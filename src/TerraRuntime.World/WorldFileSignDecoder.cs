@@ -6,7 +6,8 @@ namespace TerraRuntime.World;
 /// <summary>
 /// Decodes the Terraria 1.4.5.8 sign section. Tile-sign semantic validation is intentionally deferred until
 /// the verified tile-sign catalog is part of runtime state; coordinates and text allocations are still bounded here.
-/// Duplicate coordinates follow vanilla load behavior: the first sign wins.
+/// Duplicate coordinates follow vanilla load behavior: the first sign wins while surviving entries retain
+/// their original file-order slot IDs for packet-10 synchronization.
 /// </summary>
 public static class WorldFileSignDecoder
 {
@@ -78,7 +79,7 @@ public static class WorldFileSignDecoder
 
             long positionKey = ((long)(uint)x << 32) | (uint)y;
             if (positions.Add(positionKey))
-                loaded.Add(new WorldSign(text, x, y));
+                loaded.Add(new WorldSign(checked((short)i), text, x, y));
         }
 
         bytesConsumed = reader.Offset;
@@ -167,7 +168,7 @@ public static class WorldFileSignDecoder
                 }
             }
 
-            value = default;
+            value = 0;
             return WorldFileSignDecodeResult.InvalidStringLength;
         }
     }
