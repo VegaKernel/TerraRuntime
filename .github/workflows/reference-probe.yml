@@ -26,11 +26,11 @@ jobs:
       - name: Decompile official TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
 
-      - name: Collect world/tile references
+      - name: Collect world references
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/reference-1458
+          mkdir -p artifacts/reference-1458/tile-entities
 
           find_ref() {
             local filename="$1"
@@ -48,16 +48,26 @@ jobs:
           tile_id="$(find_ref 'TileID.cs' 'class TileID')"
           wall_id="$(find_ref 'WallID.cs' 'class WallID')"
           tile="$(find_ref 'Tile.cs' 'class Tile')"
+          tile_entity="$(find_ref 'TileEntity.cs' 'class TileEntity')"
 
           echo "WorldFile reference: $world_file"
           echo "TileID reference: $tile_id"
           echo "WallID reference: $wall_id"
           echo "Tile reference: $tile"
+          echo "TileEntity reference: $tile_entity"
 
           cp "$world_file" artifacts/reference-1458/WorldFile.cs
           cp "$tile_id" artifacts/reference-1458/TileID.cs
           cp "$wall_id" artifacts/reference-1458/WallID.cs
           cp "$tile" artifacts/reference-1458/Tile.cs
+          cp "$tile_entity" artifacts/reference-1458/tile-entities/TileEntity.cs
+
+          while IFS= read -r subtype; do
+            base="$(basename "$subtype")"
+            echo "TileEntity subtype reference: $subtype"
+            cp "$subtype" "artifacts/reference-1458/tile-entities/$base"
+          done < <(grep -RIl --include='*.cs' ': TileEntity' decompiled/1458 | sort)
+
           cp decompiled/1458/REFERENCE_SOURCE.txt artifacts/reference-1458/REFERENCE_SOURCE.txt
 
       - name: Upload local-only reference artifact
