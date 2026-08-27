@@ -48,22 +48,32 @@ jobs:
           world_file="$(find_ref '*WorldFile*.cs' 'class WorldFile')"
           tile_id="$(find_ref 'TileID.cs' 'class TileID')"
           wall_id="$(find_ref 'WallID.cs' 'class WallID')"
+          npc_id="$(find_ref 'NPCID.cs' 'class NPCID')"
           tile="$(find_ref 'Tile.cs' 'class Tile')"
           tile_entity="$(find_ref 'TileEntity.cs' 'class TileEntity')"
           tile_entities_manager="$(find_ref 'TileEntitiesManager.cs' 'class TileEntitiesManager')"
           town_manager="$(find_ref '*TownRoomManager*.cs' 'class TownRoomManager')"
           bestiary_tracker="$(find_ref '*BestiaryUnlocksTracker*.cs' 'class BestiaryUnlocksTracker')"
+          npc_kills_tracker="$(find_ref 'NPCKillsTracker.cs' 'class NPCKillsTracker')"
+          npc_sights_tracker="$(find_ref 'NPCWasNearPlayerTracker.cs' 'class NPCWasNearPlayerTracker')"
+          npc_chats_tracker="$(find_ref 'NPCWasChatWithTracker.cs' 'class NPCWasChatWithTracker')"
           creative_power_manager="$(find_ref 'CreativePowerManager.cs' 'class CreativePowerManager')"
+          creative_powers="$(find_ref 'CreativePowers.cs' 'class CreativePowers')"
 
           cp "$world_file" artifacts/reference-1458/WorldFile.cs
           cp "$tile_id" artifacts/reference-1458/TileID.cs
           cp "$wall_id" artifacts/reference-1458/WallID.cs
+          cp "$npc_id" artifacts/reference-1458/NPCID.cs
           cp "$tile" artifacts/reference-1458/Tile.cs
           cp "$tile_entity" artifacts/reference-1458/tile-entities/TileEntity.cs
           cp "$tile_entities_manager" artifacts/reference-1458/tile-entities/TileEntitiesManager.cs
           cp "$town_manager" artifacts/reference-1458/persistence/TownRoomManager.cs
           cp "$bestiary_tracker" artifacts/reference-1458/persistence/BestiaryUnlocksTracker.cs
+          cp "$npc_kills_tracker" artifacts/reference-1458/persistence/NPCKillsTracker.cs
+          cp "$npc_sights_tracker" artifacts/reference-1458/persistence/NPCWasNearPlayerTracker.cs
+          cp "$npc_chats_tracker" artifacts/reference-1458/persistence/NPCWasChatWithTracker.cs
           cp "$creative_power_manager" artifacts/reference-1458/persistence/CreativePowerManager.cs
+          cp "$creative_powers" artifacts/reference-1458/persistence/CreativePowers.cs
 
           {
             grep -RIl --include='*.cs' ': TileEntity' decompiled/1458 || true
