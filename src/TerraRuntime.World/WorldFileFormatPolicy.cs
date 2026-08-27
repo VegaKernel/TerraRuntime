@@ -7,7 +7,9 @@ namespace TerraRuntime.World;
 public static class WorldFileFormatPolicy
 {
     public const int MinimumVerifiedVersion = 279;
-    public const int MaximumVerifiedVersion = 325;
+
+    // Terraria 1.4.5.8 WorldFile.SaveFileFormatHeader writes 326.
+    public const int MaximumVerifiedVersion = 326;
 
     public static WorldFormatCompatibility Assess(int formatVersion)
     {
