@@ -1,12 +1,22 @@
+using System.Buffers;
 using System.Threading.Channels;
 
 namespace TerraRuntime.Network;
 
 public static class TerrariaOutboundFrameWriter
 {
+    public static ValueTask<OutboundWriterResult> RunAsync(
+        Stream stream,
+        BoundedOutboundQueue queue,
+        CancellationToken cancellationToken = default)
+    {
+        return RunAsync(stream, queue, OutboundWriterOptions.Default, cancellationToken);
+    }
+
     public static async ValueTask<OutboundWriterResult> RunAsync(
         Stream stream,
         BoundedOutboundQueue queue,
+        OutboundWriterOptions options,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(stream);
@@ -17,10 +27,10 @@ public static class TerrariaOutboundFrameWriter
 
         while (true)
         {
-            OutboundFrame frame;
+            OutboundFrame firstFrame;
             try
             {
-                frame = await queue.ReadAsync(cancellationToken).ConfigureAwait(false);
+                firstFrame = await queue.ReadAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -45,9 +55,34 @@ public static class TerrariaOutboundFrameWriter
                     ex.InnerException ?? ex);
             }
 
+            int batchFrames = 1;
+            int batchBytes = firstFrame.Length;
+            byte[]? rentedBuffer = null;
+            ReadOnlyMemory<byte> writeBuffer = firstFrame.Bytes;
+
+            if (CanBatch(firstFrame, options) &&
+                queue.TryPeek(out OutboundFrame nextFrame) &&
+                CanAppend(nextFrame, batchFrames, batchBytes, options))
+            {
+                rentedBuffer = ArrayPool<byte>.Shared.Rent(options.MaxBatchBytes);
+                firstFrame.Bytes.Span.CopyTo(rentedBuffer);
+
+                while (batchFrames < options.MaxBatchFrames &&
+                    queue.TryPeek(out nextFrame) &&
+                    CanAppend(nextFrame, batchFrames, batchBytes, options) &&
+                    queue.TryRead(out OutboundFrame dequeued))
+                {
+                    dequeued.Bytes.Span.CopyTo(rentedBuffer.AsSpan(batchBytes));
+                    batchFrames++;
+                    batchBytes += dequeued.Length;
+                }
+
+                writeBuffer = rentedBuffer.AsMemory(0, batchBytes);
+            }
+
             try
             {
-                await stream.WriteAsync(frame.Bytes, cancellationToken).ConfigureAwait(false);
+                await stream.WriteAsync(writeBuffer, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -64,9 +99,28 @@ public static class TerrariaOutboundFrameWriter
                     bytesWritten,
                     ex);
             }
+            finally
+            {
+                if (rentedBuffer is not null)
+                {
+                    ArrayPool<byte>.Shared.Return(rentedBuffer);
+                }
+            }
 
-            framesWritten++;
-            bytesWritten += frame.Length;
+            framesWritten += batchFrames;
+            bytesWritten += batchBytes;
         }
     }
+
+    private static bool CanBatch(OutboundFrame frame, OutboundWriterOptions options) =>
+        options.MaxBatchFrames > 1 && frame.Length <= options.MaxBatchFrameBytes;
+
+    private static bool CanAppend(
+        OutboundFrame frame,
+        int batchFrames,
+        int batchBytes,
+        OutboundWriterOptions options) =>
+        batchFrames < options.MaxBatchFrames &&
+        frame.Length <= options.MaxBatchFrameBytes &&
+        batchBytes <= options.MaxBatchBytes - frame.Length;
 }

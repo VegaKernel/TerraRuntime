@@ -76,6 +76,8 @@ public sealed class BoundedOutboundQueue
         return OutboundEnqueueResult.Enqueued;
     }
 
+    public bool TryPeek(out OutboundFrame frame) => _channel.Reader.TryPeek(out frame);
+
     public bool TryRead(out OutboundFrame frame)
     {
         if (!_channel.Reader.TryRead(out frame))
