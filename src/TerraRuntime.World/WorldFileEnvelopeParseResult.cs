@@ -11,5 +11,8 @@ public enum WorldFileEnvelopeParseResult : byte
     SectionPointerOutOfRange = 6,
     NonMonotonicSectionPointers = 7,
     FrameImportanceTooLarge = 8,
-    FirstSectionOverlapsEnvelope = 9
+    FirstSectionOverlapsEnvelope = 9,
+    CurrentSectionCountMismatch = 10,
+    CurrentFrameImportanceCountMismatch = 11,
+    FirstSectionOffsetMismatch = 12
 }
