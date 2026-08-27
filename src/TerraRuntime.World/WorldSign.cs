@@ -1,6 +1,7 @@
 namespace TerraRuntime.World;
 
 public sealed record WorldSign(
+    short SlotId,
     string Text,
     int X,
     int Y);
