@@ -288,9 +288,38 @@ internal static class Program
             return 21;
         }
 
+        if (WorldFileChestDecoder.TryDecode(
+                file,
+                world.Envelope,
+                world.Header,
+                maxItemsPerChest: 40,
+                maxTotalItems: 100,
+                out WorldChest[] chests,
+                out _) != WorldFileChestDecodeResult.Decoded ||
+            chests.Length != 0)
+        {
+            Console.Error.WriteLine("World smoke failed while decoding the current chest section.");
+            return 22;
+        }
+
+        if (WorldFileSignDecoder.TryDecode(
+                file,
+                world.Envelope,
+                world.Header,
+                maxTextBytesPerSign: 256,
+                maxTotalTextBytes: 1024,
+                out WorldSign[] signs,
+                out _) != WorldFileSignDecodeResult.Decoded ||
+            signs.Length != 0)
+        {
+            Console.Error.WriteLine("World smoke failed while decoding the current sign section.");
+            return 23;
+        }
+
         Console.WriteLine(
             $"World smoke passed: sections={dimensions.SectionCount}, dirtySection={drained[0]}, " +
-            $"wldVersion={world.Envelope.FormatVersion}, world={world.Header.Name}, tiles={world.Tiles.Count}.");
+            $"wldVersion={world.Envelope.FormatVersion}, world={world.Header.Name}, tiles={world.Tiles.Count}, " +
+            $"chests={chests.Length}, signs={signs.Length}.");
         return 0;
     }
 
@@ -309,19 +338,21 @@ internal static class Program
         const int headerEnd = 240;
         byte[] tileBytes = [0x40, 0x02, 0x40, 0x02];
         int tileEnd = headerEnd + tileBytes.Length;
+        int chestEnd = tileEnd + sizeof(short);
+        int signEnd = chestEnd + sizeof(short);
         int[] pointers =
         [
             envelopeEnd,
             headerEnd,
             tileEnd,
-            tileEnd + 8,
-            tileEnd + 16,
-            tileEnd + 24,
-            tileEnd + 32,
-            tileEnd + 40,
-            tileEnd + 48,
-            tileEnd + 56,
-            tileEnd + 64
+            chestEnd,
+            signEnd,
+            signEnd + 8,
+            signEnd + 16,
+            signEnd + 24,
+            signEnd + 32,
+            signEnd + 40,
+            signEnd + 48
         ];
         var file = new byte[pointers[^1] + 1];
 
@@ -374,6 +405,8 @@ internal static class Program
         }
 
         tileBytes.CopyTo(file, headerEnd);
+        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(tileEnd), 0);
+        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(chestEnd), 0);
         return file;
     }
 
