@@ -21,6 +21,21 @@ public static class WorldFileLoader
         if (coreLoad.Result != WorldFileCoreLoadResult.Loaded || core is null)
             return FromCoreFailure(coreLoad);
 
+        WorldFileRuntimeMetadataParseResult metadataResult = WorldFileRuntimeMetadataParser.TryParse(
+            file,
+            core.Envelope,
+            core.Header,
+            limits.RuntimeMetadata,
+            out WorldFileRuntimeMetadata? runtimeMetadata,
+            out _);
+        if (metadataResult != WorldFileRuntimeMetadataParseResult.Parsed || runtimeMetadata is null)
+        {
+            return Failure(
+                WorldFileLoadResult.InvalidHeader,
+                WorldFileLoadStage.Header,
+                0x100 + (int)metadataResult);
+        }
+
         WorldFileChestDecodeResult chestResult = WorldFileChestDecoder.TryDecode(
             file,
             core.Envelope,
@@ -110,6 +125,7 @@ public static class WorldFileLoader
         world = new WorldFileData(
             core.Envelope,
             core.Header,
+            runtimeMetadata,
             core.Tiles,
             chests,
             signs,
