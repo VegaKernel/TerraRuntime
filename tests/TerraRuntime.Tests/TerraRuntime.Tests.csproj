@@ -19,5 +19,6 @@
     <ProjectReference Include="../../src/TerraRuntime.Network/TerraRuntime.Network.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Protocol.Multiplicity/TerraRuntime.Protocol.Multiplicity.csproj" />
+    <ProjectReference Include="../../src/TerraRuntime.World/TerraRuntime.World.csproj" />
   </ItemGroup>
 </Project>
