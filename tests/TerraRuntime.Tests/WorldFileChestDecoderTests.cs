@@ -49,12 +49,43 @@ public sealed class WorldFileChestDecoderTests
         Assert.Equal(WorldFileChestDecodeResult.Decoded, result);
         Assert.Equal(chestBytes.Length, consumed);
         WorldChest chest = Assert.Single(chests);
+        Assert.Equal((short)0, chest.SlotId);
         Assert.Equal(1, chest.X);
         Assert.Equal(2, chest.Y);
         Assert.Equal("first", chest.Name);
         Assert.Equal(2, chest.Items.Length);
         Assert.Equal(new WorldChestItem(5, 100, 3), chest.Items[0]);
         Assert.True(chest.Items[1].IsEmpty);
+    }
+
+    [Fact]
+    public void Preserves_file_order_slot_after_duplicate_hole()
+    {
+        byte[] chestBytes = CreateChestBytes(writer =>
+        {
+            writer.Write((short)3);
+
+            WriteEmptyChest(writer, 1, 2, "first");
+            WriteEmptyChest(writer, 1, 2, "duplicate");
+            WriteEmptyChest(writer, 4, 5, "later");
+        });
+        byte[] file = CreateCurrentFile(chestBytes);
+
+        Assert.Equal(
+            WorldFileChestDecodeResult.Decoded,
+            WorldFileChestDecoder.TryDecode(
+                file,
+                ParseEnvelope(file),
+                CreateHeader(),
+                maxItemsPerChest: 4,
+                maxTotalItems: 12,
+                out WorldChest[] chests,
+                out _));
+
+        Assert.Equal(2, chests.Length);
+        Assert.Equal((short)0, chests[0].SlotId);
+        Assert.Equal((short)2, chests[1].SlotId);
+        Assert.Equal("later", chests[1].Name);
     }
 
     [Fact]
@@ -154,6 +185,14 @@ public sealed class WorldFileChestDecoderTests
                 maxTotalItems: 100,
                 out _,
                 out _));
+    }
+
+    private static void WriteEmptyChest(BinaryWriter writer, int x, int y, string name)
+    {
+        writer.Write(x);
+        writer.Write(y);
+        writer.Write(name);
+        writer.Write(0);
     }
 
     private static WorldFileHeader CreateHeader()
