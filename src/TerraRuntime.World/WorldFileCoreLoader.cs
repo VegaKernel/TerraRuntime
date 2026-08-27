@@ -23,8 +23,8 @@ public static class WorldFileCoreLoader
             return new WorldFileCoreLoadDiagnostic(
                 WorldFileCoreLoadResult.InvalidEnvelope,
                 envelopeResult,
-                default,
-                default);
+                null,
+                null);
         }
 
         WorldFileHeaderParseResult headerResult = WorldFileHeaderParser.TryParse(file, envelope, out WorldFileHeader? header);
@@ -34,7 +34,7 @@ public static class WorldFileCoreLoader
                 WorldFileCoreLoadResult.InvalidHeader,
                 envelopeResult,
                 headerResult,
-                default);
+                null);
         }
 
         long tileCount = (long)header.Dimensions.WidthTiles * header.Dimensions.HeightTiles;
@@ -44,7 +44,7 @@ public static class WorldFileCoreLoader
                 WorldFileCoreLoadResult.TileBudgetExceeded,
                 envelopeResult,
                 headerResult,
-                default);
+                null);
         }
 
         WorldTileStore tiles;
@@ -58,7 +58,7 @@ public static class WorldFileCoreLoader
                 WorldFileCoreLoadResult.TileStorageUnsupported,
                 envelopeResult,
                 headerResult,
-                default);
+                null);
         }
 
         WorldFileTileDecodeResult tileResult = WorldFileTileDecoder.TryDecode(
