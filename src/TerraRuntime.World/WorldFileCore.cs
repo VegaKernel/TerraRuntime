@@ -21,6 +21,6 @@ public enum WorldFileCoreLoadResult : byte
 
 public readonly record struct WorldFileCoreLoadDiagnostic(
     WorldFileCoreLoadResult Result,
-    WorldFileEnvelopeParseResult EnvelopeResult,
-    WorldFileHeaderParseResult HeaderResult,
-    WorldFileTileDecodeResult TileResult);
+    WorldFileEnvelopeParseResult? EnvelopeResult,
+    WorldFileHeaderParseResult? HeaderResult,
+    WorldFileTileDecodeResult? TileResult);
