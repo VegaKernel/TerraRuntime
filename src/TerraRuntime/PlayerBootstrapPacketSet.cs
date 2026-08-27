@@ -44,7 +44,7 @@ public sealed class PlayerBootstrapPacketSet
         for (int i = 0; i < sectionCount; i++)
         {
             WorldTileBounds bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, sections[i]);
-            WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncodeTileOnly(
+            WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncode(
                 world,
                 bounds.X,
                 bounds.Y,
