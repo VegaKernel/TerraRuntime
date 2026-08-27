@@ -7,5 +7,6 @@ public enum TerrariaPipePumpResult : byte
     Cancelled = 2,
     TruncatedFrame = 3,
     InvalidFrameLength = 4,
-    FrameTooLarge = 5
+    FrameTooLarge = 5,
+    IoFailure = 6
 }

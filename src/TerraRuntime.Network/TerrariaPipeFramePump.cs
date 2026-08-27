@@ -34,6 +34,10 @@ public static class TerrariaPipeFramePump
             {
                 return TerrariaPipePumpResult.Cancelled;
             }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+            {
+                return TerrariaPipePumpResult.IoFailure;
+            }
 
             ReadOnlySequence<byte> buffer = readResult.Buffer;
             if (readResult.IsCanceled)
