@@ -1,3 +1,5 @@
+using Multiplicity.Packets;
+using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
 if (args.Length != 1)
@@ -46,6 +48,38 @@ if (!diagnostic.IsLoaded || world is null)
     return 1;
 }
 
+WorldInfo worldInfo = WorldInfoPacketMapper.Create(world);
+using var payloadStream = new MemoryStream();
+worldInfo.ToStream(payloadStream, includeHeader: false);
+byte[] payload = payloadStream.ToArray();
+WorldInfo parsedWorldInfo;
+try
+{
+    parsedWorldInfo = (WorldInfo)TerrariaPacket.DeserializePayload(PacketTypes.WorldInfo, payload);
+}
+catch (Exception exception)
+{
+    Console.Error.WriteLine($"WorldInfo verification failed during protocol 326 round-trip: {exception}");
+    return 3;
+}
+
+if (parsedWorldInfo.WorldName != world.Header.Name ||
+    parsedWorldInfo.WorldId != world.Header.WorldId ||
+    parsedWorldInfo.WorldGeneratorVersion != world.Header.WorldGeneratorVersion ||
+    parsedWorldInfo.MaxTilesX != world.Header.Dimensions.WidthTiles ||
+    parsedWorldInfo.MaxTilesY != world.Header.Dimensions.HeightTiles ||
+    !parsedWorldInfo.WorldUniqueId.AsSpan().SequenceEqual(world.Header.UniqueId.ToByteArray()) ||
+    parsedWorldInfo.DungeonX != world.RuntimeMetadata.DungeonX ||
+    parsedWorldInfo.DungeonY != world.RuntimeMetadata.DungeonY ||
+    parsedWorldInfo.ExtraSpawnPoints.Length != world.RuntimeMetadata.ExtraSpawnPoints.Length ||
+    parsedWorldInfo.TreeTopVariations.Length != 13 ||
+    parsedWorldInfo.TrailingDataMemory.Length != 0)
+{
+    Console.Error.WriteLine(
+        "WorldInfo verification failed: loaded .wld state did not survive the protocol 326 packet-7 round-trip.");
+    return 4;
+}
+
 Console.WriteLine(
     $"Verified {Path.GetFileName(path)}: version={world.Envelope.FormatVersion}, " +
     $"name={world.Header.Name}, size={world.Header.Dimensions.WidthTiles}x{world.Header.Dimensions.HeightTiles}, " +
@@ -53,5 +87,6 @@ Console.WriteLine(
     $"tiles={world.Tiles.Count}, chests={world.Chests.Length}, signs={world.Signs.Length}, " +
     $"townNpcs={world.Npcs.TownNpcs.Length}, persistentNpcs={world.Npcs.PersistentNpcs.Length}, " +
     $"tileEntities={world.TileEntities.Length}, pressurePlates={world.PressurePlates.Length}, " +
-    $"townRooms={world.TownRooms.Length}, bestiaryKills={world.Bestiary.Kills.Length}.");
+    $"townRooms={world.TownRooms.Length}, bestiaryKills={world.Bestiary.Kills.Length}, " +
+    $"worldInfoPayload={payload.Length} bytes.");
 return 0;
