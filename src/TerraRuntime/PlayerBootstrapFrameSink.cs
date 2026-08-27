@@ -1,4 +1,5 @@
 using global::Multiplicity.Packets;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
@@ -13,7 +14,9 @@ public enum PlayerBootstrapStopReason : byte
     ServerFull = 2,
     InvalidJoinState = 3,
     MalformedJoinRequest = 4,
-    OutboundBackpressure = 5
+    OutboundBackpressure = 5,
+    PlayerSlotMismatch = 6,
+    GameIngressBackpressure = 7
 }
 
 /// <summary>
@@ -26,6 +29,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private readonly TerrariaConnectionOutboundQueue _outbound;
     private readonly PlayerBootstrapPacketSet _packets;
     private readonly ITerrariaFrameSink? _inner;
+    private readonly GameCommandSourceId _source;
+    private readonly IPlayerSpawnCommitIngress? _spawnIngress;
     private PlayerJoinSession? _session;
 
     public PlayerBootstrapFrameSink(
@@ -33,6 +38,30 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         TerrariaConnectionOutboundQueue outbound,
         PlayerBootstrapPacketSet packets,
         ITerrariaFrameSink? inner = null)
+        : this(slots, outbound, packets, GameCommandSourceId.System, null, inner)
+    {
+    }
+
+    public PlayerBootstrapFrameSink(
+        PlayerSlotPool slots,
+        TerrariaConnectionOutboundQueue outbound,
+        PlayerBootstrapPacketSet packets,
+        GameCommandSourceId source,
+        IPlayerSpawnCommitIngress spawnIngress,
+        ITerrariaFrameSink? inner = null)
+        : this(slots, outbound, packets, source, spawnIngress, inner)
+    {
+        if (source.IsSystem)
+            throw new ArgumentException("Player bootstrap ingress requires a connection command source.", nameof(source));
+    }
+
+    private PlayerBootstrapFrameSink(
+        PlayerSlotPool slots,
+        TerrariaConnectionOutboundQueue outbound,
+        PlayerBootstrapPacketSet packets,
+        GameCommandSourceId source,
+        IPlayerSpawnCommitIngress? spawnIngress,
+        ITerrariaFrameSink? inner)
     {
         ArgumentNullException.ThrowIfNull(slots);
         ArgumentNullException.ThrowIfNull(outbound);
@@ -40,6 +69,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _slots = slots;
         _outbound = outbound;
         _packets = packets;
+        _source = source;
+        _spawnIngress = spawnIngress;
         _inner = inner;
     }
 
@@ -165,14 +196,36 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     private TerrariaFrameSinkResult HandlePlayerSpawn(in TerrariaFrame frame)
     {
-        if (TerrariaJoinRequestDecoder.TryDecodePlayerSpawn(frame, out _) != TerrariaJoinDecodeResult.Decoded)
+        if (TerrariaJoinRequestDecoder.TryDecodePlayerSpawn(frame, out TerrariaPlayerSpawnRequest request) != TerrariaJoinDecodeResult.Decoded)
             return Stop(PlayerBootstrapStopReason.MalformedJoinRequest);
 
         if (_session!.State != PlayerJoinState.AwaitingSpawn && _session.State != PlayerJoinState.Playing)
             return Stop(PlayerBootstrapStopReason.InvalidJoinState);
 
-        // Deliberately do not advance 3 -> 10 here. The authoritative game-state commit must own that
-        // transition; this sink only validates the wire envelope and hands the frame onward.
+        PlayerSlotId assignedSlot = _session.Slot;
+        if (request.ClaimedPlayerId != assignedSlot.Value)
+            return Stop(PlayerBootstrapStopReason.PlayerSlotMismatch);
+
+        if (_spawnIngress is not null && _session.State == PlayerJoinState.AwaitingSpawn)
+        {
+            var commit = new PlayerSpawnCommitRequest(
+                assignedSlot,
+                request.SpawnX,
+                request.SpawnY,
+                request.RespawnTimer,
+                request.DeathsPve,
+                request.DeathsPvp,
+                request.Team,
+                request.SpawnContext);
+
+            if (!_spawnIngress.TryPost(_source, _session, in commit))
+                return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
+
+            // The network thread has only submitted a candidate. State 3 -> 10 happens when the
+            // authoritative game loop accepts and commits the command.
+            return TerrariaFrameSinkResult.Continue;
+        }
+
         return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
     }
 
