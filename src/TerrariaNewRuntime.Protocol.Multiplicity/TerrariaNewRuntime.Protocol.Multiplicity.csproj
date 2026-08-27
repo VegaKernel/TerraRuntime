@@ -3,15 +3,9 @@
     <TargetFramework>net11.0</TargetFramework>
     <RootNamespace>TerrariaNewRuntime.Protocol.Multiplicity</RootNamespace>
     <AssemblyName>TerrariaNewRuntime.Protocol.Multiplicity</AssemblyName>
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>
 
-  <!--
-    Multiplicity.Packets 1.2.7 targets .NET Framework 4.5 and is intentionally
-    isolated behind this adapter. It is a bootstrap/reference implementation,
-    not the permanent .NET 11 hot-path codec.
-  -->
   <ItemGroup>
-    <PackageReference Include="Multiplicity.Packets" Version="1.2.7" />
+    <PackageReference Include="Multiplicity" Version="2.6.3" />
   </ItemGroup>
 </Project>
