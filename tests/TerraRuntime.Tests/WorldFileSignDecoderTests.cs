@@ -36,7 +36,42 @@ public sealed class WorldFileSignDecoderTests
         Assert.Equal(WorldFileSignDecodeResult.Decoded, result);
         Assert.Equal(signBytes.Length, consumed);
         WorldSign sign = Assert.Single(signs);
-        Assert.Equal(new WorldSign("first", 2, 3), sign);
+        Assert.Equal(new WorldSign(0, "first", 2, 3), sign);
+    }
+
+    [Fact]
+    public void Preserves_file_order_slot_after_duplicate_hole()
+    {
+        byte[] signBytes = CreateSignBytes(writer =>
+        {
+            writer.Write((short)3);
+            writer.Write("first");
+            writer.Write(2);
+            writer.Write(3);
+            writer.Write("duplicate");
+            writer.Write(2);
+            writer.Write(3);
+            writer.Write("later");
+            writer.Write(4);
+            writer.Write(5);
+        });
+        byte[] file = CreateCurrentFile(signBytes);
+
+        Assert.Equal(
+            WorldFileSignDecodeResult.Decoded,
+            WorldFileSignDecoder.TryDecode(
+                file,
+                ParseEnvelope(file),
+                CreateHeader(),
+                maxTextBytesPerSign: 64,
+                maxTotalTextBytes: 256,
+                out WorldSign[] signs,
+                out _));
+
+        Assert.Equal(2, signs.Length);
+        Assert.Equal((short)0, signs[0].SlotId);
+        Assert.Equal((short)2, signs[1].SlotId);
+        Assert.Equal("later", signs[1].Text);
     }
 
     [Fact]
