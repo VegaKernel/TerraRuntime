@@ -13,6 +13,14 @@ public static class WorldFileHeaderParser
         header = null;
         if (WorldFileEnvelopeParser.TryParse(file, out WorldFileEnvelope? envelope, out _) != WorldFileEnvelopeParseResult.Parsed || envelope is null)
             return WorldFileHeaderParseResult.InvalidEnvelope;
+
+        return TryParse(file, envelope, out header);
+    }
+
+    public static WorldFileHeaderParseResult TryParse(ReadOnlySpan<byte> file, WorldFileEnvelope envelope, out WorldFileHeader? header)
+    {
+        ArgumentNullException.ThrowIfNull(envelope);
+        header = null;
         if (envelope.FormatVersion != WorldFileFormatPolicy.CurrentVersion)
             return WorldFileHeaderParseResult.UnsupportedVersion;
         if (envelope.SectionOffsets.Count < 2)
