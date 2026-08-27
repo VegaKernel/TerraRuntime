@@ -15,16 +15,24 @@ public readonly record struct WorldInfoTransientState(
     ulong LobbyId);
 
 /// <summary>
-/// Maps a fully validated Terraria 1.4.5.8 world plus live runtime flags to protocol 326 packet 7.
-/// Bit assignments are kept here at the Multiplicity boundary rather than leaking wire layout into the world model.
+/// Maps validated Terraria 1.4.5.8 world state plus live runtime flags to protocol 326 packet 7.
+/// Bit assignments remain at the Multiplicity boundary rather than leaking wire layout into the world model.
 /// </summary>
 public static class WorldInfoPacketMapper
 {
     public static WorldInfo Create(WorldFileData world, WorldInfoTransientState transient = default)
     {
         ArgumentNullException.ThrowIfNull(world);
-        WorldFileHeader header = world.Header;
-        WorldFileRuntimeMetadata state = world.RuntimeMetadata;
+        return Create(world.Header, world.RuntimeMetadata, transient);
+    }
+
+    public static WorldInfo Create(
+        WorldFileHeader header,
+        WorldFileRuntimeMetadata state,
+        WorldInfoTransientState transient = default)
+    {
+        ArgumentNullException.ThrowIfNull(header);
+        ArgumentNullException.ThrowIfNull(state);
 
         if (state.TreeX.Length != 3 || state.TreeStyles.Length != 4 ||
             state.CaveBackX.Length != 3 || state.CaveBackStyles.Length != 4 ||
@@ -33,20 +41,17 @@ public static class WorldInfoPacketMapper
             throw new InvalidOperationException("Validated world runtime metadata has an invalid fixed-array shape.");
         }
 
-        var extraSpawns = new Multiplicity.Packets.WorldSpawnPoint[state.ExtraSpawnPoints.Length];
+        var extraSpawns = new global::Multiplicity.Packets.WorldSpawnPoint[state.ExtraSpawnPoints.Length];
         for (int i = 0; i < extraSpawns.Length; i++)
         {
-            World.WorldSpawnPoint source = state.ExtraSpawnPoints[i];
-            extraSpawns[i] = new Multiplicity.Packets.WorldSpawnPoint(source.X, source.Y);
+            TerraRuntime.World.WorldSpawnPoint source = state.ExtraSpawnPoints[i];
+            extraSpawns[i] = new global::Multiplicity.Packets.WorldSpawnPoint(source.X, source.Y);
         }
 
         return new WorldInfo
         {
             Time = state.Time,
-            DayandMoonInfo = Pack(
-                (0, state.DayTime),
-                (1, state.BloodMoon),
-                (2, state.Eclipse)),
+            DayandMoonInfo = Bits(state.DayTime, state.BloodMoon, state.Eclipse),
             MoonPhase = state.MoonPhase,
             MaxTilesX = checked((short)header.Dimensions.WidthTiles),
             MaxTilesY = checked((short)header.Dimensions.HeightTiles),
@@ -94,100 +99,102 @@ public static class WorldInfoPacketMapper
             CaveBackStyle4 = state.CaveBackStyles[3],
             TreeTopVariations = (byte[])state.TreeTopVariations.Clone(),
             Rain = state.NetworkRain,
-            EventInfo = Pack(
-                (0, state.ShadowOrbSmashed),
-                (1, state.DownedBoss1),
-                (2, state.DownedBoss2),
-                (3, state.DownedBoss3),
-                (4, state.HardMode),
-                (5, state.DownedClown),
-                (7, state.DownedPlantBoss)),
-            EventInfo2 = Pack(
-                (0, state.DownedMechBoss1),
-                (1, state.DownedMechBoss2),
-                (2, state.DownedMechBoss3),
-                (3, state.DownedMechBossAny),
-                (4, state.CloudBackgroundActive),
-                (5, state.Crimson),
-                (6, transient.PumpkinMoon),
-                (7, transient.SnowMoon)),
-            EventInfo3 = Pack(
-                (1, state.FastForwardTimeToDawn),
-                (2, state.SlimeRainActive),
-                (3, state.DownedSlimeKing),
-                (4, state.DownedQueenBee),
-                (5, state.DownedFishron),
-                (6, state.DownedMartians),
-                (7, state.DownedAncientCultist)),
-            EventInfo4 = Pack(
-                (0, state.DownedMoonlord),
-                (1, state.DownedHalloweenKing),
-                (2, state.DownedHalloweenTree),
-                (3, state.DownedChristmasIceQueen),
-                (4, state.DownedChristmasSantank),
-                (5, state.DownedChristmasTree),
-                (6, state.DownedGolemBoss),
-                (7, state.PartyIsUp)),
-            EventInfo5 = Pack(
-                (0, state.DownedPirates),
-                (1, state.DownedFrost),
-                (2, state.DownedGoblins),
-                (3, state.SandstormHappening),
-                (4, transient.Dd2EventOngoing),
-                (5, state.DownedDd2InvasionT1),
-                (6, state.DownedDd2InvasionT2),
-                (7, state.DownedDd2InvasionT3)),
-            EventInfo6 = Pack(
-                (0, state.CombatBookWasUsed),
-                (1, state.LanternsUp),
-                (2, state.DownedTowerSolar),
-                (3, state.DownedTowerVortex),
-                (4, state.DownedTowerNebula),
-                (5, state.DownedTowerStardust),
-                (6, state.ForceHalloweenForToday),
-                (7, state.ForceXMasForToday)),
-            EventInfo7 = Pack(
-                (0, state.BoughtCat),
-                (1, state.BoughtDog),
-                (2, state.BoughtBunny),
-                (3, transient.FreeCake),
-                (4, state.DrunkWorld),
-                (5, state.DownedEmpressOfLight),
-                (6, state.DownedQueenSlime),
-                (7, state.GetGoodWorld)),
-            EventInfo8 = Pack(
-                (0, state.TenthAnniversaryWorld),
-                (1, state.DontStarveWorld),
-                (2, state.DownedDeerclops),
-                (3, state.NotTheBeesWorld),
-                (4, state.RemixWorld),
-                (5, state.UnlockedSlimeBlueSpawn),
-                (6, state.CombatBookVolumeTwoWasUsed),
-                (7, state.PeddlersSatchelWasUsed)),
-            EventInfo9 = Pack(
-                (0, state.UnlockedSlimeGreenSpawn),
-                (1, state.UnlockedSlimeOldSpawn),
-                (2, state.UnlockedSlimePurpleSpawn),
-                (3, state.UnlockedSlimeRainbowSpawn),
-                (4, state.UnlockedSlimeRedSpawn),
-                (5, state.UnlockedSlimeYellowSpawn),
-                (6, state.UnlockedSlimeCopperSpawn),
-                (7, state.FastForwardTimeToDusk)),
-            EventInfo10 = Pack(
-                (0, state.NoTrapsWorld),
-                (1, state.ZenithWorld),
-                (2, state.UnlockedTruffleSpawn),
-                (3, state.VampireSeed),
-                (4, state.InfectedSeed),
-                (5, state.TeamBasedSpawnsSeed),
-                (6, state.SkyblockWorld),
-                (7, state.DualDungeonsSeed)),
-            EventInfo11 = Pack(
-                (0, transient.SkyblockLowTiles),
-                (1, state.ForceHalloweenForever),
-                (2, state.ForceXMasForever),
-                (3, state.MoreLightningSeed),
-                (4, state.NoLightningSeed)),
+            EventInfo = Bits(
+                state.ShadowOrbSmashed,
+                state.DownedBoss1,
+                state.DownedBoss2,
+                state.DownedBoss3,
+                state.HardMode,
+                state.DownedClown,
+                false,
+                state.DownedPlantBoss),
+            EventInfo2 = Bits(
+                state.DownedMechBoss1,
+                state.DownedMechBoss2,
+                state.DownedMechBoss3,
+                state.DownedMechBossAny,
+                state.CloudBackgroundActive,
+                state.Crimson,
+                transient.PumpkinMoon,
+                transient.SnowMoon),
+            EventInfo3 = Bits(
+                false,
+                state.FastForwardTimeToDawn,
+                state.SlimeRainActive,
+                state.DownedSlimeKing,
+                state.DownedQueenBee,
+                state.DownedFishron,
+                state.DownedMartians,
+                state.DownedAncientCultist),
+            EventInfo4 = Bits(
+                state.DownedMoonlord,
+                state.DownedHalloweenKing,
+                state.DownedHalloweenTree,
+                state.DownedChristmasIceQueen,
+                state.DownedChristmasSantank,
+                state.DownedChristmasTree,
+                state.DownedGolemBoss,
+                state.PartyIsUp),
+            EventInfo5 = Bits(
+                state.DownedPirates,
+                state.DownedFrost,
+                state.DownedGoblins,
+                state.SandstormHappening,
+                transient.Dd2EventOngoing,
+                state.DownedDd2InvasionT1,
+                state.DownedDd2InvasionT2,
+                state.DownedDd2InvasionT3),
+            EventInfo6 = Bits(
+                state.CombatBookWasUsed,
+                state.LanternsUp,
+                state.DownedTowerSolar,
+                state.DownedTowerVortex,
+                state.DownedTowerNebula,
+                state.DownedTowerStardust,
+                state.ForceHalloweenForToday,
+                state.ForceXMasForToday),
+            EventInfo7 = Bits(
+                state.BoughtCat,
+                state.BoughtDog,
+                state.BoughtBunny,
+                transient.FreeCake,
+                state.DrunkWorld,
+                state.DownedEmpressOfLight,
+                state.DownedQueenSlime,
+                state.GetGoodWorld),
+            EventInfo8 = Bits(
+                state.TenthAnniversaryWorld,
+                state.DontStarveWorld,
+                state.DownedDeerclops,
+                state.NotTheBeesWorld,
+                state.RemixWorld,
+                state.UnlockedSlimeBlueSpawn,
+                state.CombatBookVolumeTwoWasUsed,
+                state.PeddlersSatchelWasUsed),
+            EventInfo9 = Bits(
+                state.UnlockedSlimeGreenSpawn,
+                state.UnlockedSlimeOldSpawn,
+                state.UnlockedSlimePurpleSpawn,
+                state.UnlockedSlimeRainbowSpawn,
+                state.UnlockedSlimeRedSpawn,
+                state.UnlockedSlimeYellowSpawn,
+                state.UnlockedSlimeCopperSpawn,
+                state.FastForwardTimeToDusk),
+            EventInfo10 = Bits(
+                state.NoTrapsWorld,
+                state.ZenithWorld,
+                state.UnlockedTruffleSpawn,
+                state.VampireSeed,
+                state.InfectedSeed,
+                state.TeamBasedSpawnsSeed,
+                state.SkyblockWorld,
+                state.DualDungeonsSeed),
+            EventInfo11 = Bits(
+                transient.SkyblockLowTiles,
+                state.ForceHalloweenForever,
+                state.ForceXMasForever,
+                state.MoreLightningSeed,
+                state.NoLightningSeed),
             SunDialCooldown = state.SundialCooldown,
             MoonDialCooldown = state.MoondialCooldown,
             OreTierCopper = state.OreTiers.Copper,
@@ -206,14 +213,25 @@ public static class WorldInfoPacketMapper
         };
     }
 
-    private static byte Pack(params (int Bit, bool Value)[] values)
+    private static byte Bits(
+        bool bit0 = false,
+        bool bit1 = false,
+        bool bit2 = false,
+        bool bit3 = false,
+        bool bit4 = false,
+        bool bit5 = false,
+        bool bit6 = false,
+        bool bit7 = false)
     {
-        byte result = 0;
-        foreach ((int bit, bool value) in values)
-        {
-            if (value)
-                result |= checked((byte)(1 << bit));
-        }
-        return result;
+        int value = 0;
+        if (bit0) value |= 1 << 0;
+        if (bit1) value |= 1 << 1;
+        if (bit2) value |= 1 << 2;
+        if (bit3) value |= 1 << 3;
+        if (bit4) value |= 1 << 4;
+        if (bit5) value |= 1 << 5;
+        if (bit6) value |= 1 << 6;
+        if (bit7) value |= 1 << 7;
+        return (byte)value;
     }
 }
