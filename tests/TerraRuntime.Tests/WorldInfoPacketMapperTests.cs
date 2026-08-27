@@ -1,6 +1,7 @@
 using Multiplicity.Packets;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
+using WorldSpawnPoint = TerraRuntime.World.WorldSpawnPoint;
 
 namespace TerraRuntime.Tests;
 
