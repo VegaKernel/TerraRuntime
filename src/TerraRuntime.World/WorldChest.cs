@@ -1,6 +1,7 @@
 namespace TerraRuntime.World;
 
 public sealed record WorldChest(
+    short SlotId,
     int X,
     int Y,
     string Name,
