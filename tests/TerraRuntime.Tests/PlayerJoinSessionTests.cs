@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
 namespace TerraRuntime.Tests;
@@ -20,8 +21,24 @@ public sealed class PlayerJoinSessionTests
         Assert.Equal(PlayerJoinTransition.SectionRequestAccepted, session.ObserveSectionRequest());
         Assert.Equal(PlayerJoinState.AwaitingSpawn, session.State);
 
-        Assert.Equal(PlayerJoinTransition.EnteredPlayingState, session.ObserveSpawn());
+        Assert.Equal(PlayerSpawnCommitResult.Committed, session.TryCommitSpawn(new PlayerSlotId(0)));
         Assert.Equal(PlayerJoinState.Playing, session.State);
+    }
+
+    [Fact]
+    public void Rejects_spawn_for_different_leased_slot_without_advancing()
+    {
+        var pool = new PlayerSlotPool(1);
+        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());
+        Assert.Equal(PlayerJoinTransition.SectionRequestAccepted, session.ObserveSectionRequest());
+
+        Assert.Equal(PlayerSpawnCommitResult.SlotMismatch, session.TryCommitSpawn(new PlayerSlotId(1)));
+        Assert.Equal(PlayerJoinState.AwaitingSpawn, session.State);
+        Assert.Equal(PlayerSpawnCommitResult.Committed, session.TryCommitSpawn(new PlayerSlotId(0)));
+        Assert.Equal(PlayerJoinState.Playing, session.State);
+        Assert.Equal(PlayerSpawnCommitResult.InvalidJoinState, session.TryCommitSpawn(new PlayerSlotId(0)));
     }
 
     [Fact]
