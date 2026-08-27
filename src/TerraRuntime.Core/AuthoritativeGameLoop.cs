@@ -43,7 +43,7 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
 
         commands = Channel.CreateBounded<TCommand>(new BoundedChannelOptions(this.options.CommandCapacity)
         {
-            FullMode = BoundedChannelFullMode.DropWrite,
+            FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
             SingleWriter = false,
             AllowSynchronousContinuations = false
@@ -140,13 +140,14 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
                 Interlocked.Increment(ref tick);
 
                 nextDeadline += (long)(Stopwatch.Frequency * tickSeconds);
-                WaitUntil(nextDeadline);
-
                 long now = Stopwatch.GetTimestamp();
-                if (now - nextDeadline > Stopwatch.Frequency)
+                if (now > nextDeadline)
                 {
+                    // Skip missed deadlines instead of running burst catch-up ticks.
                     nextDeadline = now;
                 }
+
+                WaitUntil(nextDeadline);
             }
         }
         catch (Exception ex)
