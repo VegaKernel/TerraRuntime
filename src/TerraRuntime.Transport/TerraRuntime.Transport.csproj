@@ -3,5 +3,7 @@
     <TargetFramework>net11.0</TargetFramework>
     <RootNamespace>TerraRuntime.Transport</RootNamespace>
     <AssemblyName>TerraRuntime.Transport</AssemblyName>
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
 </Project>
