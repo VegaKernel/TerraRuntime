@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <RootNamespace>TerraRuntime.Network</RootNamespace>
+    <AssemblyName>TerraRuntime.Network</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Pipelines" Version="11.0.0-preview.7.26381.103" />
+    <ProjectReference Include="../TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />
+  </ItemGroup>
+</Project>
