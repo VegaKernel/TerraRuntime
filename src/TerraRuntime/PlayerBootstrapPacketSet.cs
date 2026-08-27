@@ -60,7 +60,7 @@ public sealed class PlayerBootstrapPacketSet
             baseSectionFrames[i] = frame;
         }
 
-        byte[] enterWorldFrame = EncodeEmptyFrame((byte)PacketTypes.InitialSpawn);
+        byte[] enterWorldFrame = EncodeEmptyFrame((byte)PacketTypes.PlayerSpawnSelf);
         return new PlayerBootstrapPacketSet(worldInfoFrame, baseSectionFrames, enterWorldFrame);
     }
 
