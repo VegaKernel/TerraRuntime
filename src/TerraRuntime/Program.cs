@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.IO.Pipelines;
+using System.Text;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
@@ -261,27 +262,35 @@ internal static class Program
             return 19;
         }
 
-        byte[] world = CreateWorldEnvelope();
-        WorldFileEnvelopeParseResult parseResult = WorldFileEnvelopeParser.TryParse(
-            world,
-            out WorldFileEnvelope? envelope,
-            out int envelopeLength);
-        if (parseResult != WorldFileEnvelopeParseResult.Parsed ||
-            envelope is null ||
-            envelope.FormatVersion != 325 ||
-            envelope.Compatibility != WorldFormatCompatibility.Verified ||
-            envelopeLength != 46 ||
-            !envelope.IsFrameImportant(0) ||
-            envelope.IsFrameImportant(1) ||
-            !envelope.IsFrameImportant(2))
+        byte[] file = CreateCurrentCoreWorld();
+        WorldFileCoreLoadDiagnostic load = WorldFileCoreLoader.TryLoad(file, maxTileCount: 6, out WorldFileCore? world);
+        if (load.Result != WorldFileCoreLoadResult.Loaded ||
+            world is null ||
+            world.Envelope.FormatVersion != WorldFileFormatPolicy.CurrentVersion ||
+            world.Envelope.Compatibility != WorldFormatCompatibility.Verified ||
+            world.Header.Name != "native-smoke" ||
+            world.Header.Dimensions.WidthTiles != 2 ||
+            world.Header.Dimensions.HeightTiles != 3 ||
+            world.Tiles.Count != 6 ||
+            world.Tiles.Get(0, 0).IsActive ||
+            world.Tiles.Get(1, 2).IsActive)
         {
-            Console.Error.WriteLine($"World smoke failed while parsing the .wld envelope: {parseResult}.");
+            Console.Error.WriteLine(
+                $"World smoke failed while loading current .wld core: result={load.Result}, " +
+                $"envelope={load.EnvelopeResult}, header={load.HeaderResult}, tiles={load.TileResult}.");
             return 20;
+        }
+
+        WorldFileCoreLoadDiagnostic budget = WorldFileCoreLoader.TryLoad(file, maxTileCount: 5, out WorldFileCore? rejected);
+        if (budget.Result != WorldFileCoreLoadResult.TileBudgetExceeded || rejected is not null || budget.TileResult is not null)
+        {
+            Console.Error.WriteLine("World smoke failed while enforcing pre-allocation tile budget.");
+            return 21;
         }
 
         Console.WriteLine(
             $"World smoke passed: sections={dimensions.SectionCount}, dirtySection={drained[0]}, " +
-            $"wldVersion={envelope.FormatVersion}, compatibility={envelope.Compatibility}.");
+            $"wldVersion={world.Envelope.FormatVersion}, world={world.Header.Name}, tiles={world.Tiles.Count}.");
         return 0;
     }
 
@@ -294,32 +303,77 @@ internal static class Program
         (byte)'3', (byte)'2', (byte)'6'
     ];
 
-    private static byte[] CreateWorldEnvelope()
+    private static byte[] CreateCurrentCoreWorld()
     {
-        var file = new byte[128];
+        const int envelopeEnd = 167;
+        const int headerEnd = 240;
+        byte[] tileBytes = [0x40, 0x02, 0x40, 0x02];
+        int tileEnd = headerEnd + tileBytes.Length;
+        int[] pointers =
+        [
+            envelopeEnd,
+            headerEnd,
+            tileEnd,
+            tileEnd + 8,
+            tileEnd + 16,
+            tileEnd + 24,
+            tileEnd + 32,
+            tileEnd + 40,
+            tileEnd + 48,
+            tileEnd + 56,
+            tileEnd + 64
+        ];
+        var file = new byte[pointers[^1] + 1];
+
         int offset = 0;
-        BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(offset), 325);
+        BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(offset), WorldFileFormatPolicy.CurrentVersion);
         offset += sizeof(int);
         "relogic"u8.CopyTo(file.AsSpan(offset));
         offset += 7;
         file[offset++] = 2;
-        BinaryPrimitives.WriteUInt32LittleEndian(file.AsSpan(offset), 7);
+        BinaryPrimitives.WriteUInt32LittleEndian(file.AsSpan(offset), 1);
         offset += sizeof(uint);
         BinaryPrimitives.WriteUInt64LittleEndian(file.AsSpan(offset), 0);
         offset += sizeof(ulong);
-        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(offset), 4);
+        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(offset), VanillaWorldFormat326.SectionCount);
         offset += sizeof(short);
-
-        foreach (int pointer in new[] { 48, 64, 80, 96 })
+        foreach (int pointer in pointers)
         {
             BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(offset), pointer);
             offset += sizeof(int);
         }
 
-        BinaryPrimitives.WriteUInt16LittleEndian(file.AsSpan(offset), 10);
+        BinaryPrimitives.WriteUInt16LittleEndian(file.AsSpan(offset), VanillaWorldFormat326.TileTypeCount);
         offset += sizeof(ushort);
-        file[offset] = 0b_0000_0101;
-        file[offset + 1] = 0;
+        offset += (VanillaWorldFormat326.TileTypeCount + 7) >> 3;
+        if (offset != envelopeEnd)
+        {
+            throw new InvalidOperationException("Current .wld smoke envelope size drifted from the verified 1.4.5.8 layout.");
+        }
+
+        using (var stream = new MemoryStream(file, writable: true))
+        {
+            stream.Position = envelopeEnd;
+            using var writer = new BinaryWriter(stream, new UTF8Encoding(false), leaveOpen: true);
+            writer.Write("native-smoke");
+            writer.Write("326");
+            writer.Write(1UL);
+            writer.Write(Guid.Parse("00112233-4455-6677-8899-aabbccddeeff").ToByteArray());
+            writer.Write(7);
+            writer.Write(0);
+            writer.Write(32);
+            writer.Write(0);
+            writer.Write(48);
+            writer.Write(3);
+            writer.Write(2);
+            writer.Flush();
+            if (stream.Position > headerEnd)
+            {
+                throw new InvalidOperationException("Current .wld smoke header exceeded its declared section boundary.");
+            }
+        }
+
+        tileBytes.CopyTo(file, headerEnd);
         return file;
     }
 
