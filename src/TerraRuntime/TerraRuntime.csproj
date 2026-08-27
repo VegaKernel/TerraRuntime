@@ -4,10 +4,9 @@
     <TargetFramework>net11.0</TargetFramework>
     <RootNamespace>TerraRuntime</RootNamespace>
     <AssemblyName>TerraRuntime.Server</AssemblyName>
-    <PublishAot>false</PublishAot>
-    <PublishReadyToRun Condition="'$(PublishReadyToRun)' == ''">false</PublishReadyToRun>
-    <TieredCompilation>true</TieredCompilation>
-    <TieredPGO>true</TieredPGO>
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <PublishAot>true</PublishAot>
     <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
 
