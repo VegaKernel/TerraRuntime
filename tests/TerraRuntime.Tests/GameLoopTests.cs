@@ -31,7 +31,7 @@ public sealed class GameLoopTests
 
         loop.Start();
         Assert.True(loop.TryPost(42));
-        Assert.True(applied.Wait(TimeSpan.FromSeconds(2)));
+        Assert.True(applied.Wait(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
 
         var snapshot = loop.Snapshot;
         Assert.Equal(snapshot.GameThreadId, state.CommandThreadId);
