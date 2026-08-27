@@ -6,6 +6,7 @@ public sealed class BoundedOutboundQueue
 {
     private readonly Channel<OutboundFrame> _channel;
     private readonly OutboundQueueOptions _options;
+    private int _completed;
     private int _queuedFrames;
     private long _queuedBytes;
     private long _rejectedFrames;
@@ -22,6 +23,8 @@ public sealed class BoundedOutboundQueue
         });
     }
 
+    public bool IsCompleted => Volatile.Read(ref _completed) != 0;
+
     public int QueuedFrames => Volatile.Read(ref _queuedFrames);
 
     public long QueuedBytes => Interlocked.Read(ref _queuedBytes);
@@ -30,6 +33,12 @@ public sealed class BoundedOutboundQueue
 
     public OutboundEnqueueResult TryEnqueue(OutboundFrame frame)
     {
+        if (IsCompleted)
+        {
+            Reject();
+            return OutboundEnqueueResult.Closed;
+        }
+
         int length = frame.Length;
         if (length <= 0 || length > _options.MaxFrameBytes)
         {
@@ -59,7 +68,7 @@ public sealed class BoundedOutboundQueue
             Interlocked.Decrement(ref _queuedFrames);
             Interlocked.Add(ref _queuedBytes, -length);
             Reject();
-            return _channel.Writer.Completion.IsCompleted
+            return IsCompleted
                 ? OutboundEnqueueResult.Closed
                 : OutboundEnqueueResult.FrameBudgetExceeded;
         }
@@ -85,7 +94,15 @@ public sealed class BoundedOutboundQueue
         return frame;
     }
 
-    public bool Complete(Exception? error = null) => _channel.Writer.TryComplete(error);
+    public bool Complete(Exception? error = null)
+    {
+        if (Interlocked.Exchange(ref _completed, 1) != 0)
+        {
+            return false;
+        }
+
+        return _channel.Writer.TryComplete(error);
+    }
 
     private void Release(OutboundFrame frame)
     {
