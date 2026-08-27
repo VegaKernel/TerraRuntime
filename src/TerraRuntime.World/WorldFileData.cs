@@ -7,6 +7,7 @@ namespace TerraRuntime.World;
 public sealed record WorldFileData(
     WorldFileEnvelope Envelope,
     WorldFileHeader Header,
+    WorldFileRuntimeMetadata RuntimeMetadata,
     WorldTileStore Tiles,
     WorldChest[] Chests,
     WorldSign[] Signs,
@@ -27,7 +28,8 @@ public readonly record struct WorldFileLoadLimits(
     int MaxTileEntities,
     int MaxPressurePlates,
     int MaxTownRooms,
-    WorldFileBestiaryLimits Bestiary)
+    WorldFileBestiaryLimits Bestiary,
+    WorldFileRuntimeMetadataLimits RuntimeMetadata)
 {
     public void Validate()
     {
@@ -41,6 +43,7 @@ public readonly record struct WorldFileLoadLimits(
         ArgumentOutOfRangeException.ThrowIfNegative(MaxPressurePlates);
         ArgumentOutOfRangeException.ThrowIfNegative(MaxTownRooms);
         Bestiary.Validate();
+        RuntimeMetadata.Validate();
     }
 }
 
