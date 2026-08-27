@@ -1,9 +1,11 @@
 using System.Buffers;
+using System.Buffers.Binary;
 using System.IO.Pipelines;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
+using TerraRuntime.World;
 
 namespace TerraRuntime;
 
@@ -26,7 +28,12 @@ internal static class Program
             return RunNetworkSmokeAsync().GetAwaiter().GetResult();
         }
 
-        Console.WriteLine("TerraRuntime .NET 11 NativeAOT-first runtime scaffold. Use --loop-smoke, --protocol-smoke or --network-smoke for smoke tests.");
+        if (args.Contains("--world-smoke", StringComparer.Ordinal))
+        {
+            return RunWorldSmoke();
+        }
+
+        Console.WriteLine("TerraRuntime .NET 11 NativeAOT-first runtime scaffold. Use --loop-smoke, --protocol-smoke, --network-smoke or --world-smoke for smoke tests.");
         return 0;
     }
 
@@ -37,52 +44,72 @@ internal static class Program
             state,
             static (runtime, command) => runtime.Apply(command),
             static runtime => runtime.Tick());
+        var ingress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(loop);
+        using var workers = new BoundedWorkerPool<int, int>(
+            workerCount: 1,
+            workCapacity: 1,
+            completionCapacity: 1,
+            execute: static value => value * 2);
+        using var forwarder = new WorkerCompletionCommandForwarder<int, int, RuntimeCommand>(
+            workers,
+            ingress,
+            static completion => completion.IsSuccess
+                ? new WorkerResultCommand(completion.Result)
+                : throw new InvalidOperationException("Worker smoke completion failed.", completion.Error));
 
         loop.Start();
+        forwarder.Start();
+        workers.Start();
+
         if (!loop.TryPost(new ProbeCommand()))
         {
             Console.Error.WriteLine("Failed to enqueue loop smoke command.");
             return 2;
         }
 
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
-        while (loop.Snapshot.Tick < 3 && DateTime.UtcNow < deadline)
-        {
-            Thread.Sleep(5);
-        }
-
-        loop.Stop(TimeSpan.FromSeconds(1));
-        var snapshot = loop.Snapshot;
-        if (loop.Fault is not null || snapshot.Tick < 3)
-        {
-            Console.Error.WriteLine($"Game loop smoke failed: tick={snapshot.Tick}, fault={loop.Fault}");
-            return 3;
-        }
-
-        using var workers = new BoundedWorkerPool<int, int>(
-            workerCount: 1,
-            workCapacity: 1,
-            completionCapacity: 1,
-            execute: static value => value * 2);
-        workers.Start();
         if (!workers.TrySubmit(21))
         {
             Console.Error.WriteLine("Game loop smoke failed while submitting bounded worker work.");
             return 15;
         }
 
-        WorkerCompletion<int> completion = workers.ReadCompletionAsync().AsTask().GetAwaiter().GetResult();
-        if (!completion.IsSuccess || completion.Result != 42 || !workers.Stop(TimeSpan.FromSeconds(1)))
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while ((loop.Snapshot.Tick < 3 || state.LastWorkerResult != 42) && DateTime.UtcNow < deadline)
         {
-            Console.Error.WriteLine("Game loop smoke failed while exercising the bounded worker pool.");
+            Thread.Sleep(5);
+        }
+
+        bool workersStopped = workers.Stop(TimeSpan.FromSeconds(1));
+        bool forwarderStopped = forwarder.Stop(TimeSpan.FromSeconds(1));
+        bool loopStopped = loop.Stop(TimeSpan.FromSeconds(1));
+        GameLoopSnapshot snapshot = loop.Snapshot;
+
+        if (loop.Fault is not null || forwarder.Fault is not null || snapshot.Tick < 3 || state.LastWorkerResult != 42)
+        {
+            Console.Error.WriteLine(
+                $"Game loop smoke failed: tick={snapshot.Tick}, workerResult={state.LastWorkerResult}, " +
+                $"loopFault={loop.Fault}, forwarderFault={forwarder.Fault}");
+            return 3;
+        }
+
+        if (!workersStopped || !forwarderStopped || !loopStopped || forwarder.ForwardedCommands != 1)
+        {
+            Console.Error.WriteLine("Game loop smoke failed during bounded worker/forwarder shutdown.");
             return 16;
+        }
+
+        if ((OperatingSystem.IsWindows() || OperatingSystem.IsLinux()) && !snapshot.CpuTimeAvailable)
+        {
+            Console.Error.WriteLine("Game loop smoke failed: authoritative per-thread CPU clock is unavailable.");
+            return 17;
         }
 
         Console.WriteLine(
             $"Game loop smoke passed: tick={snapshot.Tick}, thread={snapshot.GameThreadId}, " +
-            $"worst={snapshot.WorstTickMilliseconds:F3} ms, slowest={snapshot.SlowestLastPhase}:" +
-            $"{snapshot.SlowestLastPhaseMilliseconds:F3} ms, missed={snapshot.MissedTickDeadlines}, " +
-            $"workerCompleted={workers.Snapshot.CompletedWork}");
+            $"wallWorst={snapshot.WorstTickMilliseconds:F3} ms, cpuWorst={snapshot.WorstTickCpuMilliseconds:F3} ms, " +
+            $"slowest={snapshot.SlowestLastPhase}:{snapshot.SlowestLastPhaseMilliseconds:F3} ms, " +
+            $"missed={snapshot.MissedTickDeadlines}, workerCompleted={workers.Snapshot.CompletedWork}, " +
+            $"forwarded={forwarder.ForwardedCommands}");
         return 0;
     }
 
@@ -217,6 +244,47 @@ internal static class Program
         return 0;
     }
 
+    private static int RunWorldSmoke()
+    {
+        var dimensions = new WorldDimensions(widthTiles: 421, heightTiles: 301);
+        var dirty = new DirtySectionTracker(dimensions);
+        if (!dirty.MarkTileDirty(420, 300))
+        {
+            Console.Error.WriteLine("World smoke failed while marking an edge section dirty.");
+            return 18;
+        }
+
+        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
+        if (dirty.Drain(drained) != 1 || drained[0] != new WorldSectionId(2, 2) || dirty.DirtyCount != 0)
+        {
+            Console.Error.WriteLine("World smoke failed while draining the dirty-section tracker.");
+            return 19;
+        }
+
+        byte[] world = CreateWorldEnvelope();
+        WorldFileEnvelopeParseResult parseResult = WorldFileEnvelopeParser.TryParse(
+            world,
+            out WorldFileEnvelope? envelope,
+            out int envelopeLength);
+        if (parseResult != WorldFileEnvelopeParseResult.Parsed ||
+            envelope is null ||
+            envelope.FormatVersion != 325 ||
+            envelope.Compatibility != WorldFormatCompatibility.Verified ||
+            envelopeLength != 46 ||
+            !envelope.IsFrameImportant(0) ||
+            envelope.IsFrameImportant(1) ||
+            !envelope.IsFrameImportant(2))
+        {
+            Console.Error.WriteLine($"World smoke failed while parsing the .wld envelope: {parseResult}.");
+            return 20;
+        }
+
+        Console.WriteLine(
+            $"World smoke passed: sections={dimensions.SectionCount}, dirtySection={drained[0]}, " +
+            $"wldVersion={envelope.FormatVersion}, compatibility={envelope.Compatibility}.");
+        return 0;
+    }
+
     private static byte[] CreateCurrentHelloPacket() =>
     [
         15, 0,
@@ -225,6 +293,35 @@ internal static class Program
         (byte)'T', (byte)'e', (byte)'r', (byte)'r', (byte)'a', (byte)'r', (byte)'i', (byte)'a',
         (byte)'3', (byte)'2', (byte)'6'
     ];
+
+    private static byte[] CreateWorldEnvelope()
+    {
+        var file = new byte[128];
+        int offset = 0;
+        BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(offset), 325);
+        offset += sizeof(int);
+        "relogic"u8.CopyTo(file.AsSpan(offset));
+        offset += 7;
+        file[offset++] = 2;
+        BinaryPrimitives.WriteUInt32LittleEndian(file.AsSpan(offset), 7);
+        offset += sizeof(uint);
+        BinaryPrimitives.WriteUInt64LittleEndian(file.AsSpan(offset), 0);
+        offset += sizeof(ulong);
+        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(offset), 4);
+        offset += sizeof(short);
+
+        foreach (int pointer in new[] { 48, 64, 80, 96 })
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(offset), pointer);
+            offset += sizeof(int);
+        }
+
+        BinaryPrimitives.WriteUInt16LittleEndian(file.AsSpan(offset), 10);
+        offset += sizeof(ushort);
+        file[offset] = 0b_0000_0101;
+        file[offset + 1] = 0;
+        return file;
+    }
 
     private sealed class HandshakeSmokeSink : ITerrariaFrameSink
     {
