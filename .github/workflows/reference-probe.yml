@@ -1,0 +1,44 @@
+name: Vanilla Reference Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/reference-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  worldfile-reference:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Decompile official TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+
+      - name: Collect WorldFile reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          src="$(find decompiled/1458 -type f -path '*/Terraria/IO/WorldFile.cs' -print -quit)"
+          test -n "$src"
+          mkdir -p artifacts/reference-1458
+          cp "$src" artifacts/reference-1458/WorldFile.cs
+          cp decompiled/1458/REFERENCE_SOURCE.txt artifacts/reference-1458/REFERENCE_SOURCE.txt
+
+      - name: Upload local-only reference artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraria-1458-worldfile-reference
+          path: artifacts/reference-1458
+          retention-days: 1
