@@ -30,8 +30,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          src="$(find decompiled/1458 -type f -path '*/Terraria/IO/WorldFile.cs' -print -quit)"
+          src="$(find decompiled/1458 -type f -name '*WorldFile*.cs' -print -quit)"
+          if [[ -z "$src" ]]; then
+            src="$(grep -RIl --include='*.cs' 'class WorldFile' decompiled/1458 | head -n 1 || true)"
+          fi
           test -n "$src"
+          echo "WorldFile reference: $src"
           mkdir -p artifacts/reference-1458
           cp "$src" artifacts/reference-1458/WorldFile.cs
           cp decompiled/1458/REFERENCE_SOURCE.txt artifacts/reference-1458/REFERENCE_SOURCE.txt
