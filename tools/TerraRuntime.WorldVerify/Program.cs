@@ -80,6 +80,22 @@ if (parsedWorldInfo.WorldName != world.Header.Name ||
     return 4;
 }
 
+int sectionWidth = Math.Min(WorldSectionGeometry.SectionWidthTiles, world.Header.Dimensions.WidthTiles);
+int sectionHeight = Math.Min(WorldSectionGeometry.SectionHeightTiles, world.Header.Dimensions.HeightTiles);
+WorldSectionPayloadEncodeResult sectionResult = WorldSectionPayloadEncoder.TryEncodeTileOnly(
+    world,
+    xStart: 0,
+    yStart: 0,
+    sectionWidth,
+    sectionHeight,
+    out byte[] sectionPayload);
+if (sectionResult != WorldSectionPayloadEncodeResult.Encoded || sectionPayload.Length <= 18)
+{
+    Console.Error.WriteLine(
+        $"World section verification failed: result={sectionResult}, payload={sectionPayload.Length} bytes.");
+    return 5;
+}
+
 Console.WriteLine(
     $"Verified {Path.GetFileName(path)}: version={world.Envelope.FormatVersion}, " +
     $"name={world.Header.Name}, size={world.Header.Dimensions.WidthTiles}x{world.Header.Dimensions.HeightTiles}, " +
@@ -88,5 +104,5 @@ Console.WriteLine(
     $"townNpcs={world.Npcs.TownNpcs.Length}, persistentNpcs={world.Npcs.PersistentNpcs.Length}, " +
     $"tileEntities={world.TileEntities.Length}, pressurePlates={world.PressurePlates.Length}, " +
     $"townRooms={world.TownRooms.Length}, bestiaryKills={world.Bestiary.Kills.Length}, " +
-    $"worldInfoPayload={payload.Length} bytes.");
+    $"worldInfoPayload={payload.Length} bytes, sectionPayload={sectionPayload.Length} bytes.");
 return 0;
