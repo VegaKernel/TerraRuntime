@@ -3,5 +3,6 @@
   <Project Path="src/TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
   <Project Path="src/TerraRuntime.Core/TerraRuntime.Core.csproj" />
   <Project Path="src/TerraRuntime.Protocol.Multiplicity/TerraRuntime.Protocol.Multiplicity.csproj" />
+  <Project Path="src/TerraRuntime.Transport/TerraRuntime.Transport.csproj" />
   <Project Path="tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj" />
 </Solution>
