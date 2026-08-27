@@ -24,6 +24,13 @@ public enum PlayerJoinTransition : byte
     Closed = 4
 }
 
+public enum PlayerSpawnCommitResult : byte
+{
+    Committed = 0,
+    InvalidJoinState = 1,
+    SlotMismatch = 2
+}
+
 /// <summary>
 /// Owns a player-slot lease from the moment a valid Hello is accepted until the connection closes.
 /// It models vanilla bootstrap transitions but intentionally contains no packet IDs or socket concerns.
@@ -114,8 +121,31 @@ public sealed class PlayerJoinSession : IDisposable
     }
 
     /// <summary>
-    /// Mirrors vanilla packet-12 handling: only the first spawn received in state 3 commits the client to state 10.
-    /// Earlier spawn packets do not skip bootstrap stages; later spawn packets do not re-enter the session.
+    /// Atomically validates the client-claimed player slot and commits vanilla state 3 -> 10.
+    /// This is the production transition to use after authoritative spawn validation succeeds.
+    /// </summary>
+    public PlayerSpawnCommitResult TryCommitSpawn(PlayerSlotId claimedSlot)
+    {
+        lock (_gate)
+        {
+            if (_state != PlayerJoinState.AwaitingSpawn || _slotLease is null)
+            {
+                return PlayerSpawnCommitResult.InvalidJoinState;
+            }
+
+            if (_slotLease.Slot != claimedSlot)
+            {
+                return PlayerSpawnCommitResult.SlotMismatch;
+            }
+
+            _state = PlayerJoinState.Playing;
+            return PlayerSpawnCommitResult.Committed;
+        }
+    }
+
+    /// <summary>
+    /// Low-level state-only transition retained for callers that have already validated the leased slot.
+    /// Production packet handling should prefer <see cref="TryCommitSpawn"/>.
     /// </summary>
     public PlayerJoinTransition ObserveSpawn()
     {
