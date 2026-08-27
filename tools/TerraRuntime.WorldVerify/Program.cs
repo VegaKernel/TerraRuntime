@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Multiplicity.Packets;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
@@ -96,6 +97,44 @@ if (sectionResult != WorldSectionPayloadEncodeResult.Encoded || sectionPayload.L
     return 5;
 }
 
+WorldSectionPacketEncodeResult packetResult = WorldSectionPacketEncoder.TryEncodeTileOnly(
+    world,
+    xStart: 0,
+    yStart: 0,
+    sectionWidth,
+    sectionHeight,
+    out byte[] sectionFrame);
+if (packetResult != WorldSectionPacketEncodeResult.Encoded ||
+    !MultiplicityPacketInspector.TryReadHeader(sectionFrame, out PacketHeaderInfo sectionHeader) ||
+    sectionHeader.MessageId != (byte)PacketTypes.TileSendSection ||
+    sectionHeader.PacketLength != sectionFrame.Length)
+{
+    Console.Error.WriteLine(
+        $"World section packet verification failed: result={packetResult}, frame={sectionFrame.Length} bytes.");
+    return 6;
+}
+
+byte[] inflated;
+try
+{
+    using var compressedStream = new MemoryStream(sectionFrame, 3, sectionFrame.Length - 3, writable: false);
+    using var deflate = new DeflateStream(compressedStream, CompressionMode.Decompress, leaveOpen: false);
+    using var inflatedStream = new MemoryStream(sectionPayload.Length);
+    deflate.CopyTo(inflatedStream);
+    inflated = inflatedStream.ToArray();
+}
+catch (InvalidDataException exception)
+{
+    Console.Error.WriteLine($"World section packet is not a valid raw DEFLATE stream: {exception.Message}");
+    return 7;
+}
+
+if (!inflated.AsSpan().SequenceEqual(sectionPayload))
+{
+    Console.Error.WriteLine("World section packet failed raw-DEFLATE round-trip.");
+    return 8;
+}
+
 Console.WriteLine(
     $"Verified {Path.GetFileName(path)}: version={world.Envelope.FormatVersion}, " +
     $"name={world.Header.Name}, size={world.Header.Dimensions.WidthTiles}x{world.Header.Dimensions.HeightTiles}, " +
@@ -104,5 +143,6 @@ Console.WriteLine(
     $"townNpcs={world.Npcs.TownNpcs.Length}, persistentNpcs={world.Npcs.PersistentNpcs.Length}, " +
     $"tileEntities={world.TileEntities.Length}, pressurePlates={world.PressurePlates.Length}, " +
     $"townRooms={world.TownRooms.Length}, bestiaryKills={world.Bestiary.Kills.Length}, " +
-    $"worldInfoPayload={payload.Length} bytes, sectionPayload={sectionPayload.Length} bytes.");
+    $"worldInfoPayload={payload.Length} bytes, sectionPayload={sectionPayload.Length} bytes, " +
+    $"sectionFrame={sectionFrame.Length} bytes.");
 return 0;
