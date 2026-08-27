@@ -4,6 +4,26 @@ TerraRuntime is a clean-room C# implementation of the Terraria dedicated server 
 
 The governing rule is: **behavioral parity where players can observe it; freedom of implementation everywhere else.**
 
+## Reference hierarchy
+
+When sources disagree, use this order of authority:
+
+```text
+TerrariaServer 1.4.5.8 decompiled  = primary behavioral/runtime truth
+Multiplicity 2.7.0                 = primary protocol library for protocol 326 / Terraria 1.4.5.8
+terrustia                          = secondary independent cross-check
+TShock / OTAPI                    = behavioral/history reference only
+```
+
+Rules:
+
+- The locally decompiled official `TerrariaServer.exe` **1.4.5.8** is the primary source of truth for vanilla behavior, `.wld` layout, gameplay ordering, state transitions, packet handling semantics and runtime constants.
+- `VegaKernel/Multiplicity` **2.7.0** is the primary protocol implementation for protocol **326 / Terraria 1.4.5.8**. Keep golden bytes and real official-client captures as independent verification of its wire behavior.
+- `terrustia` is valuable as an independent implementation, testing reference and source of architectural/performance ideas, but it never overrides the current official 1.4.5.8 server when behavior or format details differ.
+- TShock/OTAPI are useful for historical behavior, compatibility knowledge and exploit lessons, but they never define TerraRuntime architecture or override current vanilla behavior.
+- Never infer a 1.4.5.8 file/packet/gameplay layout from an older-version reference when the 1.4.5.8 decompiled server can answer the question directly.
+- Decompiled official source remains local reference material only and is never committed or copied method-for-method into clean implementation code.
+
 ## Platform baseline
 
 - Target **.NET 11** from the start.
@@ -79,12 +99,12 @@ Build a standalone Terraria protocol layer before gameplay.
 
 Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the initial typed packet implementation.
 
-- Baseline package: current VegaKernel Multiplicity line, currently protocol 325 / Terraria 1.4.5.7.
+- Baseline package: `Multiplicity` **2.7.0**, protocol **326 / Terraria 1.4.5.8**.
 - Use its typed packet model when packets need ownership, mutation or re-serialization.
 - Prefer its zero-copy `PacketView` / `PacketViewParser` path for hot-path inspection.
 - Keep Multiplicity behind the runtime protocol boundary so gameplay code does not depend on concrete packet-library types.
-- Bring protocol 326 / Terraria 1.4.5.8 differences into Multiplicity or a narrow compatibility layer rather than duplicating a second full packet parser in the runtime.
-- Keep golden-byte and real-client captures as the final protocol truth; a green Multiplicity round trip cannot prove parity by itself.
+- Put protocol fixes in Multiplicity when they belong to the shared protocol model rather than duplicating a second full packet parser in the runtime.
+- Keep golden-byte and real-client captures as the final independent protocol verification; a green Multiplicity round trip cannot prove parity by itself.
 
 ### Framing
 
@@ -517,7 +537,6 @@ Worldgen comes last because it is huge, RNG-order-sensitive and unnecessary for 
 ## Performance acceptance direction
 
 Concrete targets will be replaced by measurements on defined hardware.
-
 - Common movement/control packets should avoid avoidable heap allocations.
 - Typical ticks must stay comfortably below the 16.67 ms budget with room for spikes.
 - Idle CPU should approach sleeping cost rather than burn an entire core.
