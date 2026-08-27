@@ -27,16 +27,16 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
 
       - name: Restore
-        run: dotnet restore TerraRuntime.slnx -p:Platform="Any CPU"
+        run: dotnet restore TerraRuntime.slnx
 
       - name: Build
-        run: dotnet build TerraRuntime.slnx -c Release --no-restore -p:Platform="Any CPU"
+        run: dotnet build TerraRuntime.slnx -c Release --no-restore
 
       - name: Test
-        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build -p:Platform="Any CPU"
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
 
       - name: Authoritative loop smoke
-        run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -p:Platform="Any CPU" -- --loop-smoke
+        run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --loop-smoke
 
   native-aot:
     runs-on: ubuntu-latest
@@ -56,7 +56,6 @@ jobs:
           -c Release
           -r linux-x64
           -p:PublishAot=true
-          -p:Platform="Any CPU"
           -p:IlcTreatWarningsAsErrors=true
           -o artifacts/native-aot/linux-x64
 
