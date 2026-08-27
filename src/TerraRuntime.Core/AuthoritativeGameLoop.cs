@@ -26,8 +26,11 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
     private long rejectedCommands;
     private long missedTickDeadlines;
     private int pendingCommands;
+    private int cpuTimeAvailable;
     private double lastTickMilliseconds;
     private double worstTickMilliseconds;
+    private double lastTickCpuMilliseconds;
+    private double worstTickCpuMilliseconds;
     private double lastIngressMilliseconds;
     private double worstIngressMilliseconds;
     private double lastCommandMilliseconds;
@@ -80,8 +83,11 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         PendingCommands: Volatile.Read(ref pendingCommands),
         RejectedCommands: Interlocked.Read(ref rejectedCommands),
         MissedTickDeadlines: Interlocked.Read(ref missedTickDeadlines),
+        CpuTimeAvailable: Volatile.Read(ref cpuTimeAvailable) != 0,
         LastTickMilliseconds: Volatile.Read(ref lastTickMilliseconds),
         WorstTickMilliseconds: Volatile.Read(ref worstTickMilliseconds),
+        LastTickCpuMilliseconds: Volatile.Read(ref lastTickCpuMilliseconds),
+        WorstTickCpuMilliseconds: Volatile.Read(ref worstTickCpuMilliseconds),
         LastIngressMilliseconds: Volatile.Read(ref lastIngressMilliseconds),
         WorstIngressMilliseconds: Volatile.Read(ref worstIngressMilliseconds),
         LastCommandMilliseconds: Volatile.Read(ref lastCommandMilliseconds),
@@ -159,6 +165,7 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         {
             while (!shutdown.IsCancellationRequested)
             {
+                bool hasCpuStart = ThreadCpuClock.TryGetTimestampNanoseconds(out long cpuStarted);
                 long tickStarted = Stopwatch.GetTimestamp();
 
                 StageCommands();
@@ -178,6 +185,7 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
                 Volatile.Write(ref lastCommandsProcessed, processed);
                 Volatile.Write(ref lastTickMilliseconds, elapsedMs);
                 UpdateWorst(ref worstTickMilliseconds, elapsedMs);
+                PublishCpuMetrics(hasCpuStart, cpuStarted);
                 PublishPhaseMetrics(ingressMs, commandMs, updateMs);
                 Interlocked.Increment(ref tick);
 
@@ -299,6 +307,21 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         {
             commandQueuePool.Push(queue);
         }
+    }
+
+    private void PublishCpuMetrics(bool hasCpuStart, long cpuStarted)
+    {
+        if (!hasCpuStart ||
+            !ThreadCpuClock.TryGetTimestampNanoseconds(out long cpuFinished) ||
+            cpuFinished < cpuStarted)
+        {
+            return;
+        }
+
+        double cpuMs = (cpuFinished - cpuStarted) / 1_000_000d;
+        Volatile.Write(ref cpuTimeAvailable, 1);
+        Volatile.Write(ref lastTickCpuMilliseconds, cpuMs);
+        UpdateWorst(ref worstTickCpuMilliseconds, cpuMs);
     }
 
     private void PublishPhaseMetrics(double ingressMs, double commandMs, double updateMs)
