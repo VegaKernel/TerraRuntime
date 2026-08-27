@@ -1,0 +1,5 @@
+decompiled/
+artifacts/
+*.zip
+*.exe
+*.dll
