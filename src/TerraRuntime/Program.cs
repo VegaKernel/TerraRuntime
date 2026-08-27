@@ -102,12 +102,18 @@ internal static class Program
             return 17;
         }
 
+        if (!AuthoritativePlayerSpawnSmoke.Run(out string spawnFailure))
+        {
+            Console.Error.WriteLine($"Game loop smoke failed during authoritative player spawn commit: {spawnFailure}.");
+            return 22;
+        }
+
         Console.WriteLine(
             $"Game loop smoke passed: tick={snapshot.Tick}, thread={snapshot.GameThreadId}, " +
             $"wallWorst={snapshot.WorstTickMilliseconds:F3} ms, cpuWorst={snapshot.WorstTickCpuMilliseconds:F3} ms, " +
             $"slowest={snapshot.SlowestLastPhase}:{snapshot.SlowestLastPhaseMilliseconds:F3} ms, " +
             $"missed={snapshot.MissedTickDeadlines}, workerCompleted={workers.Snapshot.CompletedWork}, " +
-            $"forwarded={forwarder.ForwardedCommands}");
+            $"forwarded={forwarder.ForwardedCommands}, spawnCommit=ok");
         return 0;
     }
 
