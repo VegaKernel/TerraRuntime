@@ -3,6 +3,8 @@
     <TargetFramework>net11.0</TargetFramework>
     <RootNamespace>TerraRuntime.Protocol.Multiplicity</RootNamespace>
     <AssemblyName>TerraRuntime.Protocol.Multiplicity</AssemblyName>
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
 
   <ItemGroup>
