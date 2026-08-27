@@ -1,12 +1,9 @@
 using System.Buffers;
-using System.Buffers.Binary;
 using System.IO.Pipelines;
-using System.Text;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
-using TerraRuntime.World;
 
 namespace TerraRuntime;
 
@@ -31,7 +28,7 @@ internal static class Program
 
         if (args.Contains("--world-smoke", StringComparer.Ordinal))
         {
-            return RunWorldSmoke();
+            return WorldNativeSmoke.Run();
         }
 
         Console.WriteLine("TerraRuntime .NET 11 NativeAOT-first runtime scaffold. Use --loop-smoke, --protocol-smoke, --network-smoke or --world-smoke for smoke tests.");
@@ -245,84 +242,6 @@ internal static class Program
         return 0;
     }
 
-    private static int RunWorldSmoke()
-    {
-        var dimensions = new WorldDimensions(widthTiles: 421, heightTiles: 301);
-        var dirty = new DirtySectionTracker(dimensions);
-        if (!dirty.MarkTileDirty(420, 300))
-        {
-            Console.Error.WriteLine("World smoke failed while marking an edge section dirty.");
-            return 18;
-        }
-
-        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
-        if (dirty.Drain(drained) != 1 || drained[0] != new WorldSectionId(2, 2) || dirty.DirtyCount != 0)
-        {
-            Console.Error.WriteLine("World smoke failed while draining the dirty-section tracker.");
-            return 19;
-        }
-
-        byte[] file = CreateCurrentCoreWorld();
-        WorldFileCoreLoadDiagnostic load = WorldFileCoreLoader.TryLoad(file, maxTileCount: 6, out WorldFileCore? world);
-        if (load.Result != WorldFileCoreLoadResult.Loaded ||
-            world is null ||
-            world.Envelope.FormatVersion != WorldFileFormatPolicy.CurrentVersion ||
-            world.Envelope.Compatibility != WorldFormatCompatibility.Verified ||
-            world.Header.Name != "native-smoke" ||
-            world.Header.Dimensions.WidthTiles != 2 ||
-            world.Header.Dimensions.HeightTiles != 3 ||
-            world.Tiles.Count != 6 ||
-            world.Tiles.Get(0, 0).IsActive ||
-            world.Tiles.Get(1, 2).IsActive)
-        {
-            Console.Error.WriteLine(
-                $"World smoke failed while loading current .wld core: result={load.Result}, " +
-                $"envelope={load.EnvelopeResult}, header={load.HeaderResult}, tiles={load.TileResult}.");
-            return 20;
-        }
-
-        WorldFileCoreLoadDiagnostic budget = WorldFileCoreLoader.TryLoad(file, maxTileCount: 5, out WorldFileCore? rejected);
-        if (budget.Result != WorldFileCoreLoadResult.TileBudgetExceeded || rejected is not null || budget.TileResult is not null)
-        {
-            Console.Error.WriteLine("World smoke failed while enforcing pre-allocation tile budget.");
-            return 21;
-        }
-
-        if (WorldFileChestDecoder.TryDecode(
-                file,
-                world.Envelope,
-                world.Header,
-                maxItemsPerChest: 40,
-                maxTotalItems: 100,
-                out WorldChest[] chests,
-                out _) != WorldFileChestDecodeResult.Decoded ||
-            chests.Length != 0)
-        {
-            Console.Error.WriteLine("World smoke failed while decoding the current chest section.");
-            return 22;
-        }
-
-        if (WorldFileSignDecoder.TryDecode(
-                file,
-                world.Envelope,
-                world.Header,
-                maxTextBytesPerSign: 256,
-                maxTotalTextBytes: 1024,
-                out WorldSign[] signs,
-                out _) != WorldFileSignDecodeResult.Decoded ||
-            signs.Length != 0)
-        {
-            Console.Error.WriteLine("World smoke failed while decoding the current sign section.");
-            return 23;
-        }
-
-        Console.WriteLine(
-            $"World smoke passed: sections={dimensions.SectionCount}, dirtySection={drained[0]}, " +
-            $"wldVersion={world.Envelope.FormatVersion}, world={world.Header.Name}, tiles={world.Tiles.Count}, " +
-            $"chests={chests.Length}, signs={signs.Length}.");
-        return 0;
-    }
-
     private static byte[] CreateCurrentHelloPacket() =>
     [
         15, 0,
@@ -331,84 +250,6 @@ internal static class Program
         (byte)'T', (byte)'e', (byte)'r', (byte)'r', (byte)'a', (byte)'r', (byte)'i', (byte)'a',
         (byte)'3', (byte)'2', (byte)'6'
     ];
-
-    private static byte[] CreateCurrentCoreWorld()
-    {
-        const int envelopeEnd = 167;
-        const int headerEnd = 240;
-        byte[] tileBytes = [0x40, 0x02, 0x40, 0x02];
-        int tileEnd = headerEnd + tileBytes.Length;
-        int chestEnd = tileEnd + sizeof(short);
-        int signEnd = chestEnd + sizeof(short);
-        int[] pointers =
-        [
-            envelopeEnd,
-            headerEnd,
-            tileEnd,
-            chestEnd,
-            signEnd,
-            signEnd + 8,
-            signEnd + 16,
-            signEnd + 24,
-            signEnd + 32,
-            signEnd + 40,
-            signEnd + 48
-        ];
-        var file = new byte[pointers[^1] + 1];
-
-        int offset = 0;
-        BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(offset), WorldFileFormatPolicy.CurrentVersion);
-        offset += sizeof(int);
-        "relogic"u8.CopyTo(file.AsSpan(offset));
-        offset += 7;
-        file[offset++] = 2;
-        BinaryPrimitives.WriteUInt32LittleEndian(file.AsSpan(offset), 1);
-        offset += sizeof(uint);
-        BinaryPrimitives.WriteUInt64LittleEndian(file.AsSpan(offset), 0);
-        offset += sizeof(ulong);
-        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(offset), VanillaWorldFormat326.SectionCount);
-        offset += sizeof(short);
-        foreach (int pointer in pointers)
-        {
-            BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(offset), pointer);
-            offset += sizeof(int);
-        }
-
-        BinaryPrimitives.WriteUInt16LittleEndian(file.AsSpan(offset), VanillaWorldFormat326.TileTypeCount);
-        offset += sizeof(ushort);
-        offset += (VanillaWorldFormat326.TileTypeCount + 7) >> 3;
-        if (offset != envelopeEnd)
-        {
-            throw new InvalidOperationException("Current .wld smoke envelope size drifted from the verified 1.4.5.8 layout.");
-        }
-
-        using (var stream = new MemoryStream(file, writable: true))
-        {
-            stream.Position = envelopeEnd;
-            using var writer = new BinaryWriter(stream, new UTF8Encoding(false), leaveOpen: true);
-            writer.Write("native-smoke");
-            writer.Write("326");
-            writer.Write(1UL);
-            writer.Write(Guid.Parse("00112233-4455-6677-8899-aabbccddeeff").ToByteArray());
-            writer.Write(7);
-            writer.Write(0);
-            writer.Write(32);
-            writer.Write(0);
-            writer.Write(48);
-            writer.Write(3);
-            writer.Write(2);
-            writer.Flush();
-            if (stream.Position > headerEnd)
-            {
-                throw new InvalidOperationException("Current .wld smoke header exceeded its declared section boundary.");
-            }
-        }
-
-        tileBytes.CopyTo(file, headerEnd);
-        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(tileEnd), 0);
-        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(chestEnd), 0);
-        return file;
-    }
 
     private sealed class HandshakeSmokeSink : ITerrariaFrameSink
     {
