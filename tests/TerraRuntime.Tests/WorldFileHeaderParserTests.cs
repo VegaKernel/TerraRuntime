@@ -6,6 +6,9 @@ namespace TerraRuntime.Tests;
 
 public sealed class WorldFileHeaderParserTests
 {
+    private const int HeaderStart = 167;
+    private const int TilesStart = 320;
+
     [Fact]
     public void Parses_Terraria_1458_world_header_prefix_in_vanilla_order()
     {
@@ -48,7 +51,6 @@ public sealed class WorldFileHeaderParserTests
     public void Rejects_invalid_utf8_in_length_prefixed_world_name()
     {
         byte[] file = CreateCurrentWorld("A", "seed", 1, Guid.Empty, 1, 4200, 1200);
-        const int HeaderStart = 64;
         file[HeaderStart] = 1;
         file[HeaderStart + 1] = 0xFF;
 
@@ -67,9 +69,7 @@ public sealed class WorldFileHeaderParserTests
         int heightTiles,
         int formatVersion = WorldFileFormatPolicy.CurrentVersion)
     {
-        const int HeaderStart = 64;
-        const int TilesStart = 192;
-        var file = new byte[256];
+        var file = new byte[512];
 
         int offset = 0;
         BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(offset), formatVersion);
@@ -81,15 +81,18 @@ public sealed class WorldFileHeaderParserTests
         offset += sizeof(uint);
         BinaryPrimitives.WriteUInt64LittleEndian(file.AsSpan(offset), 0);
         offset += sizeof(ulong);
-        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(offset), 4);
+        BinaryPrimitives.WriteInt16LittleEndian(file.AsSpan(offset), VanillaWorldFormat326.SectionCount);
         offset += sizeof(short);
-        foreach (int pointer in new[] { HeaderStart, TilesStart, 224, 240 })
+        foreach (int pointer in new[] { HeaderStart, TilesStart, 340, 360, 380, 400, 420, 440, 460, 480, 500 })
         {
             BinaryPrimitives.WriteInt32LittleEndian(file.AsSpan(offset), pointer);
             offset += sizeof(int);
         }
 
-        BinaryPrimitives.WriteUInt16LittleEndian(file.AsSpan(offset), 0);
+        BinaryPrimitives.WriteUInt16LittleEndian(file.AsSpan(offset), VanillaWorldFormat326.TileTypeCount);
+        offset += sizeof(ushort);
+        offset += (VanillaWorldFormat326.TileTypeCount + 7) >> 3;
+        Assert.Equal(HeaderStart, offset);
 
         using var stream = new MemoryStream(file, writable: true);
         stream.Position = HeaderStart;
