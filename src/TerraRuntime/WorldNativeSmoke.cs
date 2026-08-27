@@ -35,6 +35,9 @@ internal static class WorldNativeSmoke
             world.Header.Name != "native-smoke" ||
             world.Header.Dimensions.WidthTiles != 2 ||
             world.Header.Dimensions.HeightTiles != 3 ||
+            world.RuntimeMetadata.Time != 13500 ||
+            !world.RuntimeMetadata.DayTime ||
+            world.RuntimeMetadata.TreeTopVariations.Length != 13 ||
             world.Tiles.Count != 6 ||
             world.Chests.Length != 0 ||
             world.Signs.Length != 0 ||
@@ -67,7 +70,7 @@ internal static class WorldNativeSmoke
         Console.WriteLine(
             $"World smoke passed: sections={dimensions.SectionCount}, dirtySection={drained[0]}, " +
             $"wldVersion={world.Envelope.FormatVersion}, world={world.Header.Name}, tiles={world.Tiles.Count}, " +
-            "all current persistence sections and footer decoded transactionally.");
+            "full current header metadata, all persistence sections and footer decoded transactionally.");
         return 0;
     }
 
@@ -93,12 +96,20 @@ internal static class WorldNativeSmoke
                 MaxSightEntries: 32,
                 MaxChatEntries: 32,
                 MaxPersistentIdBytes: 128,
-                MaxTotalPersistentIdBytes: 4_096));
+                MaxTotalPersistentIdBytes: 4_096),
+            RuntimeMetadata: new WorldFileRuntimeMetadataLimits(
+                MaxStringBytes: 256,
+                MaxTotalStringBytes: 4_096,
+                MaxAnglerNames: 32,
+                MaxBannerEntries: 512,
+                MaxPartyNpcEntries: 32,
+                MaxManifestBytes: 1_024));
 
     private static byte[] CreateCompleteCurrentWorld()
     {
         const int headerStart = EnvelopeEnd;
-        const int tileStart = 240;
+        byte[] header = CreateHeader();
+        int tileStart = headerStart + header.Length;
         byte[] tiles = [0x40, 0x02, 0x40, 0x02];
         byte[] chests = CreateSection(static writer => writer.Write((short)0));
         byte[] signs = CreateSection(static writer => writer.Write((short)0));
@@ -149,7 +160,7 @@ internal static class WorldNativeSmoke
 
         var file = new byte[pointers[10] + footer.Length];
         WriteEnvelope(file, pointers);
-        WriteHeader(file.AsSpan(headerStart, tileStart - headerStart));
+        header.CopyTo(file, headerStart);
         tiles.CopyTo(file, pointers[1]);
         chests.CopyTo(file, pointers[2]);
         signs.CopyTo(file, pointers[3]);
@@ -197,10 +208,9 @@ internal static class WorldNativeSmoke
             throw new InvalidOperationException("Current .wld smoke envelope size drifted from verified 1.4.5.8 layout.");
     }
 
-    private static void WriteHeader(Span<byte> destination)
+    private static byte[] CreateHeader()
     {
-        using var stream = new MemoryStream();
-        using (var writer = new BinaryWriter(stream, new UTF8Encoding(false), leaveOpen: true))
+        return CreateSection(static writer =>
         {
             writer.Write("native-smoke");
             writer.Write("326");
@@ -213,12 +223,102 @@ internal static class WorldNativeSmoke
             writer.Write(48);
             writer.Write(3);
             writer.Write(2);
-        }
 
-        byte[] header = stream.ToArray();
-        if (header.Length > destination.Length)
-            throw new InvalidOperationException("Current .wld smoke header exceeded its declared section boundary.");
-        header.CopyTo(destination);
+            writer.Write(0);
+            WriteFalseBooleans(writer, 9);
+            writer.Write(0L);
+            writer.Write(0L);
+            writer.Write((byte)0);
+            WriteInt32Zeros(writer, 3);
+            WriteInt32Zeros(writer, 4);
+            WriteInt32Zeros(writer, 3);
+            WriteInt32Zeros(writer, 4);
+            WriteInt32Zeros(writer, 3);
+            writer.Write(1);
+            writer.Write(1);
+            writer.Write(1d);
+            writer.Write(2d);
+            writer.Write(13500d);
+            writer.Write(true);
+            writer.Write(0);
+            writer.Write(false);
+            writer.Write(false);
+            writer.Write(1);
+            writer.Write(2);
+            WriteFalseBooleans(writer, 21);
+            writer.Write((byte)0);
+            writer.Write(0);
+            writer.Write(false);
+            writer.Write(false);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0d);
+            writer.Write(0d);
+            writer.Write((byte)0);
+            writer.Write(false);
+            writer.Write(0);
+            writer.Write(0f);
+            WriteInt32Zeros(writer, 3);
+            WriteByteZeros(writer, 8);
+            writer.Write(0);
+            writer.Write((short)0);
+            writer.Write(0f);
+            writer.Write(0);
+            writer.Write(false);
+            writer.Write(0);
+            WriteFalseBooleans(writer, 3);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write((short)0);
+            writer.Write((short)0);
+            WriteFalseBooleans(writer, 19);
+            writer.Write(false);
+            writer.Write(false);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(false);
+            writer.Write(0);
+            writer.Write(0f);
+            writer.Write(0f);
+            writer.Write(false);
+            WriteFalseBooleans(writer, 3);
+            WriteByteZeros(writer, 5);
+            writer.Write(false);
+            writer.Write(0);
+            WriteFalseBooleans(writer, 3);
+            writer.Write(13);
+            WriteInt32Zeros(writer, 13);
+            WriteFalseBooleans(writer, 2);
+            WriteInt32Zeros(writer, 4);
+            WriteFalseBooleans(writer, 25);
+            writer.Write((byte)0);
+            WriteFalseBooleans(writer, 4);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(false);
+            writer.Write((byte)0);
+            WriteFalseBooleans(writer, 3);
+            writer.Write("{}");
+        });
+    }
+
+    private static void WriteFalseBooleans(BinaryWriter writer, int count)
+    {
+        for (int i = 0; i < count; i++)
+            writer.Write(false);
+    }
+
+    private static void WriteInt32Zeros(BinaryWriter writer, int count)
+    {
+        for (int i = 0; i < count; i++)
+            writer.Write(0);
+    }
+
+    private static void WriteByteZeros(BinaryWriter writer, int count)
+    {
+        for (int i = 0; i < count; i++)
+            writer.Write((byte)0);
     }
 
     private static void WriteBoolPower(BinaryWriter writer, ushort id, bool value)
