@@ -40,7 +40,8 @@ public static class TerrariaSocketConnection
         PipeReader reader = PipeReader.Create(stream, new StreamPipeReaderOptions(leaveOpen: true));
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var policyState = new TerrariaConnectionPolicyState(policyOptions);
-        var policySink = new TerrariaConnectionPolicySink(sink, policyState);
+        var rateAccountant = new TerrariaConnectionRateAccountant(policyOptions.RateBudget);
+        var policySink = new TerrariaConnectionPolicySink(sink, policyState, rateAccountant);
 
         Task<TerrariaPipePumpResult> inboundTask = TerrariaPipeFramePump
             .RunAsync(reader, policySink, decoderOptions, linkedCancellation.Token)
@@ -104,7 +105,11 @@ public static class TerrariaSocketConnection
                 stopReason = MapStopReason(inboundResult, outboundResult, cancellationToken.IsCancellationRequested);
             }
 
-            return new TerrariaSocketRunResult(inboundResult, outboundResult, stopReason);
+            return new TerrariaSocketRunResult(
+                inboundResult,
+                outboundResult,
+                stopReason,
+                rateAccountant.Snapshot);
         }
         finally
         {

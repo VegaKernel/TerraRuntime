@@ -157,7 +157,19 @@ internal static class Program
             return 11;
         }
 
-        Console.WriteLine("Network smoke passed: fragmented ingress, bounded outbound queues, slow-client policy and admission gate executed successfully.");
+        var rate = new TerrariaConnectionRateAccountant(new ConnectionRateBudgetOptions(
+            window: TimeSpan.FromMinutes(1),
+            maxFrames: 1,
+            maxBytes: null));
+        if (rate.Observe(packet.Length) != ConnectionRateDecision.Allowed ||
+            rate.Observe(packet.Length) != ConnectionRateDecision.FrameLimitExceeded ||
+            rate.Snapshot.RejectedFrames != 1)
+        {
+            Console.Error.WriteLine("Network smoke failed while exercising connection rate accounting.");
+            return 12;
+        }
+
+        Console.WriteLine("Network smoke passed: fragmented ingress, bounded outbound queues, slow-client policy, admission gate and rate accounting executed successfully.");
         return 0;
     }
 
