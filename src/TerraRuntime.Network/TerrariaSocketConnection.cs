@@ -9,7 +9,7 @@ public static class TerrariaSocketConnection
     public static ValueTask<TerrariaSocketRunResult> RunAsync(
         Socket socket,
         ITerrariaFrameSink sink,
-        BoundedOutboundQueue outboundQueue,
+        TerrariaConnectionOutboundQueue outboundQueue,
         TerrariaFrameDecoderOptions decoderOptions,
         CancellationToken cancellationToken = default)
     {
@@ -25,7 +25,7 @@ public static class TerrariaSocketConnection
     public static async ValueTask<TerrariaSocketRunResult> RunAsync(
         Socket socket,
         ITerrariaFrameSink sink,
-        BoundedOutboundQueue outboundQueue,
+        TerrariaConnectionOutboundQueue outboundQueue,
         TerrariaFrameDecoderOptions decoderOptions,
         TerrariaConnectionPolicyOptions policyOptions,
         CancellationToken cancellationToken = default)
@@ -46,11 +46,12 @@ public static class TerrariaSocketConnection
             .RunAsync(reader, policySink, decoderOptions, linkedCancellation.Token)
             .AsTask();
         Task<OutboundWriterResult> outboundTask = TerrariaOutboundFrameWriter
-            .RunAsync(stream, outboundQueue, linkedCancellation.Token)
+            .RunAsync(stream, outboundQueue.InnerQueue, linkedCancellation.Token)
             .AsTask();
         Task<TerrariaConnectionStopReason> watchdogTask = RunWatchdogAsync(
             policyState,
             linkedCancellation.Token);
+        Task slowClientTask = outboundQueue.SlowClientSignal;
 
         TerrariaPipePumpResult inboundResult = TerrariaPipePumpResult.Cancelled;
         OutboundWriterResult outboundResult = new(OutboundWriterStopReason.Cancelled, 0, 0);
@@ -58,8 +59,14 @@ public static class TerrariaSocketConnection
 
         try
         {
-            Task first = await Task.WhenAny(inboundTask, outboundTask, watchdogTask).ConfigureAwait(false);
-            if (ReferenceEquals(first, watchdogTask))
+            Task first = await Task.WhenAny(inboundTask, outboundTask, watchdogTask, slowClientTask).ConfigureAwait(false);
+            if (ReferenceEquals(first, slowClientTask))
+            {
+                policyState.TryStop(TerrariaConnectionStopReason.SlowClient);
+                stopReason = TerrariaConnectionStopReason.SlowClient;
+                linkedCancellation.Cancel();
+            }
+            else if (ReferenceEquals(first, watchdogTask))
             {
                 stopReason = await watchdogTask.ConfigureAwait(false);
                 linkedCancellation.Cancel();

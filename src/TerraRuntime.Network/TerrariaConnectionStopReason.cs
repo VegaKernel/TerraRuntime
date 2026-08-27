@@ -12,5 +12,6 @@ public enum TerrariaConnectionStopReason : byte
     UnsupportedProtocol = 7,
     ProtocolFailure = 8,
     InboundIoFailure = 9,
-    OutboundFailure = 10
+    OutboundFailure = 10,
+    SlowClient = 11
 }

@@ -21,7 +21,7 @@ public sealed class TerrariaSocketConnectionTests
         Socket serverSocket = await listener.AcceptAsync(cancellationToken);
         await connectTask;
 
-        var outbound = new BoundedOutboundQueue(new OutboundQueueOptions(4, 64, 32));
+        var outbound = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 32));
         byte[] response = [3, 0, (byte)TerrariaMessageId.Kick];
         Assert.Equal(OutboundEnqueueResult.Enqueued, outbound.TryEnqueue(new OutboundFrame(response)));
         var sink = new HelloCountingSink();
@@ -33,15 +33,7 @@ public sealed class TerrariaSocketConnectionTests
             TerrariaFrameDecoderOptions.Default,
             cancellationToken);
 
-        byte[] hello =
-        [
-            15, 0,
-            (byte)TerrariaMessageId.Hello,
-            11,
-            (byte)'T', (byte)'e', (byte)'r', (byte)'r', (byte)'a', (byte)'r', (byte)'i', (byte)'a',
-            (byte)'3', (byte)'2', (byte)'6'
-        ];
-
+        byte[] hello = CurrentHelloPacket();
         Assert.Equal(1, await client.SendAsync(hello.AsMemory(0, 1), SocketFlags.None, cancellationToken));
         Assert.Equal(hello.Length - 1, await client.SendAsync(hello.AsMemory(1), SocketFlags.None, cancellationToken));
         client.Shutdown(SocketShutdown.Send);
@@ -61,9 +53,48 @@ public sealed class TerrariaSocketConnectionTests
         Assert.Equal(1, sink.HelloCount);
         Assert.Equal(TerrariaPipePumpResult.Completed, result.Inbound);
         Assert.Equal(OutboundWriterStopReason.Completed, result.Outbound.Reason);
+        Assert.Equal(TerrariaConnectionStopReason.PeerClosed, result.StopReason);
         Assert.Equal(1, result.Outbound.FramesWritten);
         Assert.Equal(response.Length, result.Outbound.BytesWritten);
     }
+
+    [Fact]
+    public async Task Disconnects_when_the_connection_outbound_queue_overflows()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        listener.Listen(1);
+        var endpoint = (IPEndPoint)listener.LocalEndPoint!;
+
+        using var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        ValueTask connectTask = client.ConnectAsync(endpoint, cancellationToken);
+        Socket serverSocket = await listener.AcceptAsync(cancellationToken);
+        await connectTask;
+
+        var outbound = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(1, 16, 8));
+        Assert.Equal(OutboundEnqueueResult.Enqueued, outbound.TryEnqueue(new OutboundFrame(new byte[] { 3, 0, (byte)TerrariaMessageId.Kick })));
+        Assert.Equal(OutboundEnqueueResult.FrameBudgetExceeded, outbound.TryEnqueue(new OutboundFrame(new byte[] { 3, 0, (byte)TerrariaMessageId.Kick })));
+        Assert.True(outbound.IsSlowClient);
+
+        TerrariaSocketRunResult result = await TerrariaSocketConnection.RunAsync(
+            serverSocket,
+            new HelloCountingSink(),
+            outbound,
+            TerrariaFrameDecoderOptions.Default,
+            cancellationToken);
+
+        Assert.Equal(TerrariaConnectionStopReason.SlowClient, result.StopReason);
+    }
+
+    private static byte[] CurrentHelloPacket() =>
+    [
+        15, 0,
+        (byte)TerrariaMessageId.Hello,
+        11,
+        (byte)'T', (byte)'e', (byte)'r', (byte)'r', (byte)'a', (byte)'r', (byte)'i', (byte)'a',
+        (byte)'3', (byte)'2', (byte)'6'
+    ];
 
     private sealed class HelloCountingSink : ITerrariaFrameSink
     {

@@ -127,7 +127,37 @@ internal static class Program
         }
 
         outbound.Complete();
-        Console.WriteLine("Network smoke passed: fragmented Terraria326 ingress and bounded outbound queue executed successfully.");
+
+        var connectionQueue = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(
+            maxFrames: 1,
+            maxQueuedBytes: 32,
+            maxFrameBytes: 16));
+        if (connectionQueue.TryEnqueue(new OutboundFrame(packet)) != OutboundEnqueueResult.Enqueued ||
+            connectionQueue.TryEnqueue(new OutboundFrame(packet)) != OutboundEnqueueResult.FrameBudgetExceeded ||
+            !connectionQueue.IsSlowClient)
+        {
+            Console.Error.WriteLine("Network smoke failed while applying slow-client queue policy.");
+            return 9;
+        }
+
+        connectionQueue.Complete();
+
+        var admission = new TerrariaConnectionAdmissionGate(maxConnections: 1);
+        if (!admission.TryAcquire(out TerrariaConnectionAdmissionGate.Lease? lease) ||
+            admission.TryAcquire(out _))
+        {
+            Console.Error.WriteLine("Network smoke failed while exercising connection admission gate.");
+            return 10;
+        }
+
+        lease!.Dispose();
+        if (admission.ActiveConnections != 0 || admission.AcceptedConnections != 1 || admission.RejectedConnections != 1)
+        {
+            Console.Error.WriteLine("Network smoke failed while verifying connection admission counters.");
+            return 11;
+        }
+
+        Console.WriteLine("Network smoke passed: fragmented ingress, bounded outbound queues, slow-client policy and admission gate executed successfully.");
         return 0;
     }
 
