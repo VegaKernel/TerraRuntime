@@ -41,6 +41,9 @@ jobs:
       - name: Protocol smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --protocol-smoke
 
+      - name: Network smoke
+        run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --network-smoke
+
   native-aot-linux:
     runs-on: ubuntu-latest
 
@@ -67,6 +70,9 @@ jobs:
 
       - name: NativeAOT protocol smoke
         run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --protocol-smoke
+
+      - name: NativeAOT network smoke
+        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --network-smoke
 
   native-aot-windows:
     runs-on: windows-latest
@@ -96,3 +102,7 @@ jobs:
       - name: NativeAOT protocol smoke
         shell: pwsh
         run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --protocol-smoke
+
+      - name: NativeAOT network smoke
+        shell: pwsh
+        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --network-smoke
