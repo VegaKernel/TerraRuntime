@@ -58,6 +58,11 @@ public static class WorldFileEnvelopeParser
             return WorldFileEnvelopeParseResult.InvalidSectionCount;
         }
 
+        if (formatVersion == WorldFileFormatPolicy.CurrentVersion && sectionCountValue != VanillaWorldFormat326.SectionCount)
+        {
+            return WorldFileEnvelopeParseResult.CurrentSectionCountMismatch;
+        }
+
         int sectionCount = sectionCountValue;
         int pointerBytes = checked(sectionCount * sizeof(int));
         if (file.Length - offset < pointerBytes + sizeof(ushort))
@@ -92,6 +97,11 @@ public static class WorldFileEnvelopeParser
             return WorldFileEnvelopeParseResult.FrameImportanceTooLarge;
         }
 
+        if (formatVersion == WorldFileFormatPolicy.CurrentVersion && frameImportanceCount != VanillaWorldFormat326.TileTypeCount)
+        {
+            return WorldFileEnvelopeParseResult.CurrentFrameImportanceCountMismatch;
+        }
+
         int importanceBytes = (frameImportanceCount + 7) >> 3;
         if (file.Length - offset < importanceBytes)
         {
@@ -103,6 +113,11 @@ public static class WorldFileEnvelopeParser
         if (sectionOffsets[0] < offset)
         {
             return WorldFileEnvelopeParseResult.FirstSectionOverlapsEnvelope;
+        }
+
+        if (formatVersion == WorldFileFormatPolicy.CurrentVersion && sectionOffsets[0] != offset)
+        {
+            return WorldFileEnvelopeParseResult.FirstSectionOffsetMismatch;
         }
 
         envelopeLength = offset;
