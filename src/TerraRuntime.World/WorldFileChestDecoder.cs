@@ -51,6 +51,8 @@ public static class WorldFileChestDecoder
         var positions = new HashSet<long>();
         long totalItems = 0;
 
+        int width = header.Dimensions.WidthTiles;
+        int height = header.Dimensions.HeightTiles;
         for (int i = 0; i < chestCount; i++)
         {
             if (!reader.TryReadInt32(out int x) || !reader.TryReadInt32(out int y))
@@ -59,7 +61,7 @@ public static class WorldFileChestDecoder
                 return WorldFileChestDecodeResult.Truncated;
             }
 
-            if (x < 0 || y < 0 || x + 1 >= header.Dimensions.WidthTiles || y + 1 >= header.Dimensions.HeightTiles)
+            if (width < 2 || height < 2 || (uint)x >= (uint)(width - 1) || (uint)y >= (uint)(height - 1))
             {
                 bytesConsumed = reader.Offset;
                 return WorldFileChestDecodeResult.InvalidChestCoordinates;
