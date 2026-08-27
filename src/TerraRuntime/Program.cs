@@ -108,7 +108,26 @@ internal static class Program
             return 6;
         }
 
-        Console.WriteLine("Network smoke passed: fragmented Terraria326 handshake crossed PipeReader frame pump.");
+        var outbound = new BoundedOutboundQueue(new OutboundQueueOptions(
+            maxFrames: 2,
+            maxQueuedBytes: 64,
+            maxFrameBytes: 32));
+
+        if (outbound.TryEnqueue(new OutboundFrame(packet)) != OutboundEnqueueResult.Enqueued)
+        {
+            Console.Error.WriteLine("Network smoke failed while enqueueing outbound frame.");
+            return 7;
+        }
+
+        OutboundFrame dequeued = await outbound.ReadAsync().ConfigureAwait(false);
+        if (!dequeued.Bytes.Span.SequenceEqual(packet) || outbound.QueuedFrames != 0 || outbound.QueuedBytes != 0)
+        {
+            Console.Error.WriteLine("Network smoke failed while draining outbound frame queue.");
+            return 8;
+        }
+
+        outbound.Complete();
+        Console.WriteLine("Network smoke passed: fragmented Terraria326 ingress and bounded outbound queue executed successfully.");
         return 0;
     }
 
