@@ -8,6 +8,8 @@ public static class VanillaWorldFormat326
     public const int SectionCount = 11;
     public const int TileTypeCount = 754;
     public const int WallTypeCount = 367;
+    public const int MaximumChestSlots = 8_000;
+    public const int MaximumSignSlots = 32_000;
     public const ushort TimersTileType = 144;
 
     public static bool AllowsSaveCompressionBatching(ushort tileType) =>
