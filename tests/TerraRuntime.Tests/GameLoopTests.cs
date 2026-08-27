@@ -116,6 +116,43 @@ public sealed class GameLoopTests
         Assert.Equal(new[] { 1, 10 }, state.Commands.Take(2));
     }
 
+    [Fact]
+    public void Slow_update_phase_records_phase_timing_and_missed_deadlines()
+    {
+        using var updated = new ManualResetEventSlim();
+        var state = new SlowState(updated, signalAtUpdate: 2);
+        using var loop = new AuthoritativeGameLoop<SlowState, int>(
+            state,
+            static (runtime, command) => runtime.Apply(command),
+            static runtime => runtime.Tick(),
+            new GameLoopOptions
+            {
+                TicksPerSecond = 1000,
+                CommandCapacity = 4,
+                MaxCommandIngressPerTick = 4,
+                MaxCommandsPerTick = 4,
+                MaxCommandsPerSourcePerTick = 1
+            });
+
+        loop.Start();
+        Assert.True(updated.Wait(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(1);
+        while (loop.Snapshot.Tick < 2 && DateTime.UtcNow < deadline)
+        {
+            Thread.Yield();
+        }
+
+        Assert.True(loop.Stop(TimeSpan.FromSeconds(1)));
+        GameLoopSnapshot snapshot = loop.Snapshot;
+
+        Assert.True(snapshot.Tick >= 2);
+        Assert.True(snapshot.MissedTickDeadlines > 0);
+        Assert.True(snapshot.WorstUpdateMilliseconds >= 5);
+        Assert.Equal(GameLoopPhase.Update, snapshot.SlowestLastPhase);
+        Assert.True(snapshot.SlowestLastPhaseMilliseconds >= 5);
+    }
+
     private sealed class State(ManualResetEventSlim? applied = null)
     {
         public int CommandThreadId { get; private set; }
@@ -161,6 +198,22 @@ public sealed class GameLoopTests
 
         public void Tick()
         {
+        }
+    }
+
+    private sealed class SlowState(ManualResetEventSlim updated, int signalAtUpdate)
+    {
+        private int updates;
+
+        public void Apply(int command) => _ = command;
+
+        public void Tick()
+        {
+            Thread.Sleep(10);
+            if (Interlocked.Increment(ref updates) >= signalAtUpdate)
+            {
+                updated.Set();
+            }
         }
     }
 }

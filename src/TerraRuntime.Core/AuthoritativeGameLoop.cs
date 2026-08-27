@@ -24,9 +24,18 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
     private readonly Thread thread;
     private long tick;
     private long rejectedCommands;
+    private long missedTickDeadlines;
     private int pendingCommands;
     private double lastTickMilliseconds;
     private double worstTickMilliseconds;
+    private double lastIngressMilliseconds;
+    private double worstIngressMilliseconds;
+    private double lastCommandMilliseconds;
+    private double worstCommandMilliseconds;
+    private double lastUpdateMilliseconds;
+    private double worstUpdateMilliseconds;
+    private double slowestLastPhaseMilliseconds;
+    private int slowestLastPhase;
     private int lastCommandsProcessed;
     private int gameThreadId;
     private Exception? fault;
@@ -70,8 +79,17 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         CommandsProcessed: Volatile.Read(ref lastCommandsProcessed),
         PendingCommands: Volatile.Read(ref pendingCommands),
         RejectedCommands: Interlocked.Read(ref rejectedCommands),
+        MissedTickDeadlines: Interlocked.Read(ref missedTickDeadlines),
         LastTickMilliseconds: Volatile.Read(ref lastTickMilliseconds),
         WorstTickMilliseconds: Volatile.Read(ref worstTickMilliseconds),
+        LastIngressMilliseconds: Volatile.Read(ref lastIngressMilliseconds),
+        WorstIngressMilliseconds: Volatile.Read(ref worstIngressMilliseconds),
+        LastCommandMilliseconds: Volatile.Read(ref lastCommandMilliseconds),
+        WorstCommandMilliseconds: Volatile.Read(ref worstCommandMilliseconds),
+        LastUpdateMilliseconds: Volatile.Read(ref lastUpdateMilliseconds),
+        WorstUpdateMilliseconds: Volatile.Read(ref worstUpdateMilliseconds),
+        SlowestLastPhase: (GameLoopPhase)Volatile.Read(ref slowestLastPhase),
+        SlowestLastPhaseMilliseconds: Volatile.Read(ref slowestLastPhaseMilliseconds),
         CapturedAtUtc: DateTimeOffset.UtcNow);
 
     public void Start()
@@ -134,7 +152,7 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
     private void Run()
     {
         Volatile.Write(ref gameThreadId, Environment.CurrentManagedThreadId);
-        double tickSeconds = 1d / options.TicksPerSecond;
+        long tickInterval = Math.Max(1L, Stopwatch.Frequency / options.TicksPerSecond);
         long nextDeadline = Stopwatch.GetTimestamp();
 
         try
@@ -142,21 +160,35 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
             while (!shutdown.IsCancellationRequested)
             {
                 long tickStarted = Stopwatch.GetTimestamp();
-                StageCommands();
-                int processed = DrainCommands();
-                update(state);
 
+                StageCommands();
+                long ingressFinished = Stopwatch.GetTimestamp();
+
+                int processed = DrainCommands();
+                long commandsFinished = Stopwatch.GetTimestamp();
+
+                update(state);
                 long tickFinished = Stopwatch.GetTimestamp();
+
+                double ingressMs = Stopwatch.GetElapsedTime(tickStarted, ingressFinished).TotalMilliseconds;
+                double commandMs = Stopwatch.GetElapsedTime(ingressFinished, commandsFinished).TotalMilliseconds;
+                double updateMs = Stopwatch.GetElapsedTime(commandsFinished, tickFinished).TotalMilliseconds;
                 double elapsedMs = Stopwatch.GetElapsedTime(tickStarted, tickFinished).TotalMilliseconds;
+
                 Volatile.Write(ref lastCommandsProcessed, processed);
                 Volatile.Write(ref lastTickMilliseconds, elapsedMs);
-                UpdateWorst(elapsedMs);
+                UpdateWorst(ref worstTickMilliseconds, elapsedMs);
+                PublishPhaseMetrics(ingressMs, commandMs, updateMs);
                 Interlocked.Increment(ref tick);
 
-                nextDeadline += (long)(Stopwatch.Frequency * tickSeconds);
+                nextDeadline += tickInterval;
                 long now = Stopwatch.GetTimestamp();
                 if (now > nextDeadline)
                 {
+                    long lateBy = now - nextDeadline;
+                    long missed = 1 + (lateBy / tickInterval);
+                    Interlocked.Add(ref missedTickDeadlines, missed);
+
                     // Skip missed deadlines instead of running burst catch-up ticks.
                     nextDeadline = now;
                 }
@@ -269,6 +301,33 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         }
     }
 
+    private void PublishPhaseMetrics(double ingressMs, double commandMs, double updateMs)
+    {
+        Volatile.Write(ref lastIngressMilliseconds, ingressMs);
+        Volatile.Write(ref lastCommandMilliseconds, commandMs);
+        Volatile.Write(ref lastUpdateMilliseconds, updateMs);
+        UpdateWorst(ref worstIngressMilliseconds, ingressMs);
+        UpdateWorst(ref worstCommandMilliseconds, commandMs);
+        UpdateWorst(ref worstUpdateMilliseconds, updateMs);
+
+        GameLoopPhase slowest = GameLoopPhase.Ingress;
+        double slowestMs = ingressMs;
+        if (commandMs > slowestMs)
+        {
+            slowest = GameLoopPhase.Commands;
+            slowestMs = commandMs;
+        }
+
+        if (updateMs > slowestMs)
+        {
+            slowest = GameLoopPhase.Update;
+            slowestMs = updateMs;
+        }
+
+        Volatile.Write(ref slowestLastPhase, (int)slowest);
+        Volatile.Write(ref slowestLastPhaseMilliseconds, slowestMs);
+    }
+
     private void WaitUntil(long deadline)
     {
         while (!shutdown.IsCancellationRequested)
@@ -289,12 +348,12 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         }
     }
 
-    private void UpdateWorst(double elapsedMs)
+    private static void UpdateWorst(ref double target, double elapsedMs)
     {
-        double current = Volatile.Read(ref worstTickMilliseconds);
+        double current = Volatile.Read(ref target);
         while (elapsedMs > current)
         {
-            double observed = Interlocked.CompareExchange(ref worstTickMilliseconds, elapsedMs, current);
+            double observed = Interlocked.CompareExchange(ref target, elapsedMs, current);
             if (observed == current)
             {
                 return;
