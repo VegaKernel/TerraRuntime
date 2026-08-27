@@ -38,7 +38,7 @@ jobs:
       - name: Authoritative loop smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --loop-smoke
 
-  native-aot:
+  native-aot-linux:
     runs-on: ubuntu-latest
 
     steps:
@@ -61,3 +61,28 @@ jobs:
 
       - name: NativeAOT loop smoke
         run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --loop-smoke
+
+  native-aot-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Publish NativeAOT win-x64
+        run: >-
+          dotnet publish src/TerraRuntime/TerraRuntime.csproj
+          -c Release
+          -r win-x64
+          -p:PublishAot=true
+          -p:IlcTreatWarningsAsErrors=true
+          -o artifacts/native-aot/win-x64
+
+      - name: NativeAOT loop smoke
+        shell: pwsh
+        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --loop-smoke
