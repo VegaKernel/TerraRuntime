@@ -6,9 +6,9 @@ namespace TerraRuntime.Tests;
 public sealed class WorldFileEnvelopeParserTests
 {
     [Fact]
-    public void Parses_bounded_modern_world_envelope_and_importance_bits()
+    public void Parses_bounded_current_world_envelope_and_importance_bits()
     {
-        byte[] file = CreateWorldEnvelope(formatVersion: 325, sectionOffsets: [48, 64, 80, 96]);
+        byte[] file = CreateWorldEnvelope(formatVersion: 326, sectionOffsets: [48, 64, 80, 96]);
         file[44] = 0b_0000_0101;
 
         WorldFileEnvelopeParseResult result = WorldFileEnvelopeParser.TryParse(
@@ -19,7 +19,7 @@ public sealed class WorldFileEnvelopeParserTests
         Assert.Equal(WorldFileEnvelopeParseResult.Parsed, result);
         Assert.NotNull(envelope);
         Assert.Equal(46, envelopeLength);
-        Assert.Equal(325, envelope.FormatVersion);
+        Assert.Equal(326, envelope.FormatVersion);
         Assert.Equal(WorldFormatCompatibility.Verified, envelope.Compatibility);
         Assert.Equal(new[] { 48, 64, 80, 96 }, envelope.SectionOffsets);
         Assert.True(envelope.IsFrameImportant(0));
@@ -31,7 +31,7 @@ public sealed class WorldFileEnvelopeParserTests
     [Fact]
     public void Future_version_can_be_structurally_read_without_becoming_save_compatible()
     {
-        byte[] file = CreateWorldEnvelope(formatVersion: 326, sectionOffsets: [48, 64, 80, 96]);
+        byte[] file = CreateWorldEnvelope(formatVersion: 327, sectionOffsets: [48, 64, 80, 96]);
 
         WorldFileEnvelopeParseResult result = WorldFileEnvelopeParser.TryParse(file, out WorldFileEnvelope? envelope, out _);
 
@@ -43,12 +43,12 @@ public sealed class WorldFileEnvelopeParserTests
     [Fact]
     public void Rejects_non_monotonic_or_out_of_range_section_pointers()
     {
-        byte[] nonMonotonic = CreateWorldEnvelope(formatVersion: 325, sectionOffsets: [48, 80, 64, 96]);
+        byte[] nonMonotonic = CreateWorldEnvelope(formatVersion: 326, sectionOffsets: [48, 80, 64, 96]);
         Assert.Equal(
             WorldFileEnvelopeParseResult.NonMonotonicSectionPointers,
             WorldFileEnvelopeParser.TryParse(nonMonotonic, out _, out _));
 
-        byte[] outOfRange = CreateWorldEnvelope(formatVersion: 325, sectionOffsets: [48, 64, 80, 200]);
+        byte[] outOfRange = CreateWorldEnvelope(formatVersion: 326, sectionOffsets: [48, 64, 80, 200]);
         Assert.Equal(
             WorldFileEnvelopeParseResult.SectionPointerOutOfRange,
             WorldFileEnvelopeParser.TryParse(outOfRange, out _, out _));
@@ -57,7 +57,7 @@ public sealed class WorldFileEnvelopeParserTests
     [Fact]
     public void Rejects_bad_magic_before_allocating_untrusted_payloads()
     {
-        byte[] file = CreateWorldEnvelope(formatVersion: 325, sectionOffsets: [48, 64, 80, 96]);
+        byte[] file = CreateWorldEnvelope(formatVersion: 326, sectionOffsets: [48, 64, 80, 96]);
         file[4] = (byte)'x';
 
         Assert.Equal(
