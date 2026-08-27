@@ -59,10 +59,30 @@ internal static class Program
             return 3;
         }
 
+        using var workers = new BoundedWorkerPool<int, int>(
+            workerCount: 1,
+            workCapacity: 1,
+            completionCapacity: 1,
+            execute: static value => value * 2);
+        workers.Start();
+        if (!workers.TrySubmit(21))
+        {
+            Console.Error.WriteLine("Game loop smoke failed while submitting bounded worker work.");
+            return 15;
+        }
+
+        WorkerCompletion<int> completion = workers.ReadCompletionAsync().AsTask().GetAwaiter().GetResult();
+        if (!completion.IsSuccess || completion.Result != 42 || !workers.Stop(TimeSpan.FromSeconds(1)))
+        {
+            Console.Error.WriteLine("Game loop smoke failed while exercising the bounded worker pool.");
+            return 16;
+        }
+
         Console.WriteLine(
             $"Game loop smoke passed: tick={snapshot.Tick}, thread={snapshot.GameThreadId}, " +
             $"worst={snapshot.WorstTickMilliseconds:F3} ms, slowest={snapshot.SlowestLastPhase}:" +
-            $"{snapshot.SlowestLastPhaseMilliseconds:F3} ms, missed={snapshot.MissedTickDeadlines}");
+            $"{snapshot.SlowestLastPhaseMilliseconds:F3} ms, missed={snapshot.MissedTickDeadlines}, " +
+            $"workerCompleted={workers.Snapshot.CompletedWork}");
         return 0;
     }
 
