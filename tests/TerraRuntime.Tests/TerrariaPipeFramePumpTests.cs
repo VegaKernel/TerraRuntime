@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.IO.Pipelines;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
@@ -9,12 +10,13 @@ public sealed class TerrariaPipeFramePumpTests
     [Fact]
     public async Task Reads_a_frame_split_across_pipe_writes()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var pipe = new Pipe();
         var sink = new RecordingSink();
-        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink);
+        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink, cancellationToken);
 
-        await pipe.Writer.WriteAsync(new byte[] { 5 });
-        await pipe.Writer.WriteAsync(new byte[] { 0, (byte)TerrariaMessageId.Kick, 0xAA, 0xBB });
+        await pipe.Writer.WriteAsync(new byte[] { 5 }, cancellationToken);
+        await pipe.Writer.WriteAsync(new byte[] { 0, (byte)TerrariaMessageId.Kick, 0xAA, 0xBB }, cancellationToken);
         await pipe.Writer.CompleteAsync();
 
         Assert.Equal(TerrariaPipePumpResult.Completed, await pump);
@@ -27,15 +29,16 @@ public sealed class TerrariaPipeFramePumpTests
     [Fact]
     public async Task Reads_coalesced_frames_from_one_pipe_buffer()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var pipe = new Pipe();
         var sink = new RecordingSink();
-        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink);
+        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink, cancellationToken);
 
         await pipe.Writer.WriteAsync(new byte[]
         {
             3, 0, (byte)TerrariaMessageId.Hello,
             4, 0, (byte)TerrariaMessageId.PlayerInfo, 0xCC
-        });
+        }, cancellationToken);
         await pipe.Writer.CompleteAsync();
 
         Assert.Equal(TerrariaPipePumpResult.Completed, await pump);
@@ -49,11 +52,12 @@ public sealed class TerrariaPipeFramePumpTests
     [Fact]
     public async Task Reports_a_truncated_frame_when_the_writer_completes_mid_frame()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var pipe = new Pipe();
         var sink = new RecordingSink();
-        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink);
+        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink, cancellationToken);
 
-        await pipe.Writer.WriteAsync(new byte[] { 5, 0, (byte)TerrariaMessageId.Kick, 0xAA });
+        await pipe.Writer.WriteAsync(new byte[] { 5, 0, (byte)TerrariaMessageId.Kick, 0xAA }, cancellationToken);
         await pipe.Writer.CompleteAsync();
 
         Assert.Equal(TerrariaPipePumpResult.TruncatedFrame, await pump);
@@ -64,11 +68,12 @@ public sealed class TerrariaPipeFramePumpTests
     [Fact]
     public async Task Rejects_an_invalid_declared_length()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var pipe = new Pipe();
         var sink = new RecordingSink();
-        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink);
+        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink, cancellationToken);
 
-        await pipe.Writer.WriteAsync(new byte[] { 2, 0, (byte)TerrariaMessageId.Hello });
+        await pipe.Writer.WriteAsync(new byte[] { 2, 0, (byte)TerrariaMessageId.Hello }, cancellationToken);
         await pipe.Writer.CompleteAsync();
 
         Assert.Equal(TerrariaPipePumpResult.InvalidFrameLength, await pump);
@@ -79,12 +84,13 @@ public sealed class TerrariaPipeFramePumpTests
     [Fact]
     public async Task Rejects_an_oversized_declared_frame_without_waiting_for_its_body()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var pipe = new Pipe();
         var sink = new RecordingSink();
         var options = new TerrariaFrameDecoderOptions(maxFrameLength: 5);
-        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink, options);
+        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink, options, cancellationToken);
 
-        await pipe.Writer.WriteAsync(new byte[] { 6, 0 });
+        await pipe.Writer.WriteAsync(new byte[] { 6, 0 }, cancellationToken);
 
         Assert.Equal(TerrariaPipePumpResult.FrameTooLarge, await pump);
         Assert.Empty(sink.Frames);
@@ -95,15 +101,16 @@ public sealed class TerrariaPipeFramePumpTests
     [Fact]
     public async Task Stops_immediately_when_the_sink_requests_it()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var pipe = new Pipe();
         var sink = new RecordingSink(stopAfter: 1);
-        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink);
+        ValueTask<TerrariaPipePumpResult> pump = TerrariaPipeFramePump.RunAsync(pipe.Reader, sink, cancellationToken);
 
         await pipe.Writer.WriteAsync(new byte[]
         {
             3, 0, (byte)TerrariaMessageId.Hello,
             3, 0, (byte)TerrariaMessageId.PlayerInfo
-        });
+        }, cancellationToken);
 
         Assert.Equal(TerrariaPipePumpResult.SinkStopped, await pump);
         Assert.Single(sink.Frames);
