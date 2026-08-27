@@ -3,6 +3,8 @@
     <TargetFramework>net11.0</TargetFramework>
     <RootNamespace>TerraRuntime.Core</RootNamespace>
     <AssemblyName>TerraRuntime.Core</AssemblyName>
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
