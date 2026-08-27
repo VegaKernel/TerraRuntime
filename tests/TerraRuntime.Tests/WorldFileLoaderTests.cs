@@ -19,6 +19,11 @@ public sealed class WorldFileLoaderTests
         WorldFileData loaded = Assert.IsType<WorldFileData>(world);
         Assert.Equal(WorldFileFormatPolicy.CurrentVersion, loaded.Envelope.FormatVersion);
         Assert.Equal("full-loader", loaded.Header.Name);
+        Assert.Equal(13500, loaded.RuntimeMetadata.Time);
+        Assert.True(loaded.RuntimeMetadata.DayTime);
+        Assert.Equal((short)1, loaded.RuntimeMetadata.SpawnX);
+        Assert.Equal((short)2, loaded.RuntimeMetadata.DungeonY);
+        Assert.Equal(13, loaded.RuntimeMetadata.TreeTopVariations.Length);
         Assert.Equal(6, loaded.Tiles.Count);
         Assert.Empty(loaded.Chests);
         Assert.Empty(loaded.Signs);
@@ -84,12 +89,20 @@ public sealed class WorldFileLoaderTests
                 MaxSightEntries: 2_048,
                 MaxChatEntries: 2_048,
                 MaxPersistentIdBytes: 256,
-                MaxTotalPersistentIdBytes: 512 * 1024));
+                MaxTotalPersistentIdBytes: 512 * 1024),
+            RuntimeMetadata: new WorldFileRuntimeMetadataLimits(
+                MaxStringBytes: 4_096,
+                MaxTotalStringBytes: 64 * 1024,
+                MaxAnglerNames: 256,
+                MaxBannerEntries: 1_024,
+                MaxPartyNpcEntries: 256,
+                MaxManifestBytes: 16 * 1024));
 
     private static byte[] CreateCompleteCurrentWorld()
     {
         const int headerStart = EnvelopeEnd;
-        const int tileStart = 240;
+        byte[] header = CreateHeader("full-loader", 77, width: 2, height: 3);
+        int tileStart = headerStart + header.Length;
         byte[] tiles = [0x40, 0x02, 0x40, 0x02];
         byte[] chests = CreateSection(static writer => writer.Write((short)0));
         byte[] signs = CreateSection(static writer => writer.Write((short)0));
@@ -140,8 +153,7 @@ public sealed class WorldFileLoaderTests
 
         var file = new byte[pointers[10] + footer.Length];
         WriteEnvelope(file, pointers);
-        WriteHeader(file.AsSpan(headerStart, tileStart - headerStart), "full-loader", 77, width: 2, height: 3);
-
+        header.CopyTo(file, headerStart);
         tiles.CopyTo(file, pointers[1]);
         chests.CopyTo(file, pointers[2]);
         signs.CopyTo(file, pointers[3]);
@@ -188,10 +200,9 @@ public sealed class WorldFileLoaderTests
         Assert.Equal(EnvelopeEnd, offset);
     }
 
-    private static void WriteHeader(Span<byte> destination, string name, int worldId, int width, int height)
+    private static byte[] CreateHeader(string name, int worldId, int width, int height)
     {
-        using var stream = new MemoryStream();
-        using (var writer = new BinaryWriter(stream, new UTF8Encoding(false), leaveOpen: true))
+        return CreateSection(writer =>
         {
             writer.Write(name);
             writer.Write("326");
@@ -204,11 +215,104 @@ public sealed class WorldFileLoaderTests
             writer.Write(height * 16);
             writer.Write(height);
             writer.Write(width);
-        }
 
-        byte[] header = stream.ToArray();
-        Assert.True(header.Length <= destination.Length);
-        header.CopyTo(destination);
+            writer.Write(0); // GameMode
+            WriteFalseBooleans(writer, 9); // world seed flags through skyblock
+            writer.Write(0L); // creation time
+            writer.Write(0L); // last played
+            writer.Write((byte)0); // moon type
+            WriteInt32Zeros(writer, 3); // tree X
+            WriteInt32Zeros(writer, 4); // tree styles
+            WriteInt32Zeros(writer, 3); // cave background X
+            WriteInt32Zeros(writer, 4); // cave background styles
+            WriteInt32Zeros(writer, 3); // ice/jungle/hell background styles
+            writer.Write(1); // spawn X
+            writer.Write(1); // spawn Y
+            writer.Write(1d); // world surface
+            writer.Write(2d); // rock layer
+            writer.Write(13500d); // time
+            writer.Write(true); // day time
+            writer.Write(0); // moon phase
+            writer.Write(false); // blood moon
+            writer.Write(false); // eclipse
+            writer.Write(1); // dungeon X
+            writer.Write(2); // dungeon Y
+
+            WriteFalseBooleans(writer, 21); // crimson through spawnMeteor
+            writer.Write((byte)0); // shadow orb count
+            writer.Write(0); // altar count
+            writer.Write(false); // hard mode
+            writer.Write(false); // after party of doom
+            writer.Write(0); // invasion delay
+            writer.Write(0); // invasion size
+            writer.Write(0); // invasion type
+            writer.Write(0d); // invasion X
+            writer.Write(0d); // slime rain time
+            writer.Write((byte)0); // sundial cooldown
+            writer.Write(false); // raining
+            writer.Write(0); // rain time
+            writer.Write(0f); // max rain
+            WriteInt32Zeros(writer, 3); // cobalt/mythril/adamantite
+            WriteByteZeros(writer, 8); // tree/corruption/jungle/snow/hallow/crimson/desert/ocean backgrounds
+            writer.Write(0); // cloud background active
+            writer.Write((short)0); // cloud count
+            writer.Write(0f); // wind
+            writer.Write(0); // angler names
+            writer.Write(false); // saved angler
+            writer.Write(0); // angler quest
+            WriteFalseBooleans(writer, 3); // stylist/tax collector/golfer
+            writer.Write(0); // invasion size start
+            writer.Write(0); // cultist delay
+            writer.Write((short)0); // banner kill count length
+            writer.Write((short)0); // banner claim count length
+
+            WriteFalseBooleans(writer, 19); // fast dawn through lunar apocalypse
+            writer.Write(false); // party manual
+            writer.Write(false); // party genuine
+            writer.Write(0); // party cooldown
+            writer.Write(0); // celebrating NPC count
+            writer.Write(false); // sandstorm happening
+            writer.Write(0); // sandstorm time left
+            writer.Write(0f); // sandstorm severity
+            writer.Write(0f); // sandstorm intended severity
+            writer.Write(false); // saved bartender
+            WriteFalseBooleans(writer, 3); // DD2 downed tiers
+            WriteByteZeros(writer, 5); // mushroom/underworld/treeBG2/treeBG3/treeBG4
+            writer.Write(false); // combat book
+            writer.Write(0); // lantern cooldown
+            WriteFalseBooleans(writer, 3); // lantern genuine/manual/next
+            writer.Write(13); // tree top variation count
+            WriteInt32Zeros(writer, 13);
+            WriteFalseBooleans(writer, 2); // force Halloween/XMas today
+            WriteInt32Zeros(writer, 4); // copper/iron/silver/gold
+            WriteFalseBooleans(writer, 25); // pets, progression unlocks and fast-forward dusk
+            writer.Write((byte)0); // moondial cooldown
+            WriteFalseBooleans(writer, 4); // force seasons forever, vampire, infected
+            writer.Write(0); // meteor shower count
+            writer.Write(0); // coin rain
+            writer.Write(false); // team-based spawns seed
+            writer.Write((byte)0); // extra spawn count
+            WriteFalseBooleans(writer, 3); // dual dungeons, more lightning, no lightning
+            writer.Write("{}"); // world manifest
+        });
+    }
+
+    private static void WriteFalseBooleans(BinaryWriter writer, int count)
+    {
+        for (int i = 0; i < count; i++)
+            writer.Write(false);
+    }
+
+    private static void WriteInt32Zeros(BinaryWriter writer, int count)
+    {
+        for (int i = 0; i < count; i++)
+            writer.Write(0);
+    }
+
+    private static void WriteByteZeros(BinaryWriter writer, int count)
+    {
+        for (int i = 0; i < count; i++)
+            writer.Write((byte)0);
     }
 
     private static void WriteBoolPower(BinaryWriter writer, ushort id, bool value)
