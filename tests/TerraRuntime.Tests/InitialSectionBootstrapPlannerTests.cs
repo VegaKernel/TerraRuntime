@@ -46,8 +46,8 @@ public sealed class InitialSectionBootstrapPlannerTests
     public void Rejects_invalid_spawn_and_short_destination()
     {
         var dimensions = new WorldDimensions(400, 300);
-        Span<WorldSectionId> enough = stackalloc WorldSectionId[InitialSectionBootstrapPlanner.MaximumBaseSectionCount];
-        Span<WorldSectionId> shortBuffer = stackalloc WorldSectionId[1];
+        var enough = new WorldSectionId[InitialSectionBootstrapPlanner.MaximumBaseSectionCount];
+        var shortBuffer = new WorldSectionId[1];
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             InitialSectionBootstrapPlanner.PlanBaseSpawnSections(dimensions, -1, 0, enough));
