@@ -51,7 +51,7 @@ public sealed class TerrariaTcpAcceptLoop
                     continue;
                 }
 
-                activeConnections.Add(RunAcceptedConnectionAsync(socket, lease, cancellationToken));
+                activeConnections.Add(RunAcceptedConnectionAsync(socket, lease!, cancellationToken));
             }
         }
         finally
