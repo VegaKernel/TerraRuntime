@@ -113,7 +113,7 @@ public static class WorldSectionObjectMetadataEncoder
             if (!tile.IsActive)
                 continue;
 
-            bool basicChest = tile.Type is 21 or 467 && tile.FrameX % 36 == 0 && tile.FrameY % 36 == 0;
+            bool basicChest = (tile.Type is 21 or 467) && tile.FrameX % 36 == 0 && tile.FrameY % 36 == 0;
             bool dresser = tile.Type == 88 && tile.FrameX % 54 == 0 && tile.FrameY % 36 == 0;
             if (basicChest || dresser)
                 result.Add(chest);
@@ -137,7 +137,7 @@ public static class WorldSectionObjectMetadataEncoder
                 continue;
 
             WorldTile tile = world.Tiles.Get(sign.X, sign.Y);
-            if (tile.IsActive && tile.Type is 85 or 55 or 425 or 573 &&
+            if (tile.IsActive && (tile.Type is 85 or 55 or 425 or 573) &&
                 tile.FrameX % 36 == 0 && tile.FrameY % 36 == 0)
             {
                 result.Add(sign);
