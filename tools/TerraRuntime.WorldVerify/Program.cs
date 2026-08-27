@@ -29,7 +29,14 @@ var limits = new WorldFileLoadLimits(
         MaxSightEntries: 100_000,
         MaxChatEntries: 100_000,
         MaxPersistentIdBytes: 4 * 1024,
-        MaxTotalPersistentIdBytes: 64L * 1024 * 1024));
+        MaxTotalPersistentIdBytes: 64L * 1024 * 1024),
+    RuntimeMetadata: new WorldFileRuntimeMetadataLimits(
+        MaxStringBytes: 64 * 1024,
+        MaxTotalStringBytes: 64L * 1024 * 1024,
+        MaxAnglerNames: 4_096,
+        MaxBannerEntries: 8_192,
+        MaxPartyNpcEntries: 4_096,
+        MaxManifestBytes: 4 * 1024 * 1024));
 
 WorldFileLoadDiagnostic diagnostic = WorldFileLoader.TryLoad(file, limits, out WorldFileData? world);
 if (!diagnostic.IsLoaded || world is null)
@@ -42,6 +49,7 @@ if (!diagnostic.IsLoaded || world is null)
 Console.WriteLine(
     $"Verified {Path.GetFileName(path)}: version={world.Envelope.FormatVersion}, " +
     $"name={world.Header.Name}, size={world.Header.Dimensions.WidthTiles}x{world.Header.Dimensions.HeightTiles}, " +
+    $"time={world.RuntimeMetadata.Time}, gameMode={world.RuntimeMetadata.GameMode}, " +
     $"tiles={world.Tiles.Count}, chests={world.Chests.Length}, signs={world.Signs.Length}, " +
     $"townNpcs={world.Npcs.TownNpcs.Length}, persistentNpcs={world.Npcs.PersistentNpcs.Length}, " +
     $"tileEntities={world.TileEntities.Length}, pressurePlates={world.PressurePlates.Length}, " +
