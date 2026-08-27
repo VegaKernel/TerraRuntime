@@ -19,5 +19,6 @@ public enum TerrariaMessageId : byte
     TileFrameSection = 11,
     PlayerSpawn = 12,
     PlayerControls = 13,
-    PlayerActive = 14
+    PlayerActive = 14,
+    PlayerSpawnSelf = 49
 }
