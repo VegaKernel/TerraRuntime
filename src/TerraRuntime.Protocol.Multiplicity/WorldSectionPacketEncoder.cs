@@ -11,7 +11,8 @@ public enum WorldSectionPacketEncodeResult : byte
     Encoded = 0,
     InvalidSection = 1,
     CompressionFailure = 2,
-    FrameTooLarge = 3
+    FrameTooLarge = 3,
+    InvalidObjectMetadata = 4
 }
 
 /// <summary>
@@ -20,6 +21,32 @@ public enum WorldSectionPacketEncodeResult : byte
 /// </summary>
 public static class WorldSectionPacketEncoder
 {
+    public static WorldSectionPacketEncodeResult TryEncode(
+        WorldFileData world,
+        int xStart,
+        int yStart,
+        int width,
+        int height,
+        out byte[] frame)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        frame = [];
+
+        WorldSectionPayloadAssemblyResult payloadResult = WorldSectionPayloadAssembler.TryEncode(
+            world,
+            xStart,
+            yStart,
+            width,
+            height,
+            out byte[] uncompressed);
+        if (payloadResult == WorldSectionPayloadAssemblyResult.InvalidObjectMetadata)
+            return WorldSectionPacketEncodeResult.InvalidObjectMetadata;
+        if (payloadResult != WorldSectionPayloadAssemblyResult.Encoded)
+            return WorldSectionPacketEncodeResult.InvalidSection;
+
+        return TryCompressFrame(uncompressed, out frame);
+    }
+
     public static WorldSectionPacketEncodeResult TryEncodeTileOnly(
         WorldFileData world,
         int xStart,
@@ -41,6 +68,12 @@ public static class WorldSectionPacketEncoder
         if (payloadResult != WorldSectionPayloadEncodeResult.Encoded)
             return WorldSectionPacketEncodeResult.InvalidSection;
 
+        return TryCompressFrame(uncompressed, out frame);
+    }
+
+    private static WorldSectionPacketEncodeResult TryCompressFrame(byte[] uncompressed, out byte[] frame)
+    {
+        frame = [];
         byte[] compressed;
         try
         {
