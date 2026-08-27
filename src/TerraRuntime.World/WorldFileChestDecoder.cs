@@ -6,7 +6,8 @@ namespace TerraRuntime.World;
 /// <summary>
 /// Decodes the Terraria 1.4.5.8 chest section. The current file format stores a per-chest item count,
 /// so caller-provided limits bound both individual and aggregate allocations before arrays are created.
-/// Duplicate coordinates follow vanilla load behavior: the first chest wins.
+/// Duplicate coordinates follow vanilla load behavior: the first chest wins while surviving entries retain
+/// their original file-order slot IDs for packet-10 synchronization.
 /// </summary>
 public static class WorldFileChestDecoder
 {
@@ -110,7 +111,7 @@ public static class WorldFileChestDecoder
 
             long positionKey = ((long)(uint)x << 32) | (uint)y;
             if (positions.Add(positionKey))
-                loaded.Add(new WorldChest(x, y, name, items));
+                loaded.Add(new WorldChest(checked((short)i), x, y, name, items));
         }
 
         bytesConsumed = reader.Offset;
