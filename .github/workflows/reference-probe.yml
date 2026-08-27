@@ -31,6 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/reference-1458/tile-entities
+          mkdir -p artifacts/reference-1458/persistence
 
           find_ref() {
             local filename="$1"
@@ -50,6 +51,9 @@ jobs:
           tile="$(find_ref 'Tile.cs' 'class Tile')"
           tile_entity="$(find_ref 'TileEntity.cs' 'class TileEntity')"
           tile_entities_manager="$(find_ref 'TileEntitiesManager.cs' 'class TileEntitiesManager')"
+          town_manager="$(find_ref '*TownRoomManager*.cs' 'class TownRoomManager')"
+          bestiary_tracker="$(find_ref '*BestiaryUnlocksTracker*.cs' 'class BestiaryUnlocksTracker')"
+          creative_power_manager="$(find_ref 'CreativePowerManager.cs' 'class CreativePowerManager')"
 
           cp "$world_file" artifacts/reference-1458/WorldFile.cs
           cp "$tile_id" artifacts/reference-1458/TileID.cs
@@ -57,6 +61,9 @@ jobs:
           cp "$tile" artifacts/reference-1458/Tile.cs
           cp "$tile_entity" artifacts/reference-1458/tile-entities/TileEntity.cs
           cp "$tile_entities_manager" artifacts/reference-1458/tile-entities/TileEntitiesManager.cs
+          cp "$town_manager" artifacts/reference-1458/persistence/TownRoomManager.cs
+          cp "$bestiary_tracker" artifacts/reference-1458/persistence/BestiaryUnlocksTracker.cs
+          cp "$creative_power_manager" artifacts/reference-1458/persistence/CreativePowerManager.cs
 
           {
             grep -RIl --include='*.cs' ': TileEntity' decompiled/1458 || true
