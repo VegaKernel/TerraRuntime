@@ -38,8 +38,16 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         TerrariaConnectionOutboundQueue outbound,
         PlayerBootstrapPacketSet packets,
         ITerrariaFrameSink? inner = null)
-        : this(slots, outbound, packets, GameCommandSourceId.System, null, inner)
     {
+        ArgumentNullException.ThrowIfNull(slots);
+        ArgumentNullException.ThrowIfNull(outbound);
+        ArgumentNullException.ThrowIfNull(packets);
+        _slots = slots;
+        _outbound = outbound;
+        _packets = packets;
+        _source = GameCommandSourceId.System;
+        _spawnIngress = null;
+        _inner = inner;
     }
 
     public PlayerBootstrapFrameSink(
@@ -49,23 +57,14 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         GameCommandSourceId source,
         IPlayerSpawnCommitIngress spawnIngress,
         ITerrariaFrameSink? inner = null)
-        : this(slots, outbound, packets, source, spawnIngress, inner)
-    {
-        if (source.IsSystem)
-            throw new ArgumentException("Player bootstrap ingress requires a connection command source.", nameof(source));
-    }
-
-    private PlayerBootstrapFrameSink(
-        PlayerSlotPool slots,
-        TerrariaConnectionOutboundQueue outbound,
-        PlayerBootstrapPacketSet packets,
-        GameCommandSourceId source,
-        IPlayerSpawnCommitIngress? spawnIngress,
-        ITerrariaFrameSink? inner)
     {
         ArgumentNullException.ThrowIfNull(slots);
         ArgumentNullException.ThrowIfNull(outbound);
         ArgumentNullException.ThrowIfNull(packets);
+        ArgumentNullException.ThrowIfNull(spawnIngress);
+        if (source.IsSystem)
+            throw new ArgumentException("Player bootstrap ingress requires a connection command source.", nameof(source));
+
         _slots = slots;
         _outbound = outbound;
         _packets = packets;
@@ -147,7 +146,6 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             return TerrariaFrameSinkResult.Continue;
         }
 
-        // Vanilla responds to repeated packet 6 with WorldInfo without rewinding its state.
         if (_session.State is PlayerJoinState.AwaitingSectionRequest or PlayerJoinState.AwaitingSpawn or PlayerJoinState.Playing)
         {
             return TryQueue(_packets.WorldInfoFrame)
@@ -167,16 +165,11 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             return Stop(PlayerBootstrapStopReason.InvalidJoinState);
 
         if (_session.State is PlayerJoinState.AwaitingSpawn or PlayerJoinState.Playing)
-        {
-            // The minimal bootstrap cache contains the base spawn sections only. Do not resend the whole
-            // base set for repeated packet 8; later per-connection section tracking handles arbitrary requests.
             return TerrariaFrameSinkResult.Continue;
-        }
 
         if (_session.State != PlayerJoinState.AwaitingSectionRequest)
             return Stop(PlayerBootstrapStopReason.InvalidJoinState);
 
-        // Vanilla sends WorldInfo again immediately before the tile bootstrap.
         if (!TryQueue(_packets.WorldInfoFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 
@@ -186,7 +179,6 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
 
-        // Packet 49 is the client-side state transition from tile loading to spawning.
         if (!TryQueue(_packets.EnterWorldFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 
@@ -221,8 +213,6 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             if (!_spawnIngress.TryPost(_source, _session, in commit))
                 return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
-            // The network thread has only submitted a candidate. State 3 -> 10 happens when the
-            // authoritative game loop accepts and commits the command.
             return TerrariaFrameSinkResult.Continue;
         }
 
