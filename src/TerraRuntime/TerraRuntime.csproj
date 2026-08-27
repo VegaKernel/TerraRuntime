@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
+    <ProjectReference Include="../TerraRuntime.Core/TerraRuntime.Core.csproj" />
     <ProjectReference Include="../TerraRuntime.Protocol.Multiplicity/TerraRuntime.Protocol.Multiplicity.csproj" />
   </ItemGroup>
 </Project>
