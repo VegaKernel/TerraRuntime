@@ -80,8 +80,8 @@ if (parsedWorldInfo.WorldName != world.Header.Name ||
     return 4;
 }
 
-int sectionWidth = Math.Min(WorldSectionGeometry.SectionWidthTiles, world.Header.Dimensions.WidthTiles);
-int sectionHeight = Math.Min(WorldSectionGeometry.SectionHeightTiles, world.Header.Dimensions.HeightTiles);
+int sectionWidth = Math.Min(TerrariaSectionGeometry.WidthTiles, world.Header.Dimensions.WidthTiles);
+int sectionHeight = Math.Min(TerrariaSectionGeometry.HeightTiles, world.Header.Dimensions.HeightTiles);
 WorldSectionPayloadEncodeResult sectionResult = WorldSectionPayloadEncoder.TryEncodeTileOnly(
     world,
     xStart: 0,
