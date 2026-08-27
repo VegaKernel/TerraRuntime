@@ -9,7 +9,8 @@ public static class WorldFileFormatPolicy
     public const int MinimumVerifiedVersion = 279;
 
     // Terraria 1.4.5.8 WorldFile.SaveFileFormatHeader writes 326.
-    public const int MaximumVerifiedVersion = 326;
+    public const int CurrentVersion = 326;
+    public const int MaximumVerifiedVersion = CurrentVersion;
 
     public static WorldFormatCompatibility Assess(int formatVersion)
     {
