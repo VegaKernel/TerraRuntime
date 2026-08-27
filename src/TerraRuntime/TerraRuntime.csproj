@@ -2,8 +2,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net11.0</TargetFramework>
-    <RootNamespace>TerrariaNewRuntime</RootNamespace>
-    <AssemblyName>TerrariaNewRuntime.Server</AssemblyName>
+    <RootNamespace>TerraRuntime</RootNamespace>
+    <AssemblyName>TerraRuntime.Server</AssemblyName>
     <PublishAot>false</PublishAot>
     <PublishReadyToRun Condition="'$(PublishReadyToRun)' == ''">false</PublishReadyToRun>
     <TieredCompilation>true</TieredCompilation>
@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../TerrariaNewRuntime.Contracts/TerrariaNewRuntime.Contracts.csproj" />
-    <ProjectReference Include="../TerrariaNewRuntime.Protocol.Multiplicity/TerrariaNewRuntime.Protocol.Multiplicity.csproj" />
+    <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
+    <ProjectReference Include="../TerraRuntime.Protocol.Multiplicity/TerraRuntime.Protocol.Multiplicity.csproj" />
   </ItemGroup>
 </Project>

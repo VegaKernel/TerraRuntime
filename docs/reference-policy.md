@@ -1,6 +1,6 @@
 # Reference policy
 
-`TerrariaNewRuntime` is a clean-room C# server runtime project.
+`TerraRuntime` is a clean-room C# server runtime project.
 
 The official Terraria dedicated server may be downloaded and decompiled locally for interoperability, protocol research, behavioral comparison, and regression investigation. The resulting binaries and decompiled source are local reference material only and must not be committed to this repository.
 

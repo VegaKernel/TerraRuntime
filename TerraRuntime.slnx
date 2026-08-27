@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/TerraRuntime/TerraRuntime.csproj" />
+  <Project Path="src/TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
+  <Project Path="src/TerraRuntime.Protocol.Multiplicity/TerraRuntime.Protocol.Multiplicity.csproj" />
+  <Project Path="tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj" />
+</Solution>

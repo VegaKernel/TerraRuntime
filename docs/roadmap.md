@@ -1,6 +1,6 @@
-# TerrariaNewRuntime roadmap
+# TerraRuntime roadmap
 
-TerrariaNewRuntime is a clean-room C# implementation of the Terraria dedicated server runtime. The project preserves observable vanilla gameplay behavior while replacing fragile legacy internals with explicit, testable, secure and high-performance subsystems.
+TerraRuntime is a clean-room C# implementation of the Terraria dedicated server runtime. The project preserves observable vanilla gameplay behavior while replacing fragile legacy internals with explicit, testable, secure and high-performance subsystems.
 
 The governing rule is: **behavioral parity where players can observe it; freedom of implementation everywhere else.**
 
@@ -274,7 +274,7 @@ Measure independently:
 - `NetworkReady`;
 - allocations and GC deltas.
 
-Vega already demonstrated an important lesson: caching only serialized/tile data can miss the real startup bottleneck, while caching safe post-load runtime state can materially reduce startup. TerrariaNewRuntime should design the image around measured post-load work from the beginning.
+Vega already demonstrated an important lesson: caching only serialized/tile data can miss the real startup bottleneck, while caching safe post-load runtime state can materially reduce startup. TerraRuntime should design the image around measured post-load work from the beginning.
 
 ## Phase 6 - Gameplay parity
 
@@ -460,7 +460,7 @@ Do not trust only tests where both the client and server use Multiplicity. A sha
 
 ### Differential tests
 
-Drive equivalent scenarios against the official dedicated server and TerrariaNewRuntime and compare observable state/output.
+Drive equivalent scenarios against the official dedicated server and TerraRuntime and compare observable state/output.
 
 ### Real process stress tests
 
@@ -545,7 +545,7 @@ Concrete targets will be replaced by measurements on defined hardware.
 Official Terraria client
         |
         v
-TerrariaNewRuntime (.NET 11)
+TerraRuntime (.NET 11)
         |
         +-- Multiplicity-backed typed handshake
         +-- player slot assignment

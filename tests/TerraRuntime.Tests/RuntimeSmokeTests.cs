@@ -1,4 +1,4 @@
-namespace TerrariaNewRuntime.Tests;
+namespace TerraRuntime.Tests;
 
 public sealed class RuntimeSmokeTests
 {

@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="src/TerrariaNewRuntime/TerrariaNewRuntime.csproj" />
-  <Project Path="tests/TerrariaNewRuntime.Tests/TerrariaNewRuntime.Tests.csproj" />
-</Solution>
