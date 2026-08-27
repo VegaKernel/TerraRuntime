@@ -26,18 +26,38 @@ jobs:
       - name: Decompile official TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
 
-      - name: Collect WorldFile reference
+      - name: Collect world/tile references
         shell: bash
         run: |
           set -euo pipefail
-          src="$(find decompiled/1458 -type f -name '*WorldFile*.cs' -print -quit)"
-          if [[ -z "$src" ]]; then
-            src="$(grep -RIl --include='*.cs' 'class WorldFile' decompiled/1458 | head -n 1 || true)"
-          fi
-          test -n "$src"
-          echo "WorldFile reference: $src"
           mkdir -p artifacts/reference-1458
-          cp "$src" artifacts/reference-1458/WorldFile.cs
+
+          find_ref() {
+            local filename="$1"
+            local class_pattern="$2"
+            local src
+            src="$(find decompiled/1458 -type f -name "$filename" -print -quit)"
+            if [[ -z "$src" ]]; then
+              src="$(grep -RIl --include='*.cs' "$class_pattern" decompiled/1458 | head -n 1 || true)"
+            fi
+            test -n "$src"
+            echo "$src"
+          }
+
+          world_file="$(find_ref '*WorldFile*.cs' 'class WorldFile')"
+          tile_id="$(find_ref 'TileID.cs' 'class TileID')"
+          wall_id="$(find_ref 'WallID.cs' 'class WallID')"
+          tile="$(find_ref 'Tile.cs' 'class Tile')"
+
+          echo "WorldFile reference: $world_file"
+          echo "TileID reference: $tile_id"
+          echo "WallID reference: $wall_id"
+          echo "Tile reference: $tile"
+
+          cp "$world_file" artifacts/reference-1458/WorldFile.cs
+          cp "$tile_id" artifacts/reference-1458/TileID.cs
+          cp "$wall_id" artifacts/reference-1458/WallID.cs
+          cp "$tile" artifacts/reference-1458/Tile.cs
           cp decompiled/1458/REFERENCE_SOURCE.txt artifacts/reference-1458/REFERENCE_SOURCE.txt
 
       - name: Upload local-only reference artifact
