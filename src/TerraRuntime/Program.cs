@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.IO.Pipelines;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
@@ -58,7 +59,10 @@ internal static class Program
             return 3;
         }
 
-        Console.WriteLine($"Game loop smoke passed: tick={snapshot.Tick}, thread={snapshot.GameThreadId}, worst={snapshot.WorstTickMilliseconds:F3} ms");
+        Console.WriteLine(
+            $"Game loop smoke passed: tick={snapshot.Tick}, thread={snapshot.GameThreadId}, " +
+            $"worst={snapshot.WorstTickMilliseconds:F3} ms, slowest={snapshot.SlowestLastPhase}:" +
+            $"{snapshot.SlowestLastPhaseMilliseconds:F3} ms, missed={snapshot.MissedTickDeadlines}");
         return 0;
     }
 
@@ -169,7 +173,27 @@ internal static class Program
             return 12;
         }
 
-        Console.WriteLine("Network smoke passed: fragmented ingress, bounded outbound queues, slow-client policy, admission gate and rate accounting executed successfully.");
+        var commandInput = new ReadOnlySequence<byte>(packet);
+        if (TerrariaFrameDecoder.TryRead(ref commandInput, out TerrariaFrame commandFrame) != TerrariaFrameReadResult.Frame)
+        {
+            Console.Error.WriteLine("Network smoke failed while preparing typed command frame.");
+            return 13;
+        }
+
+        var commandIngress = new HandshakeCommandIngress();
+        var commandSink = new TerrariaCommandFrameSink<HandshakeCommand>(
+            GameCommandSourceId.FromConnection(1),
+            new HandshakeCommandDecoder(),
+            commandIngress);
+        if (commandSink.OnFrame(in commandFrame) != TerrariaFrameSinkResult.Continue ||
+            commandSink.StopReason != TerrariaCommandFrameSinkStopReason.None ||
+            commandIngress.Command is not { ProtocolRelease: TerrariaProtocolVersion.CurrentRelease })
+        {
+            Console.Error.WriteLine("Network smoke failed while exercising typed game-command ingress.");
+            return 14;
+        }
+
+        Console.WriteLine("Network smoke passed: fragmented ingress, bounded outbound queues, slow-client policy, admission gate, rate accounting and typed command ingress executed successfully.");
         return 0;
     }
 
@@ -192,6 +216,46 @@ internal static class Program
                 TerrariaConnectRequestDecoder.TryDecode(frame, out TerrariaConnectRequest request) == ConnectRequestDecodeResult.Decoded &&
                 request.IsCurrentProtocol;
             return TerrariaFrameSinkResult.Continue;
+        }
+    }
+
+    private sealed record HandshakeCommand(int ProtocolRelease);
+
+    private sealed class HandshakeCommandDecoder : ITerrariaCommandDecoder<HandshakeCommand>
+    {
+        public TerrariaCommandDecodeResult TryDecode(in TerrariaFrame frame, out HandshakeCommand command)
+        {
+            ConnectRequestDecodeResult result = TerrariaConnectRequestDecoder.TryDecode(frame, out TerrariaConnectRequest request);
+            if (result == ConnectRequestDecodeResult.WrongMessageId)
+            {
+                command = default!;
+                return TerrariaCommandDecodeResult.Ignored;
+            }
+
+            if (result != ConnectRequestDecodeResult.Decoded)
+            {
+                command = default!;
+                return TerrariaCommandDecodeResult.Malformed;
+            }
+
+            command = new HandshakeCommand(request.ProtocolRelease);
+            return TerrariaCommandDecodeResult.Decoded;
+        }
+    }
+
+    private sealed class HandshakeCommandIngress : IGameCommandIngress<HandshakeCommand>
+    {
+        public HandshakeCommand? Command { get; private set; }
+
+        public bool TryPost(GameCommandSourceId source, HandshakeCommand command)
+        {
+            if (source.IsSystem)
+            {
+                return false;
+            }
+
+            Command = command;
+            return true;
         }
     }
 }
