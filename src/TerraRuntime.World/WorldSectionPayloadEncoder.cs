@@ -18,8 +18,8 @@ public enum WorldSectionPayloadEncodeResult : byte
 /// </summary>
 public static class WorldSectionPayloadEncoder
 {
-    public const int MaximumWidth = WorldSectionGeometry.SectionWidthTiles;
-    public const int MaximumHeight = WorldSectionGeometry.SectionHeightTiles;
+    public const int MaximumWidth = TerrariaSectionGeometry.WidthTiles;
+    public const int MaximumHeight = TerrariaSectionGeometry.HeightTiles;
 
     public static WorldSectionPayloadEncodeResult TryEncodeTileOnly(
         WorldFileData world,
