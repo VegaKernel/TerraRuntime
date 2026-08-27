@@ -62,6 +62,7 @@ jobs:
           creative_powers="$(find_ref 'CreativePowers.cs' 'class CreativePowers')"
           net_message="$(find_ref 'NetMessage.cs' 'class NetMessage')"
           message_buffer="$(find_ref 'MessageBuffer.cs' 'class MessageBuffer')"
+          netplay="$(find_ref 'Netplay.cs' 'class Netplay')"
           banner_system="$(find_ref 'BannerSystem.cs' 'class BannerSystem')"
           tree_tops="$(find_ref 'TreeTopsInfo.cs' 'class TreeTopsInfo')"
           extra_spawn_points="$(find_ref 'ExtraSpawnPointManager.cs' 'class ExtraSpawnPointManager')"
@@ -83,6 +84,7 @@ jobs:
           cp "$creative_powers" artifacts/reference-1458/persistence/CreativePowers.cs
           cp "$net_message" artifacts/reference-1458/network/NetMessage.cs
           cp "$message_buffer" artifacts/reference-1458/network/MessageBuffer.cs
+          cp "$netplay" artifacts/reference-1458/network/Netplay.cs
           cp "$banner_system" artifacts/reference-1458/network/BannerSystem.cs
           cp "$tree_tops" artifacts/reference-1458/network/TreeTopsInfo.cs
           cp "$extra_spawn_points" artifacts/reference-1458/network/ExtraSpawnPointManager.cs
