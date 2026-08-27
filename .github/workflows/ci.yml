@@ -38,6 +38,9 @@ jobs:
       - name: Authoritative loop smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --loop-smoke
 
+      - name: Protocol smoke
+        run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --protocol-smoke
+
   native-aot-linux:
     runs-on: ubuntu-latest
 
@@ -61,6 +64,9 @@ jobs:
 
       - name: NativeAOT loop smoke
         run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --loop-smoke
+
+      - name: NativeAOT protocol smoke
+        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --protocol-smoke
 
   native-aot-windows:
     runs-on: windows-latest
@@ -86,3 +92,7 @@ jobs:
       - name: NativeAOT loop smoke
         shell: pwsh
         run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --loop-smoke
+
+      - name: NativeAOT protocol smoke
+        shell: pwsh
+        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --protocol-smoke
