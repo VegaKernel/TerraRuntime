@@ -140,7 +140,7 @@ public sealed class WorldFileLoaderTests
 
         var file = new byte[pointers[10] + footer.Length];
         WriteEnvelope(file, pointers);
-        WriteHeader(file.AsSpan(headerStart), "full-loader", 77, width: 2, height: 3);
+        WriteHeader(file.AsSpan(headerStart, tileStart - headerStart), "full-loader", 77, width: 2, height: 3);
 
         tiles.CopyTo(file, pointers[1]);
         chests.CopyTo(file, pointers[2]);
@@ -190,21 +190,25 @@ public sealed class WorldFileLoaderTests
 
     private static void WriteHeader(Span<byte> destination, string name, int worldId, int width, int height)
     {
-        using var stream = new MemoryStream(destination.ToArray(), writable: true);
-        using var writer = new BinaryWriter(stream, new UTF8Encoding(false), leaveOpen: true);
-        writer.Write(name);
-        writer.Write("326");
-        writer.Write(1UL);
-        writer.Write(Guid.Parse("00112233-4455-6677-8899-aabbccddeeff").ToByteArray());
-        writer.Write(worldId);
-        writer.Write(0);
-        writer.Write(width * 16);
-        writer.Write(0);
-        writer.Write(height * 16);
-        writer.Write(height);
-        writer.Write(width);
-        writer.Flush();
-        stream.GetBuffer().AsSpan(0, checked((int)stream.Length)).CopyTo(destination);
+        using var stream = new MemoryStream();
+        using (var writer = new BinaryWriter(stream, new UTF8Encoding(false), leaveOpen: true))
+        {
+            writer.Write(name);
+            writer.Write("326");
+            writer.Write(1UL);
+            writer.Write(Guid.Parse("00112233-4455-6677-8899-aabbccddeeff").ToByteArray());
+            writer.Write(worldId);
+            writer.Write(0);
+            writer.Write(width * 16);
+            writer.Write(0);
+            writer.Write(height * 16);
+            writer.Write(height);
+            writer.Write(width);
+        }
+
+        byte[] header = stream.ToArray();
+        Assert.True(header.Length <= destination.Length);
+        header.CopyTo(destination);
     }
 
     private static void WriteBoolPower(BinaryWriter writer, ushort id, bool value)
