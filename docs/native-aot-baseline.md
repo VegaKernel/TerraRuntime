@@ -72,9 +72,9 @@ A change that cannot satisfy the NativeAOT jobs is considered an architectural r
 
 ## Internal project policy
 
-All production projects under `src/` should set `IsAotCompatible=true` and keep trim/AOT analysis enabled.
+`src/Directory.Build.props` applies `IsAotCompatible=true` and trim/AOT analysis to every current and future production project under `src/`. A new production project therefore enters the AOT contract automatically instead of relying on somebody remembering to copy project flags.
 
-`TerraRuntime.Server` sets `PublishAot=true` by default. JIT-specific tuning such as tiered compilation or Dynamic PGO must not become part of the production design assumptions.
+`TerraRuntime.Server` sets `PublishAot=true` and `IlcTreatWarningsAsErrors=true` by default. JIT-specific tuning such as tiered compilation or Dynamic PGO must not become part of the production design assumptions.
 
 ## Process boundaries
 
