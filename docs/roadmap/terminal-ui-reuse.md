@@ -2,34 +2,39 @@
 
 This document refines Phase 10 of the main TerraRuntime roadmap.
 
-The immediate goal is deliberately small: build a useful local Terminal UI for the standalone TerraRuntime server without coupling views to mutable runtime internals. A remote administration client remains a future possibility, not part of the current implementation milestone.
+The local Terminal UI foundation is now implemented for the standalone TerraRuntime server. The design deliberately keeps views separated from mutable runtime internals so the same operations semantics can be reused by a future administration client without turning the current server into a speculative remote-management framework.
 
 ## Current rule
 
-**Build the local TUI now; preserve a clean data boundary so a remote client can reuse it later.**
+**Keep the local TUI useful and runtime-owned; preserve a clean data boundary so a remote client can reuse it later.**
 
 Do not add a remote management protocol, remote adapters, client executable or client-side plugin loader merely to prepare for a client that does not exist yet.
 
-The only forward-looking requirement now is that terminal views consume stable operations snapshots/interfaces instead of directly reading mutable runtime state.
+Terminal views consume stable operations snapshots/interfaces instead of directly reading mutable runtime state.
 
 ## Current implementation status
 
-The local TUI currently has three exercised operational views in the standalone server:
+The standalone server now has five exercised operational views:
 
-- start it explicitly with `--tui`; plain-console/headless startup remains the default;
+- **Dashboard** consumes `IRuntimeDashboardOperations` and immutable `RuntimeDashboardSnapshot` values with lifecycle, world identity, target/observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, command backlog/budget telemetry and connection admission counters.
+- **Players** consumes `IPlayerOperations` and immutable `RuntimePlayersSnapshot` values populated only from already validated authoritative player events. The read model carries stable slot/generation/connection identity plus name, team, position and current health/mana without reading `ServerRuntimeState` from the UI thread.
+- **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It publishes active/registered/admitted/rejected connections, appearance/equipment/lifecycle/movement/AOI-resync counters and aggregate bounded outbound-queue telemetry: tracked queues, queued frames, queued bytes, rejected frames and currently slow clients. Queue pressure is sampled from the queue-owned thread-safe counters instead of adding a second accounting path to enqueue/dequeue hot paths.
+- **World** consumes `IWorldOperations` and an immutable `RuntimeWorldSnapshot` created from already validated `WorldFileData` plus startup/cache measurements. It exposes world identity, format/worldgen version, dimensions/tile count, persisted object/NPC counts, runtime-cache hit/result/schema state and file/cache/bootstrap/readiness timings without giving the UI mutable world access.
+- **Logs** consumes `ILogOperations` over a bounded `RuntimeLogBuffer`. The view supports severity filtering and pause/resume while selected server/runtime/network events are mirrored into the bounded read model independently of plain-console output.
+
+Operational behavior:
+
+- start the UI explicitly with `--tui`; plain-console/headless startup remains the default;
 - Terminal.Gui v2 is hosted on its own UI thread and never runs on the authoritative game-loop thread;
-- Dashboard consumes `IRuntimeDashboardOperations` and an immutable `RuntimeDashboardSnapshot` with lifecycle, world identity, target/observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, command backlog/budget telemetry and connection admission counters;
-- Players consumes `IPlayerOperations` and immutable `RuntimePlayersSnapshot` values populated only from already validated authoritative player events; the read model carries stable slot/generation/connection identity plus name, team, position and current health/mana without reading `ServerRuntimeState` from the UI thread;
-- Network consumes `INetworkOperations` and `RuntimeNetworkSnapshot`, publishing active/registered/admitted/rejected connections plus appearance, equipment, lifecycle, movement and AOI-resync replication counters owned by runtime/network subsystems;
 - observed TPS is sampled from authoritative tick progress over time in the operations layer, not reconstructed in the view from tick execution duration;
 - closing the TUI stops only the UI; it does not stop the server;
-- TUI initialization/refresh failure falls back to the running plain-console server path;
-- `--tui-smoke` renders Dashboard, Players and Network with the Terminal.Gui ANSI test driver;
-- normal CI plus Linux and Windows NativeAOT jobs exercise the same `--tui-smoke` path.
+- TUI initialization/runtime failure is non-fatal and leaves the server available through the plain-console path;
+- direct `Console.WriteLine` output is not globally intercepted or replaced;
+- `--tui-smoke` renders Dashboard, Players, Network, World and Logs through the Terminal.Gui ANSI test driver;
+- normal CoreCLR CI plus Linux and Windows NativeAOT jobs exercise the same `--tui-smoke` path;
+- changes touching the standalone host are also exercised by the official-world workflow, including world verification, host startup, live join/movement relay and warm runtime-cache startup.
 
-Dashboard, Players and Network are implemented. Logs and World remain pending. Aggregate per-connection queue/backpressure totals are also not published yet; the Network view currently exposes the counters that have authoritative subsystem ownership instead of reconstructing synthetic values in the UI.
-
-Existing direct `Console.WriteLine` server messages are not redirected into the full-screen UI; do not solve that by globally replacing `Console.Out`. The next logging/UI step should introduce a bounded log read model/sink so plain console and TUI can consume the same structured events independently.
+The foundational local-TUI slice of Phase 10 is complete. Remaining UI work is incremental: richer drill-downs, additional runtime-owned telemetry and carefully bounded administrative command surfaces as concrete operations APIs become necessary.
 
 Current shape:
 
@@ -60,20 +65,15 @@ same operations semantics
 
 Do not create a separate project graph merely for hypothetical reuse.
 
-Initial implementation may live directly in the server project:
+The current implementation may continue to live directly in the server project:
 
 ```text
 src/TerraRuntime/
     Operations/
     TerminalUI/
-        DashboardView.cs
-        PlayersView.cs
-        NetworkView.cs
-        LogsView.cs
-        WorldView.cs
 ```
 
-Shared toolkit-independent read models/contracts may live in `TerraRuntime.Contracts` when they are genuine runtime contracts.
+Shared toolkit-independent read models/contracts may move to `TerraRuntime.Contracts` when they become genuine cross-component runtime contracts.
 
 A separate `TerraRuntime.TerminalUI` project is optional and should be introduced only when there is an actual second consumer, such as a remote client, or when the existing project becomes materially harder to maintain without the split.
 
@@ -85,13 +85,13 @@ The dependency boundary matters more than the number of projects.
 
 Views must not depend directly on `ServerRuntimeState`, mutable world/player/NPC collections, sockets or authoritative-thread-owned objects.
 
-Introduce small operations/read-model interfaces as real screens require them, for example:
+Current screen-facing interfaces are deliberately small:
 
 ```text
 IRuntimeDashboardOperations
 IPlayerOperations
-IWorldOperations
 INetworkOperations
+IWorldOperations
 ILogOperations
 ```
 
@@ -103,7 +103,8 @@ Rules:
 - the TUI may poll/read snapshots from its own event loop/thread;
 - administrative mutations are marshalled through the authoritative command boundary;
 - local UI receives no privileged mutable-state access merely because it runs in-process;
-- runtime telemetry is calculated by the subsystem that owns the truth, not reconstructed by the view.
+- runtime telemetry is calculated or exposed by the subsystem that owns the truth, not reconstructed by the view;
+- expensive observability must not add unnecessary work to gameplay/network hot paths.
 
 This small boundary is useful even if a remote client is never built.
 
@@ -112,14 +113,17 @@ This small boundary is useful even if a remote client is never built.
 TerraRuntime owns and publishes the measurements used by its UI, including:
 
 - target tick rate;
-- observed/current TPS or equivalent tick-rate telemetry;
+- observed/current TPS;
 - tick wall time;
 - authoritative-thread CPU time;
 - missed deadlines;
 - phase timings;
 - command backlog/budget telemetry;
-- network/queue counters owned by runtime/network subsystems;
-- later save/cache and GC telemetry as those systems mature.
+- network replication counters;
+- bounded outbound-queue/backpressure state;
+- world/cache startup state and timings;
+- bounded runtime log events;
+- later save, GC and additional cache telemetry as those systems mature.
 
 The TUI only formats and displays these values.
 
@@ -127,26 +131,23 @@ In particular, do not calculate TPS in the view from `LastTickMilliseconds`; exe
 
 ## Terminal.Gui implementation
 
-Use Terminal.Gui v2 as the first renderer. Prefer its official application/template/dashboard patterns and UICatalog examples instead of building a private terminal framework from scratch.
+Use Terminal.Gui v2 as the renderer. Prefer its official application/template/dashboard patterns and UICatalog examples instead of building a private terminal framework from scratch.
 
-The local TUI should provide:
+The local TUI currently provides:
 
 - application shell;
 - menu/status bars;
-- navigation;
-- dashboard panels;
-- keyboard bindings;
-- bounded log viewer;
-- screen/view lifecycle;
+- Dashboard / Players / Network / World / Logs navigation;
+- keyboard quit behavior that closes only the UI;
+- bounded log viewer with severity filtering and pause/resume;
+- periodic snapshot refresh on the UI thread;
 - graceful fallback to plain console/headless operation.
 
 TUI initialization or refresh failure must not make the game server unavailable.
 
-Do not globally replace `Console.Out` to create the TUI. Structured logging should eventually fan out independently to file/plain-console/TUI sinks.
+Do not globally replace `Console.Out` to create the TUI. As structured logging matures, file/plain-console/TUI sinks should receive the same structured events independently.
 
-## Initial screens
-
-First screens remain operational and runtime-focused:
+## Implemented screens
 
 1. Runtime/dashboard
    - lifecycle/readiness;
@@ -159,22 +160,45 @@ First screens remain operational and runtime-focused:
 
 2. Players
    - stable player/session identity;
-   - join/connection state;
-   - position/basic state only through safe snapshots.
+   - generation-safe connection identity;
+   - name/team;
+   - position;
+   - health/mana through safe authoritative-event snapshots.
 
 3. Network
-   - active/admitted/rejected connections;
-   - bounded queue/backpressure state;
-   - packet/byte counters as they become available.
+   - active/admitted/rejected/registered connections;
+   - relay/baseline/AOI-resync counters;
+   - tracked bounded outbound queues;
+   - queued frames/bytes;
+   - rejected outbound frames;
+   - slow-client count.
 
 4. Logs
    - bounded retention;
-   - severity/source filtering;
-   - follow/pause independent of telemetry refresh.
+   - severity filtering;
+   - follow/pause independent of telemetry refresh;
+   - no global console redirection.
 
 5. World
-   - dimensions/name/readiness;
-   - save/cache state as those subsystems mature.
+   - name/ID/GUID/readiness;
+   - format/worldgen identity;
+   - dimensions/tile count;
+   - persisted world-object/NPC counts;
+   - runtime-cache hit/result/schema/read parallelism;
+   - startup/cache/bootstrap/readiness timings.
+
+## Next local UI work
+
+Future local UI slices should be driven by operational need rather than by filling screens for appearance's sake. Likely additions include:
+
+- deeper per-player detail when authoritative snapshots expose useful state;
+- per-connection drill-down and packet/rate telemetry where network subsystems already own trustworthy counters;
+- GC/allocation and save-pipeline telemetry once those systems publish bounded snapshots;
+- runtime-cache rebuild/save status as the persistence pipeline matures;
+- administrative actions only through explicit command/operations interfaces, never by mutating runtime objects from UI callbacks;
+- better table/list navigation when the compact current views become too dense.
+
+Do not add controls that merely expose implementation internals with no stable operational meaning.
 
 ## Future remote client, deferred
 
@@ -230,9 +254,9 @@ An external CoreCLR host may define its own dynamic extension policy outside Ter
 - provider-specific windows or identifiers inside TerraRuntime;
 - splitting the UI into several assemblies merely for architectural symmetry.
 
-## Current acceptance direction
+## Current acceptance state
 
-The current UI milestone is complete when:
+The local foundation now satisfies the intended dependency shape:
 
 ```text
 Terminal.Gui view
@@ -244,6 +268,6 @@ small operations/read-model interface
 TerraRuntime runtime snapshot/command boundary
 ```
 
-works in the standalone server without direct mutable-state access, without blocking the authoritative loop, and without making TUI availability a server-readiness requirement.
+The standalone server exercises that shape without direct mutable-state access, without blocking the authoritative loop, and without making TUI availability a server-readiness requirement.
 
-A future remote-client milestone can then prove reuse by extracting the same views and substituting a remote operations implementation. That work should happen when the client is actually being built, not before.
+A future remote-client milestone can prove reuse by extracting the same views and substituting a remote operations implementation. That work should happen when the client is actually being built, not before.
