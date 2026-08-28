@@ -31,14 +31,18 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
     public const int MaximumProtocolAddressableCapacity = MaximumProtocolIndex + 1;
 
     private readonly SlotState[] _slots;
+    private readonly IProjectileStateCommitSink? _commitSink;
     private int _activeCount;
 
-    public RuntimeProjectileStore(int capacity = MaximumProtocolAddressableCapacity)
+    public RuntimeProjectileStore(
+        int capacity = MaximumProtocolAddressableCapacity,
+        IProjectileStateCommitSink? commitSink = null)
     {
         if (capacity <= 0 || capacity > MaximumProtocolAddressableCapacity)
             throw new ArgumentOutOfRangeException(nameof(capacity));
 
         _slots = new SlotState[capacity];
+        _commitSink = commitSink;
     }
 
     public int Capacity => _slots.Length;
@@ -65,6 +69,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         state.Update = update;
         _activeCount++;
         snapshot = Capture(slot, in state);
+        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Spawn, in snapshot);
         return true;
     }
 
@@ -87,6 +92,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
 
         state.Update = update;
         snapshot = Capture(handle.Slot, in state);
+        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
         return true;
     }
 
@@ -110,6 +116,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         state.Revision = 0;
         state.Update = default;
         _activeCount--;
+        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Despawn, in finalSnapshot);
         return true;
     }
 

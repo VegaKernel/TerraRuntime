@@ -36,6 +36,32 @@ public sealed class RuntimeProjectileStoreTests
     }
 
     [Fact]
+    public void Successful_mutations_publish_committed_snapshots_only()
+    {
+        var sink = new RecordingCommitSink();
+        var store = new RuntimeProjectileStore(capacity: 4, commitSink: sink);
+        ProjectileStateUpdate state = CreateUpdate(type: 1, positionX: 10f);
+
+        Assert.True(store.TrySpawn(2, in state, out ProjectileSnapshot spawned));
+        ProjectileStateUpdate moved = state with { PositionX = 20f };
+        Assert.True(store.TryUpdate(spawned.Handle, in moved, out ProjectileSnapshot updated));
+        Assert.False(store.TryUpdate(
+            new ProjectileHandle(2, new ProjectileGeneration(99)),
+            in moved,
+            out _));
+        Assert.True(store.TryDespawn(updated.Handle, out ProjectileSnapshot despawned));
+        Assert.False(store.TryDespawn(updated.Handle, out _));
+
+        Assert.Equal(3, sink.Commits.Count);
+        Assert.Equal(ProjectileStateCommitKind.Spawn, sink.Commits[0].Kind);
+        Assert.Equal(spawned, sink.Commits[0].Snapshot);
+        Assert.Equal(ProjectileStateCommitKind.Update, sink.Commits[1].Kind);
+        Assert.Equal(updated, sink.Commits[1].Snapshot);
+        Assert.Equal(ProjectileStateCommitKind.Despawn, sink.Commits[2].Kind);
+        Assert.Equal(despawned, sink.Commits[2].Snapshot);
+    }
+
+    [Fact]
     public void Stale_handle_cannot_mutate_or_despawn_reused_slot()
     {
         var store = new RuntimeProjectileStore(capacity: 4);
@@ -112,4 +138,12 @@ public sealed class RuntimeProjectileStoreTests
             Damage: 25,
             KnockBack: 2.5f,
             OriginalDamage: 25);
+
+    private sealed class RecordingCommitSink : IProjectileStateCommitSink
+    {
+        public List<(ProjectileStateCommitKind Kind, ProjectileSnapshot Snapshot)> Commits { get; } = [];
+
+        public void ProjectileStateCommitted(ProjectileStateCommitKind kind, in ProjectileSnapshot snapshot) =>
+            Commits.Add((kind, snapshot));
+    }
 }
