@@ -39,7 +39,12 @@ public sealed class RuntimeNpcAiStateExecutor
         _snapshotBuffer = new NpcSnapshot[npcs.Capacity];
     }
 
-    public NpcAiStateTickSummary Tick(INpcAiStateStepper stepper)
+    public NpcAiStateTickSummary Tick(INpcAiStateStepper stepper) =>
+        Tick(stepper, commitSink: null);
+
+    public NpcAiStateTickSummary Tick(
+        INpcAiStateStepper stepper,
+        INpcAiStateCommitSink? commitSink)
     {
         ArgumentNullException.ThrowIfNull(stepper);
 
@@ -55,10 +60,15 @@ public sealed class RuntimeNpcAiStateExecutor
                 continue;
 
             proposed++;
-            if (_npcs.TryUpdate(npc.Handle, in next, out _))
+            if (_npcs.TryUpdate(npc.Handle, in next, out NpcSnapshot committed))
+            {
                 applied++;
+                commitSink?.NpcAiStateCommitted(in committed);
+            }
             else
+            {
                 rejected++;
+            }
         }
 
         return new NpcAiStateTickSummary(examined, proposed, applied, rejected);
