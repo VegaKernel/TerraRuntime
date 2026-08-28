@@ -10,9 +10,8 @@ namespace TerraRuntime.Protocol;
 /// </summary>
 public static class TerrariaConnectRequestDecoder
 {
-    private const int MaximumLengthPrefixBytes = 5;
+    private const int MaximumPayloadLength = TerrariaProtocolVersion.MaximumVersionBannerByteLength + 1;
     private const string VersionPrefix = "Terraria";
-    private const int MaximumPayloadLength = TerrariaProtocolVersion.MaximumVersionBannerByteLength + MaximumLengthPrefixBytes;
 
     public static ConnectRequestDecodeResult TryDecode(
         in TerrariaFrame frame,
