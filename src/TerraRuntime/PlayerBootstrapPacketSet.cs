@@ -30,6 +30,7 @@ public sealed class PlayerBootstrapPacketSet
         ReadOnlyMemory<byte> statusFrame,
         ReadOnlyMemory<byte>[] baseSectionFrames,
         ReadOnlyMemory<byte>[][] baseSectionPostFrames,
+        ReadOnlyMemory<byte>[] globalPostSectionFrames,
         ReadOnlyMemory<byte> enterWorldFrame)
     {
         _world = world;
@@ -38,6 +39,7 @@ public sealed class PlayerBootstrapPacketSet
         StatusFrame = statusFrame;
         BaseSectionFrames = baseSectionFrames;
         BaseSectionPostFrames = baseSectionPostFrames;
+        GlobalPostSectionFrames = globalPostSectionFrames;
         EnterWorldFrame = enterWorldFrame;
 
         _sectionCache = new Dictionary<int, SectionCacheEntry>(baseSections.Length);
@@ -55,6 +57,7 @@ public sealed class PlayerBootstrapPacketSet
     public ReadOnlyMemory<byte> StatusFrame { get; }
     public IReadOnlyList<ReadOnlyMemory<byte>> BaseSectionFrames { get; }
     public IReadOnlyList<ReadOnlyMemory<byte>[]> BaseSectionPostFrames { get; }
+    public IReadOnlyList<ReadOnlyMemory<byte>> GlobalPostSectionFrames { get; }
     public ReadOnlyMemory<byte> EnterWorldFrame { get; }
 
     public static PlayerBootstrapPacketSet Create(
@@ -87,6 +90,13 @@ public sealed class PlayerBootstrapPacketSet
             baseSectionPostFrames[i] = entry.PostSectionFrames;
         }
 
+        if (WorldGlobalTownNpcBootstrapPacketEncoder.TryEncode(
+                world.Npcs.TownNpcs,
+                out ReadOnlyMemory<byte>[] globalPostSectionFrames) != WorldGlobalTownNpcBootstrapPacketEncodeResult.Encoded)
+        {
+            throw new InvalidOperationException("Failed to cache the global persisted town-NPC bootstrap baseline.");
+        }
+
         byte[] statusFrame = EncodeStatusFrame(sectionCount);
         byte[] enterWorldFrame = EncodeEmptyFrame((byte)TerrariaMessageId.PlayerSpawnSelf);
         return new PlayerBootstrapPacketSet(
@@ -96,13 +106,15 @@ public sealed class PlayerBootstrapPacketSet
             statusFrame,
             baseSectionFrames,
             baseSectionPostFrames,
+            globalPostSectionFrames,
             enterWorldFrame);
     }
 
     public static PlayerBootstrapPacketSet CreateForTesting(
         ReadOnlyMemory<byte> worldInfoFrame,
         ReadOnlyMemory<byte>[] baseSectionFrames,
-        ReadOnlyMemory<byte> enterWorldFrame)
+        ReadOnlyMemory<byte> enterWorldFrame,
+        ReadOnlyMemory<byte>[]? globalPostSectionFrames = null)
     {
         ArgumentNullException.ThrowIfNull(baseSectionFrames);
         var postFrames = new ReadOnlyMemory<byte>[baseSectionFrames.Length][];
@@ -116,6 +128,7 @@ public sealed class PlayerBootstrapPacketSet
             EncodeStatusFrame(baseSectionFrames.Length),
             (ReadOnlyMemory<byte>[])baseSectionFrames.Clone(),
             postFrames,
+            globalPostSectionFrames is null ? [] : (ReadOnlyMemory<byte>[])globalPostSectionFrames.Clone(),
             enterWorldFrame);
     }
 
