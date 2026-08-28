@@ -47,6 +47,47 @@ public sealed class ServerRuntimeBlueSlimeAiTests
     }
 
     [Fact]
+    public void Blue_slime_consumes_night_state_before_same_tick_dawn_transition()
+    {
+        WorldTileStore tiles = CreateWorld();
+        tiles.Set(6, 6, SolidTile());
+        tiles.Set(7, 6, SolidTile());
+        var clock = new RuntimeWorldClock(
+            time: RuntimeWorldClock.NightLength,
+            dayTime: false,
+            moonPhase: 2,
+            slimeRainTime: 0d,
+            dayRate: 1);
+        var state = new ServerRuntimeState(worldTiles: tiles, worldClock: clock);
+        NpcSnapshot slime = Spawn(
+            state,
+            slot: 5,
+            new NpcStateUpdate(
+                Type: 1,
+                NetId: 1,
+                PositionX: 96f,
+                PositionY: 78f,
+                VelocityX: 0f,
+                VelocityY: 0f,
+                Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+                Ai: new NpcAiState(-2f, 0f, 1f, 0f),
+                Simulation: NpcSimulationState.Initial with
+                {
+                    DirectionX = 1,
+                    DirectionY = 1
+                }));
+
+        state.Tick();
+
+        Assert.True(state.TryCaptureNpcSnapshot(slime.Handle, out NpcSnapshot updated));
+        Assert.Equal(-1120f, updated.Ai.Ai0);
+        Assert.Equal(2f, updated.VelocityX, 5);
+        Assert.True(clock.DayTime);
+        Assert.Equal(0d, clock.Time);
+        Assert.Equal((byte)3, clock.MoonPhase);
+    }
+
+    [Fact]
     public void Blue_slime_remains_disabled_without_world_collision_context()
     {
         var state = new ServerRuntimeState();
