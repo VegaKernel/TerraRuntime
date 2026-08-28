@@ -17,6 +17,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private int _candidateCount;
     private bool _blueSlimeMotionEnabled;
     private double _blueSlimeWorldSurfacePixels = double.PositiveInfinity;
+    private bool _dayTime = true;
+    private bool _slimeRainActive;
 
     public VanillaNpcTargetingAiStepper(INpcAiStateStepper inner)
     {
@@ -26,8 +28,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 
     /// <summary>
     /// Enables the verified Blue Slime movement baseline when world collision/gravity is available.
-    /// Supplying world surface also enables the exact underground part of vanilla's engagement predicate.
-    /// Night, slime-rain and damaged-life engagement wait for their owning authoritative runtime state.
+    /// Supplying world surface enables the underground part of vanilla's engagement predicate; current
+    /// day/night and slime-rain state are supplied separately by the authoritative runtime clock.
     /// </summary>
     public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity)
     {
@@ -40,6 +42,16 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 
         _blueSlimeMotionEnabled = true;
         _blueSlimeWorldSurfacePixels = worldSurfaceTiles * 16d;
+    }
+
+    /// <summary>
+    /// Supplies current world conditions consumed by AI_001. Vanilla NPC updates happen before the
+    /// world-time update in the same game tick, so callers must provide the pre-time-update state.
+    /// </summary>
+    public void SetWorldConditions(bool dayTime, bool slimeRainActive)
+    {
+        _dayTime = dayTime;
+        _slimeRainActive = slimeRainActive;
     }
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates)
@@ -94,7 +106,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             ? selected
             : default;
         NpcSimulationState simulation = npc.Simulation;
-        bool engaged = npc.PositionY > _blueSlimeWorldSurfacePixels;
+        bool engaged = !_dayTime || _slimeRainActive || npc.PositionY > _blueSlimeWorldSurfacePixels;
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: npc.PositionX,
             VelocityX: npc.VelocityX,
