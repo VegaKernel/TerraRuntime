@@ -194,7 +194,13 @@ public static partial class WorldFileLoader
 
         // Attach static world geometry only after the complete file has validated. A failed load must never
         // mutate a caller-owned prepared tile store with metadata from a world that was not accepted.
-        core.Tiles.AttachWorldSurface(runtimeMetadata.WorldSurface);
+        if (!core.Tiles.TryAttachWorldSurface(runtimeMetadata.WorldSurface))
+        {
+            return Failure(
+                WorldFileLoadResult.InvalidHeader,
+                WorldFileLoadStage.Header,
+                0x100 + (int)WorldFileRuntimeMetadataParseResult.InvalidScalar);
+        }
 
         world = new WorldFileData(
             core.Envelope,
