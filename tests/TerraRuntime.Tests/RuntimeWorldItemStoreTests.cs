@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
@@ -11,9 +12,16 @@ public sealed class RuntimeWorldItemStoreTests
         var store = new RuntimeWorldItemStore();
         WorldItemStateUpdate first = CreateUpdate(itemNetId: 100, stack: 2);
 
+        Assert.True(first.TryGetItemType(out ItemTypeId submittedType));
+        Assert.Equal(new ItemTypeId(100), submittedType);
+        Assert.Equal(new PrefixId(4), first.PrefixId);
+
         Assert.True(store.TryUpsert(7, in first, out WorldItemSnapshot created));
         Assert.Equal((ulong)1, created.Handle.Generation.Value);
         Assert.Equal((ulong)1, created.Revision.Value);
+        Assert.True(created.TryGetItemType(out ItemTypeId createdType));
+        Assert.Equal(new ItemTypeId(100), createdType);
+        Assert.Equal(new PrefixId(4), created.PrefixId);
 
         WorldItemStateUpdate changed = CreateUpdate(itemNetId: 100, stack: 3);
         Assert.True(store.TryUpsert(7, in changed, out WorldItemSnapshot updated));
@@ -70,6 +78,7 @@ public sealed class RuntimeWorldItemStoreTests
             itemNetId: VanillaPlayerItemNormalizer.ItemTypeCount,
             stack: 1);
 
+        Assert.False(outOfRange.TryGetItemType(out _));
         Assert.False(store.TryUpsert(0, in outOfRange, out _));
         Assert.Equal(0, store.ActiveCount);
     }
