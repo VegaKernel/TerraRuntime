@@ -3,11 +3,6 @@ using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
 
-/// <summary>
-/// Mutable state accepted by the authoritative live-NPC store. Type is the positive gameplay id used
-/// by vanilla logic; NetId remains separate because the wire format can encode negative variant ids.
-/// Protocol flags and serialization details stay outside Core.
-/// </summary>
 public readonly record struct NpcStateUpdate(
     int Type,
     short NetId,
@@ -19,28 +14,15 @@ public readonly record struct NpcStateUpdate(
     NpcAiState Ai,
     NpcSimulationState Simulation);
 
-/// <summary>
-/// Bounded runtime-owned live NPC state. Slot reuse creates a new generation while mutations within
-/// the same logical NPC advance only its revision. All mutation APIs require the current generation,
-/// preventing stale AI/lifecycle work from modifying a replacement NPC that reused the same slot.
-/// This store is intentionally single-writer and lock-free: all access belongs on the authoritative
-/// simulation thread. Cross-thread consumers must receive immutable copies through an explicit boundary.
-/// </summary>
 public sealed class RuntimeNpcStore : INpcSnapshotReader
 {
-    /// <summary>
-    /// Packet 23 addresses NPC slots with one byte. This is an addressability ceiling, not a claim
-    /// about Terraria's gameplay spawn limit.
-    /// </summary>
     public const int MaximumAddressableCapacity = byte.MaxValue + 1;
 
     private readonly SlotState[] _slots;
     private readonly INpcStateCommitSink? _commitSink;
     private int _activeCount;
 
-    public RuntimeNpcStore(
-        int capacity = MaximumAddressableCapacity,
-        INpcStateCommitSink? commitSink = null)
+    public RuntimeNpcStore(int capacity = MaximumAddressableCapacity, INpcStateCommitSink? commitSink = null)
     {
         if (capacity <= 0 || capacity > MaximumAddressableCapacity)
             throw new ArgumentOutOfRangeException(nameof(capacity));
@@ -50,7 +32,6 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
     }
 
     public int Capacity => _slots.Length;
-
     public int ActiveCount => _activeCount;
 
     public bool TrySpawn(byte slot, in NpcStateUpdate update, out NpcSnapshot snapshot)
@@ -119,10 +100,6 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         return true;
     }
 
-    /// <summary>
-    /// Retires live NPCs whose committed authoritative lifetime reached zero. This is intended to run
-    /// immediately after the AI/lifecycle state pass so CheckActive can request despawn without a second update.
-    /// </summary>
     public int DespawnExpired()
     {
         int despawned = 0;
@@ -229,6 +206,9 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         if (simulation.TimeLeft < 0)
             simulation = simulation with { TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft };
 
+        if (simulation.SpriteDirection == 0)
+            simulation = simulation with { SpriteDirection = -1 };
+
         return update with { Simulation = simulation };
     }
 
@@ -264,6 +244,16 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
                 TimeLeft = update.Type == previous.Type && previous.Simulation.TimeLeft >= 0
                     ? previous.Simulation.TimeLeft
                     : VanillaNpcDefinitionCatalog.DefaultTimeLeft
+            };
+        }
+
+        if (simulation.SpriteDirection == 0)
+        {
+            simulation = simulation with
+            {
+                SpriteDirection = update.Type == previous.Type && previous.Simulation.SpriteDirection != 0
+                    ? previous.Simulation.SpriteDirection
+                    : -1
             };
         }
 
