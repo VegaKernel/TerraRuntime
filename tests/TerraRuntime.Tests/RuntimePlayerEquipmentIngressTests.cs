@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
@@ -36,11 +37,15 @@ public sealed class RuntimePlayerEquipmentIngressTests
             new PlayerHandle(slot, new PlayerSessionGeneration(1)));
         var request = new PlayerEquipmentCommitRequest(slot, 0, 7, 3, -19, byte.MaxValue);
 
+        Assert.False(request.TryGetCanonicalItemType(out _));
         Assert.True(ingress.TryPost(connection, in request));
 
         PlayerEquipmentRuntimeCommand posted = Assert.IsType<PlayerEquipmentRuntimeCommand>(inner.Command);
         Assert.Equal((short)3764, posted.Request.ItemNetId);
         Assert.Equal((byte)1, posted.Request.ItemFlags);
+        Assert.True(posted.Request.TryGetCanonicalItemType(out ItemTypeId itemType));
+        Assert.Equal(3764, itemType.Value);
+        Assert.Equal(3, posted.Request.PrefixId.Value);
     }
 
     private static PlayerEquipmentCommitRequest CreateRequest(
