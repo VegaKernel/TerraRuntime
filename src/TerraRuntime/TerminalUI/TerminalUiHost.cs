@@ -10,6 +10,7 @@ internal sealed class TerminalUiHost : IDisposable
 
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
+    private readonly INpcOperations npcOperations;
     private readonly INetworkOperations networkOperations;
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
@@ -22,6 +23,7 @@ internal sealed class TerminalUiHost : IDisposable
     private TerminalUiHost(
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
+        INpcOperations npcOperations,
         INetworkOperations networkOperations,
         IWorldOperations worldOperations,
         ILogOperations logOperations,
@@ -31,6 +33,7 @@ internal sealed class TerminalUiHost : IDisposable
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
+        this.npcOperations = npcOperations ?? throw new ArgumentNullException(nameof(npcOperations));
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
@@ -47,6 +50,7 @@ internal sealed class TerminalUiHost : IDisposable
     public static TerminalUiHost Start(
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
+        INpcOperations npcOperations,
         INetworkOperations networkOperations,
         IWorldOperations worldOperations,
         ILogOperations logOperations,
@@ -57,6 +61,7 @@ internal sealed class TerminalUiHost : IDisposable
         var host = new TerminalUiHost(
             dashboardOperations,
             playerOperations,
+            npcOperations,
             networkOperations,
             worldOperations,
             logOperations,
@@ -87,6 +92,7 @@ internal sealed class TerminalUiHost : IDisposable
             using (var window = new DashboardWindow(
                 dashboardOperations,
                 playerOperations,
+                npcOperations,
                 networkOperations,
                 worldOperations,
                 logOperations))

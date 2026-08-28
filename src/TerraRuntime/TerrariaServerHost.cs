@@ -168,7 +168,13 @@ public static class TerrariaServerHost
             runtimeInterestManagement,
             world.Header.Dimensions);
         var npcReplication = new RuntimeNpcReplicationRegistry();
-        var npcStore = new RuntimeNpcStore(commitSink: npcReplication);
+        RuntimeNpcOperationsTelemetry? npcOperations = options.TerminalUiEnabled
+            ? new RuntimeNpcOperationsTelemetry()
+            : null;
+        INpcStateCommitSink npcCommitSink = npcOperations is null
+            ? npcReplication
+            : new RuntimeNpcStateCommitFanout(npcReplication, npcOperations);
+        var npcStore = new RuntimeNpcStore(commitSink: npcCommitSink);
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
         var playerOperations = new RuntimePlayerOperationsTelemetry();
         var playerNetworkEvents = new RuntimePlayerEventDispatcher(
@@ -282,6 +288,7 @@ public static class TerrariaServerHost
                     terminalUi = TerminalUiHost.Start(
                         dashboardOperations,
                         playerOperations,
+                        npcOperations!,
                         networkOperations,
                         worldOperations,
                         runtimeLogs,

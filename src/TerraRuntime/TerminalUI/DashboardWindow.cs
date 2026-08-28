@@ -13,6 +13,7 @@ internal sealed class DashboardWindow : Runnable
     private const int MaximumLogSources = 32;
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
+    private readonly INpcOperations npcOperations;
     private readonly INetworkOperations networkOperations;
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
@@ -28,12 +29,14 @@ internal sealed class DashboardWindow : Runnable
     public DashboardWindow(
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
+        INpcOperations npcOperations,
         INetworkOperations networkOperations,
         IWorldOperations worldOperations,
         ILogOperations logOperations)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
+        this.npcOperations = npcOperations ?? throw new ArgumentNullException(nameof(npcOperations));
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
@@ -51,6 +54,7 @@ internal sealed class DashboardWindow : Runnable
                     [
                         new MenuItem("_Dashboard", "Runtime overview", ShowDashboard),
                         new MenuItem("_Players", "Live authoritative player read model", ShowPlayers),
+                        new MenuItem("_NPCs", "Live authoritative NPC read model", ShowNpcs),
                         new MenuItem("_Network", "Connection and replication counters", ShowNetwork),
                         new MenuItem("_World", "Validated world and cache state", ShowWorld),
                         new MenuItem("_Logs", "Bounded runtime event log", ShowLogs)
@@ -120,6 +124,9 @@ internal sealed class DashboardWindow : Runnable
             case TerminalUiScreen.Players:
                 RefreshPlayers();
                 break;
+            case TerminalUiScreen.Npcs:
+                RefreshNpcs();
+                break;
             case TerminalUiScreen.Network:
                 RefreshNetwork();
                 break;
@@ -138,6 +145,8 @@ internal sealed class DashboardWindow : Runnable
     internal void ShowDashboard() => SelectScreen(TerminalUiScreen.Dashboard, "TerraRuntime - Dashboard");
 
     internal void ShowPlayers() => SelectScreen(TerminalUiScreen.Players, "TerraRuntime - Players");
+
+    internal void ShowNpcs() => SelectScreen(TerminalUiScreen.Npcs, "TerraRuntime - NPCs");
 
     internal void ShowNetwork() => SelectScreen(TerminalUiScreen.Network, "TerraRuntime - Network");
 
@@ -213,6 +222,35 @@ internal sealed class DashboardWindow : Runnable
 
         if (players.Length > visible)
             rows[rows.Length - 2].Text = $"... {players.Length - visible} more player(s) not shown in this compact view";
+
+        rows[rows.Length - 1].Text = $"Snapshot: {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+    }
+
+    private void RefreshNpcs()
+    {
+        ClearRows();
+        RuntimeNpcsSnapshot snapshot = npcOperations.CaptureSnapshot();
+        ReadOnlySpan<RuntimeNpcSnapshot> npcs = snapshot.Npcs.Span;
+        rows[0].Text =
+            $"Live NPCs  : {npcs.Length}   commits spawn {snapshot.CommittedSpawns:N0}   " +
+            $"update {snapshot.CommittedUpdates:N0}   despawn {snapshot.CommittedDespawns:N0}";
+
+        int visible = Math.Min(npcs.Length, rows.Length - 3);
+        for (int i = 0; i < visible; i++)
+        {
+            RuntimeNpcSnapshot npc = npcs[i];
+            string collision = $"{(npc.CollideX ? 'X' : '-')}{(npc.CollideY ? 'Y' : '-')}";
+            string flags =
+                $"{collision}/{(npc.Wet ? "wet" : "dry")}/{(npc.NoGravity ? "ng" : "g")}/{(npc.NoTileCollide ? "ntc" : "tc")}";
+            rows[i + 1].Text =
+                $"#{npc.Slot,3} g{npc.Generation,-4} r{npc.Revision,-5} type {npc.Type}/{npc.NetId} " +
+                $"pos {npc.PositionX / 16f:F1},{npc.PositionY / 16f:F1}t vel {npc.VelocityX:F1},{npc.VelocityY:F1} " +
+                $"target {npc.Target} ai {npc.Ai0:F1}/{npc.Ai1:F1}/{npc.Ai2:F1}/{npc.Ai3:F1} " +
+                $"dir {npc.DirectionX},{npc.DirectionY} {flags}";
+        }
+
+        if (npcs.Length > visible)
+            rows[rows.Length - 2].Text = $"... {npcs.Length - visible} more NPC(s) not shown in this compact view";
 
         rows[rows.Length - 1].Text = $"Snapshot: {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
@@ -417,6 +455,7 @@ internal sealed class DashboardWindow : Runnable
     {
         Dashboard,
         Players,
+        Npcs,
         Network,
         World,
         Logs

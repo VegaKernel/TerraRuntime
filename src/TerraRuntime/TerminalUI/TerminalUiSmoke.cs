@@ -16,9 +16,10 @@ internal static class TerminalUiSmoke
             var logs = new RuntimeLogBuffer(capacity: 16);
             logs.Publish(RuntimeLogLevel.Information, "Server", "Terminal UI smoke startup");
             logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
-            using var window = new DashboardWindow(operations, operations, operations, operations, logs);
+            using var window = new DashboardWindow(operations, operations, operations, operations, operations, logs);
             window.RefreshSnapshot();
             window.ShowPlayers();
+            window.ShowNpcs();
             window.ShowNetwork();
             window.ShowWorld();
             window.ShowLogs();
@@ -26,7 +27,7 @@ internal static class TerminalUiSmoke
             window.SetInterestManagementEnabled(true);
             window.SetInterestManagementEnabled(false);
             app.Run(window);
-            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, network, world and logs views plus authoritative admin actions.");
+            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, NPCs, network, world and logs views plus authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -36,7 +37,7 @@ internal static class TerminalUiSmoke
         }
     }
 
-    private sealed class SmokeOperations : IRuntimeDashboardOperations, IPlayerOperations, INetworkOperations, IWorldOperations
+    private sealed class SmokeOperations : IRuntimeDashboardOperations, IPlayerOperations, INpcOperations, INetworkOperations, IWorldOperations
     {
         private bool interestManagementEnabled;
 
@@ -106,6 +107,41 @@ internal static class TerminalUiSmoke
                     MaxMana: 20)
             ];
             return new RuntimePlayersSnapshot(players.AsMemory(), DateTimeOffset.UtcNow);
+        }
+
+        RuntimeNpcsSnapshot INpcOperations.CaptureSnapshot()
+        {
+            RuntimeNpcSnapshot[] npcs =
+            [
+                new RuntimeNpcSnapshot(
+                    Slot: 1,
+                    Generation: 2,
+                    Revision: 7,
+                    Type: 1,
+                    NetId: 1,
+                    PositionX: 800f,
+                    PositionY: 1600f,
+                    VelocityX: 1.5f,
+                    VelocityY: -0.25f,
+                    Target: 0,
+                    Ai0: 1f,
+                    Ai1: 2f,
+                    Ai2: 3f,
+                    Ai3: 4f,
+                    DirectionX: 1,
+                    DirectionY: 0,
+                    CollideX: false,
+                    CollideY: true,
+                    Wet: false,
+                    NoGravity: false,
+                    NoTileCollide: false)
+            ];
+            return new RuntimeNpcsSnapshot(
+                npcs.AsMemory(),
+                CommittedSpawns: 1,
+                CommittedUpdates: 6,
+                CommittedDespawns: 0,
+                CapturedAtUtc: DateTimeOffset.UtcNow);
         }
 
         RuntimeNetworkSnapshot INetworkOperations.CaptureSnapshot() =>
