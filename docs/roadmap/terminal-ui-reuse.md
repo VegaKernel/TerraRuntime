@@ -16,11 +16,11 @@ Terminal views consume stable operations snapshots/interfaces instead of directl
 
 The standalone server now has five exercised operational views:
 
-- **Dashboard** consumes `IRuntimeDashboardOperations` and immutable `RuntimeDashboardSnapshot` values with lifecycle, world identity, target/observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, command backlog/budget telemetry and connection admission counters.
+- **Dashboard** consumes `IRuntimeDashboardOperations` and immutable `RuntimeDashboardSnapshot` values with lifecycle, world identity, target/observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, command backlog/budget telemetry, managed heap/total allocation and generation collection counters, plus connection admission counters.
 - **Players** consumes `IPlayerOperations` and immutable `RuntimePlayersSnapshot` values populated only from already validated authoritative player events. The read model carries stable slot/generation/connection identity plus name, team, position and current health/mana without reading `ServerRuntimeState` from the UI thread.
-- **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It publishes active/registered/admitted/rejected connections, appearance/equipment/lifecycle/movement/AOI-resync counters and aggregate bounded outbound-queue telemetry: tracked queues, queued frames, queued bytes, rejected frames and currently slow clients. Queue pressure is sampled from the queue-owned thread-safe counters instead of adding a second accounting path to enqueue/dequeue hot paths.
-- **World** consumes `IWorldOperations` and an immutable `RuntimeWorldSnapshot` created from already validated `WorldFileData` plus startup/cache measurements. It exposes world identity, format/worldgen version, dimensions/tile count, persisted object/NPC counts, runtime-cache hit/result/schema state and file/cache/bootstrap/readiness timings without giving the UI mutable world access.
-- **Logs** consumes `ILogOperations` over a bounded `RuntimeLogBuffer`. The view supports severity filtering and pause/resume while selected server/runtime/network events are mirrored into the bounded read model independently of plain-console output.
+- **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It publishes active/registered/admitted/rejected connections, appearance/equipment/lifecycle/movement/AOI-resync counters, aggregate bounded outbound-queue telemetry and a bounded top-two per-connection pressure drill-down. Queue pressure is sampled from queue-owned thread-safe counters instead of adding a second accounting path to enqueue/dequeue hot paths; detail is limited to stable connection IDs plus queue-owned frames/bytes/rejections/slow-client state.
+- **World** consumes `IWorldOperations` and an immutable `RuntimeWorldSnapshot` created from already validated `WorldFileData` plus startup/cache measurements. It exposes world identity, format/worldgen version, dimensions/tile count, persisted object/NPC counts, runtime-cache hit/result/read parallelism and file/cache/bootstrap/readiness timings without giving the UI mutable world access.
+- **Logs** consumes `ILogOperations` over a bounded `RuntimeLogBuffer`. The view supports severity filtering, dynamic filtering by sources actually retained in the bounded ring, and pause/resume. Selected server/runtime/network events are mirrored into the bounded read model while `RuntimeHostLog` suppresses matching plain-console writes only while the full-screen TUI is active.
 
 Operational behavior:
 
@@ -29,12 +29,12 @@ Operational behavior:
 - observed TPS is sampled from authoritative tick progress over time in the operations layer, not reconstructed in the view from tick execution duration;
 - closing the TUI stops only the UI; it does not stop the server;
 - TUI initialization/runtime failure is non-fatal and leaves the server available through the plain-console path;
-- direct `Console.WriteLine` output is not globally intercepted or replaced;
+- `Console.Out` / `Console.Error` are never globally replaced; host-owned mirrored console messages are routed around the active full-screen TUI and resume automatically after UI exit/failure;
 - `--tui-smoke` renders Dashboard, Players, Network, World and Logs through the Terminal.Gui ANSI test driver;
 - normal CoreCLR CI plus Linux and Windows NativeAOT jobs exercise the same `--tui-smoke` path;
-- changes touching the standalone host are also exercised by the official-world workflow, including world verification, host startup, live join/movement relay and warm runtime-cache startup.
+- changes touching the standalone host are also exercised by the official-world workflow, including world verification, host startup, live join/movement relay, snapshot-only warm startup and canonical `.wld` checkpoint restoration.
 
-The foundational local-TUI slice of Phase 10 is complete. Remaining UI work is incremental: richer drill-downs, additional runtime-owned telemetry and carefully bounded administrative command surfaces as concrete operations APIs become necessary.
+The foundational local-TUI slice of Phase 10 is complete. Remaining UI work is incremental: deeper runtime drill-downs, additional runtime-owned telemetry and carefully bounded administrative command surfaces as concrete operations APIs become necessary.
 
 Current shape:
 
@@ -119,11 +119,12 @@ TerraRuntime owns and publishes the measurements used by its UI, including:
 - missed deadlines;
 - phase timings;
 - command backlog/budget telemetry;
+- managed heap, lifetime allocation and Gen0/Gen1/Gen2 collection counters;
 - network replication counters;
-- bounded outbound-queue/backpressure state;
+- aggregate and bounded per-connection outbound-queue/backpressure state;
 - world/cache startup state and timings;
 - bounded runtime log events;
-- later save, GC and additional cache telemetry as those systems mature.
+- later save-pipeline and additional cache telemetry as those systems mature.
 
 The TUI only formats and displays these values.
 
@@ -139,13 +140,13 @@ The local TUI currently provides:
 - menu/status bars;
 - Dashboard / Players / Network / World / Logs navigation;
 - keyboard quit behavior that closes only the UI;
-- bounded log viewer with severity filtering and pause/resume;
+- bounded log viewer with severity/source filtering and pause/resume;
 - periodic snapshot refresh on the UI thread;
 - graceful fallback to plain console/headless operation.
 
 TUI initialization or refresh failure must not make the game server unavailable.
 
-Do not globally replace `Console.Out` to create the TUI. As structured logging matures, file/plain-console/TUI sinks should receive the same structured events independently.
+Do not globally replace `Console.Out` to create the TUI. Host-owned console mirroring is explicitly suppressed only while Terminal.Gui owns the screen; the bounded runtime log remains independent and plain-console output resumes when the TUI exits. As structured logging matures, file/plain-console/TUI sinks should receive the same structured events independently.
 
 ## Implemented screens
 
@@ -156,7 +157,9 @@ Do not globally replace `Console.Out` to create the TUI. As structured logging m
    - last/worst tick wall and CPU time;
    - slowest phase;
    - missed deadlines;
-   - command backlog/budget state.
+   - command backlog/budget state;
+   - managed heap and total allocated bytes;
+   - Gen0/Gen1/Gen2 collection counts.
 
 2. Players
    - stable player/session identity;
@@ -169,22 +172,25 @@ Do not globally replace `Console.Out` to create the TUI. As structured logging m
    - active/admitted/rejected/registered connections;
    - relay/baseline/AOI-resync counters;
    - tracked bounded outbound queues;
-   - queued frames/bytes;
+   - aggregate queued frames/bytes;
    - rejected outbound frames;
-   - slow-client count.
+   - slow-client count;
+   - bounded top-two per-connection queue-pressure detail using stable connection IDs.
 
 4. Logs
    - bounded retention;
    - severity filtering;
+   - dynamic source filtering from currently retained sources;
    - follow/pause independent of telemetry refresh;
-   - no global console redirection.
+   - no global console redirection;
+   - automatic plain-console resume after TUI exit/failure.
 
 5. World
    - name/ID/GUID/readiness;
    - format/worldgen identity;
    - dimensions/tile count;
    - persisted world-object/NPC counts;
-   - runtime-cache hit/result/schema/read parallelism;
+   - runtime-cache hit/result/read parallelism;
    - startup/cache/bootstrap/readiness timings.
 
 ## Next local UI work
@@ -192,9 +198,8 @@ Do not globally replace `Console.Out` to create the TUI. As structured logging m
 Future local UI slices should be driven by operational need rather than by filling screens for appearance's sake. Likely additions include:
 
 - deeper per-player detail when authoritative snapshots expose useful state;
-- per-connection drill-down and packet/rate telemetry where network subsystems already own trustworthy counters;
-- GC/allocation and save-pipeline telemetry once those systems publish bounded snapshots;
-- runtime-cache rebuild/save status as the persistence pipeline matures;
+- packet/rate telemetry where network subsystems already own trustworthy counters;
+- save-pipeline/cache-rebuild status once persistence publishes bounded runtime snapshots;
 - administrative actions only through explicit command/operations interfaces, never by mutating runtime objects from UI callbacks;
 - better table/list navigation when the compact current views become too dense.
 
