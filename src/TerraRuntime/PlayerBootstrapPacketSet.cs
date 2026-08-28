@@ -137,7 +137,7 @@ public sealed class PlayerBootstrapPacketSet
             team != 0 &&
             team < _world.RuntimeMetadata.ExtraSpawnPoints.Length)
         {
-            WorldSpawnPoint teamSpawn = _world.RuntimeMetadata.ExtraSpawnPoints[team];
+            var teamSpawn = _world.RuntimeMetadata.ExtraSpawnPoints[team];
             teamCount = InitialSectionBootstrapPlanner.PlanTeamSpawnSections(
                 _world.Header.Dimensions,
                 teamSpawn.X,
