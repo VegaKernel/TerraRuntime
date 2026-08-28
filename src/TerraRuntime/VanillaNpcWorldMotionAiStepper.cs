@@ -44,7 +44,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         // Grounded style-1 AI is intentionally disabled when ServerRuntimeState has no world tiles.
         // Enabling it here guarantees every proposed Blue Slime step has gravity/collision available.
         if (inner is VanillaNpcTargetingAiStepper targeting)
-            targeting.EnableBlueSlimeMotion();
+            targeting.EnableBlueSlimeMotion(worldSurfaceTiles);
     }
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
