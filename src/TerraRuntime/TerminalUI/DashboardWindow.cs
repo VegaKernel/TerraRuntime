@@ -9,12 +9,13 @@ namespace TerraRuntime.TerminalUI;
 
 internal sealed class DashboardWindow : Runnable
 {
-    private const int RowCount = 15;
+    private const int RowCount = 16;
     private const int MaximumLogSources = 32;
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
     private readonly INpcOperations npcOperations;
     private readonly IProjectileOperations? projectileOperations;
+    private readonly IWorldItemOperations? worldItemOperations;
     private readonly INetworkOperations networkOperations;
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
@@ -34,12 +35,14 @@ internal sealed class DashboardWindow : Runnable
         INetworkOperations networkOperations,
         IWorldOperations worldOperations,
         ILogOperations logOperations,
-        IProjectileOperations? projectileOperations = null)
+        IProjectileOperations? projectileOperations = null,
+        IWorldItemOperations? worldItemOperations = null)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
         this.npcOperations = npcOperations ?? throw new ArgumentNullException(nameof(npcOperations));
         this.projectileOperations = projectileOperations;
+        this.worldItemOperations = worldItemOperations;
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
@@ -59,6 +62,7 @@ internal sealed class DashboardWindow : Runnable
                         new MenuItem("_Players", "Live authoritative player read model", ShowPlayers),
                         new MenuItem("_NPCs", "Live authoritative NPC read model", ShowNpcs),
                         new MenuItem("P_rojectiles", "Grouped authoritative projectile read model", ShowProjectiles),
+                        new MenuItem("_Items", "Grouped authoritative dropped-item read model", ShowItems),
                         new MenuItem("_Network", "Connection and replication counters", ShowNetwork),
                         new MenuItem("_World", "Validated world and cache state", ShowWorld),
                         new MenuItem("_Logs", "Bounded runtime event log", ShowLogs)
@@ -134,6 +138,9 @@ internal sealed class DashboardWindow : Runnable
             case TerminalUiScreen.Projectiles:
                 RefreshProjectiles();
                 break;
+            case TerminalUiScreen.Items:
+                RefreshItems();
+                break;
             case TerminalUiScreen.Network:
                 RefreshNetwork();
                 break;
@@ -156,6 +163,8 @@ internal sealed class DashboardWindow : Runnable
     internal void ShowNpcs() => SelectScreen(TerminalUiScreen.Npcs, "TerraRuntime - NPCs");
 
     internal void ShowProjectiles() => SelectScreen(TerminalUiScreen.Projectiles, "TerraRuntime - Projectiles");
+
+    internal void ShowItems() => SelectScreen(TerminalUiScreen.Items, "TerraRuntime - Items");
 
     internal void ShowNetwork() => SelectScreen(TerminalUiScreen.Network, "TerraRuntime - Network");
 
@@ -300,6 +309,35 @@ internal sealed class DashboardWindow : Runnable
         rows[rows.Length - 1].Text = $"Snapshot: {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
+    private void RefreshItems()
+    {
+        ClearRows();
+        if (worldItemOperations is null)
+        {
+            rows[0].Text = "World-item telemetry: <unavailable>";
+            return;
+        }
+
+        RuntimeWorldItemsSnapshot snapshot = worldItemOperations.CaptureSnapshot();
+        ReadOnlySpan<RuntimeWorldItemGroupSnapshot> groups = snapshot.Groups.Span;
+        rows[0].Text = $"Live items  : {snapshot.ActiveItems} in {groups.Length} item-type group(s)";
+
+        int visible = Math.Min(groups.Length, rows.Length - 3);
+        for (int i = 0; i < visible; i++)
+        {
+            RuntimeWorldItemGroupSnapshot group = groups[i];
+            rows[i + 1].Text =
+                $"x{group.DropCount,-4} type #{group.ItemNetId,-6} stack total {group.TotalStack,-8:N0} max {group.MaxStack,-5} " +
+                $"reserved {group.ReservedDrops,-4} shimmer {group.ShimmeredDrops,-4} " +
+                $"pos~ {group.AveragePositionX / 16f:F1},{group.AveragePositionY / 16f:F1}t";
+        }
+
+        if (groups.Length > visible)
+            rows[rows.Length - 2].Text = $"... {groups.Length - visible} more item group(s) not shown";
+
+        rows[rows.Length - 1].Text = $"Snapshot: {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+    }
+
     private void RefreshNetwork()
     {
         ClearRows();
@@ -313,31 +351,32 @@ internal sealed class DashboardWindow : Runnable
         rows[6].Text = $"Lifecycle   : active baselines {snapshot.PlayerActiveBaselineFrames:N0}   deactivations {snapshot.PlayerDeactivationFrames:N0}";
         rows[7].Text = $"NPC packet23: relayed {snapshot.NpcRelayedFrames:N0}   baselines {snapshot.NpcBaselineFrames:N0}   rejected {snapshot.NpcRejectedFrames:N0}   unsupported {snapshot.NpcUnsupportedCommits:N0}";
         rows[8].Text = $"Proj packet27: relayed {snapshot.ProjectileRelayedFrames:N0}   baselines {snapshot.ProjectileBaselineFrames:N0}   rejected {snapshot.ProjectileRejectedFrames:N0}   unsupported {snapshot.ProjectileUnsupportedCommits:N0}";
-        rows[9].Text = $"Inbound 1s  : tracked {snapshot.TrackedInboundRates}   frames {snapshot.InboundWindowFrames:N0}   bytes {snapshot.InboundWindowBytes:N0}   rejected {snapshot.RejectedInboundFrames:N0}";
+        rows[9].Text = $"Items 21/22 : relayed {snapshot.WorldItemRelayedFrames:N0}   rejected {snapshot.WorldItemRejectedFrames:N0}   unsupported {snapshot.WorldItemUnsupportedCommits:N0}";
+        rows[10].Text = $"Inbound 1s  : tracked {snapshot.TrackedInboundRates}   frames {snapshot.InboundWindowFrames:N0}   bytes {snapshot.InboundWindowBytes:N0}   rejected {snapshot.RejectedInboundFrames:N0}";
 
         ReadOnlySpan<RuntimeConnectionRateDetail> rates = snapshot.TopInboundRates.Span;
         for (int i = 0; i < Math.Min(rates.Length, 2); i++)
         {
             RuntimeConnectionRateDetail rate = rates[i];
-            rows[i + 10].Text =
+            rows[i + 11].Text =
                 $"Inbound #{rate.ConnectionId,-5}: 1s {rate.WindowFrames:N0} frames / {FormatMebibytes(rate.WindowBytes)}   " +
                 $"total {rate.TotalFrames:N0} / {FormatMebibytes(rate.TotalBytes)}   rejected {rate.RejectedFrames:N0}";
         }
         if (rates.Length == 0)
-            rows[10].Text = "Inbound detail: <no active inbound traffic>";
+            rows[11].Text = "Inbound detail: <no active inbound traffic>";
 
         ReadOnlySpan<RuntimeConnectionQueueDetail> queues = snapshot.TopOutboundQueues.Span;
         for (int i = 0; i < Math.Min(queues.Length, 2); i++)
         {
             RuntimeConnectionQueueDetail queue = queues[i];
-            rows[i + 12].Text =
+            rows[i + 13].Text =
                 $"Queue #{queue.ConnectionId,-5}: frames {queue.QueuedFrames:N0}   bytes {FormatMebibytes(queue.QueuedBytes)}   " +
                 $"rejected {queue.RejectedFrames:N0}   {(queue.SlowClient ? "SLOW" : "ok")}";
         }
         if (queues.Length == 0)
-            rows[12].Text = "Queue detail : <no queued/rejected/slow clients>";
+            rows[13].Text = "Queue detail : <no queued/rejected/slow clients>";
 
-        rows[14].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+        rows[15].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
     private void RefreshWorld()
@@ -521,6 +560,7 @@ internal sealed class DashboardWindow : Runnable
         Players,
         Npcs,
         Projectiles,
+        Items,
         Network,
         World,
         Logs
