@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Terminal.Gui" Version="2.4.17" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
     <ProjectReference Include="../TerraRuntime.Core/TerraRuntime.Core.csproj" />
     <ProjectReference Include="../TerraRuntime.Network/TerraRuntime.Network.csproj" />
