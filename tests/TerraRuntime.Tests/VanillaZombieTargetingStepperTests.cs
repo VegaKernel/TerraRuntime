@@ -117,6 +117,36 @@ public sealed class VanillaZombieTargetingStepperTests
         Assert.Equal(61f, next.Ai.Ai3, 5);
     }
 
+    [Fact]
+    public void Just_hit_is_consumed_after_resetting_stuck_counter()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.EnableZombieMotion(worldSurfaceTiles: 100d);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        stepper.SetCandidates([
+            new VanillaNpcTargetCandidate(
+                Slot: 7,
+                CenterX: 220f,
+                CenterY: 100f,
+                Aggro: 0,
+                Active: true,
+                Dead: false,
+                Ghost: false,
+                NoAggro: false)
+        ]);
+        NpcSnapshot npc = CreateZombie(positionY: 80f) with
+        {
+            Ai = new NpcAiState(0f, 0f, 0f, 80f),
+            Simulation = CreateZombie(positionY: 80f).Simulation with { JustHit = true }
+        };
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.False(next.Simulation.JustHit);
+        Assert.Equal(0f, next.Ai.Ai3, 5);
+        Assert.Equal((ushort)7, next.Target);
+    }
+
     private static NpcSnapshot CreateZombie(float positionY) =>
         new(
             Handle: new NpcHandle(1, new NpcGeneration(1)),
