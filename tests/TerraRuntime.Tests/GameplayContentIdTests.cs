@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
@@ -33,5 +34,33 @@ public sealed class GameplayContentIdTests
         Assert.Equal(1, VanillaNpcAiStyles.Slime.Value);
         Assert.Equal(2, VanillaNpcAiStyles.DemonEye.Value);
         Assert.Equal(3, VanillaNpcAiStyles.Fighter.Value);
+    }
+
+    [Fact]
+    public void Vanilla_tile_ids_are_pinned_to_1458_count()
+    {
+        Assert.Equal(VanillaTileIds.Count, VanillaTileCollisionCatalog.TileTypeCount);
+        Assert.True(VanillaTileIds.TryCreate(0, out TileTypeId first));
+        Assert.Equal(0, first.Value);
+        Assert.True(VanillaTileIds.TryCreate(VanillaTileIds.Count - 1, out TileTypeId last));
+        Assert.Equal(VanillaTileIds.Count - 1, last.Value);
+        Assert.False(VanillaTileIds.TryCreate(VanillaTileIds.Count, out _));
+    }
+
+    [Fact]
+    public void Vanilla_tile_behavior_families_are_named_and_centralized()
+    {
+        Assert.True(VanillaTileIds.IsPlatform(VanillaTileIds.Platforms));
+        Assert.True(VanillaTileIds.IsPlatform(VanillaTileIds.TeamBlockWhitePlatform));
+        Assert.False(VanillaTileIds.IsPlatform(VanillaTileIds.Containers));
+
+        Assert.True(VanillaTileIds.IsChestAnchor(VanillaTileIds.Containers));
+        Assert.True(VanillaTileIds.IsChestAnchor(VanillaTileIds.Containers2));
+        Assert.True(VanillaTileIds.IsChestAnchor(VanillaTileIds.Dressers));
+        Assert.False(VanillaTileIds.IsChestAnchor(VanillaTileIds.Signs));
+
+        Assert.True(VanillaTileIds.CarriesSignText(VanillaTileIds.Signs));
+        Assert.True(VanillaTileIds.CarriesSignText(VanillaTileIds.TatteredWoodSign));
+        Assert.False(VanillaTileIds.CarriesSignText(VanillaTileIds.ItemFrame));
     }
 }
