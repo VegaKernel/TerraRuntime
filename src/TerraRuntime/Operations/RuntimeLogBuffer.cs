@@ -56,7 +56,10 @@ internal sealed class RuntimeLogBuffer : ILogOperations
         }
     }
 
-    public RuntimeLogSnapshot CaptureSnapshot(RuntimeLogLevel minimumLevel, int maxEntries)
+    public RuntimeLogSnapshot CaptureSnapshot(
+        RuntimeLogLevel minimumLevel,
+        string? source,
+        int maxEntries)
     {
         if (minimumLevel < RuntimeLogLevel.Debug || minimumLevel > RuntimeLogLevel.Error)
             throw new ArgumentOutOfRangeException(nameof(minimumLevel));
@@ -85,8 +88,11 @@ internal sealed class RuntimeLogBuffer : ILogOperations
                     index += entries.Length;
 
                 RuntimeLogEntry entry = entries[index];
-                if (entry.Level < minimumLevel)
+                if (entry.Level < minimumLevel ||
+                    (source is not null && !string.Equals(entry.Source, source, StringComparison.Ordinal)))
+                {
                     continue;
+                }
 
                 snapshot[found++] = entry;
             }
@@ -101,6 +107,32 @@ internal sealed class RuntimeLogBuffer : ILogOperations
                 overwrittenEntries,
                 minimumLevel,
                 DateTimeOffset.UtcNow);
+        }
+    }
+
+    public ReadOnlyMemory<string> CaptureSources(int maxSources)
+    {
+        if (maxSources < 0)
+            throw new ArgumentOutOfRangeException(nameof(maxSources));
+        if (maxSources == 0)
+            return ReadOnlyMemory<string>.Empty;
+
+        lock (gate)
+        {
+            if (count == 0)
+                return ReadOnlyMemory<string>.Empty;
+
+            var sources = new HashSet<string>(StringComparer.Ordinal);
+            int oldestIndex = count == entries.Length ? nextIndex : 0;
+            for (int offset = 0; offset < count && sources.Count < maxSources; offset++)
+            {
+                int index = (oldestIndex + offset) % entries.Length;
+                sources.Add(entries[index].Source);
+            }
+
+            string[] snapshot = sources.ToArray();
+            Array.Sort(snapshot, StringComparer.Ordinal);
+            return snapshot.AsMemory();
         }
     }
 

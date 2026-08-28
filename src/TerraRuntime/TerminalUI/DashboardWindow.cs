@@ -10,6 +10,7 @@ namespace TerraRuntime.TerminalUI;
 internal sealed class DashboardWindow : Runnable
 {
     private const int RowCount = 12;
+    private const int MaximumLogSources = 32;
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
     private readonly INetworkOperations networkOperations;
@@ -18,6 +19,7 @@ internal sealed class DashboardWindow : Runnable
     private readonly Label[] rows = new Label[RowCount];
     private TerminalUiScreen screen;
     private RuntimeLogLevel minimumLogLevel = RuntimeLogLevel.Information;
+    private string? logSourceFilter;
     private RuntimeLogSnapshot lastLogSnapshot;
     private bool hasLogSnapshot;
     private bool logPaused;
@@ -59,6 +61,8 @@ internal sealed class DashboardWindow : Runnable
                         new MenuItem("_Information+", "Show information and above", () => SetLogLevel(RuntimeLogLevel.Information)),
                         new MenuItem("_Warnings+", "Show warnings and errors", () => SetLogLevel(RuntimeLogLevel.Warning)),
                         new MenuItem("_Errors", "Show only errors", () => SetLogLevel(RuntimeLogLevel.Error)),
+                        new MenuItem("Next _source", "Cycle through sources currently retained in the bounded log", CycleLogSource),
+                        new MenuItem("Clear source _filter", "Show all log sources", ClearLogSource),
                         new MenuItem("_Pause / resume", "Freeze or resume the log snapshot", ToggleLogPause)
                     ]),
                 new MenuBarItem(
@@ -220,13 +224,17 @@ internal sealed class DashboardWindow : Runnable
     {
         if (!logPaused || !hasLogSnapshot)
         {
-            lastLogSnapshot = logOperations.CaptureSnapshot(minimumLogLevel, rows.Length - 2);
+            lastLogSnapshot = logOperations.CaptureSnapshot(
+                minimumLogLevel,
+                logSourceFilter,
+                rows.Length - 2);
             hasLogSnapshot = true;
         }
 
         ClearRows();
+        string source = logSourceFilter is null ? "all" : SanitizeText(logSourceFilter, 24);
         rows[0].Text =
-            $"Filter {minimumLogLevel}+   follow {(logPaused ? "paused" : "on")}   " +
+            $"Level {minimumLogLevel}+   source {source}   follow {(logPaused ? "paused" : "on")}   " +
             $"published {lastLogSnapshot.PublishedEntries:N0}   overwritten {lastLogSnapshot.OverwrittenEntries:N0}";
 
         ReadOnlySpan<RuntimeLogEntry> entries = lastLogSnapshot.Entries.Span;
@@ -252,6 +260,50 @@ internal sealed class DashboardWindow : Runnable
     private void SetLogLevel(RuntimeLogLevel level)
     {
         minimumLogLevel = level;
+        hasLogSnapshot = false;
+        if (screen == TerminalUiScreen.Logs)
+            RefreshLogs();
+    }
+
+    private void CycleLogSource()
+    {
+        ReadOnlyMemory<string> sourceSnapshot = logOperations.CaptureSources(MaximumLogSources);
+        ReadOnlySpan<string> sources = sourceSnapshot.Span;
+        if (sources.Length == 0)
+        {
+            logSourceFilter = null;
+        }
+        else if (logSourceFilter is null)
+        {
+            logSourceFilter = sources[0];
+        }
+        else
+        {
+            int currentIndex = -1;
+            for (int i = 0; i < sources.Length; i++)
+            {
+                if (string.Equals(sources[i], logSourceFilter, StringComparison.Ordinal))
+                {
+                    currentIndex = i;
+                    break;
+                }
+            }
+
+            logSourceFilter = currentIndex < 0
+                ? sources[0]
+                : currentIndex + 1 < sources.Length
+                    ? sources[currentIndex + 1]
+                    : null;
+        }
+
+        hasLogSnapshot = false;
+        if (screen == TerminalUiScreen.Logs)
+            RefreshLogs();
+    }
+
+    private void ClearLogSource()
+    {
+        logSourceFilter = null;
         hasLogSnapshot = false;
         if (screen == TerminalUiScreen.Logs)
             RefreshLogs();
