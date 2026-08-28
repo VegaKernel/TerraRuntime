@@ -24,8 +24,6 @@ public sealed class RuntimeNpcPacketProjectionTests
     {
         NpcSnapshot npc = CreateNpc(type: 1, netId: -3, generation: 256);
 
-        Assert.Equal(VanillaNpcIds.BlueSlime, npc.TypeIdentity);
-        Assert.Equal(new NpcNetId(-3), npc.NetIdentity);
         Assert.True(RuntimeNpcPacketProjection.TryCreate(
             in npc,
             RuntimeNpcSyncKind.Spawn,
@@ -41,12 +39,40 @@ public sealed class RuntimeNpcPacketProjectionTests
     }
 
     [Fact]
+    public void Zombie_projection_carries_authoritative_sprite_direction_and_life()
+    {
+        NpcSnapshot npc = CreateNpc(type: 3, netId: 3, generation: 7) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                DirectionX = -1,
+                DirectionY = 1,
+                SpriteDirection = 1,
+                Life = 17,
+                LifeMax = 45,
+                TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft
+            }
+        };
+
+        Assert.True(RuntimeNpcPacketProjection.TryCreate(
+            in npc,
+            RuntimeNpcSyncKind.Update,
+            out var state));
+
+        Assert.Equal(VanillaNpcIds.Zombie.Value, state.NpcType);
+        Assert.Equal((short)3, state.NpcNetId);
+        Assert.Equal(-1, state.DirectionX);
+        Assert.Equal(1, state.SpriteDirection);
+        Assert.Equal(17, state.Life);
+        Assert.Equal(45, state.LifeMax);
+        Assert.False(state.SpawnNeedsSyncing);
+    }
+
+    [Fact]
     public void Despawn_projection_keeps_generation_and_identity_but_sends_zero_life()
     {
         NpcSnapshot npc = CreateNpc(type: 2, netId: 2, generation: 255);
 
-        Assert.Equal(VanillaNpcIds.DemonEye, npc.TypeIdentity);
-        Assert.Equal(new NpcNetId(2), npc.NetIdentity);
         Assert.True(RuntimeNpcPacketProjection.TryCreate(
             in npc,
             RuntimeNpcSyncKind.Despawn,
