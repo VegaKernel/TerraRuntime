@@ -5,7 +5,10 @@ namespace TerraRuntime;
 
 internal sealed class ServerRuntimeState
 {
+    private const int MaxPlayerSlots = 256;
+
     private readonly Dictionary<byte, RuntimePlayerState> _players = [];
+    private readonly PendingPlayerVitals?[] _pendingVitals = new PendingPlayerVitals?[MaxPlayerSlots];
     private readonly IRuntimePlayerEventSink? _playerEvents;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
@@ -26,6 +29,14 @@ internal sealed class ServerRuntimeState
     public long AppliedPlayerEquipmentUpdates { get; private set; }
 
     public long RejectedPlayerEquipmentUpdates { get; private set; }
+
+    public long AppliedPlayerHealthUpdates { get; private set; }
+
+    public long RejectedPlayerHealthUpdates { get; private set; }
+
+    public long AppliedPlayerManaUpdates { get; private set; }
+
+    public long RejectedPlayerManaUpdates { get; private set; }
 
     public long CommittedPlayerSpawns { get; private set; }
 
@@ -86,6 +97,14 @@ internal sealed class ServerRuntimeState
 
             case PlayerEquipmentRuntimeCommand equipment:
                 ApplyPlayerEquipment(equipment);
+                break;
+
+            case PlayerHealthRuntimeCommand health:
+                ApplyPlayerHealth(health);
+                break;
+
+            case PlayerManaRuntimeCommand mana:
+                ApplyPlayerMana(mana);
                 break;
 
             case PlayerSpawnRuntimeCommand spawn:
@@ -151,6 +170,86 @@ internal sealed class ServerRuntimeState
         _playerEvents?.PlayerEquipmentUpdated(equipment.Connection, in request);
     }
 
+    private void ApplyPlayerHealth(PlayerHealthRuntimeCommand health)
+    {
+        PlayerHealthCommitRequest request = VanillaPlayerHealthNormalizer.Normalize(in health.Request);
+        if (!health.Connection.IsAssigned || health.Connection.Player.Slot != request.PlayerSlot)
+        {
+            RejectedPlayerHealthUpdates++;
+            return;
+        }
+
+        if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer))
+        {
+            if (activePlayer.Connection != health.Connection || !activePlayer.TryAdvanceRevision())
+            {
+                RejectedPlayerHealthUpdates++;
+                return;
+            }
+
+            activePlayer.HasHealth = true;
+            activePlayer.Life = request.Life;
+            activePlayer.MaxLife = request.MaxLife;
+            activePlayer.IsDead = request.Life <= 0;
+        }
+        else
+        {
+            PendingPlayerVitals pending = GetOrReplacePending(health.Connection);
+            pending.HasHealth = true;
+            pending.Life = request.Life;
+            pending.MaxLife = request.MaxLife;
+        }
+
+        AppliedPlayerHealthUpdates++;
+        _playerEvents?.PlayerHealthUpdated(health.Connection, in request);
+    }
+
+    private void ApplyPlayerMana(PlayerManaRuntimeCommand mana)
+    {
+        PlayerManaCommitRequest request = mana.Request;
+        if (!mana.Connection.IsAssigned || mana.Connection.Player.Slot != request.PlayerSlot)
+        {
+            RejectedPlayerManaUpdates++;
+            return;
+        }
+
+        if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer))
+        {
+            if (activePlayer.Connection != mana.Connection || !activePlayer.TryAdvanceRevision())
+            {
+                RejectedPlayerManaUpdates++;
+                return;
+            }
+
+            activePlayer.HasMana = true;
+            activePlayer.Mana = request.Mana;
+            activePlayer.MaxMana = request.MaxMana;
+        }
+        else
+        {
+            PendingPlayerVitals pending = GetOrReplacePending(mana.Connection);
+            pending.HasMana = true;
+            pending.Mana = request.Mana;
+            pending.MaxMana = request.MaxMana;
+        }
+
+        AppliedPlayerManaUpdates++;
+        _playerEvents?.PlayerManaUpdated(mana.Connection, in request);
+    }
+
+    private PendingPlayerVitals GetOrReplacePending(ConnectionHandle connection)
+    {
+        int slot = connection.Player.Slot.Value;
+        PendingPlayerVitals? pending = _pendingVitals[slot];
+        if (pending is null || pending.Connection != connection)
+        {
+            pending = new PendingPlayerVitals(connection);
+            _pendingVitals[slot] = pending;
+        }
+
+        return pending;
+    }
+
     private void ApplyPlayerSpawn(PlayerSpawnRuntimeCommand spawn)
     {
         PlayerSpawnCommitRequest request = spawn.Request;
@@ -172,6 +271,11 @@ internal sealed class ServerRuntimeState
         if (commit != PlayerSpawnCommitResult.Committed)
             return;
 
+        PendingPlayerVitals? pending = _pendingVitals[request.ClaimedSlot.Value];
+        bool hasPending = pending is not null && pending.Connection == spawn.Connection;
+        if (pending is not null)
+            _pendingVitals[request.ClaimedSlot.Value] = null;
+
         CommittedPlayerSpawns++;
         _players[request.ClaimedSlot.Value] = new RuntimePlayerState
         {
@@ -180,7 +284,14 @@ internal sealed class ServerRuntimeState
             Slot = request.ClaimedSlot,
             Team = request.Team,
             PositionX = request.SpawnX * 16f,
-            PositionY = request.SpawnY * 16f
+            PositionY = request.SpawnY * 16f,
+            HasHealth = hasPending && pending!.HasHealth,
+            Life = hasPending ? pending!.Life : (short)0,
+            MaxLife = hasPending ? pending!.MaxLife : (short)0,
+            IsDead = hasPending && pending!.HasHealth && pending.Life <= 0,
+            HasMana = hasPending && pending!.HasMana,
+            Mana = hasPending ? pending!.Mana : (short)0,
+            MaxMana = hasPending ? pending!.MaxMana : (short)0
         };
         _playerEvents?.PlayerSpawned(spawn.Connection, in request);
     }
@@ -244,6 +355,10 @@ internal sealed class ServerRuntimeState
     private void ApplyPlayerDisconnect(PlayerDisconnectRuntimeCommand disconnect)
     {
         ConnectionHandle connection = disconnect.Connection;
+        PendingPlayerVitals? pending = _pendingVitals[connection.Player.Slot.Value];
+        if (pending is not null && pending.Connection == connection)
+            _pendingVitals[connection.Player.Slot.Value] = null;
+
         if (!_players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) ||
             player.Connection != connection)
         {
@@ -263,12 +378,30 @@ internal sealed class ServerRuntimeState
         command.Completion.TrySetResult(result);
     }
 
+    private sealed class PendingPlayerVitals(ConnectionHandle connection)
+    {
+        public ConnectionHandle Connection { get; } = connection;
+        public bool HasHealth { get; set; }
+        public short Life { get; set; }
+        public short MaxLife { get; set; }
+        public bool HasMana { get; set; }
+        public short Mana { get; set; }
+        public short MaxMana { get; set; }
+    }
+
     private sealed class RuntimePlayerState
     {
         public ConnectionHandle Connection { get; init; }
         public ulong Revision { get; set; }
         public PlayerSlotId Slot { get; init; }
         public byte Team { get; init; }
+        public bool HasHealth { get; set; }
+        public short Life { get; set; }
+        public short MaxLife { get; set; }
+        public bool IsDead { get; set; }
+        public bool HasMana { get; set; }
+        public short Mana { get; set; }
+        public short MaxMana { get; set; }
         public byte ControlFlags { get; set; }
         public byte MovementFlags { get; set; }
         public byte MiscFlags1 { get; set; }
@@ -315,12 +448,15 @@ internal sealed class ServerRuntimeState
                 PotionOfReturnHomePositionX,
                 PotionOfReturnHomePositionY,
                 CameraTargetX,
-                CameraTargetY);
+                CameraTargetY)
+            {
+                HasHealth = HasHealth,
+                Life = Life,
+                MaxLife = MaxLife,
+                IsDead = IsDead,
+                HasMana = HasMana,
+                Mana = Mana,
+                MaxMana = MaxMana
+            };
     }
 }
-
-internal abstract record RuntimeCommand;
-
-internal sealed record ProbeCommand : RuntimeCommand;
-
-internal sealed record WorkerResultCommand(int Value) : RuntimeCommand;
