@@ -19,6 +19,9 @@ internal sealed class ServerRuntimeState
     private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
     private readonly INpcAiStateStepper _npcAiStepper;
     private readonly VanillaNpcTargetingAiStepper? _vanillaNpcTargetingAiStepper;
+    private readonly RuntimeProjectileStore _projectiles;
+    private readonly RuntimeProjectileStateExecutor _projectileExecutor;
+    private readonly IProjectileStateStepper? _projectileStepper;
     private readonly RuntimeWorldClock? _worldClock;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
@@ -28,12 +31,17 @@ internal sealed class ServerRuntimeState
         RuntimeNpcStore? npcs = null,
         INpcAiStateStepper? npcAiStepper = null,
         WorldTileStore? worldTiles = null,
-        RuntimeWorldClock? worldClock = null)
+        RuntimeWorldClock? worldClock = null,
+        RuntimeProjectileStore? projectiles = null,
+        IProjectileStateStepper? projectileStepper = null)
     {
         _playerEvents = playerEvents;
         _worldClock = worldClock;
         _npcs = npcs ?? new RuntimeNpcStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
+        _projectiles = projectiles ?? new RuntimeProjectileStore();
+        _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
+        _projectileStepper = projectileStepper;
 
         if (npcAiStepper is null)
         {
@@ -88,7 +96,21 @@ internal sealed class ServerRuntimeState
 
     public long RejectedNpcDespawns { get; private set; }
 
+    public long AppliedProjectileSpawns { get; private set; }
+
+    public long RejectedProjectileSpawns { get; private set; }
+
+    public long AppliedProjectileUpdates { get; private set; }
+
+    public long RejectedProjectileUpdates { get; private set; }
+
+    public long AppliedProjectileDespawns { get; private set; }
+
+    public long RejectedProjectileDespawns { get; private set; }
+
     public NpcAiStateTickSummary LastNpcAiTick { get; private set; }
+
+    public ProjectileStateTickSummary LastProjectileTick { get; private set; }
 
     public PlayerSlotId? LastMovementPlayerSlot { get; private set; }
 
@@ -130,6 +152,12 @@ internal sealed class ServerRuntimeState
     internal bool TryCaptureNpcSnapshot(NpcHandle npc, out NpcSnapshot snapshot) =>
         _npcs.TryGet(npc, out snapshot);
 
+    /// <summary>
+    /// Captures an exact generation-safe projectile snapshot on the authoritative thread.
+    /// </summary>
+    internal bool TryCaptureProjectileSnapshot(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
+        _projectiles.TryGet(projectile, out snapshot);
+
     public void Apply(RuntimeCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -155,6 +183,18 @@ internal sealed class ServerRuntimeState
 
             case NpcDespawnRuntimeCommand despawn:
                 ApplyNpcDespawn(despawn);
+                break;
+
+            case ProjectileSpawnRuntimeCommand spawn:
+                ApplyProjectileSpawn(spawn);
+                break;
+
+            case ProjectileUpdateRuntimeCommand update:
+                ApplyProjectileUpdate(update);
+                break;
+
+            case ProjectileDespawnRuntimeCommand despawn:
+                ApplyProjectileDespawn(despawn);
                 break;
 
             case PlayerAppearanceRuntimeCommand appearance:
@@ -206,6 +246,9 @@ internal sealed class ServerRuntimeState
         }
 
         LastNpcAiTick = _npcAiExecutor.Tick(_npcAiStepper);
+        if (_projectileStepper is not null)
+            LastProjectileTick = _projectileExecutor.Tick(_projectileStepper);
+
         _worldClock?.Tick();
         Updates++;
     }
@@ -272,6 +315,43 @@ internal sealed class ServerRuntimeState
         }
 
         RejectedNpcDespawns++;
+    }
+
+    private void ApplyProjectileSpawn(ProjectileSpawnRuntimeCommand command)
+    {
+        ProjectileStateUpdate state = command.State;
+        if (_projectiles.TrySpawn(command.Slot, in state, out ProjectileSnapshot snapshot))
+        {
+            AppliedProjectileSpawns++;
+            command.Completion?.TrySetResult(snapshot);
+            return;
+        }
+
+        RejectedProjectileSpawns++;
+        command.Completion?.TrySetResult(null);
+    }
+
+    private void ApplyProjectileUpdate(ProjectileUpdateRuntimeCommand command)
+    {
+        ProjectileStateUpdate state = command.State;
+        if (_projectiles.TryUpdate(command.Projectile, in state, out _))
+        {
+            AppliedProjectileUpdates++;
+            return;
+        }
+
+        RejectedProjectileUpdates++;
+    }
+
+    private void ApplyProjectileDespawn(ProjectileDespawnRuntimeCommand command)
+    {
+        if (_projectiles.TryDespawn(command.Projectile, out _))
+        {
+            AppliedProjectileDespawns++;
+            return;
+        }
+
+        RejectedProjectileDespawns++;
     }
 
     private void ApplyPlayerAppearance(PlayerAppearanceRuntimeCommand appearance)
