@@ -102,7 +102,7 @@ public sealed class WorldFileLoaderTests
             Assert.Null(staleWorld);
 
             byte[] cacheBytes = File.ReadAllBytes(cachePath);
-            cacheBytes[^33] ^= 0x01;
+            cacheBytes[96] ^= 0x01;
             File.WriteAllBytes(cachePath, cacheBytes);
             RuntimeWorldCacheLoadDiagnostic corruptDiagnostic = RuntimeWorldCache.TryLoad(
                 cachePath,
