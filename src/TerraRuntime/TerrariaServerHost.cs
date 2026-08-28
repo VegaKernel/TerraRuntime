@@ -222,7 +222,13 @@ public static class TerrariaServerHost
             : new RuntimeNpcStateCommitFanout(npcReplication, npcOperations);
         var npcStore = new RuntimeNpcStore(commitSink: npcCommitSink);
         var projectileReplication = new RuntimeProjectileReplicationRegistry();
-        var projectileStore = new RuntimeProjectileStore(commitSink: projectileReplication);
+        RuntimeProjectileOperationsTelemetry? projectileOperations = options.TerminalUiEnabled
+            ? new RuntimeProjectileOperationsTelemetry()
+            : null;
+        IProjectileStateCommitSink projectileCommitSink = projectileOperations is null
+            ? projectileReplication
+            : new RuntimeProjectileStateCommitFanout(projectileReplication, projectileOperations);
+        var projectileStore = new RuntimeProjectileStore(commitSink: projectileCommitSink);
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
         var playerOperations = new RuntimePlayerOperationsTelemetry();
         var playerNetworkEvents = new RuntimePlayerEventDispatcher(
@@ -258,7 +264,8 @@ public static class TerrariaServerHost
             runtimeConnections,
             queueTelemetry,
             rateTelemetry,
-            npcReplication);
+            npcReplication,
+            projectileReplication);
         var connectionTasks = new ConcurrentDictionary<long, Task>();
         long nextConnectionId = 0;
 
@@ -354,7 +361,8 @@ public static class TerrariaServerHost
                             "TerminalUI",
                             message,
                             useStandardError: true),
-                        shutdown.Token);
+                        shutdown.Token,
+                        projectileOperations);
                 }
                 catch (Exception exception)
                 {
