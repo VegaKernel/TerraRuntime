@@ -19,6 +19,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     private readonly Endpoint?[] _playingEndpoints = new Endpoint?[256];
     private readonly RuntimeInterestRouter _interestRouter;
     private long _relayedMovementFrames;
+    private long _movementResyncFrames;
 
     public RuntimeConnectionRegistry(
         IInterestManagementControl? interestManagement = null,
@@ -32,6 +33,8 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     public int Count => _endpoints.Count;
 
     public long RelayedMovementFrames => Interlocked.Read(ref _relayedMovementFrames);
+
+    public long MovementResyncFrames => Interlocked.Read(ref _movementResyncFrames);
 
     internal RuntimePlayerSpatialIndexSnapshot? PlayerSpatialSnapshot =>
         _interestRouter.PlayerSpatialSnapshot;
@@ -48,16 +51,74 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 
     internal bool TryGetLatestPlayerMovementFrame(PlayerSlotId slot, out OutboundFrame frame)
     {
-        Endpoint? endpoint = Volatile.Read(ref _playingEndpoints[slot.Value]);
-        if (endpoint is null ||
-            !endpoint.TryGetPlayingSlot(out PlayerSlotId currentSlot) ||
-            currentSlot != slot)
+        if (!TryGetPlayingEndpoint(slot, out Endpoint? endpoint))
         {
             frame = default;
             return false;
         }
 
         return endpoint.TryGetLatestMovementFrame(out frame);
+    }
+
+    internal RuntimePlayerMovementResyncPlan PlanPlayerMovementResyncs(
+        PlayerSlotId subject,
+        ReadOnlySpan<PlayerSlotId> enteredPeers,
+        Span<RuntimePlayerMovementResyncOperation> destination)
+    {
+        int requiredCapacity = checked(enteredPeers.Length * 2);
+        if (destination.Length < requiredCapacity)
+        {
+            throw new ArgumentException(
+                $"Destination must have room for {requiredCapacity} possible resync operations.",
+                nameof(destination));
+        }
+
+        int planned = 0;
+        int missingSnapshots = 0;
+        int missingEndpoints = 0;
+
+        for (int i = 0; i < enteredPeers.Length; i++)
+        {
+            PlayerSlotId peer = enteredPeers[i];
+            PlanOne(peer, subject);
+            PlanOne(subject, peer);
+        }
+
+        return new RuntimePlayerMovementResyncPlan(planned, missingSnapshots, missingEndpoints);
+
+        void PlanOne(PlayerSlotId recipient, PlayerSlotId source)
+        {
+            if (!TryGetPlayingEndpoint(recipient, out _) ||
+                !TryGetPlayingEndpoint(source, out Endpoint? sourceEndpoint))
+            {
+                missingEndpoints++;
+                return;
+            }
+
+            if (!sourceEndpoint.TryGetLatestMovementFrame(out _))
+            {
+                missingSnapshots++;
+                return;
+            }
+
+            destination[planned++] = new RuntimePlayerMovementResyncOperation(recipient, source);
+        }
+    }
+
+    internal bool TryEnqueuePlayerMovementResync(in RuntimePlayerMovementResyncOperation operation)
+    {
+        if (operation.Recipient == operation.Subject ||
+            !TryGetPlayingEndpoint(operation.Recipient, out Endpoint? recipient) ||
+            !TryGetLatestPlayerMovementFrame(operation.Subject, out OutboundFrame frame))
+        {
+            return false;
+        }
+
+        if (recipient.Outbound.TryEnqueue(frame) != OutboundEnqueueResult.Enqueued)
+            return false;
+
+        Interlocked.Increment(ref _movementResyncFrames);
+        return true;
     }
 
     public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
@@ -166,6 +227,20 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
     }
 
+    private bool TryGetPlayingEndpoint(PlayerSlotId slot, out Endpoint? endpoint)
+    {
+        endpoint = Volatile.Read(ref _playingEndpoints[slot.Value]);
+        if (endpoint is null ||
+            !endpoint.TryGetPlayingSlot(out PlayerSlotId currentSlot) ||
+            currentSlot != slot)
+        {
+            endpoint = null;
+            return false;
+        }
+
+        return true;
+    }
+
     private sealed class Endpoint
     {
         private int _playingSlot = -1;
@@ -235,3 +310,12 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
     }
 }
+
+internal readonly record struct RuntimePlayerMovementResyncOperation(
+    PlayerSlotId Recipient,
+    PlayerSlotId Subject);
+
+internal readonly record struct RuntimePlayerMovementResyncPlan(
+    int Planned,
+    int MissingSnapshots,
+    int MissingEndpoints);
