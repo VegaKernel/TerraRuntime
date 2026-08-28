@@ -17,8 +17,8 @@ internal static class StartupProgram
             return 0;
         }
 
-        string[] serverArgs = NormalizeVegaAliases(args);
-        if (!serverArgs.Contains("--world", StringComparer.Ordinal))
+        string[] serverArgs = args;
+        if (!HasWorldArgument(serverArgs))
         {
             if (!LocalWorldSelector.TrySelect(out string? worldPath) || string.IsNullOrWhiteSpace(worldPath))
                 return 0;
@@ -26,7 +26,14 @@ internal static class StartupProgram
             serverArgs = [.. serverArgs, "--world", worldPath];
         }
 
-        return Program.Main(serverArgs);
+        if (!ServerHostOptions.TryParse(serverArgs, out ServerHostOptions? options, out string? error) || options is null)
+        {
+            Console.Error.WriteLine(error ?? "Invalid server host options.");
+            PrintUsage();
+            return 23;
+        }
+
+        return TerrariaServerHost.RunAsync(options).GetAwaiter().GetResult();
     }
 
     private static bool ContainsStandaloneMode(IEnumerable<string> args)
@@ -47,19 +54,15 @@ internal static class StartupProgram
         return false;
     }
 
-    private static string[] NormalizeVegaAliases(string[] args)
+    private static bool HasWorldArgument(IEnumerable<string> args)
     {
-        string[] normalized = new string[args.Length];
-        for (int i = 0; i < args.Length; i++)
+        foreach (string arg in args)
         {
-            normalized[i] = args[i] switch
-            {
-                "-world" => "--world",
-                _ => args[i]
-            };
+            if (arg is "--world" or "-world")
+                return true;
         }
 
-        return normalized;
+        return false;
     }
 
     private static void PrintUsage()
