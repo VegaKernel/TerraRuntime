@@ -1,0 +1,25 @@
+name: Wire Zombie CheckActive
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/wire-zombie-check-active.yml
+      - tools/ci/wire_zombie_check_active.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 tools/ci/wire_zombie_check_active.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/TerraRuntime/ServerRuntimeState.cs
+          git diff --cached --check
+          git commit -m "runtime: wire Zombie CheckActive lifecycle"
+          git push origin HEAD:main
