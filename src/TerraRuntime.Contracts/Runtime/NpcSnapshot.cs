@@ -76,8 +76,8 @@ public enum NpcLiquidContactKind : byte
 
 /// <summary>
 /// Authoritative local simulation inputs/state first required by vanilla NPC AI and movement.
-/// Collision and liquid flags are produced by their owning world/physics systems; AI consumes the
-/// immutable pre-pass values and may change persistent flags such as NoGravity.
+/// Collision, overlap and liquid flags are produced by their owning world/physics systems; AI consumes
+/// the immutable pre-pass values and may change persistent flags such as NoGravity.
 /// </summary>
 public readonly record struct NpcSimulationState(
     int DirectionX,
@@ -93,6 +93,12 @@ public readonly record struct NpcSimulationState(
 {
     public NpcLiquidContactKind LiquidContact { get; init; }
 
+    /// <summary>
+    /// Result of vanilla Collision.SolidCollision at the final authoritative position of the previous
+    /// world pass. AI_001 uses it together with CollideY/OldVelocityY to escape tile overlap.
+    /// </summary>
+    public bool SolidCollision { get; init; }
+
     public static NpcSimulationState Initial => new(
         DirectionX: 0,
         DirectionY: 0,
@@ -105,7 +111,8 @@ public readonly record struct NpcSimulationState(
         NoTileCollide: false,
         Scale: 1f)
     {
-        LiquidContact = NpcLiquidContactKind.None
+        LiquidContact = NpcLiquidContactKind.None,
+        SolidCollision = false
     };
 
     public bool IsValid =>
