@@ -58,7 +58,7 @@ internal static class StartupProgram
     {
         foreach (string arg in args)
         {
-            if (arg is "--world" or "-world")
+            if (arg == "--world")
                 return true;
         }
 
@@ -75,9 +75,8 @@ internal static class StartupProgram
         Console.WriteLine();
         Console.WriteLine("Server startup:");
         Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--no-tui]");
-        Console.WriteLine("  Vega/Terraria aliases: -world <path.wld> -port 7777 -maxplayers 8");
         Console.WriteLine();
-        Console.WriteLine("Terminal UI is enabled by default. Use --no-tui or --plain to disable it.");
+        Console.WriteLine("Terminal UI is enabled by default. Use --no-tui to disable it.");
         Console.WriteLine("Smoke modes: --loop-smoke, --protocol-smoke, --network-smoke, --world-smoke, --tui-smoke.");
         Console.WriteLine("Checkpoint save: --save-wld <path.wld>.");
     }
