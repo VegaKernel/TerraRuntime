@@ -89,7 +89,7 @@ public sealed record ServerHostOptions(
 
     private static bool TryReadValue(string[] args, ref int index, out string? value)
     {
-        if (index + 1 >= args.Length || args[index + 1].StartsWith('-', StringComparison.Ordinal))
+        if (index + 1 >= args.Length || args[index + 1].StartsWith("-", StringComparison.Ordinal))
         {
             value = null;
             return false;
