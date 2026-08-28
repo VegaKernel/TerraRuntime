@@ -82,6 +82,8 @@ public static class TerrariaServerHost
         var spawnIngress = new RuntimePlayerSpawnCommitIngress(commandIngress);
         var appearanceIngress = new RuntimePlayerAppearanceIngress(commandIngress);
         var equipmentIngress = new RuntimePlayerEquipmentIngress(commandIngress);
+        var healthIngress = new RuntimePlayerHealthIngress(commandIngress);
+        var manaIngress = new RuntimePlayerManaIngress(commandIngress);
         var movementIngress = new RuntimePlayerMovementIngress(commandIngress);
         var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
         var slots = new PlayerSlotPool(options.MaxPlayers);
@@ -145,6 +147,8 @@ public static class TerrariaServerHost
                     spawnIngress,
                     appearanceIngress,
                     equipmentIngress,
+                    healthIngress,
+                    manaIngress,
                     movementIngress,
                     disconnectIngress,
                     runtimeConnections,
@@ -198,6 +202,8 @@ public static class TerrariaServerHost
         IPlayerSpawnCommitIngress spawnIngress,
         IPlayerAppearanceIngress appearanceIngress,
         IPlayerEquipmentIngress equipmentIngress,
+        IPlayerHealthIngress healthIngress,
+        IPlayerManaIngress manaIngress,
         IPlayerMovementIngress movementIngress,
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
@@ -215,7 +221,7 @@ public static class TerrariaServerHost
                 return;
             }
 
-            using var sink = new PlayerBootstrapFrameSink(
+            using var bootstrapSink = new PlayerBootstrapFrameSink(
                 slots,
                 outbound,
                 bootstrapPackets,
@@ -224,6 +230,11 @@ public static class TerrariaServerHost
                 appearanceIngress,
                 equipmentIngress,
                 movementIngress);
+            var sink = new PlayerVitalsFrameSink(
+                source,
+                bootstrapSink,
+                healthIngress,
+                manaIngress);
 
             try
             {
@@ -237,7 +248,7 @@ public static class TerrariaServerHost
                         cancellationToken).ConfigureAwait(false);
                     Console.WriteLine(
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
-                        $"bootstrap={sink.StopReason}, state={sink.JoinState}; " +
+                        $"bootstrap={bootstrapSink.StopReason}, vitals={sink.StopReason}, state={bootstrapSink.JoinState}; " +
                         $"inbound={result.Inbound}; outbound={result.Outbound.Reason}.");
                 }
                 catch (Exception exception) when (exception is IOException or SocketException or OperationCanceledException)
@@ -256,7 +267,7 @@ public static class TerrariaServerHost
                 if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
                     playingPlayer is PlayerHandle player)
                 {
-                    bool posted = sink.AssignedPlayerHandle == player &&
+                    bool posted = bootstrapSink.AssignedPlayerHandle == player &&
                         disconnectIngress.TryPost(new ConnectionHandle(source, player));
                     if (!posted && !cancellationToken.IsCancellationRequested)
                     {
