@@ -133,7 +133,7 @@ public static class RuntimeWorldSnapshotCache
             WorldTileStore tiles;
             try
             {
-                tiles = new WorldTileStore(dimensions);
+                tiles = WorldTileStore.CreateForSnapshotLoad(dimensions);
             }
             catch (ArgumentOutOfRangeException)
             {
