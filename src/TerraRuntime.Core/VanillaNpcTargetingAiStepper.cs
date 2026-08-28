@@ -5,8 +5,8 @@ namespace TerraRuntime.Core;
 
 /// <summary>
 /// Coordinates verified player-target selection cadence with state-only NPC AI. Demon Eye refreshes every
-/// ordinary style-2 tick; Blue Slime refreshes at its AI_001 state-machine points; ordinary Zombie refreshes
-/// on the verified night/underground AI_003 pursuit path while ai[3] is below its stuck threshold.
+/// ordinary style-2 tick; Blue Slime refreshes at its AI_001 state-machine points; ordinary Zombie follows
+/// the verified AI_003 pursuit or discouraged/despawn branch according to world state and ai[3].
 /// </summary>
 public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 {
@@ -43,8 +43,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     }
 
     /// <summary>
-    /// Enables the source-backed ordinary type-3 Zombie pursuit slice. Daytime surface behavior remains
-    /// deliberately unsupported until its despawn/eclipse/graveyard policy is modeled in authoritative state.
+    /// Enables the source-backed ordinary type-3 Zombie state slice, including daytime surface
+    /// EncourageDespawn(10). Eclipse/graveyard/statue/invasion exceptions remain future world-state inputs.
     /// </summary>
     public void EnableZombieMotion(double worldSurfaceTiles)
     {
@@ -86,8 +86,6 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         if (npcType == VanillaNpcIds.Zombie && _zombieMotionEnabled)
             return TryStepZombie(in npc, npcType, out next);
 
-        // The verified ordinary Demon Eye path calls TargetClosest every tick. Do not apply this policy
-        // globally: other vanilla AI styles have their own retarget cadence.
         NpcSnapshot targeted = npc;
         if (npcType == VanillaNpcIds.DemonEye && TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh closest))
         {
@@ -163,13 +161,13 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private bool TryStepZombie(in NpcSnapshot npc, NpcTypeId npcType, out NpcStateUpdate next)
     {
         if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
-            definition.AiStyle != VanillaNpcAiStyles.Fighter ||
-            (_dayTime && npc.PositionY <= _worldSurfacePixels))
+            definition.AiStyle != VanillaNpcAiStyles.Fighter)
         {
             next = default;
             return false;
         }
 
+        bool daytimeSurface = _dayTime && npc.PositionY < _worldSurfacePixels;
         VanillaBlueSlimeTargetRefresh closest = TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh selected)
             ? selected
             : default;
@@ -202,7 +200,12 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             Ai: npc.Ai,
             Scale: simulation.Scale,
             TargetOverlaps: TargetOverlapsNpc(in npc, definition),
-            ClosestTarget: zombieTarget);
+            ClosestTarget: zombieTarget)
+        {
+            PursuitAllowed = !daytimeSurface,
+            EncourageDespawn = daytimeSurface,
+            TimeLeft = simulation.TimeLeft
+        };
 
         if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))
         {
@@ -223,7 +226,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             {
                 DirectionX = result.DirectionX,
                 DirectionY = result.DirectionY,
-                NoGravity = false
+                NoGravity = false,
+                TimeLeft = result.TimeLeft
             });
         return true;
     }
