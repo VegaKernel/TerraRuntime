@@ -22,9 +22,10 @@ internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IR
 
     public void PlayerAppearanceUpdated(ConnectionHandle connection, in PlayerAppearanceCommitRequest request)
     {
+        string name = request.Name;
         PendingPlayerState state = GetPending(connection.Source);
-        state.Name = request.Name;
-        UpdateLive(connection, current => current with { Name = request.Name });
+        state.Name = name;
+        UpdateLive(connection, current => current with { Name = name });
     }
 
     public void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)
@@ -33,33 +34,37 @@ internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IR
 
     public void PlayerHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest request)
     {
+        short life = request.Life;
+        short maxLife = request.MaxLife;
         PendingPlayerState state = GetPending(connection.Source);
         state.HasHealth = true;
-        state.Life = request.Life;
-        state.MaxLife = request.MaxLife;
+        state.Life = life;
+        state.MaxLife = maxLife;
         UpdateLive(
             connection,
             current => current with
             {
                 HasHealth = true,
-                Life = request.Life,
-                MaxLife = request.MaxLife
+                Life = life,
+                MaxLife = maxLife
             });
     }
 
     public void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
+        short mana = request.Mana;
+        short maxMana = request.MaxMana;
         PendingPlayerState state = GetPending(connection.Source);
         state.HasMana = true;
-        state.Mana = request.Mana;
-        state.MaxMana = request.MaxMana;
+        state.Mana = mana;
+        state.MaxMana = maxMana;
         UpdateLive(
             connection,
             current => current with
             {
                 HasMana = true,
-                Mana = request.Mana,
-                MaxMana = request.MaxMana
+                Mana = mana,
+                MaxMana = maxMana
             });
     }
 
@@ -83,14 +88,18 @@ internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IR
         players[request.ClaimedSlot.Value] = snapshot;
     }
 
-    public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request) =>
+    public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request)
+    {
+        float positionX = request.PositionX;
+        float positionY = request.PositionY;
         UpdateLive(
             connection,
             current => current with
             {
-                PositionX = request.PositionX,
-                PositionY = request.PositionY
+                PositionX = positionX,
+                PositionY = positionY
             });
+    }
 
     public void PlayerDisconnected(ConnectionHandle connection)
     {
