@@ -12,7 +12,7 @@ public readonly record struct PlayerBootstrapSectionResponse(
 
 /// <summary>
 /// Immutable server-owned frames shared by connections during the initial Terraria join bootstrap.
-/// Expensive section compression is cached by section and reused across joining clients.
+/// Expensive section compression and immutable persistence-derived section sync are cached and reused.
 /// </summary>
 public sealed class PlayerBootstrapPacketSet
 {
@@ -20,8 +20,8 @@ public sealed class PlayerBootstrapPacketSet
 
     private readonly WorldFileData? _world;
     private readonly WorldSectionId[] _baseSections;
-    private readonly Dictionary<int, ReadOnlyMemory<byte>> _sectionFrameCache;
-    private readonly object _sectionFrameCacheGate = new();
+    private readonly Dictionary<int, SectionCacheEntry> _sectionCache;
+    private readonly object _sectionCacheGate = new();
 
     private PlayerBootstrapPacketSet(
         WorldFileData? world,
@@ -29,6 +29,7 @@ public sealed class PlayerBootstrapPacketSet
         ReadOnlyMemory<byte> worldInfoFrame,
         ReadOnlyMemory<byte> statusFrame,
         ReadOnlyMemory<byte>[] baseSectionFrames,
+        ReadOnlyMemory<byte>[][] baseSectionPostFrames,
         ReadOnlyMemory<byte> enterWorldFrame)
     {
         _world = world;
@@ -36,15 +37,16 @@ public sealed class PlayerBootstrapPacketSet
         WorldInfoFrame = worldInfoFrame;
         StatusFrame = statusFrame;
         BaseSectionFrames = baseSectionFrames;
+        BaseSectionPostFrames = baseSectionPostFrames;
         EnterWorldFrame = enterWorldFrame;
 
-        _sectionFrameCache = new Dictionary<int, ReadOnlyMemory<byte>>(baseSections.Length);
+        _sectionCache = new Dictionary<int, SectionCacheEntry>(baseSections.Length);
         if (world is not null)
         {
             for (int i = 0; i < baseSections.Length; i++)
             {
                 int index = TerrariaSectionGeometry.ToLinearIndex(world.Header.Dimensions, baseSections[i]);
-                _sectionFrameCache[index] = baseSectionFrames[i];
+                _sectionCache[index] = new SectionCacheEntry(baseSectionFrames[i], baseSectionPostFrames[i]);
             }
         }
     }
@@ -52,6 +54,7 @@ public sealed class PlayerBootstrapPacketSet
     public ReadOnlyMemory<byte> WorldInfoFrame { get; }
     public ReadOnlyMemory<byte> StatusFrame { get; }
     public IReadOnlyList<ReadOnlyMemory<byte>> BaseSectionFrames { get; }
+    public IReadOnlyList<ReadOnlyMemory<byte>[]> BaseSectionPostFrames { get; }
     public ReadOnlyMemory<byte> EnterWorldFrame { get; }
 
     public static PlayerBootstrapPacketSet Create(
@@ -71,15 +74,17 @@ public sealed class PlayerBootstrapPacketSet
         WorldSectionId[] baseSections = plannedSections[..sectionCount].ToArray();
 
         var baseSectionFrames = new ReadOnlyMemory<byte>[sectionCount];
+        var baseSectionPostFrames = new ReadOnlyMemory<byte>[sectionCount][];
         for (int i = 0; i < sectionCount; i++)
         {
-            if (!TryEncodeSection(world, baseSections[i], out ReadOnlyMemory<byte> frame))
+            if (!TryEncodeSection(world, baseSections[i], out SectionCacheEntry entry))
             {
                 throw new InvalidOperationException(
                     $"Failed to cache bootstrap section {baseSections[i]}.");
             }
 
-            baseSectionFrames[i] = frame;
+            baseSectionFrames[i] = entry.TileSectionFrame;
+            baseSectionPostFrames[i] = entry.PostSectionFrames;
         }
 
         byte[] statusFrame = EncodeStatusFrame(sectionCount);
@@ -90,6 +95,7 @@ public sealed class PlayerBootstrapPacketSet
             worldInfoFrame,
             statusFrame,
             baseSectionFrames,
+            baseSectionPostFrames,
             enterWorldFrame);
     }
 
@@ -99,18 +105,24 @@ public sealed class PlayerBootstrapPacketSet
         ReadOnlyMemory<byte> enterWorldFrame)
     {
         ArgumentNullException.ThrowIfNull(baseSectionFrames);
+        var postFrames = new ReadOnlyMemory<byte>[baseSectionFrames.Length][];
+        for (int i = 0; i < postFrames.Length; i++)
+            postFrames[i] = [];
+
         return new PlayerBootstrapPacketSet(
             world: null,
             baseSections: [],
             worldInfoFrame,
             EncodeStatusFrame(baseSectionFrames.Length),
             (ReadOnlyMemory<byte>[])baseSectionFrames.Clone(),
+            postFrames,
             enterWorldFrame);
     }
 
     /// <summary>
-    /// Creates the additional packet-10 frames selected by packet 8. The client-requested window and,
+    /// Creates the additional section sync selected by packet 8. The client-requested window and,
     /// for team-based-spawn worlds, the team's extra-spawn window are deduplicated against already sent sections.
+    /// Each section contributes packet 10 followed by persistence-derived post-section sync such as chest contents.
     /// </summary>
     public bool TryCreateSectionResponse(
         int tileX,
@@ -145,8 +157,7 @@ public sealed class PlayerBootstrapPacketSet
                 teamSections);
         }
 
-        int maximumAdditional = checked(requestedCount + teamCount);
-        if (maximumAdditional == 0)
+        if (requestedCount + teamCount == 0)
         {
             response = new PlayerBootstrapSectionResponse(StatusFrame, []);
             return true;
@@ -159,22 +170,23 @@ public sealed class PlayerBootstrapPacketSet
         AppendUniqueAdditionalSections(requestedSections[..requestedCount], additionalSections, ref additionalCount);
         AppendUniqueAdditionalSections(teamSections[..teamCount], additionalSections, ref additionalCount);
 
-        var additionalFrames = new ReadOnlyMemory<byte>[additionalCount];
+        var additionalFrames = new List<ReadOnlyMemory<byte>>(additionalCount);
         for (int i = 0; i < additionalCount; i++)
         {
-            if (!TryGetOrEncodeSection(additionalSections[i], out ReadOnlyMemory<byte> frame))
+            if (!TryGetOrEncodeSection(additionalSections[i], out SectionCacheEntry entry))
             {
                 response = default;
                 return false;
             }
 
-            additionalFrames[i] = frame;
+            additionalFrames.Add(entry.TileSectionFrame);
+            additionalFrames.AddRange(entry.PostSectionFrames);
         }
 
         ReadOnlyMemory<byte> statusFrame = additionalCount == 0
             ? StatusFrame
             : EncodeStatusFrame(checked(BaseSectionFrames.Count + additionalCount));
-        response = new PlayerBootstrapSectionResponse(statusFrame, additionalFrames);
+        response = new PlayerBootstrapSectionResponse(statusFrame, additionalFrames.ToArray());
         return true;
     }
 
@@ -206,30 +218,30 @@ public sealed class PlayerBootstrapPacketSet
         return false;
     }
 
-    private bool TryGetOrEncodeSection(WorldSectionId section, out ReadOnlyMemory<byte> frame)
+    private bool TryGetOrEncodeSection(WorldSectionId section, out SectionCacheEntry entry)
     {
         WorldFileData world = _world!;
         int index = TerrariaSectionGeometry.ToLinearIndex(world.Header.Dimensions, section);
 
-        lock (_sectionFrameCacheGate)
+        lock (_sectionCacheGate)
         {
-            if (_sectionFrameCache.TryGetValue(index, out frame))
+            if (_sectionCache.TryGetValue(index, out entry))
                 return true;
         }
 
-        if (!TryEncodeSection(world, section, out ReadOnlyMemory<byte> encoded))
+        if (!TryEncodeSection(world, section, out SectionCacheEntry encoded))
         {
-            frame = default;
+            entry = default;
             return false;
         }
 
-        lock (_sectionFrameCacheGate)
+        lock (_sectionCacheGate)
         {
-            if (_sectionFrameCache.TryGetValue(index, out frame))
+            if (_sectionCache.TryGetValue(index, out entry))
                 return true;
 
-            _sectionFrameCache.Add(index, encoded);
-            frame = encoded;
+            _sectionCache.Add(index, encoded);
+            entry = encoded;
             return true;
         }
     }
@@ -237,7 +249,7 @@ public sealed class PlayerBootstrapPacketSet
     private static bool TryEncodeSection(
         WorldFileData world,
         WorldSectionId section,
-        out ReadOnlyMemory<byte> frame)
+        out SectionCacheEntry entry)
     {
         WorldTileBounds bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, section);
         WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncode(
@@ -249,11 +261,42 @@ public sealed class PlayerBootstrapPacketSet
             out byte[] encoded);
         if (result != WorldSectionPacketEncodeResult.Encoded)
         {
-            frame = default;
+            entry = default;
             return false;
         }
 
-        frame = encoded;
+        if (!TryEncodePostSectionFrames(world, section, out ReadOnlyMemory<byte>[] postSectionFrames))
+        {
+            entry = default;
+            return false;
+        }
+
+        entry = new SectionCacheEntry(encoded, postSectionFrames);
+        return true;
+    }
+
+    private static bool TryEncodePostSectionFrames(
+        WorldFileData world,
+        WorldSectionId section,
+        out ReadOnlyMemory<byte>[] frames)
+    {
+        var encodedFrames = new List<ReadOnlyMemory<byte>>();
+        foreach (WorldChest chest in world.Chests)
+        {
+            if (TerrariaSectionGeometry.FromTile(world.Header.Dimensions, chest.X, chest.Y) != section)
+                continue;
+
+            WorldChestSyncPacketEncodeResult result = WorldChestSyncPacketEncoder.TryEncode(chest, out ReadOnlyMemory<byte>[] chestFrames);
+            if (result != WorldChestSyncPacketEncodeResult.Encoded)
+            {
+                frames = [];
+                return false;
+            }
+
+            encodedFrames.AddRange(chestFrames);
+        }
+
+        frames = encodedFrames.ToArray();
         return true;
     }
 
@@ -290,4 +333,8 @@ public sealed class PlayerBootstrapPacketSet
             throw new InvalidOperationException($"Failed to encode empty bootstrap frame {messageId}.");
         return writer.WrittenSpan.ToArray();
     }
+
+    private readonly record struct SectionCacheEntry(
+        ReadOnlyMemory<byte> TileSectionFrame,
+        ReadOnlyMemory<byte>[] PostSectionFrames);
 }
