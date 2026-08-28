@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Text;
+using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.World;
 
@@ -104,6 +105,12 @@ public static class WorldFileChestDecoder
                 {
                     bytesConsumed = reader.Offset;
                     return WorldFileChestDecodeResult.Truncated;
+                }
+
+                if (!VanillaItemIds.TryCreate(itemType, out _))
+                {
+                    bytesConsumed = reader.Offset;
+                    return WorldFileChestDecodeResult.InvalidItemType;
                 }
 
                 items[itemIndex] = new WorldChestItem(stack < 0 ? 1 : stack, itemType, prefix);
