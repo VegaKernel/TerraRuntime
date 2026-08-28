@@ -1,3 +1,5 @@
+using TerraRuntime.World;
+
 namespace TerraRuntime.Tests;
 
 public sealed class RuntimeWorldClockTests
@@ -83,5 +85,49 @@ public sealed class RuntimeWorldClockTests
         clock.Tick();
 
         Assert.Equal(0d, clock.SlimeRainTime);
+    }
+
+    [Fact]
+    public void Persisted_creative_slider_maps_to_vanilla_one_through_twenty_four_rate()
+    {
+        var metadata = new WorldFileRuntimeMetadata
+        {
+            Time = 123,
+            DayTime = false,
+            MoonPhase = 5,
+            SlimeRainTime = 42d
+        };
+        var powers = new WorldCreativePowersData(
+            FreezeTime: false,
+            TimeRateSlider: 0.5f,
+            FreezeRain: false,
+            FreezeWind: false,
+            DifficultySlider: 0f,
+            StopBiomeSpread: false);
+
+        RuntimeWorldClock clock = RuntimeWorldClock.FromWorld(metadata, powers);
+
+        Assert.Equal(13, clock.DayRate);
+        Assert.Equal(123d, clock.Time);
+        Assert.False(clock.DayTime);
+        Assert.Equal((byte)5, clock.MoonPhase);
+        Assert.Equal(42d, clock.SlimeRainTime);
+    }
+
+    [Fact]
+    public void Persisted_freeze_time_overrides_slider_rate()
+    {
+        var metadata = new WorldFileRuntimeMetadata();
+        var powers = new WorldCreativePowersData(
+            FreezeTime: true,
+            TimeRateSlider: 1f,
+            FreezeRain: false,
+            FreezeWind: false,
+            DifficultySlider: 0f,
+            StopBiomeSpread: false);
+
+        RuntimeWorldClock clock = RuntimeWorldClock.FromWorld(metadata, powers);
+
+        Assert.Equal(0, clock.DayRate);
     }
 }
