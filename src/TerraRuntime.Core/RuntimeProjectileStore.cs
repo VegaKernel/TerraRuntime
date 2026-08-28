@@ -186,8 +186,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         handle.IsAssigned && IsAddressableSlot(handle.Slot);
 
     private static bool IsValid(in ProjectileStateUpdate update) =>
-        update.Type.Value != 0 &&
-        VanillaProjectileIds.TryCreate(update.Type.Value, out _) &&
+        VanillaProjectileIds.IsLiveWireType(update.Type) &&
         float.IsFinite(update.PositionX) &&
         float.IsFinite(update.PositionY) &&
         float.IsFinite(update.VelocityX) &&
