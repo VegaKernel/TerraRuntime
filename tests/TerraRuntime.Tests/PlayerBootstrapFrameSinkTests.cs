@@ -12,6 +12,54 @@ namespace TerraRuntime.Tests;
 public sealed class PlayerBootstrapFrameSinkTests
 {
     [Fact]
+    public void Packet8_queues_all_sections_contiguously_before_global_state_and_packet49()
+    {
+        var slots = new PlayerSlotPool(1);
+        var outbound = CreateOutbound();
+        ReadOnlyMemory<byte>[] sections =
+        [
+            new byte[] { 3, 0, (byte)TerrariaMessageId.TileSection },
+            new byte[] { 3, 0, (byte)TerrariaMessageId.TileSection }
+        ];
+        ReadOnlyMemory<byte>[] globalFrames =
+        [
+            new byte[] { 3, 0, 23 },
+            new byte[] { 3, 0, 54 }
+        ];
+        using var sink = new PlayerBootstrapFrameSink(
+            slots,
+            outbound,
+            PlayerBootstrapPacketSet.CreateForTesting(
+                worldInfoFrame: new byte[] { 3, 0, (byte)TerrariaMessageId.WorldData },
+                baseSectionFrames: sections,
+                enterWorldFrame: new byte[] { 3, 0, (byte)TerrariaMessageId.PlayerSpawnSelf },
+                globalPostSectionFrames: globalFrames));
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Hello()));
+        Assert.Equal((byte)TerrariaMessageId.PlayerInfo, DequeueMessageId(outbound));
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.RequestWorldData, [])));
+        Assert.Equal((byte)TerrariaMessageId.WorldData, DequeueMessageId(outbound));
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.SpawnTileData, new byte[9])));
+
+        Assert.Equal(
+            new byte[]
+            {
+                (byte)TerrariaMessageId.WorldData,
+                (byte)TerrariaMessageId.StatusTextSize,
+                (byte)TerrariaMessageId.TileSection,
+                (byte)TerrariaMessageId.TileSection,
+                23,
+                54,
+                (byte)TerrariaMessageId.PlayerSpawnSelf
+            },
+            DrainMessageIds(outbound));
+        Assert.Equal(PlayerJoinState.AwaitingSpawn, sink.JoinState);
+        Assert.Equal(PlayerBootstrapStopReason.None, sink.StopReason);
+    }
+
+    [Fact]
     public void Packet12_is_submitted_without_committing_playing_state_on_network_thread()
     {
         var slots = new PlayerSlotPool(1);
@@ -103,6 +151,25 @@ public sealed class PlayerBootstrapFrameSinkTests
 
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
         new(new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 4_096, maxFrameBytes: 1_024));
+
+    private static byte DequeueMessageId(TerrariaConnectionOutboundQueue outbound)
+    {
+        Assert.True(outbound.InnerQueue.TryRead(out OutboundFrame frame));
+        Assert.True(frame.Bytes.Length >= TerrariaFrameDecoderOptions.MinimumFrameLength);
+        return frame.Bytes.Span[2];
+    }
+
+    private static byte[] DrainMessageIds(TerrariaConnectionOutboundQueue outbound)
+    {
+        var ids = new List<byte>();
+        while (outbound.InnerQueue.TryRead(out OutboundFrame frame))
+        {
+            Assert.True(frame.Bytes.Length >= TerrariaFrameDecoderOptions.MinimumFrameLength);
+            ids.Add(frame.Bytes.Span[2]);
+        }
+
+        return ids.ToArray();
+    }
 
     private static TerrariaFrame Hello() =>
         Frame(
