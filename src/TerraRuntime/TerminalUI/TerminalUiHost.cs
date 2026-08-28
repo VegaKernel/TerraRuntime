@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using TerraRuntime.Operations;
 using Terminal.Gui.App;
+using Terminal.Gui.Drivers;
 
 namespace TerraRuntime.TerminalUI;
 
@@ -93,45 +94,48 @@ internal sealed class TerminalUiHost : IDisposable
         bool announcedActive = false;
         try
         {
-            using (IApplication app = Application.Create().Init())
-            using (var window = new DashboardWindow(
+            using IApplication app = Application.Create();
+            if (OperatingSystem.IsWindows())
+                app.ForceDriver = DriverRegistry.Names.WINDOWS;
+
+            app.Init();
+            using var window = new DashboardWindow(
                 dashboardOperations,
                 playerOperations,
                 npcOperations,
                 networkOperations,
                 worldOperations,
                 logOperations,
-                projectileOperations))
+                projectileOperations);
+
+            long nextRefresh = 0;
+
+            app.Iteration += (_, _) =>
             {
-                long nextRefresh = 0;
-
-                app.Iteration += (_, _) =>
-                {
-                    long now = Stopwatch.GetTimestamp();
-                    if (now < nextRefresh)
-                        return;
-
-                    window.RefreshSnapshot();
-                    nextRefresh = now + RefreshIntervalTicks;
-                };
-
-                using CancellationTokenRegistration registration = stopUi.Token.Register(() =>
-                {
-                    try
-                    {
-                        app.Invoke(static application => application.RequestStop());
-                    }
-                    catch (Exception)
-                    {
-                        // The application may already be disposing after the user closes only the UI.
-                    }
-                });
+                long now = Stopwatch.GetTimestamp();
+                if (now < nextRefresh)
+                    return;
 
                 window.RefreshSnapshot();
-                NotifyActivity(active: true);
-                announcedActive = true;
-                app.Run(window);
-            }
+                nextRefresh = now + RefreshIntervalTicks;
+            };
+
+            using CancellationTokenRegistration registration = stopUi.Token.Register(() =>
+            {
+                try
+                {
+                    app.Invoke(static application => application.RequestStop());
+                }
+                catch (Exception)
+                {
+                    // The application may already be disposing after the user closes only the UI.
+                }
+            });
+
+            window.RefreshSnapshot();
+            NotifyActivity(active: true);
+            announcedActive = true;
+            app.Run(window);
         }
         catch (Exception exception)
         {
