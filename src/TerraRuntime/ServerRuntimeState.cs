@@ -6,13 +6,18 @@ namespace TerraRuntime;
 internal sealed class ServerRuntimeState
 {
     private const int MaxPlayerSlots = 256;
+    private const float VanillaBasePlayerWidth = 20f;
+    private const float VanillaBasePlayerHeight = 42f;
 
     private readonly Dictionary<byte, RuntimePlayerState> _players = [];
     private readonly PendingPlayerVitals?[] _pendingVitals = new PendingPlayerVitals?[MaxPlayerSlots];
+    private readonly VanillaNpcTargetCandidate[] _npcTargetCandidates =
+        new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly IRuntimePlayerEventSink? _playerEvents;
     private readonly RuntimeNpcStore _npcs;
     private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
     private readonly INpcAiStateStepper _npcAiStepper;
+    private readonly VanillaNpcTargetingAiStepper? _vanillaNpcTargetingAiStepper;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
 
@@ -24,7 +29,16 @@ internal sealed class ServerRuntimeState
         _playerEvents = playerEvents;
         _npcs = npcs ?? new RuntimeNpcStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
-        _npcAiStepper = npcAiStepper ?? new VanillaDemonEyeAiStepper();
+
+        if (npcAiStepper is null)
+        {
+            _vanillaNpcTargetingAiStepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+            _npcAiStepper = _vanillaNpcTargetingAiStepper;
+        }
+        else
+        {
+            _npcAiStepper = npcAiStepper;
+        }
     }
 
     public long AppliedCommands { get; private set; }
@@ -168,8 +182,41 @@ internal sealed class ServerRuntimeState
 
     public void Tick()
     {
+        if (_vanillaNpcTargetingAiStepper is not null)
+        {
+            int candidateCount = CopyVanillaNpcTargetCandidates(_npcTargetCandidates);
+            _vanillaNpcTargetingAiStepper.SetCandidates(_npcTargetCandidates.AsSpan(0, candidateCount));
+        }
+
         LastNpcAiTick = _npcAiExecutor.Tick(_npcAiStepper);
         Updates++;
+    }
+
+    private int CopyVanillaNpcTargetCandidates(Span<VanillaNpcTargetCandidate> destination)
+    {
+        int written = 0;
+        for (int slot = 0; slot < VanillaNpcTargetingAiStepper.MaximumPlayerCandidates; slot++)
+        {
+            if (!_players.TryGetValue(checked((byte)slot), out RuntimePlayerState? player))
+                continue;
+
+            // Vanilla Player starts at 20x42. Mount delegates may override the hitbox, so mounted
+            // players stay outside this verified baseline until mount-specific sizing is modeled.
+            if (player.MountType != 0)
+                continue;
+
+            destination[written++] = new VanillaNpcTargetCandidate(
+                Slot: checked((byte)slot),
+                CenterX: player.PositionX + VanillaBasePlayerWidth * 0.5f,
+                CenterY: player.PositionY + VanillaBasePlayerHeight * 0.5f,
+                Aggro: 0,
+                Active: true,
+                Dead: player.IsDead,
+                Ghost: false,
+                NoAggro: false);
+        }
+
+        return written;
     }
 
     private void ApplyNpcSpawn(NpcSpawnRuntimeCommand command)
