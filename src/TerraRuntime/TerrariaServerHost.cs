@@ -4,7 +4,9 @@ using System.Net.Sockets;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
+using TerraRuntime.Operations;
 using TerraRuntime.Protocol;
+using TerraRuntime.TerminalUI;
 using TerraRuntime.World;
 
 namespace TerraRuntime;
@@ -103,6 +105,7 @@ public static class TerrariaServerHost
 
         using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+        TerminalUiHost? terminalUi = null;
 
         try
         {
@@ -114,7 +117,31 @@ public static class TerrariaServerHost
                 $"TerraRuntime listening on 0.0.0.0:{options.Port}; " +
                 $"world='{world.Header.Name}' {world.Header.Dimensions.WidthTiles}x{world.Header.Dimensions.HeightTiles}; " +
                 $"maxPlayers={options.MaxPlayers}; " +
-                $"interestManagement={(runtimeInterestManagement.IsEnabled ? "enabled" : "disabled")}.");
+                $"interestManagement={(runtimeInterestManagement.IsEnabled ? "enabled" : "disabled")}; " +
+                $"tui={(options.TerminalUiEnabled ? "enabled" : "disabled")}.");
+
+            if (options.TerminalUiEnabled)
+            {
+                try
+                {
+                    var dashboardOperations = new LocalRuntimeDashboardOperations(
+                        gameLoop,
+                        admission,
+                        runtimeInterestManagement,
+                        world.Header.Name,
+                        world.Header.Dimensions.WidthTiles,
+                        world.Header.Dimensions.HeightTiles,
+                        options.Port,
+                        options.MaxPlayers,
+                        GameLoopOptions.DefaultTicksPerSecond);
+                    terminalUi = TerminalUiHost.Start(dashboardOperations, shutdown.Token);
+                }
+                catch (Exception exception)
+                {
+                    Console.Error.WriteLine(
+                        $"Terminal UI could not start; continuing in plain-console mode: {exception.Message}");
+                }
+            }
 
             while (!shutdown.IsCancellationRequested)
             {
@@ -172,6 +199,7 @@ public static class TerrariaServerHost
         finally
         {
             shutdown.Cancel();
+            terminalUi?.Dispose();
             Console.CancelKeyPress -= cancelHandler;
 
             Task[] activeConnections = connectionTasks.Values.ToArray();
