@@ -25,18 +25,18 @@ internal sealed class RuntimeNpcOperationsTelemetry : INpcOperations, INpcStateC
         {
             case NpcStateCommitKind.Spawn:
                 WriteSnapshot(slot, in snapshot);
-                committedSpawns++;
+                Interlocked.Increment(ref committedSpawns);
                 break;
 
             case NpcStateCommitKind.Update:
                 WriteSnapshot(slot, in snapshot);
-                committedUpdates++;
+                Interlocked.Increment(ref committedUpdates);
                 break;
 
             case NpcStateCommitKind.Despawn:
                 if (slot.Active && slot.Generation == snapshot.Handle.Generation.Value)
                     ClearSnapshot(slot);
-                committedDespawns++;
+                Interlocked.Increment(ref committedDespawns);
                 break;
 
             default:
@@ -60,6 +60,7 @@ internal sealed class RuntimeNpcOperationsTelemetry : INpcOperations, INpcStateC
 
                 bool active = slot.Active;
                 RuntimeNpcSnapshot snapshot = slot.Snapshot;
+                Thread.MemoryBarrier();
                 long after = Volatile.Read(ref slot.Sequence);
                 if (before != after || (after & 1L) != 0)
                     continue;
@@ -72,9 +73,9 @@ internal sealed class RuntimeNpcOperationsTelemetry : INpcOperations, INpcStateC
 
         return new RuntimeNpcsSnapshot(
             captured.AsMemory(0, written),
-            Volatile.Read(ref committedSpawns),
-            Volatile.Read(ref committedUpdates),
-            Volatile.Read(ref committedDespawns),
+            Interlocked.Read(ref committedSpawns),
+            Interlocked.Read(ref committedUpdates),
+            Interlocked.Read(ref committedDespawns),
             DateTimeOffset.UtcNow);
     }
 
@@ -88,34 +89,25 @@ internal sealed class RuntimeNpcOperationsTelemetry : INpcOperations, INpcStateC
 
     private static void WriteSnapshot(SlotState slot, in NpcSnapshot snapshot)
     {
-        long writeSequence = BeginWrite(slot);
+        BeginWrite(slot);
         slot.Active = true;
         slot.Generation = snapshot.Handle.Generation.Value;
         slot.Snapshot = Project(in snapshot);
-        EndWrite(slot, writeSequence);
+        EndWrite(slot);
     }
 
     private static void ClearSnapshot(SlotState slot)
     {
-        long writeSequence = BeginWrite(slot);
+        BeginWrite(slot);
         slot.Active = false;
         slot.Generation = 0;
         slot.Snapshot = default;
-        EndWrite(slot, writeSequence);
+        EndWrite(slot);
     }
 
-    private static long BeginWrite(SlotState slot)
-    {
-        long sequence = Volatile.Read(ref slot.Sequence);
-        long writeSequence = unchecked(sequence + 1L);
-        if ((writeSequence & 1L) == 0)
-            writeSequence = unchecked(writeSequence + 1L);
-        Volatile.Write(ref slot.Sequence, writeSequence);
-        return writeSequence;
-    }
+    private static void BeginWrite(SlotState slot) => Interlocked.Increment(ref slot.Sequence);
 
-    private static void EndWrite(SlotState slot, long writeSequence) =>
-        Volatile.Write(ref slot.Sequence, unchecked(writeSequence + 1L));
+    private static void EndWrite(SlotState slot) => Interlocked.Increment(ref slot.Sequence);
 
     private static RuntimeNpcSnapshot Project(in NpcSnapshot snapshot) =>
         new(
