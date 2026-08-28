@@ -35,8 +35,8 @@ public static class VanillaWorldSolidCollision
                 WorldTile tile = tiles.Get(x, y);
                 if (!tile.IsActive ||
                     (tile.Flags & WorldTileFlags.Inactive) != 0 ||
-                    !VanillaTileCollisionCatalog.IsSolid(tile.Type) ||
-                    VanillaTileCollisionCatalog.IsSolidTop(tile.Type))
+                    !VanillaTileCollisionCatalog.IsSolid(tile.TileType) ||
+                    VanillaTileCollisionCatalog.IsSolidTop(tile.TileType))
                 {
                     continue;
                 }
