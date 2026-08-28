@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.Contracts.Runtime;
 
 /// <summary>
@@ -60,7 +62,8 @@ public enum WorldItemOwnershipMode : byte
 
 /// <summary>
 /// Immutable protocol-neutral projection of one active world item.
-/// Packet encoding remains owned by the protocol adapter.
+/// Packet encoding remains owned by the protocol adapter. ItemNetId is retained as the current
+/// compatibility/storage primitive; gameplay should cross it through <see cref="TryGetItemType"/>.
 /// </summary>
 public readonly record struct WorldItemSnapshot(
     WorldItemHandle Handle,
@@ -81,11 +84,28 @@ public readonly record struct WorldItemSnapshot(
     byte GrabDelayPlayer,
     int GrabDelayTime)
 {
+    public PrefixId PrefixId => new(Prefix);
+
     public bool IsActive =>
         Handle.IsAssigned &&
         Revision.IsAssigned &&
         Stack > 0 &&
-        ItemNetId > 0;
+        TryGetItemType(out _);
+
+    /// <summary>
+    /// Crosses the compatibility primitive into the version-pinned Terraria 1.4.5.8 item catalog.
+    /// Empty item type zero is not a live world-item identity.
+    /// </summary>
+    public bool TryGetItemType(out ItemTypeId itemType)
+    {
+        if (!VanillaItemIds.TryCreate(ItemNetId, out itemType) || itemType.IsNone)
+        {
+            itemType = default;
+            return false;
+        }
+
+        return true;
+    }
 }
 
 /// <summary>
