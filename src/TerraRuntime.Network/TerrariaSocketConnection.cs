@@ -22,7 +22,7 @@ public static class TerrariaSocketConnection
             cancellationToken);
     }
 
-    public static async ValueTask<TerrariaSocketRunResult> RunAsync(
+    public static ValueTask<TerrariaSocketRunResult> RunAsync(
         Socket socket,
         ITerrariaFrameSink sink,
         TerrariaConnectionOutboundQueue outboundQueue,
@@ -30,9 +30,34 @@ public static class TerrariaSocketConnection
         TerrariaConnectionPolicyOptions policyOptions,
         CancellationToken cancellationToken = default)
     {
+        var rateAccountant = new TerrariaConnectionRateAccountant(policyOptions.RateBudget);
+        return RunAsync(
+            socket,
+            sink,
+            outboundQueue,
+            decoderOptions,
+            policyOptions,
+            rateAccountant,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Runs a connection with a caller-owned rate accountant so operational telemetry can sample the
+    /// exact counters already written by the inbound policy path while the connection is active.
+    /// </summary>
+    public static async ValueTask<TerrariaSocketRunResult> RunAsync(
+        Socket socket,
+        ITerrariaFrameSink sink,
+        TerrariaConnectionOutboundQueue outboundQueue,
+        TerrariaFrameDecoderOptions decoderOptions,
+        TerrariaConnectionPolicyOptions policyOptions,
+        TerrariaConnectionRateAccountant rateAccountant,
+        CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(socket);
         ArgumentNullException.ThrowIfNull(sink);
         ArgumentNullException.ThrowIfNull(outboundQueue);
+        ArgumentNullException.ThrowIfNull(rateAccountant);
 
         socket.NoDelay = true;
 
@@ -40,7 +65,6 @@ public static class TerrariaSocketConnection
         PipeReader reader = PipeReader.Create(stream, new StreamPipeReaderOptions(leaveOpen: true));
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var policyState = new TerrariaConnectionPolicyState(policyOptions);
-        var rateAccountant = new TerrariaConnectionRateAccountant(policyOptions.RateBudget);
         var policySink = new TerrariaConnectionPolicySink(sink, policyState, rateAccountant);
 
         Task<TerrariaPipePumpResult> inboundTask = TerrariaPipeFramePump

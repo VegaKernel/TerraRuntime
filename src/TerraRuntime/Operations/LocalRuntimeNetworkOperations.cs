@@ -5,24 +5,29 @@ namespace TerraRuntime.Operations;
 internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
 {
     private const int MaximumQueueDetails = 2;
+    private const int MaximumRateDetails = 2;
 
     private readonly TerrariaConnectionAdmissionGate admission;
     private readonly global::TerraRuntime.RuntimeConnectionRegistry connections;
     private readonly RuntimeConnectionQueueTelemetry queueTelemetry;
+    private readonly RuntimeConnectionRateTelemetry rateTelemetry;
 
     public LocalRuntimeNetworkOperations(
         TerrariaConnectionAdmissionGate admission,
         global::TerraRuntime.RuntimeConnectionRegistry connections,
-        RuntimeConnectionQueueTelemetry queueTelemetry)
+        RuntimeConnectionQueueTelemetry queueTelemetry,
+        RuntimeConnectionRateTelemetry rateTelemetry)
     {
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
         this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
         this.queueTelemetry = queueTelemetry ?? throw new ArgumentNullException(nameof(queueTelemetry));
+        this.rateTelemetry = rateTelemetry ?? throw new ArgumentNullException(nameof(rateTelemetry));
     }
 
     public RuntimeNetworkSnapshot CaptureSnapshot()
     {
         RuntimeConnectionQueueSnapshot queues = queueTelemetry.CaptureSnapshot(MaximumQueueDetails);
+        RuntimeConnectionRateTelemetrySnapshot rates = rateTelemetry.CaptureSnapshot(MaximumRateDetails);
         return new RuntimeNetworkSnapshot(
             ActiveConnections: admission.ActiveConnections,
             RegisteredConnections: connections.Count,
@@ -34,6 +39,13 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             RejectedOutboundFrames: queues.RejectedFrames,
             SlowClients: queues.SlowClients,
             TopOutboundQueues: queues.TopQueues,
+            TrackedInboundRates: rates.TrackedConnections,
+            InboundWindowFrames: rates.WindowFrames,
+            InboundWindowBytes: rates.WindowBytes,
+            InboundTotalFrames: rates.TotalFrames,
+            InboundTotalBytes: rates.TotalBytes,
+            RejectedInboundFrames: rates.RejectedFrames,
+            TopInboundRates: rates.TopConnections,
             RelayedAppearanceFrames: connections.RelayedAppearanceFrames,
             AppearanceBaselineFrames: connections.AppearanceBaselineFrames,
             RelayedEquipmentFrames: connections.RelayedEquipmentFrames,

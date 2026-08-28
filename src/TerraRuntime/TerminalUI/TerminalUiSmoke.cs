@@ -117,12 +117,17 @@ internal static class TerminalUiSmoke
                 SlowClients: 1,
                 TopOutboundQueues: new RuntimeConnectionQueueDetail[]
                 {
-                    new(
-                        ConnectionId: 1,
-                        QueuedFrames: 2,
-                        QueuedBytes: 128,
-                        RejectedFrames: 1,
-                        SlowClient: true)
+                    new(1, 2, 128, 1, true)
+                }.AsMemory(),
+                TrackedInboundRates: 1,
+                InboundWindowFrames: 12,
+                InboundWindowBytes: 2048,
+                InboundTotalFrames: 120,
+                InboundTotalBytes: 16384,
+                RejectedInboundFrames: 1,
+                TopInboundRates: new RuntimeConnectionRateDetail[]
+                {
+                    new(1, 12, 2048, 120, 16384, 1)
                 }.AsMemory(),
                 RelayedAppearanceFrames: 1,
                 AppearanceBaselineFrames: 1,

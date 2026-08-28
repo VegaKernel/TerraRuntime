@@ -189,7 +189,12 @@ public static class TerrariaServerHost
         var slots = new PlayerSlotPool(options.MaxPlayers);
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
         var queueTelemetry = new RuntimeConnectionQueueTelemetry();
-        var networkOperations = new LocalRuntimeNetworkOperations(admission, runtimeConnections, queueTelemetry);
+        var rateTelemetry = new RuntimeConnectionRateTelemetry();
+        var networkOperations = new LocalRuntimeNetworkOperations(
+            admission,
+            runtimeConnections,
+            queueTelemetry,
+            rateTelemetry);
         var connectionTasks = new ConcurrentDictionary<long, Task>();
         long nextConnectionId = 0;
 
@@ -338,6 +343,7 @@ public static class TerrariaServerHost
                     vitalsReplication,
                     worldItems,
                     queueTelemetry,
+                    rateTelemetry,
                     hostLog,
                     shutdown.Token);
                 connectionTasks[connectionId] = connectionTask;
@@ -401,6 +407,7 @@ public static class TerrariaServerHost
         RuntimePlayerVitalsReplicator vitalsReplication,
         RuntimeWorldItemStore worldItems,
         RuntimeConnectionQueueTelemetry queueTelemetry,
+        RuntimeConnectionRateTelemetry rateTelemetry,
         RuntimeHostLog hostLog,
         CancellationToken cancellationToken)
     {
@@ -411,6 +418,8 @@ public static class TerrariaServerHost
         using (admissionLease)
         {
             var outbound = new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueOptions);
+            TerrariaConnectionPolicyOptions policyOptions = TerrariaConnectionPolicyOptions.Default;
+            var rateAccountant = new TerrariaConnectionRateAccountant(policyOptions.RateBudget);
             if (!runtimeConnections.TryRegister(source, outbound))
             {
                 socket.Dispose();
@@ -424,8 +433,17 @@ public static class TerrariaServerHost
                 return;
             }
 
+            if (!rateTelemetry.TryRegister(connectionId, rateAccountant))
+            {
+                queueTelemetry.TryUnregister(connectionId);
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+            }
+
             if (!vitalsReplication.TryRegister(source, outbound))
             {
+                rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
@@ -458,11 +476,13 @@ public static class TerrariaServerHost
                         sink,
                         outbound,
                         TerrariaFrameDecoderOptions.Default,
+                        policyOptions,
+                        rateAccountant,
                         cancellationToken).ConfigureAwait(false);
                     string message =
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
                         $"bootstrap={bootstrapSink.StopReason}, vitals={sink.StopReason}, state={bootstrapSink.JoinState}; " +
-                        $"inbound={result.Inbound}; outbound={result.Outbound.Reason}.";
+                        $"inbound={result.Inbound}; rate={result.Rate}; outbound={result.Outbound.Reason}.";
                     hostLog.Write(RuntimeLogLevel.Information, "Network", message);
                 }
                 catch (Exception exception) when (exception is IOException or SocketException or OperationCanceledException)
@@ -481,6 +501,7 @@ public static class TerrariaServerHost
             }
             finally
             {
+                rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
                 vitalsReplication.TryUnregister(source);
                 if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
