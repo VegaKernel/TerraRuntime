@@ -96,6 +96,14 @@ public readonly record struct NpcSimulationState(
     public NpcLiquidContactKind LiquidContact { get; init; }
 
     /// <summary>
+    /// Position captured immediately before the previous authoritative movement. AI_003 compares
+    /// current X with OldPositionX to detect fighters that are stuck against world geometry.
+    /// </summary>
+    public float OldPositionX { get; init; }
+
+    public float OldPositionY { get; init; }
+
+    /// <summary>
     /// Result of vanilla Collision.SolidCollision at the final authoritative position of the previous
     /// world pass. AI_001 uses it together with CollideY/OldVelocityY to escape tile overlap.
     /// </summary>
@@ -114,6 +122,8 @@ public readonly record struct NpcSimulationState(
         Scale: 1f)
     {
         LiquidContact = NpcLiquidContactKind.None,
+        OldPositionX = 0f,
+        OldPositionY = 0f,
         SolidCollision = false
     };
 
@@ -122,6 +132,8 @@ public readonly record struct NpcSimulationState(
         DirectionY is >= -1 and <= 1 &&
         float.IsFinite(OldVelocityX) &&
         float.IsFinite(OldVelocityY) &&
+        float.IsFinite(OldPositionX) &&
+        float.IsFinite(OldPositionY) &&
         float.IsFinite(Scale) &&
         Scale > 0f &&
         Enum.IsDefined(LiquidContact);
