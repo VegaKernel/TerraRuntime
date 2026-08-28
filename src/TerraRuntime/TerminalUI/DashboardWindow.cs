@@ -155,6 +155,7 @@ internal sealed class DashboardWindow : Runnable
         rows[6].Text = $"Commands  : processed {snapshot.CommandsProcessed:N0}   pending {snapshot.PendingCommands:N0}   deferred {snapshot.DeferredCommands:N0}   rejected {snapshot.RejectedCommands:N0}";
         rows[7].Text = $"Network   : active {snapshot.ActiveConnections}/{snapshot.MaxPlayers}   accepted {snapshot.AcceptedConnections:N0}   rejected {snapshot.RejectedConnections:N0}   port {snapshot.Port}";
         rows[8].Text = $"Runtime   : interest management {(snapshot.InterestManagementEnabled ? "enabled" : "disabled")}   budget exhaustions {snapshot.CommandBudgetExhaustions:N0}   oldest command {FormatMilliseconds(snapshot.OldestPendingCommandAgeMilliseconds)}";
+        rows[9].Text = $"Memory    : heap {FormatMebibytes(snapshot.ManagedHeapBytes)}   allocated {FormatMebibytes(snapshot.TotalAllocatedBytes)}   GC 0/1/2 {snapshot.Gen0Collections:N0}/{snapshot.Gen1Collections:N0}/{snapshot.Gen2Collections:N0}";
         rows[10].Text = $"Snapshot  : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
@@ -296,6 +297,9 @@ internal sealed class DashboardWindow : Runnable
 
     private static string FormatMilliseconds(double milliseconds) =>
         milliseconds.ToString("F3", CultureInfo.InvariantCulture) + " ms";
+
+    private static string FormatMebibytes(long bytes) =>
+        (bytes / (1024d * 1024d)).ToString("F1", CultureInfo.InvariantCulture) + " MiB";
 
     private void ShowAbout() =>
         MessageBox.Query(
