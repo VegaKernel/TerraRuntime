@@ -14,16 +14,21 @@ public sealed class RuntimeProjectileStoreCatalogTests
         ProjectileStateUpdate none = CreateUpdate(new ProjectileTypeId(0));
         ProjectileStateUpdate unknown = CreateUpdate(new ProjectileTypeId(VanillaProjectileIds.Count));
         ProjectileStateUpdate valid = CreateUpdate(VanillaProjectileIds.WoodenArrowFriendly);
+        ProjectileStateUpdate lastValid = CreateUpdate(new ProjectileTypeId(VanillaProjectileIds.Count - 1));
 
         Assert.False(store.TrySpawn(0, in none, out _));
         Assert.False(store.TrySpawn(1, in unknown, out _));
         Assert.True(store.TrySpawn(2, in valid, out ProjectileSnapshot created));
+        Assert.True(store.TrySpawn(3, in lastValid, out ProjectileSnapshot lastCreated));
 
-        Assert.Equal(1, store.ActiveCount);
+        Assert.Equal(2, store.ActiveCount);
         Assert.Equal(VanillaProjectileIds.WoodenArrowFriendly, created.Type);
-        Assert.Single(sink.Commits);
+        Assert.Equal(VanillaProjectileIds.Count - 1, lastCreated.Type.Value);
+        Assert.Equal(2, sink.Commits.Count);
         Assert.Equal(ProjectileStateCommitKind.Spawn, sink.Commits[0].Kind);
         Assert.Equal(created, sink.Commits[0].Snapshot);
+        Assert.Equal(ProjectileStateCommitKind.Spawn, sink.Commits[1].Kind);
+        Assert.Equal(lastCreated, sink.Commits[1].Snapshot);
     }
 
     [Fact]
