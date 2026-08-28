@@ -1,48 +1,72 @@
-# Reusable Terminal UI roadmap
+# Terminal UI roadmap
 
-This document refines Phase 10 of the main TerraRuntime roadmap. The goal is to implement the Terminal UI once and reuse the same view/layout code both inside the standalone server process and inside a future remote administration client.
+This document refines Phase 10 of the main TerraRuntime roadmap.
 
-## Core rule
+The immediate goal is deliberately small: build a useful local Terminal UI for the standalone TerraRuntime server without coupling views to mutable runtime internals. A remote administration client remains a future possibility, not part of the current implementation milestone.
 
-**UI layout is code, not network data.**
+## Current rule
 
-Do not invent a server-driven JSON/XAML/Protobuf schema that describes windows, controls, coordinates or layout. Do not transmit `Terminal.Gui` view trees over the network. The server and remote client should reuse the same compiled UI implementation.
+**Build the local TUI now; preserve a clean data boundary so a remote client can reuse it later.**
 
-The network/control boundary carries only operational state and behavior:
+Do not add a remote management protocol, remote adapters, client executable or client-side plugin loader merely to prepare for a client that does not exist yet.
 
-- immutable snapshots/read models;
-- bounded event streams;
-- commands/actions;
-- command results and errors;
-- protocol/API version information required for compatibility.
+The only forward-looking requirement now is that terminal views consume stable operations snapshots/interfaces instead of directly reading mutable runtime state.
 
-## Target architecture
+Current shape:
 
 ```text
-                    shared UI code
-             TerraRuntime.TerminalUI
-              /                  \
-             /                    \
-            v                      v
- standalone server           remote client
-      TUI                         TUI
-       |                           |
-       v                           v
- local operations           remote operations
-     adapter                    adapter
-       |                           |
-       v                           v
- live TerraRuntime        operations protocol
-                                  |
-                                  v
-                           TerraRuntime server
+Terminal UI
+    |
+    v
+operations/read-model boundary
+    |
+    v
+local TerraRuntime
 ```
 
-The same `DashboardView`, `PlayersView`, `WorldView`, `NetworkView`, `LogsView` and later views are instantiated in both processes. A view must not know whether its data source is local or remote.
+Possible future shape, only when a real client is started:
 
-## UI-facing contracts
+```text
+same/extracted Terminal UI
+    |
+    v
+same operations semantics
+    |
+    +--> local adapter  --> TerraRuntime
+    |
+    `--> remote adapter --> operations protocol --> TerraRuntime server
+```
 
-Terminal views depend only on stable toolkit-independent operations interfaces/read models, for example:
+## Keep the implementation simple now
+
+Do not create a separate project graph merely for hypothetical reuse.
+
+Initial implementation may live directly in the server project:
+
+```text
+src/TerraRuntime/
+    Operations/
+    TerminalUI/
+        DashboardView.cs
+        PlayersView.cs
+        NetworkView.cs
+        LogsView.cs
+        WorldView.cs
+```
+
+Shared toolkit-independent read models/contracts may live in `TerraRuntime.Contracts` when they are genuine runtime contracts.
+
+A separate `TerraRuntime.TerminalUI` project is optional and should be introduced only when there is an actual second consumer, such as a remote client, or when the existing project becomes materially harder to maintain without the split.
+
+Do not create `TerraRuntime.Operations.Local`, `TerraRuntime.Operations.Remote`, `TerraRuntime.Ui.Contracts` and similar assemblies in advance unless concrete implementation pressure justifies them.
+
+The dependency boundary matters more than the number of projects.
+
+## UI-facing operations boundary
+
+Views must not depend directly on `ServerRuntimeState`, mutable world/player/NPC collections, sockets or authoritative-thread-owned objects.
+
+Introduce small operations/read-model interfaces as real screens require them, for example:
 
 ```text
 IRuntimeDashboardOperations
@@ -52,127 +76,21 @@ INetworkOperations
 ILogOperations
 ```
 
-The exact contracts should be introduced only as real screens require them; avoid speculative mega-interfaces.
+Avoid speculative mega-interfaces.
 
 Rules:
 
-- no UI view receives `ServerRuntimeState`, mutable world state, sockets or game-thread-owned collections;
-- no UI view directly depends on the remote transport implementation;
-- local and remote adapters implement the same UI-facing contracts;
-- administrative mutations still cross the authoritative command boundary;
-- snapshots remain immutable/bounded and safe to consume from the UI event loop.
+- snapshots are immutable and bounded;
+- the TUI may poll/read snapshots from its own event loop/thread;
+- administrative mutations are marshalled through the authoritative command boundary;
+- local UI receives no privileged mutable-state access merely because it runs in-process;
+- runtime telemetry is calculated by the subsystem that owns the truth, not reconstructed by the view.
 
-## Local adapter
-
-The standalone server composes the shared UI with local operations implementations:
-
-```text
-PlayersView
-    |
-    v
-IPlayerOperations
-    |
-    v
-LocalPlayerOperations
-    |
-    v
-authoritative runtime command/snapshot boundaries
-```
-
-The local adapter may avoid serialization, but it must obey the same public semantics as the future remote adapter. Do not give local UI privileged direct access merely because it runs in the same process.
-
-## Remote adapter
-
-A future administration client composes the exact same UI classes with remote operations implementations:
-
-```text
-PlayersView
-    |
-    v
-IPlayerOperations
-    |
-    v
-RemotePlayerOperations
-    |
-    v
-network/control protocol
-    |
-    v
-TerraRuntime server
-```
-
-The remote protocol is therefore an operations protocol, not a UI-description protocol.
-
-## External UI extensions
-
-TerraRuntime must provide only generic extension points. It must not contain provider-specific window names, identifiers, capabilities or behavior for an external platform layer.
-
-An external host may ship its own reusable UI library and compose it alongside `TerraRuntime.TerminalUI` in both its local server host and its matching remote client.
-
-Conceptually:
-
-```text
-TerraRuntime.TerminalUI
-    +
-ExternalPlatform.TerminalUI
-    |
-    +--> local host
-    `--> remote client
-```
-
-The external UI library owns the layout and behavior of its own windows. TerraRuntime only supplies generic registration/composition contracts.
-
-Because production TerraRuntime is NativeAOT-first:
-
-- extension registration must be explicit/static or source-generated;
-- do not discover UI extensions by runtime assembly scanning;
-- do not require arbitrary managed DLL loading in the shipping TerraRuntime process;
-- a composition host decides at build/startup which UI extension assemblies are present.
-
-If a remote client does not contain the matching UI extension, its base TerraRuntime screens continue to work; provider-specific screens are simply unavailable in that client build. Do not solve this by downloading executable UI code from the server.
-
-## Terminal.Gui implementation
-
-Use Terminal.Gui v2 as the first renderer. Prefer its established application/dashboard patterns instead of hand-building a private terminal framework.
-
-The reusable project should own:
-
-- application shell;
-- menu/status bars;
-- navigation;
-- reusable dashboard panels;
-- keyboard bindings;
-- bounded log viewer;
-- screen/view lifecycle;
-- generic extension registration slots.
-
-It must not own authoritative runtime state.
-
-Suggested project direction:
-
-```text
-src/TerraRuntime.Ui.Contracts/
-    operations/read-model contracts needed by UI
-    generic UI extension registration contracts
-
-src/TerraRuntime.TerminalUI/
-    Terminal.Gui v2 shell and reusable views
-
-src/TerraRuntime.Operations.Local/
-    local adapters over runtime snapshots/commands
-
-future client-side projects:
-    TerraRuntime.Operations.Remote
-    TerraRuntime.Client
-```
-
-Project names may be collapsed if the implementation remains simpler with fewer assemblies; the dependency direction is the requirement, not the exact folder count.
+This small boundary is useful even if a remote client is never built.
 
 ## Runtime telemetry ownership
 
-Metrics shown by the UI are calculated by the subsystem that owns the truth, not reconstructed by the view.
-
-In particular, TerraRuntime owns:
+TerraRuntime owns and publishes the measurements used by its UI, including:
 
 - target tick rate;
 - observed/current TPS or equivalent tick-rate telemetry;
@@ -181,13 +99,35 @@ In particular, TerraRuntime owns:
 - missed deadlines;
 - phase timings;
 - command backlog/budget telemetry;
-- network/queue counters owned by runtime/network subsystems.
+- network/queue counters owned by runtime/network subsystems;
+- later save/cache and GC telemetry as those systems mature.
 
-The UI only formats and displays these values. A remote client receives the same measurements through the operations protocol rather than calculating a second independent TPS value.
+The TUI only formats and displays these values.
+
+In particular, do not calculate TPS in the view from `LastTickMilliseconds`; execution duration and observed simulation rate are different measurements.
+
+## Terminal.Gui implementation
+
+Use Terminal.Gui v2 as the first renderer. Prefer its official application/template/dashboard patterns and UICatalog examples instead of building a private terminal framework from scratch.
+
+The local TUI should provide:
+
+- application shell;
+- menu/status bars;
+- navigation;
+- dashboard panels;
+- keyboard bindings;
+- bounded log viewer;
+- screen/view lifecycle;
+- graceful fallback to plain console/headless operation.
+
+TUI initialization or refresh failure must not make the game server unavailable.
+
+Do not globally replace `Console.Out` to create the TUI. Structured logging should eventually fan out independently to file/plain-console/TUI sinks.
 
 ## Initial screens
 
-First reusable screens should remain operational rather than becoming a full administration suite prematurely:
+First screens remain operational and runtime-focused:
 
 1. Runtime/dashboard
    - lifecycle/readiness;
@@ -201,7 +141,7 @@ First reusable screens should remain operational rather than becoming a full adm
 2. Players
    - stable player/session identity;
    - join/connection state;
-   - position/basic state only when exposed through safe snapshots.
+   - position/basic state only through safe snapshots.
 
 3. Network
    - active/admitted/rejected connections;
@@ -217,22 +157,74 @@ First reusable screens should remain operational rather than becoming a full adm
    - dimensions/name/readiness;
    - save/cache state as those subsystems mature.
 
-## Non-goals
+## Future remote client, deferred
 
-- transmitting window coordinates/layout/control trees over the network;
-- creating a custom declarative UI language;
-- making remote transport types visible to views;
-- giving in-process UI direct access to mutable runtime state;
-- adding knowledge of any specific external host/platform to TerraRuntime;
-- runtime downloading/loading of arbitrary UI assemblies in the NativeAOT server.
+A separate administration client is intentionally **not** part of the current Phase 10 implementation.
 
-## Acceptance direction
+If/when it becomes a real project, preserve this model:
 
-The architecture is proven when one real screen can run unchanged in both modes:
+- reuse or extract the existing view/layout code rather than reimplementing screens;
+- keep UI layout as compiled code, not network data;
+- do not transmit window coordinates, control trees or a home-grown JSON/XAML UI description;
+- transport only operations state/events/commands/results/version information;
+- implement remote operations with the same semantics already consumed by local views.
+
+At that point it may become worthwhile to extract reusable UI code into a separate project/library.
+
+## Future external/plugin UI windows
+
+TerraRuntime must not contain knowledge of any specific external host/platform.
+
+If a future CoreCLR administration client supports optional UI modules, those modules may provide additional windows as ordinary client-side libraries. If the matching module is absent, its windows simply do not appear.
+
+Conceptually:
 
 ```text
-same view class + local adapter  -> standalone server TUI
-same view class + remote adapter -> administration client TUI
+TerraRuntime.Client
+    |
+    +-- built-in runtime windows
+    |
+    `-- optional UI modules
+          +-- ExternalPlatform.TerminalUI.dll
+          `-- OtherExtension.TerminalUI.dll
 ```
 
-The rendered screen and available actions should have the same semantics in both modes, modulo network latency and capabilities supported by the connected server version.
+Those libraries contain their own Terminal.Gui layout code. Window/control layout is not downloaded from the server.
+
+This dynamic client-side model must not leak into the NativeAOT server architecture:
+
+- shipping TerraRuntime NativeAOT does not scan folders for managed UI DLLs;
+- it does not use reflection-driven extension discovery;
+- it does not download or dynamically load arbitrary managed UI code;
+- any UI extensions compiled into a NativeAOT host are registered explicitly/staticly or source-generated.
+
+An external CoreCLR host may define its own dynamic extension policy outside TerraRuntime.
+
+## Non-goals for the current implementation
+
+- remote administration protocol;
+- `TerraRuntime.Client` executable;
+- remote operations adapters;
+- custom declarative UI language;
+- transmitting layout/control trees over the network;
+- dynamic UI DLL loading in the NativeAOT server;
+- provider-specific windows or identifiers inside TerraRuntime;
+- splitting the UI into several assemblies merely for architectural symmetry.
+
+## Current acceptance direction
+
+The current UI milestone is complete when:
+
+```text
+Terminal.Gui view
+      |
+      v
+small operations/read-model interface
+      |
+      v
+TerraRuntime runtime snapshot/command boundary
+```
+
+works in the standalone server without direct mutable-state access, without blocking the authoritative loop, and without making TUI availability a server-readiness requirement.
+
+A future remote-client milestone can then prove reuse by extracting the same views and substituting a remote operations implementation. That work should happen when the client is actually being built, not before.
