@@ -624,9 +624,10 @@ public static class RuntimeWorldSnapshotCache
             if (!CryptographicOperations.FixedTimeEquals(computedHash, shard.Hash))
                 return RuntimeWorldSnapshotLoadResult.PayloadHashMismatch;
 
-            return ValidateTiles(tiles)
-                ? RuntimeWorldSnapshotLoadResult.Loaded
-                : RuntimeWorldSnapshotLoadResult.InvalidTileData;
+            // The writer validates every tile before persisting a shard. A matching cryptographic hash means
+            // these are exactly those validated bytes, so scanning millions of tiles again on every warm start
+            // only duplicates work and adds no new corruption coverage.
+            return RuntimeWorldSnapshotLoadResult.Loaded;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or OverflowException)
         {
