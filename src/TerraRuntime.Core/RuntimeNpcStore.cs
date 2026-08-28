@@ -35,14 +35,18 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
     public const int MaximumAddressableCapacity = byte.MaxValue + 1;
 
     private readonly SlotState[] _slots;
+    private readonly INpcStateCommitSink? _commitSink;
     private int _activeCount;
 
-    public RuntimeNpcStore(int capacity = MaximumAddressableCapacity)
+    public RuntimeNpcStore(
+        int capacity = MaximumAddressableCapacity,
+        INpcStateCommitSink? commitSink = null)
     {
         if (capacity <= 0 || capacity > MaximumAddressableCapacity)
             throw new ArgumentOutOfRangeException(nameof(capacity));
 
         _slots = new SlotState[capacity];
+        _commitSink = commitSink;
     }
 
     public int Capacity => _slots.Length;
@@ -69,6 +73,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         state.Update = update;
         _activeCount++;
         snapshot = Capture(slot, in state);
+        _commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in snapshot);
         return true;
     }
 
@@ -91,6 +96,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
 
         state.Update = update;
         snapshot = Capture(handle.Slot, in state);
+        _commitSink?.NpcStateCommitted(NpcStateCommitKind.Update, in snapshot);
         return true;
     }
 
@@ -103,10 +109,12 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         if (!state.Active || state.Generation != handle.Generation.Value)
             return false;
 
+        NpcSnapshot finalSnapshot = Capture(handle.Slot, in state);
         state.Active = false;
         state.Revision = 0;
         state.Update = default;
         _activeCount--;
+        _commitSink?.NpcStateCommitted(NpcStateCommitKind.Despawn, in finalSnapshot);
         return true;
     }
 
