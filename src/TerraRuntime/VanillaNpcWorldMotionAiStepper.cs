@@ -47,6 +47,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         {
             targeting.EnableBlueSlimeMotion(worldSurfaceTiles);
             targeting.EnableZombieMotion(worldSurfaceTiles);
+            targeting.SetCanHitQuery(new VanillaWorldNpcCanHitQuery(tiles));
         }
     }
 
@@ -126,9 +127,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             }
         }
 
-        // Vanilla computes NPC.gravity and maxFallSpeed before AI regardless of noGravity. The noGravity
-        // flag controls only whether the already-computed gravity is added after AI. WalkDownSlope later
-        // receives that same gravity field, so the parameter must remain available even when noGravity is set.
         if (!VanillaNpcGravity.TryApply(
                 npcType,
                 aiState.PositionY,
