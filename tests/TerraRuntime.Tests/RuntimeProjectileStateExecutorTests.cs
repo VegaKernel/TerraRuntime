@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Network;
 
 namespace TerraRuntime.Tests;
 
@@ -25,6 +26,35 @@ public sealed class RuntimeProjectileStateExecutorTests
         Assert.Equal(17f, movedSecond.PositionX);
         Assert.Equal((ulong)2, movedFirst.Revision.Value);
         Assert.Equal((ulong)2, movedSecond.Revision.Value);
+    }
+
+    [Fact]
+    public void Executor_commit_flows_through_projection_encoder_and_outbound_queue()
+    {
+        var replication = new RuntimeProjectileReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(11);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = new(
+            source,
+            new PlayerHandle(new PlayerSlotId(4), new PlayerSessionGeneration(1)));
+        PlayerSpawnCommitRequest playerSpawn = new(player.Player.Slot, 100, 200, 0, 0, 0, 0, 0);
+        replication.PlayerSpawned(player, in playerSpawn);
+
+        var store = new RuntimeProjectileStore(capacity: 4, commitSink: replication);
+        ProjectileStateUpdate state = CreateUpdate(type: 1, positionX: 10f, velocityX: 2f);
+        Assert.True(store.TrySpawn(1, in state, out _));
+        Assert.Equal(1, outbound.QueuedFrames);
+
+        var executor = new RuntimeProjectileStateExecutor(store);
+        ProjectileStateTickSummary summary = executor.Tick(new IntegrateVelocityStepper());
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(2, outbound.QueuedFrames);
+        Assert.Equal(2, replication.RelayedFrames);
+        Assert.Equal(0, replication.RejectedFrames);
+        Assert.Equal(0, replication.UnsupportedCommits);
     }
 
     [Fact]
