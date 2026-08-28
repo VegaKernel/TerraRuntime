@@ -4,7 +4,8 @@ public sealed record ServerHostOptions(
     string WorldPath,
     int Port,
     int MaxPlayers,
-    bool InterestManagementEnabled = false)
+    bool InterestManagementEnabled = false,
+    bool TerminalUiEnabled = false)
 {
     public const int DefaultPort = 7777;
     public const int DefaultMaxPlayers = 8;
@@ -17,6 +18,7 @@ public sealed record ServerHostOptions(
         int port = DefaultPort;
         int maxPlayers = DefaultMaxPlayers;
         bool interestManagementEnabled = false;
+        bool terminalUiEnabled = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -53,6 +55,10 @@ public sealed record ServerHostOptions(
                 case "--interest-management":
                     interestManagementEnabled = true;
                     break;
+
+                case "--tui":
+                    terminalUiEnabled = true;
+                    break;
             }
         }
 
@@ -67,7 +73,8 @@ public sealed record ServerHostOptions(
             Path.GetFullPath(worldPath),
             port,
             maxPlayers,
-            interestManagementEnabled);
+            interestManagementEnabled,
+            terminalUiEnabled);
         error = null;
         return true;
     }
