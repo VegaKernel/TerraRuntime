@@ -154,6 +154,17 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 
         bool daytimeSurface = _dayTime && npc.PositionY < _worldSurfacePixels;
         ReadOnlySpan<VanillaNpcTargetCandidate> candidates = _candidates.AsSpan(0, _candidateCount);
+        int startingDirectionY = npc.Simulation.DirectionY;
+        if (npc.Target < byte.MaxValue &&
+            TryFindCandidate(checked((byte)npc.Target), candidates, out VanillaNpcTargetCandidate currentTarget) &&
+            currentTarget.Active &&
+            !currentTarget.Dead &&
+            !currentTarget.Ghost &&
+            currentTarget.CenterY + VanillaBasePlayerHeight * 0.5f == npc.PositionY + definition.Height)
+        {
+            startingDirectionY = -1;
+        }
+
         VanillaBlueSlimeTargetRefresh closest = TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh selected)
             ? selected
             : default;
@@ -179,7 +190,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             VelocityX: npc.VelocityX,
             VelocityY: npc.VelocityY,
             DirectionX: simulation.DirectionX,
-            DirectionY: simulation.DirectionY,
+            DirectionY: startingDirectionY,
             Target: npc.Target,
             Ai: npc.Ai,
             Scale: simulation.Scale,
