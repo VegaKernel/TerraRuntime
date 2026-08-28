@@ -68,7 +68,8 @@ internal sealed class RuntimeProjectileWireIdentityRegistry
         if (existingReverse.Handle.IsAssigned &&
             (existingReverse.Handle != handle || existingReverse.Key != key))
         {
-            ClearForwardIfCurrent(in existingReverse.Key, existingReverse.Handle);
+            TerrariaProjectileKeyState previousKey = existingReverse.Key;
+            ClearForwardIfCurrent(in previousKey, existingReverse.Handle);
         }
 
         forward[key.Spawner, key.ProjectileIndex] = new ForwardEntry(key, handle);
