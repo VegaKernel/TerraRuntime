@@ -70,6 +70,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
     public bool TrySpawn(ushort slot, in ProjectileStateUpdate update, out ProjectileSnapshot snapshot)
     {
         if (!IsAddressableSlot(slot) ||
+            !IsValid(in update) ||
             !TryCreateLifecycle(update.Type, out ProjectileLifecycleState lifecycle))
         {
             snapshot = default;
@@ -97,7 +98,8 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
     /// </summary>
     public bool TrySpawnVanilla(in ProjectileStateUpdate update, out ProjectileSnapshot snapshot)
     {
-        if (!TryCreateLifecycle(update.Type, out ProjectileLifecycleState lifecycle) ||
+        if (!IsValid(in update) ||
+            !TryCreateLifecycle(update.Type, out ProjectileLifecycleState lifecycle) ||
             !TrySelectVanillaAllocationSlot(out ushort slot))
         {
             snapshot = default;
