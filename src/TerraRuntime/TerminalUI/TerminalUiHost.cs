@@ -11,6 +11,7 @@ internal sealed class TerminalUiHost : IDisposable
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
     private readonly INetworkOperations networkOperations;
+    private readonly ILogOperations logOperations;
     private readonly CancellationTokenSource stopUi;
     private readonly Thread thread;
     private int disposed;
@@ -19,11 +20,13 @@ internal sealed class TerminalUiHost : IDisposable
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
         INetworkOperations networkOperations,
+        ILogOperations logOperations,
         CancellationToken serverCancellation)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
+        this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
         stopUi = CancellationTokenSource.CreateLinkedTokenSource(serverCancellation);
         thread = new Thread(Run)
         {
@@ -36,12 +39,14 @@ internal sealed class TerminalUiHost : IDisposable
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
         INetworkOperations networkOperations,
+        ILogOperations logOperations,
         CancellationToken serverCancellation)
     {
         var host = new TerminalUiHost(
             dashboardOperations,
             playerOperations,
             networkOperations,
+            logOperations,
             serverCancellation);
         host.thread.Start();
         return host;
@@ -66,7 +71,8 @@ internal sealed class TerminalUiHost : IDisposable
             using var window = new DashboardWindow(
                 dashboardOperations,
                 playerOperations,
-                networkOperations);
+                networkOperations,
+                logOperations);
             long nextRefresh = 0;
 
             app.Iteration += (_, _) =>

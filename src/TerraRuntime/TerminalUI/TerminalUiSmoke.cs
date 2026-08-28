@@ -13,13 +13,17 @@ internal static class TerminalUiSmoke
             using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
             app.StopAfterFirstIteration = true;
             var operations = new SmokeOperations();
-            using var window = new DashboardWindow(operations, operations, operations);
+            var logs = new RuntimeLogBuffer(capacity: 16);
+            logs.Publish(RuntimeLogLevel.Information, "Server", "Terminal UI smoke startup");
+            logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
+            using var window = new DashboardWindow(operations, operations, operations, logs);
             window.RefreshSnapshot();
             window.ShowPlayers();
             window.ShowNetwork();
+            window.ShowLogs();
             window.ShowDashboard();
             app.Run(window);
-            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players and network views.");
+            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, network and logs views.");
             return 0;
         }
         catch (Exception exception)

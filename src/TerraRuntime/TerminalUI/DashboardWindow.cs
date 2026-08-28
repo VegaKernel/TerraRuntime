@@ -13,17 +13,24 @@ internal sealed class DashboardWindow : Runnable
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
     private readonly INetworkOperations networkOperations;
+    private readonly ILogOperations logOperations;
     private readonly Label[] rows = new Label[RowCount];
     private TerminalUiScreen screen;
+    private RuntimeLogLevel minimumLogLevel = RuntimeLogLevel.Information;
+    private RuntimeLogSnapshot lastLogSnapshot;
+    private bool hasLogSnapshot;
+    private bool logPaused;
 
     public DashboardWindow(
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
-        INetworkOperations networkOperations)
+        INetworkOperations networkOperations,
+        ILogOperations logOperations)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
+        this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
         Title = "TerraRuntime - Dashboard";
 
         MenuBar menu = new()
@@ -38,7 +45,17 @@ internal sealed class DashboardWindow : Runnable
                     [
                         new MenuItem("_Dashboard", "Runtime overview", ShowDashboard),
                         new MenuItem("_Players", "Live authoritative player read model", ShowPlayers),
-                        new MenuItem("_Network", "Connection and replication counters", ShowNetwork)
+                        new MenuItem("_Network", "Connection and replication counters", ShowNetwork),
+                        new MenuItem("_Logs", "Bounded runtime event log", ShowLogs)
+                    ]),
+                new MenuBarItem(
+                    "_Logs",
+                    [
+                        new MenuItem("_All", "Show debug and above", () => SetLogLevel(RuntimeLogLevel.Debug)),
+                        new MenuItem("_Information+", "Show information and above", () => SetLogLevel(RuntimeLogLevel.Information)),
+                        new MenuItem("_Warnings+", "Show warnings and errors", () => SetLogLevel(RuntimeLogLevel.Warning)),
+                        new MenuItem("_Errors", "Show only errors", () => SetLogLevel(RuntimeLogLevel.Error)),
+                        new MenuItem("_Pause / resume", "Freeze or resume the log snapshot", ToggleLogPause)
                     ]),
                 new MenuBarItem(
                     "_Help",
@@ -85,6 +102,9 @@ internal sealed class DashboardWindow : Runnable
             case TerminalUiScreen.Network:
                 RefreshNetwork();
                 break;
+            case TerminalUiScreen.Logs:
+                RefreshLogs();
+                break;
             default:
                 RefreshDashboard();
                 break;
@@ -96,6 +116,8 @@ internal sealed class DashboardWindow : Runnable
     internal void ShowPlayers() => SelectScreen(TerminalUiScreen.Players, "TerraRuntime - Players");
 
     internal void ShowNetwork() => SelectScreen(TerminalUiScreen.Network, "TerraRuntime - Network");
+
+    internal void ShowLogs() => SelectScreen(TerminalUiScreen.Logs, "TerraRuntime - Logs");
 
     private void SelectScreen(TerminalUiScreen next, string title)
     {
@@ -166,24 +188,84 @@ internal sealed class DashboardWindow : Runnable
         rows[10].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
+    private void RefreshLogs()
+    {
+        if (!logPaused || !hasLogSnapshot)
+        {
+            lastLogSnapshot = logOperations.CaptureSnapshot(minimumLogLevel, rows.Length - 2);
+            hasLogSnapshot = true;
+        }
+
+        ClearRows();
+        rows[0].Text =
+            $"Filter {minimumLogLevel}+   follow {(logPaused ? "paused" : "on")}   " +
+            $"published {lastLogSnapshot.PublishedEntries:N0}   overwritten {lastLogSnapshot.OverwrittenEntries:N0}";
+
+        ReadOnlySpan<RuntimeLogEntry> entries = lastLogSnapshot.Entries.Span;
+        if (entries.Length == 0)
+        {
+            rows[1].Text = "<no matching runtime log entries>";
+        }
+        else
+        {
+            int visible = Math.Min(entries.Length, rows.Length - 2);
+            for (int i = 0; i < visible; i++)
+            {
+                RuntimeLogEntry entry = entries[i];
+                rows[i + 1].Text =
+                    $"{entry.TimestampUtc:HH:mm:ss.fff} {FormatLevel(entry.Level),-4} " +
+                    $"{SanitizeText(entry.Source, 16),-16} {SanitizeText(entry.Message, 96)}";
+            }
+        }
+
+        rows[rows.Length - 1].Text = $"Snapshot: {lastLogSnapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+    }
+
+    private void SetLogLevel(RuntimeLogLevel level)
+    {
+        minimumLogLevel = level;
+        hasLogSnapshot = false;
+        if (screen == TerminalUiScreen.Logs)
+            RefreshLogs();
+    }
+
+    private void ToggleLogPause()
+    {
+        logPaused = !logPaused;
+        if (!logPaused)
+            hasLogSnapshot = false;
+        if (screen == TerminalUiScreen.Logs)
+            RefreshLogs();
+    }
+
     private void ClearRows()
     {
         foreach (Label row in rows)
             row.Text = string.Empty;
     }
 
-    private static string SanitizeName(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return "<unnamed>";
+    private static string SanitizeName(string name) =>
+        string.IsNullOrWhiteSpace(name) ? "<unnamed>" : SanitizeText(name, 20);
 
-        int length = Math.Min(name.Length, 20);
+    private static string SanitizeText(string value, int maximumLength)
+    {
+        int length = Math.Min(value.Length, maximumLength);
         char[] buffer = new char[length];
         for (int i = 0; i < length; i++)
-            buffer[i] = char.IsControl(name[i]) ? '?' : name[i];
+            buffer[i] = char.IsControl(value[i]) ? ' ' : value[i];
 
         return new string(buffer);
     }
+
+    private static string FormatLevel(RuntimeLogLevel level) =>
+        level switch
+        {
+            RuntimeLogLevel.Debug => "DBG",
+            RuntimeLogLevel.Information => "INFO",
+            RuntimeLogLevel.Warning => "WARN",
+            RuntimeLogLevel.Error => "ERR",
+            _ => "?"
+        };
 
     private static string FormatMilliseconds(double milliseconds) =>
         milliseconds.ToString("F3", CultureInfo.InvariantCulture) + " ms";
@@ -199,6 +281,7 @@ internal sealed class DashboardWindow : Runnable
     {
         Dashboard,
         Players,
-        Network
+        Network,
+        Logs
     }
 }

@@ -28,6 +28,7 @@ public static class TerrariaServerHost
         IInterestManagementControl? interestManagement = null)
     {
         ArgumentNullException.ThrowIfNull(options);
+        var runtimeLogs = new RuntimeLogBuffer();
 
         IInterestManagementControl runtimeInterestManagement =
             interestManagement ?? new InterestManagementControl(options.InterestManagementEnabled);
@@ -184,13 +185,16 @@ public static class TerrariaServerHost
                 GC.GetTotalAllocatedBytes(precise: false) - allocatedBytesAtStart);
             string startupProfile = FormattableString.Invariant($"startup_profile source={(runtimeCacheHit ? "runtime-cache" : "canonical-wld")} cache_result={cacheDiagnostic.Result} cache_parallel_reads={RuntimeWorldCacheReadOptions.Default.MaxParallelReads} file_read_ms={fileReadDuration.TotalMilliseconds:F3} cache_load_ms={cacheLoadDuration.TotalMilliseconds:F3} wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} bootstrap_ms={bootstrapDuration.TotalMilliseconds:F3} world_ready_ms={worldReadyDuration.TotalMilliseconds:F3} network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
             Console.WriteLine(startupProfile);
+            runtimeLogs.Publish(RuntimeLogLevel.Debug, "Startup", startupProfile);
 
-            Console.WriteLine(
+            string listeningMessage =
                 $"TerraRuntime listening on 0.0.0.0:{options.Port}; " +
                 $"world='{world.Header.Name}' {world.Header.Dimensions.WidthTiles}x{world.Header.Dimensions.HeightTiles}; " +
                 $"maxPlayers={options.MaxPlayers}; " +
                 $"interestManagement={(runtimeInterestManagement.IsEnabled ? "enabled" : "disabled")}; " +
-                $"tui={(options.TerminalUiEnabled ? "enabled" : "disabled")}.");
+                $"tui={(options.TerminalUiEnabled ? "enabled" : "disabled")}.";
+            Console.WriteLine(listeningMessage);
+            runtimeLogs.Publish(RuntimeLogLevel.Information, "Server", listeningMessage);
 
             if (options.TerminalUiEnabled)
             {
@@ -210,12 +214,15 @@ public static class TerrariaServerHost
                         dashboardOperations,
                         playerOperations,
                         networkOperations,
+                        runtimeLogs,
                         shutdown.Token);
                 }
                 catch (Exception exception)
                 {
-                    Console.Error.WriteLine(
-                        $"Terminal UI could not start; continuing in plain-console mode: {exception.Message}");
+                    string message =
+                        $"Terminal UI could not start; continuing in plain-console mode: {exception.Message}";
+                    runtimeLogs.Publish(RuntimeLogLevel.Error, "TerminalUI", message);
+                    Console.Error.WriteLine(message);
                 }
             }
 
@@ -232,6 +239,7 @@ public static class TerrariaServerHost
                 }
                 catch (SocketException exception) when (!shutdown.IsCancellationRequested)
                 {
+                    runtimeLogs.Publish(RuntimeLogLevel.Warning, "Network", $"Accept failed: {exception.SocketErrorCode}.");
                     Console.Error.WriteLine($"Accept failed: {exception.SocketErrorCode}.");
                     continue;
                 }
@@ -259,6 +267,7 @@ public static class TerrariaServerHost
                     runtimeConnections,
                     vitalsReplication,
                     worldItems,
+                    runtimeLogs,
                     shutdown.Token);
                 connectionTasks[connectionId] = connectionTask;
                 _ = connectionTask.ContinueWith(
@@ -270,7 +279,9 @@ public static class TerrariaServerHost
         }
         catch (SocketException exception)
         {
-            Console.Error.WriteLine($"Failed to start listener on port {options.Port}: {exception.Message}");
+            string message = $"Failed to start listener on port {options.Port}: {exception.Message}";
+            runtimeLogs.Publish(RuntimeLogLevel.Error, "Network", message);
+            Console.Error.WriteLine(message);
             return 28;
         }
         finally
@@ -288,13 +299,17 @@ public static class TerrariaServerHost
                 }
                 catch (Exception exception)
                 {
-                    Console.Error.WriteLine($"Connection shutdown observed a fault: {exception.Message}");
+                    string message = $"Connection shutdown observed a fault: {exception.Message}";
+                    runtimeLogs.Publish(RuntimeLogLevel.Error, "Network", message);
+                    Console.Error.WriteLine(message);
                 }
             }
 
             if (!gameLoop.Stop(TimeSpan.FromSeconds(5)))
             {
-                Console.Error.WriteLine("Authoritative game loop did not stop within the shutdown deadline.");
+                const string message = "Authoritative game loop did not stop within the shutdown deadline.";
+                runtimeLogs.Publish(RuntimeLogLevel.Error, "Runtime", message);
+                Console.Error.WriteLine(message);
             }
         }
 
@@ -317,10 +332,12 @@ public static class TerrariaServerHost
         RuntimeConnectionRegistry runtimeConnections,
         RuntimePlayerVitalsReplicator vitalsReplication,
         RuntimeWorldItemStore worldItems,
+        RuntimeLogBuffer runtimeLogs,
         CancellationToken cancellationToken)
     {
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
         GameCommandSourceId source = GameCommandSourceId.FromConnection(connectionId);
+        runtimeLogs.Publish(RuntimeLogLevel.Information, "Network", $"Connection {connectionId} accepted from {remote}.");
 
         using (admissionLease)
         {
@@ -365,15 +382,21 @@ public static class TerrariaServerHost
                         outbound,
                         TerrariaFrameDecoderOptions.Default,
                         cancellationToken).ConfigureAwait(false);
-                    Console.WriteLine(
+                    string message =
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
                         $"bootstrap={bootstrapSink.StopReason}, vitals={sink.StopReason}, state={bootstrapSink.JoinState}; " +
-                        $"inbound={result.Inbound}; outbound={result.Outbound.Reason}.");
+                        $"inbound={result.Inbound}; outbound={result.Outbound.Reason}.";
+                    runtimeLogs.Publish(RuntimeLogLevel.Information, "Network", message);
+                    Console.WriteLine(message);
                 }
                 catch (Exception exception) when (exception is IOException or SocketException or OperationCanceledException)
                 {
                     if (!cancellationToken.IsCancellationRequested)
-                        Console.Error.WriteLine($"Connection {connectionId} ({remote}) failed: {exception.Message}");
+                    {
+                        string message = $"Connection {connectionId} ({remote}) failed: {exception.Message}";
+                        runtimeLogs.Publish(RuntimeLogLevel.Warning, "Network", message);
+                        Console.Error.WriteLine(message);
+                    }
                 }
                 catch
                 {
@@ -391,8 +414,10 @@ public static class TerrariaServerHost
                         disconnectIngress.TryPost(new ConnectionHandle(source, player));
                     if (!posted && !cancellationToken.IsCancellationRequested)
                     {
-                        Console.Error.WriteLine(
-                            $"Connection {connectionId} ({remote}) could not enqueue authoritative disconnect for {player}.");
+                        string message =
+                            $"Connection {connectionId} ({remote}) could not enqueue authoritative disconnect for {player}.";
+                        runtimeLogs.Publish(RuntimeLogLevel.Warning, "Runtime", message);
+                        Console.Error.WriteLine(message);
                     }
                 }
             }
