@@ -55,6 +55,10 @@ HELLO = bytes([
     *b"Terraria326",
 ])
 
+# Mirrors PlayerBootstrapFrameBudget.LiveProbeFrameBudget. Keep this below the
+# server connection queue depth so bootstrap growth fails CI before production backpressure.
+BOOTSTRAP_FRAME_BUDGET = 3072
+
 
 def join_client(host, port, expected_slot):
     client = socket.create_connection((host, port), timeout=5)
@@ -196,9 +200,11 @@ def join_client(host, port, expected_slot):
         if message_id != 23:
             previous_npc_slot = None
 
-        if frame_count > 4096:
+        if frame_count > BOOTSTRAP_FRAME_BUDGET:
             client.close()
-            raise SystemExit("bootstrap exceeded 4096 frames before packet 49")
+            raise SystemExit(
+                f"bootstrap exceeded {BOOTSTRAP_FRAME_BUDGET} frames before packet 49"
+            )
 
     if section_count != expected_sections:
         client.close()
