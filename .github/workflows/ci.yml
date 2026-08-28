@@ -47,6 +47,9 @@ jobs:
       - name: World smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --world-smoke
 
+      - name: Terminal UI smoke
+        run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --tui-smoke
+
   native-aot-linux:
     runs-on: ubuntu-latest
 
@@ -79,6 +82,9 @@ jobs:
 
       - name: NativeAOT world smoke
         run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --world-smoke
+
+      - name: NativeAOT Terminal UI smoke
+        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --tui-smoke
 
   native-aot-windows:
     runs-on: windows-latest
@@ -116,3 +122,7 @@ jobs:
       - name: NativeAOT world smoke
         shell: pwsh
         run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --world-smoke
+
+      - name: NativeAOT Terminal UI smoke
+        shell: pwsh
+        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --tui-smoke
