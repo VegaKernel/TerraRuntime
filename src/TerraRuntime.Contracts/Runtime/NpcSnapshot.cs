@@ -62,8 +62,21 @@ public readonly record struct NpcAiState(float Ai0, float Ai1, float Ai2, float 
 }
 
 /// <summary>
-/// Authoritative local simulation inputs/state first required by vanilla floating-eye AI.
-/// Collision and wet flags are produced by their owning world/physics systems; AI consumes the
+/// Liquid kind remembered from the previous authoritative collision pass. Vanilla gravity runs before
+/// the new wet-collision pass and therefore consumes these persisted contact flags from the prior tick.
+/// </summary>
+public enum NpcLiquidContactKind : byte
+{
+    None = 0,
+    Water = 1,
+    Lava = 2,
+    Honey = 3,
+    Shimmer = 4
+}
+
+/// <summary>
+/// Authoritative local simulation inputs/state first required by vanilla NPC AI and movement.
+/// Collision and liquid flags are produced by their owning world/physics systems; AI consumes the
 /// immutable pre-pass values and may change persistent flags such as NoGravity.
 /// </summary>
 public readonly record struct NpcSimulationState(
@@ -78,6 +91,8 @@ public readonly record struct NpcSimulationState(
     bool NoTileCollide,
     float Scale)
 {
+    public NpcLiquidContactKind LiquidContact { get; init; }
+
     public static NpcSimulationState Initial => new(
         DirectionX: 0,
         DirectionY: 0,
@@ -88,7 +103,10 @@ public readonly record struct NpcSimulationState(
         Wet: false,
         NoGravity: false,
         NoTileCollide: false,
-        Scale: 1f);
+        Scale: 1f)
+    {
+        LiquidContact = NpcLiquidContactKind.None
+    };
 
     public bool IsValid =>
         DirectionX is >= -1 and <= 1 &&
@@ -96,7 +114,8 @@ public readonly record struct NpcSimulationState(
         float.IsFinite(OldVelocityX) &&
         float.IsFinite(OldVelocityY) &&
         float.IsFinite(Scale) &&
-        Scale > 0f;
+        Scale > 0f &&
+        Enum.IsDefined(LiquidContact);
 }
 
 /// <summary>
