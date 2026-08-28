@@ -25,18 +25,24 @@ public static class TerrariaPlayerMovementDecoder
         if (payloadLength is < MinimumPayloadLength or > MaximumPayloadLength)
             return TerrariaPlayerMovementDecodeResult.Malformed;
 
-        Span<byte> scratch = stackalloc byte[MaximumPayloadLength];
-        ReadOnlySpan<byte> payload;
         if (frame.Payload.IsSingleSegment)
+            return DecodePayload(frame.Payload.FirstSpan, out request);
+
+        Span<byte> scratch = stackalloc byte[MaximumPayloadLength];
+        int offset = 0;
+        foreach (ReadOnlyMemory<byte> segment in frame.Payload)
         {
-            payload = frame.Payload.FirstSpan;
-        }
-        else
-        {
-            frame.Payload.CopyTo(scratch);
-            payload = scratch[..checked((int)payloadLength)];
+            segment.Span.CopyTo(scratch[offset..]);
+            offset += segment.Length;
         }
 
+        return DecodePayload(scratch[..checked((int)payloadLength)], out request);
+    }
+
+    private static TerrariaPlayerMovementDecodeResult DecodePayload(
+        ReadOnlySpan<byte> payload,
+        out TerrariaPlayerMovementRequest request)
+    {
         try
         {
             var view = PlayerUpdateView.FromPayload(payload);
