@@ -72,7 +72,8 @@ public sealed class VanillaNpcEngagementFactsTests
                 OldPositionX = 99f,
                 OldPositionY = 80f,
                 Life = 45,
-                LifeMax = 45
+                LifeMax = 45,
+                TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft
             });
 
         Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
