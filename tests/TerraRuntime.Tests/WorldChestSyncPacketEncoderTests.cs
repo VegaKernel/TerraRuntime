@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
@@ -61,6 +62,38 @@ public sealed class WorldChestSyncPacketEncoderTests
         WorldChestSyncPacketEncodeResult result = WorldChestSyncPacketEncoder.TryEncode(chest, out ReadOnlyMemory<byte>[] frames);
 
         Assert.Equal(WorldChestSyncPacketEncodeResult.InvalidChest, result);
+        Assert.Empty(frames);
+    }
+
+    [Fact]
+    public void Rejects_nonempty_item_outside_vanilla_item_catalog()
+    {
+        var chest = new WorldChest(
+            SlotId: 0,
+            X: 0,
+            Y: 0,
+            Name: string.Empty,
+            Items: [new WorldChestItem(Stack: 1, ItemType: VanillaItemIds.Count, Prefix: 0)]);
+
+        WorldChestSyncPacketEncodeResult result = WorldChestSyncPacketEncoder.TryEncode(chest, out ReadOnlyMemory<byte>[] frames);
+
+        Assert.Equal(WorldChestSyncPacketEncodeResult.InvalidItem, result);
+        Assert.Empty(frames);
+    }
+
+    [Fact]
+    public void Rejects_nonempty_none_item_identity()
+    {
+        var chest = new WorldChest(
+            SlotId: 0,
+            X: 0,
+            Y: 0,
+            Name: string.Empty,
+            Items: [new WorldChestItem(Stack: 1, ItemType: 0, Prefix: 0)]);
+
+        WorldChestSyncPacketEncodeResult result = WorldChestSyncPacketEncoder.TryEncode(chest, out ReadOnlyMemory<byte>[] frames);
+
+        Assert.Equal(WorldChestSyncPacketEncodeResult.InvalidItem, result);
         Assert.Empty(frames);
     }
 }
