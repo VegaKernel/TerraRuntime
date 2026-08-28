@@ -11,9 +11,9 @@ A normal server startup uses the executable directory as the TerraRuntime root a
 ```text
 TerraRuntime.Server[.exe]
 Worlds/    # canonical .wld worlds and adjacent .runtime-world snapshots
-config/    # TerraRuntime-owned configuration
- data/     # TerraRuntime-owned durable auxiliary state
-logs/      # standalone runtime diagnostics/log output
+config/    # reserved for TerraRuntime-owned configuration
+data/      # reserved for TerraRuntime-owned durable auxiliary state
+logs/      # reserved for standalone runtime diagnostics/log output
 ```
 
 `--world <path.wld>` may still point to an explicit world anywhere on disk. Interactive startup without `--world` only enumerates the canonical `Worlds/` directory, avoiding ambiguous current-working-directory lookup.
