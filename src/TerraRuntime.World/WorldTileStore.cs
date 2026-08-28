@@ -21,9 +21,12 @@ public sealed class WorldTileStore
 
         Dimensions = dimensions;
         _tiles = new WorldTile[(int)tileCount];
+        LiquidUpdates = new WorldLiquidUpdateQueue(dimensions);
     }
 
     public WorldDimensions Dimensions { get; }
+
+    public WorldLiquidUpdateQueue LiquidUpdates { get; }
 
     public int Count => _tiles.Length;
 
