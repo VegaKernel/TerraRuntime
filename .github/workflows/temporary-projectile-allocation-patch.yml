@@ -32,64 +32,35 @@ jobs:
 
           path = Path("src/TerraRuntime/ServerRuntimeState.cs")
           text = path.read_text()
+          already = "TrySpawnVanilla(in update, out _)" in text
 
-          old = """        if (!TryFindFreeVanillaProjectileSlot(out ushort slot))
-          {
-              RejectedProjectileSpawns++;
-              RejectedClientProjectileUpdates++;
-              return;
-          }
+          if not already:
+              start_marker = "        if (!TryFindFreeVanillaProjectileSlot(out ushort slot))"
+              tail_marker = "        RejectedProjectileSpawns++;\n        RejectedClientProjectileUpdates++;\n    }\n\n    private void ApplyClientProjectileDestroy"
+              start = text.find(start_marker)
+              tail = text.find(tail_marker, start + 1) if start >= 0 else -1
+              if start < 0 or tail < 0:
+                  raise SystemExit("expected client projectile allocation markers not found")
+              replacement = (
+                  "        using (clientCommits.Enter(command.Connection.Source, in key))\n"
+                  "        {\n"
+                  "            if (_projectiles.TrySpawnVanilla(in update, out _))\n"
+                  "            {\n"
+                  "                AppliedProjectileSpawns++;\n"
+                  "                return;\n"
+                  "            }\n"
+                  "        }\n\n"
+              )
+              text = text[:start] + replacement + text[tail:]
 
-          using (clientCommits.Enter(command.Connection.Source, in key))
-          {
-              if (_projectiles.TrySpawn(slot, in update, out _))
-              {
-                  AppliedProjectileSpawns++;
-                  return;
-              }
-          }
-          """
-
-          new = """        using (clientCommits.Enter(command.Connection.Source, in key))
-          {
-              if (_projectiles.TrySpawnVanilla(in update, out _))
-              {
-                  AppliedProjectileSpawns++;
-                  return;
-              }
-          }
-          """
-
-          helper = """    private bool TryFindFreeVanillaProjectileSlot(out ushort slot)
-          {
-              int physicalCapacity = Math.Min(_projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
-              for (int candidate = 0; candidate < physicalCapacity; candidate++)
-              {
-                  ushort physicalSlot = checked((ushort)candidate);
-                  if (_projectiles.TryGetActive(physicalSlot, out _))
-                      continue;
-
-                  slot = physicalSlot;
-                  return true;
-              }
-
-              slot = default;
-              return false;
-          }
-
-          """
-
-          if old in text:
-              if text.count(old) != 1:
-                  raise SystemExit("client projectile allocation block is ambiguous")
-              text = text.replace(old, new, 1)
-          elif "TrySpawnVanilla(in update, out _)" not in text:
-              raise SystemExit("expected client projectile allocation block not found")
-
-          if helper in text:
-              if text.count(helper) != 1:
-                  raise SystemExit("old allocation helper is ambiguous")
-              text = text.replace(helper, "", 1)
+          helper_marker = "    private bool TryFindFreeVanillaProjectileSlot(out ushort slot)"
+          convert_marker = "    private static bool TryConvertClientProjectileUpdate("
+          helper_start = text.find(helper_marker)
+          if helper_start >= 0:
+              helper_end = text.find(convert_marker, helper_start)
+              if helper_end < 0:
+                  raise SystemExit("allocation helper end marker not found")
+              text = text[:helper_start] + text[helper_end:]
           elif "TryFindFreeVanillaProjectileSlot" in text:
               raise SystemExit("allocation helper changed unexpectedly")
 
