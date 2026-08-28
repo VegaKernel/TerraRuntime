@@ -16,11 +16,20 @@ internal static class TerminalUiSmoke
             var logs = new RuntimeLogBuffer(capacity: 16);
             logs.Publish(RuntimeLogLevel.Information, "Server", "Terminal UI smoke startup");
             logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
-            using var window = new DashboardWindow(operations, operations, operations, operations, operations, logs, operations);
+            using var window = new DashboardWindow(
+                operations,
+                operations,
+                operations,
+                operations,
+                operations,
+                logs,
+                operations,
+                operations);
             window.RefreshSnapshot();
             window.ShowPlayers();
             window.ShowNpcs();
             window.ShowProjectiles();
+            window.ShowItems();
             window.ShowNetwork();
             window.ShowWorld();
             window.ShowLogs();
@@ -28,7 +37,7 @@ internal static class TerminalUiSmoke
             window.SetInterestManagementEnabled(true);
             window.SetInterestManagementEnabled(false);
             app.Run(window);
-            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, NPCs, grouped projectiles, network, world and logs views plus authoritative admin actions.");
+            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, NPCs, grouped projectiles, grouped world items, network, world and logs views plus authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -38,7 +47,14 @@ internal static class TerminalUiSmoke
         }
     }
 
-    private sealed class SmokeOperations : IRuntimeDashboardOperations, IPlayerOperations, INpcOperations, IProjectileOperations, INetworkOperations, IWorldOperations
+    private sealed class SmokeOperations :
+        IRuntimeDashboardOperations,
+        IPlayerOperations,
+        INpcOperations,
+        IProjectileOperations,
+        IWorldItemOperations,
+        INetworkOperations,
+        IWorldOperations
     {
         private bool interestManagementEnabled;
 
@@ -181,6 +197,35 @@ internal static class TerminalUiSmoke
                 CapturedAtUtc: DateTimeOffset.UtcNow);
         }
 
+        RuntimeWorldItemsSnapshot IWorldItemOperations.CaptureSnapshot()
+        {
+            RuntimeWorldItemGroupSnapshot[] groups =
+            [
+                new RuntimeWorldItemGroupSnapshot(
+                    ItemNetId: 71,
+                    DropCount: 4,
+                    TotalStack: 183,
+                    ReservedDrops: 1,
+                    ShimmeredDrops: 1,
+                    MaxStack: 99,
+                    AveragePositionX: 1920f,
+                    AveragePositionY: 2880f),
+                new RuntimeWorldItemGroupSnapshot(
+                    ItemNetId: 1,
+                    DropCount: 2,
+                    TotalStack: 2,
+                    ReservedDrops: 0,
+                    ShimmeredDrops: 0,
+                    MaxStack: 1,
+                    AveragePositionX: 640f,
+                    AveragePositionY: 960f)
+            ];
+            return new RuntimeWorldItemsSnapshot(
+                ActiveItems: 6,
+                Groups: groups.AsMemory(),
+                CapturedAtUtc: DateTimeOffset.UtcNow);
+        }
+
         RuntimeNetworkSnapshot INetworkOperations.CaptureSnapshot() =>
             new(
                 ActiveConnections: 1,
@@ -223,7 +268,10 @@ internal static class TerminalUiSmoke
                 ProjectileRelayedFrames: 15,
                 ProjectileBaselineFrames: 4,
                 ProjectileRejectedFrames: 2,
-                ProjectileUnsupportedCommits: 1);
+                ProjectileUnsupportedCommits: 1,
+                WorldItemRelayedFrames: 9,
+                WorldItemRejectedFrames: 1,
+                WorldItemUnsupportedCommits: 1);
 
         RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() =>
             new(
