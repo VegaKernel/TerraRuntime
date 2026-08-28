@@ -43,6 +43,53 @@ public sealed class VanillaZombieWorldMotionIntegrationTests
         Assert.True(updated.Simulation.OldVelocityY < -5f);
     }
 
+    [Fact]
+    public void Solid_wall_blocks_current_target_and_forces_AI003_stuck_threshold()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(32, 100));
+        tiles.Set(6, 5, SolidTile());
+        var targeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        targeting.SetCandidates([
+            new VanillaNpcTargetCandidate(
+                Slot: 4,
+                CenterX: 170f,
+                CenterY: 85f,
+                Aggro: 0,
+                Active: true,
+                Dead: false,
+                Ghost: false,
+                NoAggro: false)
+        ]);
+        targeting.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        var stepper = new VanillaNpcWorldMotionAiStepper(targeting, tiles, worldSurfaceTiles: 40d);
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate initial = new(
+            Type: 3,
+            NetId: 3,
+            PositionX: 32f,
+            PositionY: 64f,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: 4,
+            Ai: new NpcAiState(0f, 0f, 0f, 3f),
+            Simulation: NpcSimulationState.Initial with
+            {
+                DirectionX = 1,
+                DirectionY = 1,
+                OldPositionX = 31f,
+                OldPositionY = 64f
+            });
+        Assert.True(store.TrySpawn(0, in initial, out NpcSnapshot spawned));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+
+        executor.Tick(stepper);
+
+        Assert.True(store.TryGet(spawned.Handle, out NpcSnapshot updated));
+        Assert.Equal(60f, updated.Ai.Ai3, 5);
+        Assert.Equal(-1, updated.Simulation.DirectionY);
+        Assert.Equal((ushort)4, updated.Target);
+    }
+
     private static WorldTile SolidTile() => new()
     {
         Type = 1,
