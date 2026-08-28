@@ -52,6 +52,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
+        bool zombieStuckHopEligible = npc.VelocityX == 0f && !npc.Simulation.JustHit;
         if (!inner.TryStepState(in npc, out NpcStateUpdate aiState))
         {
             next = default;
@@ -71,7 +72,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         float velocityY = aiState.VelocityY;
 
         // The late ordinary AI_003 world-probe tail executes before UpdateNPC applies gravity. Closed-door
-        // contact owns ai[1]/ai[2]/ai[3] and can recoil X; the obstacle jump ladder follows if no door owns it.
+        // contact owns ai[1]/ai[2]/ai[3] and can recoil X; obstacle jumps follow, then the tiny stuck-hop whose
+        // eligibility vanilla captured from the pre-AI X velocity and justHit state.
         if (npcType == VanillaNpcIds.Zombie)
         {
             VanillaZombieDoorContactResult doorContact = VanillaWorldZombieDoorContact.Resolve(
@@ -103,6 +105,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
                 simulation.DirectionY);
             velocityX = obstacle.VelocityX;
             velocityY = obstacle.VelocityY;
+
+            if (velocityY == 0f && zombieStuckHopEligible && aiState.Ai.Ai3 == 1f)
+                velocityY = -5f;
         }
 
         // Vanilla computes NPC.gravity and maxFallSpeed before AI regardless of noGravity. The noGravity
