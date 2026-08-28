@@ -12,6 +12,22 @@ Do not add a remote management protocol, remote adapters, client executable or c
 
 The only forward-looking requirement now is that terminal views consume stable operations snapshots/interfaces instead of directly reading mutable runtime state.
 
+## Current implementation status
+
+The first local-TUI vertical slice is implemented in the standalone server:
+
+- start it explicitly with `--tui`; plain-console/headless startup remains the default;
+- Terminal.Gui v2 is hosted on its own UI thread and never runs on the authoritative game-loop thread;
+- `DashboardWindow` consumes only `IRuntimeDashboardOperations` and an immutable `RuntimeDashboardSnapshot`;
+- the local operations adapter publishes lifecycle, world identity, target/observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, command backlog/budget telemetry and connection admission counters;
+- observed TPS is sampled from authoritative tick progress over time in the operations layer, not reconstructed in the view from tick execution duration;
+- closing the TUI stops only the UI; it does not stop the server;
+- TUI initialization/refresh failure falls back to the running plain-console server path;
+- `--tui-smoke` renders the dashboard once with the Terminal.Gui ANSI test driver;
+- normal CI plus Linux and Windows NativeAOT jobs contain an exercised `--tui-smoke` gate.
+
+This is the foundation slice, not completion of Phase 10. Dedicated Players, Network, Logs and World screens are still pending. In particular, existing direct `Console.WriteLine` server messages are not redirected into the full-screen UI; do not solve that by globally replacing `Console.Out`. The next logging/UI step should introduce a bounded log read model/sink so plain console and TUI can consume the same structured events independently.
+
 Current shape:
 
 ```text
