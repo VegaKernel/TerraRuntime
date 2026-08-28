@@ -4,19 +4,23 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Coordinates the verified player-target selection cadence with state-only NPC AI. Demon Eye refreshes
-/// its target every ordinary style-2 tick; Blue Slime refreshes only at the exact AI_001 state-machine
-/// points represented by VanillaBlueSlimeMotion. All state remains one NpcStateUpdate per simulation tick.
+/// Coordinates verified player-target selection cadence with state-only NPC AI. Demon Eye refreshes every
+/// ordinary style-2 tick; Blue Slime refreshes at its AI_001 state-machine points; ordinary Zombie refreshes
+/// on the verified night/underground AI_003 pursuit path while ai[3] is below its stuck threshold.
 /// </summary>
 public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 {
     public const int MaximumPlayerCandidates = byte.MaxValue;
 
+    private const float VanillaBasePlayerWidth = 20f;
+    private const float VanillaBasePlayerHeight = 42f;
+
     private readonly INpcAiStateStepper _inner;
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
     private int _candidateCount;
     private bool _blueSlimeMotionEnabled;
-    private double _blueSlimeWorldSurfacePixels = double.PositiveInfinity;
+    private bool _zombieMotionEnabled;
+    private double _worldSurfacePixels = double.PositiveInfinity;
     private bool _dayTime = true;
     private bool _slimeRainActive;
 
@@ -33,20 +37,25 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     /// </summary>
     public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity)
     {
-        if (double.IsNaN(worldSurfaceTiles) ||
-            worldSurfaceTiles <= 0d ||
-            (double.IsInfinity(worldSurfaceTiles) && !double.IsPositiveInfinity(worldSurfaceTiles)))
-        {
-            throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
-        }
-
+        ValidateWorldSurface(worldSurfaceTiles);
         _blueSlimeMotionEnabled = true;
-        _blueSlimeWorldSurfacePixels = worldSurfaceTiles * 16d;
+        _worldSurfacePixels = worldSurfaceTiles * 16d;
     }
 
     /// <summary>
-    /// Supplies current world conditions consumed by AI_001. Vanilla NPC updates happen before the
-    /// world-time update in the same game tick, so callers must provide the pre-time-update state.
+    /// Enables the source-backed ordinary type-3 Zombie pursuit slice. Daytime surface behavior remains
+    /// deliberately unsupported until its despawn/eclipse/graveyard policy is modeled in authoritative state.
+    /// </summary>
+    public void EnableZombieMotion(double worldSurfaceTiles)
+    {
+        ValidateWorldSurface(worldSurfaceTiles);
+        _zombieMotionEnabled = true;
+        _worldSurfacePixels = worldSurfaceTiles * 16d;
+    }
+
+    /// <summary>
+    /// Supplies current world conditions consumed by AI_001 and the verified AI_003 pursuit gate. Vanilla
+    /// NPC updates happen before the world-time update in the same game tick, so callers provide pre-update state.
     /// </summary>
     public void SetWorldConditions(bool dayTime, bool slimeRainActive)
     {
@@ -74,8 +83,11 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         if (npcType == VanillaNpcIds.BlueSlime && _blueSlimeMotionEnabled)
             return TryStepBlueSlime(in npc, npcType, out next);
 
+        if (npcType == VanillaNpcIds.Zombie && _zombieMotionEnabled)
+            return TryStepZombie(in npc, npcType, out next);
+
         // The verified ordinary Demon Eye path calls TargetClosest every tick. Do not apply this policy
-        // globally: other vanilla AI styles, including slimes, have their own retarget cadence.
+        // globally: other vanilla AI styles have their own retarget cadence.
         NpcSnapshot targeted = npc;
         if (npcType == VanillaNpcIds.DemonEye && TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh closest))
         {
@@ -106,7 +118,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             ? selected
             : default;
         NpcSimulationState simulation = npc.Simulation;
-        bool engaged = !_dayTime || _slimeRainActive || npc.PositionY > _blueSlimeWorldSurfacePixels;
+        bool engaged = !_dayTime || _slimeRainActive || npc.PositionY > _worldSurfacePixels;
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: npc.PositionX,
             VelocityX: npc.VelocityX,
@@ -133,6 +145,62 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             npcType.Value,
             npc.NetId,
             result.PositionX,
+            npc.PositionY,
+            result.VelocityX,
+            result.VelocityY,
+            result.Target,
+            result.Ai,
+            simulation with
+            {
+                DirectionX = result.DirectionX,
+                DirectionY = result.DirectionY,
+                NoGravity = false
+            });
+        return true;
+    }
+
+    private bool TryStepZombie(in NpcSnapshot npc, NpcTypeId npcType, out NpcStateUpdate next)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
+            definition.AiStyle != VanillaNpcAiStyles.Fighter ||
+            (_dayTime && npc.PositionY <= _worldSurfacePixels))
+        {
+            next = default;
+            return false;
+        }
+
+        VanillaBlueSlimeTargetRefresh closest = TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh selected)
+            ? selected
+            : default;
+        var zombieTarget = new VanillaZombieTargetRefresh(
+            closest.HasTarget,
+            closest.Target,
+            closest.DirectionX,
+            closest.DirectionY);
+        NpcSimulationState simulation = npc.Simulation;
+        var input = new VanillaZombieMotionInput(
+            PositionX: npc.PositionX,
+            OldPositionX: simulation.OldPositionX,
+            VelocityX: npc.VelocityX,
+            VelocityY: npc.VelocityY,
+            DirectionX: simulation.DirectionX,
+            DirectionY: simulation.DirectionY,
+            Target: npc.Target,
+            Ai: npc.Ai,
+            Scale: simulation.Scale,
+            TargetOverlaps: TargetOverlapsNpc(in npc, definition),
+            ClosestTarget: zombieTarget);
+
+        if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))
+        {
+            next = default;
+            return false;
+        }
+
+        next = new NpcStateUpdate(
+            npcType.Value,
+            npc.NetId,
+            npc.PositionX,
             npc.PositionY,
             result.VelocityX,
             result.VelocityY,
@@ -180,6 +248,23 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         return true;
     }
 
+    private bool TargetOverlapsNpc(in NpcSnapshot npc, VanillaNpcDefinition definition)
+    {
+        if (npc.Target >= byte.MaxValue ||
+            !TryFindCandidate((byte)npc.Target, _candidates.AsSpan(0, _candidateCount), out VanillaNpcTargetCandidate candidate) ||
+            !candidate.Active || candidate.Dead || candidate.Ghost)
+        {
+            return false;
+        }
+
+        float playerLeft = candidate.CenterX - VanillaBasePlayerWidth * 0.5f;
+        float playerTop = candidate.CenterY - VanillaBasePlayerHeight * 0.5f;
+        return npc.PositionX < playerLeft + VanillaBasePlayerWidth &&
+               npc.PositionX + definition.Width > playerLeft &&
+               npc.PositionY < playerTop + VanillaBasePlayerHeight &&
+               npc.PositionY + definition.Height > playerTop;
+    }
+
     private static bool TryFindCandidate(
         byte slot,
         ReadOnlySpan<VanillaNpcTargetCandidate> candidates,
@@ -196,5 +281,15 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 
         candidate = default;
         return false;
+    }
+
+    private static void ValidateWorldSurface(double worldSurfaceTiles)
+    {
+        if (double.IsNaN(worldSurfaceTiles) ||
+            worldSurfaceTiles <= 0d ||
+            (double.IsInfinity(worldSurfaceTiles) && !double.IsPositiveInfinity(worldSurfaceTiles)))
+        {
+            throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
+        }
     }
 }
