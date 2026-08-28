@@ -16,6 +16,7 @@ namespace TerraRuntime;
 internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 {
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> _endpoints = new();
+    private readonly Endpoint?[] _playingEndpoints = new Endpoint?[256];
     private readonly RuntimeInterestRouter _interestRouter;
     private long _relayedMovementFrames;
 
@@ -35,12 +36,29 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     internal RuntimePlayerSpatialIndexSnapshot? PlayerSpatialSnapshot =>
         _interestRouter.PlayerSpatialSnapshot;
 
+    internal RuntimePlayerVisibilitySnapshot? PlayerVisibilitySnapshot =>
+        _interestRouter.PlayerVisibilitySnapshot;
+
     internal int CollectNearbyPlayers(
         PlayerSlotId subject,
         int radiusSections,
         Span<PlayerSlotId> destination,
         bool includeSubject = false) =>
         _interestRouter.CollectNearbyPlayers(subject, radiusSections, destination, includeSubject);
+
+    internal bool TryGetLatestPlayerMovementFrame(PlayerSlotId slot, out OutboundFrame frame)
+    {
+        Endpoint? endpoint = Volatile.Read(ref _playingEndpoints[slot.Value]);
+        if (endpoint is null ||
+            !endpoint.TryGetPlayingSlot(out PlayerSlotId currentSlot) ||
+            currentSlot != slot)
+        {
+            frame = default;
+            return false;
+        }
+
+        return endpoint.TryGetLatestMovementFrame(out frame);
+    }
 
     public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
     {
@@ -58,7 +76,10 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             return false;
 
         if (endpoint.TryGetPlayingSlot(out PlayerSlotId slot))
+        {
             playingSlot = slot;
+            Interlocked.CompareExchange(ref _playingEndpoints[slot.Value], null, endpoint);
+        }
 
         return true;
     }
@@ -72,6 +93,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         float positionY = request.SpawnY * 16f;
         endpoint.MarkPlaying(request.ClaimedSlot);
         endpoint.UpdatePosition(positionX, positionY);
+        Interlocked.Exchange(ref _playingEndpoints[request.ClaimedSlot.Value], endpoint);
         _interestRouter.TrackPlayer(request.ClaimedSlot, positionX, positionY);
     }
 
@@ -114,6 +136,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             request.CameraTargetY);
 
         byte[] encoded = TerrariaPlayerMovementEncoder.Encode(in movement);
+        origin.UpdateLatestMovementFrame(encoded);
         var frame = new OutboundFrame(encoded);
 
         foreach (KeyValuePair<GameCommandSourceId, Endpoint> pair in _endpoints)
@@ -137,7 +160,10 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     {
         _interestRouter.RemovePlayer(slot);
         if (_endpoints.TryGetValue(source, out Endpoint? endpoint))
+        {
+            Interlocked.CompareExchange(ref _playingEndpoints[slot.Value], null, endpoint);
             endpoint.ClearPlaying(slot);
+        }
     }
 
     private sealed class Endpoint
@@ -146,6 +172,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         private bool _hasPosition;
         private float _positionX;
         private float _positionY;
+        private byte[]? _latestMovementFrame;
 
         public Endpoint(TerrariaConnectionOutboundQueue outbound)
         {
@@ -176,10 +203,35 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             _hasPosition = true;
         }
 
+        public void UpdateLatestMovementFrame(byte[] encoded)
+        {
+            ArgumentNullException.ThrowIfNull(encoded);
+            Volatile.Write(ref _latestMovementFrame, encoded);
+        }
+
+        public bool TryGetLatestMovementFrame(out OutboundFrame frame)
+        {
+            byte[]? encoded = Volatile.Read(ref _latestMovementFrame);
+            if (encoded is null)
+            {
+                frame = default;
+                return false;
+            }
+
+            frame = new OutboundFrame(encoded);
+            return true;
+        }
+
         public RuntimePlayerInterestState CreateInterestState(PlayerSlotId slot) =>
             new(slot, _hasPosition, _positionX, _positionY);
 
-        public void ClearPlaying(PlayerSlotId slot) =>
-            Interlocked.CompareExchange(ref _playingSlot, -1, slot.Value);
+        public void ClearPlaying(PlayerSlotId slot)
+        {
+            if (Interlocked.CompareExchange(ref _playingSlot, -1, slot.Value) != slot.Value)
+                return;
+
+            _hasPosition = false;
+            Volatile.Write(ref _latestMovementFrame, null);
+        }
     }
 }
