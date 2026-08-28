@@ -195,7 +195,7 @@ internal static class TerrariaServerHost
                     cancellationToken).ConfigureAwait(false);
                 Console.WriteLine(
                     $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
-                    $"inbound={result.InboundResult}; outbound={result.OutboundResult.Reason}.");
+                    $"inbound={result.Inbound}; outbound={result.Outbound.Reason}.");
             }
             catch (Exception exception) when (exception is IOException or SocketException or OperationCanceledException)
             {
