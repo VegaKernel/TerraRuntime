@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 namespace TerraRuntime;
 
 internal sealed record PlayerMovementRuntimeCommand(
+    GameCommandSourceId Source,
     PlayerMovementCommitRequest Request) : RuntimeCommand;
 
 internal sealed class RuntimePlayerMovementIngress : IPlayerMovementIngress
@@ -21,6 +22,6 @@ internal sealed class RuntimePlayerMovementIngress : IPlayerMovementIngress
         if (source.IsSystem)
             return false;
 
-        return _ingress.TryPost(source, new PlayerMovementRuntimeCommand(request));
+        return _ingress.TryPost(source, new PlayerMovementRuntimeCommand(source, request));
     }
 }

@@ -59,7 +59,8 @@ internal static class TerrariaServerHost
             return 27;
         }
 
-        var state = new ServerRuntimeState();
+        var runtimeConnections = new RuntimeConnectionRegistry();
+        var state = new ServerRuntimeState(runtimeConnections);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
             static (runtime, command) => runtime.Apply(command),
@@ -67,9 +68,10 @@ internal static class TerrariaServerHost
         var commandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(gameLoop);
         var spawnIngress = new RuntimePlayerSpawnCommitIngress(commandIngress);
         var movementIngress = new RuntimePlayerMovementIngress(commandIngress);
+        var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
         var slots = new PlayerSlotPool(options.MaxPlayers);
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
-        var connections = new ConcurrentDictionary<long, Task>();
+        var connectionTasks = new ConcurrentDictionary<long, Task>();
         long nextConnectionId = 0;
 
         using var shutdown = new CancellationTokenSource();
@@ -126,10 +128,12 @@ internal static class TerrariaServerHost
                     bootstrapPackets,
                     spawnIngress,
                     movementIngress,
+                    disconnectIngress,
+                    runtimeConnections,
                     shutdown.Token);
-                connections[connectionId] = connectionTask;
+                connectionTasks[connectionId] = connectionTask;
                 _ = connectionTask.ContinueWith(
-                    completed => connections.TryRemove(connectionId, out _),
+                    completed => connectionTasks.TryRemove(connectionId, out _),
                     CancellationToken.None,
                     TaskContinuationOptions.ExecuteSynchronously,
                     TaskScheduler.Default);
@@ -145,7 +149,7 @@ internal static class TerrariaServerHost
             shutdown.Cancel();
             Console.CancelKeyPress -= cancelHandler;
 
-            Task[] activeConnections = connections.Values.ToArray();
+            Task[] activeConnections = connectionTasks.Values.ToArray();
             if (activeConnections.Length != 0)
             {
                 try
@@ -175,42 +179,66 @@ internal static class TerrariaServerHost
         PlayerBootstrapPacketSet bootstrapPackets,
         IPlayerSpawnCommitIngress spawnIngress,
         IPlayerMovementIngress movementIngress,
+        RuntimePlayerDisconnectIngress disconnectIngress,
+        RuntimeConnectionRegistry runtimeConnections,
         CancellationToken cancellationToken)
     {
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(connectionId);
+
         using (admissionLease)
         {
             var outbound = new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueOptions);
+            if (!runtimeConnections.TryRegister(source, outbound))
+            {
+                socket.Dispose();
+                return;
+            }
+
             using var sink = new PlayerBootstrapFrameSink(
                 slots,
                 outbound,
                 bootstrapPackets,
-                GameCommandSourceId.FromConnection(connectionId),
+                source,
                 spawnIngress,
                 movementIngress);
 
             try
             {
-                TerrariaSocketRunResult result = await TerrariaSocketConnection.RunAsync(
-                    socket,
-                    sink,
-                    outbound,
-                    TerrariaFrameDecoderOptions.Default,
-                    cancellationToken).ConfigureAwait(false);
-                Console.WriteLine(
-                    $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
-                    $"bootstrap={sink.StopReason}, state={sink.JoinState}; " +
-                    $"inbound={result.Inbound}; outbound={result.Outbound.Reason}.");
+                try
+                {
+                    TerrariaSocketRunResult result = await TerrariaSocketConnection.RunAsync(
+                        socket,
+                        sink,
+                        outbound,
+                        TerrariaFrameDecoderOptions.Default,
+                        cancellationToken).ConfigureAwait(false);
+                    Console.WriteLine(
+                        $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
+                        $"bootstrap={sink.StopReason}, state={sink.JoinState}; " +
+                        $"inbound={result.Inbound}; outbound={result.Outbound.Reason}.");
+                }
+                catch (Exception exception) when (exception is IOException or SocketException or OperationCanceledException)
+                {
+                    if (!cancellationToken.IsCancellationRequested)
+                        Console.Error.WriteLine($"Connection {connectionId} ({remote}) failed: {exception.Message}");
+                }
+                catch
+                {
+                    socket.Dispose();
+                    throw;
+                }
             }
-            catch (Exception exception) when (exception is IOException or SocketException or OperationCanceledException)
+            finally
             {
-                if (!cancellationToken.IsCancellationRequested)
-                    Console.Error.WriteLine($"Connection {connectionId} ({remote}) failed: {exception.Message}");
-            }
-            catch
-            {
-                socket.Dispose();
-                throw;
+                if (runtimeConnections.TryUnregister(source, out PlayerSlotId? playingSlot) &&
+                    playingSlot is PlayerSlotId slot &&
+                    !disconnectIngress.TryPost(source, slot) &&
+                    !cancellationToken.IsCancellationRequested)
+                {
+                    Console.Error.WriteLine(
+                        $"Connection {connectionId} ({remote}) could not enqueue authoritative disconnect for slot {slot.Value}.");
+                }
             }
         }
     }

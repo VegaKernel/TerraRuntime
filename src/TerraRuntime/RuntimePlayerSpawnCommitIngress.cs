@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 namespace TerraRuntime;
 
 internal sealed record PlayerSpawnRuntimeCommand(
+    GameCommandSourceId Source,
     PlayerJoinSession Session,
     PlayerSpawnCommitRequest Request) : RuntimeCommand;
 
@@ -26,6 +27,6 @@ internal sealed class RuntimePlayerSpawnCommitIngress : IPlayerSpawnCommitIngres
         if (source.IsSystem)
             return false;
 
-        return _ingress.TryPost(source, new PlayerSpawnRuntimeCommand(session, request));
+        return _ingress.TryPost(source, new PlayerSpawnRuntimeCommand(source, session, request));
     }
 }

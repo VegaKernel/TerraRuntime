@@ -6,8 +6,14 @@ namespace TerraRuntime;
 internal sealed class ServerRuntimeState
 {
     private readonly Dictionary<byte, RuntimePlayerState> _players = [];
+    private readonly IRuntimePlayerEventSink? _playerEvents;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
+
+    public ServerRuntimeState(IRuntimePlayerEventSink? playerEvents = null)
+    {
+        _playerEvents = playerEvents;
+    }
 
     public long AppliedCommands { get; private set; }
 
@@ -18,6 +24,8 @@ internal sealed class ServerRuntimeState
     public long AppliedPlayerMovements { get; private set; }
 
     public long RejectedPlayerMovements { get; private set; }
+
+    public long DisconnectedPlayers { get; private set; }
 
     public PlayerSlotId? LastMovementPlayerSlot { get; private set; }
 
@@ -52,7 +60,11 @@ internal sealed class ServerRuntimeState
                 break;
 
             case PlayerMovementRuntimeCommand movement:
-                ApplyPlayerMovement(movement.Request);
+                ApplyPlayerMovement(movement);
+                break;
+
+            case PlayerDisconnectRuntimeCommand disconnect:
+                ApplyPlayerDisconnect(disconnect);
                 break;
         }
     }
@@ -72,16 +84,20 @@ internal sealed class ServerRuntimeState
         CommittedPlayerSpawns++;
         _players[spawn.Request.ClaimedSlot.Value] = new RuntimePlayerState
         {
+            Source = spawn.Source,
             Slot = spawn.Request.ClaimedSlot,
             Team = spawn.Request.Team,
             PositionX = spawn.Request.SpawnX * 16f,
             PositionY = spawn.Request.SpawnY * 16f
         };
+        _playerEvents?.PlayerSpawned(spawn.Source, spawn.Request.ClaimedSlot);
     }
 
-    private void ApplyPlayerMovement(in PlayerMovementCommitRequest request)
+    private void ApplyPlayerMovement(PlayerMovementRuntimeCommand movement)
     {
-        if (!_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? player))
+        PlayerMovementCommitRequest request = movement.Request;
+        if (!_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? player) ||
+            player.Source != movement.Source)
         {
             RejectedPlayerMovements++;
             return;
@@ -116,10 +132,25 @@ internal sealed class ServerRuntimeState
         LastMovementPlayerSlot = request.PlayerSlot;
         LastMovementPositionX = request.PositionX;
         LastMovementPositionY = request.PositionY;
+        _playerEvents?.PlayerMoved(movement.Source, in request);
+    }
+
+    private void ApplyPlayerDisconnect(PlayerDisconnectRuntimeCommand disconnect)
+    {
+        if (!_players.TryGetValue(disconnect.PlayerSlot.Value, out RuntimePlayerState? player) ||
+            player.Source != disconnect.Source)
+        {
+            return;
+        }
+
+        _players.Remove(disconnect.PlayerSlot.Value);
+        DisconnectedPlayers++;
+        _playerEvents?.PlayerDisconnected(disconnect.Source, disconnect.PlayerSlot);
     }
 
     private sealed class RuntimePlayerState
     {
+        public GameCommandSourceId Source { get; init; }
         public PlayerSlotId Slot { get; init; }
         public byte Team { get; init; }
         public byte ControlFlags { get; set; }
