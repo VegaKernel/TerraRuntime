@@ -1,0 +1,154 @@
+name: Projectile Reference Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/projectile-reference-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  projectile-reference:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Decompile official TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+
+      - name: Collect projectile reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/reference-1458-projectile
+
+          find_ref() {
+            local filename="$1"
+            local class_pattern="$2"
+            local src
+            src="$(find decompiled/1458 -type f -name "$filename" -print -quit)"
+            if [[ -z "$src" ]]; then
+              src="$(grep -RIl --include='*.cs' "$class_pattern" decompiled/1458 | head -n 1 || true)"
+            fi
+            test -n "$src"
+            echo "$src"
+          }
+
+          projectile_key="$(find_ref 'ProjectileKey.cs' 'struct ProjectileKey')"
+          projectile="$(find_ref 'Projectile.cs' 'class Projectile')"
+          projectile_id="$(find_ref 'ProjectileID.cs' 'class ProjectileID')"
+          message_buffer="$(find_ref 'MessageBuffer.cs' 'class MessageBuffer')"
+          net_message="$(find_ref 'NetMessage.cs' 'class NetMessage')"
+          main="$(find_ref 'Main.cs' 'class Main')"
+
+          cp "$projectile_key" artifacts/reference-1458-projectile/ProjectileKey.cs
+          cp "$projectile" artifacts/reference-1458-projectile/Projectile.cs
+          cp "$projectile_id" artifacts/reference-1458-projectile/ProjectileID.cs
+          cp "$message_buffer" artifacts/reference-1458-projectile/MessageBuffer.cs
+          cp "$net_message" artifacts/reference-1458-projectile/NetMessage.cs
+          cp "$main" artifacts/reference-1458-projectile/Main.cs
+          cp decompiled/1458/REFERENCE_SOURCE.txt artifacts/reference-1458-projectile/REFERENCE_SOURCE.txt
+
+          python3 - "$projectile_key" "$projectile" "$message_buffer" "$main" <<'PY'
+          import json
+          import pathlib
+          import re
+          import sys
+
+          key_text = pathlib.Path(sys.argv[1]).read_text(errors="ignore")
+          projectile_text = pathlib.Path(sys.argv[2]).read_text(errors="ignore")
+          message_text = pathlib.Path(sys.argv[3]).read_text(errors="ignore")
+          main_text = pathlib.Path(sys.argv[4]).read_text(errors="ignore")
+
+          def extract_braced(text, opening):
+              depth = 0
+              for i in range(opening, len(text)):
+                  if text[i] == "{":
+                      depth += 1
+                  elif text[i] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          return text[opening:i + 1]
+              return ""
+
+          def find_method(text, name):
+              match = re.search(rf"\b{re.escape(name)}\s*\([^;{{}}]*\)\s*\{{", text)
+              if not match:
+                  return ""
+              return extract_braced(text, match.end() - 1)
+
+          def find_case(text, number):
+              match = re.search(rf"case\s+{number}\s*:\s*\{{", text)
+              if not match:
+                  return ""
+              return extract_braced(text, match.end() - 1)
+
+          try_get = find_method(key_text, "TryGet")
+          new_setup = find_method(projectile_text, "NewProjectileSetup")
+          find_oldest = find_method(projectile_text, "FindOldestProjectile")
+          case27 = find_case(message_text, 27)
+          case29 = find_case(message_text, 29)
+
+          summary = {
+              "projectileKeyTryGetFound": bool(try_get),
+              "tryGetMainProjectileRefs": try_get.count("Main.projectile"),
+              "tryGetGenerationRefs": len(re.findall(r"\bgeneration\b", try_get)),
+              "tryGetActiveRefs": len(re.findall(r"\bactive\b", try_get)),
+              "newProjectileSetupFound": bool(new_setup),
+              "newSetupGenerationRefs": len(re.findall(r"\bgeneration\b", new_setup)),
+              "newSetupActiveRefs": len(re.findall(r"\bactive\b", new_setup)),
+              "newSetupFindOldestCalls": new_setup.count("FindOldestProjectile("),
+              "findOldestFound": bool(find_oldest),
+              "findOldestScansNormalPool": bool(re.search(r"for\s*\([^;]+;\s*[^;]+<\s*1000\s*;", find_oldest)),
+              "findOldestNetImportantChecks": find_oldest.count("netImportant"),
+              "findOldestTimeLeftRefs": find_oldest.count("timeLeft"),
+              "findOldestFallbackSlot1000": bool(re.search(r"\bresult\s*=\s*1000\s*;", find_oldest)),
+              "mainProjectileArray1001": bool(re.search(r"projectile\s*=\s*new\s+Projectile\[1001\]", main_text)),
+              "packet27Found": bool(case27),
+              "packet27HostileChecks": case27.count("projHostile"),
+              "packet27SpawnerChecks": case27.count("Spawner"),
+              "packet27TryGetCalls": case27.count("TryGet("),
+              "packet27NewSetupCalls": case27.count("NewProjectileSetup"),
+              "packet27OwnerAssignments": len(re.findall(r"\.owner\s*=", case27)),
+              "packet27RelayCalls": case27.count("TrySendData(27"),
+              "packet29Found": bool(case29),
+              "packet29TryGetCalls": case29.count("TryGet("),
+              "packet29OwnerChecks": len(re.findall(r"\.owner\s*!=", case29)),
+              "packet29KillCalls": case29.count(".Kill("),
+              "packet29RelayCalls": case29.count("TrySendData(29"),
+              "mainProjHostileRefs": main_text.count("projHostile"),
+          }
+          print("PROJECTILE_REFERENCE_SUMMARY=" + json.dumps(summary, sort_keys=True))
+
+          required = (
+              summary["projectileKeyTryGetFound"]
+              and summary["newProjectileSetupFound"]
+              and summary["findOldestFound"]
+              and summary["findOldestScansNormalPool"]
+              and summary["findOldestNetImportantChecks"] > 0
+              and summary["findOldestTimeLeftRefs"] > 0
+              and summary["findOldestFallbackSlot1000"]
+              and summary["mainProjectileArray1001"]
+              and summary["packet27Found"]
+              and summary["packet29Found"]
+          )
+          if not required:
+              raise SystemExit("official projectile reference invariants were not found")
+          PY
+
+      - name: Upload local-only projectile reference artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraria-1458-projectile-reference
+          path: artifacts/reference-1458-projectile
+          retention-days: 1
