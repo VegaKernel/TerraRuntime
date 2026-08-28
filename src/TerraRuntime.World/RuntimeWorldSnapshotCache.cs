@@ -18,7 +18,7 @@ public static class RuntimeWorldSnapshotCache
     private const int LiquidTrailerHeaderSize = 64;
     private const int PreparedTrailerHeaderSize = 32;
     private const int IoBufferSize = 64 * 1024;
-    private const int TargetShardBytes = 16 * 1024 * 1024;
+    private const int TargetShardBytes = 8 * 1024 * 1024;
     private const int TilesPerShard = TargetShardBytes / TileRecordSize;
 
     private const WorldTileFlags KnownFlags =
