@@ -20,7 +20,7 @@ The standalone server has six exercised operational views:
 - **Players** consumes `IPlayerOperations` and `RuntimePlayersSnapshot`. The generation-safe read model is populated only from already validated authoritative player events and includes slot/generation/connection identity, name/team, position, velocity, selected inventory slot, mount type, health, and mana.
 - **NPCs** consumes `INpcOperations` and `RuntimeNpcsSnapshot`. It observes only committed authoritative NPC snapshots and exposes generation/revision/content identity, position/velocity, target/AI state, and bounded simulation/collision flags without exposing `RuntimeNpcStore` to the UI thread.
 - **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It shows admission/registration state, player replication counters, packet-23 NPC replication counters, bounded outbound-queue/backpressure telemetry, live inbound one-second frame/byte rates, lifetime inbound counters, rejected inbound frames, and bounded per-connection pressure/rate detail.
-- **World** consumes `IWorldOperations` and `RuntimeWorldSnapshot`. It exposes validated world identity, format/worldgen version, dimensions, persisted object/NPC counts, runtime-cache result/read parallelism, and startup/cache/bootstrap/readiness timings without giving the UI mutable world access.
+- **World** consumes `IWorldOperations` and `RuntimeWorldSnapshot`. It exposes validated world identity, format/worldgen version, dimensions, persisted object/NPC counts, runtime-cache/startup timings, and a live authoritative world-clock projection containing day/night state, world time, day rate, moon phase, and slime-rain timer without exposing the mutable `RuntimeWorldClock` to the UI thread.
 - **Logs** consumes `ILogOperations` over a bounded `RuntimeLogBuffer`. It supports severity filtering, dynamic source filtering, and pause/resume while remaining independent of the plain-console sink.
 
 The UI also has a first bounded administrative action surface:
@@ -37,7 +37,8 @@ The UI also has a first bounded administrative action surface:
 - Observed TPS comes from authoritative tick progress over time, not from `LastTickMilliseconds`.
 - Runtime/network telemetry is read from subsystem-owned counters rather than reconstructed in the view.
 - NPC UI telemetry exists only when TUI mode is enabled. Authoritative NPC commit publication remains allocation-free and does not take a simulation lock for the UI.
-- `--tui-smoke` renders Dashboard, Players, NPCs, Network, World, and Logs and exercises authoritative admin actions through the Terminal.Gui ANSI test driver.
+- World-clock UI telemetry also exists only when TUI mode is enabled. `RuntimeWorldClock` publishes committed primitive state through a non-blocking internal observer; the UI never receives the mutable clock instance.
+- `--tui-smoke` renders Dashboard, Players, NPCs, Network, World, and Logs and exercises live packet-23/world-clock formatting plus authoritative admin actions through the Terminal.Gui ANSI test driver.
 - CoreCLR CI and Linux/Windows NativeAOT jobs exercise the same TUI smoke path.
 - Host-affecting changes are also covered by the official-world workflow, including real world verification, host startup, live join/movement relay, snapshot-only warm startup, and canonical `.wld` checkpoint restoration.
 
@@ -130,6 +131,7 @@ TerraRuntime currently owns and publishes UI-facing measurements for:
 - live and lifetime inbound frame/byte accounting plus rejected inbound frames;
 - authoritative player identity/vitals/movement state used by the Players view;
 - authoritative committed NPC state used by the NPCs view;
+- authoritative world-clock state published after committed clock changes;
 - world/cache startup state and timings;
 - bounded runtime log events.
 
@@ -215,7 +217,12 @@ Inbound telemetry reuses the `TerrariaConnectionRateAccountant` already used by 
 - dimensions/tile count;
 - persisted world-object/NPC counts;
 - runtime-cache hit/result/read parallelism;
-- startup/cache/bootstrap/readiness timings.
+- startup/cache/bootstrap/readiness timings;
+- live authoritative day/night state and raw world time;
+- current day rate and moon phase;
+- slime-rain active/cooldown/inactive state and timer.
+
+The mutable `RuntimeWorldClock` remains authoritative-thread-owned. In TUI mode it publishes primitive committed state through `IRuntimeWorldClockObserver` into a single-writer sequence-protected projection. `LocalRuntimeWorldOperations` merges that projection into the immutable `RuntimeWorldSnapshot`; headless mode does not create the projection.
 
 ## Administrative actions
 
@@ -237,7 +244,6 @@ Rules for future actions:
 
 Future slices should be driven by operational need rather than by filling screens for appearance's sake. Useful candidates are:
 
-- authoritative world-time/event state once the mutable world clock publishes a thread-safe runtime-owned snapshot;
 - save/checkpoint/cache-rebuild status once persistence publishes a bounded runtime-owned snapshot;
 - richer player/NPC navigation and sorting only when the compact lists become operationally limiting;
 - additional packet/category telemetry only where the network subsystem already owns trustworthy counters;
