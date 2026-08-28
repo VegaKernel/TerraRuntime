@@ -9,8 +9,8 @@ public sealed class RuntimeNpcAiStateExecutorTests
     public void Tick_applies_one_state_transition_to_each_prepass_npc()
     {
         var store = new RuntimeNpcStore(capacity: 4);
-        NpcStateUpdate first = CreateUpdate(netId: 1, positionX: 10f, ai0: 0f);
-        NpcStateUpdate second = CreateUpdate(netId: 2, positionX: 20f, ai0: 5f);
+        NpcStateUpdate first = CreateUpdate(type: 1, netId: 1, positionX: 10f, ai0: 0f);
+        NpcStateUpdate second = CreateUpdate(type: 2, netId: 2, positionX: 20f, ai0: 5f);
         Assert.True(store.TrySpawn(0, in first, out NpcSnapshot firstNpc));
         Assert.True(store.TrySpawn(2, in second, out NpcSnapshot secondNpc));
         var executor = new RuntimeNpcAiStateExecutor(store);
@@ -33,7 +33,7 @@ public sealed class RuntimeNpcAiStateExecutorTests
     public void No_proposal_leaves_npc_revision_unchanged()
     {
         var store = new RuntimeNpcStore(capacity: 2);
-        NpcStateUpdate update = CreateUpdate(netId: 1, positionX: 10f, ai0: 0f);
+        NpcStateUpdate update = CreateUpdate(type: 1, netId: 1, positionX: 10f, ai0: 0f);
         Assert.True(store.TrySpawn(0, in update, out NpcSnapshot created));
         var executor = new RuntimeNpcAiStateExecutor(store);
 
@@ -49,7 +49,7 @@ public sealed class RuntimeNpcAiStateExecutorTests
     public void Slot_reuse_during_step_rejects_stale_ai_transition()
     {
         var store = new RuntimeNpcStore(capacity: 2);
-        NpcStateUpdate originalState = CreateUpdate(netId: 1, positionX: 10f, ai0: 0f);
+        NpcStateUpdate originalState = CreateUpdate(type: 1, netId: 1, positionX: 10f, ai0: 0f);
         Assert.True(store.TrySpawn(0, in originalState, out NpcSnapshot original));
         var executor = new RuntimeNpcAiStateExecutor(store);
         var stepper = new ReplaceCurrentNpcStepper(store);
@@ -59,14 +59,16 @@ public sealed class RuntimeNpcAiStateExecutorTests
         Assert.Equal(new NpcAiStateTickSummary(1, 1, 0, 1), summary);
         Assert.False(store.TryGet(original.Handle, out _));
         Assert.True(store.TryGetActive(0, out NpcSnapshot replacement));
+        Assert.Equal(99, replacement.Type);
         Assert.Equal((short)99, replacement.NetId);
         Assert.Equal(500f, replacement.PositionX);
         Assert.Equal((ulong)2, replacement.Handle.Generation.Value);
         Assert.Equal((ulong)1, replacement.Revision.Value);
     }
 
-    private static NpcStateUpdate CreateUpdate(short netId, float positionX, float ai0) =>
+    private static NpcStateUpdate CreateUpdate(int type, short netId, float positionX, float ai0) =>
         new(
+            Type: type,
             NetId: netId,
             PositionX: positionX,
             PositionY: 20f,
@@ -80,6 +82,7 @@ public sealed class RuntimeNpcAiStateExecutorTests
         public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
         {
             next = new NpcStateUpdate(
+                npc.Type,
                 npc.NetId,
                 npc.PositionX + 1f,
                 npc.PositionY,
@@ -105,10 +108,11 @@ public sealed class RuntimeNpcAiStateExecutorTests
         public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
         {
             Assert.True(store.TryDespawn(npc.Handle));
-            NpcStateUpdate replacementState = CreateUpdate(netId: 99, positionX: 500f, ai0: 0f);
+            NpcStateUpdate replacementState = CreateUpdate(type: 99, netId: 99, positionX: 500f, ai0: 0f);
             Assert.True(store.TrySpawn(npc.Handle.Slot, in replacementState, out _));
 
             next = new NpcStateUpdate(
+                npc.Type,
                 npc.NetId,
                 npc.PositionX + 100f,
                 npc.PositionY,

@@ -3,10 +3,12 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Mutable state accepted by the authoritative live-NPC store. Only source-backed state needed by
-/// the current lifecycle/AI bring-up is represented; protocol flags and serialization details stay outside Core.
+/// Mutable state accepted by the authoritative live-NPC store. Type is the positive gameplay id used
+/// by vanilla logic; NetId remains separate because the wire format can encode negative variant ids.
+/// Protocol flags and serialization details stay outside Core.
 /// </summary>
 public readonly record struct NpcStateUpdate(
+    int Type,
     short NetId,
     float PositionX,
     float PositionY,
@@ -172,6 +174,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         handle.IsAssigned && IsAddressableSlot(handle.Slot);
 
     private static bool IsValid(in NpcStateUpdate update) =>
+        update.Type > 0 &&
         float.IsFinite(update.PositionX) &&
         float.IsFinite(update.PositionY) &&
         float.IsFinite(update.VelocityX) &&
@@ -184,6 +187,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         return new NpcSnapshot(
             new NpcHandle(slot, new NpcGeneration(state.Generation)),
             new NpcRevision(state.Revision),
+            update.Type,
             update.NetId,
             update.PositionX,
             update.PositionY,

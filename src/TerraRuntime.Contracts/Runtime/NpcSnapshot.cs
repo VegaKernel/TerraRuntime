@@ -63,11 +63,13 @@ public readonly record struct NpcAiState(float Ai0, float Ai1, float Ai2, float 
 
 /// <summary>
 /// Minimal protocol-neutral live NPC projection used to bring authoritative NPC lifecycle and AI online.
-/// Additional gameplay state should be added only when a source-backed behavior requires it.
+/// Type is the positive gameplay NPC type used by vanilla AI. NetId is kept separately because packet 23
+/// permits negative variant ids that map back to a positive gameplay type.
 /// </summary>
 public readonly record struct NpcSnapshot(
     NpcHandle Handle,
     NpcRevision Revision,
+    int Type,
     short NetId,
     float PositionX,
     float PositionY,
