@@ -20,10 +20,13 @@ public sealed class WorldChestItemIdentityTests
         Assert.Equal(3, item.PrefixId.Value);
         Assert.True(item.HasValidItemType);
         Assert.True(default(WorldChestItem).HasValidItemType);
+        Assert.False(new WorldChestItem(Stack: 1, ItemType: 0, Prefix: 0).HasValidItemType);
     }
 
-    [Fact]
-    public void Decoder_rejects_nonempty_item_outside_vanilla_1458_catalog()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(VanillaItemIds.Count)]
+    public void Decoder_rejects_invalid_identity_for_nonempty_item(int itemType)
     {
         byte[] chestBytes = CreateChestBytes(writer =>
         {
@@ -33,7 +36,7 @@ public sealed class WorldChestItemIdentityTests
             writer.Write("invalid-item");
             writer.Write(1);
             writer.Write((short)1);
-            writer.Write(VanillaItemIds.Count);
+            writer.Write(itemType);
             writer.Write((byte)0);
         });
         byte[] file = CreateCurrentFile(chestBytes);
