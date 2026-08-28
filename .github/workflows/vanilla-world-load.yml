@@ -93,7 +93,7 @@ jobs:
       - name: Build TerraRuntime host
         run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
 
-      - name: Probe live TerraRuntime join bootstrap
+      - name: Probe live TerraRuntime join and movement relay
         shell: bash
         run: |
           set -euo pipefail
@@ -104,7 +104,7 @@ jobs:
           dotnet "$server_dll" \
             --world "$GITHUB_WORKSPACE/artifacts/vanilla-smoke.wld" \
             --port 17780 \
-            --max-players 1 \
+            --max-players 2 \
             > "$host_log" 2>&1 &
           host_pid=$!
 
@@ -131,6 +131,7 @@ jobs:
           python3 - <<'PY' 2>&1 | tee "$client_log"
           import socket
           import struct
+          import time
 
           def recv_exact(sock, count):
               chunks = []
@@ -138,7 +139,7 @@ jobs:
               while remaining:
                   chunk = sock.recv(remaining)
                   if not chunk:
-                      raise SystemExit(
+                      raise ConnectionError(
                           f"connection closed with {remaining} bytes still expected"
                       )
                   chunks.append(chunk)
@@ -149,7 +150,7 @@ jobs:
               header = recv_exact(sock, 3)
               length, message_id = struct.unpack("<HB", header)
               if length < 3:
-                  raise SystemExit(f"invalid frame length {length} for packet {message_id}")
+                  raise RuntimeError(f"invalid frame length {length} for packet {message_id}")
               return message_id, recv_exact(sock, length - 3)
 
           hello = bytes([
@@ -159,19 +160,23 @@ jobs:
               *b"Terraria326",
           ])
 
-          with socket.create_connection(("127.0.0.1", 17780), timeout=5) as client:
+          def join_client(expected_slot):
+              client = socket.create_connection(("127.0.0.1", 17780), timeout=5)
               client.settimeout(15)
 
               client.sendall(hello)
               message_id, payload = recv_frame(client)
-              if message_id != 3 or payload != b"\x00\x00":
+              expected_continue = bytes([expected_slot, 0])
+              if message_id != 3 or payload != expected_continue:
+                  client.close()
                   raise SystemExit(
-                      f"expected packet 3 slot 0/flag false, got id={message_id}, payload={payload!r}"
+                      f"expected packet 3 slot {expected_slot}/flag false, got id={message_id}, payload={payload!r}"
                   )
 
               client.sendall(struct.pack("<HB", 3, 6))
               message_id, world_info = recv_frame(client)
               if message_id != 7 or not world_info:
+                  client.close()
                   raise SystemExit(
                       f"expected non-empty packet 7 after packet 6, got id={message_id}, bytes={len(world_info)}"
                   )
@@ -180,17 +185,20 @@ jobs:
 
               message_id, repeated_world_info = recv_frame(client)
               if message_id != 7 or repeated_world_info != world_info:
+                  client.close()
                   raise SystemExit(
                       "packet 8 did not begin with the cached packet 7 WorldInfo frame"
                   )
 
               message_id, status_payload = recv_frame(client)
               if message_id != 9 or len(status_payload) < 4:
+                  client.close()
                   raise SystemExit(
                       f"expected packet 9 after repeated packet 7, got id={message_id}"
                   )
               expected_sections = struct.unpack_from("<i", status_payload, 0)[0]
               if expected_sections <= 0:
+                  client.close()
                   raise SystemExit(f"invalid packet 9 section count {expected_sections}")
 
               section_count = 0
@@ -210,18 +218,126 @@ jobs:
                       break
 
                   if frame_count > 20000:
+                      client.close()
                       raise SystemExit("bootstrap exceeded 20000 frames before packet 49")
 
               if section_count != expected_sections:
+                  client.close()
                   raise SystemExit(
                       f"packet 9 announced {expected_sections} sections but received {section_count} packet-10 frames"
                   )
 
-          print(
-              "Live TerraRuntime join bootstrap passed: "
-              f"sections={section_count}, chestSizes={chest_size_count}, "
-              f"chestItems={chest_item_count}, framesBefore49={frame_count}."
-          )
+              spawn = struct.pack(
+                  "<HBBhhihhBB",
+                  18,
+                  12,
+                  expected_slot,
+                  100 + expected_slot,
+                  200,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+              )
+              client.sendall(spawn)
+              return client, section_count, chest_size_count, chest_item_count, frame_count
+
+          client1 = None
+          client2 = None
+          replacement = None
+          try:
+              client1, sections1, chest_sizes1, chest_items1, frames1 = join_client(0)
+              client2, sections2, chest_sizes2, chest_items2, frames2 = join_client(1)
+
+              # Packet 12 enters the authoritative loop asynchronously. A few ticks are enough for
+              # both endpoints to become Playing before exercising the relay path.
+              time.sleep(0.25)
+
+              movement_x = 123.5
+              movement_y = 456.25
+              movement = struct.pack(
+                  "<HBBBBBBBff",
+                  17,
+                  13,
+                  99,      # deliberately forged client player id; server slot 0 must win
+                  0x03,
+                  0,
+                  0,
+                  0,
+                  4,
+                  movement_x,
+                  movement_y,
+              )
+              client1.sendall(movement)
+
+              client2.settimeout(5)
+              message_id, payload = recv_frame(client2)
+              if message_id != 13 or len(payload) != 14:
+                  raise SystemExit(
+                      f"expected relayed minimum packet 13, got id={message_id}, payloadBytes={len(payload)}"
+                  )
+              if payload[0] != 0:
+                  raise SystemExit(
+                      f"movement relay trusted forged player id 99 instead of authoritative slot 0: relayed={payload[0]}"
+                  )
+              relayed_x, relayed_y = struct.unpack_from("<ff", payload, 6)
+              if relayed_x != movement_x or relayed_y != movement_y:
+                  raise SystemExit(
+                      f"movement relay changed coordinates: expected=({movement_x},{movement_y}), got=({relayed_x},{relayed_y})"
+                  )
+
+              client1.settimeout(0.5)
+              try:
+                  echoed_id, echoed_payload = recv_frame(client1)
+              except socket.timeout:
+                  pass
+              else:
+                  raise SystemExit(
+                      f"movement sender unexpectedly received relay echo id={echoed_id}, bytes={len(echoed_payload)}"
+                  )
+
+              client1.close()
+              client1 = None
+
+              # Closing a playing client must release its slot. Keep client 2 connected and prove
+              # that a fresh connection can reuse authoritative slot 0.
+              deadline = time.time() + 5
+              while time.time() < deadline and replacement is None:
+                  candidate = None
+                  try:
+                      candidate = socket.create_connection(("127.0.0.1", 17780), timeout=1)
+                      candidate.settimeout(0.5)
+                      candidate.sendall(hello)
+                      message_id, payload = recv_frame(candidate)
+                      if message_id == 3 and payload == b"\x00\x00":
+                          replacement = candidate
+                          candidate = None
+                          break
+                  except (OSError, ConnectionError, RuntimeError):
+                      pass
+                  finally:
+                      if candidate is not None:
+                          candidate.close()
+                  time.sleep(0.1)
+
+              if replacement is None:
+                  raise SystemExit("slot 0 was not reusable after clean disconnect")
+
+              print(
+                  "Live TerraRuntime two-client relay passed: "
+                  f"client1Sections={sections1}, client2Sections={sections2}, "
+                  f"client1ChestSizes={chest_sizes1}, client2ChestSizes={chest_sizes2}, "
+                  f"client1ChestItems={chest_items1}, client2ChestItems={chest_items2}, "
+                  f"framesBefore49=({frames1},{frames2}), relaySlot={payload[0] if payload else 0}."
+              )
+          finally:
+              for client in (client1, client2, replacement):
+                  if client is not None:
+                      try:
+                          client.close()
+                      except OSError:
+                          pass
           PY
 
           cat "$host_log"
