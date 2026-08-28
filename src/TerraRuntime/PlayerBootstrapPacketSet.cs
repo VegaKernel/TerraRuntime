@@ -12,7 +12,9 @@ public readonly record struct PlayerBootstrapSectionResponse(
 
 /// <summary>
 /// Immutable server-owned frames shared by connections during the initial Terraria join bootstrap.
-/// Expensive section compression and immutable persistence-derived section sync are cached and reused.
+/// Expensive section compression and immutable global bootstrap sync are cached and reused.
+/// Section-local persistence frames intentionally remain empty during initial join so chest inventories
+/// cannot delay the final packet-49 handoff after tile transfer has completed.
 /// </summary>
 public sealed class PlayerBootstrapPacketSet
 {
@@ -170,12 +172,11 @@ public sealed class PlayerBootstrapPacketSet
             }
 
             ReadOnlyMemory<byte>[] postFrames = snapshot.BaseSectionPostFrames[i];
-            if (postFrames is null)
-                return false;
-            for (int frameIndex = 0; frameIndex < postFrames.Length; frameIndex++)
+            if (postFrames is null || postFrames.Length != 0)
             {
-                if (!IsValidFrame(postFrames[frameIndex]))
-                    return false;
+                // Older bootstrap snapshots embedded section-local NPC/chest synchronization.
+                // Reject them so a warm start cannot reintroduce the pre-packet-49 join stall.
+                return false;
             }
         }
 
@@ -250,9 +251,9 @@ public sealed class PlayerBootstrapPacketSet
     }
 
     /// <summary>
-    /// Creates the additional section sync selected by packet 8. The client-requested window and,
+    /// Creates the additional packet-10 section sync selected by packet 8. The client-requested window and,
     /// for team-based-spawn worlds, the team's extra-spawn window are deduplicated against already sent sections.
-    /// Each section contributes packet 10 followed by persisted town-NPC sync and then chest contents.
+    /// Persistence-backed chest/NPC payloads are deliberately not interleaved into initial tile transfer.
     /// </summary>
     public bool TryCreateSectionResponse(
         int tileX,
@@ -310,7 +311,6 @@ public sealed class PlayerBootstrapPacketSet
             }
 
             additionalFrames.Add(entry.TileSectionFrame);
-            additionalFrames.AddRange(entry.PostSectionFrames);
         }
 
         ReadOnlyMemory<byte> statusFrame = additionalCount == 0
@@ -395,28 +395,8 @@ public sealed class PlayerBootstrapPacketSet
             return false;
         }
 
-        if (!TryEncodePostSectionFrames(world, section, out ReadOnlyMemory<byte>[] postSectionFrames))
-        {
-            entry = default;
-            return false;
-        }
-
-        entry = new SectionCacheEntry(encoded, postSectionFrames);
+        entry = new SectionCacheEntry(encoded, []);
         return true;
-    }
-
-    private static bool TryEncodePostSectionFrames(
-        WorldFileData world,
-        WorldSectionId section,
-        out ReadOnlyMemory<byte>[] frames)
-    {
-        WorldSectionPersistenceSyncPacketEncodeResult result = WorldSectionPersistenceSyncPacketEncoder.TryEncode(
-            world.Header.Dimensions,
-            world.Npcs.TownNpcs,
-            world.Chests,
-            section,
-            out frames);
-        return result == WorldSectionPersistenceSyncPacketEncodeResult.Encoded;
     }
 
     private static byte[] EncodeStatusFrame(int sectionCount)
