@@ -13,6 +13,7 @@ internal sealed class DashboardWindow : Runnable
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
     private readonly INetworkOperations networkOperations;
+    private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
     private readonly Label[] rows = new Label[RowCount];
     private TerminalUiScreen screen;
@@ -25,11 +26,13 @@ internal sealed class DashboardWindow : Runnable
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
         INetworkOperations networkOperations,
+        IWorldOperations worldOperations,
         ILogOperations logOperations)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
+        this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
         Title = "TerraRuntime - Dashboard";
 
@@ -46,6 +49,7 @@ internal sealed class DashboardWindow : Runnable
                         new MenuItem("_Dashboard", "Runtime overview", ShowDashboard),
                         new MenuItem("_Players", "Live authoritative player read model", ShowPlayers),
                         new MenuItem("_Network", "Connection and replication counters", ShowNetwork),
+                        new MenuItem("_World", "Validated world and cache state", ShowWorld),
                         new MenuItem("_Logs", "Bounded runtime event log", ShowLogs)
                     ]),
                 new MenuBarItem(
@@ -102,6 +106,9 @@ internal sealed class DashboardWindow : Runnable
             case TerminalUiScreen.Network:
                 RefreshNetwork();
                 break;
+            case TerminalUiScreen.World:
+                RefreshWorld();
+                break;
             case TerminalUiScreen.Logs:
                 RefreshLogs();
                 break;
@@ -116,6 +123,8 @@ internal sealed class DashboardWindow : Runnable
     internal void ShowPlayers() => SelectScreen(TerminalUiScreen.Players, "TerraRuntime - Players");
 
     internal void ShowNetwork() => SelectScreen(TerminalUiScreen.Network, "TerraRuntime - Network");
+
+    internal void ShowWorld() => SelectScreen(TerminalUiScreen.World, "TerraRuntime - World");
 
     internal void ShowLogs() => SelectScreen(TerminalUiScreen.Logs, "TerraRuntime - Logs");
 
@@ -186,6 +195,23 @@ internal sealed class DashboardWindow : Runnable
         rows[6].Text = $"Lifecycle   : active baselines {snapshot.PlayerActiveBaselineFrames:N0}   deactivations {snapshot.PlayerDeactivationFrames:N0}";
         rows[8].Text = "Queues      : per-connection queues are bounded; aggregate backpressure counters are not published yet";
         rows[10].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+    }
+
+    private void RefreshWorld()
+    {
+        ClearRows();
+        RuntimeWorldSnapshot snapshot = worldOperations.CaptureSnapshot();
+        rows[0].Text = $"State      : {(snapshot.Ready ? "ready" : "not ready")}   world '{snapshot.Name}'   id {snapshot.WorldId}";
+        rows[1].Text = $"Identity   : {snapshot.UniqueId:D}";
+        rows[2].Text = $"Format     : {snapshot.FormatVersion}   worldgen {snapshot.WorldGeneratorVersion}";
+        rows[3].Text = $"Dimensions : {snapshot.WidthTiles}x{snapshot.HeightTiles}   tiles {snapshot.TileCount:N0}";
+        rows[4].Text = $"Objects    : chests {snapshot.ChestCount:N0}   signs {snapshot.SignCount:N0}   tile entities {snapshot.TileEntityCount:N0}   plates {snapshot.PressurePlateCount:N0}";
+        rows[5].Text = $"NPC state  : town {snapshot.TownNpcCount:N0}   persistent {snapshot.PersistentNpcCount:N0}   rooms {snapshot.TownRoomCount:N0}";
+        rows[6].Text = $"Cache      : {(snapshot.RuntimeCacheHit ? "hit" : "miss")}   initial {snapshot.InitialCacheResult}   schema {snapshot.CacheSchemaVersion}   readers {snapshot.CacheParallelReads}";
+        rows[7].Text = $"Load       : file {FormatMilliseconds(snapshot.FileReadMilliseconds)}   cache {FormatMilliseconds(snapshot.CacheLoadMilliseconds)}   canonical {FormatMilliseconds(snapshot.CanonicalWorldLoadMilliseconds)}";
+        rows[8].Text = $"Prepare    : cache write {FormatMilliseconds(snapshot.CacheWriteMilliseconds)}   bootstrap {FormatMilliseconds(snapshot.BootstrapMilliseconds)}";
+        rows[9].Text = $"Ready      : world {FormatMilliseconds(snapshot.WorldReadyMilliseconds)}   network {FormatMilliseconds(snapshot.NetworkReadyMilliseconds)}";
+        rows[10].Text = $"Snapshot   : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
     private void RefreshLogs()
@@ -282,6 +308,7 @@ internal sealed class DashboardWindow : Runnable
         Dashboard,
         Players,
         Network,
+        World,
         Logs
     }
 }

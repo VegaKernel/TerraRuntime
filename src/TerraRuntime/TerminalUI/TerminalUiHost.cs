@@ -11,6 +11,7 @@ internal sealed class TerminalUiHost : IDisposable
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
     private readonly INetworkOperations networkOperations;
+    private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
     private readonly CancellationTokenSource stopUi;
     private readonly Thread thread;
@@ -20,12 +21,14 @@ internal sealed class TerminalUiHost : IDisposable
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
         INetworkOperations networkOperations,
+        IWorldOperations worldOperations,
         ILogOperations logOperations,
         CancellationToken serverCancellation)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
+        this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
         stopUi = CancellationTokenSource.CreateLinkedTokenSource(serverCancellation);
         thread = new Thread(Run)
@@ -39,6 +42,7 @@ internal sealed class TerminalUiHost : IDisposable
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
         INetworkOperations networkOperations,
+        IWorldOperations worldOperations,
         ILogOperations logOperations,
         CancellationToken serverCancellation)
     {
@@ -46,6 +50,7 @@ internal sealed class TerminalUiHost : IDisposable
             dashboardOperations,
             playerOperations,
             networkOperations,
+            worldOperations,
             logOperations,
             serverCancellation);
         host.thread.Start();
@@ -72,6 +77,7 @@ internal sealed class TerminalUiHost : IDisposable
                 dashboardOperations,
                 playerOperations,
                 networkOperations,
+                worldOperations,
                 logOperations);
             long nextRefresh = 0;
 

@@ -210,10 +210,41 @@ public static class TerrariaServerHost
                         options.Port,
                         options.MaxPlayers,
                         GameLoopOptions.DefaultTicksPerSecond);
+                    var worldOperations = new LocalRuntimeWorldOperations(
+                        new RuntimeWorldSnapshot(
+                            Ready: true,
+                            Name: world.Header.Name,
+                            WorldId: world.Header.WorldId,
+                            UniqueId: world.Header.UniqueId,
+                            FormatVersion: world.Envelope.FormatVersion,
+                            WorldGeneratorVersion: world.Header.WorldGeneratorVersion,
+                            WidthTiles: world.Header.Dimensions.WidthTiles,
+                            HeightTiles: world.Header.Dimensions.HeightTiles,
+                            TileCount: world.Tiles.Count,
+                            ChestCount: world.Chests.Length,
+                            SignCount: world.Signs.Length,
+                            TownNpcCount: world.Npcs.TownNpcs.Length,
+                            PersistentNpcCount: world.Npcs.PersistentNpcs.Length,
+                            TileEntityCount: world.TileEntities.Length,
+                            PressurePlateCount: world.PressurePlates.Length,
+                            TownRoomCount: world.TownRooms.Length,
+                            RuntimeCacheHit: runtimeCacheHit,
+                            InitialCacheResult: cacheDiagnostic.Result.ToString(),
+                            CacheSchemaVersion: RuntimeWorldCache.SchemaVersion,
+                            CacheParallelReads: RuntimeWorldCacheReadOptions.Default.MaxParallelReads,
+                            FileReadMilliseconds: fileReadDuration.TotalMilliseconds,
+                            CacheLoadMilliseconds: cacheLoadDuration.TotalMilliseconds,
+                            CanonicalWorldLoadMilliseconds: canonicalLoadProfile.Total.TotalMilliseconds,
+                            CacheWriteMilliseconds: cacheWriteDuration.TotalMilliseconds,
+                            BootstrapMilliseconds: bootstrapDuration.TotalMilliseconds,
+                            WorldReadyMilliseconds: worldReadyDuration.TotalMilliseconds,
+                            NetworkReadyMilliseconds: networkReadyDuration.TotalMilliseconds,
+                            CapturedAtUtc: DateTimeOffset.UtcNow));
                     terminalUi = TerminalUiHost.Start(
                         dashboardOperations,
                         playerOperations,
                         networkOperations,
+                        worldOperations,
                         runtimeLogs,
                         shutdown.Token);
                 }

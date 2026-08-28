@@ -16,14 +16,15 @@ internal static class TerminalUiSmoke
             var logs = new RuntimeLogBuffer(capacity: 16);
             logs.Publish(RuntimeLogLevel.Information, "Server", "Terminal UI smoke startup");
             logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
-            using var window = new DashboardWindow(operations, operations, operations, logs);
+            using var window = new DashboardWindow(operations, operations, operations, operations, logs);
             window.RefreshSnapshot();
             window.ShowPlayers();
             window.ShowNetwork();
+            window.ShowWorld();
             window.ShowLogs();
             window.ShowDashboard();
             app.Run(window);
-            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, network and logs views.");
+            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, network, world and logs views.");
             return 0;
         }
         catch (Exception exception)
@@ -33,7 +34,7 @@ internal static class TerminalUiSmoke
         }
     }
 
-    private sealed class SmokeOperations : IRuntimeDashboardOperations, IPlayerOperations, INetworkOperations
+    private sealed class SmokeOperations : IRuntimeDashboardOperations, IPlayerOperations, INetworkOperations, IWorldOperations
     {
         public RuntimeDashboardSnapshot CaptureSnapshot() =>
             new(
@@ -103,6 +104,37 @@ internal static class TerminalUiSmoke
                 PlayerDeactivationFrames: 0,
                 RelayedMovementFrames: 10,
                 MovementResyncFrames: 1,
+                CapturedAtUtc: DateTimeOffset.UtcNow);
+
+        RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() =>
+            new(
+                Ready: true,
+                Name: "NativeAOT-Smoke",
+                WorldId: 42,
+                UniqueId: new Guid("00112233-4455-6677-8899-aabbccddeeff"),
+                FormatVersion: 326,
+                WorldGeneratorVersion: 1,
+                WidthTiles: 4200,
+                HeightTiles: 1200,
+                TileCount: 5_040_000,
+                ChestCount: 12,
+                SignCount: 4,
+                TownNpcCount: 3,
+                PersistentNpcCount: 1,
+                TileEntityCount: 5,
+                PressurePlateCount: 2,
+                TownRoomCount: 3,
+                RuntimeCacheHit: true,
+                InitialCacheResult: "Loaded",
+                CacheSchemaVersion: 2,
+                CacheParallelReads: 4,
+                FileReadMilliseconds: 1.2,
+                CacheLoadMilliseconds: 3.4,
+                CanonicalWorldLoadMilliseconds: 0,
+                CacheWriteMilliseconds: 0,
+                BootstrapMilliseconds: 2.1,
+                WorldReadyMilliseconds: 4.8,
+                NetworkReadyMilliseconds: 6.2,
                 CapturedAtUtc: DateTimeOffset.UtcNow);
     }
 }
