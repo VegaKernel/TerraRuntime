@@ -5,7 +5,7 @@ public sealed record ServerHostOptions(
     int Port,
     int MaxPlayers,
     bool InterestManagementEnabled = false,
-    bool TerminalUiEnabled = false)
+    bool TerminalUiEnabled = true)
 {
     public const int DefaultPort = 7777;
     public const int DefaultMaxPlayers = 8;
@@ -18,7 +18,7 @@ public sealed record ServerHostOptions(
         int port = DefaultPort;
         int maxPlayers = DefaultMaxPlayers;
         bool interestManagementEnabled = false;
-        bool terminalUiEnabled = false;
+        bool terminalUiEnabled = true;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -26,28 +26,31 @@ public sealed record ServerHostOptions(
             switch (arg)
             {
                 case "--world":
+                case "-world":
                     if (!TryReadValue(args, ref i, out worldPath))
                     {
                         options = null;
-                        error = "--world requires a .wld path.";
+                        error = $"{arg} requires a .wld path.";
                         return false;
                     }
                     break;
 
                 case "--port":
+                case "-port":
                     if (!TryReadInt(args, ref i, 1, ushort.MaxValue, out port))
                     {
                         options = null;
-                        error = $"--port requires an integer from 1 to {ushort.MaxValue}.";
+                        error = $"{arg} requires an integer from 1 to {ushort.MaxValue}.";
                         return false;
                     }
                     break;
 
                 case "--max-players":
+                case "-maxplayers":
                     if (!TryReadInt(args, ref i, 1, byte.MaxValue, out maxPlayers))
                     {
                         options = null;
-                        error = $"--max-players requires an integer from 1 to {byte.MaxValue}.";
+                        error = $"{arg} requires an integer from 1 to {byte.MaxValue}.";
                         return false;
                     }
                     break;
@@ -59,13 +62,18 @@ public sealed record ServerHostOptions(
                 case "--tui":
                     terminalUiEnabled = true;
                     break;
+
+                case "--no-tui":
+                case "--plain":
+                    terminalUiEnabled = false;
+                    break;
             }
         }
 
         if (string.IsNullOrWhiteSpace(worldPath))
         {
             options = null;
-            error = "--world is required to start the server host.";
+            error = "A world path is required to start the server host.";
             return false;
         }
 
