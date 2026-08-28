@@ -43,6 +43,7 @@ public static class TerrariaServerHost
 
         long startupStart = Stopwatch.GetTimestamp();
         long allocatedBytesAtStart = GC.GetTotalAllocatedBytes(precise: false);
+        TimeSpan sourceStatDuration = TimeSpan.Zero;
         TimeSpan fileReadDuration = TimeSpan.Zero;
         TimeSpan cacheLoadDuration = TimeSpan.Zero;
         TimeSpan cacheWriteDuration = TimeSpan.Zero;
@@ -50,29 +51,45 @@ public static class TerrariaServerHost
         WorldFileLoadProfile canonicalLoadProfile = default;
         bool runtimeCacheHit = false;
 
-        byte[] file;
-        long fileReadStart = Stopwatch.GetTimestamp();
-        try
+        long sourceStatStart = Stopwatch.GetTimestamp();
+        if (!RuntimeWorldSnapshotCache.TryCaptureSourceStamp(options.WorldPath, out RuntimeWorldSourceStamp sourceStamp))
         {
-            file = await File.ReadAllBytesAsync(options.WorldPath).ConfigureAwait(false);
-            fileReadDuration = Stopwatch.GetElapsedTime(fileReadStart);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            fileReadDuration = Stopwatch.GetElapsedTime(fileReadStart);
-            Console.Error.WriteLine($"Failed to read world file '{options.WorldPath}': {exception.Message}");
+            sourceStatDuration = Stopwatch.GetElapsedTime(sourceStatStart);
+            Console.Error.WriteLine($"Failed to stat world file '{options.WorldPath}'.");
             return 25;
         }
+        sourceStatDuration = Stopwatch.GetElapsedTime(sourceStatStart);
 
         WorldFileLoadLimits worldLoadLimits = CreateServerWorldLoadLimits();
-        string runtimeCachePath = RuntimeWorldCache.GetCachePath(options.WorldPath);
+        string runtimeCachePath = RuntimeWorldSnapshotCache.GetCachePath(options.WorldPath);
         long cacheLoadStart = Stopwatch.GetTimestamp();
-        RuntimeWorldCacheLoadDiagnostic cacheDiagnostic = RuntimeWorldCache.TryLoad(
+        RuntimeWorldSnapshotLoadDiagnostic cacheDiagnostic = RuntimeWorldSnapshotCache.TryLoad(
             runtimeCachePath,
-            file,
+            sourceStamp,
             worldLoadLimits,
             out WorldFileData? world);
         cacheLoadDuration = Stopwatch.GetElapsedTime(cacheLoadStart);
+
+        if (cacheDiagnostic.IsLoaded)
+        {
+            long verifyStatStart = Stopwatch.GetTimestamp();
+            bool statOk = RuntimeWorldSnapshotCache.TryCaptureSourceStamp(
+                options.WorldPath,
+                out RuntimeWorldSourceStamp postCacheStamp);
+            sourceStatDuration += Stopwatch.GetElapsedTime(verifyStatStart);
+            if (!statOk)
+            {
+                Console.Error.WriteLine($"Failed to re-stat world file '{options.WorldPath}' after cache load.");
+                return 25;
+            }
+
+            if (postCacheStamp != sourceStamp)
+            {
+                sourceStamp = postCacheStamp;
+                world = null;
+                cacheDiagnostic = new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.SourceNewer);
+            }
+        }
 
         TimeSpan worldReadyDuration;
         if (cacheDiagnostic.IsLoaded && world is not null)
@@ -87,6 +104,18 @@ public static class TerrariaServerHost
                 $"Runtime world cache miss: result={cacheDiagnostic.Result}, code={cacheDiagnostic.DetailCode}; " +
                 "falling back to canonical .wld.");
 
+            StableWorldReadResult stableRead = await ReadStableWorldAsync(
+                options.WorldPath,
+                sourceStamp).ConfigureAwait(false);
+            fileReadDuration = stableRead.Duration;
+            if (!stableRead.Success || stableRead.Bytes is null)
+            {
+                Console.Error.WriteLine(stableRead.Error ?? $"Failed to read world file '{options.WorldPath}'.");
+                return 25;
+            }
+
+            byte[] file = stableRead.Bytes;
+            sourceStamp = stableRead.Stamp;
             WorldFileLoadDiagnostic diagnostic = WorldFileLoader.TryLoad(
                 file,
                 worldLoadLimits,
@@ -101,9 +130,10 @@ public static class TerrariaServerHost
 
             worldReadyDuration = Stopwatch.GetElapsedTime(startupStart);
             long cacheWriteStart = Stopwatch.GetTimestamp();
-            RuntimeWorldCacheWriteDiagnostic cacheWrite = RuntimeWorldCache.TryWriteAtomic(
+            RuntimeWorldSnapshotWriteDiagnostic cacheWrite = RuntimeWorldSnapshotCache.TryWriteAtomic(
                 runtimeCachePath,
                 file,
+                sourceStamp,
                 world);
             cacheWriteDuration = Stopwatch.GetElapsedTime(cacheWriteStart);
             if (cacheWrite.IsWritten)
@@ -114,7 +144,7 @@ public static class TerrariaServerHost
             {
                 Console.Error.WriteLine(
                     $"Runtime world cache rebuild skipped/failed: result={cacheWrite.Result}. " +
-                    "The canonical .wld remains authoritative.");
+                    "The canonical .wld remains the recovery checkpoint.");
             }
         }
 
@@ -184,7 +214,7 @@ public static class TerrariaServerHost
             long allocatedBytes = Math.Max(
                 0L,
                 GC.GetTotalAllocatedBytes(precise: false) - allocatedBytesAtStart);
-            string startupProfile = FormattableString.Invariant($"startup_profile source={(runtimeCacheHit ? "runtime-cache" : "canonical-wld")} cache_result={cacheDiagnostic.Result} cache_parallel_reads={RuntimeWorldCacheReadOptions.Default.MaxParallelReads} file_read_ms={fileReadDuration.TotalMilliseconds:F3} cache_load_ms={cacheLoadDuration.TotalMilliseconds:F3} wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} bootstrap_ms={bootstrapDuration.TotalMilliseconds:F3} world_ready_ms={worldReadyDuration.TotalMilliseconds:F3} network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
+            string startupProfile = FormattableString.Invariant($"startup_profile source={(runtimeCacheHit ? "runtime-cache" : "canonical-wld")} cache_result={cacheDiagnostic.Result} cache_schema={RuntimeWorldSnapshotCache.SchemaVersion} cache_parallel_reads={RuntimeWorldCacheReadOptions.Default.MaxParallelReads} source_stat_ms={sourceStatDuration.TotalMilliseconds:F3} file_read_ms={fileReadDuration.TotalMilliseconds:F3} cache_load_ms={cacheLoadDuration.TotalMilliseconds:F3} wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} bootstrap_ms={bootstrapDuration.TotalMilliseconds:F3} world_ready_ms={worldReadyDuration.TotalMilliseconds:F3} network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
             Console.WriteLine(startupProfile);
             runtimeLogs.Publish(RuntimeLogLevel.Debug, "Startup", startupProfile);
 
@@ -231,7 +261,7 @@ public static class TerrariaServerHost
                             TownRoomCount: world.TownRooms.Length,
                             RuntimeCacheHit: runtimeCacheHit,
                             InitialCacheResult: cacheDiagnostic.Result.ToString(),
-                            CacheSchemaVersion: RuntimeWorldCache.SchemaVersion,
+                            CacheSchemaVersion: RuntimeWorldSnapshotCache.SchemaVersion,
                             CacheParallelReads: RuntimeWorldCacheReadOptions.Default.MaxParallelReads,
                             FileReadMilliseconds: fileReadDuration.TotalMilliseconds,
                             CacheLoadMilliseconds: cacheLoadDuration.TotalMilliseconds,
@@ -467,7 +497,62 @@ public static class TerrariaServerHost
         }
     }
 
-    private static WorldFileLoadLimits CreateServerWorldLoadLimits() =>
+    private static async Task<StableWorldReadResult> ReadStableWorldAsync(
+        string worldPath,
+        RuntimeWorldSourceStamp initialStamp)
+    {
+        long start = Stopwatch.GetTimestamp();
+        RuntimeWorldSourceStamp expectedStamp = initialStamp;
+
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
+            byte[] bytes;
+            try
+            {
+                bytes = await File.ReadAllBytesAsync(worldPath).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                return new StableWorldReadResult(
+                    false,
+                    null,
+                    default,
+                    Stopwatch.GetElapsedTime(start),
+                    $"Failed to read world file '{worldPath}': {exception.Message}");
+            }
+
+            if (!RuntimeWorldSnapshotCache.TryCaptureSourceStamp(worldPath, out RuntimeWorldSourceStamp actualStamp))
+            {
+                return new StableWorldReadResult(
+                    false,
+                    null,
+                    default,
+                    Stopwatch.GetElapsedTime(start),
+                    $"Failed to stat world file '{worldPath}' after reading it.");
+            }
+
+            if (actualStamp == expectedStamp && actualStamp.Length == bytes.LongLength)
+            {
+                return new StableWorldReadResult(
+                    true,
+                    bytes,
+                    actualStamp,
+                    Stopwatch.GetElapsedTime(start),
+                    null);
+            }
+
+            expectedStamp = actualStamp;
+        }
+
+        return new StableWorldReadResult(
+            false,
+            null,
+            default,
+            Stopwatch.GetElapsedTime(start),
+            $"World file '{worldPath}' changed while it was being read twice; refusing to build a mixed snapshot.");
+    }
+
+    internal static WorldFileLoadLimits CreateServerWorldLoadLimits() =>
         new(
             MaxTileCount: 32_000_000,
             MaxItemsPerChest: 100,
@@ -497,4 +582,11 @@ public static class TerrariaServerHost
                 MaxBannerEntries: 8_192,
                 MaxPartyNpcEntries: 4_096,
                 MaxManifestBytes: 4 * 1024 * 1024));
+
+    private readonly record struct StableWorldReadResult(
+        bool Success,
+        byte[]? Bytes,
+        RuntimeWorldSourceStamp Stamp,
+        TimeSpan Duration,
+        string? Error);
 }
