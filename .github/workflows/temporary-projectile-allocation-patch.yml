@@ -33,7 +33,7 @@ jobs:
           path = Path("src/TerraRuntime/ServerRuntimeState.cs")
           text = path.read_text()
 
-          old = '''        if (!TryFindFreeVanillaProjectileSlot(out ushort slot))
+          old = """        if (!TryFindFreeVanillaProjectileSlot(out ushort slot))
           {
               RejectedProjectileSpawns++;
               RejectedClientProjectileUpdates++;
@@ -48,9 +48,9 @@ jobs:
                   return;
               }
           }
-'''.replace('          ', '        ')
+          """
 
-          new = '''        using (clientCommits.Enter(command.Connection.Source, in key))
+          new = """        using (clientCommits.Enter(command.Connection.Source, in key))
           {
               if (_projectiles.TrySpawnVanilla(in update, out _))
               {
@@ -58,43 +58,40 @@ jobs:
                   return;
               }
           }
-'''.replace('          ', '        ')
+          """
 
-          helper = '''    private bool TryFindFreeVanillaProjectileSlot(out ushort slot)
-      {
-          int physicalCapacity = Math.Min(_projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
-          for (int candidate = 0; candidate < physicalCapacity; candidate++)
+          helper = """    private bool TryFindFreeVanillaProjectileSlot(out ushort slot)
           {
-              ushort physicalSlot = checked((ushort)candidate);
-              if (_projectiles.TryGetActive(physicalSlot, out _))
-                  continue;
+              int physicalCapacity = Math.Min(_projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
+              for (int candidate = 0; candidate < physicalCapacity; candidate++)
+              {
+                  ushort physicalSlot = checked((ushort)candidate);
+                  if (_projectiles.TryGetActive(physicalSlot, out _))
+                      continue;
 
-              slot = physicalSlot;
-              return true;
+                  slot = physicalSlot;
+                  return true;
+              }
+
+              slot = default;
+              return false;
           }
 
-          slot = default;
-          return false;
-      }
+          """
 
-'''.replace('      ', '    ')
-
-          if old not in text:
-              if 'TrySpawnVanilla(in update, out _)' in text:
-                  print('authoritative allocation already wired')
-              else:
-                  raise SystemExit('expected client projectile allocation block not found')
-          else:
+          if old in text:
               if text.count(old) != 1:
-                  raise SystemExit('client projectile allocation block is ambiguous')
+                  raise SystemExit("client projectile allocation block is ambiguous")
               text = text.replace(old, new, 1)
+          elif "TrySpawnVanilla(in update, out _)" not in text:
+              raise SystemExit("expected client projectile allocation block not found")
 
           if helper in text:
               if text.count(helper) != 1:
-                  raise SystemExit('old allocation helper is ambiguous')
-              text = text.replace(helper, '', 1)
-          elif 'TryFindFreeVanillaProjectileSlot' in text:
-              raise SystemExit('allocation helper changed unexpectedly')
+                  raise SystemExit("old allocation helper is ambiguous")
+              text = text.replace(helper, "", 1)
+          elif "TryFindFreeVanillaProjectileSlot" in text:
+              raise SystemExit("allocation helper changed unexpectedly")
 
           path.write_text(text)
           PY
