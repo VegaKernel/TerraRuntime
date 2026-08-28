@@ -327,7 +327,7 @@ internal static class RuntimeBootstrapSnapshotCache
 
     private static void WriteFrame(BinaryWriter writer, ReadOnlyMemory<byte> frame)
     {
-        if (frame.Length is < TerrariaFrameDecoderOptions.MinimumFrameLength or > ushort.MaxValue)
+        if (frame.Length < TerrariaFrameDecoderOptions.MinimumFrameLength || frame.Length > ushort.MaxValue)
             throw new InvalidDataException($"Invalid bootstrap frame length {frame.Length}.");
 
         writer.Write(frame.Length);
@@ -344,7 +344,8 @@ internal static class RuntimeBootstrapSnapshotCache
             return false;
 
         int length = reader.ReadInt32();
-        if (length is < TerrariaFrameDecoderOptions.MinimumFrameLength or > ushort.MaxValue ||
+        if (length < TerrariaFrameDecoderOptions.MinimumFrameLength ||
+            length > ushort.MaxValue ||
             stream.Length - stream.Position < length)
         {
             return false;
