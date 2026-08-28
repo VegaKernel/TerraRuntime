@@ -41,6 +41,37 @@ public sealed class ServerHostOptionsTests
         Assert.True(options.TerminalUiEnabled);
     }
 
+    [Theory]
+    [InlineData("tui", true)]
+    [InlineData("terminal", true)]
+    [InlineData("plain", false)]
+    [InlineData("console", false)]
+    [InlineData("headless", false)]
+    public void Vega_ui_modes_are_supported(string mode, bool expectedEnabled)
+    {
+        bool parsed = ServerHostOptions.TryParse(
+            ["--world", "test.wld", "--vega-ui", mode],
+            out ServerHostOptions? options,
+            out string? error);
+
+        Assert.True(parsed, error);
+        Assert.NotNull(options);
+        Assert.Equal(expectedEnabled, options.TerminalUiEnabled);
+    }
+
+    [Fact]
+    public void Vega_ui_equals_syntax_is_supported()
+    {
+        bool parsed = ServerHostOptions.TryParse(
+            ["--world", "test.wld", "--vega-ui=plain"],
+            out ServerHostOptions? options,
+            out string? error);
+
+        Assert.True(parsed, error);
+        Assert.NotNull(options);
+        Assert.False(options.TerminalUiEnabled);
+    }
+
     [Fact]
     public void Vega_style_server_argument_aliases_are_supported()
     {
