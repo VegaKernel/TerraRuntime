@@ -28,8 +28,7 @@ public sealed class WorldLiquidUpdateQueueTests
         Assert.True(queue.TryDequeue(out WorldLiquidUpdate second));
         Assert.Equal(new WorldLiquidUpdate(0, 1, 4, 0), second);
         Assert.True(queue.TryDequeueBuffered(out int bufferX, out int bufferY));
-        Assert.Equal(3, bufferX);
-        Assert.Equal(0, bufferY);
+        Assert.Equal((3, 0), (bufferX, bufferY));
         Assert.False(queue.HasPendingWork);
 
         Assert.True(queue.TryEnqueue(1, 2, delay: 1, kill: 2));
@@ -37,44 +36,36 @@ public sealed class WorldLiquidUpdateQueueTests
     }
 
     [Fact]
-    public void Snapshot_restore_preserves_active_state_and_buffer_order()
+    public void Clear_releases_all_membership_for_requeue()
     {
-        var source = new WorldLiquidUpdateQueue(new WorldDimensions(5, 4));
-        Assert.True(source.TryEnqueue(2, 3, delay: 11, kill: 5));
-        Assert.True(source.TryEnqueue(4, 0, delay: 2, kill: 1));
-        Assert.True(source.TryBuffer(1, 1));
-        Assert.True(source.TryBuffer(0, 3));
+        var queue = new WorldLiquidUpdateQueue(new WorldDimensions(5, 4));
+        Assert.True(queue.TryEnqueue(2, 3, delay: 11, kill: 5));
+        Assert.True(queue.TryBuffer(1, 1));
 
-        WorldLiquidUpdateEntry[] active = source.CaptureActiveSnapshot();
-        int[] buffered = source.CaptureBufferSnapshot();
+        queue.Clear();
 
-        var restored = new WorldLiquidUpdateQueue(new WorldDimensions(5, 4));
-        Assert.True(restored.TryRestoreSnapshot(active, buffered));
-
-        Assert.True(restored.TryDequeue(out WorldLiquidUpdate first));
-        Assert.Equal(new WorldLiquidUpdate(2, 3, 11, 5), first);
-        Assert.True(restored.TryDequeue(out WorldLiquidUpdate second));
-        Assert.Equal(new WorldLiquidUpdate(4, 0, 2, 1), second);
-        Assert.True(restored.TryDequeueBuffered(out int firstBufferX, out int firstBufferY));
-        Assert.Equal((1, 1), (firstBufferX, firstBufferY));
-        Assert.True(restored.TryDequeueBuffered(out int secondBufferX, out int secondBufferY));
-        Assert.Equal((0, 3), (secondBufferX, secondBufferY));
+        Assert.Equal(0, queue.ActiveCount);
+        Assert.Equal(0, queue.BufferedCount);
+        Assert.False(queue.HasPendingWork);
+        Assert.False(queue.IsQueued(2, 3));
+        Assert.False(queue.IsBuffered(1, 1));
+        Assert.True(queue.TryEnqueue(2, 3, delay: 2, kill: 1));
+        Assert.True(queue.TryBuffer(1, 1));
     }
 
     [Fact]
-    public void Snapshot_restore_rejects_duplicate_or_out_of_range_entries()
+    public void Queue_rejects_out_of_bounds_coordinates_without_mutation()
     {
         var queue = new WorldLiquidUpdateQueue(new WorldDimensions(2, 2));
 
-        WorldLiquidUpdateEntry[] duplicateActive =
-        [
-            new(1, 0, 0),
-            new(1, 2, 3)
-        ];
-        Assert.False(queue.TryRestoreSnapshot(duplicateActive, []));
+        Assert.False(queue.TryEnqueue(-1, 0));
+        Assert.False(queue.TryEnqueue(2, 0));
+        Assert.False(queue.TryEnqueue(0, 2));
+        Assert.False(queue.TryBuffer(0, -1));
+        Assert.False(queue.TryBuffer(2, 1));
 
-        WorldLiquidUpdateEntry[] outOfRange = [new(4, 0, 0)];
-        Assert.False(queue.TryRestoreSnapshot(outOfRange, []));
-        Assert.False(queue.TryRestoreSnapshot([], [2, 2]));
+        Assert.Equal(0, queue.ActiveCount);
+        Assert.Equal(0, queue.BufferedCount);
+        Assert.False(queue.HasPendingWork);
     }
 }
