@@ -49,8 +49,11 @@ public static class TerrariaServerHost
         TimeSpan cacheLoadDuration = TimeSpan.Zero;
         TimeSpan cacheWriteDuration = TimeSpan.Zero;
         TimeSpan bootstrapDuration = TimeSpan.Zero;
+        TimeSpan bootstrapCacheLoadDuration = TimeSpan.Zero;
+        TimeSpan bootstrapCacheWriteDuration = TimeSpan.Zero;
         WorldFileLoadProfile canonicalLoadProfile = default;
         bool runtimeCacheHit = false;
+        bool bootstrapCacheHit = false;
 
         long sourceStatStart = Stopwatch.GetTimestamp();
         if (!RuntimeWorldSnapshotCache.TryCaptureSourceStamp(options.WorldPath, out RuntimeWorldSourceStamp sourceStamp))
@@ -149,18 +152,54 @@ public static class TerrariaServerHost
             }
         }
 
-        PlayerBootstrapPacketSet bootstrapPackets;
+        string runtimeBootstrapCachePath = RuntimeBootstrapSnapshotCache.GetCachePath(options.WorldPath);
         long bootstrapStart = Stopwatch.GetTimestamp();
-        try
+        long bootstrapCacheLoadStart = Stopwatch.GetTimestamp();
+        RuntimeBootstrapSnapshotLoadDiagnostic bootstrapCacheDiagnostic = RuntimeBootstrapSnapshotCache.TryLoad(
+            runtimeBootstrapCachePath,
+            sourceStamp,
+            world,
+            out PlayerBootstrapPacketSet? cachedBootstrapPackets);
+        bootstrapCacheLoadDuration = Stopwatch.GetElapsedTime(bootstrapCacheLoadStart);
+
+        PlayerBootstrapPacketSet bootstrapPackets;
+        if (bootstrapCacheDiagnostic.IsLoaded && cachedBootstrapPackets is not null)
         {
-            bootstrapPackets = PlayerBootstrapPacketSet.Create(world);
+            bootstrapPackets = cachedBootstrapPackets;
+            bootstrapCacheHit = true;
             bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
+            Console.WriteLine($"Runtime bootstrap cache hit: '{runtimeBootstrapCachePath}'.");
         }
-        catch (Exception exception) when (exception is InvalidOperationException or OverflowException)
+        else
         {
-            bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
-            Console.Error.WriteLine($"Failed to prepare join bootstrap packets: {exception.Message}");
-            return 27;
+            try
+            {
+                bootstrapPackets = PlayerBootstrapPacketSet.Create(world);
+                bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or OverflowException)
+            {
+                bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
+                Console.Error.WriteLine($"Failed to prepare join bootstrap packets: {exception.Message}");
+                return 27;
+            }
+
+            long bootstrapCacheWriteStart = Stopwatch.GetTimestamp();
+            RuntimeBootstrapSnapshotWriteDiagnostic bootstrapCacheWrite = RuntimeBootstrapSnapshotCache.TryWriteAtomic(
+                runtimeBootstrapCachePath,
+                sourceStamp,
+                world,
+                bootstrapPackets);
+            bootstrapCacheWriteDuration = Stopwatch.GetElapsedTime(bootstrapCacheWriteStart);
+            if (bootstrapCacheWrite.IsWritten)
+            {
+                Console.WriteLine($"Runtime bootstrap cache rebuilt: '{runtimeBootstrapCachePath}'.");
+            }
+            else
+            {
+                Console.Error.WriteLine(
+                    $"Runtime bootstrap cache rebuild skipped/failed: result={bootstrapCacheWrite.Result}.");
+            }
         }
 
         var worldItems = new RuntimeWorldItemStore();
@@ -229,7 +268,7 @@ public static class TerrariaServerHost
             long allocatedBytes = Math.Max(
                 0L,
                 GC.GetTotalAllocatedBytes(precise: false) - allocatedBytesAtStart);
-            string startupProfile = FormattableString.Invariant($"startup_profile source={(runtimeCacheHit ? "runtime-cache" : "canonical-wld")} cache_result={cacheDiagnostic.Result} cache_parallel_reads={RuntimeWorldCacheReadOptions.Default.MaxParallelReads} source_stat_ms={sourceStatDuration.TotalMilliseconds:F3} file_read_ms={fileReadDuration.TotalMilliseconds:F3} cache_load_ms={cacheLoadDuration.TotalMilliseconds:F3} wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} bootstrap_ms={bootstrapDuration.TotalMilliseconds:F3} world_ready_ms={worldReadyDuration.TotalMilliseconds:F3} network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
+            string startupProfile = FormattableString.Invariant($"startup_profile source={(runtimeCacheHit ? "runtime-cache" : "canonical-wld")} cache_result={cacheDiagnostic.Result} cache_parallel_reads={RuntimeWorldCacheReadOptions.Default.MaxParallelReads} source_stat_ms={sourceStatDuration.TotalMilliseconds:F3} file_read_ms={fileReadDuration.TotalMilliseconds:F3} cache_load_ms={cacheLoadDuration.TotalMilliseconds:F3} wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} bootstrap_cache_hit={(bootstrapCacheHit ? "true" : "false")} bootstrap_cache_result={bootstrapCacheDiagnostic.Result} bootstrap_cache_load_ms={bootstrapCacheLoadDuration.TotalMilliseconds:F3} bootstrap_cache_write_ms={bootstrapCacheWriteDuration.TotalMilliseconds:F3} bootstrap_ms={bootstrapDuration.TotalMilliseconds:F3} world_ready_ms={worldReadyDuration.TotalMilliseconds:F3} network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
             Console.WriteLine(startupProfile);
             runtimeLogs.Publish(RuntimeLogLevel.Debug, "Startup", startupProfile);
 
@@ -387,7 +426,7 @@ public static class TerrariaServerHost
                 catch (Exception exception)
                 {
                     string message = $"Connection shutdown observed a fault: {exception.Message}";
-                    hostLog.Write(RuntimeLogLevel.Error, "Network", message, useStandardError: true);
+                    hostLog.Write(RuntimeLogLevel.Error, "Runtime", message, useStandardError: true);
                 }
             }
 
