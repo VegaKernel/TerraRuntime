@@ -2,39 +2,46 @@
 
 This document refines Phase 10 of the main TerraRuntime roadmap.
 
-The local Terminal UI foundation is now implemented for the standalone TerraRuntime server. The design deliberately keeps views separated from mutable runtime internals so the same operations semantics can be reused by a future administration client without turning the current server into a speculative remote-management framework.
+The standalone TerraRuntime server already has a local Terminal.Gui v2 operations UI. The UI is intentionally separated from mutable runtime internals so its read-model and command semantics can be reused later without introducing a speculative remote-management framework now.
 
 ## Current rule
 
-**Keep the local TUI useful and runtime-owned; preserve a clean data boundary so a remote client can reuse it later.**
+**Keep the local TUI useful and runtime-owned; preserve a clean operations boundary for possible future reuse.**
 
-Do not add a remote management protocol, remote adapters, client executable or client-side plugin loader merely to prepare for a client that does not exist yet.
+Do not add a remote management protocol, remote adapters, a separate client executable, or client-side plugin loading merely to prepare for a client that does not exist yet.
 
-Terminal views consume stable operations snapshots/interfaces instead of directly reading mutable runtime state.
+Views consume immutable operations snapshots. Mutations cross explicit runtime command boundaries.
 
-## Current implementation status
+## Current implementation
 
-The standalone server now has five exercised operational views:
+The standalone server has five exercised operational views:
 
-- **Dashboard** consumes `IRuntimeDashboardOperations` and immutable `RuntimeDashboardSnapshot` values with lifecycle, world identity, target/observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, command backlog/budget telemetry, managed heap/total allocation and generation collection counters, plus connection admission counters.
-- **Players** consumes `IPlayerOperations` and immutable `RuntimePlayersSnapshot` values populated only from already validated authoritative player events. The read model carries stable slot/generation/connection identity plus name, team, position and current health/mana without reading `ServerRuntimeState` from the UI thread.
-- **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It publishes active/registered/admitted/rejected connections, appearance/equipment/lifecycle/movement/AOI-resync counters, aggregate bounded outbound-queue telemetry and a bounded top-two per-connection pressure drill-down. Queue pressure is sampled from queue-owned thread-safe counters instead of adding a second accounting path to enqueue/dequeue hot paths; detail is limited to stable connection IDs plus queue-owned frames/bytes/rejections/slow-client state.
-- **World** consumes `IWorldOperations` and an immutable `RuntimeWorldSnapshot` created from already validated `WorldFileData` plus startup/cache measurements. It exposes world identity, format/worldgen version, dimensions/tile count, persisted object/NPC counts, runtime-cache hit/result/read parallelism and file/cache/bootstrap/readiness timings without giving the UI mutable world access.
-- **Logs** consumes `ILogOperations` over a bounded `RuntimeLogBuffer`. The view supports severity filtering, dynamic filtering by sources actually retained in the bounded ring, and pause/resume. Selected server/runtime/network events are mirrored into the bounded read model while `RuntimeHostLog` suppresses matching plain-console writes only while the full-screen TUI is active.
+- **Dashboard** consumes `IRuntimeDashboardOperations` and `RuntimeDashboardSnapshot`. It shows lifecycle/world identity, target and observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, authoritative command backlog/budget telemetry, managed heap/lifetime allocation, GC collection counts, connection admission counters, and interest-management state.
+- **Players** consumes `IPlayerOperations` and `RuntimePlayersSnapshot`. The generation-safe read model is populated only from already validated authoritative player events and includes slot/generation/connection identity, name/team, position, velocity, selected inventory slot, mount type, health, and mana.
+- **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It shows admission/registration state, replication counters, bounded outbound-queue/backpressure telemetry, live inbound one-second frame/byte rates, lifetime inbound counters, rejected inbound frames, and bounded per-connection pressure/rate detail.
+- **World** consumes `IWorldOperations` and `RuntimeWorldSnapshot`. It exposes validated world identity, format/worldgen version, dimensions, persisted object/NPC counts, runtime-cache result/read parallelism, and startup/cache/bootstrap/readiness timings without giving the UI mutable world access.
+- **Logs** consumes `ILogOperations` over a bounded `RuntimeLogBuffer`. It supports severity filtering, dynamic source filtering, and pause/resume while remaining independent of the plain-console sink.
 
-Operational behavior:
+The UI also has a first bounded administrative action surface:
 
-- start the UI explicitly with `--tui`; plain-console/headless startup remains the default;
-- Terminal.Gui v2 is hosted on its own UI thread and never runs on the authoritative game-loop thread;
-- observed TPS is sampled from authoritative tick progress over time in the operations layer, not reconstructed in the view from tick execution duration;
-- closing the TUI stops only the UI; it does not stop the server;
-- TUI initialization/runtime failure is non-fatal and leaves the server available through the plain-console path;
-- `Console.Out` / `Console.Error` are never globally replaced; host-owned mirrored console messages are routed around the active full-screen TUI and resume automatically after UI exit/failure;
-- `--tui-smoke` renders Dashboard, Players, Network, World and Logs through the Terminal.Gui ANSI test driver;
-- normal CoreCLR CI plus Linux and Windows NativeAOT jobs exercise the same `--tui-smoke` path;
-- changes touching the standalone host are also exercised by the official-world workflow, including world verification, host startup, live join/movement relay, snapshot-only warm startup and canonical `.wld` checkpoint restoration.
+- **Enable/disable interest management** is queued through the authoritative runtime command ingress. The UI does not receive `IInterestManagementControl` or another mutable runtime capability. Queue-full/stopping rejection is reported instead of pretending the action succeeded.
 
-The foundational local-TUI slice of Phase 10 is complete. Remaining UI work is incremental: deeper runtime drill-downs, additional runtime-owned telemetry and carefully bounded administrative command surfaces as concrete operations APIs become necessary.
+## Operational behavior
+
+- `--tui` explicitly enables the UI; plain-console/headless startup remains the default.
+- Terminal.Gui v2 runs on a dedicated UI thread and never owns the authoritative game-loop thread.
+- Closing the TUI closes only the UI and leaves the server running.
+- TUI initialization/runtime failure is non-fatal and returns the host to plain-console behavior.
+- `Console.Out` and `Console.Error` are never globally replaced. `RuntimeHostLog` suppresses matching host-owned console writes only while the full-screen UI is active, while the bounded log read model continues receiving events.
+- Observed TPS comes from authoritative tick progress over time, not from `LastTickMilliseconds`.
+- Runtime/network telemetry is read from subsystem-owned counters rather than reconstructed in the view.
+- `--tui-smoke` renders Dashboard, Players, Network, World, and Logs and exercises authoritative admin actions through the Terminal.Gui ANSI test driver.
+- CoreCLR CI and Linux/Windows NativeAOT jobs exercise the same TUI smoke path.
+- Host-affecting changes are also covered by the official-world workflow, including real world verification, host startup, live join/movement relay, snapshot-only warm startup, and canonical `.wld` checkpoint restoration.
+
+The foundational local-TUI slice of Phase 10 is complete. Remaining work is incremental and should follow concrete operational needs.
+
+## Dependency shape
 
 Current shape:
 
@@ -42,13 +49,17 @@ Current shape:
 Terminal UI
     |
     v
-operations/read-model boundary
+small operations/read-model interfaces
     |
-    v
-local TerraRuntime
+    +--> immutable snapshots
+    |
+    `--> authoritative command ingress
+             |
+             v
+         TerraRuntime
 ```
 
-Possible future shape, only when a real client is started:
+Possible future shape, only when a real remote client exists:
 
 ```text
 same/extracted Terminal UI
@@ -61,11 +72,11 @@ same operations semantics
     `--> remote adapter --> operations protocol --> TerraRuntime server
 ```
 
-## Keep the implementation simple now
+The dependency boundary matters more than the number of projects.
 
-Do not create a separate project graph merely for hypothetical reuse.
+## Project layout
 
-The current implementation may continue to live directly in the server project:
+The current implementation may remain directly in the server project:
 
 ```text
 src/TerraRuntime/
@@ -73,17 +84,13 @@ src/TerraRuntime/
     TerminalUI/
 ```
 
-Shared toolkit-independent read models/contracts may move to `TerraRuntime.Contracts` when they become genuine cross-component runtime contracts.
+A separate `TerraRuntime.TerminalUI` project should be introduced only when there is an actual second consumer or when the current project becomes materially harder to maintain without the split.
 
-A separate `TerraRuntime.TerminalUI` project is optional and should be introduced only when there is an actual second consumer, such as a remote client, or when the existing project becomes materially harder to maintain without the split.
-
-Do not create `TerraRuntime.Operations.Local`, `TerraRuntime.Operations.Remote`, `TerraRuntime.Ui.Contracts` and similar assemblies in advance unless concrete implementation pressure justifies them.
-
-The dependency boundary matters more than the number of projects.
+Shared toolkit-independent read models/contracts may move to `TerraRuntime.Contracts` when they become genuine cross-component contracts. Do not create `Operations.Local`, `Operations.Remote`, `Ui.Contracts`, and similar assemblies merely for architectural symmetry.
 
 ## UI-facing operations boundary
 
-Views must not depend directly on `ServerRuntimeState`, mutable world/player/NPC collections, sockets or authoritative-thread-owned objects.
+Views must not depend directly on `ServerRuntimeState`, mutable world/player/NPC collections, sockets, connection queues, or authoritative-thread-owned objects.
 
 Current screen-facing interfaces are deliberately small:
 
@@ -95,173 +102,165 @@ IWorldOperations
 ILogOperations
 ```
 
-Avoid speculative mega-interfaces.
-
 Rules:
 
 - snapshots are immutable and bounded;
-- the TUI may poll/read snapshots from its own event loop/thread;
+- the TUI may poll snapshots from its own event loop/thread;
 - administrative mutations are marshalled through the authoritative command boundary;
-- local UI receives no privileged mutable-state access merely because it runs in-process;
-- runtime telemetry is calculated or exposed by the subsystem that owns the truth, not reconstructed by the view;
-- expensive observability must not add unnecessary work to gameplay/network hot paths.
-
-This small boundary is useful even if a remote client is never built.
+- local UI receives no privileged mutable-state access merely because it is in-process;
+- telemetry is calculated or exposed by the subsystem that owns the truth;
+- observability should reuse existing thread-safe counters when possible instead of adding duplicate hot-path accounting;
+- bounded detail is preferred over unbounded per-connection/per-event materialization.
 
 ## Runtime telemetry ownership
 
-TerraRuntime owns and publishes the measurements used by its UI, including:
+TerraRuntime currently owns and publishes UI-facing measurements for:
 
-- target tick rate;
-- observed/current TPS;
-- tick wall time;
-- authoritative-thread CPU time;
-- missed deadlines;
-- phase timings;
-- command backlog/budget telemetry;
-- managed heap, lifetime allocation and Gen0/Gen1/Gen2 collection counters;
+- target and observed TPS;
+- tick wall time and authoritative-thread CPU time;
+- missed deadlines and phase timings;
+- command backlog, rejection, deferral, age, and budget-exhaustion telemetry;
+- managed heap, lifetime allocation, and Gen0/Gen1/Gen2 collection counts;
 - network replication counters;
-- aggregate and bounded per-connection outbound-queue/backpressure state;
+- aggregate and bounded per-connection outbound queue/backpressure state;
+- live and lifetime inbound frame/byte accounting plus rejected inbound frames;
+- authoritative player identity/vitals/movement state used by the Players view;
 - world/cache startup state and timings;
-- bounded runtime log events;
-- later save-pipeline and additional cache telemetry as those systems mature.
+- bounded runtime log events.
 
-The TUI only formats and displays these values.
-
-In particular, do not calculate TPS in the view from `LastTickMilliseconds`; execution duration and observed simulation rate are different measurements.
-
-## Terminal.Gui implementation
-
-Use Terminal.Gui v2 as the renderer. Prefer its official application/template/dashboard patterns and UICatalog examples instead of building a private terminal framework from scratch.
-
-The local TUI currently provides:
-
-- application shell;
-- menu/status bars;
-- Dashboard / Players / Network / World / Logs navigation;
-- keyboard quit behavior that closes only the UI;
-- bounded log viewer with severity/source filtering and pause/resume;
-- periodic snapshot refresh on the UI thread;
-- graceful fallback to plain console/headless operation.
-
-TUI initialization or refresh failure must not make the game server unavailable.
-
-Do not globally replace `Console.Out` to create the TUI. Host-owned console mirroring is explicitly suppressed only while Terminal.Gui owns the screen; the bounded runtime log remains independent and plain-console output resumes when the TUI exits. As structured logging matures, file/plain-console/TUI sinks should receive the same structured events independently.
+The TUI formats these values but does not invent them.
 
 ## Implemented screens
 
-1. Runtime/dashboard
-   - lifecycle/readiness;
-   - world identity;
-   - TPS/tick budget;
-   - last/worst tick wall and CPU time;
-   - slowest phase;
-   - missed deadlines;
-   - command backlog/budget state;
-   - managed heap and total allocated bytes;
-   - Gen0/Gen1/Gen2 collection counts.
+### Dashboard
 
-2. Players
-   - stable player/session identity;
-   - generation-safe connection identity;
-   - name/team;
-   - position;
-   - health/mana through safe authoritative-event snapshots.
+- lifecycle/readiness;
+- world identity;
+- target/observed TPS;
+- last/worst tick wall and CPU time;
+- slowest phase;
+- missed deadlines;
+- command backlog/budget state;
+- managed heap and lifetime allocated bytes;
+- Gen0/Gen1/Gen2 collection counts;
+- interest-management state and authoritative action result.
 
-3. Network
-   - active/admitted/rejected/registered connections;
-   - relay/baseline/AOI-resync counters;
-   - tracked bounded outbound queues;
-   - aggregate queued frames/bytes;
-   - rejected outbound frames;
-   - slow-client count;
-   - bounded top-two per-connection queue-pressure detail using stable connection IDs.
+### Players
 
-4. Logs
-   - bounded retention;
-   - severity filtering;
-   - dynamic source filtering from currently retained sources;
-   - follow/pause independent of telemetry refresh;
-   - no global console redirection;
-   - automatic plain-console resume after TUI exit/failure.
+- stable player/session identity;
+- generation-safe connection identity;
+- name/team;
+- position;
+- velocity;
+- selected inventory slot;
+- mount type;
+- health/mana.
 
-5. World
-   - name/ID/GUID/readiness;
-   - format/worldgen identity;
-   - dimensions/tile count;
-   - persisted world-object/NPC counts;
-   - runtime-cache hit/result/read parallelism;
-   - startup/cache/bootstrap/readiness timings.
+Player data is fed from validated authoritative events. The UI does not read `ServerRuntimeState` directly. Optional movement fields are normalized to the same resulting state used by the authoritative runtime, so a later movement without velocity/mount clears the corresponding read-model values rather than leaving stale UI data.
+
+### Network
+
+- active/admitted/rejected/registered connections;
+- relay/baseline/AOI-resync counters;
+- tracked bounded outbound queues;
+- aggregate queued frames/bytes;
+- rejected outbound frames;
+- slow-client count;
+- bounded top-two outbound queue-pressure detail;
+- tracked inbound rate accountants;
+- aggregate one-second inbound frames/bytes;
+- lifetime inbound frames/bytes;
+- rejected inbound frames;
+- bounded top-two live inbound-rate detail.
+
+Inbound telemetry reuses the `TerrariaConnectionRateAccountant` already used by the connection policy. It does not add a second frame/byte counter to the receive hot path.
+
+### Logs
+
+- bounded retention;
+- severity filtering;
+- dynamic source filtering from currently retained sources;
+- follow/pause independent of telemetry refresh;
+- no global console redirection;
+- automatic plain-console resume after TUI exit/failure.
+
+### World
+
+- name/ID/GUID/readiness;
+- format/worldgen identity;
+- dimensions/tile count;
+- persisted world-object/NPC counts;
+- runtime-cache hit/result/read parallelism;
+- startup/cache/bootstrap/readiness timings.
+
+## Administrative actions
+
+Administrative controls must be added only when there is an explicit runtime-owned operation with stable semantics.
+
+Implemented:
+
+- interest-management enable/disable through the bounded authoritative command ingress.
+
+Rules for future actions:
+
+- no direct mutable runtime references in UI callbacks;
+- no bypass around command queue/budget/lifecycle rules;
+- report queue rejection/failure honestly;
+- separate requesting an operation from observing its eventual state/result where an action is asynchronous;
+- keep authorization concerns outside the local-only UI until a real remote boundary exists.
 
 ## Next local UI work
 
-Future local UI slices should be driven by operational need rather than by filling screens for appearance's sake. Likely additions include:
+Future slices should be driven by operational need rather than by filling screens for appearance's sake. Useful candidates are:
 
-- deeper per-player detail when authoritative snapshots expose useful state;
-- packet/rate telemetry where network subsystems already own trustworthy counters;
-- save-pipeline/cache-rebuild status once persistence publishes bounded runtime snapshots;
-- administrative actions only through explicit command/operations interfaces, never by mutating runtime objects from UI callbacks;
-- better table/list navigation when the compact current views become too dense.
+- save/checkpoint/cache-rebuild status once persistence publishes a bounded runtime-owned snapshot;
+- richer player navigation/detail only when the compact list becomes operationally limiting;
+- additional packet/category telemetry only where the network subsystem already owns trustworthy counters;
+- more administrative actions only after explicit runtime operations exist;
+- table/list navigation and sorting when current bounded detail becomes too dense.
 
 Do not add controls that merely expose implementation internals with no stable operational meaning.
 
 ## Future remote client, deferred
 
-A separate administration client is intentionally **not** part of the current Phase 10 implementation.
+A separate administration client is intentionally not part of the current Phase 10 implementation.
 
-If/when it becomes a real project, preserve this model:
+If it becomes a real project:
 
 - reuse or extract the existing view/layout code rather than reimplementing screens;
 - keep UI layout as compiled code, not network data;
-- do not transmit window coordinates, control trees or a home-grown JSON/XAML UI description;
-- transport only operations state/events/commands/results/version information;
-- implement remote operations with the same semantics already consumed by local views.
-
-At that point it may become worthwhile to extract reusable UI code into a separate project/library.
+- transmit operations state/events/commands/results/version information, not window coordinates or control trees;
+- implement remote operations with the same semantics already consumed by local views;
+- extract additional assemblies only when a real second consumer creates that pressure.
 
 ## Future external/plugin UI windows
 
-TerraRuntime must not contain knowledge of any specific external host/platform.
+TerraRuntime must not contain knowledge of a specific external host/platform.
 
-If a future CoreCLR administration client supports optional UI modules, those modules may provide additional windows as ordinary client-side libraries. If the matching module is absent, its windows simply do not appear.
+A future CoreCLR administration client may load optional client-side UI modules. Those modules can provide their own Terminal.Gui windows, and absent modules simply do not contribute windows.
 
-Conceptually:
-
-```text
-TerraRuntime.Client
-    |
-    +-- built-in runtime windows
-    |
-    `-- optional UI modules
-          +-- ExternalPlatform.TerminalUI.dll
-          `-- OtherExtension.TerminalUI.dll
-```
-
-Those libraries contain their own Terminal.Gui layout code. Window/control layout is not downloaded from the server.
-
-This dynamic client-side model must not leak into the NativeAOT server architecture:
+That dynamic model must not leak into the NativeAOT server architecture:
 
 - shipping TerraRuntime NativeAOT does not scan folders for managed UI DLLs;
 - it does not use reflection-driven extension discovery;
 - it does not download or dynamically load arbitrary managed UI code;
-- any UI extensions compiled into a NativeAOT host are registered explicitly/staticly or source-generated.
+- UI extensions compiled into a NativeAOT host must be explicit/static or source-generated.
 
 An external CoreCLR host may define its own dynamic extension policy outside TerraRuntime.
 
-## Non-goals for the current implementation
+## Non-goals
 
-- remote administration protocol;
-- `TerraRuntime.Client` executable;
-- remote operations adapters;
+- remote administration protocol before there is a real remote client;
+- `TerraRuntime.Client` executable merely for symmetry;
 - custom declarative UI language;
 - transmitting layout/control trees over the network;
 - dynamic UI DLL loading in the NativeAOT server;
 - provider-specific windows or identifiers inside TerraRuntime;
-- splitting the UI into several assemblies merely for architectural symmetry.
+- splitting the UI into several assemblies without concrete implementation pressure.
 
 ## Current acceptance state
 
-The local foundation now satisfies the intended dependency shape:
+The local foundation now satisfies the intended shape:
 
 ```text
 Terminal.Gui view
@@ -270,7 +269,7 @@ Terminal.Gui view
 small operations/read-model interface
       |
       v
-TerraRuntime runtime snapshot/command boundary
+TerraRuntime snapshot/authoritative-command boundary
 ```
 
 The standalone server exercises that shape without direct mutable-state access, without blocking the authoritative loop, and without making TUI availability a server-readiness requirement.
