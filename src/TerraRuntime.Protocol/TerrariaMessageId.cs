@@ -1,8 +1,8 @@
 namespace TerraRuntime.Protocol;
 
 /// <summary>
-/// Verified message identifiers needed by the initial connection pipeline.
-/// Extend this catalog only from confirmed Terraria 1.4.5.8 protocol evidence.
+/// Verified message identifiers consumed by TerraRuntime's protocol boundaries.
+/// Extend this catalog only from confirmed Terraria 1.4.5.8 / protocol-326 evidence.
 /// </summary>
 public enum TerrariaMessageId : byte
 {
@@ -21,6 +21,8 @@ public enum TerrariaMessageId : byte
     PlayerControls = 13,
     PlayerActive = 14,
     PlayerHp = 16,
+    ProjectileNew = 27,
+    ProjectileDestroy = 29,
     PlayerMana = 42,
     PlayerSpawnSelf = 49
 }

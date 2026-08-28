@@ -63,3 +63,12 @@ public readonly record struct TerrariaProjectileDestroyState(
         float.IsFinite(PositionX) &&
         float.IsFinite(PositionY);
 }
+
+public enum TerrariaProjectileDecodeResult : byte
+{
+    Decoded = 0,
+    WrongMessageId = 1,
+    InvalidPayloadLength = 2,
+    Malformed = 3,
+    InvalidState = 4
+}
