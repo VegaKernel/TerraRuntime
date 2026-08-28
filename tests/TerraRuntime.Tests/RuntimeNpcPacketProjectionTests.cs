@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
@@ -23,13 +24,15 @@ public sealed class RuntimeNpcPacketProjectionTests
     {
         NpcSnapshot npc = CreateNpc(type: 1, netId: -3, generation: 256);
 
+        Assert.Equal(VanillaNpcIds.BlueSlime, npc.TypeIdentity);
+        Assert.Equal(new NpcNetId(-3), npc.NetIdentity);
         Assert.True(RuntimeNpcPacketProjection.TryCreate(
             in npc,
             RuntimeNpcSyncKind.Spawn,
             out var state));
 
         Assert.Equal((byte)1, state.Generation);
-        Assert.Equal(1, state.NpcType);
+        Assert.Equal(VanillaNpcIds.BlueSlime.Value, state.NpcType);
         Assert.Equal((short)-3, state.NpcNetId);
         Assert.Equal(25, state.Life);
         Assert.Equal(25, state.LifeMax);
@@ -42,6 +45,8 @@ public sealed class RuntimeNpcPacketProjectionTests
     {
         NpcSnapshot npc = CreateNpc(type: 2, netId: 2, generation: 255);
 
+        Assert.Equal(VanillaNpcIds.DemonEye, npc.TypeIdentity);
+        Assert.Equal(new NpcNetId(2), npc.NetIdentity);
         Assert.True(RuntimeNpcPacketProjection.TryCreate(
             in npc,
             RuntimeNpcSyncKind.Despawn,

@@ -1,4 +1,5 @@
 using global::Multiplicity.Packets;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
@@ -30,12 +31,14 @@ public static class WorldTownNpcSyncPacketEncoder
 
         if ((uint)npcSlot > byte.MaxValue)
             return WorldTownNpcSyncPacketEncodeResult.InvalidNpcSlot;
-        if (npc.NetId < short.MinValue || npc.NetId > short.MaxValue)
+
+        NpcNetId netIdentity = npc.NetIdentity;
+        if (netIdentity.Value < short.MinValue || netIdentity.Value > short.MaxValue)
             return WorldTownNpcSyncPacketEncodeResult.InvalidNpcNetId;
         if (!float.IsFinite(npc.X) || !float.IsFinite(npc.Y))
             return WorldTownNpcSyncPacketEncodeResult.NonFinitePosition;
 
-        short netId = checked((short)npc.NetId);
+        short netId = checked((short)netIdentity.Value);
         var packet = new NpcUpdate
         {
             NpcSlot = checked((byte)npcSlot),
