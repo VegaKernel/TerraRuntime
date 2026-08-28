@@ -38,8 +38,10 @@ internal sealed class RuntimePlayerSpatialIndex
         int nextSection = TryGetSectionIndex(positionX, positionY, out int sectionIndex)
             ? sectionIndex
             : -1;
-        int previousSection = _slotSections[slot.Value];
+        if (nextSection < 0)
+            _outOfBoundsUpdates++;
 
+        int previousSection = _slotSections[slot.Value];
         if (previousSection == nextSection)
             return nextSection >= 0;
 
@@ -60,7 +62,6 @@ internal sealed class RuntimePlayerSpatialIndex
 
         if (previousSection >= 0)
             _indexedPlayers--;
-        _outOfBoundsUpdates++;
         return false;
     }
 
