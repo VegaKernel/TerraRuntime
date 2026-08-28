@@ -330,6 +330,12 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
 
+        foreach (ReadOnlyMemory<byte> globalPostSectionFrame in _packets.GlobalPostSectionFrames)
+        {
+            if (!TryQueue(globalPostSectionFrame))
+                return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
+        }
+
         if (!TryQueue(_packets.EnterWorldFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 
