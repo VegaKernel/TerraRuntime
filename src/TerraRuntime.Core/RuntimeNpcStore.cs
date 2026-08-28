@@ -211,7 +211,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             };
         }
 
-        if (simulation.TimeLeft == 0)
+        if (simulation.TimeLeft < 0)
             simulation = simulation with { TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft };
 
         return update with { Simulation = simulation };
@@ -242,11 +242,11 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             }
         }
 
-        if (simulation.TimeLeft == 0)
+        if (simulation.TimeLeft < 0)
         {
             simulation = simulation with
             {
-                TimeLeft = update.Type == previous.Type && previous.Simulation.TimeLeft > 0
+                TimeLeft = update.Type == previous.Type && previous.Simulation.TimeLeft >= 0
                     ? previous.Simulation.TimeLeft
                     : VanillaNpcDefinitionCatalog.DefaultTimeLeft
             };
