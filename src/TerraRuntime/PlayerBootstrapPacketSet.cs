@@ -76,18 +76,40 @@ public sealed class PlayerBootstrapPacketSet
             plannedSections);
         WorldSectionId[] baseSections = plannedSections[..sectionCount].ToArray();
 
+        var entries = new SectionCacheEntry[sectionCount];
+        var encoded = new bool[sectionCount];
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Math.Min(sectionCount, Math.Clamp(Environment.ProcessorCount, 1, 8))
+        };
+
+        try
+        {
+            Parallel.For(
+                0,
+                sectionCount,
+                parallelOptions,
+                i => encoded[i] = TryEncodeSection(world, baseSections[i], out entries[i]));
+        }
+        catch (AggregateException exception)
+        {
+            throw new InvalidOperationException(
+                "Failed while encoding bootstrap sections in parallel.",
+                exception.Flatten());
+        }
+
         var baseSectionFrames = new ReadOnlyMemory<byte>[sectionCount];
         var baseSectionPostFrames = new ReadOnlyMemory<byte>[sectionCount][];
         for (int i = 0; i < sectionCount; i++)
         {
-            if (!TryEncodeSection(world, baseSections[i], out SectionCacheEntry entry))
+            if (!encoded[i])
             {
                 throw new InvalidOperationException(
                     $"Failed to cache bootstrap section {baseSections[i]}.");
             }
 
-            baseSectionFrames[i] = entry.TileSectionFrame;
-            baseSectionPostFrames[i] = entry.PostSectionFrames;
+            baseSectionFrames[i] = entries[i].TileSectionFrame;
+            baseSectionPostFrames[i] = entries[i].PostSectionFrames;
         }
 
         if (WorldGlobalTownNpcBootstrapPacketEncoder.TryEncode(
