@@ -104,7 +104,6 @@ def join_client(host, port, expected_slot):
     chest_item_count = 0
     frame_count = 0
     saw_section = False
-    chest_phase_started = False
     previous_message_id = None
     previous_npc_slot = None
 
@@ -114,16 +113,15 @@ def join_client(host, port, expected_slot):
         if message_id == 10:
             section_count += 1
             saw_section = True
-            chest_phase_started = False
             previous_npc_slot = None
         elif message_id == 23:
             if not saw_section:
                 client.close()
                 raise SystemExit("received packet 23 before any packet-10 section")
-            if chest_phase_started and section_count < expected_sections:
+            if section_count != expected_sections:
                 client.close()
                 raise SystemExit(
-                    "received packet 23 after chest synchronization started for a non-final section"
+                    f"received section-local packet23 before tile transfer completed: {section_count}/{expected_sections} sections"
                 )
             if len(payload) < 24:
                 client.close()
@@ -172,11 +170,17 @@ def join_client(host, port, expected_slot):
                 )
             global_npc_count += 1
         elif message_id == 155:
-            chest_phase_started = True
             chest_size_count += 1
+            client.close()
+            raise SystemExit(
+                "received packet155 chest-size synchronization during initial join bootstrap"
+            )
         elif message_id == 32:
-            chest_phase_started = True
             chest_item_count += 1
+            client.close()
+            raise SystemExit(
+                "received packet32 chest-item synchronization during initial join bootstrap"
+            )
         elif message_id == 49:
             break
 
@@ -184,9 +188,9 @@ def join_client(host, port, expected_slot):
         if message_id != 23:
             previous_npc_slot = None
 
-        if frame_count > 20000:
+        if frame_count > 4096:
             client.close()
-            raise SystemExit("bootstrap exceeded 20000 frames before packet 49")
+            raise SystemExit("bootstrap exceeded 4096 frames before packet 49")
 
     if section_count != expected_sections:
         client.close()
