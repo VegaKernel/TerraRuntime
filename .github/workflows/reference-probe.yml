@@ -35,62 +35,103 @@ jobs:
           import pathlib
           import re
 
-          candidates = list(pathlib.Path("decompiled/1458").rglob("*WorldFile*.cs"))
+          root = pathlib.Path("decompiled/1458")
+
+          def extract_braced(text, opening):
+              depth = 0
+              for i in range(opening, len(text)):
+                  if text[i] == "{":
+                      depth += 1
+                  elif text[i] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          return text[opening:i + 1]
+              return None
+
+          method_pattern = re.compile(
+              r"(?:public|private|internal|protected)\s+(?:static\s+)?[A-Za-z0-9_<>,.?\[\]\s]+\s+"
+              r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*\{"
+          )
+
+          candidates = []
+          marker_files = []
+          for path in root.rglob("*.cs"):
+              text = path.read_text(errors="ignore")
+              file_marker_score = sum(text.count(marker) for marker in (
+                  "Main.npc[", ".townNPC", "SavesAndLoads", ".SetDefaults("))
+              if file_marker_score:
+                  marker_files.append((file_marker_score, path.name))
+
+              for match in method_pattern.finditer(text):
+                  body = extract_braced(text, match.end() - 1)
+                  if body is None:
+                      continue
+                  score = (
+                      body.count("Main.npc[") * 8
+                      + body.count(".SetDefaults(") * 6
+                      + body.count(".townNPC") * 4
+                      + body.count("SavesAndLoads") * 4
+                      + (10 if "LoadNPC" in match.group("name") else 0)
+                  )
+                  if score:
+                      candidates.append((score, path.name, match.group("name"), body))
+
           if not candidates:
-              candidates = [p for p in pathlib.Path("decompiled/1458").rglob("*.cs") if "class WorldFile" in p.read_text(errors="ignore")]
-          if not candidates:
-              raise SystemExit("WorldFile reference not found")
+              raise SystemExit("no NPC load semantic candidates found")
 
-          text = candidates[0].read_text(errors="ignore")
-          match = re.search(r"\bLoadNPCs\s*\(", text)
-          if not match:
-              raise SystemExit("LoadNPCs method not found in official reference")
+          candidates.sort(key=lambda item: item[0], reverse=True)
+          score, file_name, method_name, body = candidates[0]
 
-          opening = text.find("{", match.end())
-          if opening < 0:
-              raise SystemExit("LoadNPCs body not found")
-          depth = 0
-          closing = None
-          for i in range(opening, len(text)):
-              if text[i] == "{":
-                  depth += 1
-              elif text[i] == "}":
-                  depth -= 1
-                  if depth == 0:
-                      closing = i + 1
-                      break
-          if closing is None:
-              raise SystemExit("LoadNPCs body is unbalanced")
-
-          body = text[opening:closing]
           index_vars = sorted(set(re.findall(r"Main\.npc\[([A-Za-z_][A-Za-z0-9_]*)\]", body)))
           setdefaults_vars = sorted(set(re.findall(r"Main\.npc\[([A-Za-z_][A-Za-z0-9_]*)\]\.SetDefaults", body)))
           zero_initialized = sorted(set(re.findall(r"int\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*0\s*;", body)))
           increment_counts = {name: len(re.findall(rf"\b{re.escape(name)}\s*\+\+", body)) for name in index_vars}
-          setdefaults_count = len(re.findall(r"\.SetDefaults\s*\(", body))
-          town_flag_count = len(re.findall(r"\.townNPC\s*=\s*true", body))
-          saves_and_loads_count = body.count("SavesAndLoads")
+          assignment_counts = {name: len(re.findall(rf"\b{re.escape(name)}\s*=", body)) for name in index_vars}
 
-          marker_positions = {
-              "town_flag": body.find(".townNPC"),
-              "saves_and_loads": body.find("SavesAndLoads"),
-          }
+          town_positions = [m.start() for m in re.finditer(r"\.townNPC", body)]
+          persistent_positions = [m.start() for m in re.finditer(r"SavesAndLoads|persistent|Persistent", body)]
           setdefaults_positions = [m.start() for m in re.finditer(r"\.SetDefaults\s*\(", body)]
+          increment_positions = {
+              name: [m.start() for m in re.finditer(rf"\b{re.escape(name)}\s*\+\+", body)]
+              for name in index_vars
+          }
+
+          first_town = min(town_positions) if town_positions else -1
+          first_persistent = min(persistent_positions) if persistent_positions else -1
 
           summary = {
+              "selectedFile": file_name,
+              "selectedMethod": method_name,
+              "candidateScore": score,
               "mainNpcIndexVariables": index_vars,
               "setDefaultsIndexVariables": setdefaults_vars,
               "zeroInitializedCounters": zero_initialized,
               "counterIncrementCounts": increment_counts,
-              "setDefaultsCallCount": setdefaults_count,
-              "townNpcFlagAssignmentCount": town_flag_count,
-              "savesAndLoadsReferenceCount": saves_and_loads_count,
-              "townFlagBeforeSavesAndLoads": marker_positions["town_flag"] >= 0 and marker_positions["saves_and_loads"] > marker_positions["town_flag"],
-              "setDefaultsPositionsRelativeToTownAndPersistentMarkers": [
-                  "before-town" if p < marker_positions["town_flag"] else
-                  "town-phase" if marker_positions["saves_and_loads"] < 0 or p < marker_positions["saves_and_loads"] else
-                  "persistent-phase"
-                  for p in setdefaults_positions
+              "counterAssignmentCounts": assignment_counts,
+              "setDefaultsCallCount": len(setdefaults_positions),
+              "townNpcMarkerCount": len(town_positions),
+              "persistentMarkerCount": len(persistent_positions),
+              "singleMainNpcCounter": len(index_vars) == 1,
+              "counterUsedBySetDefaults": len(index_vars) == 1 and index_vars == setdefaults_vars,
+              "counterIncrementsBeforeAndAfterPersistentMarker": (
+                  len(index_vars) == 1
+                  and first_persistent >= 0
+                  and any(p < first_persistent for p in increment_positions[index_vars[0]])
+                  and any(p > first_persistent for p in increment_positions[index_vars[0]])
+              ),
+              "townPhasePrecedesPersistentMarker": first_town >= 0 and first_persistent > first_town,
+              "setDefaultsBeforeAndAfterPersistentMarker": (
+                  first_persistent >= 0
+                  and any(p < first_persistent for p in setdefaults_positions)
+                  and any(p > first_persistent for p in setdefaults_positions)
+              ),
+              "topCandidateMethods": [
+                  {"file": f, "method": m, "score": s}
+                  for s, f, m, _ in candidates[:5]
+              ],
+              "topMarkerFiles": [
+                  {"file": name, "score": s}
+                  for s, name in sorted(marker_files, reverse=True)[:5]
               ],
           }
           print("NPC_LOAD_SEMANTICS=" + json.dumps(summary, sort_keys=True))
