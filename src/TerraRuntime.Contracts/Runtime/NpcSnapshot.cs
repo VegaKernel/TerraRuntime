@@ -77,9 +77,10 @@ public enum NpcLiquidContactKind : byte
 }
 
 /// <summary>
-/// Authoritative local simulation inputs/state first required by vanilla NPC AI and movement.
-/// Collision, overlap and liquid flags are produced by their owning world/physics systems; AI consumes
-/// the immutable pre-pass values and may change persistent flags such as NoGravity.
+/// Authoritative local simulation inputs/state required by vanilla NPC AI and movement. Collision, overlap,
+/// liquid and combat state are local runtime facts rather than packet-23 serialization details. A zero LifeMax
+/// means the caller left combat state unspecified; the authoritative store resolves that sentinel on spawn and
+/// preserves existing combat state across updates that do not own it.
 /// </summary>
 public readonly record struct NpcSimulationState(
     int DirectionX,
@@ -104,6 +105,14 @@ public readonly record struct NpcSimulationState(
     public float OldPositionY { get; init; }
 
     /// <summary>
+    /// Current authoritative NPC life. LifeMax == 0 means unspecified at an ingress/update boundary;
+    /// once an NPC is live the runtime store materializes a positive vanilla maximum for known types.
+    /// </summary>
+    public int Life { get; init; }
+
+    public int LifeMax { get; init; }
+
+    /// <summary>
     /// Result of vanilla Collision.SolidCollision at the final authoritative position of the previous
     /// world pass. AI_001 uses it together with CollideY/OldVelocityY to escape tile overlap.
     /// </summary>
@@ -124,6 +133,8 @@ public readonly record struct NpcSimulationState(
         LiquidContact = NpcLiquidContactKind.None,
         OldPositionX = 0f,
         OldPositionY = 0f,
+        Life = 0,
+        LifeMax = 0,
         SolidCollision = false
     };
 
@@ -136,6 +147,8 @@ public readonly record struct NpcSimulationState(
         float.IsFinite(OldPositionY) &&
         float.IsFinite(Scale) &&
         Scale > 0f &&
+        ((LifeMax == 0 && Life == 0) ||
+         (LifeMax > 0 && Life >= 0 && Life <= LifeMax)) &&
         Enum.IsDefined(LiquidContact);
 }
 
