@@ -132,6 +132,101 @@ public sealed class PlayerBootstrapPacketSet
             enterWorldFrame);
     }
 
+    internal static bool TryCreateFromSnapshot(
+        WorldFileData world,
+        PlayerBootstrapPacketSnapshot snapshot,
+        out PlayerBootstrapPacketSet? packets)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(snapshot);
+        packets = null;
+
+        int sectionCount = snapshot.BaseSections.Length;
+        if (sectionCount > InitialSectionBootstrapPlanner.MaximumBaseSectionCount ||
+            snapshot.BaseSectionFrames.Length != sectionCount ||
+            snapshot.BaseSectionPostFrames.Length != sectionCount ||
+            !IsValidFrame(snapshot.WorldInfoFrame) ||
+            !IsValidFrame(snapshot.StatusFrame) ||
+            !IsValidFrame(snapshot.EnterWorldFrame))
+        {
+            return false;
+        }
+
+        Span<WorldSectionId> plannedSections = stackalloc WorldSectionId[InitialSectionBootstrapPlanner.MaximumBaseSectionCount];
+        int plannedCount = InitialSectionBootstrapPlanner.PlanBaseSpawnSections(
+            world.Header.Dimensions,
+            world.RuntimeMetadata.SpawnX,
+            world.RuntimeMetadata.SpawnY,
+            plannedSections);
+        if (plannedCount != sectionCount)
+            return false;
+
+        for (int i = 0; i < sectionCount; i++)
+        {
+            if (snapshot.BaseSections[i] != plannedSections[i] ||
+                !IsValidFrame(snapshot.BaseSectionFrames[i]))
+            {
+                return false;
+            }
+
+            ReadOnlyMemory<byte>[] postFrames = snapshot.BaseSectionPostFrames[i];
+            if (postFrames is null)
+                return false;
+            for (int frameIndex = 0; frameIndex < postFrames.Length; frameIndex++)
+            {
+                if (!IsValidFrame(postFrames[frameIndex]))
+                    return false;
+            }
+        }
+
+        for (int i = 0; i < snapshot.GlobalPostSectionFrames.Length; i++)
+        {
+            if (!IsValidFrame(snapshot.GlobalPostSectionFrames[i]))
+                return false;
+        }
+
+        WorldSectionId[] baseSections = (WorldSectionId[])snapshot.BaseSections.Clone();
+        var baseFrames = (ReadOnlyMemory<byte>[])snapshot.BaseSectionFrames.Clone();
+        var postFramesCopy = new ReadOnlyMemory<byte>[sectionCount][];
+        for (int i = 0; i < sectionCount; i++)
+            postFramesCopy[i] = (ReadOnlyMemory<byte>[])snapshot.BaseSectionPostFrames[i].Clone();
+
+        packets = new PlayerBootstrapPacketSet(
+            world,
+            baseSections,
+            snapshot.WorldInfoFrame,
+            snapshot.StatusFrame,
+            baseFrames,
+            postFramesCopy,
+            (ReadOnlyMemory<byte>[])snapshot.GlobalPostSectionFrames.Clone(),
+            snapshot.EnterWorldFrame);
+        return true;
+    }
+
+    internal PlayerBootstrapPacketSnapshot CaptureSnapshot()
+    {
+        var baseFrames = new ReadOnlyMemory<byte>[BaseSectionFrames.Count];
+        for (int i = 0; i < baseFrames.Length; i++)
+            baseFrames[i] = BaseSectionFrames[i];
+
+        var postFrames = new ReadOnlyMemory<byte>[BaseSectionPostFrames.Count][];
+        for (int i = 0; i < postFrames.Length; i++)
+            postFrames[i] = (ReadOnlyMemory<byte>[])BaseSectionPostFrames[i].Clone();
+
+        var globalFrames = new ReadOnlyMemory<byte>[GlobalPostSectionFrames.Count];
+        for (int i = 0; i < globalFrames.Length; i++)
+            globalFrames[i] = GlobalPostSectionFrames[i];
+
+        return new PlayerBootstrapPacketSnapshot(
+            (WorldSectionId[])_baseSections.Clone(),
+            WorldInfoFrame,
+            StatusFrame,
+            baseFrames,
+            postFrames,
+            globalFrames,
+            EnterWorldFrame);
+    }
+
     public static PlayerBootstrapPacketSet CreateForTesting(
         ReadOnlyMemory<byte> worldInfoFrame,
         ReadOnlyMemory<byte>[] baseSectionFrames,
@@ -358,7 +453,19 @@ public sealed class PlayerBootstrapPacketSet
         return writer.WrittenSpan.ToArray();
     }
 
+    private static bool IsValidFrame(ReadOnlyMemory<byte> frame) =>
+        frame.Length is >= TerrariaFrameDecoderOptions.MinimumFrameLength and <= ushort.MaxValue;
+
     private readonly record struct SectionCacheEntry(
         ReadOnlyMemory<byte> TileSectionFrame,
         ReadOnlyMemory<byte>[] PostSectionFrames);
 }
+
+internal sealed record PlayerBootstrapPacketSnapshot(
+    WorldSectionId[] BaseSections,
+    ReadOnlyMemory<byte> WorldInfoFrame,
+    ReadOnlyMemory<byte> StatusFrame,
+    ReadOnlyMemory<byte>[] BaseSectionFrames,
+    ReadOnlyMemory<byte>[][] BaseSectionPostFrames,
+    ReadOnlyMemory<byte>[] GlobalPostSectionFrames,
+    ReadOnlyMemory<byte> EnterWorldFrame);
