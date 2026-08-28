@@ -79,15 +79,17 @@ public sealed class RuntimeProjectileClientCommitRoutingTests
         Assert.Equal(1, peerOutbound.QueuedFrames);
 
         ProjectileStateUpdate moved = state with { PositionX = 20f };
+        ProjectileSnapshot updated;
         using (clientCommits.Enter(source, in key))
-            Assert.True(store.TryUpdate(handle, in moved, out ProjectileSnapshot updated));
+            Assert.True(store.TryUpdate(handle, in moved, out updated));
 
         Assert.Equal(20f, updated.PositionX);
         Assert.Equal(0, sourceOutbound.QueuedFrames);
         Assert.Equal(2, peerOutbound.QueuedFrames);
 
+        ProjectileSnapshot final;
         using (clientCommits.Enter(source, in key))
-            Assert.True(store.TryDespawnAt(handle, 30f, 40f, out ProjectileSnapshot final));
+            Assert.True(store.TryDespawnAt(handle, 30f, 40f, out final));
 
         Assert.Equal(30f, final.PositionX);
         Assert.Equal(40f, final.PositionY);
@@ -131,9 +133,10 @@ public sealed class RuntimeProjectileClientCommitRoutingTests
         GameCommandSourceId source = GameCommandSourceId.FromConnection(1);
         var foreignKey = new TerrariaProjectileKeyState(Spawner: 5, ProjectileIndex: 100, Generation: 1);
         ProjectileStateUpdate state = CreateState(spawner: 4, positionX: 10f);
+        ProjectileSnapshot created;
 
         using (clientCommits.Enter(source, in foreignKey))
-            Assert.True(store.TrySpawn(2, in state, out ProjectileSnapshot created));
+            Assert.True(store.TrySpawn(2, in state, out created));
 
         Assert.False(identities.TryResolve(in foreignKey, out _));
         Assert.Equal(1, replication.UnsupportedCommits);
