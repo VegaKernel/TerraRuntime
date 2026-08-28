@@ -252,7 +252,8 @@ public static class TerrariaServerHost
             worldTiles: world.Tiles,
             worldClock: worldClock,
             projectiles: projectileStore,
-            worldItems: worldItems);
+            worldItems: worldItems,
+            projectileReplication: projectileReplication);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
             static (runtime, command) => runtime.Apply(command),
@@ -265,6 +266,7 @@ public static class TerrariaServerHost
         var manaIngress = new RuntimePlayerManaIngress(commandIngress);
         var movementIngress = new RuntimePlayerMovementIngress(commandIngress);
         var worldItemIngress = new RuntimeWorldItemIngress(commandIngress);
+        var projectileIngress = new RuntimeProjectileNetworkIngress(commandIngress);
         var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
         var slots = new PlayerSlotPool(options.MaxPlayers);
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
@@ -426,6 +428,7 @@ public static class TerrariaServerHost
                     manaIngress,
                     movementIngress,
                     worldItemIngress,
+                    projectileIngress,
                     disconnectIngress,
                     runtimeConnections,
                     npcReplication,
@@ -494,6 +497,7 @@ public static class TerrariaServerHost
         IPlayerManaIngress manaIngress,
         IPlayerMovementIngress movementIngress,
         IWorldItemIngress worldItemIngress,
+        IProjectileNetworkIngress projectileIngress,
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
         RuntimeNpcReplicationRegistry npcReplication,
@@ -594,11 +598,16 @@ public static class TerrariaServerHost
                 bootstrapSink,
                 healthIngress,
                 manaIngress);
-            var sink = new WorldItemFrameSink(
+            var itemSink = new WorldItemFrameSink(
                 source,
                 bootstrapSink,
                 vitalsSink,
                 worldItemIngress);
+            var projectileSink = new ProjectileLifecycleFrameSink(
+                source,
+                bootstrapSink,
+                itemSink,
+                projectileIngress);
 
             try
             {
@@ -606,7 +615,7 @@ public static class TerrariaServerHost
                 {
                     TerrariaSocketRunResult result = await TerrariaSocketConnection.RunAsync(
                         socket,
-                        sink,
+                        projectileSink,
                         outbound,
                         TerrariaFrameDecoderOptions.Default,
                         policyOptions,
@@ -614,7 +623,7 @@ public static class TerrariaServerHost
                         cancellationToken).ConfigureAwait(false);
                     string message =
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
-                        $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={sink.StopReason}, state={bootstrapSink.JoinState}; " +
+                        $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, state={bootstrapSink.JoinState}; " +
                         $"inbound={result.Inbound}; rate={result.Rate}; outbound={result.Outbound.Reason}.";
                     hostLog.Write(RuntimeLogLevel.Information, "Network", message);
                 }
