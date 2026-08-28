@@ -82,7 +82,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
                 velocityY,
                 definition.Width,
                 definition.Height,
-                simulation.DirectionX);
+                simulation.DirectionX,
+                simulation.DirectionY);
             velocityX = obstacle.VelocityX;
             velocityY = obstacle.VelocityY;
         }
