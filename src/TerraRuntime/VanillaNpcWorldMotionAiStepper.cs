@@ -6,7 +6,7 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Post-AI authoritative movement slice for the verified ordinary Demon Eye path. Terraria runs AI first,
-/// then resolves gravity/collision and commits position; collision/wet state becomes input for the next AI tick.
+/// then resolves gravity/collision and commits position; collision/liquid state becomes input for the next AI tick.
 /// This wrapper keeps targeting, AI and world motion inside one RuntimeNpcStore revision.
 /// </summary>
 internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
@@ -56,14 +56,16 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
                     OldVelocityX = velocityX,
                     OldVelocityY = velocityY,
                     CollideX = false,
-                    CollideY = false
+                    CollideY = false,
+                    Wet = false,
+                    LiquidContact = NpcLiquidContactKind.None
                 }
             };
             return true;
         }
 
         // This first world-motion slice is intentionally limited to the no-gravity flying path.
-        // Ground/falling families need their own source-backed gravity/max-fall-speed parameters.
+        // Ground/falling families use VanillaNpcGravity before they are enabled here.
         if (!simulation.NoGravity)
         {
             next = aiState;
@@ -77,6 +79,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             definition.Width,
             definition.Height,
             out WorldLiquidKind liquidKind);
+        NpcLiquidContactKind liquidContact = wet ? MapLiquid(liquidKind) : NpcLiquidContactKind.None;
 
         // Vanilla halves horizontal momentum exactly when an NPC leaves liquid.
         if (simulation.Wet && !wet)
@@ -128,9 +131,18 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
                 OldVelocityY = oldVelocityY,
                 CollideX = collideX,
                 CollideY = collideY,
-                Wet = wet
+                Wet = wet,
+                LiquidContact = liquidContact
             }
         };
         return true;
     }
+
+    private static NpcLiquidContactKind MapLiquid(WorldLiquidKind kind) => kind switch
+    {
+        WorldLiquidKind.Lava => NpcLiquidContactKind.Lava,
+        WorldLiquidKind.Honey => NpcLiquidContactKind.Honey,
+        WorldLiquidKind.Shimmer => NpcLiquidContactKind.Shimmer,
+        _ => NpcLiquidContactKind.Water
+    };
 }
