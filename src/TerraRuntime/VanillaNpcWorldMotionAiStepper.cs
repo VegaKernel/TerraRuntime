@@ -5,9 +5,9 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 /// <summary>
-/// Post-AI authoritative movement slice for the verified ordinary Demon Eye path. Terraria runs AI first,
-/// then resolves gravity/collision and commits position; collision/liquid state becomes input for the next AI tick.
-/// This wrapper keeps targeting, AI and world motion inside one RuntimeNpcStore revision.
+/// Post-AI authoritative movement for the verified ordinary Blue Slime and Demon Eye paths. Vanilla
+/// computes gravity parameters before AI, applies AI, then gravity, epsilon velocity clamp, wet/tile
+/// collision and position movement. Collision/liquid state becomes input for the next AI tick.
 /// </summary>
 internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 {
@@ -15,14 +15,28 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
     private const float LavaMovementSpeed = 0.5f;
     private const float HoneyMovementSpeed = 0.25f;
     private const float ShimmerMovementSpeed = 0.375f;
+    private const float HorizontalVelocityEpsilon = 0.005f;
 
     private readonly INpcAiStateStepper inner;
     private readonly WorldTileStore tiles;
+    private readonly double worldSurfaceTiles;
 
     public VanillaNpcWorldMotionAiStepper(INpcAiStateStepper inner, WorldTileStore tiles)
+        : this(inner, tiles, Math.Max(1d, tiles?.Dimensions.HeightTiles / 3d ?? 1d))
+    {
+    }
+
+    public VanillaNpcWorldMotionAiStepper(
+        INpcAiStateStepper inner,
+        WorldTileStore tiles,
+        double worldSurfaceTiles)
     {
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
+        if (!double.IsFinite(worldSurfaceTiles) || worldSurfaceTiles <= 0d)
+            throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
+
+        this.worldSurfaceTiles = worldSurfaceTiles;
     }
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
@@ -33,9 +47,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             return false;
         }
 
-        if (npc.Type != 2 ||
-            !VanillaNpcDefinitionCatalog.TryGet(npc.Type, out VanillaNpcDefinition definition) ||
-            definition.AiStyle != 2)
+        if (!VanillaNpcDefinitionCatalog.TryGet(npc.Type, out VanillaNpcDefinition definition) ||
+            !IsSupportedMotionPath(npc.Type, definition.AiStyle))
         {
             next = aiState;
             return true;
@@ -45,30 +58,39 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         float velocityX = aiState.VelocityX;
         float velocityY = aiState.VelocityY;
 
+        if (!simulation.NoGravity)
+        {
+            if (!VanillaNpcGravity.TryApply(
+                    npc.Type,
+                    aiState.PositionY,
+                    velocityY,
+                    simulation.Wet,
+                    simulation.LiquidContact,
+                    tiles.Dimensions.WidthTiles,
+                    worldSurfaceTiles,
+                    out VanillaNpcGravityResult gravity))
+            {
+                next = aiState;
+                return true;
+            }
+
+            velocityY = gravity.VelocityY;
+        }
+
+        if (velocityX < HorizontalVelocityEpsilon && velocityX > -HorizontalVelocityEpsilon)
+            velocityX = 0f;
+
         if (simulation.NoTileCollide)
         {
+            // Vanilla bypasses UpdateCollision entirely in this branch. Persisted collision/wet flags therefore
+            // remain available to the next AI tick; style-2 ignores them while noTileCollide is active.
             next = aiState with
             {
                 PositionX = aiState.PositionX + velocityX,
                 PositionY = aiState.PositionY + velocityY,
-                Simulation = simulation with
-                {
-                    OldVelocityX = velocityX,
-                    OldVelocityY = velocityY,
-                    CollideX = false,
-                    CollideY = false,
-                    Wet = false,
-                    LiquidContact = NpcLiquidContactKind.None
-                }
+                VelocityX = velocityX,
+                VelocityY = velocityY
             };
-            return true;
-        }
-
-        // This first world-motion slice is intentionally limited to the no-gravity flying path.
-        // Ground/falling families use VanillaNpcGravity before they are enabled here.
-        if (!simulation.NoGravity)
-        {
-            next = aiState;
             return true;
         }
 
@@ -81,12 +103,14 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             out WorldLiquidKind liquidKind);
         NpcLiquidContactKind liquidContact = wet ? MapLiquid(liquidKind) : NpcLiquidContactKind.None;
 
-        // Vanilla halves horizontal momentum exactly when an NPC leaves liquid.
+        // Collision_WaterCollision halves horizontal velocity exactly when leaving liquid, before oldVelocity
+        // is captured for the new collision pass.
         if (simulation.Wet && !wet)
             velocityX *= 0.5f;
 
         float oldVelocityX = velocityX;
         float oldVelocityY = velocityY;
+        bool fallThroughPlatforms = npc.Type == 2;
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
             tiles,
             aiState.PositionX,
@@ -95,8 +119,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             velocityY,
             definition.Width,
             definition.Height,
-            fallThrough: true,
-            fall2: true);
+            fallThrough: fallThroughPlatforms,
+            fall2: fallThroughPlatforms);
 
         float collidedVelocityX = collision.VelocityX;
         float collidedVelocityY = collision.HitCeiling ? 0.01f : collision.VelocityY;
@@ -137,6 +161,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         };
         return true;
     }
+
+    private static bool IsSupportedMotionPath(int type, int aiStyle) =>
+        (type == 1 && aiStyle == 1) ||
+        (type == 2 && aiStyle == 2);
 
     private static NpcLiquidContactKind MapLiquid(WorldLiquidKind kind) => kind switch
     {
