@@ -21,7 +21,8 @@ public enum PlayerBootstrapStopReason : byte
     MalformedPlayerMovement = 9,
     MalformedPlayerAppearance = 10,
     MalformedPlayerEquipment = 11,
-    MalformedPlayerSpawn = 12
+    MalformedPlayerSpawn = 12,
+    DynamicEntityBootstrapFailure = 13
 }
 
 /// <summary>
@@ -40,6 +41,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private readonly IPlayerAppearanceIngress? _appearanceIngress;
     private readonly IPlayerEquipmentIngress? _equipmentIngress;
     private readonly IPlayerMovementIngress? _movementIngress;
+    private readonly RuntimeEntityBootstrapFrameSource? _entityBootstrap;
     private PlayerJoinSession? _session;
     private PlayerHandle? _assignedPlayerHandle;
     private bool _spawnSubmitted;
@@ -61,6 +63,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _appearanceIngress = null;
         _equipmentIngress = null;
         _movementIngress = null;
+        _entityBootstrap = null;
         _inner = inner;
     }
 
@@ -109,7 +112,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         IPlayerAppearanceIngress? appearanceIngress,
         IPlayerEquipmentIngress? equipmentIngress,
         IPlayerMovementIngress? movementIngress,
-        ITerrariaFrameSink? inner = null)
+        ITerrariaFrameSink? inner = null,
+        IWorldItemSnapshotReader? worldItems = null)
     {
         ArgumentNullException.ThrowIfNull(slots);
         ArgumentNullException.ThrowIfNull(outbound);
@@ -126,6 +130,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _appearanceIngress = appearanceIngress;
         _equipmentIngress = equipmentIngress;
         _movementIngress = movementIngress;
+        _entityBootstrap = worldItems is null ? null : new RuntimeEntityBootstrapFrameSource(worldItems);
         _inner = inner;
     }
 
@@ -328,6 +333,18 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         {
             if (!TryQueue(sectionFrame))
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
+        }
+
+        if (_entityBootstrap is not null)
+        {
+            if (_entityBootstrap.TryCapture(out ReadOnlyMemory<byte>[] dynamicEntityFrames) != RuntimeEntityBootstrapCaptureResult.Captured)
+                return Stop(PlayerBootstrapStopReason.DynamicEntityBootstrapFailure);
+
+            foreach (ReadOnlyMemory<byte> dynamicEntityFrame in dynamicEntityFrames)
+            {
+                if (!TryQueue(dynamicEntityFrame))
+                    return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
+            }
         }
 
         foreach (ReadOnlyMemory<byte> globalPostSectionFrame in _packets.GlobalPostSectionFrames)
