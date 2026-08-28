@@ -44,18 +44,27 @@ jobs:
           fi
           test -n "$npc_id"
 
+          player_file="$(find decompiled/1458 -type f -name 'Player.cs' -print -quit)"
+          if [[ -z "$player_file" ]]; then
+            player_file="$(grep -RIl --include='*.cs' 'class Player' decompiled/1458 | head -n 1 || true)"
+          fi
+          test -n "$player_file"
+
           cp "$npc_file" artifacts/reference-1458-npc/NPC.cs
           cp "$npc_id" artifacts/reference-1458-npc/NPCID.cs
+          cp "$player_file" artifacts/reference-1458-npc/Player.cs
           cp decompiled/1458/REFERENCE_SOURCE.txt artifacts/reference-1458-npc/REFERENCE_SOURCE.txt
 
-          python3 - "$npc_file" <<'PY'
+          python3 - "$npc_file" "$player_file" <<'PY'
           import json
           import pathlib
           import re
           import sys
 
-          path = pathlib.Path(sys.argv[1])
-          text = path.read_text(errors="ignore")
+          npc_path = pathlib.Path(sys.argv[1])
+          player_path = pathlib.Path(sys.argv[2])
+          text = npc_path.read_text(errors="ignore")
+          player_text = player_path.read_text(errors="ignore")
 
           def method_summary(name):
               pattern = re.compile(rf"\b{name}\s*\([^;{{}}]*\)\s*\{{")
@@ -95,10 +104,17 @@ jobs:
               "AI_004_EyeOfCthulhu",
               "AI_005_Flyer",
           ]
+          player_markers = {}
+          for marker in ("width", "height", "aggro", "ghost", "dead", "active", "Center"):
+              player_markers[marker] = len(re.findall(rf"\b{re.escape(marker)}\b", player_text))
+
           summary = {
-              "source": str(path),
+              "source": str(npc_path),
               "characters": len(text),
               "methods": {name: method_summary(name) for name in methods},
+              "playerSource": str(player_path),
+              "playerCharacters": len(player_text),
+              "playerMarkers": player_markers,
           }
           print("NPC_REFERENCE_SUMMARY=" + json.dumps(summary, sort_keys=True))
           PY
