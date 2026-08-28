@@ -288,7 +288,8 @@ public static class VanillaWorldCollision
         if ((uint)x >= (uint)tiles.Dimensions.WidthTiles || (uint)y >= (uint)tiles.Dimensions.HeightTiles)
             return 0;
 
-        return GetSlope(in tiles.Get(x, y));
+        WorldTile tile = tiles.Get(x, y);
+        return GetSlope(in tile);
     }
 
     private static void GetScanBounds(
