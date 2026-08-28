@@ -16,6 +16,7 @@ public static class RuntimeWorldSnapshotCache
     private const int LiquidActiveEntrySize = 12;
     private const int LiquidBufferEntrySize = 4;
     private const int LiquidTrailerHeaderSize = 64;
+    private const int PreparedTrailerHeaderSize = 32;
     private const int IoBufferSize = 64 * 1024;
     private const int TargetShardBytes = 16 * 1024 * 1024;
     private const int TilesPerShard = TargetShardBytes / TileRecordSize;
@@ -40,6 +41,8 @@ public static class RuntimeWorldSnapshotCache
     private static ReadOnlySpan<byte> Magic => "TRWCACHE"u8;
 
     private static ReadOnlySpan<byte> LiquidTrailerMagic => "LIQSTATE"u8;
+
+    private static ReadOnlySpan<byte> PreparedTrailerMagic => "PREPARED"u8;
 
     public static string GetCachePath(string worldPath)
     {
@@ -156,15 +159,15 @@ public static class RuntimeWorldSnapshotCache
                 shards[shardIndex] = decoded;
             }
 
-            byte[] canonical = new byte[checked((int)header.CanonicalLength)];
-            RuntimeWorldSnapshotLoadResult canonicalReadResult = RuntimeWorldSnapshotLoadResult.Loaded;
+            byte[] preparedPayload = new byte[header.PreparedPayloadLength];
+            RuntimeWorldSnapshotLoadResult preparedReadResult = RuntimeWorldSnapshotLoadResult.Loaded;
             RuntimeWorldSnapshotLoadDiagnostic tileDiagnostic = default;
             RuntimeWorldSnapshotLoadResult liquidReadResult = RuntimeWorldSnapshotLoadResult.Loaded;
             WorldLiquidUpdateEntry[]? liquidActive = null;
             int[]? liquidBuffered = null;
 
             Parallel.Invoke(
-                () => canonicalReadResult = TryReadCanonical(handle, header, canonical),
+                () => preparedReadResult = TryReadPreparedState(handle, header, preparedPayload),
                 () => tileDiagnostic = TryReadTilesParallel(
                     handle,
                     header.TilePayloadOffset,
@@ -177,8 +180,8 @@ public static class RuntimeWorldSnapshotCache
                     out liquidActive,
                     out liquidBuffered));
 
-            if (canonicalReadResult != RuntimeWorldSnapshotLoadResult.Loaded)
-                return new RuntimeWorldSnapshotLoadDiagnostic(canonicalReadResult);
+            if (preparedReadResult != RuntimeWorldSnapshotLoadResult.Loaded)
+                return new RuntimeWorldSnapshotLoadDiagnostic(preparedReadResult);
 
             if (!tileDiagnostic.IsLoaded)
                 return tileDiagnostic;
@@ -193,49 +196,23 @@ public static class RuntimeWorldSnapshotCache
             if (!tiles.LiquidUpdates.TryRestoreSnapshot(liquidActive, liquidBuffered))
                 return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidLiquidQueue);
 
-            WorldFileEnvelopeParseResult envelopeResult = WorldFileEnvelopeParser.TryParse(
-                canonical,
-                out WorldFileEnvelope? envelope,
-                out _);
-            if (envelopeResult != WorldFileEnvelopeParseResult.Parsed || envelope is null)
-            {
-                return new RuntimeWorldSnapshotLoadDiagnostic(
-                    RuntimeWorldSnapshotLoadResult.InvalidCanonicalEnvelope,
-                    (int)envelopeResult);
-            }
-
-            WorldFileHeaderParseResult worldHeaderResult = WorldFileHeaderParser.TryParse(
-                canonical,
-                envelope,
-                out WorldFileHeader? worldHeader);
-            if (worldHeaderResult != WorldFileHeaderParseResult.Parsed || worldHeader is null)
-            {
-                return new RuntimeWorldSnapshotLoadDiagnostic(
-                    RuntimeWorldSnapshotLoadResult.InvalidCanonicalHeader,
-                    (int)worldHeaderResult);
-            }
-
-            if (envelope.FormatVersion != header.WorldFormatVersion)
-                return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.WorldFormatMismatch);
-
-            if (worldHeader.Dimensions.WidthTiles != header.Width ||
-                worldHeader.Dimensions.HeightTiles != header.Height)
-            {
-                return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.DimensionsMismatch);
-            }
-
-            var core = new WorldFileCore(envelope, worldHeader, tiles);
-            WorldFileLoadDiagnostic canonicalDiagnostic = WorldFileLoader.TryLoadPreparedCore(
-                canonical,
-                limits,
-                core,
-                out world);
-            if (!canonicalDiagnostic.IsLoaded || world is null)
+            if (!RuntimeWorldPreparedStateCodec.TryDecode(preparedPayload, tiles, out world) || world is null)
             {
                 world = null;
-                return new RuntimeWorldSnapshotLoadDiagnostic(
-                    RuntimeWorldSnapshotLoadResult.InvalidCanonicalWorld,
-                    ((int)canonicalDiagnostic.Stage << 16) | (canonicalDiagnostic.StageResultCode & 0xFFFF));
+                return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidPreparedWorld);
+            }
+
+            if (world.Envelope.FormatVersion != header.WorldFormatVersion)
+            {
+                world = null;
+                return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.WorldFormatMismatch);
+            }
+
+            if (world.Header.Dimensions.WidthTiles != header.Width ||
+                world.Header.Dimensions.HeightTiles != header.Height)
+            {
+                world = null;
+                return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.DimensionsMismatch);
             }
 
             return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.Loaded);
@@ -273,11 +250,13 @@ public static class RuntimeWorldSnapshotCache
             return new RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult.InvalidWorld);
 
         byte[] liquidPayload;
+        byte[] preparedPayload;
         try
         {
             liquidPayload = EncodeLiquidState(liquidActive, liquidBuffered);
+            preparedPayload = RuntimeWorldPreparedStateCodec.Encode(world);
         }
-        catch (OverflowException)
+        catch (Exception exception) when (exception is OverflowException or InvalidDataException or ArgumentException)
         {
             return new RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult.InvalidWorld);
         }
@@ -287,6 +266,8 @@ public static class RuntimeWorldSnapshotCache
         long shardTableOffset;
         long liquidHeaderOffset;
         long liquidPayloadOffset;
+        long preparedHeaderOffset;
+        long preparedPayloadOffset;
         int shardCount;
         try
         {
@@ -296,7 +277,9 @@ public static class RuntimeWorldSnapshotCache
             shardTableOffset = checked(tilePayloadOffset + tilePayloadLength);
             liquidHeaderOffset = checked(shardTableOffset + ((long)shardCount * ShardEntrySize));
             liquidPayloadOffset = checked(liquidHeaderOffset + LiquidTrailerHeaderSize);
-            _ = checked(liquidPayloadOffset + liquidPayload.Length);
+            preparedHeaderOffset = checked(liquidPayloadOffset + liquidPayload.Length);
+            preparedPayloadOffset = checked(preparedHeaderOffset + PreparedTrailerHeaderSize);
+            _ = checked(preparedPayloadOffset + preparedPayload.Length);
         }
         catch (OverflowException)
         {
@@ -334,6 +317,12 @@ public static class RuntimeWorldSnapshotCache
         BinaryPrimitives.WriteInt32LittleEndian(liquidHeader[20..], liquidBuffered.Length);
         BinaryPrimitives.WriteInt64LittleEndian(liquidHeader[24..], liquidPayload.LongLength);
         BinaryPrimitives.WriteUInt64LittleEndian(liquidHeader[32..], RuntimeWorldIntegrity.Hash64(liquidPayload));
+
+        Span<byte> preparedHeader = stackalloc byte[PreparedTrailerHeaderSize];
+        preparedHeader.Clear();
+        PreparedTrailerMagic.CopyTo(preparedHeader);
+        BinaryPrimitives.WriteInt64LittleEndian(preparedHeader[8..], preparedPayload.LongLength);
+        BinaryPrimitives.WriteUInt64LittleEndian(preparedHeader[16..], RuntimeWorldIntegrity.Hash64(preparedPayload));
 
         TileShardDescriptor[] shards = CreateShardLayout(expectedTileCount);
         byte[] shardTable = new byte[checked(shardCount * ShardEntrySize)];
@@ -376,6 +365,8 @@ public static class RuntimeWorldSnapshotCache
                 stream.Write(shardTable);
                 stream.Write(liquidHeader);
                 stream.Write(liquidPayload);
+                stream.Write(preparedHeader);
+                stream.Write(preparedPayload);
                 stream.Flush(flushToDisk: true);
             }
 
@@ -607,14 +598,14 @@ public static class RuntimeWorldSnapshotCache
 
         long expectedLiquidPayloadLength;
         long liquidPayloadOffset;
-        long expectedFileLength;
+        long preparedHeaderOffset;
         try
         {
             expectedLiquidPayloadLength = checked(
                 ((long)liquidActiveCount * LiquidActiveEntrySize) +
                 ((long)liquidBufferCount * LiquidBufferEntrySize));
             liquidPayloadOffset = checked(liquidHeaderOffset + LiquidTrailerHeaderSize);
-            expectedFileLength = checked(liquidPayloadOffset + liquidPayloadLength);
+            preparedHeaderOffset = checked(liquidPayloadOffset + liquidPayloadLength);
         }
         catch (OverflowException)
         {
@@ -632,6 +623,35 @@ public static class RuntimeWorldSnapshotCache
             !liquidHeader[40..64].SequenceEqual(stackalloc byte[24]))
         {
             return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidLiquidQueue);
+        }
+
+        Span<byte> preparedHeader = stackalloc byte[PreparedTrailerHeaderSize];
+        if (!ReadExactlyAt(handle, preparedHeader, preparedHeaderOffset))
+            return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.Truncated);
+
+        if (!preparedHeader[..PreparedTrailerMagic.Length].SequenceEqual(PreparedTrailerMagic))
+            return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidPreparedWorld);
+
+        long preparedPayloadLength = BinaryPrimitives.ReadInt64LittleEndian(preparedHeader[8..]);
+        ulong preparedHash = BinaryPrimitives.ReadUInt64LittleEndian(preparedHeader[16..]);
+        long preparedPayloadOffset;
+        long expectedFileLength;
+        try
+        {
+            preparedPayloadOffset = checked(preparedHeaderOffset + PreparedTrailerHeaderSize);
+            expectedFileLength = checked(preparedPayloadOffset + preparedPayloadLength);
+        }
+        catch (OverflowException)
+        {
+            return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidPreparedWorld);
+        }
+
+        if (preparedPayloadLength <= 0 ||
+            preparedPayloadLength > RuntimeWorldPreparedStateCodec.MaximumPayloadBytes ||
+            preparedPayloadLength > int.MaxValue ||
+            !preparedHeader[24..32].SequenceEqual(stackalloc byte[8]))
+        {
+            return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidPreparedWorld);
         }
 
         if (RandomAccess.GetLength(handle) != expectedFileLength)
@@ -652,7 +672,10 @@ public static class RuntimeWorldSnapshotCache
             liquidActiveCount,
             liquidBufferCount,
             liquidPayloadOffset,
-            liquidHash);
+            liquidHash,
+            checked((int)preparedPayloadLength),
+            preparedPayloadOffset,
+            preparedHash);
         return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.Loaded);
     }
 
@@ -669,6 +692,29 @@ public static class RuntimeWorldSnapshotCache
             return RuntimeWorldIntegrity.Hash64(destination) == header.CanonicalHash
                 ? RuntimeWorldSnapshotLoadResult.Loaded
                 : RuntimeWorldSnapshotLoadResult.CanonicalPayloadHashMismatch;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return RuntimeWorldSnapshotLoadResult.IoError;
+        }
+    }
+
+    private static RuntimeWorldSnapshotLoadResult TryReadPreparedState(
+        SafeFileHandle handle,
+        CacheHeader header,
+        byte[] destination)
+    {
+        try
+        {
+            if (destination.Length != header.PreparedPayloadLength ||
+                !ReadExactlyAt(handle, destination, header.PreparedPayloadOffset))
+            {
+                return RuntimeWorldSnapshotLoadResult.Truncated;
+            }
+
+            return RuntimeWorldIntegrity.Hash64(destination) == header.PreparedHash
+                ? RuntimeWorldSnapshotLoadResult.Loaded
+                : RuntimeWorldSnapshotLoadResult.PreparedPayloadHashMismatch;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -935,7 +981,10 @@ public static class RuntimeWorldSnapshotCache
         int LiquidActiveCount,
         int LiquidBufferCount,
         long LiquidPayloadOffset,
-        ulong LiquidHash);
+        ulong LiquidHash,
+        int PreparedPayloadLength,
+        long PreparedPayloadOffset,
+        ulong PreparedHash);
 
     private readonly record struct TileShardDescriptor(long TileStart, int TileCount, ulong Hash);
 }
@@ -978,7 +1027,9 @@ public enum RuntimeWorldSnapshotLoadResult : byte
     InvalidShardTable = 19,
     CanonicalPayloadHashMismatch = 20,
     LiquidQueueHashMismatch = 21,
-    InvalidLiquidQueue = 22
+    InvalidLiquidQueue = 22,
+    PreparedPayloadHashMismatch = 23,
+    InvalidPreparedWorld = 24
 }
 
 public readonly record struct RuntimeWorldSnapshotLoadDiagnostic(
