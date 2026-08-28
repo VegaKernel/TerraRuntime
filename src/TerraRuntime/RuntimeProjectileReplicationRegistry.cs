@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
+using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime;
@@ -9,7 +10,8 @@ namespace TerraRuntime;
 /// <summary>
 /// Network-side projection/cache for authoritative projectile commits. Active projectile baselines are
 /// retained as packet-27 frames and emitted only after a connection completes the authoritative player
-/// spawn transition. Packed ProjectileKey details remain confined to the protocol adapter boundary.
+/// spawn transition. Exact inbound ProjectileKeys are retained independently from physical runtime slots;
+/// runtime-created projectiles receive a canonical fallback key only when no wire identity is registered.
 /// </summary>
 internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCommitSink, IRuntimePlayerEventSink
 {
@@ -17,10 +19,21 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private readonly byte[]?[] baselineFrames = new byte[MaxProjectileSlots][];
+    private readonly RuntimeProjectileWireIdentityRegistry identities;
     private long relayedFrames;
     private long baselineFrameCount;
     private long rejectedFrames;
     private long unsupportedCommits;
+
+    public RuntimeProjectileReplicationRegistry()
+        : this(new RuntimeProjectileWireIdentityRegistry())
+    {
+    }
+
+    internal RuntimeProjectileReplicationRegistry(RuntimeProjectileWireIdentityRegistry identities)
+    {
+        this.identities = identities ?? throw new ArgumentNullException(nameof(identities));
+    }
 
     public long RelayedFrames => Interlocked.Read(ref relayedFrames);
 
@@ -29,6 +42,8 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
     public long RejectedFrames => Interlocked.Read(ref rejectedFrames);
 
     public long UnsupportedCommits => Interlocked.Read(ref unsupportedCommits);
+
+    internal RuntimeProjectileWireIdentityRegistry WireIdentities => identities;
 
     public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
     {
@@ -45,22 +60,32 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
     {
         if (kind == ProjectileStateCommitKind.Despawn)
         {
-            if (!RuntimeProjectilePacketProjection.TryCreateDestroy(in snapshot, out var destroyState) ||
-                !TerrariaProjectileEncoder.TryEncodeDestroy(in destroyState, out byte[] destroyFrame))
+            try
             {
-                Interlocked.Increment(ref unsupportedCommits);
-                return;
+                if (!TryResolveWireKey(in snapshot, out TerrariaProjectileKeyState destroyKey) ||
+                    !RuntimeProjectilePacketProjection.TryCreateDestroy(in snapshot, in destroyKey, out var destroyState) ||
+                    !TerrariaProjectileEncoder.TryEncodeDestroy(in destroyState, out byte[] destroyFrame))
+                {
+                    Interlocked.Increment(ref unsupportedCommits);
+                    return;
+                }
+
+                Broadcast(destroyFrame);
+            }
+            finally
+            {
+                Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
+                identities.TryUnbind(snapshot.Handle, out _);
             }
 
-            Broadcast(destroyFrame);
-            Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
             return;
         }
 
         if (kind is not ProjectileStateCommitKind.Spawn and not ProjectileStateCommitKind.Update)
             throw new ArgumentOutOfRangeException(nameof(kind));
 
-        if (!RuntimeProjectilePacketProjection.TryCreateUpdate(in snapshot, out var updateState) ||
+        if (!TryResolveOrCreateWireKey(in snapshot, out TerrariaProjectileKeyState updateKey) ||
+            !RuntimeProjectilePacketProjection.TryCreateUpdate(in snapshot, in updateKey, out var updateState) ||
             !TerrariaProjectileEncoder.TryEncodeUpdate(in updateState, out byte[] updateFrame))
         {
             Interlocked.Increment(ref unsupportedCommits);
@@ -117,6 +142,25 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
 
     public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request)
     {
+    }
+
+    private bool TryResolveWireKey(
+        in ProjectileSnapshot snapshot,
+        out TerrariaProjectileKeyState key) =>
+        identities.TryGetWireKey(snapshot.Handle, out key) ||
+        RuntimeProjectilePacketProjection.TryCreateCanonicalKey(in snapshot, out key);
+
+    private bool TryResolveOrCreateWireKey(
+        in ProjectileSnapshot snapshot,
+        out TerrariaProjectileKeyState key)
+    {
+        if (identities.TryGetWireKey(snapshot.Handle, out key))
+            return true;
+
+        if (!RuntimeProjectilePacketProjection.TryCreateCanonicalKey(in snapshot, out key))
+            return false;
+
+        return identities.TryBind(in key, snapshot.Handle);
     }
 
     private void Broadcast(byte[] encoded)

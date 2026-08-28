@@ -38,6 +38,51 @@ public sealed class RuntimeProjectilePacketProjectionTests
     }
 
     [Fact]
+    public void Exact_wire_key_is_independent_from_physical_runtime_slot_and_generation()
+    {
+        ProjectileSnapshot projectile = CreateSnapshot(slot: 17, generation: 20000);
+        var wireKey = new TerrariaProjectileKeyState(
+            Spawner: projectile.Spawner,
+            ProjectileIndex: 777,
+            Generation: 1234);
+
+        Assert.True(RuntimeProjectilePacketProjection.TryCreateUpdate(
+            in projectile,
+            in wireKey,
+            out TerrariaProjectileUpdateState update));
+        Assert.True(RuntimeProjectilePacketProjection.TryCreateDestroy(
+            in projectile,
+            in wireKey,
+            out TerrariaProjectileDestroyState destroy));
+
+        Assert.Equal(wireKey, update.Key);
+        Assert.Equal(wireKey, destroy.Key);
+        Assert.NotEqual(projectile.Handle.Slot, update.Key.ProjectileIndex);
+        Assert.NotEqual(
+            RuntimeProjectilePacketProjection.ToProtocolGeneration(projectile.Handle.Generation),
+            update.Key.Generation);
+    }
+
+    [Fact]
+    public void Exact_wire_key_with_wrong_spawner_is_rejected()
+    {
+        ProjectileSnapshot projectile = CreateSnapshot(slot: 17, generation: 23);
+        var wrongSpawner = new TerrariaProjectileKeyState(
+            Spawner: 5,
+            ProjectileIndex: 17,
+            Generation: 23);
+
+        Assert.False(RuntimeProjectilePacketProjection.TryCreateUpdate(
+            in projectile,
+            in wrongSpawner,
+            out _));
+        Assert.False(RuntimeProjectilePacketProjection.TryCreateDestroy(
+            in projectile,
+            in wrongSpawner,
+            out _));
+    }
+
+    [Fact]
     public void Runtime_generation_wraps_only_at_the_14_bit_wire_boundary()
     {
         Assert.Equal((ushort)1,

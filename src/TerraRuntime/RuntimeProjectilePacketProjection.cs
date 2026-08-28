@@ -6,7 +6,9 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Converts generation-safe authoritative projectile state into protocol-neutral packet projections.
-/// Runtime generations stay monotonic ulongs; only the wire projection wraps into ProjectileKey's 14-bit field.
+/// Runtime generations stay monotonic ulongs; only server-created fallback identities wrap into
+/// ProjectileKey's 14-bit generation field. Inbound client projectiles can supply their exact preserved
+/// wire key so physical runtime slots never leak into protocol identity.
 /// </summary>
 internal static class RuntimeProjectilePacketProjection
 {
@@ -14,8 +16,23 @@ internal static class RuntimeProjectilePacketProjection
         in ProjectileSnapshot projectile,
         out TerrariaProjectileUpdateState state)
     {
+        if (!TryCreateCanonicalKey(in projectile, out TerrariaProjectileKeyState key))
+        {
+            state = default;
+            return false;
+        }
+
+        return TryCreateUpdate(in projectile, in key, out state);
+    }
+
+    public static bool TryCreateUpdate(
+        in ProjectileSnapshot projectile,
+        in TerrariaProjectileKeyState key,
+        out TerrariaProjectileUpdateState state)
+    {
         if (!projectile.IsActive ||
-            projectile.Handle.Slot > TerrariaProjectileKeyState.MaximumProjectileIndex ||
+            !key.IsValid ||
+            key.Spawner != projectile.Spawner ||
             !VanillaProjectileIds.IsLiveWireType(projectile.Type))
         {
             state = default;
@@ -24,7 +41,7 @@ internal static class RuntimeProjectilePacketProjection
 
         ProjectileAiState ai = projectile.Ai;
         state = new TerrariaProjectileUpdateState(
-            Key: CreateKey(in projectile),
+            Key: key,
             ProjectileType: projectile.Type.Value,
             PositionX: projectile.PositionX,
             PositionY: projectile.PositionY,
@@ -44,18 +61,49 @@ internal static class RuntimeProjectilePacketProjection
         in ProjectileSnapshot projectile,
         out TerrariaProjectileDestroyState state)
     {
-        if (!projectile.IsActive ||
-            projectile.Handle.Slot > TerrariaProjectileKeyState.MaximumProjectileIndex)
+        if (!TryCreateCanonicalKey(in projectile, out TerrariaProjectileKeyState key))
+        {
+            state = default;
+            return false;
+        }
+
+        return TryCreateDestroy(in projectile, in key, out state);
+    }
+
+    public static bool TryCreateDestroy(
+        in ProjectileSnapshot projectile,
+        in TerrariaProjectileKeyState key,
+        out TerrariaProjectileDestroyState state)
+    {
+        if (!projectile.IsActive || !key.IsValid || key.Spawner != projectile.Spawner)
         {
             state = default;
             return false;
         }
 
         state = new TerrariaProjectileDestroyState(
-            Key: CreateKey(in projectile),
+            Key: key,
             PositionX: projectile.PositionX,
             PositionY: projectile.PositionY);
         return state.IsValid;
+    }
+
+    internal static bool TryCreateCanonicalKey(
+        in ProjectileSnapshot projectile,
+        out TerrariaProjectileKeyState key)
+    {
+        if (!projectile.IsActive ||
+            projectile.Handle.Slot > TerrariaProjectileKeyState.MaximumProjectileIndex)
+        {
+            key = default;
+            return false;
+        }
+
+        key = new TerrariaProjectileKeyState(
+            Spawner: projectile.Spawner,
+            ProjectileIndex: projectile.Handle.Slot,
+            Generation: ToProtocolGeneration(projectile.Handle.Generation));
+        return key.IsValid;
     }
 
     internal static ushort ToProtocolGeneration(ProjectileGeneration generation)
@@ -67,10 +115,4 @@ internal static class RuntimeProjectilePacketProjection
             (generation.Value - 1UL) % TerrariaProjectileKeyState.MaximumGeneration;
         return checked((ushort)(zeroBased + 1UL));
     }
-
-    private static TerrariaProjectileKeyState CreateKey(in ProjectileSnapshot projectile) =>
-        new(
-            Spawner: projectile.Spawner,
-            ProjectileIndex: projectile.Handle.Slot,
-            Generation: ToProtocolGeneration(projectile.Handle.Generation));
 }
