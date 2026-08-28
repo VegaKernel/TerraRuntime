@@ -38,7 +38,7 @@ public sealed class ServerRuntimeProjectileFullPoolIngressTests
         Assert.Equal((ushort)123, displaced.Slot);
         Assert.Equal((ulong)1, displaced.Generation.Value);
 
-        using var slots = new PlayerSlotPool(1);
+        var slots = new PlayerSlotPool(1);
         Assert.True(slots.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
         using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
         Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());
