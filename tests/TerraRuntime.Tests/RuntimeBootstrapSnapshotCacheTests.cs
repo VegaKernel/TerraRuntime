@@ -1,0 +1,184 @@
+using System.Reflection;
+using TerraRuntime.World;
+
+namespace TerraRuntime.Tests;
+
+public sealed class RuntimeBootstrapSnapshotCacheTests
+{
+    [Fact]
+    public void Bootstrap_snapshot_round_trips_encoded_join_frames()
+    {
+        byte[] source = CreateCompleteWorld();
+        WorldFileLoadLimits limits = CreateLimits();
+        Assert.True(WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded).IsLoaded);
+        WorldFileData world = Assert.IsType<WorldFileData>(loaded);
+        PlayerBootstrapPacketSet expectedPackets = PlayerBootstrapPacketSet.Create(world);
+        PlayerBootstrapPacketSnapshot expected = expectedPackets.CaptureSnapshot();
+
+        string path = TempPath();
+        var stamp = new RuntimeWorldSourceStamp(source.LongLength, DateTime.UtcNow.Ticks);
+        try
+        {
+            Assert.True(RuntimeBootstrapSnapshotCache.TryWriteAtomic(path, stamp, world, expectedPackets).IsWritten);
+
+            RuntimeBootstrapSnapshotLoadDiagnostic diagnostic = RuntimeBootstrapSnapshotCache.TryLoad(
+                path,
+                stamp,
+                world,
+                out PlayerBootstrapPacketSet? restoredPackets);
+
+            Assert.True(diagnostic.IsLoaded);
+            PlayerBootstrapPacketSnapshot actual = Assert.IsType<PlayerBootstrapPacketSet>(restoredPackets).CaptureSnapshot();
+            AssertSnapshotsEqual(expected, actual);
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(path + ".tmp");
+        }
+    }
+
+    [Fact]
+    public void Bootstrap_snapshot_rejects_corrupted_payload()
+    {
+        byte[] source = CreateCompleteWorld();
+        WorldFileLoadLimits limits = CreateLimits();
+        WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded);
+        WorldFileData world = Assert.IsType<WorldFileData>(loaded);
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+
+        string path = TempPath();
+        var stamp = new RuntimeWorldSourceStamp(source.LongLength, DateTime.UtcNow.Ticks);
+        try
+        {
+            Assert.True(RuntimeBootstrapSnapshotCache.TryWriteAtomic(path, stamp, world, packets).IsWritten);
+            byte[] bytes = File.ReadAllBytes(path);
+            bytes[128] ^= 0x01;
+            File.WriteAllBytes(path, bytes);
+
+            RuntimeBootstrapSnapshotLoadDiagnostic diagnostic = RuntimeBootstrapSnapshotCache.TryLoad(
+                path,
+                stamp,
+                world,
+                out PlayerBootstrapPacketSet? restored);
+
+            Assert.Equal(RuntimeBootstrapSnapshotLoadResult.PayloadHashMismatch, diagnostic.Result);
+            Assert.Null(restored);
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(path + ".tmp");
+        }
+    }
+
+    [Fact]
+    public void Bootstrap_snapshot_is_invalidated_by_source_stamp_change()
+    {
+        byte[] source = CreateCompleteWorld();
+        WorldFileLoadLimits limits = CreateLimits();
+        WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded);
+        WorldFileData world = Assert.IsType<WorldFileData>(loaded);
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+
+        string path = TempPath();
+        var stamp = new RuntimeWorldSourceStamp(source.LongLength, DateTime.UtcNow.Ticks);
+        try
+        {
+            Assert.True(RuntimeBootstrapSnapshotCache.TryWriteAtomic(path, stamp, world, packets).IsWritten);
+            RuntimeWorldSourceStamp changed = stamp with { LastWriteTimeUtcTicks = stamp.LastWriteTimeUtcTicks + 1 };
+
+            RuntimeBootstrapSnapshotLoadDiagnostic diagnostic = RuntimeBootstrapSnapshotCache.TryLoad(
+                path,
+                changed,
+                world,
+                out PlayerBootstrapPacketSet? restored);
+
+            Assert.Equal(RuntimeBootstrapSnapshotLoadResult.SourceMismatch, diagnostic.Result);
+            Assert.Null(restored);
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(path + ".tmp");
+        }
+    }
+
+    [Fact]
+    public void Bootstrap_snapshot_is_invalidated_by_build_identity_change()
+    {
+        byte[] source = CreateCompleteWorld();
+        WorldFileLoadLimits limits = CreateLimits();
+        WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded);
+        WorldFileData world = Assert.IsType<WorldFileData>(loaded);
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+
+        string path = TempPath();
+        var stamp = new RuntimeWorldSourceStamp(source.LongLength, DateTime.UtcNow.Ticks);
+        try
+        {
+            Assert.True(RuntimeBootstrapSnapshotCache.TryWriteAtomic(path, stamp, world, packets).IsWritten);
+            byte[] bytes = File.ReadAllBytes(path);
+            bytes[32] ^= 0x01;
+            File.WriteAllBytes(path, bytes);
+
+            RuntimeBootstrapSnapshotLoadDiagnostic diagnostic = RuntimeBootstrapSnapshotCache.TryLoad(
+                path,
+                stamp,
+                world,
+                out PlayerBootstrapPacketSet? restored);
+
+            Assert.Equal(RuntimeBootstrapSnapshotLoadResult.BuildMismatch, diagnostic.Result);
+            Assert.Null(restored);
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(path + ".tmp");
+        }
+    }
+
+    private static void AssertSnapshotsEqual(
+        PlayerBootstrapPacketSnapshot expected,
+        PlayerBootstrapPacketSnapshot actual)
+    {
+        Assert.Equal(expected.BaseSections, actual.BaseSections);
+        AssertFrameEqual(expected.WorldInfoFrame, actual.WorldInfoFrame);
+        AssertFrameEqual(expected.StatusFrame, actual.StatusFrame);
+        Assert.Equal(expected.BaseSectionFrames.Length, actual.BaseSectionFrames.Length);
+        Assert.Equal(expected.BaseSectionPostFrames.Length, actual.BaseSectionPostFrames.Length);
+        for (int i = 0; i < expected.BaseSectionFrames.Length; i++)
+        {
+            AssertFrameEqual(expected.BaseSectionFrames[i], actual.BaseSectionFrames[i]);
+            Assert.Equal(expected.BaseSectionPostFrames[i].Length, actual.BaseSectionPostFrames[i].Length);
+            for (int frame = 0; frame < expected.BaseSectionPostFrames[i].Length; frame++)
+                AssertFrameEqual(expected.BaseSectionPostFrames[i][frame], actual.BaseSectionPostFrames[i][frame]);
+        }
+
+        Assert.Equal(expected.GlobalPostSectionFrames.Length, actual.GlobalPostSectionFrames.Length);
+        for (int i = 0; i < expected.GlobalPostSectionFrames.Length; i++)
+            AssertFrameEqual(expected.GlobalPostSectionFrames[i], actual.GlobalPostSectionFrames[i]);
+        AssertFrameEqual(expected.EnterWorldFrame, actual.EnterWorldFrame);
+    }
+
+    private static void AssertFrameEqual(ReadOnlyMemory<byte> expected, ReadOnlyMemory<byte> actual) =>
+        Assert.True(expected.Span.SequenceEqual(actual.Span));
+
+    private static string TempPath() =>
+        Path.Combine(Path.GetTempPath(), $"terraruntime-bootstrap-{Guid.NewGuid():N}.runtime-bootstrap");
+
+    private static byte[] CreateCompleteWorld() =>
+        (byte[])InvokeWorldLoaderTestHelper("CreateCompleteCurrentWorld")!;
+
+    private static WorldFileLoadLimits CreateLimits() =>
+        (WorldFileLoadLimits)InvokeWorldLoaderTestHelper("CreateLimits")!;
+
+    private static object? InvokeWorldLoaderTestHelper(string name)
+    {
+        MethodInfo method = typeof(WorldFileLoaderTests).GetMethod(
+            name,
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException($"World loader test helper '{name}' was not found.");
+        return method.Invoke(null, null);
+    }
+}
