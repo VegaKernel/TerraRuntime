@@ -7,7 +7,8 @@ namespace TerraRuntime;
 /// <summary>
 /// Post-AI authoritative movement for the verified ordinary Blue Slime and Demon Eye paths. Vanilla
 /// computes gravity parameters before AI, applies AI, then gravity, epsilon velocity clamp, wet/tile
-/// collision and position movement. Collision/liquid state becomes input for the next AI tick.
+/// collision, position movement and the post-move slope pass. Collision/liquid state becomes input for
+/// the next AI tick.
 /// </summary>
 internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 {
@@ -153,6 +154,20 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         float nextPositionX = aiState.PositionX + movementX;
         float nextPositionY = aiState.PositionY + movementY;
+        VanillaSlopeCollisionResult slope = VanillaWorldSlopeCollision.Resolve(
+            tiles,
+            nextPositionX,
+            nextPositionY,
+            collidedVelocityX,
+            collidedVelocityY,
+            definition.Width,
+            definition.Height,
+            fallThroughPlatforms);
+        nextPositionX = slope.PositionX;
+        nextPositionY = slope.PositionY;
+        float finalVelocityX = slope.VelocityX;
+        float finalVelocityY = slope.VelocityY;
+
         bool solidCollision = VanillaWorldSolidCollision.Intersects(
             tiles,
             nextPositionX,
@@ -164,8 +179,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         {
             PositionX = nextPositionX,
             PositionY = nextPositionY,
-            VelocityX = collidedVelocityX,
-            VelocityY = collidedVelocityY,
+            VelocityX = finalVelocityX,
+            VelocityY = finalVelocityY,
             Simulation = simulation with
             {
                 OldVelocityX = oldVelocityX,
