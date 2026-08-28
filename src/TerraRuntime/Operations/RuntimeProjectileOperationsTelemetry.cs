@@ -34,6 +34,7 @@ internal sealed class RuntimeProjectileOperationsTelemetry : IProjectileOperatio
                 break;
 
             case ProjectileStateCommitKind.Despawn:
+            case ProjectileStateCommitKind.Remove:
                 if (slot.Active && slot.Generation == snapshot.Handle.Generation.Value)
                     ClearSnapshot(slot);
                 Interlocked.Increment(ref committedDespawns);
