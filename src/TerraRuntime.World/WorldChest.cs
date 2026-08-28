@@ -24,7 +24,9 @@ public readonly record struct WorldChestItem(
 
     public PrefixId PrefixId => new(Prefix);
 
-    public bool HasValidItemType => IsEmpty || TryGetItemType(out _);
+    public bool HasValidItemType =>
+        IsEmpty ||
+        (TryGetItemType(out ItemTypeId itemType) && !itemType.IsNone);
 }
 
 public enum WorldFileChestDecodeResult : byte
