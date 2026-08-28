@@ -51,7 +51,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 
     internal bool TryGetLatestPlayerMovementFrame(PlayerSlotId slot, out OutboundFrame frame)
     {
-        if (!TryGetPlayingEndpoint(slot, out Endpoint? endpoint))
+        if (!TryGetPlayingEndpoint(slot, out Endpoint endpoint))
         {
             frame = default;
             return false;
@@ -80,35 +80,29 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         for (int i = 0; i < enteredPeers.Length; i++)
         {
             PlayerSlotId peer = enteredPeers[i];
-            PlanOne(peer, subject);
-            PlanOne(subject, peer);
+            PlanOnePlayerMovementResync(
+                peer,
+                subject,
+                destination,
+                ref planned,
+                ref missingSnapshots,
+                ref missingEndpoints);
+            PlanOnePlayerMovementResync(
+                subject,
+                peer,
+                destination,
+                ref planned,
+                ref missingSnapshots,
+                ref missingEndpoints);
         }
 
         return new RuntimePlayerMovementResyncPlan(planned, missingSnapshots, missingEndpoints);
-
-        void PlanOne(PlayerSlotId recipient, PlayerSlotId source)
-        {
-            if (!TryGetPlayingEndpoint(recipient, out _) ||
-                !TryGetPlayingEndpoint(source, out Endpoint? sourceEndpoint))
-            {
-                missingEndpoints++;
-                return;
-            }
-
-            if (!sourceEndpoint.TryGetLatestMovementFrame(out _))
-            {
-                missingSnapshots++;
-                return;
-            }
-
-            destination[planned++] = new RuntimePlayerMovementResyncOperation(recipient, source);
-        }
     }
 
     internal bool TryEnqueuePlayerMovementResync(in RuntimePlayerMovementResyncOperation operation)
     {
         if (operation.Recipient == operation.Subject ||
-            !TryGetPlayingEndpoint(operation.Recipient, out Endpoint? recipient) ||
+            !TryGetPlayingEndpoint(operation.Recipient, out Endpoint recipient) ||
             !TryGetLatestPlayerMovementFrame(operation.Subject, out OutboundFrame frame))
         {
             return false;
@@ -227,17 +221,42 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
     }
 
-    private bool TryGetPlayingEndpoint(PlayerSlotId slot, out Endpoint? endpoint)
+    private void PlanOnePlayerMovementResync(
+        PlayerSlotId recipient,
+        PlayerSlotId subject,
+        Span<RuntimePlayerMovementResyncOperation> destination,
+        ref int planned,
+        ref int missingSnapshots,
+        ref int missingEndpoints)
     {
-        endpoint = Volatile.Read(ref _playingEndpoints[slot.Value]);
-        if (endpoint is null ||
-            !endpoint.TryGetPlayingSlot(out PlayerSlotId currentSlot) ||
+        if (!TryGetPlayingEndpoint(recipient, out _) ||
+            !TryGetPlayingEndpoint(subject, out Endpoint subjectEndpoint))
+        {
+            missingEndpoints++;
+            return;
+        }
+
+        if (!subjectEndpoint.TryGetLatestMovementFrame(out _))
+        {
+            missingSnapshots++;
+            return;
+        }
+
+        destination[planned++] = new RuntimePlayerMovementResyncOperation(recipient, subject);
+    }
+
+    private bool TryGetPlayingEndpoint(PlayerSlotId slot, out Endpoint endpoint)
+    {
+        Endpoint? candidate = Volatile.Read(ref _playingEndpoints[slot.Value]);
+        if (candidate is null ||
+            !candidate.TryGetPlayingSlot(out PlayerSlotId currentSlot) ||
             currentSlot != slot)
         {
-            endpoint = null;
+            endpoint = null!;
             return false;
         }
 
+        endpoint = candidate;
         return true;
     }
 
