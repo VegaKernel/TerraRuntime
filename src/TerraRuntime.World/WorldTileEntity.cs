@@ -64,8 +64,9 @@ public sealed record WorldTileEntity(
     WorldTileEntityPayload Payload);
 
 /// <summary>
-/// Version-pinned validation for item identities embedded in tile-entity payloads. This deliberately
+/// Version-pinned validation for ordinary serialized Item payloads embedded in tile entities. This deliberately
 /// validates only content identity at this stage; stack/prefix semantics remain source-backed follow-up work.
+/// Leashed-anchor payloads are excluded until their sentinel semantics are independently verified.
 /// </summary>
 public static class WorldTileEntityItemValidator
 {
@@ -81,7 +82,6 @@ public static class WorldTileEntityItemValidator
                 AllValid(doll.Dyes) &&
                 (!doll.Misc.HasValue || IsValid(doll.Misc.Value)),
             WorldHatRackPayload hatRack => AllValid(hatRack.Items) && AllValid(hatRack.Dyes),
-            WorldLeashedAnchorPayload anchor => anchor.TryGetItemType(out _),
             _ => true
         };
     }
@@ -91,7 +91,7 @@ public static class WorldTileEntityItemValidator
         ArgumentNullException.ThrowIfNull(items);
         for (int i = 0; i < items.Length; i++)
         {
-            if (items[i].HasValue && !IsValid(items[i]!.Value))
+            if (items[i].HasValue && !IsValid(items[i].Value))
                 return false;
         }
 
