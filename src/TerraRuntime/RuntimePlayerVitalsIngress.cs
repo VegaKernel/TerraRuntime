@@ -3,9 +3,20 @@ using TerraRuntime.Core;
 
 namespace TerraRuntime;
 
-internal sealed record PlayerHealthRuntimeCommand(
-    ConnectionHandle Connection,
-    PlayerHealthCommitRequest Request) : RuntimeCommand;
+internal sealed class PlayerHealthRuntimeCommand : RuntimeCommand
+{
+    public PlayerHealthRuntimeCommand(
+        ConnectionHandle connection,
+        PlayerHealthCommitRequest request)
+    {
+        Connection = connection;
+        Request = request;
+    }
+
+    public ConnectionHandle Connection { get; }
+
+    public readonly PlayerHealthCommitRequest Request;
+}
 
 internal sealed record PlayerManaRuntimeCommand(
     ConnectionHandle Connection,
