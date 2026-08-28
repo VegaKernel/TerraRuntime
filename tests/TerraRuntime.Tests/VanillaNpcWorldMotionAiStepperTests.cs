@@ -29,6 +29,8 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
         Assert.Equal(-0.04f, updated.VelocityY, 5);
         Assert.Equal(0.1f, updated.Simulation.OldVelocityX, 5);
         Assert.Equal(-0.04f, updated.Simulation.OldVelocityY, 5);
+        Assert.Equal(100f, updated.Simulation.OldPositionX, 5);
+        Assert.Equal(200f, updated.Simulation.OldPositionY, 5);
         Assert.False(updated.Simulation.CollideX);
         Assert.False(updated.Simulation.CollideY);
     }
@@ -55,6 +57,8 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
         Assert.Equal(114f, updated.PositionX, 5);
         Assert.Equal(14f, updated.VelocityX, 5);
         Assert.Equal(20f, updated.Simulation.OldVelocityX, 5);
+        Assert.Equal(100f, updated.Simulation.OldPositionX, 5);
+        Assert.Equal(160f, updated.Simulation.OldPositionY, 5);
         Assert.True(updated.Simulation.CollideX);
     }
 
@@ -112,6 +116,38 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
     }
 
     [Fact]
+    public void No_tile_collide_path_still_captures_old_position_before_direct_motion()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate state = CreateDemonEye() with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                DirectionX = 1,
+                DirectionY = -1,
+                NoGravity = true,
+                NoTileCollide = true,
+                CollideX = true,
+                Wet = true
+            }
+        };
+        Assert.True(store.TrySpawn(0, in state, out NpcSnapshot spawned));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+        var stepper = new VanillaNpcWorldMotionAiStepper(new FixedVelocityStepper(3f, 4f), tiles);
+
+        executor.Tick(stepper);
+
+        Assert.True(store.TryGet(spawned.Handle, out NpcSnapshot updated));
+        Assert.Equal(103f, updated.PositionX, 5);
+        Assert.Equal(204f, updated.PositionY, 5);
+        Assert.Equal(100f, updated.Simulation.OldPositionX, 5);
+        Assert.Equal(200f, updated.Simulation.OldPositionY, 5);
+        Assert.True(updated.Simulation.CollideX);
+        Assert.True(updated.Simulation.Wet);
+    }
+
+    [Fact]
     public void Walk_down_slope_adjustment_is_captured_before_tile_collision()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
@@ -133,6 +169,8 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
         Assert.True(store.TryGet(spawned.Handle, out NpcSnapshot updated));
         Assert.Equal(2f, updated.Simulation.OldVelocityX, 5);
         Assert.Equal(2.075f, updated.Simulation.OldVelocityY, 5);
+        Assert.Equal(100f, updated.Simulation.OldPositionX, 5);
+        Assert.Equal(82f, updated.Simulation.OldPositionY, 5);
     }
 
     private static NpcStateUpdate CreateDemonEye() =>
