@@ -18,7 +18,7 @@ public static class RuntimeWorldSnapshotCache
     private const int LiquidTrailerHeaderSize = 64;
     private const int PreparedTrailerHeaderSize = 32;
     private const int IoBufferSize = 64 * 1024;
-    private const int TargetShardBytes = 16 * 1024 * 1024;
+    private const int TargetShardBytes = 8 * 1024 * 1024;
     private const int TilesPerShard = TargetShardBytes / TileRecordSize;
 
     private const WorldTileFlags KnownFlags =
@@ -909,11 +909,13 @@ public static class RuntimeWorldSnapshotCache
     {
         int shardCount = GetShardCount(tileCount);
         var shards = new TileShardDescriptor[shardCount];
+        long baseTilesPerShard = tileCount / shardCount;
+        int remainder = checked((int)(tileCount % shardCount));
         long tileStart = 0;
 
         for (int shardIndex = 0; shardIndex < shardCount; shardIndex++)
         {
-            int shardTileCount = checked((int)Math.Min(TilesPerShard, tileCount - tileStart));
+            int shardTileCount = checked((int)(baseTilesPerShard + (shardIndex < remainder ? 1 : 0)));
             shards[shardIndex] = new TileShardDescriptor(tileStart, shardTileCount, 0);
             tileStart += shardTileCount;
         }
