@@ -106,8 +106,13 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             velocityX = obstacle.VelocityX;
             velocityY = obstacle.VelocityY;
 
-            if (velocityY == 0f && zombieStuckHopEligible && aiState.Ai.Ai3 == 1f)
+            if (doorContact.GroundSupported &&
+                velocityY == 0f &&
+                zombieStuckHopEligible &&
+                aiState.Ai.Ai3 == 1f)
+            {
                 velocityY = -5f;
+            }
         }
 
         // Vanilla computes NPC.gravity and maxFallSpeed before AI regardless of noGravity. The noGravity
