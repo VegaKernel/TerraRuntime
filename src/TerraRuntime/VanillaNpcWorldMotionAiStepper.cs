@@ -47,7 +47,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         {
             targeting.EnableBlueSlimeMotion(worldSurfaceTiles);
             targeting.EnableZombieMotion(worldSurfaceTiles);
-            targeting.SetCanHitQuery(new VanillaWorldNpcCanHitQuery(tiles));
         }
     }
 
@@ -72,9 +71,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         float velocityX = aiState.VelocityX;
         float velocityY = aiState.VelocityY;
 
-        // The late ordinary AI_003 world-probe tail executes before UpdateNPC applies gravity. The vanilla
-        // order is step-up position correction, closed-door state/recoil, obstacle jump ladder, then the tiny
-        // stuck-hop whose eligibility was captured from the pre-AI X velocity and justHit state.
         if (npcType == VanillaNpcIds.Zombie)
         {
             VanillaZombieStepUpResult stepUp = VanillaWorldZombieStepUp.Resolve(
