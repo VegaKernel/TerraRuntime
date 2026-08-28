@@ -23,7 +23,7 @@ public sealed class TerrariaConnectionPolicyTests
     }
 
     [Fact]
-    public void Accepts_current_handshake_and_forwards_subsequent_frames()
+    public void Marks_handshake_complete_only_after_inner_sink_accepts_hello()
     {
         var time = new ManualTimeProvider();
         var state = new TerrariaConnectionPolicyState(
@@ -42,18 +42,35 @@ public sealed class TerrariaConnectionPolicyTests
     }
 
     [Fact]
-    public void Rejects_an_older_protocol_handshake()
+    public void Does_not_complete_handshake_when_inner_sink_rejects_hello()
     {
         var state = new TerrariaConnectionPolicyState(
             new TerrariaConnectionPolicyOptions(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30)),
             new ManualTimeProvider());
-        var policy = new TerrariaConnectionPolicySink(new CountingSink(), state);
-        byte[] packet = CurrentHelloPacket();
-        packet[^1] = (byte)'5';
-        TerrariaFrame hello = Decode(packet);
+        var sink = new RejectingSink();
+        var policy = new TerrariaConnectionPolicySink(sink, state);
+        TerrariaFrame hello = Decode(CurrentHelloPacket());
 
         Assert.Equal(TerrariaFrameSinkResult.Stop, policy.OnFrame(in hello));
-        Assert.Equal(TerrariaConnectionStopReason.UnsupportedProtocol, state.StopReason);
+        Assert.False(state.HandshakeComplete);
+        Assert.Equal(TerrariaConnectionStopReason.ApplicationStopped, state.StopReason);
+        Assert.Equal(1, sink.Count);
+    }
+
+    [Fact]
+    public void Rejects_a_second_hello_after_handshake_before_forwarding_it()
+    {
+        var state = new TerrariaConnectionPolicyState(
+            new TerrariaConnectionPolicyOptions(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30)),
+            new ManualTimeProvider());
+        var sink = new CountingSink();
+        var policy = new TerrariaConnectionPolicySink(sink, state);
+        TerrariaFrame hello = Decode(CurrentHelloPacket());
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in hello));
+        Assert.Equal(TerrariaFrameSinkResult.Stop, policy.OnFrame(in hello));
+        Assert.Equal(TerrariaConnectionStopReason.InvalidHandshake, state.StopReason);
+        Assert.Equal(1, sink.Count);
     }
 
     [Fact]
@@ -114,6 +131,17 @@ public sealed class TerrariaConnectionPolicyTests
         {
             Count++;
             return TerrariaFrameSinkResult.Continue;
+        }
+    }
+
+    private sealed class RejectingSink : ITerrariaFrameSink
+    {
+        public int Count { get; private set; }
+
+        public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
+        {
+            Count++;
+            return TerrariaFrameSinkResult.Stop;
         }
     }
 

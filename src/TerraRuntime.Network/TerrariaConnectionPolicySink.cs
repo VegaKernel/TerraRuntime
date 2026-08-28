@@ -38,32 +38,12 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
             return TerrariaFrameSinkResult.Stop;
         }
 
-        if (!_state.HandshakeComplete)
+        bool completingHandshake = !_state.HandshakeComplete;
+        if (completingHandshake)
         {
             if (frame.MessageId != (byte)TerrariaMessageId.Hello)
             {
                 _state.TryStop(TerrariaConnectionStopReason.InvalidHandshake);
-                return TerrariaFrameSinkResult.Stop;
-            }
-
-            ConnectRequestDecodeResult decodeResult = TerrariaConnectRequestDecoder.TryDecode(
-                frame,
-                out TerrariaConnectRequest request);
-
-            if (decodeResult != ConnectRequestDecodeResult.Decoded)
-            {
-                _state.TryStop(TerrariaConnectionStopReason.InvalidHandshake);
-                return TerrariaFrameSinkResult.Stop;
-            }
-
-            if (!request.IsCurrentProtocol)
-            {
-                _state.TryStop(TerrariaConnectionStopReason.UnsupportedProtocol);
-                return TerrariaFrameSinkResult.Stop;
-            }
-
-            if (!_state.TryCompleteHandshake())
-            {
                 return TerrariaFrameSinkResult.Stop;
             }
         }
@@ -77,7 +57,11 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
         if (result == TerrariaFrameSinkResult.Stop)
         {
             _state.TryStop(TerrariaConnectionStopReason.ApplicationStopped);
+            return result;
         }
+
+        if (completingHandshake && !_state.TryCompleteHandshake())
+            return TerrariaFrameSinkResult.Stop;
 
         return result;
     }
