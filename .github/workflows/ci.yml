@@ -71,20 +71,40 @@ jobs:
           -p:IlcTreatWarningsAsErrors=true
           -o artifacts/native-aot/linux-x64
 
+      - name: Verify clean deployment layout
+        shell: bash
+        run: |
+          root="artifacts/deploy/linux-x64"
+          test -x "$root/TerraRuntime.Server"
+          for dir in Worlds config data logs; do
+            test -d "$root/$dir"
+          done
+          unexpected="$(find "$root" -mindepth 1 -maxdepth 1 \
+            ! -name TerraRuntime.Server \
+            ! -name Worlds \
+            ! -name config \
+            ! -name data \
+            ! -name logs -print)"
+          if [ -n "$unexpected" ]; then
+            echo "Unexpected deployment entries:"
+            echo "$unexpected"
+            exit 1
+          fi
+
       - name: NativeAOT loop smoke
-        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --loop-smoke
+        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --loop-smoke
 
       - name: NativeAOT protocol smoke
-        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --protocol-smoke
+        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --protocol-smoke
 
       - name: NativeAOT network smoke
-        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --network-smoke
+        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --network-smoke
 
       - name: NativeAOT world smoke
-        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --world-smoke
+        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --world-smoke
 
       - name: NativeAOT Terminal UI smoke
-        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --tui-smoke
+        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --tui-smoke
 
   native-aot-windows:
     runs-on: windows-latest
@@ -107,22 +127,37 @@ jobs:
           -p:IlcTreatWarningsAsErrors=true
           -o artifacts/native-aot/win-x64
 
+      - name: Verify clean deployment layout
+        shell: pwsh
+        run: |
+          $root = "artifacts/deploy/win-x64"
+          $allowed = @("TerraRuntime.Server.exe", "Worlds", "config", "data", "logs")
+          if (-not (Test-Path "$root/TerraRuntime.Server.exe" -PathType Leaf)) { throw "Missing TerraRuntime.Server.exe" }
+          foreach ($dir in @("Worlds", "config", "data", "logs")) {
+            if (-not (Test-Path "$root/$dir" -PathType Container)) { throw "Missing deployment directory: $dir" }
+          }
+          $unexpected = @(Get-ChildItem $root | Where-Object { $_.Name -notin $allowed })
+          if ($unexpected.Count -ne 0) {
+            $names = $unexpected.Name -join ", "
+            throw "Unexpected deployment entries: $names"
+          }
+
       - name: NativeAOT loop smoke
         shell: pwsh
-        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --loop-smoke
+        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --loop-smoke
 
       - name: NativeAOT protocol smoke
         shell: pwsh
-        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --protocol-smoke
+        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --protocol-smoke
 
       - name: NativeAOT network smoke
         shell: pwsh
-        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --network-smoke
+        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --network-smoke
 
       - name: NativeAOT world smoke
         shell: pwsh
-        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --world-smoke
+        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --world-smoke
 
       - name: NativeAOT Terminal UI smoke
         shell: pwsh
-        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --tui-smoke
+        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --tui-smoke
