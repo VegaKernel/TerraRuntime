@@ -160,7 +160,26 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
     }
 
     public bool TryDespawn(ProjectileHandle handle, out ProjectileSnapshot finalSnapshot) =>
-        TryDespawnCore(handle, overridePosition: false, positionX: 0f, positionY: 0f, out finalSnapshot);
+        TryRemoveCore(
+            handle,
+            ProjectileStateCommitKind.Despawn,
+            overridePosition: false,
+            positionX: 0f,
+            positionY: 0f,
+            out finalSnapshot);
+
+    /// <summary>
+    /// Removes one exact generation from authoritative state without declaring a packet-29 network destroy.
+    /// Replication sinks still receive the final snapshot so they can clear baseline and exact wire identity.
+    /// </summary>
+    public bool TryRemove(ProjectileHandle handle, out ProjectileSnapshot finalSnapshot) =>
+        TryRemoveCore(
+            handle,
+            ProjectileStateCommitKind.Remove,
+            overridePosition: false,
+            positionX: 0f,
+            positionY: 0f,
+            out finalSnapshot);
 
     /// <summary>
     /// Atomically applies packet-29's final finite position and despawns the exact generation without
@@ -179,7 +198,13 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
             return false;
         }
 
-        return TryDespawnCore(handle, overridePosition: true, positionX, positionY, out finalSnapshot);
+        return TryRemoveCore(
+            handle,
+            ProjectileStateCommitKind.Despawn,
+            overridePosition: true,
+            positionX,
+            positionY,
+            out finalSnapshot);
     }
 
     public bool TryGetActive(ushort slot, out ProjectileSnapshot snapshot)
@@ -273,8 +298,6 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
             return true;
         }
 
-        // Reduced-capacity stores are useful for bounded tests/custom worlds, but they are not a complete
-        // vanilla physical pool and therefore must not pretend that "full" means Terraria's 1000 slots.
         if (normalCapacity < VanillaPhysicalSlotCount)
         {
             slot = default;
@@ -303,13 +326,17 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         return true;
     }
 
-    private bool TryDespawnCore(
+    private bool TryRemoveCore(
         ProjectileHandle handle,
+        ProjectileStateCommitKind commitKind,
         bool overridePosition,
         float positionX,
         float positionY,
         out ProjectileSnapshot finalSnapshot)
     {
+        if (commitKind is not ProjectileStateCommitKind.Despawn and not ProjectileStateCommitKind.Remove)
+            throw new ArgumentOutOfRangeException(nameof(commitKind));
+
         if (!IsCurrentHandleCandidate(handle))
         {
             finalSnapshot = default;
@@ -338,7 +365,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         state.Update = default;
         state.Lifecycle = default;
         _activeCount--;
-        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Despawn, in finalSnapshot);
+        _commitSink?.ProjectileStateCommitted(commitKind, in finalSnapshot);
         return true;
     }
 
