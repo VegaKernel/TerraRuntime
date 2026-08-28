@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace TerraRuntime.World;
 
 [Flags]
@@ -28,7 +30,10 @@ public enum WorldLiquidKind : byte
 /// <summary>
 /// Normalized runtime tile state. This is deliberately independent from the variable-length .wld encoding.
 /// Shape is 0 for full/ordinary, 1 for half-brick, and 2..5 for the four vanilla slope values plus one.
+/// The explicit 16-byte sequential layout is the TerraRuntime snapshot ABI; the final byte is reserved and
+/// must remain zero so verified snapshot shards can be copied directly into the runtime tile array.
 /// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 2, Size = 16)]
 public struct WorldTile
 {
     public ushort Type;
@@ -41,6 +46,7 @@ public struct WorldTile
     public byte WallColor;
     public byte Shape;
     public WorldLiquidKind LiquidKind;
+    internal byte Reserved;
 
     public readonly bool IsActive => (Flags & WorldTileFlags.Active) != 0;
 }
