@@ -197,64 +197,67 @@ static int RunCacheBenchmark(string worldPath, WorldFileLoadLimits limits)
             $"cache_parallel_result parallel={parallelism} median_ms={median:F3} min_ms={values[0]:F3} max_ms={values[^1]:F3}");
     }
 
-    const int profileParallelism = 4;
-    RuntimeWorldSnapshotLoadDiagnostic profileWarmup = RuntimeWorldSnapshotProfiler.TryLoad(
-        cachePath,
-        sourceStamp,
-        limits,
-        new RuntimeWorldCacheReadOptions(profileParallelism),
-        out WorldFileData? profileWarmWorld,
-        out _);
-    if (!profileWarmup.IsLoaded || profileWarmWorld is null)
+    int[] profileParallelisms = [4, 8];
+    foreach (int profileParallelism in profileParallelisms)
     {
-        Console.Error.WriteLine(
-            $"Cache profile warmup failed: parallel={profileParallelism}, result={profileWarmup.Result}, code={profileWarmup.DetailCode}.");
-        return 24;
-    }
-
-    var profiles = new List<RuntimeWorldSnapshotLoadProfile>(rounds);
-    for (int round = 0; round < rounds; round++)
-    {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-
-        RuntimeWorldSnapshotLoadDiagnostic profiled = RuntimeWorldSnapshotProfiler.TryLoad(
+        RuntimeWorldSnapshotLoadDiagnostic profileWarmup = RuntimeWorldSnapshotProfiler.TryLoad(
             cachePath,
             sourceStamp,
             limits,
             new RuntimeWorldCacheReadOptions(profileParallelism),
-            out WorldFileData? loaded,
-            out RuntimeWorldSnapshotLoadProfile profile);
-        if (!profiled.IsLoaded || loaded is null)
+            out WorldFileData? profileWarmWorld,
+            out _);
+        if (!profileWarmup.IsLoaded || profileWarmWorld is null)
         {
             Console.Error.WriteLine(
-                $"Cache profile failed: parallel={profileParallelism}, result={profiled.Result}, code={profiled.DetailCode}.");
-            return 25;
+                $"Cache profile warmup failed: parallel={profileParallelism}, result={profileWarmup.Result}, code={profileWarmup.DetailCode}.");
+            return 24;
         }
 
-        profiles.Add(profile);
-    }
+        var profiles = new List<RuntimeWorldSnapshotLoadProfile>(rounds);
+        for (int round = 0; round < rounds; round++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
 
-    RuntimeWorldSnapshotLoadProfile sampleProfile = profiles[0];
-    Console.WriteLine(
-        $"cache_stage_profile parallel={profileParallelism} rounds={rounds} shards={sampleProfile.ShardCount} " +
-        $"tile_bytes={sampleProfile.TilePayloadBytes} prepared_bytes={sampleProfile.PreparedPayloadBytes} liquid_bytes={sampleProfile.LiquidPayloadBytes} " +
-        $"total_ms={Median(profiles, static value => value.Total.TotalMilliseconds):F3} " +
-        $"header_ms={Median(profiles, static value => value.Header.TotalMilliseconds):F3} " +
-        $"tile_alloc_ms={Median(profiles, static value => value.TileAllocation.TotalMilliseconds):F3} " +
-        $"shard_table_ms={Median(profiles, static value => value.ShardTable.TotalMilliseconds):F3} " +
-        $"parallel_wall_ms={Median(profiles, static value => value.ParallelWall.TotalMilliseconds):F3} " +
-        $"tile_wall_ms={Median(profiles, static value => value.TileWall.TotalMilliseconds):F3} " +
-        $"tile_io_agg_ms={Median(profiles, static value => value.TileIoAggregate.TotalMilliseconds):F3} " +
-        $"tile_hash_agg_ms={Median(profiles, static value => value.TileHashAggregate.TotalMilliseconds):F3} " +
-        $"prepared_io_ms={Median(profiles, static value => value.PreparedIo.TotalMilliseconds):F3} " +
-        $"prepared_hash_ms={Median(profiles, static value => value.PreparedHash.TotalMilliseconds):F3} " +
-        $"liquid_io_ms={Median(profiles, static value => value.LiquidIo.TotalMilliseconds):F3} " +
-        $"liquid_hash_ms={Median(profiles, static value => value.LiquidHash.TotalMilliseconds):F3} " +
-        $"liquid_decode_ms={Median(profiles, static value => value.LiquidDecode.TotalMilliseconds):F3} " +
-        $"liquid_restore_ms={Median(profiles, static value => value.LiquidRestore.TotalMilliseconds):F3} " +
-        $"prepared_decode_ms={Median(profiles, static value => value.PreparedDecode.TotalMilliseconds):F3}");
+            RuntimeWorldSnapshotLoadDiagnostic profiled = RuntimeWorldSnapshotProfiler.TryLoad(
+                cachePath,
+                sourceStamp,
+                limits,
+                new RuntimeWorldCacheReadOptions(profileParallelism),
+                out WorldFileData? loaded,
+                out RuntimeWorldSnapshotLoadProfile profile);
+            if (!profiled.IsLoaded || loaded is null)
+            {
+                Console.Error.WriteLine(
+                    $"Cache profile failed: parallel={profileParallelism}, result={profiled.Result}, code={profiled.DetailCode}.");
+                return 25;
+            }
+
+            profiles.Add(profile);
+        }
+
+        RuntimeWorldSnapshotLoadProfile sampleProfile = profiles[0];
+        Console.WriteLine(
+            $"cache_stage_profile parallel={profileParallelism} rounds={rounds} shards={sampleProfile.ShardCount} " +
+            $"tile_bytes={sampleProfile.TilePayloadBytes} prepared_bytes={sampleProfile.PreparedPayloadBytes} liquid_bytes={sampleProfile.LiquidPayloadBytes} " +
+            $"total_ms={Median(profiles, static value => value.Total.TotalMilliseconds):F3} " +
+            $"header_ms={Median(profiles, static value => value.Header.TotalMilliseconds):F3} " +
+            $"tile_alloc_ms={Median(profiles, static value => value.TileAllocation.TotalMilliseconds):F3} " +
+            $"shard_table_ms={Median(profiles, static value => value.ShardTable.TotalMilliseconds):F3} " +
+            $"parallel_wall_ms={Median(profiles, static value => value.ParallelWall.TotalMilliseconds):F3} " +
+            $"tile_wall_ms={Median(profiles, static value => value.TileWall.TotalMilliseconds):F3} " +
+            $"tile_io_agg_ms={Median(profiles, static value => value.TileIoAggregate.TotalMilliseconds):F3} " +
+            $"tile_hash_agg_ms={Median(profiles, static value => value.TileHashAggregate.TotalMilliseconds):F3} " +
+            $"prepared_io_ms={Median(profiles, static value => value.PreparedIo.TotalMilliseconds):F3} " +
+            $"prepared_hash_ms={Median(profiles, static value => value.PreparedHash.TotalMilliseconds):F3} " +
+            $"liquid_io_ms={Median(profiles, static value => value.LiquidIo.TotalMilliseconds):F3} " +
+            $"liquid_hash_ms={Median(profiles, static value => value.LiquidHash.TotalMilliseconds):F3} " +
+            $"liquid_decode_ms={Median(profiles, static value => value.LiquidDecode.TotalMilliseconds):F3} " +
+            $"liquid_restore_ms={Median(profiles, static value => value.LiquidRestore.TotalMilliseconds):F3} " +
+            $"prepared_decode_ms={Median(profiles, static value => value.PreparedDecode.TotalMilliseconds):F3}");
+    }
 
     return 0;
 }
