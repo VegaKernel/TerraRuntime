@@ -22,19 +22,31 @@ public readonly record struct ProjectileStateUpdate(
     short OriginalDamage);
 
 /// <summary>
-/// Bounded single-writer authoritative projectile lifecycle state. Protocol 326 packs projectile index into
-/// ProjectileKey with the Multiplicity-verified range 0..1000. That is an addressability ceiling only; it is
-/// deliberately not named or treated as Terraria's gameplay projectile population limit. Vanilla physical
-/// projectile allocation scans slots 0..999; wire key index 1000 is therefore kept distinct from the normal
-/// physical allocation range. Live entries must always carry a protocol-version-valid nonzero vanilla
-/// presentation type so authoritative state cannot contain an entity that the official client cannot represent.
+/// Runtime-owned lifecycle fields initialized by vanilla Projectile.SetDefaults and intentionally absent
+/// from packet 27. They remain authoritative server state so allocation and later simulation do not infer
+/// gameplay lifetime from network traffic.
+/// </summary>
+public readonly record struct ProjectileLifecycleState(int TimeLeft, bool NetImportant)
+{
+    public bool IsInitialized => TimeLeft > 0;
+}
+
+/// <summary>
+/// Bounded single-writer authoritative projectile lifecycle state. TerrariaServer 1.4.5.8 normally scans
+/// physical slots 0..999. When all are occupied it replaces the non-netImportant projectile with the lowest
+/// timeLeft; if every normal slot is netImportant, slot 1000 is the real overflow/fallback physical slot.
+/// Protocol ProjectileKey also addresses indices 0..1000, while runtime generations stay wider than the
+/// 14-bit wire generation so stale handles do not alias after ordinary reuse.
 /// </summary>
 public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
 {
     public const ushort MaximumVanillaPhysicalSlot = 999;
     public const int VanillaPhysicalSlotCount = MaximumVanillaPhysicalSlot + 1;
-    public const ushort MaximumProtocolIndex = 1000;
+    public const ushort VanillaOverflowSlot = 1000;
+    public const ushort MaximumProtocolIndex = VanillaOverflowSlot;
     public const int MaximumProtocolAddressableCapacity = MaximumProtocolIndex + 1;
+
+    private const int VanillaOldestProjectileSentinelTimeLeft = 9_999_999;
 
     private readonly SlotState[] _slots;
     private readonly IProjectileStateCommitSink? _commitSink;
@@ -57,7 +69,8 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
 
     public bool TrySpawn(ushort slot, in ProjectileStateUpdate update, out ProjectileSnapshot snapshot)
     {
-        if (!IsAddressableSlot(slot) || !IsValid(in update))
+        if (!IsAddressableSlot(slot) ||
+            !TryCreateLifecycle(update.Type, out ProjectileLifecycleState lifecycle))
         {
             snapshot = default;
             return false;
@@ -70,10 +83,39 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
             return false;
         }
 
-        state.Active = true;
-        state.Revision = 1;
-        state.Update = update;
+        InitializeSlot(ref state, in update, in lifecycle);
         _activeCount++;
+        snapshot = Capture(slot, in state);
+        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Spawn, in snapshot);
+        return true;
+    }
+
+    /// <summary>
+    /// Applies TerrariaServer 1.4.5.8 NewProjectileSetup slot selection. A full normal pool replaces the
+    /// eligible projectile in place and emits only a Spawn commit for the new generation; vanilla does not
+    /// Kill the displaced projectile or emit packet 29 before reusing that physical slot.
+    /// </summary>
+    public bool TrySpawnVanilla(in ProjectileStateUpdate update, out ProjectileSnapshot snapshot)
+    {
+        if (!TryCreateLifecycle(update.Type, out ProjectileLifecycleState lifecycle) ||
+            !TrySelectVanillaAllocationSlot(out ushort slot))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        ref SlotState state = ref _slots[slot];
+        if (!TryAdvance(ref state.Generation))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        bool wasActive = state.Active;
+        InitializeSlot(ref state, in update, in lifecycle);
+        if (!wasActive)
+            _activeCount++;
+
         snapshot = Capture(slot, in state);
         _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Spawn, in snapshot);
         return true;
@@ -88,15 +130,28 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         }
 
         ref SlotState state = ref _slots[handle.Slot];
-        if (!state.Active ||
-            state.Generation != handle.Generation.Value ||
-            !TryAdvance(ref state.Revision))
+        if (!state.Active || state.Generation != handle.Generation.Value)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        ProjectileLifecycleState lifecycle = state.Lifecycle;
+        if (state.Update.Type != update.Type &&
+            !TryCreateLifecycle(update.Type, out lifecycle))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        if (!TryAdvance(ref state.Revision))
         {
             snapshot = default;
             return false;
         }
 
         state.Update = update;
+        state.Lifecycle = lifecycle;
         snapshot = Capture(handle.Slot, in state);
         _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
         return true;
@@ -163,6 +218,25 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         return true;
     }
 
+    public bool TryGetLifecycle(ProjectileHandle handle, out ProjectileLifecycleState lifecycle)
+    {
+        if (!IsCurrentHandleCandidate(handle))
+        {
+            lifecycle = default;
+            return false;
+        }
+
+        ref readonly SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value)
+        {
+            lifecycle = default;
+            return false;
+        }
+
+        lifecycle = state.Lifecycle;
+        return true;
+    }
+
     public int CopyActive(Span<ProjectileSnapshot> destination)
     {
         if (destination.Length < _activeCount)
@@ -183,6 +257,48 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         }
 
         return written;
+    }
+
+    private bool TrySelectVanillaAllocationSlot(out ushort slot)
+    {
+        int normalCapacity = Math.Min(_slots.Length, VanillaPhysicalSlotCount);
+        for (int candidate = 0; candidate < normalCapacity; candidate++)
+        {
+            if (_slots[candidate].Active)
+                continue;
+
+            slot = checked((ushort)candidate);
+            return true;
+        }
+
+        // Reduced-capacity stores are useful for bounded tests/custom worlds, but they are not a complete
+        // vanilla physical pool and therefore must not pretend that "full" means Terraria's 1000 slots.
+        if (normalCapacity < VanillaPhysicalSlotCount)
+        {
+            slot = default;
+            return false;
+        }
+
+        int selected = VanillaOverflowSlot;
+        int lowestTimeLeft = VanillaOldestProjectileSentinelTimeLeft;
+        for (int candidate = 0; candidate < VanillaPhysicalSlotCount; candidate++)
+        {
+            ref readonly SlotState state = ref _slots[candidate];
+            if (state.Lifecycle.NetImportant || state.Lifecycle.TimeLeft >= lowestTimeLeft)
+                continue;
+
+            selected = candidate;
+            lowestTimeLeft = state.Lifecycle.TimeLeft;
+        }
+
+        if (selected == VanillaOverflowSlot && _slots.Length <= VanillaOverflowSlot)
+        {
+            slot = default;
+            return false;
+        }
+
+        slot = checked((ushort)selected);
+        return true;
     }
 
     private bool TryDespawnCore(
@@ -218,6 +334,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         state.Active = false;
         state.Revision = 0;
         state.Update = default;
+        state.Lifecycle = default;
         _activeCount--;
         _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Despawn, in finalSnapshot);
         return true;
@@ -228,6 +345,20 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
     private bool IsCurrentHandleCandidate(ProjectileHandle handle) =>
         handle.IsAssigned && IsAddressableSlot(handle.Slot);
 
+    private static bool TryCreateLifecycle(
+        ProjectileTypeId type,
+        out ProjectileLifecycleState lifecycle)
+    {
+        if (!VanillaProjectileLifecycleFacts.TryGetDefaults(type, out VanillaProjectileLifecycleDefaults defaults))
+        {
+            lifecycle = default;
+            return false;
+        }
+
+        lifecycle = new ProjectileLifecycleState(defaults.TimeLeft, defaults.NetImportant);
+        return true;
+    }
+
     private static bool IsValid(in ProjectileStateUpdate update) =>
         VanillaProjectileIds.IsLiveWireType(update.Type) &&
         float.IsFinite(update.PositionX) &&
@@ -236,6 +367,17 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         float.IsFinite(update.VelocityY) &&
         update.Ai.IsFinite &&
         float.IsFinite(update.KnockBack);
+
+    private static void InitializeSlot(
+        ref SlotState state,
+        in ProjectileStateUpdate update,
+        in ProjectileLifecycleState lifecycle)
+    {
+        state.Active = true;
+        state.Revision = 1;
+        state.Update = update;
+        state.Lifecycle = lifecycle;
+    }
 
     private static ProjectileSnapshot Capture(ushort slot, in SlotState state)
     {
@@ -271,5 +413,6 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         public ulong Generation;
         public ulong Revision;
         public ProjectileStateUpdate Update;
+        public ProjectileLifecycleState Lifecycle;
     }
 }
