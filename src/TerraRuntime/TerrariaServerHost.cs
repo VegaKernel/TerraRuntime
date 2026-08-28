@@ -203,7 +203,13 @@ public static class TerrariaServerHost
         }
 
         var worldItems = new RuntimeWorldItemStore();
-        var worldClock = RuntimeWorldClock.FromWorld(world.RuntimeMetadata, world.CreativePowers);
+        RuntimeWorldClockOperationsTelemetry? worldClockTelemetry = options.TerminalUiEnabled
+            ? new RuntimeWorldClockOperationsTelemetry()
+            : null;
+        var worldClock = RuntimeWorldClock.FromWorld(
+            world.RuntimeMetadata,
+            world.CreativePowers,
+            worldClockTelemetry);
         var runtimeConnections = new RuntimeConnectionRegistry(
             runtimeInterestManagement,
             world.Header.Dimensions);
@@ -329,7 +335,8 @@ public static class TerrariaServerHost
                             BootstrapMilliseconds: bootstrapDuration.TotalMilliseconds,
                             WorldReadyMilliseconds: worldReadyDuration.TotalMilliseconds,
                             NetworkReadyMilliseconds: networkReadyDuration.TotalMilliseconds,
-                            CapturedAtUtc: DateTimeOffset.UtcNow));
+                            CapturedAtUtc: DateTimeOffset.UtcNow),
+                        worldClockTelemetry);
                     terminalUi = TerminalUiHost.Start(
                         dashboardOperations,
                         playerOperations,
