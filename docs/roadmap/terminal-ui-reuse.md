@@ -14,19 +14,22 @@ The only forward-looking requirement now is that terminal views consume stable o
 
 ## Current implementation status
 
-The first local-TUI vertical slice is implemented in the standalone server:
+The local TUI currently has three exercised operational views in the standalone server:
 
 - start it explicitly with `--tui`; plain-console/headless startup remains the default;
 - Terminal.Gui v2 is hosted on its own UI thread and never runs on the authoritative game-loop thread;
-- `DashboardWindow` consumes only `IRuntimeDashboardOperations` and an immutable `RuntimeDashboardSnapshot`;
-- the local operations adapter publishes lifecycle, world identity, target/observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, command backlog/budget telemetry and connection admission counters;
+- Dashboard consumes `IRuntimeDashboardOperations` and an immutable `RuntimeDashboardSnapshot` with lifecycle, world identity, target/observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, command backlog/budget telemetry and connection admission counters;
+- Players consumes `IPlayerOperations` and immutable `RuntimePlayersSnapshot` values populated only from already validated authoritative player events; the read model carries stable slot/generation/connection identity plus name, team, position and current health/mana without reading `ServerRuntimeState` from the UI thread;
+- Network consumes `INetworkOperations` and `RuntimeNetworkSnapshot`, publishing active/registered/admitted/rejected connections plus appearance, equipment, lifecycle, movement and AOI-resync replication counters owned by runtime/network subsystems;
 - observed TPS is sampled from authoritative tick progress over time in the operations layer, not reconstructed in the view from tick execution duration;
 - closing the TUI stops only the UI; it does not stop the server;
 - TUI initialization/refresh failure falls back to the running plain-console server path;
-- `--tui-smoke` renders the dashboard once with the Terminal.Gui ANSI test driver;
-- normal CI plus Linux and Windows NativeAOT jobs contain an exercised `--tui-smoke` gate.
+- `--tui-smoke` renders Dashboard, Players and Network with the Terminal.Gui ANSI test driver;
+- normal CI plus Linux and Windows NativeAOT jobs exercise the same `--tui-smoke` path.
 
-This is the foundation slice, not completion of Phase 10. Dedicated Players, Network, Logs and World screens are still pending. In particular, existing direct `Console.WriteLine` server messages are not redirected into the full-screen UI; do not solve that by globally replacing `Console.Out`. The next logging/UI step should introduce a bounded log read model/sink so plain console and TUI can consume the same structured events independently.
+Dashboard, Players and Network are implemented. Logs and World remain pending. Aggregate per-connection queue/backpressure totals are also not published yet; the Network view currently exposes the counters that have authoritative subsystem ownership instead of reconstructing synthetic values in the UI.
+
+Existing direct `Console.WriteLine` server messages are not redirected into the full-screen UI; do not solve that by globally replacing `Console.Out`. The next logging/UI step should introduce a bounded log read model/sink so plain console and TUI can consume the same structured events independently.
 
 Current shape:
 
