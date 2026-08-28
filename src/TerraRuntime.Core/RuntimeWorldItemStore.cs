@@ -5,6 +5,7 @@ namespace TerraRuntime.Core;
 
 /// <summary>
 /// Mutable state accepted by the authoritative world-item store. Wire-specific flags are intentionally absent.
+/// ItemNetId remains a compatibility primitive at ingress; authoritative validation crosses it into ItemTypeId.
 /// </summary>
 public readonly record struct WorldItemStateUpdate(
     float PositionX,
@@ -21,7 +22,21 @@ public readonly record struct WorldItemStateUpdate(
     byte OwnerPlayerId,
     int TimeToKeepReservation,
     byte GrabDelayPlayer,
-    int GrabDelayTime);
+    int GrabDelayTime)
+{
+    public PrefixId PrefixId => new(Prefix);
+
+    public bool TryGetItemType(out ItemTypeId itemType)
+    {
+        if (!VanillaItemIds.TryCreate(ItemNetId, out itemType) || itemType.IsNone)
+        {
+            itemType = default;
+            return false;
+        }
+
+        return true;
+    }
+}
 
 /// <summary>
 /// Bounded runtime-owned world-item state. Terraria reuses item slots, so identity is slot + generation;
@@ -185,8 +200,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         float.IsFinite(update.VelocityY) &&
         float.IsFinite(update.ShimmerTime) &&
         update.Stack > 0 &&
-        VanillaItemIds.TryCreate(update.ItemNetId, out ItemTypeId itemType) &&
-        !itemType.IsNone &&
+        update.TryGetItemType(out _) &&
         (byte)update.Ownership <= (byte)WorldItemOwnershipMode.GrabDelayForAllPlayers;
 
     private static bool TryAdvance(ref ulong value)
