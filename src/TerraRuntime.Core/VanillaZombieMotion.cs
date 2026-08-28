@@ -26,7 +26,14 @@ public readonly record struct VanillaZombieMotionInput(
     NpcAiState Ai,
     float Scale,
     bool TargetOverlaps,
-    VanillaZombieTargetRefresh ClosestTarget);
+    VanillaZombieTargetRefresh ClosestTarget)
+{
+    public bool PursuitAllowed { get; init; } = true;
+
+    public bool EncourageDespawn { get; init; }
+
+    public int TimeLeft { get; init; }
+}
 
 public readonly record struct VanillaZombieMotionResult(
     float VelocityX,
@@ -35,13 +42,16 @@ public readonly record struct VanillaZombieMotionResult(
     int DirectionY,
     ushort Target,
     NpcAiState Ai,
-    int TargetRefreshes);
+    int TargetRefreshes)
+{
+    public int TimeLeft { get; init; }
+}
 
 /// <summary>
 /// Deterministic ordinary type-3 state slice from TerrariaServer 1.4.5.8 NPC.AI_003_Fighters.
-/// This covers the night/underground pursuit path shared by a plain Zombie: TargetClosest cadence,
-/// ai[3] stuck accounting and the default horizontal acceleration band. Obstacle/door probing,
-/// justHit resets, daytime surface despawn behavior and special fighter subtypes are separate layers.
+/// Covers stuck accounting, pursuit/TargetClosest cadence, the discouraged idle-turn branch,
+/// EncourageDespawn(10) lifetime clamping and the default horizontal acceleration band.
+/// Obstacle/door probing and justHit resets remain separate layers.
 /// </summary>
 public static class VanillaZombieMotion
 {
@@ -49,6 +59,7 @@ public static class VanillaZombieMotion
     private const float MaximumStuckCounter = StuckThreshold * 10f;
     private const float BaseMaximumHorizontalSpeed = 1f;
     private const float HorizontalAcceleration = 0.07f;
+    private const int EncouragedDespawnTime = 10;
 
     public static bool TryStep(
         in VanillaZombieMotionInput input,
@@ -63,6 +74,7 @@ public static class VanillaZombieMotion
             input.DirectionX is < -1 or > 1 ||
             input.DirectionY is < -1 or > 1 ||
             input.Target > byte.MaxValue ||
+            input.TimeLeft < 0 ||
             !input.Ai.IsFinite ||
             !input.ClosestTarget.IsValid)
         {
@@ -81,6 +93,7 @@ public static class VanillaZombieMotion
         float ai2 = input.Ai.Ai2;
         float ai3 = input.Ai.Ai3;
         int targetRefreshes = 0;
+        int timeLeft = input.TimeLeft;
 
         bool reversingWhileGrounded =
             velocityY == 0f &&
@@ -101,13 +114,37 @@ public static class VanillaZombieMotion
         if (input.TargetOverlaps)
             ai3 = 0f;
 
-        // Plain type 3 is not discouraged at night or below worldSurface, so the verified branch calls
-        // TargetClosest every tick while ai[3] remains below the stuck threshold.
-        if (ai3 < StuckThreshold)
+        bool pursue = ai3 < StuckThreshold && input.PursuitAllowed;
+        if (pursue)
         {
             RefreshTarget();
             if (directionY > 0 && closestTarget.HasTarget && closestTarget.DirectionY < 0)
                 directionY = -1;
+        }
+        else
+        {
+            if (input.EncourageDespawn && timeLeft > EncouragedDespawnTime)
+                timeLeft = EncouragedDespawnTime;
+
+            if (velocityX == 0f)
+            {
+                if (velocityY == 0f)
+                {
+                    ai0++;
+                    if (ai0 >= 2f)
+                    {
+                        directionX *= -1;
+                        ai0 = 0f;
+                    }
+                }
+            }
+            else
+            {
+                ai0 = 0f;
+            }
+
+            if (directionX == 0)
+                directionX = 1;
         }
 
         float maximumSpeed = BaseMaximumHorizontalSpeed * (1f + (1f - input.Scale));
@@ -136,7 +173,10 @@ public static class VanillaZombieMotion
             directionY,
             target,
             new NpcAiState(ai0, ai1, ai2, ai3),
-            targetRefreshes);
+            targetRefreshes)
+        {
+            TimeLeft = timeLeft
+        };
         return true;
 
         void RefreshTarget()
