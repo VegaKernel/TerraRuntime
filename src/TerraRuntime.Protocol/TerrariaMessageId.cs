@@ -20,5 +20,7 @@ public enum TerrariaMessageId : byte
     PlayerSpawn = 12,
     PlayerControls = 13,
     PlayerActive = 14,
+    PlayerHp = 16,
+    PlayerMana = 42,
     PlayerSpawnSelf = 49
 }
