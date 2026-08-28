@@ -131,6 +131,47 @@ jobs:
           python3 tools/ci/live_join_relay_probe.py --port 17780 2>&1 | tee "$client_log"
           cat "$host_log"
 
+      - name: Verify warm runtime cache startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-smoke.wld"
+          cache="$GITHUB_WORKSPACE/artifacts/vanilla-smoke.runtime-world"
+          warm_log="$GITHUB_WORKSPACE/artifacts/terraruntime-warm-cache.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          test -s "$cache"
+
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17781 \
+            --max-players 2 \
+            > "$warm_log" 2>&1 &
+          warm_pid=$!
+
+          cleanup_warm() {
+            kill "$warm_pid" 2>/dev/null || true
+            wait "$warm_pid" 2>/dev/null || true
+          }
+          trap cleanup_warm EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$warm_pid" 2>/dev/null; then
+              cat "$warm_log" >&2
+              echo "Warm-cache TerraRuntime host exited before opening the listener." >&2
+              exit 1
+            fi
+            if grep -q "TerraRuntime listening on 0.0.0.0:17781" "$warm_log"; then
+              break
+            fi
+            sleep 0.5
+          done
+
+          grep -q "Runtime world cache hit:" "$warm_log"
+          grep -q "startup_profile source=runtime-cache" "$warm_log"
+          grep -q "TerraRuntime listening on 0.0.0.0:17781" "$warm_log"
+          cat "$warm_log"
+
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
@@ -141,4 +182,5 @@ jobs:
             artifacts/vanilla-serverconfig.txt
             artifacts/terraruntime-server.log
             artifacts/terraruntime-client.log
+            artifacts/terraruntime-warm-cache.log
           retention-days: 3
