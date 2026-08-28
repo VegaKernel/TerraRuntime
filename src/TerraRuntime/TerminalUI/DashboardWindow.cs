@@ -309,7 +309,25 @@ internal sealed class DashboardWindow : Runnable
         rows[7].Text = $"Load       : file {FormatMilliseconds(snapshot.FileReadMilliseconds)}   cache {FormatMilliseconds(snapshot.CacheLoadMilliseconds)}   canonical {FormatMilliseconds(snapshot.CanonicalWorldLoadMilliseconds)}";
         rows[8].Text = $"Prepare    : cache write {FormatMilliseconds(snapshot.CacheWriteMilliseconds)}   bootstrap {FormatMilliseconds(snapshot.BootstrapMilliseconds)}";
         rows[9].Text = $"Ready      : world {FormatMilliseconds(snapshot.WorldReadyMilliseconds)}   network {FormatMilliseconds(snapshot.NetworkReadyMilliseconds)}";
-        rows[10].Text = $"Snapshot   : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+
+        if (snapshot.RuntimeClockAvailable)
+        {
+            rows[10].Text =
+                $"Clock      : {(snapshot.RuntimeDayTime ? "day" : "night")}   time {snapshot.RuntimeTime:N0}   " +
+                $"rate {snapshot.RuntimeDayRate}   moon {snapshot.RuntimeMoonPhase}";
+            string slimeRainState = snapshot.RuntimeSlimeRainTime > 0d
+                ? "active"
+                : snapshot.RuntimeSlimeRainTime < 0d
+                    ? "cooldown"
+                    : "inactive";
+            rows[11].Text = $"Slime rain : {slimeRainState}   timer {snapshot.RuntimeSlimeRainTime:N0}";
+        }
+        else
+        {
+            rows[10].Text = "Clock      : <runtime clock telemetry unavailable>";
+        }
+
+        rows[12].Text = $"Snapshot   : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
     private void RefreshLogs()
