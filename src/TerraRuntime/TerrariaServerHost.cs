@@ -204,6 +204,9 @@ public static class TerrariaServerHost
 
         var worldItemReplication = new RuntimeWorldItemReplicationRegistry();
         var worldItems = new RuntimeWorldItemStore(worldItemReplication);
+        LocalRuntimeWorldItemOperations? worldItemOperations = options.TerminalUiEnabled
+            ? new LocalRuntimeWorldItemOperations(worldItems)
+            : null;
         RuntimeWorldClockOperationsTelemetry? worldClockTelemetry = options.TerminalUiEnabled
             ? new RuntimeWorldClockOperationsTelemetry()
             : null;
@@ -273,7 +276,8 @@ public static class TerrariaServerHost
             queueTelemetry,
             rateTelemetry,
             npcReplication,
-            projectileReplication);
+            projectileReplication,
+            worldItemReplication);
         var connectionTasks = new ConcurrentDictionary<long, Task>();
         long nextConnectionId = 0;
 
@@ -370,7 +374,8 @@ public static class TerrariaServerHost
                             message,
                             useStandardError: true),
                         shutdown.Token,
-                        projectileOperations);
+                        projectileOperations,
+                        worldItemOperations);
                 }
                 catch (Exception exception)
                 {
