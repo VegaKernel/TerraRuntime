@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.Core;
 
 /// <summary>
@@ -6,12 +8,25 @@ namespace TerraRuntime.Core;
 /// </summary>
 public static class VanillaPlayerItemNormalizer
 {
-    public const short ItemTypeCount = 6196;
+    public const short ItemTypeCount = VanillaItemIds.Count;
+
+    // Exact signed Item.netDefaults compatibility bands from TerrariaServer 1.4.5.8. These are wire/file
+    // canonicalization rules, so their arithmetic stays here rather than leaking into inventory gameplay.
+    private const short LegacyNetIdBand1Min = -18;
+    private const short LegacyNetIdBand1Max = -1;
+    private const int LegacyNetIdBand1Offset = 3522;
+    private const short LegacyNetIdBand2Min = -24;
+    private const short LegacyNetIdBand2Max = -19;
+    private const int LegacyNetIdBand2Base = 3745;
+    private const short LegacyNetIdBand3Min = -48;
+    private const short LegacyNetIdBand3Max = -25;
+    private const int LegacyNetIdBand3Offset = 3528;
 
     public static PlayerEquipmentCommitRequest Normalize(in PlayerEquipmentCommitRequest request)
     {
-        short itemNetId = NormalizeNetId(request.ItemNetId);
-        if (itemNetId == 0 || request.Stack <= 0)
+        if (!TryNormalizeNetId(request.ItemNetId, out ItemTypeId itemType) ||
+            itemType.IsNone ||
+            request.Stack <= 0)
         {
             return request with
             {
@@ -24,22 +39,45 @@ public static class VanillaPlayerItemNormalizer
 
         return request with
         {
-            ItemNetId = itemNetId,
+            ItemNetId = checked((short)itemType.Value),
             ItemFlags = (byte)(request.ItemFlags & 1)
         };
     }
 
-    public static short NormalizeNetId(short itemNetId)
-    {
-        if ((ushort)itemNetId < ItemTypeCount)
-            return itemNetId;
-        if (itemNetId is >= -18 and <= -1)
-            return checked((short)(3522 + itemNetId));
-        if (itemNetId is >= -24 and <= -19)
-            return checked((short)(3745 - itemNetId));
-        if (itemNetId is >= -48 and <= -25)
-            return checked((short)(3528 + itemNetId));
+    /// <summary>Compatibility wrapper for callers that still require the canonical protocol primitive.</summary>
+    public static short NormalizeNetId(short itemNetId) =>
+        TryNormalizeNetId(itemNetId, out ItemTypeId itemType)
+            ? checked((short)itemType.Value)
+            : (short)0;
 
-        return 0;
+    /// <summary>
+    /// Crosses the signed packet-5 net-id representation into validated Terraria 1.4.5.8 item identity.
+    /// </summary>
+    public static bool TryNormalizeNetId(short itemNetId, out ItemTypeId itemType)
+    {
+        int normalizedType;
+        if ((ushort)itemNetId < ItemTypeCount)
+        {
+            normalizedType = itemNetId;
+        }
+        else if (itemNetId is >= LegacyNetIdBand1Min and <= LegacyNetIdBand1Max)
+        {
+            normalizedType = LegacyNetIdBand1Offset + itemNetId;
+        }
+        else if (itemNetId is >= LegacyNetIdBand2Min and <= LegacyNetIdBand2Max)
+        {
+            normalizedType = LegacyNetIdBand2Base - itemNetId;
+        }
+        else if (itemNetId is >= LegacyNetIdBand3Min and <= LegacyNetIdBand3Max)
+        {
+            normalizedType = LegacyNetIdBand3Offset + itemNetId;
+        }
+        else
+        {
+            itemType = default;
+            return false;
+        }
+
+        return VanillaItemIds.TryCreate(normalizedType, out itemType);
     }
 }

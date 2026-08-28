@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
@@ -52,13 +53,19 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
-        if (npc.Type == 1 && _blueSlimeMotionEnabled)
-            return TryStepBlueSlime(in npc, out next);
+        if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType))
+        {
+            next = default;
+            return false;
+        }
 
-        // The verified ordinary style-2 path calls TargetClosest every tick. Do not apply this policy
+        if (npcType == VanillaNpcIds.BlueSlime && _blueSlimeMotionEnabled)
+            return TryStepBlueSlime(in npc, npcType, out next);
+
+        // The verified ordinary Demon Eye path calls TargetClosest every tick. Do not apply this policy
         // globally: other vanilla AI styles, including slimes, have their own retarget cadence.
         NpcSnapshot targeted = npc;
-        if (npc.Type == 2 && TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh closest))
+        if (npcType == VanillaNpcIds.DemonEye && TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh closest))
         {
             targeted = npc with
             {
@@ -74,10 +81,10 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         return _inner.TryStepState(in targeted, out next);
     }
 
-    private bool TryStepBlueSlime(in NpcSnapshot npc, out NpcStateUpdate next)
+    private bool TryStepBlueSlime(in NpcSnapshot npc, NpcTypeId npcType, out NpcStateUpdate next)
     {
-        if (!VanillaNpcDefinitionCatalog.TryGet(npc.Type, out VanillaNpcDefinition definition) ||
-            definition.AiStyle != 1)
+        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
+            definition.AiStyle != VanillaNpcAiStyles.Slime)
         {
             next = default;
             return false;
@@ -111,7 +118,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         }
 
         next = new NpcStateUpdate(
-            npc.Type,
+            npcType.Value,
             npc.NetId,
             result.PositionX,
             npc.PositionY,

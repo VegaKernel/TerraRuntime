@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 
 namespace TerraRuntime.Tests;
@@ -19,8 +20,8 @@ public sealed class VanillaNpcDefinitionCatalogTests
         float knockBackResist)
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition));
-        Assert.Equal(type, definition.Type);
-        Assert.Equal(aiStyle, definition.AiStyle);
+        Assert.Equal(type, definition.Type.Value);
+        Assert.Equal(aiStyle, definition.AiStyle.Value);
         Assert.Equal(width, definition.Width);
         Assert.Equal(height, definition.Height);
         Assert.Equal(damage, definition.Damage);
@@ -28,6 +29,14 @@ public sealed class VanillaNpcDefinitionCatalogTests
         Assert.Equal(lifeMax, definition.LifeMax);
         Assert.Equal(knockBackResist, definition.KnockBackResist);
         Assert.Equal(1f, definition.Scale);
+    }
+
+    [Fact]
+    public void Named_npc_ids_address_the_same_verified_catalog()
+    {
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.DemonEye, out VanillaNpcDefinition definition));
+        Assert.Equal(VanillaNpcIds.DemonEye, definition.Type);
+        Assert.Equal(VanillaNpcAiStyles.DemonEye, definition.AiStyle);
     }
 
     [Fact]

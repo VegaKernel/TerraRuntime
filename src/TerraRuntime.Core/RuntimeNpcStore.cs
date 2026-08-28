@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
@@ -175,7 +176,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         handle.IsAssigned && IsAddressableSlot(handle.Slot);
 
     private static bool IsValid(in NpcStateUpdate update) =>
-        update.Type > 0 &&
+        NpcTypeId.TryCreate(update.Type, out _) &&
         float.IsFinite(update.PositionX) &&
         float.IsFinite(update.PositionY) &&
         float.IsFinite(update.VelocityX) &&

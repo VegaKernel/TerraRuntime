@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 
 namespace TerraRuntime.Tests;
@@ -17,6 +18,22 @@ public sealed class VanillaPlayerItemNormalizerTests
     [InlineData(-49, 0)]
     public void Net_ids_match_vanilla_net_defaults(short input, short expected) =>
         Assert.Equal(expected, VanillaPlayerItemNormalizer.NormalizeNetId(input));
+
+    [Theory]
+    [InlineData(6195, 6195)]
+    [InlineData(-19, 3764)]
+    public void Valid_net_ids_cross_into_typed_item_identity(short input, int expected)
+    {
+        Assert.True(VanillaPlayerItemNormalizer.TryNormalizeNetId(input, out ItemTypeId itemType));
+        Assert.Equal(expected, itemType.Value);
+    }
+
+    [Fact]
+    public void Invalid_net_id_does_not_cross_the_gameplay_boundary()
+    {
+        Assert.False(VanillaPlayerItemNormalizer.TryNormalizeNetId(6196, out _));
+        Assert.False(VanillaPlayerItemNormalizer.TryNormalizeNetId(-49, out _));
+    }
 
     [Fact]
     public void Empty_or_invalid_items_become_canonical_air()

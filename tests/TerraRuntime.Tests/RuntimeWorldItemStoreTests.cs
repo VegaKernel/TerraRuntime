@@ -62,6 +62,18 @@ public sealed class RuntimeWorldItemStoreTests
         Assert.False(store.TryUpsert(RuntimeWorldItemStore.VanillaCapacity, in invalid, out _));
     }
 
+    [Fact]
+    public void Item_type_must_fit_the_vanilla_1458_catalog()
+    {
+        var store = new RuntimeWorldItemStore();
+        WorldItemStateUpdate outOfRange = CreateUpdate(
+            itemNetId: VanillaPlayerItemNormalizer.ItemTypeCount,
+            stack: 1);
+
+        Assert.False(store.TryUpsert(0, in outOfRange, out _));
+        Assert.Equal(0, store.ActiveCount);
+    }
+
     private static WorldItemStateUpdate CreateUpdate(short itemNetId, short stack) =>
         new(
             PositionX: 120f,
