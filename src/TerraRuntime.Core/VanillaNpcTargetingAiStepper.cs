@@ -6,7 +6,7 @@ namespace TerraRuntime.Core;
 /// <summary>
 /// Coordinates verified player-target selection cadence with state-only NPC AI. Demon Eye refreshes every
 /// ordinary style-2 tick; Blue Slime refreshes at its AI_001 state-machine points; ordinary Zombie follows
-/// the verified AI_003 pursuit or discouraged/despawn branch according to world state and ai[3].
+/// verified AI_003 pursuit, visibility and discouraged/despawn branches.
 /// </summary>
 public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 {
@@ -16,6 +16,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private const float VanillaBasePlayerHeight = 42f;
 
     private readonly INpcAiStateStepper _inner;
+    private readonly IVanillaNpcCanHitQuery? _canHitQuery;
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
     private int _candidateCount;
     private bool _blueSlimeMotionEnabled;
@@ -24,17 +25,15 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private bool _dayTime = true;
     private bool _slimeRainActive;
 
-    public VanillaNpcTargetingAiStepper(INpcAiStateStepper inner)
+    public VanillaNpcTargetingAiStepper(
+        INpcAiStateStepper inner,
+        IVanillaNpcCanHitQuery? canHitQuery = null)
     {
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
+        _canHitQuery = canHitQuery;
     }
 
-    /// <summary>
-    /// Enables the verified Blue Slime movement baseline when world collision/gravity is available.
-    /// Supplying world surface enables the underground part of vanilla's engagement predicate; current
-    /// day/night and slime-rain state are supplied separately by the authoritative runtime clock.
-    /// </summary>
     public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity)
     {
         ValidateWorldSurface(worldSurfaceTiles);
@@ -42,10 +41,6 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         _worldSurfacePixels = worldSurfaceTiles * 16d;
     }
 
-    /// <summary>
-    /// Enables the source-backed ordinary type-3 Zombie state slice, including daytime surface
-    /// EncourageDespawn(10). Eclipse/graveyard/statue/invasion exceptions remain future world-state inputs.
-    /// </summary>
     public void EnableZombieMotion(double worldSurfaceTiles)
     {
         ValidateWorldSurface(worldSurfaceTiles);
@@ -53,10 +48,6 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         _worldSurfacePixels = worldSurfaceTiles * 16d;
     }
 
-    /// <summary>
-    /// Supplies current world conditions consumed by AI_001 and the verified AI_003 pursuit gate. Vanilla
-    /// NPC updates happen before the world-time update in the same game tick, so callers provide pre-update state.
-    /// </summary>
     public void SetWorldConditions(bool dayTime, bool slimeRainActive)
     {
         _dayTime = dayTime;
@@ -168,16 +159,14 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         }
 
         bool daytimeSurface = _dayTime && npc.PositionY < _worldSurfacePixels;
+        ReadOnlySpan<VanillaNpcTargetCandidate> candidates = _candidates.AsSpan(0, _candidateCount);
         VanillaBlueSlimeTargetRefresh closest = TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh selected)
             ? selected
             : default;
         int zombieDirectionY = closest.DirectionY;
         if (closest.HasTarget &&
             zombieDirectionY > 0 &&
-            TryFindCandidate(
-                checked((byte)closest.Target),
-                _candidates.AsSpan(0, _candidateCount),
-                out VanillaNpcTargetCandidate selectedCandidate) &&
+            TryFindCandidate(checked((byte)closest.Target), candidates, out VanillaNpcTargetCandidate selectedCandidate) &&
             selectedCandidate.CenterY <= npc.PositionY + definition.Height)
         {
             zombieDirectionY = -1;
@@ -188,6 +177,22 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             closest.Target,
             closest.DirectionX,
             zombieDirectionY);
+
+        bool applyCanHitRule = false;
+        bool canHitCurrentTarget = true;
+        float currentTargetCenterY = 0f;
+        if (_canHitQuery is not null &&
+            npc.Target < byte.MaxValue &&
+            TryFindCandidate(checked((byte)npc.Target), candidates, out VanillaNpcTargetCandidate currentTarget) &&
+            currentTarget.Active &&
+            !currentTarget.Dead &&
+            !currentTarget.Ghost)
+        {
+            applyCanHitRule = true;
+            canHitCurrentTarget = _canHitQuery.CanHit(in npc, in currentTarget);
+            currentTargetCenterY = currentTarget.CenterY;
+        }
+
         NpcSimulationState simulation = npc.Simulation;
         var input = new VanillaZombieMotionInput(
             PositionX: npc.PositionX,
@@ -205,6 +210,10 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             PursuitAllowed = !daytimeSurface,
             EncourageDespawn = daytimeSurface,
             JustHit = simulation.JustHit,
+            ApplyCanHitRule = applyCanHitRule,
+            CanHitCurrentTarget = canHitCurrentTarget,
+            NpcCenterY = npc.PositionY + definition.Height * 0.5f,
+            CurrentTargetCenterY = currentTargetCenterY,
             TimeLeft = simulation.TimeLeft
         };
 
