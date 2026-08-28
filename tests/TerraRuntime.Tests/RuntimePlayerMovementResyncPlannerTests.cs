@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
+using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
@@ -9,7 +10,7 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
     [Fact]
     public void Planner_requires_real_snapshots_for_each_resync_direction()
     {
-        var registry = new RuntimeConnectionRegistry();
+        var registry = CreateRegistry();
         GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(1);
         GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(2);
         var firstOutbound = CreateOutbound();
@@ -47,7 +48,7 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
     [Fact]
     public void Planned_resync_reuses_cached_frame_and_targets_only_recipient_queue()
     {
-        var registry = new RuntimeConnectionRegistry();
+        var registry = CreateRegistry();
         GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(10);
         GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(20);
         var firstOutbound = CreateOutbound();
@@ -76,9 +77,52 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
     }
 
     [Fact]
+    public void Stale_resync_plan_is_rejected_after_players_leave_visibility()
+    {
+        var registry = CreateRegistry();
+        GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(30);
+        GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(40);
+        var firstOutbound = CreateOutbound();
+        var secondOutbound = CreateOutbound();
+        var first = new PlayerSlotId(30);
+        var second = new PlayerSlotId(40);
+
+        Assert.True(registry.TryRegister(firstSource, firstOutbound));
+        Assert.True(registry.TryRegister(secondSource, secondOutbound));
+        PlayerSpawnCommitRequest firstSpawn = CreateSpawnRequest(first);
+        PlayerSpawnCommitRequest secondSpawn = CreateSpawnRequest(second);
+        registry.PlayerSpawned(firstSource, in firstSpawn);
+        registry.PlayerSpawned(secondSource, in secondSpawn);
+
+        PlayerMovementCommitRequest firstMovement = CreateMovementRequest(first, PixelsAtSection(0), 200f);
+        PlayerMovementCommitRequest secondMovement = CreateMovementRequest(second, PixelsAtSection(0) + 20f, 200f);
+        registry.PlayerMoved(firstSource, in firstMovement);
+        registry.PlayerMoved(secondSource, in secondMovement);
+
+        Span<PlayerSlotId> entered = stackalloc PlayerSlotId[1];
+        entered[0] = second;
+        Span<RuntimePlayerMovementResyncOperation> operations = stackalloc RuntimePlayerMovementResyncOperation[2];
+        RuntimePlayerMovementResyncPlan plan = registry.PlanPlayerMovementResyncs(first, entered, operations);
+        Assert.Equal(2, plan.Planned);
+
+        PlayerMovementCommitRequest leave = CreateMovementRequest(second, PixelsAtSection(5), 200f);
+        registry.PlayerMoved(secondSource, in leave);
+        Assert.Equal(0, registry.PlayerVisibilitySnapshot?.VisiblePairs);
+
+        long resyncFramesBefore = registry.MovementResyncFrames;
+        int recipientFramesBefore = secondOutbound.QueuedFrames;
+        RuntimePlayerMovementResyncOperation stale = operations[0];
+
+        Assert.False(registry.TryEnqueuePlayerMovementResync(in stale));
+        Assert.Equal(resyncFramesBefore, registry.MovementResyncFrames);
+        Assert.Equal(recipientFramesBefore, secondOutbound.QueuedFrames);
+        Assert.False(registry.IsPlayerMovementVisibilityReady(stale.Recipient, stale.Subject));
+    }
+
+    [Fact]
     public void Planner_drops_operations_when_an_entered_endpoint_has_unregistered()
     {
-        var registry = new RuntimeConnectionRegistry();
+        var registry = CreateRegistry();
         GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(100);
         GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(200);
         var first = new PlayerSlotId(5);
@@ -104,6 +148,11 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
 
         Assert.Equal(new RuntimePlayerMovementResyncPlan(0, 0, 2), plan);
     }
+
+    private static RuntimeConnectionRegistry CreateRegistry() =>
+        new(
+            new InterestManagementControl(enabled: true),
+            new WorldDimensions(2_400, 600));
 
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
         new(new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
@@ -142,4 +191,7 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
             HasCameraTarget: false,
             CameraTargetX: 0f,
             CameraTargetY: 0f);
+
+    private static float PixelsAtSection(int section) =>
+        ((section * TerrariaSectionGeometry.WidthTiles) + 10) * 16f;
 }

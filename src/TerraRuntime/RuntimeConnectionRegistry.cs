@@ -111,6 +111,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     internal bool TryEnqueuePlayerMovementResync(in RuntimePlayerMovementResyncOperation operation)
     {
         if (operation.Recipient == operation.Subject ||
+            !_interestRouter.IsPlayerVisible(operation.Recipient, operation.Subject) ||
             !TryGetPlayingEndpoint(operation.Recipient, out Endpoint recipient) ||
             !TryGetLatestPlayerMovementFrame(operation.Subject, out OutboundFrame frame))
         {
