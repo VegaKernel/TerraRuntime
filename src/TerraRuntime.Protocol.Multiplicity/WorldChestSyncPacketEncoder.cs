@@ -61,14 +61,15 @@ public static class WorldChestSyncPacketEncoder
             else
             {
                 if (item.Stack > short.MaxValue ||
-                    item.ItemType < 0 ||
-                    item.ItemType > short.MaxValue)
+                    !item.TryGetItemType(out var itemType) ||
+                    itemType.IsNone ||
+                    itemType.Value > short.MaxValue)
                 {
                     return WorldChestSyncPacketEncodeResult.InvalidItem;
                 }
 
                 stack = checked((short)item.Stack);
-                itemNetId = checked((short)item.ItemType);
+                itemNetId = checked((short)itemType.Value);
                 prefix = item.Prefix;
             }
 
