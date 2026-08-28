@@ -81,6 +81,13 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
             return;
         }
 
+        if (kind == ProjectileStateCommitKind.Remove)
+        {
+            Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
+            identities.TryUnbind(snapshot.Handle, out _);
+            return;
+        }
+
         if (kind == ProjectileStateCommitKind.Despawn)
         {
             try
