@@ -80,7 +80,7 @@ public static class WorldTileEntityItemValidator
             WorldDisplayDollPayload doll =>
                 AllValid(doll.Equipment) &&
                 AllValid(doll.Dyes) &&
-                (!doll.Misc.HasValue || IsValid(doll.Misc.Value)),
+                (doll.Misc is not { } misc || IsValid(misc)),
             WorldHatRackPayload hatRack => AllValid(hatRack.Items) && AllValid(hatRack.Dyes),
             _ => true
         };
@@ -91,7 +91,8 @@ public static class WorldTileEntityItemValidator
         ArgumentNullException.ThrowIfNull(items);
         for (int i = 0; i < items.Length; i++)
         {
-            if (items[i].HasValue && !IsValid(items[i].Value))
+            WorldTileEntityItem? item = items[i];
+            if (item is { } value && !IsValid(value))
                 return false;
         }
 
