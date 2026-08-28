@@ -16,7 +16,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private const float VanillaBasePlayerHeight = 42f;
 
     private readonly INpcAiStateStepper _inner;
-    private readonly IVanillaNpcCanHitQuery? _canHitQuery;
+    private IVanillaNpcCanHitQuery? _canHitQuery;
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
     private int _candidateCount;
     private bool _blueSlimeMotionEnabled;
@@ -31,6 +31,12 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     {
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
+        _canHitQuery = canHitQuery;
+    }
+
+    public void SetCanHitQuery(IVanillaNpcCanHitQuery canHitQuery)
+    {
+        ArgumentNullException.ThrowIfNull(canHitQuery);
         _canHitQuery = canHitQuery;
     }
 
