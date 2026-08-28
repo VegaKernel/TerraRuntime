@@ -176,15 +176,9 @@ internal static class TerrariaServerHost
     {
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
         using (admissionLease)
-        using (var sink = new PlayerBootstrapFrameSink(
-            slots,
-            new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueOptions),
-            bootstrapPackets,
-            GameCommandSourceId.FromConnection(connectionId),
-            spawnIngress))
         {
             var outbound = new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueOptions);
-            using var actualSink = new PlayerBootstrapFrameSink(
+            using var sink = new PlayerBootstrapFrameSink(
                 slots,
                 outbound,
                 bootstrapPackets,
@@ -195,7 +189,7 @@ internal static class TerrariaServerHost
             {
                 TerrariaSocketRunResult result = await TerrariaSocketConnection.RunAsync(
                     socket,
-                    actualSink,
+                    sink,
                     outbound,
                     TerrariaFrameDecoderOptions.Default,
                     cancellationToken).ConfigureAwait(false);
