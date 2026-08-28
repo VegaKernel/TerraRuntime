@@ -19,6 +19,7 @@ internal sealed class ServerRuntimeState
     private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
     private readonly INpcAiStateStepper _npcAiStepper;
     private readonly VanillaNpcTargetingAiStepper? _vanillaNpcTargetingAiStepper;
+    private readonly RuntimeWorldClock? _worldClock;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
 
@@ -26,9 +27,11 @@ internal sealed class ServerRuntimeState
         IRuntimePlayerEventSink? playerEvents = null,
         RuntimeNpcStore? npcs = null,
         INpcAiStateStepper? npcAiStepper = null,
-        WorldTileStore? worldTiles = null)
+        WorldTileStore? worldTiles = null,
+        RuntimeWorldClock? worldClock = null)
     {
         _playerEvents = playerEvents;
+        _worldClock = worldClock;
         _npcs = npcs ?? new RuntimeNpcStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
 
@@ -194,9 +197,16 @@ internal sealed class ServerRuntimeState
         {
             int candidateCount = CopyVanillaNpcTargetCandidates(_npcTargetCandidates);
             _vanillaNpcTargetingAiStepper.SetCandidates(_npcTargetCandidates.AsSpan(0, candidateCount));
+            if (_worldClock is not null)
+            {
+                _vanillaNpcTargetingAiStepper.SetWorldConditions(
+                    _worldClock.DayTime,
+                    _worldClock.SlimeRainActive);
+            }
         }
 
         LastNpcAiTick = _npcAiExecutor.Tick(_npcAiStepper);
+        _worldClock?.Tick();
         Updates++;
     }
 

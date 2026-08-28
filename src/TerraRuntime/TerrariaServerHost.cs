@@ -203,6 +203,7 @@ public static class TerrariaServerHost
         }
 
         var worldItems = new RuntimeWorldItemStore();
+        var worldClock = RuntimeWorldClock.FromWorld(world.RuntimeMetadata, world.CreativePowers);
         var runtimeConnections = new RuntimeConnectionRegistry(
             runtimeInterestManagement,
             world.Header.Dimensions);
@@ -221,7 +222,11 @@ public static class TerrariaServerHost
             vitalsReplication,
             playerOperations);
         var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, npcReplication);
-        var state = new ServerRuntimeState(playerEvents, npcs: npcStore, worldTiles: world.Tiles);
+        var state = new ServerRuntimeState(
+            playerEvents,
+            npcs: npcStore,
+            worldTiles: world.Tiles,
+            worldClock: worldClock);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
             static (runtime, command) => runtime.Apply(command),
