@@ -48,6 +48,7 @@ public static class VanillaItemIds
 /// <summary>
 /// Source-verified TerrariaServer 1.4.5.8 tile identities currently consumed by world/gameplay code.
 /// The catalog intentionally grows with implemented behavior instead of copying an unverified giant ID table.
+/// Behavior-family predicates live here so consumers do not duplicate raw-id membership sets.
 /// </summary>
 public static class VanillaTileIds
 {
@@ -87,4 +88,24 @@ public static class VanillaTileIds
         type = new TileTypeId(rawType);
         return true;
     }
+
+    public static bool IsPlatform(TileTypeId type) =>
+        type == Platforms ||
+        type == TeamBlockRedPlatform ||
+        type == TeamBlockGreenPlatform ||
+        type == TeamBlockBluePlatform ||
+        type == TeamBlockYellowPlatform ||
+        type == TeamBlockPinkPlatform ||
+        type == TeamBlockWhitePlatform;
+
+    public static bool IsChestAnchor(TileTypeId type) =>
+        type == Containers ||
+        type == Containers2 ||
+        type == Dressers;
+
+    public static bool CarriesSignText(TileTypeId type) =>
+        type == Signs ||
+        type == Tombstones ||
+        type == AnnouncementBox ||
+        type == TatteredWoodSign;
 }
