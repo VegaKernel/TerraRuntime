@@ -57,7 +57,7 @@ HELLO = bytes([
 
 # Mirrors PlayerBootstrapFrameBudget.LiveProbeFrameBudget. Keep this below the
 # server connection queue depth so bootstrap growth fails CI before production backpressure.
-BOOTSTRAP_FRAME_BUDGET = 3072
+BOOTSTRAP_FRAME_BUDGET = 1536
 
 
 def join_client(host, port, expected_slot):
