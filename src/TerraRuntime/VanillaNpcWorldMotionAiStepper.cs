@@ -87,8 +87,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         if (simulation.NoTileCollide)
         {
-            // Vanilla bypasses UpdateCollision entirely in this branch. Persisted collision/wet flags therefore
-            // remain available to the next AI tick; style-2 ignores them while noTileCollide is active.
+            // Vanilla bypasses UpdateCollision entirely in this branch. Persisted collision/wet/overlap flags
+            // therefore remain available to the next AI tick; verified style-2 ignores them while noTileCollide.
             next = aiState with
             {
                 PositionX = aiState.PositionX + velocityX,
@@ -148,10 +148,19 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             movementY = collideY ? collidedVelocityY : collidedVelocityY * slowdown;
         }
 
+        float nextPositionX = aiState.PositionX + movementX;
+        float nextPositionY = aiState.PositionY + movementY;
+        bool solidCollision = VanillaWorldSolidCollision.Intersects(
+            tiles,
+            nextPositionX,
+            nextPositionY,
+            definition.Width,
+            definition.Height);
+
         next = aiState with
         {
-            PositionX = aiState.PositionX + movementX,
-            PositionY = aiState.PositionY + movementY,
+            PositionX = nextPositionX,
+            PositionY = nextPositionY,
             VelocityX = collidedVelocityX,
             VelocityY = collidedVelocityY,
             Simulation = simulation with
@@ -161,7 +170,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
                 CollideX = collideX,
                 CollideY = collideY,
                 Wet = wet,
-                LiquidContact = liquidContact
+                LiquidContact = liquidContact,
+                SolidCollision = solidCollision
             }
         };
         return true;
