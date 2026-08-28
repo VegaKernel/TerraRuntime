@@ -3,10 +3,12 @@ namespace TerraRuntime.Protocol;
 /// <summary>
 /// Protocol-library-neutral authoritative projection for Terraria packet 23 / NpcUpdate.
 /// Position is the wire sync-anchor position; ordinary supported NPCs currently use a zero SyncAnchor.
+/// Gameplay type stays separate from NetId so the protocol adapter can validate negative variant ids.
 /// </summary>
 public readonly record struct TerrariaNpcUpdateState(
     byte NpcSlot,
     byte Generation,
+    int NpcType,
     float PositionX,
     float PositionY,
     float VelocityX,
@@ -26,6 +28,7 @@ public readonly record struct TerrariaNpcUpdateState(
 {
     public bool IsValid =>
         Generation != 0 &&
+        NpcType > 0 &&
         float.IsFinite(PositionX) &&
         float.IsFinite(PositionY) &&
         float.IsFinite(VelocityX) &&
