@@ -1,46 +1,22 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using Multiplicity.Packets;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
+WorldFileLoadLimits limits = CreateLimits();
+
+if (args.Length == 2 && args[0] == "--cache-bench")
+    return RunCacheBenchmark(args[1], limits);
+
 if (args.Length != 1)
 {
-    Console.Error.WriteLine("Usage: TerraRuntime.WorldVerify <world.wld>");
+    Console.Error.WriteLine("Usage: TerraRuntime.WorldVerify <world.wld> | --cache-bench <world.wld>");
     return 2;
 }
 
 string path = Path.GetFullPath(args[0]);
 byte[] file = File.ReadAllBytes(path);
-var limits = new WorldFileLoadLimits(
-    MaxTileCount: 6_000_000,
-    MaxItemsPerChest: 100,
-    MaxTotalChestItems: 1_000_000,
-    MaxTextBytesPerSign: 64 * 1024,
-    MaxTotalSignTextBytes: 64L * 1024 * 1024,
-    Npcs: new WorldFileNpcDecodeOptions(
-        MaxShimmeredTownNpcIndices: 1_024,
-        MaxShimmerIndexExclusive: 1_024,
-        MaxTownNpcs: 1_024,
-        MaxPersistentNpcs: 4_096,
-        MaxNameBytesPerTownNpc: 4 * 1024,
-        MaxTotalNameBytes: 4L * 1024 * 1024),
-    MaxTileEntities: 100_000,
-    MaxPressurePlates: 1_000_000,
-    MaxTownRooms: VanillaWorldFormat326.NpcTypeCount,
-    Bestiary: new WorldFileBestiaryLimits(
-        MaxKillEntries: 100_000,
-        MaxSightEntries: 100_000,
-        MaxChatEntries: 100_000,
-        MaxPersistentIdBytes: 4 * 1024,
-        MaxTotalPersistentIdBytes: 64L * 1024 * 1024),
-    RuntimeMetadata: new WorldFileRuntimeMetadataLimits(
-        MaxStringBytes: 64 * 1024,
-        MaxTotalStringBytes: 64L * 1024 * 1024,
-        MaxAnglerNames: 4_096,
-        MaxBannerEntries: 8_192,
-        MaxPartyNpcEntries: 4_096,
-        MaxManifestBytes: 4 * 1024 * 1024));
-
 WorldFileLoadDiagnostic diagnostic = WorldFileLoader.TryLoad(file, limits, out WorldFileData? world);
 if (!diagnostic.IsLoaded || world is null)
 {
@@ -146,3 +122,111 @@ Console.WriteLine(
     $"worldInfoPayload={payload.Length} bytes, sectionPayload={sectionPayload.Length} bytes, " +
     $"sectionFrame={sectionFrame.Length} bytes.");
 return 0;
+
+static int RunCacheBenchmark(string worldPath, WorldFileLoadLimits limits)
+{
+    string path = Path.GetFullPath(worldPath);
+    string cachePath = RuntimeWorldSnapshotCache.GetCachePath(path);
+    if (!RuntimeWorldSnapshotCache.TryCaptureSourceStamp(path, out RuntimeWorldSourceStamp sourceStamp))
+    {
+        Console.Error.WriteLine($"Could not stat source world '{path}'.");
+        return 20;
+    }
+
+    if (!File.Exists(cachePath))
+    {
+        Console.Error.WriteLine($"Runtime world cache not found: '{cachePath}'.");
+        return 21;
+    }
+
+    int[] parallelisms = [1, 2, 4, 8];
+    foreach (int parallelism in parallelisms)
+    {
+        RuntimeWorldSnapshotLoadDiagnostic warmup = RuntimeWorldSnapshotCache.TryLoad(
+            cachePath,
+            sourceStamp,
+            limits,
+            new RuntimeWorldCacheReadOptions(parallelism),
+            out WorldFileData? warmWorld);
+        if (!warmup.IsLoaded || warmWorld is null)
+        {
+            Console.Error.WriteLine(
+                $"Cache benchmark warmup failed: parallel={parallelism}, result={warmup.Result}, code={warmup.DetailCode}.");
+            return 22;
+        }
+    }
+
+    const int rounds = 5;
+    var samples = parallelisms.ToDictionary(static value => value, static _ => new List<double>(rounds));
+    for (int round = 0; round < rounds; round++)
+    {
+        for (int offset = 0; offset < parallelisms.Length; offset++)
+        {
+            int parallelism = parallelisms[(round + offset) % parallelisms.Length];
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            long start = Stopwatch.GetTimestamp();
+            RuntimeWorldSnapshotLoadDiagnostic diagnostic = RuntimeWorldSnapshotCache.TryLoad(
+                cachePath,
+                sourceStamp,
+                limits,
+                new RuntimeWorldCacheReadOptions(parallelism),
+                out WorldFileData? loaded);
+            TimeSpan elapsed = Stopwatch.GetElapsedTime(start);
+            if (!diagnostic.IsLoaded || loaded is null)
+            {
+                Console.Error.WriteLine(
+                    $"Cache benchmark failed: parallel={parallelism}, result={diagnostic.Result}, code={diagnostic.DetailCode}.");
+                return 23;
+            }
+
+            samples[parallelism].Add(elapsed.TotalMilliseconds);
+        }
+    }
+
+    Console.WriteLine(
+        $"cache_parallel_bench cache={Path.GetFileName(cachePath)} bytes={new FileInfo(cachePath).Length} rounds={rounds}");
+    foreach (int parallelism in parallelisms)
+    {
+        List<double> values = samples[parallelism];
+        values.Sort();
+        double median = values[values.Count / 2];
+        Console.WriteLine(
+            $"cache_parallel_result parallel={parallelism} median_ms={median:F3} min_ms={values[0]:F3} max_ms={values[^1]:F3}");
+    }
+
+    return 0;
+}
+
+static WorldFileLoadLimits CreateLimits() =>
+    new(
+        MaxTileCount: 6_000_000,
+        MaxItemsPerChest: 100,
+        MaxTotalChestItems: 1_000_000,
+        MaxTextBytesPerSign: 64 * 1024,
+        MaxTotalSignTextBytes: 64L * 1024 * 1024,
+        Npcs: new WorldFileNpcDecodeOptions(
+            MaxShimmeredTownNpcIndices: 1_024,
+            MaxShimmerIndexExclusive: 1_024,
+            MaxTownNpcs: 1_024,
+            MaxPersistentNpcs: 4_096,
+            MaxNameBytesPerTownNpc: 4 * 1024,
+            MaxTotalNameBytes: 4L * 1024 * 1024),
+        MaxTileEntities: 100_000,
+        MaxPressurePlates: 1_000_000,
+        MaxTownRooms: VanillaWorldFormat326.NpcTypeCount,
+        Bestiary: new WorldFileBestiaryLimits(
+            MaxKillEntries: 100_000,
+            MaxSightEntries: 100_000,
+            MaxChatEntries: 100_000,
+            MaxPersistentIdBytes: 4 * 1024,
+            MaxTotalPersistentIdBytes: 64L * 1024 * 1024),
+        RuntimeMetadata: new WorldFileRuntimeMetadataLimits(
+            MaxStringBytes: 64 * 1024,
+            MaxTotalStringBytes: 64L * 1024 * 1024,
+            MaxAnglerNames: 4_096,
+            MaxBannerEntries: 8_192,
+            MaxPartyNpcEntries: 4_096,
+            MaxManifestBytes: 4 * 1024 * 1024));
