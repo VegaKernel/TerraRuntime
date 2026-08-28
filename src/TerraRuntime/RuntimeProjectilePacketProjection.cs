@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol;
 
@@ -14,7 +15,8 @@ internal static class RuntimeProjectilePacketProjection
         out TerrariaProjectileUpdateState state)
     {
         if (!projectile.IsActive ||
-            projectile.Handle.Slot > TerrariaProjectileKeyState.MaximumProjectileIndex)
+            projectile.Handle.Slot > TerrariaProjectileKeyState.MaximumProjectileIndex ||
+            !VanillaProjectileIds.IsLiveWireType(projectile.Type))
         {
             state = default;
             return false;
