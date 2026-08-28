@@ -19,6 +19,10 @@ internal sealed class ServerRuntimeState
 
     public long Updates { get; private set; }
 
+    public long AppliedPlayerAppearances { get; private set; }
+
+    public long RejectedPlayerAppearances { get; private set; }
+
     public long CommittedPlayerSpawns { get; private set; }
 
     public long AppliedPlayerMovements { get; private set; }
@@ -55,6 +59,10 @@ internal sealed class ServerRuntimeState
                 Volatile.Write(ref lastWorkerResult, result.Value);
                 break;
 
+            case PlayerAppearanceRuntimeCommand appearance:
+                ApplyPlayerAppearance(appearance);
+                break;
+
             case PlayerSpawnRuntimeCommand spawn:
                 ApplyPlayerSpawn(spawn);
                 break;
@@ -72,6 +80,20 @@ internal sealed class ServerRuntimeState
     public void Tick()
     {
         Updates++;
+    }
+
+    private void ApplyPlayerAppearance(PlayerAppearanceRuntimeCommand appearance)
+    {
+        PlayerAppearanceCommitRequest request = appearance.Request;
+        if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer) &&
+            activePlayer.Source != appearance.Source)
+        {
+            RejectedPlayerAppearances++;
+            return;
+        }
+
+        AppliedPlayerAppearances++;
+        _playerEvents?.PlayerAppearanceUpdated(appearance.Source, in request);
     }
 
     private void ApplyPlayerSpawn(PlayerSpawnRuntimeCommand spawn)

@@ -1,0 +1,125 @@
+using System.Buffers;
+using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
+using TerraRuntime.Network;
+using TerraRuntime.Protocol;
+using TerraRuntime.Protocol.Multiplicity;
+
+namespace TerraRuntime.Tests;
+
+public sealed class RuntimePlayerAppearanceRelayTests
+{
+    [Fact]
+    public void Pre_spawn_appearance_is_cached_and_exchanged_when_second_player_becomes_playing()
+    {
+        var registry = new RuntimeConnectionRegistry();
+        GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(1);
+        GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(2);
+        var firstOutbound = CreateOutbound();
+        var secondOutbound = CreateOutbound();
+        var first = new PlayerSlotId(1);
+        var second = new PlayerSlotId(2);
+
+        Assert.True(registry.TryRegister(firstSource, firstOutbound));
+        Assert.True(registry.TryRegister(secondSource, secondOutbound));
+
+        PlayerAppearanceCommitRequest firstAppearance = CreateAppearance(first, "First");
+        PlayerAppearanceCommitRequest secondAppearance = CreateAppearance(second, "Second");
+        registry.PlayerAppearanceUpdated(firstSource, in firstAppearance);
+        registry.PlayerAppearanceUpdated(secondSource, in secondAppearance);
+        Assert.Equal(0, firstOutbound.QueuedFrames);
+        Assert.Equal(0, secondOutbound.QueuedFrames);
+
+        PlayerSpawnCommitRequest firstSpawn = CreateSpawn(first);
+        registry.PlayerSpawned(firstSource, in firstSpawn);
+        Assert.Equal(0, firstOutbound.QueuedFrames);
+        Assert.Equal(0, secondOutbound.QueuedFrames);
+
+        PlayerSpawnCommitRequest secondSpawn = CreateSpawn(second);
+        registry.PlayerSpawned(secondSource, in secondSpawn);
+
+        Assert.Equal(1, firstOutbound.QueuedFrames);
+        Assert.Equal(1, secondOutbound.QueuedFrames);
+        Assert.Equal(2, registry.AppearanceBaselineFrames);
+
+        Assert.True(registry.TryGetLatestPlayerAppearanceFrame(first, out OutboundFrame firstFrame));
+        Assert.True(registry.TryGetLatestPlayerAppearanceFrame(second, out OutboundFrame secondFrame));
+        AssertAppearance(firstFrame, first.Value, "First");
+        AssertAppearance(secondFrame, second.Value, "Second");
+    }
+
+    [Fact]
+    public void Playing_appearance_update_relays_to_peer_with_authoritative_slot()
+    {
+        var registry = new RuntimeConnectionRegistry();
+        GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(10);
+        GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(20);
+        var firstOutbound = CreateOutbound();
+        var secondOutbound = CreateOutbound();
+        var first = new PlayerSlotId(10);
+        var second = new PlayerSlotId(20);
+
+        Assert.True(registry.TryRegister(firstSource, firstOutbound));
+        Assert.True(registry.TryRegister(secondSource, secondOutbound));
+        PlayerSpawnCommitRequest firstSpawn = CreateSpawn(first);
+        PlayerSpawnCommitRequest secondSpawn = CreateSpawn(second);
+        registry.PlayerSpawned(firstSource, in firstSpawn);
+        registry.PlayerSpawned(secondSource, in secondSpawn);
+
+        PlayerAppearanceCommitRequest appearance = CreateAppearance(first, "Updated");
+        registry.PlayerAppearanceUpdated(firstSource, in appearance);
+
+        Assert.Equal(0, firstOutbound.QueuedFrames);
+        Assert.Equal(1, secondOutbound.QueuedFrames);
+        Assert.Equal(1, registry.RelayedAppearanceFrames);
+        Assert.True(registry.TryGetLatestPlayerAppearanceFrame(first, out OutboundFrame frame));
+        AssertAppearance(frame, first.Value, "Updated");
+    }
+
+    private static void AssertAppearance(OutboundFrame outbound, byte expectedSlot, string expectedName)
+    {
+        var input = new ReadOnlySequence<byte>(outbound.Bytes);
+        Assert.Equal(TerrariaFrameReadResult.Frame, TerrariaFrameDecoder.TryRead(ref input, out TerrariaFrame frame));
+        Assert.Equal(
+            TerrariaPlayerAppearanceDecodeResult.Decoded,
+            TerrariaPlayerAppearanceCodec.TryDecode(frame, out TerrariaPlayerAppearanceState appearance));
+        Assert.Equal(expectedSlot, appearance.PlayerId);
+        Assert.Equal(expectedName, appearance.Name);
+    }
+
+    private static TerrariaConnectionOutboundQueue CreateOutbound() =>
+        new(new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
+
+    private static PlayerSpawnCommitRequest CreateSpawn(PlayerSlotId slot) =>
+        new(
+            slot,
+            SpawnX: 100,
+            SpawnY: 200,
+            RespawnTimer: 0,
+            DeathsPve: 0,
+            DeathsPvp: 0,
+            Team: 0,
+            SpawnContext: 0);
+
+    private static PlayerAppearanceCommitRequest CreateAppearance(PlayerSlotId slot, string name) =>
+        new(
+            slot,
+            SkinVariant: 1,
+            VoiceVariant: 2,
+            VoicePitchOffset: 0.1f,
+            Hair: 3,
+            Name: name,
+            HairDye: 4,
+            HideVisibleAccessory: 5,
+            HideMisc: 6,
+            HairColor: new PlayerRgbColor(1, 2, 3),
+            SkinColor: new PlayerRgbColor(4, 5, 6),
+            EyeColor: new PlayerRgbColor(7, 8, 9),
+            ShirtColor: new PlayerRgbColor(10, 11, 12),
+            UnderShirtColor: new PlayerRgbColor(13, 14, 15),
+            PantsColor: new PlayerRgbColor(16, 17, 18),
+            ShoeColor: new PlayerRgbColor(19, 20, 21),
+            DifficultyFlags: 0,
+            TorchAndCartFlags: 0,
+            ConsumableUnlockFlags: 0);
+}

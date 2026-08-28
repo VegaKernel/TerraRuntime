@@ -21,6 +21,8 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     private readonly Endpoint?[] _playingEndpoints = new Endpoint?[MaxPlayerSlots];
     private readonly RuntimeInterestRouter _interestRouter;
     private readonly RuntimePlayerMovementVisibilityReadiness _movementVisibilityReadiness = new();
+    private long _relayedAppearanceFrames;
+    private long _appearanceBaselineFrames;
     private long _relayedMovementFrames;
     private long _movementResyncFrames;
 
@@ -34,6 +36,10 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     }
 
     public int Count => _endpoints.Count;
+
+    public long RelayedAppearanceFrames => Interlocked.Read(ref _relayedAppearanceFrames);
+
+    public long AppearanceBaselineFrames => Interlocked.Read(ref _appearanceBaselineFrames);
 
     public long RelayedMovementFrames => Interlocked.Read(ref _relayedMovementFrames);
 
@@ -57,6 +63,17 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 
     internal bool IsPlayerMovementVisibilityReady(PlayerSlotId observer, PlayerSlotId subject) =>
         _movementVisibilityReadiness.IsReady(observer, subject);
+
+    internal bool TryGetLatestPlayerAppearanceFrame(PlayerSlotId slot, out OutboundFrame frame)
+    {
+        if (!TryGetPlayingEndpoint(slot, out Endpoint endpoint))
+        {
+            frame = default;
+            return false;
+        }
+
+        return endpoint.TryGetLatestAppearanceFrame(slot, out frame);
+    }
 
     internal bool TryGetLatestPlayerMovementFrame(PlayerSlotId slot, out OutboundFrame frame)
     {
@@ -151,6 +168,49 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         return true;
     }
 
+    public void PlayerAppearanceUpdated(GameCommandSourceId source, in PlayerAppearanceCommitRequest request)
+    {
+        if (!_endpoints.TryGetValue(source, out Endpoint? endpoint))
+            return;
+
+        var appearance = new TerrariaPlayerAppearanceState(
+            request.PlayerSlot.Value,
+            request.SkinVariant,
+            request.VoiceVariant,
+            request.VoicePitchOffset,
+            request.Hair,
+            request.Name,
+            request.HairDye,
+            request.HideVisibleAccessory,
+            request.HideMisc,
+            ToProtocol(request.HairColor),
+            ToProtocol(request.SkinColor),
+            ToProtocol(request.EyeColor),
+            ToProtocol(request.ShirtColor),
+            ToProtocol(request.UnderShirtColor),
+            ToProtocol(request.PantsColor),
+            ToProtocol(request.ShoeColor),
+            request.DifficultyFlags,
+            request.TorchAndCartFlags,
+            request.ConsumableUnlockFlags);
+
+        byte[] encoded = TerrariaPlayerAppearanceCodec.Encode(in appearance);
+        endpoint.UpdateLatestAppearanceFrame(request.PlayerSlot, encoded);
+
+        if (!endpoint.TryGetPlayingSlot(out PlayerSlotId currentSlot) || currentSlot != request.PlayerSlot)
+            return;
+
+        var frame = new OutboundFrame(encoded);
+        foreach (KeyValuePair<GameCommandSourceId, Endpoint> pair in _endpoints)
+        {
+            if (pair.Key == source || !pair.Value.TryGetPlayingSlot(out _))
+                continue;
+
+            if (pair.Value.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref _relayedAppearanceFrames);
+        }
+    }
+
     public void PlayerSpawned(GameCommandSourceId source, in PlayerSpawnCommitRequest request)
     {
         if (!_endpoints.TryGetValue(source, out Endpoint? endpoint))
@@ -162,6 +222,8 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         endpoint.UpdatePosition(positionX, positionY);
         Interlocked.Exchange(ref _playingEndpoints[request.ClaimedSlot.Value], endpoint);
         _movementVisibilityReadiness.ClearPlayer(request.ClaimedSlot);
+
+        SynchronizeAppearanceBaselines(source, request.ClaimedSlot, endpoint);
 
         Span<PlayerSlotId> entered = stackalloc PlayerSlotId[MaxPlayerSlots];
         Span<PlayerSlotId> left = stackalloc PlayerSlotId[MaxPlayerSlots];
@@ -256,6 +318,32 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
     }
 
+    private void SynchronizeAppearanceBaselines(
+        GameCommandSourceId source,
+        PlayerSlotId slot,
+        Endpoint endpoint)
+    {
+        bool hasOriginAppearance = endpoint.TryGetLatestAppearanceFrame(slot, out OutboundFrame originAppearance);
+
+        foreach (KeyValuePair<GameCommandSourceId, Endpoint> pair in _endpoints)
+        {
+            if (pair.Key == source || !pair.Value.TryGetPlayingSlot(out PlayerSlotId peerSlot))
+                continue;
+
+            if (hasOriginAppearance &&
+                pair.Value.Outbound.TryEnqueue(originAppearance) == OutboundEnqueueResult.Enqueued)
+            {
+                Interlocked.Increment(ref _appearanceBaselineFrames);
+            }
+
+            if (pair.Value.TryGetLatestAppearanceFrame(peerSlot, out OutboundFrame peerAppearance) &&
+                endpoint.Outbound.TryEnqueue(peerAppearance) == OutboundEnqueueResult.Enqueued)
+            {
+                Interlocked.Increment(ref _appearanceBaselineFrames);
+            }
+        }
+    }
+
     private void ResetMovementVisibilityReadiness(
         PlayerSlotId subject,
         RuntimePlayerVisibilityUpdate visibility,
@@ -308,12 +396,17 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         return true;
     }
 
+    private static TerrariaRgbColor ToProtocol(PlayerRgbColor color) =>
+        new(color.R, color.G, color.B);
+
     private sealed class Endpoint
     {
         private int _playingSlot = -1;
+        private int _appearanceSlot = -1;
         private bool _hasPosition;
         private float _positionX;
         private float _positionY;
+        private byte[]? _latestAppearanceFrame;
         private byte[]? _latestMovementFrame;
 
         public Endpoint(TerrariaConnectionOutboundQueue outbound)
@@ -345,6 +438,27 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             _hasPosition = true;
         }
 
+        public void UpdateLatestAppearanceFrame(PlayerSlotId slot, byte[] encoded)
+        {
+            ArgumentNullException.ThrowIfNull(encoded);
+            Volatile.Write(ref _latestAppearanceFrame, encoded);
+            Volatile.Write(ref _appearanceSlot, slot.Value);
+        }
+
+        public bool TryGetLatestAppearanceFrame(PlayerSlotId expectedSlot, out OutboundFrame frame)
+        {
+            int appearanceSlot = Volatile.Read(ref _appearanceSlot);
+            byte[]? encoded = Volatile.Read(ref _latestAppearanceFrame);
+            if (appearanceSlot != expectedSlot.Value || encoded is null)
+            {
+                frame = default;
+                return false;
+            }
+
+            frame = new OutboundFrame(encoded);
+            return true;
+        }
+
         public void UpdateLatestMovementFrame(byte[] encoded)
         {
             ArgumentNullException.ThrowIfNull(encoded);
@@ -373,6 +487,8 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
                 return;
 
             _hasPosition = false;
+            if (Interlocked.CompareExchange(ref _appearanceSlot, -1, slot.Value) == slot.Value)
+                Volatile.Write(ref _latestAppearanceFrame, null);
             Volatile.Write(ref _latestMovementFrame, null);
         }
     }
