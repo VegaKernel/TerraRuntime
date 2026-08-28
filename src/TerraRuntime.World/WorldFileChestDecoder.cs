@@ -107,7 +107,7 @@ public static class WorldFileChestDecoder
                     return WorldFileChestDecodeResult.Truncated;
                 }
 
-                if (!VanillaItemIds.TryCreate(itemType, out _))
+                if (!VanillaItemIds.TryCreate(itemType, out ItemTypeId typedItem) || typedItem.IsNone)
                 {
                     bytesConsumed = reader.Offset;
                     return WorldFileChestDecodeResult.InvalidItemType;
