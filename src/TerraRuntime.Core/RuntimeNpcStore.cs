@@ -68,9 +68,10 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             return false;
         }
 
+        NpcStateUpdate normalized = MaterializeInitialCombatState(in update);
         state.Active = true;
         state.Revision = 1;
-        state.Update = update;
+        state.Update = normalized;
         _activeCount++;
         snapshot = Capture(slot, in state);
         _commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in snapshot);
@@ -86,15 +87,20 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         }
 
         ref SlotState state = ref _slots[handle.Slot];
-        if (!state.Active ||
-            state.Generation != handle.Generation.Value ||
-            !TryAdvance(ref state.Revision))
+        if (!state.Active || state.Generation != handle.Generation.Value)
         {
             snapshot = default;
             return false;
         }
 
-        state.Update = update;
+        NpcStateUpdate normalized = PreserveOrMaterializeCombatState(in update, in state.Update);
+        if (!TryAdvance(ref state.Revision))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        state.Update = normalized;
         snapshot = Capture(handle.Slot, in state);
         _commitSink?.NpcStateCommitted(NpcStateCommitKind.Update, in snapshot);
         return true;
@@ -191,6 +197,46 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         float.IsFinite(update.VelocityY) &&
         update.Ai.IsFinite &&
         update.Simulation.IsValid;
+
+    private static NpcStateUpdate MaterializeInitialCombatState(in NpcStateUpdate update)
+    {
+        if (update.Simulation.LifeMax != 0 ||
+            !VanillaNpcDefinitionCatalog.TryGet(update.Type, out VanillaNpcDefinition definition))
+        {
+            return update;
+        }
+
+        return update with
+        {
+            Simulation = update.Simulation with
+            {
+                Life = definition.LifeMax,
+                LifeMax = definition.LifeMax
+            }
+        };
+    }
+
+    private static NpcStateUpdate PreserveOrMaterializeCombatState(
+        in NpcStateUpdate update,
+        in NpcStateUpdate previous)
+    {
+        if (update.Simulation.LifeMax != 0)
+            return update;
+
+        if (update.Type == previous.Type && previous.Simulation.LifeMax > 0)
+        {
+            return update with
+            {
+                Simulation = update.Simulation with
+                {
+                    Life = previous.Simulation.Life,
+                    LifeMax = previous.Simulation.LifeMax
+                }
+            };
+        }
+
+        return MaterializeInitialCombatState(in update);
+    }
 
     private static NpcSnapshot Capture(byte slot, in SlotState state)
     {
