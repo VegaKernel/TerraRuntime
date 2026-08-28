@@ -27,4 +27,10 @@ internal readonly record struct RuntimeWorldSnapshot(
     double BootstrapMilliseconds,
     double WorldReadyMilliseconds,
     double NetworkReadyMilliseconds,
-    DateTimeOffset CapturedAtUtc);
+    DateTimeOffset CapturedAtUtc,
+    bool RuntimeClockAvailable = false,
+    double RuntimeTime = 0d,
+    bool RuntimeDayTime = false,
+    byte RuntimeMoonPhase = 0,
+    double RuntimeSlimeRainTime = 0d,
+    int RuntimeDayRate = 0);
