@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.World;
 
 public readonly record struct VanillaSlopeCollisionResult(
@@ -69,8 +71,9 @@ public static class VanillaWorldSlopeCollision
                 if (!tile.IsActive || (tile.Flags & WorldTileFlags.Inactive) != 0)
                     continue;
 
-                bool solid = VanillaTileCollisionCatalog.IsSolid(tile.Type);
-                if (VanillaTileCollisionCatalog.IsSolidTop(tile.Type) && tile.FrameY == 0)
+                TileTypeId tileType = tile.TileType;
+                bool solid = VanillaTileCollisionCatalog.IsSolid(tileType);
+                if (VanillaTileCollisionCatalog.IsSolidTop(tileType) && tile.FrameY == 0)
                     solid = true;
                 if (!solid)
                     continue;
@@ -87,7 +90,7 @@ public static class VanillaWorldSlopeCollision
                 if (!Intersects(positionX, positionY, width, height, tileX, tileY, 16f, tileHeight))
                     continue;
 
-                bool platform = IsPlatform(tile.Type);
+                bool platform = VanillaTileIds.IsPlatform(tileType);
                 int slope = GetSlope(in tile);
                 bool eligible = true;
                 if (platform)
@@ -243,9 +246,6 @@ public static class VanillaWorldSlopeCollision
             stair,
             stairFall);
     }
-
-    private static bool IsPlatform(ushort type) =>
-        type is 19 or 427 or 435 or 436 or 437 or 438 or 439;
 
     private static int GetSlope(in WorldTile tile) => tile.Shape >= 2 ? tile.Shape - 1 : 0;
 
