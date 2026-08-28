@@ -8,6 +8,7 @@ namespace TerraRuntime.Operations;
 internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperations
 {
     private static readonly long MinimumTickRateSampleTicks = Math.Max(1L, Stopwatch.Frequency / 4);
+    private static readonly long MinimumProcessCpuSampleTicks = Math.Max(1L, Stopwatch.Frequency / 4);
 
     private readonly AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> gameLoop;
     private readonly TerrariaConnectionAdmissionGate admission;
@@ -23,6 +24,9 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
     private long sampleTick = -1;
     private long sampleTimestamp;
     private double observedTicksPerSecond;
+    private long processCpuSampleTimestamp;
+    private long processCpuSampleTicks = -1;
+    private double processCpuPercent;
 
     public LocalRuntimeDashboardOperations(
         AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> gameLoop,
@@ -63,6 +67,12 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
                 ? RuntimeLifecycleState.Running
                 : RuntimeLifecycleState.Stopped;
 
+        TimeSpan processCpuTime;
+        using (Process process = Process.GetCurrentProcess())
+            processCpuTime = process.TotalProcessorTime;
+
+        GCMemoryInfo gcMemory = GC.GetGCMemoryInfo();
+
         return new RuntimeDashboardSnapshot(
             Lifecycle: lifecycle,
             WorldName: worldName,
@@ -90,6 +100,9 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
             OldestPendingCommandAgeMilliseconds: loop.OldestPendingCommandAgeMilliseconds,
             ManagedHeapBytes: GC.GetTotalMemory(forceFullCollection: false),
             TotalAllocatedBytes: GC.GetTotalAllocatedBytes(precise: false),
+            WorkingSetBytes: Environment.WorkingSet,
+            ProcessCpuPercent: ObserveProcessCpuPercent(processCpuTime),
+            GcPauseTimePercentage: gcMemory.PauseTimePercentage,
             Gen0Collections: GC.CollectionCount(0),
             Gen1Collections: GC.CollectionCount(1),
             Gen2Collections: GC.CollectionCount(2),
@@ -123,13 +136,44 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
 
             long completedTicks = currentTick - sampleTick;
             if (completedTicks >= 0)
-            {
                 observedTicksPerSecond = completedTicks * (double)Stopwatch.Frequency / elapsed;
-            }
 
             sampleTick = currentTick;
             sampleTimestamp = now;
             return observedTicksPerSecond;
+        }
+    }
+
+    private double ObserveProcessCpuPercent(TimeSpan totalCpuTime)
+    {
+        long now = Stopwatch.GetTimestamp();
+        long totalCpuTicks = totalCpuTime.Ticks;
+
+        lock (sampleSync)
+        {
+            if (processCpuSampleTicks < 0)
+            {
+                processCpuSampleTicks = totalCpuTicks;
+                processCpuSampleTimestamp = now;
+                return 0d;
+            }
+
+            long elapsed = now - processCpuSampleTimestamp;
+            if (elapsed < MinimumProcessCpuSampleTicks)
+                return processCpuPercent;
+
+            long cpuTicks = totalCpuTicks - processCpuSampleTicks;
+            if (cpuTicks >= 0 && elapsed > 0)
+            {
+                double wallSeconds = elapsed / (double)Stopwatch.Frequency;
+                double cpuSeconds = cpuTicks / (double)TimeSpan.TicksPerSecond;
+                double capacitySeconds = wallSeconds * Math.Max(1, Environment.ProcessorCount);
+                processCpuPercent = Math.Clamp(cpuSeconds / capacitySeconds * 100d, 0d, 100d);
+            }
+
+            processCpuSampleTicks = totalCpuTicks;
+            processCpuSampleTimestamp = now;
+            return processCpuPercent;
         }
     }
 }

@@ -40,4 +40,7 @@ internal readonly record struct RuntimeDashboardSnapshot(
     int ActiveConnections,
     long AcceptedConnections,
     long RejectedConnections,
-    DateTimeOffset CapturedAtUtc);
+    DateTimeOffset CapturedAtUtc,
+    long WorkingSetBytes = 0,
+    double ProcessCpuPercent = 0d,
+    double GcPauseTimePercentage = 0d);

@@ -183,10 +183,11 @@ internal sealed class DashboardWindow : Runnable
         rows[6].Text = $"Commands  : processed {snapshot.CommandsProcessed:N0}   pending {snapshot.PendingCommands:N0}   deferred {snapshot.DeferredCommands:N0}   rejected {snapshot.RejectedCommands:N0}";
         rows[7].Text = $"Network   : active {snapshot.ActiveConnections}/{snapshot.MaxPlayers}   accepted {snapshot.AcceptedConnections:N0}   rejected {snapshot.RejectedConnections:N0}   port {snapshot.Port}";
         rows[8].Text = $"Runtime   : interest management {(snapshot.InterestManagementEnabled ? "enabled" : "disabled")}   budget exhaustions {snapshot.CommandBudgetExhaustions:N0}   oldest command {FormatMilliseconds(snapshot.OldestPendingCommandAgeMilliseconds)}";
-        rows[9].Text = $"Memory    : heap {FormatMebibytes(snapshot.ManagedHeapBytes)}   allocated {FormatMebibytes(snapshot.TotalAllocatedBytes)}   GC 0/1/2 {snapshot.Gen0Collections:N0}/{snapshot.Gen1Collections:N0}/{snapshot.Gen2Collections:N0}";
-        rows[10].Text = $"Snapshot  : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+        rows[9].Text = $"Memory    : heap {FormatMebibytes(snapshot.ManagedHeapBytes)}   allocated {FormatMebibytes(snapshot.TotalAllocatedBytes)}   working set {FormatMebibytes(snapshot.WorkingSetBytes)}   GC 0/1/2 {snapshot.Gen0Collections:N0}/{snapshot.Gen1Collections:N0}/{snapshot.Gen2Collections:N0}";
+        rows[10].Text = $"Process   : CPU {snapshot.ProcessCpuPercent:F1}%   GC pause {snapshot.GcPauseTimePercentage:F2}%";
+        rows[11].Text = $"Snapshot  : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
         if (lastAdminAction is not null)
-            rows[11].Text = lastAdminAction;
+            rows[12].Text = lastAdminAction;
     }
 
     private void RefreshPlayers()
