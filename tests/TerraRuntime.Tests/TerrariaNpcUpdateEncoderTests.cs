@@ -27,6 +27,7 @@ public sealed class TerrariaNpcUpdateEncoderTests
 
         Assert.Equal((byte)5, packet.NpcSlot);
         Assert.Equal((byte)2, packet.Generation);
+        Assert.Equal(1, packet.NpcType);
         Assert.Equal(100f, packet.PositionX);
         Assert.Equal(200f, packet.PositionY);
         Assert.Equal(1.5f, packet.VelocityX);
@@ -40,6 +41,24 @@ public sealed class TerrariaNpcUpdateEncoderTests
         Assert.True((packet.ExtraFlags & NpcUpdateExtraFlags.SpawnNeedsSyncing) != 0);
         Assert.Equal(1.25f, packet.AI[0]);
         Assert.Equal((short)1, packet.NpcNetId);
+    }
+
+    [Fact]
+    public void Negative_variant_net_id_must_resolve_to_the_declared_gameplay_type()
+    {
+        TerrariaNpcUpdateState blueSlimeVariant = CreateState(1, 25, 25, false) with
+        {
+            NpcType = 1,
+            NpcNetId = -3
+        };
+        TerrariaNpcUpdateState mismatch = blueSlimeVariant with { NpcType = 2 };
+
+        Assert.True(TerrariaNpcUpdateEncoder.TryEncode(in blueSlimeVariant, out byte[] encoded));
+        NpcUpdate packet = Assert.IsType<NpcUpdate>(
+            TerrariaPacket.Deserialize((ReadOnlyMemory<byte>)encoded));
+        Assert.Equal(1, packet.NpcType);
+        Assert.Equal((short)-3, packet.NpcNetId);
+        Assert.False(TerrariaNpcUpdateEncoder.TryEncode(in mismatch, out _));
     }
 
     [Fact]
@@ -82,6 +101,7 @@ public sealed class TerrariaNpcUpdateEncoderTests
         new(
             NpcSlot: 5,
             Generation: generation,
+            NpcType: 1,
             PositionX: 100f,
             PositionY: 200f,
             VelocityX: 1.5f,
