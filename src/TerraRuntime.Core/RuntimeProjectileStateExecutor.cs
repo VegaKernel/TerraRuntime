@@ -23,6 +23,8 @@ public readonly record struct ProjectileStateTickSummary(
 /// Runs allocation-stable projectile state transitions against a pre-pass snapshot of the live table.
 /// Every proposal is committed through the generation-safe store using the handle captured before the
 /// pass, so reentrant despawn/slot-reuse cannot let stale simulation mutate a replacement projectile.
+/// TerrariaServer 1.4.5.8 updates only slots 0..999; physical overflow slot 1000 is intentionally retained
+/// for allocation/network identity but excluded from the ordinary simulation pass.
 /// </summary>
 public sealed class RuntimeProjectileStateExecutor
 {
@@ -40,14 +42,19 @@ public sealed class RuntimeProjectileStateExecutor
     {
         ArgumentNullException.ThrowIfNull(stepper);
 
-        int examined = _projectiles.CopyActive(_snapshotBuffer);
+        int captured = _projectiles.CopyActive(_snapshotBuffer);
+        int examined = 0;
         int proposed = 0;
         int applied = 0;
         int rejected = 0;
 
-        for (int index = 0; index < examined; index++)
+        for (int index = 0; index < captured; index++)
         {
             ProjectileSnapshot projectile = _snapshotBuffer[index];
+            if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount)
+                continue;
+
+            examined++;
             if (!stepper.TryStepState(in projectile, out ProjectileStateUpdate next))
                 continue;
 
