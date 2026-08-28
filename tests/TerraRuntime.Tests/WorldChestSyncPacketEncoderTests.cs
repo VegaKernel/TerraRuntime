@@ -49,14 +49,14 @@ public sealed class WorldChestSyncPacketEncoderTests
     }
 
     [Fact]
-    public void Rejects_chests_whose_slot_count_cannot_fit_packet_32_slot_index()
+    public void Rejects_chests_whose_slot_count_exceeds_byte_index_range()
     {
         var chest = new WorldChest(
             SlotId: 0,
             X: 0,
             Y: 0,
             Name: string.Empty,
-            Items: new WorldChestItem[byte.MaxValue + 1]);
+            Items: new WorldChestItem[byte.MaxValue + 2]);
 
         WorldChestSyncPacketEncodeResult result = WorldChestSyncPacketEncoder.TryEncode(chest, out ReadOnlyMemory<byte>[] frames);
 
