@@ -71,11 +71,22 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         float velocityX = aiState.VelocityX;
         float velocityY = aiState.VelocityY;
 
-        // The late ordinary AI_003 world-probe tail executes before UpdateNPC applies gravity. Closed-door
-        // contact owns ai[1]/ai[2]/ai[3] and can recoil X; obstacle jumps follow, then the tiny stuck-hop whose
-        // eligibility vanilla captured from the pre-AI X velocity and justHit state.
+        // The late ordinary AI_003 world-probe tail executes before UpdateNPC applies gravity. The vanilla
+        // order is step-up position correction, closed-door state/recoil, obstacle jump ladder, then the tiny
+        // stuck-hop whose eligibility was captured from the pre-AI X velocity and justHit state.
         if (npcType == VanillaNpcIds.Zombie)
         {
+            VanillaZombieStepUpResult stepUp = VanillaWorldZombieStepUp.Resolve(
+                tiles,
+                aiState.PositionX,
+                aiState.PositionY,
+                velocityX,
+                velocityY,
+                definition.Width,
+                definition.Height);
+            if (stepUp.Stepped)
+                aiState = aiState with { PositionY = stepUp.PositionY };
+
             VanillaZombieDoorContactResult doorContact = VanillaWorldZombieDoorContact.Resolve(
                 tiles,
                 aiState.PositionX,
