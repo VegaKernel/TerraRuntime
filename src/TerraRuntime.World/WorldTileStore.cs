@@ -28,6 +28,12 @@ public sealed class WorldTileStore
 
     public WorldLiquidUpdateQueue LiquidUpdates { get; }
 
+    /// <summary>
+    /// Validated immutable world-surface geometry from the canonical runtime metadata. It is attached only
+    /// after the complete .wld has passed transactional validation, so ad-hoc/test stores may leave it unset.
+    /// </summary>
+    public double? WorldSurfaceTiles { get; private set; }
+
     public int Count => _tiles.Length;
 
     public WorldTile Get(int x, int y) => _tiles[GetIndex(x, y)];
@@ -39,6 +45,21 @@ public sealed class WorldTileStore
     internal WorldTile[] TileArray => _tiles;
 
     internal int GetUncheckedIndex(int x, int y) => (x * Dimensions.HeightTiles) + y;
+
+    internal void AttachWorldSurface(double worldSurfaceTiles)
+    {
+        if (!double.IsFinite(worldSurfaceTiles) ||
+            worldSurfaceTiles <= 0d ||
+            worldSurfaceTiles >= Dimensions.HeightTiles)
+        {
+            throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
+        }
+
+        if (WorldSurfaceTiles is double existing && existing != worldSurfaceTiles)
+            throw new InvalidOperationException("World surface geometry is already attached with a different value.");
+
+        WorldSurfaceTiles = worldSurfaceTiles;
+    }
 
     private int GetIndex(int x, int y)
     {
