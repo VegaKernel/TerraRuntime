@@ -30,6 +30,41 @@ public sealed class RuntimeNpcAiStateExecutorTests
     }
 
     [Fact]
+    public void Commit_sink_receives_only_successfully_applied_snapshots()
+    {
+        var store = new RuntimeNpcStore(capacity: 2);
+        NpcStateUpdate first = CreateUpdate(type: 1, netId: 1, positionX: 10f, ai0: 0f);
+        NpcStateUpdate second = CreateUpdate(type: 2, netId: 2, positionX: 20f, ai0: 0f);
+        Assert.True(store.TrySpawn(0, in first, out _));
+        Assert.True(store.TrySpawn(1, in second, out _));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+        var sink = new RecordingCommitSink();
+
+        NpcAiStateTickSummary summary = executor.Tick(new IncrementStateStepper(), sink);
+
+        Assert.Equal(new NpcAiStateTickSummary(2, 2, 2, 0), summary);
+        Assert.Equal(2, sink.Count);
+        Assert.Equal((byte)0, sink.Snapshots[0].Handle.Slot);
+        Assert.Equal((byte)1, sink.Snapshots[1].Handle.Slot);
+        Assert.All(sink.Snapshots, snapshot => Assert.Equal(new NpcRevision(2), snapshot.Revision));
+    }
+
+    [Fact]
+    public void Rejected_stale_transition_is_not_published_to_commit_sink()
+    {
+        var store = new RuntimeNpcStore(capacity: 2);
+        NpcStateUpdate originalState = CreateUpdate(type: 1, netId: 1, positionX: 10f, ai0: 0f);
+        Assert.True(store.TrySpawn(0, in originalState, out _));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+        var sink = new RecordingCommitSink();
+
+        NpcAiStateTickSummary summary = executor.Tick(new ReplaceCurrentNpcStepper(store), sink);
+
+        Assert.Equal(new NpcAiStateTickSummary(1, 1, 0, 1), summary);
+        Assert.Equal(0, sink.Count);
+    }
+
+    [Fact]
     public void No_proposal_leaves_npc_revision_unchanged()
     {
         var store = new RuntimeNpcStore(capacity: 2);
@@ -77,6 +112,15 @@ public sealed class RuntimeNpcAiStateExecutorTests
             Target: 0,
             Ai: new NpcAiState(ai0, 0f, 0f, 0f),
             Simulation: NpcSimulationState.Initial);
+
+    private sealed class RecordingCommitSink : INpcAiStateCommitSink
+    {
+        public List<NpcSnapshot> Snapshots { get; } = [];
+
+        public int Count => Snapshots.Count;
+
+        public void NpcAiStateCommitted(in NpcSnapshot snapshot) => Snapshots.Add(snapshot);
+    }
 
     private sealed class IncrementStateStepper : INpcAiStateStepper
     {
