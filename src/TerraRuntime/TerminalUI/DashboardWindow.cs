@@ -285,9 +285,10 @@ internal sealed class DashboardWindow : Runnable
         for (int i = 0; i < visible; i++)
         {
             RuntimeProjectileGroupSnapshot group = groups[i];
-            string owner = ResolveProjectileOwner(group.Spawner, players);
+            string type = ProjectileDisplayFormatter.FormatType(group.Type);
+            string owner = ProjectileDisplayFormatter.FormatOwner(group.Spawner, players);
             rows[i + 1].Text =
-                $"x{group.Count,-4} type {group.Type,-5} {owner,-28} " +
+                $"x{group.Count,-4} {type,-28} {owner,-28} " +
                 $"pos~ {group.AveragePositionX / 16f:F1},{group.AveragePositionY / 16f:F1}t " +
                 $"vel~ {group.AverageVelocityX:F1},{group.AverageVelocityY:F1} " +
                 $"dmg<={group.MaxDamage} orig<={group.MaxOriginalDamage} kb<={group.MaxKnockBack:F1}";
@@ -476,18 +477,6 @@ internal sealed class DashboardWindow : Runnable
     {
         foreach (Label row in rows)
             row.Text = string.Empty;
-    }
-
-    private static string ResolveProjectileOwner(byte spawner, ReadOnlySpan<RuntimePlayerSnapshot> players)
-    {
-        for (int i = 0; i < players.Length; i++)
-        {
-            RuntimePlayerSnapshot player = players[i];
-            if (player.Slot == spawner)
-                return $"owner {SanitizeName(player.Name)}(#{spawner})";
-        }
-
-        return $"spawner #{spawner}";
     }
 
     private static string SanitizeName(string name) =>
