@@ -455,16 +455,9 @@ internal sealed class ServerRuntimeState
             return;
         }
 
-        if (!TryFindFreeVanillaProjectileSlot(out ushort slot))
-        {
-            RejectedProjectileSpawns++;
-            RejectedClientProjectileUpdates++;
-            return;
-        }
-
         using (clientCommits.Enter(command.Connection.Source, in key))
         {
-            if (_projectiles.TrySpawn(slot, in update, out _))
+            if (_projectiles.TrySpawnVanilla(in update, out _))
             {
                 AppliedProjectileSpawns++;
                 return;
@@ -530,23 +523,6 @@ internal sealed class ServerRuntimeState
 
         RejectedProjectileDespawns++;
         RejectedClientProjectileDestroys++;
-    }
-
-    private bool TryFindFreeVanillaProjectileSlot(out ushort slot)
-    {
-        int physicalCapacity = Math.Min(_projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
-        for (int candidate = 0; candidate < physicalCapacity; candidate++)
-        {
-            ushort physicalSlot = checked((ushort)candidate);
-            if (_projectiles.TryGetActive(physicalSlot, out _))
-                continue;
-
-            slot = physicalSlot;
-            return true;
-        }
-
-        slot = default;
-        return false;
     }
 
     private static bool TryConvertClientProjectileUpdate(
