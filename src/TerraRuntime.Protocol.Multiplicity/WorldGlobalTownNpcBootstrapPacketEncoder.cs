@@ -8,7 +8,8 @@ public enum WorldGlobalTownNpcBootstrapPacketEncodeResult : byte
 {
     Encoded = 0,
     InvalidNpcState = 1,
-    FrameTooLarge = 2
+    FrameTooLarge = 2,
+    FrameBudgetExceeded = 3
 }
 
 /// <summary>
@@ -18,13 +19,22 @@ public enum WorldGlobalTownNpcBootstrapPacketEncodeResult : byte
 /// </summary>
 public static class WorldGlobalTownNpcBootstrapPacketEncoder
 {
+    public const int MaximumTownNpcs = 1_024;
+    public const int FramesPerTownNpc = 2;
+    public const int MaximumFrames = MaximumTownNpcs * FramesPerTownNpc;
+
     public static WorldGlobalTownNpcBootstrapPacketEncodeResult TryEncode(
         IReadOnlyList<WorldTownNpc> townNpcs,
         out ReadOnlyMemory<byte>[] frames)
     {
         ArgumentNullException.ThrowIfNull(townNpcs);
+        if (townNpcs.Count > MaximumTownNpcs)
+        {
+            frames = [];
+            return WorldGlobalTownNpcBootstrapPacketEncodeResult.FrameBudgetExceeded;
+        }
 
-        var encoded = new ReadOnlyMemory<byte>[checked(townNpcs.Count * 2)];
+        var encoded = new ReadOnlyMemory<byte>[checked(townNpcs.Count * FramesPerTownNpc)];
         int frameIndex = 0;
         for (int npcSlot = 0; npcSlot < townNpcs.Count; npcSlot++)
         {

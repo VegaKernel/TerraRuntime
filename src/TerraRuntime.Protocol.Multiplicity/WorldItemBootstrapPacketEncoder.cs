@@ -17,11 +17,13 @@ public enum WorldItemBootstrapPacketEncodeResult : byte
 /// </summary>
 public static class WorldItemBootstrapPacketEncoder
 {
+    public const int FramesPerItem = 2;
+
     public static WorldItemBootstrapPacketEncodeResult TryEncode(
         ReadOnlySpan<WorldItemSnapshot> items,
         out ReadOnlyMemory<byte>[] frames)
     {
-        var encoded = new ReadOnlyMemory<byte>[checked(items.Length * 2)];
+        var encoded = new ReadOnlyMemory<byte>[checked(items.Length * FramesPerItem)];
         int frameIndex = 0;
 
         for (int i = 0; i < items.Length; i++)

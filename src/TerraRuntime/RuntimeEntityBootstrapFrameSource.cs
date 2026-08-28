@@ -8,7 +8,8 @@ internal enum RuntimeEntityBootstrapCaptureResult : byte
 {
     Captured = 0,
     InvalidEntityState = 1,
-    EncodingFailure = 2
+    EncodingFailure = 2,
+    FrameBudgetExceeded = 3
 }
 
 /// <summary>
@@ -22,8 +23,12 @@ internal sealed class RuntimeEntityBootstrapFrameSource
     public RuntimeEntityBootstrapFrameSource(IWorldItemSnapshotReader items)
     {
         ArgumentNullException.ThrowIfNull(items);
-        if (items.Capacity < 0)
-            throw new ArgumentOutOfRangeException(nameof(items), "World-item snapshot capacity cannot be negative.");
+        if (items.Capacity < 0 || items.Capacity > PlayerBootstrapFrameBudget.MaximumWorldItemSlots)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(items),
+                $"World-item snapshot capacity must be between 0 and {PlayerBootstrapFrameBudget.MaximumWorldItemSlots}.");
+        }
 
         _items = items;
     }
@@ -59,12 +64,20 @@ internal sealed class RuntimeEntityBootstrapFrameSource
             WorldItemBootstrapPacketEncodeResult result = WorldItemBootstrapPacketEncoder.TryEncode(
                 buffer.AsSpan(0, count),
                 out frames);
-            return result switch
+            if (result != WorldItemBootstrapPacketEncodeResult.Encoded)
             {
-                WorldItemBootstrapPacketEncodeResult.Encoded => RuntimeEntityBootstrapCaptureResult.Captured,
-                WorldItemBootstrapPacketEncodeResult.InvalidItemState => RuntimeEntityBootstrapCaptureResult.InvalidEntityState,
-                _ => RuntimeEntityBootstrapCaptureResult.EncodingFailure
-            };
+                return result == WorldItemBootstrapPacketEncodeResult.InvalidItemState
+                    ? RuntimeEntityBootstrapCaptureResult.InvalidEntityState
+                    : RuntimeEntityBootstrapCaptureResult.EncodingFailure;
+            }
+
+            if (frames.Length > PlayerBootstrapFrameBudget.MaximumDynamicEntityFrames)
+            {
+                frames = [];
+                return RuntimeEntityBootstrapCaptureResult.FrameBudgetExceeded;
+            }
+
+            return RuntimeEntityBootstrapCaptureResult.Captured;
         }
         finally
         {
