@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.Contracts.Runtime;
 
 /// <summary>
@@ -144,6 +146,10 @@ public readonly record struct NpcSnapshot(
     NpcSimulationState Simulation)
 {
     public bool IsActive => Handle.IsAssigned && Revision.IsAssigned;
+
+    public NpcTypeId TypeIdentity => new(Type);
+
+    public NpcNetId NetIdentity => new(NetId);
 }
 
 /// <summary>
