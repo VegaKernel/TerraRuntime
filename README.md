@@ -18,9 +18,13 @@ logs/      # reserved for standalone runtime diagnostics/log output
 
 `--world <path.wld>` may still point to an explicit world anywhere on disk. Interactive startup without `--world` only enumerates the canonical `Worlds/` directory, avoiding ambiguous current-working-directory lookup.
 
+A production NativeAOT publish is intentionally **not** a copied `dotnet build` directory. TerraRuntime project/package assemblies are linked into the native host, so the deployment root must not accumulate loose `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll`, `*.deps.json` or `*.runtimeconfig.json` files.
+
+The normal Vega topology is also single-process: Vega hosts the TerraRuntime implementation in the same NativeAOT executable and consumes its stable API through `TerraRuntime.Contracts`. The standalone `TerraRuntime.Server[.exe]` remains available for development, smoke tests and runtime-only deployments.
+
 See:
 
-- [`docs/native-aot-baseline.md`](docs/native-aot-baseline.md) for the mandatory NativeAOT architecture rules;
+- [`docs/native-aot-baseline.md`](docs/native-aot-baseline.md) for the mandatory NativeAOT architecture, Vega hosting and clean-deployment rules;
 - [`docs/aot-dependency-audit.md`](docs/aot-dependency-audit.md) for the dependency audit;
 - [`docs/roadmap.md`](docs/roadmap.md) for the broader implementation plan;
 - [`docs/roadmap/performance-tick-stability.md`](docs/roadmap/performance-tick-stability.md) for the detailed performance, tick-budget and interest-management roadmap;
