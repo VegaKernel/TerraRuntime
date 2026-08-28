@@ -56,6 +56,9 @@ internal sealed class RuntimeLogBuffer : ILogOperations
         }
     }
 
+    public RuntimeLogSnapshot CaptureSnapshot(RuntimeLogLevel minimumLevel, int maxEntries) =>
+        CaptureSnapshot(minimumLevel, source: null, maxEntries);
+
     public RuntimeLogSnapshot CaptureSnapshot(
         RuntimeLogLevel minimumLevel,
         string? source,
