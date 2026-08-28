@@ -280,52 +280,13 @@ public sealed class PlayerBootstrapPacketSet
         WorldSectionId section,
         out ReadOnlyMemory<byte>[] frames)
     {
-        var encodedFrames = new List<ReadOnlyMemory<byte>>();
-
-        WorldTownNpc[] townNpcs = world.Npcs.TownNpcs;
-        for (int npcSlot = 0; npcSlot < townNpcs.Length; npcSlot++)
-        {
-            WorldTownNpc npc = townNpcs[npcSlot];
-            int tileX = (int)(npc.X / 16f);
-            int tileY = (int)(npc.Y / 16f);
-            if (tileX / TerrariaSectionGeometry.WidthTiles != section.X ||
-                tileY / TerrariaSectionGeometry.HeightTiles != section.Y)
-            {
-                continue;
-            }
-
-            WorldTownNpcSyncPacketEncodeResult npcResult = WorldTownNpcSyncPacketEncoder.TryEncode(
-                npcSlot,
-                npc,
-                out ReadOnlyMemory<byte> npcFrame);
-            if (npcResult != WorldTownNpcSyncPacketEncodeResult.Encoded)
-            {
-                frames = [];
-                return false;
-            }
-
-            encodedFrames.Add(npcFrame);
-        }
-
-        foreach (WorldChest chest in world.Chests)
-        {
-            if (TerrariaSectionGeometry.FromTile(world.Header.Dimensions, chest.X, chest.Y) != section)
-                continue;
-
-            WorldChestSyncPacketEncodeResult chestResult = WorldChestSyncPacketEncoder.TryEncode(
-                chest,
-                out ReadOnlyMemory<byte>[] chestFrames);
-            if (chestResult != WorldChestSyncPacketEncodeResult.Encoded)
-            {
-                frames = [];
-                return false;
-            }
-
-            encodedFrames.AddRange(chestFrames);
-        }
-
-        frames = encodedFrames.ToArray();
-        return true;
+        WorldSectionPersistenceSyncPacketEncodeResult result = WorldSectionPersistenceSyncPacketEncoder.TryEncode(
+            world.Header.Dimensions,
+            world.Npcs.TownNpcs,
+            world.Chests,
+            section,
+            out frames);
+        return result == WorldSectionPersistenceSyncPacketEncodeResult.Encoded;
     }
 
     private static byte[] EncodeStatusFrame(int sectionCount)
