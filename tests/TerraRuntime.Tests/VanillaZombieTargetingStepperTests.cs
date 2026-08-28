@@ -30,17 +30,34 @@ public sealed class VanillaZombieTargetingStepperTests
         Assert.Equal((ushort)7, next.Target);
         Assert.Equal(1, next.Simulation.DirectionX);
         Assert.Equal(0.07f, next.VelocityX, 5);
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, next.Simulation.TimeLeft);
     }
 
     [Fact]
-    public void Day_surface_zombie_slice_stays_unsupported_until_despawn_policy_exists()
+    public void Day_surface_zombie_encourages_despawn_without_target_refresh()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
         stepper.EnableZombieMotion(worldSurfaceTiles: 100d);
         stepper.SetWorldConditions(dayTime: true, slimeRainActive: false);
+        stepper.SetCandidates([
+            new VanillaNpcTargetCandidate(
+                Slot: 7,
+                CenterX: 220f,
+                CenterY: 100f,
+                Aggro: 0,
+                Active: true,
+                Dead: false,
+                Ghost: false,
+                NoAggro: false)
+        ]);
         NpcSnapshot npc = CreateZombie(positionY: 80f);
 
-        Assert.False(stepper.TryStepState(in npc, out _));
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, next.Target);
+        Assert.Equal(10, next.Simulation.TimeLeft);
+        Assert.Equal(1f, next.Ai.Ai0, 5);
+        Assert.Equal(0.07f, next.VelocityX, 5);
     }
 
     [Fact]
@@ -67,6 +84,37 @@ public sealed class VanillaZombieTargetingStepperTests
         Assert.Equal((ushort)3, next.Target);
         Assert.Equal(-1, next.Simulation.DirectionX);
         Assert.Equal(-0.07f, next.VelocityX, 5);
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, next.Simulation.TimeLeft);
+    }
+
+    [Fact]
+    public void Night_stuck_zombie_uses_idle_branch_without_encouraging_despawn()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.EnableZombieMotion(worldSurfaceTiles: 100d);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        stepper.SetCandidates([
+            new VanillaNpcTargetCandidate(
+                Slot: 7,
+                CenterX: 220f,
+                CenterY: 100f,
+                Aggro: 0,
+                Active: true,
+                Dead: false,
+                Ghost: false,
+                NoAggro: false)
+        ]);
+        NpcSnapshot npc = CreateZombie(positionY: 80f) with
+        {
+            Ai = new NpcAiState(0f, 0f, 0f, 60f)
+        };
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, next.Target);
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, next.Simulation.TimeLeft);
+        Assert.Equal(1f, next.Ai.Ai0, 5);
+        Assert.Equal(61f, next.Ai.Ai3, 5);
     }
 
     private static NpcSnapshot CreateZombie(float positionY) =>
@@ -86,6 +134,7 @@ public sealed class VanillaZombieTargetingStepperTests
                 DirectionX = 1,
                 DirectionY = 1,
                 OldPositionX = 99f,
-                OldPositionY = positionY
+                OldPositionY = positionY,
+                TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft
             });
 }
