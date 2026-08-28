@@ -84,6 +84,12 @@ public static class WorldFileTileEntityDecoder
                 return payloadResult;
             }
 
+            if (!WorldTileEntityItemValidator.HasValidItemTypes(payload))
+            {
+                bytesConsumed = reader.Offset;
+                return WorldFileTileEntityDecodeResult.InvalidItemType;
+            }
+
             long positionKey = ((long)(uint)(ushort)x << 32) | (ushort)y;
             var entity = new WorldTileEntity(persistedId, x, y, (WorldTileEntityKind)typeValue, payload);
 

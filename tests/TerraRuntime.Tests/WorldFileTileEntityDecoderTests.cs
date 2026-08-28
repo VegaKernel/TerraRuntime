@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -62,7 +63,11 @@ public sealed class WorldFileTileEntityDecoderTests
         Assert.Equal(6, entities.Length);
 
         Assert.Equal(new WorldTrainingDummyPayload(-1), entities[0].Payload);
-        Assert.Equal(new WorldTileEntityItem(100, 3, 4), Assert.IsType<WorldItemTileEntityPayload>(entities[1].Payload).Item);
+        WorldTileEntityItem frameItem = Assert.IsType<WorldItemTileEntityPayload>(entities[1].Payload).Item;
+        Assert.Equal(new WorldTileEntityItem(100, 3, 4), frameItem);
+        Assert.True(frameItem.TryGetItemType(out ItemTypeId frameItemType));
+        Assert.Equal(100, frameItemType.Value);
+        Assert.Equal(3, frameItem.PrefixId.Value);
         Assert.Equal(new WorldLogicSensorPayload(5, true), entities[2].Payload);
 
         WorldDisplayDollPayload doll = Assert.IsType<WorldDisplayDollPayload>(entities[3].Payload);
@@ -76,7 +81,10 @@ public sealed class WorldFileTileEntityDecoderTests
         WorldHatRackPayload hatRack = Assert.IsType<WorldHatRackPayload>(entities[4].Payload);
         Assert.Equal(new WorldTileEntityItem(106, 6, 7), hatRack.Items[0]);
         Assert.Equal(new WorldTileEntityItem(107, 7, 8), hatRack.Dyes[1]);
-        Assert.Equal(new WorldLeashedAnchorPayload(108), entities[5].Payload);
+        WorldLeashedAnchorPayload anchor = Assert.IsType<WorldLeashedAnchorPayload>(entities[5].Payload);
+        Assert.Equal(new WorldLeashedAnchorPayload(108), anchor);
+        Assert.True(anchor.TryGetItemType(out ItemTypeId anchorItemType));
+        Assert.Equal(108, anchorItemType.Value);
     }
 
     [Fact]
@@ -135,6 +143,28 @@ public sealed class WorldFileTileEntityDecoderTests
             WorldFileTileEntityDecoder.TryDecode(
                 budgetFile,
                 ParseEnvelope(budgetFile),
+                CreateHeader(),
+                maxEntities: 1,
+                out _,
+                out _));
+    }
+
+    [Fact]
+    public void Rejects_tile_entity_item_type_outside_vanilla_1458_catalog()
+    {
+        byte[] section = CreateSection(writer =>
+        {
+            writer.Write(1);
+            WriteEntityHeader(writer, WorldTileEntityKind.ItemFrame, 1, 2, 3);
+            WriteItem(writer, checked((short)VanillaItemIds.Count), 0, 1);
+        });
+
+        byte[] file = CreateCurrentFile(section);
+        Assert.Equal(
+            WorldFileTileEntityDecodeResult.InvalidItemType,
+            WorldFileTileEntityDecoder.TryDecode(
+                file,
+                ParseEnvelope(file),
                 CreateHeader(),
                 maxEntities: 1,
                 out _,
