@@ -1,6 +1,5 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using Microsoft.Win32.SafeHandles;
 
 namespace TerraRuntime.World;
@@ -12,9 +11,8 @@ namespace TerraRuntime.World;
 public static class RuntimeWorldSnapshotCache
 {
     private const int HeaderSize = 128;
-    private const int HashSize = 32;
     private const int TileRecordSize = 16;
-    private const int ShardEntrySize = 48;
+    private const int ShardEntrySize = 24;
     private const int LiquidActiveEntrySize = 12;
     private const int LiquidBufferEntrySize = 4;
     private const int LiquidTrailerHeaderSize = 64;
@@ -305,8 +303,7 @@ public static class RuntimeWorldSnapshotCache
             return new RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult.InvalidWorld);
         }
 
-        Span<byte> canonicalHash = stackalloc byte[HashSize];
-        SHA256.HashData(sourceWorld, canonicalHash);
+        ulong canonicalHash = RuntimeWorldIntegrity.Hash64(sourceWorld);
 
         Span<byte> header = stackalloc byte[HeaderSize];
         header.Clear();
@@ -316,7 +313,7 @@ public static class RuntimeWorldSnapshotCache
         BinaryPrimitives.WriteInt64LittleEndian(header[16..], sourceStamp.Length);
         BinaryPrimitives.WriteInt64LittleEndian(header[24..], sourceStamp.LastWriteTimeUtcTicks);
         BinaryPrimitives.WriteInt64LittleEndian(header[32..], sourceWorld.Length);
-        canonicalHash.CopyTo(header[40..72]);
+        BinaryPrimitives.WriteUInt64LittleEndian(header[40..], canonicalHash);
         BinaryPrimitives.WriteInt32LittleEndian(header[72..], world.Envelope.FormatVersion);
         BinaryPrimitives.WriteInt32LittleEndian(header[76..], world.Header.Dimensions.WidthTiles);
         BinaryPrimitives.WriteInt32LittleEndian(header[80..], world.Header.Dimensions.HeightTiles);
@@ -336,7 +333,7 @@ public static class RuntimeWorldSnapshotCache
         BinaryPrimitives.WriteInt32LittleEndian(liquidHeader[16..], liquidActive.Length);
         BinaryPrimitives.WriteInt32LittleEndian(liquidHeader[20..], liquidBuffered.Length);
         BinaryPrimitives.WriteInt64LittleEndian(liquidHeader[24..], liquidPayload.LongLength);
-        SHA256.HashData(liquidPayload, liquidHeader[32..64]);
+        BinaryPrimitives.WriteUInt64LittleEndian(liquidHeader[32..], RuntimeWorldIntegrity.Hash64(liquidPayload));
 
         TileShardDescriptor[] shards = CreateShardLayout(expectedTileCount);
         byte[] shardTable = new byte[checked(shardCount * ShardEntrySize)];
@@ -367,7 +364,7 @@ public static class RuntimeWorldSnapshotCache
                         checked((int)shard.TileStart),
                         shard.TileCount);
                     ReadOnlySpan<byte> shardBytes = MemoryMarshal.AsBytes(shardTiles);
-                    byte[] hash = SHA256.HashData(shardBytes);
+                    ulong hash = RuntimeWorldIntegrity.Hash64(shardBytes);
                     stream.Write(shardBytes);
 
                     TileShardDescriptor written = shard with { Hash = hash };
@@ -539,7 +536,7 @@ public static class RuntimeWorldSnapshotCache
         long sourceLength = BinaryPrimitives.ReadInt64LittleEndian(bytes[16..]);
         long sourceLastWriteTimeUtcTicks = BinaryPrimitives.ReadInt64LittleEndian(bytes[24..]);
         long canonicalLength = BinaryPrimitives.ReadInt64LittleEndian(bytes[32..]);
-        byte[] canonicalHash = bytes[40..72].ToArray();
+        ulong canonicalHash = BinaryPrimitives.ReadUInt64LittleEndian(bytes[40..]);
         int worldFormatVersion = BinaryPrimitives.ReadInt32LittleEndian(bytes[72..]);
         int width = BinaryPrimitives.ReadInt32LittleEndian(bytes[76..]);
         int height = BinaryPrimitives.ReadInt32LittleEndian(bytes[80..]);
@@ -553,6 +550,7 @@ public static class RuntimeWorldSnapshotCache
         if (BinaryPrimitives.ReadInt32LittleEndian(bytes[8..]) != HeaderSize ||
             BinaryPrimitives.ReadInt32LittleEndian(bytes[12..]) != TileRecordSize ||
             BinaryPrimitives.ReadInt32LittleEndian(bytes[84..]) != ShardEntrySize ||
+            !bytes[48..72].SequenceEqual(stackalloc byte[24]) ||
             reserved != 0 ||
             sourceLength <= 0 ||
             sourceLength != canonicalLength ||
@@ -605,7 +603,7 @@ public static class RuntimeWorldSnapshotCache
         int liquidActiveCount = BinaryPrimitives.ReadInt32LittleEndian(liquidHeader[16..]);
         int liquidBufferCount = BinaryPrimitives.ReadInt32LittleEndian(liquidHeader[20..]);
         long liquidPayloadLength = BinaryPrimitives.ReadInt64LittleEndian(liquidHeader[24..]);
-        byte[] liquidHash = liquidHeader[32..64].ToArray();
+        ulong liquidHash = BinaryPrimitives.ReadUInt64LittleEndian(liquidHeader[32..]);
 
         long expectedLiquidPayloadLength;
         long liquidPayloadOffset;
@@ -630,7 +628,8 @@ public static class RuntimeWorldSnapshotCache
             liquidBufferCount < 0 ||
             liquidBufferCount > tileCount ||
             liquidPayloadLength != expectedLiquidPayloadLength ||
-            liquidPayloadLength > int.MaxValue)
+            liquidPayloadLength > int.MaxValue ||
+            !liquidHeader[40..64].SequenceEqual(stackalloc byte[24]))
         {
             return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidLiquidQueue);
         }
@@ -667,9 +666,7 @@ public static class RuntimeWorldSnapshotCache
             if (!ReadExactlyAt(handle, destination, HeaderSize))
                 return RuntimeWorldSnapshotLoadResult.Truncated;
 
-            Span<byte> computedHash = stackalloc byte[HashSize];
-            SHA256.HashData(destination, computedHash);
-            return CryptographicOperations.FixedTimeEquals(computedHash, header.CanonicalHash)
+            return RuntimeWorldIntegrity.Hash64(destination) == header.CanonicalHash
                 ? RuntimeWorldSnapshotLoadResult.Loaded
                 : RuntimeWorldSnapshotLoadResult.CanonicalPayloadHashMismatch;
         }
@@ -696,9 +693,7 @@ public static class RuntimeWorldSnapshotCache
             if (!ReadExactlyAt(handle, payload, header.LiquidPayloadOffset))
                 return RuntimeWorldSnapshotLoadResult.Truncated;
 
-            Span<byte> computedHash = stackalloc byte[HashSize];
-            SHA256.HashData(payload, computedHash);
-            if (!CryptographicOperations.FixedTimeEquals(computedHash, header.LiquidHash))
+            if (RuntimeWorldIntegrity.Hash64(payload) != header.LiquidHash)
                 return RuntimeWorldSnapshotLoadResult.LiquidQueueHashMismatch;
 
             var decodedActive = new WorldLiquidUpdateEntry[header.LiquidActiveCount];
@@ -821,13 +816,11 @@ public static class RuntimeWorldSnapshotCache
             if (!ReadExactlyAt(handle, bytes, fileOffset))
                 return RuntimeWorldSnapshotLoadResult.Truncated;
 
-            Span<byte> computedHash = stackalloc byte[HashSize];
-            SHA256.HashData(bytes, computedHash);
-            if (!CryptographicOperations.FixedTimeEquals(computedHash, shard.Hash))
+            if (RuntimeWorldIntegrity.Hash64(bytes) != shard.Hash)
                 return RuntimeWorldSnapshotLoadResult.PayloadHashMismatch;
 
-            // Tiles were semantically validated before snapshot write. Matching SHA-256 proves these are
-            // exactly those bytes, so a second full semantic scan on every warm start would be redundant.
+            // Tiles were semantically validated before snapshot write. The matching integrity digest proves
+            // the payload was not changed after validation, so a second semantic scan on warm start is redundant.
             return RuntimeWorldSnapshotLoadResult.Loaded;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or OverflowException)
@@ -875,7 +868,7 @@ public static class RuntimeWorldSnapshotCache
         for (int shardIndex = 0; shardIndex < shardCount; shardIndex++)
         {
             int shardTileCount = checked((int)Math.Min(TilesPerShard, tileCount - tileStart));
-            shards[shardIndex] = new TileShardDescriptor(tileStart, shardTileCount, new byte[HashSize]);
+            shards[shardIndex] = new TileShardDescriptor(tileStart, shardTileCount, 0);
             tileStart += shardTileCount;
         }
 
@@ -895,7 +888,7 @@ public static class RuntimeWorldSnapshotCache
         BinaryPrimitives.WriteInt64LittleEndian(destination, shard.TileStart);
         BinaryPrimitives.WriteInt32LittleEndian(destination[8..], shard.TileCount);
         BinaryPrimitives.WriteInt32LittleEndian(destination[12..], 0);
-        shard.Hash.CopyTo(destination[16..48]);
+        BinaryPrimitives.WriteUInt64LittleEndian(destination[16..], shard.Hash);
     }
 
     private static bool TryDecodeShardEntry(
@@ -912,7 +905,7 @@ public static class RuntimeWorldSnapshotCache
             return false;
         }
 
-        shard = expected with { Hash = source[16..48].ToArray() };
+        shard = expected with { Hash = BinaryPrimitives.ReadUInt64LittleEndian(source[16..]) };
         return true;
     }
 
@@ -931,7 +924,7 @@ public static class RuntimeWorldSnapshotCache
         long SourceLength,
         long SourceLastWriteTimeUtcTicks,
         long CanonicalLength,
-        byte[] CanonicalHash,
+        ulong CanonicalHash,
         int WorldFormatVersion,
         int Width,
         int Height,
@@ -942,9 +935,9 @@ public static class RuntimeWorldSnapshotCache
         int LiquidActiveCount,
         int LiquidBufferCount,
         long LiquidPayloadOffset,
-        byte[] LiquidHash);
+        ulong LiquidHash);
 
-    private readonly record struct TileShardDescriptor(long TileStart, int TileCount, byte[] Hash);
+    private readonly record struct TileShardDescriptor(long TileStart, int TileCount, ulong Hash);
 }
 
 public readonly record struct RuntimeWorldSourceStamp(long Length, long LastWriteTimeUtcTicks);
