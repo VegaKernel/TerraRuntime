@@ -14,12 +14,13 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         using var fixture = new Fixture(playerCount: 1);
         ConnectionHandle source = fixture.SpawnPlayer(connectionId: 1);
         TerrariaProjectileUpdateState first = CreateUpdate(source.Player.Slot.Value, index: 777, generation: 9, type: 1, positionX: 100f);
+        TerrariaProjectileKeyState firstKey = first.Key;
 
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(source, first));
 
         Assert.Equal(1, fixture.State.AppliedProjectileSpawns);
         Assert.Equal(0, fixture.State.RejectedClientProjectileUpdates);
-        Assert.True(fixture.Replication.WireIdentities.TryResolve(in first.Key, out ProjectileHandle handle));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(in firstKey, out ProjectileHandle handle));
         Assert.Equal((ushort)0, handle.Slot);
         Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot created));
         Assert.Equal(100f, created.PositionX);
@@ -30,7 +31,7 @@ public sealed class ServerRuntimeClientProjectileIngressTests
 
         Assert.Equal(1, fixture.State.AppliedProjectileSpawns);
         Assert.Equal(1, fixture.State.AppliedProjectileUpdates);
-        Assert.True(fixture.Replication.WireIdentities.TryResolve(in first.Key, out ProjectileHandle same));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(in firstKey, out ProjectileHandle same));
         Assert.Equal(handle, same);
         Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot updated));
         Assert.Equal(150f, updated.PositionX);
@@ -43,22 +44,24 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         using var fixture = new Fixture(playerCount: 1);
         ConnectionHandle source = fixture.SpawnPlayer(connectionId: 2);
         TerrariaProjectileUpdateState first = CreateUpdate(source.Player.Slot.Value, index: 88, generation: 1, type: 1, positionX: 10f);
+        TerrariaProjectileKeyState firstKey = first.Key;
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(source, first));
-        Assert.True(fixture.Replication.WireIdentities.TryResolve(in first.Key, out ProjectileHandle oldHandle));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(in firstKey, out ProjectileHandle oldHandle));
 
         TerrariaProjectileUpdateState replacement = first with
         {
             Key = new TerrariaProjectileKeyState(source.Player.Slot.Value, 88, 2),
             PositionX = 20f
         };
+        TerrariaProjectileKeyState replacementKey = replacement.Key;
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(source, replacement));
 
-        Assert.True(fixture.Replication.WireIdentities.TryResolve(in replacement.Key, out ProjectileHandle newHandle));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(in replacementKey, out ProjectileHandle newHandle));
         Assert.Equal((ushort)1, newHandle.Slot);
         Assert.NotEqual(oldHandle, newHandle);
-        Assert.False(fixture.Replication.WireIdentities.TryResolve(in first.Key, out _));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(in firstKey, out _));
         Assert.True(fixture.Replication.WireIdentities.TryGetWireKey(oldHandle, out TerrariaProjectileKeyState retainedOld));
-        Assert.Equal(first.Key, retainedOld);
+        Assert.Equal(firstKey, retainedOld);
         Assert.True(fixture.State.TryCaptureProjectileSnapshot(oldHandle, out _));
         Assert.True(fixture.State.TryCaptureProjectileSnapshot(newHandle, out _));
     }
@@ -108,10 +111,11 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 6);
         ConnectionHandle foreign = fixture.SpawnPlayer(connectionId: 7);
         TerrariaProjectileUpdateState spawn = CreateUpdate(owner.Player.Slot.Value, 123, 1, type: 1, positionX: 10f);
+        TerrariaProjectileKeyState spawnKey = spawn.Key;
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, spawn));
-        Assert.True(fixture.Replication.WireIdentities.TryResolve(in spawn.Key, out ProjectileHandle handle));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(in spawnKey, out ProjectileHandle handle));
 
-        var destroy = new TerrariaProjectileDestroyState(spawn.Key, 500f, 600f);
+        var destroy = new TerrariaProjectileDestroyState(spawnKey, 500f, 600f);
         fixture.State.Apply(new ClientProjectileDestroyRuntimeCommand(foreign, destroy));
 
         Assert.Equal(1, fixture.State.RejectedClientProjectileDestroys);
@@ -122,7 +126,7 @@ public sealed class ServerRuntimeClientProjectileIngressTests
 
         Assert.Equal(1, fixture.State.AppliedProjectileDespawns);
         Assert.False(fixture.State.TryCaptureProjectileSnapshot(handle, out _));
-        Assert.False(fixture.Replication.WireIdentities.TryResolve(in spawn.Key, out _));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(in spawnKey, out _));
     }
 
     private static TerrariaProjectileUpdateState CreateUpdate(
@@ -196,7 +200,6 @@ public sealed class ServerRuntimeClientProjectileIngressTests
                 Replication.TryUnregister(pair.Key);
             foreach (PlayerJoinSession session in sessions)
                 session.Dispose();
-            slots.Dispose();
         }
     }
 }
