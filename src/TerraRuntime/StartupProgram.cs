@@ -17,11 +17,26 @@ internal static class StartupProgram
             return 0;
         }
 
+        RuntimeDirectoryLayout directories = RuntimeDirectoryLayout.CreateDefault();
+        try
+        {
+            directories.EnsureCreated();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine(
+                $"Could not initialize TerraRuntime directories under '{directories.RootDirectory}': {exception.Message}");
+            return 24;
+        }
+
         string[] serverArgs = args;
         if (!HasWorldArgument(serverArgs))
         {
-            if (!LocalWorldSelector.TrySelect(out string? worldPath) || string.IsNullOrWhiteSpace(worldPath))
+            if (!LocalWorldSelector.TrySelect(directories.WorldsDirectory, out string? worldPath) ||
+                string.IsNullOrWhiteSpace(worldPath))
+            {
                 return 0;
+            }
 
             serverArgs = [.. serverArgs, "--world", worldPath];
         }
@@ -71,7 +86,7 @@ internal static class StartupProgram
         Console.WriteLine();
         Console.WriteLine("Interactive startup:");
         Console.WriteLine("  TerraRuntime.Server");
-        Console.WriteLine("    Scans local Worlds folders and lets you choose a .wld world.");
+        Console.WriteLine("    Scans the runtime Worlds folder and lets you choose a .wld world.");
         Console.WriteLine();
         Console.WriteLine("Server startup:");
         Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--no-tui]");
