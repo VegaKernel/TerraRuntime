@@ -1,0 +1,111 @@
+name: NPC Reference Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/npc-reference-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npc-reference:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Decompile official TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+
+      - name: Collect NPC reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/reference-1458-npc
+
+          npc_file="$(find decompiled/1458 -type f -name 'NPC.cs' -print -quit)"
+          if [[ -z "$npc_file" ]]; then
+            npc_file="$(grep -RIl --include='*.cs' 'class NPC' decompiled/1458 | head -n 1 || true)"
+          fi
+          test -n "$npc_file"
+
+          npc_id="$(find decompiled/1458 -type f -name 'NPCID.cs' -print -quit)"
+          if [[ -z "$npc_id" ]]; then
+            npc_id="$(grep -RIl --include='*.cs' 'class NPCID' decompiled/1458 | head -n 1 || true)"
+          fi
+          test -n "$npc_id"
+
+          cp "$npc_file" artifacts/reference-1458-npc/NPC.cs
+          cp "$npc_id" artifacts/reference-1458-npc/NPCID.cs
+          cp decompiled/1458/REFERENCE_SOURCE.txt artifacts/reference-1458-npc/REFERENCE_SOURCE.txt
+
+          python3 - "$npc_file" <<'PY'
+          import json
+          import pathlib
+          import re
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          text = path.read_text(errors="ignore")
+
+          def method_summary(name):
+              pattern = re.compile(rf"\b{name}\s*\([^;{{}}]*\)\s*\{{")
+              match = pattern.search(text)
+              if not match:
+                  return {"found": False}
+              opening = match.end() - 1
+              depth = 0
+              end = None
+              for index in range(opening, len(text)):
+                  char = text[index]
+                  if char == "{":
+                      depth += 1
+                  elif char == "}":
+                      depth -= 1
+                      if depth == 0:
+                          end = index + 1
+                          break
+              if end is None:
+                  return {"found": False}
+              body = text[opening:end]
+              return {
+                  "found": True,
+                  "characters": len(body),
+                  "line": text.count("\n", 0, match.start()) + 1,
+                  "aiReads": len(re.findall(r"\bai\[[0-3]\]", body)),
+                  "localAiReads": len(re.findall(r"\blocalAI\[[0-3]\]", body)),
+                  "projectileCalls": body.count("Projectile.NewProjectile"),
+                  "npcSpawnCalls": body.count("NewNPC"),
+              }
+
+          methods = [
+              "SetDefaults",
+              "AI_001_Slimes",
+              "AI_002_FloatingEye",
+              "AI_003_Fighters",
+              "AI_004_EyeOfCthulhu",
+              "AI_005_Flyer",
+          ]
+          summary = {
+              "source": str(path),
+              "characters": len(text),
+              "methods": {name: method_summary(name) for name in methods},
+          }
+          print("NPC_REFERENCE_SUMMARY=" + json.dumps(summary, sort_keys=True))
+          PY
+
+      - name: Upload local-only NPC reference artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraria-1458-npc-reference
+          path: artifacts/reference-1458-npc
+          retention-days: 1
