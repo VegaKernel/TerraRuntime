@@ -6,7 +6,7 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 /// <summary>
-/// Post-AI authoritative movement for the verified ordinary Blue Slime and Demon Eye paths. Vanilla
+/// Post-AI authoritative movement for the verified ordinary Blue Slime, Demon Eye and Zombie paths. Vanilla
 /// computes gravity parameters before AI, applies AI, then gravity, epsilon velocity clamp, the pre-collision
 /// walk-down-slope pass, wet/tile collision, position movement and the post-move slope pass. Collision/liquid
 /// state becomes input for the next AI tick.
@@ -43,10 +43,13 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         this.worldSurfaceTiles = worldSurfaceTiles;
 
-        // Grounded style-1 AI is intentionally disabled when ServerRuntimeState has no world tiles.
-        // Enabling it here guarantees every proposed Blue Slime step has gravity/collision available.
+        // Grounded style-1/type-3 AI is intentionally disabled when ServerRuntimeState has no world tiles.
+        // Enabling it here guarantees every proposed step has authoritative gravity/collision available.
         if (inner is VanillaNpcTargetingAiStepper targeting)
+        {
             targeting.EnableBlueSlimeMotion(worldSurfaceTiles);
+            targeting.EnableZombieMotion(worldSurfaceTiles);
+        }
     }
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
@@ -139,7 +142,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         float oldVelocityX = velocityX;
         float oldVelocityY = velocityY;
-        bool fallThroughPlatforms = npcType == VanillaNpcIds.DemonEye;
+        bool fallThroughPlatforms =
+            npcType == VanillaNpcIds.DemonEye ||
+            (npcType == VanillaNpcIds.Zombie && simulation.DirectionY == 1);
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
             tiles,
             aiState.PositionX,
@@ -223,7 +228,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
     private static bool IsSupportedMotionPath(NpcTypeId type, NpcAiStyleId aiStyle) =>
         (type == VanillaNpcIds.BlueSlime && aiStyle == VanillaNpcAiStyles.Slime) ||
-        (type == VanillaNpcIds.DemonEye && aiStyle == VanillaNpcAiStyles.DemonEye);
+        (type == VanillaNpcIds.DemonEye && aiStyle == VanillaNpcAiStyles.DemonEye) ||
+        (type == VanillaNpcIds.Zombie && aiStyle == VanillaNpcAiStyles.Fighter);
 
     private static NpcLiquidContactKind MapLiquid(WorldLiquidKind kind) => kind switch
     {
