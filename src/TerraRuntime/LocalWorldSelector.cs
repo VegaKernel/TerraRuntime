@@ -2,12 +2,13 @@ namespace TerraRuntime;
 
 internal static class LocalWorldSelector
 {
-    public static bool TrySelect(out string? worldPath)
+    public static bool TrySelect(string worldsDirectory, out string? worldPath)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(worldsDirectory);
+
         while (true)
         {
-            string[] searchDirectories = GetSearchDirectories();
-            string[] worlds = DiscoverWorlds(searchDirectories);
+            string[] worlds = DiscoverWorlds([worldsDirectory]);
 
             if (Console.IsInputRedirected)
             {
@@ -20,13 +21,13 @@ internal static class LocalWorldSelector
 
                 Console.Error.WriteLine(
                     worlds.Length == 0
-                        ? "No world was specified and no local .wld files were found. Use --world <path.wld>."
-                        : "No world was specified and multiple local .wld files were found, but input is redirected. Use --world <path.wld>.");
+                        ? $"No world was specified and no local .wld files were found in '{worldsDirectory}'. Use --world <path.wld>."
+                        : $"No world was specified and multiple local .wld files were found in '{worldsDirectory}', but input is redirected. Use --world <path.wld>.");
                 worldPath = null;
                 return false;
             }
 
-            PrintMenu(searchDirectories, worlds);
+            PrintMenu(worldsDirectory, worlds);
             string? input = Console.ReadLine();
             if (input is null)
             {
@@ -102,26 +103,13 @@ internal static class LocalWorldSelector
             .ToArray();
     }
 
-    private static string[] GetSearchDirectories()
-    {
-        string workingDirectoryWorlds = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, "Worlds"));
-        string executableDirectoryWorlds = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "Worlds"));
-        string[] directories = [workingDirectoryWorlds, executableDirectoryWorlds];
-
-        return directories
-            .Distinct(GetPathComparer())
-            .ToArray();
-    }
-
-    private static void PrintMenu(IReadOnlyList<string> searchDirectories, IReadOnlyList<string> worlds)
+    private static void PrintMenu(string worldsDirectory, IReadOnlyList<string> worlds)
     {
         Console.WriteLine();
         Console.WriteLine("TerraRuntime local world selection");
-        Console.WriteLine("Worlds directories:");
-        foreach (string directory in searchDirectories)
-            Console.WriteLine($"  {directory}");
-
+        Console.WriteLine($"Worlds directory: {worldsDirectory}");
         Console.WriteLine();
+
         if (worlds.Count == 0)
         {
             Console.WriteLine("No local .wld worlds found.");
@@ -133,7 +121,7 @@ internal static class LocalWorldSelector
         }
 
         Console.WriteLine("  P. Enter a world path");
-        Console.WriteLine("  R. Refresh Worlds folders");
+        Console.WriteLine("  R. Refresh Worlds folder");
         Console.WriteLine("  Q. Quit");
         Console.Write("Select world: ");
     }
