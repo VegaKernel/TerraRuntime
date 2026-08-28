@@ -106,6 +106,7 @@ public static class TerrariaServerHost
             return 27;
         }
 
+        var worldItems = new RuntimeWorldItemStore();
         var runtimeConnections = new RuntimeConnectionRegistry(
             runtimeInterestManagement,
             world.Header.Dimensions);
@@ -216,6 +217,7 @@ public static class TerrariaServerHost
                     disconnectIngress,
                     runtimeConnections,
                     vitalsReplication,
+                    worldItems,
                     shutdown.Token);
                 connectionTasks[connectionId] = connectionTask;
                 _ = connectionTask.ContinueWith(
@@ -273,6 +275,7 @@ public static class TerrariaServerHost
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
         RuntimePlayerVitalsReplicator vitalsReplication,
+        RuntimeWorldItemStore worldItems,
         CancellationToken cancellationToken)
     {
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
@@ -302,7 +305,9 @@ public static class TerrariaServerHost
                 spawnIngress,
                 appearanceIngress,
                 equipmentIngress,
-                movementIngress);
+                movementIngress,
+                inner: null,
+                worldItems: worldItems);
             var sink = new PlayerVitalsFrameSink(
                 source,
                 bootstrapSink,
