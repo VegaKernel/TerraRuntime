@@ -74,24 +74,24 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         lock (_gate)
-        {
-            for (short slot = 0; slot < _slots.Length; slot++)
-            {
-                ref SlotState state = ref _slots[slot];
-                if (state.Active || !TryAdvance(ref state.Generation))
-                    continue;
+            return TryAllocateLocked(in update, out snapshot);
+    }
 
-                state.Revision = 1;
-                state.Active = true;
-                state.Update = update;
-                _activeCount++;
-                snapshot = Capture(slot, in state);
-                return true;
-            }
+    /// <summary>
+    /// Allocates a new slot from packet-neutral drop state. Packet-22 owner/reservation fields start in the
+    /// vanilla unowned state and may be applied later without changing the logical item generation.
+    /// </summary>
+    public bool TryAllocateDrop(in WorldItemDropStateUpdate drop, out WorldItemSnapshot snapshot)
+    {
+        if (!IsValidDrop(in drop))
+        {
+            snapshot = default;
+            return false;
         }
 
-        snapshot = default;
-        return false;
+        WorldItemStateUpdate initial = CreateInitial(in drop);
+        lock (_gate)
+            return TryAllocateLocked(in initial, out snapshot);
     }
 
     public bool TryUpsert(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
@@ -103,27 +103,61 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         lock (_gate)
+            return TryUpsertLocked(slot, in update, out snapshot);
+    }
+
+    /// <summary>
+    /// Applies packet-neutral drop state while preserving owner/reservation fields previously committed from
+    /// packet 22. An inactive explicit slot starts a new generation with the vanilla unowned defaults.
+    /// </summary>
+    public bool TryApplyDrop(short slot, in WorldItemDropStateUpdate drop, out WorldItemSnapshot snapshot)
+    {
+        if (!IsValidSlot(slot) || !IsValidDrop(in drop))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        lock (_gate)
         {
             ref SlotState state = ref _slots[slot];
-            if (!state.Active)
-            {
-                if (!TryAdvance(ref state.Generation))
-                {
-                    snapshot = default;
-                    return false;
-                }
+            WorldItemStateUpdate merged = state.Active
+                ? MergeDrop(in state.Update, in drop)
+                : CreateInitial(in drop);
+            return TryUpsertLocked(slot, in merged, out snapshot);
+        }
+    }
 
-                state.Revision = 1;
-                state.Active = true;
-                _activeCount++;
-            }
-            else if (!TryAdvance(ref state.Revision))
+    /// <summary>
+    /// Applies packet-neutral packet-22 owner/reservation state to an existing generation. Drop identity,
+    /// velocity, stack, type, prefix, shimmer and ownership-mode bits remain untouched.
+    /// </summary>
+    public bool TryApplyOwner(short slot, in WorldItemOwnerStateUpdate owner, out WorldItemSnapshot snapshot)
+    {
+        if (!IsValidSlot(slot) || !IsValidOwner(in owner))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        lock (_gate)
+        {
+            ref SlotState state = ref _slots[slot];
+            if (!state.Active || !TryAdvance(ref state.Revision))
             {
                 snapshot = default;
                 return false;
             }
 
-            state.Update = update;
+            state.Update = state.Update with
+            {
+                PositionX = owner.PositionX,
+                PositionY = owner.PositionY,
+                OwnerPlayerId = owner.OwnerPlayerId,
+                TimeToKeepReservation = owner.TimeToKeepReservation,
+                GrabDelayPlayer = owner.GrabDelayPlayer,
+                GrabDelayTime = owner.GrabDelayTime
+            };
             snapshot = Capture(slot, in state);
             return true;
         }
@@ -201,6 +235,88 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
     }
 
+    private bool TryAllocateLocked(in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
+    {
+        for (short slot = 0; slot < _slots.Length; slot++)
+        {
+            ref SlotState state = ref _slots[slot];
+            if (state.Active || !TryAdvance(ref state.Generation))
+                continue;
+
+            state.Revision = 1;
+            state.Active = true;
+            state.Update = update;
+            _activeCount++;
+            snapshot = Capture(slot, in state);
+            return true;
+        }
+
+        snapshot = default;
+        return false;
+    }
+
+    private bool TryUpsertLocked(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
+    {
+        ref SlotState state = ref _slots[slot];
+        if (!state.Active)
+        {
+            if (!TryAdvance(ref state.Generation))
+            {
+                snapshot = default;
+                return false;
+            }
+
+            state.Revision = 1;
+            state.Active = true;
+            _activeCount++;
+        }
+        else if (!TryAdvance(ref state.Revision))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        state.Update = update;
+        snapshot = Capture(slot, in state);
+        return true;
+    }
+
+    private static WorldItemStateUpdate CreateInitial(in WorldItemDropStateUpdate drop) =>
+        new(
+            PositionX: drop.PositionX,
+            PositionY: drop.PositionY,
+            VelocityX: drop.VelocityX,
+            VelocityY: drop.VelocityY,
+            Stack: drop.Stack,
+            Prefix: drop.Prefix,
+            Ownership: drop.Ownership,
+            ItemNetId: drop.ItemNetId,
+            Shimmered: drop.Shimmered,
+            ShimmerTime: drop.ShimmerTime,
+            EnemyGrabDelayTime: drop.EnemyGrabDelayTime,
+            OwnerPlayerId: byte.MaxValue,
+            TimeToKeepReservation: 0,
+            GrabDelayPlayer: byte.MaxValue,
+            GrabDelayTime: 0);
+
+    private static WorldItemStateUpdate MergeDrop(
+        in WorldItemStateUpdate current,
+        in WorldItemDropStateUpdate drop) =>
+        current with
+        {
+            PositionX = drop.PositionX,
+            PositionY = drop.PositionY,
+            VelocityX = drop.VelocityX,
+            VelocityY = drop.VelocityY,
+            Stack = drop.Stack,
+            Prefix = drop.Prefix,
+            Ownership = drop.Ownership,
+            ItemNetId = drop.ItemNetId,
+            Shimmered = drop.Shimmered,
+            ShimmerTime = drop.ShimmerTime,
+            EnemyGrabDelayTime = drop.EnemyGrabDelayTime
+        };
+
     private static WorldItemSnapshot Capture(short slot, in SlotState state)
     {
         WorldItemStateUpdate update = state.Update;
@@ -235,6 +351,23 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         update.Stack > 0 &&
         update.TryGetItemType(out _) &&
         (byte)update.Ownership <= (byte)WorldItemOwnershipMode.GrabDelayForAllPlayers;
+
+    private static bool IsValidDrop(in WorldItemDropStateUpdate drop) =>
+        float.IsFinite(drop.PositionX) &&
+        float.IsFinite(drop.PositionY) &&
+        float.IsFinite(drop.VelocityX) &&
+        float.IsFinite(drop.VelocityY) &&
+        float.IsFinite(drop.ShimmerTime) &&
+        drop.ShimmerTime >= 0f &&
+        drop.Stack > 0 &&
+        drop.TryGetItemType(out _) &&
+        (byte)drop.Ownership <= (byte)WorldItemOwnershipMode.GrabDelayForAllPlayers;
+
+    private static bool IsValidOwner(in WorldItemOwnerStateUpdate owner) =>
+        float.IsFinite(owner.PositionX) &&
+        float.IsFinite(owner.PositionY) &&
+        owner.TimeToKeepReservation >= 0 &&
+        owner.GrabDelayTime >= 0;
 
     private static bool TryAdvance(ref ulong value)
     {
