@@ -10,6 +10,11 @@ public sealed class WorldTileStore
     private readonly WorldTile[] _tiles;
 
     public WorldTileStore(WorldDimensions dimensions)
+        : this(dimensions, skipZeroInitialization: false)
+    {
+    }
+
+    private WorldTileStore(WorldDimensions dimensions, bool skipZeroInitialization)
     {
         ArgumentNullException.ThrowIfNull(dimensions);
 
@@ -20,9 +25,18 @@ public sealed class WorldTileStore
         }
 
         Dimensions = dimensions;
-        _tiles = new WorldTile[(int)tileCount];
+        _tiles = skipZeroInitialization
+            ? GC.AllocateUninitializedArray<WorldTile>((int)tileCount)
+            : new WorldTile[(int)tileCount];
         LiquidUpdates = new WorldLiquidUpdateQueue(dimensions);
     }
+
+    /// <summary>
+    /// Allocates tile backing storage without paying for a redundant managed zero-fill. This is valid only
+    /// for transactional snapshot loading, which overwrites every tile before the store can be published.
+    /// </summary>
+    internal static WorldTileStore CreateForSnapshotLoad(WorldDimensions dimensions) =>
+        new(dimensions, skipZeroInitialization: true);
 
     public WorldDimensions Dimensions { get; }
 
