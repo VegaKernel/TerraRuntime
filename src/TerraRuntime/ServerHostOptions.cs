@@ -67,6 +67,27 @@ public sealed record ServerHostOptions(
                 case "--plain":
                     terminalUiEnabled = false;
                     break;
+
+                case "--vega-ui":
+                    if (!TryReadValue(args, ref i, out string? uiMode) ||
+                        !TryApplyUiMode(uiMode, out terminalUiEnabled))
+                    {
+                        options = null;
+                        error = "--vega-ui requires auto, tui, plain, or headless.";
+                        return false;
+                    }
+                    break;
+
+                default:
+                    const string uiPrefix = "--vega-ui=";
+                    if (arg.StartsWith(uiPrefix, StringComparison.OrdinalIgnoreCase) &&
+                        !TryApplyUiMode(arg[uiPrefix.Length..], out terminalUiEnabled))
+                    {
+                        options = null;
+                        error = "--vega-ui requires auto, tui, plain, or headless.";
+                        return false;
+                    }
+                    break;
             }
         }
 
@@ -85,6 +106,33 @@ public sealed record ServerHostOptions(
             terminalUiEnabled);
         error = null;
         return true;
+    }
+
+    private static bool TryApplyUiMode(string? value, out bool terminalUiEnabled)
+    {
+        switch (value?.ToLowerInvariant())
+        {
+            case "tui":
+            case "terminal":
+                terminalUiEnabled = true;
+                return true;
+
+            case "plain":
+            case "console":
+            case "headless":
+                terminalUiEnabled = false;
+                return true;
+
+            case "auto":
+                terminalUiEnabled = Environment.UserInteractive &&
+                    !Console.IsInputRedirected &&
+                    !Console.IsOutputRedirected;
+                return true;
+
+            default:
+                terminalUiEnabled = default;
+                return false;
+        }
     }
 
     private static bool TryReadValue(string[] args, ref int index, out string? value)
