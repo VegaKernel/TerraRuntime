@@ -4,8 +4,9 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Mutable state accepted by the authoritative projectile store. Type is already gameplay-domain identity;
-/// packet presence flags and packed ProjectileKey representation remain outside Core.
+/// Mutable state accepted by the authoritative projectile store. Type is the vanilla client-visible
+/// presentation identity for the current protocol; future custom archetype identity stays separate from
+/// this field. Packet presence flags and packed ProjectileKey representation remain outside Core.
 /// </summary>
 public readonly record struct ProjectileStateUpdate(
     ProjectileTypeId Type,
@@ -23,7 +24,9 @@ public readonly record struct ProjectileStateUpdate(
 /// <summary>
 /// Bounded single-writer authoritative projectile lifecycle state. Protocol 326 packs projectile index into
 /// ProjectileKey with the Multiplicity-verified range 0..1000. That is an addressability ceiling only; it is
-/// deliberately not named or treated as Terraria's gameplay projectile population limit.
+/// deliberately not named or treated as Terraria's gameplay projectile population limit. Live entries must
+/// always carry a protocol-version-valid nonzero vanilla presentation type so authoritative state cannot
+/// contain an entity that the official client is unable to represent.
 /// </summary>
 public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
 {
