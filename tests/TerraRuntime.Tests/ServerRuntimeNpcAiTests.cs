@@ -41,6 +41,36 @@ public sealed class ServerRuntimeNpcAiTests
     }
 
     [Fact]
+    public void Authoritative_tick_targets_live_unmounted_player_before_demon_eye_motion()
+    {
+        var state = new ServerRuntimeState();
+        var slots = new PlayerSlotPool(1);
+        using PlayerJoinSession player = CreateAwaitingSpawnSession(slots);
+        ConnectionHandle connection = SpawnPlayer(
+            state,
+            GameCommandSourceId.FromConnection(42),
+            player,
+            spawnX: 20,
+            spawnY: 10);
+        Assert.True(state.TryCapturePlayerSnapshot(connection.Player, out PlayerStateSnapshot playerSnapshot));
+        Assert.Equal(320f, playerSnapshot.PositionX);
+        Assert.Equal(160f, playerSnapshot.PositionY);
+
+        NpcSnapshot demonEye = Spawn(state, slot: 4, CreateDemonEye(NpcSimulationState.Initial));
+
+        state.Tick();
+
+        Assert.Equal(new NpcAiStateTickSummary(1, 1, 1, 0), state.LastNpcAiTick);
+        Assert.True(state.TryCaptureNpcSnapshot(demonEye.Handle, out NpcSnapshot updated));
+        Assert.Equal((ushort)player.Slot.Value, updated.Target);
+        Assert.Equal(1, updated.Simulation.DirectionX);
+        Assert.Equal(-1, updated.Simulation.DirectionY);
+        Assert.Equal(0.1f, updated.VelocityX, 5);
+        Assert.Equal(-0.04f, updated.VelocityY, 5);
+        Assert.Equal(new NpcRevision(2), updated.Revision);
+    }
+
+    [Fact]
     public void Unsupported_npc_type_is_examined_but_not_mutated_by_current_ai_phase()
     {
         var state = new ServerRuntimeState();
@@ -102,6 +132,29 @@ public sealed class ServerRuntimeNpcAiTests
         NpcSnapshot? snapshot = completion.Task.GetAwaiter().GetResult();
         Assert.True(snapshot.HasValue);
         return snapshot.Value;
+    }
+
+    private static PlayerJoinSession CreateAwaitingSpawnSession(PlayerSlotPool slots)
+    {
+        Assert.True(slots.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+        var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());
+        Assert.Equal(PlayerJoinTransition.SectionRequestAccepted, session.ObserveSectionRequest());
+        return session;
+    }
+
+    private static ConnectionHandle SpawnPlayer(
+        ServerRuntimeState state,
+        GameCommandSourceId source,
+        PlayerJoinSession session,
+        short spawnX,
+        short spawnY)
+    {
+        var connection = new ConnectionHandle(source, session.Handle);
+        var request = new PlayerSpawnCommitRequest(session.Slot, spawnX, spawnY, 0, 0, 0, 0, 0);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session, request));
+        Assert.Equal(PlayerSpawnCommitResult.Committed, state.LastSpawnCommitResult);
+        return connection;
     }
 
     private static NpcStateUpdate CreateDemonEye(NpcSimulationState simulation) =>
