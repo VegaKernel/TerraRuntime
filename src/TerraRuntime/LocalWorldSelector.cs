@@ -106,8 +106,9 @@ internal static class LocalWorldSelector
     {
         string workingDirectoryWorlds = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, "Worlds"));
         string executableDirectoryWorlds = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "Worlds"));
+        string[] directories = [workingDirectoryWorlds, executableDirectoryWorlds];
 
-        return [workingDirectoryWorlds, executableDirectoryWorlds]
+        return directories
             .Distinct(GetPathComparer())
             .ToArray();
     }
