@@ -13,6 +13,7 @@ internal sealed class TerminalUiHost : IDisposable
     private readonly IPlayerOperations playerOperations;
     private readonly INpcOperations npcOperations;
     private readonly IProjectileOperations? projectileOperations;
+    private readonly IWorldItemOperations? worldItemOperations;
     private readonly INetworkOperations networkOperations;
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
@@ -32,12 +33,14 @@ internal sealed class TerminalUiHost : IDisposable
         Action<bool> activityChanged,
         Action<string> failureSink,
         CancellationToken serverCancellation,
-        IProjectileOperations? projectileOperations)
+        IProjectileOperations? projectileOperations,
+        IWorldItemOperations? worldItemOperations)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
         this.npcOperations = npcOperations ?? throw new ArgumentNullException(nameof(npcOperations));
         this.projectileOperations = projectileOperations;
+        this.worldItemOperations = worldItemOperations;
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
@@ -61,7 +64,8 @@ internal sealed class TerminalUiHost : IDisposable
         Action<bool> activityChanged,
         Action<string> failureSink,
         CancellationToken serverCancellation,
-        IProjectileOperations? projectileOperations = null)
+        IProjectileOperations? projectileOperations = null,
+        IWorldItemOperations? worldItemOperations = null)
     {
         var host = new TerminalUiHost(
             dashboardOperations,
@@ -73,7 +77,8 @@ internal sealed class TerminalUiHost : IDisposable
             activityChanged,
             failureSink,
             serverCancellation,
-            projectileOperations);
+            projectileOperations,
+            worldItemOperations);
         host.thread.Start();
         return host;
     }
@@ -106,7 +111,8 @@ internal sealed class TerminalUiHost : IDisposable
                 networkOperations,
                 worldOperations,
                 logOperations,
-                projectileOperations);
+                projectileOperations,
+                worldItemOperations);
 
             long nextRefresh = 0;
 
