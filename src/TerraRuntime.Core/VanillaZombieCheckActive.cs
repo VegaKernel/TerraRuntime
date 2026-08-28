@@ -41,11 +41,9 @@ public static class VanillaZombieCheckActive
             return false;
         }
 
-        int centerX = (int)(positionX + width * 0.5f);
-        int centerY = (int)(positionY + height * 0.5f);
         var activeRange = new IntRect(
-            centerX - ActiveRangeX,
-            centerY - ActiveRangeY,
+            (int)(positionX + width * 0.5f - ActiveRangeX),
+            (int)(positionY + height * 0.5f - ActiveRangeY),
             ActiveRangeX * 2,
             ActiveRangeY * 2);
         var resetRange = new IntRect(
