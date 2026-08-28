@@ -52,6 +52,7 @@ jobs:
           tile_id="$(find_ref 'TileID.cs' 'class TileID')"
           net_message="$(find_ref 'NetMessage.cs' 'class NetMessage')"
           message_buffer="$(find_ref 'MessageBuffer.cs' 'class MessageBuffer')"
+          creative_powers="$(find_ref 'CreativePowers.cs' 'class ModifyTimeRate')"
 
           cp "$npc_file" artifacts/reference-1458-npc/NPC.cs
           cp "$npc_id" artifacts/reference-1458-npc/NPCID.cs
@@ -61,9 +62,10 @@ jobs:
           cp "$tile_id" artifacts/reference-1458-npc/TileID.cs
           cp "$net_message" artifacts/reference-1458-npc/NetMessage.cs
           cp "$message_buffer" artifacts/reference-1458-npc/MessageBuffer.cs
+          cp "$creative_powers" artifacts/reference-1458-npc/CreativePowers.cs
           cp decompiled/1458/REFERENCE_SOURCE.txt artifacts/reference-1458-npc/REFERENCE_SOURCE.txt
 
-          python3 - "$npc_file" "$player_file" "$collision_file" "$main_file" "$net_message" "$message_buffer" <<'PY'
+          python3 - "$npc_file" "$player_file" "$collision_file" "$main_file" "$net_message" "$message_buffer" "$creative_powers" <<'PY'
           import json
           import pathlib
           import re
@@ -75,12 +77,14 @@ jobs:
           main_path = pathlib.Path(sys.argv[4])
           net_message_path = pathlib.Path(sys.argv[5])
           message_buffer_path = pathlib.Path(sys.argv[6])
+          creative_powers_path = pathlib.Path(sys.argv[7])
           text = npc_path.read_text(errors="ignore")
           player_text = player_path.read_text(errors="ignore")
           collision_text = collision_path.read_text(errors="ignore")
           main_text = main_path.read_text(errors="ignore")
           net_message_text = net_message_path.read_text(errors="ignore")
           message_buffer_text = message_buffer_path.read_text(errors="ignore")
+          creative_powers_text = creative_powers_path.read_text(errors="ignore")
 
           def method_summary(name):
               pattern = re.compile(rf"\b{name}\s*\([^;{{}}]*\)\s*\{{")
@@ -142,6 +146,7 @@ jobs:
               "mainTileSolidTopMarkers": len(re.findall(r"\btileSolidTop\b", main_text)),
               "netMessagePacket23Cases": len(re.findall(r"case\s+23\s*:", net_message_text)),
               "messageBufferPacket23Cases": len(re.findall(r"case\s+23\s*:", message_buffer_text)),
+              "creativeTargetTimeRateMarkers": len(re.findall(r"\bTargetTimeRate\b", creative_powers_text)),
           }
           print("NPC_REFERENCE_SUMMARY=" + json.dumps(summary, sort_keys=True))
           PY
