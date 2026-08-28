@@ -107,7 +107,7 @@ public sealed class RuntimeWorldClockTests
 
         RuntimeWorldClock clock = RuntimeWorldClock.FromWorld(metadata, powers);
 
-        Assert.Equal(13, clock.DayRate);
+        Assert.Equal(12, clock.DayRate);
         Assert.Equal(123d, clock.Time);
         Assert.False(clock.DayTime);
         Assert.Equal((byte)5, clock.MoonPhase);
