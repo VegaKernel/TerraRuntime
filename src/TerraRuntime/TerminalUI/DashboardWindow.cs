@@ -14,6 +14,7 @@ internal sealed class DashboardWindow : Runnable
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
     private readonly INpcOperations npcOperations;
+    private readonly IProjectileOperations? projectileOperations;
     private readonly INetworkOperations networkOperations;
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
@@ -32,11 +33,13 @@ internal sealed class DashboardWindow : Runnable
         INpcOperations npcOperations,
         INetworkOperations networkOperations,
         IWorldOperations worldOperations,
-        ILogOperations logOperations)
+        ILogOperations logOperations,
+        IProjectileOperations? projectileOperations = null)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
         this.npcOperations = npcOperations ?? throw new ArgumentNullException(nameof(npcOperations));
+        this.projectileOperations = projectileOperations;
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
@@ -55,6 +58,7 @@ internal sealed class DashboardWindow : Runnable
                         new MenuItem("_Dashboard", "Runtime overview", ShowDashboard),
                         new MenuItem("_Players", "Live authoritative player read model", ShowPlayers),
                         new MenuItem("_NPCs", "Live authoritative NPC read model", ShowNpcs),
+                        new MenuItem("P_rojectiles", "Grouped authoritative projectile read model", ShowProjectiles),
                         new MenuItem("_Network", "Connection and replication counters", ShowNetwork),
                         new MenuItem("_World", "Validated world and cache state", ShowWorld),
                         new MenuItem("_Logs", "Bounded runtime event log", ShowLogs)
@@ -127,6 +131,9 @@ internal sealed class DashboardWindow : Runnable
             case TerminalUiScreen.Npcs:
                 RefreshNpcs();
                 break;
+            case TerminalUiScreen.Projectiles:
+                RefreshProjectiles();
+                break;
             case TerminalUiScreen.Network:
                 RefreshNetwork();
                 break;
@@ -147,6 +154,8 @@ internal sealed class DashboardWindow : Runnable
     internal void ShowPlayers() => SelectScreen(TerminalUiScreen.Players, "TerraRuntime - Players");
 
     internal void ShowNpcs() => SelectScreen(TerminalUiScreen.Npcs, "TerraRuntime - NPCs");
+
+    internal void ShowProjectiles() => SelectScreen(TerminalUiScreen.Projectiles, "TerraRuntime - Projectiles");
 
     internal void ShowNetwork() => SelectScreen(TerminalUiScreen.Network, "TerraRuntime - Network");
 
@@ -255,19 +264,54 @@ internal sealed class DashboardWindow : Runnable
         rows[rows.Length - 1].Text = $"Snapshot: {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
+    private void RefreshProjectiles()
+    {
+        ClearRows();
+        if (projectileOperations is null)
+        {
+            rows[0].Text = "Projectile telemetry: <unavailable>";
+            return;
+        }
+
+        RuntimeProjectilesSnapshot snapshot = projectileOperations.CaptureSnapshot();
+        RuntimePlayersSnapshot playersSnapshot = playerOperations.CaptureSnapshot();
+        ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
+        ReadOnlySpan<RuntimeProjectileGroupSnapshot> groups = snapshot.Groups.Span;
+        rows[0].Text =
+            $"Live projectiles: {snapshot.ActiveProjectiles} in {groups.Length} owner/type group(s)   " +
+            $"commits spawn {snapshot.CommittedSpawns:N0} update {snapshot.CommittedUpdates:N0} despawn {snapshot.CommittedDespawns:N0}";
+
+        int visible = Math.Min(groups.Length, rows.Length - 3);
+        for (int i = 0; i < visible; i++)
+        {
+            RuntimeProjectileGroupSnapshot group = groups[i];
+            string owner = ResolveProjectileOwner(group.Spawner, players);
+            rows[i + 1].Text =
+                $"x{group.Count,-4} type {group.Type,-5} {owner,-28} " +
+                $"pos~ {group.AveragePositionX / 16f:F1},{group.AveragePositionY / 16f:F1}t " +
+                $"vel~ {group.AverageVelocityX:F1},{group.AverageVelocityY:F1} " +
+                $"dmg<={group.MaxDamage} orig<={group.MaxOriginalDamage} kb<={group.MaxKnockBack:F1}";
+        }
+
+        if (groups.Length > visible)
+            rows[rows.Length - 2].Text = $"... {groups.Length - visible} more projectile group(s) not shown";
+
+        rows[rows.Length - 1].Text = $"Snapshot: {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+    }
+
     private void RefreshNetwork()
     {
         ClearRows();
         RuntimeNetworkSnapshot snapshot = networkOperations.CaptureSnapshot();
         rows[0].Text = $"Connections : active {snapshot.ActiveConnections}   registered {snapshot.RegisteredConnections}";
         rows[1].Text = $"Admission   : accepted {snapshot.AcceptedConnections:N0}   rejected {snapshot.RejectedConnections:N0}";
-        rows[2].Text = $"Queues      : tracked {snapshot.TrackedOutboundQueues}   frames {snapshot.QueuedOutboundFrames:N0}   bytes {snapshot.QueuedOutboundBytes:N0}";
+        rows[2].Text = $"Queues      : tracked {snapshot.TrackedOutboundQueues}   frames {snapshot.QueuedOutboundFrames:N0}   bytes {snapshot.QueuedOutboundBytes:N0}   rejected {snapshot.RejectedOutboundFrames:N0}   slow {snapshot.SlowClients}";
         rows[3].Text = $"Movement    : relayed {snapshot.RelayedMovementFrames:N0}   AOI resync {snapshot.MovementResyncFrames:N0}";
         rows[4].Text = $"Appearance  : relayed {snapshot.RelayedAppearanceFrames:N0}   baselines {snapshot.AppearanceBaselineFrames:N0}";
         rows[5].Text = $"Equipment   : relayed {snapshot.RelayedEquipmentFrames:N0}   baselines {snapshot.EquipmentBaselineFrames:N0}   dropped snapshots {snapshot.DroppedEquipmentSnapshotUpdates:N0}";
         rows[6].Text = $"Lifecycle   : active baselines {snapshot.PlayerActiveBaselineFrames:N0}   deactivations {snapshot.PlayerDeactivationFrames:N0}";
         rows[7].Text = $"NPC packet23: relayed {snapshot.NpcRelayedFrames:N0}   baselines {snapshot.NpcBaselineFrames:N0}   rejected {snapshot.NpcRejectedFrames:N0}   unsupported {snapshot.NpcUnsupportedCommits:N0}";
-        rows[8].Text = $"Backpressure: rejected frames {snapshot.RejectedOutboundFrames:N0}   slow clients {snapshot.SlowClients}";
+        rows[8].Text = $"Proj packet27: relayed {snapshot.ProjectileRelayedFrames:N0}   baselines {snapshot.ProjectileBaselineFrames:N0}   rejected {snapshot.ProjectileRejectedFrames:N0}   unsupported {snapshot.ProjectileUnsupportedCommits:N0}";
         rows[9].Text = $"Inbound 1s  : tracked {snapshot.TrackedInboundRates}   frames {snapshot.InboundWindowFrames:N0}   bytes {snapshot.InboundWindowBytes:N0}   rejected {snapshot.RejectedInboundFrames:N0}";
 
         ReadOnlySpan<RuntimeConnectionRateDetail> rates = snapshot.TopInboundRates.Span;
@@ -434,6 +478,18 @@ internal sealed class DashboardWindow : Runnable
             row.Text = string.Empty;
     }
 
+    private static string ResolveProjectileOwner(byte spawner, ReadOnlySpan<RuntimePlayerSnapshot> players)
+    {
+        for (int i = 0; i < players.Length; i++)
+        {
+            RuntimePlayerSnapshot player = players[i];
+            if (player.Slot == spawner)
+                return $"owner {SanitizeName(player.Name)}(#{spawner})";
+        }
+
+        return $"spawner #{spawner}";
+    }
+
     private static string SanitizeName(string name) =>
         string.IsNullOrWhiteSpace(name) ? "<unnamed>" : SanitizeText(name, 20);
 
@@ -475,6 +531,7 @@ internal sealed class DashboardWindow : Runnable
         Dashboard,
         Players,
         Npcs,
+        Projectiles,
         Network,
         World,
         Logs
