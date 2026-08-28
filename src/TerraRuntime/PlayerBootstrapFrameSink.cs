@@ -21,7 +21,7 @@ public enum PlayerBootstrapStopReason : byte
 
 /// <summary>
 /// Connection-owned coordinator for the minimal vanilla 1.4.5.8 join path:
-/// Hello -> packet 3 -> packet 6/7 -> packet 8/sections/49 -> packet 12 authoritative handoff.
+/// Hello -> packet 3 -> packet 6/7 -> packet 8/9/10/11/49/7 -> packet 12 authoritative handoff.
 /// </summary>
 public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 {
@@ -170,7 +170,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (_session.State != PlayerJoinState.AwaitingSectionRequest)
             return Stop(PlayerBootstrapStopReason.InvalidJoinState);
 
-        if (!TryQueue(_packets.WorldInfoFrame))
+        if (!TryQueue(_packets.StatusFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 
         foreach (ReadOnlyMemory<byte> sectionFrame in _packets.BaseSectionFrames)
@@ -179,8 +179,12 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
 
-        if (!TryQueue(_packets.EnterWorldFrame))
+        if (!TryQueue(_packets.BaseTileFrameFrame) ||
+            !TryQueue(_packets.EnterWorldFrame) ||
+            !TryQueue(_packets.WorldInfoFrame))
+        {
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
+        }
 
         _session.ObserveSectionRequest();
         return TerrariaFrameSinkResult.Continue;
