@@ -94,14 +94,19 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         if (simulation.NoTileCollide)
         {
-            // Vanilla bypasses UpdateCollision entirely in this branch. Persisted collision/wet/overlap flags
-            // therefore remain available to the next AI tick; verified style-2 ignores them while noTileCollide.
+            // Vanilla bypasses UpdateCollision entirely in this branch but still captures oldPosition before
+            // direct movement. Persisted collision/wet/overlap flags otherwise remain available unchanged.
             next = aiState with
             {
                 PositionX = aiState.PositionX + velocityX,
                 PositionY = aiState.PositionY + velocityY,
                 VelocityX = velocityX,
-                VelocityY = velocityY
+                VelocityY = velocityY,
+                Simulation = simulation with
+                {
+                    OldPositionX = aiState.PositionX,
+                    OldPositionY = aiState.PositionY
+                }
             };
             return true;
         }
@@ -167,6 +172,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             movementY = collideY ? collidedVelocityY : collidedVelocityY * slowdown;
         }
 
+        // Collision_MoveWhileDry / Collision_MoveWhileWet both capture oldPosition immediately before
+        // applying the movement delta. AI_003 consumes that X value on the following tick.
+        float oldPositionX = aiState.PositionX;
+        float oldPositionY = aiState.PositionY;
         float nextPositionX = aiState.PositionX + movementX;
         float nextPositionY = aiState.PositionY + movementY;
         VanillaSlopeCollisionResult slope = VanillaWorldSlopeCollision.Resolve(
@@ -200,6 +209,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             {
                 OldVelocityX = oldVelocityX,
                 OldVelocityY = oldVelocityY,
+                OldPositionX = oldPositionX,
+                OldPositionY = oldPositionY,
                 CollideX = collideX,
                 CollideY = collideY,
                 Wet = wet,
