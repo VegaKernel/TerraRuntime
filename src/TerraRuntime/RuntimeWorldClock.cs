@@ -1,3 +1,5 @@
+using TerraRuntime.World;
+
 namespace TerraRuntime;
 
 /// <summary>
@@ -46,6 +48,23 @@ internal sealed class RuntimeWorldClock
     public bool SlimeRainActive => SlimeRainTime > 0d;
 
     public int DayRate => _dayRate;
+
+    public static RuntimeWorldClock FromWorld(
+        WorldFileRuntimeMetadata metadata,
+        WorldCreativePowersData creativePowers)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentNullException.ThrowIfNull(creativePowers);
+
+        int targetTimeRate = (int)Math.Round(1f + creativePowers.TimeRateSlider * 23f);
+        int dayRate = creativePowers.FreezeTime ? 0 : targetTimeRate;
+        return new RuntimeWorldClock(
+            metadata.Time,
+            metadata.DayTime,
+            metadata.MoonPhase,
+            metadata.SlimeRainTime,
+            dayRate);
+    }
 
     public void SetDayRate(int dayRate)
     {
