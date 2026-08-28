@@ -167,13 +167,16 @@ public static class TerrariaServerHost
         var runtimeConnections = new RuntimeConnectionRegistry(
             runtimeInterestManagement,
             world.Header.Dimensions);
+        var npcReplication = new RuntimeNpcReplicationRegistry();
+        var npcStore = new RuntimeNpcStore(commitSink: npcReplication);
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
         var playerOperations = new RuntimePlayerOperationsTelemetry();
-        var playerEvents = new RuntimePlayerEventDispatcher(
+        var playerNetworkEvents = new RuntimePlayerEventDispatcher(
             runtimeConnections,
             vitalsReplication,
             playerOperations);
-        var state = new ServerRuntimeState(playerEvents, worldTiles: world.Tiles);
+        var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, npcReplication);
+        var state = new ServerRuntimeState(playerEvents, npcs: npcStore, worldTiles: world.Tiles);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
             static (runtime, command) => runtime.Apply(command),
@@ -340,6 +343,7 @@ public static class TerrariaServerHost
                     movementIngress,
                     disconnectIngress,
                     runtimeConnections,
+                    npcReplication,
                     vitalsReplication,
                     worldItems,
                     queueTelemetry,
@@ -404,6 +408,7 @@ public static class TerrariaServerHost
         IPlayerMovementIngress movementIngress,
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
+        RuntimeNpcReplicationRegistry npcReplication,
         RuntimePlayerVitalsReplicator vitalsReplication,
         RuntimeWorldItemStore worldItems,
         RuntimeConnectionQueueTelemetry queueTelemetry,
@@ -426,8 +431,16 @@ public static class TerrariaServerHost
                 return;
             }
 
+            if (!npcReplication.TryRegister(source, outbound))
+            {
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+            }
+
             if (!queueTelemetry.TryRegister(connectionId, outbound))
             {
+                npcReplication.TryUnregister(source);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
@@ -436,6 +449,7 @@ public static class TerrariaServerHost
             if (!rateTelemetry.TryRegister(connectionId, rateAccountant))
             {
                 queueTelemetry.TryUnregister(connectionId);
+                npcReplication.TryUnregister(source);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
@@ -445,6 +459,7 @@ public static class TerrariaServerHost
             {
                 rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
+                npcReplication.TryUnregister(source);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
@@ -504,6 +519,7 @@ public static class TerrariaServerHost
                 rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
                 vitalsReplication.TryUnregister(source);
+                npcReplication.TryUnregister(source);
                 if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
                     playingPlayer is PlayerHandle player)
                 {
