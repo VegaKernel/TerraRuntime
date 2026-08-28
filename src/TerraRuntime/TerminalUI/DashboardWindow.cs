@@ -9,7 +9,7 @@ namespace TerraRuntime.TerminalUI;
 
 internal sealed class DashboardWindow : Runnable
 {
-    private const int RowCount = 14;
+    private const int RowCount = 15;
     private const int MaximumLogSources = 32;
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
@@ -266,32 +266,33 @@ internal sealed class DashboardWindow : Runnable
         rows[4].Text = $"Appearance  : relayed {snapshot.RelayedAppearanceFrames:N0}   baselines {snapshot.AppearanceBaselineFrames:N0}";
         rows[5].Text = $"Equipment   : relayed {snapshot.RelayedEquipmentFrames:N0}   baselines {snapshot.EquipmentBaselineFrames:N0}   dropped snapshots {snapshot.DroppedEquipmentSnapshotUpdates:N0}";
         rows[6].Text = $"Lifecycle   : active baselines {snapshot.PlayerActiveBaselineFrames:N0}   deactivations {snapshot.PlayerDeactivationFrames:N0}";
-        rows[7].Text = $"Backpressure: rejected frames {snapshot.RejectedOutboundFrames:N0}   slow clients {snapshot.SlowClients}";
-        rows[8].Text = $"Inbound 1s  : tracked {snapshot.TrackedInboundRates}   frames {snapshot.InboundWindowFrames:N0}   bytes {snapshot.InboundWindowBytes:N0}   rejected {snapshot.RejectedInboundFrames:N0}";
+        rows[7].Text = $"NPC packet23: relayed {snapshot.NpcRelayedFrames:N0}   baselines {snapshot.NpcBaselineFrames:N0}   rejected {snapshot.NpcRejectedFrames:N0}   unsupported {snapshot.NpcUnsupportedCommits:N0}";
+        rows[8].Text = $"Backpressure: rejected frames {snapshot.RejectedOutboundFrames:N0}   slow clients {snapshot.SlowClients}";
+        rows[9].Text = $"Inbound 1s  : tracked {snapshot.TrackedInboundRates}   frames {snapshot.InboundWindowFrames:N0}   bytes {snapshot.InboundWindowBytes:N0}   rejected {snapshot.RejectedInboundFrames:N0}";
 
         ReadOnlySpan<RuntimeConnectionRateDetail> rates = snapshot.TopInboundRates.Span;
         for (int i = 0; i < Math.Min(rates.Length, 2); i++)
         {
             RuntimeConnectionRateDetail rate = rates[i];
-            rows[i + 9].Text =
+            rows[i + 10].Text =
                 $"Inbound #{rate.ConnectionId,-5}: 1s {rate.WindowFrames:N0} frames / {FormatMebibytes(rate.WindowBytes)}   " +
                 $"total {rate.TotalFrames:N0} / {FormatMebibytes(rate.TotalBytes)}   rejected {rate.RejectedFrames:N0}";
         }
         if (rates.Length == 0)
-            rows[9].Text = "Inbound detail: <no active inbound traffic>";
+            rows[10].Text = "Inbound detail: <no active inbound traffic>";
 
         ReadOnlySpan<RuntimeConnectionQueueDetail> queues = snapshot.TopOutboundQueues.Span;
         for (int i = 0; i < Math.Min(queues.Length, 2); i++)
         {
             RuntimeConnectionQueueDetail queue = queues[i];
-            rows[i + 11].Text =
+            rows[i + 12].Text =
                 $"Queue #{queue.ConnectionId,-5}: frames {queue.QueuedFrames:N0}   bytes {FormatMebibytes(queue.QueuedBytes)}   " +
                 $"rejected {queue.RejectedFrames:N0}   {(queue.SlowClient ? "SLOW" : "ok")}";
         }
         if (queues.Length == 0)
-            rows[11].Text = "Queue detail : <no queued/rejected/slow clients>";
+            rows[12].Text = "Queue detail : <no queued/rejected/slow clients>";
 
-        rows[13].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+        rows[14].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
     private void RefreshWorld()
