@@ -1,14 +1,14 @@
-using System.Buffers;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Microsoft.Win32.SafeHandles;
 
 namespace TerraRuntime.World;
 
 /// <summary>
-/// Self-contained startup snapshot. The live .wld is used only as a freshness/recovery checkpoint;
-/// a valid warm snapshot contains the canonical bytes needed for non-tile persistence plus normalized
-/// sharded tile state for fast parallel reconstruction.
+/// Disposable self-contained TerraRuntime startup snapshot. There is intentionally no migration or
+/// schema-version mechanism: the project has no deployed runtime-world state to preserve. Any incompatible
+/// or invalid snapshot is discarded by the caller and rebuilt from the canonical .wld checkpoint.
 /// </summary>
 public static class RuntimeWorldSnapshotCache
 {
@@ -20,9 +20,24 @@ public static class RuntimeWorldSnapshotCache
     private const int TargetShardBytes = 16 * 1024 * 1024;
     private const int TilesPerShard = TargetShardBytes / TileRecordSize;
 
-    private static ReadOnlySpan<byte> Magic => "TRWCACHE"u8;
+    private const WorldTileFlags KnownFlags =
+        WorldTileFlags.Active |
+        WorldTileFlags.WireRed |
+        WorldTileFlags.WireBlue |
+        WorldTileFlags.WireGreen |
+        WorldTileFlags.WireYellow |
+        WorldTileFlags.Actuator |
+        WorldTileFlags.Inactive |
+        WorldTileFlags.InvisibleBlock |
+        WorldTileFlags.InvisibleWall |
+        WorldTileFlags.FullbrightBlock |
+        WorldTileFlags.FullbrightWall;
 
-    public const int SchemaVersion = 3;
+    private static readonly bool NativeTileLayoutSupported =
+        BitConverter.IsLittleEndian &&
+        MemoryMarshal.AsBytes(new WorldTile[1].AsSpan()).Length == TileRecordSize;
+
+    private static ReadOnlySpan<byte> Magic => "TRWCACHE"u8;
 
     public static string GetCachePath(string worldPath)
     {
@@ -71,6 +86,9 @@ public static class RuntimeWorldSnapshotCache
         limits.Validate();
         readOptions.Validate();
         world = null;
+
+        if (!NativeTileLayoutSupported)
+            return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.TileLayoutMismatch);
 
         if (!File.Exists(cachePath))
             return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.NotFound);
@@ -218,11 +236,15 @@ public static class RuntimeWorldSnapshotCache
         ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
         ArgumentNullException.ThrowIfNull(world);
 
-        if (sourceStamp.Length != sourceWorld.Length || sourceWorld.Length == 0)
+        if (!NativeTileLayoutSupported || sourceStamp.Length != sourceWorld.Length || sourceWorld.Length == 0)
             return new RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult.InvalidWorld);
 
         long expectedTileCount = (long)world.Header.Dimensions.WidthTiles * world.Header.Dimensions.HeightTiles;
-        if (expectedTileCount != world.Tiles.Count || expectedTileCount < 0)
+        if (expectedTileCount != world.Tiles.Count || expectedTileCount <= 0)
+            return new RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult.InvalidWorld);
+
+        ReadOnlySpan<WorldTile> sourceTiles = world.Tiles.Tiles;
+        if (!ValidateTiles(sourceTiles))
             return new RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult.InvalidWorld);
 
         long tilePayloadLength;
@@ -248,8 +270,8 @@ public static class RuntimeWorldSnapshotCache
         Span<byte> header = stackalloc byte[HeaderSize];
         header.Clear();
         Magic.CopyTo(header);
-        BinaryPrimitives.WriteInt32LittleEndian(header[8..], SchemaVersion);
-        BinaryPrimitives.WriteInt32LittleEndian(header[12..], HeaderSize);
+        BinaryPrimitives.WriteInt32LittleEndian(header[8..], HeaderSize);
+        BinaryPrimitives.WriteInt32LittleEndian(header[12..], TileRecordSize);
         BinaryPrimitives.WriteInt64LittleEndian(header[16..], sourceStamp.Length);
         BinaryPrimitives.WriteInt64LittleEndian(header[24..], sourceStamp.LastWriteTimeUtcTicks);
         BinaryPrimitives.WriteInt64LittleEndian(header[32..], sourceWorld.Length);
@@ -257,11 +279,11 @@ public static class RuntimeWorldSnapshotCache
         BinaryPrimitives.WriteInt32LittleEndian(header[72..], world.Envelope.FormatVersion);
         BinaryPrimitives.WriteInt32LittleEndian(header[76..], world.Header.Dimensions.WidthTiles);
         BinaryPrimitives.WriteInt32LittleEndian(header[80..], world.Header.Dimensions.HeightTiles);
-        BinaryPrimitives.WriteInt32LittleEndian(header[84..], TileRecordSize);
+        BinaryPrimitives.WriteInt32LittleEndian(header[84..], ShardEntrySize);
         BinaryPrimitives.WriteInt64LittleEndian(header[88..], expectedTileCount);
         BinaryPrimitives.WriteInt64LittleEndian(header[96..], tilePayloadLength);
         BinaryPrimitives.WriteInt32LittleEndian(header[104..], shardCount);
-        BinaryPrimitives.WriteInt32LittleEndian(header[108..], ShardEntrySize);
+        BinaryPrimitives.WriteInt32LittleEndian(header[108..], 0);
         BinaryPrimitives.WriteInt64LittleEndian(header[112..], tilePayloadOffset);
         BinaryPrimitives.WriteInt64LittleEndian(header[120..], shardTableOffset);
 
@@ -287,19 +309,20 @@ public static class RuntimeWorldSnapshotCache
                 stream.Write(header);
                 stream.Write(sourceWorld);
 
-                ReadOnlySpan<WorldTile> sourceTiles = world.Tiles.Tiles;
                 for (int shardIndex = 0; shardIndex < shards.Length; shardIndex++)
                 {
                     TileShardDescriptor shard = shards[shardIndex];
-                    byte[] hash = WriteTileShard(
-                        stream,
-                        sourceTiles,
+                    ReadOnlySpan<WorldTile> shardTiles = sourceTiles.Slice(
                         checked((int)shard.TileStart),
                         shard.TileCount);
-                    shards[shardIndex] = shard with { Hash = hash };
+                    ReadOnlySpan<byte> shardBytes = MemoryMarshal.AsBytes(shardTiles);
+                    byte[] hash = SHA256.HashData(shardBytes);
+                    stream.Write(shardBytes);
+
+                    TileShardDescriptor written = shard with { Hash = hash };
                     EncodeShardEntry(
                         shardTable.AsSpan(shardIndex * ShardEntrySize, ShardEntrySize),
-                        shards[shardIndex]);
+                        written);
                 }
 
                 stream.Write(shardTable);
@@ -437,17 +460,6 @@ public static class RuntimeWorldSnapshotCache
         if (!bytes[..Magic.Length].SequenceEqual(Magic))
             return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidMagic);
 
-        int schemaVersion = BinaryPrimitives.ReadInt32LittleEndian(bytes[8..]);
-        if (schemaVersion != SchemaVersion)
-        {
-            return new RuntimeWorldSnapshotLoadDiagnostic(
-                RuntimeWorldSnapshotLoadResult.UnsupportedSchema,
-                schemaVersion);
-        }
-
-        if (BinaryPrimitives.ReadInt32LittleEndian(bytes[12..]) != HeaderSize)
-            return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidHeader);
-
         long sourceLength = BinaryPrimitives.ReadInt64LittleEndian(bytes[16..]);
         long sourceLastWriteTimeUtcTicks = BinaryPrimitives.ReadInt64LittleEndian(bytes[24..]);
         long canonicalLength = BinaryPrimitives.ReadInt64LittleEndian(bytes[32..]);
@@ -455,24 +467,25 @@ public static class RuntimeWorldSnapshotCache
         int worldFormatVersion = BinaryPrimitives.ReadInt32LittleEndian(bytes[72..]);
         int width = BinaryPrimitives.ReadInt32LittleEndian(bytes[76..]);
         int height = BinaryPrimitives.ReadInt32LittleEndian(bytes[80..]);
-        int tileRecordSize = BinaryPrimitives.ReadInt32LittleEndian(bytes[84..]);
         long tileCount = BinaryPrimitives.ReadInt64LittleEndian(bytes[88..]);
         long tilePayloadLength = BinaryPrimitives.ReadInt64LittleEndian(bytes[96..]);
         int shardCount = BinaryPrimitives.ReadInt32LittleEndian(bytes[104..]);
-        int shardEntrySize = BinaryPrimitives.ReadInt32LittleEndian(bytes[108..]);
+        int reserved = BinaryPrimitives.ReadInt32LittleEndian(bytes[108..]);
         long tilePayloadOffset = BinaryPrimitives.ReadInt64LittleEndian(bytes[112..]);
         long shardTableOffset = BinaryPrimitives.ReadInt64LittleEndian(bytes[120..]);
 
-        if (sourceLength <= 0 ||
+        if (BinaryPrimitives.ReadInt32LittleEndian(bytes[8..]) != HeaderSize ||
+            BinaryPrimitives.ReadInt32LittleEndian(bytes[12..]) != TileRecordSize ||
+            BinaryPrimitives.ReadInt32LittleEndian(bytes[84..]) != ShardEntrySize ||
+            reserved != 0 ||
+            sourceLength <= 0 ||
             sourceLength != canonicalLength ||
             canonicalLength > int.MaxValue ||
             sourceLastWriteTimeUtcTicks < 0 ||
             width <= 0 ||
             height <= 0 ||
-            tileRecordSize != TileRecordSize ||
             tileCount <= 0 ||
-            shardCount <= 0 ||
-            shardEntrySize != ShardEntrySize)
+            shardCount <= 0)
         {
             return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.InvalidHeader);
         }
@@ -516,7 +529,6 @@ public static class RuntimeWorldSnapshotCache
             width,
             height,
             tileCount,
-            tilePayloadLength,
             shardCount,
             tilePayloadOffset,
             shardTableOffset);
@@ -528,37 +540,20 @@ public static class RuntimeWorldSnapshotCache
         CacheHeader header,
         byte[] destination)
     {
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(IoBufferSize);
         try
         {
-            using IncrementalHash hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            int copied = 0;
-            long fileOffset = HeaderSize;
-            while (copied < destination.Length)
-            {
-                int byteCount = Math.Min(destination.Length - copied, IoBufferSize);
-                Span<byte> chunk = buffer.AsSpan(0, byteCount);
-                if (!ReadExactlyAt(handle, chunk, fileOffset))
-                    return RuntimeWorldSnapshotLoadResult.Truncated;
+            if (!ReadExactlyAt(handle, destination, HeaderSize))
+                return RuntimeWorldSnapshotLoadResult.Truncated;
 
-                chunk.CopyTo(destination.AsSpan(copied, byteCount));
-                hasher.AppendData(chunk);
-                copied += byteCount;
-                fileOffset += byteCount;
-            }
-
-            byte[] hash = hasher.GetHashAndReset();
-            return CryptographicOperations.FixedTimeEquals(hash, header.CanonicalHash)
+            Span<byte> computedHash = stackalloc byte[HashSize];
+            SHA256.HashData(destination, computedHash);
+            return CryptographicOperations.FixedTimeEquals(computedHash, header.CanonicalHash)
                 ? RuntimeWorldSnapshotLoadResult.Loaded
                 : RuntimeWorldSnapshotLoadResult.CanonicalPayloadHashMismatch;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return RuntimeWorldSnapshotLoadResult.IoError;
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 
@@ -614,50 +609,45 @@ public static class RuntimeWorldSnapshotCache
         TileShardDescriptor shard,
         WorldTile[] destination)
     {
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(IoBufferSize);
         try
         {
-            using IncrementalHash payloadHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            int remainingTiles = shard.TileCount;
-            int tileIndex = checked((int)shard.TileStart);
+            int tileStart = checked((int)shard.TileStart);
+            Span<WorldTile> tiles = destination.AsSpan(tileStart, shard.TileCount);
+            Span<byte> bytes = MemoryMarshal.AsBytes(tiles);
             long fileOffset = checked(tilePayloadOffset + (shard.TileStart * TileRecordSize));
 
-            while (remainingTiles > 0)
-            {
-                int recordCount = Math.Min(remainingTiles, IoBufferSize / TileRecordSize);
-                int byteCount = recordCount * TileRecordSize;
-                Span<byte> chunk = buffer.AsSpan(0, byteCount);
-                if (!ReadExactlyAt(handle, chunk, fileOffset))
-                    return RuntimeWorldSnapshotLoadResult.Truncated;
+            if (!ReadExactlyAt(handle, bytes, fileOffset))
+                return RuntimeWorldSnapshotLoadResult.Truncated;
 
-                payloadHasher.AppendData(chunk);
-                for (int recordIndex = 0; recordIndex < recordCount; recordIndex++)
-                {
-                    ReadOnlySpan<byte> record = chunk.Slice(recordIndex * TileRecordSize, TileRecordSize);
-                    if (!TryDecodeTile(record, out WorldTile tile))
-                        return RuntimeWorldSnapshotLoadResult.InvalidTileData;
+            Span<byte> computedHash = stackalloc byte[HashSize];
+            SHA256.HashData(bytes, computedHash);
+            if (!CryptographicOperations.FixedTimeEquals(computedHash, shard.Hash))
+                return RuntimeWorldSnapshotLoadResult.PayloadHashMismatch;
 
-                    destination[tileIndex + recordIndex] = tile;
-                }
-
-                remainingTiles -= recordCount;
-                tileIndex += recordCount;
-                fileOffset += byteCount;
-            }
-
-            byte[] computedHash = payloadHasher.GetHashAndReset();
-            return CryptographicOperations.FixedTimeEquals(computedHash, shard.Hash)
+            return ValidateTiles(tiles)
                 ? RuntimeWorldSnapshotLoadResult.Loaded
-                : RuntimeWorldSnapshotLoadResult.PayloadHashMismatch;
+                : RuntimeWorldSnapshotLoadResult.InvalidTileData;
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or OverflowException)
         {
             return RuntimeWorldSnapshotLoadResult.IoError;
         }
-        finally
+    }
+
+    private static bool ValidateTiles(ReadOnlySpan<WorldTile> tiles)
+    {
+        foreach (ref readonly WorldTile tile in tiles)
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            if ((tile.Flags & ~KnownFlags) != 0 ||
+                tile.Shape > 5 ||
+                (byte)tile.LiquidKind > (byte)WorldLiquidKind.Shimmer ||
+                tile.Reserved != 0)
+            {
+                return false;
+            }
         }
+
+        return true;
     }
 
     private static bool ReadExactlyAt(SafeFileHandle handle, Span<byte> destination, long fileOffset)
@@ -724,96 +714,6 @@ public static class RuntimeWorldSnapshotCache
         return true;
     }
 
-    private static byte[] WriteTileShard(
-        Stream stream,
-        ReadOnlySpan<WorldTile> source,
-        int tileStart,
-        int tileCount)
-    {
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(IoBufferSize);
-        try
-        {
-            using IncrementalHash payloadHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            int writtenTiles = 0;
-            while (writtenTiles < tileCount)
-            {
-                int recordCount = Math.Min(tileCount - writtenTiles, IoBufferSize / TileRecordSize);
-                int byteCount = recordCount * TileRecordSize;
-                Span<byte> chunk = buffer.AsSpan(0, byteCount);
-                for (int recordIndex = 0; recordIndex < recordCount; recordIndex++)
-                {
-                    Span<byte> record = chunk.Slice(recordIndex * TileRecordSize, TileRecordSize);
-                    EncodeTile(record, source[tileStart + writtenTiles + recordIndex]);
-                }
-
-                payloadHasher.AppendData(chunk);
-                stream.Write(chunk);
-                writtenTiles += recordCount;
-            }
-
-            return payloadHasher.GetHashAndReset();
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
-    }
-
-    private static void EncodeTile(Span<byte> destination, in WorldTile tile)
-    {
-        BinaryPrimitives.WriteUInt16LittleEndian(destination, tile.Type);
-        BinaryPrimitives.WriteUInt16LittleEndian(destination[2..], tile.Wall);
-        BinaryPrimitives.WriteInt16LittleEndian(destination[4..], tile.FrameX);
-        BinaryPrimitives.WriteInt16LittleEndian(destination[6..], tile.FrameY);
-        BinaryPrimitives.WriteUInt16LittleEndian(destination[8..], (ushort)tile.Flags);
-        destination[10] = tile.LiquidAmount;
-        destination[11] = tile.TileColor;
-        destination[12] = tile.WallColor;
-        destination[13] = tile.Shape;
-        destination[14] = (byte)tile.LiquidKind;
-        destination[15] = 0;
-    }
-
-    private static bool TryDecodeTile(ReadOnlySpan<byte> source, out WorldTile tile)
-    {
-        WorldTileFlags flags = (WorldTileFlags)BinaryPrimitives.ReadUInt16LittleEndian(source[8..]);
-        const WorldTileFlags knownFlags =
-            WorldTileFlags.Active |
-            WorldTileFlags.WireRed |
-            WorldTileFlags.WireBlue |
-            WorldTileFlags.WireGreen |
-            WorldTileFlags.WireYellow |
-            WorldTileFlags.Actuator |
-            WorldTileFlags.Inactive |
-            WorldTileFlags.InvisibleBlock |
-            WorldTileFlags.InvisibleWall |
-            WorldTileFlags.FullbrightBlock |
-            WorldTileFlags.FullbrightWall;
-
-        byte shape = source[13];
-        byte liquidKind = source[14];
-        if ((flags & ~knownFlags) != 0 || shape > 5 || liquidKind > (byte)WorldLiquidKind.Shimmer || source[15] != 0)
-        {
-            tile = default;
-            return false;
-        }
-
-        tile = new WorldTile
-        {
-            Type = BinaryPrimitives.ReadUInt16LittleEndian(source),
-            Wall = BinaryPrimitives.ReadUInt16LittleEndian(source[2..]),
-            FrameX = BinaryPrimitives.ReadInt16LittleEndian(source[4..]),
-            FrameY = BinaryPrimitives.ReadInt16LittleEndian(source[6..]),
-            Flags = flags,
-            LiquidAmount = source[10],
-            TileColor = source[11],
-            WallColor = source[12],
-            Shape = shape,
-            LiquidKind = (WorldLiquidKind)liquidKind
-        };
-        return true;
-    }
-
     private static void TryDelete(string path)
     {
         try
@@ -834,7 +734,6 @@ public static class RuntimeWorldSnapshotCache
         int Width,
         int Height,
         long TileCount,
-        long TilePayloadLength,
         int ShardCount,
         long TilePayloadOffset,
         long ShardTableOffset);
@@ -844,31 +743,41 @@ public static class RuntimeWorldSnapshotCache
 
 public readonly record struct RuntimeWorldSourceStamp(long Length, long LastWriteTimeUtcTicks);
 
+public readonly record struct RuntimeWorldCacheReadOptions(int MaxParallelReads)
+{
+    public static RuntimeWorldCacheReadOptions Default =>
+        new(Math.Clamp(Environment.ProcessorCount, 1, 4));
+
+    internal void Validate()
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(MaxParallelReads, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(MaxParallelReads, 32);
+    }
+}
+
 public enum RuntimeWorldSnapshotLoadResult : byte
 {
     Loaded = 0,
     NotFound = 1,
     IoError = 2,
     InvalidMagic = 3,
-    UnsupportedSchema = 4,
-    InvalidHeader = 5,
-    SourceLengthMismatch = 6,
-    SourceNewer = 7,
-    WorldFormatMismatch = 8,
-    DimensionsMismatch = 9,
-    TileLayoutMismatch = 10,
-    TileCountMismatch = 11,
-    TileBudgetExceeded = 12,
-    TileStorageUnsupported = 13,
-    PayloadLengthMismatch = 14,
-    PayloadHashMismatch = 15,
-    InvalidTileData = 16,
-    Truncated = 17,
-    InvalidCanonicalEnvelope = 18,
-    InvalidCanonicalHeader = 19,
-    InvalidCanonicalWorld = 20,
-    InvalidShardTable = 21,
-    CanonicalPayloadHashMismatch = 22
+    InvalidHeader = 4,
+    SourceLengthMismatch = 5,
+    SourceNewer = 6,
+    WorldFormatMismatch = 7,
+    DimensionsMismatch = 8,
+    TileLayoutMismatch = 9,
+    TileBudgetExceeded = 10,
+    TileStorageUnsupported = 11,
+    PayloadLengthMismatch = 12,
+    PayloadHashMismatch = 13,
+    InvalidTileData = 14,
+    Truncated = 15,
+    InvalidCanonicalEnvelope = 16,
+    InvalidCanonicalHeader = 17,
+    InvalidCanonicalWorld = 18,
+    InvalidShardTable = 19,
+    CanonicalPayloadHashMismatch = 20
 }
 
 public readonly record struct RuntimeWorldSnapshotLoadDiagnostic(

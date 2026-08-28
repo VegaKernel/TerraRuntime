@@ -215,7 +215,7 @@ public static class TerrariaServerHost
             long allocatedBytes = Math.Max(
                 0L,
                 GC.GetTotalAllocatedBytes(precise: false) - allocatedBytesAtStart);
-            string startupProfile = FormattableString.Invariant($"startup_profile source={(runtimeCacheHit ? "runtime-cache" : "canonical-wld")} cache_result={cacheDiagnostic.Result} cache_schema={RuntimeWorldSnapshotCache.SchemaVersion} cache_parallel_reads={RuntimeWorldCacheReadOptions.Default.MaxParallelReads} source_stat_ms={sourceStatDuration.TotalMilliseconds:F3} file_read_ms={fileReadDuration.TotalMilliseconds:F3} cache_load_ms={cacheLoadDuration.TotalMilliseconds:F3} wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} bootstrap_ms={bootstrapDuration.TotalMilliseconds:F3} world_ready_ms={worldReadyDuration.TotalMilliseconds:F3} network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
+            string startupProfile = FormattableString.Invariant($"startup_profile source={(runtimeCacheHit ? "runtime-cache" : "canonical-wld")} cache_result={cacheDiagnostic.Result} cache_parallel_reads={RuntimeWorldCacheReadOptions.Default.MaxParallelReads} source_stat_ms={sourceStatDuration.TotalMilliseconds:F3} file_read_ms={fileReadDuration.TotalMilliseconds:F3} cache_load_ms={cacheLoadDuration.TotalMilliseconds:F3} wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} bootstrap_ms={bootstrapDuration.TotalMilliseconds:F3} world_ready_ms={worldReadyDuration.TotalMilliseconds:F3} network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
             Console.WriteLine(startupProfile);
             runtimeLogs.Publish(RuntimeLogLevel.Debug, "Startup", startupProfile);
 
@@ -262,7 +262,6 @@ public static class TerrariaServerHost
                             TownRoomCount: world.TownRooms.Length,
                             RuntimeCacheHit: runtimeCacheHit,
                             InitialCacheResult: cacheDiagnostic.Result.ToString(),
-                            CacheSchemaVersion: RuntimeWorldSnapshotCache.SchemaVersion,
                             CacheParallelReads: RuntimeWorldCacheReadOptions.Default.MaxParallelReads,
                             FileReadMilliseconds: fileReadDuration.TotalMilliseconds,
                             CacheLoadMilliseconds: cacheLoadDuration.TotalMilliseconds,

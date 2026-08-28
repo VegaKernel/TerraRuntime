@@ -136,7 +136,6 @@ internal static class TerminalUiSmoke
                 TownRoomCount: 3,
                 RuntimeCacheHit: true,
                 InitialCacheResult: "Loaded",
-                CacheSchemaVersion: 2,
                 CacheParallelReads: 4,
                 FileReadMilliseconds: 1.2,
                 CacheLoadMilliseconds: 3.4,

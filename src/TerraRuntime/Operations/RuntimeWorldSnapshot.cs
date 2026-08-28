@@ -19,7 +19,6 @@ internal readonly record struct RuntimeWorldSnapshot(
     int TownRoomCount,
     bool RuntimeCacheHit,
     string InitialCacheResult,
-    int CacheSchemaVersion,
     int CacheParallelReads,
     double FileReadMilliseconds,
     double CacheLoadMilliseconds,
