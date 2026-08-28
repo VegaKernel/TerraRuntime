@@ -247,7 +247,8 @@ public static class TerrariaServerHost
             admission,
             runtimeConnections,
             queueTelemetry,
-            rateTelemetry);
+            rateTelemetry,
+            npcReplication);
         var connectionTasks = new ConcurrentDictionary<long, Task>();
         long nextConnectionId = 0;
 
