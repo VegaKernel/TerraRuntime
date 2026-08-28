@@ -14,6 +14,7 @@ public sealed class RuntimeBootstrapSnapshotCacheTests
         WorldFileData world = Assert.IsType<WorldFileData>(loaded);
         PlayerBootstrapPacketSet expectedPackets = PlayerBootstrapPacketSet.Create(world);
         PlayerBootstrapPacketSnapshot expected = expectedPackets.CaptureSnapshot();
+        Assert.All(expected.BaseSectionPostFrames, Assert.Empty);
 
         string path = TempPath();
         var stamp = new RuntimeWorldSourceStamp(source.LongLength, DateTime.UtcNow.Ticks);
@@ -36,6 +37,24 @@ public sealed class RuntimeBootstrapSnapshotCacheTests
             File.Delete(path);
             File.Delete(path + ".tmp");
         }
+    }
+
+    [Fact]
+    public void Bootstrap_snapshot_rejects_legacy_section_post_frames()
+    {
+        byte[] source = CreateCompleteWorld();
+        WorldFileLoadLimits limits = CreateLimits();
+        Assert.True(WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded).IsLoaded);
+        WorldFileData world = Assert.IsType<WorldFileData>(loaded);
+        PlayerBootstrapPacketSnapshot current = PlayerBootstrapPacketSet.Create(world).CaptureSnapshot();
+        Assert.NotEmpty(current.BaseSectionPostFrames);
+
+        var legacyPostFrames = (ReadOnlyMemory<byte>[][])current.BaseSectionPostFrames.Clone();
+        legacyPostFrames[0] = [new byte[] { 3, 0, 32 }];
+        PlayerBootstrapPacketSnapshot legacy = current with { BaseSectionPostFrames = legacyPostFrames };
+
+        Assert.False(PlayerBootstrapPacketSet.TryCreateFromSnapshot(world, legacy, out PlayerBootstrapPacketSet? restored));
+        Assert.Null(restored);
     }
 
     [Fact]
