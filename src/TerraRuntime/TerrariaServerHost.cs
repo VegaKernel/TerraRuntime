@@ -66,6 +66,7 @@ internal static class TerrariaServerHost
             static runtime => runtime.Tick());
         var commandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(gameLoop);
         var spawnIngress = new RuntimePlayerSpawnCommitIngress(commandIngress);
+        var movementIngress = new RuntimePlayerMovementIngress(commandIngress);
         var slots = new PlayerSlotPool(options.MaxPlayers);
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
         var connections = new ConcurrentDictionary<long, Task>();
@@ -124,6 +125,7 @@ internal static class TerrariaServerHost
                     slots,
                     bootstrapPackets,
                     spawnIngress,
+                    movementIngress,
                     shutdown.Token);
                 connections[connectionId] = connectionTask;
                 _ = connectionTask.ContinueWith(
@@ -172,6 +174,7 @@ internal static class TerrariaServerHost
         PlayerSlotPool slots,
         PlayerBootstrapPacketSet bootstrapPackets,
         IPlayerSpawnCommitIngress spawnIngress,
+        IPlayerMovementIngress movementIngress,
         CancellationToken cancellationToken)
     {
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
@@ -183,7 +186,8 @@ internal static class TerrariaServerHost
                 outbound,
                 bootstrapPackets,
                 GameCommandSourceId.FromConnection(connectionId),
-                spawnIngress);
+                spawnIngress,
+                movementIngress);
 
             try
             {
@@ -195,6 +199,7 @@ internal static class TerrariaServerHost
                     cancellationToken).ConfigureAwait(false);
                 Console.WriteLine(
                     $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
+                    $"bootstrap={sink.StopReason}, state={sink.JoinState}; " +
                     $"inbound={result.Inbound}; outbound={result.Outbound.Reason}.");
             }
             catch (Exception exception) when (exception is IOException or SocketException or OperationCanceledException)

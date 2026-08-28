@@ -17,12 +17,14 @@ public enum PlayerBootstrapStopReason : byte
     OutboundBackpressure = 5,
     PlayerSlotMismatch = 6,
     GameIngressBackpressure = 7,
-    SectionEncodingFailure = 8
+    SectionEncodingFailure = 8,
+    MalformedPlayerMovement = 9
 }
 
 /// <summary>
-/// Connection-owned coordinator for the minimal vanilla 1.4.5.8 join path:
-/// Hello -> packet 3 -> packet 6/7 -> packet 8/7/9/10/.../49 -> packet 12 authoritative handoff.
+/// Connection-owned coordinator for the minimal vanilla 1.4.5.8 join path and the first
+/// authoritative gameplay handoff:
+/// Hello -> packet 3 -> packet 6/7 -> packet 8/7/9/10/.../49 -> packet 12 -> packet 13.
 /// </summary>
 public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 {
@@ -32,7 +34,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private readonly ITerrariaFrameSink? _inner;
     private readonly GameCommandSourceId _source;
     private readonly IPlayerSpawnCommitIngress? _spawnIngress;
+    private readonly IPlayerMovementIngress? _movementIngress;
     private PlayerJoinSession? _session;
+    private bool _spawnSubmitted;
 
     public PlayerBootstrapFrameSink(
         PlayerSlotPool slots,
@@ -48,6 +52,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _packets = packets;
         _source = GameCommandSourceId.System;
         _spawnIngress = null;
+        _movementIngress = null;
         _inner = inner;
     }
 
@@ -57,6 +62,18 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         PlayerBootstrapPacketSet packets,
         GameCommandSourceId source,
         IPlayerSpawnCommitIngress spawnIngress,
+        ITerrariaFrameSink? inner = null)
+        : this(slots, outbound, packets, source, spawnIngress, movementIngress: null, inner)
+    {
+    }
+
+    public PlayerBootstrapFrameSink(
+        PlayerSlotPool slots,
+        TerrariaConnectionOutboundQueue outbound,
+        PlayerBootstrapPacketSet packets,
+        GameCommandSourceId source,
+        IPlayerSpawnCommitIngress spawnIngress,
+        IPlayerMovementIngress? movementIngress,
         ITerrariaFrameSink? inner = null)
     {
         ArgumentNullException.ThrowIfNull(slots);
@@ -71,6 +88,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _packets = packets;
         _source = source;
         _spawnIngress = spawnIngress;
+        _movementIngress = movementIngress;
         _inner = inner;
     }
 
@@ -101,6 +119,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
             case TerrariaMessageId.PlayerSpawn:
                 return HandlePlayerSpawn(frame);
+
+            case TerrariaMessageId.PlayerControls:
+                return HandlePlayerMovement(frame);
 
             default:
                 return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
@@ -174,7 +195,6 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (!_packets.TryCreateSectionResponse(request.TileX, request.TileY, request.Team, out PlayerBootstrapSectionResponse sectionResponse))
             return Stop(PlayerBootstrapStopReason.SectionEncodingFailure);
 
-        // TerrariaServer 1.4.5.8 re-sends WorldInfo at the start of packet-8 handling.
         if (!TryQueue(_packets.WorldInfoFrame) ||
             !TryQueue(sectionResponse.StatusFrame))
         {
@@ -199,7 +219,6 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
 
-        // Remaining vanilla world-state packets are added incrementally; packet 49 terminates the current bootstrap subset.
         if (!TryQueue(_packets.EnterWorldFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 
@@ -221,6 +240,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
         if (_spawnIngress is not null && _session.State == PlayerJoinState.AwaitingSpawn)
         {
+            if (_spawnSubmitted)
+                return TerrariaFrameSinkResult.Continue;
+
             var commit = new PlayerSpawnCommitRequest(
                 assignedSlot,
                 request.SpawnX,
@@ -234,10 +256,55 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             if (!_spawnIngress.TryPost(_source, _session, in commit))
                 return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
+            _spawnSubmitted = true;
             return TerrariaFrameSinkResult.Continue;
         }
 
         return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
+    }
+
+    private TerrariaFrameSinkResult HandlePlayerMovement(in TerrariaFrame frame)
+    {
+        if (!_spawnSubmitted && _session!.State != PlayerJoinState.Playing)
+            return TerrariaFrameSinkResult.Continue;
+
+        TerrariaPlayerMovementDecodeResult decode = TerrariaPlayerMovementDecoder.TryDecode(
+            frame,
+            out TerrariaPlayerMovementRequest request);
+        if (decode != TerrariaPlayerMovementDecodeResult.Decoded)
+            return Stop(PlayerBootstrapStopReason.MalformedPlayerMovement);
+
+        if (_movementIngress is null)
+            return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
+
+        PlayerSlotId assignedSlot = _session.Slot;
+        var commit = new PlayerMovementCommitRequest(
+            assignedSlot,
+            request.ControlFlags,
+            request.MovementFlags,
+            request.MiscFlags1,
+            request.MiscFlags2,
+            request.SelectedItem,
+            request.PositionX,
+            request.PositionY,
+            request.HasVelocity,
+            request.VelocityX,
+            request.VelocityY,
+            request.HasMount,
+            request.MountType,
+            request.HasPotionOfReturnPositions,
+            request.PotionOfReturnOriginalPositionX,
+            request.PotionOfReturnOriginalPositionY,
+            request.PotionOfReturnHomePositionX,
+            request.PotionOfReturnHomePositionY,
+            request.HasCameraTarget,
+            request.CameraTargetX,
+            request.CameraTargetY);
+
+        if (!_movementIngress.TryPost(_source, in commit))
+            return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
+
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private bool TryQueue(ReadOnlyMemory<byte> frame) =>
