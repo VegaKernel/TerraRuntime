@@ -189,11 +189,12 @@ internal sealed class DashboardWindow : Runnable
         RuntimeNetworkSnapshot snapshot = networkOperations.CaptureSnapshot();
         rows[0].Text = $"Connections : active {snapshot.ActiveConnections}   registered {snapshot.RegisteredConnections}";
         rows[1].Text = $"Admission   : accepted {snapshot.AcceptedConnections:N0}   rejected {snapshot.RejectedConnections:N0}";
+        rows[2].Text = $"Queues      : tracked {snapshot.TrackedOutboundQueues}   frames {snapshot.QueuedOutboundFrames:N0}   bytes {snapshot.QueuedOutboundBytes:N0}";
         rows[3].Text = $"Movement    : relayed {snapshot.RelayedMovementFrames:N0}   AOI resync {snapshot.MovementResyncFrames:N0}";
         rows[4].Text = $"Appearance  : relayed {snapshot.RelayedAppearanceFrames:N0}   baselines {snapshot.AppearanceBaselineFrames:N0}";
         rows[5].Text = $"Equipment   : relayed {snapshot.RelayedEquipmentFrames:N0}   baselines {snapshot.EquipmentBaselineFrames:N0}   dropped snapshots {snapshot.DroppedEquipmentSnapshotUpdates:N0}";
         rows[6].Text = $"Lifecycle   : active baselines {snapshot.PlayerActiveBaselineFrames:N0}   deactivations {snapshot.PlayerDeactivationFrames:N0}";
-        rows[8].Text = "Queues      : per-connection queues are bounded; aggregate backpressure counters are not published yet";
+        rows[8].Text = $"Backpressure: rejected frames {snapshot.RejectedOutboundFrames:N0}   slow clients {snapshot.SlowClients}";
         rows[10].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 

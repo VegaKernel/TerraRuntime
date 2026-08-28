@@ -157,7 +157,8 @@ public static class TerrariaServerHost
         var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
         var slots = new PlayerSlotPool(options.MaxPlayers);
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
-        var networkOperations = new LocalRuntimeNetworkOperations(admission, runtimeConnections);
+        var queueTelemetry = new RuntimeConnectionQueueTelemetry();
+        var networkOperations = new LocalRuntimeNetworkOperations(admission, runtimeConnections, queueTelemetry);
         var connectionTasks = new ConcurrentDictionary<long, Task>();
         long nextConnectionId = 0;
 
@@ -298,6 +299,7 @@ public static class TerrariaServerHost
                     runtimeConnections,
                     vitalsReplication,
                     worldItems,
+                    queueTelemetry,
                     runtimeLogs,
                     shutdown.Token);
                 connectionTasks[connectionId] = connectionTask;
@@ -363,6 +365,7 @@ public static class TerrariaServerHost
         RuntimeConnectionRegistry runtimeConnections,
         RuntimePlayerVitalsReplicator vitalsReplication,
         RuntimeWorldItemStore worldItems,
+        RuntimeConnectionQueueTelemetry queueTelemetry,
         RuntimeLogBuffer runtimeLogs,
         CancellationToken cancellationToken)
     {
@@ -379,8 +382,16 @@ public static class TerrariaServerHost
                 return;
             }
 
+            if (!queueTelemetry.TryRegister(connectionId, outbound))
+            {
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+            }
+
             if (!vitalsReplication.TryRegister(source, outbound))
             {
+                queueTelemetry.TryUnregister(connectionId);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
@@ -437,6 +448,7 @@ public static class TerrariaServerHost
             }
             finally
             {
+                queueTelemetry.TryUnregister(connectionId);
                 vitalsReplication.TryUnregister(source);
                 if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
                     playingPlayer is PlayerHandle player)

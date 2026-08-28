@@ -6,21 +6,31 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
 {
     private readonly TerrariaConnectionAdmissionGate admission;
     private readonly global::TerraRuntime.RuntimeConnectionRegistry connections;
+    private readonly RuntimeConnectionQueueTelemetry queueTelemetry;
 
     public LocalRuntimeNetworkOperations(
         TerrariaConnectionAdmissionGate admission,
-        global::TerraRuntime.RuntimeConnectionRegistry connections)
+        global::TerraRuntime.RuntimeConnectionRegistry connections,
+        RuntimeConnectionQueueTelemetry queueTelemetry)
     {
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
         this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
+        this.queueTelemetry = queueTelemetry ?? throw new ArgumentNullException(nameof(queueTelemetry));
     }
 
-    public RuntimeNetworkSnapshot CaptureSnapshot() =>
-        new(
+    public RuntimeNetworkSnapshot CaptureSnapshot()
+    {
+        RuntimeConnectionQueueSnapshot queues = queueTelemetry.CaptureSnapshot();
+        return new RuntimeNetworkSnapshot(
             ActiveConnections: admission.ActiveConnections,
             RegisteredConnections: connections.Count,
             AcceptedConnections: admission.AcceptedConnections,
             RejectedConnections: admission.RejectedConnections,
+            TrackedOutboundQueues: queues.TrackedQueues,
+            QueuedOutboundFrames: queues.QueuedFrames,
+            QueuedOutboundBytes: queues.QueuedBytes,
+            RejectedOutboundFrames: queues.RejectedFrames,
+            SlowClients: queues.SlowClients,
             RelayedAppearanceFrames: connections.RelayedAppearanceFrames,
             AppearanceBaselineFrames: connections.AppearanceBaselineFrames,
             RelayedEquipmentFrames: connections.RelayedEquipmentFrames,
@@ -31,4 +41,5 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             RelayedMovementFrames: connections.RelayedMovementFrames,
             MovementResyncFrames: connections.MovementResyncFrames,
             CapturedAtUtc: DateTimeOffset.UtcNow);
+    }
 }
