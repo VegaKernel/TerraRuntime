@@ -22,7 +22,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
     private readonly double worldSurfaceTiles;
 
     public VanillaNpcWorldMotionAiStepper(INpcAiStateStepper inner, WorldTileStore tiles)
-        : this(inner, tiles, Math.Max(1d, tiles?.Dimensions.HeightTiles / 3d ?? 1d))
+        : this(
+            inner,
+            tiles,
+            tiles?.WorldSurfaceTiles ?? Math.Max(1d, tiles?.Dimensions.HeightTiles / 3d ?? 1d))
     {
     }
 
