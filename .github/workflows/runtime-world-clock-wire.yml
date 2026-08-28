@@ -1,0 +1,25 @@
+name: Wire authoritative world clock
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/runtime-world-clock-wire.yml
+      - tools/ci/wire_runtime_world_clock.py
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 tools/ci/wire_runtime_world_clock.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/TerraRuntime/ServerRuntimeState.cs src/TerraRuntime/TerrariaServerHost.cs
+          git diff --cached --check
+          git commit -m "runtime: wire authoritative world clock into NPC tick"
+          git push origin HEAD:main
