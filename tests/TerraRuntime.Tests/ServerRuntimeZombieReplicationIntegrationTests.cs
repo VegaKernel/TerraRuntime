@@ -46,7 +46,10 @@ public sealed class ServerRuntimeZombieReplicationIntegrationTests
             Type: 3,
             NetId: 3,
             PositionX: 100f,
-            PositionY: 200f,
+            // Keep this integration target below the fallback world-surface line. Daytime surface Zombies
+            // intentionally discourage pursuit and retain the vanilla no-target sentinel; that behavior has
+            // dedicated tests and is not what this packet-23 replication test is exercising.
+            PositionY: 600f,
             VelocityX: 0f,
             VelocityY: 0f,
             Target: VanillaNpcDefinitionCatalog.DefaultTarget,
