@@ -115,13 +115,28 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         if (!state.Active || state.Generation != handle.Generation.Value)
             return false;
 
-        NpcSnapshot finalSnapshot = Capture(handle.Slot, in state);
-        state.Active = false;
-        state.Revision = 0;
-        state.Update = default;
-        _activeCount--;
-        _commitSink?.NpcStateCommitted(NpcStateCommitKind.Despawn, in finalSnapshot);
+        DespawnSlot(handle.Slot, ref state);
         return true;
+    }
+
+    /// <summary>
+    /// Retires live NPCs whose committed authoritative lifetime reached zero. This is intended to run
+    /// immediately after the AI/lifecycle state pass so CheckActive can request despawn without a second update.
+    /// </summary>
+    public int DespawnExpired()
+    {
+        int despawned = 0;
+        for (int slot = 0; slot < _slots.Length; slot++)
+        {
+            ref SlotState state = ref _slots[slot];
+            if (!state.Active || state.Update.Simulation.TimeLeft != 0)
+                continue;
+
+            DespawnSlot(checked((byte)slot), ref state);
+            despawned++;
+        }
+
+        return despawned;
     }
 
     public bool TryGetActive(byte slot, out NpcSnapshot snapshot)
@@ -253,6 +268,16 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         }
 
         return update with { Simulation = simulation };
+    }
+
+    private void DespawnSlot(byte slot, ref SlotState state)
+    {
+        NpcSnapshot finalSnapshot = Capture(slot, in state);
+        state.Active = false;
+        state.Revision = 0;
+        state.Update = default;
+        _activeCount--;
+        _commitSink?.NpcStateCommitted(NpcStateCommitKind.Despawn, in finalSnapshot);
     }
 
     private static NpcSnapshot Capture(byte slot, in SlotState state)
