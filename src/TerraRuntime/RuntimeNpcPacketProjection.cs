@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol;
@@ -24,9 +25,15 @@ internal static class RuntimeNpcPacketProjection
         RuntimeNpcSyncKind kind,
         out TerrariaNpcUpdateState state)
     {
-        if (!npc.IsActive ||
-            npc.Type is not (1 or 2) ||
-            !VanillaNpcDefinitionCatalog.TryGet(npc.Type, out VanillaNpcDefinition definition) ||
+        if (!npc.IsActive)
+        {
+            state = default;
+            return false;
+        }
+
+        NpcTypeId npcType = npc.TypeIdentity;
+        if ((npcType != VanillaNpcIds.BlueSlime && npcType != VanillaNpcIds.DemonEye) ||
+            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
             npc.Target == ushort.MaxValue)
         {
             state = default;
@@ -36,10 +43,11 @@ internal static class RuntimeNpcPacketProjection
         int life = kind == RuntimeNpcSyncKind.Despawn ? 0 : definition.LifeMax;
         NpcSimulationState simulation = npc.Simulation;
         NpcAiState ai = npc.Ai;
+        NpcNetId netIdentity = npc.NetIdentity;
         state = new TerrariaNpcUpdateState(
             NpcSlot: npc.Handle.Slot,
             Generation: ToProtocolGeneration(npc.Handle.Generation),
-            NpcType: npc.Type,
+            NpcType: npcType.Value,
             PositionX: npc.PositionX,
             PositionY: npc.PositionY,
             VelocityX: npc.VelocityX,
@@ -52,7 +60,7 @@ internal static class RuntimeNpcPacketProjection
             Ai1: ai.Ai1,
             Ai2: ai.Ai2,
             Ai3: ai.Ai3,
-            NpcNetId: npc.NetId,
+            NpcNetId: checked((short)netIdentity.Value),
             Life: life,
             LifeMax: definition.LifeMax,
             SpawnNeedsSyncing: kind == RuntimeNpcSyncKind.Spawn);
