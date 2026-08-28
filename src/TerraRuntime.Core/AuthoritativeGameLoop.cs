@@ -247,8 +247,9 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         long currentTick = Interlocked.Read(ref tick);
         bool cpuBudgetExhausted = false;
         double commandCpuBudgetMilliseconds = options.MaxCommandCpuMillisecondsPerTick ?? 0d;
+        long commandCpuStarted = 0L;
         bool enforceCpuBudget = options.MaxCommandCpuMillisecondsPerTick.HasValue &&
-            ThreadCpuClock.TryGetTimestampNanoseconds(out long commandCpuStarted);
+            ThreadCpuClock.TryGetTimestampNanoseconds(out commandCpuStarted);
         long commandCpuBudgetNanoseconds = enforceCpuBudget
             ? checked((long)(commandCpuBudgetMilliseconds * 1_000_000d))
             : 0L;
