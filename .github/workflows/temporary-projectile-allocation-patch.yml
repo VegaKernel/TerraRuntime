@@ -1,0 +1,108 @@
+name: Temporary Projectile Allocation Patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/temporary-projectile-allocation-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Patch authoritative projectile allocation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/TerraRuntime/ServerRuntimeState.cs")
+          text = path.read_text()
+
+          old = '''        if (!TryFindFreeVanillaProjectileSlot(out ushort slot))
+          {
+              RejectedProjectileSpawns++;
+              RejectedClientProjectileUpdates++;
+              return;
+          }
+
+          using (clientCommits.Enter(command.Connection.Source, in key))
+          {
+              if (_projectiles.TrySpawn(slot, in update, out _))
+              {
+                  AppliedProjectileSpawns++;
+                  return;
+              }
+          }
+'''.replace('          ', '        ')
+
+          new = '''        using (clientCommits.Enter(command.Connection.Source, in key))
+          {
+              if (_projectiles.TrySpawnVanilla(in update, out _))
+              {
+                  AppliedProjectileSpawns++;
+                  return;
+              }
+          }
+'''.replace('          ', '        ')
+
+          helper = '''    private bool TryFindFreeVanillaProjectileSlot(out ushort slot)
+      {
+          int physicalCapacity = Math.Min(_projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
+          for (int candidate = 0; candidate < physicalCapacity; candidate++)
+          {
+              ushort physicalSlot = checked((ushort)candidate);
+              if (_projectiles.TryGetActive(physicalSlot, out _))
+                  continue;
+
+              slot = physicalSlot;
+              return true;
+          }
+
+          slot = default;
+          return false;
+      }
+
+'''.replace('      ', '    ')
+
+          if old not in text:
+              if 'TrySpawnVanilla(in update, out _)' in text:
+                  print('authoritative allocation already wired')
+              else:
+                  raise SystemExit('expected client projectile allocation block not found')
+          else:
+              if text.count(old) != 1:
+                  raise SystemExit('client projectile allocation block is ambiguous')
+              text = text.replace(old, new, 1)
+
+          if helper in text:
+              if text.count(helper) != 1:
+                  raise SystemExit('old allocation helper is ambiguous')
+              text = text.replace(helper, '', 1)
+          elif 'TryFindFreeVanillaProjectileSlot' in text:
+              raise SystemExit('allocation helper changed unexpectedly')
+
+          path.write_text(text)
+          PY
+
+          git add src/TerraRuntime/ServerRuntimeState.cs
+          if git diff --cached --quiet; then
+            echo "No source patch required."
+            exit 0
+          fi
+          git commit -m "feat: use vanilla projectile pool allocation"
+          git push origin HEAD:main
