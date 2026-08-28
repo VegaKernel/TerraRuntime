@@ -41,8 +41,14 @@ public sealed class VanillaPlayerItemNormalizerTests
         PlayerEquipmentCommitRequest empty = Request(stack: 0, itemNetId: 1, flags: byte.MaxValue);
         PlayerEquipmentCommitRequest invalid = Request(stack: 1, itemNetId: 6196, flags: byte.MaxValue);
 
-        Assert.Equal((0, (byte)0, (short)0, (byte)0), Fields(VanillaPlayerItemNormalizer.Normalize(in empty)));
-        Assert.Equal((0, (byte)0, (short)0, (byte)0), Fields(VanillaPlayerItemNormalizer.Normalize(in invalid)));
+        PlayerEquipmentCommitRequest normalizedEmpty = VanillaPlayerItemNormalizer.Normalize(in empty);
+        PlayerEquipmentCommitRequest normalizedInvalid = VanillaPlayerItemNormalizer.Normalize(in invalid);
+        Assert.Equal((0, (byte)0, (short)0, (byte)0), Fields(normalizedEmpty));
+        Assert.Equal((0, (byte)0, (short)0, (byte)0), Fields(normalizedInvalid));
+        Assert.True(normalizedEmpty.TryGetCanonicalItemType(out ItemTypeId emptyType));
+        Assert.True(emptyType.IsNone);
+        Assert.True(normalizedInvalid.TryGetCanonicalItemType(out ItemTypeId invalidType));
+        Assert.True(invalidType.IsNone);
     }
 
     [Fact]
@@ -50,9 +56,25 @@ public sealed class VanillaPlayerItemNormalizerTests
     {
         PlayerEquipmentCommitRequest request = Request(stack: 7, itemNetId: -19, flags: byte.MaxValue);
 
+        Assert.False(request.TryGetCanonicalItemType(out _));
         PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
 
         Assert.Equal((7, (byte)3, (short)3764, (byte)1), Fields(normalized));
+        Assert.True(normalized.TryGetCanonicalItemType(out ItemTypeId itemType));
+        Assert.Equal(3764, itemType.Value);
+        Assert.Equal(3, normalized.PrefixId.Value);
+    }
+
+    [Fact]
+    public void Nonempty_none_identity_is_not_canonical()
+    {
+        PlayerEquipmentCommitRequest request = Request(stack: 1, itemNetId: 0, flags: 0);
+
+        Assert.False(request.TryGetCanonicalItemType(out _));
+        PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
+        Assert.Equal((0, (byte)0, (short)0, (byte)0), Fields(normalized));
+        Assert.True(normalized.TryGetCanonicalItemType(out ItemTypeId itemType));
+        Assert.True(itemType.IsNone);
     }
 
     private static PlayerEquipmentCommitRequest Request(short stack, short itemNetId, byte flags) =>
