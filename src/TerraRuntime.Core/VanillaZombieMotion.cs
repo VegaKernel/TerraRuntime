@@ -34,6 +34,14 @@ public readonly record struct VanillaZombieMotionInput(
 
     public bool JustHit { get; init; }
 
+    public bool ApplyCanHitRule { get; init; }
+
+    public bool CanHitCurrentTarget { get; init; } = true;
+
+    public float NpcCenterY { get; init; }
+
+    public float CurrentTargetCenterY { get; init; }
+
     public int TimeLeft { get; init; }
 }
 
@@ -51,14 +59,15 @@ public readonly record struct VanillaZombieMotionResult(
 
 /// <summary>
 /// Deterministic ordinary type-3 state slice from TerrariaServer 1.4.5.8 NPC.AI_003_Fighters.
-/// Covers stuck accounting including justHit reset, pursuit/TargetClosest cadence, the discouraged idle-turn
-/// branch, EncourageDespawn(10) lifetime clamping and the default horizontal acceleration band.
+/// Covers stuck accounting including justHit and world CanHit resets, pursuit/TargetClosest cadence,
+/// the discouraged idle-turn branch, EncourageDespawn(10) lifetime clamping and default horizontal motion.
 /// World obstacle/door probing remains in the authoritative world-motion layer.
 /// </summary>
 public static class VanillaZombieMotion
 {
     private const float StuckThreshold = 60f;
     private const float MaximumStuckCounter = StuckThreshold * 10f;
+    private const float CanHitVerticalResetDistance = 128f;
     private const float BaseMaximumHorizontalSpeed = 1f;
     private const float HorizontalAcceleration = 0.07f;
     private const int EncouragedDespawnTime = 10;
@@ -77,6 +86,8 @@ public static class VanillaZombieMotion
             input.DirectionY is < -1 or > 1 ||
             input.Target > byte.MaxValue ||
             input.TimeLeft < 0 ||
+            (input.ApplyCanHitRule &&
+             (!float.IsFinite(input.NpcCenterY) || !float.IsFinite(input.CurrentTargetCenterY))) ||
             !input.Ai.IsFinite ||
             !input.ClosestTarget.IsValid)
         {
@@ -117,6 +128,22 @@ public static class VanillaZombieMotion
             ai3 = 0f;
         if (input.TargetOverlaps)
             ai3 = 0f;
+
+        // AI_003 applies Collision.CanHit after the ordinary stuck accounting above. A blocked current target
+        // forces the threshold immediately and asks to path upward. A visible target that is not more than
+        // 128 px above the fighter clears accumulated stuck state before the pursuit/idle branch is selected.
+        if (input.ApplyCanHitRule)
+        {
+            if (!input.CanHitCurrentTarget)
+            {
+                ai3 = StuckThreshold;
+                directionY = -1;
+            }
+            else if (input.CurrentTargetCenterY > input.NpcCenterY - CanHitVerticalResetDistance)
+            {
+                ai3 = 0f;
+            }
+        }
 
         bool pursue = ai3 < StuckThreshold && input.PursuitAllowed;
         if (pursue)
