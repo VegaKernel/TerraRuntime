@@ -62,8 +62,8 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
         {
             try
             {
-                if (!TryResolveWireKey(in snapshot, out TerrariaProjectileKeyState key) ||
-                    !RuntimeProjectilePacketProjection.TryCreateDestroy(in snapshot, in key, out var destroyState) ||
+                if (!TryResolveWireKey(in snapshot, out TerrariaProjectileKeyState destroyKey) ||
+                    !RuntimeProjectilePacketProjection.TryCreateDestroy(in snapshot, in destroyKey, out var destroyState) ||
                     !TerrariaProjectileEncoder.TryEncodeDestroy(in destroyState, out byte[] destroyFrame))
                 {
                     Interlocked.Increment(ref unsupportedCommits);
@@ -84,8 +84,8 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
         if (kind is not ProjectileStateCommitKind.Spawn and not ProjectileStateCommitKind.Update)
             throw new ArgumentOutOfRangeException(nameof(kind));
 
-        if (!TryResolveOrCreateWireKey(in snapshot, out TerrariaProjectileKeyState key) ||
-            !RuntimeProjectilePacketProjection.TryCreateUpdate(in snapshot, in key, out var updateState) ||
+        if (!TryResolveOrCreateWireKey(in snapshot, out TerrariaProjectileKeyState updateKey) ||
+            !RuntimeProjectilePacketProjection.TryCreateUpdate(in snapshot, in updateKey, out var updateState) ||
             !TerrariaProjectileEncoder.TryEncodeUpdate(in updateState, out byte[] updateFrame))
         {
             Interlocked.Increment(ref unsupportedCommits);
