@@ -9,22 +9,22 @@ namespace TerraRuntime.TerminalUI;
 
 internal sealed class DashboardWindow : Runnable
 {
-    private readonly IRuntimeDashboardOperations operations;
-    private readonly Label lifecycleLabel;
-    private readonly Label worldLabel;
-    private readonly Label tickLabel;
-    private readonly Label tickTimingLabel;
-    private readonly Label cpuTimingLabel;
-    private readonly Label phaseLabel;
-    private readonly Label commandLabel;
-    private readonly Label networkLabel;
-    private readonly Label optionsLabel;
-    private readonly Label capturedLabel;
+    private const int RowCount = 12;
+    private readonly IRuntimeDashboardOperations dashboardOperations;
+    private readonly IPlayerOperations playerOperations;
+    private readonly INetworkOperations networkOperations;
+    private readonly Label[] rows = new Label[RowCount];
+    private TerminalUiScreen screen;
 
-    public DashboardWindow(IRuntimeDashboardOperations operations)
+    public DashboardWindow(
+        IRuntimeDashboardOperations dashboardOperations,
+        IPlayerOperations playerOperations,
+        INetworkOperations networkOperations)
     {
-        this.operations = operations ?? throw new ArgumentNullException(nameof(operations));
-        Title = "TerraRuntime";
+        this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
+        this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
+        this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
+        Title = "TerraRuntime - Dashboard";
 
         MenuBar menu = new()
         {
@@ -33,6 +33,13 @@ internal sealed class DashboardWindow : Runnable
                 new MenuBarItem(
                     "_File",
                     [new MenuItem("_Close UI", "Keep the server running and close only the terminal UI", () => App?.RequestStop())]),
+                new MenuBarItem(
+                    "_View",
+                    [
+                        new MenuItem("_Dashboard", "Runtime overview", ShowDashboard),
+                        new MenuItem("_Players", "Live authoritative player read model", ShowPlayers),
+                        new MenuItem("_Network", "Connection and replication counters", ShowNetwork)
+                    ]),
                 new MenuBarItem(
                     "_Help",
                     [new MenuItem("_About", "", ShowAbout)])
@@ -52,34 +59,55 @@ internal sealed class DashboardWindow : Runnable
             Height = Dim.Fill(status)
         };
 
-        lifecycleLabel = CreateLabel(1);
-        worldLabel = CreateLabel(Pos.Bottom(lifecycleLabel));
-        tickLabel = CreateLabel(Pos.Bottom(worldLabel) + 1);
-        tickTimingLabel = CreateLabel(Pos.Bottom(tickLabel));
-        cpuTimingLabel = CreateLabel(Pos.Bottom(tickTimingLabel));
-        phaseLabel = CreateLabel(Pos.Bottom(cpuTimingLabel));
-        commandLabel = CreateLabel(Pos.Bottom(phaseLabel) + 1);
-        networkLabel = CreateLabel(Pos.Bottom(commandLabel) + 1);
-        optionsLabel = CreateLabel(Pos.Bottom(networkLabel));
-        capturedLabel = CreateLabel(Pos.Bottom(optionsLabel) + 1);
+        Pos y = 1;
+        for (int i = 0; i < rows.Length; i++)
+        {
+            rows[i] = new Label
+            {
+                X = 1,
+                Y = y,
+                Width = Dim.Fill(1)
+            };
+            content.Add(rows[i]);
+            y = Pos.Bottom(rows[i]);
+        }
 
-        content.Add(
-            lifecycleLabel,
-            worldLabel,
-            tickLabel,
-            tickTimingLabel,
-            cpuTimingLabel,
-            phaseLabel,
-            commandLabel,
-            networkLabel,
-            optionsLabel,
-            capturedLabel);
         Add(menu, content, status);
     }
 
     public void RefreshSnapshot()
     {
-        RuntimeDashboardSnapshot snapshot = operations.CaptureSnapshot();
+        switch (screen)
+        {
+            case TerminalUiScreen.Players:
+                RefreshPlayers();
+                break;
+            case TerminalUiScreen.Network:
+                RefreshNetwork();
+                break;
+            default:
+                RefreshDashboard();
+                break;
+        }
+    }
+
+    internal void ShowDashboard() => SelectScreen(TerminalUiScreen.Dashboard, "TerraRuntime - Dashboard");
+
+    internal void ShowPlayers() => SelectScreen(TerminalUiScreen.Players, "TerraRuntime - Players");
+
+    internal void ShowNetwork() => SelectScreen(TerminalUiScreen.Network, "TerraRuntime - Network");
+
+    private void SelectScreen(TerminalUiScreen next, string title)
+    {
+        screen = next;
+        Title = title;
+        RefreshSnapshot();
+    }
+
+    private void RefreshDashboard()
+    {
+        ClearRows();
+        RuntimeDashboardSnapshot snapshot = dashboardOperations.CaptureSnapshot();
         string cpuLast = snapshot.CpuTimeAvailable
             ? FormatMilliseconds(snapshot.LastTickCpuMilliseconds)
             : "n/a";
@@ -87,25 +115,75 @@ internal sealed class DashboardWindow : Runnable
             ? FormatMilliseconds(snapshot.WorstTickCpuMilliseconds)
             : "n/a";
 
-        lifecycleLabel.Text = $"Lifecycle : {snapshot.Lifecycle}";
-        worldLabel.Text = $"World     : {snapshot.WorldName}  {snapshot.WorldWidthTiles}x{snapshot.WorldHeightTiles}";
-        tickLabel.Text = $"Tick      : {snapshot.Tick:N0}   TPS {snapshot.ObservedTicksPerSecond:F1}/{snapshot.TargetTicksPerSecond}";
-        tickTimingLabel.Text = $"Tick wall : last {FormatMilliseconds(snapshot.LastTickMilliseconds)}   worst {FormatMilliseconds(snapshot.WorstTickMilliseconds)}";
-        cpuTimingLabel.Text = $"Tick CPU  : last {cpuLast}   worst {cpuWorst}";
-        phaseLabel.Text = $"Slow phase: {snapshot.SlowestPhase}  {FormatMilliseconds(snapshot.SlowestPhaseMilliseconds)}   missed deadlines {snapshot.MissedTickDeadlines:N0}";
-        commandLabel.Text = $"Commands  : processed {snapshot.CommandsProcessed:N0}   pending {snapshot.PendingCommands:N0}   deferred {snapshot.DeferredCommands:N0}   rejected {snapshot.RejectedCommands:N0}";
-        networkLabel.Text = $"Network   : active {snapshot.ActiveConnections}/{snapshot.MaxPlayers}   accepted {snapshot.AcceptedConnections:N0}   rejected {snapshot.RejectedConnections:N0}   port {snapshot.Port}";
-        optionsLabel.Text = $"Runtime   : interest management {(snapshot.InterestManagementEnabled ? "enabled" : "disabled")}   budget exhaustions {snapshot.CommandBudgetExhaustions:N0}   oldest command {FormatMilliseconds(snapshot.OldestPendingCommandAgeMilliseconds)}";
-        capturedLabel.Text = $"Snapshot  : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+        rows[0].Text = $"Lifecycle : {snapshot.Lifecycle}";
+        rows[1].Text = $"World     : {snapshot.WorldName}  {snapshot.WorldWidthTiles}x{snapshot.WorldHeightTiles}";
+        rows[2].Text = $"Tick      : {snapshot.Tick:N0}   TPS {snapshot.ObservedTicksPerSecond:F1}/{snapshot.TargetTicksPerSecond}";
+        rows[3].Text = $"Tick wall : last {FormatMilliseconds(snapshot.LastTickMilliseconds)}   worst {FormatMilliseconds(snapshot.WorstTickMilliseconds)}";
+        rows[4].Text = $"Tick CPU  : last {cpuLast}   worst {cpuWorst}";
+        rows[5].Text = $"Slow phase: {snapshot.SlowestPhase}  {FormatMilliseconds(snapshot.SlowestPhaseMilliseconds)}   missed deadlines {snapshot.MissedTickDeadlines:N0}";
+        rows[6].Text = $"Commands  : processed {snapshot.CommandsProcessed:N0}   pending {snapshot.PendingCommands:N0}   deferred {snapshot.DeferredCommands:N0}   rejected {snapshot.RejectedCommands:N0}";
+        rows[7].Text = $"Network   : active {snapshot.ActiveConnections}/{snapshot.MaxPlayers}   accepted {snapshot.AcceptedConnections:N0}   rejected {snapshot.RejectedConnections:N0}   port {snapshot.Port}";
+        rows[8].Text = $"Runtime   : interest management {(snapshot.InterestManagementEnabled ? "enabled" : "disabled")}   budget exhaustions {snapshot.CommandBudgetExhaustions:N0}   oldest command {FormatMilliseconds(snapshot.OldestPendingCommandAgeMilliseconds)}";
+        rows[10].Text = $"Snapshot  : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
-    private static Label CreateLabel(Pos y) =>
-        new()
+    private void RefreshPlayers()
+    {
+        ClearRows();
+        RuntimePlayersSnapshot snapshot = playerOperations.CaptureSnapshot();
+        ReadOnlySpan<RuntimePlayerSnapshot> players = snapshot.Players.Span;
+        rows[0].Text = $"Playing players: {players.Length}";
+
+        int visible = Math.Min(players.Length, rows.Length - 3);
+        for (int i = 0; i < visible; i++)
         {
-            X = 1,
-            Y = y,
-            Width = Dim.Fill(1)
-        };
+            RuntimePlayerSnapshot player = players[i];
+            string name = SanitizeName(player.Name);
+            string health = player.HasHealth ? $"{player.Life}/{player.MaxLife}" : "n/a";
+            string mana = player.HasMana ? $"{player.Mana}/{player.MaxMana}" : "n/a";
+            rows[i + 1].Text =
+                $"#{player.Slot,3} gen {player.Generation,-4} conn {player.ConnectionId,-5} {name,-20} " +
+                $"team {player.Team} pos {player.PositionX / 16f:F1},{player.PositionY / 16f:F1}t HP {health} MP {mana}";
+        }
+
+        if (players.Length > visible)
+            rows[rows.Length - 2].Text = $"... {players.Length - visible} more player(s) not shown in this compact view";
+
+        rows[rows.Length - 1].Text = $"Snapshot: {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+    }
+
+    private void RefreshNetwork()
+    {
+        ClearRows();
+        RuntimeNetworkSnapshot snapshot = networkOperations.CaptureSnapshot();
+        rows[0].Text = $"Connections : active {snapshot.ActiveConnections}   registered {snapshot.RegisteredConnections}";
+        rows[1].Text = $"Admission   : accepted {snapshot.AcceptedConnections:N0}   rejected {snapshot.RejectedConnections:N0}";
+        rows[3].Text = $"Movement    : relayed {snapshot.RelayedMovementFrames:N0}   AOI resync {snapshot.MovementResyncFrames:N0}";
+        rows[4].Text = $"Appearance  : relayed {snapshot.RelayedAppearanceFrames:N0}   baselines {snapshot.AppearanceBaselineFrames:N0}";
+        rows[5].Text = $"Equipment   : relayed {snapshot.RelayedEquipmentFrames:N0}   baselines {snapshot.EquipmentBaselineFrames:N0}   dropped snapshots {snapshot.DroppedEquipmentSnapshotUpdates:N0}";
+        rows[6].Text = $"Lifecycle   : active baselines {snapshot.PlayerActiveBaselineFrames:N0}   deactivations {snapshot.PlayerDeactivationFrames:N0}";
+        rows[8].Text = "Queues      : per-connection queues are bounded; aggregate backpressure counters are not published yet";
+        rows[10].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+    }
+
+    private void ClearRows()
+    {
+        foreach (Label row in rows)
+            row.Text = string.Empty;
+    }
+
+    private static string SanitizeName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "<unnamed>";
+
+        int length = Math.Min(name.Length, 20);
+        char[] buffer = new char[length];
+        for (int i = 0; i < length; i++)
+            buffer[i] = char.IsControl(name[i]) ? '?' : name[i];
+
+        return new string(buffer);
+    }
 
     private static string FormatMilliseconds(double milliseconds) =>
         milliseconds.ToString("F3", CultureInfo.InvariantCulture) + " ms";
@@ -114,6 +192,13 @@ internal sealed class DashboardWindow : Runnable
         MessageBox.Query(
             App!,
             "TerraRuntime",
-            "Local operations dashboard. Closing this UI does not stop the game server.",
+            "Local operations UI. Views consume bounded read models and never own mutable game state.",
             "OK");
+
+    private enum TerminalUiScreen
+    {
+        Dashboard,
+        Players,
+        Network
+    }
 }

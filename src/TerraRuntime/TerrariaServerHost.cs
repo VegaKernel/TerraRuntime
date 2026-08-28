@@ -136,7 +136,11 @@ public static class TerrariaServerHost
             runtimeInterestManagement,
             world.Header.Dimensions);
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
-        var playerEvents = new RuntimePlayerEventDispatcher(runtimeConnections, vitalsReplication);
+        var playerOperations = new RuntimePlayerOperationsTelemetry();
+        var playerEvents = new RuntimePlayerEventDispatcher(
+            runtimeConnections,
+            vitalsReplication,
+            playerOperations);
         var state = new ServerRuntimeState(playerEvents);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
@@ -152,6 +156,7 @@ public static class TerrariaServerHost
         var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
         var slots = new PlayerSlotPool(options.MaxPlayers);
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
+        var networkOperations = new LocalRuntimeNetworkOperations(admission, runtimeConnections);
         var connectionTasks = new ConcurrentDictionary<long, Task>();
         long nextConnectionId = 0;
 
@@ -214,7 +219,11 @@ public static class TerrariaServerHost
                         options.Port,
                         options.MaxPlayers,
                         GameLoopOptions.DefaultTicksPerSecond);
-                    terminalUi = TerminalUiHost.Start(dashboardOperations, shutdown.Token);
+                    terminalUi = TerminalUiHost.Start(
+                        dashboardOperations,
+                        playerOperations,
+                        networkOperations,
+                        shutdown.Token);
                 }
                 catch (Exception exception)
                 {

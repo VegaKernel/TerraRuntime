@@ -8,16 +8,22 @@ internal sealed class TerminalUiHost : IDisposable
 {
     private static readonly long RefreshIntervalTicks = Math.Max(1L, Stopwatch.Frequency / 2);
 
-    private readonly IRuntimeDashboardOperations operations;
+    private readonly IRuntimeDashboardOperations dashboardOperations;
+    private readonly IPlayerOperations playerOperations;
+    private readonly INetworkOperations networkOperations;
     private readonly CancellationTokenSource stopUi;
     private readonly Thread thread;
     private int disposed;
 
     private TerminalUiHost(
-        IRuntimeDashboardOperations operations,
+        IRuntimeDashboardOperations dashboardOperations,
+        IPlayerOperations playerOperations,
+        INetworkOperations networkOperations,
         CancellationToken serverCancellation)
     {
-        this.operations = operations ?? throw new ArgumentNullException(nameof(operations));
+        this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
+        this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
+        this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
         stopUi = CancellationTokenSource.CreateLinkedTokenSource(serverCancellation);
         thread = new Thread(Run)
         {
@@ -27,10 +33,16 @@ internal sealed class TerminalUiHost : IDisposable
     }
 
     public static TerminalUiHost Start(
-        IRuntimeDashboardOperations operations,
+        IRuntimeDashboardOperations dashboardOperations,
+        IPlayerOperations playerOperations,
+        INetworkOperations networkOperations,
         CancellationToken serverCancellation)
     {
-        var host = new TerminalUiHost(operations, serverCancellation);
+        var host = new TerminalUiHost(
+            dashboardOperations,
+            playerOperations,
+            networkOperations,
+            serverCancellation);
         host.thread.Start();
         return host;
     }
@@ -51,7 +63,10 @@ internal sealed class TerminalUiHost : IDisposable
         try
         {
             using IApplication app = Application.Create().Init();
-            using var window = new DashboardWindow(operations);
+            using var window = new DashboardWindow(
+                dashboardOperations,
+                playerOperations,
+                networkOperations);
             long nextRefresh = 0;
 
             app.Iteration += (_, _) =>
