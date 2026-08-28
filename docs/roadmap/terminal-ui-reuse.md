@@ -14,11 +14,12 @@ Views consume immutable operations snapshots. Mutations cross explicit runtime c
 
 ## Current implementation
 
-The standalone server has five exercised operational views:
+The standalone server has six exercised operational views:
 
-- **Dashboard** consumes `IRuntimeDashboardOperations` and `RuntimeDashboardSnapshot`. It shows lifecycle/world identity, target and observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, authoritative command backlog/budget telemetry, managed heap/lifetime allocation, GC collection counts, connection admission counters, and interest-management state.
+- **Dashboard** consumes `IRuntimeDashboardOperations` and `RuntimeDashboardSnapshot`. It shows lifecycle/world identity, target and observed TPS, tick wall/CPU timings, slowest phase, missed deadlines, authoritative command backlog/budget telemetry, managed heap/lifetime allocation, working set, process CPU, GC pause/collection counters, connection admission counters, and interest-management state.
 - **Players** consumes `IPlayerOperations` and `RuntimePlayersSnapshot`. The generation-safe read model is populated only from already validated authoritative player events and includes slot/generation/connection identity, name/team, position, velocity, selected inventory slot, mount type, health, and mana.
-- **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It shows admission/registration state, replication counters, bounded outbound-queue/backpressure telemetry, live inbound one-second frame/byte rates, lifetime inbound counters, rejected inbound frames, and bounded per-connection pressure/rate detail.
+- **NPCs** consumes `INpcOperations` and `RuntimeNpcsSnapshot`. It observes only committed authoritative NPC snapshots and exposes generation/revision/content identity, position/velocity, target/AI state, and bounded simulation/collision flags without exposing `RuntimeNpcStore` to the UI thread.
+- **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It shows admission/registration state, player replication counters, packet-23 NPC replication counters, bounded outbound-queue/backpressure telemetry, live inbound one-second frame/byte rates, lifetime inbound counters, rejected inbound frames, and bounded per-connection pressure/rate detail.
 - **World** consumes `IWorldOperations` and `RuntimeWorldSnapshot`. It exposes validated world identity, format/worldgen version, dimensions, persisted object/NPC counts, runtime-cache result/read parallelism, and startup/cache/bootstrap/readiness timings without giving the UI mutable world access.
 - **Logs** consumes `ILogOperations` over a bounded `RuntimeLogBuffer`. It supports severity filtering, dynamic source filtering, and pause/resume while remaining independent of the plain-console sink.
 
@@ -35,7 +36,8 @@ The UI also has a first bounded administrative action surface:
 - `Console.Out` and `Console.Error` are never globally replaced. `RuntimeHostLog` suppresses matching host-owned console writes only while the full-screen UI is active, while the bounded log read model continues receiving events.
 - Observed TPS comes from authoritative tick progress over time, not from `LastTickMilliseconds`.
 - Runtime/network telemetry is read from subsystem-owned counters rather than reconstructed in the view.
-- `--tui-smoke` renders Dashboard, Players, Network, World, and Logs and exercises authoritative admin actions through the Terminal.Gui ANSI test driver.
+- NPC UI telemetry exists only when TUI mode is enabled. Authoritative NPC commit publication remains allocation-free and does not take a simulation lock for the UI.
+- `--tui-smoke` renders Dashboard, Players, NPCs, Network, World, and Logs and exercises authoritative admin actions through the Terminal.Gui ANSI test driver.
 - CoreCLR CI and Linux/Windows NativeAOT jobs exercise the same TUI smoke path.
 - Host-affecting changes are also covered by the official-world workflow, including real world verification, host startup, live join/movement relay, snapshot-only warm startup, and canonical `.wld` checkpoint restoration.
 
@@ -97,6 +99,7 @@ Current screen-facing interfaces are deliberately small:
 ```text
 IRuntimeDashboardOperations
 IPlayerOperations
+INpcOperations
 INetworkOperations
 IWorldOperations
 ILogOperations
@@ -120,11 +123,13 @@ TerraRuntime currently owns and publishes UI-facing measurements for:
 - tick wall time and authoritative-thread CPU time;
 - missed deadlines and phase timings;
 - command backlog, rejection, deferral, age, and budget-exhaustion telemetry;
-- managed heap, lifetime allocation, and Gen0/Gen1/Gen2 collection counts;
-- network replication counters;
+- managed heap, lifetime allocation, working set, process CPU, GC pause percentage, and Gen0/Gen1/Gen2 collection counts;
+- player replication counters;
+- packet-23 NPC relay, baseline, rejection, and unsupported-commit counters owned by `RuntimeNpcReplicationRegistry`;
 - aggregate and bounded per-connection outbound queue/backpressure state;
 - live and lifetime inbound frame/byte accounting plus rejected inbound frames;
 - authoritative player identity/vitals/movement state used by the Players view;
+- authoritative committed NPC state used by the NPCs view;
 - world/cache startup state and timings;
 - bounded runtime log events.
 
@@ -142,7 +147,8 @@ The TUI formats these values but does not invent them.
 - missed deadlines;
 - command backlog/budget state;
 - managed heap and lifetime allocated bytes;
-- Gen0/Gen1/Gen2 collection counts;
+- process working set and CPU percentage;
+- GC pause percentage and Gen0/Gen1/Gen2 collection counts;
 - interest-management state and authoritative action result.
 
 ### Players
@@ -158,10 +164,28 @@ The TUI formats these values but does not invent them.
 
 Player data is fed from validated authoritative events. The UI does not read `ServerRuntimeState` directly. Optional movement fields are normalized to the same resulting state used by the authoritative runtime, so a later movement without velocity/mount clears the corresponding read-model values rather than leaving stale UI data.
 
+### NPCs
+
+- active authoritative slot and generation;
+- committed revision;
+- gameplay type and network identity;
+- position and velocity;
+- target;
+- four AI state values;
+- direction and collision state;
+- wet/no-gravity/no-tile-collide flags;
+- committed spawn/update/despawn counters.
+
+NPC data is projected only after `RuntimeNpcStore` commits authoritative state. Packet-23 replication remains the primary consumer and the TUI is an observer through a commit fan-out. In TUI mode the projection uses a fixed 256-slot, single-writer sequence publication so authoritative NPC updates do not acquire a UI lock or allocate per commit. Headless mode does not create the NPC operations projection.
+
 ### Network
 
 - active/admitted/rejected/registered connections;
-- relay/baseline/AOI-resync counters;
+- player relay/baseline/AOI-resync counters;
+- packet-23 NPC relayed frames;
+- packet-23 NPC join baselines;
+- packet-23 NPC rejected outbound frames;
+- packet-23 unsupported NPC commits;
 - tracked bounded outbound queues;
 - aggregate queued frames/bytes;
 - rejected outbound frames;
@@ -173,7 +197,7 @@ Player data is fed from validated authoritative events. The UI does not read `Se
 - rejected inbound frames;
 - bounded top-two live inbound-rate detail.
 
-Inbound telemetry reuses the `TerrariaConnectionRateAccountant` already used by the connection policy. It does not add a second frame/byte counter to the receive hot path.
+Inbound telemetry reuses the `TerrariaConnectionRateAccountant` already used by the connection policy. NPC replication telemetry reads the existing thread-safe counters from `RuntimeNpcReplicationRegistry`. Neither path adds a duplicate counter to the packet/NPC hot path merely for the UI.
 
 ### Logs
 
@@ -213,11 +237,11 @@ Rules for future actions:
 
 Future slices should be driven by operational need rather than by filling screens for appearance's sake. Useful candidates are:
 
+- authoritative world-time/event state once the mutable world clock publishes a thread-safe runtime-owned snapshot;
 - save/checkpoint/cache-rebuild status once persistence publishes a bounded runtime-owned snapshot;
-- richer player navigation/detail only when the compact list becomes operationally limiting;
+- richer player/NPC navigation and sorting only when the compact lists become operationally limiting;
 - additional packet/category telemetry only where the network subsystem already owns trustworthy counters;
-- more administrative actions only after explicit runtime operations exist;
-- table/list navigation and sorting when current bounded detail becomes too dense.
+- more administrative actions only after explicit runtime operations exist.
 
 Do not add controls that merely expose implementation internals with no stable operational meaning.
 
