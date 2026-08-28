@@ -23,8 +23,10 @@ internal static class TerminalUiSmoke
             window.ShowWorld();
             window.ShowLogs();
             window.ShowDashboard();
+            window.SetInterestManagementEnabled(true);
+            window.SetInterestManagementEnabled(false);
             app.Run(window);
-            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, network, world and logs views.");
+            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, network, world and logs views plus authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -36,6 +38,8 @@ internal static class TerminalUiSmoke
 
     private sealed class SmokeOperations : IRuntimeDashboardOperations, IPlayerOperations, INetworkOperations, IWorldOperations
     {
+        private bool interestManagementEnabled;
+
         public RuntimeDashboardSnapshot CaptureSnapshot() =>
             new(
                 Lifecycle: RuntimeLifecycleState.Running,
@@ -44,7 +48,7 @@ internal static class TerminalUiSmoke
                 WorldHeightTiles: 1200,
                 Port: ServerHostOptions.DefaultPort,
                 MaxPlayers: ServerHostOptions.DefaultMaxPlayers,
-                InterestManagementEnabled: false,
+                InterestManagementEnabled: interestManagementEnabled,
                 Tick: 120,
                 TargetTicksPerSecond: 60,
                 ObservedTicksPerSecond: 60d,
@@ -71,6 +75,12 @@ internal static class TerminalUiSmoke
                 AcceptedConnections: 1,
                 RejectedConnections: 0,
                 CapturedAtUtc: DateTimeOffset.UtcNow);
+
+        public bool TrySetInterestManagementEnabled(bool enabled)
+        {
+            interestManagementEnabled = enabled;
+            return true;
+        }
 
         RuntimePlayersSnapshot IPlayerOperations.CaptureSnapshot()
         {

@@ -138,6 +138,10 @@ internal sealed class ServerRuntimeState
                 Volatile.Write(ref lastWorkerResult, result.Value);
                 break;
 
+            case SetInterestManagementRuntimeCommand interestManagement:
+                interestManagement.Control.SetEnabled(interestManagement.Enabled);
+                break;
+
             case NpcSpawnRuntimeCommand spawn:
                 ApplyNpcSpawn(spawn);
                 break;

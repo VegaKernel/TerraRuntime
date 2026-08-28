@@ -21,6 +21,7 @@ internal sealed class DashboardWindow : Runnable
     private RuntimeLogLevel minimumLogLevel = RuntimeLogLevel.Information;
     private string? logSourceFilter;
     private RuntimeLogSnapshot lastLogSnapshot;
+    private string? lastAdminAction;
     private bool hasLogSnapshot;
     private bool logPaused;
 
@@ -53,6 +54,18 @@ internal sealed class DashboardWindow : Runnable
                         new MenuItem("_Network", "Connection and replication counters", ShowNetwork),
                         new MenuItem("_World", "Validated world and cache state", ShowWorld),
                         new MenuItem("_Logs", "Bounded runtime event log", ShowLogs)
+                    ]),
+                new MenuBarItem(
+                    "_Actions",
+                    [
+                        new MenuItem(
+                            "_Enable interest management",
+                            "Queue the runtime-owned visibility optimization through the authoritative command boundary",
+                            () => SetInterestManagementEnabled(true)),
+                        new MenuItem(
+                            "_Disable interest management",
+                            "Queue disabling runtime-owned visibility optimization through the authoritative command boundary",
+                            () => SetInterestManagementEnabled(false))
                     ]),
                 new MenuBarItem(
                     "_Logs",
@@ -132,6 +145,17 @@ internal sealed class DashboardWindow : Runnable
 
     internal void ShowLogs() => SelectScreen(TerminalUiScreen.Logs, "TerraRuntime - Logs");
 
+    internal void SetInterestManagementEnabled(bool enabled)
+    {
+        bool queued = dashboardOperations.TrySetInterestManagementEnabled(enabled);
+        lastAdminAction = queued
+            ? $"Admin     : queued interest management {(enabled ? "enable" : "disable")} command"
+            : $"Admin     : rejected interest management {(enabled ? "enable" : "disable")} command (queue full/stopping)";
+
+        if (screen == TerminalUiScreen.Dashboard)
+            RefreshDashboard();
+    }
+
     private void SelectScreen(TerminalUiScreen next, string title)
     {
         screen = next;
@@ -161,6 +185,8 @@ internal sealed class DashboardWindow : Runnable
         rows[8].Text = $"Runtime   : interest management {(snapshot.InterestManagementEnabled ? "enabled" : "disabled")}   budget exhaustions {snapshot.CommandBudgetExhaustions:N0}   oldest command {FormatMilliseconds(snapshot.OldestPendingCommandAgeMilliseconds)}";
         rows[9].Text = $"Memory    : heap {FormatMebibytes(snapshot.ManagedHeapBytes)}   allocated {FormatMebibytes(snapshot.TotalAllocatedBytes)}   GC 0/1/2 {snapshot.Gen0Collections:N0}/{snapshot.Gen1Collections:N0}/{snapshot.Gen2Collections:N0}";
         rows[10].Text = $"Snapshot  : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+        if (lastAdminAction is not null)
+            rows[11].Text = lastAdminAction;
     }
 
     private void RefreshPlayers()

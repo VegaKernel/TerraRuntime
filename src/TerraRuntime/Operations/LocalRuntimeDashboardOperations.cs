@@ -99,6 +99,11 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
             CapturedAtUtc: loop.CapturedAtUtc);
     }
 
+    public bool TrySetInterestManagementEnabled(bool enabled) =>
+        gameLoop.TryPost(
+            GameCommandSourceId.System,
+            new SetInterestManagementRuntimeCommand(interestManagement, enabled));
+
     private double ObserveTickRate(long currentTick)
     {
         long now = Stopwatch.GetTimestamp();
