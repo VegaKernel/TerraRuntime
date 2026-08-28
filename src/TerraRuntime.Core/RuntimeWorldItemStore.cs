@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
@@ -184,7 +185,8 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         float.IsFinite(update.VelocityY) &&
         float.IsFinite(update.ShimmerTime) &&
         update.Stack > 0 &&
-        update.ItemNetId > 0 &&
+        VanillaItemIds.TryCreate(update.ItemNetId, out ItemTypeId itemType) &&
+        !itemType.IsNone &&
         (byte)update.Ownership <= (byte)WorldItemOwnershipMode.GrabDelayForAllPlayers;
 
     private static bool TryAdvance(ref ulong value)

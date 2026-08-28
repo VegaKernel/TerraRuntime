@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
@@ -56,8 +57,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             return false;
         }
 
-        if (!VanillaNpcDefinitionCatalog.TryGet(npc.Type, out VanillaNpcDefinition definition) ||
-            !IsSupportedMotionPath(npc.Type, definition.AiStyle))
+        if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
+            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
+            !IsSupportedMotionPath(npcType, definition.AiStyle))
         {
             next = aiState;
             return true;
@@ -70,7 +72,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         if (!simulation.NoGravity)
         {
             if (!VanillaNpcGravity.TryApply(
-                    npc.Type,
+                    npcType,
                     aiState.PositionY,
                     velocityY,
                     simulation.Wet,
@@ -119,7 +121,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         float oldVelocityX = velocityX;
         float oldVelocityY = velocityY;
-        bool fallThroughPlatforms = npc.Type == 2;
+        bool fallThroughPlatforms = npcType == VanillaNpcIds.DemonEye;
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
             tiles,
             aiState.PositionX,
@@ -195,9 +197,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         return true;
     }
 
-    private static bool IsSupportedMotionPath(int type, int aiStyle) =>
-        (type == 1 && aiStyle == 1) ||
-        (type == 2 && aiStyle == 2);
+    private static bool IsSupportedMotionPath(NpcTypeId type, NpcAiStyleId aiStyle) =>
+        (type == VanillaNpcIds.BlueSlime && aiStyle == VanillaNpcAiStyles.Slime) ||
+        (type == VanillaNpcIds.DemonEye && aiStyle == VanillaNpcAiStyles.DemonEye);
 
     private static NpcLiquidContactKind MapLiquid(WorldLiquidKind kind) => kind switch
     {

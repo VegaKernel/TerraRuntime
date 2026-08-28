@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.Core;
 
 /// <summary>
@@ -6,8 +8,8 @@ namespace TerraRuntime.Core;
 /// independently implemented in TerraRuntime.
 /// </summary>
 public readonly record struct VanillaNpcDefinition(
-    int Type,
-    int AiStyle,
+    NpcTypeId Type,
+    NpcAiStyleId AiStyle,
     int Width,
     int Height,
     int Damage,
@@ -26,43 +28,69 @@ public static class VanillaNpcDefinitionCatalog
     public const ushort DefaultTarget = byte.MaxValue;
     public const int DefaultTimeLeft = 750;
 
+    /// <summary>
+    /// Raw-id compatibility boundary for protocol/bootstrap callers that have not yet crossed into
+    /// typed gameplay identity. Authoritative gameplay should prefer the typed overload.
+    /// </summary>
     public static bool TryGet(int type, out VanillaNpcDefinition definition)
     {
-        definition = type switch
+        if (!NpcTypeId.TryCreate(type, out NpcTypeId npcType))
         {
-            1 => new VanillaNpcDefinition(
-                Type: 1,
-                AiStyle: 1,
+            definition = default;
+            return false;
+        }
+
+        return TryGet(npcType, out definition);
+    }
+
+    public static bool TryGet(NpcTypeId type, out VanillaNpcDefinition definition)
+    {
+        if (type == VanillaNpcIds.BlueSlime)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.BlueSlime,
+                AiStyle: VanillaNpcAiStyles.Slime,
                 Width: 24,
                 Height: 18,
                 Damage: 7,
                 Defense: 2,
                 LifeMax: 25,
                 KnockBackResist: 1f,
-                Scale: 1f),
-            2 => new VanillaNpcDefinition(
-                Type: 2,
-                AiStyle: 2,
+                Scale: 1f);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.DemonEye)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.DemonEye,
+                AiStyle: VanillaNpcAiStyles.DemonEye,
                 Width: 30,
                 Height: 32,
                 Damage: 18,
                 Defense: 2,
                 LifeMax: 60,
                 KnockBackResist: 0.8f,
-                Scale: 1f),
-            3 => new VanillaNpcDefinition(
-                Type: 3,
-                AiStyle: 3,
+                Scale: 1f);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.Zombie)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.Zombie,
+                AiStyle: VanillaNpcAiStyles.Fighter,
                 Width: 18,
                 Height: 40,
                 Damage: 14,
                 Defense: 6,
                 LifeMax: 45,
                 KnockBackResist: 0.5f,
-                Scale: 1f),
-            _ => default
-        };
+                Scale: 1f);
+            return true;
+        }
 
-        return definition.Type != 0;
+        definition = default;
+        return false;
     }
 }

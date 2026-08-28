@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
@@ -10,7 +11,7 @@ public readonly record struct VanillaNpcGravityResult(
 
 /// <summary>
 /// Source-backed baseline from TerrariaServer 1.4.5.8 NPC.UpdateNPC_UpdateGravity for the first
-/// supported NPC types (Blue Slime 1, Demon Eye 2, Zombie 3). These types do not enter any of the
+/// supported NPC types (Blue Slime, Demon Eye, Zombie). These types do not enter any of the
 /// vanilla type-specific gravity exceptions, so only altitude scaling and persisted liquid contact apply.
 /// </summary>
 public static class VanillaNpcGravity
@@ -18,6 +19,7 @@ public static class VanillaNpcGravity
     private const float BaseGravity = 0.3f;
     private const float BaseMaxFallSpeed = 10f;
 
+    /// <summary>Raw-id compatibility boundary; gameplay code should prefer the typed overload.</summary>
     public static bool TryApply(
         int npcType,
         float positionY,
@@ -28,7 +30,34 @@ public static class VanillaNpcGravity
         double worldSurfaceTiles,
         out VanillaNpcGravityResult result)
     {
-        if (npcType is not (1 or 2 or 3) ||
+        if (!NpcTypeId.TryCreate(npcType, out NpcTypeId type))
+        {
+            result = default;
+            return false;
+        }
+
+        return TryApply(
+            type,
+            positionY,
+            velocityY,
+            wet,
+            liquidContact,
+            worldWidthTiles,
+            worldSurfaceTiles,
+            out result);
+    }
+
+    public static bool TryApply(
+        NpcTypeId npcType,
+        float positionY,
+        float velocityY,
+        bool wet,
+        NpcLiquidContactKind liquidContact,
+        int worldWidthTiles,
+        double worldSurfaceTiles,
+        out VanillaNpcGravityResult result)
+    {
+        if (!IsSupportedType(npcType) ||
             !float.IsFinite(positionY) ||
             !float.IsFinite(velocityY) ||
             worldWidthTiles <= 0 ||
@@ -74,4 +103,9 @@ public static class VanillaNpcGravity
             new VanillaNpcGravityParameters(gravity, maxFallSpeed));
         return true;
     }
+
+    private static bool IsSupportedType(NpcTypeId type) =>
+        type == VanillaNpcIds.BlueSlime ||
+        type == VanillaNpcIds.DemonEye ||
+        type == VanillaNpcIds.Zombie;
 }
