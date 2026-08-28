@@ -32,6 +32,17 @@ public sealed class RuntimeWorldSnapshotLiquidTests
 
             Assert.True(diagnostic.IsLoaded);
             WorldFileData loaded = Assert.IsType<WorldFileData>(loadedWorld);
+            Assert.Equal(expected.Header, loaded.Header);
+            Assert.Equal(expected.RuntimeMetadata.GameMode, loaded.RuntimeMetadata.GameMode);
+            Assert.Equal(expected.RuntimeMetadata.WorldSurface, loaded.RuntimeMetadata.WorldSurface);
+            Assert.Equal(expected.Chests.Length, loaded.Chests.Length);
+            Assert.Equal(expected.Signs.Length, loaded.Signs.Length);
+            Assert.Equal(expected.Npcs.TownNpcs.Length, loaded.Npcs.TownNpcs.Length);
+            Assert.Equal(expected.TileEntities.Length, loaded.TileEntities.Length);
+            Assert.Equal(expected.PressurePlates.Length, loaded.PressurePlates.Length);
+            Assert.Equal(expected.TownRooms.Length, loaded.TownRooms.Length);
+            Assert.Equal(expected.Bestiary.Kills.Length, loaded.Bestiary.Kills.Length);
+            Assert.Equal(expected.CreativePowers, loaded.CreativePowers);
             Assert.Equal(2, loaded.Tiles.LiquidUpdates.ActiveCount);
             Assert.Equal(1, loaded.Tiles.LiquidUpdates.BufferedCount);
 
@@ -65,7 +76,9 @@ public sealed class RuntimeWorldSnapshotLiquidTests
         {
             Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(cachePath, file, stamp, world).IsWritten);
             byte[] bytes = File.ReadAllBytes(cachePath);
-            bytes[^1] ^= 0x01;
+            int liquidHeaderOffset = bytes.AsSpan().IndexOf("LIQSTATE"u8);
+            Assert.True(liquidHeaderOffset >= 0);
+            bytes[liquidHeaderOffset + 64] ^= 0x01;
             File.WriteAllBytes(cachePath, bytes);
 
             RuntimeWorldSnapshotLoadDiagnostic diagnostic = RuntimeWorldSnapshotCache.TryLoad(
@@ -75,6 +88,41 @@ public sealed class RuntimeWorldSnapshotLiquidTests
                 out WorldFileData? loadedWorld);
 
             Assert.Equal(RuntimeWorldSnapshotLoadResult.LiquidQueueHashMismatch, diagnostic.Result);
+            Assert.Null(loadedWorld);
+        }
+        finally
+        {
+            File.Delete(cachePath);
+            File.Delete(cachePath + ".tmp");
+        }
+    }
+
+    [Fact]
+    public void Runtime_snapshot_rejects_corrupted_prepared_runtime_payload()
+    {
+        byte[] file = CreateCompleteWorld();
+        WorldFileLoadLimits limits = CreateLimits();
+        WorldFileLoader.TryLoad(file, limits, out WorldFileData? sourceWorld);
+        WorldFileData world = Assert.IsType<WorldFileData>(sourceWorld);
+
+        string cachePath = Path.Combine(Path.GetTempPath(), $"terraruntime-prepared-{Guid.NewGuid():N}.runtime-world");
+        var stamp = new RuntimeWorldSourceStamp(file.LongLength, DateTime.UtcNow.Ticks);
+        try
+        {
+            Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(cachePath, file, stamp, world).IsWritten);
+            byte[] bytes = File.ReadAllBytes(cachePath);
+            int preparedHeaderOffset = bytes.AsSpan().IndexOf("PREPARED"u8);
+            Assert.True(preparedHeaderOffset >= 0);
+            bytes[preparedHeaderOffset + 32] ^= 0x01;
+            File.WriteAllBytes(cachePath, bytes);
+
+            RuntimeWorldSnapshotLoadDiagnostic diagnostic = RuntimeWorldSnapshotCache.TryLoad(
+                cachePath,
+                stamp,
+                limits,
+                out WorldFileData? loadedWorld);
+
+            Assert.Equal(RuntimeWorldSnapshotLoadResult.PreparedPayloadHashMismatch, diagnostic.Result);
             Assert.Null(loadedWorld);
         }
         finally
