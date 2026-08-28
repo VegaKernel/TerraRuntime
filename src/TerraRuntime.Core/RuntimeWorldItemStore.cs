@@ -61,6 +61,39 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
     }
 
+    /// <summary>
+    /// Allocates the first available vanilla world-item slot. Wire sentinels such as packet-21 index 400
+    /// are deliberately handled by ingress and never enter this runtime-owned store.
+    /// </summary>
+    public bool TryAllocate(in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
+    {
+        if (!IsValid(in update))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        lock (_gate)
+        {
+            for (short slot = 0; slot < _slots.Length; slot++)
+            {
+                ref SlotState state = ref _slots[slot];
+                if (state.Active || !TryAdvance(ref state.Generation))
+                    continue;
+
+                state.Revision = 1;
+                state.Active = true;
+                state.Update = update;
+                _activeCount++;
+                snapshot = Capture(slot, in state);
+                return true;
+            }
+        }
+
+        snapshot = default;
+        return false;
+    }
+
     public bool TryUpsert(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
     {
         if (!IsValidSlot(slot) || !IsValid(in update))
