@@ -4,6 +4,20 @@ High-performance clean-room **.NET 11 NativeAOT-first** server runtime for Terra
 
 Production target: a native server executable with no JIT requirement and no arbitrary managed plugin loading inside the runtime process.
 
+## Runtime directory layout
+
+A normal server startup uses the executable directory as the TerraRuntime root and ensures a small runtime-owned directory layout exists:
+
+```text
+TerraRuntime.Server[.exe]
+Worlds/    # canonical .wld worlds and adjacent .runtime-world snapshots
+config/    # TerraRuntime-owned configuration
+ data/     # TerraRuntime-owned durable auxiliary state
+logs/      # standalone runtime diagnostics/log output
+```
+
+`--world <path.wld>` may still point to an explicit world anywhere on disk. Interactive startup without `--world` only enumerates the canonical `Worlds/` directory, avoiding ambiguous current-working-directory lookup.
+
 See:
 
 - [`docs/native-aot-baseline.md`](docs/native-aot-baseline.md) for the mandatory NativeAOT architecture rules;
