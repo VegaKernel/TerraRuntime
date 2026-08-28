@@ -16,7 +16,8 @@ public enum PlayerBootstrapStopReason : byte
     MalformedJoinRequest = 4,
     OutboundBackpressure = 5,
     PlayerSlotMismatch = 6,
-    GameIngressBackpressure = 7
+    GameIngressBackpressure = 7,
+    SectionEncodingFailure = 8
 }
 
 /// <summary>
@@ -158,7 +159,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     private TerrariaFrameSinkResult HandleSectionRequest(in TerrariaFrame frame)
     {
-        if (TerrariaJoinRequestDecoder.TryDecodeSectionRequest(frame, out _) != TerrariaJoinDecodeResult.Decoded)
+        if (TerrariaJoinRequestDecoder.TryDecodeSectionRequest(frame, out TerrariaSectionBootstrapRequest request) != TerrariaJoinDecodeResult.Decoded)
             return Stop(PlayerBootstrapStopReason.MalformedJoinRequest);
 
         if (_session!.State == PlayerJoinState.AwaitingWorldRequest)
@@ -170,7 +171,10 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (_session.State != PlayerJoinState.AwaitingSectionRequest)
             return Stop(PlayerBootstrapStopReason.InvalidJoinState);
 
-        if (!TryQueue(_packets.StatusFrame))
+        if (!_packets.TryCreateSectionResponse(request.TileX, request.TileY, out PlayerBootstrapSectionResponse sectionResponse))
+            return Stop(PlayerBootstrapStopReason.SectionEncodingFailure);
+
+        if (!TryQueue(sectionResponse.StatusFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 
         foreach (ReadOnlyMemory<byte> sectionFrame in _packets.BaseSectionFrames)
@@ -179,8 +183,19 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
 
-        if (!TryQueue(_packets.BaseTileFrameFrame) ||
-            !TryQueue(_packets.EnterWorldFrame) ||
+        if (!TryQueue(_packets.BaseTileFrameFrame))
+            return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
+
+        foreach (ReadOnlyMemory<byte> sectionFrame in sectionResponse.AdditionalSectionFrames)
+        {
+            if (!TryQueue(sectionFrame))
+                return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
+        }
+
+        if (sectionResponse.HasRequestedTileFrame && !TryQueue(sectionResponse.RequestedTileFrameFrame))
+            return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
+
+        if (!TryQueue(_packets.EnterWorldFrame) ||
             !TryQueue(_packets.WorldInfoFrame))
         {
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);

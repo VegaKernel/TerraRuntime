@@ -1,12 +1,13 @@
 namespace TerraRuntime.World;
 
 /// <summary>
-/// Plans the base section window sent by Terraria 1.4.5.8 when handling the initial packet-8 request.
+/// Plans the section windows sent by Terraria 1.4.5.8 when handling the initial packet-8 request.
 /// Vanilla computes the 5x3 window before clamping, so worlds spawning near an edge intentionally receive fewer sections.
 /// </summary>
 public static class InitialSectionBootstrapPlanner
 {
     public const int MaximumBaseSectionCount = 5 * 3;
+    public const int MaximumRequestedSectionCount = 5 * 3;
 
     public static int PlanBaseSpawnSections(
         WorldDimensions dimensions,
@@ -45,5 +46,38 @@ public static class InitialSectionBootstrapPlanner
         }
 
         return count;
+    }
+
+    /// <summary>
+    /// Plans the optional second 5x3 packet-8 window around the client-provided spawn position.
+    /// A missing (-1) coordinate or a position inside vanilla's ten-tile edge guard disables the window.
+    /// </summary>
+    public static int PlanRequestedSections(
+        WorldDimensions dimensions,
+        int tileX,
+        int tileY,
+        Span<WorldSectionId> destination)
+    {
+        ArgumentNullException.ThrowIfNull(dimensions);
+        if (destination.Length < MaximumRequestedSectionCount)
+            throw new ArgumentException($"Destination must hold at least {MaximumRequestedSectionCount} sections.", nameof(destination));
+
+        if (!HasValidRequestedPosition(dimensions, tileX, tileY))
+            return 0;
+
+        return PlanBaseSpawnSections(dimensions, tileX, tileY, destination);
+    }
+
+    public static bool HasValidRequestedPosition(WorldDimensions dimensions, int tileX, int tileY)
+    {
+        ArgumentNullException.ThrowIfNull(dimensions);
+
+        if (tileX == -1 || tileY == -1)
+            return false;
+
+        return tileX >= 10 &&
+            tileX <= dimensions.WidthTiles - 10 &&
+            tileY >= 10 &&
+            tileY <= dimensions.HeightTiles - 10;
     }
 }
