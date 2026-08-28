@@ -27,4 +27,8 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long PlayerDeactivationFrames,
     long RelayedMovementFrames,
     long MovementResyncFrames,
-    DateTimeOffset CapturedAtUtc);
+    DateTimeOffset CapturedAtUtc,
+    long NpcRelayedFrames = 0,
+    long NpcBaselineFrames = 0,
+    long NpcRejectedFrames = 0,
+    long NpcUnsupportedCommits = 0);
