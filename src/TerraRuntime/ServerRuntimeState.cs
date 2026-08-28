@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.World;
 
 namespace TerraRuntime;
 
@@ -24,7 +25,8 @@ internal sealed class ServerRuntimeState
     public ServerRuntimeState(
         IRuntimePlayerEventSink? playerEvents = null,
         RuntimeNpcStore? npcs = null,
-        INpcAiStateStepper? npcAiStepper = null)
+        INpcAiStateStepper? npcAiStepper = null,
+        WorldTileStore? worldTiles = null)
     {
         _playerEvents = playerEvents;
         _npcs = npcs ?? new RuntimeNpcStore();
@@ -33,7 +35,9 @@ internal sealed class ServerRuntimeState
         if (npcAiStepper is null)
         {
             _vanillaNpcTargetingAiStepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
-            _npcAiStepper = _vanillaNpcTargetingAiStepper;
+            _npcAiStepper = worldTiles is null
+                ? _vanillaNpcTargetingAiStepper
+                : new VanillaNpcWorldMotionAiStepper(_vanillaNpcTargetingAiStepper, worldTiles);
         }
         else
         {
