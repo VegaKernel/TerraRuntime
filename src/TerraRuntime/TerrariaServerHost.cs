@@ -9,16 +9,27 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
-internal static class TerrariaServerHost
+public static class TerrariaServerHost
 {
     private static readonly OutboundQueueOptions ConnectionOutboundQueueOptions = new(
         maxFrames: 4_096,
         maxQueuedBytes: 16L * 1024 * 1024,
         maxFrameBytes: TerrariaFrameDecoderOptions.AbsoluteMaximumFrameLength);
 
-    public static async Task<int> RunAsync(ServerHostOptions options)
+    /// <summary>
+    /// Runs one Terraria world. The optional interest-management control is the only supported
+    /// external switch for runtime visibility optimization; spatial policy remains owned by TerraRuntime.
+    /// </summary>
+    public static async Task<int> RunAsync(
+        ServerHostOptions options,
+        IInterestManagementControl? interestManagement = null)
     {
         ArgumentNullException.ThrowIfNull(options);
+
+        IInterestManagementControl runtimeInterestManagement =
+            interestManagement ?? new InterestManagementControl(options.InterestManagementEnabled);
+        if (options.InterestManagementEnabled)
+            runtimeInterestManagement.SetEnabled(true);
 
         if (!File.Exists(options.WorldPath))
         {
@@ -59,7 +70,7 @@ internal static class TerrariaServerHost
             return 27;
         }
 
-        var runtimeConnections = new RuntimeConnectionRegistry();
+        var runtimeConnections = new RuntimeConnectionRegistry(runtimeInterestManagement);
         var state = new ServerRuntimeState(runtimeConnections);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
@@ -94,7 +105,8 @@ internal static class TerrariaServerHost
             Console.WriteLine(
                 $"TerraRuntime listening on 0.0.0.0:{options.Port}; " +
                 $"world='{world.Header.Name}' {world.Header.Dimensions.WidthTiles}x{world.Header.Dimensions.HeightTiles}; " +
-                $"maxPlayers={options.MaxPlayers}.");
+                $"maxPlayers={options.MaxPlayers}; " +
+                $"interestManagement={(runtimeInterestManagement.IsEnabled ? "enabled" : "disabled")}.");
 
             while (!shutdown.IsCancellationRequested)
             {

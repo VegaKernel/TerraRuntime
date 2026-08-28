@@ -9,7 +9,7 @@ namespace TerraRuntime;
 /// </summary>
 internal interface IRuntimePlayerEventSink
 {
-    void PlayerSpawned(GameCommandSourceId source, PlayerSlotId slot);
+    void PlayerSpawned(GameCommandSourceId source, in PlayerSpawnCommitRequest request);
 
     void PlayerMoved(GameCommandSourceId source, in PlayerMovementCommitRequest request);
 

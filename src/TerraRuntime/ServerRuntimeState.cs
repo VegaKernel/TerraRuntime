@@ -76,21 +76,22 @@ internal sealed class ServerRuntimeState
 
     private void ApplyPlayerSpawn(PlayerSpawnRuntimeCommand spawn)
     {
-        PlayerSpawnCommitResult commit = spawn.Session.TryCommitSpawn(spawn.Request.ClaimedSlot);
+        PlayerSpawnCommitRequest request = spawn.Request;
+        PlayerSpawnCommitResult commit = spawn.Session.TryCommitSpawn(request.ClaimedSlot);
         Volatile.Write(ref lastSpawnCommitResult, (int)commit);
         if (commit != PlayerSpawnCommitResult.Committed)
             return;
 
         CommittedPlayerSpawns++;
-        _players[spawn.Request.ClaimedSlot.Value] = new RuntimePlayerState
+        _players[request.ClaimedSlot.Value] = new RuntimePlayerState
         {
             Source = spawn.Source,
-            Slot = spawn.Request.ClaimedSlot,
-            Team = spawn.Request.Team,
-            PositionX = spawn.Request.SpawnX * 16f,
-            PositionY = spawn.Request.SpawnY * 16f
+            Slot = request.ClaimedSlot,
+            Team = request.Team,
+            PositionX = request.SpawnX * 16f,
+            PositionY = request.SpawnY * 16f
         };
-        _playerEvents?.PlayerSpawned(spawn.Source, spawn.Request.ClaimedSlot);
+        _playerEvents?.PlayerSpawned(spawn.Source, in request);
     }
 
     private void ApplyPlayerMovement(PlayerMovementRuntimeCommand movement)

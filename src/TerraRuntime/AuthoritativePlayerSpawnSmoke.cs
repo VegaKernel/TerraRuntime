@@ -9,7 +9,8 @@ internal static class AuthoritativePlayerSpawnSmoke
     public static bool Run(out string failure)
     {
         failure = string.Empty;
-        var registry = new RuntimeConnectionRegistry();
+        var interestManagement = new InterestManagementControl(enabled: true);
+        var registry = new RuntimeConnectionRegistry(interestManagement);
         var source1 = GameCommandSourceId.FromConnection(1);
         var source2 = GameCommandSourceId.FromConnection(2);
         var outbound1 = CreateOutbound();
@@ -17,6 +18,12 @@ internal static class AuthoritativePlayerSpawnSmoke
         if (!registry.TryRegister(source1, outbound1) || !registry.TryRegister(source2, outbound2))
         {
             failure = "failed to register runtime connection endpoints";
+            return false;
+        }
+
+        if (!interestManagement.IsEnabled)
+        {
+            failure = "interest-management routing was not enabled for the authoritative relay smoke";
             return false;
         }
 
@@ -97,7 +104,7 @@ internal static class AuthoritativePlayerSpawnSmoke
                 outbound1.QueuedFrames != 0 ||
                 outbound2.QueuedFrames != 1)
             {
-                failure = $"movement relay mismatch: applied={state.AppliedPlayerMovements}, relayed={registry.RelayedMovementFrames}, senderQueued={outbound1.QueuedFrames}, peerQueued={outbound2.QueuedFrames}";
+                failure = $"movement relay mismatch with interest management enabled: applied={state.AppliedPlayerMovements}, relayed={registry.RelayedMovementFrames}, senderQueued={outbound1.QueuedFrames}, peerQueued={outbound2.QueuedFrames}";
                 loop.Stop(TimeSpan.FromSeconds(1));
                 return false;
             }

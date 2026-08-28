@@ -10,11 +10,19 @@ namespace TerraRuntime;
 /// <summary>
 /// Tracks live connection outbound queues independently from socket ownership and fans out
 /// authoritative player events only to clients that have completed the spawn transition.
+/// Recipient selection always passes through the runtime-owned interest router before enqueue.
 /// </summary>
 internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 {
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> _endpoints = new();
+    private readonly RuntimeInterestRouter _interestRouter;
     private long _relayedMovementFrames;
+
+    public RuntimeConnectionRegistry(IInterestManagementControl? interestManagement = null)
+    {
+        _interestRouter = new RuntimeInterestRouter(
+            interestManagement ?? new InterestManagementControl());
+    }
 
     public int Count => _endpoints.Count;
 
@@ -41,10 +49,13 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         return true;
     }
 
-    public void PlayerSpawned(GameCommandSourceId source, PlayerSlotId slot)
+    public void PlayerSpawned(GameCommandSourceId source, in PlayerSpawnCommitRequest request)
     {
-        if (_endpoints.TryGetValue(source, out Endpoint? endpoint))
-            endpoint.MarkPlaying(slot);
+        if (!_endpoints.TryGetValue(source, out Endpoint? endpoint))
+            return;
+
+        endpoint.MarkPlaying(request.ClaimedSlot);
+        endpoint.UpdatePosition(request.SpawnX * 16f, request.SpawnY * 16f);
     }
 
     public void PlayerMoved(GameCommandSourceId source, in PlayerMovementCommitRequest request)
@@ -55,6 +66,11 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         {
             return;
         }
+
+        // Track authoritative positions even while interest management is disabled. A live enable
+        // can therefore start from current state instead of waiting for every player to move again.
+        origin.UpdatePosition(request.PositionX, request.PositionY);
+        RuntimePlayerInterestState subject = origin.CreateInterestState(originSlot);
 
         var movement = new TerrariaPlayerMovementState(
             request.PlayerSlot.Value,
@@ -84,7 +100,14 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 
         foreach (KeyValuePair<GameCommandSourceId, Endpoint> pair in _endpoints)
         {
-            if (pair.Key == source || !pair.Value.TryGetPlayingSlot(out _))
+            if (pair.Key == source ||
+                !pair.Value.TryGetPlayingSlot(out PlayerSlotId observerSlot))
+            {
+                continue;
+            }
+
+            RuntimePlayerInterestState observer = pair.Value.CreateInterestState(observerSlot);
+            if (!_interestRouter.ShouldRelayPlayerMovement(in observer, in subject))
                 continue;
 
             if (pair.Value.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
@@ -101,6 +124,9 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     private sealed class Endpoint
     {
         private int _playingSlot = -1;
+        private bool _hasPosition;
+        private float _positionX;
+        private float _positionY;
 
         public Endpoint(TerrariaConnectionOutboundQueue outbound)
         {
@@ -123,6 +149,16 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             slot = new PlayerSlotId(checked((byte)value));
             return true;
         }
+
+        public void UpdatePosition(float positionX, float positionY)
+        {
+            _positionX = positionX;
+            _positionY = positionY;
+            _hasPosition = true;
+        }
+
+        public RuntimePlayerInterestState CreateInterestState(PlayerSlotId slot) =>
+            new(slot, _hasPosition, _positionX, _positionY);
 
         public void ClearPlaying(PlayerSlotId slot) =>
             Interlocked.CompareExchange(ref _playingSlot, -1, slot.Value);

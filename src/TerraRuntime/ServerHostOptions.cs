@@ -1,6 +1,10 @@
 namespace TerraRuntime;
 
-internal sealed record ServerHostOptions(string WorldPath, int Port, int MaxPlayers)
+public sealed record ServerHostOptions(
+    string WorldPath,
+    int Port,
+    int MaxPlayers,
+    bool InterestManagementEnabled = false)
 {
     public const int DefaultPort = 7777;
     public const int DefaultMaxPlayers = 8;
@@ -12,6 +16,7 @@ internal sealed record ServerHostOptions(string WorldPath, int Port, int MaxPlay
         string? worldPath = null;
         int port = DefaultPort;
         int maxPlayers = DefaultMaxPlayers;
+        bool interestManagementEnabled = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -44,6 +49,10 @@ internal sealed record ServerHostOptions(string WorldPath, int Port, int MaxPlay
                         return false;
                     }
                     break;
+
+                case "--interest-management":
+                    interestManagementEnabled = true;
+                    break;
             }
         }
 
@@ -54,7 +63,11 @@ internal sealed record ServerHostOptions(string WorldPath, int Port, int MaxPlay
             return false;
         }
 
-        options = new ServerHostOptions(Path.GetFullPath(worldPath), port, maxPlayers);
+        options = new ServerHostOptions(
+            Path.GetFullPath(worldPath),
+            port,
+            maxPlayers,
+            interestManagementEnabled);
         error = null;
         return true;
     }

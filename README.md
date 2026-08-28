@@ -8,4 +8,5 @@ See:
 
 - [`docs/native-aot-baseline.md`](docs/native-aot-baseline.md) for the mandatory NativeAOT architecture rules;
 - [`docs/aot-dependency-audit.md`](docs/aot-dependency-audit.md) for the dependency audit;
-- [`docs/roadmap.md`](docs/roadmap.md) for the broader implementation plan.
+- [`docs/roadmap.md`](docs/roadmap.md) for the broader implementation plan;
+- [`docs/roadmap/performance-tick-stability.md`](docs/roadmap/performance-tick-stability.md) for the detailed performance, tick-budget and interest-management roadmap.
