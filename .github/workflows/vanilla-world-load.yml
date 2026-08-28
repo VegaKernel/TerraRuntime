@@ -127,11 +127,12 @@ jobs:
             sleep 0.5
           done
 
+          grep -q "startup_profile source=canonical-wld" "$host_log"
           grep -q "TerraRuntime listening on 0.0.0.0:17780" "$host_log"
           python3 tools/ci/live_join_relay_probe.py --port 17780 2>&1 | tee "$client_log"
           cat "$host_log"
 
-      - name: Verify warm runtime cache startup
+      - name: Prove warm snapshot startup without reading source world
         shell: bash
         run: |
           set -euo pipefail
@@ -141,6 +142,8 @@ jobs:
           server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
 
           test -s "$cache"
+          original_mode="$(stat -c '%a' "$world")"
+          chmod 000 "$world"
 
           dotnet "$server_dll" \
             --world "$world" \
@@ -152,6 +155,7 @@ jobs:
           cleanup_warm() {
             kill "$warm_pid" 2>/dev/null || true
             wait "$warm_pid" 2>/dev/null || true
+            chmod "$original_mode" "$world" 2>/dev/null || true
           }
           trap cleanup_warm EXIT
 
@@ -169,8 +173,73 @@ jobs:
 
           grep -q "Runtime world cache hit:" "$warm_log"
           grep -q "startup_profile source=runtime-cache" "$warm_log"
+          grep -q "file_read_ms=0.000" "$warm_log"
           grep -q "TerraRuntime listening on 0.0.0.0:17781" "$warm_log"
           cat "$warm_log"
+
+      - name: Restore canonical wld checkpoint from snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-smoke.wld"
+          original="$GITHUB_WORKSPACE/artifacts/vanilla-smoke.original.wld"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          cp "$world" "$original"
+          rm "$world"
+          dotnet "$server_dll" --save-wld "$world"
+          test -s "$world"
+          cmp -s "$world" "$original"
+          dotnet run \
+            --project tools/TerraRuntime.WorldVerify/TerraRuntime.WorldVerify.csproj \
+            -c Release \
+            -- "$world"
+
+      - name: Report cold versus warm startup timings
+        shell: bash
+        run: |
+          set -euo pipefail
+          cold="$(grep 'startup_profile source=canonical-wld' artifacts/terraruntime-server.log | tail -1)"
+          warm="$(grep 'startup_profile source=runtime-cache' artifacts/terraruntime-warm-cache.log | tail -1)"
+          test -n "$cold"
+          test -n "$warm"
+
+          COLD="$cold" WARM="$warm" python3 - <<'PY' | tee artifacts/runtime-cache-timing.txt
+          import os
+          import re
+
+          cold = os.environ["COLD"]
+          warm = os.environ["WARM"]
+
+          def value(line, key):
+              match = re.search(rf"(?:^| ){re.escape(key)}=([0-9.]+)", line)
+              if match is None:
+                  raise SystemExit(f"missing {key}: {line}")
+              return float(match.group(1))
+
+          print("cold_profile=" + cold)
+          print("warm_profile=" + warm)
+          for metric in ("world_ready_ms", "network_ready_ms", "file_read_ms", "cache_load_ms", "allocated_mib"):
+              cold_value = value(cold, metric)
+              warm_value = value(warm, metric)
+              print(f"{metric}: cold={cold_value:.3f} warm={warm_value:.3f} delta={warm_value-cold_value:+.3f}")
+
+          cold_ready = value(cold, "world_ready_ms")
+          warm_ready = value(warm, "world_ready_ms")
+          if warm_ready > 0:
+              print(f"world_ready_speedup={cold_ready / warm_ready:.3f}x")
+          if cold_ready > 0:
+              print(f"world_ready_reduction_pct={(1.0 - warm_ready / cold_ready) * 100.0:.2f}")
+          PY
+
+          cat artifacts/runtime-cache-timing.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload runtime cache timing evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-cache-timing
+          path: artifacts/runtime-cache-timing.txt
+          retention-days: 14
 
       - name: Upload failure evidence
         if: failure()
