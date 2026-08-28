@@ -118,7 +118,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             ? selected
             : default;
         NpcSimulationState simulation = npc.Simulation;
-        bool engaged = !_dayTime || _slimeRainActive || npc.PositionY > _worldSurfacePixels;
+        bool damaged = simulation.LifeMax > 0 && simulation.Life != simulation.LifeMax;
+        bool engaged = !_dayTime || damaged || _slimeRainActive || npc.PositionY > _worldSurfacePixels;
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: npc.PositionX,
             VelocityX: npc.VelocityX,
@@ -172,11 +173,23 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         VanillaBlueSlimeTargetRefresh closest = TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh selected)
             ? selected
             : default;
+        int zombieDirectionY = closest.DirectionY;
+        if (closest.HasTarget &&
+            zombieDirectionY > 0 &&
+            TryFindCandidate(
+                checked((byte)closest.Target),
+                _candidates.AsSpan(0, _candidateCount),
+                out VanillaNpcTargetCandidate selectedCandidate) &&
+            selectedCandidate.CenterY <= npc.PositionY + definition.Height)
+        {
+            zombieDirectionY = -1;
+        }
+
         var zombieTarget = new VanillaZombieTargetRefresh(
             closest.HasTarget,
             closest.Target,
             closest.DirectionX,
-            closest.DirectionY);
+            zombieDirectionY);
         NpcSimulationState simulation = npc.Simulation;
         var input = new VanillaZombieMotionInput(
             PositionX: npc.PositionX,
