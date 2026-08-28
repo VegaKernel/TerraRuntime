@@ -33,6 +33,8 @@ public sealed class WorldTileStore
 
     internal Span<WorldTile> Tiles => _tiles;
 
+    internal WorldTile[] TileArray => _tiles;
+
     internal int GetUncheckedIndex(int x, int y) => (x * Dimensions.HeightTiles) + y;
 
     private int GetIndex(int x, int y)
