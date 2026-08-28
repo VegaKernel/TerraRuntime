@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
     paths:
+      - 'src/TerraRuntime/**'
+      - 'src/TerraRuntime.Network/**'
+      - 'src/TerraRuntime.Protocol/**'
+      - 'src/TerraRuntime.Protocol.Multiplicity/**'
       - 'src/TerraRuntime.World/**'
       - 'tools/TerraRuntime.WorldVerify/**'
       - '.github/workflows/vanilla-world-load.yml'
@@ -86,6 +90,74 @@ jobs:
           -c Release
           -- artifacts/vanilla-smoke.wld
 
+      - name: Build TerraRuntime host
+        run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+
+      - name: Probe live TerraRuntime handshake
+        shell: bash
+        run: |
+          set -euo pipefail
+          host_log="$GITHUB_WORKSPACE/artifacts/terraruntime-server.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          dotnet "$server_dll" \
+            --world "$GITHUB_WORKSPACE/artifacts/vanilla-smoke.wld" \
+            --port 17780 \
+            --max-players 1 \
+            > "$host_log" 2>&1 &
+          host_pid=$!
+
+          cleanup() {
+            kill "$host_pid" 2>/dev/null || true
+            wait "$host_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "TerraRuntime host exited before opening the listener." >&2
+              exit 1
+            fi
+            if grep -q "TerraRuntime listening on 0.0.0.0:17780" "$host_log"; then
+              break
+            fi
+            sleep 0.5
+          done
+
+          grep -q "TerraRuntime listening on 0.0.0.0:17780" "$host_log"
+
+          python3 - <<'PY'
+          import socket
+          import struct
+
+          hello = bytes([
+              15, 0,
+              1,
+              11,
+              *b"Terraria326",
+          ])
+
+          with socket.create_connection(("127.0.0.1", 17780), timeout=5) as client:
+              client.settimeout(5)
+              client.sendall(hello)
+              header = client.recv(3)
+              if len(header) != 3:
+                  raise SystemExit(f"short response header: {header!r}")
+              length, message_id = struct.unpack("<HB", header)
+              if message_id != 3:
+                  raise SystemExit(f"expected packet 3, got {message_id}")
+              if length != 4:
+                  raise SystemExit(f"expected packet 3 length 4, got {length}")
+              payload = client.recv(length - 3)
+              if payload != b"\x00":
+                  raise SystemExit(f"expected assigned player slot 0, got {payload!r}")
+
+          print("Live TerraRuntime handshake passed: Terraria326 -> packet 3 slot 0.")
+          PY
+
+          cat "$host_log"
+
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
@@ -94,4 +166,5 @@ jobs:
           path: |
             artifacts/vanilla-server.log
             artifacts/vanilla-serverconfig.txt
+            artifacts/terraruntime-server.log
           retention-days: 3
