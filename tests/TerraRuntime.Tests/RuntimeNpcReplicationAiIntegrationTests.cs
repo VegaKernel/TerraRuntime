@@ -32,7 +32,7 @@ public sealed class RuntimeNpcReplicationAiIntegrationTests
             VelocityX: 0f,
             VelocityY: 0f,
             Target: 4,
-            Ai: NpcAiState.Initial,
+            Ai: new NpcAiState(0f, 0f, 0f, 0f),
             Simulation: NpcSimulationState.Initial);
         Assert.True(store.TrySpawn(1, in initial, out _));
         Assert.Equal(1, outbound.QueuedFrames);
