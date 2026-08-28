@@ -203,9 +203,11 @@ internal sealed class DashboardWindow : Runnable
             string name = SanitizeName(player.Name);
             string health = player.HasHealth ? $"{player.Life}/{player.MaxLife}" : "n/a";
             string mana = player.HasMana ? $"{player.Mana}/{player.MaxMana}" : "n/a";
+            string mount = player.MountType == 0 ? "none" : player.MountType.ToString(CultureInfo.InvariantCulture);
             rows[i + 1].Text =
-                $"#{player.Slot,3} gen {player.Generation,-4} conn {player.ConnectionId,-5} {name,-20} " +
-                $"team {player.Team} pos {player.PositionX / 16f:F1},{player.PositionY / 16f:F1}t HP {health} MP {mana}";
+                $"#{player.Slot,3} g{player.Generation,-4} c{player.ConnectionId,-5} {name,-20} team {player.Team} " +
+                $"pos {player.PositionX / 16f:F1},{player.PositionY / 16f:F1}t vel {player.VelocityX:F1},{player.VelocityY:F1} " +
+                $"item-slot {player.SelectedItem} mount {mount} HP {health} MP {mana}";
         }
 
         if (players.Length > visible)

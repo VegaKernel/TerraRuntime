@@ -29,14 +29,14 @@ public sealed class RuntimePlayerOperationsTelemetryTests
             MovementFlags: 0,
             MiscFlags1: 0,
             MiscFlags2: 0,
-            SelectedItem: 0,
+            SelectedItem: 8,
             PositionX: 321f,
             PositionY: 654f,
-            HasVelocity: false,
-            VelocityX: 0f,
-            VelocityY: 0f,
-            HasMount: false,
-            MountType: 0,
+            HasVelocity: true,
+            VelocityX: 1.5f,
+            VelocityY: -2.25f,
+            HasMount: true,
+            MountType: 11,
             HasPotionOfReturnPositions: false,
             PotionOfReturnOriginalPositionX: 0f,
             PotionOfReturnOriginalPositionY: 0f,
@@ -57,12 +57,34 @@ public sealed class RuntimePlayerOperationsTelemetryTests
         Assert.Equal((byte)4, live.Team);
         Assert.Equal(321f, live.PositionX);
         Assert.Equal(654f, live.PositionY);
+        Assert.Equal(1.5f, live.VelocityX);
+        Assert.Equal(-2.25f, live.VelocityY);
+        Assert.Equal((byte)8, live.SelectedItem);
+        Assert.Equal((ushort)11, live.MountType);
         Assert.True(live.HasHealth);
         Assert.Equal((short)87, live.Life);
         Assert.Equal((short)100, live.MaxLife);
         Assert.True(live.HasMana);
         Assert.Equal((short)16, live.Mana);
         Assert.Equal((short)20, live.MaxMana);
+
+        PlayerMovementCommitRequest stoppedMovement = movement with
+        {
+            SelectedItem = 9,
+            PositionX = 400f,
+            PositionY = 700f,
+            HasVelocity = false,
+            HasMount = false
+        };
+        telemetry.PlayerMoved(connection, in stoppedMovement);
+
+        live = telemetry.CaptureSnapshot().Players.Span[0];
+        Assert.Equal(400f, live.PositionX);
+        Assert.Equal(700f, live.PositionY);
+        Assert.Equal(0f, live.VelocityX);
+        Assert.Equal(0f, live.VelocityY);
+        Assert.Equal((byte)9, live.SelectedItem);
+        Assert.Equal((ushort)0, live.MountType);
 
         telemetry.PlayerDisconnected(connection);
         Assert.Equal(0, telemetry.CaptureSnapshot().Players.Length);

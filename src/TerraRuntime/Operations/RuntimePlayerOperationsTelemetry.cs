@@ -79,6 +79,10 @@ internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IR
             Team: request.Team,
             PositionX: request.SpawnX * 16f,
             PositionY: request.SpawnY * 16f,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            SelectedItem: 0,
+            MountType: 0,
             HasHealth: state?.HasHealth ?? false,
             Life: state?.Life ?? 0,
             MaxLife: state?.MaxLife ?? 0,
@@ -92,12 +96,20 @@ internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IR
     {
         float positionX = request.PositionX;
         float positionY = request.PositionY;
+        float velocityX = request.HasVelocity ? request.VelocityX : 0f;
+        float velocityY = request.HasVelocity ? request.VelocityY : 0f;
+        byte selectedItem = request.SelectedItem;
+        ushort mountType = request.HasMount ? request.MountType : (ushort)0;
         UpdateLive(
             connection,
             current => current with
             {
                 PositionX = positionX,
-                PositionY = positionY
+                PositionY = positionY,
+                VelocityX = velocityX,
+                VelocityY = velocityY,
+                SelectedItem = selectedItem,
+                MountType = mountType
             });
     }
 
