@@ -43,8 +43,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         this.worldSurfaceTiles = worldSurfaceTiles;
 
-        // Grounded style-1/type-3 AI is intentionally disabled when ServerRuntimeState has no world tiles.
-        // Enabling it here guarantees every proposed step has authoritative gravity/collision available.
         if (inner is VanillaNpcTargetingAiStepper targeting)
         {
             targeting.EnableBlueSlimeMotion(worldSurfaceTiles);
@@ -72,6 +70,23 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         float velocityX = aiState.VelocityX;
         float velocityY = aiState.VelocityY;
 
+        // AI_003 performs its solid obstacle jump probe before UpdateNPC applies gravity. Door/tall-gate
+        // side effects are intentionally outside this motion wrapper, but ordinary solid-block jumps belong here.
+        if (npcType == VanillaNpcIds.Zombie)
+        {
+            VanillaZombieObstacleMotionResult obstacle = VanillaWorldZombieObstacleMotion.Resolve(
+                tiles,
+                aiState.PositionX,
+                aiState.PositionY,
+                velocityX,
+                velocityY,
+                definition.Width,
+                definition.Height,
+                simulation.DirectionX);
+            velocityX = obstacle.VelocityX;
+            velocityY = obstacle.VelocityY;
+        }
+
         // Vanilla computes NPC.gravity and maxFallSpeed before AI regardless of noGravity. The noGravity
         // flag controls only whether the already-computed gravity is added after AI. WalkDownSlope later
         // receives that same gravity field, so the parameter must remain available even when noGravity is set.
@@ -97,8 +112,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         if (simulation.NoTileCollide)
         {
-            // Vanilla bypasses UpdateCollision entirely in this branch but still captures oldPosition before
-            // direct movement. Persisted collision/wet/overlap flags otherwise remain available unchanged.
             next = aiState with
             {
                 PositionX = aiState.PositionX + velocityX,
@@ -114,8 +127,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             return true;
         }
 
-        // First operation inside vanilla UpdateCollision. It only changes Y velocity, and only when the
-        // post-gravity Y velocity is exactly the computed gravity value, which represents a grounded entity.
         velocityY = VanillaWorldWalkDownSlope.ResolveVelocityY(
             tiles,
             aiState.PositionX,
@@ -135,8 +146,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             out WorldLiquidKind liquidKind);
         NpcLiquidContactKind liquidContact = wet ? MapLiquid(liquidKind) : NpcLiquidContactKind.None;
 
-        // Collision_WaterCollision halves horizontal velocity exactly when leaving liquid, before oldVelocity
-        // is captured for the new collision pass.
         if (simulation.Wet && !wet)
             velocityX *= 0.5f;
 
@@ -177,8 +186,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             movementY = collideY ? collidedVelocityY : collidedVelocityY * slowdown;
         }
 
-        // Collision_MoveWhileDry / Collision_MoveWhileWet both capture oldPosition immediately before
-        // applying the movement delta. AI_003 consumes that X value on the following tick.
         float oldPositionX = aiState.PositionX;
         float oldPositionY = aiState.PositionY;
         float nextPositionX = aiState.PositionX + movementX;
