@@ -93,6 +93,25 @@ public sealed class VanillaZombieMotionTests
     }
 
     [Fact]
+    public void Just_hit_clears_stuck_counter_before_targeting()
+    {
+        VanillaZombieMotionInput input = CreateInput() with
+        {
+            PositionX = 100f,
+            OldPositionX = 100f,
+            Ai = new NpcAiState(0f, 0f, 0f, 80f),
+            JustHit = true,
+            ClosestTarget = new VanillaZombieTargetRefresh(true, 5, -1, 1)
+        };
+
+        Assert.True(VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result));
+
+        Assert.Equal(0f, result.Ai.Ai3);
+        Assert.Equal(1, result.TargetRefreshes);
+        Assert.Equal((ushort)5, result.Target);
+    }
+
+    [Fact]
     public void Scale_changes_default_type_three_speed_cap()
     {
         VanillaZombieMotionInput input = CreateInput() with
@@ -120,5 +139,8 @@ public sealed class VanillaZombieMotionTests
             Ai: default,
             Scale: 1f,
             TargetOverlaps: false,
-            ClosestTarget: new VanillaZombieTargetRefresh(true, 2, 1, 1));
+            ClosestTarget: new VanillaZombieTargetRefresh(true, 2, 1, 1))
+        {
+            TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft
+        };
 }
