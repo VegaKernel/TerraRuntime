@@ -10,27 +10,76 @@ namespace TerraRuntime;
 /// </summary>
 internal sealed class RuntimeInterestRouter
 {
+    private const int DefaultPlayerEnterRadiusSections = 3;
+    private const int DefaultPlayerLeaveRadiusSections = 4;
+
     private readonly IInterestManagementControl _control;
     private readonly IRuntimeInterestPolicy _enabledPolicy;
     private readonly RuntimePlayerSpatialIndex? _players;
+    private readonly RuntimePlayerVisibilityTracker? _playerVisibility;
 
     public RuntimeInterestRouter(
         IInterestManagementControl control,
         WorldDimensions? dimensions = null,
-        IRuntimeInterestPolicy? enabledPolicy = null)
+        IRuntimeInterestPolicy? enabledPolicy = null,
+        int playerEnterRadiusSections = DefaultPlayerEnterRadiusSections,
+        int playerLeaveRadiusSections = DefaultPlayerLeaveRadiusSections)
     {
         ArgumentNullException.ThrowIfNull(control);
+        ArgumentOutOfRangeException.ThrowIfNegative(playerEnterRadiusSections);
+        ArgumentOutOfRangeException.ThrowIfLessThan(playerLeaveRadiusSections, playerEnterRadiusSections);
+
         _control = control;
         _enabledPolicy = enabledPolicy ?? PassthroughInterestPolicy.Instance;
-        _players = dimensions is null ? null : new RuntimePlayerSpatialIndex(dimensions);
+
+        if (dimensions is not null)
+        {
+            _players = new RuntimePlayerSpatialIndex(dimensions);
+            _playerVisibility = new RuntimePlayerVisibilityTracker(
+                _players,
+                playerEnterRadiusSections,
+                playerLeaveRadiusSections);
+        }
     }
 
     public RuntimePlayerSpatialIndexSnapshot? PlayerSpatialSnapshot => _players?.Snapshot;
 
-    public void TrackPlayer(PlayerSlotId slot, float positionX, float positionY) =>
-        _players?.Update(slot, positionX, positionY);
+    public RuntimePlayerVisibilitySnapshot? PlayerVisibilitySnapshot => _playerVisibility?.Snapshot;
 
-    public void RemovePlayer(PlayerSlotId slot) => _players?.Remove(slot);
+    public RuntimePlayerVisibilityUpdate TrackPlayer(
+        PlayerSlotId slot,
+        float positionX,
+        float positionY)
+    {
+        Span<PlayerSlotId> entered = stackalloc PlayerSlotId[256];
+        Span<PlayerSlotId> left = stackalloc PlayerSlotId[256];
+        return TrackPlayer(slot, positionX, positionY, entered, left);
+    }
+
+    public RuntimePlayerVisibilityUpdate TrackPlayer(
+        PlayerSlotId slot,
+        float positionX,
+        float positionY,
+        Span<PlayerSlotId> entered,
+        Span<PlayerSlotId> left)
+    {
+        if (_players is null || _playerVisibility is null)
+            return default;
+
+        _players.Update(slot, positionX, positionY);
+        return _playerVisibility.Refresh(slot, entered, left);
+    }
+
+    public RuntimePlayerVisibilityUpdate RemovePlayer(PlayerSlotId slot)
+    {
+        if (_players is null || _playerVisibility is null)
+            return default;
+
+        Span<PlayerSlotId> left = stackalloc PlayerSlotId[256];
+        RuntimePlayerVisibilityUpdate update = _playerVisibility.Remove(slot, left);
+        _players.Remove(slot);
+        return update;
+    }
 
     public int CollectNearbyPlayers(
         PlayerSlotId subject,
@@ -38,6 +87,9 @@ internal sealed class RuntimeInterestRouter
         Span<PlayerSlotId> destination,
         bool includeSubject = false) =>
         _players?.CollectNearbyPlayers(subject, radiusSections, destination, includeSubject) ?? 0;
+
+    public bool IsPlayerVisible(PlayerSlotId observer, PlayerSlotId subject) =>
+        _playerVisibility?.IsVisible(observer, subject) ?? false;
 
     public bool ShouldRelayPlayerMovement(
         in RuntimePlayerInterestState observer,
@@ -69,9 +121,9 @@ internal interface IRuntimeInterestPolicy
 }
 
 /// <summary>
-/// Foundation policy used until enter/leave snapshots, hysteresis and forced resync semantics are
-/// implemented. Enabling interest management today therefore changes routing ownership and builds
-/// the spatial index, but does not yet suppress player-visible movement updates.
+/// Foundation policy used until enter/leave snapshots and forced resync semantics are wired to the
+/// outbound synchronization layer. Enabling interest management today therefore changes routing
+/// ownership and maintains spatial/visibility state, but does not yet suppress movement updates.
 /// </summary>
 internal sealed class PassthroughInterestPolicy : IRuntimeInterestPolicy
 {
