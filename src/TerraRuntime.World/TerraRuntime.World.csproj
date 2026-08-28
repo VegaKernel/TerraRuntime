@@ -4,4 +4,8 @@
     <RootNamespace>TerraRuntime.World</RootNamespace>
     <AssemblyName>TerraRuntime.World</AssemblyName>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
+  </ItemGroup>
 </Project>
