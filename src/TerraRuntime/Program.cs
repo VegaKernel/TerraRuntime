@@ -4,6 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
+using TerraRuntime.TerminalUI;
 
 namespace TerraRuntime;
 
@@ -31,12 +32,17 @@ internal static class Program
             return WorldNativeSmoke.Run();
         }
 
+        if (args.Contains("--tui-smoke", StringComparer.Ordinal))
+        {
+            return TerminalUiSmoke.Run();
+        }
+
         if (args.Contains("--world", StringComparer.Ordinal))
         {
             if (!ServerHostOptions.TryParse(args, out ServerHostOptions? options, out string? error) || options is null)
             {
                 Console.Error.WriteLine(error ?? "Invalid server host options.");
-                Console.Error.WriteLine("Usage: TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--interest-management]");
+                Console.Error.WriteLine("Usage: TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--tui]");
                 return 23;
             }
 
@@ -45,8 +51,8 @@ internal static class Program
 
         Console.WriteLine(
             "TerraRuntime .NET 11 server runtime. " +
-            "Start with --world <path.wld> [--port 7777] [--max-players 8] [--interest-management], " +
-            "or use --loop-smoke, --protocol-smoke, --network-smoke or --world-smoke.");
+            "Start with --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--tui], " +
+            "or use --loop-smoke, --protocol-smoke, --network-smoke, --world-smoke or --tui-smoke.");
         return 0;
     }
 
