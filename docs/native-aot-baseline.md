@@ -58,9 +58,17 @@ data/
 logs/
 ```
 
+A NativeAOT `dotnet publish` of `src/TerraRuntime/TerraRuntime.csproj` automatically recreates this clean tree under:
+
+```text
+artifacts/deploy/<RuntimeIdentifier>/
+```
+
+The clean tree contains only the native executable and the runtime-owned directories above. The SDK/intermediate publish directory is deliberately kept separate and may contain build or debug artifacts that are not part of deployment.
+
 The Vega-hosted deployment follows the same rule: the root is centered around `Vega.Server[.exe]` plus application/runtime data directories, not a loose pile of `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll` or other managed build artifacts.
 
-CI treats loose managed runtime assemblies and CoreCLR launch metadata (`*.deps.json`, `*.runtimeconfig.json`) in the NativeAOT publish root as an architectural regression.
+CI launches NativeAOT smoke paths from the clean deployment tree and rejects unexpected root entries. That makes the one-file runtime assumption executable evidence: if the native server accidentally starts depending on a loose sidecar, the smoke gate fails.
 
 If a dependency genuinely requires a native sidecar library that cannot be statically linked into the executable, it must be admitted explicitly as a deployment dependency. When the platform loader permits it, such sidecars belong under a dedicated `runtime/native/` location rather than turning the server root into a generic library directory.
 
@@ -110,8 +118,8 @@ CI must keep all three gates green:
 
 ```text
 build + tests
-NativeAOT linux-x64 + native smoke
-NativeAOT win-x64 + native smoke
+NativeAOT linux-x64 + native smoke from artifacts/deploy/linux-x64
+NativeAOT win-x64 + native smoke from artifacts/deploy/win-x64
 ```
 
 A change that cannot satisfy the NativeAOT jobs is considered an architectural regression unless the runtime architecture itself is deliberately changed.
