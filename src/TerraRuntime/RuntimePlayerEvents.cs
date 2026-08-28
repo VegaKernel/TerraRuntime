@@ -13,9 +13,13 @@ internal interface IRuntimePlayerEventSink
 
     void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request);
 
-    void PlayerHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest request);
+    void PlayerHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest request)
+    {
+    }
 
-    void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request);
+    void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
+    {
+    }
 
     void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request);
 
