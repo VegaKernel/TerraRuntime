@@ -46,19 +46,20 @@ public sealed class WorldTileStore
 
     internal int GetUncheckedIndex(int x, int y) => (x * Dimensions.HeightTiles) + y;
 
-    internal void AttachWorldSurface(double worldSurfaceTiles)
+    internal bool TryAttachWorldSurface(double worldSurfaceTiles)
     {
         if (!double.IsFinite(worldSurfaceTiles) ||
             worldSurfaceTiles <= 0d ||
             worldSurfaceTiles >= Dimensions.HeightTiles)
         {
-            throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
+            return false;
         }
 
-        if (WorldSurfaceTiles is double existing && existing != worldSurfaceTiles)
-            throw new InvalidOperationException("World surface geometry is already attached with a different value.");
+        if (WorldSurfaceTiles is double existing)
+            return existing == worldSurfaceTiles;
 
         WorldSurfaceTiles = worldSurfaceTiles;
+        return true;
     }
 
     private int GetIndex(int x, int y)
