@@ -19,6 +19,7 @@ internal sealed class ServerRuntimeState
     private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
     private readonly INpcAiStateStepper _npcAiStepper;
     private readonly VanillaNpcTargetingAiStepper? _vanillaNpcTargetingAiStepper;
+    private readonly VanillaNpcCheckActiveAiStepper? _vanillaNpcCheckActiveAiStepper;
     private readonly RuntimeProjectileStore _projectiles;
     private readonly RuntimeProjectileStateExecutor _projectileExecutor;
     private readonly IProjectileStateStepper? _projectileStepper;
@@ -46,9 +47,16 @@ internal sealed class ServerRuntimeState
         if (npcAiStepper is null)
         {
             _vanillaNpcTargetingAiStepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
-            _npcAiStepper = worldTiles is null
-                ? _vanillaNpcTargetingAiStepper
-                : new VanillaNpcWorldMotionAiStepper(_vanillaNpcTargetingAiStepper, worldTiles);
+            if (worldTiles is null)
+            {
+                _npcAiStepper = _vanillaNpcTargetingAiStepper;
+            }
+            else
+            {
+                var worldMotion = new VanillaNpcWorldMotionAiStepper(_vanillaNpcTargetingAiStepper, worldTiles);
+                _vanillaNpcCheckActiveAiStepper = new VanillaNpcCheckActiveAiStepper(worldMotion);
+                _npcAiStepper = _vanillaNpcCheckActiveAiStepper;
+            }
         }
         else
         {
@@ -236,7 +244,9 @@ internal sealed class ServerRuntimeState
         if (_vanillaNpcTargetingAiStepper is not null)
         {
             int candidateCount = CopyVanillaNpcTargetCandidates(_npcTargetCandidates);
-            _vanillaNpcTargetingAiStepper.SetCandidates(_npcTargetCandidates.AsSpan(0, candidateCount));
+            ReadOnlySpan<VanillaNpcTargetCandidate> candidates = _npcTargetCandidates.AsSpan(0, candidateCount);
+            _vanillaNpcTargetingAiStepper.SetCandidates(candidates);
+            _vanillaNpcCheckActiveAiStepper?.SetCandidates(candidates);
             if (_worldClock is not null)
             {
                 _vanillaNpcTargetingAiStepper.SetWorldConditions(
@@ -246,6 +256,7 @@ internal sealed class ServerRuntimeState
         }
 
         LastNpcAiTick = _npcAiExecutor.Tick(_npcAiStepper);
+        AppliedNpcDespawns += _npcs.DespawnExpired();
         if (_projectileStepper is not null)
             LastProjectileTick = _projectileExecutor.Tick(_projectileStepper);
 
