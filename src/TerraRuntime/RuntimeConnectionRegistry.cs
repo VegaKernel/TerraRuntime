@@ -15,9 +15,12 @@ namespace TerraRuntime;
 /// </summary>
 internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 {
+    private const int MaxPlayerSlots = 256;
+
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> _endpoints = new();
-    private readonly Endpoint?[] _playingEndpoints = new Endpoint?[256];
+    private readonly Endpoint?[] _playingEndpoints = new Endpoint?[MaxPlayerSlots];
     private readonly RuntimeInterestRouter _interestRouter;
+    private readonly RuntimePlayerMovementVisibilityReadiness _movementVisibilityReadiness = new();
     private long _relayedMovementFrames;
     private long _movementResyncFrames;
 
@@ -42,12 +45,18 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     internal RuntimePlayerVisibilitySnapshot? PlayerVisibilitySnapshot =>
         _interestRouter.PlayerVisibilitySnapshot;
 
+    internal RuntimePlayerMovementVisibilityReadinessSnapshot PlayerMovementVisibilityReadinessSnapshot =>
+        _movementVisibilityReadiness.Snapshot;
+
     internal int CollectNearbyPlayers(
         PlayerSlotId subject,
         int radiusSections,
         Span<PlayerSlotId> destination,
         bool includeSubject = false) =>
         _interestRouter.CollectNearbyPlayers(subject, radiusSections, destination, includeSubject);
+
+    internal bool IsPlayerMovementVisibilityReady(PlayerSlotId observer, PlayerSlotId subject) =>
+        _movementVisibilityReadiness.IsReady(observer, subject);
 
     internal bool TryGetLatestPlayerMovementFrame(PlayerSlotId slot, out OutboundFrame frame)
     {
@@ -111,6 +120,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         if (recipient.Outbound.TryEnqueue(frame) != OutboundEnqueueResult.Enqueued)
             return false;
 
+        _movementVisibilityReadiness.MarkReady(operation.Recipient, operation.Subject);
         Interlocked.Increment(ref _movementResyncFrames);
         return true;
     }
@@ -134,6 +144,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         {
             playingSlot = slot;
             Interlocked.CompareExchange(ref _playingEndpoints[slot.Value], null, endpoint);
+            _movementVisibilityReadiness.ClearPlayer(slot);
         }
 
         return true;
@@ -149,7 +160,17 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         endpoint.MarkPlaying(request.ClaimedSlot);
         endpoint.UpdatePosition(positionX, positionY);
         Interlocked.Exchange(ref _playingEndpoints[request.ClaimedSlot.Value], endpoint);
-        _interestRouter.TrackPlayer(request.ClaimedSlot, positionX, positionY);
+        _movementVisibilityReadiness.ClearPlayer(request.ClaimedSlot);
+
+        Span<PlayerSlotId> entered = stackalloc PlayerSlotId[MaxPlayerSlots];
+        Span<PlayerSlotId> left = stackalloc PlayerSlotId[MaxPlayerSlots];
+        RuntimePlayerVisibilityUpdate visibility = _interestRouter.TrackPlayer(
+            request.ClaimedSlot,
+            positionX,
+            positionY,
+            entered,
+            left);
+        ResetMovementVisibilityReadiness(request.ClaimedSlot, visibility, entered, left);
     }
 
     public void PlayerMoved(GameCommandSourceId source, in PlayerMovementCommitRequest request)
@@ -161,11 +182,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             return;
         }
 
-        // Track authoritative positions even while interest management is disabled. A live enable
-        // can therefore start from current state instead of waiting for every player to move again.
         origin.UpdatePosition(request.PositionX, request.PositionY);
-        _interestRouter.TrackPlayer(request.PlayerSlot, request.PositionX, request.PositionY);
-        RuntimePlayerInterestState subject = origin.CreateInterestState(originSlot);
 
         var movement = new TerrariaPlayerMovementState(
             request.PlayerSlot.Value,
@@ -190,9 +207,25 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             request.CameraTargetX,
             request.CameraTargetY);
 
+        // Cache the current authoritative movement before refreshing visibility. A future AOI-enter
+        // resync can therefore use this exact movement as the subject's baseline in the same commit.
         byte[] encoded = TerrariaPlayerMovementEncoder.Encode(in movement);
         origin.UpdateLatestMovementFrame(encoded);
         var frame = new OutboundFrame(encoded);
+
+        // Track authoritative positions even while interest management is disabled. A live enable
+        // can therefore start from current state instead of waiting for every player to move again.
+        Span<PlayerSlotId> entered = stackalloc PlayerSlotId[MaxPlayerSlots];
+        Span<PlayerSlotId> left = stackalloc PlayerSlotId[MaxPlayerSlots];
+        RuntimePlayerVisibilityUpdate visibility = _interestRouter.TrackPlayer(
+            request.PlayerSlot,
+            request.PositionX,
+            request.PositionY,
+            entered,
+            left);
+        ResetMovementVisibilityReadiness(request.PlayerSlot, visibility, entered, left);
+
+        RuntimePlayerInterestState subject = origin.CreateInterestState(originSlot);
 
         foreach (KeyValuePair<GameCommandSourceId, Endpoint> pair in _endpoints)
         {
@@ -214,11 +247,25 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     public void PlayerDisconnected(GameCommandSourceId source, PlayerSlotId slot)
     {
         _interestRouter.RemovePlayer(slot);
+        _movementVisibilityReadiness.ClearPlayer(slot);
         if (_endpoints.TryGetValue(source, out Endpoint? endpoint))
         {
             Interlocked.CompareExchange(ref _playingEndpoints[slot.Value], null, endpoint);
             endpoint.ClearPlaying(slot);
         }
+    }
+
+    private void ResetMovementVisibilityReadiness(
+        PlayerSlotId subject,
+        RuntimePlayerVisibilityUpdate visibility,
+        ReadOnlySpan<PlayerSlotId> entered,
+        ReadOnlySpan<PlayerSlotId> left)
+    {
+        for (int i = 0; i < visibility.Entered; i++)
+            _movementVisibilityReadiness.ClearPair(subject, entered[i]);
+
+        for (int i = 0; i < visibility.Left; i++)
+            _movementVisibilityReadiness.ClearPair(subject, left[i]);
     }
 
     private void PlanOnePlayerMovementResync(
