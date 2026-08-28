@@ -13,6 +13,7 @@ internal sealed class RuntimeWorldClock
     public const double DayLength = 54_000d;
     public const double NightLength = 32_400d;
 
+    private readonly IRuntimeWorldClockObserver? _observer;
     private int _dayRate;
 
     public RuntimeWorldClock(
@@ -20,7 +21,8 @@ internal sealed class RuntimeWorldClock
         bool dayTime,
         byte moonPhase,
         double slimeRainTime,
-        int dayRate)
+        int dayRate,
+        IRuntimeWorldClockObserver? observer = null)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -35,6 +37,8 @@ internal sealed class RuntimeWorldClock
         MoonPhase = moonPhase;
         SlimeRainTime = slimeRainTime;
         _dayRate = dayRate;
+        _observer = observer;
+        PublishCommittedState();
     }
 
     public double Time { get; private set; }
@@ -51,7 +55,8 @@ internal sealed class RuntimeWorldClock
 
     public static RuntimeWorldClock FromWorld(
         WorldFileRuntimeMetadata metadata,
-        WorldCreativePowersData creativePowers)
+        WorldCreativePowersData creativePowers,
+        IRuntimeWorldClockObserver? observer = null)
     {
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(creativePowers);
@@ -63,13 +68,15 @@ internal sealed class RuntimeWorldClock
             metadata.DayTime,
             metadata.MoonPhase,
             metadata.SlimeRainTime,
-            dayRate);
+            dayRate,
+            observer);
     }
 
     public void SetDayRate(int dayRate)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(dayRate);
         _dayRate = dayRate;
+        PublishCommittedState();
     }
 
     public void Tick()
@@ -109,5 +116,15 @@ internal sealed class RuntimeWorldClock
             Time = 0d;
             DayTime = false;
         }
+
+        PublishCommittedState();
     }
+
+    private void PublishCommittedState() =>
+        _observer?.WorldClockCommitted(
+            Time,
+            DayTime,
+            MoonPhase,
+            SlimeRainTime,
+            _dayRate);
 }
