@@ -178,7 +178,11 @@ internal static class TerminalUiSmoke
                 PlayerDeactivationFrames: 0,
                 RelayedMovementFrames: 10,
                 MovementResyncFrames: 1,
-                CapturedAtUtc: DateTimeOffset.UtcNow);
+                CapturedAtUtc: DateTimeOffset.UtcNow,
+                NpcRelayedFrames: 8,
+                NpcBaselineFrames: 2,
+                NpcRejectedFrames: 1,
+                NpcUnsupportedCommits: 1);
 
         RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() =>
             new(
@@ -208,6 +212,12 @@ internal static class TerminalUiSmoke
                 BootstrapMilliseconds: 2.1,
                 WorldReadyMilliseconds: 4.8,
                 NetworkReadyMilliseconds: 6.2,
-                CapturedAtUtc: DateTimeOffset.UtcNow);
+                CapturedAtUtc: DateTimeOffset.UtcNow,
+                RuntimeClockAvailable: true,
+                RuntimeTime: 12_345d,
+                RuntimeDayTime: true,
+                RuntimeMoonPhase: 2,
+                RuntimeSlimeRainTime: 300d,
+                RuntimeDayRate: 1);
     }
 }
