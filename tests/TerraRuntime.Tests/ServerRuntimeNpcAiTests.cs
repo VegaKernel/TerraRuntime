@@ -6,7 +6,7 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeNpcAiTests
 {
     [Fact]
-    public void Authoritative_tick_runs_demon_eye_ai_over_runtime_owned_npc_store()
+    public async Task Authoritative_tick_runs_demon_eye_ai_over_runtime_owned_npc_store()
     {
         var state = new ServerRuntimeState();
         var completion = new TaskCompletionSource<NpcSnapshot?>(
@@ -22,7 +22,7 @@ public sealed class ServerRuntimeNpcAiTests
 
         Assert.Equal(1, state.AppliedNpcSpawns);
         Assert.Equal(0, state.RejectedNpcSpawns);
-        NpcSnapshot? createdValue = completion.Task.GetAwaiter().GetResult();
+        NpcSnapshot? createdValue = await completion.Task;
         Assert.True(createdValue.HasValue);
         NpcSnapshot created = createdValue.Value;
         Assert.Equal(new NpcRevision(1), created.Revision);
@@ -71,7 +71,7 @@ public sealed class ServerRuntimeNpcAiTests
     }
 
     [Fact]
-    public void Unsupported_npc_type_is_examined_but_not_mutated_by_current_ai_phase()
+    public async Task Unsupported_npc_type_is_examined_but_not_mutated_by_current_ai_phase()
     {
         var state = new ServerRuntimeState();
         var completion = new TaskCompletionSource<NpcSnapshot?>(
@@ -88,7 +88,7 @@ public sealed class ServerRuntimeNpcAiTests
             Simulation: NpcSimulationState.Initial);
 
         state.Apply(new NpcSpawnRuntimeCommand(1, spawn, completion));
-        NpcSnapshot? createdValue = completion.Task.GetAwaiter().GetResult();
+        NpcSnapshot? createdValue = await completion.Task;
         Assert.True(createdValue.HasValue);
         NpcSnapshot created = createdValue.Value;
 
