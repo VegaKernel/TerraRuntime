@@ -61,6 +61,22 @@ public sealed class RuntimeNpcCombatStateTests
     }
 
     [Fact]
+    public void Explicit_zero_lifetime_remains_expired_instead_of_rematerializing()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate update = CreateBlueSlime();
+        Assert.True(store.TrySpawn(0, in update, out NpcSnapshot spawned));
+        NpcStateUpdate expired = update with
+        {
+            Simulation = NpcSimulationState.Initial with { TimeLeft = 0 }
+        };
+
+        Assert.True(store.TryUpdate(spawned.Handle, in expired, out NpcSnapshot updated));
+
+        Assert.Equal(0, updated.Simulation.TimeLeft);
+    }
+
+    [Fact]
     public void Invalid_combat_or_lifetime_range_is_rejected_without_advancing_revision()
     {
         var store = new RuntimeNpcStore(capacity: 4);
@@ -76,7 +92,7 @@ public sealed class RuntimeNpcCombatStateTests
         };
         NpcStateUpdate invalidLifetime = update with
         {
-            Simulation = NpcSimulationState.Initial with { TimeLeft = -1 }
+            Simulation = NpcSimulationState.Initial with { TimeLeft = -2 }
         };
 
         Assert.False(store.TryUpdate(spawned.Handle, in invalidCombat, out _));
