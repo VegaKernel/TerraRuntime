@@ -113,6 +113,12 @@ public readonly record struct NpcSimulationState(
     public int LifeMax { get; init; }
 
     /// <summary>
+    /// One-tick damage transient corresponding to vanilla NPC.justHit. Combat owns setting it; the
+    /// authoritative AI pass consumes it and clears it so stale hit state cannot leak into later ticks.
+    /// </summary>
+    public bool JustHit { get; init; }
+
+    /// <summary>
     /// Vanilla inactivity lifetime. -1 is reserved for an unspecified ingress/update value; zero is a
     /// real expired lifetime and must remain representable so CheckActive can request authoritative despawn.
     /// </summary>
@@ -141,6 +147,7 @@ public readonly record struct NpcSimulationState(
         OldPositionY = 0f,
         Life = 0,
         LifeMax = 0,
+        JustHit = false,
         TimeLeft = -1,
         SolidCollision = false
     };
