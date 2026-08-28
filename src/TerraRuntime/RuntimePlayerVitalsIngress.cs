@@ -3,7 +3,7 @@ using TerraRuntime.Core;
 
 namespace TerraRuntime;
 
-internal sealed class PlayerHealthRuntimeCommand : RuntimeCommand
+internal sealed record PlayerHealthRuntimeCommand : RuntimeCommand
 {
     public PlayerHealthRuntimeCommand(
         ConnectionHandle connection,
