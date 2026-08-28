@@ -7,9 +7,9 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Post-AI authoritative movement for the verified ordinary Blue Slime and Demon Eye paths. Vanilla
-/// computes gravity parameters before AI, applies AI, then gravity, epsilon velocity clamp, wet/tile
-/// collision, position movement and the post-move slope pass. Collision/liquid state becomes input for
-/// the next AI tick.
+/// computes gravity parameters before AI, applies AI, then gravity, epsilon velocity clamp, the pre-collision
+/// walk-down-slope pass, wet/tile collision, position movement and the post-move slope pass. Collision/liquid
+/// state becomes input for the next AI tick.
 /// </summary>
 internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 {
@@ -69,24 +69,25 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         float velocityX = aiState.VelocityX;
         float velocityY = aiState.VelocityY;
 
-        if (!simulation.NoGravity)
+        // Vanilla computes NPC.gravity and maxFallSpeed before AI regardless of noGravity. The noGravity
+        // flag controls only whether the already-computed gravity is added after AI. WalkDownSlope later
+        // receives that same gravity field, so the parameter must remain available even when noGravity is set.
+        if (!VanillaNpcGravity.TryApply(
+                npcType,
+                aiState.PositionY,
+                velocityY,
+                simulation.Wet,
+                simulation.LiquidContact,
+                tiles.Dimensions.WidthTiles,
+                worldSurfaceTiles,
+                out VanillaNpcGravityResult gravity))
         {
-            if (!VanillaNpcGravity.TryApply(
-                    npcType,
-                    aiState.PositionY,
-                    velocityY,
-                    simulation.Wet,
-                    simulation.LiquidContact,
-                    tiles.Dimensions.WidthTiles,
-                    worldSurfaceTiles,
-                    out VanillaNpcGravityResult gravity))
-            {
-                next = aiState;
-                return true;
-            }
-
-            velocityY = gravity.VelocityY;
+            next = aiState;
+            return true;
         }
+
+        if (!simulation.NoGravity)
+            velocityY = gravity.VelocityY;
 
         if (velocityX < HorizontalVelocityEpsilon && velocityX > -HorizontalVelocityEpsilon)
             velocityX = 0f;
@@ -104,6 +105,18 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             };
             return true;
         }
+
+        // First operation inside vanilla UpdateCollision. It only changes Y velocity, and only when the
+        // post-gravity Y velocity is exactly the computed gravity value, which represents a grounded entity.
+        velocityY = VanillaWorldWalkDownSlope.ResolveVelocityY(
+            tiles,
+            aiState.PositionX,
+            aiState.PositionY,
+            velocityX,
+            velocityY,
+            definition.Width,
+            definition.Height,
+            gravity.Parameters.Gravity);
 
         bool wet = VanillaWorldCollision.TryGetWetContact(
             tiles,
