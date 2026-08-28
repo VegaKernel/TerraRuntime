@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Reflection;
 using TerraRuntime;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -34,12 +35,13 @@ public sealed class PlayerBootstrapFrameSinkTests
                 baseSectionFrames: sections,
                 enterWorldFrame: new byte[] { 3, 0, (byte)TerrariaMessageId.PlayerSpawnSelf },
                 globalPostSectionFrames: globalFrames));
+        BoundedOutboundQueue queue = GetInnerQueue(outbound);
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Hello()));
-        Assert.Equal((byte)TerrariaMessageId.PlayerInfo, DequeueMessageId(outbound));
+        Assert.Equal((byte)TerrariaMessageId.PlayerInfo, DequeueMessageId(queue));
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.RequestWorldData, [])));
-        Assert.Equal((byte)TerrariaMessageId.WorldData, DequeueMessageId(outbound));
+        Assert.Equal((byte)TerrariaMessageId.WorldData, DequeueMessageId(queue));
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.SpawnTileData, new byte[9])));
 
@@ -54,7 +56,7 @@ public sealed class PlayerBootstrapFrameSinkTests
                 54,
                 (byte)TerrariaMessageId.PlayerSpawnSelf
             },
-            DrainMessageIds(outbound));
+            DrainMessageIds(queue));
         Assert.Equal(PlayerJoinState.AwaitingSpawn, sink.JoinState);
         Assert.Equal(PlayerBootstrapStopReason.None, sink.StopReason);
     }
@@ -152,17 +154,26 @@ public sealed class PlayerBootstrapFrameSinkTests
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
         new(new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 4_096, maxFrameBytes: 1_024));
 
-    private static byte DequeueMessageId(TerrariaConnectionOutboundQueue outbound)
+    private static BoundedOutboundQueue GetInnerQueue(TerrariaConnectionOutboundQueue outbound)
     {
-        Assert.True(outbound.InnerQueue.TryRead(out OutboundFrame frame));
+        PropertyInfo property = typeof(TerrariaConnectionOutboundQueue).GetProperty(
+            "InnerQueue",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Terraria outbound queue no longer exposes its internal queue to the network assembly.");
+        return Assert.IsType<BoundedOutboundQueue>(property.GetValue(outbound));
+    }
+
+    private static byte DequeueMessageId(BoundedOutboundQueue queue)
+    {
+        Assert.True(queue.TryRead(out OutboundFrame frame));
         Assert.True(frame.Bytes.Length >= TerrariaFrameDecoderOptions.MinimumFrameLength);
         return frame.Bytes.Span[2];
     }
 
-    private static byte[] DrainMessageIds(TerrariaConnectionOutboundQueue outbound)
+    private static byte[] DrainMessageIds(BoundedOutboundQueue queue)
     {
         var ids = new List<byte>();
-        while (outbound.InnerQueue.TryRead(out OutboundFrame frame))
+        while (queue.TryRead(out OutboundFrame frame))
         {
             Assert.True(frame.Bytes.Length >= TerrariaFrameDecoderOptions.MinimumFrameLength);
             ids.Add(frame.Bytes.Span[2]);
