@@ -16,6 +16,7 @@ namespace TerraRuntime;
 internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 {
     private const int MaxPlayerSlots = 256;
+    private const int MaxEquipmentSnapshotsPerPlayer = 512;
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> _endpoints = new();
     private readonly Endpoint?[] _playingEndpoints = new Endpoint?[MaxPlayerSlots];
@@ -23,6 +24,9 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     private readonly RuntimePlayerMovementVisibilityReadiness _movementVisibilityReadiness = new();
     private long _relayedAppearanceFrames;
     private long _appearanceBaselineFrames;
+    private long _relayedEquipmentFrames;
+    private long _equipmentBaselineFrames;
+    private long _droppedEquipmentSnapshotUpdates;
     private long _relayedMovementFrames;
     private long _movementResyncFrames;
 
@@ -40,6 +44,12 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     public long RelayedAppearanceFrames => Interlocked.Read(ref _relayedAppearanceFrames);
 
     public long AppearanceBaselineFrames => Interlocked.Read(ref _appearanceBaselineFrames);
+
+    public long RelayedEquipmentFrames => Interlocked.Read(ref _relayedEquipmentFrames);
+
+    public long EquipmentBaselineFrames => Interlocked.Read(ref _equipmentBaselineFrames);
+
+    public long DroppedEquipmentSnapshotUpdates => Interlocked.Read(ref _droppedEquipmentSnapshotUpdates);
 
     public long RelayedMovementFrames => Interlocked.Read(ref _relayedMovementFrames);
 
@@ -211,6 +221,36 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
     }
 
+    public void PlayerEquipmentUpdated(GameCommandSourceId source, in PlayerEquipmentCommitRequest request)
+    {
+        if (!_endpoints.TryGetValue(source, out Endpoint? endpoint))
+            return;
+
+        var equipment = new TerrariaPlayerEquipmentState(
+            request.PlayerSlot.Value,
+            request.SlotId,
+            request.Stack,
+            request.Prefix,
+            request.ItemNetId,
+            request.ItemFlags);
+        byte[] encoded = TerrariaPlayerEquipmentCodec.Encode(in equipment);
+        if (!endpoint.UpdateLatestEquipmentFrame(request.PlayerSlot, request.SlotId, encoded))
+            Interlocked.Increment(ref _droppedEquipmentSnapshotUpdates);
+
+        if (!endpoint.TryGetPlayingSlot(out PlayerSlotId currentSlot) || currentSlot != request.PlayerSlot)
+            return;
+
+        var frame = new OutboundFrame(encoded);
+        foreach (KeyValuePair<GameCommandSourceId, Endpoint> pair in _endpoints)
+        {
+            if (pair.Key == source || !pair.Value.TryGetPlayingSlot(out _))
+                continue;
+
+            if (pair.Value.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref _relayedEquipmentFrames);
+        }
+    }
+
     public void PlayerSpawned(GameCommandSourceId source, in PlayerSpawnCommitRequest request)
     {
         if (!_endpoints.TryGetValue(source, out Endpoint? endpoint))
@@ -223,7 +263,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         Interlocked.Exchange(ref _playingEndpoints[request.ClaimedSlot.Value], endpoint);
         _movementVisibilityReadiness.ClearPlayer(request.ClaimedSlot);
 
-        SynchronizeAppearanceBaselines(source, request.ClaimedSlot, endpoint);
+        SynchronizePlayerBaselines(source, request.ClaimedSlot, endpoint);
 
         Span<PlayerSlotId> entered = stackalloc PlayerSlotId[MaxPlayerSlots];
         Span<PlayerSlotId> left = stackalloc PlayerSlotId[MaxPlayerSlots];
@@ -318,7 +358,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
     }
 
-    private void SynchronizeAppearanceBaselines(
+    private void SynchronizePlayerBaselines(
         GameCommandSourceId source,
         PlayerSlotId slot,
         Endpoint endpoint)
@@ -341,6 +381,13 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             {
                 Interlocked.Increment(ref _appearanceBaselineFrames);
             }
+
+            Interlocked.Add(
+                ref _equipmentBaselineFrames,
+                endpoint.EnqueueEquipmentBaselineTo(pair.Value, slot));
+            Interlocked.Add(
+                ref _equipmentBaselineFrames,
+                pair.Value.EnqueueEquipmentBaselineTo(endpoint, peerSlot));
         }
     }
 
@@ -401,8 +448,11 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 
     private sealed class Endpoint
     {
+        private readonly object _equipmentGate = new();
+        private readonly SortedDictionary<short, byte[]> _equipmentFrames = [];
         private int _playingSlot = -1;
         private int _appearanceSlot = -1;
+        private int _equipmentOwnerSlot = -1;
         private bool _hasPosition;
         private float _positionX;
         private float _positionY;
@@ -459,6 +509,49 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             return true;
         }
 
+        public bool UpdateLatestEquipmentFrame(PlayerSlotId ownerSlot, short equipmentSlot, byte[] encoded)
+        {
+            ArgumentNullException.ThrowIfNull(encoded);
+            lock (_equipmentGate)
+            {
+                if (_equipmentOwnerSlot != ownerSlot.Value)
+                {
+                    _equipmentFrames.Clear();
+                    _equipmentOwnerSlot = ownerSlot.Value;
+                }
+
+                if (_equipmentFrames.ContainsKey(equipmentSlot))
+                {
+                    _equipmentFrames[equipmentSlot] = encoded;
+                    return true;
+                }
+
+                if (_equipmentFrames.Count >= MaxEquipmentSnapshotsPerPlayer)
+                    return false;
+
+                _equipmentFrames.Add(equipmentSlot, encoded);
+                return true;
+            }
+        }
+
+        public int EnqueueEquipmentBaselineTo(Endpoint recipient, PlayerSlotId expectedOwnerSlot)
+        {
+            int enqueued = 0;
+            lock (_equipmentGate)
+            {
+                if (_equipmentOwnerSlot != expectedOwnerSlot.Value)
+                    return 0;
+
+                foreach (byte[] encoded in _equipmentFrames.Values)
+                {
+                    if (recipient.Outbound.TryEnqueue(new OutboundFrame(encoded)) == OutboundEnqueueResult.Enqueued)
+                        enqueued++;
+                }
+            }
+
+            return enqueued;
+        }
+
         public void UpdateLatestMovementFrame(byte[] encoded)
         {
             ArgumentNullException.ThrowIfNull(encoded);
@@ -489,6 +582,16 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
             _hasPosition = false;
             if (Interlocked.CompareExchange(ref _appearanceSlot, -1, slot.Value) == slot.Value)
                 Volatile.Write(ref _latestAppearanceFrame, null);
+
+            lock (_equipmentGate)
+            {
+                if (_equipmentOwnerSlot == slot.Value)
+                {
+                    _equipmentOwnerSlot = -1;
+                    _equipmentFrames.Clear();
+                }
+            }
+
             Volatile.Write(ref _latestMovementFrame, null);
         }
     }

@@ -23,6 +23,10 @@ internal sealed class ServerRuntimeState
 
     public long RejectedPlayerAppearances { get; private set; }
 
+    public long AppliedPlayerEquipmentUpdates { get; private set; }
+
+    public long RejectedPlayerEquipmentUpdates { get; private set; }
+
     public long CommittedPlayerSpawns { get; private set; }
 
     public long AppliedPlayerMovements { get; private set; }
@@ -63,6 +67,10 @@ internal sealed class ServerRuntimeState
                 ApplyPlayerAppearance(appearance);
                 break;
 
+            case PlayerEquipmentRuntimeCommand equipment:
+                ApplyPlayerEquipment(equipment);
+                break;
+
             case PlayerSpawnRuntimeCommand spawn:
                 ApplyPlayerSpawn(spawn);
                 break;
@@ -94,6 +102,20 @@ internal sealed class ServerRuntimeState
 
         AppliedPlayerAppearances++;
         _playerEvents?.PlayerAppearanceUpdated(appearance.Source, in request);
+    }
+
+    private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
+    {
+        PlayerEquipmentCommitRequest request = equipment.Request;
+        if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer) &&
+            activePlayer.Source != equipment.Source)
+        {
+            RejectedPlayerEquipmentUpdates++;
+            return;
+        }
+
+        AppliedPlayerEquipmentUpdates++;
+        _playerEvents?.PlayerEquipmentUpdated(equipment.Source, in request);
     }
 
     private void ApplyPlayerSpawn(PlayerSpawnRuntimeCommand spawn)

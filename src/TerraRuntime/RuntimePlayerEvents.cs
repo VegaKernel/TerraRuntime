@@ -11,6 +11,8 @@ internal interface IRuntimePlayerEventSink
 {
     void PlayerAppearanceUpdated(GameCommandSourceId source, in PlayerAppearanceCommitRequest request);
 
+    void PlayerEquipmentUpdated(GameCommandSourceId source, in PlayerEquipmentCommitRequest request);
+
     void PlayerSpawned(GameCommandSourceId source, in PlayerSpawnCommitRequest request);
 
     void PlayerMoved(GameCommandSourceId source, in PlayerMovementCommitRequest request);

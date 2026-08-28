@@ -81,6 +81,7 @@ public static class TerrariaServerHost
         var commandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(gameLoop);
         var spawnIngress = new RuntimePlayerSpawnCommitIngress(commandIngress);
         var appearanceIngress = new RuntimePlayerAppearanceIngress(commandIngress);
+        var equipmentIngress = new RuntimePlayerEquipmentIngress(commandIngress);
         var movementIngress = new RuntimePlayerMovementIngress(commandIngress);
         var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
         var slots = new PlayerSlotPool(options.MaxPlayers);
@@ -143,6 +144,7 @@ public static class TerrariaServerHost
                     bootstrapPackets,
                     spawnIngress,
                     appearanceIngress,
+                    equipmentIngress,
                     movementIngress,
                     disconnectIngress,
                     runtimeConnections,
@@ -195,6 +197,7 @@ public static class TerrariaServerHost
         PlayerBootstrapPacketSet bootstrapPackets,
         IPlayerSpawnCommitIngress spawnIngress,
         IPlayerAppearanceIngress appearanceIngress,
+        IPlayerEquipmentIngress equipmentIngress,
         IPlayerMovementIngress movementIngress,
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
@@ -219,6 +222,7 @@ public static class TerrariaServerHost
                 source,
                 spawnIngress,
                 appearanceIngress,
+                equipmentIngress,
                 movementIngress);
 
             try

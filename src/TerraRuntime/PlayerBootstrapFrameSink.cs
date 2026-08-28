@@ -19,7 +19,8 @@ public enum PlayerBootstrapStopReason : byte
     GameIngressBackpressure = 7,
     SectionEncodingFailure = 8,
     MalformedPlayerMovement = 9,
-    MalformedPlayerAppearance = 10
+    MalformedPlayerAppearance = 10,
+    MalformedPlayerEquipment = 11
 }
 
 /// <summary>
@@ -36,6 +37,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private readonly GameCommandSourceId _source;
     private readonly IPlayerSpawnCommitIngress? _spawnIngress;
     private readonly IPlayerAppearanceIngress? _appearanceIngress;
+    private readonly IPlayerEquipmentIngress? _equipmentIngress;
     private readonly IPlayerMovementIngress? _movementIngress;
     private PlayerJoinSession? _session;
     private bool _spawnSubmitted;
@@ -55,6 +57,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _source = GameCommandSourceId.System;
         _spawnIngress = null;
         _appearanceIngress = null;
+        _equipmentIngress = null;
         _movementIngress = null;
         _inner = inner;
     }
@@ -66,7 +69,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         GameCommandSourceId source,
         IPlayerSpawnCommitIngress spawnIngress,
         ITerrariaFrameSink? inner = null)
-        : this(slots, outbound, packets, source, spawnIngress, appearanceIngress: null, movementIngress: null, inner)
+        : this(slots, outbound, packets, source, spawnIngress, appearanceIngress: null, equipmentIngress: null, movementIngress: null, inner)
     {
     }
 
@@ -78,7 +81,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         IPlayerSpawnCommitIngress spawnIngress,
         IPlayerMovementIngress? movementIngress,
         ITerrariaFrameSink? inner = null)
-        : this(slots, outbound, packets, source, spawnIngress, appearanceIngress: null, movementIngress, inner)
+        : this(slots, outbound, packets, source, spawnIngress, appearanceIngress: null, equipmentIngress: null, movementIngress, inner)
     {
     }
 
@@ -89,6 +92,20 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         GameCommandSourceId source,
         IPlayerSpawnCommitIngress spawnIngress,
         IPlayerAppearanceIngress? appearanceIngress,
+        IPlayerMovementIngress? movementIngress,
+        ITerrariaFrameSink? inner = null)
+        : this(slots, outbound, packets, source, spawnIngress, appearanceIngress, equipmentIngress: null, movementIngress, inner)
+    {
+    }
+
+    public PlayerBootstrapFrameSink(
+        PlayerSlotPool slots,
+        TerrariaConnectionOutboundQueue outbound,
+        PlayerBootstrapPacketSet packets,
+        GameCommandSourceId source,
+        IPlayerSpawnCommitIngress spawnIngress,
+        IPlayerAppearanceIngress? appearanceIngress,
+        IPlayerEquipmentIngress? equipmentIngress,
         IPlayerMovementIngress? movementIngress,
         ITerrariaFrameSink? inner = null)
     {
@@ -105,6 +122,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _source = source;
         _spawnIngress = spawnIngress;
         _appearanceIngress = appearanceIngress;
+        _equipmentIngress = equipmentIngress;
         _movementIngress = movementIngress;
         _inner = inner;
     }
@@ -130,6 +148,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
             case TerrariaMessageId.SyncPlayer:
                 return HandlePlayerAppearance(frame);
+
+            case TerrariaMessageId.SyncEquipment:
+                return HandlePlayerEquipment(frame);
 
             case TerrariaMessageId.RequestWorldData:
                 return HandleWorldRequest(frame);
@@ -209,6 +230,31 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             appearance.ConsumableUnlockFlags);
 
         if (!_appearanceIngress.TryPost(_source, in commit))
+            return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
+
+        return TerrariaFrameSinkResult.Continue;
+    }
+
+    private TerrariaFrameSinkResult HandlePlayerEquipment(in TerrariaFrame frame)
+    {
+        TerrariaPlayerEquipmentDecodeResult decode = TerrariaPlayerEquipmentCodec.TryDecode(
+            frame,
+            out TerrariaPlayerEquipmentState equipment);
+        if (decode != TerrariaPlayerEquipmentDecodeResult.Decoded)
+            return Stop(PlayerBootstrapStopReason.MalformedPlayerEquipment);
+
+        if (_equipmentIngress is null)
+            return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
+
+        var commit = new PlayerEquipmentCommitRequest(
+            _session!.Slot,
+            equipment.SlotId,
+            equipment.Stack,
+            equipment.Prefix,
+            equipment.ItemNetId,
+            equipment.ItemFlags);
+
+        if (!_equipmentIngress.TryPost(_source, in commit))
             return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
         return TerrariaFrameSinkResult.Continue;
