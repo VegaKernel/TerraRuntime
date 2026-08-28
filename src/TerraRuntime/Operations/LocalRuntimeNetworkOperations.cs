@@ -11,17 +11,20 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
     private readonly global::TerraRuntime.RuntimeConnectionRegistry connections;
     private readonly RuntimeConnectionQueueTelemetry queueTelemetry;
     private readonly RuntimeConnectionRateTelemetry rateTelemetry;
+    private readonly global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication;
 
     public LocalRuntimeNetworkOperations(
         TerrariaConnectionAdmissionGate admission,
         global::TerraRuntime.RuntimeConnectionRegistry connections,
         RuntimeConnectionQueueTelemetry queueTelemetry,
-        RuntimeConnectionRateTelemetry rateTelemetry)
+        RuntimeConnectionRateTelemetry rateTelemetry,
+        global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication = null)
     {
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
         this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
         this.queueTelemetry = queueTelemetry ?? throw new ArgumentNullException(nameof(queueTelemetry));
         this.rateTelemetry = rateTelemetry ?? throw new ArgumentNullException(nameof(rateTelemetry));
+        this.npcReplication = npcReplication;
     }
 
     public RuntimeNetworkSnapshot CaptureSnapshot()
@@ -55,6 +58,10 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             PlayerDeactivationFrames: connections.PlayerDeactivationFrames,
             RelayedMovementFrames: connections.RelayedMovementFrames,
             MovementResyncFrames: connections.MovementResyncFrames,
-            CapturedAtUtc: DateTimeOffset.UtcNow);
+            CapturedAtUtc: DateTimeOffset.UtcNow,
+            NpcRelayedFrames: npcReplication?.RelayedFrames ?? 0,
+            NpcBaselineFrames: npcReplication?.BaselineFrames ?? 0,
+            NpcRejectedFrames: npcReplication?.RejectedFrames ?? 0,
+            NpcUnsupportedCommits: npcReplication?.UnsupportedCommits ?? 0);
     }
 }
