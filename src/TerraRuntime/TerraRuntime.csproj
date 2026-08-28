@@ -4,6 +4,7 @@
     <TargetFramework>net11.0</TargetFramework>
     <RootNamespace>TerraRuntime</RootNamespace>
     <AssemblyName>TerraRuntime.Server</AssemblyName>
+    <StartupObject>TerraRuntime.StartupProgram</StartupObject>
     <IsAotCompatible>true</IsAotCompatible>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <PublishAot>true</PublishAot>
