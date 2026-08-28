@@ -18,6 +18,8 @@ public enum WorldChestSyncPacketEncodeResult : byte
 /// </summary>
 public static class WorldChestSyncPacketEncoder
 {
+    private const int MaximumAddressableSlots = byte.MaxValue + 1;
+
     public static WorldChestSyncPacketEncodeResult TryEncode(
         WorldChest chest,
         out ReadOnlyMemory<byte>[] frames)
@@ -28,7 +30,7 @@ public static class WorldChestSyncPacketEncoder
         if (chest.SlotId < 0 ||
             chest.SlotId >= VanillaWorldFormat326.MaximumChestSlots ||
             chest.Items is null ||
-            chest.Items.Length > byte.MaxValue)
+            chest.Items.Length > MaximumAddressableSlots)
         {
             return WorldChestSyncPacketEncodeResult.InvalidChest;
         }
