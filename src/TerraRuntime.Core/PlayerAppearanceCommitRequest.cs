@@ -31,5 +31,5 @@ public readonly record struct PlayerAppearanceCommitRequest(
 
 public interface IPlayerAppearanceIngress
 {
-    bool TryPost(GameCommandSourceId source, in PlayerAppearanceCommitRequest request);
+    bool TryPost(ConnectionHandle connection, in PlayerAppearanceCommitRequest request);
 }

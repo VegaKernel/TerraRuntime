@@ -28,7 +28,8 @@ public enum PlayerSpawnCommitResult : byte
 {
     Committed = 0,
     InvalidJoinState = 1,
-    SlotMismatch = 2
+    SlotMismatch = 2,
+    InvalidSpawnData = 3
 }
 
 /// <summary>
@@ -60,7 +61,23 @@ public sealed class PlayerJoinSession : IDisposable
             lock (_gate)
             {
                 ThrowIfClosed();
-                return _slotLease!.Slot;
+                return _slotLease!.Handle.Slot;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Identifies this exact occupation of the leased slot. A later lease of the same slot has a
+    /// different generation and therefore a different handle.
+    /// </summary>
+    public PlayerHandle Handle
+    {
+        get
+        {
+            lock (_gate)
+            {
+                ThrowIfClosed();
+                return _slotLease!.Handle;
             }
         }
     }
@@ -133,7 +150,7 @@ public sealed class PlayerJoinSession : IDisposable
                 return PlayerSpawnCommitResult.InvalidJoinState;
             }
 
-            if (_slotLease.Slot != claimedSlot)
+            if (_slotLease.Handle.Slot != claimedSlot)
             {
                 return PlayerSpawnCommitResult.SlotMismatch;
             }

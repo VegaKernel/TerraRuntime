@@ -20,7 +20,8 @@ public enum PlayerBootstrapStopReason : byte
     SectionEncodingFailure = 8,
     MalformedPlayerMovement = 9,
     MalformedPlayerAppearance = 10,
-    MalformedPlayerEquipment = 11
+    MalformedPlayerEquipment = 11,
+    MalformedPlayerSpawn = 12
 }
 
 /// <summary>
@@ -40,6 +41,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private readonly IPlayerEquipmentIngress? _equipmentIngress;
     private readonly IPlayerMovementIngress? _movementIngress;
     private PlayerJoinSession? _session;
+    private PlayerHandle? _assignedPlayerHandle;
     private bool _spawnSubmitted;
 
     public PlayerBootstrapFrameSink(
@@ -132,6 +134,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     public byte? PlayerSlot => _session is null || _session.State == PlayerJoinState.Closed
         ? null
         : _session.Slot.Value;
+    public PlayerHandle? AssignedPlayerHandle => _assignedPlayerHandle;
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
@@ -193,6 +196,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         }
 
         _session = session;
+        _assignedPlayerHandle = session.Handle;
         return TerrariaFrameSinkResult.Continue;
     }
 
@@ -229,7 +233,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             appearance.TorchAndCartFlags,
             appearance.ConsumableUnlockFlags);
 
-        if (!_appearanceIngress.TryPost(_source, in commit))
+        var connection = new ConnectionHandle(_source, _session.Handle);
+        if (!_appearanceIngress.TryPost(connection, in commit))
             return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
         return TerrariaFrameSinkResult.Continue;
@@ -254,7 +259,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             equipment.ItemNetId,
             equipment.ItemFlags);
 
-        if (!_equipmentIngress.TryPost(_source, in commit))
+        var connection = new ConnectionHandle(_source, _session.Handle);
+        if (!_equipmentIngress.TryPost(connection, in commit))
             return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
         return TerrariaFrameSinkResult.Continue;
@@ -358,6 +364,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 request.Team,
                 request.SpawnContext);
 
+            if (!VanillaPlayerSpawnValidator.IsValid(in commit))
+                return Stop(PlayerBootstrapStopReason.MalformedPlayerSpawn);
+
             if (!_spawnIngress.TryPost(_source, _session, in commit))
                 return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
@@ -407,7 +416,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             request.CameraTargetX,
             request.CameraTargetY);
 
-        if (!_movementIngress.TryPost(_source, in commit))
+        var connection = new ConnectionHandle(_source, session.Handle);
+        if (!_movementIngress.TryPost(connection, in commit))
             return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
         return TerrariaFrameSinkResult.Continue;

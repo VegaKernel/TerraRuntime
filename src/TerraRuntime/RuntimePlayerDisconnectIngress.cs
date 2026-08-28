@@ -4,8 +4,7 @@ using TerraRuntime.Core;
 namespace TerraRuntime;
 
 internal sealed record PlayerDisconnectRuntimeCommand(
-    GameCommandSourceId Source,
-    PlayerSlotId PlayerSlot) : RuntimeCommand;
+    ConnectionHandle Connection) : RuntimeCommand;
 
 internal sealed class RuntimePlayerDisconnectIngress
 {
@@ -17,11 +16,13 @@ internal sealed class RuntimePlayerDisconnectIngress
         _ingress = ingress;
     }
 
-    public bool TryPost(GameCommandSourceId source, PlayerSlotId playerSlot)
+    public bool TryPost(ConnectionHandle connection)
     {
-        if (source.IsSystem)
+        if (!connection.IsAssigned)
             return false;
 
-        return _ingress.TryPost(source, new PlayerDisconnectRuntimeCommand(source, playerSlot));
+        return _ingress.TryPost(
+            connection.Source,
+            new PlayerDisconnectRuntimeCommand(connection));
     }
 }

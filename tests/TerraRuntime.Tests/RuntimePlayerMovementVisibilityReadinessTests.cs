@@ -33,13 +33,13 @@ public sealed class RuntimePlayerMovementVisibilityReadinessTests
         var registry = CreateRegistry(out GameCommandSourceId firstSource, out GameCommandSourceId secondSource, out PlayerSlotId first, out PlayerSlotId second);
         PlayerMovementCommitRequest firstMovement = CreateMovementRequest(first, PixelsAtSection(0), 200f);
         PlayerMovementCommitRequest secondMovement = CreateMovementRequest(second, PixelsAtSection(0) + 20f, 220f);
-        registry.PlayerMoved(firstSource, in firstMovement);
-        registry.PlayerMoved(secondSource, in secondMovement);
+        Move(registry, firstSource, in firstMovement);
+        Move(registry, secondSource, in secondMovement);
 
         Assert.False(registry.IsPlayerMovementVisibilityReady(first, second));
         Assert.False(registry.IsPlayerMovementVisibilityReady(second, first));
 
-        var operation = new RuntimePlayerMovementResyncOperation(first, second);
+        var operation = new RuntimePlayerMovementResyncOperation(Player(first), Player(second));
         Assert.True(registry.TryEnqueuePlayerMovementResync(in operation));
 
         Assert.True(registry.IsPlayerMovementVisibilityReady(first, second));
@@ -53,15 +53,15 @@ public sealed class RuntimePlayerMovementVisibilityReadinessTests
         var registry = CreateRegistry(out GameCommandSourceId firstSource, out GameCommandSourceId secondSource, out PlayerSlotId first, out PlayerSlotId second);
         PlayerMovementCommitRequest firstMovement = CreateMovementRequest(first, PixelsAtSection(0), 200f);
         PlayerMovementCommitRequest secondMovement = CreateMovementRequest(second, PixelsAtSection(0) + 20f, 220f);
-        registry.PlayerMoved(firstSource, in firstMovement);
-        registry.PlayerMoved(secondSource, in secondMovement);
+        Move(registry, firstSource, in firstMovement);
+        Move(registry, secondSource, in secondMovement);
 
         MarkBothDirectionsReady(registry, first, second);
         Assert.True(registry.IsPlayerMovementVisibilityReady(first, second));
         Assert.True(registry.IsPlayerMovementVisibilityReady(second, first));
 
         PlayerMovementCommitRequest leave = CreateMovementRequest(second, PixelsAtSection(5), 220f);
-        registry.PlayerMoved(secondSource, in leave);
+        Move(registry, secondSource, in leave);
 
         Assert.False(registry.IsPlayerMovementVisibilityReady(first, second));
         Assert.False(registry.IsPlayerMovementVisibilityReady(second, first));
@@ -75,13 +75,13 @@ public sealed class RuntimePlayerMovementVisibilityReadinessTests
         var registry = CreateRegistry(out GameCommandSourceId firstSource, out GameCommandSourceId secondSource, out PlayerSlotId first, out PlayerSlotId second);
         PlayerMovementCommitRequest firstMovement = CreateMovementRequest(first, PixelsAtSection(0), 200f);
         PlayerMovementCommitRequest secondMovement = CreateMovementRequest(second, PixelsAtSection(0) + 20f, 220f);
-        registry.PlayerMoved(firstSource, in firstMovement);
-        registry.PlayerMoved(secondSource, in secondMovement);
+        Move(registry, firstSource, in firstMovement);
+        Move(registry, secondSource, in secondMovement);
         MarkBothDirectionsReady(registry, first, second);
         Assert.Equal(2, registry.PlayerMovementVisibilityReadinessSnapshot.ReadyDirections);
 
-        Assert.True(registry.TryUnregister(secondSource, out PlayerSlotId? released));
-        Assert.Equal(second, released);
+        Assert.True(registry.TryUnregister(secondSource, out PlayerHandle? released));
+        Assert.Equal(Player(second), released);
         Assert.False(registry.IsPlayerMovementVisibilityReady(first, second));
         Assert.False(registry.IsPlayerMovementVisibilityReady(second, first));
         Assert.Equal(0, registry.PlayerMovementVisibilityReadinessSnapshot.ReadyDirections);
@@ -92,8 +92,8 @@ public sealed class RuntimePlayerMovementVisibilityReadinessTests
         PlayerSlotId first,
         PlayerSlotId second)
     {
-        var firstSeesSecond = new RuntimePlayerMovementResyncOperation(first, second);
-        var secondSeesFirst = new RuntimePlayerMovementResyncOperation(second, first);
+        var firstSeesSecond = new RuntimePlayerMovementResyncOperation(Player(first), Player(second));
+        var secondSeesFirst = new RuntimePlayerMovementResyncOperation(Player(second), Player(first));
         Assert.True(registry.TryEnqueuePlayerMovementResync(in firstSeesSecond));
         Assert.True(registry.TryEnqueuePlayerMovementResync(in secondSeesFirst));
     }
@@ -116,14 +116,26 @@ public sealed class RuntimePlayerMovementVisibilityReadinessTests
         Assert.True(registry.TryRegister(secondSource, CreateOutbound()));
         PlayerSpawnCommitRequest firstSpawn = CreateSpawnRequest(first, 100, 200);
         PlayerSpawnCommitRequest secondSpawn = CreateSpawnRequest(second, 120, 200);
-        registry.PlayerSpawned(firstSource, in firstSpawn);
-        registry.PlayerSpawned(secondSource, in secondSpawn);
+        registry.PlayerSpawned(Connection(firstSource, first), in firstSpawn);
+        registry.PlayerSpawned(Connection(secondSource, second), in secondSpawn);
         Assert.Equal(1, registry.PlayerVisibilitySnapshot?.VisiblePairs);
         return registry;
     }
 
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
         new(new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 32_768, maxFrameBytes: 1_024));
+
+    private static void Move(
+        RuntimeConnectionRegistry registry,
+        GameCommandSourceId source,
+        in PlayerMovementCommitRequest request) =>
+        registry.PlayerMoved(Connection(source, request.PlayerSlot), in request);
+
+    private static ConnectionHandle Connection(GameCommandSourceId source, PlayerSlotId slot) =>
+        new(source, Player(slot));
+
+    private static PlayerHandle Player(PlayerSlotId slot) =>
+        new(slot, new PlayerSessionGeneration(1));
 
     private static PlayerSpawnCommitRequest CreateSpawnRequest(
         PlayerSlotId slot,

@@ -1,5 +1,9 @@
 decompiled/
 artifacts/
+.cache/
+.tools/
+**/bin/
+**/obj/
 *.zip
 *.exe
 *.dll

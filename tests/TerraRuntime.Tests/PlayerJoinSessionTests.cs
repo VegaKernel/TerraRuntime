@@ -14,6 +14,8 @@ public sealed class PlayerJoinSessionTests
 
         Assert.Equal(PlayerJoinState.AwaitingWorldRequest, session.State);
         Assert.Equal((byte)0, session.Slot.Value);
+        Assert.Equal(lease.Handle, session.Handle);
+        Assert.True(session.Handle.IsAssigned);
 
         Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());
         Assert.Equal(PlayerJoinState.AwaitingSectionRequest, session.State);
@@ -79,6 +81,7 @@ public sealed class PlayerJoinSessionTests
         Assert.Equal(PlayerJoinTransition.None, session.Close());
         Assert.Equal(0, pool.LeasedCount);
         Assert.Throws<ObjectDisposedException>(() => _ = session.Slot);
+        Assert.Throws<ObjectDisposedException>(() => _ = session.Handle);
     }
 
     [Fact]

@@ -16,25 +16,26 @@ public sealed class RuntimeConnectionRegistryMovementSnapshotTests
         var outbound = new TerrariaConnectionOutboundQueue(
             new OutboundQueueOptions(maxFrames: 8, maxQueuedBytes: 8_192, maxFrameBytes: 1_024));
         var slot = new PlayerSlotId(7);
+        ConnectionHandle connection = Connection(source, slot);
 
         Assert.True(registry.TryRegister(source, outbound));
         PlayerSpawnCommitRequest spawn = CreateSpawnRequest(slot);
-        registry.PlayerSpawned(source, in spawn);
+        registry.PlayerSpawned(connection, in spawn);
         Assert.False(registry.TryGetLatestPlayerMovementFrame(slot, out _));
 
         PlayerMovementCommitRequest first = CreateMovementRequest(slot, 100f, 200f, selectedItem: 3);
-        registry.PlayerMoved(source, in first);
+        registry.PlayerMoved(connection, in first);
         Assert.True(registry.TryGetLatestPlayerMovementFrame(slot, out OutboundFrame firstFrame));
         Assert.True(firstFrame.Bytes.Span.SequenceEqual(Encode(in first)));
 
         PlayerMovementCommitRequest second = CreateMovementRequest(slot, 300f, 400f, selectedItem: 9);
-        registry.PlayerMoved(source, in second);
+        registry.PlayerMoved(connection, in second);
         Assert.True(registry.TryGetLatestPlayerMovementFrame(slot, out OutboundFrame secondFrame));
         Assert.True(secondFrame.Bytes.Span.SequenceEqual(Encode(in second)));
         Assert.False(secondFrame.Bytes.Span.SequenceEqual(firstFrame.Bytes.Span));
 
-        Assert.True(registry.TryUnregister(source, out PlayerSlotId? playingSlot));
-        Assert.Equal(slot, playingSlot);
+        Assert.True(registry.TryUnregister(source, out PlayerHandle? playingPlayer));
+        Assert.Equal(connection.Player, playingPlayer);
         Assert.False(registry.TryGetLatestPlayerMovementFrame(slot, out _));
     }
 
@@ -47,17 +48,18 @@ public sealed class RuntimeConnectionRegistryMovementSnapshotTests
         var outbound = new TerrariaConnectionOutboundQueue(
             new OutboundQueueOptions(maxFrames: 8, maxQueuedBytes: 8_192, maxFrameBytes: 1_024));
         var slot = new PlayerSlotId(8);
+        ConnectionHandle ownerConnection = Connection(owner, slot);
 
         Assert.True(registry.TryRegister(owner, outbound));
         PlayerSpawnCommitRequest spawn = CreateSpawnRequest(slot);
-        registry.PlayerSpawned(owner, in spawn);
+        registry.PlayerSpawned(ownerConnection, in spawn);
 
         PlayerMovementCommitRequest authoritative = CreateMovementRequest(slot, 10f, 20f, selectedItem: 1);
-        registry.PlayerMoved(owner, in authoritative);
+        registry.PlayerMoved(ownerConnection, in authoritative);
         Assert.True(registry.TryGetLatestPlayerMovementFrame(slot, out OutboundFrame before));
 
         PlayerMovementCommitRequest forged = CreateMovementRequest(slot, 999f, 999f, selectedItem: 50);
-        registry.PlayerMoved(attacker, in forged);
+        registry.PlayerMoved(Connection(attacker, slot), in forged);
         Assert.True(registry.TryGetLatestPlayerMovementFrame(slot, out OutboundFrame after));
         Assert.True(after.Bytes.Span.SequenceEqual(before.Bytes.Span));
     }
@@ -73,6 +75,9 @@ public sealed class RuntimeConnectionRegistryMovementSnapshotTests
             Team: 0,
             SpawnContext: 0);
 
+    private static ConnectionHandle Connection(GameCommandSourceId source, PlayerSlotId slot) =>
+        new(source, new PlayerHandle(slot, new PlayerSessionGeneration(1)));
+
     private static PlayerMovementCommitRequest CreateMovementRequest(
         PlayerSlotId slot,
         float x,
@@ -81,7 +86,7 @@ public sealed class RuntimeConnectionRegistryMovementSnapshotTests
         new(
             slot,
             ControlFlags: 0x03,
-            MovementFlags: 0x01,
+            MovementFlags: 0x05,
             MiscFlags1: 0,
             MiscFlags2: 0,
             SelectedItem: selectedItem,

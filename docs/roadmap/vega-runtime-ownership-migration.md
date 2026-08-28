@@ -164,6 +164,13 @@ Requirements:
 - queued work captures a generation where stale application would be dangerous;
 - telemetry identifies both connection source and authoritative player slot.
 
+Current foundation: `PlayerSlotPool` assigns a non-zero, monotonically advancing per-slot session
+generation and exposes `PlayerHandle` (`slot + generation`) through each lease and join session.
+Player appearance, equipment, spawn, movement and disconnect commands capture a `ConnectionHandle`
+(`source + player handle`); the authoritative state rejects stale generations even if both source and
+slot are reused. Deferred movement-resync operations also capture both player generations before
+enqueue. Extending the same identity to later player-owned entity commands remains required.
+
 ---
 
 ## 5. Typed packet processing context
@@ -238,6 +245,32 @@ Owned by the subsystem that owns the state:
 - projectile ownership;
 - tile/liquid/object coordinates;
 - legal mutation preconditions.
+
+Current inventory boundary: player item slot IDs are validated before authoritative enqueue and
+again before snapshot/relay. TerrariaServer 1.4.5.8 packet 5 accepts slots `0..989`, but only
+relays `0..98` and `700..989` (389 slots); private bank/trash ranges `99..699` never enter the
+replication cache or peer queues. These exact `PlayerItemSlotID.CanRelay` boundaries have focused
+ingress and exhaustive relay tests.
+
+Packet-5 item state is also normalized before the authoritative queue: legacy net IDs `-1..-48`
+map through the vanilla 1.4.5.8 `Item.netDefaults` table, IDs outside `ItemID.Count` become air,
+non-positive stacks produce canonical air, and relay flags retain only the persistent favorite bit.
+The registry repeats normalization defensively for callers that bypass the network ingress.
+
+Packet 4 follows the same rule: player names are trimmed and constrained to the vanilla 20-character
+limit before enqueue, while skin, voice, pitch, hair, visibility and progression bit fields are
+normalized to the exact 1.4.5.8 ranges. Invalid empty/oversized names cannot enter the authoritative
+queue, and defensive registry normalization prevents non-network callers from bypassing the rule.
+
+Packet 13 now has a shared semantic guard at ingress, authoritative apply and replication: positions
+and every flag-present optional vector must be finite, selected inventory indices stay in `0..58`,
+mount IDs stay below the 1.4.5.8 `MountID.Count` of 66, and optional-field presence is derived from
+the wire flags. Absent optional values are canonicalized to zero before storage or encoding.
+
+Packet 12 is validated before spawn submission and again on authoritative apply: spawn coordinates
+permit only the vanilla `-1` sentinel or non-negative tiles, timers/death counts cannot be negative,
+teams stay in `PlayerTeamID` `0..5`, and spawn contexts stay in the four-value 1.4.5.8 enum. Invalid
+data closes bootstrap with a distinct reason and cannot advance the join session to playing.
 
 ### Vega policy
 
@@ -371,6 +404,12 @@ Guidelines:
 - snapshots may be created on the authoritative thread and consumed elsewhere;
 - expensive formatting belongs outside the authoritative loop.
 
+Current foundation: live players carry a non-zero authoritative `PlayerStateRevision`; accepted
+appearance, equipment and movement updates advance it. `PlayerStateSnapshot` is an immutable,
+protocol-neutral projection keyed by the exact `PlayerHandle`, and stale generations cannot capture
+the replacement session. Life/mana, inventory and an asynchronous snapshot request boundary remain
+future slices rather than being folded into this first projection.
+
 ---
 
 ## 10. Entity lifecycle foundation
@@ -412,6 +451,11 @@ Each lifecycle owner is responsible for:
 - spatial-index membership where applicable.
 
 This lifecycle becomes the common input to replication instead of packet-specific broadcast code.
+
+Current player slice: spawn exchanges packet-14 active baselines before appearance/equipment state,
+and authoritative disconnect broadcasts packet-14 inactive state. This ordering and disconnect
+behavior are verified against TerrariaServer 1.4.5.8 `NetMessage.SyncOnePlayer`; later lifecycle
+entities must follow the same generation-safe activation/deactivation boundary.
 
 ---
 

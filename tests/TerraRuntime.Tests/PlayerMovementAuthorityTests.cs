@@ -39,7 +39,8 @@ public sealed class PlayerMovementAuthorityTests
 
         Assert.Equal(PlayerBootstrapStopReason.None, sink.StopReason);
         Assert.Equal(1, movementIngress.PostCount);
-        Assert.Equal(GameCommandSourceId.FromConnection(42), movementIngress.Source);
+        Assert.Equal(GameCommandSourceId.FromConnection(42), movementIngress.Connection.Source);
+        Assert.True(movementIngress.Connection.Player.Generation.IsAssigned);
         Assert.Equal(new PlayerSlotId(0), movementIngress.Request.PlayerSlot);
         Assert.Equal(123.5f, movementIngress.Request.PositionX);
         Assert.Equal(456.25f, movementIngress.Request.PositionY);
@@ -121,13 +122,13 @@ public sealed class PlayerMovementAuthorityTests
     private sealed class CapturingMovementIngress : IPlayerMovementIngress
     {
         public int PostCount { get; private set; }
-        public GameCommandSourceId Source { get; private set; }
+        public ConnectionHandle Connection { get; private set; }
         public PlayerMovementCommitRequest Request { get; private set; }
 
-        public bool TryPost(GameCommandSourceId source, in PlayerMovementCommitRequest request)
+        public bool TryPost(ConnectionHandle connection, in PlayerMovementCommitRequest request)
         {
             PostCount++;
-            Source = source;
+            Connection = connection;
             Request = request;
             return true;
         }

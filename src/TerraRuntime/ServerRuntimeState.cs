@@ -52,6 +52,23 @@ internal sealed class ServerRuntimeState
         }
     }
 
+    /// <summary>
+    /// Captures an immutable projection for an exact live session. This method is authoritative-thread
+    /// only; asynchronous consumers must receive the value through a command/result boundary.
+    /// </summary>
+    internal bool TryCapturePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
+    {
+        if (!_players.TryGetValue(player.Slot.Value, out RuntimePlayerState? state) ||
+            state.Connection.Player != player)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        snapshot = state.CaptureSnapshot();
+        return true;
+    }
+
     public void Apply(RuntimeCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -82,6 +99,10 @@ internal sealed class ServerRuntimeState
             case PlayerDisconnectRuntimeCommand disconnect:
                 ApplyPlayerDisconnect(disconnect);
                 break;
+
+            case PlayerStateSnapshotRuntimeCommand snapshot:
+                CompletePlayerSnapshot(snapshot);
+                break;
         }
     }
 
@@ -94,33 +115,58 @@ internal sealed class ServerRuntimeState
     {
         PlayerAppearanceCommitRequest request = appearance.Request;
         if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer) &&
-            activePlayer.Source != appearance.Source)
+            activePlayer.Connection != appearance.Connection)
+        {
+            RejectedPlayerAppearances++;
+            return;
+        }
+
+        if (activePlayer is not null && !activePlayer.TryAdvanceRevision())
         {
             RejectedPlayerAppearances++;
             return;
         }
 
         AppliedPlayerAppearances++;
-        _playerEvents?.PlayerAppearanceUpdated(appearance.Source, in request);
+        _playerEvents?.PlayerAppearanceUpdated(appearance.Connection, in request);
     }
 
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
         if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer) &&
-            activePlayer.Source != equipment.Source)
+            activePlayer.Connection != equipment.Connection)
+        {
+            RejectedPlayerEquipmentUpdates++;
+            return;
+        }
+
+        if (activePlayer is not null && !activePlayer.TryAdvanceRevision())
         {
             RejectedPlayerEquipmentUpdates++;
             return;
         }
 
         AppliedPlayerEquipmentUpdates++;
-        _playerEvents?.PlayerEquipmentUpdated(equipment.Source, in request);
+        _playerEvents?.PlayerEquipmentUpdated(equipment.Connection, in request);
     }
 
     private void ApplyPlayerSpawn(PlayerSpawnRuntimeCommand spawn)
     {
         PlayerSpawnCommitRequest request = spawn.Request;
+        if (!VanillaPlayerSpawnValidator.IsValid(in request))
+        {
+            Volatile.Write(ref lastSpawnCommitResult, (int)PlayerSpawnCommitResult.InvalidSpawnData);
+            return;
+        }
+
+        if (!spawn.Connection.IsAssigned ||
+            spawn.Connection.Player.Slot != request.ClaimedSlot)
+        {
+            Volatile.Write(ref lastSpawnCommitResult, (int)PlayerSpawnCommitResult.SlotMismatch);
+            return;
+        }
+
         PlayerSpawnCommitResult commit = spawn.Session.TryCommitSpawn(request.ClaimedSlot);
         Volatile.Write(ref lastSpawnCommitResult, (int)commit);
         if (commit != PlayerSpawnCommitResult.Committed)
@@ -129,20 +175,35 @@ internal sealed class ServerRuntimeState
         CommittedPlayerSpawns++;
         _players[request.ClaimedSlot.Value] = new RuntimePlayerState
         {
-            Source = spawn.Source,
+            Connection = spawn.Connection,
+            Revision = 1,
             Slot = request.ClaimedSlot,
             Team = request.Team,
             PositionX = request.SpawnX * 16f,
             PositionY = request.SpawnY * 16f
         };
-        _playerEvents?.PlayerSpawned(spawn.Source, in request);
+        _playerEvents?.PlayerSpawned(spawn.Connection, in request);
     }
 
     private void ApplyPlayerMovement(PlayerMovementRuntimeCommand movement)
     {
-        PlayerMovementCommitRequest request = movement.Request;
+        PlayerMovementCommitRequest submitted = movement.Request;
+        if (!VanillaPlayerMovementNormalizer.TryNormalize(
+                in submitted,
+                out PlayerMovementCommitRequest request))
+        {
+            RejectedPlayerMovements++;
+            return;
+        }
+
         if (!_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? player) ||
-            player.Source != movement.Source)
+            player.Connection != movement.Connection)
+        {
+            RejectedPlayerMovements++;
+            return;
+        }
+
+        if (!player.TryAdvanceRevision())
         {
             RejectedPlayerMovements++;
             return;
@@ -177,25 +238,35 @@ internal sealed class ServerRuntimeState
         LastMovementPlayerSlot = request.PlayerSlot;
         LastMovementPositionX = request.PositionX;
         LastMovementPositionY = request.PositionY;
-        _playerEvents?.PlayerMoved(movement.Source, in request);
+        _playerEvents?.PlayerMoved(movement.Connection, in request);
     }
 
     private void ApplyPlayerDisconnect(PlayerDisconnectRuntimeCommand disconnect)
     {
-        if (!_players.TryGetValue(disconnect.PlayerSlot.Value, out RuntimePlayerState? player) ||
-            player.Source != disconnect.Source)
+        ConnectionHandle connection = disconnect.Connection;
+        if (!_players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) ||
+            player.Connection != connection)
         {
             return;
         }
 
-        _players.Remove(disconnect.PlayerSlot.Value);
+        _players.Remove(connection.Player.Slot.Value);
         DisconnectedPlayers++;
-        _playerEvents?.PlayerDisconnected(disconnect.Source, disconnect.PlayerSlot);
+        _playerEvents?.PlayerDisconnected(connection);
+    }
+
+    private void CompletePlayerSnapshot(PlayerStateSnapshotRuntimeCommand command)
+    {
+        PlayerStateSnapshot? result = TryCapturePlayerSnapshot(command.Player, out PlayerStateSnapshot snapshot)
+            ? snapshot
+            : null;
+        command.Completion.TrySetResult(result);
     }
 
     private sealed class RuntimePlayerState
     {
-        public GameCommandSourceId Source { get; init; }
+        public ConnectionHandle Connection { get; init; }
+        public ulong Revision { get; set; }
         public PlayerSlotId Slot { get; init; }
         public byte Team { get; init; }
         public byte ControlFlags { get; set; }
@@ -214,6 +285,37 @@ internal sealed class ServerRuntimeState
         public float PotionOfReturnHomePositionY { get; set; }
         public float CameraTargetX { get; set; }
         public float CameraTargetY { get; set; }
+
+        public bool TryAdvanceRevision()
+        {
+            if (Revision == ulong.MaxValue)
+                return false;
+
+            Revision++;
+            return true;
+        }
+
+        public PlayerStateSnapshot CaptureSnapshot() =>
+            new(
+                Connection.Player,
+                new PlayerStateRevision(Revision),
+                Team,
+                ControlFlags,
+                MovementFlags,
+                MiscFlags1,
+                MiscFlags2,
+                SelectedItem,
+                PositionX,
+                PositionY,
+                VelocityX,
+                VelocityY,
+                MountType,
+                PotionOfReturnOriginalPositionX,
+                PotionOfReturnOriginalPositionY,
+                PotionOfReturnHomePositionX,
+                PotionOfReturnHomePositionY,
+                CameraTargetX,
+                CameraTargetY);
     }
 }
 

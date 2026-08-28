@@ -57,6 +57,7 @@ internal static class AuthoritativePlayerSpawnSmoke
             loop.Start();
             PlayerSpawnCommitRequest spawn1 = CreateSpawnRequest(session1.Slot, 100, 200);
             PlayerSpawnCommitRequest spawn2 = CreateSpawnRequest(session2.Slot, 120, 220);
+            var connection1 = new ConnectionHandle(source1, session1.Handle);
 
             if (!spawnIngress.TryPost(source1, session1, in spawn1) ||
                 !spawnIngress.TryPost(source2, session2, in spawn2))
@@ -84,8 +85,19 @@ internal static class AuthoritativePlayerSpawnSmoke
                 return false;
             }
 
+            int senderBaselineFrames = outbound1.QueuedFrames;
+            int peerBaselineFrames = outbound2.QueuedFrames;
+            if (senderBaselineFrames != 1 ||
+                peerBaselineFrames != 1 ||
+                registry.PlayerActiveBaselineFrames != 2)
+            {
+                failure = $"player-active baseline mismatch: sender={senderBaselineFrames}, peer={peerBaselineFrames}, active={registry.PlayerActiveBaselineFrames}";
+                loop.Stop(TimeSpan.FromSeconds(1));
+                return false;
+            }
+
             PlayerMovementCommitRequest movement = CreateMovementRequest(session1.Slot, 123.5f, 456.25f);
-            if (!movementIngress.TryPost(source1, in movement))
+            if (!movementIngress.TryPost(connection1, in movement))
             {
                 failure = "authoritative movement ingress rejected command";
                 loop.Stop(TimeSpan.FromSeconds(1));
@@ -101,15 +113,15 @@ internal static class AuthoritativePlayerSpawnSmoke
 
             if (state.AppliedPlayerMovements != 1 ||
                 registry.RelayedMovementFrames != 1 ||
-                outbound1.QueuedFrames != 0 ||
-                outbound2.QueuedFrames != 1)
+                outbound1.QueuedFrames != senderBaselineFrames ||
+                outbound2.QueuedFrames != peerBaselineFrames + 1)
             {
                 failure = $"movement relay mismatch with interest management enabled: applied={state.AppliedPlayerMovements}, relayed={registry.RelayedMovementFrames}, senderQueued={outbound1.QueuedFrames}, peerQueued={outbound2.QueuedFrames}";
                 loop.Stop(TimeSpan.FromSeconds(1));
                 return false;
             }
 
-            if (!disconnectIngress.TryPost(source1, session1.Slot))
+            if (!disconnectIngress.TryPost(connection1))
             {
                 failure = "authoritative disconnect ingress rejected command";
                 loop.Stop(TimeSpan.FromSeconds(1));
@@ -127,7 +139,7 @@ internal static class AuthoritativePlayerSpawnSmoke
                 return false;
             }
 
-            if (!movementIngress.TryPost(source1, in movement))
+            if (!movementIngress.TryPost(connection1, in movement))
             {
                 failure = "post-disconnect movement could not enter bounded ingress for rejection test";
                 loop.Stop(TimeSpan.FromSeconds(1));
@@ -148,7 +160,9 @@ internal static class AuthoritativePlayerSpawnSmoke
                 return false;
             }
 
-            if (state.RejectedPlayerMovements != 1 || outbound2.QueuedFrames != 1)
+            if (state.RejectedPlayerMovements != 1 ||
+                registry.PlayerDeactivationFrames != 1 ||
+                outbound2.QueuedFrames != peerBaselineFrames + 2)
             {
                 failure = $"post-disconnect movement was not rejected cleanly: rejected={state.RejectedPlayerMovements}, peerQueued={outbound2.QueuedFrames}";
                 return false;

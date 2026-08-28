@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 namespace TerraRuntime;
 
 internal sealed record PlayerEquipmentRuntimeCommand(
-    GameCommandSourceId Source,
+    ConnectionHandle Connection,
     PlayerEquipmentCommitRequest Request) : RuntimeCommand;
 
 internal sealed class RuntimePlayerEquipmentIngress : IPlayerEquipmentIngress
@@ -17,11 +17,16 @@ internal sealed class RuntimePlayerEquipmentIngress : IPlayerEquipmentIngress
         _ingress = ingress;
     }
 
-    public bool TryPost(GameCommandSourceId source, in PlayerEquipmentCommitRequest request)
+    public bool TryPost(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)
     {
-        if (source.IsSystem)
+        if (!connection.IsAssigned ||
+            connection.Player.Slot != request.PlayerSlot ||
+            !VanillaPlayerItemSlotCatalog.IsValid(request.SlotId))
             return false;
 
-        return _ingress.TryPost(source, new PlayerEquipmentRuntimeCommand(source, request));
+        PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
+        return _ingress.TryPost(
+            connection.Source,
+            new PlayerEquipmentRuntimeCommand(connection, normalized));
     }
 }

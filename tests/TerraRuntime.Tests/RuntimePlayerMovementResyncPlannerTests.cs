@@ -22,11 +22,11 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
         Assert.True(registry.TryRegister(secondSource, secondOutbound));
         PlayerSpawnCommitRequest firstSpawn = CreateSpawnRequest(first);
         PlayerSpawnCommitRequest secondSpawn = CreateSpawnRequest(second);
-        registry.PlayerSpawned(firstSource, in firstSpawn);
-        registry.PlayerSpawned(secondSource, in secondSpawn);
+        Spawn(registry, firstSource, in firstSpawn);
+        Spawn(registry, secondSource, in secondSpawn);
 
         PlayerMovementCommitRequest firstMovement = CreateMovementRequest(first, 100f, 200f);
-        registry.PlayerMoved(firstSource, in firstMovement);
+        Move(registry, firstSource, in firstMovement);
 
         Span<PlayerSlotId> entered = stackalloc PlayerSlotId[1];
         entered[0] = second;
@@ -34,15 +34,15 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
         RuntimePlayerMovementResyncPlan plan = registry.PlanPlayerMovementResyncs(first, entered, operations);
 
         Assert.Equal(new RuntimePlayerMovementResyncPlan(1, 1, 0), plan);
-        Assert.Equal(new RuntimePlayerMovementResyncOperation(second, first), operations[0]);
+        Assert.Equal(new RuntimePlayerMovementResyncOperation(Player(second), Player(first)), operations[0]);
 
         PlayerMovementCommitRequest secondMovement = CreateMovementRequest(second, 300f, 400f);
-        registry.PlayerMoved(secondSource, in secondMovement);
+        Move(registry, secondSource, in secondMovement);
         plan = registry.PlanPlayerMovementResyncs(first, entered, operations);
 
         Assert.Equal(new RuntimePlayerMovementResyncPlan(2, 0, 0), plan);
-        Assert.Equal(new RuntimePlayerMovementResyncOperation(second, first), operations[0]);
-        Assert.Equal(new RuntimePlayerMovementResyncOperation(first, second), operations[1]);
+        Assert.Equal(new RuntimePlayerMovementResyncOperation(Player(second), Player(first)), operations[0]);
+        Assert.Equal(new RuntimePlayerMovementResyncOperation(Player(first), Player(second)), operations[1]);
     }
 
     [Fact]
@@ -60,15 +60,15 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
         Assert.True(registry.TryRegister(secondSource, secondOutbound));
         PlayerSpawnCommitRequest firstSpawn = CreateSpawnRequest(first);
         PlayerSpawnCommitRequest secondSpawn = CreateSpawnRequest(second);
-        registry.PlayerSpawned(firstSource, in firstSpawn);
-        registry.PlayerSpawned(secondSource, in secondSpawn);
+        Spawn(registry, firstSource, in firstSpawn);
+        Spawn(registry, secondSource, in secondSpawn);
 
         PlayerMovementCommitRequest firstMovement = CreateMovementRequest(first, 123f, 456f);
-        registry.PlayerMoved(firstSource, in firstMovement);
+        Move(registry, firstSource, in firstMovement);
         int firstBefore = firstOutbound.QueuedFrames;
         int secondBefore = secondOutbound.QueuedFrames;
 
-        var operation = new RuntimePlayerMovementResyncOperation(second, first);
+        var operation = new RuntimePlayerMovementResyncOperation(Player(second), Player(first));
         Assert.True(registry.TryEnqueuePlayerMovementResync(in operation));
 
         Assert.Equal(firstBefore, firstOutbound.QueuedFrames);
@@ -91,13 +91,13 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
         Assert.True(registry.TryRegister(secondSource, secondOutbound));
         PlayerSpawnCommitRequest firstSpawn = CreateSpawnRequest(first);
         PlayerSpawnCommitRequest secondSpawn = CreateSpawnRequest(second);
-        registry.PlayerSpawned(firstSource, in firstSpawn);
-        registry.PlayerSpawned(secondSource, in secondSpawn);
+        Spawn(registry, firstSource, in firstSpawn);
+        Spawn(registry, secondSource, in secondSpawn);
 
         PlayerMovementCommitRequest firstMovement = CreateMovementRequest(first, PixelsAtSection(0), 200f);
         PlayerMovementCommitRequest secondMovement = CreateMovementRequest(second, PixelsAtSection(0) + 20f, 200f);
-        registry.PlayerMoved(firstSource, in firstMovement);
-        registry.PlayerMoved(secondSource, in secondMovement);
+        Move(registry, firstSource, in firstMovement);
+        Move(registry, secondSource, in secondMovement);
 
         Span<PlayerSlotId> entered = stackalloc PlayerSlotId[1];
         entered[0] = second;
@@ -106,7 +106,7 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
         Assert.Equal(2, plan.Planned);
 
         PlayerMovementCommitRequest leave = CreateMovementRequest(second, PixelsAtSection(5), 200f);
-        registry.PlayerMoved(secondSource, in leave);
+        Move(registry, secondSource, in leave);
         Assert.Equal(0, registry.PlayerVisibilitySnapshot?.VisiblePairs);
 
         long resyncFramesBefore = registry.MovementResyncFrames;
@@ -116,7 +116,7 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
         Assert.False(registry.TryEnqueuePlayerMovementResync(in stale));
         Assert.Equal(resyncFramesBefore, registry.MovementResyncFrames);
         Assert.Equal(recipientFramesBefore, secondOutbound.QueuedFrames);
-        Assert.False(registry.IsPlayerMovementVisibilityReady(stale.Recipient, stale.Subject));
+        Assert.False(registry.IsPlayerMovementVisibilityReady(stale.Recipient.Slot, stale.Subject.Slot));
     }
 
     [Fact]
@@ -132,12 +132,12 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
         Assert.True(registry.TryRegister(secondSource, CreateOutbound()));
         PlayerSpawnCommitRequest firstSpawn = CreateSpawnRequest(first);
         PlayerSpawnCommitRequest secondSpawn = CreateSpawnRequest(second);
-        registry.PlayerSpawned(firstSource, in firstSpawn);
-        registry.PlayerSpawned(secondSource, in secondSpawn);
+        Spawn(registry, firstSource, in firstSpawn);
+        Spawn(registry, secondSource, in secondSpawn);
         PlayerMovementCommitRequest firstMovement = CreateMovementRequest(first, 10f, 20f);
         PlayerMovementCommitRequest secondMovement = CreateMovementRequest(second, 30f, 40f);
-        registry.PlayerMoved(firstSource, in firstMovement);
-        registry.PlayerMoved(secondSource, in secondMovement);
+        Move(registry, firstSource, in firstMovement);
+        Move(registry, secondSource, in secondMovement);
 
         Assert.True(registry.TryUnregister(secondSource, out _));
 
@@ -149,10 +149,74 @@ public sealed class RuntimePlayerMovementResyncPlannerTests
         Assert.Equal(new RuntimePlayerMovementResyncPlan(0, 0, 2), plan);
     }
 
+    [Fact]
+    public void Planned_resync_is_rejected_after_subject_slot_generation_is_reused()
+    {
+        var registry = CreateRegistry();
+        GameCommandSourceId observerSource = GameCommandSourceId.FromConnection(300);
+        GameCommandSourceId oldSubjectSource = GameCommandSourceId.FromConnection(301);
+        GameCommandSourceId newSubjectSource = GameCommandSourceId.FromConnection(302);
+        var observer = new PlayerSlotId(3);
+        var subject = new PlayerSlotId(4);
+        ConnectionHandle observerConnection = Connection(observerSource, observer, generation: 1);
+        ConnectionHandle oldSubjectConnection = Connection(oldSubjectSource, subject, generation: 1);
+
+        Assert.True(registry.TryRegister(observerSource, CreateOutbound()));
+        Assert.True(registry.TryRegister(oldSubjectSource, CreateOutbound()));
+        PlayerSpawnCommitRequest observerSpawn = CreateSpawnRequest(observer);
+        PlayerSpawnCommitRequest subjectSpawn = CreateSpawnRequest(subject);
+        registry.PlayerSpawned(observerConnection, in observerSpawn);
+        registry.PlayerSpawned(oldSubjectConnection, in subjectSpawn);
+        PlayerMovementCommitRequest observerMovement = CreateMovementRequest(observer, 100f, 200f);
+        PlayerMovementCommitRequest subjectMovement = CreateMovementRequest(subject, 120f, 200f);
+        registry.PlayerMoved(observerConnection, in observerMovement);
+        registry.PlayerMoved(oldSubjectConnection, in subjectMovement);
+
+        Span<PlayerSlotId> entered = stackalloc PlayerSlotId[1] { subject };
+        Span<RuntimePlayerMovementResyncOperation> operations = stackalloc RuntimePlayerMovementResyncOperation[2];
+        RuntimePlayerMovementResyncPlan plan = registry.PlanPlayerMovementResyncs(observer, entered, operations);
+        Assert.Equal(2, plan.Planned);
+        RuntimePlayerMovementResyncOperation stale = operations[1];
+
+        Assert.True(registry.TryUnregister(oldSubjectSource, out _));
+        registry.PlayerDisconnected(oldSubjectConnection);
+        Assert.True(registry.TryRegister(newSubjectSource, CreateOutbound()));
+        ConnectionHandle newSubjectConnection = Connection(newSubjectSource, subject, generation: 2);
+        registry.PlayerSpawned(newSubjectConnection, in subjectSpawn);
+        registry.PlayerMoved(newSubjectConnection, in subjectMovement);
+
+        Assert.False(registry.TryEnqueuePlayerMovementResync(in stale));
+        Assert.Equal(0, registry.MovementResyncFrames);
+    }
+
     private static RuntimeConnectionRegistry CreateRegistry() =>
         new(
             new InterestManagementControl(enabled: true),
             new WorldDimensions(2_400, 600));
+
+    private static void Spawn(
+        RuntimeConnectionRegistry registry,
+        GameCommandSourceId source,
+        in PlayerSpawnCommitRequest request) =>
+        registry.PlayerSpawned(Connection(source, request.ClaimedSlot), in request);
+
+    private static void Move(
+        RuntimeConnectionRegistry registry,
+        GameCommandSourceId source,
+        in PlayerMovementCommitRequest request) =>
+        registry.PlayerMoved(Connection(source, request.PlayerSlot), in request);
+
+    private static ConnectionHandle Connection(GameCommandSourceId source, PlayerSlotId slot) =>
+        Connection(source, slot, generation: 1);
+
+    private static ConnectionHandle Connection(
+        GameCommandSourceId source,
+        PlayerSlotId slot,
+        ulong generation) =>
+        new(source, new PlayerHandle(slot, new PlayerSessionGeneration(generation)));
+
+    private static PlayerHandle Player(PlayerSlotId slot) =>
+        new(slot, new PlayerSessionGeneration(1));
 
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
         new(new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));

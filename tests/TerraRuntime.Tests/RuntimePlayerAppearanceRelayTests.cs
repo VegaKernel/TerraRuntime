@@ -19,27 +19,30 @@ public sealed class RuntimePlayerAppearanceRelayTests
         var secondOutbound = CreateOutbound();
         var first = new PlayerSlotId(1);
         var second = new PlayerSlotId(2);
+        ConnectionHandle firstConnection = Connection(firstSource, first);
+        ConnectionHandle secondConnection = Connection(secondSource, second);
 
         Assert.True(registry.TryRegister(firstSource, firstOutbound));
         Assert.True(registry.TryRegister(secondSource, secondOutbound));
 
         PlayerAppearanceCommitRequest firstAppearance = CreateAppearance(first, "First");
         PlayerAppearanceCommitRequest secondAppearance = CreateAppearance(second, "Second");
-        registry.PlayerAppearanceUpdated(firstSource, in firstAppearance);
-        registry.PlayerAppearanceUpdated(secondSource, in secondAppearance);
+        registry.PlayerAppearanceUpdated(firstConnection, in firstAppearance);
+        registry.PlayerAppearanceUpdated(secondConnection, in secondAppearance);
         Assert.Equal(0, firstOutbound.QueuedFrames);
         Assert.Equal(0, secondOutbound.QueuedFrames);
 
         PlayerSpawnCommitRequest firstSpawn = CreateSpawn(first);
-        registry.PlayerSpawned(firstSource, in firstSpawn);
+        registry.PlayerSpawned(firstConnection, in firstSpawn);
         Assert.Equal(0, firstOutbound.QueuedFrames);
         Assert.Equal(0, secondOutbound.QueuedFrames);
 
         PlayerSpawnCommitRequest secondSpawn = CreateSpawn(second);
-        registry.PlayerSpawned(secondSource, in secondSpawn);
+        registry.PlayerSpawned(secondConnection, in secondSpawn);
 
-        Assert.Equal(1, firstOutbound.QueuedFrames);
-        Assert.Equal(1, secondOutbound.QueuedFrames);
+        Assert.Equal(2, firstOutbound.QueuedFrames);
+        Assert.Equal(2, secondOutbound.QueuedFrames);
+        Assert.Equal(2, registry.PlayerActiveBaselineFrames);
         Assert.Equal(2, registry.AppearanceBaselineFrames);
 
         Assert.True(registry.TryGetLatestPlayerAppearanceFrame(first, out OutboundFrame firstFrame));
@@ -58,19 +61,21 @@ public sealed class RuntimePlayerAppearanceRelayTests
         var secondOutbound = CreateOutbound();
         var first = new PlayerSlotId(10);
         var second = new PlayerSlotId(20);
+        ConnectionHandle firstConnection = Connection(firstSource, first);
+        ConnectionHandle secondConnection = Connection(secondSource, second);
 
         Assert.True(registry.TryRegister(firstSource, firstOutbound));
         Assert.True(registry.TryRegister(secondSource, secondOutbound));
         PlayerSpawnCommitRequest firstSpawn = CreateSpawn(first);
         PlayerSpawnCommitRequest secondSpawn = CreateSpawn(second);
-        registry.PlayerSpawned(firstSource, in firstSpawn);
-        registry.PlayerSpawned(secondSource, in secondSpawn);
+        registry.PlayerSpawned(firstConnection, in firstSpawn);
+        registry.PlayerSpawned(secondConnection, in secondSpawn);
 
         PlayerAppearanceCommitRequest appearance = CreateAppearance(first, "Updated");
-        registry.PlayerAppearanceUpdated(firstSource, in appearance);
+        registry.PlayerAppearanceUpdated(firstConnection, in appearance);
 
-        Assert.Equal(0, firstOutbound.QueuedFrames);
-        Assert.Equal(1, secondOutbound.QueuedFrames);
+        Assert.Equal(1, firstOutbound.QueuedFrames);
+        Assert.Equal(2, secondOutbound.QueuedFrames);
         Assert.Equal(1, registry.RelayedAppearanceFrames);
         Assert.True(registry.TryGetLatestPlayerAppearanceFrame(first, out OutboundFrame frame));
         AssertAppearance(frame, first.Value, "Updated");
@@ -89,6 +94,9 @@ public sealed class RuntimePlayerAppearanceRelayTests
 
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
         new(new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
+
+    private static ConnectionHandle Connection(GameCommandSourceId source, PlayerSlotId slot) =>
+        new(source, new PlayerHandle(slot, new PlayerSessionGeneration(1)));
 
     private static PlayerSpawnCommitRequest CreateSpawn(PlayerSlotId slot) =>
         new(

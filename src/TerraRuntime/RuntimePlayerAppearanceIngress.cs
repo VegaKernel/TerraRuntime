@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 namespace TerraRuntime;
 
 internal sealed record PlayerAppearanceRuntimeCommand(
-    GameCommandSourceId Source,
+    ConnectionHandle Connection,
     PlayerAppearanceCommitRequest Request) : RuntimeCommand;
 
 internal sealed class RuntimePlayerAppearanceIngress : IPlayerAppearanceIngress
@@ -17,11 +17,16 @@ internal sealed class RuntimePlayerAppearanceIngress : IPlayerAppearanceIngress
         _ingress = ingress;
     }
 
-    public bool TryPost(GameCommandSourceId source, in PlayerAppearanceCommitRequest request)
+    public bool TryPost(ConnectionHandle connection, in PlayerAppearanceCommitRequest request)
     {
-        if (source.IsSystem)
+        if (!connection.IsAssigned || connection.Player.Slot != request.PlayerSlot)
             return false;
 
-        return _ingress.TryPost(source, new PlayerAppearanceRuntimeCommand(source, request));
+        if (!VanillaPlayerAppearanceNormalizer.TryNormalize(in request, out PlayerAppearanceCommitRequest normalized))
+            return false;
+
+        return _ingress.TryPost(
+            connection.Source,
+            new PlayerAppearanceRuntimeCommand(connection, normalized));
     }
 }

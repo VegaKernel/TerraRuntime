@@ -34,5 +34,5 @@ public readonly record struct PlayerMovementCommitRequest(
 /// </summary>
 public interface IPlayerMovementIngress
 {
-    bool TryPost(GameCommandSourceId source, in PlayerMovementCommitRequest request);
+    bool TryPost(ConnectionHandle connection, in PlayerMovementCommitRequest request);
 }

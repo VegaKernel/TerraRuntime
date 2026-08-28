@@ -253,13 +253,16 @@ public static class TerrariaServerHost
             }
             finally
             {
-                if (runtimeConnections.TryUnregister(source, out PlayerSlotId? playingSlot) &&
-                    playingSlot is PlayerSlotId slot &&
-                    !disconnectIngress.TryPost(source, slot) &&
-                    !cancellationToken.IsCancellationRequested)
+                if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
+                    playingPlayer is PlayerHandle player)
                 {
-                    Console.Error.WriteLine(
-                        $"Connection {connectionId} ({remote}) could not enqueue authoritative disconnect for slot {slot.Value}.");
+                    bool posted = sink.AssignedPlayerHandle == player &&
+                        disconnectIngress.TryPost(new ConnectionHandle(source, player));
+                    if (!posted && !cancellationToken.IsCancellationRequested)
+                    {
+                        Console.Error.WriteLine(
+                            $"Connection {connectionId} ({remote}) could not enqueue authoritative disconnect for {player}.");
+                    }
                 }
             }
         }

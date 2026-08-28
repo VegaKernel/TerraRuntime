@@ -9,13 +9,13 @@ namespace TerraRuntime;
 /// </summary>
 internal interface IRuntimePlayerEventSink
 {
-    void PlayerAppearanceUpdated(GameCommandSourceId source, in PlayerAppearanceCommitRequest request);
+    void PlayerAppearanceUpdated(ConnectionHandle connection, in PlayerAppearanceCommitRequest request);
 
-    void PlayerEquipmentUpdated(GameCommandSourceId source, in PlayerEquipmentCommitRequest request);
+    void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request);
 
-    void PlayerSpawned(GameCommandSourceId source, in PlayerSpawnCommitRequest request);
+    void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request);
 
-    void PlayerMoved(GameCommandSourceId source, in PlayerMovementCommitRequest request);
+    void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request);
 
-    void PlayerDisconnected(GameCommandSourceId source, PlayerSlotId slot);
+    void PlayerDisconnected(ConnectionHandle connection);
 }

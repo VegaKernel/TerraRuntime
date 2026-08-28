@@ -77,6 +77,30 @@ public sealed class PlayerBootstrapFrameSinkTests
         Assert.Equal(0, slots.LeasedCount);
     }
 
+    [Fact]
+    public void Packet12_with_invalid_spawn_data_is_rejected_before_game_ingress()
+    {
+        var slots = new PlayerSlotPool(1);
+        var ingress = new CapturingSpawnIngress();
+        using var sink = new PlayerBootstrapFrameSink(
+            slots,
+            CreateOutbound(),
+            PlayerBootstrapPacketSet.CreateForTesting(
+                new byte[] { 3, 0, (byte)TerrariaMessageId.WorldData },
+                Array.Empty<ReadOnlyMemory<byte>>(),
+                new byte[] { 3, 0, (byte)TerrariaMessageId.PlayerSpawnSelf }),
+            GameCommandSourceId.FromConnection(7),
+            ingress);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Hello()));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.RequestWorldData, [])));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.SpawnTileData, new byte[9])));
+
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(PlayerSpawn(claimedSlot: 0, team: 6)));
+        Assert.Equal(PlayerBootstrapStopReason.MalformedPlayerSpawn, sink.StopReason);
+        Assert.Equal(0, ingress.PostCount);
+    }
+
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
         new(new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 4_096, maxFrameBytes: 1_024));
 
@@ -90,7 +114,7 @@ public sealed class PlayerBootstrapFrameSinkTests
                 (byte)'3', (byte)'2', (byte)'6'
             });
 
-    private static TerrariaFrame PlayerSpawn(byte claimedSlot)
+    private static TerrariaFrame PlayerSpawn(byte claimedSlot, byte team = 0)
     {
         byte[] payload = new byte[TerrariaJoinRequestDecoder.PlayerSpawnPayloadLength];
         payload[0] = claimedSlot;
@@ -99,7 +123,7 @@ public sealed class PlayerBootstrapFrameSinkTests
         BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(5), 0);
         BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(9), 0);
         BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(11), 0);
-        payload[13] = 0;
+        payload[13] = team;
         payload[14] = 0;
         return Frame(TerrariaMessageId.PlayerSpawn, payload);
     }

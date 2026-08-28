@@ -16,7 +16,7 @@ namespace TerraRuntime;
 internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 {
     private const int MaxPlayerSlots = 256;
-    private const int MaxEquipmentSnapshotsPerPlayer = 512;
+    private const int MaxEquipmentSnapshotsPerPlayer = VanillaPlayerItemSlotCatalog.RelayableCount;
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> _endpoints = new();
     private readonly Endpoint?[] _playingEndpoints = new Endpoint?[MaxPlayerSlots];
@@ -27,6 +27,8 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     private long _relayedEquipmentFrames;
     private long _equipmentBaselineFrames;
     private long _droppedEquipmentSnapshotUpdates;
+    private long _playerActiveBaselineFrames;
+    private long _playerDeactivationFrames;
     private long _relayedMovementFrames;
     private long _movementResyncFrames;
 
@@ -50,6 +52,10 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     public long EquipmentBaselineFrames => Interlocked.Read(ref _equipmentBaselineFrames);
 
     public long DroppedEquipmentSnapshotUpdates => Interlocked.Read(ref _droppedEquipmentSnapshotUpdates);
+
+    public long PlayerActiveBaselineFrames => Interlocked.Read(ref _playerActiveBaselineFrames);
+
+    public long PlayerDeactivationFrames => Interlocked.Read(ref _playerDeactivationFrames);
 
     public long RelayedMovementFrames => Interlocked.Read(ref _relayedMovementFrames);
 
@@ -138,9 +144,10 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     internal bool TryEnqueuePlayerMovementResync(in RuntimePlayerMovementResyncOperation operation)
     {
         if (operation.Recipient == operation.Subject ||
-            !_interestRouter.IsPlayerVisible(operation.Recipient, operation.Subject) ||
+            !_interestRouter.IsPlayerVisible(operation.Recipient.Slot, operation.Subject.Slot) ||
             !TryGetPlayingEndpoint(operation.Recipient, out Endpoint recipient) ||
-            !TryGetLatestPlayerMovementFrame(operation.Subject, out OutboundFrame frame))
+            !TryGetPlayingEndpoint(operation.Subject, out Endpoint subject) ||
+            !subject.TryGetLatestMovementFrame(out OutboundFrame frame))
         {
             return false;
         }
@@ -148,7 +155,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         if (recipient.Outbound.TryEnqueue(frame) != OutboundEnqueueResult.Enqueued)
             return false;
 
-        _movementVisibilityReadiness.MarkReady(operation.Recipient, operation.Subject);
+        _movementVisibilityReadiness.MarkReady(operation.Recipient.Slot, operation.Subject.Slot);
         Interlocked.Increment(ref _movementResyncFrames);
         return true;
     }
@@ -162,52 +169,59 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         return _endpoints.TryAdd(source, new Endpoint(outbound));
     }
 
-    public bool TryUnregister(GameCommandSourceId source, out PlayerSlotId? playingSlot)
+    public bool TryUnregister(GameCommandSourceId source, out PlayerHandle? playingPlayer)
     {
-        playingSlot = null;
+        playingPlayer = null;
         if (!_endpoints.TryRemove(source, out Endpoint? endpoint))
             return false;
 
-        if (endpoint.TryGetPlayingSlot(out PlayerSlotId slot))
+        if (endpoint.TryGetPlayingPlayer(out PlayerHandle player))
         {
-            playingSlot = slot;
-            Interlocked.CompareExchange(ref _playingEndpoints[slot.Value], null, endpoint);
-            _movementVisibilityReadiness.ClearPlayer(slot);
+            playingPlayer = player;
+            Interlocked.CompareExchange(ref _playingEndpoints[player.Slot.Value], null, endpoint);
+            _movementVisibilityReadiness.ClearPlayer(player.Slot);
         }
 
         return true;
     }
 
-    public void PlayerAppearanceUpdated(GameCommandSourceId source, in PlayerAppearanceCommitRequest request)
+    public void PlayerAppearanceUpdated(ConnectionHandle connection, in PlayerAppearanceCommitRequest request)
     {
+        if (!VanillaPlayerAppearanceNormalizer.TryNormalize(in request, out PlayerAppearanceCommitRequest normalized))
+            return;
+
+        GameCommandSourceId source = connection.Source;
+        if (connection.Player.Slot != normalized.PlayerSlot)
+            return;
+
         if (!_endpoints.TryGetValue(source, out Endpoint? endpoint))
             return;
 
         var appearance = new TerrariaPlayerAppearanceState(
-            request.PlayerSlot.Value,
-            request.SkinVariant,
-            request.VoiceVariant,
-            request.VoicePitchOffset,
-            request.Hair,
-            request.Name,
-            request.HairDye,
-            request.HideVisibleAccessory,
-            request.HideMisc,
-            ToProtocol(request.HairColor),
-            ToProtocol(request.SkinColor),
-            ToProtocol(request.EyeColor),
-            ToProtocol(request.ShirtColor),
-            ToProtocol(request.UnderShirtColor),
-            ToProtocol(request.PantsColor),
-            ToProtocol(request.ShoeColor),
-            request.DifficultyFlags,
-            request.TorchAndCartFlags,
-            request.ConsumableUnlockFlags);
+            normalized.PlayerSlot.Value,
+            normalized.SkinVariant,
+            normalized.VoiceVariant,
+            normalized.VoicePitchOffset,
+            normalized.Hair,
+            normalized.Name,
+            normalized.HairDye,
+            normalized.HideVisibleAccessory,
+            normalized.HideMisc,
+            ToProtocol(normalized.HairColor),
+            ToProtocol(normalized.SkinColor),
+            ToProtocol(normalized.EyeColor),
+            ToProtocol(normalized.ShirtColor),
+            ToProtocol(normalized.UnderShirtColor),
+            ToProtocol(normalized.PantsColor),
+            ToProtocol(normalized.ShoeColor),
+            normalized.DifficultyFlags,
+            normalized.TorchAndCartFlags,
+            normalized.ConsumableUnlockFlags);
 
         byte[] encoded = TerrariaPlayerAppearanceCodec.Encode(in appearance);
-        endpoint.UpdateLatestAppearanceFrame(request.PlayerSlot, encoded);
+        endpoint.UpdateLatestAppearanceFrame(normalized.PlayerSlot, encoded);
 
-        if (!endpoint.TryGetPlayingSlot(out PlayerSlotId currentSlot) || currentSlot != request.PlayerSlot)
+        if (!endpoint.TryGetPlayingPlayer(out PlayerHandle currentPlayer) || currentPlayer != connection.Player)
             return;
 
         var frame = new OutboundFrame(encoded);
@@ -221,23 +235,30 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
     }
 
-    public void PlayerEquipmentUpdated(GameCommandSourceId source, in PlayerEquipmentCommitRequest request)
+    public void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)
     {
+        PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
+        GameCommandSourceId source = connection.Source;
+        if (connection.Player.Slot != normalized.PlayerSlot ||
+            !VanillaPlayerItemSlotCatalog.IsValid(normalized.SlotId) ||
+            !VanillaPlayerItemSlotCatalog.CanRelay(normalized.SlotId))
+            return;
+
         if (!_endpoints.TryGetValue(source, out Endpoint? endpoint))
             return;
 
         var equipment = new TerrariaPlayerEquipmentState(
-            request.PlayerSlot.Value,
-            request.SlotId,
-            request.Stack,
-            request.Prefix,
-            request.ItemNetId,
-            request.ItemFlags);
+            normalized.PlayerSlot.Value,
+            normalized.SlotId,
+            normalized.Stack,
+            normalized.Prefix,
+            normalized.ItemNetId,
+            normalized.ItemFlags);
         byte[] encoded = TerrariaPlayerEquipmentCodec.Encode(in equipment);
-        if (!endpoint.UpdateLatestEquipmentFrame(request.PlayerSlot, request.SlotId, encoded))
+        if (!endpoint.UpdateLatestEquipmentFrame(normalized.PlayerSlot, normalized.SlotId, encoded))
             Interlocked.Increment(ref _droppedEquipmentSnapshotUpdates);
 
-        if (!endpoint.TryGetPlayingSlot(out PlayerSlotId currentSlot) || currentSlot != request.PlayerSlot)
+        if (!endpoint.TryGetPlayingPlayer(out PlayerHandle currentPlayer) || currentPlayer != connection.Player)
             return;
 
         var frame = new OutboundFrame(encoded);
@@ -251,14 +272,19 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
     }
 
-    public void PlayerSpawned(GameCommandSourceId source, in PlayerSpawnCommitRequest request)
+    public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)
     {
+        GameCommandSourceId source = connection.Source;
+        if (connection.Player.Slot != request.ClaimedSlot ||
+            !VanillaPlayerSpawnValidator.IsValid(in request))
+            return;
+
         if (!_endpoints.TryGetValue(source, out Endpoint? endpoint))
             return;
 
         float positionX = request.SpawnX * 16f;
         float positionY = request.SpawnY * 16f;
-        endpoint.MarkPlaying(request.ClaimedSlot);
+        endpoint.MarkPlaying(connection.Player);
         endpoint.UpdatePosition(positionX, positionY);
         Interlocked.Exchange(ref _playingEndpoints[request.ClaimedSlot.Value], endpoint);
         _movementVisibilityReadiness.ClearPlayer(request.ClaimedSlot);
@@ -276,39 +302,46 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         ResetMovementVisibilityReadiness(request.ClaimedSlot, visibility, entered, left);
     }
 
-    public void PlayerMoved(GameCommandSourceId source, in PlayerMovementCommitRequest request)
+    public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request)
     {
+        if (!VanillaPlayerMovementNormalizer.TryNormalize(in request, out PlayerMovementCommitRequest normalized))
+            return;
+
+        GameCommandSourceId source = connection.Source;
         if (!_endpoints.TryGetValue(source, out Endpoint? origin) ||
-            !origin.TryGetPlayingSlot(out PlayerSlotId originSlot) ||
-            originSlot != request.PlayerSlot)
+            !origin.TryGetPlayingPlayer(out PlayerHandle originPlayer) ||
+            originPlayer != connection.Player ||
+            originPlayer.Slot != normalized.PlayerSlot)
         {
             return;
         }
 
-        origin.UpdatePosition(request.PositionX, request.PositionY);
+        PlayerSlotId originSlot = originPlayer.Slot;
+
+        origin.UpdatePosition(normalized.PositionX, normalized.PositionY);
 
         var movement = new TerrariaPlayerMovementState(
-            request.PlayerSlot.Value,
-            request.ControlFlags,
-            request.MovementFlags,
-            request.MiscFlags1,
-            request.MiscFlags2,
-            request.SelectedItem,
-            request.PositionX,
-            request.PositionY,
-            request.HasVelocity,
-            request.VelocityX,
-            request.VelocityY,
-            request.HasMount,
-            request.MountType,
-            request.HasPotionOfReturnPositions,
-            request.PotionOfReturnOriginalPositionX,
-            request.PotionOfReturnOriginalPositionY,
-            request.PotionOfReturnHomePositionX,
-            request.PotionOfReturnHomePositionY,
-            request.HasCameraTarget,
-            request.CameraTargetX,
-            request.CameraTargetY);
+            normalized.PlayerSlot.Value,
+            normalized.ControlFlags,
+            normalized.MovementFlags,
+            normalized.MiscFlags1,
+            normalized.MiscFlags2,
+            normalized.SelectedItem,
+            normalized.PositionX,
+            normalized.PositionY,
+            normalized.HasVelocity,
+            normalized.VelocityX,
+            normalized.VelocityY,
+            normalized.HasMount,
+            normalized.MountType,
+            normalized.HasPotionOfReturnPositions,
+            normalized.PotionOfReturnOriginalPositionX,
+            normalized.PotionOfReturnOriginalPositionY,
+            normalized.PotionOfReturnHomePositionX,
+            normalized.PotionOfReturnHomePositionY,
+            normalized.HasCameraTarget,
+            normalized.CameraTargetX,
+            normalized.CameraTargetY);
 
         // Cache the current authoritative movement before refreshing visibility. A future AOI-enter
         // resync can therefore use this exact movement as the subject's baseline in the same commit.
@@ -321,12 +354,12 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         Span<PlayerSlotId> entered = stackalloc PlayerSlotId[MaxPlayerSlots];
         Span<PlayerSlotId> left = stackalloc PlayerSlotId[MaxPlayerSlots];
         RuntimePlayerVisibilityUpdate visibility = _interestRouter.TrackPlayer(
-            request.PlayerSlot,
-            request.PositionX,
-            request.PositionY,
+            normalized.PlayerSlot,
+            normalized.PositionX,
+            normalized.PositionY,
             entered,
             left);
-        ResetMovementVisibilityReadiness(request.PlayerSlot, visibility, entered, left);
+        ResetMovementVisibilityReadiness(normalized.PlayerSlot, visibility, entered, left);
 
         RuntimePlayerInterestState subject = origin.CreateInterestState(originSlot);
 
@@ -347,14 +380,28 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
     }
 
-    public void PlayerDisconnected(GameCommandSourceId source, PlayerSlotId slot)
+    public void PlayerDisconnected(ConnectionHandle connection)
     {
+        GameCommandSourceId source = connection.Source;
+        PlayerSlotId slot = connection.Player.Slot;
         _interestRouter.RemovePlayer(slot);
         _movementVisibilityReadiness.ClearPlayer(slot);
+
+        var inactiveFrame = new OutboundFrame(
+            TerrariaPlayerActiveEncoder.Encode(slot.Value, active: false));
+        foreach (KeyValuePair<GameCommandSourceId, Endpoint> pair in _endpoints)
+        {
+            if (pair.Key == source || !pair.Value.TryGetPlayingSlot(out _))
+                continue;
+
+            if (pair.Value.Outbound.TryEnqueue(inactiveFrame) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref _playerDeactivationFrames);
+        }
+
         if (_endpoints.TryGetValue(source, out Endpoint? endpoint))
         {
             Interlocked.CompareExchange(ref _playingEndpoints[slot.Value], null, endpoint);
-            endpoint.ClearPlaying(slot);
+            endpoint.ClearPlaying(connection.Player);
         }
     }
 
@@ -363,12 +410,22 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         PlayerSlotId slot,
         Endpoint endpoint)
     {
+        var originActive = new OutboundFrame(
+            TerrariaPlayerActiveEncoder.Encode(slot.Value, active: true));
         bool hasOriginAppearance = endpoint.TryGetLatestAppearanceFrame(slot, out OutboundFrame originAppearance);
 
         foreach (KeyValuePair<GameCommandSourceId, Endpoint> pair in _endpoints)
         {
             if (pair.Key == source || !pair.Value.TryGetPlayingSlot(out PlayerSlotId peerSlot))
                 continue;
+
+            if (pair.Value.Outbound.TryEnqueue(originActive) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref _playerActiveBaselineFrames);
+
+            var peerActive = new OutboundFrame(
+                TerrariaPlayerActiveEncoder.Encode(peerSlot.Value, active: true));
+            if (endpoint.Outbound.TryEnqueue(peerActive) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref _playerActiveBaselineFrames);
 
             if (hasOriginAppearance &&
                 pair.Value.Outbound.TryEnqueue(originAppearance) == OutboundEnqueueResult.Enqueued)
@@ -405,15 +462,17 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     }
 
     private void PlanOnePlayerMovementResync(
-        PlayerSlotId recipient,
-        PlayerSlotId subject,
+        PlayerSlotId recipientSlot,
+        PlayerSlotId subjectSlot,
         Span<RuntimePlayerMovementResyncOperation> destination,
         ref int planned,
         ref int missingSnapshots,
         ref int missingEndpoints)
     {
-        if (!TryGetPlayingEndpoint(recipient, out _) ||
-            !TryGetPlayingEndpoint(subject, out Endpoint subjectEndpoint))
+        if (!TryGetPlayingEndpoint(recipientSlot, out Endpoint recipientEndpoint) ||
+            !TryGetPlayingEndpoint(subjectSlot, out Endpoint subjectEndpoint) ||
+            !recipientEndpoint.TryGetPlayingPlayer(out PlayerHandle recipient) ||
+            !subjectEndpoint.TryGetPlayingPlayer(out PlayerHandle subject))
         {
             missingEndpoints++;
             return;
@@ -426,6 +485,19 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         }
 
         destination[planned++] = new RuntimePlayerMovementResyncOperation(recipient, subject);
+    }
+
+    private bool TryGetPlayingEndpoint(PlayerHandle player, out Endpoint endpoint)
+    {
+        if (!TryGetPlayingEndpoint(player.Slot, out endpoint) ||
+            !endpoint.TryGetPlayingPlayer(out PlayerHandle current) ||
+            current != player)
+        {
+            endpoint = null!;
+            return false;
+        }
+
+        return true;
     }
 
     private bool TryGetPlayingEndpoint(PlayerSlotId slot, out Endpoint endpoint)
@@ -451,6 +523,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         private readonly object _equipmentGate = new();
         private readonly SortedDictionary<short, byte[]> _equipmentFrames = [];
         private int _playingSlot = -1;
+        private ulong _playingGeneration;
         private int _appearanceSlot = -1;
         private int _equipmentOwnerSlot = -1;
         private bool _hasPosition;
@@ -466,18 +539,39 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 
         public TerrariaConnectionOutboundQueue Outbound { get; }
 
-        public void MarkPlaying(PlayerSlotId slot) => Volatile.Write(ref _playingSlot, slot.Value);
+        public void MarkPlaying(PlayerHandle player)
+        {
+            Volatile.Write(ref _playingGeneration, player.Generation.Value);
+            Volatile.Write(ref _playingSlot, player.Slot.Value);
+        }
+
+        public bool TryGetPlayingPlayer(out PlayerHandle player)
+        {
+            int slotValue = Volatile.Read(ref _playingSlot);
+            ulong generation = Volatile.Read(ref _playingGeneration);
+            if (slotValue < 0 ||
+                generation == 0 ||
+                slotValue != Volatile.Read(ref _playingSlot))
+            {
+                player = default;
+                return false;
+            }
+
+            player = new PlayerHandle(
+                new PlayerSlotId(checked((byte)slotValue)),
+                new PlayerSessionGeneration(generation));
+            return true;
+        }
 
         public bool TryGetPlayingSlot(out PlayerSlotId slot)
         {
-            int value = Volatile.Read(ref _playingSlot);
-            if (value < 0)
+            if (!TryGetPlayingPlayer(out PlayerHandle player))
             {
                 slot = default;
                 return false;
             }
 
-            slot = new PlayerSlotId(checked((byte)value));
+            slot = player.Slot;
             return true;
         }
 
@@ -574,18 +668,20 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         public RuntimePlayerInterestState CreateInterestState(PlayerSlotId slot) =>
             new(slot, _hasPosition, _positionX, _positionY);
 
-        public void ClearPlaying(PlayerSlotId slot)
+        public void ClearPlaying(PlayerHandle player)
         {
-            if (Interlocked.CompareExchange(ref _playingSlot, -1, slot.Value) != slot.Value)
+            if (Volatile.Read(ref _playingGeneration) != player.Generation.Value ||
+                Interlocked.CompareExchange(ref _playingSlot, -1, player.Slot.Value) != player.Slot.Value)
                 return;
 
+            Volatile.Write(ref _playingGeneration, 0);
             _hasPosition = false;
-            if (Interlocked.CompareExchange(ref _appearanceSlot, -1, slot.Value) == slot.Value)
+            if (Interlocked.CompareExchange(ref _appearanceSlot, -1, player.Slot.Value) == player.Slot.Value)
                 Volatile.Write(ref _latestAppearanceFrame, null);
 
             lock (_equipmentGate)
             {
-                if (_equipmentOwnerSlot == slot.Value)
+                if (_equipmentOwnerSlot == player.Slot.Value)
                 {
                     _equipmentOwnerSlot = -1;
                     _equipmentFrames.Clear();
@@ -598,8 +694,8 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 }
 
 internal readonly record struct RuntimePlayerMovementResyncOperation(
-    PlayerSlotId Recipient,
-    PlayerSlotId Subject);
+    PlayerHandle Recipient,
+    PlayerHandle Subject);
 
 internal readonly record struct RuntimePlayerMovementResyncPlan(
     int Planned,

@@ -9,6 +9,7 @@ public sealed class PlayerSlotPool
 {
     private readonly object _gate = new();
     private readonly bool[] _leased;
+    private readonly ulong[] _generations;
     private int _leasedCount;
 
     public PlayerSlotPool(int capacity)
@@ -16,6 +17,7 @@ public sealed class PlayerSlotPool
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(capacity, byte.MaxValue);
         _leased = new bool[capacity];
+        _generations = new ulong[capacity];
     }
 
     public int Capacity => _leased.Length;
@@ -42,9 +44,20 @@ public sealed class PlayerSlotPool
                     continue;
                 }
 
+                // A generation must never wrap and collide with an ancient stale handle. Saturation
+                // is unreachable in practice, but skipping the slot keeps the invariant explicit.
+                if (_generations[i] == ulong.MaxValue)
+                    continue;
+
+                ulong generation = _generations[i] + 1;
                 _leased[i] = true;
                 _leasedCount++;
-                lease = new PlayerSlotLease(this, new PlayerSlotId((byte)i));
+                _generations[i] = generation;
+                lease = new PlayerSlotLease(
+                    this,
+                    new PlayerHandle(
+                        new PlayerSlotId((byte)i),
+                        new PlayerSessionGeneration(generation)));
                 return true;
             }
         }
@@ -72,13 +85,17 @@ public sealed class PlayerSlotPool
     {
         private PlayerSlotPool? _owner;
 
-        internal PlayerSlotLease(PlayerSlotPool owner, PlayerSlotId slot)
+        internal PlayerSlotLease(PlayerSlotPool owner, PlayerHandle handle)
         {
             _owner = owner;
-            Slot = slot;
+            Handle = handle;
         }
 
-        public PlayerSlotId Slot { get; }
+        public PlayerHandle Handle { get; }
+
+        public PlayerSlotId Slot => Handle.Slot;
+
+        public PlayerSessionGeneration Generation => Handle.Generation;
 
         public bool IsReleased => Volatile.Read(ref _owner) is null;
 

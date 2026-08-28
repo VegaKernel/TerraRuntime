@@ -157,7 +157,9 @@ public sealed class GameLoopTests
     public void Cpu_command_budget_defers_remaining_work_when_thread_cpu_clock_is_available()
     {
         using var firstApplied = new ManualResetEventSlim();
-        var state = new SlowCommandState(firstApplied);
+        // GetThreadTimes can advance in coarse scheduler-sized quanta on Windows. Keep each command
+        // above that resolution so this tests budget deferral instead of timer granularity.
+        var state = new SlowCommandState(firstApplied, commandCpuMilliseconds: 40d);
         using var loop = new AuthoritativeGameLoop<SlowCommandState, int>(
             state,
             static (runtime, command) => runtime.Apply(command),
@@ -317,7 +319,9 @@ public sealed class GameLoopTests
         }
     }
 
-    private sealed class SlowCommandState(ManualResetEventSlim firstApplied)
+    private sealed class SlowCommandState(
+        ManualResetEventSlim firstApplied,
+        double commandCpuMilliseconds)
     {
         private int applied;
 
@@ -325,7 +329,7 @@ public sealed class GameLoopTests
         {
             _ = command;
             long started = Stopwatch.GetTimestamp();
-            while (Stopwatch.GetElapsedTime(started).TotalMilliseconds < 2d)
+            while (Stopwatch.GetElapsedTime(started).TotalMilliseconds < commandCpuMilliseconds)
                 Thread.SpinWait(64);
 
             if (Interlocked.Increment(ref applied) == 1)

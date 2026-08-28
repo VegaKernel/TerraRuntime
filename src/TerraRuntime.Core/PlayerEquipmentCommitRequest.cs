@@ -16,5 +16,5 @@ public readonly record struct PlayerEquipmentCommitRequest(
 
 public interface IPlayerEquipmentIngress
 {
-    bool TryPost(GameCommandSourceId source, in PlayerEquipmentCommitRequest request);
+    bool TryPost(ConnectionHandle connection, in PlayerEquipmentCommitRequest request);
 }
