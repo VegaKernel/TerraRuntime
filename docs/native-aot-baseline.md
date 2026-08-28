@@ -20,6 +20,52 @@ TerraRuntime source graph
 
 CoreCLR may still be used during development when it improves debugging, profiling or iteration speed. It is not the production architecture target.
 
+## Vega hosting model
+
+The normal production topology is **Vega and TerraRuntime in the same NativeAOT process**.
+
+The source graph remains split by explicit contracts even though deployment is a single native host:
+
+```text
+Vega source graph
+    |
+    +-- Vega application layer
+    +-- TerraRuntime implementation
+    +-- TerraRuntime.Contracts
+    +-- other admitted AOT-safe dependencies
+    |
+    v
+.NET 11 NativeAOT publish
+    |
+    +-- Vega.Server[.exe]
+```
+
+`TerraRuntime.Contracts` is the stable compile-time boundary for Vega-facing runtime interfaces, handles, snapshots and DTOs. Vega should depend on contracts instead of implementation details wherever a public contract is sufficient.
+
+A standalone `TerraRuntime.Server[.exe]` remains supported for runtime development, smoke tests, debugging and deployments that intentionally do not include Vega. That standalone host does not imply an IPC boundary for the normal Vega topology.
+
+## Clean production layout
+
+NativeAOT project and package assemblies are build inputs, not files that should be copied wholesale into the production server root. A normal `dotnet build` output may contain many managed DLLs; it is not a deployment layout.
+
+The intended standalone TerraRuntime deployment root is:
+
+```text
+TerraRuntime.Server[.exe]
+Worlds/
+config/
+data/
+logs/
+```
+
+The Vega-hosted deployment follows the same rule: the root is centered around `Vega.Server[.exe]` plus application/runtime data directories, not a loose pile of `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll` or other managed build artifacts.
+
+CI treats loose managed runtime assemblies and CoreCLR launch metadata (`*.deps.json`, `*.runtimeconfig.json`) in the NativeAOT publish root as an architectural regression.
+
+If a dependency genuinely requires a native sidecar library that cannot be statically linked into the executable, it must be admitted explicitly as a deployment dependency. When the platform loader permits it, such sidecars belong under a dedicated `runtime/native/` location rather than turning the server root into a generic library directory.
+
+Debug symbols and other developer-only artifacts belong in build/CI artifacts rather than the normal deployment package unless a deployment explicitly opts into them.
+
 ## AOT-safe design rules
 
 Production code must not depend on runtime features that require a JIT or arbitrary managed assembly loading.
