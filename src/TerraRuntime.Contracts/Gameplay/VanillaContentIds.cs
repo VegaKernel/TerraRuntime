@@ -46,6 +46,36 @@ public static class VanillaItemIds
 }
 
 /// <summary>
+/// TerrariaServer 1.4.5.8 projectile content bounds and the initial named identities used by runtime tests.
+/// IDs 1111..1135 were the final additions in the 1.4.5.7 content update, leaving ProjectileID.Count at
+/// 1136 for 1.4.5.8. Zero is ProjectileID.None and is catalog-valid but not a live packet-27 projectile type.
+/// </summary>
+public static class VanillaProjectileIds
+{
+    public const int Count = 1136;
+
+    public static ProjectileTypeId None => default;
+    public static readonly ProjectileTypeId WoodenArrowFriendly = new(1);
+    public static readonly ProjectileTypeId FireArrow = new(2);
+    public static readonly ProjectileTypeId Shuriken = new(3);
+
+    public static bool TryCreate(int rawType, out ProjectileTypeId type)
+    {
+        if ((uint)rawType >= (uint)Count)
+        {
+            type = default;
+            return false;
+        }
+
+        type = new ProjectileTypeId(rawType);
+        return true;
+    }
+
+    public static bool IsLiveWireType(ProjectileTypeId type) =>
+        type.Value > None.Value && type.Value < Count;
+}
+
+/// <summary>
 /// Source-verified TerrariaServer 1.4.5.8 tile identities currently consumed by world/gameplay code.
 /// The catalog intentionally grows with implemented behavior instead of copying an unverified giant ID table.
 /// Behavior-family predicates live here so consumers do not duplicate raw-id membership sets.
