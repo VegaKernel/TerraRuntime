@@ -30,7 +30,7 @@ internal static class PlayerBootstrapFrameBudget
         MaximumGlobalPostSectionFrames +
         MaximumDynamicEntityFrames;
 
-    // CI may leave a little headroom for future bounded bootstrap metadata, but must remain
-    // comfortably below the server connection queue capacity of 4096 frames.
-    public const int LiveProbeFrameBudget = 3_072;
+    // Keep the live probe slightly above the structural maximum but well below the
+    // production connection queue depth of 4096 frames.
+    public const int LiveProbeFrameBudget = 1_536;
 }

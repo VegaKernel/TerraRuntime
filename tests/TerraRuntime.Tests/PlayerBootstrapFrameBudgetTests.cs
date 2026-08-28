@@ -9,10 +9,12 @@ public sealed class PlayerBootstrapFrameBudgetTests
     [Fact]
     public void Current_bootstrap_maximum_stays_below_live_probe_and_connection_queue_capacity()
     {
+        Assert.Equal(byte.MaxValue + 1, WorldGlobalTownNpcBootstrapPacketEncoder.MaximumTownNpcs);
         Assert.Equal(63, PlayerBootstrapFrameBudget.MaximumTileSectionFrames);
-        Assert.Equal(2_048, PlayerBootstrapFrameBudget.MaximumGlobalPostSectionFrames);
+        Assert.Equal(512, PlayerBootstrapFrameBudget.MaximumGlobalPostSectionFrames);
         Assert.Equal(800, PlayerBootstrapFrameBudget.MaximumDynamicEntityFrames);
-        Assert.Equal(2_913, PlayerBootstrapFrameBudget.MaximumFramesBeforeEnterWorld);
+        Assert.Equal(1_377, PlayerBootstrapFrameBudget.MaximumFramesBeforeEnterWorld);
+        Assert.Equal(1_536, PlayerBootstrapFrameBudget.LiveProbeFrameBudget);
         Assert.True(
             PlayerBootstrapFrameBudget.MaximumFramesBeforeEnterWorld <=
             PlayerBootstrapFrameBudget.LiveProbeFrameBudget);
@@ -27,7 +29,7 @@ public sealed class PlayerBootstrapFrameBudgetTests
     }
 
     [Fact]
-    public void Global_town_npc_bootstrap_rejects_frames_beyond_budget()
+    public void Global_town_npc_bootstrap_rejects_frames_beyond_wire_slot_budget()
     {
         var npcs = new WorldTownNpc[WorldGlobalTownNpcBootstrapPacketEncoder.MaximumTownNpcs + 1];
 

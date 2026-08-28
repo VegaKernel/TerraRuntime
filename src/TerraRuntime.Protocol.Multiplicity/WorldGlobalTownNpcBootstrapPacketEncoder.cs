@@ -19,7 +19,8 @@ public enum WorldGlobalTownNpcBootstrapPacketEncodeResult : byte
 /// </summary>
 public static class WorldGlobalTownNpcBootstrapPacketEncoder
 {
-    public const int MaximumTownNpcs = 1_024;
+    // Packet 23 carries NpcSlot as one byte, so the wire can address slots 0..255.
+    public const int MaximumTownNpcs = byte.MaxValue + 1;
     public const int FramesPerTownNpc = 2;
     public const int MaximumFrames = MaximumTownNpcs * FramesPerTownNpc;
 
@@ -48,12 +49,6 @@ public static class WorldGlobalTownNpcBootstrapPacketEncoder
                 return updateResult == WorldTownNpcSyncPacketEncodeResult.FrameTooLarge
                     ? WorldGlobalTownNpcBootstrapPacketEncodeResult.FrameTooLarge
                     : WorldGlobalTownNpcBootstrapPacketEncodeResult.InvalidNpcState;
-            }
-
-            if (npcSlot > short.MaxValue)
-            {
-                frames = [];
-                return WorldGlobalTownNpcBootstrapPacketEncodeResult.InvalidNpcState;
             }
 
             var buffs = new NpcUpdateBuff
