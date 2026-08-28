@@ -19,6 +19,8 @@ public readonly record struct NpcStateUpdate(
 /// Bounded runtime-owned live NPC state. Slot reuse creates a new generation while mutations within
 /// the same logical NPC advance only its revision. All mutation APIs require the current generation,
 /// preventing stale AI/lifecycle work from modifying a replacement NPC that reused the same slot.
+/// This store is intentionally single-writer and lock-free: all access belongs on the authoritative
+/// simulation thread. Cross-thread consumers must receive immutable copies through an explicit boundary.
 /// </summary>
 public sealed class RuntimeNpcStore : INpcSnapshotReader
 {
@@ -28,7 +30,6 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
     /// </summary>
     public const int MaximumAddressableCapacity = byte.MaxValue + 1;
 
-    private readonly object _gate = new();
     private readonly SlotState[] _slots;
     private int _activeCount;
 
@@ -42,14 +43,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
 
     public int Capacity => _slots.Length;
 
-    public int ActiveCount
-    {
-        get
-        {
-            lock (_gate)
-                return _activeCount;
-        }
-    }
+    public int ActiveCount => _activeCount;
 
     public bool TrySpawn(byte slot, in NpcStateUpdate update, out NpcSnapshot snapshot)
     {
@@ -59,22 +53,19 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             return false;
         }
 
-        lock (_gate)
+        ref SlotState state = ref _slots[slot];
+        if (state.Active || !TryAdvance(ref state.Generation))
         {
-            ref SlotState state = ref _slots[slot];
-            if (state.Active || !TryAdvance(ref state.Generation))
-            {
-                snapshot = default;
-                return false;
-            }
-
-            state.Active = true;
-            state.Revision = 1;
-            state.Update = update;
-            _activeCount++;
-            snapshot = Capture(slot, in state);
-            return true;
+            snapshot = default;
+            return false;
         }
+
+        state.Active = true;
+        state.Revision = 1;
+        state.Update = update;
+        _activeCount++;
+        snapshot = Capture(slot, in state);
+        return true;
     }
 
     public bool TryUpdate(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot)
@@ -85,21 +76,18 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             return false;
         }
 
-        lock (_gate)
+        ref SlotState state = ref _slots[handle.Slot];
+        if (!state.Active ||
+            state.Generation != handle.Generation.Value ||
+            !TryAdvance(ref state.Revision))
         {
-            ref SlotState state = ref _slots[handle.Slot];
-            if (!state.Active ||
-                state.Generation != handle.Generation.Value ||
-                !TryAdvance(ref state.Revision))
-            {
-                snapshot = default;
-                return false;
-            }
-
-            state.Update = update;
-            snapshot = Capture(handle.Slot, in state);
-            return true;
+            snapshot = default;
+            return false;
         }
+
+        state.Update = update;
+        snapshot = Capture(handle.Slot, in state);
+        return true;
     }
 
     public bool TryDespawn(NpcHandle handle)
@@ -107,18 +95,15 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         if (!IsCurrentHandleCandidate(handle))
             return false;
 
-        lock (_gate)
-        {
-            ref SlotState state = ref _slots[handle.Slot];
-            if (!state.Active || state.Generation != handle.Generation.Value)
-                return false;
+        ref SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value)
+            return false;
 
-            state.Active = false;
-            state.Revision = 0;
-            state.Update = default;
-            _activeCount--;
-            return true;
-        }
+        state.Active = false;
+        state.Revision = 0;
+        state.Update = default;
+        _activeCount--;
+        return true;
     }
 
     public bool TryGetActive(byte slot, out NpcSnapshot snapshot)
@@ -129,18 +114,15 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             return false;
         }
 
-        lock (_gate)
+        ref readonly SlotState state = ref _slots[slot];
+        if (!state.Active)
         {
-            ref readonly SlotState state = ref _slots[slot];
-            if (!state.Active)
-            {
-                snapshot = default;
-                return false;
-            }
-
-            snapshot = Capture(slot, in state);
-            return true;
+            snapshot = default;
+            return false;
         }
+
+        snapshot = Capture(slot, in state);
+        return true;
     }
 
     public bool TryGet(NpcHandle handle, out NpcSnapshot snapshot)
@@ -151,43 +133,37 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             return false;
         }
 
-        lock (_gate)
+        ref readonly SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value)
         {
-            ref readonly SlotState state = ref _slots[handle.Slot];
-            if (!state.Active || state.Generation != handle.Generation.Value)
-            {
-                snapshot = default;
-                return false;
-            }
-
-            snapshot = Capture(handle.Slot, in state);
-            return true;
+            snapshot = default;
+            return false;
         }
+
+        snapshot = Capture(handle.Slot, in state);
+        return true;
     }
 
     public int CopyActive(Span<NpcSnapshot> destination)
     {
-        lock (_gate)
+        if (destination.Length < _activeCount)
         {
-            if (destination.Length < _activeCount)
-            {
-                throw new ArgumentException(
-                    $"Destination length {destination.Length} is smaller than active NPC count {_activeCount}.",
-                    nameof(destination));
-            }
-
-            int written = 0;
-            for (int slot = 0; slot < _slots.Length; slot++)
-            {
-                ref readonly SlotState state = ref _slots[slot];
-                if (!state.Active)
-                    continue;
-
-                destination[written++] = Capture(checked((byte)slot), in state);
-            }
-
-            return written;
+            throw new ArgumentException(
+                $"Destination length {destination.Length} is smaller than active NPC count {_activeCount}.",
+                nameof(destination));
         }
+
+        int written = 0;
+        for (int slot = 0; slot < _slots.Length; slot++)
+        {
+            ref readonly SlotState state = ref _slots[slot];
+            if (!state.Active)
+                continue;
+
+            destination[written++] = Capture(checked((byte)slot), in state);
+        }
+
+        return written;
     }
 
     private bool IsAddressableSlot(byte slot) => slot < _slots.Length;
