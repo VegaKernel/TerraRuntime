@@ -38,7 +38,8 @@ public sealed class VanillaProjectileFactsTests
     [InlineData(527)]
     [InlineData(1135)]
     [InlineData(VanillaProjectileIds.Count)]
-    public void Startup_lookup_does_not_mark_non_hostile_or_special_world_only_types(int rawType)
+    [InlineData(int.MaxValue)]
+    public void Startup_lookup_does_not_mark_non_hostile_or_out_of_catalog_types(int rawType)
     {
         Assert.False(VanillaProjectileFacts.IsHostile(new ProjectileTypeId(rawType)));
     }
