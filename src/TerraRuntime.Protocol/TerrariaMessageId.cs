@@ -21,6 +21,8 @@ public enum TerrariaMessageId : byte
     PlayerControls = 13,
     PlayerActive = 14,
     PlayerHp = 16,
+    WorldItemDrop = 21,
+    WorldItemOwner = 22,
     ProjectileNew = 27,
     ProjectileDestroy = 29,
     PlayerMana = 42,
