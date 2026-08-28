@@ -265,7 +265,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     private TerrariaFrameSinkResult HandlePlayerMovement(in TerrariaFrame frame)
     {
-        if (!_spawnSubmitted && _session!.State != PlayerJoinState.Playing)
+        PlayerJoinSession session = _session!;
+        if (!_spawnSubmitted && session.State != PlayerJoinState.Playing)
             return TerrariaFrameSinkResult.Continue;
 
         TerrariaPlayerMovementDecodeResult decode = TerrariaPlayerMovementDecoder.TryDecode(
@@ -277,7 +278,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (_movementIngress is null)
             return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
 
-        PlayerSlotId assignedSlot = _session.Slot;
+        PlayerSlotId assignedSlot = session.Slot;
         var commit = new PlayerMovementCommitRequest(
             assignedSlot,
             request.ControlFlags,
