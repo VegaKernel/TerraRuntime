@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace TerraRuntime.World;
 
 /// <summary>
@@ -9,10 +11,23 @@ public static class WorldFileCoreLoader
     public static WorldFileCoreLoadDiagnostic TryLoad(
         ReadOnlySpan<byte> file,
         long maxTileCount,
-        out WorldFileCore? world)
+        out WorldFileCore? world) =>
+        TryLoad(file, maxTileCount, out world, out _);
+
+    public static WorldFileCoreLoadDiagnostic TryLoad(
+        ReadOnlySpan<byte> file,
+        long maxTileCount,
+        out WorldFileCore? world,
+        out WorldFileLoadProfile profile)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(maxTileCount, 1);
         world = null;
+
+        long totalStart = Stopwatch.GetTimestamp();
+        long stageStart = totalStart;
+        TimeSpan envelopeAndHeader = TimeSpan.Zero;
+        TimeSpan tileAllocation = TimeSpan.Zero;
+        TimeSpan tileDecode = TimeSpan.Zero;
 
         WorldFileEnvelopeParseResult envelopeResult = WorldFileEnvelopeParser.TryParse(
             file,
@@ -20,6 +35,13 @@ public static class WorldFileCoreLoader
             out _);
         if (envelopeResult != WorldFileEnvelopeParseResult.Parsed || envelope is null)
         {
+            envelopeAndHeader = Stopwatch.GetElapsedTime(stageStart);
+            profile = new WorldFileLoadProfile(
+                envelopeAndHeader,
+                tileAllocation,
+                tileDecode,
+                TimeSpan.Zero,
+                Stopwatch.GetElapsedTime(totalStart));
             return new WorldFileCoreLoadDiagnostic(
                 WorldFileCoreLoadResult.InvalidEnvelope,
                 envelopeResult,
@@ -28,8 +50,15 @@ public static class WorldFileCoreLoader
         }
 
         WorldFileHeaderParseResult headerResult = WorldFileHeaderParser.TryParse(file, envelope, out WorldFileHeader? header);
+        envelopeAndHeader = Stopwatch.GetElapsedTime(stageStart);
         if (headerResult != WorldFileHeaderParseResult.Parsed || header is null)
         {
+            profile = new WorldFileLoadProfile(
+                envelopeAndHeader,
+                tileAllocation,
+                tileDecode,
+                TimeSpan.Zero,
+                Stopwatch.GetElapsedTime(totalStart));
             return new WorldFileCoreLoadDiagnostic(
                 WorldFileCoreLoadResult.InvalidHeader,
                 envelopeResult,
@@ -40,6 +69,12 @@ public static class WorldFileCoreLoader
         long tileCount = (long)header.Dimensions.WidthTiles * header.Dimensions.HeightTiles;
         if (tileCount > maxTileCount)
         {
+            profile = new WorldFileLoadProfile(
+                envelopeAndHeader,
+                tileAllocation,
+                tileDecode,
+                TimeSpan.Zero,
+                Stopwatch.GetElapsedTime(totalStart));
             return new WorldFileCoreLoadDiagnostic(
                 WorldFileCoreLoadResult.TileBudgetExceeded,
                 envelopeResult,
@@ -48,12 +83,21 @@ public static class WorldFileCoreLoader
         }
 
         WorldTileStore tiles;
+        stageStart = Stopwatch.GetTimestamp();
         try
         {
             tiles = new WorldTileStore(header.Dimensions);
+            tileAllocation = Stopwatch.GetElapsedTime(stageStart);
         }
         catch (ArgumentOutOfRangeException)
         {
+            tileAllocation = Stopwatch.GetElapsedTime(stageStart);
+            profile = new WorldFileLoadProfile(
+                envelopeAndHeader,
+                tileAllocation,
+                tileDecode,
+                TimeSpan.Zero,
+                Stopwatch.GetElapsedTime(totalStart));
             return new WorldFileCoreLoadDiagnostic(
                 WorldFileCoreLoadResult.TileStorageUnsupported,
                 envelopeResult,
@@ -61,14 +105,22 @@ public static class WorldFileCoreLoader
                 null);
         }
 
+        stageStart = Stopwatch.GetTimestamp();
         WorldFileTileDecodeResult tileResult = WorldFileTileDecoder.TryDecode(
             file,
             envelope,
             header,
             tiles,
             out _);
+        tileDecode = Stopwatch.GetElapsedTime(stageStart);
         if (tileResult != WorldFileTileDecodeResult.Decoded)
         {
+            profile = new WorldFileLoadProfile(
+                envelopeAndHeader,
+                tileAllocation,
+                tileDecode,
+                TimeSpan.Zero,
+                Stopwatch.GetElapsedTime(totalStart));
             // 'tiles' is intentionally not exposed: a partially decoded world can never become authoritative state.
             return new WorldFileCoreLoadDiagnostic(
                 WorldFileCoreLoadResult.InvalidTiles,
@@ -78,6 +130,12 @@ public static class WorldFileCoreLoader
         }
 
         world = new WorldFileCore(envelope, header, tiles);
+        profile = new WorldFileLoadProfile(
+            envelopeAndHeader,
+            tileAllocation,
+            tileDecode,
+            TimeSpan.Zero,
+            Stopwatch.GetElapsedTime(totalStart));
         return new WorldFileCoreLoadDiagnostic(
             WorldFileCoreLoadResult.Loaded,
             envelopeResult,

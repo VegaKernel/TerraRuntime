@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace TerraRuntime.World;
 
 /// <summary>
@@ -9,19 +11,38 @@ public static class WorldFileLoader
     public static WorldFileLoadDiagnostic TryLoad(
         ReadOnlySpan<byte> file,
         WorldFileLoadLimits limits,
-        out WorldFileData? world)
+        out WorldFileData? world) =>
+        TryLoad(file, limits, out world, out _);
+
+    public static WorldFileLoadDiagnostic TryLoad(
+        ReadOnlySpan<byte> file,
+        WorldFileLoadLimits limits,
+        out WorldFileData? world,
+        out WorldFileLoadProfile profile)
     {
         limits.Validate();
         world = null;
+        long totalStart = Stopwatch.GetTimestamp();
 
         WorldFileCoreLoadDiagnostic coreLoad = WorldFileCoreLoader.TryLoad(
             file,
             limits.MaxTileCount,
-            out WorldFileCore? core);
+            out WorldFileCore? core,
+            out WorldFileLoadProfile coreProfile);
         if (coreLoad.Result != WorldFileCoreLoadResult.Loaded || core is null)
+        {
+            profile = coreProfile with { Total = Stopwatch.GetElapsedTime(totalStart) };
             return FromCoreFailure(coreLoad);
+        }
 
-        return TryLoadPreparedCoreValidated(file, limits, core, out world);
+        long nonTileStart = Stopwatch.GetTimestamp();
+        WorldFileLoadDiagnostic diagnostic = TryLoadPreparedCoreValidated(file, limits, core, out world);
+        profile = coreProfile with
+        {
+            NonTileSections = Stopwatch.GetElapsedTime(nonTileStart),
+            Total = Stopwatch.GetElapsedTime(totalStart)
+        };
+        return diagnostic;
     }
 
     /// <summary>

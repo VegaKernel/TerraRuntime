@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using TerraRuntime.Contracts.Runtime;
@@ -39,27 +40,44 @@ public static class TerrariaServerHost
             return 24;
         }
 
+        long startupStart = Stopwatch.GetTimestamp();
+        long allocatedBytesAtStart = GC.GetTotalAllocatedBytes(precise: false);
+        TimeSpan fileReadDuration = TimeSpan.Zero;
+        TimeSpan cacheLoadDuration = TimeSpan.Zero;
+        TimeSpan cacheWriteDuration = TimeSpan.Zero;
+        TimeSpan bootstrapDuration = TimeSpan.Zero;
+        WorldFileLoadProfile canonicalLoadProfile = default;
+        bool runtimeCacheHit = false;
+
         byte[] file;
+        long fileReadStart = Stopwatch.GetTimestamp();
         try
         {
             file = await File.ReadAllBytesAsync(options.WorldPath).ConfigureAwait(false);
+            fileReadDuration = Stopwatch.GetElapsedTime(fileReadStart);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
+            fileReadDuration = Stopwatch.GetElapsedTime(fileReadStart);
             Console.Error.WriteLine($"Failed to read world file '{options.WorldPath}': {exception.Message}");
             return 25;
         }
 
         WorldFileLoadLimits worldLoadLimits = CreateServerWorldLoadLimits();
         string runtimeCachePath = RuntimeWorldCache.GetCachePath(options.WorldPath);
+        long cacheLoadStart = Stopwatch.GetTimestamp();
         RuntimeWorldCacheLoadDiagnostic cacheDiagnostic = RuntimeWorldCache.TryLoad(
             runtimeCachePath,
             file,
             worldLoadLimits,
             out WorldFileData? world);
+        cacheLoadDuration = Stopwatch.GetElapsedTime(cacheLoadStart);
 
+        TimeSpan worldReadyDuration;
         if (cacheDiagnostic.IsLoaded && world is not null)
         {
+            runtimeCacheHit = true;
+            worldReadyDuration = Stopwatch.GetElapsedTime(startupStart);
             Console.WriteLine($"Runtime world cache hit: '{runtimeCachePath}'.");
         }
         else
@@ -71,7 +89,8 @@ public static class TerrariaServerHost
             WorldFileLoadDiagnostic diagnostic = WorldFileLoader.TryLoad(
                 file,
                 worldLoadLimits,
-                out world);
+                out world,
+                out canonicalLoadProfile);
             if (!diagnostic.IsLoaded || world is null)
             {
                 Console.Error.WriteLine(
@@ -79,10 +98,13 @@ public static class TerrariaServerHost
                 return 26;
             }
 
+            worldReadyDuration = Stopwatch.GetElapsedTime(startupStart);
+            long cacheWriteStart = Stopwatch.GetTimestamp();
             RuntimeWorldCacheWriteDiagnostic cacheWrite = RuntimeWorldCache.TryWriteAtomic(
                 runtimeCachePath,
                 file,
                 world);
+            cacheWriteDuration = Stopwatch.GetElapsedTime(cacheWriteStart);
             if (cacheWrite.IsWritten)
             {
                 Console.WriteLine($"Runtime world cache rebuilt: '{runtimeCachePath}'.");
@@ -96,12 +118,15 @@ public static class TerrariaServerHost
         }
 
         PlayerBootstrapPacketSet bootstrapPackets;
+        long bootstrapStart = Stopwatch.GetTimestamp();
         try
         {
             bootstrapPackets = PlayerBootstrapPacketSet.Create(world);
+            bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
         }
         catch (Exception exception) when (exception is InvalidOperationException or OverflowException)
         {
+            bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
             Console.Error.WriteLine($"Failed to prepare join bootstrap packets: {exception.Message}");
             return 27;
         }
@@ -147,6 +172,26 @@ public static class TerrariaServerHost
             listener.Bind(new IPEndPoint(IPAddress.Any, options.Port));
             listener.Listen(backlog: Math.Max(32, options.MaxPlayers * 2));
             gameLoop.Start();
+
+            TimeSpan networkReadyDuration = Stopwatch.GetElapsedTime(startupStart);
+            long allocatedBytes = Math.Max(
+                0L,
+                GC.GetTotalAllocatedBytes(precise: false) - allocatedBytesAtStart);
+            string startupProfile = FormattableString.Invariant(
+                $"startup_profile source={(runtimeCacheHit ? "runtime-cache" : "canonical-wld")} " +
+                $"cache_result={cacheDiagnostic.Result} file_read_ms={fileReadDuration.TotalMilliseconds:F3} " +
+                $"cache_load_ms={cacheLoadDuration.TotalMilliseconds:F3} " +
+                $"wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} " +
+                $"wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} " +
+                $"wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} " +
+                $"wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} " +
+                $"wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} " +
+                $"cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} " +
+                $"bootstrap_ms={bootstrapDuration.TotalMilliseconds:F3} " +
+                $"world_ready_ms={worldReadyDuration.TotalMilliseconds:F3} " +
+                $"network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} " +
+                $"allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
+            Console.WriteLine(startupProfile);
 
             Console.WriteLine(
                 $"TerraRuntime listening on 0.0.0.0:{options.Port}; " +
