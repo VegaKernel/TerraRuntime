@@ -15,6 +15,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
     private int _candidateCount;
     private bool _blueSlimeMotionEnabled;
+    private double _blueSlimeWorldSurfacePixels = double.PositiveInfinity;
 
     public VanillaNpcTargetingAiStepper(INpcAiStateStepper inner)
     {
@@ -23,11 +24,22 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     }
 
     /// <summary>
-    /// Enables the verified undamaged daytime/surface Blue Slime movement baseline. The owning world-motion
-    /// layer calls this only when tile collision and gravity are available. Night/underground/damaged engagement
-    /// acceleration is enabled separately once authoritative world-time and NPC life state are wired.
+    /// Enables the verified Blue Slime movement baseline when world collision/gravity is available.
+    /// Supplying world surface also enables the exact underground part of vanilla's engagement predicate.
+    /// Night, slime-rain and damaged-life engagement wait for their owning authoritative runtime state.
     /// </summary>
-    public void EnableBlueSlimeMotion() => _blueSlimeMotionEnabled = true;
+    public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity)
+    {
+        if (double.IsNaN(worldSurfaceTiles) ||
+            worldSurfaceTiles <= 0d ||
+            (double.IsInfinity(worldSurfaceTiles) && !double.IsPositiveInfinity(worldSurfaceTiles)))
+        {
+            throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
+        }
+
+        _blueSlimeMotionEnabled = true;
+        _blueSlimeWorldSurfacePixels = worldSurfaceTiles * 16d;
+    }
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates)
     {
@@ -75,6 +87,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             ? selected
             : default;
         NpcSimulationState simulation = npc.Simulation;
+        bool engaged = npc.PositionY > _blueSlimeWorldSurfacePixels;
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: npc.PositionX,
             VelocityX: npc.VelocityX,
@@ -87,7 +100,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             Wet: simulation.Wet,
             CollideX: simulation.CollideX,
             CollideY: simulation.CollideY,
-            Engaged: false,
+            Engaged: engaged,
             SolidCollision: simulation.SolidCollision,
             ClosestTarget: closest);
 
