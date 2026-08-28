@@ -208,6 +208,9 @@ public static class WorldSectionObjectMetadataEncoder
 
     private static bool TryWriteEntityPayload(BinaryWriter writer, WorldTileEntity entity)
     {
+        if (!WorldTileEntityItemValidator.HasValidItemTypes(entity.Payload))
+            return false;
+
         switch (entity.Kind)
         {
             case WorldTileEntityKind.TrainingDummy when entity.Payload is WorldTrainingDummyPayload dummy:
