@@ -23,6 +23,7 @@ internal sealed class ServerRuntimeState
     private readonly RuntimeProjectileStore _projectiles;
     private readonly RuntimeProjectileStateExecutor _projectileExecutor;
     private readonly IProjectileStateStepper? _projectileStepper;
+    private readonly RuntimeWorldItemStore _worldItems;
     private readonly RuntimeWorldClock? _worldClock;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
@@ -34,7 +35,8 @@ internal sealed class ServerRuntimeState
         WorldTileStore? worldTiles = null,
         RuntimeWorldClock? worldClock = null,
         RuntimeProjectileStore? projectiles = null,
-        IProjectileStateStepper? projectileStepper = null)
+        IProjectileStateStepper? projectileStepper = null,
+        RuntimeWorldItemStore? worldItems = null)
     {
         _playerEvents = playerEvents;
         _worldClock = worldClock;
@@ -43,6 +45,7 @@ internal sealed class ServerRuntimeState
         _projectiles = projectiles ?? new RuntimeProjectileStore();
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
         _projectileStepper = projectileStepper;
+        _worldItems = worldItems ?? new RuntimeWorldItemStore();
 
         if (npcAiStepper is null)
         {
@@ -116,6 +119,22 @@ internal sealed class ServerRuntimeState
 
     public long RejectedProjectileDespawns { get; private set; }
 
+    public long AppliedWorldItemAllocations { get; private set; }
+
+    public long RejectedWorldItemAllocations { get; private set; }
+
+    public long AppliedWorldItemDrops { get; private set; }
+
+    public long RejectedWorldItemDrops { get; private set; }
+
+    public long AppliedWorldItemRemovals { get; private set; }
+
+    public long RejectedWorldItemRemovals { get; private set; }
+
+    public long AppliedWorldItemOwners { get; private set; }
+
+    public long RejectedWorldItemOwners { get; private set; }
+
     public NpcAiStateTickSummary LastNpcAiTick { get; private set; }
 
     public ProjectileStateTickSummary LastProjectileTick { get; private set; }
@@ -166,6 +185,12 @@ internal sealed class ServerRuntimeState
     internal bool TryCaptureProjectileSnapshot(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
         _projectiles.TryGet(projectile, out snapshot);
 
+    /// <summary>
+    /// Captures the currently active occupation of one vanilla world-item slot on the authoritative thread.
+    /// </summary>
+    internal bool TryCaptureWorldItemSnapshot(short slot, out WorldItemSnapshot snapshot) =>
+        _worldItems.TryGetActive(slot, out snapshot);
+
     public void Apply(RuntimeCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -203,6 +228,22 @@ internal sealed class ServerRuntimeState
 
             case ProjectileDespawnRuntimeCommand despawn:
                 ApplyProjectileDespawn(despawn);
+                break;
+
+            case WorldItemAllocateRuntimeCommand allocate:
+                ApplyWorldItemAllocate(allocate);
+                break;
+
+            case WorldItemDropRuntimeCommand drop:
+                ApplyWorldItemDrop(drop);
+                break;
+
+            case WorldItemRemoveRuntimeCommand remove:
+                ApplyWorldItemRemove(remove);
+                break;
+
+            case WorldItemOwnerRuntimeCommand owner:
+                ApplyWorldItemOwner(owner);
                 break;
 
             case PlayerAppearanceRuntimeCommand appearance:
@@ -363,6 +404,55 @@ internal sealed class ServerRuntimeState
         }
 
         RejectedProjectileDespawns++;
+    }
+
+    private void ApplyWorldItemAllocate(WorldItemAllocateRuntimeCommand command)
+    {
+        WorldItemDropStateUpdate state = command.State;
+        if (_worldItems.TryAllocateDrop(in state, out WorldItemSnapshot snapshot))
+        {
+            AppliedWorldItemAllocations++;
+            command.Completion?.TrySetResult(snapshot);
+            return;
+        }
+
+        RejectedWorldItemAllocations++;
+        command.Completion?.TrySetResult(null);
+    }
+
+    private void ApplyWorldItemDrop(WorldItemDropRuntimeCommand command)
+    {
+        WorldItemDropStateUpdate state = command.State;
+        if (_worldItems.TryApplyDrop(command.Slot, in state, out _))
+        {
+            AppliedWorldItemDrops++;
+            return;
+        }
+
+        RejectedWorldItemDrops++;
+    }
+
+    private void ApplyWorldItemRemove(WorldItemRemoveRuntimeCommand command)
+    {
+        if (_worldItems.TryRemove(command.Slot, out _))
+        {
+            AppliedWorldItemRemovals++;
+            return;
+        }
+
+        RejectedWorldItemRemovals++;
+    }
+
+    private void ApplyWorldItemOwner(WorldItemOwnerRuntimeCommand command)
+    {
+        WorldItemOwnerStateUpdate state = command.State;
+        if (_worldItems.TryApplyOwner(command.Slot, in state, out _))
+        {
+            AppliedWorldItemOwners++;
+            return;
+        }
+
+        RejectedWorldItemOwners++;
     }
 
     private void ApplyPlayerAppearance(PlayerAppearanceRuntimeCommand appearance)
