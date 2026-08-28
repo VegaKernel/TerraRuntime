@@ -78,6 +78,32 @@ public sealed class RuntimeProjectileExactWireReplicationTests
     }
 
     [Fact]
+    public void Preserved_wire_key_with_different_spawner_is_not_relayed()
+    {
+        var identities = new RuntimeProjectileWireIdentityRegistry();
+        var replication = new RuntimeProjectileReplicationRegistry(identities);
+        ProjectileSnapshot projectile = CreateProjectile(revision: 1);
+        var wrongSpawnerKey = new TerrariaProjectileKeyState(
+            Spawner: (byte)(projectile.Spawner + 1),
+            ProjectileIndex: 777,
+            Generation: 1234);
+        Assert.True(identities.TryBind(in wrongSpawnerKey, projectile.Handle));
+
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(3);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 3, generation: 1);
+        PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        replication.ProjectileStateCommitted(ProjectileStateCommitKind.Spawn, in projectile);
+
+        Assert.Equal(0, outbound.QueuedFrames);
+        Assert.Equal(0, replication.RelayedFrames);
+        Assert.Equal(1, replication.UnsupportedCommits);
+    }
+
+    [Fact]
     public void Invalid_despawn_still_releases_stale_reverse_identity_and_baseline()
     {
         var identities = new RuntimeProjectileWireIdentityRegistry();
