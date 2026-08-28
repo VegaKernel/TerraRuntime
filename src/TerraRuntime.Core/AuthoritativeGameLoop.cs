@@ -19,11 +19,12 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
     private readonly Dictionary<GameCommandSourceId, SourceQueue> stagedSources = [];
     private readonly Queue<SourceQueue> readySources = [];
     private readonly List<SourceQueue> throttledSources = [];
-    private readonly Stack<Queue<TCommand>> commandQueuePool = [];
+    private readonly Stack<Queue<QueuedCommand>> commandQueuePool = [];
     private readonly CancellationTokenSource shutdown = new();
     private readonly Thread thread;
     private long tick;
     private long rejectedCommands;
+    private long commandBudgetExhaustions;
     private long missedTickDeadlines;
     private int pendingCommands;
     private int cpuTimeAvailable;
@@ -38,8 +39,11 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
     private double lastUpdateMilliseconds;
     private double worstUpdateMilliseconds;
     private double slowestLastPhaseMilliseconds;
+    private double oldestPendingCommandAgeMilliseconds;
     private int slowestLastPhase;
     private int lastCommandsProcessed;
+    private int lastDeferredCommands;
+    private int lastCommandBudgetExhausted;
     private int gameThreadId;
     private Exception? fault;
     private int started;
@@ -81,7 +85,11 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         GameThreadId: Volatile.Read(ref gameThreadId),
         CommandsProcessed: Volatile.Read(ref lastCommandsProcessed),
         PendingCommands: Volatile.Read(ref pendingCommands),
+        DeferredCommands: Volatile.Read(ref lastDeferredCommands),
         RejectedCommands: Interlocked.Read(ref rejectedCommands),
+        CommandBudgetExhaustions: Interlocked.Read(ref commandBudgetExhaustions),
+        LastCommandBudgetExhausted: Volatile.Read(ref lastCommandBudgetExhausted) != 0,
+        OldestPendingCommandAgeMilliseconds: Volatile.Read(ref oldestPendingCommandAgeMilliseconds),
         MissedTickDeadlines: Interlocked.Read(ref missedTickDeadlines),
         CpuTimeAvailable: Volatile.Read(ref cpuTimeAvailable) != 0,
         LastTickMilliseconds: Volatile.Read(ref lastTickMilliseconds),
@@ -121,7 +129,8 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
             return false;
         }
 
-        if (!commands.Writer.TryWrite(new QueuedCommand(source, command)))
+        var queued = new QueuedCommand(source, command, Stopwatch.GetTimestamp());
+        if (!commands.Writer.TryWrite(queued))
         {
             Interlocked.Decrement(ref pendingCommands);
             RejectCommand();
@@ -171,8 +180,9 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
                 StageCommands();
                 long ingressFinished = Stopwatch.GetTimestamp();
 
-                int processed = DrainCommands();
+                CommandDrainResult drain = DrainCommands();
                 long commandsFinished = Stopwatch.GetTimestamp();
+                double oldestPendingAgeMs = GetOldestPendingCommandAgeMilliseconds(commandsFinished);
 
                 update(state);
                 long tickFinished = Stopwatch.GetTimestamp();
@@ -182,7 +192,10 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
                 double updateMs = Stopwatch.GetElapsedTime(commandsFinished, tickFinished).TotalMilliseconds;
                 double elapsedMs = Stopwatch.GetElapsedTime(tickStarted, tickFinished).TotalMilliseconds;
 
-                Volatile.Write(ref lastCommandsProcessed, processed);
+                Volatile.Write(ref lastCommandsProcessed, drain.Processed);
+                Volatile.Write(ref lastDeferredCommands, Volatile.Read(ref pendingCommands));
+                Volatile.Write(ref lastCommandBudgetExhausted, drain.BudgetExhausted ? 1 : 0);
+                Volatile.Write(ref oldestPendingCommandAgeMilliseconds, oldestPendingAgeMs);
                 Volatile.Write(ref lastTickMilliseconds, elapsedMs);
                 UpdateWorst(ref worstTickMilliseconds, elapsedMs);
                 PublishCpuMetrics(hasCpuStart, cpuStarted);
@@ -223,15 +236,22 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
                 readySources.Enqueue(sourceQueue);
             }
 
-            sourceQueue.Commands.Enqueue(queued.Command);
+            sourceQueue.Commands.Enqueue(queued);
             staged++;
         }
     }
 
-    private int DrainCommands()
+    private CommandDrainResult DrainCommands()
     {
         int processed = 0;
         long currentTick = Interlocked.Read(ref tick);
+        bool cpuBudgetExhausted = false;
+        double commandCpuBudgetMilliseconds = options.MaxCommandCpuMillisecondsPerTick ?? 0d;
+        bool enforceCpuBudget = options.MaxCommandCpuMillisecondsPerTick.HasValue &&
+            ThreadCpuClock.TryGetTimestampNanoseconds(out long commandCpuStarted);
+        long commandCpuBudgetNanoseconds = enforceCpuBudget
+            ? checked((long)(commandCpuBudgetMilliseconds * 1_000_000d))
+            : 0L;
 
         while (processed < options.MaxCommandsPerTick && readySources.TryDequeue(out SourceQueue? sourceQueue))
         {
@@ -245,9 +265,9 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
                 continue;
             }
 
-            TCommand command = sourceQueue.Commands.Dequeue();
+            QueuedCommand queued = sourceQueue.Commands.Dequeue();
             Interlocked.Decrement(ref pendingCommands);
-            applyCommand(state, command);
+            applyCommand(state, queued.Command);
             sourceQueue.CommandsProcessedThisTick++;
             processed++;
 
@@ -255,17 +275,28 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
             {
                 stagedSources.Remove(sourceQueue.Source);
                 ReturnCommandQueue(sourceQueue.Commands);
-                continue;
             }
-
-            if (!sourceQueue.Source.IsSystem &&
-                sourceQueue.CommandsProcessedThisTick >= options.MaxCommandsPerSourcePerTick)
+            else if (!sourceQueue.Source.IsSystem &&
+                     sourceQueue.CommandsProcessedThisTick >= options.MaxCommandsPerSourcePerTick)
             {
                 throttledSources.Add(sourceQueue);
             }
             else
             {
                 readySources.Enqueue(sourceQueue);
+            }
+
+            if (enforceCpuBudget)
+            {
+                if (!ThreadCpuClock.TryGetTimestampNanoseconds(out long commandCpuNow))
+                {
+                    enforceCpuBudget = false;
+                }
+                else if (commandCpuNow - commandCpuStarted >= commandCpuBudgetNanoseconds)
+                {
+                    cpuBudgetExhausted = true;
+                    break;
+                }
             }
         }
 
@@ -275,7 +306,32 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         }
 
         throttledSources.Clear();
-        return processed;
+
+        bool operationBudgetExhausted = processed >= options.MaxCommandsPerTick;
+        bool budgetExhausted = Volatile.Read(ref pendingCommands) > 0 &&
+            (operationBudgetExhausted || cpuBudgetExhausted);
+        if (budgetExhausted)
+            Interlocked.Increment(ref commandBudgetExhaustions);
+
+        return new CommandDrainResult(processed, budgetExhausted);
+    }
+
+    private double GetOldestPendingCommandAgeMilliseconds(long now)
+    {
+        long oldest = long.MaxValue;
+
+        foreach (SourceQueue sourceQueue in stagedSources.Values)
+        {
+            if (sourceQueue.Commands.TryPeek(out QueuedCommand queued) && queued.EnqueuedAt < oldest)
+                oldest = queued.EnqueuedAt;
+        }
+
+        if (commands.Reader.TryPeek(out QueuedCommand unstaged) && unstaged.EnqueuedAt < oldest)
+            oldest = unstaged.EnqueuedAt;
+
+        return oldest == long.MaxValue
+            ? 0d
+            : Stopwatch.GetElapsedTime(oldest, now).TotalMilliseconds;
     }
 
     private bool TryReservePendingSlot()
@@ -297,10 +353,10 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
 
     private void RejectCommand() => Interlocked.Increment(ref rejectedCommands);
 
-    private Queue<TCommand> RentCommandQueue() =>
-        commandQueuePool.TryPop(out Queue<TCommand>? queue) ? queue : new Queue<TCommand>();
+    private Queue<QueuedCommand> RentCommandQueue() =>
+        commandQueuePool.TryPop(out Queue<QueuedCommand>? queue) ? queue : new Queue<QueuedCommand>();
 
-    private void ReturnCommandQueue(Queue<TCommand> queue)
+    private void ReturnCommandQueue(Queue<QueuedCommand> queue)
     {
         queue.Clear();
         if (commandQueuePool.Count < options.CommandCapacity)
@@ -386,13 +442,18 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         }
     }
 
-    private readonly record struct QueuedCommand(GameCommandSourceId Source, TCommand Command);
+    private readonly record struct QueuedCommand(
+        GameCommandSourceId Source,
+        TCommand Command,
+        long EnqueuedAt);
 
-    private sealed class SourceQueue(GameCommandSourceId source, Queue<TCommand> commands)
+    private readonly record struct CommandDrainResult(int Processed, bool BudgetExhausted);
+
+    private sealed class SourceQueue(GameCommandSourceId source, Queue<QueuedCommand> commands)
     {
         public GameCommandSourceId Source { get; } = source;
 
-        public Queue<TCommand> Commands { get; } = commands;
+        public Queue<QueuedCommand> Commands { get; } = commands;
 
         public long QuotaTick { get; private set; } = -1;
 

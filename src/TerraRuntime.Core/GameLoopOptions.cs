@@ -3,6 +3,7 @@ namespace TerraRuntime.Core;
 public sealed record GameLoopOptions
 {
     public const int DefaultTicksPerSecond = 60;
+    private const double MaximumRepresentableCpuBudgetMilliseconds = long.MaxValue / 1_000_000d;
 
     public int TicksPerSecond { get; init; } = DefaultTicksPerSecond;
 
@@ -13,6 +14,12 @@ public sealed record GameLoopOptions
     public int MaxCommandsPerTick { get; init; } = 1024;
 
     public int MaxCommandsPerSourcePerTick { get; init; } = 128;
+
+    /// <summary>
+    /// Optional authoritative-thread CPU budget for command application in one tick.
+    /// The hard operation budget remains active even when the platform CPU clock is unavailable.
+    /// </summary>
+    public double? MaxCommandCpuMillisecondsPerTick { get; init; }
 
     internal void Validate()
     {
@@ -25,5 +32,15 @@ public sealed record GameLoopOptions
         ArgumentOutOfRangeException.ThrowIfGreaterThan(MaxCommandsPerTick, CommandCapacity);
         ArgumentOutOfRangeException.ThrowIfLessThan(MaxCommandsPerSourcePerTick, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(MaxCommandsPerSourcePerTick, MaxCommandsPerTick);
+
+        if (MaxCommandCpuMillisecondsPerTick is double commandCpuBudget &&
+            (!double.IsFinite(commandCpuBudget) ||
+             commandCpuBudget <= 0d ||
+             commandCpuBudget > MaximumRepresentableCpuBudgetMilliseconds))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(MaxCommandCpuMillisecondsPerTick),
+                "Command CPU budget must be a finite positive representable number of milliseconds.");
+        }
     }
 }

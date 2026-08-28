@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
@@ -117,6 +118,107 @@ public sealed class GameLoopTests
     }
 
     [Fact]
+    public void Global_command_budget_reports_deferred_work_and_oldest_backlog_age()
+    {
+        using var firstApplied = new ManualResetEventSlim();
+        var state = new RecordingState(firstApplied, signalAtCount: 1);
+        using var loop = new AuthoritativeGameLoop<RecordingState, int>(
+            state,
+            static (runtime, command) => runtime.Apply(command),
+            static runtime => runtime.Tick(),
+            new GameLoopOptions
+            {
+                TicksPerSecond = 1,
+                CommandCapacity = 8,
+                MaxCommandIngressPerTick = 8,
+                MaxCommandsPerTick = 1,
+                MaxCommandsPerSourcePerTick = 1
+            });
+
+        Assert.True(loop.TryPost(1));
+        Assert.True(loop.TryPost(2));
+        Assert.True(loop.TryPost(3));
+
+        loop.Start();
+        Assert.True(firstApplied.Wait(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        WaitForTick(loop, minimumTick: 1);
+
+        GameLoopSnapshot snapshot = loop.Snapshot;
+        Assert.Equal(1, snapshot.CommandsProcessed);
+        Assert.Equal(2, snapshot.PendingCommands);
+        Assert.Equal(2, snapshot.DeferredCommands);
+        Assert.True(snapshot.LastCommandBudgetExhausted);
+        Assert.True(snapshot.CommandBudgetExhaustions >= 1);
+        Assert.True(snapshot.OldestPendingCommandAgeMilliseconds > 0d);
+        Assert.True(loop.Stop(TimeSpan.FromSeconds(1)));
+    }
+
+    [Fact]
+    public void Cpu_command_budget_defers_remaining_work_when_thread_cpu_clock_is_available()
+    {
+        using var firstApplied = new ManualResetEventSlim();
+        var state = new SlowCommandState(firstApplied);
+        using var loop = new AuthoritativeGameLoop<SlowCommandState, int>(
+            state,
+            static (runtime, command) => runtime.Apply(command),
+            static runtime => runtime.Tick(),
+            new GameLoopOptions
+            {
+                TicksPerSecond = 1,
+                CommandCapacity = 8,
+                MaxCommandIngressPerTick = 8,
+                MaxCommandsPerTick = 8,
+                MaxCommandsPerSourcePerTick = 8,
+                MaxCommandCpuMillisecondsPerTick = 0.25d
+            });
+
+        Assert.True(loop.TryPost(1));
+        Assert.True(loop.TryPost(2));
+        Assert.True(loop.TryPost(3));
+
+        loop.Start();
+        Assert.True(firstApplied.Wait(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        WaitForTick(loop, minimumTick: 1);
+
+        GameLoopSnapshot snapshot = loop.Snapshot;
+        if (snapshot.CpuTimeAvailable)
+        {
+            Assert.True(snapshot.LastCommandBudgetExhausted);
+            Assert.True(snapshot.CommandBudgetExhaustions >= 1);
+            Assert.InRange(snapshot.CommandsProcessed, 1, 2);
+            Assert.True(snapshot.DeferredCommands >= 1);
+            Assert.True(snapshot.PendingCommands >= 1);
+        }
+        else
+        {
+            Assert.Equal(3, snapshot.CommandsProcessed);
+            Assert.Equal(0, snapshot.PendingCommands);
+        }
+
+        Assert.True(loop.Stop(TimeSpan.FromSeconds(1)));
+    }
+
+    [Theory]
+    [InlineData(0d)]
+    [InlineData(-1d)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void Invalid_command_cpu_budget_is_rejected(double budgetMilliseconds)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            using var loop = new AuthoritativeGameLoop<State, int>(
+                new State(),
+                static (state, command) => state.Apply(command),
+                static state => state.Tick(),
+                new GameLoopOptions
+                {
+                    MaxCommandCpuMillisecondsPerTick = budgetMilliseconds
+                });
+        });
+    }
+
+    [Fact]
     public void Slow_update_phase_records_phase_timing_and_missed_deadlines()
     {
         using var updated = new ManualResetEventSlim();
@@ -151,6 +253,20 @@ public sealed class GameLoopTests
         Assert.True(snapshot.WorstUpdateMilliseconds >= 5);
         Assert.Equal(GameLoopPhase.Update, snapshot.SlowestLastPhase);
         Assert.True(snapshot.SlowestLastPhaseMilliseconds >= 5);
+    }
+
+    private static void WaitForTick<TState, TCommand>(
+        AuthoritativeGameLoop<TState, TCommand> loop,
+        long minimumTick)
+        where TState : class
+    {
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (loop.Snapshot.Tick < minimumTick && DateTime.UtcNow < deadline)
+        {
+            Thread.Yield();
+        }
+
+        Assert.True(loop.Snapshot.Tick >= minimumTick);
     }
 
     private sealed class State(ManualResetEventSlim? applied = null)
@@ -194,6 +310,26 @@ public sealed class GameLoopTests
                     applied.Set();
                 }
             }
+        }
+
+        public void Tick()
+        {
+        }
+    }
+
+    private sealed class SlowCommandState(ManualResetEventSlim firstApplied)
+    {
+        private int applied;
+
+        public void Apply(int command)
+        {
+            _ = command;
+            long started = Stopwatch.GetTimestamp();
+            while (Stopwatch.GetElapsedTime(started).TotalMilliseconds < 2d)
+                Thread.SpinWait(64);
+
+            if (Interlocked.Increment(ref applied) == 1)
+                firstApplied.Set();
         }
 
         public void Tick()
