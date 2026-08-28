@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
+using TerraRuntime.Operations;
 
 namespace TerraRuntime.Tests;
 
@@ -86,6 +87,59 @@ public sealed class RuntimeNpcReplicationRegistryTests
 
         Assert.Equal(0, outbound.QueuedFrames);
         Assert.Equal(1, replication.UnsupportedCommits);
+    }
+
+    [Fact]
+    public void Network_operations_surface_existing_npc_replication_counters()
+    {
+        var admission = new TerrariaConnectionAdmissionGate(maxConnections: 8);
+        var connections = new RuntimeConnectionRegistry();
+        var replication = new RuntimeNpcReplicationRegistry();
+        var operations = new LocalRuntimeNetworkOperations(
+            admission,
+            connections,
+            new RuntimeConnectionQueueTelemetry(),
+            new RuntimeConnectionRateTelemetry(),
+            replication);
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(1);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 2, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
+        Assert.True(replication.TryRegister(source, outbound));
+
+        NpcSnapshot npc = CreateNpc(revision: 1, positionX: 100f);
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in npc);
+        ConnectionHandle player = Connection(source, slot: 1, generation: 1);
+        PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        NpcSnapshot moved = npc with
+        {
+            Revision = new NpcRevision(2),
+            PositionX = 130f
+        };
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in moved);
+
+        NpcSnapshot rejected = moved with
+        {
+            Revision = new NpcRevision(3),
+            PositionX = 150f
+        };
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in rejected);
+
+        NpcSnapshot unsupported = rejected with
+        {
+            Revision = new NpcRevision(4),
+            Type = 99,
+            NetId = 99
+        };
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in unsupported);
+
+        RuntimeNetworkSnapshot snapshot = operations.CaptureSnapshot();
+
+        Assert.Equal(1, snapshot.NpcBaselineFrames);
+        Assert.Equal(1, snapshot.NpcRelayedFrames);
+        Assert.Equal(1, snapshot.NpcRejectedFrames);
+        Assert.Equal(1, snapshot.NpcUnsupportedCommits);
     }
 
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
