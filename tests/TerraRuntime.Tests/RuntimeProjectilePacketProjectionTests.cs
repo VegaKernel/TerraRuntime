@@ -69,15 +69,28 @@ public sealed class RuntimeProjectilePacketProjectionTests
     }
 
     [Fact]
-    public void Inactive_or_protocol_unaddressable_snapshot_is_rejected()
+    public void Inactive_protocol_unaddressable_or_unknown_wire_type_snapshot_is_rejected()
     {
         ProjectileSnapshot inactive = default;
         ProjectileSnapshot oversizedSlot = CreateSnapshot(slot: 1001, generation: 1);
+        ProjectileSnapshot noneType = CreateSnapshot(slot: 1, generation: 1) with
+        {
+            Type = VanillaProjectileIds.None
+        };
+        ProjectileSnapshot unknownType = CreateSnapshot(slot: 1, generation: 1) with
+        {
+            Type = new ProjectileTypeId(VanillaProjectileIds.Count)
+        };
 
         Assert.False(RuntimeProjectilePacketProjection.TryCreateUpdate(in inactive, out _));
         Assert.False(RuntimeProjectilePacketProjection.TryCreateDestroy(in inactive, out _));
         Assert.False(RuntimeProjectilePacketProjection.TryCreateUpdate(in oversizedSlot, out _));
         Assert.False(RuntimeProjectilePacketProjection.TryCreateDestroy(in oversizedSlot, out _));
+        Assert.False(RuntimeProjectilePacketProjection.TryCreateUpdate(in noneType, out _));
+        Assert.False(RuntimeProjectilePacketProjection.TryCreateUpdate(in unknownType, out _));
+
+        Assert.True(RuntimeProjectilePacketProjection.TryCreateDestroy(in noneType, out _));
+        Assert.True(RuntimeProjectilePacketProjection.TryCreateDestroy(in unknownType, out _));
     }
 
     private static ProjectileSnapshot CreateSnapshot(ushort slot, ulong generation) =>
