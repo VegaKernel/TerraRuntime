@@ -31,4 +31,8 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long NpcRelayedFrames = 0,
     long NpcBaselineFrames = 0,
     long NpcRejectedFrames = 0,
-    long NpcUnsupportedCommits = 0);
+    long NpcUnsupportedCommits = 0,
+    long ProjectileRelayedFrames = 0,
+    long ProjectileBaselineFrames = 0,
+    long ProjectileRejectedFrames = 0,
+    long ProjectileUnsupportedCommits = 0);
