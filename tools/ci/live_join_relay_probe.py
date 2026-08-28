@@ -99,11 +99,14 @@ def join_client(host, port, expected_slot):
 
     section_count = 0
     npc_count = 0
+    global_npc_count = 0
     chest_size_count = 0
     chest_item_count = 0
     frame_count = 0
     saw_section = False
     chest_phase_started = False
+    previous_message_id = None
+    previous_npc_slot = None
 
     while True:
         message_id, payload = recv_frame(client)
@@ -112,14 +115,15 @@ def join_client(host, port, expected_slot):
             section_count += 1
             saw_section = True
             chest_phase_started = False
+            previous_npc_slot = None
         elif message_id == 23:
             if not saw_section:
                 client.close()
                 raise SystemExit("received packet 23 before any packet-10 section")
-            if chest_phase_started:
+            if chest_phase_started and section_count < expected_sections:
                 client.close()
                 raise SystemExit(
-                    "received packet 23 after chest synchronization started for the current section"
+                    "received packet 23 after chest synchronization started for a non-final section"
                 )
             if len(payload) < 24:
                 client.close()
@@ -137,9 +141,36 @@ def join_client(host, port, expected_slot):
             if generation != 0:
                 client.close()
                 raise SystemExit(
-                    f"persisted section NPC slot {npc_slot} used non-zero generation {generation}"
+                    f"persisted NPC slot {npc_slot} used non-zero generation {generation}"
                 )
+            previous_npc_slot = npc_slot
             npc_count += 1
+        elif message_id == 54:
+            if section_count != expected_sections:
+                client.close()
+                raise SystemExit(
+                    f"global packet54 arrived before all sections: {section_count}/{expected_sections}"
+                )
+            if previous_message_id != 23 or previous_npc_slot is None:
+                client.close()
+                raise SystemExit("global packet54 was not immediately preceded by packet23")
+            if len(payload) != 4:
+                client.close()
+                raise SystemExit(
+                    f"startup packet54 should contain npc id plus empty-buff terminator, got {len(payload)} bytes"
+                )
+            npc_id, terminator = struct.unpack_from("<hH", payload, 0)
+            if npc_id != previous_npc_slot:
+                client.close()
+                raise SystemExit(
+                    f"packet54 npc id {npc_id} does not match preceding packet23 slot {previous_npc_slot}"
+                )
+            if terminator != 0:
+                client.close()
+                raise SystemExit(
+                    f"startup packet54 for npc {npc_id} unexpectedly contained a non-empty buff list"
+                )
+            global_npc_count += 1
         elif message_id == 155:
             chest_phase_started = True
             chest_size_count += 1
@@ -148,6 +179,10 @@ def join_client(host, port, expected_slot):
             chest_item_count += 1
         elif message_id == 49:
             break
+
+        previous_message_id = message_id
+        if message_id != 23:
+            previous_npc_slot = None
 
         if frame_count > 20000:
             client.close()
@@ -161,7 +196,12 @@ def join_client(host, port, expected_slot):
     if npc_count <= 0:
         client.close()
         raise SystemExit(
-            "official generated world produced no persisted town-NPC packet23 during section bootstrap"
+            "official generated world produced no persisted town-NPC packet23 during bootstrap"
+        )
+    if global_npc_count <= 0:
+        client.close()
+        raise SystemExit(
+            "official generated world produced no global packet23/54 persisted town-NPC baseline before packet49"
         )
 
     spawn = struct.pack(
@@ -182,6 +222,7 @@ def join_client(host, port, expected_slot):
         client,
         section_count,
         npc_count,
+        global_npc_count,
         chest_size_count,
         chest_item_count,
         frame_count,
@@ -193,10 +234,10 @@ def run(host, port):
     client2 = None
     replacement = None
     try:
-        client1, sections1, npcs1, chest_sizes1, chest_items1, frames1 = join_client(
+        client1, sections1, npcs1, global_npcs1, chest_sizes1, chest_items1, frames1 = join_client(
             host, port, 0
         )
-        client2, sections2, npcs2, chest_sizes2, chest_items2, frames2 = join_client(
+        client2, sections2, npcs2, global_npcs2, chest_sizes2, chest_items2, frames2 = join_client(
             host, port, 1
         )
 
@@ -282,7 +323,8 @@ def run(host, port):
         print(
             "Live TerraRuntime two-client relay passed: "
             f"client1Sections={sections1}, client2Sections={sections2}, "
-            f"client1TownNpcs={npcs1}, client2TownNpcs={npcs2}, "
+            f"client1TownNpcUpdates={npcs1}, client2TownNpcUpdates={npcs2}, "
+            f"client1GlobalTownNpcs={global_npcs1}, client2GlobalTownNpcs={global_npcs2}, "
             f"client1ChestSizes={chest_sizes1}, client2ChestSizes={chest_sizes2}, "
             f"client1ChestItems={chest_items1}, client2ChestItems={chest_items2}, "
             f"framesBefore49=({frames1},{frames2}), relaySlot={payload[0]}, "
