@@ -5,14 +5,12 @@ namespace TerraRuntime.Operations;
 
 /// <summary>
 /// TUI-facing immutable projection of authoritative NPC commits. The authoritative store remains the
-/// only mutable gameplay owner; this observer keeps a bounded, generation-safe copy for cross-thread
-/// operations reads and never scans or re-reads RuntimeNpcStore.
+/// only mutable gameplay owner. Commit writes are single-writer, allocation-free and lock-free; the UI
+/// uses a per-slot sequence check to copy a consistent bounded projection without scanning RuntimeNpcStore.
 /// </summary>
 internal sealed class RuntimeNpcOperationsTelemetry : INpcOperations, INpcStateCommitSink
 {
-    private readonly object sync = new();
-    private readonly SlotState[] slots = new SlotState[RuntimeNpcStore.MaximumAddressableCapacity];
-    private int activeCount;
+    private readonly SlotState[] slots = CreateSlots();
     private long committedSpawns;
     private long committedUpdates;
     private long committedDespawns;
@@ -22,69 +20,102 @@ internal sealed class RuntimeNpcOperationsTelemetry : INpcOperations, INpcStateC
         if (!snapshot.IsActive)
             return;
 
-        lock (sync)
+        SlotState slot = slots[snapshot.Handle.Slot];
+        switch (kind)
         {
-            ref SlotState slot = ref slots[snapshot.Handle.Slot];
-            switch (kind)
-            {
-                case NpcStateCommitKind.Spawn:
-                    Upsert(ref slot, in snapshot);
-                    committedSpawns++;
-                    break;
+            case NpcStateCommitKind.Spawn:
+                WriteSnapshot(slot, in snapshot);
+                committedSpawns++;
+                break;
 
-                case NpcStateCommitKind.Update:
-                    Upsert(ref slot, in snapshot);
-                    committedUpdates++;
-                    break;
+            case NpcStateCommitKind.Update:
+                WriteSnapshot(slot, in snapshot);
+                committedUpdates++;
+                break;
 
-                case NpcStateCommitKind.Despawn:
-                    if (slot.Active && slot.Generation == snapshot.Handle.Generation.Value)
-                    {
-                        slot = default;
-                        activeCount--;
-                    }
-                    committedDespawns++;
-                    break;
+            case NpcStateCommitKind.Despawn:
+                if (slot.Active && slot.Generation == snapshot.Handle.Generation.Value)
+                    ClearSnapshot(slot);
+                committedDespawns++;
+                break;
 
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(kind));
-            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(kind));
         }
     }
 
     public RuntimeNpcsSnapshot CaptureSnapshot()
     {
-        lock (sync)
+        var captured = new RuntimeNpcSnapshot[slots.Length];
+        int written = 0;
+
+        for (int slotIndex = 0; slotIndex < slots.Length; slotIndex++)
         {
-            var snapshot = new RuntimeNpcSnapshot[activeCount];
-            int written = 0;
-            for (int slotIndex = 0; slotIndex < slots.Length; slotIndex++)
+            SlotState slot = slots[slotIndex];
+            while (true)
             {
-                ref readonly SlotState slot = ref slots[slotIndex];
-                if (!slot.Active)
+                long before = Volatile.Read(ref slot.Sequence);
+                if ((before & 1L) != 0)
                     continue;
 
-                snapshot[written++] = slot.Snapshot;
-            }
+                bool active = slot.Active;
+                RuntimeNpcSnapshot snapshot = slot.Snapshot;
+                long after = Volatile.Read(ref slot.Sequence);
+                if (before != after || (after & 1L) != 0)
+                    continue;
 
-            return new RuntimeNpcsSnapshot(
-                snapshot.AsMemory(),
-                committedSpawns,
-                committedUpdates,
-                committedDespawns,
-                DateTimeOffset.UtcNow);
+                if (active)
+                    captured[written++] = snapshot;
+                break;
+            }
         }
+
+        return new RuntimeNpcsSnapshot(
+            captured.AsMemory(0, written),
+            Volatile.Read(ref committedSpawns),
+            Volatile.Read(ref committedUpdates),
+            Volatile.Read(ref committedDespawns),
+            DateTimeOffset.UtcNow);
     }
 
-    private void Upsert(ref SlotState slot, in NpcSnapshot snapshot)
+    private static SlotState[] CreateSlots()
     {
-        if (!slot.Active)
-            activeCount++;
+        var result = new SlotState[RuntimeNpcStore.MaximumAddressableCapacity];
+        for (int index = 0; index < result.Length; index++)
+            result[index] = new SlotState();
+        return result;
+    }
 
+    private static void WriteSnapshot(SlotState slot, in NpcSnapshot snapshot)
+    {
+        long writeSequence = BeginWrite(slot);
         slot.Active = true;
         slot.Generation = snapshot.Handle.Generation.Value;
         slot.Snapshot = Project(in snapshot);
+        EndWrite(slot, writeSequence);
     }
+
+    private static void ClearSnapshot(SlotState slot)
+    {
+        long writeSequence = BeginWrite(slot);
+        slot.Active = false;
+        slot.Generation = 0;
+        slot.Snapshot = default;
+        EndWrite(slot, writeSequence);
+    }
+
+    private static long BeginWrite(SlotState slot)
+    {
+        long sequence = Volatile.Read(ref slot.Sequence);
+        long writeSequence = unchecked(sequence + 1L);
+        if ((writeSequence & 1L) == 0)
+            writeSequence = unchecked(writeSequence + 1L);
+        Volatile.Write(ref slot.Sequence, writeSequence);
+        return writeSequence;
+    }
+
+    private static void EndWrite(SlotState slot, long writeSequence) =>
+        Volatile.Write(ref slot.Sequence, unchecked(writeSequence + 1L));
 
     private static RuntimeNpcSnapshot Project(in NpcSnapshot snapshot) =>
         new(
@@ -110,8 +141,9 @@ internal sealed class RuntimeNpcOperationsTelemetry : INpcOperations, INpcStateC
             NoGravity: snapshot.Simulation.NoGravity,
             NoTileCollide: snapshot.Simulation.NoTileCollide);
 
-    private struct SlotState
+    private sealed class SlotState
     {
+        public long Sequence;
         public bool Active;
         public ulong Generation;
         public RuntimeNpcSnapshot Snapshot;
