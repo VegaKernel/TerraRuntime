@@ -10,12 +10,21 @@ internal sealed class ServerRuntimeState
     private readonly Dictionary<byte, RuntimePlayerState> _players = [];
     private readonly PendingPlayerVitals?[] _pendingVitals = new PendingPlayerVitals?[MaxPlayerSlots];
     private readonly IRuntimePlayerEventSink? _playerEvents;
+    private readonly RuntimeNpcStore _npcs;
+    private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
+    private readonly INpcAiStateStepper _npcAiStepper;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
 
-    public ServerRuntimeState(IRuntimePlayerEventSink? playerEvents = null)
+    public ServerRuntimeState(
+        IRuntimePlayerEventSink? playerEvents = null,
+        RuntimeNpcStore? npcs = null,
+        INpcAiStateStepper? npcAiStepper = null)
     {
         _playerEvents = playerEvents;
+        _npcs = npcs ?? new RuntimeNpcStore();
+        _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
+        _npcAiStepper = npcAiStepper ?? new VanillaDemonEyeAiStepper();
     }
 
     public long AppliedCommands { get; private set; }
@@ -45,6 +54,20 @@ internal sealed class ServerRuntimeState
     public long RejectedPlayerMovements { get; private set; }
 
     public long DisconnectedPlayers { get; private set; }
+
+    public long AppliedNpcSpawns { get; private set; }
+
+    public long RejectedNpcSpawns { get; private set; }
+
+    public long AppliedNpcUpdates { get; private set; }
+
+    public long RejectedNpcUpdates { get; private set; }
+
+    public long AppliedNpcDespawns { get; private set; }
+
+    public long RejectedNpcDespawns { get; private set; }
+
+    public NpcAiStateTickSummary LastNpcAiTick { get; private set; }
 
     public PlayerSlotId? LastMovementPlayerSlot { get; private set; }
 
@@ -80,6 +103,12 @@ internal sealed class ServerRuntimeState
         return true;
     }
 
+    /// <summary>
+    /// Captures an exact generation-safe NPC snapshot on the authoritative thread.
+    /// </summary>
+    internal bool TryCaptureNpcSnapshot(NpcHandle npc, out NpcSnapshot snapshot) =>
+        _npcs.TryGet(npc, out snapshot);
+
     public void Apply(RuntimeCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -89,6 +118,18 @@ internal sealed class ServerRuntimeState
         {
             case WorkerResultCommand result:
                 Volatile.Write(ref lastWorkerResult, result.Value);
+                break;
+
+            case NpcSpawnRuntimeCommand spawn:
+                ApplyNpcSpawn(spawn);
+                break;
+
+            case NpcUpdateRuntimeCommand update:
+                ApplyNpcUpdate(update);
+                break;
+
+            case NpcDespawnRuntimeCommand despawn:
+                ApplyNpcDespawn(despawn);
                 break;
 
             case PlayerAppearanceRuntimeCommand appearance:
@@ -127,7 +168,45 @@ internal sealed class ServerRuntimeState
 
     public void Tick()
     {
+        LastNpcAiTick = _npcAiExecutor.Tick(_npcAiStepper);
         Updates++;
+    }
+
+    private void ApplyNpcSpawn(NpcSpawnRuntimeCommand command)
+    {
+        NpcStateUpdate state = command.State;
+        if (_npcs.TrySpawn(command.Slot, in state, out NpcSnapshot snapshot))
+        {
+            AppliedNpcSpawns++;
+            command.Completion?.TrySetResult(snapshot);
+            return;
+        }
+
+        RejectedNpcSpawns++;
+        command.Completion?.TrySetResult(null);
+    }
+
+    private void ApplyNpcUpdate(NpcUpdateRuntimeCommand command)
+    {
+        NpcStateUpdate state = command.State;
+        if (_npcs.TryUpdate(command.Npc, in state, out _))
+        {
+            AppliedNpcUpdates++;
+            return;
+        }
+
+        RejectedNpcUpdates++;
+    }
+
+    private void ApplyNpcDespawn(NpcDespawnRuntimeCommand command)
+    {
+        if (_npcs.TryDespawn(command.Npc))
+        {
+            AppliedNpcDespawns++;
+            return;
+        }
+
+        RejectedNpcDespawns++;
     }
 
     private void ApplyPlayerAppearance(PlayerAppearanceRuntimeCommand appearance)
@@ -360,7 +439,7 @@ internal sealed class ServerRuntimeState
             _pendingVitals[connection.Player.Slot.Value] = null;
 
         if (!_players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) ||
-            player.Connection != connection)
+            player.Connection != disconnect.Connection)
         {
             return;
         }
