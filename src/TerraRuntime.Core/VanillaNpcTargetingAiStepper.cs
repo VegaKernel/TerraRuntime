@@ -204,6 +204,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         {
             PursuitAllowed = !daytimeSurface,
             EncourageDespawn = daytimeSurface,
+            JustHit = simulation.JustHit,
             TimeLeft = simulation.TimeLeft
         };
 
@@ -227,6 +228,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
                 DirectionX = result.DirectionX,
                 DirectionY = result.DirectionY,
                 NoGravity = false,
+                JustHit = false,
                 TimeLeft = result.TimeLeft
             });
         return true;
