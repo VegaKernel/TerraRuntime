@@ -29,20 +29,14 @@ public readonly record struct VanillaZombieMotionInput(
     VanillaZombieTargetRefresh ClosestTarget)
 {
     public bool PursuitAllowed { get; init; } = true;
-
     public bool EncourageDespawn { get; init; }
-
     public bool JustHit { get; init; }
-
     public bool ApplyCanHitRule { get; init; }
-
     public bool CanHitCurrentTarget { get; init; } = true;
-
     public float NpcCenterY { get; init; }
-
     public float CurrentTargetCenterY { get; init; }
-
     public int TimeLeft { get; init; }
+    public int SpriteDirection { get; init; } = -1;
 }
 
 public readonly record struct VanillaZombieMotionResult(
@@ -55,12 +49,13 @@ public readonly record struct VanillaZombieMotionResult(
     int TargetRefreshes)
 {
     public int TimeLeft { get; init; }
+    public int SpriteDirection { get; init; }
 }
 
 /// <summary>
 /// Deterministic ordinary type-3 state slice from TerrariaServer 1.4.5.8 NPC.AI_003_Fighters.
 /// Covers stuck accounting including justHit and world CanHit resets, pursuit/TargetClosest cadence,
-/// the discouraged idle-turn branch, EncourageDespawn(10) lifetime clamping and default horizontal motion.
+/// discouraged idle turning including spriteDirection, EncourageDespawn(10) and default horizontal motion.
 /// World obstacle/door probing remains in the authoritative world-motion layer.
 /// </summary>
 public static class VanillaZombieMotion
@@ -84,6 +79,7 @@ public static class VanillaZombieMotion
             input.Scale <= 0f ||
             input.DirectionX is < -1 or > 1 ||
             input.DirectionY is < -1 or > 1 ||
+            input.SpriteDirection is < -1 or > 1 ||
             input.Target > byte.MaxValue ||
             input.TimeLeft < 0 ||
             (input.ApplyCanHitRule &&
@@ -100,6 +96,7 @@ public static class VanillaZombieMotion
         float velocityY = input.VelocityY;
         int directionX = input.DirectionX;
         int directionY = input.DirectionY;
+        int spriteDirection = input.SpriteDirection;
         ushort target = input.Target;
         float ai0 = input.Ai.Ai0;
         float ai1 = input.Ai.Ai1;
@@ -114,13 +111,9 @@ public static class VanillaZombieMotion
              (velocityX < 0f && directionX > 0));
 
         if (input.PositionX == input.OldPositionX || ai3 >= StuckThreshold || reversingWhileGrounded)
-        {
             ai3++;
-        }
         else if (MathF.Abs(velocityX) > 0.9f && ai3 > 0f)
-        {
             ai3--;
-        }
 
         if (ai3 > MaximumStuckCounter)
             ai3 = 0f;
@@ -129,9 +122,6 @@ public static class VanillaZombieMotion
         if (input.TargetOverlaps)
             ai3 = 0f;
 
-        // AI_003 applies Collision.CanHit after the ordinary stuck accounting above. A blocked current target
-        // forces the threshold immediately and asks to path upward. A visible target that is not more than
-        // 128 px above the fighter clears accumulated stuck state before the pursuit/idle branch is selected.
         if (input.ApplyCanHitRule)
         {
             if (!input.CanHitCurrentTarget)
@@ -165,6 +155,7 @@ public static class VanillaZombieMotion
                     if (ai0 >= 2f)
                     {
                         directionX *= -1;
+                        spriteDirection = directionX;
                         ai0 = 0f;
                     }
                 }
@@ -206,7 +197,8 @@ public static class VanillaZombieMotion
             new NpcAiState(ai0, ai1, ai2, ai3),
             targetRefreshes)
         {
-            TimeLeft = timeLeft
+            TimeLeft = timeLeft,
+            SpriteDirection = spriteDirection
         };
         return true;
 
