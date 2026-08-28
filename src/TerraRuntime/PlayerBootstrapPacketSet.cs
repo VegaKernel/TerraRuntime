@@ -288,8 +288,8 @@ public sealed class PlayerBootstrapPacketSet
             WorldTownNpc npc = townNpcs[npcSlot];
             int tileX = (int)(npc.X / 16f);
             int tileY = (int)(npc.Y / 16f);
-            if (tileX / TerrariaSectionGeometry.SectionWidthTiles != section.X ||
-                tileY / TerrariaSectionGeometry.SectionHeightTiles != section.Y)
+            if (tileX / TerrariaSectionGeometry.WidthTiles != section.X ||
+                tileY / TerrariaSectionGeometry.HeightTiles != section.Y)
             {
                 continue;
             }
