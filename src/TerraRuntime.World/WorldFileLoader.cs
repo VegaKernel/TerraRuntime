@@ -6,7 +6,7 @@ namespace TerraRuntime.World;
 /// Transactionally loads a complete Terraria 1.4.5.8 .wld file. No partially decoded state is returned:
 /// every section and the footer must validate before <see cref="WorldFileData"/> is published.
 /// </summary>
-public static class WorldFileLoader
+public static partial class WorldFileLoader
 {
     public static WorldFileLoadDiagnostic TryLoad(
         ReadOnlySpan<byte> file,
