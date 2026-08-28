@@ -5,6 +5,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.TerminalUI;
+using TerraRuntime.World;
 
 namespace TerraRuntime;
 
@@ -37,6 +38,35 @@ internal static class Program
             return TerminalUiSmoke.Run();
         }
 
+        int saveWldIndex = Array.FindIndex(
+            args,
+            static value => string.Equals(value, "--save-wld", StringComparison.Ordinal));
+        if (saveWldIndex >= 0)
+        {
+            if (saveWldIndex + 1 >= args.Length || string.IsNullOrWhiteSpace(args[saveWldIndex + 1]))
+            {
+                Console.Error.WriteLine("Usage: TerraRuntime.Server --save-wld <path.wld>");
+                return 29;
+            }
+
+            string worldPath = args[saveWldIndex + 1];
+            string cachePath = RuntimeWorldSnapshotCache.GetCachePath(worldPath);
+            RuntimeWorldCheckpointSaveDiagnostic save = RuntimeWorldSnapshotCache.TrySaveCanonicalCheckpointAtomic(
+                cachePath,
+                worldPath,
+                TerrariaServerHost.CreateServerWorldLoadLimits());
+            if (!save.IsSaved)
+            {
+                Console.Error.WriteLine(
+                    $"Canonical .wld checkpoint save failed: result={save.Result}, code={save.DetailCode}, cache='{cachePath}'.");
+                return 30;
+            }
+
+            Console.WriteLine(
+                $"Canonical .wld checkpoint saved atomically: '{worldPath}', cache='{cachePath}', result={save.Result}.");
+            return 0;
+        }
+
         if (args.Contains("--world", StringComparer.Ordinal))
         {
             if (!ServerHostOptions.TryParse(args, out ServerHostOptions? options, out string? error) || options is null)
@@ -52,6 +82,7 @@ internal static class Program
         Console.WriteLine(
             "TerraRuntime .NET 11 server runtime. " +
             "Start with --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--tui], " +
+            "restore the compatible checkpoint with --save-wld <path.wld>, " +
             "or use --loop-smoke, --protocol-smoke, --network-smoke, --world-smoke or --tui-smoke.");
         return 0;
     }
