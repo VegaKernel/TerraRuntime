@@ -12,19 +12,22 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
     private readonly RuntimeConnectionQueueTelemetry queueTelemetry;
     private readonly RuntimeConnectionRateTelemetry rateTelemetry;
     private readonly global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication;
+    private readonly global::TerraRuntime.RuntimeProjectileReplicationRegistry? projectileReplication;
 
     public LocalRuntimeNetworkOperations(
         TerrariaConnectionAdmissionGate admission,
         global::TerraRuntime.RuntimeConnectionRegistry connections,
         RuntimeConnectionQueueTelemetry queueTelemetry,
         RuntimeConnectionRateTelemetry rateTelemetry,
-        global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication = null)
+        global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication = null,
+        global::TerraRuntime.RuntimeProjectileReplicationRegistry? projectileReplication = null)
     {
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
         this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
         this.queueTelemetry = queueTelemetry ?? throw new ArgumentNullException(nameof(queueTelemetry));
         this.rateTelemetry = rateTelemetry ?? throw new ArgumentNullException(nameof(rateTelemetry));
         this.npcReplication = npcReplication;
+        this.projectileReplication = projectileReplication;
     }
 
     public RuntimeNetworkSnapshot CaptureSnapshot()
@@ -62,6 +65,10 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             NpcRelayedFrames: npcReplication?.RelayedFrames ?? 0,
             NpcBaselineFrames: npcReplication?.BaselineFrames ?? 0,
             NpcRejectedFrames: npcReplication?.RejectedFrames ?? 0,
-            NpcUnsupportedCommits: npcReplication?.UnsupportedCommits ?? 0);
+            NpcUnsupportedCommits: npcReplication?.UnsupportedCommits ?? 0,
+            ProjectileRelayedFrames: projectileReplication?.RelayedFrames ?? 0,
+            ProjectileBaselineFrames: projectileReplication?.BaselineFrames ?? 0,
+            ProjectileRejectedFrames: projectileReplication?.RejectedFrames ?? 0,
+            ProjectileUnsupportedCommits: projectileReplication?.UnsupportedCommits ?? 0);
     }
 }
