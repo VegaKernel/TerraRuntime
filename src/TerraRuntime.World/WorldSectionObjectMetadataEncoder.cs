@@ -1,4 +1,5 @@
 using System.Text;
+using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.World;
 
@@ -113,8 +114,16 @@ public static class WorldSectionObjectMetadataEncoder
             if (!tile.IsActive)
                 continue;
 
-            bool basicChest = (tile.Type is 21 or 467) && tile.FrameX % 36 == 0 && tile.FrameY % 36 == 0;
-            bool dresser = tile.Type == 88 && tile.FrameX % 54 == 0 && tile.FrameY % 36 == 0;
+            TileTypeId tileType = tile.TileType;
+            bool basicChest =
+                VanillaTileIds.IsChestAnchor(tileType) &&
+                tileType != VanillaTileIds.Dressers &&
+                tile.FrameX % 36 == 0 &&
+                tile.FrameY % 36 == 0;
+            bool dresser =
+                tileType == VanillaTileIds.Dressers &&
+                tile.FrameX % 54 == 0 &&
+                tile.FrameY % 36 == 0;
             if (basicChest || dresser)
                 result.Add(chest);
         }
@@ -137,8 +146,10 @@ public static class WorldSectionObjectMetadataEncoder
                 continue;
 
             WorldTile tile = world.Tiles.Get(sign.X, sign.Y);
-            if (tile.IsActive && (tile.Type is 85 or 55 or 425 or 573) &&
-                tile.FrameX % 36 == 0 && tile.FrameY % 36 == 0)
+            if (tile.IsActive &&
+                VanillaTileIds.CarriesSignText(tile.TileType) &&
+                tile.FrameX % 36 == 0 &&
+                tile.FrameY % 36 == 0)
             {
                 result.Add(sign);
             }
@@ -170,19 +181,30 @@ public static class WorldSectionObjectMetadataEncoder
         return result;
     }
 
-    private static bool MatchesVanillaTileEntityAnchor(WorldTileEntityKind kind, in WorldTile tile) =>
-        kind switch
+    private static bool MatchesVanillaTileEntityAnchor(WorldTileEntityKind kind, in WorldTile tile)
+    {
+        TileTypeId tileType = tile.TileType;
+        return kind switch
         {
-            WorldTileEntityKind.TrainingDummy => tile.Type == 378 && tile.FrameX % 36 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.ItemFrame => tile.Type == 395 && tile.FrameX % 36 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.DeadCellsDisplayJar => tile.Type == 698 && tile.FrameX % 18 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.FoodPlatter => tile.Type == 520 && tile.FrameX % 18 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.WeaponsRack => tile.Type == 471 && tile.FrameX % 54 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.DisplayDoll => tile.Type == 470 && tile.FrameX % 36 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.HatRack => tile.Type == 475 && tile.FrameX % 54 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.TeleportationPylon => tile.Type == 597 && tile.FrameX % 54 == 0 && tile.FrameY % 72 == 0,
+            WorldTileEntityKind.TrainingDummy =>
+                tileType == VanillaTileIds.TargetDummy && tile.FrameX % 36 == 0 && tile.FrameY == 0,
+            WorldTileEntityKind.ItemFrame =>
+                tileType == VanillaTileIds.ItemFrame && tile.FrameX % 36 == 0 && tile.FrameY == 0,
+            WorldTileEntityKind.DeadCellsDisplayJar =>
+                tileType == VanillaTileIds.DeadCellsDisplayJar && tile.FrameX % 18 == 0 && tile.FrameY == 0,
+            WorldTileEntityKind.FoodPlatter =>
+                tileType == VanillaTileIds.FoodPlatter && tile.FrameX % 18 == 0 && tile.FrameY == 0,
+            WorldTileEntityKind.WeaponsRack =>
+                tileType == VanillaTileIds.WeaponsRack2 && tile.FrameX % 54 == 0 && tile.FrameY == 0,
+            WorldTileEntityKind.DisplayDoll =>
+                tileType == VanillaTileIds.DisplayDoll && tile.FrameX % 36 == 0 && tile.FrameY == 0,
+            WorldTileEntityKind.HatRack =>
+                tileType == VanillaTileIds.HatRack && tile.FrameX % 54 == 0 && tile.FrameY == 0,
+            WorldTileEntityKind.TeleportationPylon =>
+                tileType == VanillaTileIds.TeleportationPylon && tile.FrameX % 54 == 0 && tile.FrameY % 72 == 0,
             _ => false
         };
+    }
 
     private static bool TryWriteEntityPayload(BinaryWriter writer, WorldTileEntity entity)
     {
