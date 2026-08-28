@@ -41,6 +41,7 @@ public readonly record struct WorldItemStateUpdate(
 /// <summary>
 /// Bounded runtime-owned world-item state. Terraria reuses item slots, so identity is slot + generation;
 /// revision changes only within one generation. Reads are copied under a short lock for join/replication snapshots.
+/// Commit notifications are emitted only after the internal lock has been released.
 /// </summary>
 public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
 {
@@ -48,7 +49,13 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
     private readonly object _gate = new();
     private readonly SlotState[] _slots = new SlotState[VanillaCapacity];
+    private readonly IWorldItemStateCommitSink? _commitSink;
     private int _activeCount;
+
+    public RuntimeWorldItemStore(IWorldItemStateCommitSink? commitSink = null)
+    {
+        _commitSink = commitSink;
+    }
 
     public int Capacity => VanillaCapacity;
 
@@ -73,8 +80,13 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             return false;
         }
 
+        bool committed;
         lock (_gate)
-            return TryAllocateLocked(in update, out snapshot);
+            committed = TryAllocateLocked(in update, out snapshot);
+
+        if (committed)
+            Publish(WorldItemStateCommitKind.Drop, in snapshot);
+        return committed;
     }
 
     /// <summary>
@@ -90,8 +102,13 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         WorldItemStateUpdate initial = CreateInitial(in drop);
+        bool committed;
         lock (_gate)
-            return TryAllocateLocked(in initial, out snapshot);
+            committed = TryAllocateLocked(in initial, out snapshot);
+
+        if (committed)
+            Publish(WorldItemStateCommitKind.Drop, in snapshot);
+        return committed;
     }
 
     public bool TryUpsert(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
@@ -102,8 +119,13 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             return false;
         }
 
+        bool committed;
         lock (_gate)
-            return TryUpsertLocked(slot, in update, out snapshot);
+            committed = TryUpsertLocked(slot, in update, out snapshot);
+
+        if (committed)
+            Publish(WorldItemStateCommitKind.Drop, in snapshot);
+        return committed;
     }
 
     /// <summary>
@@ -118,14 +140,19 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             return false;
         }
 
+        bool committed;
         lock (_gate)
         {
             ref SlotState state = ref _slots[slot];
             WorldItemStateUpdate merged = state.Active
                 ? MergeDrop(in state.Update, in drop)
                 : CreateInitial(in drop);
-            return TryUpsertLocked(slot, in merged, out snapshot);
+            committed = TryUpsertLocked(slot, in merged, out snapshot);
         }
+
+        if (committed)
+            Publish(WorldItemStateCommitKind.Drop, in snapshot);
+        return committed;
     }
 
     /// <summary>
@@ -140,27 +167,33 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             return false;
         }
 
+        bool committed = false;
         lock (_gate)
         {
             ref SlotState state = ref _slots[slot];
-            if (!state.Active || !TryAdvance(ref state.Revision))
+            if (state.Active && TryAdvance(ref state.Revision))
+            {
+                state.Update = state.Update with
+                {
+                    PositionX = owner.PositionX,
+                    PositionY = owner.PositionY,
+                    OwnerPlayerId = owner.OwnerPlayerId,
+                    TimeToKeepReservation = owner.TimeToKeepReservation,
+                    GrabDelayPlayer = owner.GrabDelayPlayer,
+                    GrabDelayTime = owner.GrabDelayTime
+                };
+                snapshot = Capture(slot, in state);
+                committed = true;
+            }
+            else
             {
                 snapshot = default;
-                return false;
             }
-
-            state.Update = state.Update with
-            {
-                PositionX = owner.PositionX,
-                PositionY = owner.PositionY,
-                OwnerPlayerId = owner.OwnerPlayerId,
-                TimeToKeepReservation = owner.TimeToKeepReservation,
-                GrabDelayPlayer = owner.GrabDelayPlayer,
-                GrabDelayTime = owner.GrabDelayTime
-            };
-            snapshot = Capture(slot, in state);
-            return true;
         }
+
+        if (committed)
+            Publish(WorldItemStateCommitKind.Owner, in snapshot);
+        return committed;
     }
 
     public bool TryRemove(short slot, out WorldItemHandle removed)
@@ -171,6 +204,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             return false;
         }
 
+        WorldItemSnapshot finalSnapshot;
         lock (_gate)
         {
             ref SlotState state = ref _slots[slot];
@@ -180,12 +214,15 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
                 return false;
             }
 
-            removed = new WorldItemHandle(slot, new WorldItemGeneration(state.Generation));
+            finalSnapshot = Capture(slot, in state);
+            removed = finalSnapshot.Handle;
             state.Active = false;
             state.Update = default;
             _activeCount--;
-            return true;
         }
+
+        Publish(WorldItemStateCommitKind.Remove, in finalSnapshot);
+        return true;
     }
 
     public bool TryGetActive(short slot, out WorldItemSnapshot snapshot)
@@ -234,6 +271,9 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             return written;
         }
     }
+
+    private void Publish(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot) =>
+        _commitSink?.WorldItemStateCommitted(kind, in snapshot);
 
     private bool TryAllocateLocked(in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
     {
