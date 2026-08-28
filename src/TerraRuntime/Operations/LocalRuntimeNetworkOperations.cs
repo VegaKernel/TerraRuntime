@@ -13,6 +13,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
     private readonly RuntimeConnectionRateTelemetry rateTelemetry;
     private readonly global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication;
     private readonly global::TerraRuntime.RuntimeProjectileReplicationRegistry? projectileReplication;
+    private readonly global::TerraRuntime.RuntimeWorldItemReplicationRegistry? worldItemReplication;
 
     public LocalRuntimeNetworkOperations(
         TerrariaConnectionAdmissionGate admission,
@@ -20,7 +21,8 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         RuntimeConnectionQueueTelemetry queueTelemetry,
         RuntimeConnectionRateTelemetry rateTelemetry,
         global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication = null,
-        global::TerraRuntime.RuntimeProjectileReplicationRegistry? projectileReplication = null)
+        global::TerraRuntime.RuntimeProjectileReplicationRegistry? projectileReplication = null,
+        global::TerraRuntime.RuntimeWorldItemReplicationRegistry? worldItemReplication = null)
     {
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
         this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
@@ -28,6 +30,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         this.rateTelemetry = rateTelemetry ?? throw new ArgumentNullException(nameof(rateTelemetry));
         this.npcReplication = npcReplication;
         this.projectileReplication = projectileReplication;
+        this.worldItemReplication = worldItemReplication;
     }
 
     public RuntimeNetworkSnapshot CaptureSnapshot()
@@ -69,6 +72,9 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             ProjectileRelayedFrames: projectileReplication?.RelayedFrames ?? 0,
             ProjectileBaselineFrames: projectileReplication?.BaselineFrames ?? 0,
             ProjectileRejectedFrames: projectileReplication?.RejectedFrames ?? 0,
-            ProjectileUnsupportedCommits: projectileReplication?.UnsupportedCommits ?? 0);
+            ProjectileUnsupportedCommits: projectileReplication?.UnsupportedCommits ?? 0,
+            WorldItemRelayedFrames: worldItemReplication?.RelayedFrames ?? 0,
+            WorldItemRejectedFrames: worldItemReplication?.RejectedFrames ?? 0,
+            WorldItemUnsupportedCommits: worldItemReplication?.UnsupportedCommits ?? 0);
     }
 }
