@@ -79,8 +79,8 @@ public enum NpcLiquidContactKind : byte
 /// <summary>
 /// Authoritative local simulation inputs/state required by vanilla NPC AI and movement. Collision, overlap,
 /// liquid, combat and lifetime state are local runtime facts rather than packet-23 serialization details.
-/// Zero LifeMax or TimeLeft means the caller left that state unspecified; the authoritative store resolves
-/// those sentinels on spawn and preserves existing values across updates that do not own them.
+/// Zero LifeMax means unspecified combat state; TimeLeft == -1 means unspecified lifetime state. The store
+/// resolves those sentinels on spawn and preserves existing values across updates that do not own them.
 /// </summary>
 public readonly record struct NpcSimulationState(
     int DirectionX,
@@ -113,8 +113,8 @@ public readonly record struct NpcSimulationState(
     public int LifeMax { get; init; }
 
     /// <summary>
-    /// Vanilla inactivity lifetime. Zero is an ingress/update sentinel until lifecycle materializes
-    /// the default active time; ordinary AI updates preserve the current value unless they explicitly own it.
+    /// Vanilla inactivity lifetime. -1 is reserved for an unspecified ingress/update value; zero is a
+    /// real expired lifetime and must remain representable so CheckActive can request authoritative despawn.
     /// </summary>
     public int TimeLeft { get; init; }
 
@@ -141,7 +141,7 @@ public readonly record struct NpcSimulationState(
         OldPositionY = 0f,
         Life = 0,
         LifeMax = 0,
-        TimeLeft = 0,
+        TimeLeft = -1,
         SolidCollision = false
     };
 
@@ -156,7 +156,7 @@ public readonly record struct NpcSimulationState(
         Scale > 0f &&
         ((LifeMax == 0 && Life == 0) ||
          (LifeMax > 0 && Life >= 0 && Life <= LifeMax)) &&
-        TimeLeft >= 0 &&
+        TimeLeft >= -1 &&
         Enum.IsDefined(LiquidContact);
 }
 
