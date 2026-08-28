@@ -122,7 +122,7 @@ public sealed class PlayerBootstrapPacketSet
     /// <summary>
     /// Creates the additional section sync selected by packet 8. The client-requested window and,
     /// for team-based-spawn worlds, the team's extra-spawn window are deduplicated against already sent sections.
-    /// Each section contributes packet 10 followed by persistence-derived post-section sync such as chest contents.
+    /// Each section contributes packet 10 followed by persisted town-NPC sync and then chest contents.
     /// </summary>
     public bool TryCreateSectionResponse(
         int tileX,
@@ -281,13 +281,41 @@ public sealed class PlayerBootstrapPacketSet
         out ReadOnlyMemory<byte>[] frames)
     {
         var encodedFrames = new List<ReadOnlyMemory<byte>>();
+
+        WorldTownNpc[] townNpcs = world.Npcs.TownNpcs;
+        for (int npcSlot = 0; npcSlot < townNpcs.Length; npcSlot++)
+        {
+            WorldTownNpc npc = townNpcs[npcSlot];
+            int tileX = (int)(npc.X / 16f);
+            int tileY = (int)(npc.Y / 16f);
+            if (tileX / TerrariaSectionGeometry.SectionWidthTiles != section.X ||
+                tileY / TerrariaSectionGeometry.SectionHeightTiles != section.Y)
+            {
+                continue;
+            }
+
+            WorldTownNpcSyncPacketEncodeResult npcResult = WorldTownNpcSyncPacketEncoder.TryEncode(
+                npcSlot,
+                npc,
+                out ReadOnlyMemory<byte> npcFrame);
+            if (npcResult != WorldTownNpcSyncPacketEncodeResult.Encoded)
+            {
+                frames = [];
+                return false;
+            }
+
+            encodedFrames.Add(npcFrame);
+        }
+
         foreach (WorldChest chest in world.Chests)
         {
             if (TerrariaSectionGeometry.FromTile(world.Header.Dimensions, chest.X, chest.Y) != section)
                 continue;
 
-            WorldChestSyncPacketEncodeResult result = WorldChestSyncPacketEncoder.TryEncode(chest, out ReadOnlyMemory<byte>[] chestFrames);
-            if (result != WorldChestSyncPacketEncodeResult.Encoded)
+            WorldChestSyncPacketEncodeResult chestResult = WorldChestSyncPacketEncoder.TryEncode(
+                chest,
+                out ReadOnlyMemory<byte>[] chestFrames);
+            if (chestResult != WorldChestSyncPacketEncodeResult.Encoded)
             {
                 frames = [];
                 return false;
