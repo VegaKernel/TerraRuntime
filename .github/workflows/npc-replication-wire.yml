@@ -1,0 +1,150 @@
+name: Wire NPC replication host path
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/npc-replication-wire.yml
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Apply guarded host wiring
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/TerraRuntime/TerrariaServerHost.cs')
+          text = path.read_text()
+
+          replacements = [
+              ('''        var worldItems = new RuntimeWorldItemStore();
+        var runtimeConnections = new RuntimeConnectionRegistry(
+            runtimeInterestManagement,
+            world.Header.Dimensions);
+        var vitalsReplication = new RuntimePlayerVitalsReplicator();
+        var playerOperations = new RuntimePlayerOperationsTelemetry();
+        var playerEvents = new RuntimePlayerEventDispatcher(
+            runtimeConnections,
+            vitalsReplication,
+            playerOperations);
+        var state = new ServerRuntimeState(playerEvents, worldTiles: world.Tiles);
+''', '''        var worldItems = new RuntimeWorldItemStore();
+        var runtimeConnections = new RuntimeConnectionRegistry(
+            runtimeInterestManagement,
+            world.Header.Dimensions);
+        var npcReplication = new RuntimeNpcReplicationRegistry();
+        var npcStore = new RuntimeNpcStore(commitSink: npcReplication);
+        var vitalsReplication = new RuntimePlayerVitalsReplicator();
+        var playerOperations = new RuntimePlayerOperationsTelemetry();
+        var playerNetworkEvents = new RuntimePlayerEventDispatcher(
+            runtimeConnections,
+            vitalsReplication,
+            playerOperations);
+        var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, npcReplication);
+        var state = new ServerRuntimeState(playerEvents, npcs: npcStore, worldTiles: world.Tiles);
+'''),
+              ('''                    runtimeConnections,
+                    vitalsReplication,
+                    worldItems,
+''', '''                    runtimeConnections,
+                    npcReplication,
+                    vitalsReplication,
+                    worldItems,
+'''),
+              ('''        RuntimeConnectionRegistry runtimeConnections,
+        RuntimePlayerVitalsReplicator vitalsReplication,
+''', '''        RuntimeConnectionRegistry runtimeConnections,
+        RuntimeNpcReplicationRegistry npcReplication,
+        RuntimePlayerVitalsReplicator vitalsReplication,
+'''),
+              ('''            if (!runtimeConnections.TryRegister(source, outbound))
+            {
+                socket.Dispose();
+                return;
+            }
+
+            if (!queueTelemetry.TryRegister(connectionId, outbound))
+            {
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+            }
+''', '''            if (!runtimeConnections.TryRegister(source, outbound))
+            {
+                socket.Dispose();
+                return;
+            }
+
+            if (!npcReplication.TryRegister(source, outbound))
+            {
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+            }
+
+            if (!queueTelemetry.TryRegister(connectionId, outbound))
+            {
+                npcReplication.TryUnregister(source);
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+            }
+'''),
+              ('''                queueTelemetry.TryUnregister(connectionId);
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+''', '''                queueTelemetry.TryUnregister(connectionId);
+                npcReplication.TryUnregister(source);
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+'''),
+              ('''                rateTelemetry.TryUnregister(connectionId);
+                queueTelemetry.TryUnregister(connectionId);
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+''', '''                rateTelemetry.TryUnregister(connectionId);
+                queueTelemetry.TryUnregister(connectionId);
+                npcReplication.TryUnregister(source);
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+'''),
+              ('''                vitalsReplication.TryUnregister(source);
+                if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
+''', '''                vitalsReplication.TryUnregister(source);
+                npcReplication.TryUnregister(source);
+                if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
+'''),
+          ]
+
+          for index, (old, new) in enumerate(replacements, 1):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'replacement {index} expected exactly once, found {count}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Commit guarded wiring
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/TerraRuntime/TerrariaServerHost.cs
+          git diff --cached --check
+          git commit -m "network: wire NPC packet 23 replication into host"
+          git push origin HEAD:main
