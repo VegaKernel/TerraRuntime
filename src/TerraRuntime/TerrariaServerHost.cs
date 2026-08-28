@@ -221,18 +221,22 @@ public static class TerrariaServerHost
             ? npcReplication
             : new RuntimeNpcStateCommitFanout(npcReplication, npcOperations);
         var npcStore = new RuntimeNpcStore(commitSink: npcCommitSink);
+        var projectileReplication = new RuntimeProjectileReplicationRegistry();
+        var projectileStore = new RuntimeProjectileStore(commitSink: projectileReplication);
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
         var playerOperations = new RuntimePlayerOperationsTelemetry();
         var playerNetworkEvents = new RuntimePlayerEventDispatcher(
             runtimeConnections,
             vitalsReplication,
             playerOperations);
-        var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, npcReplication);
+        var entityReplicationEvents = new RuntimePlayerEventFanout(npcReplication, projectileReplication);
+        var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, entityReplicationEvents);
         var state = new ServerRuntimeState(
             playerEvents,
             npcs: npcStore,
             worldTiles: world.Tiles,
-            worldClock: worldClock);
+            worldClock: worldClock,
+            projectiles: projectileStore);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
             static (runtime, command) => runtime.Apply(command),
@@ -403,6 +407,7 @@ public static class TerrariaServerHost
                     disconnectIngress,
                     runtimeConnections,
                     npcReplication,
+                    projectileReplication,
                     vitalsReplication,
                     worldItems,
                     queueTelemetry,
@@ -468,6 +473,7 @@ public static class TerrariaServerHost
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
         RuntimeNpcReplicationRegistry npcReplication,
+        RuntimeProjectileReplicationRegistry projectileReplication,
         RuntimePlayerVitalsReplicator vitalsReplication,
         RuntimeWorldItemStore worldItems,
         RuntimeConnectionQueueTelemetry queueTelemetry,
@@ -497,8 +503,17 @@ public static class TerrariaServerHost
                 return;
             }
 
+            if (!projectileReplication.TryRegister(source, outbound))
+            {
+                npcReplication.TryUnregister(source);
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+            }
+
             if (!queueTelemetry.TryRegister(connectionId, outbound))
             {
+                projectileReplication.TryUnregister(source);
                 npcReplication.TryUnregister(source);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
@@ -508,6 +523,7 @@ public static class TerrariaServerHost
             if (!rateTelemetry.TryRegister(connectionId, rateAccountant))
             {
                 queueTelemetry.TryUnregister(connectionId);
+                projectileReplication.TryUnregister(source);
                 npcReplication.TryUnregister(source);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
@@ -518,6 +534,7 @@ public static class TerrariaServerHost
             {
                 rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
+                projectileReplication.TryUnregister(source);
                 npcReplication.TryUnregister(source);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
@@ -578,6 +595,7 @@ public static class TerrariaServerHost
                 rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
                 vitalsReplication.TryUnregister(source);
+                projectileReplication.TryUnregister(source);
                 npcReplication.TryUnregister(source);
                 if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
                     playingPlayer is PlayerHandle player)
