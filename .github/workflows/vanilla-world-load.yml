@@ -184,6 +184,17 @@ jobs:
           grep -q "TerraRuntime listening on 0.0.0.0:17781" "$warm_log"
           cat "$warm_log"
 
+      - name: Benchmark runtime cache parallel reads
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.WorldVerify/TerraRuntime.WorldVerify.csproj \
+            -c Release \
+            -- --cache-bench artifacts/vanilla-smoke.wld \
+            | tee artifacts/runtime-cache-parallel.txt
+          cat artifacts/runtime-cache-parallel.txt >> "$GITHUB_STEP_SUMMARY"
+
       - name: Restore canonical wld checkpoint from snapshot
         shell: bash
         run: |
@@ -261,7 +272,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: runtime-cache-timing
-          path: artifacts/runtime-cache-timing.txt
+          path: |
+            artifacts/runtime-cache-timing.txt
+            artifacts/runtime-cache-parallel.txt
           retention-days: 14
 
       - name: Upload failure evidence
@@ -275,4 +288,5 @@ jobs:
             artifacts/terraruntime-server.log
             artifacts/terraruntime-client.log
             artifacts/terraruntime-warm-cache.log
+            artifacts/runtime-cache-parallel.txt
           retention-days: 3
