@@ -153,6 +153,25 @@ jobs:
                   raise RuntimeError(f"invalid frame length {length} for packet {message_id}")
               return message_id, recv_exact(sock, length - 3)
 
+          def recv_until_packet(sock, expected_id, timeout, max_frames=2048):
+              deadline = time.monotonic() + timeout
+              skipped = []
+              for _ in range(max_frames):
+                  remaining = deadline - time.monotonic()
+                  if remaining <= 0:
+                      break
+                  sock.settimeout(remaining)
+                  try:
+                      message_id, payload = recv_frame(sock)
+                  except socket.timeout:
+                      break
+                  if message_id == expected_id:
+                      return payload, skipped
+                  skipped.append(message_id)
+              raise SystemExit(
+                  f"expected packet {expected_id} before timeout/frame limit; skipped={skipped[:64]}"
+              )
+
           hello = bytes([
               15, 0,
               1,
@@ -271,11 +290,14 @@ jobs:
               )
               client1.sendall(movement)
 
-              client2.settimeout(5)
-              message_id, payload = recv_frame(client2)
-              if message_id != 13 or len(payload) != 14:
+              # SyncOnePlayer lifecycle/baseline frames such as PlayerActive (14), PlayerInfo (4)
+              # and PlayerSlot (5) may already be queued after the second spawn. Wait for the
+              # semantic movement result instead of assuming packet 13 is physically next.
+              payload, skipped_to_movement = recv_until_packet(client2, 13, 5)
+              if len(payload) != 14:
                   raise SystemExit(
-                      f"expected relayed minimum packet 13, got id={message_id}, payloadBytes={len(payload)}"
+                      f"expected relayed minimum packet 13 payload, got payloadBytes={len(payload)}, "
+                      f"skipped={skipped_to_movement[:64]}"
                   )
               if payload[0] != 0:
                   raise SystemExit(
@@ -287,15 +309,24 @@ jobs:
                       f"movement relay changed coordinates: expected=({movement_x},{movement_y}), got=({relayed_x},{relayed_y})"
                   )
 
-              client1.settimeout(0.5)
-              try:
-                  echoed_id, echoed_payload = recv_frame(client1)
-              except socket.timeout:
-                  pass
-              else:
-                  raise SystemExit(
-                      f"movement sender unexpectedly received relay echo id={echoed_id}, bytes={len(echoed_payload)}"
-                  )
+              # The sender may legitimately receive lifecycle/baseline frames for the peer. What
+              # must never happen is an echo of its own authoritative movement packet.
+              echo_deadline = time.monotonic() + 0.5
+              echoed_movement = None
+              while time.monotonic() < echo_deadline:
+                  client1.settimeout(max(0.001, echo_deadline - time.monotonic()))
+                  try:
+                      echoed_id, echoed_payload = recv_frame(client1)
+                  except socket.timeout:
+                      break
+                  if echoed_id != 13 or len(echoed_payload) != 14:
+                      continue
+                  echoed_x, echoed_y = struct.unpack_from("<ff", echoed_payload, 6)
+                  if echoed_payload[0] == 0 and echoed_x == movement_x and echoed_y == movement_y:
+                      echoed_movement = echoed_payload
+                      break
+              if echoed_movement is not None:
+                  raise SystemExit("movement sender unexpectedly received its own authoritative packet-13 relay echo")
 
               client1.close()
               client1 = None
@@ -309,8 +340,8 @@ jobs:
                       candidate = socket.create_connection(("127.0.0.1", 17780), timeout=1)
                       candidate.settimeout(0.5)
                       candidate.sendall(hello)
-                      message_id, payload = recv_frame(candidate)
-                      if message_id == 3 and payload == b"\x00\x00":
+                      message_id, replacement_payload = recv_frame(candidate)
+                      if message_id == 3 and replacement_payload == b"\x00\x00":
                           replacement = candidate
                           candidate = None
                           break
@@ -329,7 +360,8 @@ jobs:
                   f"client1Sections={sections1}, client2Sections={sections2}, "
                   f"client1ChestSizes={chest_sizes1}, client2ChestSizes={chest_sizes2}, "
                   f"client1ChestItems={chest_items1}, client2ChestItems={chest_items2}, "
-                  f"framesBefore49=({frames1},{frames2}), relaySlot={payload[0] if payload else 0}."
+                  f"framesBefore49=({frames1},{frames2}), relaySlot={payload[0]}, "
+                  f"lifecycleFramesBeforeRelay={len(skipped_to_movement)}."
               )
           finally:
               for client in (client1, client2, replacement):
