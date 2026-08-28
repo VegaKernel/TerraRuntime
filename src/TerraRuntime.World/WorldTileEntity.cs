@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.World;
 
 public enum WorldTileEntityKind : byte
@@ -15,7 +17,16 @@ public enum WorldTileEntityKind : byte
     CritterAnchor = 10
 }
 
-public readonly record struct WorldTileEntityItem(short Type, byte Prefix, short Stack);
+/// <summary>
+/// Persistence representation of one item embedded in a vanilla tile entity. Raw primitive fields are
+/// retained because they are the .wld ABI; gameplay consumers should cross them through the typed accessors.
+/// </summary>
+public readonly record struct WorldTileEntityItem(short Type, byte Prefix, short Stack)
+{
+    public bool TryGetItemType(out ItemTypeId itemType) => VanillaItemIds.TryCreate(Type, out itemType);
+
+    public PrefixId PrefixId => new(Prefix);
+}
 
 public abstract record WorldTileEntityPayload;
 
@@ -40,7 +51,10 @@ public sealed record WorldEmptyTileEntityPayload : WorldTileEntityPayload
     public static WorldEmptyTileEntityPayload Instance { get; } = new();
 }
 
-public sealed record WorldLeashedAnchorPayload(short ItemType) : WorldTileEntityPayload;
+public sealed record WorldLeashedAnchorPayload(short ItemType) : WorldTileEntityPayload
+{
+    public bool TryGetItemType(out ItemTypeId itemType) => VanillaItemIds.TryCreate(ItemType, out itemType);
+}
 
 public sealed record WorldTileEntity(
     int PersistedId,
@@ -48,6 +62,44 @@ public sealed record WorldTileEntity(
     short Y,
     WorldTileEntityKind Kind,
     WorldTileEntityPayload Payload);
+
+/// <summary>
+/// Version-pinned validation for item identities embedded in tile-entity payloads. This deliberately
+/// validates only content identity at this stage; stack/prefix semantics remain source-backed follow-up work.
+/// </summary>
+public static class WorldTileEntityItemValidator
+{
+    public static bool HasValidItemTypes(WorldTileEntityPayload payload)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+
+        return payload switch
+        {
+            WorldItemTileEntityPayload item => IsValid(item.Item),
+            WorldDisplayDollPayload doll =>
+                AllValid(doll.Equipment) &&
+                AllValid(doll.Dyes) &&
+                (!doll.Misc.HasValue || IsValid(doll.Misc.Value)),
+            WorldHatRackPayload hatRack => AllValid(hatRack.Items) && AllValid(hatRack.Dyes),
+            WorldLeashedAnchorPayload anchor => anchor.TryGetItemType(out _),
+            _ => true
+        };
+    }
+
+    private static bool AllValid(WorldTileEntityItem?[] items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        for (int i = 0; i < items.Length; i++)
+        {
+            if (items[i].HasValue && !IsValid(items[i]!.Value))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsValid(in WorldTileEntityItem item) => item.TryGetItemType(out _);
+}
 
 public enum WorldFileTileEntityDecodeResult : byte
 {
@@ -62,5 +114,6 @@ public enum WorldFileTileEntityDecodeResult : byte
     DuplicatePersistedId = 8,
     InvalidCoordinates = 9,
     InvalidPayloadFlags = 10,
-    SectionLengthMismatch = 11
+    SectionLengthMismatch = 11,
+    InvalidItemType = 12
 }
