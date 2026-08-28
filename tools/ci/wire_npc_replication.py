@@ -90,31 +90,43 @@ replacements = [
 """,
     ),
     (
-        """                queueTelemetry.TryUnregister(connectionId);
+        """            if (!rateTelemetry.TryRegister(connectionId, rateAccountant))
+            {
+                queueTelemetry.TryUnregister(connectionId);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
+            }
 """,
-        """                queueTelemetry.TryUnregister(connectionId);
+        """            if (!rateTelemetry.TryRegister(connectionId, rateAccountant))
+            {
+                queueTelemetry.TryUnregister(connectionId);
                 npcReplication.TryUnregister(source);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
+            }
 """,
     ),
     (
-        """                rateTelemetry.TryUnregister(connectionId);
+        """            if (!vitalsReplication.TryRegister(source, outbound))
+            {
+                rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
+            }
 """,
-        """                rateTelemetry.TryUnregister(connectionId);
+        """            if (!vitalsReplication.TryRegister(source, outbound))
+            {
+                rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
                 npcReplication.TryUnregister(source);
                 runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
+            }
 """,
     ),
     (
