@@ -88,7 +88,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             CollideX: simulation.CollideX,
             CollideY: simulation.CollideY,
             Engaged: false,
-            SolidCollision: false,
+            SolidCollision: simulation.SolidCollision,
             ClosestTarget: closest);
 
         if (!VanillaBlueSlimeMotion.TryStep(in input, out VanillaBlueSlimeMotionResult result))
