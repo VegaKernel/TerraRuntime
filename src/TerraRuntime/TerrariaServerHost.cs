@@ -173,7 +173,7 @@ public static class TerrariaServerHost
             runtimeConnections,
             vitalsReplication,
             playerOperations);
-        var state = new ServerRuntimeState(playerEvents);
+        var state = new ServerRuntimeState(playerEvents, worldTiles: world.Tiles);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
             static (runtime, command) => runtime.Apply(command),
