@@ -62,6 +62,44 @@ public readonly record struct NpcAiState(float Ai0, float Ai1, float Ai2, float 
 }
 
 /// <summary>
+/// Authoritative local simulation inputs/state first required by vanilla floating-eye AI.
+/// Collision and wet flags are produced by their owning world/physics systems; AI consumes the
+/// immutable pre-pass values and may change persistent flags such as NoGravity.
+/// </summary>
+public readonly record struct NpcSimulationState(
+    int DirectionX,
+    int DirectionY,
+    float OldVelocityX,
+    float OldVelocityY,
+    bool CollideX,
+    bool CollideY,
+    bool Wet,
+    bool NoGravity,
+    bool NoTileCollide,
+    float Scale)
+{
+    public static NpcSimulationState Initial => new(
+        DirectionX: 0,
+        DirectionY: 0,
+        OldVelocityX: 0f,
+        OldVelocityY: 0f,
+        CollideX: false,
+        CollideY: false,
+        Wet: false,
+        NoGravity: false,
+        NoTileCollide: false,
+        Scale: 1f);
+
+    public bool IsValid =>
+        DirectionX is >= -1 and <= 1 &&
+        DirectionY is >= -1 and <= 1 &&
+        float.IsFinite(OldVelocityX) &&
+        float.IsFinite(OldVelocityY) &&
+        float.IsFinite(Scale) &&
+        Scale > 0f;
+}
+
+/// <summary>
 /// Minimal protocol-neutral live NPC projection used to bring authoritative NPC lifecycle and AI online.
 /// Type is the positive gameplay NPC type used by vanilla AI. NetId is kept separately because packet 23
 /// permits negative variant ids that map back to a positive gameplay type.
@@ -76,7 +114,8 @@ public readonly record struct NpcSnapshot(
     float VelocityX,
     float VelocityY,
     ushort Target,
-    NpcAiState Ai)
+    NpcAiState Ai,
+    NpcSimulationState Simulation)
 {
     public bool IsActive => Handle.IsAssigned && Revision.IsAssigned;
 }

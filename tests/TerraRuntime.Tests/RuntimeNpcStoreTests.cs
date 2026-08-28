@@ -94,14 +94,19 @@ public sealed class RuntimeNpcStoreTests
     }
 
     [Fact]
-    public void Non_finite_motion_or_ai_state_is_rejected_without_occupying_slot()
+    public void Non_finite_motion_ai_or_simulation_state_is_rejected_without_occupying_slot()
     {
         var store = new RuntimeNpcStore(capacity: 4);
         NpcStateUpdate badPosition = CreateUpdate(type: 1, netId: 1, ai0: 0f) with { PositionX = float.NaN };
         NpcStateUpdate badAi = CreateUpdate(type: 1, netId: 1, ai0: float.PositiveInfinity);
+        NpcStateUpdate badSimulation = CreateUpdate(type: 1, netId: 1, ai0: 0f) with
+        {
+            Simulation = NpcSimulationState.Initial with { Scale = 0f }
+        };
 
         Assert.False(store.TrySpawn(0, in badPosition, out _));
         Assert.False(store.TrySpawn(1, in badAi, out _));
+        Assert.False(store.TrySpawn(2, in badSimulation, out _));
         Assert.Equal(0, store.ActiveCount);
     }
 
@@ -142,5 +147,6 @@ public sealed class RuntimeNpcStoreTests
             VelocityX: 1.5f,
             VelocityY: -2f,
             Target: ushort.MaxValue,
-            Ai: new NpcAiState(ai0, 0f, 0f, 0f));
+            Ai: new NpcAiState(ai0, 0f, 0f, 0f),
+            Simulation: NpcSimulationState.Initial);
 }

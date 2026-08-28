@@ -15,7 +15,8 @@ public readonly record struct NpcStateUpdate(
     float VelocityX,
     float VelocityY,
     ushort Target,
-    NpcAiState Ai);
+    NpcAiState Ai,
+    NpcSimulationState Simulation);
 
 /// <summary>
 /// Bounded runtime-owned live NPC state. Slot reuse creates a new generation while mutations within
@@ -179,7 +180,8 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         float.IsFinite(update.PositionY) &&
         float.IsFinite(update.VelocityX) &&
         float.IsFinite(update.VelocityY) &&
-        update.Ai.IsFinite;
+        update.Ai.IsFinite &&
+        update.Simulation.IsValid;
 
     private static NpcSnapshot Capture(byte slot, in SlotState state)
     {
@@ -194,7 +196,8 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             update.VelocityX,
             update.VelocityY,
             update.Target,
-            update.Ai);
+            update.Ai,
+            update.Simulation);
     }
 
     private static bool TryAdvance(ref ulong value)

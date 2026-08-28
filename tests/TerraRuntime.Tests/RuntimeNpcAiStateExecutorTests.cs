@@ -75,7 +75,8 @@ public sealed class RuntimeNpcAiStateExecutorTests
             VelocityX: 0f,
             VelocityY: 0f,
             Target: 0,
-            Ai: new NpcAiState(ai0, 0f, 0f, 0f));
+            Ai: new NpcAiState(ai0, 0f, 0f, 0f),
+            Simulation: NpcSimulationState.Initial);
 
     private sealed class IncrementStateStepper : INpcAiStateStepper
     {
@@ -89,7 +90,8 @@ public sealed class RuntimeNpcAiStateExecutorTests
                 npc.VelocityX,
                 npc.VelocityY,
                 npc.Target,
-                npc.Ai with { Ai0 = npc.Ai.Ai0 + 1f });
+                npc.Ai with { Ai0 = npc.Ai.Ai0 + 1f },
+                npc.Simulation);
             return true;
         }
     }
@@ -119,7 +121,8 @@ public sealed class RuntimeNpcAiStateExecutorTests
                 npc.VelocityX,
                 npc.VelocityY,
                 npc.Target,
-                npc.Ai);
+                npc.Ai,
+                npc.Simulation);
             return true;
         }
     }
