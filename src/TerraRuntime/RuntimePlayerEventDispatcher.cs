@@ -1,0 +1,53 @@
+using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
+
+namespace TerraRuntime;
+
+/// <summary>
+/// Keeps authoritative state mutation decoupled from individual replication services.
+/// Connection/AOI routing and player-vitals synchronization remain independently replaceable.
+/// </summary>
+internal sealed class RuntimePlayerEventDispatcher : IRuntimePlayerEventSink
+{
+    private readonly RuntimeConnectionRegistry _connections;
+    private readonly RuntimePlayerVitalsReplicator _vitals;
+
+    public RuntimePlayerEventDispatcher(
+        RuntimeConnectionRegistry connections,
+        RuntimePlayerVitalsReplicator vitals)
+    {
+        ArgumentNullException.ThrowIfNull(connections);
+        ArgumentNullException.ThrowIfNull(vitals);
+        _connections = connections;
+        _vitals = vitals;
+    }
+
+    public void PlayerAppearanceUpdated(ConnectionHandle connection, in PlayerAppearanceCommitRequest request) =>
+        _connections.PlayerAppearanceUpdated(connection, in request);
+
+    public void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request) =>
+        _connections.PlayerEquipmentUpdated(connection, in request);
+
+    public void PlayerHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest request) =>
+        _vitals.PlayerHealthUpdated(connection, in request);
+
+    public void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request) =>
+        _vitals.PlayerManaUpdated(connection, in request);
+
+    public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)
+    {
+        // Keep the broad vanilla SyncOnePlayer envelope: active/appearance/equipment first,
+        // then health and mana baselines.
+        _connections.PlayerSpawned(connection, in request);
+        _vitals.PlayerSpawned(connection, in request);
+    }
+
+    public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request) =>
+        _connections.PlayerMoved(connection, in request);
+
+    public void PlayerDisconnected(ConnectionHandle connection)
+    {
+        _connections.PlayerDisconnected(connection);
+        _vitals.PlayerDisconnected(connection);
+    }
+}
