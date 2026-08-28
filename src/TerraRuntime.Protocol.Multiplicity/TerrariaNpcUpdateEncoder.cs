@@ -11,7 +11,7 @@ public static class TerrariaNpcUpdateEncoder
 {
     public static bool TryEncode(in TerrariaNpcUpdateState state, out byte[] bytes)
     {
-        if (!state.IsValid)
+        if (!state.IsValid || NpcUpdate.NpcTypeFromNetId(state.NpcNetId) != state.NpcType)
         {
             bytes = [];
             return false;
@@ -43,7 +43,7 @@ public static class TerrariaNpcUpdateEncoder
             Flags = flags,
             ExtraFlags = extraFlags,
             NpcNetId = state.NpcNetId,
-            NpcType = NpcUpdate.NpcTypeFromNetId(state.NpcNetId),
+            NpcType = state.NpcType,
             Life = state.Life,
             LifeBytes = state.Life == state.LifeMax ? (byte)0 : GetVanillaLifeWidth(state.LifeMax)
         };
