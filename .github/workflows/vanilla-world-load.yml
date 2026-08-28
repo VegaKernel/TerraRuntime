@@ -93,7 +93,7 @@ jobs:
       - name: Build TerraRuntime host
         run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
 
-      - name: Probe live TerraRuntime handshake
+      - name: Probe live TerraRuntime join bootstrap
         shell: bash
         run: |
           set -euo pipefail
@@ -145,6 +145,13 @@ jobs:
                   remaining -= len(chunk)
               return b"".join(chunks)
 
+          def recv_frame(sock):
+              header = recv_exact(sock, 3)
+              length, message_id = struct.unpack("<HB", header)
+              if length < 3:
+                  raise SystemExit(f"invalid frame length {length} for packet {message_id}")
+              return message_id, recv_exact(sock, length - 3)
+
           hello = bytes([
               15, 0,
               1,
@@ -153,23 +160,67 @@ jobs:
           ])
 
           with socket.create_connection(("127.0.0.1", 17780), timeout=5) as client:
-              client.settimeout(5)
+              client.settimeout(15)
+
               client.sendall(hello)
-              header = recv_exact(client, 3)
-              length, message_id = struct.unpack("<HB", header)
-              if message_id != 3:
-                  raise SystemExit(f"expected packet 3, got {message_id}")
-              if length != 5:
-                  raise SystemExit(f"expected protocol-326 packet 3 length 5, got {length}")
-              payload = recv_exact(client, length - 3)
-              if payload != b"\x00\x00":
+              message_id, payload = recv_frame(client)
+              if message_id != 3 or payload != b"\x00\x00":
                   raise SystemExit(
-                      f"expected slot 0 and ServerSpecialFlag2=false, got {payload!r}"
+                      f"expected packet 3 slot 0/flag false, got id={message_id}, payload={payload!r}"
+                  )
+
+              client.sendall(struct.pack("<HB", 3, 6))
+              message_id, world_info = recv_frame(client)
+              if message_id != 7 or not world_info:
+                  raise SystemExit(
+                      f"expected non-empty packet 7 after packet 6, got id={message_id}, bytes={len(world_info)}"
+                  )
+
+              client.sendall(struct.pack("<HBiiB", 12, 8, -1, -1, 0))
+
+              message_id, repeated_world_info = recv_frame(client)
+              if message_id != 7 or repeated_world_info != world_info:
+                  raise SystemExit(
+                      "packet 8 did not begin with the cached packet 7 WorldInfo frame"
+                  )
+
+              message_id, status_payload = recv_frame(client)
+              if message_id != 9 or len(status_payload) < 4:
+                  raise SystemExit(
+                      f"expected packet 9 after repeated packet 7, got id={message_id}"
+                  )
+              expected_sections = struct.unpack_from("<i", status_payload, 0)[0]
+              if expected_sections <= 0:
+                  raise SystemExit(f"invalid packet 9 section count {expected_sections}")
+
+              section_count = 0
+              chest_size_count = 0
+              chest_item_count = 0
+              frame_count = 0
+              while True:
+                  message_id, payload = recv_frame(client)
+                  frame_count += 1
+                  if message_id == 10:
+                      section_count += 1
+                  elif message_id == 155:
+                      chest_size_count += 1
+                  elif message_id == 32:
+                      chest_item_count += 1
+                  elif message_id == 49:
+                      break
+
+                  if frame_count > 20000:
+                      raise SystemExit("bootstrap exceeded 20000 frames before packet 49")
+
+              if section_count != expected_sections:
+                  raise SystemExit(
+                      f"packet 9 announced {expected_sections} sections but received {section_count} packet-10 frames"
                   )
 
           print(
-              "Live TerraRuntime handshake passed: Terraria326 -> "
-              "packet 3 slot 0, ServerSpecialFlag2=false."
+              "Live TerraRuntime join bootstrap passed: "
+              f"sections={section_count}, chestSizes={chest_size_count}, "
+              f"chestItems={chest_item_count}, framesBefore49={frame_count}."
           )
           PY
 
