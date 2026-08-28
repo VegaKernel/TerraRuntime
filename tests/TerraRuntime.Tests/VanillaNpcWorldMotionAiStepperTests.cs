@@ -111,6 +111,30 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
         Assert.False(updated.Simulation.Wet);
     }
 
+    [Fact]
+    public void Walk_down_slope_adjustment_is_captured_before_tile_collision()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, SlopeTile(type: 1, slope: 1));
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate state = CreateBlueSlime() with
+        {
+            PositionX = 100f,
+            PositionY = 82f
+        };
+        Assert.True(store.TrySpawn(0, in state, out NpcSnapshot spawned));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+        var stepper = new VanillaNpcWorldMotionAiStepper(
+            new GroundedVelocityStepper(2f),
+            tiles);
+
+        executor.Tick(stepper);
+
+        Assert.True(store.TryGet(spawned.Handle, out NpcSnapshot updated));
+        Assert.Equal(2f, updated.Simulation.OldVelocityX, 5);
+        Assert.Equal(2.075f, updated.Simulation.OldVelocityY, 5);
+    }
+
     private static NpcStateUpdate CreateDemonEye() =>
         new(
             Type: 2,
@@ -128,11 +152,35 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
                 NoGravity = true
             });
 
+    private static NpcStateUpdate CreateBlueSlime() =>
+        new(
+            Type: 1,
+            NetId: 1,
+            PositionX: 100f,
+            PositionY: 82f,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial with
+            {
+                DirectionX = 1,
+                DirectionY = 1
+            });
+
     private static WorldTile SolidTile(ushort type) =>
         new()
         {
             Type = type,
             Flags = WorldTileFlags.Active
+        };
+
+    private static WorldTile SlopeTile(ushort type, int slope) =>
+        new()
+        {
+            Type = type,
+            Flags = WorldTileFlags.Active,
+            Shape = checked((byte)(slope + 1))
         };
 
     private sealed class FixedVelocityStepper(float velocityX, float velocityY) : INpcAiStateStepper
@@ -149,6 +197,24 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
                 npc.Target,
                 npc.Ai,
                 npc.Simulation with { NoGravity = true });
+            return true;
+        }
+    }
+
+    private sealed class GroundedVelocityStepper(float velocityX) : INpcAiStateStepper
+    {
+        public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
+        {
+            next = new NpcStateUpdate(
+                npc.Type,
+                npc.NetId,
+                npc.PositionX,
+                npc.PositionY,
+                velocityX,
+                0f,
+                npc.Target,
+                npc.Ai,
+                npc.Simulation with { NoGravity = false });
             return true;
         }
     }
