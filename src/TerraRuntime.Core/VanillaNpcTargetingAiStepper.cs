@@ -25,9 +25,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private bool _dayTime = true;
     private bool _slimeRainActive;
 
-    public VanillaNpcTargetingAiStepper(
-        INpcAiStateStepper inner,
-        IVanillaNpcCanHitQuery? canHitQuery = null)
+    public VanillaNpcTargetingAiStepper(INpcAiStateStepper inner, IVanillaNpcCanHitQuery? canHitQuery = null)
     {
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
@@ -102,8 +100,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 
     private bool TryStepBlueSlime(in NpcSnapshot npc, NpcTypeId npcType, out NpcStateUpdate next)
     {
-        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
-            definition.AiStyle != VanillaNpcAiStyles.Slime)
+        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) || definition.AiStyle != VanillaNpcAiStyles.Slime)
         {
             next = default;
             return false;
@@ -157,8 +154,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 
     private bool TryStepZombie(in NpcSnapshot npc, NpcTypeId npcType, out NpcStateUpdate next)
     {
-        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
-            definition.AiStyle != VanillaNpcAiStyles.Fighter)
+        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) || definition.AiStyle != VanillaNpcAiStyles.Fighter)
         {
             next = default;
             return false;
@@ -220,7 +216,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             CanHitCurrentTarget = canHitCurrentTarget,
             NpcCenterY = npc.PositionY + definition.Height * 0.5f,
             CurrentTargetCenterY = currentTargetCenterY,
-            TimeLeft = simulation.TimeLeft
+            TimeLeft = simulation.TimeLeft,
+            SpriteDirection = simulation.SpriteDirection
         };
 
         if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))
@@ -242,6 +239,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             {
                 DirectionX = result.DirectionX,
                 DirectionY = result.DirectionY,
+                SpriteDirection = result.SpriteDirection,
                 NoGravity = false,
                 JustHit = false,
                 TimeLeft = result.TimeLeft
@@ -249,16 +247,11 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         return true;
     }
 
-    private bool TrySelectClosestTarget(
-        in NpcSnapshot npc,
-        out VanillaBlueSlimeTargetRefresh target)
+    private bool TrySelectClosestTarget(in NpcSnapshot npc, out VanillaBlueSlimeTargetRefresh target)
     {
         target = default;
-        if (_candidateCount == 0 ||
-            !VanillaNpcDefinitionCatalog.TryGet(npc.Type, out VanillaNpcDefinition definition))
-        {
+        if (_candidateCount == 0 || !VanillaNpcDefinitionCatalog.TryGet(npc.Type, out VanillaNpcDefinition definition))
             return false;
-        }
 
         float npcCenterX = npc.PositionX + definition.Width * 0.5f;
         float npcCenterY = npc.PositionY + definition.Height * 0.5f;
