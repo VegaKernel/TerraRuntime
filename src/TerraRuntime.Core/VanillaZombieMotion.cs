@@ -70,6 +70,7 @@ public static class VanillaZombieMotion
             return false;
         }
 
+        VanillaZombieTargetRefresh closestTarget = input.ClosestTarget;
         float velocityX = input.VelocityX;
         float velocityY = input.VelocityY;
         int directionX = input.DirectionX;
@@ -105,7 +106,7 @@ public static class VanillaZombieMotion
         if (ai3 < StuckThreshold)
         {
             RefreshTarget();
-            if (directionY > 0 && input.ClosestTarget.HasTarget && input.ClosestTarget.DirectionY < 0)
+            if (directionY > 0 && closestTarget.HasTarget && closestTarget.DirectionY < 0)
                 directionY = -1;
         }
 
@@ -141,12 +142,12 @@ public static class VanillaZombieMotion
         void RefreshTarget()
         {
             targetRefreshes++;
-            if (!input.ClosestTarget.HasTarget)
+            if (!closestTarget.HasTarget)
                 return;
 
-            target = input.ClosestTarget.Target;
-            directionX = input.ClosestTarget.DirectionX;
-            directionY = input.ClosestTarget.DirectionY;
+            target = closestTarget.Target;
+            directionX = closestTarget.DirectionX;
+            directionY = closestTarget.DirectionY;
         }
     }
 }
