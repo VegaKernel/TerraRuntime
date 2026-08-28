@@ -44,3 +44,68 @@ public static class VanillaItemIds
         return true;
     }
 }
+
+/// <summary>
+/// Source-verified TerrariaServer 1.4.5.8 tile identities currently consumed by world/gameplay code.
+/// The catalog intentionally grows with implemented behavior instead of copying an unverified giant ID table.
+/// Behavior-family predicates live here so consumers do not duplicate raw-id membership sets.
+/// </summary>
+public static class VanillaTileIds
+{
+    public const int Count = 754;
+
+    public static readonly TileTypeId Platforms = new(19);
+    public static readonly TileTypeId Containers = new(21);
+    public static readonly TileTypeId Signs = new(55);
+    public static readonly TileTypeId Tombstones = new(85);
+    public static readonly TileTypeId Dressers = new(88);
+    public static readonly TileTypeId TargetDummy = new(378);
+    public static readonly TileTypeId ItemFrame = new(395);
+    public static readonly TileTypeId AnnouncementBox = new(425);
+    public static readonly TileTypeId TeamBlockRedPlatform = new(427);
+    public static readonly TileTypeId TeamBlockGreenPlatform = new(435);
+    public static readonly TileTypeId TeamBlockBluePlatform = new(436);
+    public static readonly TileTypeId TeamBlockYellowPlatform = new(437);
+    public static readonly TileTypeId TeamBlockPinkPlatform = new(438);
+    public static readonly TileTypeId TeamBlockWhitePlatform = new(439);
+    public static readonly TileTypeId Containers2 = new(467);
+    public static readonly TileTypeId DisplayDoll = new(470);
+    public static readonly TileTypeId WeaponsRack2 = new(471);
+    public static readonly TileTypeId HatRack = new(475);
+    public static readonly TileTypeId FoodPlatter = new(520);
+    public static readonly TileTypeId TatteredWoodSign = new(573);
+    public static readonly TileTypeId TeleportationPylon = new(597);
+    public static readonly TileTypeId DeadCellsDisplayJar = new(698);
+
+    public static bool TryCreate(int rawType, out TileTypeId type)
+    {
+        if ((uint)rawType >= (uint)Count)
+        {
+            type = default;
+            return false;
+        }
+
+        type = new TileTypeId(rawType);
+        return true;
+    }
+
+    public static bool IsPlatform(TileTypeId type) =>
+        type == Platforms ||
+        type == TeamBlockRedPlatform ||
+        type == TeamBlockGreenPlatform ||
+        type == TeamBlockBluePlatform ||
+        type == TeamBlockYellowPlatform ||
+        type == TeamBlockPinkPlatform ||
+        type == TeamBlockWhitePlatform;
+
+    public static bool IsChestAnchor(TileTypeId type) =>
+        type == Containers ||
+        type == Containers2 ||
+        type == Dressers;
+
+    public static bool CarriesSignText(TileTypeId type) =>
+        type == Signs ||
+        type == Tombstones ||
+        type == AnnouncementBox ||
+        type == TatteredWoodSign;
+}

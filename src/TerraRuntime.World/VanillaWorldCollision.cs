@@ -1,14 +1,16 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.World;
 
 /// <summary>
 /// Source-backed collision facts from TerrariaServer 1.4.5.8 Main.Initialize_TileAndNPCData2.
-/// The packed tables mirror Main.tileSolid and Main.tileSolidTop for TileID.Count == 754.
+/// The packed tables mirror Main.tileSolid and Main.tileSolidTop for the version-pinned vanilla tile catalog.
 /// Reference TerrariaServer.exe SHA-256:
 /// d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e.
 /// </summary>
 public static class VanillaTileCollisionCatalog
 {
-    public const int TileTypeCount = 754;
+    public const int TileTypeCount = VanillaTileIds.Count;
 
     private static ReadOnlySpan<ulong> SolidWords =>
     [
@@ -26,17 +28,24 @@ public static class VanillaTileCollisionCatalog
         0x0120081FFF800040UL, 0x0000000000000039UL, 0x0000000000000040UL
     ];
 
-    public static bool IsSolid(ushort type) => Test(type, SolidWords);
+    public static bool IsSolid(TileTypeId type) => Test(type, SolidWords);
 
-    public static bool IsSolidTop(ushort type) => Test(type, SolidTopWords);
+    public static bool IsSolidTop(TileTypeId type) => Test(type, SolidTopWords);
 
-    private static bool Test(ushort type, ReadOnlySpan<ulong> words)
+    /// <summary>Compatibility boundary for packed/raw tile storage callers.</summary>
+    public static bool IsSolid(ushort type) => IsSolid(new TileTypeId(type));
+
+    /// <summary>Compatibility boundary for packed/raw tile storage callers.</summary>
+    public static bool IsSolidTop(ushort type) => IsSolidTop(new TileTypeId(type));
+
+    private static bool Test(TileTypeId type, ReadOnlySpan<ulong> words)
     {
-        if (type >= TileTypeCount)
+        int value = type.Value;
+        if ((uint)value >= (uint)TileTypeCount)
             return false;
 
-        int word = type >> 6;
-        int bit = type & 63;
+        int word = value >> 6;
+        int bit = value & 63;
         return (words[word] & (1UL << bit)) != 0;
     }
 }
@@ -109,8 +118,9 @@ public static class VanillaWorldCollision
                 if (!IsCollisionActive(in tile))
                     continue;
 
-                bool solidTop = VanillaTileCollisionCatalog.IsSolidTop(tile.Type) && tile.FrameY == 0;
-                bool solid = VanillaTileCollisionCatalog.IsSolid(tile.Type) || solidTop;
+                TileTypeId tileType = tile.TileType;
+                bool solidTop = VanillaTileCollisionCatalog.IsSolidTop(tileType) && tile.FrameY == 0;
+                bool solid = VanillaTileCollisionCatalog.IsSolid(tileType) || solidTop;
                 if (!solid)
                     continue;
 
