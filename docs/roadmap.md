@@ -4,13 +4,15 @@ TerraRuntime is a clean-room C# implementation of the Terraria dedicated server 
 
 The governing rule is: **behavioral parity where players can observe it; freedom of implementation everywhere else.**
 
+Detailed performance and tick-stability work is tracked in [`roadmap/performance-tick-stability.md`](roadmap/performance-tick-stability.md). NativeAOT production constraints are normative and live in [`native-aot-baseline.md`](native-aot-baseline.md).
+
 ## Reference hierarchy
 
 When sources disagree, use this order of authority:
 
 ```text
 TerrariaServer 1.4.5.8 decompiled  = primary behavioral/runtime truth
-Multiplicity 2.7.0                 = primary protocol library for protocol 326 / Terraria 1.4.5.8
+Multiplicity 2.7.2                 = primary protocol library for protocol 326 / Terraria 1.4.5.8
 terrustia                          = secondary independent cross-check
 TShock / OTAPI                    = behavioral/history reference only
 ```
@@ -18,7 +20,7 @@ TShock / OTAPI                    = behavioral/history reference only
 Rules:
 
 - The locally decompiled official `TerrariaServer.exe` **1.4.5.8** is the primary source of truth for vanilla behavior, `.wld` layout, gameplay ordering, state transitions, packet handling semantics and runtime constants.
-- `VegaKernel/Multiplicity` **2.7.0** is the primary protocol implementation for protocol **326 / Terraria 1.4.5.8**. Keep golden bytes and real official-client captures as independent verification of its wire behavior.
+- `VegaKernel/Multiplicity` **2.7.2** is the current protocol implementation baseline for protocol **326 / Terraria 1.4.5.8**. Keep golden bytes and real official-client captures as independent verification of its wire behavior.
 - `terrustia` is valuable as an independent implementation, testing reference and source of architectural/performance ideas, but it never overrides the current official 1.4.5.8 server when behavior or format details differ.
 - TShock/OTAPI are useful for historical behavior, compatibility knowledge and exploit lessons, but they never define TerraRuntime architecture or override current vanilla behavior.
 - Never infer a 1.4.5.8 file/packet/gameplay layout from an older-version reference when the 1.4.5.8 decompiled server can answer the question directly.
@@ -27,10 +29,12 @@ Rules:
 ## Platform baseline
 
 - Target **.NET 11** from the start.
+- The shipping server is **NativeAOT-first**. Linux x64 and Windows x64 native publication and exercised smoke paths are part of the production contract.
+- CoreCLR may be used during development, debugging and profiling when it improves iteration, but production architecture must not rely on JIT-only behavior.
 - Do not preserve compatibility with older .NET runtimes unless a concrete deployment requirement appears later.
-- Use the current .NET 11 runtime, JIT, GC, `System.IO.Pipelines`, spans, source generators and performance APIs instead of carrying legacy compatibility abstractions.
+- Use current .NET 11 BCL, GC, `System.IO.Pipelines`, spans, source generators and performance APIs instead of carrying legacy compatibility abstractions.
 - Enable nullable reference types, warnings as errors, deterministic builds and analyzers.
-- Keep NativeAOT compatibility in mind for standalone tooling, but do not constrain the game server architecture around NativeAOT while dynamic/runtime features are still useful.
+- Do not introduce arbitrary managed DLL loading, runtime code generation, reflection-driven registration or serializers without an explicit trimming/AOT contract.
 - Prefer modern BCL functionality over third-party dependencies where it is sufficient.
 
 ## Architectural goals
@@ -88,6 +92,7 @@ Connection code never mutates the world directly. Background work produces immut
 - Record the exact Terraria dedicated-server version and binary SHA-256 used as behavioral reference.
 - Maintain reproducible local tooling to download and decompile the official server.
 - Add .NET 11 CI for restore, build, test and formatting/analyzers.
+- Keep Linux and Windows NativeAOT publish + native smoke jobs green.
 - Enable nullable, warnings as errors and deterministic builds.
 - Remove dependencies and patterns retained only for old .NET/Mono compatibility.
 
@@ -97,9 +102,9 @@ Build a standalone Terraria protocol layer before gameplay.
 
 ### Multiplicity bootstrap
 
-Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the initial typed packet implementation.
+Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the typed packet implementation.
 
-- Baseline package: `Multiplicity` **2.7.0**, protocol **326 / Terraria 1.4.5.8**.
+- Baseline package: `Multiplicity` **2.7.2**, protocol **326 / Terraria 1.4.5.8**.
 - Use its typed packet model when packets need ownership, mutation or re-serialization.
 - Prefer its zero-copy `PacketView` / `PacketViewParser` path for hot-path inspection.
 - Keep Multiplicity behind the runtime protocol boundary so gameplay code does not depend on concrete packet-library types.
@@ -168,6 +173,8 @@ Use a single-writer simulation model initially, borrowing the useful actor-style
 - No locks on the main simulation hot path.
 - Preserve packet order per connection.
 - Bound inbound work processed per tick so one connection cannot monopolize a frame.
+- Use global operation budgets per subsystem; never multiply a full subsystem budget by player count.
+- The command loop keeps a hard global operation cap, per-source fairness quota and optional authoritative-thread CPU-time cap, with deferred-work and backlog-age telemetry.
 - Fixed 60 Hz simulation schedule with an explicit missed-tick policy.
 - Measure both wall time and CPU time; report them separately so OS contention is not confused with simulation cost.
 - Record timing per simulation phase and report the worst phase, not only total tick time.
@@ -374,12 +381,26 @@ Preserve observable results, not inefficient vanilla broadcast mechanics.
 - Compare low-frequency progress/state packets against the last transmitted value before sending unchanged data every tick.
 - Build expensive per-tick roster/spatial summaries lazily once per tick and only if a subsystem actually asks for them.
 
+### Runtime-owned interest management
+
+Interest management belongs to TerraRuntime, not Vega or another host layer.
+
+- External hosts receive only the narrow world-scoped `IInterestManagementControl` toggle (`IsEnabled` / `SetEnabled(bool)`).
+- The standalone host accepts `--interest-management`; the same mechanism can be switched at runtime through the control interface without restarting the world.
+- Spatial policy, cell/section layout, radii, hysteresis, full-resync rules and entity-specific routing remain internal TerraRuntime details.
+- Disabling interest management is fail-open and restores vanilla-like global recipient selection.
+- Current foundation tracks authoritative player positions in a section-based compact bitset index on spawn, movement and disconnect.
+- Enabling the feature currently uses a passthrough policy. Actual packet suppression must remain disabled until enter/leave transitions, full state on entry, out-of-range semantics and forced resync are implemented and live-tested.
+- Invalid/non-finite/out-of-world positions are removed from spatial membership so later visibility logic can fail open rather than leave a player stuck in a stale cell.
+- Initial player-player policy should use hysteresis, for example a smaller enter radius and larger leave radius, to avoid boundary oscillation.
+- Teleport, respawn and slot reuse must recalculate/clear visibility immediately.
+
 ### Join pipeline
 
 A player joining must not freeze everybody already online.
 
 - Create a staged join state machine.
-- Spread first-time uncached section generation/compression across multiple ticks under an explicit per-tick budget.
+- Spread first-time uncached section generation/compression across multiple ticks under an explicit **global subsystem budget**, not a full budget per joining player.
 - Prioritize the minimum sections/state required to enter the world.
 - Continue streaming remaining interest data after initial spawn where protocol behavior allows it.
 - Keep outbound queue growth bounded during join bursts.
@@ -397,22 +418,23 @@ After correctness baselines exist:
 - Cache immutable encoded packets only with explicit invalidation.
 - Avoid unnecessary async state machines inside the core tick.
 - Use source-generated logging/serialization on hot paths where beneficial.
-- Measure GC allocation rate, pause time and heap size on .NET 11.
-- Tune GC mode only from production-like benchmarks rather than folklore.
-- Consider `GC.TryStartNoGCRegion` only for focused experiments, not as a baseline design.
+- Measure allocation rate, collection counts, pause time and heap size on .NET 11 where the runtime exposes them safely under NativeAOT.
+- Tune GC settings only from production-like native benchmarks rather than folklore.
+- `GC.TryStartNoGCRegion` is not a baseline architecture assumption.
 - `unsafe` requires a benchmark demonstrating material benefit plus focused correctness tests.
 
 ### Runtime specialization
 
-Main server runtime:
+Main shipping server runtime:
 
-- CoreCLR on .NET 11;
-- tiered compilation enabled;
-- dynamic PGO enabled;
-- Server GC enabled when production benchmarks support it;
-- ReadyToRun remains an optional measured publication experiment.
+- .NET 11 NativeAOT;
+- `linux-x64` and `win-x64` are exercised production targets;
+- zero unexplained trim/AOT warnings;
+- native executable startup plus exercised loop/protocol/network/world smoke paths are required in CI;
+- Server GC and other GC settings are changed only from compatible production-like benchmarks;
+- no tiered-JIT, dynamic-PGO or ReadyToRun assumption may enter production architecture because the shipping process has no JIT requirement.
 
-NativeAOT is reserved for separate fixed-function executables such as future admin CLI, world inspection/conversion tools, updater/bootstrapper or diagnostics helpers. Do not create process boundaries solely to claim partial AOT.
+CoreCLR remains useful for development-only debugging/profiling experiments, but a change that only works under CoreCLR is not considered production-compatible.
 
 ## Phase 10 - Operations API and Terminal UI
 
@@ -440,13 +462,15 @@ Terminal.Gui          plain console       future web/API
 - Structured logging from the start.
 - Stable event IDs/categories.
 - Tick CPU/wall duration and worst phase.
+- Command processed/deferred counts, budget exhaustion count and oldest pending command age.
 - Queue depth and slow-client drops, including the packet type that filled the queue.
 - Packet counts/bytes by message ID and direction.
 - Invalid/malformed/rejected packet counters.
 - Active players/NPCs/projectiles/items.
+- Spatial-index membership/section changes/invalid-position counters.
 - Save snapshot duration, serialization duration and write duration separately.
 - World-cache hit/miss/invalidation reason and load/build times.
-- GC allocation rate, collections, pause time and heap size.
+- GC allocation rate, collections, pause time and heap size where available.
 
 Telemetry must not add heavy formatting/allocation to every hot-path operation.
 
@@ -536,7 +560,8 @@ Worldgen comes last because it is huge, RNG-order-sensitive and unnecessary for 
 
 ## Performance acceptance direction
 
-Concrete targets will be replaced by measurements on defined hardware.
+Concrete targets will be replaced by measurements on defined hardware. See [`roadmap/performance-tick-stability.md`](roadmap/performance-tick-stability.md) for the detailed gates and stress matrix.
+
 - Common movement/control packets should avoid avoidable heap allocations.
 - Typical ticks must stay comfortably below the 16.67 ms budget with room for spikes.
 - Idle CPU should approach sleeping cost rather than burn an entire core.
@@ -564,7 +589,7 @@ Concrete targets will be replaced by measurements on defined hardware.
 Official Terraria client
         |
         v
-TerraRuntime (.NET 11)
+TerraRuntime (.NET 11 NativeAOT)
         |
         +-- Multiplicity-backed typed handshake
         +-- player slot assignment
