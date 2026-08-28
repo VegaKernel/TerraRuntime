@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.IO;
 using global::Multiplicity.Packets.Views;
 
