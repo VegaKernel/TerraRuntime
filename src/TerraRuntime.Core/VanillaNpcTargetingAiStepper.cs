@@ -6,7 +6,7 @@ namespace TerraRuntime.Core;
 /// <summary>
 /// Coordinates verified player-target selection cadence with state-only NPC AI. Demon Eye refreshes every
 /// ordinary style-2 tick; Blue Slime refreshes at its AI_001 state-machine points; ordinary Zombie follows
-/// verified AI_003 pursuit, visibility and discouraged/despawn branches.
+/// verified AI_003 pursuit and discouraged/despawn branches.
 /// </summary>
 public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 {
@@ -16,7 +16,6 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private const float VanillaBasePlayerHeight = 42f;
 
     private readonly INpcAiStateStepper _inner;
-    private IVanillaNpcCanHitQuery? _canHitQuery;
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
     private int _candidateCount;
     private bool _blueSlimeMotionEnabled;
@@ -25,17 +24,10 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private bool _dayTime = true;
     private bool _slimeRainActive;
 
-    public VanillaNpcTargetingAiStepper(INpcAiStateStepper inner, IVanillaNpcCanHitQuery? canHitQuery = null)
+    public VanillaNpcTargetingAiStepper(INpcAiStateStepper inner)
     {
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
-        _canHitQuery = canHitQuery;
-    }
-
-    public void SetCanHitQuery(IVanillaNpcCanHitQuery canHitQuery)
-    {
-        ArgumentNullException.ThrowIfNull(canHitQuery);
-        _canHitQuery = canHitQuery;
     }
 
     public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity)
@@ -180,21 +172,6 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             closest.DirectionX,
             zombieDirectionY);
 
-        bool applyCanHitRule = false;
-        bool canHitCurrentTarget = true;
-        float currentTargetCenterY = 0f;
-        if (_canHitQuery is not null &&
-            npc.Target < byte.MaxValue &&
-            TryFindCandidate(checked((byte)npc.Target), candidates, out VanillaNpcTargetCandidate currentTarget) &&
-            currentTarget.Active &&
-            !currentTarget.Dead &&
-            !currentTarget.Ghost)
-        {
-            applyCanHitRule = true;
-            canHitCurrentTarget = _canHitQuery.CanHit(in npc, in currentTarget);
-            currentTargetCenterY = currentTarget.CenterY;
-        }
-
         NpcSimulationState simulation = npc.Simulation;
         var input = new VanillaZombieMotionInput(
             PositionX: npc.PositionX,
@@ -212,10 +189,6 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             PursuitAllowed = !daytimeSurface,
             EncourageDespawn = daytimeSurface,
             JustHit = simulation.JustHit,
-            ApplyCanHitRule = applyCanHitRule,
-            CanHitCurrentTarget = canHitCurrentTarget,
-            NpcCenterY = npc.PositionY + definition.Height * 0.5f,
-            CurrentTargetCenterY = currentTargetCenterY,
             TimeLeft = simulation.TimeLeft,
             SpriteDirection = simulation.SpriteDirection
         };
