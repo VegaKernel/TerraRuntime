@@ -39,6 +39,87 @@ public sealed class WorldFileLoaderTests
     }
 
     [Fact]
+    public void Runtime_cache_round_trips_predecoded_tiles_and_complete_world_state()
+    {
+        byte[] file = CreateCompleteCurrentWorld();
+        WorldFileLoadDiagnostic sourceDiagnostic = WorldFileLoader.TryLoad(file, CreateLimits(), out WorldFileData? sourceWorld);
+        WorldFileData expected = Assert.IsType<WorldFileData>(sourceWorld);
+        Assert.True(sourceDiagnostic.IsLoaded);
+
+        string cachePath = Path.Combine(Path.GetTempPath(), $"terraruntime-{Guid.NewGuid():N}.runtime-world");
+        try
+        {
+            RuntimeWorldCacheWriteDiagnostic writeDiagnostic = RuntimeWorldCache.TryWriteAtomic(
+                cachePath,
+                file,
+                expected);
+            Assert.True(writeDiagnostic.IsWritten);
+
+            RuntimeWorldCacheLoadDiagnostic cacheDiagnostic = RuntimeWorldCache.TryLoad(
+                cachePath,
+                file,
+                CreateLimits(),
+                out WorldFileData? cachedWorld);
+
+            Assert.True(cacheDiagnostic.IsLoaded);
+            WorldFileData actual = Assert.IsType<WorldFileData>(cachedWorld);
+            Assert.Equal(expected.Header.Name, actual.Header.Name);
+            Assert.Equal(expected.RuntimeMetadata.Time, actual.RuntimeMetadata.Time);
+            Assert.Equal(expected.Tiles.Count, actual.Tiles.Count);
+            for (int x = 0; x < expected.Header.Dimensions.WidthTiles; x++)
+            {
+                for (int y = 0; y < expected.Header.Dimensions.HeightTiles; y++)
+                    Assert.Equal(expected.Tiles.Get(x, y), actual.Tiles.Get(x, y));
+            }
+        }
+        finally
+        {
+            File.Delete(cachePath);
+            File.Delete(cachePath + ".tmp");
+        }
+    }
+
+    [Fact]
+    public void Runtime_cache_rejects_stale_or_corrupted_data_without_publishing_world()
+    {
+        byte[] file = CreateCompleteCurrentWorld();
+        WorldFileLoader.TryLoad(file, CreateLimits(), out WorldFileData? sourceWorld);
+        WorldFileData expected = Assert.IsType<WorldFileData>(sourceWorld);
+
+        string cachePath = Path.Combine(Path.GetTempPath(), $"terraruntime-{Guid.NewGuid():N}.runtime-world");
+        try
+        {
+            Assert.True(RuntimeWorldCache.TryWriteAtomic(cachePath, file, expected).IsWritten);
+
+            byte[] staleSource = (byte[])file.Clone();
+            staleSource[^1] ^= 0x01;
+            RuntimeWorldCacheLoadDiagnostic staleDiagnostic = RuntimeWorldCache.TryLoad(
+                cachePath,
+                staleSource,
+                CreateLimits(),
+                out WorldFileData? staleWorld);
+            Assert.Equal(RuntimeWorldCacheLoadResult.SourceHashMismatch, staleDiagnostic.Result);
+            Assert.Null(staleWorld);
+
+            byte[] cacheBytes = File.ReadAllBytes(cachePath);
+            cacheBytes[^33] ^= 0x01;
+            File.WriteAllBytes(cachePath, cacheBytes);
+            RuntimeWorldCacheLoadDiagnostic corruptDiagnostic = RuntimeWorldCache.TryLoad(
+                cachePath,
+                file,
+                CreateLimits(),
+                out WorldFileData? corruptWorld);
+            Assert.Equal(RuntimeWorldCacheLoadResult.PayloadHashMismatch, corruptDiagnostic.Result);
+            Assert.Null(corruptWorld);
+        }
+        finally
+        {
+            File.Delete(cachePath);
+            File.Delete(cachePath + ".tmp");
+        }
+    }
+
+    [Fact]
     public void Does_not_publish_partial_world_when_footer_fails_after_all_sections()
     {
         byte[] file = CreateCompleteCurrentWorld();

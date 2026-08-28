@@ -21,6 +21,55 @@ public static class WorldFileLoader
         if (coreLoad.Result != WorldFileCoreLoadResult.Loaded || core is null)
             return FromCoreFailure(coreLoad);
 
+        return TryLoadPreparedCoreValidated(file, limits, core, out world);
+    }
+
+    /// <summary>
+    /// Completes validation/loading when the envelope, header and normalized tile store were already
+    /// prepared by a trusted runtime cache path. The canonical .wld still supplies and validates every
+    /// non-tile section plus the footer before the world can become authoritative.
+    /// </summary>
+    internal static WorldFileLoadDiagnostic TryLoadPreparedCore(
+        ReadOnlySpan<byte> file,
+        WorldFileLoadLimits limits,
+        WorldFileCore core,
+        out WorldFileData? world)
+    {
+        limits.Validate();
+        ArgumentNullException.ThrowIfNull(core);
+        world = null;
+
+        long expectedTileCount = (long)core.Header.Dimensions.WidthTiles * core.Header.Dimensions.HeightTiles;
+        if (expectedTileCount != core.Tiles.Count || expectedTileCount > limits.MaxTileCount)
+        {
+            return Failure(
+                WorldFileLoadResult.InvalidTiles,
+                WorldFileLoadStage.Tiles,
+                0x200);
+        }
+
+        WorldDimensions tileDimensions = core.Tiles.Dimensions;
+        WorldDimensions headerDimensions = core.Header.Dimensions;
+        if (tileDimensions.WidthTiles != headerDimensions.WidthTiles ||
+            tileDimensions.HeightTiles != headerDimensions.HeightTiles)
+        {
+            return Failure(
+                WorldFileLoadResult.InvalidTiles,
+                WorldFileLoadStage.Tiles,
+                0x201);
+        }
+
+        return TryLoadPreparedCoreValidated(file, limits, core, out world);
+    }
+
+    private static WorldFileLoadDiagnostic TryLoadPreparedCoreValidated(
+        ReadOnlySpan<byte> file,
+        WorldFileLoadLimits limits,
+        WorldFileCore core,
+        out WorldFileData? world)
+    {
+        world = null;
+
         WorldFileRuntimeMetadataParseResult metadataResult = WorldFileRuntimeMetadataParser.TryParse(
             file,
             core.Envelope,

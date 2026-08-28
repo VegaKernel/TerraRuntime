@@ -50,15 +50,49 @@ public static class TerrariaServerHost
             return 25;
         }
 
-        WorldFileLoadDiagnostic diagnostic = WorldFileLoader.TryLoad(
+        WorldFileLoadLimits worldLoadLimits = CreateServerWorldLoadLimits();
+        string runtimeCachePath = RuntimeWorldCache.GetCachePath(options.WorldPath);
+        RuntimeWorldCacheLoadDiagnostic cacheDiagnostic = RuntimeWorldCache.TryLoad(
+            runtimeCachePath,
             file,
-            CreateServerWorldLoadLimits(),
+            worldLoadLimits,
             out WorldFileData? world);
-        if (!diagnostic.IsLoaded || world is null)
+
+        if (cacheDiagnostic.IsLoaded && world is not null)
         {
-            Console.Error.WriteLine(
-                $"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.");
-            return 26;
+            Console.WriteLine($"Runtime world cache hit: '{runtimeCachePath}'.");
+        }
+        else
+        {
+            Console.WriteLine(
+                $"Runtime world cache miss: result={cacheDiagnostic.Result}, code={cacheDiagnostic.DetailCode}; " +
+                "falling back to canonical .wld.");
+
+            WorldFileLoadDiagnostic diagnostic = WorldFileLoader.TryLoad(
+                file,
+                worldLoadLimits,
+                out world);
+            if (!diagnostic.IsLoaded || world is null)
+            {
+                Console.Error.WriteLine(
+                    $"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.");
+                return 26;
+            }
+
+            RuntimeWorldCacheWriteDiagnostic cacheWrite = RuntimeWorldCache.TryWriteAtomic(
+                runtimeCachePath,
+                file,
+                world);
+            if (cacheWrite.IsWritten)
+            {
+                Console.WriteLine($"Runtime world cache rebuilt: '{runtimeCachePath}'.");
+            }
+            else
+            {
+                Console.Error.WriteLine(
+                    $"Runtime world cache rebuild skipped/failed: result={cacheWrite.Result}. " +
+                    "The canonical .wld remains authoritative.");
+            }
         }
 
         PlayerBootstrapPacketSet bootstrapPackets;
