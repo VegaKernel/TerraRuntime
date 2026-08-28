@@ -70,7 +70,10 @@ internal static class AuthoritativePlayerSpawnSmoke
             DateTime spawnDeadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
             while ((session1.State != PlayerJoinState.Playing ||
                     session2.State != PlayerJoinState.Playing ||
-                    state.CommittedPlayerSpawns != 2) &&
+                    state.CommittedPlayerSpawns != 2 ||
+                    outbound1.QueuedFrames != 1 ||
+                    outbound2.QueuedFrames != 1 ||
+                    registry.PlayerActiveBaselineFrames != 2) &&
                    DateTime.UtcNow < spawnDeadline)
             {
                 Thread.Sleep(5);
