@@ -9,7 +9,8 @@ public readonly record struct VanillaBlueSlimeTargetRefresh(
     int DirectionY)
 {
     public bool IsValid =>
-        (!HasTarget || Target < byte.MaxValue) &&
+        (!HasTarget ||
+         (Target < byte.MaxValue && DirectionX is -1 or 1 && DirectionY is -1 or 1)) &&
         DirectionX is >= -1 and <= 1 &&
         DirectionY is >= -1 and <= 1;
 }
@@ -68,6 +69,7 @@ public static class VanillaBlueSlimeMotion
             return false;
         }
 
+        VanillaBlueSlimeTargetRefresh closestTarget = input.ClosestTarget;
         float positionX = input.PositionX;
         float velocityX = input.VelocityX;
         float velocityY = input.VelocityY;
@@ -212,12 +214,12 @@ public static class VanillaBlueSlimeMotion
         void RefreshTarget()
         {
             targetRefreshes++;
-            if (!input.ClosestTarget.HasTarget)
+            if (!closestTarget.HasTarget)
                 return;
 
-            target = input.ClosestTarget.Target;
-            directionX = input.ClosestTarget.DirectionX;
-            directionY = input.ClosestTarget.DirectionY;
+            target = closestTarget.Target;
+            directionX = closestTarget.DirectionX;
+            directionY = closestTarget.DirectionY;
         }
 
         VanillaBlueSlimeMotionResult CreateResult() =>
