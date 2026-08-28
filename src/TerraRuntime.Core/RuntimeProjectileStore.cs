@@ -24,12 +24,15 @@ public readonly record struct ProjectileStateUpdate(
 /// <summary>
 /// Bounded single-writer authoritative projectile lifecycle state. Protocol 326 packs projectile index into
 /// ProjectileKey with the Multiplicity-verified range 0..1000. That is an addressability ceiling only; it is
-/// deliberately not named or treated as Terraria's gameplay projectile population limit. Live entries must
-/// always carry a protocol-version-valid nonzero vanilla presentation type so authoritative state cannot
-/// contain an entity that the official client is unable to represent.
+/// deliberately not named or treated as Terraria's gameplay projectile population limit. Vanilla physical
+/// projectile allocation scans slots 0..999; wire key index 1000 is therefore kept distinct from the normal
+/// physical allocation range. Live entries must always carry a protocol-version-valid nonzero vanilla
+/// presentation type so authoritative state cannot contain an entity that the official client cannot represent.
 /// </summary>
 public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
 {
+    public const ushort MaximumVanillaPhysicalSlot = 999;
+    public const int VanillaPhysicalSlotCount = MaximumVanillaPhysicalSlot + 1;
     public const ushort MaximumProtocolIndex = 1000;
     public const int MaximumProtocolAddressableCapacity = MaximumProtocolIndex + 1;
 
@@ -99,28 +102,27 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         return true;
     }
 
-    public bool TryDespawn(ProjectileHandle handle, out ProjectileSnapshot finalSnapshot)
+    public bool TryDespawn(ProjectileHandle handle, out ProjectileSnapshot finalSnapshot) =>
+        TryDespawnCore(handle, overridePosition: false, positionX: 0f, positionY: 0f, out finalSnapshot);
+
+    /// <summary>
+    /// Atomically applies packet-29's final finite position and despawns the exact generation without
+    /// publishing an intermediate Update commit. Replication therefore observes one final Despawn snapshot,
+    /// matching vanilla's position assignment followed by Projectile.Kill rather than inventing packet 27.
+    /// </summary>
+    public bool TryDespawnAt(
+        ProjectileHandle handle,
+        float positionX,
+        float positionY,
+        out ProjectileSnapshot finalSnapshot)
     {
-        if (!IsCurrentHandleCandidate(handle))
+        if (!float.IsFinite(positionX) || !float.IsFinite(positionY))
         {
             finalSnapshot = default;
             return false;
         }
 
-        ref SlotState state = ref _slots[handle.Slot];
-        if (!state.Active || state.Generation != handle.Generation.Value)
-        {
-            finalSnapshot = default;
-            return false;
-        }
-
-        finalSnapshot = Capture(handle.Slot, in state);
-        state.Active = false;
-        state.Revision = 0;
-        state.Update = default;
-        _activeCount--;
-        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Despawn, in finalSnapshot);
-        return true;
+        return TryDespawnCore(handle, overridePosition: true, positionX, positionY, out finalSnapshot);
     }
 
     public bool TryGetActive(ushort slot, out ProjectileSnapshot snapshot)
@@ -181,6 +183,44 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         }
 
         return written;
+    }
+
+    private bool TryDespawnCore(
+        ProjectileHandle handle,
+        bool overridePosition,
+        float positionX,
+        float positionY,
+        out ProjectileSnapshot finalSnapshot)
+    {
+        if (!IsCurrentHandleCandidate(handle))
+        {
+            finalSnapshot = default;
+            return false;
+        }
+
+        ref SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value)
+        {
+            finalSnapshot = default;
+            return false;
+        }
+
+        if (overridePosition)
+        {
+            state.Update = state.Update with
+            {
+                PositionX = positionX,
+                PositionY = positionY
+            };
+        }
+
+        finalSnapshot = Capture(handle.Slot, in state);
+        state.Active = false;
+        state.Revision = 0;
+        state.Update = default;
+        _activeCount--;
+        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Despawn, in finalSnapshot);
+        return true;
     }
 
     private bool IsAddressableSlot(ushort slot) => slot < _slots.Length;
