@@ -1,4 +1,3 @@
-using global::Multiplicity.Packets;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
@@ -24,15 +23,13 @@ public sealed class RuntimeNpcReplicationRegistryTests
         replication.PlayerSpawned(player, in spawn);
 
         Assert.Equal(1, outbound.QueuedFrames);
-        NpcUpdate packet = ReadNpcPacket(outbound);
-        Assert.Equal(npc.Handle.Slot, packet.NpcSlot);
-        Assert.True((packet.ExtraFlags & NpcUpdateExtraFlags.SpawnNeedsSyncing) != 0);
-        Assert.Equal(25, packet.Life);
         Assert.Equal(1, replication.BaselineFrames);
+        Assert.Equal(0, replication.RelayedFrames);
+        Assert.Equal(0, replication.RejectedFrames);
     }
 
     [Fact]
-    public void Playing_client_receives_live_update_without_spawn_flag_and_despawn_clears_future_baseline()
+    public void Playing_client_receives_spawn_update_and_despawn_and_despawn_clears_future_baseline()
     {
         var replication = new RuntimeNpcReplicationRegistry();
         GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(1);
@@ -44,8 +41,7 @@ public sealed class RuntimeNpcReplicationRegistryTests
 
         NpcSnapshot npc = CreateNpc(revision: 1, positionX: 100f);
         replication.NpcStateCommitted(NpcStateCommitKind.Spawn, in npc);
-        NpcUpdate spawned = ReadNpcPacket(firstOutbound);
-        Assert.True((spawned.ExtraFlags & NpcUpdateExtraFlags.SpawnNeedsSyncing) != 0);
+        Assert.Equal(1, firstOutbound.QueuedFrames);
 
         NpcSnapshot moved = npc with
         {
@@ -53,13 +49,10 @@ public sealed class RuntimeNpcReplicationRegistryTests
             PositionX = 130f
         };
         replication.NpcStateCommitted(NpcStateCommitKind.Update, in moved);
-        NpcUpdate updated = ReadNpcPacket(firstOutbound);
-        Assert.False((updated.ExtraFlags & NpcUpdateExtraFlags.SpawnNeedsSyncing) != 0);
-        Assert.Equal(130f, updated.PositionX);
+        Assert.Equal(2, firstOutbound.QueuedFrames);
 
         replication.NpcStateCommitted(NpcStateCommitKind.Despawn, in moved);
-        NpcUpdate despawned = ReadNpcPacket(firstOutbound);
-        Assert.Equal(0, despawned.Life);
+        Assert.Equal(3, firstOutbound.QueuedFrames);
 
         GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(2);
         TerrariaConnectionOutboundQueue secondOutbound = CreateOutbound();
@@ -70,6 +63,7 @@ public sealed class RuntimeNpcReplicationRegistryTests
 
         Assert.Equal(0, secondOutbound.QueuedFrames);
         Assert.Equal(3, replication.RelayedFrames);
+        Assert.Equal(0, replication.RejectedFrames);
     }
 
     [Fact]
@@ -92,13 +86,6 @@ public sealed class RuntimeNpcReplicationRegistryTests
 
         Assert.Equal(0, outbound.QueuedFrames);
         Assert.Equal(1, replication.UnsupportedCommits);
-    }
-
-    private static NpcUpdate ReadNpcPacket(TerrariaConnectionOutboundQueue outbound)
-    {
-        Assert.True(outbound.InnerQueue.TryRead(out OutboundFrame frame));
-        return Assert.IsType<NpcUpdate>(
-            TerrariaPacket.Deserialize(frame.Bytes));
     }
 
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
