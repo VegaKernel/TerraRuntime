@@ -7,7 +7,7 @@ namespace TerraRuntime.Tests;
 public sealed class PlayerBootstrapPacketSetTests
 {
     [Fact]
-    public void Testing_packet_set_includes_status_and_tile_frame_packets()
+    public void Testing_packet_set_includes_status_packet_for_base_sections()
     {
         ReadOnlyMemory<byte>[] sections =
         [
@@ -22,11 +22,5 @@ public sealed class PlayerBootstrapPacketSetTests
 
         Assert.Equal((byte)TerrariaMessageId.StatusTextSize, packets.StatusFrame.Span[2]);
         Assert.Equal(2, BinaryPrimitives.ReadInt32LittleEndian(packets.StatusFrame.Span[3..7]));
-
-        Assert.Equal((byte)TerrariaMessageId.TileFrameSection, packets.BaseTileFrameFrame.Span[2]);
-        Assert.Equal(0, BinaryPrimitives.ReadInt16LittleEndian(packets.BaseTileFrameFrame.Span[3..5]));
-        Assert.Equal(0, BinaryPrimitives.ReadInt16LittleEndian(packets.BaseTileFrameFrame.Span[5..7]));
-        Assert.Equal(0, BinaryPrimitives.ReadInt16LittleEndian(packets.BaseTileFrameFrame.Span[7..9]));
-        Assert.Equal(0, BinaryPrimitives.ReadInt16LittleEndian(packets.BaseTileFrameFrame.Span[9..11]));
     }
 }

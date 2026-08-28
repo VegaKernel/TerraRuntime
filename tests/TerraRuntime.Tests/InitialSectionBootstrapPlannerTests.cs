@@ -24,7 +24,7 @@ public sealed class InitialSectionBootstrapPlannerTests
     }
 
     [Fact]
-    public void Preserves_vanilla_pre_clamp_window_shrink_at_world_edge()
+    public void Preserves_vanilla_base_window_clamping_at_world_edge()
     {
         var dimensions = new WorldDimensions(4_200, 1_200);
         Span<WorldSectionId> sections = stackalloc WorldSectionId[InitialSectionBootstrapPlanner.MaximumBaseSectionCount];
@@ -43,7 +43,7 @@ public sealed class InitialSectionBootstrapPlannerTests
     }
 
     [Fact]
-    public void Plans_optional_requested_window_with_same_section_geometry()
+    public void Plans_current_vanilla_inclusive_requested_window()
     {
         var dimensions = new WorldDimensions(4_200, 1_200);
         Span<WorldSectionId> sections = stackalloc WorldSectionId[InitialSectionBootstrapPlanner.MaximumRequestedSectionCount];
@@ -54,9 +54,26 @@ public sealed class InitialSectionBootstrapPlannerTests
             tileY: 750,
             sections);
 
-        Assert.Equal(15, count);
+        Assert.Equal(24, count);
         Assert.Equal(new WorldSectionId(13, 4), sections[0]);
-        Assert.Equal(new WorldSectionId(17, 6), sections[14]);
+        Assert.Equal(new WorldSectionId(18, 7), sections[23]);
+    }
+
+    [Fact]
+    public void Plans_team_spawn_window_without_client_edge_guard()
+    {
+        var dimensions = new WorldDimensions(4_200, 1_200);
+        Span<WorldSectionId> sections = stackalloc WorldSectionId[InitialSectionBootstrapPlanner.MaximumTeamSpawnSectionCount];
+
+        int count = InitialSectionBootstrapPlanner.PlanTeamSpawnSections(
+            dimensions,
+            tileX: 3_000,
+            tileY: 750,
+            sections);
+
+        Assert.Equal(24, count);
+        Assert.Equal(new WorldSectionId(13, 4), sections[0]);
+        Assert.Equal(new WorldSectionId(18, 7), sections[23]);
     }
 
     [Theory]
@@ -89,5 +106,7 @@ public sealed class InitialSectionBootstrapPlannerTests
             InitialSectionBootstrapPlanner.PlanBaseSpawnSections(dimensions, 0, 0, shortBuffer));
         Assert.Throws<ArgumentException>(() =>
             InitialSectionBootstrapPlanner.PlanRequestedSections(dimensions, 100, 100, shortBuffer));
+        Assert.Throws<ArgumentException>(() =>
+            InitialSectionBootstrapPlanner.PlanTeamSpawnSections(dimensions, 100, 100, shortBuffer));
     }
 }

@@ -8,11 +8,7 @@ namespace TerraRuntime;
 
 public readonly record struct PlayerBootstrapSectionResponse(
     ReadOnlyMemory<byte> StatusFrame,
-    ReadOnlyMemory<byte>[] AdditionalSectionFrames,
-    ReadOnlyMemory<byte> RequestedTileFrameFrame)
-{
-    public bool HasRequestedTileFrame => !RequestedTileFrameFrame.IsEmpty;
-}
+    ReadOnlyMemory<byte>[] AdditionalSectionFrames);
 
 /// <summary>
 /// Immutable server-owned frames shared by connections during the initial Terraria join bootstrap.
@@ -33,7 +29,6 @@ public sealed class PlayerBootstrapPacketSet
         ReadOnlyMemory<byte> worldInfoFrame,
         ReadOnlyMemory<byte> statusFrame,
         ReadOnlyMemory<byte>[] baseSectionFrames,
-        ReadOnlyMemory<byte> baseTileFrameFrame,
         ReadOnlyMemory<byte> enterWorldFrame)
     {
         _world = world;
@@ -41,7 +36,6 @@ public sealed class PlayerBootstrapPacketSet
         WorldInfoFrame = worldInfoFrame;
         StatusFrame = statusFrame;
         BaseSectionFrames = baseSectionFrames;
-        BaseTileFrameFrame = baseTileFrameFrame;
         EnterWorldFrame = enterWorldFrame;
 
         _sectionFrameCache = new Dictionary<int, ReadOnlyMemory<byte>>(baseSections.Length);
@@ -58,7 +52,6 @@ public sealed class PlayerBootstrapPacketSet
     public ReadOnlyMemory<byte> WorldInfoFrame { get; }
     public ReadOnlyMemory<byte> StatusFrame { get; }
     public IReadOnlyList<ReadOnlyMemory<byte>> BaseSectionFrames { get; }
-    public ReadOnlyMemory<byte> BaseTileFrameFrame { get; }
     public ReadOnlyMemory<byte> EnterWorldFrame { get; }
 
     public static PlayerBootstrapPacketSet Create(
@@ -90,7 +83,6 @@ public sealed class PlayerBootstrapPacketSet
         }
 
         byte[] statusFrame = EncodeStatusFrame(sectionCount);
-        byte[] tileFrameFrame = EncodeTileFrameSectionFrame(baseSections);
         byte[] enterWorldFrame = EncodeEmptyFrame((byte)TerrariaMessageId.PlayerSpawnSelf);
         return new PlayerBootstrapPacketSet(
             world,
@@ -98,7 +90,6 @@ public sealed class PlayerBootstrapPacketSet
             worldInfoFrame,
             statusFrame,
             baseSectionFrames,
-            tileFrameFrame,
             enterWorldFrame);
     }
 
@@ -114,22 +105,22 @@ public sealed class PlayerBootstrapPacketSet
             worldInfoFrame,
             EncodeStatusFrame(baseSectionFrames.Length),
             (ReadOnlyMemory<byte>[])baseSectionFrames.Clone(),
-            EncodeTileFrameSectionFrame(0, 0, 0, 0),
             enterWorldFrame);
     }
 
     /// <summary>
-    /// Creates the packet-8 response additions for the optional client-requested tile position.
-    /// Base spawn sections remain prebuilt; additional packet-10 frames are encoded once and cached.
+    /// Creates the additional packet-10 frames selected by packet 8. The client-requested window and,
+    /// for team-based-spawn worlds, the team's extra-spawn window are deduplicated against already sent sections.
     /// </summary>
     public bool TryCreateSectionResponse(
         int tileX,
         int tileY,
+        byte team,
         out PlayerBootstrapSectionResponse response)
     {
         if (_world is null)
         {
-            response = new PlayerBootstrapSectionResponse(StatusFrame, [], ReadOnlyMemory<byte>.Empty);
+            response = new PlayerBootstrapSectionResponse(StatusFrame, []);
             return true;
         }
 
@@ -139,49 +130,76 @@ public sealed class PlayerBootstrapPacketSet
             tileX,
             tileY,
             requestedSections);
-        if (requestedCount == 0)
+
+        Span<WorldSectionId> teamSections = stackalloc WorldSectionId[InitialSectionBootstrapPlanner.MaximumTeamSpawnSectionCount];
+        int teamCount = 0;
+        if (_world.RuntimeMetadata.TeamBasedSpawnsSeed &&
+            team != 0 &&
+            team < _world.RuntimeMetadata.ExtraSpawnPoints.Length)
         {
-            response = new PlayerBootstrapSectionResponse(StatusFrame, [], ReadOnlyMemory<byte>.Empty);
+            WorldSpawnPoint teamSpawn = _world.RuntimeMetadata.ExtraSpawnPoints[team];
+            teamCount = InitialSectionBootstrapPlanner.PlanTeamSpawnSections(
+                _world.Header.Dimensions,
+                teamSpawn.X,
+                teamSpawn.Y,
+                teamSections);
+        }
+
+        int maximumAdditional = checked(requestedCount + teamCount);
+        if (maximumAdditional == 0)
+        {
+            response = new PlayerBootstrapSectionResponse(StatusFrame, []);
             return true;
         }
 
-        var additionalFrames = new ReadOnlyMemory<byte>[requestedCount];
+        Span<WorldSectionId> additionalSections = stackalloc WorldSectionId[
+            InitialSectionBootstrapPlanner.MaximumRequestedSectionCount +
+            InitialSectionBootstrapPlanner.MaximumTeamSpawnSectionCount];
         int additionalCount = 0;
-        for (int i = 0; i < requestedCount; i++)
-        {
-            WorldSectionId section = requestedSections[i];
-            if (ContainsBaseSection(section))
-                continue;
+        AppendUniqueAdditionalSections(requestedSections[..requestedCount], additionalSections, ref additionalCount);
+        AppendUniqueAdditionalSections(teamSections[..teamCount], additionalSections, ref additionalCount);
 
-            if (!TryGetOrEncodeSection(section, out ReadOnlyMemory<byte> frame))
+        var additionalFrames = new ReadOnlyMemory<byte>[additionalCount];
+        for (int i = 0; i < additionalCount; i++)
+        {
+            if (!TryGetOrEncodeSection(additionalSections[i], out ReadOnlyMemory<byte> frame))
             {
                 response = default;
                 return false;
             }
 
-            additionalFrames[additionalCount++] = frame;
+            additionalFrames[i] = frame;
         }
-
-        if (additionalCount != additionalFrames.Length)
-            Array.Resize(ref additionalFrames, additionalCount);
 
         ReadOnlyMemory<byte> statusFrame = additionalCount == 0
             ? StatusFrame
             : EncodeStatusFrame(checked(BaseSectionFrames.Count + additionalCount));
-        ReadOnlyMemory<byte> requestedTileFrameFrame = EncodeTileFrameSectionFrame(requestedSections[..requestedCount]);
-
-        response = new PlayerBootstrapSectionResponse(
-            statusFrame,
-            additionalFrames,
-            requestedTileFrameFrame);
+        response = new PlayerBootstrapSectionResponse(statusFrame, additionalFrames);
         return true;
     }
 
-    private bool ContainsBaseSection(WorldSectionId section)
+    private void AppendUniqueAdditionalSections(
+        ReadOnlySpan<WorldSectionId> candidates,
+        Span<WorldSectionId> destination,
+        ref int count)
     {
-        for (int i = 0; i < _baseSections.Length; i++)
+        for (int i = 0; i < candidates.Length; i++)
         {
-            if (_baseSections[i] == section)
+            WorldSectionId section = candidates[i];
+            if (ContainsBaseSection(section) || Contains(destination[..count], section))
+                continue;
+
+            destination[count++] = section;
+        }
+    }
+
+    private bool ContainsBaseSection(WorldSectionId section) => Contains(_baseSections, section);
+
+    private static bool Contains(ReadOnlySpan<WorldSectionId> sections, WorldSectionId section)
+    {
+        for (int i = 0; i < sections.Length; i++)
+        {
+            if (sections[i] == section)
                 return true;
         }
 
@@ -253,30 +271,6 @@ public sealed class PlayerBootstrapPacketSet
         };
 
         return SerializePacket(packet);
-    }
-
-    private static byte[] EncodeTileFrameSectionFrame(ReadOnlySpan<WorldSectionId> sections)
-    {
-        if (sections.IsEmpty)
-            throw new ArgumentException("At least one bootstrap section is required.", nameof(sections));
-
-        WorldSectionId first = sections[0];
-        WorldSectionId last = sections[^1];
-        return EncodeTileFrameSectionFrame(first.X, first.Y, last.X, last.Y);
-    }
-
-    private static byte[] EncodeTileFrameSectionFrame(int startX, int startY, int endX, int endY)
-    {
-        Span<byte> payload = stackalloc byte[sizeof(short) * 4];
-        System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(payload, checked((short)startX));
-        System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(payload[2..], checked((short)startY));
-        System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(payload[4..], checked((short)endX));
-        System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(payload[6..], checked((short)endY));
-
-        var writer = new System.Buffers.ArrayBufferWriter<byte>(TerrariaFrameDecoderOptions.MinimumFrameLength + payload.Length);
-        if (TerrariaFrameEncoder.TryWrite(writer, (byte)TerrariaMessageId.TileFrameSection, payload) != TerrariaFrameWriteResult.Written)
-            throw new InvalidOperationException("Failed to encode bootstrap tile-frame section packet.");
-        return writer.WrittenSpan.ToArray();
     }
 
     private static byte[] SerializePacket(TerrariaPacket packet)

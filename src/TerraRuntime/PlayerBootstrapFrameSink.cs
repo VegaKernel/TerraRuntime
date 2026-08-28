@@ -22,7 +22,7 @@ public enum PlayerBootstrapStopReason : byte
 
 /// <summary>
 /// Connection-owned coordinator for the minimal vanilla 1.4.5.8 join path:
-/// Hello -> packet 3 -> packet 6/7 -> packet 8/9/10/11/49/7 -> packet 12 authoritative handoff.
+/// Hello -> packet 3 -> packet 6/7 -> packet 8/7/9/10/.../49 -> packet 12 authoritative handoff.
 /// </summary>
 public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 {
@@ -171,11 +171,15 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (_session.State != PlayerJoinState.AwaitingSectionRequest)
             return Stop(PlayerBootstrapStopReason.InvalidJoinState);
 
-        if (!_packets.TryCreateSectionResponse(request.TileX, request.TileY, out PlayerBootstrapSectionResponse sectionResponse))
+        if (!_packets.TryCreateSectionResponse(request.TileX, request.TileY, request.Team, out PlayerBootstrapSectionResponse sectionResponse))
             return Stop(PlayerBootstrapStopReason.SectionEncodingFailure);
 
-        if (!TryQueue(sectionResponse.StatusFrame))
+        // TerrariaServer 1.4.5.8 re-sends WorldInfo at the start of packet-8 handling.
+        if (!TryQueue(_packets.WorldInfoFrame) ||
+            !TryQueue(sectionResponse.StatusFrame))
+        {
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
+        }
 
         foreach (ReadOnlyMemory<byte> sectionFrame in _packets.BaseSectionFrames)
         {
@@ -183,23 +187,15 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
 
-        if (!TryQueue(_packets.BaseTileFrameFrame))
-            return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
-
         foreach (ReadOnlyMemory<byte> sectionFrame in sectionResponse.AdditionalSectionFrames)
         {
             if (!TryQueue(sectionFrame))
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
 
-        if (sectionResponse.HasRequestedTileFrame && !TryQueue(sectionResponse.RequestedTileFrameFrame))
+        // Remaining vanilla world-state packets are added incrementally; packet 49 terminates the current bootstrap subset.
+        if (!TryQueue(_packets.EnterWorldFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
-
-        if (!TryQueue(_packets.EnterWorldFrame) ||
-            !TryQueue(_packets.WorldInfoFrame))
-        {
-            return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
-        }
 
         _session.ObserveSectionRequest();
         return TerrariaFrameSinkResult.Continue;

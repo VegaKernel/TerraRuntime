@@ -2,12 +2,13 @@ namespace TerraRuntime.World;
 
 /// <summary>
 /// Plans the section windows sent by Terraria 1.4.5.8 when handling the initial packet-8 request.
-/// Vanilla computes the 5x3 window before clamping, so worlds spawning near an edge intentionally receive fewer sections.
+/// The base spawn window and optional requested/team windows intentionally use different vanilla bounds.
 /// </summary>
 public static class InitialSectionBootstrapPlanner
 {
     public const int MaximumBaseSectionCount = 5 * 3;
-    public const int MaximumRequestedSectionCount = 5 * 3;
+    public const int MaximumRequestedSectionCount = 6 * 4;
+    public const int MaximumTeamSpawnSectionCount = 6 * 4;
 
     public static int PlanBaseSpawnSections(
         WorldDimensions dimensions,
@@ -49,8 +50,8 @@ public static class InitialSectionBootstrapPlanner
     }
 
     /// <summary>
-    /// Plans the optional second 5x3 packet-8 window around the client-provided spawn position.
-    /// A missing (-1) coordinate or a position inside vanilla's ten-tile edge guard disables the window.
+    /// Plans the optional packet-8 window around the client-provided spawn position.
+    /// Terraria 1.4.5.8 uses inclusive upper bounds here, producing up to a 6x4 window.
     /// </summary>
     public static int PlanRequestedSections(
         WorldDimensions dimensions,
@@ -65,7 +66,22 @@ public static class InitialSectionBootstrapPlanner
         if (!HasValidRequestedPosition(dimensions, tileX, tileY))
             return 0;
 
-        return PlanBaseSpawnSections(dimensions, tileX, tileY, destination);
+        return PlanInclusiveAdditionalWindow(dimensions, tileX, tileY, destination);
+    }
+
+    public static int PlanTeamSpawnSections(
+        WorldDimensions dimensions,
+        int tileX,
+        int tileY,
+        Span<WorldSectionId> destination)
+    {
+        ArgumentNullException.ThrowIfNull(dimensions);
+        if (destination.Length < MaximumTeamSpawnSectionCount)
+            throw new ArgumentException($"Destination must hold at least {MaximumTeamSpawnSectionCount} sections.", nameof(destination));
+        if ((uint)tileX >= (uint)dimensions.WidthTiles || (uint)tileY >= (uint)dimensions.HeightTiles)
+            return 0;
+
+        return PlanInclusiveAdditionalWindow(dimensions, tileX, tileY, destination);
     }
 
     public static bool HasValidRequestedPosition(WorldDimensions dimensions, int tileX, int tileY)
@@ -79,5 +95,33 @@ public static class InitialSectionBootstrapPlanner
             tileX <= dimensions.WidthTiles - 10 &&
             tileY >= 10 &&
             tileY <= dimensions.HeightTiles - 10;
+    }
+
+    private static int PlanInclusiveAdditionalWindow(
+        WorldDimensions dimensions,
+        int tileX,
+        int tileY,
+        Span<WorldSectionId> destination)
+    {
+        int startX = (tileX / TerrariaSectionGeometry.WidthTiles) - 2;
+        int startY = (tileY / TerrariaSectionGeometry.HeightTiles) - 1;
+        int endXInclusive = startX + 5;
+        int endYInclusive = startY + 3;
+
+        startX = Math.Max(0, startX);
+        startY = Math.Max(0, startY);
+        endXInclusive = Math.Min(endXInclusive, dimensions.SectionColumns - 1);
+        endYInclusive = Math.Min(endYInclusive, dimensions.SectionRows - 1);
+
+        int count = 0;
+        for (int x = startX; x <= endXInclusive; x++)
+        {
+            for (int y = startY; y <= endYInclusive; y++)
+            {
+                destination[count++] = new WorldSectionId(x, y);
+            }
+        }
+
+        return count;
     }
 }
