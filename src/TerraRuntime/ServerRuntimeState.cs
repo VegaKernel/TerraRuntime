@@ -1,5 +1,7 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
 namespace TerraRuntime;
@@ -23,6 +25,7 @@ internal sealed class ServerRuntimeState
     private readonly RuntimeProjectileStore _projectiles;
     private readonly RuntimeProjectileStateExecutor _projectileExecutor;
     private readonly IProjectileStateStepper? _projectileStepper;
+    private readonly RuntimeProjectileReplicationRegistry? _projectileReplication;
     private readonly RuntimeWorldItemStore _worldItems;
     private readonly RuntimeWorldClock? _worldClock;
     private int lastWorkerResult;
@@ -36,7 +39,8 @@ internal sealed class ServerRuntimeState
         RuntimeWorldClock? worldClock = null,
         RuntimeProjectileStore? projectiles = null,
         IProjectileStateStepper? projectileStepper = null,
-        RuntimeWorldItemStore? worldItems = null)
+        RuntimeWorldItemStore? worldItems = null,
+        RuntimeProjectileReplicationRegistry? projectileReplication = null)
     {
         _playerEvents = playerEvents;
         _worldClock = worldClock;
@@ -45,6 +49,7 @@ internal sealed class ServerRuntimeState
         _projectiles = projectiles ?? new RuntimeProjectileStore();
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
         _projectileStepper = projectileStepper;
+        _projectileReplication = projectileReplication;
         _worldItems = worldItems ?? new RuntimeWorldItemStore();
 
         if (npcAiStepper is null)
@@ -118,6 +123,12 @@ internal sealed class ServerRuntimeState
     public long AppliedProjectileDespawns { get; private set; }
 
     public long RejectedProjectileDespawns { get; private set; }
+
+    public long RejectedClientProjectileUpdates { get; private set; }
+
+    public long RejectedClientProjectileDestroys { get; private set; }
+
+    public long RelayedUnknownProjectileDestroys { get; private set; }
 
     public long AppliedWorldItemAllocations { get; private set; }
 
@@ -228,6 +239,14 @@ internal sealed class ServerRuntimeState
 
             case ProjectileDespawnRuntimeCommand despawn:
                 ApplyProjectileDespawn(despawn);
+                break;
+
+            case ClientProjectileUpdateRuntimeCommand update:
+                ApplyClientProjectileUpdate(update);
+                break;
+
+            case ClientProjectileDestroyRuntimeCommand destroy:
+                ApplyClientProjectileDestroy(destroy);
                 break;
 
             case WorldItemAllocateRuntimeCommand allocate:
@@ -405,6 +424,163 @@ internal sealed class ServerRuntimeState
 
         RejectedProjectileDespawns++;
     }
+
+    private void ApplyClientProjectileUpdate(ClientProjectileUpdateRuntimeCommand command)
+    {
+        TerrariaProjectileUpdateState packet = command.State;
+        if (_projectileReplication is null ||
+            !IsCurrentPlayerConnection(command.Connection) ||
+            packet.Key.Spawner != command.Connection.Player.Slot.Value ||
+            !TryConvertClientProjectileUpdate(in packet, out ProjectileStateUpdate update))
+        {
+            RejectedClientProjectileUpdates++;
+            return;
+        }
+
+        RuntimeProjectileWireIdentityRegistry identities = _projectileReplication.WireIdentities;
+        RuntimeProjectileClientCommitContext clientCommits = _projectileReplication.ClientCommitContext;
+        TerrariaProjectileKeyState key = packet.Key;
+
+        if (identities.TryResolve(in key, out ProjectileHandle projectile))
+        {
+            using IDisposable scope = clientCommits.Enter(command.Connection.Source, in key);
+            if (_projectiles.TryUpdate(projectile, in update, out _))
+            {
+                AppliedProjectileUpdates++;
+                return;
+            }
+
+            RejectedProjectileUpdates++;
+            RejectedClientProjectileUpdates++;
+            return;
+        }
+
+        if (!TryFindFreeVanillaProjectileSlot(out ushort slot))
+        {
+            RejectedProjectileSpawns++;
+            RejectedClientProjectileUpdates++;
+            return;
+        }
+
+        using (clientCommits.Enter(command.Connection.Source, in key))
+        {
+            if (_projectiles.TrySpawn(slot, in update, out _))
+            {
+                AppliedProjectileSpawns++;
+                return;
+            }
+        }
+
+        RejectedProjectileSpawns++;
+        RejectedClientProjectileUpdates++;
+    }
+
+    private void ApplyClientProjectileDestroy(ClientProjectileDestroyRuntimeCommand command)
+    {
+        TerrariaProjectileDestroyState packet = command.State;
+        if (_projectileReplication is null ||
+            !packet.IsValid ||
+            !IsCurrentPlayerConnection(command.Connection))
+        {
+            RejectedClientProjectileDestroys++;
+            return;
+        }
+
+        RuntimeProjectileWireIdentityRegistry identities = _projectileReplication.WireIdentities;
+        TerrariaProjectileKeyState key = packet.Key;
+        if (!identities.TryResolve(in key, out ProjectileHandle projectile))
+        {
+            if (_projectileReplication.TryRelayUnresolvedDestroy(command.Connection.Source, in packet))
+            {
+                RelayedUnknownProjectileDestroys++;
+                return;
+            }
+
+            RejectedClientProjectileDestroys++;
+            return;
+        }
+
+        if (!_projectiles.TryGet(projectile, out ProjectileSnapshot current))
+        {
+            identities.TryUnbind(projectile, out _);
+            if (_projectileReplication.TryRelayUnresolvedDestroy(command.Connection.Source, in packet))
+            {
+                RelayedUnknownProjectileDestroys++;
+                return;
+            }
+
+            RejectedClientProjectileDestroys++;
+            return;
+        }
+
+        if (current.Spawner != command.Connection.Player.Slot.Value)
+        {
+            RejectedClientProjectileDestroys++;
+            return;
+        }
+
+        using (_projectileReplication.ClientCommitContext.Enter(command.Connection.Source, in key))
+        {
+            if (_projectiles.TryDespawnAt(projectile, packet.PositionX, packet.PositionY, out _))
+            {
+                AppliedProjectileDespawns++;
+                return;
+            }
+        }
+
+        RejectedProjectileDespawns++;
+        RejectedClientProjectileDestroys++;
+    }
+
+    private bool TryFindFreeVanillaProjectileSlot(out ushort slot)
+    {
+        int physicalCapacity = Math.Min(_projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
+        for (int candidate = 0; candidate < physicalCapacity; candidate++)
+        {
+            ushort physicalSlot = checked((ushort)candidate);
+            if (_projectiles.TryGetActive(physicalSlot, out _))
+                continue;
+
+            slot = physicalSlot;
+            return true;
+        }
+
+        slot = default;
+        return false;
+    }
+
+    private static bool TryConvertClientProjectileUpdate(
+        in TerrariaProjectileUpdateState packet,
+        out ProjectileStateUpdate update)
+    {
+        if (!packet.IsValid ||
+            !VanillaProjectileIds.TryCreate(packet.ProjectileType, out ProjectileTypeId type) ||
+            !VanillaProjectileIds.IsLiveWireType(type) ||
+            VanillaProjectileFacts.IsHostile(type))
+        {
+            update = default;
+            return false;
+        }
+
+        update = new ProjectileStateUpdate(
+            type,
+            packet.Key.Spawner,
+            packet.PositionX,
+            packet.PositionY,
+            packet.VelocityX,
+            packet.VelocityY,
+            new ProjectileAiState(packet.Ai0, packet.Ai1, packet.Ai2),
+            packet.BannerIdToRespondTo,
+            packet.Damage,
+            packet.KnockBack,
+            packet.OriginalDamage);
+        return true;
+    }
+
+    private bool IsCurrentPlayerConnection(ConnectionHandle connection) =>
+        connection.IsAssigned &&
+        _players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) &&
+        player.Connection == connection;
 
     private void ApplyWorldItemAllocate(WorldItemAllocateRuntimeCommand command)
     {
