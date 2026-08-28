@@ -70,10 +70,27 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         float velocityX = aiState.VelocityX;
         float velocityY = aiState.VelocityY;
 
-        // AI_003 performs its solid obstacle jump probe before UpdateNPC applies gravity. Door/tall-gate
-        // side effects are intentionally outside this motion wrapper, but ordinary solid-block jumps belong here.
+        // The late ordinary AI_003 world-probe tail executes before UpdateNPC applies gravity. Closed-door
+        // contact owns ai[1]/ai[2]/ai[3] and can recoil X; the obstacle jump ladder follows if no door owns it.
         if (npcType == VanillaNpcIds.Zombie)
         {
+            VanillaZombieDoorContactResult doorContact = VanillaWorldZombieDoorContact.Resolve(
+                tiles,
+                aiState.PositionX,
+                aiState.PositionY,
+                velocityX,
+                velocityY,
+                definition.Width,
+                definition.Height,
+                simulation.DirectionX,
+                aiState.Ai);
+            velocityX = doorContact.VelocityX;
+            aiState = aiState with
+            {
+                VelocityX = velocityX,
+                Ai = doorContact.Ai
+            };
+
             VanillaZombieObstacleMotionResult obstacle = VanillaWorldZombieObstacleMotion.Resolve(
                 tiles,
                 aiState.PositionX,
