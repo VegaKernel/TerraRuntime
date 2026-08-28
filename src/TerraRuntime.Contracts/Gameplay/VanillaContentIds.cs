@@ -48,7 +48,8 @@ public static class VanillaItemIds
 /// <summary>
 /// TerrariaServer 1.4.5.8 projectile content bounds and the initial named identities used by runtime tests.
 /// IDs 1111..1135 were the final additions in the 1.4.5.7 content update, leaving ProjectileID.Count at
-/// 1136 for 1.4.5.8. Zero is ProjectileID.None and is catalog-valid but not a live packet-27 projectile type.
+/// 1136 for 1.4.5.8. Zero is ProjectileID.None. A handful of in-range legacy gaps also fall through
+/// Projectile.SetDefaults and therefore are not live authoritative projectile types.
 /// </summary>
 public static class VanillaProjectileIds
 {
@@ -72,7 +73,7 @@ public static class VanillaProjectileIds
     }
 
     public static bool IsLiveWireType(ProjectileTypeId type) =>
-        type.Value > None.Value && type.Value < Count;
+        VanillaProjectileLifecycleFacts.IsDefinedLiveType(type);
 }
 
 /// <summary>
