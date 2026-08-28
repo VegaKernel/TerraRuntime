@@ -1,0 +1,236 @@
+using TerraRuntime.Contracts.Runtime;
+
+namespace TerraRuntime.Core;
+
+/// <summary>
+/// Mutable state accepted by the authoritative live-NPC store. Only source-backed state needed by
+/// the current lifecycle/AI bring-up is represented; protocol flags and serialization details stay outside Core.
+/// </summary>
+public readonly record struct NpcStateUpdate(
+    short NetId,
+    float PositionX,
+    float PositionY,
+    float VelocityX,
+    float VelocityY,
+    ushort Target,
+    NpcAiState Ai);
+
+/// <summary>
+/// Bounded runtime-owned live NPC state. Slot reuse creates a new generation while mutations within
+/// the same logical NPC advance only its revision. All mutation APIs require the current generation,
+/// preventing stale AI/lifecycle work from modifying a replacement NPC that reused the same slot.
+/// </summary>
+public sealed class RuntimeNpcStore : INpcSnapshotReader
+{
+    /// <summary>
+    /// Packet 23 addresses NPC slots with one byte. This is an addressability ceiling, not a claim
+    /// about Terraria's gameplay spawn limit.
+    /// </summary>
+    public const int MaximumAddressableCapacity = byte.MaxValue + 1;
+
+    private readonly object _gate = new();
+    private readonly SlotState[] _slots;
+    private int _activeCount;
+
+    public RuntimeNpcStore(int capacity = MaximumAddressableCapacity)
+    {
+        if (capacity <= 0 || capacity > MaximumAddressableCapacity)
+            throw new ArgumentOutOfRangeException(nameof(capacity));
+
+        _slots = new SlotState[capacity];
+    }
+
+    public int Capacity => _slots.Length;
+
+    public int ActiveCount
+    {
+        get
+        {
+            lock (_gate)
+                return _activeCount;
+        }
+    }
+
+    public bool TrySpawn(byte slot, in NpcStateUpdate update, out NpcSnapshot snapshot)
+    {
+        if (!IsAddressableSlot(slot) || !IsValid(in update))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        lock (_gate)
+        {
+            ref SlotState state = ref _slots[slot];
+            if (state.Active || !TryAdvance(ref state.Generation))
+            {
+                snapshot = default;
+                return false;
+            }
+
+            state.Active = true;
+            state.Revision = 1;
+            state.Update = update;
+            _activeCount++;
+            snapshot = Capture(slot, in state);
+            return true;
+        }
+    }
+
+    public bool TryUpdate(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot)
+    {
+        if (!IsCurrentHandleCandidate(handle) || !IsValid(in update))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        lock (_gate)
+        {
+            ref SlotState state = ref _slots[handle.Slot];
+            if (!state.Active ||
+                state.Generation != handle.Generation.Value ||
+                !TryAdvance(ref state.Revision))
+            {
+                snapshot = default;
+                return false;
+            }
+
+            state.Update = update;
+            snapshot = Capture(handle.Slot, in state);
+            return true;
+        }
+    }
+
+    public bool TryDespawn(NpcHandle handle)
+    {
+        if (!IsCurrentHandleCandidate(handle))
+            return false;
+
+        lock (_gate)
+        {
+            ref SlotState state = ref _slots[handle.Slot];
+            if (!state.Active || state.Generation != handle.Generation.Value)
+                return false;
+
+            state.Active = false;
+            state.Revision = 0;
+            state.Update = default;
+            _activeCount--;
+            return true;
+        }
+    }
+
+    public bool TryGetActive(byte slot, out NpcSnapshot snapshot)
+    {
+        if (!IsAddressableSlot(slot))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        lock (_gate)
+        {
+            ref readonly SlotState state = ref _slots[slot];
+            if (!state.Active)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            snapshot = Capture(slot, in state);
+            return true;
+        }
+    }
+
+    public bool TryGet(NpcHandle handle, out NpcSnapshot snapshot)
+    {
+        if (!IsCurrentHandleCandidate(handle))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        lock (_gate)
+        {
+            ref readonly SlotState state = ref _slots[handle.Slot];
+            if (!state.Active || state.Generation != handle.Generation.Value)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            snapshot = Capture(handle.Slot, in state);
+            return true;
+        }
+    }
+
+    public int CopyActive(Span<NpcSnapshot> destination)
+    {
+        lock (_gate)
+        {
+            if (destination.Length < _activeCount)
+            {
+                throw new ArgumentException(
+                    $"Destination length {destination.Length} is smaller than active NPC count {_activeCount}.",
+                    nameof(destination));
+            }
+
+            int written = 0;
+            for (int slot = 0; slot < _slots.Length; slot++)
+            {
+                ref readonly SlotState state = ref _slots[slot];
+                if (!state.Active)
+                    continue;
+
+                destination[written++] = Capture(checked((byte)slot), in state);
+            }
+
+            return written;
+        }
+    }
+
+    private bool IsAddressableSlot(byte slot) => slot < _slots.Length;
+
+    private bool IsCurrentHandleCandidate(NpcHandle handle) =>
+        handle.IsAssigned && IsAddressableSlot(handle.Slot);
+
+    private static bool IsValid(in NpcStateUpdate update) =>
+        float.IsFinite(update.PositionX) &&
+        float.IsFinite(update.PositionY) &&
+        float.IsFinite(update.VelocityX) &&
+        float.IsFinite(update.VelocityY) &&
+        update.Ai.IsFinite;
+
+    private static NpcSnapshot Capture(byte slot, in SlotState state)
+    {
+        NpcStateUpdate update = state.Update;
+        return new NpcSnapshot(
+            new NpcHandle(slot, new NpcGeneration(state.Generation)),
+            new NpcRevision(state.Revision),
+            update.NetId,
+            update.PositionX,
+            update.PositionY,
+            update.VelocityX,
+            update.VelocityY,
+            update.Target,
+            update.Ai);
+    }
+
+    private static bool TryAdvance(ref ulong value)
+    {
+        if (value == ulong.MaxValue)
+            return false;
+
+        value++;
+        return true;
+    }
+
+    private struct SlotState
+    {
+        public bool Active;
+        public ulong Generation;
+        public ulong Revision;
+        public NpcStateUpdate Update;
+    }
+}
