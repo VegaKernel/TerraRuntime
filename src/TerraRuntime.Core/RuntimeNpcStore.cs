@@ -68,7 +68,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             return false;
         }
 
-        NpcStateUpdate normalized = MaterializeInitialCombatState(in update);
+        NpcStateUpdate normalized = MaterializeInitialLocalState(in update);
         state.Active = true;
         state.Revision = 1;
         state.Update = normalized;
@@ -93,7 +93,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             return false;
         }
 
-        NpcStateUpdate normalized = PreserveOrMaterializeCombatState(in update, in state.Update);
+        NpcStateUpdate normalized = PreserveOrMaterializeLocalState(in update, in state.Update);
         if (!TryAdvance(ref state.Revision))
         {
             snapshot = default;
@@ -198,44 +198,61 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         update.Ai.IsFinite &&
         update.Simulation.IsValid;
 
-    private static NpcStateUpdate MaterializeInitialCombatState(in NpcStateUpdate update)
+    private static NpcStateUpdate MaterializeInitialLocalState(in NpcStateUpdate update)
     {
-        if (update.Simulation.LifeMax != 0 ||
-            !VanillaNpcDefinitionCatalog.TryGet(update.Type, out VanillaNpcDefinition definition))
+        NpcSimulationState simulation = update.Simulation;
+        if (simulation.LifeMax == 0 &&
+            VanillaNpcDefinitionCatalog.TryGet(update.Type, out VanillaNpcDefinition definition))
         {
-            return update;
-        }
-
-        return update with
-        {
-            Simulation = update.Simulation with
+            simulation = simulation with
             {
                 Life = definition.LifeMax,
                 LifeMax = definition.LifeMax
-            }
-        };
-    }
-
-    private static NpcStateUpdate PreserveOrMaterializeCombatState(
-        in NpcStateUpdate update,
-        in NpcStateUpdate previous)
-    {
-        if (update.Simulation.LifeMax != 0)
-            return update;
-
-        if (update.Type == previous.Type && previous.Simulation.LifeMax > 0)
-        {
-            return update with
-            {
-                Simulation = update.Simulation with
-                {
-                    Life = previous.Simulation.Life,
-                    LifeMax = previous.Simulation.LifeMax
-                }
             };
         }
 
-        return MaterializeInitialCombatState(in update);
+        if (simulation.TimeLeft == 0)
+            simulation = simulation with { TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft };
+
+        return update with { Simulation = simulation };
+    }
+
+    private static NpcStateUpdate PreserveOrMaterializeLocalState(
+        in NpcStateUpdate update,
+        in NpcStateUpdate previous)
+    {
+        NpcSimulationState simulation = update.Simulation;
+        if (simulation.LifeMax == 0)
+        {
+            if (update.Type == previous.Type && previous.Simulation.LifeMax > 0)
+            {
+                simulation = simulation with
+                {
+                    Life = previous.Simulation.Life,
+                    LifeMax = previous.Simulation.LifeMax
+                };
+            }
+            else if (VanillaNpcDefinitionCatalog.TryGet(update.Type, out VanillaNpcDefinition definition))
+            {
+                simulation = simulation with
+                {
+                    Life = definition.LifeMax,
+                    LifeMax = definition.LifeMax
+                };
+            }
+        }
+
+        if (simulation.TimeLeft == 0)
+        {
+            simulation = simulation with
+            {
+                TimeLeft = update.Type == previous.Type && previous.Simulation.TimeLeft > 0
+                    ? previous.Simulation.TimeLeft
+                    : VanillaNpcDefinitionCatalog.DefaultTimeLeft
+            };
+        }
+
+        return update with { Simulation = simulation };
     }
 
     private static NpcSnapshot Capture(byte slot, in SlotState state)
