@@ -30,6 +30,26 @@ public sealed class RuntimeProjectileReplicationRegistryTests
     }
 
     [Fact]
+    public void Mismatched_spawn_claim_does_not_mark_connection_as_playing()
+    {
+        var replication = new RuntimeProjectileReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(1);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+
+        ConnectionHandle player = Connection(source, slot: 4, generation: 1);
+        PlayerSpawnCommitRequest mismatchedSpawn = CreatePlayerSpawn(new PlayerSlotId(5));
+        replication.PlayerSpawned(player, in mismatchedSpawn);
+
+        ProjectileSnapshot projectile = CreateProjectile(revision: 1, positionX: 100f);
+        replication.ProjectileStateCommitted(ProjectileStateCommitKind.Spawn, in projectile);
+
+        Assert.Equal(0, outbound.QueuedFrames);
+        Assert.Equal(0, replication.RelayedFrames);
+        Assert.Equal(0, replication.BaselineFrames);
+    }
+
+    [Fact]
     public void Playing_client_receives_spawn_update_and_despawn_and_despawn_clears_future_baseline()
     {
         var replication = new RuntimeProjectileReplicationRegistry();
