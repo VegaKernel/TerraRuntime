@@ -1,0 +1,25 @@
+name: Fix profiler shadow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-profiler-shadow.yml
+      - tools/ci/fix_profiler_shadow.py
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 tools/ci/fix_profiler_shadow.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/TerraRuntime.World/RuntimeWorldSnapshotProfiler.cs
+          git diff --cached --check
+          git commit -m "fix: avoid profiler decoded local shadow"
+          git push origin HEAD:main
