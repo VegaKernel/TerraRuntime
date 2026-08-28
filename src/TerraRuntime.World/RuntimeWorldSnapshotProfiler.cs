@@ -141,14 +141,14 @@ public static class RuntimeWorldSnapshotProfiler
             {
                 ReadOnlySpan<byte> entry = shardTable.AsSpan(shardIndex * ShardEntrySize, ShardEntrySize);
                 TileShardDescriptor expected = shards[shardIndex];
-                if (!TryDecodeShardEntry(entry, expected, out TileShardDescriptor decoded))
+                if (!TryDecodeShardEntry(entry, expected, out TileShardDescriptor decodedShard))
                 {
                     return new RuntimeWorldSnapshotLoadDiagnostic(
                         RuntimeWorldSnapshotLoadResult.InvalidShardTable,
                         shardIndex);
                 }
 
-                shards[shardIndex] = decoded;
+                shards[shardIndex] = decodedShard;
             }
             shardTableTicks = ElapsedTicks(stageStart);
 
