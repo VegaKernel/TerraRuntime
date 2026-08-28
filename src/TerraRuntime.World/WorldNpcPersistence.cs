@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.World;
 
 public sealed record WorldNpcPersistence(
@@ -14,12 +16,18 @@ public sealed record WorldTownNpc(
     int HomeTileX,
     int HomeTileY,
     int? TownNpcVariationIndex,
-    bool HomelessDespawn);
+    bool HomelessDespawn)
+{
+    public NpcNetId NetIdentity => new(NetId);
+}
 
 public readonly record struct WorldPersistentNpc(
     int NetId,
     float X,
-    float Y);
+    float Y)
+{
+    public NpcNetId NetIdentity => new(NetId);
+}
 
 public readonly record struct WorldFileNpcDecodeOptions(
     int MaxShimmeredTownNpcIndices,
