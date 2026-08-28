@@ -25,6 +25,9 @@ internal sealed class RuntimePlayerEquipmentIngress : IPlayerEquipmentIngress
             return false;
 
         PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
+        if (!normalized.TryGetCanonicalItemType(out _))
+            return false;
+
         return _ingress.TryPost(
             connection.Source,
             new PlayerEquipmentRuntimeCommand(connection, normalized));
