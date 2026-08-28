@@ -1,0 +1,155 @@
+using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
+using TerraRuntime.Network;
+using TerraRuntime.Protocol;
+using TerraRuntime.Protocol.Multiplicity;
+
+namespace TerraRuntime;
+
+public enum WorldItemFrameStopReason : byte
+{
+    None = 0,
+    InvalidJoinState = 1,
+    MalformedDrop = 2,
+    MalformedOwner = 3,
+    PlayerOwnershipMismatch = 4,
+    GameIngressBackpressure = 5
+}
+
+/// <summary>
+/// Connection-owned packet 21/22 ingress. World-item mutation is accepted only for a fully playing session;
+/// packet identities are decoded through Multiplicity and converted into packet-neutral Core updates before
+/// bounded authoritative queue admission.
+/// </summary>
+public sealed class WorldItemFrameSink : ITerrariaFrameSink
+{
+    private readonly GameCommandSourceId _source;
+    private readonly PlayerBootstrapFrameSink _bootstrap;
+    private readonly ITerrariaFrameSink _inner;
+    private readonly IWorldItemIngress _ingress;
+
+    public WorldItemFrameSink(
+        GameCommandSourceId source,
+        PlayerBootstrapFrameSink bootstrap,
+        ITerrariaFrameSink inner,
+        IWorldItemIngress ingress)
+    {
+        if (source.IsSystem)
+            throw new ArgumentException("World-item ingress requires a connection command source.", nameof(source));
+        ArgumentNullException.ThrowIfNull(bootstrap);
+        ArgumentNullException.ThrowIfNull(inner);
+        ArgumentNullException.ThrowIfNull(ingress);
+
+        _source = source;
+        _bootstrap = bootstrap;
+        _inner = inner;
+        _ingress = ingress;
+    }
+
+    public WorldItemFrameStopReason StopReason { get; private set; }
+
+    public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
+    {
+        if (StopReason != WorldItemFrameStopReason.None)
+            return TerrariaFrameSinkResult.Stop;
+
+        return (TerrariaMessageId)frame.MessageId switch
+        {
+            TerrariaMessageId.WorldItemDrop => HandleDrop(frame),
+            TerrariaMessageId.WorldItemOwner => HandleOwner(frame),
+            _ => _inner.OnFrame(in frame)
+        };
+    }
+
+    private TerrariaFrameSinkResult HandleDrop(in TerrariaFrame frame)
+    {
+        if (!TryGetPlayingConnection(out ConnectionHandle connection))
+            return Stop(WorldItemFrameStopReason.InvalidJoinState);
+
+        TerrariaWorldItemDropDecodeResult decode = TerrariaWorldItemDropDecoder.TryDecode(
+            in frame,
+            out TerrariaWorldItemDropState drop);
+        if (decode != TerrariaWorldItemDropDecodeResult.Decoded)
+            return Stop(WorldItemFrameStopReason.MalformedDrop);
+
+        if (drop.IsNewItemRequest && drop.IsRemoval)
+            return Stop(WorldItemFrameStopReason.MalformedDrop);
+
+        if (drop.IsRemoval)
+        {
+            return _ingress.TryPostRemove(connection, drop.ItemIndex)
+                ? TerrariaFrameSinkResult.Continue
+                : Stop(WorldItemFrameStopReason.GameIngressBackpressure);
+        }
+
+        var state = new WorldItemDropStateUpdate(
+            drop.PositionX,
+            drop.PositionY,
+            drop.VelocityX,
+            drop.VelocityY,
+            drop.Stack,
+            drop.Prefix,
+            (WorldItemOwnershipMode)(byte)drop.Ownership,
+            drop.ItemNetId,
+            drop.Shimmered,
+            drop.ShimmerTime,
+            drop.EnemyGrabDelayTime);
+
+        bool posted = drop.IsNewItemRequest
+            ? _ingress.TryPostAllocate(connection, in state)
+            : _ingress.TryPostDrop(connection, drop.ItemIndex, in state);
+        return posted
+            ? TerrariaFrameSinkResult.Continue
+            : Stop(WorldItemFrameStopReason.GameIngressBackpressure);
+    }
+
+    private TerrariaFrameSinkResult HandleOwner(in TerrariaFrame frame)
+    {
+        if (!TryGetPlayingConnection(out ConnectionHandle connection))
+            return Stop(WorldItemFrameStopReason.InvalidJoinState);
+
+        TerrariaWorldItemOwnerDecodeResult decode = TerrariaWorldItemOwnerDecoder.TryDecode(
+            in frame,
+            out TerrariaWorldItemOwnerState owner);
+        if (decode != TerrariaWorldItemOwnerDecodeResult.Decoded)
+            return Stop(WorldItemFrameStopReason.MalformedOwner);
+
+        byte playerSlot = connection.Player.Slot.Value;
+        if ((owner.OwnerPlayerId != byte.MaxValue && owner.OwnerPlayerId != playerSlot) ||
+            (owner.GrabDelayPlayer != byte.MaxValue && owner.GrabDelayPlayer != playerSlot))
+        {
+            return Stop(WorldItemFrameStopReason.PlayerOwnershipMismatch);
+        }
+
+        var state = new WorldItemOwnerStateUpdate(
+            owner.OwnerPlayerId,
+            owner.TimeToKeepReservation,
+            owner.GrabDelayPlayer,
+            owner.GrabDelayTime,
+            owner.PositionX,
+            owner.PositionY);
+
+        return _ingress.TryPostOwner(connection, owner.ItemIndex, in state)
+            ? TerrariaFrameSinkResult.Continue
+            : Stop(WorldItemFrameStopReason.GameIngressBackpressure);
+    }
+
+    private bool TryGetPlayingConnection(out ConnectionHandle connection)
+    {
+        if (_bootstrap.JoinState == PlayerJoinState.Playing &&
+            _bootstrap.AssignedPlayerHandle is PlayerHandle player)
+        {
+            connection = new ConnectionHandle(_source, player);
+            return true;
+        }
+
+        connection = default;
+        return false;
+    }
+
+    private TerrariaFrameSinkResult Stop(WorldItemFrameStopReason reason)
+    {
+        StopReason = reason;
+        return TerrariaFrameSinkResult.Stop;
+    }
+}
