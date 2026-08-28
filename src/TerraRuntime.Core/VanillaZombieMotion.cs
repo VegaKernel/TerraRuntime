@@ -32,6 +32,8 @@ public readonly record struct VanillaZombieMotionInput(
 
     public bool EncourageDespawn { get; init; }
 
+    public bool JustHit { get; init; }
+
     public int TimeLeft { get; init; }
 }
 
@@ -49,9 +51,9 @@ public readonly record struct VanillaZombieMotionResult(
 
 /// <summary>
 /// Deterministic ordinary type-3 state slice from TerrariaServer 1.4.5.8 NPC.AI_003_Fighters.
-/// Covers stuck accounting, pursuit/TargetClosest cadence, the discouraged idle-turn branch,
-/// EncourageDespawn(10) lifetime clamping and the default horizontal acceleration band.
-/// Obstacle/door probing and justHit resets remain separate layers.
+/// Covers stuck accounting including justHit reset, pursuit/TargetClosest cadence, the discouraged idle-turn
+/// branch, EncourageDespawn(10) lifetime clamping and the default horizontal acceleration band.
+/// World obstacle/door probing remains in the authoritative world-motion layer.
 /// </summary>
 public static class VanillaZombieMotion
 {
@@ -110,6 +112,8 @@ public static class VanillaZombieMotion
         }
 
         if (ai3 > MaximumStuckCounter)
+            ai3 = 0f;
+        if (input.JustHit)
             ai3 = 0f;
         if (input.TargetOverlaps)
             ai3 = 0f;
