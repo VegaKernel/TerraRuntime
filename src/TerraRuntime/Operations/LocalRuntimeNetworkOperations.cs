@@ -4,6 +4,8 @@ namespace TerraRuntime.Operations;
 
 internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
 {
+    private const int MaximumQueueDetails = 2;
+
     private readonly TerrariaConnectionAdmissionGate admission;
     private readonly global::TerraRuntime.RuntimeConnectionRegistry connections;
     private readonly RuntimeConnectionQueueTelemetry queueTelemetry;
@@ -20,7 +22,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
 
     public RuntimeNetworkSnapshot CaptureSnapshot()
     {
-        RuntimeConnectionQueueSnapshot queues = queueTelemetry.CaptureSnapshot();
+        RuntimeConnectionQueueSnapshot queues = queueTelemetry.CaptureSnapshot(MaximumQueueDetails);
         return new RuntimeNetworkSnapshot(
             ActiveConnections: admission.ActiveConnections,
             RegisteredConnections: connections.Count,
@@ -31,6 +33,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             QueuedOutboundBytes: queues.QueuedBytes,
             RejectedOutboundFrames: queues.RejectedFrames,
             SlowClients: queues.SlowClients,
+            TopOutboundQueues: queues.TopQueues,
             RelayedAppearanceFrames: connections.RelayedAppearanceFrames,
             AppearanceBaselineFrames: connections.AppearanceBaselineFrames,
             RelayedEquipmentFrames: connections.RelayedEquipmentFrames,
