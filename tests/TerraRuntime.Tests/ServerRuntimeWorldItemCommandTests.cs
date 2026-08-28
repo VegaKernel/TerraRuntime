@@ -6,7 +6,7 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeWorldItemCommandTests
 {
     [Fact]
-    public void Authoritative_commands_allocate_merge_and_remove_one_world_item_generation()
+    public async Task Authoritative_commands_allocate_merge_and_remove_one_world_item_generation()
     {
         var store = new RuntimeWorldItemStore();
         var runtime = new ServerRuntimeState(worldItems: store);
@@ -16,7 +16,7 @@ public sealed class ServerRuntimeWorldItemCommandTests
         runtime.Apply(new WorldItemAllocateRuntimeCommand(initial, completion));
 
         Assert.True(completion.Task.IsCompletedSuccessfully);
-        WorldItemSnapshot allocated = Assert.IsType<WorldItemSnapshot>(completion.Task.Result);
+        WorldItemSnapshot allocated = Assert.IsType<WorldItemSnapshot>(await completion.Task);
         Assert.Equal((short)0, allocated.Handle.Slot);
         Assert.Equal((ulong)1, allocated.Handle.Generation.Value);
         Assert.Equal(1, runtime.AppliedWorldItemAllocations);
@@ -60,7 +60,7 @@ public sealed class ServerRuntimeWorldItemCommandTests
     }
 
     [Fact]
-    public void Invalid_or_stale_world_item_commands_increment_rejection_counters()
+    public async Task Invalid_or_stale_world_item_commands_increment_rejection_counters()
     {
         var runtime = new ServerRuntimeState(worldItems: new RuntimeWorldItemStore());
         WorldItemDropStateUpdate invalid = CreateDrop(positionX: float.NaN, stack: 1);
@@ -74,7 +74,7 @@ public sealed class ServerRuntimeWorldItemCommandTests
         runtime.Apply(new WorldItemRemoveRuntimeCommand(7));
 
         Assert.True(completion.Task.IsCompletedSuccessfully);
-        Assert.Null(completion.Task.Result);
+        Assert.Null(await completion.Task);
         Assert.Equal(1, runtime.RejectedWorldItemAllocations);
         Assert.Equal(1, runtime.RejectedWorldItemDrops);
         Assert.Equal(1, runtime.RejectedWorldItemOwners);
