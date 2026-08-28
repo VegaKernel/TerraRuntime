@@ -16,10 +16,11 @@ internal static class TerminalUiSmoke
             var logs = new RuntimeLogBuffer(capacity: 16);
             logs.Publish(RuntimeLogLevel.Information, "Server", "Terminal UI smoke startup");
             logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
-            using var window = new DashboardWindow(operations, operations, operations, operations, operations, logs);
+            using var window = new DashboardWindow(operations, operations, operations, operations, operations, logs, operations);
             window.RefreshSnapshot();
             window.ShowPlayers();
             window.ShowNpcs();
+            window.ShowProjectiles();
             window.ShowNetwork();
             window.ShowWorld();
             window.ShowLogs();
@@ -27,7 +28,7 @@ internal static class TerminalUiSmoke
             window.SetInterestManagementEnabled(true);
             window.SetInterestManagementEnabled(false);
             app.Run(window);
-            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, NPCs, network, world and logs views plus authoritative admin actions.");
+            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, NPCs, grouped projectiles, network, world and logs views plus authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -37,7 +38,7 @@ internal static class TerminalUiSmoke
         }
     }
 
-    private sealed class SmokeOperations : IRuntimeDashboardOperations, IPlayerOperations, INpcOperations, INetworkOperations, IWorldOperations
+    private sealed class SmokeOperations : IRuntimeDashboardOperations, IPlayerOperations, INpcOperations, IProjectileOperations, INetworkOperations, IWorldOperations
     {
         private bool interestManagementEnabled;
 
@@ -144,6 +145,42 @@ internal static class TerminalUiSmoke
                 CapturedAtUtc: DateTimeOffset.UtcNow);
         }
 
+        RuntimeProjectilesSnapshot IProjectileOperations.CaptureSnapshot()
+        {
+            RuntimeProjectileGroupSnapshot[] groups =
+            [
+                new RuntimeProjectileGroupSnapshot(
+                    Spawner: 0,
+                    Type: 1,
+                    Count: 12,
+                    AveragePositionX: 1600f,
+                    AveragePositionY: 3200f,
+                    AverageVelocityX: 3.5f,
+                    AverageVelocityY: -0.25f,
+                    MaxDamage: 42,
+                    MaxOriginalDamage: 42,
+                    MaxKnockBack: 3f),
+                new RuntimeProjectileGroupSnapshot(
+                    Spawner: 7,
+                    Type: 14,
+                    Count: 3,
+                    AveragePositionX: 2400f,
+                    AveragePositionY: 1600f,
+                    AverageVelocityX: -2f,
+                    AverageVelocityY: 0f,
+                    MaxDamage: 20,
+                    MaxOriginalDamage: 20,
+                    MaxKnockBack: 1f)
+            ];
+            return new RuntimeProjectilesSnapshot(
+                ActiveProjectiles: 15,
+                Groups: groups.AsMemory(),
+                CommittedSpawns: 20,
+                CommittedUpdates: 64,
+                CommittedDespawns: 5,
+                CapturedAtUtc: DateTimeOffset.UtcNow);
+        }
+
         RuntimeNetworkSnapshot INetworkOperations.CaptureSnapshot() =>
             new(
                 ActiveConnections: 1,
@@ -182,7 +219,11 @@ internal static class TerminalUiSmoke
                 NpcRelayedFrames: 8,
                 NpcBaselineFrames: 2,
                 NpcRejectedFrames: 1,
-                NpcUnsupportedCommits: 1);
+                NpcUnsupportedCommits: 1,
+                ProjectileRelayedFrames: 15,
+                ProjectileBaselineFrames: 4,
+                ProjectileRejectedFrames: 2,
+                ProjectileUnsupportedCommits: 1);
 
         RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() =>
             new(
