@@ -5,6 +5,7 @@ namespace TerraRuntime.World;
 public readonly record struct VanillaZombieDoorContactResult(
     float VelocityX,
     NpcAiState Ai,
+    bool GroundSupported,
     bool TouchingDoor,
     bool StruckDoor);
 
@@ -49,23 +50,21 @@ public static class VanillaWorldZombieDoorContact
         float ai2 = ai.Ai2;
         float ai3 = ai.Ai3;
 
-        // Ordinary type 3 enters this branch only from the grounded/support probe.
-        if (velocityY != 0f ||
-            directionX == 0 ||
-            !HasGroundSupport(tiles, positionX, positionY, width, height))
-        {
-            return ResetDoorProgress(velocityX, ai);
-        }
+        bool groundSupported = velocityY == 0f &&
+            directionX != 0 &&
+            HasGroundSupport(tiles, positionX, positionY, width, height);
+        if (!groundSupported)
+            return ResetDoorProgress(velocityX, ai, groundSupported: false);
 
         int tileX = (int)((positionX + width * 0.5f + 15f * directionX) / TileSize);
         int tileY = (int)((positionY + height - 15f) / TileSize);
         if (!InProbeBounds(tiles, tileX, tileY))
-            return ResetDoorProgress(velocityX, ai);
+            return ResetDoorProgress(velocityX, ai, groundSupported: true);
 
         WorldTile door = tiles.Get(tileX, tileY - 1);
         bool touchingDoor = IsActiveDoor(in door);
         if (!touchingDoor)
-            return ResetDoorProgress(velocityX, ai);
+            return ResetDoorProgress(velocityX, ai, groundSupported: true);
 
         ai2++;
         ai3 = 0f;
@@ -84,14 +83,19 @@ public static class VanillaWorldZombieDoorContact
         return new VanillaZombieDoorContactResult(
             velocityX,
             new NpcAiState(ai.Ai0, ai1, ai2, ai3),
+            GroundSupported: true,
             TouchingDoor: true,
             StruckDoor: struckDoor);
     }
 
-    private static VanillaZombieDoorContactResult ResetDoorProgress(float velocityX, NpcAiState ai) =>
+    private static VanillaZombieDoorContactResult ResetDoorProgress(
+        float velocityX,
+        NpcAiState ai,
+        bool groundSupported) =>
         new(
             velocityX,
             new NpcAiState(ai.Ai0, 0f, 0f, ai.Ai3),
+            GroundSupported: groundSupported,
             TouchingDoor: false,
             StruckDoor: false);
 
