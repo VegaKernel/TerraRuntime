@@ -22,6 +22,7 @@ public readonly record struct PlayerStateRevision
 /// <summary>
 /// Immutable, protocol-neutral projection of authoritative player simulation state.
 /// Connection/network details and inventory are intentionally separate concerns.
+/// Vitals remain explicitly optional until their vanilla sync packets have been observed for this session.
 /// </summary>
 public readonly record struct PlayerStateSnapshot(
     PlayerHandle Player,
@@ -42,4 +43,19 @@ public readonly record struct PlayerStateSnapshot(
     float PotionOfReturnHomePositionX,
     float PotionOfReturnHomePositionY,
     float CameraTargetX,
-    float CameraTargetY);
+    float CameraTargetY)
+{
+    public bool HasHealth { get; init; }
+
+    public short Life { get; init; }
+
+    public short MaxLife { get; init; }
+
+    public bool IsDead { get; init; }
+
+    public bool HasMana { get; init; }
+
+    public short Mana { get; init; }
+
+    public short MaxMana { get; init; }
+}
