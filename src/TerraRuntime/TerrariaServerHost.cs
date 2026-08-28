@@ -73,7 +73,9 @@ public static class TerrariaServerHost
         var runtimeConnections = new RuntimeConnectionRegistry(
             runtimeInterestManagement,
             world.Header.Dimensions);
-        var state = new ServerRuntimeState(runtimeConnections);
+        var vitalsReplication = new RuntimePlayerVitalsReplicator();
+        var playerEvents = new RuntimePlayerEventDispatcher(runtimeConnections, vitalsReplication);
+        var state = new ServerRuntimeState(playerEvents);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
             static (runtime, command) => runtime.Apply(command),
@@ -152,6 +154,7 @@ public static class TerrariaServerHost
                     movementIngress,
                     disconnectIngress,
                     runtimeConnections,
+                    vitalsReplication,
                     shutdown.Token);
                 connectionTasks[connectionId] = connectionTask;
                 _ = connectionTask.ContinueWith(
@@ -207,6 +210,7 @@ public static class TerrariaServerHost
         IPlayerMovementIngress movementIngress,
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
+        RuntimePlayerVitalsReplicator vitalsReplication,
         CancellationToken cancellationToken)
     {
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
@@ -217,6 +221,13 @@ public static class TerrariaServerHost
             var outbound = new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueOptions);
             if (!runtimeConnections.TryRegister(source, outbound))
             {
+                socket.Dispose();
+                return;
+            }
+
+            if (!vitalsReplication.TryRegister(source, outbound))
+            {
+                runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
             }
@@ -264,6 +275,7 @@ public static class TerrariaServerHost
             }
             finally
             {
+                vitalsReplication.TryUnregister(source);
                 if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
                     playingPlayer is PlayerHandle player)
                 {
