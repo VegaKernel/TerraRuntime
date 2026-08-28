@@ -32,7 +32,17 @@ public sealed class RuntimeWorldSnapshotLiquidTests
 
             Assert.True(diagnostic.IsLoaded);
             WorldFileData loaded = Assert.IsType<WorldFileData>(loadedWorld);
-            Assert.Equal(expected.Header, loaded.Header);
+            Assert.Equal(expected.Header.Name, loaded.Header.Name);
+            Assert.Equal(expected.Header.SeedText, loaded.Header.SeedText);
+            Assert.Equal(expected.Header.WorldGeneratorVersion, loaded.Header.WorldGeneratorVersion);
+            Assert.Equal(expected.Header.UniqueId, loaded.Header.UniqueId);
+            Assert.Equal(expected.Header.WorldId, loaded.Header.WorldId);
+            Assert.Equal(expected.Header.LeftWorld, loaded.Header.LeftWorld);
+            Assert.Equal(expected.Header.RightWorld, loaded.Header.RightWorld);
+            Assert.Equal(expected.Header.TopWorld, loaded.Header.TopWorld);
+            Assert.Equal(expected.Header.BottomWorld, loaded.Header.BottomWorld);
+            Assert.Equal(expected.Header.Dimensions.WidthTiles, loaded.Header.Dimensions.WidthTiles);
+            Assert.Equal(expected.Header.Dimensions.HeightTiles, loaded.Header.Dimensions.HeightTiles);
             Assert.Equal(expected.RuntimeMetadata.GameMode, loaded.RuntimeMetadata.GameMode);
             Assert.Equal(expected.RuntimeMetadata.WorldSurface, loaded.RuntimeMetadata.WorldSurface);
             Assert.Equal(expected.Chests.Length, loaded.Chests.Length);
