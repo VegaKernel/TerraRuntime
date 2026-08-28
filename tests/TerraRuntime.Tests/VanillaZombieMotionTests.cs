@@ -112,6 +112,49 @@ public sealed class VanillaZombieMotionTests
     }
 
     [Fact]
+    public void Blocked_current_target_forces_stuck_threshold_and_upward_pathing()
+    {
+        VanillaZombieMotionInput input = CreateInput() with
+        {
+            Target = 4,
+            Ai = new NpcAiState(0f, 0f, 0f, 2f),
+            ApplyCanHitRule = true,
+            CanHitCurrentTarget = false,
+            NpcCenterY = 120f,
+            CurrentTargetCenterY = 120f,
+            ClosestTarget = new VanillaZombieTargetRefresh(true, 4, 1, 1)
+        };
+
+        Assert.True(VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result));
+
+        Assert.Equal(60f, result.Ai.Ai3);
+        Assert.Equal(-1, result.DirectionY);
+        Assert.Equal(0, result.TargetRefreshes);
+    }
+
+    [Fact]
+    public void Visible_current_target_near_vertical_band_clears_stuck_counter()
+    {
+        VanillaZombieMotionInput input = CreateInput() with
+        {
+            Target = 4,
+            PositionX = 100f,
+            OldPositionX = 100f,
+            Ai = new NpcAiState(0f, 0f, 0f, 59f),
+            ApplyCanHitRule = true,
+            CanHitCurrentTarget = true,
+            NpcCenterY = 120f,
+            CurrentTargetCenterY = 20f,
+            ClosestTarget = new VanillaZombieTargetRefresh(true, 4, 1, -1)
+        };
+
+        Assert.True(VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result));
+
+        Assert.Equal(0f, result.Ai.Ai3);
+        Assert.Equal(1, result.TargetRefreshes);
+    }
+
+    [Fact]
     public void Scale_changes_default_type_three_speed_cap()
     {
         VanillaZombieMotionInput input = CreateInput() with
