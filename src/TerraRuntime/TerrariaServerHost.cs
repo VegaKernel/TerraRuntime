@@ -70,7 +70,9 @@ public static class TerrariaServerHost
             return 27;
         }
 
-        var runtimeConnections = new RuntimeConnectionRegistry(runtimeInterestManagement);
+        var runtimeConnections = new RuntimeConnectionRegistry(
+            runtimeInterestManagement,
+            world.Header.Dimensions);
         var state = new ServerRuntimeState(runtimeConnections);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,

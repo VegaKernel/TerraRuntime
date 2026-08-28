@@ -1,25 +1,43 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.World;
 
 namespace TerraRuntime;
 
 /// <summary>
 /// Runtime-owned routing boundary between authoritative entity state and outbound fan-out.
-/// External hosts can only toggle the control surface; the active policy remains an internal
-/// TerraRuntime implementation detail.
+/// External hosts can only toggle the control surface; the active policy and spatial indexes remain
+/// TerraRuntime implementation details.
 /// </summary>
 internal sealed class RuntimeInterestRouter
 {
     private readonly IInterestManagementControl _control;
     private readonly IRuntimeInterestPolicy _enabledPolicy;
+    private readonly RuntimePlayerSpatialIndex? _players;
 
     public RuntimeInterestRouter(
         IInterestManagementControl control,
+        WorldDimensions? dimensions = null,
         IRuntimeInterestPolicy? enabledPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(control);
         _control = control;
         _enabledPolicy = enabledPolicy ?? PassthroughInterestPolicy.Instance;
+        _players = dimensions is null ? null : new RuntimePlayerSpatialIndex(dimensions);
     }
+
+    public RuntimePlayerSpatialIndexSnapshot? PlayerSpatialSnapshot => _players?.Snapshot;
+
+    public void TrackPlayer(PlayerSlotId slot, float positionX, float positionY) =>
+        _players?.Update(slot, positionX, positionY);
+
+    public void RemovePlayer(PlayerSlotId slot) => _players?.Remove(slot);
+
+    public int CollectNearbyPlayers(
+        PlayerSlotId subject,
+        int radiusSections,
+        Span<PlayerSlotId> destination,
+        bool includeSubject = false) =>
+        _players?.CollectNearbyPlayers(subject, radiusSections, destination, includeSubject) ?? 0;
 
     public bool ShouldRelayPlayerMovement(
         in RuntimePlayerInterestState observer,
@@ -52,8 +70,8 @@ internal interface IRuntimeInterestPolicy
 
 /// <summary>
 /// Foundation policy used until enter/leave snapshots, hysteresis and forced resync semantics are
-/// implemented. Enabling interest management today therefore changes routing ownership, not
-/// player-visible network behavior.
+/// implemented. Enabling interest management today therefore changes routing ownership and builds
+/// the spatial index, but does not yet suppress player-visible movement updates.
 /// </summary>
 internal sealed class PassthroughInterestPolicy : IRuntimeInterestPolicy
 {

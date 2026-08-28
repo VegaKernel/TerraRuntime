@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
+using TerraRuntime.World;
 
 namespace TerraRuntime;
 
@@ -18,15 +19,28 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
     private readonly RuntimeInterestRouter _interestRouter;
     private long _relayedMovementFrames;
 
-    public RuntimeConnectionRegistry(IInterestManagementControl? interestManagement = null)
+    public RuntimeConnectionRegistry(
+        IInterestManagementControl? interestManagement = null,
+        WorldDimensions? dimensions = null)
     {
         _interestRouter = new RuntimeInterestRouter(
-            interestManagement ?? new InterestManagementControl());
+            interestManagement ?? new InterestManagementControl(),
+            dimensions);
     }
 
     public int Count => _endpoints.Count;
 
     public long RelayedMovementFrames => Interlocked.Read(ref _relayedMovementFrames);
+
+    internal RuntimePlayerSpatialIndexSnapshot? PlayerSpatialSnapshot =>
+        _interestRouter.PlayerSpatialSnapshot;
+
+    internal int CollectNearbyPlayers(
+        PlayerSlotId subject,
+        int radiusSections,
+        Span<PlayerSlotId> destination,
+        bool includeSubject = false) =>
+        _interestRouter.CollectNearbyPlayers(subject, radiusSections, destination, includeSubject);
 
     public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
     {
@@ -54,8 +68,11 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         if (!_endpoints.TryGetValue(source, out Endpoint? endpoint))
             return;
 
+        float positionX = request.SpawnX * 16f;
+        float positionY = request.SpawnY * 16f;
         endpoint.MarkPlaying(request.ClaimedSlot);
-        endpoint.UpdatePosition(request.SpawnX * 16f, request.SpawnY * 16f);
+        endpoint.UpdatePosition(positionX, positionY);
+        _interestRouter.TrackPlayer(request.ClaimedSlot, positionX, positionY);
     }
 
     public void PlayerMoved(GameCommandSourceId source, in PlayerMovementCommitRequest request)
@@ -70,6 +87,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
         // Track authoritative positions even while interest management is disabled. A live enable
         // can therefore start from current state instead of waiting for every player to move again.
         origin.UpdatePosition(request.PositionX, request.PositionY);
+        _interestRouter.TrackPlayer(request.PlayerSlot, request.PositionX, request.PositionY);
         RuntimePlayerInterestState subject = origin.CreateInterestState(originSlot);
 
         var movement = new TerrariaPlayerMovementState(
@@ -117,6 +135,7 @@ internal sealed class RuntimeConnectionRegistry : IRuntimePlayerEventSink
 
     public void PlayerDisconnected(GameCommandSourceId source, PlayerSlotId slot)
     {
+        _interestRouter.RemovePlayer(slot);
         if (_endpoints.TryGetValue(source, out Endpoint? endpoint))
             endpoint.ClearPlaying(slot);
     }
