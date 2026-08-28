@@ -19,8 +19,9 @@ public enum WorldGlobalTownNpcBootstrapPacketEncodeResult : byte
 /// </summary>
 public static class WorldGlobalTownNpcBootstrapPacketEncoder
 {
-    // Packet 23 carries NpcSlot as one byte, so the wire can address slots 0..255.
-    public const int MaximumTownNpcs = byte.MaxValue + 1;
+    // Terraria 1.4.5.8 Main.maxNPCs is 200. Packet 23 itself can represent a wider byte slot,
+    // but initial bootstrap must stay inside the vanilla client's actual NPC array.
+    public const int MaximumTownNpcs = 200;
     public const int FramesPerTownNpc = 2;
     public const int MaximumFrames = MaximumTownNpcs * FramesPerTownNpc;
 
