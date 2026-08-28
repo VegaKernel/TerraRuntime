@@ -1,24 +1,23 @@
-# Runtime world cache
+# Runtime world snapshot
 
-TerraRuntime keeps Terraria `.wld` files as the canonical persistence and recovery format. The adjacent `.runtime-world` file is a disposable startup cache and may always be deleted.
-
-## Schema v2
-
-Schema v2 caches the normalized runtime tile array so startup can skip the variable-length `.wld` tile RLE/flag decoder, but stores the tile payload as independently verified shards so SSD/NVMe reads and tile reconstruction can run concurrently.
-
-Non-tile sections are still decoded and validated from the canonical `.wld`, including runtime metadata, chests, signs, NPC persistence, tile entities, pressure plates, town rooms, bestiary, creative powers and the footer. Future cache sections can use the same independent-section model once startup profiling proves they are worth persisting.
-
-File name:
+TerraRuntime uses two adjacent world files with deliberately different jobs:
 
 ```text
-world.wld
-world.runtime-world
+world.wld            # Terraria-compatible checkpoint and recovery source
+world.runtime-world  # TerraRuntime startup snapshot
 ```
+
+A valid warm startup is driven by `.runtime-world`. The original `.wld` contents are not read or hashed on that path. TerraRuntime only reads filesystem metadata for the source `.wld` so an externally replaced or newer Terraria checkpoint invalidates the snapshot.
+
+## Schema v3
+
+Schema v3 is self-contained for startup. It embeds the validated canonical `.wld` checkpoint needed for non-tile persistence state and stores the normalized runtime tile array separately as independently verified shards. This lets the expensive tile reconstruction use bounded parallel positional I/O while the embedded canonical payload is read and verified independently.
 
 Layout:
 
 ```text
-96-byte fixed header
+128-byte fixed header
+embedded canonical .wld checkpoint
 shard 0 normalized WorldTile records
 shard 1 normalized WorldTile records
 ...
@@ -26,44 +25,70 @@ shard N normalized WorldTile records
 N * 48-byte shard integrity entries
 ```
 
-The fixed header contains:
+The fixed header stores:
 
 - magic `TRWCACHE`;
-- runtime cache schema version;
-- header size;
-- canonical `.wld` byte length;
-- SHA-256 of the complete canonical `.wld`;
+- runtime snapshot schema version;
+- source `.wld` byte length;
+- source `.wld` `LastWriteTimeUtc` ticks captured when the snapshot was built;
+- embedded canonical checkpoint length and SHA-256;
 - Terraria world format version;
-- world width and height in tiles;
-- tile-record layout size;
-- tile count;
-- total tile payload byte length;
-- shard count and shard-entry size.
+- world width and height;
+- normalized tile-record size and tile count;
+- tile payload length;
+- shard count and shard-entry size;
+- tile-payload and shard-table offsets.
 
-Each tile record is 16 bytes and explicitly stores normalized fields instead of dumping the CLR struct layout: tile type, wall type, frame coordinates, flags, liquid amount, tile/wall paint, shape and liquid kind. Liquid state is currently part of the tile record, matching the in-memory `WorldTile` model.
+The live source `.wld` SHA-256 is deliberately not recomputed at warm startup. Hashing the whole source would force a full source-file read and defeat the purpose of a self-contained runtime snapshot. SHA-256 is retained for data inside `.runtime-world`: the embedded canonical payload and every tile shard are verified before the world is published.
 
-Each shard targets 16 MiB of encoded tile payload. The trailing shard table records the tile start index, tile count and SHA-256 for every shard. Cache loading uses positional `RandomAccess` reads with bounded parallelism. The default is at most four concurrent shard reads, which is conservative for SATA SSD while still exposing useful queue depth on NVMe. The read option can later be raised for measured NVMe workloads without changing the file schema.
+Each normalized tile record is 16 bytes and explicitly stores tile type, wall type, frame coordinates, flags, liquid amount, tile/wall paint, shape and liquid kind. Liquid state therefore already participates in parallel tile loading.
 
-## Validation and fallback
+Each tile shard targets 16 MiB. Loading uses positional `RandomAccess` reads with bounded parallelism. The current default is at most four simultaneous tile-shard reads, suitable as a conservative SSD/NVMe baseline. The embedded canonical payload is read concurrently with tile reconstruction.
 
-A cache hit requires all structural fields, the canonical source fingerprint, the exact deterministic shard layout and every shard hash to validate. Unsupported schema, stale source hash, truncation, invalid tile data or any shard failure is a cache miss, never a world-load success. Shard failures report the shard index through the diagnostic detail code.
+## Warm-start validity and fallback
 
-On a cache miss the server loads the canonical `.wld` normally. Only after that full load succeeds is a replacement cache written. Cache writes remain sequential and use `world.runtime-world.tmp`, flush the complete file, and rename it over the old cache. Failure to create or replace the cache does not affect the canonical `.wld` or prevent the server from starting.
+At startup TerraRuntime captures a cheap source stamp consisting of:
 
-## Startup profiling
+```text
+source .wld length
+source .wld LastWriteTimeUtc
+```
 
-The server emits one machine-readable `startup_profile` line containing at least:
+A snapshot is used when its stored source length still matches and the live `.wld` is not newer. TerraRuntime re-stats the source after loading the snapshot to detect a concurrent external replacement while the cache was being read.
 
-- `.wld` file read time;
-- cache load time;
-- canonical loader total time;
-- envelope/header parse time;
-- tile storage allocation time;
-- tile decode time;
-- non-tile section time;
-- cache rebuild/write time;
+The original `.wld` contents are read only when the runtime snapshot is missing, stale or invalid. The fallback path reads a stable `.wld`, fully validates it through the canonical loader and atomically rebuilds `.runtime-world` only after the canonical load succeeds.
+
+Cache corruption, unsupported schema, a bad embedded canonical hash, a bad shard hash, invalid tile data, truncation, a newer `.wld` or a changed source length are all cache misses. No partially reconstructed world is published.
+
+Snapshot writes use a temporary file, flush it to disk and atomically replace the previous snapshot. The source `.wld` is never modified as a side effect of cache rebuild.
+
+## Canonical checkpoint command
+
+The host exposes an offline compatibility-checkpoint command:
+
+```text
+TerraRuntime.Server --save-wld path/to/world.wld
+```
+
+It validates the canonical checkpoint embedded in `world.runtime-world`, writes `world.wld.tmp`, flushes it and atomically replaces `world.wld`. It then refreshes the runtime snapshot source stamp so the just-written checkpoint is not immediately treated as newer than the snapshot.
+
+This command is currently a checkpoint restore/export operation. TerraRuntime does not yet have a complete vanilla `WorldFileWriter`, so future live mutations that exist only in runtime-owned state cannot yet be serialized into a fresh vanilla `.wld`. Adding that writer is the required step before `--save-wld` can become a complete live-state export rather than an export of the canonical checkpoint represented by the snapshot.
+
+## Startup profiling and performance gate
+
+The server emits a machine-readable `startup_profile` line with:
+
+- source metadata/stat time;
+- original `.wld` file-read time;
+- runtime snapshot load time;
+- canonical loader total and stage timings on fallback;
+- runtime snapshot rebuild/write time;
 - join-bootstrap preparation time;
 - `WorldReady` and `NetworkReady` wall time;
-- process allocation delta during startup.
+- startup allocation delta.
 
-These measurements decide what schema v3 should persist. Likely candidates are independently loadable metadata, chests/signs/tile entities and prebuilt section/bootstrap data. The loader should parallelize only independent immutable sections and publish the completed world at one validation/commit point.
+On a genuine warm snapshot hit `file_read_ms` must remain `0.000` because the original `.wld` contents were not read.
+
+The official-world workflow runs cold and warm startup against the same generated Terraria 1.4.5.8 world, reports the two profiles and publishes a timing artifact. Its warm run removes read permission from the original `.wld`, proving that startup succeeds from `.runtime-world` plus source filesystem metadata rather than silently touching the source contents.
+
+Performance decisions after schema v3 must use these before/after measurements. More parallel reads, additional prebuilt bootstrap/index sections or a different shard size should be adopted only when the same-world profile demonstrates a real improvement rather than because more threads look impressive in a diagram.
