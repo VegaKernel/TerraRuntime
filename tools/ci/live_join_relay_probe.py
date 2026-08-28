@@ -110,6 +110,14 @@ def join_client(host, port, expected_slot):
     while True:
         message_id, payload = recv_frame(client)
         frame_count += 1
+
+        if section_count < expected_sections and message_id != 10:
+            client.close()
+            raise SystemExit(
+                f"received packet {message_id} before contiguous tile transfer completed: "
+                f"{section_count}/{expected_sections} sections"
+            )
+
         if message_id == 10:
             section_count += 1
             saw_section = True
