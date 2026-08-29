@@ -12,4 +12,5 @@ public interface ITerraRuntimeHostRuntime
     IInterestManagementControl InterestManagement { get; }
     IPlayerStateSnapshotReader PlayerStates { get; }
     INpcActorOperations NpcActors { get; }
+    IServerPlayerOperations ServerPlayers { get; }
 }

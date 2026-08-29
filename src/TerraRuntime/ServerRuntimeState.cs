@@ -23,6 +23,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
     private readonly RuntimeNpcActorControlRegistry _npcActorControls;
     private readonly RuntimeNpcActorControlCommandService _npcActorCommands;
     private readonly RuntimeServerPlayerStateStore? _serverPlayerStates;
+    private readonly RuntimeServerPlayerCommandService? _serverPlayerCommands;
     private readonly PlayerStateSnapshot[] _serverPlayerSnapshots =
         new PlayerStateSnapshot[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly INpcAiStateStepper _npcAiStepper;
@@ -51,7 +52,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         RuntimeWorldItemStore? worldItems = null,
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
         RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null,
-        RuntimeServerPlayerStateStore? serverPlayerStates = null)
+        RuntimeServerPlayerStateStore? serverPlayerStates = null,
+        RuntimeServerPlayerSlotRegistry? serverPlayerIdentities = null)
     {
         _playerEvents = playerEvents;
         _worldTiles = worldTiles;
@@ -59,6 +61,11 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         _npcs = npcs ?? new RuntimeNpcStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
         _serverPlayerStates = serverPlayerStates;
+        if (serverPlayerIdentities is not null && serverPlayerStates is null)
+            throw new ArgumentException("Server-player identities require an authoritative state store.", nameof(serverPlayerIdentities));
+        _serverPlayerCommands = serverPlayerIdentities is not null && serverPlayerStates is not null
+            ? new RuntimeServerPlayerCommandService(serverPlayerIdentities, serverPlayerStates)
+            : null;
         _npcActorControls = new RuntimeNpcActorControlRegistry(_npcs);
         _npcActorCommands = new RuntimeNpcActorControlCommandService(_npcs, _npcActorControls);
         _projectiles = projectiles ?? new RuntimeProjectileStore();
@@ -264,6 +271,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         ArgumentNullException.ThrowIfNull(command);
         AppliedCommands++;
 
+        if (_serverPlayerCommands?.TryApply(command) == true)
+            return;
         if (_npcActorCommands.TryApply(command))
             return;
 

@@ -21,10 +21,12 @@ internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
         }
 
         NpcActors = new RuntimeNpcActorOperations(runtimePlayerStates.CommandIngress);
+        ServerPlayers = new RuntimeServerPlayerOperations(runtimePlayerStates.CommandIngress);
     }
 
     public TerraRuntimeHostRuntimeInfo Info { get; }
     public IInterestManagementControl InterestManagement { get; }
     public IPlayerStateSnapshotReader PlayerStates { get; }
     public INpcActorOperations NpcActors { get; }
+    public IServerPlayerOperations ServerPlayers { get; }
 }
