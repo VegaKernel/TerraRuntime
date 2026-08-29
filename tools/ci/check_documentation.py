@@ -26,6 +26,7 @@ REQUIRED_MIRRORS = {
     "observability-logging.md",
     "world-generation.md",
     "security.md",
+    "testing-evidence.md",
 }
 
 # Deliberately simple: repository docs use ordinary inline Markdown links.
