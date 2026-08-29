@@ -113,6 +113,20 @@ jobs:
             exit 1
           fi
 
+          mapfile -t live_temps < <(compgen -G "$work/.world.wld.*.tmp" || true)
+          mapfile -t live_leases < <(compgen -G "$work/.world.wld.*.tmp.lease" || true)
+          if [[ ${#live_temps[@]} -ne 1 || ${#live_leases[@]} -ne 1 ]]; then
+            printf 'expected one live temp+lease before SIGKILL; temps=%s leases=%s\n' \
+              "${#live_temps[@]}" "${#live_leases[@]}" >&2
+            exit 1
+          fi
+          orphan_temp="${live_temps[0]}"
+          orphan_lease="${live_leases[0]}"
+          if [[ "$orphan_lease" != "$orphan_temp.lease" ]]; then
+            echo 'live save temp and lease identities do not match' >&2
+            exit 1
+          fi
+
           kill -KILL "$pid"
           set +e
           wait "$pid"
@@ -125,14 +139,21 @@ jobs:
           fi
 
           cmp "$old_expected" "$destination"
-          if ! compgen -G "$work/.world.wld.*.tmp" >/dev/null; then
-            echo 'expected the killed writer to leave only a temporary save file' >&2
-            exit 1
-          fi
+          test -f "$orphan_temp"
+          test -f "$orphan_lease"
 
           dotnet "$probe" write "$destination" 'new-world'
           printf 'new-world' > "$work/new.expected"
           cmp "$work/new.expected" "$destination"
+          if [[ -e "$orphan_temp" || -e "$orphan_lease" ]]; then
+            echo 'next save did not reap the abandoned leased temporary' >&2
+            exit 1
+          fi
+          if compgen -G "$work/.world.wld.*.tmp" >/dev/null || \
+             compgen -G "$work/.world.wld.*.tmp.lease" >/dev/null; then
+            echo 'completed recovery save left temporary or lease files behind' >&2
+            exit 1
+          fi
 
           fresh="$work/fresh.wld"
           fresh_ready="$work/fresh.ready"
@@ -157,6 +178,20 @@ jobs:
             exit 1
           fi
 
+          mapfile -t fresh_temps < <(compgen -G "$work/.fresh.wld.*.tmp" || true)
+          mapfile -t fresh_leases < <(compgen -G "$work/.fresh.wld.*.tmp.lease" || true)
+          if [[ ${#fresh_temps[@]} -ne 1 || ${#fresh_leases[@]} -ne 1 ]]; then
+            printf 'expected one first-save temp+lease before SIGKILL; temps=%s leases=%s\n' \
+              "${#fresh_temps[@]}" "${#fresh_leases[@]}" >&2
+            exit 1
+          fi
+          fresh_orphan_temp="${fresh_temps[0]}"
+          fresh_orphan_lease="${fresh_leases[0]}"
+          if [[ "$fresh_orphan_lease" != "$fresh_orphan_temp.lease" ]]; then
+            echo 'first-save temp and lease identities do not match' >&2
+            exit 1
+          fi
+
           kill -KILL "$fresh_pid"
           set +e
           wait "$fresh_pid"
@@ -171,12 +206,23 @@ jobs:
             echo 'partial first save became visible after SIGKILL' >&2
             exit 1
           fi
-          if ! compgen -G "$work/.fresh.wld.*.tmp" >/dev/null; then
-            echo 'expected the killed first writer to leave only a temporary save file' >&2
+          test -f "$fresh_orphan_temp"
+          test -f "$fresh_orphan_lease"
+
+          dotnet "$probe" write "$fresh" 'first-world'
+          printf 'first-world' > "$work/fresh.expected"
+          cmp "$work/fresh.expected" "$fresh"
+          if [[ -e "$fresh_orphan_temp" || -e "$fresh_orphan_lease" ]]; then
+            echo 'first successful save did not reap the abandoned first-save temporary' >&2
+            exit 1
+          fi
+          if compgen -G "$work/.fresh.wld.*.tmp" >/dev/null || \
+             compgen -G "$work/.fresh.wld.*.tmp.lease" >/dev/null; then
+            echo 'completed first-save recovery left temporary or lease files behind' >&2
             exit 1
           fi
 
-          echo 'atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true'
+          echo 'atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true orphan_cleanup=true live_lease=true'
 
   save-pipeline:
     runs-on: ubuntu-latest
