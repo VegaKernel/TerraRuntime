@@ -10,7 +10,7 @@ namespace TerraRuntime.Tests;
 public sealed class WorldItemFrameSinkTests
 {
     [Fact]
-    public void Playing_session_routes_allocate_drop_remove_and_owner_without_wire_state_leaking_into_core()
+    public void Playing_session_routes_allocate_drop_remove_and_ignores_server_only_owner_packet()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(901);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
@@ -30,10 +30,7 @@ public sealed class WorldItemFrameSinkTests
         Assert.Equal((short)4, ingress.Drop.Stack);
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(ItemOwner(itemIndex: 12, ownerPlayerId: 0, grabDelayPlayer: 0)));
-        Assert.Equal(1, ingress.OwnerCount);
-        Assert.Equal((short)12, ingress.Slot);
-        Assert.Equal((byte)0, ingress.Owner.OwnerPlayerId);
-        Assert.Equal(60, ingress.Owner.TimeToKeepReservation);
+        Assert.Equal(0, ingress.OwnerCount);
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(ItemRemoval(itemIndex: 12)));
         Assert.Equal(1, ingress.RemoveCount);
@@ -56,16 +53,29 @@ public sealed class WorldItemFrameSinkTests
     }
 
     [Fact]
-    public void Packet22_cannot_claim_another_player_as_owner_or_grab_delay_target()
+    public void Packet22_from_client_is_ignored_in_server_mode()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(903);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
         var ingress = new CapturingWorldItemIngress();
         var sink = new WorldItemFrameSink(source, bootstrap, new PassthroughSink(), ingress);
 
-        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(ItemOwner(itemIndex: 8, ownerPlayerId: 7, grabDelayPlayer: 0)));
-        Assert.Equal(WorldItemFrameStopReason.PlayerOwnershipMismatch, sink.StopReason);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(ItemOwner(itemIndex: 8, ownerPlayerId: 7, grabDelayPlayer: 9)));
+        Assert.Equal(WorldItemFrameStopReason.None, sink.StopReason);
         Assert.Equal(0, ingress.OwnerCount);
+    }
+
+    [Fact]
+    public void Malformed_packet22_payload_is_ignored_in_server_mode()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(905);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var ingress = new CapturingWorldItemIngress();
+        var sink = new WorldItemFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.WorldItemOwner, [])));
+        Assert.Equal(WorldItemFrameStopReason.None, sink.StopReason);
+        Assert.Equal(0, ingress.TotalCount);
     }
 
     [Fact]
