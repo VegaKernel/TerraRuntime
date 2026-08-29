@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
@@ -366,6 +367,15 @@ public static class TerrariaServerHost
             shutdown.Cancel();
         };
         Console.CancelKeyPress += cancelHandler;
+        using PosixSignalRegistration? terminateSignalRegistration = OperatingSystem.IsWindows()
+            ? null
+            : PosixSignalRegistration.Create(
+                PosixSignal.SIGTERM,
+                context =>
+                {
+                    context.Cancel = true;
+                    shutdown.Cancel();
+                });
 
         using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
