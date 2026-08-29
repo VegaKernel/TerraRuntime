@@ -26,7 +26,10 @@ internal static class Program
         }
 
         await using var loader = new TrustedHostModuleLoader(layout.HostModulesDirectory);
-        var environment = new TerraRuntimeHostEnvironment(layout, loader.TerminalDashboards);
+        var environment = new TerraRuntimeHostEnvironment(
+            layout,
+            loader.TerminalDashboards,
+            loader.WorldGenerators);
         try
         {
             int loadedCount = await loader.StartAllAsync(environment).ConfigureAwait(false);
