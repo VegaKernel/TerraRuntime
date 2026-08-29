@@ -184,6 +184,20 @@ jobs:
 
           path.write_text(text, encoding="utf-8")
 
+      - name: Restore Terminal.Gui input injection namespace
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("src/TerraRuntime/TerminalUI/TerminalUiSmoke.cs")
+          text = path.read_text(encoding="utf-8")
+          marker = "using Terminal.Gui.Input;\n"
+          addition = marker + "using Terminal.Gui.Testing;\n"
+          if "using Terminal.Gui.Testing;\n" not in text:
+              if text.count(marker) != 1:
+                  raise SystemExit("could not locate Terminal.Gui input import")
+              text = text.replace(marker, addition, 1)
+              path.write_text(text, encoding="utf-8")
+
       - name: Build and test save lifecycle
         run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
@@ -195,6 +209,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if ! git diff --quiet -- src/TerraRuntime/TerminalUI/TerminalUiSmoke.cs; then
+            git add src/TerraRuntime/TerminalUI/TerminalUiSmoke.cs
+            git commit -m "fix: import terminal input injection helpers"
+          fi
+
           git rm .github/workflows/apply-save-host-wiring.yml
           git add src/TerraRuntime/TerrariaServerHost.cs
           git commit -m "feat: persist authoritative world on shutdown"
