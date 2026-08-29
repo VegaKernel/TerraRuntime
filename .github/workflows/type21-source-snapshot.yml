@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Extract pinned type21 facts
+      - name: Extract pinned Bone facts
         shell: bash
         run: |
           set -euo pipefail
@@ -38,44 +38,42 @@ jobs:
           python3 - <<'PY'
           import re
           from pathlib import Path
-          p = Path('artifacts/type21/projectile.cs').read_text(encoding='utf-8')
-          ids = Path('artifacts/type21/projectile-id.cs').read_text(encoding='utf-8')
+          p=Path('artifacts/type21/projectile.cs').read_text(encoding='utf-8')
+          ids=Path('artifacts/type21/projectile-id.cs').read_text(encoding='utf-8')
           def compact(x): return ' '.join(x.split())
-          def ctx(src, pattern, radius=2200, limit=10):
+          def ctx(src,pat,radius=2200,limit=10):
               s=compact(src); out=[]
-              for m in re.finditer(pattern,s):
+              for m in re.finditer(pat,s):
                   if len(out)>=limit: break
                   out.append(s[max(0,m.start()-radius):min(len(s),m.end()+radius)])
               return ' | '.join(out) if out else '<none>'
           def method(src,name):
               m=re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$',src)
-              if not m: return '<method-not-found>'
-              o=src.find('{',m.end()); depth=0; ins=inc=esc=False
+              if not m:return '<method-not-found>'
+              o=src.find('{',m.end()); d=0; ins=inc=esc=False
               for i in range(o,len(src)):
                   c=src[i]
-                  if esc: esc=False; continue
-                  if c=='\\' and (ins or inc): esc=True; continue
-                  if c=='"' and not inc: ins=not ins; continue
-                  if c=="'" and not ins: inc=not inc; continue
-                  if ins or inc: continue
-                  if c=='{': depth+=1
+                  if esc:esc=False;continue
+                  if c=='\\' and (ins or inc):esc=True;continue
+                  if c=='"' and not inc:ins=not ins;continue
+                  if c=="'" and not ins:inc=not inc;continue
+                  if ins or inc:continue
+                  if c=='{':d+=1
                   elif c=='}':
-                      depth-=1
-                      if depth==0:return src[m.start():i+1]
+                      d-=1
+                      if d==0:return src[m.start():i+1]
               return '<unterminated>'
-          defaults=method(p,'SetDefaults')
-          movement=method(p,'HandleMovement')
-          kill=method(p,'Kill')
-          cancut=method(p,'CanCutTiles')
-          ai=method(p,'AI')
+          defaults=method(p,'SetDefaults'); ai=method(p,'AI'); movement=method(p,'HandleMovement')
+          collision=method(p,'GetCollisionParams'); kill=method(p,'Kill'); cancut=method(p,'CanCutTiles')
           lines=[
             'projectile_id_type21='+ctx(ids,r'\b[A-Za-z0-9_]+\s*=\s*21\s*;',350),
             'projectile_type21_defaults='+ctx(defaults,r'(?<!\d)type\s*==\s*21(?!\d)',1800),
-            'projectile_type21_all_contexts='+ctx(p,r'(?<!\d)type\s*==\s*21(?!\d)',2200,20),
+            'projectile_ai_type21='+ctx(ai,r'(?<!\d)type\s*==\s*21(?!\d)',2800,20),
             'projectile_ai_style2_dispatch='+ctx(ai,r'aiStyle\s*==\s*2|case\s+2\s*:',2200,10),
-            'projectile_handle_movement_type21='+ctx(movement,r'(?<!\d)type\s*==\s*21(?!\d)',2600),
-            'projectile_handle_movement_ai2='+ctx(movement,r'aiStyle\s*==\s*2',2600),
-            'projectile_kill_type21='+ctx(kill,r'(?<!\d)type\s*==\s*21(?!\d)',3200),
+            'projectile_collision_params='+compact(collision),
+            'projectile_collision_params_type21='+ctx(collision,r'(?<!\d)type\s*==\s*21(?!\d)',1600),
+            'projectile_handle_movement_type21='+ctx(movement,r'(?<!\d)type\s*==\s*21(?!\d)',2400),
+            'projectile_kill_type21='+ctx(kill,r'(?<!\d)type\s*==\s*21(?!\d)',2800),
             'projectile_can_cut_tiles_type21='+ctx(cancut,r'(?<!\d)21(?!\d)',1200),
           ]
           Path('artifacts/type21/type21-source.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
