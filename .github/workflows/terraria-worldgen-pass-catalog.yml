@@ -7,7 +7,10 @@ on:
       - 'tools/ci/probe_world_generation_init.py'
       - 'tools/ci/probe_worldgen_terrain_pass.py'
       - 'tools/ci/probe_worldgen_rng.py'
+      - 'tools/ci/verify_runtime_worldgen_catalog.py'
+      - 'src/TerraRuntime.Core/VanillaUnifiedRandom1458.cs'
       - 'src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs'
+      - 'tests/TerraRuntime.Tests/VanillaUnifiedRandom1458Tests.cs'
       - 'tests/TerraRuntime.Tests/VanillaWorldGenerationPassCatalog1458Tests.cs'
       - '.github/workflows/terraria-worldgen-pass-catalog.yml'
   workflow_dispatch:
@@ -111,9 +114,16 @@ jobs:
 
       - name: Verify runtime catalog against pinned fingerprint
         run: >-
+          python3 tools/ci/verify_runtime_worldgen_catalog.py
+          --runtime-catalog src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs
+          --source-evidence artifacts/source-contract/world-generation-pass-catalog.txt
+
+      - name: Build pinned RNG implementation and vector tests
+        run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           -c Release
-          --filter FullyQualifiedName~VanillaWorldGenerationPassCatalog1458Tests
+          --no-restore
+          --filter FullyQualifiedName~VanillaUnifiedRandom1458Tests
 
       - name: Upload pass registration evidence
         uses: actions/upload-artifact@v4
