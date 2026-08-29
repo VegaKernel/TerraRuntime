@@ -13,6 +13,8 @@ internal static class TerminalUiSmoke
 {
     private const int SmokeWidth = 160;
     private const int SmokeHeight = 28;
+    private const int NarrowSmokeWidth = 80;
+    private const int NarrowSmokeHeight = 24;
 
     public static int Run()
     {
@@ -100,6 +102,19 @@ internal static class TerminalUiSmoke
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "Save        shadow ready");
                     AssertRendered(app.Driver!, "request pending");
+
+                    // Real operators do not all donate 160 columns to a server dashboard. Re-layout the
+                    // same production window at a conventional 80x24 terminal and prove the core view
+                    // remains drawable and navigable rather than assuming the roomy smoke size forever.
+                    app.Driver!.SetScreenSize(NarrowSmokeWidth, NarrowSmokeHeight);
+                    workspace.ShowSystemDashboard();
+                    workspace.RefreshSnapshot();
+                    AssertWorkspaceRow(workspace, "Running");
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Running");
+                    AssertRendered(app.Driver!, "TPS");
+                    AssertRendered(app.Driver!, "Process");
+                    AssertRendered(app.Driver!, "Commands");
                 }
                 finally
                 {
@@ -108,8 +123,8 @@ internal static class TerminalUiSmoke
             }
 
             Console.WriteLine(
-                "Terminal UI smoke passed: ANSI framebuffer rendered production runtime health, the external-dashboard transition, " +
-                "all Details menu hotkeys, Actions/manual-save path, complete bounded network telemetry, " +
+                "Terminal UI smoke passed: ANSI framebuffer rendered production runtime health at wide and narrow terminal sizes, " +
+                "the external-dashboard transition, all Details menu hotkeys, Actions/manual-save path, complete bounded network telemetry, " +
                 "section-cache pipeline/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
@@ -152,11 +167,13 @@ internal static class TerminalUiSmoke
         if (driver.Contents is null)
             throw new InvalidOperationException("ANSI driver did not expose framebuffer contents.");
 
-        var screen = new StringBuilder(SmokeWidth * SmokeHeight);
-        for (int row = 0; row < SmokeHeight; row++)
+        int height = driver.Contents.GetLength(0);
+        int width = driver.Contents.GetLength(1);
+        var screen = new StringBuilder(width * height);
+        for (int row = 0; row < height; row++)
         {
-            var line = new StringBuilder(SmokeWidth);
-            for (int column = 0; column < SmokeWidth; column++)
+            var line = new StringBuilder(width);
+            for (int column = 0; column < width; column++)
                 line.Append(driver.Contents[row, column]!.Grapheme);
 
             string renderedRow = line.ToString();
