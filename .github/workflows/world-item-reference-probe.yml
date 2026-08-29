@@ -85,7 +85,6 @@ jobs:
               'packet22': facts(c22),
           }
 
-          # Emit only narrow semantic lines, not whole decompiled methods.
           patterns = [
               r'.{0,100}Item\.NewItem.{0,180}',
               r'.{0,100}playerIndexTheItemIsReservedFor.{0,180}',
@@ -106,3 +105,5 @@ jobs:
 
           print('WORLD_ITEM_PACKET_FACTS=' + json.dumps(summary, sort_keys=True))
           print('WORLD_ITEM_PACKET_EVIDENCE=' + json.dumps(evidence, sort_keys=True))
+
+# Touch 2026-08-29: rerun probe after concurrent main activity.
