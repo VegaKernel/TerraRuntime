@@ -231,7 +231,9 @@ await runtime.ServerPlayers.SetJumpIntentAsync(
     cancellationToken);
 ```
 
-`ServerPlayerJumpIntent` is button-level semantic input, not a velocity command. TerraRuntime owns ordinary vanilla jump speed/duration, release gate, gravity and collision. Holding jump through landing does not start another jump until `Released` rearms the vanilla release gate. The current source-backed slice is dry, unmounted and normal-gravity; liquids, mounts, grapples and extra-jump families remain separate gameplay work.
+`ServerPlayerJumpIntent` is button-level semantic input, not a velocity command. TerraRuntime owns ordinary vanilla jump speed/duration, release gate, gravity and collision. Holding jump through landing does not start another jump until `Released` rearms the vanilla release gate.
+
+Liquid contact is derived by TerraRuntime from authoritative world tiles; the host still supplies no liquid or velocity data. The verified collision/displacement slice uses the vanilla movement factors $0.5$ in water/lava, $0.25$ in honey and $0.375$ in shimmer. These factors scale position advance only: the authoritative collision velocity remains unscaled, and an axis clamped by tile collision advances by that clamped component without applying the liquid factor again. Liquid-specific gravity/fall-speed, swimming/jump control, floating and wet-entry/exit state are not yet claimed source-backed by this slice. Mounts, grapples and extra-jump families also remain separate gameplay work.
 
 Despawn:
 
