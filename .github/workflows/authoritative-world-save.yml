@@ -1,5 +1,6 @@
 name: Authoritative World Save
 
+# Persistence proof is intentionally isolated from unrelated gameplay/TUI test churn.
 on:
   push:
     branches: [main]
