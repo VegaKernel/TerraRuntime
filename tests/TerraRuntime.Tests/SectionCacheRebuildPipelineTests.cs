@@ -153,11 +153,25 @@ public sealed class SectionCacheRebuildPipelineTests
         pipeline.Tick();
         Assert.True(encodeStarted.Wait(TimeSpan.FromSeconds(5)));
 
+        tile = world.Tiles.Get(x, y);
+        tile.Flags ^= WorldTileFlags.WireBlue;
+        world.Tiles.Set(x, y, tile);
+        pipeline.Tick();
+        Assert.Equal(2, pipeline.Snapshot.InFlight);
+
+        tile = world.Tiles.Get(x, y);
+        tile.Flags ^= WorldTileFlags.WireGreen;
+        world.Tiles.Set(x, y, tile);
+        Assert.Equal(1, world.Tiles.DirtySections.DirtyCount);
+
         long capturedBefore = pipeline.Snapshot.CapturedSnapshots;
         for (int i = 0; i < 8; i++)
             pipeline.Tick();
 
-        Assert.Equal(capturedBefore, pipeline.Snapshot.CapturedSnapshots);
+        SectionCacheRebuildPipelineSnapshot snapshot = pipeline.Snapshot;
+        Assert.Equal(capturedBefore, snapshot.CapturedSnapshots);
+        Assert.Equal(2, snapshot.InFlight);
+        Assert.Equal(1, snapshot.DirtyBacklog);
         releaseEncode.Set();
     }
 
