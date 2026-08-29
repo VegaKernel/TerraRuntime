@@ -24,7 +24,8 @@ docs/
 │   ├── operations-tui.md
 │   ├── observability-logging.md
 │   ├── world-generation.md
-│   └── security.md
+│   ├── security.md
+│   └── testing-evidence.md
 ├── en/
 │   ├── README.md
 │   ├── project-guide.md
@@ -37,7 +38,8 @@ docs/
 │   ├── operations-tui.md
 │   ├── observability-logging.md
 │   ├── world-generation.md
-│   └── security.md
+│   ├── security.md
+│   └── testing-evidence.md
 ├── roadmap.md
 └── roadmap/
 ```
@@ -59,6 +61,7 @@ A code change must update both RU and EN documentation in the same change when i
 - security, rate-limit or failure behavior;
 - TUI/operations integration;
 - logging/observability contracts;
+- test/evidence policy that changes what qualifies as verified support;
 - world generation extension contracts;
 - known supported/unsupported vanilla behavior.
 
@@ -97,9 +100,9 @@ System-level source of truth for dependency direction, ownership, threading, dat
 
 Practical descriptions of supported external integration contracts, lifecycle, status/error semantics and examples.
 
-### Subsystem guides
+### Subsystem and engineering guides
 
-Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, operations/TUI, observability/logging, world generation and security.
+Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, operations/TUI, observability/logging, world generation, security and the project's testing/evidence discipline.
 
 ### Roadmaps
 
@@ -151,6 +154,7 @@ python3 tools/ci/check_documentation.py
 - [x] Dedicated observability/logging guide: bounded current read models and telemetry, TUI consumption, and explicit separation from the incomplete async structured logging target.
 - [x] Dedicated worldgen guide: provider contracts, plan/pass lifecycle, workspace model and vanilla-worldgen status.
 - [x] Dedicated security guide: trust boundaries, budgets, rate limits, malformed input handling and failure isolation.
+- [x] Dedicated testing/evidence guide: source hierarchy, roadmap checkbox policy, independent compatibility evidence, official/live probes, runtime publish gates and performance proof rules.
 - [x] Add diagrams/examples when they clarify an actual interaction path; subsystem guides now contain maintained text diagrams and API/flow examples where useful.
 - [x] Add documentation-link validation in CI.
 - [x] Add lightweight RU/EN structural parity validation without machine translation or line-by-line equality.
