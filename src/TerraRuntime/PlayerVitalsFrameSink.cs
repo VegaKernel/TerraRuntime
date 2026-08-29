@@ -145,6 +145,7 @@ public sealed class PlayerVitalsFrameSink :
         PlayerBootstrapStopReason.MalformedChat => TerrariaFrameRejectionCategory.MalformedProtocol,
         PlayerBootstrapStopReason.InvalidJoinState or
         PlayerBootstrapStopReason.PlayerSlotMismatch => TerrariaFrameRejectionCategory.InvalidState,
+        PlayerBootstrapStopReason.SectionWorkRateLimited => TerrariaFrameRejectionCategory.RateLimited,
         PlayerBootstrapStopReason.OutboundBackpressure or
         PlayerBootstrapStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => TerrariaFrameRejectionCategory.None
