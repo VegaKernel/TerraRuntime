@@ -122,16 +122,20 @@ def assert_dirt_drop(drop, tile_x, tile_y):
         fail(f"packet21 Dirt expected ownership/shimmer flags 0, got {drop['flags']:#04x}")
 
 
-def assert_no_tile_echo(client):
-    deadline = time.monotonic() + 0.5
-    while time.monotonic() < deadline:
-        client.settimeout(max(0.001, deadline - time.monotonic()))
-        try:
-            message_id, _ = recv_frame(client)
-        except socket.timeout:
-            return
-        if message_id == 17:
-            fail("packet17 sender unexpectedly received its own authoritative tile relay")
+def assert_no_messages(client, forbidden, duration, label):
+    previous_timeout = client.gettimeout()
+    deadline = time.monotonic() + duration
+    try:
+        while time.monotonic() < deadline:
+            client.settimeout(max(0.001, deadline - time.monotonic()))
+            try:
+                message_id, _ = recv_frame(client)
+            except socket.timeout:
+                return
+            if message_id in forbidden:
+                fail(f"{label} unexpectedly received packet{message_id}")
+    finally:
+        client.settimeout(previous_timeout)
 
 
 def run(host, port, tile_x, tile_y):
@@ -147,6 +151,17 @@ def run(host, port, tile_x, tile_y):
         receive_tile(peer, PLACE_TILE, tile_x, tile_y, 0)
 
         select_item(origin, peer, 0, COPPER_PICKAXE_ITEM)
+
+        send_tile(origin, KILL_TILE, tile_x, tile_y, 1)
+        failed_hit_skipped = receive_tile(peer, KILL_TILE, tile_x, tile_y, 1)
+        if 21 in failed_hit_skipped:
+            fail(
+                "peer observed packet21 before failed-hit packet17: "
+                f"skipped={failed_hit_skipped[:64]}"
+            )
+        assert_no_messages(origin, {17, 21}, 0.25, "failed-hit origin")
+        assert_no_messages(peer, {17, 21}, 0.25, "failed-hit peer after expected relay")
+
         send_tile(origin, KILL_TILE, tile_x, tile_y, 0)
 
         origin_drop = receive_world_item(origin)
@@ -161,13 +176,14 @@ def run(host, port, tile_x, tile_y):
 
         assert_dirt_drop(origin_drop, tile_x, tile_y)
         receive_tile(peer, KILL_TILE, tile_x, tile_y, 0)
-        assert_no_tile_echo(origin)
+        assert_no_messages(origin, {17}, 0.5, "successful-kill origin")
 
         print(
             "live dirt action0 ok: "
             f"tile=({tile_x},{tile_y}) itemIndex={origin_drop['item_index']} "
             f"position=({origin_drop['pos_x']},{origin_drop['pos_y']}) "
             f"velocity=({origin_drop['vel_x']},{origin_drop['vel_y']}) "
+            "failedHit=peer-packet17-no-drop "
             "origin=packet21-only peer=packet21-then-packet17 "
             f"originSections={origin_sections} originBootstrapFrames={origin_bootstrap} "
             f"peerSections={peer_sections} peerBootstrapFrames={peer_bootstrap}"
