@@ -208,7 +208,7 @@ internal sealed class RuntimeOverviewDashboard : View
         ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
         SetSelectableText(
             serverText,
-            RenderServer(runtime, network, world, players.Length, status),
+            RenderServer(runtime, network, world, players.Length),
             ref appliedServerText,
             ref pendingServerText);
         SetSelectableText(
@@ -234,6 +234,9 @@ internal sealed class RuntimeOverviewDashboard : View
             CultureInfo.InvariantCulture,
             $"IN {networkRates.InboundPacketsPerSecond:F1} pkt/s {networkRates.InboundKiBPerSecond:F1} KiB/s  ·  " +
             $"OUT {networkRates.OutboundPacketsPerSecond:F1} pkt/s {networkRates.OutboundKiBPerSecond:F1} KiB/s");
+
+        if (!string.IsNullOrWhiteSpace(status))
+            SetCommandFeedback(status);
 
         UpdateGraphs(runtime.TargetTicksPerSecond);
         SetNeedsDraw();
@@ -678,10 +681,9 @@ internal sealed class RuntimeOverviewDashboard : View
         RuntimeDashboardSnapshot runtime,
         RuntimeNetworkSnapshot network,
         RuntimeWorldSnapshot world,
-        int playerCount,
-        string? status)
+        int playerCount)
     {
-        var text = new StringBuilder(384)
+        return new StringBuilder(384)
             .Append(runtime.Lifecycle).Append(" | ")
             .Append(Sanitize(runtime.WorldName, 28)).Append(' ')
             .Append(runtime.WorldWidthTiles).Append('x').Append(runtime.WorldHeightTiles).AppendLine()
@@ -692,11 +694,8 @@ internal sealed class RuntimeOverviewDashboard : View
             .Append(" | accepted ").Append(runtime.AcceptedConnections)
             .Append(" | rejected ").Append(runtime.RejectedConnections)
             .Append(" | slow ").Append(network.SlowClients).AppendLine()
-            .Append("cache ").Append(world.RuntimeCacheHit ? "hit" : "miss");
-
-        if (!string.IsNullOrWhiteSpace(status))
-            text.AppendLine().Append(Sanitize(status, 120));
-        return text.ToString();
+            .Append("cache ").Append(world.RuntimeCacheHit ? "hit" : "miss")
+            .ToString();
     }
 
     private static string RenderLogs(
