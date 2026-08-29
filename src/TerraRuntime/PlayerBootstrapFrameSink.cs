@@ -28,10 +28,17 @@ public enum PlayerBootstrapStopReason : byte
 /// <summary>
 /// Connection-owned coordinator for the minimal vanilla 1.4.5.8 join path and the first
 /// authoritative gameplay handoff:
-/// Hello -> packet 3 -> player sync -> packet 6/7 -> packet 8/7/9/10/.../49 -> packet 12 -> packet 13.
+/// Hello -> packet 3 -> player sync -> packet 6/7 -> packet 8/7/9/10/.../49 -> packet 12/129 -> packet 13.
 /// </summary>
 public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 {
+    private static readonly byte[] FinishedConnectingFrame =
+    [
+        3,
+        0,
+        (byte)TerrariaMessageId.FinishedConnectingToServer
+    ];
+
     private readonly PlayerSlotPool _slots;
     private readonly TerrariaConnectionOutboundQueue _outbound;
     private readonly PlayerBootstrapPacketSet _packets;
@@ -377,6 +384,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
             _spawnSubmitted = true;
+            if (!TryQueue(FinishedConnectingFrame))
+                return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
+
             return TerrariaFrameSinkResult.Continue;
         }
 
