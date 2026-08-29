@@ -20,7 +20,7 @@ public sealed class TypedProtocolDecoderFuzzTests
             {
                 // Every decoder sees every payload length in the bounded fuzz window repeatedly.
                 // This guarantees exact-length codecs exercise their parser paths instead of relying
-                // on random selection to happen to land on 5/8/9/etc. bytes.
+                // on random selection to happen to land on 4/6/8/etc. bytes.
                 int payloadLength = sample % (MaximumPayloadLength + 1);
                 var payload = new byte[payloadLength];
                 for (int index = 0; index < payload.Length; index++)
@@ -37,6 +37,22 @@ public sealed class TypedProtocolDecoderFuzzTests
                     $"Decoder {kind} escaped its contract for sample {sample}, payload length {payloadLength}, segmented={segmented}: {exception}");
             }
         }
+    }
+
+    [Fact]
+    public void Variable_length_decoders_reject_payloads_beyond_their_declared_ceiling_without_deserializing()
+    {
+        var chatPayload = new byte[TerrariaChatCodec.MaximumPayloadLength + 1];
+        TerrariaFrame chat = CreateFrame(DecoderKind.Chat, chatPayload, segmented: true);
+        Assert.Equal(
+            TerrariaClientChatDecodeResult.InvalidPayloadLength,
+            TerrariaChatCodec.TryDecodeClientMessage(chat, out _));
+
+        var chestPayload = new byte[161];
+        TerrariaFrame activeChest = CreateFrame(DecoderKind.ActiveChest, chestPayload, segmented: true);
+        Assert.Equal(
+            TerrariaChestDecodeResult.InvalidPayloadLength,
+            TerrariaChestCodec.TryDecodeActiveChest(activeChest, out _));
     }
 
     private static TerrariaFrame CreateFrame(DecoderKind kind, byte[] payload, bool segmented)
@@ -57,6 +73,11 @@ public sealed class TypedProtocolDecoderFuzzTests
             DecoderKind.ProjectileDestroy => (byte)TerrariaMessageId.ProjectileDestroy,
             DecoderKind.WorldItemDrop => (byte)TerrariaMessageId.WorldItemDrop,
             DecoderKind.WorldItemOwner => (byte)TerrariaMessageId.WorldItemOwner,
+            DecoderKind.ChestOpen => (byte)TerrariaMessageId.RequestChestOpen,
+            DecoderKind.ChestItem => (byte)TerrariaMessageId.SyncChestItem,
+            DecoderKind.ActiveChest => (byte)TerrariaMessageId.SyncPlayerChest,
+            DecoderKind.ChestNameLookup => (byte)TerrariaMessageId.ChestName,
+            DecoderKind.Chat => (byte)TerrariaMessageId.LoadNetModule,
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
 
@@ -156,6 +177,36 @@ public sealed class TypedProtocolDecoderFuzzTests
                 Assert.True(Enum.IsDefined(result));
                 break;
             }
+            case DecoderKind.ChestOpen:
+            {
+                TerrariaChestDecodeResult result = TerrariaChestCodec.TryDecodeOpenRequest(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.ChestItem:
+            {
+                TerrariaChestDecodeResult result = TerrariaChestCodec.TryDecodeItem(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.ActiveChest:
+            {
+                TerrariaChestDecodeResult result = TerrariaChestCodec.TryDecodeActiveChest(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.ChestNameLookup:
+            {
+                TerrariaChestDecodeResult result = TerrariaChestCodec.TryDecodeNameLookup(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.Chat:
+            {
+                TerrariaClientChatDecodeResult result = TerrariaChatCodec.TryDecodeClientMessage(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(kind));
         }
@@ -196,6 +247,11 @@ public sealed class TypedProtocolDecoderFuzzTests
         ProjectileDestroy,
         WorldItemDrop,
         WorldItemOwner,
+        ChestOpen,
+        ChestItem,
+        ActiveChest,
+        ChestNameLookup,
+        Chat,
         Count
     }
 
