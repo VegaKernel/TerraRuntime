@@ -4,8 +4,9 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Source-backed ordinary-player horizontal movement slice from TerrariaServer 1.4.5.8 Player.HorizontalMovement.
-/// It deliberately models only the unmounted baseline: run-speed clamp before input, left/right acceleration and
-/// grounded/airborne slowdown. Dash, mounts, sandstorm, wrong-ground and portal branches remain outside this slice.
+/// It deliberately models the unmounted, no-track-boost baseline: left/right acceleration below max run speed and
+/// the ordinary grounded/airborne slowdown fallback. Dash, mounts, wind, sandstorm, wrong-ground and portal branches
+/// remain outside this slice.
 /// </summary>
 internal static class VanillaServerPlayerHorizontalControl
 {
@@ -22,45 +23,34 @@ internal static class VanillaServerPlayerHorizontalControl
         if (!float.IsFinite(velocityX) || !float.IsFinite(velocityY))
             return velocityX;
 
-        if (velocityX < -MaximumRunSpeed)
-            velocityX = -MaximumRunSpeed;
-        else if (velocityX > MaximumRunSpeed)
-            velocityX = MaximumRunSpeed;
-
-        switch (intent)
+        if (intent == ServerPlayerHorizontalIntent.Left && velocityX > -MaximumRunSpeed)
         {
-            case ServerPlayerHorizontalIntent.Left:
-                if (velocityX > -MaximumRunSpeed)
-                {
-                    if (velocityX > RunSlowdown)
-                        velocityX -= RunSlowdown;
-                    velocityX -= RunAcceleration;
-                }
-                break;
-
-            case ServerPlayerHorizontalIntent.Right:
-                if (velocityX < MaximumRunSpeed)
-                {
-                    if (velocityX < -RunSlowdown)
-                        velocityX += RunSlowdown;
-                    velocityX += RunAcceleration;
-                }
-                break;
-
-            case ServerPlayerHorizontalIntent.Stop:
-                float slowdown = velocityY == 0f ? RunSlowdown : AirborneRunSlowdown;
-                if (velocityX > slowdown)
-                    velocityX -= slowdown;
-                else if (velocityX < -slowdown)
-                    velocityX += slowdown;
-                else
-                    velocityX = 0f;
-                break;
-
-            default:
-                throw new ArgumentOutOfRangeException(nameof(intent), intent, "Unknown server-player horizontal intent.");
+            if (velocityX > RunSlowdown)
+                velocityX -= RunSlowdown;
+            return velocityX - RunAcceleration;
         }
 
-        return velocityX;
+        if (intent == ServerPlayerHorizontalIntent.Right && velocityX < MaximumRunSpeed)
+        {
+            if (velocityX < -RunSlowdown)
+                velocityX += RunSlowdown;
+            return velocityX + RunAcceleration;
+        }
+
+        if (intent is not ServerPlayerHorizontalIntent.Left and
+            not ServerPlayerHorizontalIntent.Stop and
+            not ServerPlayerHorizontalIntent.Right)
+        {
+            throw new ArgumentOutOfRangeException(nameof(intent), intent, "Unknown server-player horizontal intent.");
+        }
+
+        // In the ordinary unmounted path, an input that cannot enter the maxRunSpeed branch falls through to the
+        // same slowdown branch as no input. There is no general pre-input clamp; the nearby clamp is trackBoost-only.
+        float slowdown = velocityY == 0f ? RunSlowdown : AirborneRunSlowdown;
+        if (velocityX > slowdown)
+            return velocityX - slowdown;
+        if (velocityX < -slowdown)
+            return velocityX + slowdown;
+        return 0f;
     }
 }
