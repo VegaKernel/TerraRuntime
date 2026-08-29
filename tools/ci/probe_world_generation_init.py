@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import re
 from pathlib import Path
 
@@ -67,6 +68,30 @@ def emit(label: str, source: str, names: set[str]) -> set[str]:
     return emitted
 
 
+def inspect_add_passes(source: str) -> list[str]:
+    signatures = named_signatures(source, {"AddPasses"})
+    if len(signatures) != 1:
+        raise SystemExit(
+            "Pinned Terraria.WorldGen must expose exactly one AddPasses method; "
+            f"found {len(signatures)}."
+        )
+
+    signature = signatures[0]
+    method = extract_method(source, signature)
+    pass_pattern = re.compile(r'new\s+PassLegacy\s*\(\s*"((?:\\.|[^"\\])*)"')
+    pass_names = [match.group(1) for match in pass_pattern.finditer(method)]
+    if not pass_names:
+        raise SystemExit("Pinned Terraria.WorldGen.AddPasses contains no PassLegacy registrations.")
+
+    fingerprint = hashlib.sha256(method.encode("utf-8")).hexdigest()
+    print(f"WorldGen_AddPasses_signature={compact(signature)}")
+    print(f"WorldGen_AddPasses_sha256={fingerprint}")
+    print(f"WorldGen_AddPasses_passlegacy_count={len(pass_names)}")
+    for index, name in enumerate(pass_names):
+        print(f"WorldGen_AddPasses_passlegacy_{index:03d}={name}")
+    return pass_names
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Inspect pinned TerrariaServer 1.4.5.8 fresh-world initialization and finalization."
@@ -98,6 +123,7 @@ def main() -> int:
 
     emitted_world_gen = emit("WorldGen", world_gen, world_gen_names)
     emitted_main = emit("Main", main_source, main_names)
+    add_passes = inspect_add_passes(world_gen)
 
     required_world_gen = {"GenerateWorld", "Reset", "Finish"}
     missing_world_gen = sorted(required_world_gen - emitted_world_gen)
@@ -108,6 +134,7 @@ def main() -> int:
 
     print(f"worldgen_methods_emitted={sorted(emitted_world_gen)}")
     print(f"main_methods_emitted={sorted(emitted_main)}")
+    print(f"worldgen_addpasses_passlegacy_names={add_passes}")
     return 0
 
 
