@@ -81,6 +81,7 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
             sinks.AddRange(additionalSinks);
 
         pipeline = new RuntimeLogPipeline(sinks, loggingOptions.ToPipelineOptions());
+        runtimeLogs.AttachPipelineDiagnostics(pipeline.CaptureMetrics, pipeline.CaptureSinkHealth);
 
         processExitHandler = (_, _) => DisposeForProcessExit();
         AppDomain.CurrentDomain.ProcessExit += processExitHandler;
