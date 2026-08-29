@@ -36,6 +36,34 @@ public sealed class WorldFilePreservedSectionsTests
     }
 
     [Fact]
+    public void Seekable_capture_matches_span_capture_and_restores_caller_position()
+    {
+        int[] offsets =
+        [
+            10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110
+        ];
+        byte[] file = Enumerable.Range(0, 120).Select(static value => (byte)value).ToArray();
+        var envelope = Envelope(offsets);
+        Assert.True(WorldFilePreservedSections.TryCapture(file, envelope, out WorldFilePreservedSections? expected));
+        Assert.NotNull(expected);
+
+        using var stream = new MemoryStream(file, writable: false);
+        stream.Position = 37;
+        Assert.True(WorldFilePreservedSections.TryCapture(stream, envelope, out WorldFilePreservedSections? actual));
+        Assert.NotNull(actual);
+
+        Assert.Equal(37, stream.Position);
+        Assert.Equal(expected!.Header.ToArray(), actual!.Header.ToArray());
+        Assert.Equal(expected.Signs.ToArray(), actual.Signs.ToArray());
+        Assert.Equal(expected.Npcs.ToArray(), actual.Npcs.ToArray());
+        Assert.Equal(expected.TileEntities.ToArray(), actual.TileEntities.ToArray());
+        Assert.Equal(expected.PressurePlates.ToArray(), actual.PressurePlates.ToArray());
+        Assert.Equal(expected.TownRooms.ToArray(), actual.TownRooms.ToArray());
+        Assert.Equal(expected.Bestiary.ToArray(), actual.Bestiary.ToArray());
+        Assert.Equal(expected.CreativePowers.ToArray(), actual.CreativePowers.ToArray());
+    }
+
+    [Fact]
     public void Capture_rejects_preserved_section_outside_source_file()
     {
         int[] offsets =
