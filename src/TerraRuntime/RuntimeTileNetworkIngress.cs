@@ -14,14 +14,14 @@ internal interface ITileNetworkIngress
 /// bounded command queue; all current-session, world-bounds and gameplay-authority decisions remain on the single
 /// authoritative writer thread.
 /// </summary>
-internal sealed class RuntimeTileNetworkIngress : ITileNetworkIngress
+internal class RuntimeTileNetworkIngress : ITileNetworkIngress
 {
-    private readonly IGameCommandIngress<RuntimeCommand> ingress;
+    protected IGameCommandIngress<RuntimeCommand> Ingress { get; }
 
     public RuntimeTileNetworkIngress(IGameCommandIngress<RuntimeCommand> ingress)
     {
         ArgumentNullException.ThrowIfNull(ingress);
-        this.ingress = ingress;
+        Ingress = ingress;
     }
 
     public bool TryPost(ConnectionHandle connection, in TerrariaTileManipulationState state)
@@ -29,7 +29,7 @@ internal sealed class RuntimeTileNetworkIngress : ITileNetworkIngress
         if (!connection.IsAssigned)
             return false;
 
-        return ingress.TryPost(
+        return Ingress.TryPost(
             connection.Source,
             new ClientTileManipulationRuntimeCommand(connection, state));
     }
