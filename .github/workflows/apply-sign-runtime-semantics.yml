@@ -1,0 +1,84 @@
+name: Apply Vanilla Sign Runtime Semantics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-sign-runtime-semantics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Patch host, encoder and tests
+        shell: python
+        run: |
+          from pathlib import Path
+
+          host = Path('src/TerraRuntime/TerrariaServerHost.cs')
+          text = host.read_text()
+          old = '        var signStore = new RuntimeSignStore(world.Signs);'
+          new = '        var signStore = new RuntimeSignStore(world.Signs, world.Tiles);'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one host sign-store construction, found {text.count(old)}')
+          host.write_text(text.replace(old, new))
+
+          encoder = Path('src/TerraRuntime.World/WorldFileSignEncoder.cs')
+          text = encoder.read_text()
+          text = text.replace(
+              '    DuplicateCoordinates = 4,\n    InvalidText = 5,',
+              '    DuplicateCoordinates = 4, // retained for API compatibility; vanilla SaveSigns persists duplicates\n    InvalidText = 5,')
+          old = '''        var positions = new HashSet<long>();\n\n        for (int index = 0; index < source.Length; index++)\n'''
+          new = '''        for (int index = 0; index < source.Length; index++)\n'''
+          if old not in text:
+              raise SystemExit('encoder positions declaration pattern missing')
+          text = text.replace(old, new, 1)
+          old = '''            long positionKey = ((long)(uint)sign.X << 32) | (uint)sign.Y;\n            if (!positions.Add(positionKey))\n                return WorldFileSignEncodeResult.DuplicateCoordinates;\n            if (sign.Text is null)\n'''
+          new = '''            // Vanilla 1.4.5.8 SaveSigns writes every non-null slot in ascending runtime slot order,\n            // including duplicate coordinates. LoadSigns removes later duplicates after the next restart.\n            if (sign.Text is null)\n'''
+          if old not in text:
+              raise SystemExit('encoder duplicate-coordinate validation pattern missing')
+          encoder.write_text(text.replace(old, new, 1))
+
+          store_tests = Path('tests/TerraRuntime.Tests/RuntimeSignStoreTests.cs')
+          store_tests.write_text('''using TerraRuntime.Protocol.Multiplicity;\nusing TerraRuntime.World;\n\nnamespace TerraRuntime.Tests;\n\npublic sealed class RuntimeSignStoreTests\n{\n    [Fact]\n    public void Loaded_sign_reads_and_snapshot_is_detached()\n    {\n        var store = new RuntimeSignStore([new WorldSign(0, "first", 10, 20)]);\n\n        Assert.True(store.TryRead(10, 20, out WorldSign first));\n        Assert.Equal("first", first.Text);\n        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] snapshot));\n\n        var update = new TerrariaSignState(0, 10, 20, "changed", 99, 1);\n        Assert.True(store.TryApply(in update, out WorldSign? committed, out bool textChanged));\n        Assert.True(textChanged);\n        Assert.NotNull(committed);\n        Assert.Equal("changed", committed!.Text);\n        Assert.Equal("first", snapshot[0].Text);\n    }\n\n    [Fact]\n    public void Read_normalizes_sign_frame_and_allocates_first_free_slot()\n    {\n        var tiles = CreateTiles();\n        SetSignTile(tiles, 10, 20, frameX: 0, frameY: 0);\n        SetSignTile(tiles, 11, 21, frameX: 18, frameY: 18);\n        var store = new RuntimeSignStore([new WorldSign(0, "occupied", 30, 40)], tiles);\n\n        Assert.True(store.TryRead(11, 21, out WorldSign sign));\n        Assert.Equal((short)1, sign.SlotId);\n        Assert.Equal(10, sign.X);\n        Assert.Equal(20, sign.Y);\n        Assert.Equal(string.Empty, sign.Text);\n\n        Assert.True(store.TryRead(10, 20, out WorldSign secondRead));\n        Assert.Equal(sign.SlotId, secondRead.SlotId);\n    }\n\n    [Fact]\n    public void Packet47_can_create_sparse_slot_and_snapshot_compacts_runtime_ids()\n    {\n        var tiles = CreateTiles();\n        SetSignTile(tiles, 10, 20);\n        SetSignTile(tiles, 30, 40);\n        var store = new RuntimeSignStore([new WorldSign(0, "zero", 10, 20)], tiles);\n        var update = new TerrariaSignState(7, 30, 40, "seven", 99, 0x7F);\n\n        Assert.True(store.TryApply(in update, out WorldSign? committed, out bool textChanged));\n        Assert.True(textChanged);\n        Assert.NotNull(committed);\n        Assert.Equal((short)7, committed!.SlotId);\n\n        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] snapshot));\n        Assert.Equal(2, snapshot.Length);\n        Assert.Equal((short)0, snapshot[0].SlotId);\n        Assert.Equal("zero", snapshot[0].Text);\n        Assert.Equal((short)1, snapshot[1].SlotId);\n        Assert.Equal("seven", snapshot[1].Text);\n    }\n\n    [Fact]\n    public void Packet47_replaces_coordinates_even_when_text_is_identical_without_broadcast_change()\n    {\n        var tiles = CreateTiles();\n        SetSignTile(tiles, 10, 20);\n        SetSignTile(tiles, 30, 40);\n        var store = new RuntimeSignStore([new WorldSign(0, "same", 10, 20)], tiles);\n        var update = new TerrariaSignState(0, 30, 40, "same", 0, 0);\n\n        Assert.True(store.TryApply(in update, out WorldSign? committed, out bool textChanged));\n        Assert.False(textChanged);\n        Assert.NotNull(committed);\n        Assert.Equal(30, committed!.X);\n        Assert.Equal(40, committed.Y);\n        Assert.False(store.TryRead(10, 20, out _));\n        Assert.True(store.TryRead(30, 40, out WorldSign moved));\n        Assert.Equal((short)0, moved.SlotId);\n    }\n\n    [Fact]\n    public void Packet47_invalid_sign_tile_clears_existing_slot()\n    {\n        var tiles = CreateTiles();\n        SetSignTile(tiles, 10, 20);\n        tiles.Set(30, 40, new WorldTile { Type = 54, Flags = WorldTileFlags.Active });\n        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)], tiles);\n        var update = new TerrariaSignState(0, 30, 40, "after", 0, 0);\n\n        Assert.True(store.TryApply(in update, out WorldSign? committed, out bool textChanged));\n        Assert.True(textChanged);\n        Assert.Null(committed);\n        Assert.False(store.TryRead(10, 20, out _));\n        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] snapshot));\n        Assert.Empty(snapshot);\n    }\n\n    [Fact]\n    public void Duplicate_runtime_coordinates_are_allowed_and_read_uses_lowest_slot()\n    {\n        var tiles = CreateTiles();\n        SetSignTile(tiles, 10, 20);\n        var store = new RuntimeSignStore(\n        [\n            new WorldSign(0, "first", 10, 20),\n            new WorldSign(2, "second", 10, 20)\n        ], tiles);\n\n        Assert.True(store.TryRead(10, 20, out WorldSign sign));\n        Assert.Equal((short)0, sign.SlotId);\n        Assert.Equal("first", sign.Text);\n        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] snapshot));\n        Assert.Equal(2, snapshot.Length);\n        Assert.Equal("first", snapshot[0].Text);\n        Assert.Equal("second", snapshot[1].Text);\n    }\n\n    private static WorldTileStore CreateTiles() => new(new WorldDimensions(50, 50));\n\n    private static void SetSignTile(WorldTileStore tiles, int x, int y, short frameX = 0, short frameY = 0)\n    {\n        tiles.Set(x, y, new WorldTile\n        {\n            Type = 55,\n            FrameX = frameX,\n            FrameY = frameY,\n            Flags = WorldTileFlags.Active\n        });\n    }\n}\n''')
+
+          processor_tests = Path('tests/TerraRuntime.Tests/RuntimeSignCommandProcessorTests.cs')
+          text = processor_tests.read_text()
+          text = text.replace(
+              '        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)]);\n',
+              '        var tiles = new WorldTileStore(new WorldDimensions(50, 50));\n        tiles.Set(10, 20, new WorldTile { Type = 55, Flags = WorldTileFlags.Active });\n        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)], tiles);\n',
+              1)
+          old = '''        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)]);\n        var replication = new RuntimeSignReplicationRegistry();\n        var processor = new RuntimeSignCommandProcessor(store, replication);\n        ConnectionHandle owner = Connection(31, playerSlot: 1, generation: 1);\n        var outbound = Outbound();\n\n        Assert.True(replication.TryRegister(owner.Source, outbound));\n        MarkPlaying(replication, owner);\n\n        var submitted = new TerrariaSignState(0, 11, 20, "wrong coordinate", Player: 1, Flags: 0);\n        Assert.True(processor.TryApply(new ClientSignUpdateRuntimeCommand(owner, submitted)));\n\n        Assert.Equal(0, processor.AppliedUpdates);\n        Assert.Equal(1, processor.RejectedUpdates);\n        Assert.Equal(0, outbound.QueuedFrames);\n        Assert.True(store.TryRead(10, 20, out WorldSign unchanged));\n        Assert.Equal("before", unchanged.Text);\n'''
+          new = '''        var tiles = new WorldTileStore(new WorldDimensions(50, 50));\n        tiles.Set(10, 20, new WorldTile { Type = 55, Flags = WorldTileFlags.Active });\n        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)], tiles);\n        var replication = new RuntimeSignReplicationRegistry();\n        var processor = new RuntimeSignCommandProcessor(store, replication);\n        ConnectionHandle owner = Connection(31, playerSlot: 1, generation: 1);\n        var outbound = Outbound();\n\n        Assert.True(replication.TryRegister(owner.Source, outbound));\n        MarkPlaying(replication, owner);\n\n        var submitted = new TerrariaSignState(0, 11, 20, "wrong coordinate", Player: 1, Flags: 0);\n        Assert.True(processor.TryApply(new ClientSignUpdateRuntimeCommand(owner, submitted)));\n\n        Assert.Equal(1, processor.AppliedUpdates);\n        Assert.Equal(0, processor.RejectedUpdates);\n        Assert.Equal(0, outbound.QueuedFrames);\n        Assert.False(store.TryRead(10, 20, out _));\n        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] snapshot));\n        Assert.Empty(snapshot);\n'''
+          if old not in text:
+              raise SystemExit('processor invalid-update test pattern missing')
+          processor_tests.write_text(text.replace(old, new, 1))
+
+      - name: Commit source parity changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/TerraRuntime/TerrariaServerHost.cs \
+                  src/TerraRuntime.World/WorldFileSignEncoder.cs \
+                  tests/TerraRuntime.Tests/RuntimeSignStoreTests.cs \
+                  tests/TerraRuntime.Tests/RuntimeSignCommandProcessorTests.cs
+          git commit -m 'gameplay: complete vanilla sign slot semantics'
+          for attempt in 1 2 3 4 5 6; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
