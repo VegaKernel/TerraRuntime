@@ -1,4 +1,4 @@
-name: Bullet Source Snapshot
+name: Apply Bullet Runtime Slice
 
 on:
   push:
@@ -8,94 +8,333 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Extract pinned Bullet facts
+      - name: Apply source-backed Bullet slice
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .cache/terraria-1458 artifacts/bullet .tools
-          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
-          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
-          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
-
-          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
-          assembly=""
-          while IFS= read -r -d '' candidate; do
-            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
-            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then
-              assembly="$candidate"
-            fi
-          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
-          test -n "$assembly"
-          assembly_dir="$(dirname "$assembly")"
-
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/bullet/projectile.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/bullet/projectile-id.cs
+          git fetch origin main
+          git reset --hard origin/main
 
           python3 - <<'PY'
-          import re
           from pathlib import Path
 
-          projectile = Path('artifacts/bullet/projectile.cs').read_text(encoding='utf-8')
-          projectile_id = Path('artifacts/bullet/projectile-id.cs').read_text(encoding='utf-8')
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one match, found {count}: {old[:120]!r}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-          def method(source, name):
-              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', source)
-              if not m:
-                  raise SystemExit(f'method not found: {name}')
-              opening = source.find('{', m.end())
-              depth = 0
-              for i in range(opening, len(source)):
-                  if source[i] == '{': depth += 1
-                  elif source[i] == '}':
-                      depth -= 1
-                      if depth == 0: return source[m.start():i+1]
-              raise SystemExit(f'unterminated: {name}')
+          replace_once(
+              'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs',
+              '    public static readonly ProjectileTypeId JestersArrow = new(5);\n    public static readonly ProjectileTypeId ThrowingKnife = new(48);',
+              '    public static readonly ProjectileTypeId JestersArrow = new(5);\n    public static readonly ProjectileTypeId Bullet = new(14);\n    public static readonly ProjectileTypeId ThrowingKnife = new(48);')
 
-          def compact(text): return ' '.join(text.split())
-          def contexts(source, pattern, radius=2600):
-              text = compact(source)
-              rx = re.compile(pattern)
-              out = []
-              for m in rx.finditer(text):
-                  out.append(text[max(0,m.start()-radius):min(len(text),m.end()+radius)])
-              return ' | '.join(out) if out else '<none>'
+          replace_once(
+              'src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs',
+              '''    private static readonly VanillaProjectileDefinition JestersArrowDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
 
-          defaults = method(projectile, 'SetDefaults')
-          ai = method(projectile, 'AI_001')
-          update = method(projectile, 'Update')
-          movement = method(projectile, 'HandleMovement')
-          kill = method(projectile, 'Kill')
-          can_cut = compact(method(projectile, 'CanCutTiles'))
+    private static readonly VanillaProjectileDefinition ShurikenDefinition = new(''',
+              '''    private static readonly VanillaProjectileDefinition JestersArrowDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
 
-          lines = [
-              'projectile_id_bullet=' + contexts(projectile_id, r'\bBullet\b[^;]*;|\bBullet\s*=\s*14\b', 500),
-              'projectile_bullet_defaults=' + contexts(defaults, r'(?<!\d)type\s*==\s*14(?!\d)', 1800),
-              'projectile_ai001_type14_contexts=' + contexts(ai, r'(?<!\d)type\s*==\s*14(?!\d)', 2600),
-              'projectile_ai001_arrow_mentions=' + contexts(ai, r'\barrow\b', 1200),
-              'projectile_ai001_ranged_mentions=' + contexts(ai, r'\branged\b', 1200),
-              'projectile_update_type14_contexts=' + contexts(update, r'(?<!\d)type\s*==\s*14(?!\d)', 2600),
-              'projectile_handle_movement_type14_contexts=' + contexts(movement, r'(?<!\d)type\s*==\s*14(?!\d)', 2600),
-              'projectile_kill_type14_contexts=' + contexts(kill, r'(?<!\d)type\s*==\s*14(?!\d)', 3000),
-              'projectile_can_cut_tiles=' + can_cut,
-          ]
-          Path('artifacts/bullet/bullet-source.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
-          print('\n'.join(lines))
+    private static readonly VanillaProjectileDefinition BulletDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
+    private static readonly VanillaProjectileDefinition ShurikenDefinition = new(''')
+
+          replace_once(
+              'src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs',
+              '''        if (type == VanillaProjectileIds.JestersArrow)
+        {
+            definition = JestersArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.Shuriken)''',
+              '''        if (type == VanillaProjectileIds.JestersArrow)
+        {
+            definition = JestersArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.Bullet)
+        {
+            definition = BulletDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.Shuriken)''')
+
+          replace_once(
+              'src/TerraRuntime/VanillaProjectileWorldStateStepper.cs',
+              '''/// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden,
+/// Fire, Unholy, and Jester's Arrows (aiStyle 1) plus Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2),''',
+              '''/// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden,
+/// Fire, Unholy, and Jester's Arrows plus Bullet (aiStyle 1), and Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2),''')
+
+          replace_once(
+              'src/TerraRuntime/VanillaProjectileWorldStateStepper.cs',
+              '''        bool isOrdinaryArrow =
+            definition.AiStyle == VanillaProjectileAiStyles.Arrow &&
+            (current.Type == VanillaProjectileIds.WoodenArrowFriendly ||
+             current.Type == VanillaProjectileIds.FireArrow ||
+             current.Type == VanillaProjectileIds.UnholyArrow ||
+             current.Type == VanillaProjectileIds.JestersArrow);
+        if (!isThrown && !isOrdinaryArrow)''',
+              '''        bool isBasicAiStyleOne =
+            definition.AiStyle == VanillaProjectileAiStyles.Arrow &&
+            (current.Type == VanillaProjectileIds.WoodenArrowFriendly ||
+             current.Type == VanillaProjectileIds.FireArrow ||
+             current.Type == VanillaProjectileIds.UnholyArrow ||
+             current.Type == VanillaProjectileIds.JestersArrow ||
+             current.Type == VanillaProjectileIds.Bullet);
+        if (!isThrown && !isBasicAiStyleOne)''')
+
+          replace_once(
+              'src/TerraRuntime/VanillaProjectileWorldStateStepper.cs',
+              '''        // TerrariaServer AI_001 uses ai[2] as a feature selector for several special arrow families. The
+        // ordinary Wooden/Fire/Unholy/Jester's Arrow path has ai[2] == 0; non-default feature state remains separate.
+        if (isOrdinaryArrow && current.Ai.Ai2 != 0f)''',
+              '''        // TerrariaServer AI_001 uses ai[2] as a feature selector for several special aiStyle-1 families. The
+        // source-backed Wooden/Fire/Unholy/Jester/Bullet path has ai[2] == 0; non-default feature state remains separate.
+        if (isBasicAiStyleOne && current.Ai.Ai2 != 0f)''')
+
+          replace_once(
+              'src/TerraRuntime/VanillaProjectileWorldStateStepper.cs',
+              '''            // TerrariaServer 1.4.5.8 Projectile.AI_001(), ordinary Wooden/Fire/Unholy/Jester's Arrow path. Type-specific
+            // AI feature branches do not apply when ai[2] is the default zero value. Kill visuals remain separate.''',
+              '''            // TerrariaServer 1.4.5.8 Projectile.AI_001(), source-backed basic aiStyle-1 path. Bullet has no
+            // type-specific AI/Update branch and AI_001 does not branch on arrow/ranged flags. Nonzero ai[2] stays separate.''')
+
+          replace_once(
+              'tools/ci/probe_projectile_tile_cut.py',
+              '''    jesters_arrow_defaults = around_optional(set_defaults, "type == 5", radius=2200)
+    arrow_ai = extract_method(projectile_source, "AI_001")''',
+              '''    jesters_arrow_defaults = around_optional(set_defaults, "type == 5", radius=2200)
+    bullet_defaults = around_optional(set_defaults, "type == 14", radius=1800)
+    arrow_ai = extract_method(projectile_source, "AI_001")''')
+
+          replace_once(
+              'tools/ci/probe_projectile_tile_cut.py',
+              '''    print("projectile_jesters_arrow_defaults=" + jesters_arrow_defaults)
+    print("projectile_ai001_ai0_increment=" + around_optional(arrow_ai, "ai[0]++;", radius=1200))''',
+              '''    print("projectile_jesters_arrow_defaults=" + jesters_arrow_defaults)
+    print("projectile_bullet_defaults=" + bullet_defaults)
+    print("projectile_ai001_ai0_increment=" + around_optional(arrow_ai, "ai[0]++;", radius=1200))''')
+
+          replace_once(
+              'tools/ci/probe_projectile_tile_cut.py',
+              '''    print("projectile_ai001_type5_contexts=" + all_type_comparison_contexts(arrow_ai, 5, radius=3200, limit=20))
+    print("projectile_update_type5_contexts=" + all_type_comparison_contexts(projectile_update, 5, radius=2600, limit=20))''',
+              '''    print("projectile_ai001_type5_contexts=" + all_type_comparison_contexts(arrow_ai, 5, radius=3200, limit=20))
+    print("projectile_ai001_type14_contexts=" + all_type_comparison_contexts(arrow_ai, 14, radius=2600, limit=20))
+    print("projectile_update_type5_contexts=" + all_type_comparison_contexts(projectile_update, 5, radius=2600, limit=20))
+    print("projectile_update_type14_contexts=" + all_type_comparison_contexts(projectile_update, 14, radius=2600, limit=20))''')
+
+          replace_once(
+              'tools/ci/probe_projectile_tile_cut.py',
+              '''    print("projectile_kill_type5_contexts=" + all_type_comparison_contexts(projectile_kill, 5, radius=3600, limit=20))
+    print("projectile_kill_request_new_item=" + around_optional(''',
+              '''    print("projectile_kill_type5_contexts=" + all_type_comparison_contexts(projectile_kill, 5, radius=3600, limit=20))
+    print("projectile_kill_type14_contexts=" + all_type_comparison_contexts(projectile_kill, 14, radius=3000, limit=20))
+    print("projectile_kill_request_new_item=" + around_optional(''')
+
+          replace_once(
+              'tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs',
+              '''    [Fact]
+    public void Terraria_1458_shuriken_definition_matches_source()''',
+              '''    [Fact]
+    public void Terraria_1458_bullet_definition_matches_source()
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            VanillaProjectileIds.Bullet,
+            out VanillaProjectileDefinition definition));
+
+        Assert.Equal(4, definition.Width);
+        Assert.Equal(4, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
+        Assert.Equal(4, definition.CollisionWidth);
+        Assert.Equal(4, definition.CollisionHeight);
+        Assert.Equal(0f, definition.CollisionOffsetX);
+        Assert.Equal(0f, definition.CollisionOffsetY);
+    }
+
+    [Fact]
+    public void Terraria_1458_shuriken_definition_matches_source()''')
+
+          replace_once(
+              'tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs',
+              '''    [Fact]
+    public void Jesters_arrow_free_flight_ignores_water_and_uses_ordinary_ai001_path()''',
+              '''    [Fact]
+    public void Bullet_water_contact_uses_basic_ai001_path_and_generic_liquid_scaling()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot bullet = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f) with
+        {
+            Type = VanillaProjectileIds.Bullet
+        };
+        ProjectileSimulationStepContext context = CreateContext(bullet, timeLeft: 600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.Bullet, next.State.Type);
+        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(2f, next.State.VelocityY, 5);
+        Assert.Equal(102f, next.State.PositionX, 5);
+        Assert.Equal(101f, next.State.PositionY, 5);
+        Assert.Equal(599, next.TimeLeft);
+        Assert.True(next.Liquid.GetValueOrDefault().Wet);
+    }
+
+    [Fact]
+    public void Bullet_tile_impact_uses_four_pixel_collision_box_and_generic_kill_path()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot bullet = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.Bullet
+        };
+        ProjectileSimulationStepContext context = CreateContext(bullet, timeLeft: 600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.Bullet, next.State.Type);
+        Assert.Equal(0, next.TimeLeft);
+    }
+
+    [Fact]
+    public void Jesters_arrow_free_flight_ignores_water_and_uses_ordinary_ai001_path()''')
+
+          replace_once(
+              'tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs',
+              '''    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    public async Task Server_owned_arrow_simulates_when_tile_cut_effect_is_empty(int type)''',
+              '''    [Fact]
+    public async Task Server_owned_bullet_runs_two_subupdates_when_tile_cut_effect_is_empty()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
+        ProjectileStateUpdate projectile = CreateProjectile(14, VanillaProjectileOwnership.ServerOwner);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot updated));
+        Assert.Equal(VanillaProjectileIds.Bullet, updated.Type);
+        Assert.Equal(new ProjectileRevision(2), updated.Revision);
+        Assert.Equal(108f, updated.PositionX, 5);
+        Assert.Equal(100f, updated.PositionY, 5);
+        Assert.Equal(2f, updated.Ai.Ai0, 5);
+        Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
+        Assert.Equal(598, lifecycle.TimeLeft);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    public async Task Server_owned_arrow_simulates_when_tile_cut_effect_is_empty(int type)''')
+
+          replace_once(
+              'tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs',
+              '''    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public async Task Server_owned_arrow_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)''',
+              '''    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(14)]
+    public async Task Server_owned_arrow_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)''')
+
+          replace_once(
+              'tests/TerraRuntime.Tests/VanillaProjectileUpdateFactsTests.cs',
+              '''    [InlineData(5, 1)]
+    [InlineData(20, 2)]''',
+              '''    [InlineData(5, 1)]
+    [InlineData(14, 1)]
+    [InlineData(20, 2)]''')
           PY
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: bullet-source
-          path: artifacts/bullet/bullet-source.txt
-          retention-days: 1
+          python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
+          git diff --check
+          git rm .github/workflows/bullet-source-snapshot.yml
+
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+
+          git config user.name 'OpenAI'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src tools tests .github/workflows
+          git commit -m 'feat: simulate vanilla bullet world flight'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+          done
+          echo 'main kept advancing; refusing to force-push' >&2
+          exit 1
