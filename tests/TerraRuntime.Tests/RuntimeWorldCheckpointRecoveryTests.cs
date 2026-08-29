@@ -6,6 +6,28 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeWorldCheckpointRecoveryTests
 {
     [Fact]
+    public void Automatic_restore_rejects_explicit_world_version_incompatibility()
+    {
+        var diagnostic = new WorldFileLoadDiagnostic(
+            WorldFileLoadResult.InvalidEnvelope,
+            WorldFileLoadStage.Envelope,
+            (int)WorldFileEnvelopeParseResult.InvalidVersion);
+
+        Assert.False(RuntimeWorldCheckpointRecovery.CanAutomaticallyRestoreAfter(diagnostic));
+    }
+
+    [Fact]
+    public void Automatic_restore_accepts_structural_checkpoint_corruption()
+    {
+        var diagnostic = new WorldFileLoadDiagnostic(
+            WorldFileLoadResult.InvalidFooter,
+            WorldFileLoadStage.Footer,
+            stageResultCode: 1);
+
+        Assert.True(RuntimeWorldCheckpointRecovery.CanAutomaticallyRestoreAfter(diagnostic));
+    }
+
+    [Fact]
     public async Task Valid_backup_restores_canonical_world_atomically()
     {
         byte[] validWorld = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
