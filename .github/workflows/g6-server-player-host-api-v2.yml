@@ -1,0 +1,45 @@
+name: Apply G6 server-player host API v2
+
+# Rerun after the footer world-id fixture baseline was repaired on main.
+on:
+  push:
+    branches:
+      - gameplay/g6-server-player-host-api-v2
+    paths:
+      - .github/workflows/g6-server-player-host-api-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: gameplay/g6-server-player-host-api-v2
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Apply production wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_g6_server_player_host_api_v2.py
+          git diff --check
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+
+      - name: Commit validated wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/scripts/apply_g6_server_player_host_api_v2.py .github/workflows/g6-server-player-host-api-v2.yml
+          git add src/TerraRuntime.HostContracts/ITerraRuntimeHostRuntime.cs src/TerraRuntime/TerraRuntimeHostRuntime.cs src/TerraRuntime/ServerRuntimeState.cs src/TerraRuntime/TerrariaServerHost.cs tests/TerraRuntime.Tests/TrustedHostModuleLoaderTests.cs
+          git diff --cached --check
+          git commit -m "gameplay: wire server-player lifecycle into host"
+          git push origin HEAD:gameplay/g6-server-player-host-api-v2
