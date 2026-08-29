@@ -183,25 +183,39 @@ public static class TerrariaChestCodec
 
     private static bool TryDeserialize(in TerrariaFrame frame, out TerrariaPacket packet)
     {
-        int length = checked((int)frame.Payload.Length);
-        ReadOnlyMemory<byte> payload;
-        if (frame.Payload.IsSingleSegment)
+        try
         {
-            payload = frame.Payload.First;
-        }
-        else
-        {
-            byte[] buffer = GC.AllocateUninitializedArray<byte>(length);
-            int offset = 0;
-            foreach (ReadOnlyMemory<byte> segment in frame.Payload)
+            int length = checked((int)frame.Payload.Length);
+            ReadOnlyMemory<byte> payload;
+            if (frame.Payload.IsSingleSegment)
             {
-                segment.Span.CopyTo(buffer.AsSpan(offset));
-                offset += segment.Length;
+                payload = frame.Payload.First;
             }
-            payload = buffer;
-        }
+            else
+            {
+                byte[] buffer = GC.AllocateUninitializedArray<byte>(length);
+                int offset = 0;
+                foreach (ReadOnlyMemory<byte> segment in frame.Payload)
+                {
+                    segment.Span.CopyTo(buffer.AsSpan(offset));
+                    offset += segment.Length;
+                }
+                payload = buffer;
+            }
 
-        return TerrariaPacket.TryDeserializePayload(frame.MessageId, payload, out packet);
+            return TerrariaPacket.TryDeserializePayload(frame.MessageId, payload, out packet);
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or
+            EndOfStreamException or
+            IOException or
+            OverflowException or
+            FormatException or
+            ArgumentException)
+        {
+            packet = null!;
+            return false;
+        }
     }
 
     private static byte[] Serialize(TerrariaPacket packet)
