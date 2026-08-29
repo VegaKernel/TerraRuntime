@@ -22,11 +22,25 @@ public readonly record struct ProjectileStateUpdate(
     short OriginalDamage);
 
 /// <summary>
+/// Runtime-only liquid contact flags carried by Terraria Projectile across updates. Generic wet contact can
+/// clear on exit, while the liquid-kind flags are raised by the current collision probes and persist until a
+/// source-backed behavior explicitly clears them. None of these fields belong to packet 27.
+/// </summary>
+public readonly record struct ProjectileLiquidState(
+    bool Wet,
+    bool LavaWet,
+    bool HoneyWet,
+    bool ShimmerWet);
+
+/// <summary>
 /// Runtime-owned lifecycle fields initialized by vanilla Projectile.SetDefaults and intentionally absent
 /// from packet 27. They remain authoritative server state so allocation and later simulation do not infer
-/// gameplay lifetime from network traffic.
+/// gameplay lifetime or liquid history from network traffic.
 /// </summary>
-public readonly record struct ProjectileLifecycleState(int TimeLeft, bool NetImportant)
+public readonly record struct ProjectileLifecycleState(
+    int TimeLeft,
+    bool NetImportant,
+    ProjectileLiquidState Liquid = default)
 {
     public bool IsInitialized => TimeLeft > 0;
 }
@@ -140,12 +154,17 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
             return false;
         }
 
-        ProjectileLifecycleState lifecycle = state.Lifecycle;
-        if (state.Update.Type != update.Type &&
-            !TryCreateLifecycle(update.Type, out lifecycle))
+        ProjectileLifecycleState previousLifecycle = state.Lifecycle;
+        ProjectileLifecycleState lifecycle = previousLifecycle;
+        if (state.Update.Type != update.Type)
         {
-            snapshot = default;
-            return false;
+            if (!TryCreateLifecycle(update.Type, out lifecycle))
+            {
+                snapshot = default;
+                return false;
+            }
+
+            lifecycle = lifecycle with { Liquid = previousLifecycle.Liquid };
         }
 
         if (!TryAdvance(ref state.Revision))
@@ -172,6 +191,25 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         ProjectileHandle handle,
         in ProjectileStateUpdate update,
         int timeLeft,
+        out ProjectileSnapshot snapshot,
+        out bool expired) =>
+        TryCommitSimulationStep(
+            handle,
+            in update,
+            timeLeft,
+            liquidState: null,
+            out snapshot,
+            out expired);
+
+    /// <summary>
+    /// Commits a simulation result together with runtime-only liquid history. A null liquid state preserves
+    /// the current lifecycle so existing state steppers cannot accidentally erase authoritative wet flags.
+    /// </summary>
+    public bool TryCommitSimulationStep(
+        ProjectileHandle handle,
+        in ProjectileStateUpdate update,
+        int timeLeft,
+        ProjectileLiquidState? liquidState,
         out ProjectileSnapshot snapshot,
         out bool expired)
     {
@@ -209,7 +247,8 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
             return true;
         }
 
-        ProjectileLifecycleState lifecycle = state.Lifecycle;
+        ProjectileLifecycleState previousLifecycle = state.Lifecycle;
+        ProjectileLifecycleState lifecycle = previousLifecycle;
         if (state.Update.Type != update.Type)
         {
             if (!TryCreateLifecycle(update.Type, out lifecycle))
@@ -217,9 +256,15 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
                 snapshot = default;
                 return false;
             }
+
+            lifecycle = lifecycle with { Liquid = previousLifecycle.Liquid };
         }
 
-        lifecycle = lifecycle with { TimeLeft = timeLeft };
+        lifecycle = lifecycle with
+        {
+            TimeLeft = timeLeft,
+            Liquid = liquidState ?? lifecycle.Liquid
+        };
         if (!TryAdvance(ref state.Revision))
         {
             snapshot = default;
