@@ -59,13 +59,17 @@ The lease object is idempotent from the caller's perspective: repeated `Dispose`
 
 Internal negative active-count state is treated as an invariant violation rather than silently ignored.
 
-## 5. Handshake deadline
+## 5. Handshake and join deadlines
 
-The default connection policy requires handshake completion within **10 seconds**.
+The default connection policy requires protocol handshake completion within **10 seconds**.
 
-This prevents a peer from occupying an admitted connection indefinitely while sending no usable protocol progress.
+A valid `Hello` ends the pre-handshake deadline, but it does not grant an unlimited player-slot lease. Production sink composition exposes a narrow readiness signal to the network watchdog. After `Hello`, a connection that has not reached the runtime's ready/`Playing` state is bounded by a default **2 minute join-completion deadline**.
 
-After handshake, the current default normal idle timeout is infinite. This is an explicit current policy, not a guarantee that future deployments will never configure post-handshake inactivity limits.
+The two-minute value is a deliberately conservative hard-abuse ceiling, not a Terraria gameplay cadence or a claim about an official vanilla timeout. It exists to prevent a peer from sending a valid `Hello` and then retaining an admitted player slot forever without completing world entry.
+
+Once the connection reaches `Playing`, the join deadline no longer applies. The current default normal post-join idle timeout remains infinite. Deployments may configure a finite idle timeout independently of the join budget.
+
+The watchdog keeps handshake, join and ordinary idle expiration distinct so telemetry can report `HandshakeTimeout`, `JoinTimeout` and `IdleTimeout` separately.
 
 ## 6. Connection-wide rate accounting
 
@@ -117,6 +121,7 @@ Current stop reasons include categories such as:
 
 ```text
 HandshakeTimeout
+JoinTimeout
 IdleTimeout
 InvalidHandshake
 UnsupportedProtocol
@@ -127,7 +132,7 @@ SlowClient
 RateLimited
 ```
 
-This classification is useful for security telemetry because a rate-limited peer, a malformed client and a broken network adapter are not the same incident.
+This classification is useful for security telemetry because a stalled join, a rate-limited peer, a malformed client and a broken network adapter are not the same incident.
 
 ## 11. Bounded queues
 
@@ -245,13 +250,15 @@ This reduces hidden runtime behavior and deployment-only failures in security-se
 The intended failure scope is as small as practical:
 
 ```text
-bad frame        -> reject/close connection
-rate abuse       -> reject/close connection
-slow reader      -> close that connection
-bad runtime cache-> fall back to .wld
-TUI failure      -> fall back to plain console
-save write fail  -> keep previous canonical checkpoint
-invalid worldgen -> discard candidate world
+bad frame          -> reject/close connection
+rate abuse         -> reject/close connection
+stalled handshake  -> close that connection
+stalled join       -> close that connection
+slow reader        -> close that connection
+bad runtime cache  -> fall back to .wld
+TUI failure        -> fall back to plain console
+save write fail    -> keep previous canonical checkpoint
+invalid worldgen   -> discard candidate world
 ```
 
 The process should not fail-fast for ordinary hostile network input.
@@ -266,7 +273,7 @@ Security-relevant observability should distinguish at least:
 - capacity admission rejects;
 - admission-rate rejects;
 - connection/message rate limits;
-- connection stop reason mapping;
+- connection stop reason mapping, including handshake/join/idle timeouts;
 - malformed/protocol failures;
 - slow-client disconnects;
 - queue depth/backlog age;
@@ -278,23 +285,23 @@ Telemetry itself must be bounded so an attacker cannot turn error reporting into
 
 ## 24. Fuzzing
 
-The roadmap requires permanent fuzz/malformed corpora for areas such as:
+Permanent deterministic malformed/fuzz coverage already exists for the framing layer and typed packet decoders, including hostile declared lengths and segmented input. This is a regression floor, not a claim that protocol fuzzing is complete.
 
-- frame parsing;
-- variable-length packet decoders;
+The broader roadmap still requires fuzz/malformed corpora for areas such as:
+
 - section/tile data;
 - `.wld` parsing;
-- command/text parsing.
+- command/text parsing;
+- future complex variable-length gameplay formats.
 
 A useful fuzz scenario should prove not only that malformed input was rejected, but that the server remains healthy enough to accept a valid connection afterward.
-
-This work is not yet complete and must not be represented as finished fuzz coverage.
 
 ## 25. Security evidence
 
 Depending on the change, evidence includes:
 
 - admission-gate churn/capacity tests;
+- handshake/join/idle deadline tests;
 - connection policy/rate tests;
 - malformed frame/packet tests;
 - slow-reader real-socket tests;
@@ -309,7 +316,7 @@ For a bug fix, the regression test should fail when the fix is removed.
 
 The following remain active security work:
 
-- complete protocol fuzz corpus;
+- broader protocol/world fuzz corpora beyond the current framing and typed-decoder regression floor;
 - complete global/per-subsystem expensive-work budgets;
 - complete rate limits for all expensive gameplay classes;
 - richer malformed/rejected packet telemetry;
