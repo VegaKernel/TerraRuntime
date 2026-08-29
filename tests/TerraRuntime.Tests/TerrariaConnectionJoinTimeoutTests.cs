@@ -8,6 +8,12 @@ namespace TerraRuntime.Tests;
 public sealed class TerrariaConnectionJoinTimeoutTests
 {
     [Fact]
+    public void Default_policy_has_a_conservative_join_abuse_ceiling()
+    {
+        Assert.Equal(TimeSpan.FromMinutes(2), TerrariaConnectionPolicyOptions.Default.JoinTimeout);
+    }
+
+    [Fact]
     public void Policy_state_distinguishes_handshake_join_and_ready_deadlines()
     {
         var time = new ManualTimeProvider();
@@ -117,6 +123,46 @@ public sealed class TerrariaConnectionJoinTimeoutTests
         Assert.Equal(TerrariaConnectionStopReason.PeerClosed, result.StopReason);
     }
 
+    [Fact]
+    public async Task Infinite_join_budget_still_transitions_to_idle_timeout_after_readiness()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        listener.Listen(1);
+        var endpoint = (IPEndPoint)listener.LocalEndPoint!;
+
+        using var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        ValueTask connectTask = client.ConnectAsync(endpoint, cancellationToken);
+        Socket serverSocket = await listener.AcceptAsync(cancellationToken);
+        await connectTask;
+
+        var outbound = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 32));
+        var sink = new ReadinessSink(connectionReady: false);
+        var policy = new TerrariaConnectionPolicyOptions(
+            handshakeTimeout: TimeSpan.FromSeconds(2),
+            idleTimeout: TimeSpan.FromMilliseconds(150),
+            rateBudget: ConnectionRateBudgetOptions.AccountingOnly,
+            messageRateLimits: ConnectionMessageRateLimits.None,
+            joinTimeout: Timeout.InfiniteTimeSpan);
+
+        Task<TerrariaSocketRunResult> run = TerrariaSocketConnection.RunAsync(
+            serverSocket,
+            sink,
+            outbound,
+            TerrariaFrameDecoderOptions.Default,
+            policy,
+            cancellationToken).AsTask();
+
+        byte[] hello = CurrentHelloPacket();
+        Assert.Equal(hello.Length, await client.SendAsync(hello, SocketFlags.None, cancellationToken));
+        await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken);
+        sink.ConnectionReady = true;
+
+        TerrariaSocketRunResult result = await run.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+        Assert.Equal(TerrariaConnectionStopReason.IdleTimeout, result.StopReason);
+    }
+
     private static byte[] CurrentHelloPacket() =>
     [
         15, 0,
@@ -132,7 +178,7 @@ public sealed class TerrariaConnectionJoinTimeoutTests
     {
         public int Frames { get; private set; }
 
-        public bool ConnectionReady { get; } = connectionReady;
+        public bool ConnectionReady { get; set; } = connectionReady;
 
         public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
         {
