@@ -26,7 +26,7 @@ TerraRuntime core/source graph
 
 This profile has no arbitrary managed plugin loading. It is intended for runtime-only deployments, native smoke testing, benchmarking and environments that do not require the Vega managed plugin ecosystem.
 
-The current NativeAOT publish and clean-deployment mechanism remains valid and must not be removed merely because an extensible CoreCLR host is introduced.
+The current NativeAOT publish and runnable-artifact mechanism remains valid and must not be removed merely because an extensible CoreCLR host is introduced.
 
 ### Extensible Vega profile
 
@@ -99,24 +99,22 @@ data/
 logs/
 ```
 
-A NativeAOT `dotnet publish` of the current standalone host automatically recreates the clean tree under:
+A NativeAOT `dotnet publish` writes directly to the runnable artifact root selected by `PublishDir`. The repository/CI convention is:
 
 ```text
-artifacts/deploy/<RuntimeIdentifier>/
+artifacts/native-aot/<RuntimeIdentifier>/
 ```
 
-The clean tree contains only the native executable and runtime-owned directories. SDK/intermediate publish output may contain build or debug artifacts and is not the deployment directory.
-
-CI launches NativeAOT smoke paths from the clean deployment tree and rejects unexpected root entries. If the native server accidentally starts depending on a loose managed sidecar, the smoke gate must fail.
+That directory is the deployment directory, not an SDK staging tree. Release `*.pdb`/`*.dbg` symbols are excluded, runtime-owned directories are created during publish, and CI rejects unexpected root entries. If the native server accidentally starts depending on a loose managed sidecar, the smoke gate must fail.
 
 ### Extensible CoreCLR host
 
-The managed profile necessarily ships managed assemblies, but the human-facing root should remain organized:
+The managed profile keeps a clean human-facing root:
 
 ```text
 TerraRuntime/
-├── TerraRuntime.Server.exe
-├── runtime/              # managed/native implementation dependencies
+├── TerraRuntime.Extensible.Server.exe
+├── runtime/              # reserved for deliberately external sidecar dependencies
 ├── HostModules/
 │   └── Vega.dll
 ├── ServerPlugins/
@@ -127,9 +125,15 @@ TerraRuntime/
 └── logs/
 ```
 
-The dependency directory may ultimately be named `runtime/` or `libs/`; the important rule is that ordinary runtime/framework assemblies do not flood the root directory.
+The current production publish is self-contained and single-file, so framework/runtime assemblies required for startup are bundled into the executable rather than copied as loose DLLs. `runtime/` is still created as the explicit location for any future dependency that must remain external. Loose framework/runtime libraries must not flood the root directory.
 
-Debug symbols and developer-only artifacts belong in build/CI artifacts unless a deployment explicitly opts into them.
+The repository/CI convention is:
+
+```text
+artifacts/coreclr/<RuntimeIdentifier>/
+```
+
+Release debug symbols and developer-only files are excluded from that runnable artifact. CI copies a host-module fixture into `HostModules/` and starts the executable from the artifact root, proving that the directory can be deployed and launched directly.
 
 ## AOT-safe core design rules
 
@@ -179,8 +183,10 @@ CI must continue to keep the NativeAOT gates green even after the CoreCLR extens
 
 ```text
 build + tests
-NativeAOT linux-x64 + native smoke from artifacts/deploy/linux-x64
-NativeAOT win-x64 + native smoke from artifacts/deploy/win-x64
+NativeAOT linux-x64 + native smoke from artifacts/native-aot/linux-x64
+NativeAOT win-x64 + native smoke from artifacts/native-aot/win-x64
+CoreCLR linux-x64 + host-module smoke from artifacts/coreclr/linux-x64
+CoreCLR win-x64 + host-module smoke from artifacts/coreclr/win-x64
 ```
 
 The extensible host adds its own CoreCLR build, plugin-load and hot-reload tests rather than replacing the native jobs.
