@@ -84,6 +84,8 @@ def main() -> int:
     kill_method = compact(extract_method(raw, kill_signature))
     drop_signature = first_signature(raw, "KillTile_DropItems")
     drop_method = compact(extract_method(raw, drop_signature))
+    get_drops_signature = first_signature(raw, "KillTile_GetItemDrops")
+    get_drops_method = compact(extract_method(raw, get_drops_signature))
     breakability_signature = first_signature(raw, "CheckTileBreakability")
     breakability_method = compact(extract_method(raw, breakability_signature))
     survive_signature = first_signature(raw, "CheckTileBreakability2_ShouldTileSurvive")
@@ -133,8 +135,11 @@ def main() -> int:
         raise SystemExit("CheckTileBreakability2_ShouldTileSurvive no longer ends in false.")
 
     print(f"drop_signature={drop_signature}")
-    for marker in ("TileID.Dirt", "DirtBlock", "tile.type == 0", "case 0:"):
-        print_context(drop_method, marker)
+    print(f"drop_method_prefix={drop_method[:6000]}")
+    print(f"get_drops_signature={get_drops_signature}")
+    print(f"get_drops_method_prefix={get_drops_method[:16000]}")
+    for marker in ("TileID.Dirt", "DirtBlock", "tileCache.type == 0", "case 0:"):
+        print_context(get_drops_method, marker)
 
     print("tile_id_dirt=0")
     print("dirt_kill_no_item_drop_gate=verified")
