@@ -53,7 +53,7 @@ def require(text: str, needle: str, label: str) -> None:
         raise SystemExit(f"Pinned source contract changed: missing {label}: {needle}")
 
 
-def print_context(text: str, marker: str, radius: int = 2500) -> None:
+def print_context(text: str, marker: str, radius: int = 3500) -> None:
     index = text.find(marker)
     if index < 0:
         print(f"diagnostic_marker_missing={marker}")
@@ -67,10 +67,14 @@ def main() -> int:
     )
     parser.add_argument("--world-gen", required=True)
     parser.add_argument("--item", required=True)
+    parser.add_argument("--item-id", required=True)
+    parser.add_argument("--prefix-legacy", required=True)
     args = parser.parse_args()
 
     world_gen = Path(args.world_gen).read_text(encoding="utf-8")
     item = Path(args.item).read_text(encoding="utf-8")
+    item_id = compact(Path(args.item_id).read_text(encoding="utf-8"))
+    prefix_legacy = compact(Path(args.prefix_legacy).read_text(encoding="utf-8"))
 
     drop_sig = next(
         (s for s in signatures(world_gen, "KillTile_GetItemDrops") if "out int dropItem" in s),
@@ -136,23 +140,38 @@ def main() -> int:
         "server packet-21 broadcast before spawn ownership",
     )
 
-    for name in ("GetRollablePrefixes", "SetDefaults", "SetDefaults1"):
-        matches = signatures(item, name, require_static=False)
-        print(f"{name}_diagnostics_begin")
-        for signature in matches:
-            body = compact(extract_method(item, signature))
-            print(signature)
-            if name == "SetDefaults1":
-                print_context(body, "case 2:")
-            elif name == "SetDefaults":
-                print(body[:9000])
-            else:
-                print(body[:20000])
-        print(f"{name}_diagnostics_end")
+    defaults1 = next(iter(signatures(item, "SetDefaults1", require_static=False)), None)
+    if defaults1 is None:
+        raise SystemExit("Could not locate Item.SetDefaults1.")
+    defaults1_body = compact(extract_method(item, defaults1))
+    require(
+        defaults1_body,
+        "case 2: useStyle = 1; useTurn = true; useAnimation = 15; useTime = 10; autoReuse = true; consumable = true; createTile = 0; width = 12; height = 12; break;",
+        "Dirt Block 12x12 defaults",
+    )
+
+    get_rollable = next(iter(signatures(item, "GetRollablePrefixes", require_static=False)), None)
+    if get_rollable is None:
+        raise SystemExit("Could not locate Item.GetRollablePrefixes.")
+    get_rollable_body = compact(extract_method(item, get_rollable))
+    require(get_rollable_body, "if (PrefixLegacy.ItemSets.SwordsHammersAxesPicks[type])", "melee prefix set gate")
+    require(get_rollable_body, "if (IsAPrefixableAccessory())", "accessory prefix gate")
+    require(get_rollable_body, "return null;", "non-prefixable return")
+
+    print_context(prefix_legacy, "SwordsHammersAxesPicks")
+    print_context(prefix_legacy, "SpearsMacesChainsawsDrillsPunchCannon")
+    print_context(prefix_legacy, "GunsBows")
+    print_context(prefix_legacy, "Magic")
+    print_context(prefix_legacy, "Summon")
+    print_context(prefix_legacy, "BoomerangsChakrams")
+    print_context(prefix_legacy, "ItemsThatCanHaveLegendary2")
+    print_context(item_id, "ItemNoGravity")
 
     print("dirt_drop_item=2")
     print("dirt_drop_stack=1")
+    print("dirt_drop_item_size=12x12")
     print("dirt_drop_center=x*16+8,y*16+8")
+    print("dirt_drop_position=x*16+2,y*16+2")
     print("dirt_drop_velocity_x=Main.rand.Next(-30,31)*0.1")
     print("dirt_drop_velocity_y=Main.rand.Next(-40,-15)*0.1")
     return 0
