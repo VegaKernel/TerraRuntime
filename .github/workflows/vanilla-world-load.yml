@@ -13,6 +13,7 @@ on:
       - 'tools/TerraRuntime.ChestLocate/**'
       - 'tools/ci/live_join_relay_probe.py'
       - 'tools/ci/live_chest_open_probe.py'
+      - 'tools/ci/live_chest_observer_probe.py'
       - '.github/workflows/vanilla-world-load.yml'
   workflow_dispatch:
 
@@ -143,6 +144,7 @@ jobs:
           world="$GITHUB_WORKSPACE/artifacts/vanilla-smoke.wld"
           host_log="$GITHUB_WORKSPACE/artifacts/terraruntime-chest-server.log"
           client_log="$GITHUB_WORKSPACE/artifacts/terraruntime-chest-client.log"
+          observer_log="$GITHUB_WORKSPACE/artifacts/terraruntime-chest-observer.log"
           server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
 
           chest_info="$(dotnet run \
@@ -175,7 +177,7 @@ jobs:
           dotnet "$server_dll" \
             --world "$world" \
             --port 17782 \
-            --max-players 1 \
+            --max-players 2 \
             > "$host_log" 2>&1 &
           host_pid=$!
 
@@ -209,6 +211,18 @@ jobs:
             --item-prefix "$item_prefix" \
             --item-net-id "$item_net_id" \
             2>&1 | tee "$client_log"
+
+          python3 tools/ci/live_chest_observer_probe.py \
+            --port 17782 \
+            --chest-id "$chest_id" \
+            --x "$x" \
+            --y "$y" \
+            --slots "$slots" \
+            --item-slot "$item_slot" \
+            --item-stack "$item_stack" \
+            --item-prefix "$item_prefix" \
+            --item-net-id "$item_net_id" \
+            2>&1 | tee "$observer_log"
           cat "$host_log"
 
       - name: Prove warm world and bootstrap snapshot startup without reading source world
@@ -366,6 +380,7 @@ jobs:
             artifacts/terraruntime-client.log
             artifacts/terraruntime-chest-server.log
             artifacts/terraruntime-chest-client.log
+            artifacts/terraruntime-chest-observer.log
             artifacts/terraruntime-chest-selection.txt
             artifacts/terraruntime-warm-cache.log
             artifacts/runtime-cache-parallel.txt
