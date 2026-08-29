@@ -16,11 +16,6 @@ namespace TerraRuntime;
 
 public static class TerrariaServerHost
 {
-    private static readonly OutboundQueueOptions ConnectionOutboundQueueOptions = new(
-        maxFrames: 4_096,
-        maxQueuedBytes: 16L * 1024 * 1024,
-        maxFrameBytes: TerrariaFrameDecoderOptions.AbsoluteMaximumFrameLength);
-
     // Correctness-first ceiling until section rebuild throughput is measured on representative worlds.
     // One worker plus one queued item bounds live rebuild snapshots to at most two network sections.
     private const int SectionCacheWorkerCount = 1;
@@ -702,7 +697,7 @@ public static class TerrariaServerHost
 
         using (admissionLease)
         {
-            var outbound = new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueOptions);
+            var outbound = new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueSizing.Create(slots.Capacity));
             TerrariaConnectionPolicyOptions policyOptions = TerrariaConnectionPolicyOptions.Default;
             var rateAccountant = new TerrariaConnectionRateAccountant(policyOptions.RateBudget);
             if (!runtimeConnections.TryRegister(source, outbound))
