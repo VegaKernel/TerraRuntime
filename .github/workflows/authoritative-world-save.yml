@@ -32,6 +32,7 @@ concurrency:
 jobs:
   save-pipeline:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v5
