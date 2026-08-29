@@ -95,16 +95,16 @@ public sealed class WorldFileFooterEncoderTests
         Assert.Equal(0, oversizedStream.Length);
     }
 
-    private static WorldFileHeader Header(string name, ulong worldId, WorldDimensions dimensions) =>
+    private static WorldFileHeader Header(string name, int worldId, WorldDimensions dimensions) =>
         new(
-            name,
-            "seed",
-            worldId,
-            Guid.Empty,
-            1,
-            0,
-            dimensions.WidthTiles * 16,
-            0,
-            dimensions.HeightTiles * 16,
-            dimensions);
+            Name: name,
+            SeedText: "seed",
+            WorldGeneratorVersion: 1UL,
+            UniqueId: Guid.Empty,
+            WorldId: worldId,
+            LeftWorld: 0,
+            RightWorld: dimensions.WidthTiles * 16,
+            TopWorld: 0,
+            BottomWorld: dimensions.HeightTiles * 16,
+            Dimensions: dimensions);
 }
