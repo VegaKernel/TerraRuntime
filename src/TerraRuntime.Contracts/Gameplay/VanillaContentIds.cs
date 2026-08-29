@@ -33,6 +33,8 @@ public static class VanillaItemIds
 
     public static ItemTypeId None => default;
     public static readonly ItemTypeId DirtBlock = new(2);
+    public static readonly ItemTypeId Gel = new(23);
+    public static readonly ItemTypeId SlimeStaff = new(1309);
     public static readonly ItemTypeId CopperPickaxe = new(3509);
 
     public static bool TryCreate(int rawType, out ItemTypeId type)

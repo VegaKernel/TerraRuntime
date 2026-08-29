@@ -12,6 +12,7 @@ on:
       - 'tests/TerraRuntime.Tests/*Npc*.cs'
       - 'tests/TerraRuntime.Tests/*ItemUse*.cs'
       - 'tests/TerraRuntime.Tests/*ItemDefinition*.cs'
+      - 'tests/TerraRuntime.Tests/*NpcLoot*.cs'
       - '.github/workflows/gameplay-ai-verify.yml'
   workflow_dispatch:
 
@@ -45,7 +46,7 @@ jobs:
         run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           -c Release --no-build
-          --filter "FullyQualifiedName~Projectile|FullyQualifiedName~Npc|FullyQualifiedName~ItemUse|FullyQualifiedName~VanillaItemDefinition"
+          --filter "FullyQualifiedName~Projectile|FullyQualifiedName~Npc|FullyQualifiedName~ItemUse|FullyQualifiedName~VanillaItemDefinition|FullyQualifiedName~NpcLoot"
 
       - name: Authoritative loop smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --loop-smoke
