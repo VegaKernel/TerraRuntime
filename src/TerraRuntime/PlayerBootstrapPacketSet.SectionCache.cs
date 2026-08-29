@@ -5,7 +5,13 @@ namespace TerraRuntime;
 internal readonly record struct SectionPacketCacheSnapshot(
     int Entries,
     long Bytes,
-    int MaximumEntries);
+    int MaximumEntries,
+    long Hits,
+    long Misses,
+    long StaleReads,
+    long Waits,
+    long WaitCompletions,
+    long WaitTimeouts);
 
 public sealed partial class PlayerBootstrapPacketSet
 {
@@ -32,9 +38,13 @@ public sealed partial class PlayerBootstrapPacketSet
                 return false;
 
             if (_sectionCache.TryGetValue(index, out SectionCacheEntry existing) && existing.Version == revision)
+            {
+                Monitor.PulseAll(_sectionCacheGate);
                 return true;
+            }
 
             _sectionCache[index] = new SectionCacheEntry(frame, [], revision);
+            Monitor.PulseAll(_sectionCacheGate);
             return true;
         }
     }
@@ -75,7 +85,13 @@ public sealed partial class PlayerBootstrapPacketSet
             return new SectionPacketCacheSnapshot(
                 Entries: _sectionCache.Count,
                 Bytes: bytes,
-                MaximumEntries: maximumEntries);
+                MaximumEntries: maximumEntries,
+                Hits: Interlocked.Read(ref _sectionCacheHits),
+                Misses: Interlocked.Read(ref _sectionCacheMisses),
+                StaleReads: Interlocked.Read(ref _sectionCacheStaleReads),
+                Waits: Interlocked.Read(ref _sectionCacheWaits),
+                WaitCompletions: Interlocked.Read(ref _sectionCacheWaitCompletions),
+                WaitTimeouts: Interlocked.Read(ref _sectionCacheWaitTimeouts));
         }
     }
 }
