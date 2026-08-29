@@ -10,6 +10,9 @@ The design has three priorities, in this order:
 
 NativeAOT remains a first-class build and deployment target for TerraRuntime. The extensible plugin host deliberately uses CoreCLR because arbitrary managed DLL loading, collectible `AssemblyLoadContext` and hot replacement are part of that product profile.
 
+
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+
 ## Two supported host profiles
 
 TerraRuntime keeps one runtime core and two explicit host profiles instead of forcing incompatible requirements into one executable.
@@ -278,11 +281,11 @@ For the Vega-enabled extensible server, sustained runtime performance plus drop-
 
 This roadmap item is complete when:
 
-1. TerraRuntime core remains buildable and smoke-tested under NativeAOT on Linux x64 and Windows x64.
-2. A CoreCLR extensible host can load `HostModules/Vega.dll` without exposing TerraRuntime implementation assemblies as a public plugin SDK.
-3. Vega can load an ordinary managed plugin by placing its DLL in `ServerPlugins/`.
-4. Ordinary plugins compile only against `Vega.PluginSdk` for normal server capabilities.
-5. Plugin mutations cross Vega policy and TerraRuntime command boundaries before touching authoritative state.
-6. CoreCLR production defaults include Server GC, Tiered Compilation, Dynamic PGO and ReadyToRun as listed above.
-7. Hot reload remains available for compatible Vega plugins through collectible `AssemblyLoadContext`.
-8. The CoreCLR and NativeAOT profiles have reproducible performance comparisons rather than assumption-based claims.
+1. [x] TerraRuntime core remains buildable and smoke-tested under NativeAOT on Linux x64 and Windows x64.
+2. [ ] A CoreCLR extensible host can load `HostModules/Vega.dll` without exposing TerraRuntime implementation assemblies as a public plugin SDK.
+3. [ ] Vega can load an ordinary managed plugin by placing its DLL in `ServerPlugins/`.
+4. [ ] Ordinary plugins compile only against `Vega.PluginSdk` for normal server capabilities.
+5. [ ] Plugin mutations cross Vega policy and TerraRuntime command boundaries before touching authoritative state.
+6. [x] CoreCLR production defaults include Server GC, Tiered Compilation, Dynamic PGO and ReadyToRun as listed above.
+7. [ ] Hot reload remains available for compatible Vega plugins through collectible `AssemblyLoadContext`.
+8. [ ] The CoreCLR and NativeAOT profiles have reproducible performance comparisons rather than assumption-based claims.

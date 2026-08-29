@@ -12,6 +12,9 @@ The governing rule is:
 
 ---
 
+
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+
 ## 1. What counts as a magic number
 
 Not every numeric literal is a problem.
@@ -802,13 +805,13 @@ Refactoring a magic number is not done merely because the renamed constant has t
 
 Produce an inventory of:
 
-- raw content IDs;
-- hardcoded counts/ranges;
-- raw bit masks;
-- special slot ranges;
-- hardcoded timers/distances/speeds;
-- giant type/AI switches;
-- duplicate constants across projects.
+- [ ] raw content IDs;
+- [ ] hardcoded counts/ranges;
+- [ ] raw bit masks;
+- [ ] special slot ranges;
+- [ ] hardcoded timers/distances/speeds;
+- [ ] giant type/AI switches;
+- [ ] duplicate constants across projects.
 
 Classify each as:
 
@@ -824,61 +827,61 @@ Only then decide the right replacement.
 
 ### D1 - ID types and catalog foundation
 
-- add typed vanilla IDs;
-- add version-pinned catalogs;
-- central range validation;
-- deterministic generated-data path if needed;
-- selected independent verification tests.
+- [x] add typed vanilla IDs;
+- [x] add version-pinned catalogs;
+- [x] central range validation;
+- [ ] deterministic generated-data path if needed;
+- [x] selected independent verification tests.
 
 ### D2 - Items and inventory
 
-- item definitions/defaults;
-- typed inventory layout;
-- prefix/stack normalization;
-- item-use semantic boundary;
-- remove raw item/slot IDs from gameplay paths.
+- [ ] item definitions/defaults;
+- [x] typed inventory layout;
+- [x] prefix/stack normalization;
+- [ ] item-use semantic boundary;
+- [ ] remove raw item/slot IDs from gameplay paths.
 
 ### D3 - Projectiles
 
-- projectile definitions;
-- typed lifecycle/provenance;
-- behavior/physics/collision/combat decomposition;
-- remove raw projectile IDs and AI-style numbers from gameplay paths;
-- align with custom projectile extension pipeline.
+- [x] projectile definitions;
+- [x] typed lifecycle/provenance;
+- [ ] behavior/physics/collision/combat decomposition;
+- [ ] remove raw projectile IDs and AI-style numbers from gameplay paths;
+- [x] align with custom projectile extension pipeline.
 
 ### D4 - NPCs
 
-- NPC definitions;
-- AI family/behavior decomposition;
-- spawn/physics/combat/loot separation;
-- boss/town behavior boundaries;
-- remove raw NPC IDs/AI-style numbers;
-- align with custom NPC extension pipeline.
+- [x] NPC definitions;
+- [ ] AI family/behavior decomposition;
+- [ ] spawn/physics/combat/loot separation;
+- [ ] boss/town behavior boundaries;
+- [ ] remove raw NPC IDs/AI-style numbers;
+- [x] align with custom NPC extension pipeline.
 
 ### D5 - Tiles, walls and objects
 
-- tile/wall definitions;
-- named tile state flags;
-- multi-tile object definitions;
-- placement/break/framing operations;
-- wiring/liquids/growth decomposition;
-- remove raw tile/wall IDs and frame constants from unrelated handlers.
+- [ ] tile/wall definitions;
+- [ ] named tile state flags;
+- [ ] multi-tile object definitions;
+- [ ] placement/break/framing operations;
+- [ ] wiring/liquids/growth decomposition;
+- [ ] remove raw tile/wall IDs and frame constants from unrelated handlers.
 
 ### D6 - Buffs, combat, loot and progression
 
-- buff/prefix catalogs;
-- damage-source model;
-- loot rules;
-- event/progression IDs/state;
-- biome/zone semantics;
-- remove remaining cross-subsystem magic values.
+- [ ] buff/prefix catalogs;
+- [ ] damage-source model;
+- [ ] loot rules;
+- [ ] event/progression IDs/state;
+- [ ] biome/zone semantics;
+- [ ] remove remaining cross-subsystem magic values.
 
 ### D7 - Enforcement
 
-- CI audit for prohibited raw IDs/masks;
-- architecture tests;
-- optional Roslyn analyzer if textual enforcement is insufficient;
-- document any intentional remaining raw values and their ownership.
+- [ ] CI audit for prohibited raw IDs/masks;
+- [ ] architecture tests;
+- [ ] optional Roslyn analyzer if textual enforcement is insufficient;
+- [ ] document any intentional remaining raw values and their ownership.
 
 ---
 
@@ -886,15 +889,15 @@ Only then decide the right replacement.
 
 This roadmap slice is complete when:
 
-- gameplay code no longer relies on unexplained raw vanilla content IDs;
-- items, NPCs, projectiles, tiles, walls, buffs and prefixes have explicit version-pinned identity/catalog boundaries where required;
-- raw protocol/file primitives are converted at boundaries rather than propagated as authoritative domain state;
-- inventory slot families and other special ranges are named and centralized;
-- entity type identity is impossible to casually confuse with entity slot/generation identity;
-- projectile/NPC behavior is decomposed enough to support the extension contracts without packet hacks;
-- tile/world mutation rules are decomposed from packet handling and replication;
-- behavior constants live with the behavior that owns them rather than a global constants dump;
-- TShock/Terraria assemblies are not runtime dependencies;
-- new raw IDs/masks are prevented by CI/code-review rules;
-- focused differential tests demonstrate that decomposition preserves verified vanilla behavior;
-- all generated/catalog code remains clean under Linux and Windows NativeAOT publication.
+- [ ] gameplay code no longer relies on unexplained raw vanilla content IDs;
+- [ ] items, NPCs, projectiles, tiles, walls, buffs and prefixes have explicit version-pinned identity/catalog boundaries where required;
+- [ ] raw protocol/file primitives are converted at boundaries rather than propagated as authoritative domain state;
+- [ ] inventory slot families and other special ranges are named and centralized;
+- [x] entity type identity is impossible to casually confuse with entity slot/generation identity;
+- [x] projectile/NPC behavior is decomposed enough to support the extension contracts without packet hacks;
+- [ ] tile/world mutation rules are decomposed from packet handling and replication;
+- [ ] behavior constants live with the behavior that owns them rather than a global constants dump;
+- [x] TShock/Terraria assemblies are not runtime dependencies;
+- [ ] new raw IDs/masks are prevented by CI/code-review rules;
+- [ ] focused differential tests demonstrate that decomposition preserves verified vanilla behavior;
+- [x] all generated/catalog code remains clean under Linux and Windows NativeAOT publication.

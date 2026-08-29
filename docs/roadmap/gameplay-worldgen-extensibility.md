@@ -12,6 +12,9 @@ This work builds on the existing single-writer game loop, generation/revision ha
 
 ---
 
+
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+
 ## 1. Scope and ownership
 
 ### TerraRuntime owns
@@ -559,53 +562,53 @@ The zero-extension path must remain extremely close to the direct vanilla dispat
 
 ### G0 - Contract foundation
 
-- stable behavior/archetype IDs;
-- explicit AOT-safe registration API;
-- immutable registry snapshots and tick-boundary swap;
-- extension diagnostics identity;
-- extension RNG service;
-- extension-state lifecycle primitive.
+- [x] stable behavior/archetype IDs;
+- [x] explicit AOT-safe registration API;
+- [x] immutable registry snapshots and tick-boundary swap;
+- [x] extension diagnostics identity;
+- [x] extension RNG service;
+- [x] extension-state lifecycle primitive.
 
 ### G1 - NPC behavior
 
-- vanilla/default dispatch;
-- decorators;
-- exclusive replacement;
-- spawn/tick/despawn hooks;
-- Vega adapter proof-of-concept;
-- focused performance gate.
+- [x] vanilla/default dispatch;
+- [x] decorators;
+- [x] exclusive replacement;
+- [x] spawn/tick/despawn hooks;
+- [ ] Vega adapter proof-of-concept;
+- [ ] focused performance gate.
 
 ### G2 - Projectile behavior
 
-- dedicated projectile pipeline;
-- collision/hit/kill semantics;
-- child spawn requests;
-- Vega adapter proof-of-concept;
-- focused performance gate.
+- [x] dedicated projectile pipeline;
+- [x] collision/hit/kill semantics;
+- [ ] child spawn requests;
+- [ ] Vega adapter proof-of-concept;
+- [ ] focused performance gate.
 
 ### G3 - Custom archetypes
 
-- server-defined NPC/projectile archetype descriptors;
-- vanilla presentation mapping;
-- snapshot/diagnostic identity;
-- explicit persistence semantics.
+- [x] server-defined NPC/projectile archetype descriptors;
+- [x] vanilla presentation mapping;
+- [x] snapshot/diagnostic identity;
+- [x] explicit persistence semantics.
 
 ### G4 - Worldgen pass planner
 
-- provider/pass contracts;
-- stable pass IDs/dependencies;
-- deterministic planner;
-- isolated workspace;
-- progress/cancellation;
-- isolated deterministic RNG mode.
+- [x] provider/pass contracts;
+- [x] stable pass IDs/dependencies;
+- [x] deterministic planner;
+- [x] isolated workspace;
+- [x] progress/cancellation;
+- [x] isolated deterministic RNG mode.
 
 ### G5 - Vega/plugin integration
 
-- permission/config policy stays in Vega;
-- registration leases tied to plugin lifecycle;
-- safe unregister/hot-reload flow;
-- per-world enable/disable;
-- example plugin implementing a modified vanilla mob and projectile plus a small custom worldgen pass.
+- [ ] permission/config policy stays in Vega;
+- [ ] registration leases tied to plugin lifecycle;
+- [ ] safe unregister/hot-reload flow;
+- [ ] per-world enable/disable;
+- [ ] example plugin implementing a modified vanilla mob and projectile plus a small custom worldgen pass.
 
 ---
 
@@ -613,14 +616,14 @@ The zero-extension path must remain extremely close to the direct vanilla dispat
 
 This roadmap slice is not complete until:
 
-- TerraRuntime can run with zero extensions and preserve vanilla behavior/performance baselines;
-- a host can explicitly register an NPC decorator and replacement without reflection or runtime assembly scanning;
-- a host can explicitly register a projectile decorator and replacement through a dedicated projectile contract;
-- custom server-side NPC/projectile archetypes can use vanilla client presentations safely;
-- registration removal and plugin reload cannot leave stale callbacks or per-entity state behind;
-- extension faults are isolated and observable;
-- extension CPU cost is visible in tick telemetry;
-- a custom world-generation provider can add/replace passes in a deterministic validated plan;
-- failed/cancelled generation cannot partially commit a world;
-- official-client-compatible generated worlds contain only protocol/content IDs the client understands;
-- Linux and Windows NativeAOT smoke paths remain green with the extension contracts present.
+- [ ] TerraRuntime can run with zero extensions and preserve vanilla behavior/performance baselines;
+- [x] a host can explicitly register an NPC decorator and replacement without reflection or runtime assembly scanning;
+- [x] a host can explicitly register a projectile decorator and replacement through a dedicated projectile contract;
+- [x] custom server-side NPC/projectile archetypes can use vanilla client presentations safely;
+- [ ] registration removal and plugin reload cannot leave stale callbacks or per-entity state behind;
+- [ ] extension faults are isolated and observable;
+- [ ] extension CPU cost is visible in tick telemetry;
+- [x] a custom world-generation provider can add/replace passes in a deterministic validated plan;
+- [x] failed/cancelled generation cannot partially commit a world;
+- [ ] official-client-compatible generated worlds contain only protocol/content IDs the client understands;
+- [x] Linux and Windows NativeAOT smoke paths remain green with the extension contracts present.

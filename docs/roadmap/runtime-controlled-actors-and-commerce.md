@@ -10,6 +10,9 @@ This stage is mandatory for the gameplay extensibility story. It is not a packet
 
 ---
 
+
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+
 ## G6 - Runtime-controlled actors and commerce
 
 ### Goals
@@ -266,46 +269,46 @@ A plugin unload must retire:
 
 ### G6-A - NPC actor control foundation
 
-- stable actor/controller IDs;
-- generation-safe NPC control bindings;
-- `Stop`, `MoveTo`, `FollowPlayer` command state;
-- player snapshot query adapter;
-- NPC control stepper integrated with existing behavior/world-motion path;
-- target disconnect/generation change handling;
-- focused tests proving movement goes through authoritative NPC physics rather than position teleport.
+- [x] stable actor/controller IDs;
+- [x] generation-safe NPC control bindings;
+- [x] `Stop`, `MoveTo`, `FollowPlayer` command state;
+- [x] player snapshot query adapter;
+- [x] NPC control stepper integrated with existing behavior/world-motion path;
+- [x] target disconnect/generation change handling;
+- [x] focused tests proving movement goes through authoritative NPC physics rather than position teleport.
 
 ### G6-B - NPC interactions and shops
 
-- actor interaction request boundary;
-- stable `ShopId` and registration lease;
-- immutable shop catalog snapshot;
-- vanilla item/price validation;
-- atomic inventory + coin transaction path;
-- purchase commit diagnostics/events;
-- Vega adapter proof-of-concept with a custom merchant NPC.
+- [ ] actor interaction request boundary;
+- [x] stable `ShopId` and registration lease;
+- [x] immutable shop catalog snapshot;
+- [x] vanilla item/price validation;
+- [x] atomic inventory + coin transaction path;
+- [ ] purchase commit diagnostics/events;
+- [ ] Vega adapter proof-of-concept with a custom merchant NPC.
 
 ### G6-C - Fake player foundation
 
-- server-owned player identity/slot allocation separate from connection ownership;
-- fake-player appearance/vitals/equipment/inventory state;
-- replication to real players;
-- rejection of client control packets for server-owned slots.
+- [x] server-owned player identity/slot allocation separate from connection ownership;
+- [ ] fake-player appearance/vitals/equipment/inventory state;
+- [ ] replication to real players;
+- [ ] rejection of client control packets for server-owned slots.
 
 ### G6-D - Runtime player physics
 
-- server-owned player physics stepper;
-- source-backed movement/collision/gravity/jump/liquid semantics;
-- fake-player `MoveTo`/`FollowPlayer` controller;
-- deterministic tick integration and performance gate.
+- [ ] server-owned player physics stepper;
+- [ ] source-backed movement/collision/gravity/jump/liquid semantics;
+- [ ] fake-player `MoveTo`/`FollowPlayer` controller;
+- [ ] deterministic tick integration and performance gate.
 
 ### G6-E - Gameplay integration
 
-- NPC escort/follow example;
-- custom merchant example;
-- fake-player/bot example;
-- per-world enable/disable;
-- plugin hot-reload/retirement tests;
-- NativeAOT Linux/Windows coverage.
+- [ ] NPC escort/follow example;
+- [ ] custom merchant example;
+- [ ] fake-player/bot example;
+- [ ] per-world enable/disable;
+- [ ] plugin hot-reload/retirement tests;
+- [ ] NativeAOT Linux/Windows coverage.
 
 ---
 
@@ -313,14 +316,14 @@ A plugin unload must retire:
 
 G6 is not complete until:
 
-- a Vega plugin can spawn/control an NPC and tell it to follow a specific live player while TerraRuntime performs the actual movement/collision physics;
-- the NPC continues to replicate through the ordinary authoritative NPC path;
-- player disconnect/slot reuse cannot redirect the NPC to a different generation by accident;
-- a Vega plugin can attach a custom shop to a runtime NPC and supply protocol-valid vanilla merchandise;
-- a purchase is validated and committed atomically by TerraRuntime, not by direct plugin inventory mutation;
-- a fake player can exist without a client connection and is allocated without colliding with real-player slots;
-- fake-player movement is produced by a runtime-owned player physics path rather than direct packet/position scripting;
-- real clients cannot seize control of a fake player's slot;
-- actor/shop/plugin unload leaves no stale callbacks, control leases, catalog state or entity-generation state;
-- zero actor/shop registrations keep the ordinary vanilla/runtime path allocation-light;
-- NativeAOT and normal CI remain green.
+- [ ] a Vega plugin can spawn/control an NPC and tell it to follow a specific live player while TerraRuntime performs the actual movement/collision physics;
+- [x] the NPC continues to replicate through the ordinary authoritative NPC path;
+- [x] player disconnect/slot reuse cannot redirect the NPC to a different generation by accident;
+- [ ] a Vega plugin can attach a custom shop to a runtime NPC and supply protocol-valid vanilla merchandise;
+- [x] a purchase is validated and committed atomically by TerraRuntime, not by direct plugin inventory mutation;
+- [x] a fake player can exist without a client connection and is allocated without colliding with real-player slots;
+- [ ] fake-player movement is produced by a runtime-owned player physics path rather than direct packet/position scripting;
+- [x] real clients cannot seize control of a fake player's slot;
+- [ ] actor/shop/plugin unload leaves no stale callbacks, control leases, catalog state or entity-generation state;
+- [ ] zero actor/shop registrations keep the ordinary vanilla/runtime path allocation-light;
+- [ ] NativeAOT and normal CI remain green.
