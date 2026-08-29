@@ -189,6 +189,15 @@ public sealed class TrustedHostModuleLoaderTests
             return ValueTask.FromResult(false);
         }
 
+        public ValueTask<bool> SetJumpIntentAsync(
+            ServerPlayerId id,
+            ServerPlayerJumpIntent intent,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
+        }
+
         public ValueTask<bool> DespawnAsync(
             ServerPlayerId id,
             CancellationToken cancellationToken = default)

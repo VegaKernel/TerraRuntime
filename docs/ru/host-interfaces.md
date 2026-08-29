@@ -243,7 +243,22 @@ bool accepted = await runtime.ServerPlayers.SetHorizontalIntentAsync(
     serverPlayerId,
     ServerPlayerHorizontalIntent.Right,
     cancellationToken);
+
+bool jumping = await runtime.ServerPlayers.SetJumpIntentAsync(
+    serverPlayerId,
+    ServerPlayerJumpIntent.Held,
+    cancellationToken);
+
+await runtime.ServerPlayers.SetJumpIntentAsync(
+    serverPlayerId,
+    ServerPlayerJumpIntent.Released,
+    cancellationToken);
 ```
+
+`ServerPlayerJumpIntent` — это semantic состояние кнопки, а не команда записи скорости. TerraRuntime сам владеет
+vanilla jump speed, счётчиком длительности прыжка, release gate, gravity и collision. Поэтому удерживание jump после
+приземления не запускает новый прыжок, пока `Released` снова не взведёт vanilla release gate. Текущий source-backed
+slice покрывает dry/unmounted/normal-gravity path; liquids, mounts, grapples и extra-jump families идут отдельно.
 
 Удаление:
 

@@ -243,7 +243,22 @@ bool accepted = await runtime.ServerPlayers.SetHorizontalIntentAsync(
     serverPlayerId,
     ServerPlayerHorizontalIntent.Right,
     cancellationToken);
+
+bool jumping = await runtime.ServerPlayers.SetJumpIntentAsync(
+    serverPlayerId,
+    ServerPlayerJumpIntent.Held,
+    cancellationToken);
+
+await runtime.ServerPlayers.SetJumpIntentAsync(
+    serverPlayerId,
+    ServerPlayerJumpIntent.Released,
+    cancellationToken);
 ```
+
+`ServerPlayerJumpIntent` is button-level semantic input, not a velocity command. TerraRuntime owns the ordinary vanilla
+jump speed, jump-duration counter, release gate, gravity and collision. Holding jump through landing therefore does not
+start another jump until a `Released` state has armed the vanilla release gate again. The current source-backed slice is
+the dry, unmounted, normal-gravity path; liquid, mount, grapple and extra-jump families are separate gameplay work.
 
 Despawn:
 

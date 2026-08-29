@@ -393,13 +393,22 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
             PlayerStateSnapshot player = _serverPlayerSnapshots[index];
             ServerPlayerHorizontalIntent horizontalIntent =
                 _serverPlayerCommands?.GetHorizontalIntent(player.Player) ?? ServerPlayerHorizontalIntent.Stop;
+            ServerPlayerJumpIntent jumpIntent =
+                _serverPlayerCommands?.GetJumpIntent(player.Player) ?? ServerPlayerJumpIntent.Released;
+            VanillaServerPlayerJumpState jumpState =
+                _serverPlayerCommands?.GetJumpState(player.Player) ?? VanillaServerPlayerJumpState.Initial;
             if (!_serverPlayerDryPhysics.TryStep(
                     in player,
                     horizontalIntent,
-                    out ServerPlayerDryPhysicsStepResult next))
+                    jumpIntent,
+                    in jumpState,
+                    out ServerPlayerDryPhysicsStepResult next,
+                    out VanillaServerPlayerJumpState nextJumpState))
             {
                 continue;
             }
+
+            _serverPlayerCommands?.CommitJumpState(player.Player, in nextJumpState);
 
             if (next.PositionX == player.PositionX &&
                 next.PositionY == player.PositionY &&
