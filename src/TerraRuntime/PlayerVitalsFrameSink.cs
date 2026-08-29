@@ -49,7 +49,7 @@ public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
     {
         PlayerVitalsStopReason.MalformedHealth or PlayerVitalsStopReason.MalformedMana => TerrariaFrameRejectionCategory.MalformedProtocol,
         PlayerVitalsStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
-        _ => TerrariaFrameRejectionCategory.None
+        _ => ClassifyBootstrapRejection(_bootstrap.StopReason)
     };
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
@@ -100,6 +100,22 @@ public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
             ? TerrariaFrameSinkResult.Continue
             : Stop(PlayerVitalsStopReason.GameIngressBackpressure);
     }
+
+    private static TerrariaFrameRejectionCategory ClassifyBootstrapRejection(PlayerBootstrapStopReason reason) => reason switch
+    {
+        PlayerBootstrapStopReason.InvalidHandshake or
+        PlayerBootstrapStopReason.MalformedJoinRequest or
+        PlayerBootstrapStopReason.MalformedPlayerMovement or
+        PlayerBootstrapStopReason.MalformedPlayerAppearance or
+        PlayerBootstrapStopReason.MalformedPlayerEquipment or
+        PlayerBootstrapStopReason.MalformedPlayerSpawn or
+        PlayerBootstrapStopReason.MalformedChat => TerrariaFrameRejectionCategory.MalformedProtocol,
+        PlayerBootstrapStopReason.InvalidJoinState or
+        PlayerBootstrapStopReason.PlayerSlotMismatch => TerrariaFrameRejectionCategory.InvalidState,
+        PlayerBootstrapStopReason.OutboundBackpressure or
+        PlayerBootstrapStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
+        _ => TerrariaFrameRejectionCategory.None
+    };
 
     private TerrariaFrameSinkResult Stop(PlayerVitalsStopReason reason)
     {
