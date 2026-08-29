@@ -191,8 +191,7 @@ public static partial class AtomicSaveFileWriter
                         Options = FileOptions.None
                     });
             }
-            catch (Exception exception) when (
-                exception is IOException or UnauthorizedAccessException or FileNotFoundException)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
                 continue;
             }
