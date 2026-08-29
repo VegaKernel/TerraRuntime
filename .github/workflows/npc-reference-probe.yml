@@ -162,6 +162,85 @@ jobs:
           print("NPC_REFERENCE_SUMMARY=" + json.dumps(summary, sort_keys=True))
           PY
 
+          python3 - "$npc_file" "$npc_id" <<'PY'
+          import json
+          import pathlib
+          import re
+          import sys
+
+          npc_text = pathlib.Path(sys.argv[1]).read_text(errors="ignore")
+          id_text = pathlib.Path(sys.argv[2]).read_text(errors="ignore")
+
+          method = re.search(r"\bSetDefaults\s*\([^;{}]*\)\s*\{", npc_text)
+          if not method:
+              raise SystemExit("SetDefaults was not found")
+          opening = method.end() - 1
+          depth = 0
+          closing = None
+          for index in range(opening, len(npc_text)):
+              if npc_text[index] == "{":
+                  depth += 1
+              elif npc_text[index] == "}":
+                  depth -= 1
+                  if depth == 0:
+                      closing = index + 1
+                      break
+          if closing is None:
+              raise SystemExit("SetDefaults body was truncated")
+          body = npc_text[opening:closing]
+
+          names = {}
+          for match in re.finditer(
+              r"\b(?:public|internal)\s+const\s+(?:short|int)\s+(\w+)\s*=\s*(-?\d+)\s*;",
+              id_text):
+              names.setdefault(int(match.group(2)), match.group(1))
+
+          case_matches = list(re.finditer(r"\bcase\s+(-?\d+)\s*:", body))
+          pending_ids = []
+          candidates = []
+          fields = (
+              "width", "height", "damage", "defense", "lifeMax", "knockBackResist",
+              "scale", "noGravity", "noTileCollide", "lavaImmune", "value"
+          )
+          for index, case_match in enumerate(case_matches):
+              raw_id = int(case_match.group(1))
+              pending_ids.append(raw_id)
+              start = case_match.end()
+              end = case_matches[index + 1].start() if index + 1 < len(case_matches) else len(body)
+              segment = body[start:end]
+              substantive = re.sub(r"[\s{}]", "", segment)
+              if not substantive:
+                  continue
+
+              if re.search(r"\baiStyle\s*=\s*5\s*;", segment):
+                  facts = {}
+                  for field in fields:
+                      assignment = re.search(
+                          rf"\b{re.escape(field)}\s*=\s*([^;]+);",
+                          segment)
+                      if assignment:
+                          facts[field] = assignment.group(1).strip()
+                  for candidate_id in pending_ids:
+                      candidates.append({
+                          "id": candidate_id,
+                          "name": names.get(candidate_id),
+                          "facts": facts,
+                      })
+              pending_ids = []
+
+          unique = []
+          seen = set()
+          for candidate in candidates:
+              if candidate["id"] in seen:
+                  continue
+              seen.add(candidate["id"])
+              unique.append(candidate)
+
+          print("NPC_AISTYLE5_DEFAULTS=" + json.dumps(unique, sort_keys=True))
+          if not unique:
+              raise SystemExit("No aiStyle 5 SetDefaults candidates were found")
+          PY
+
       - name: Upload local-only NPC reference artifact
         uses: actions/upload-artifact@v4
         with:
