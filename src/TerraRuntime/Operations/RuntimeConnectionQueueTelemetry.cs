@@ -7,6 +7,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
 {
     private const int MaximumDetailCount = 64;
     private readonly ConcurrentDictionary<long, TerrariaConnectionOutboundQueue> queues = new();
+    private long lifetimePeakQueuedFrames;
+    private long lifetimePeakQueuedBytes;
 
     public bool TryRegister(long connectionId, TerrariaConnectionOutboundQueue queue)
     {
@@ -14,7 +16,15 @@ internal sealed class RuntimeConnectionQueueTelemetry
         return connectionId > 0 && queues.TryAdd(connectionId, queue);
     }
 
-    public bool TryUnregister(long connectionId) => queues.TryRemove(connectionId, out _);
+    public bool TryUnregister(long connectionId)
+    {
+        if (!queues.TryRemove(connectionId, out TerrariaConnectionOutboundQueue? queue))
+            return false;
+
+        UpdateMaximum(ref lifetimePeakQueuedFrames, queue.PeakQueuedFrames);
+        UpdateMaximum(ref lifetimePeakQueuedBytes, queue.PeakQueuedBytes);
+        return true;
+    }
 
     public RuntimeConnectionQueueSnapshot CaptureSnapshot(int maxDetails = 0)
     {
@@ -25,8 +35,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
         int slowClients = 0;
         long queuedFrames = 0;
         long queuedBytes = 0;
-        long peakQueuedFrames = 0;
-        long peakQueuedBytes = 0;
+        long peakQueuedFrames = Interlocked.Read(ref lifetimePeakQueuedFrames);
+        long peakQueuedBytes = Interlocked.Read(ref lifetimePeakQueuedBytes);
         long rejectedFrames = 0;
         RuntimeConnectionQueueDetail[] details = maxDetails == 0
             ? []
@@ -137,6 +147,19 @@ internal sealed class RuntimeConnectionQueueTelemetry
             return left.RejectedFrames > right.RejectedFrames;
 
         return left.ConnectionId < right.ConnectionId;
+    }
+
+    private static void UpdateMaximum(ref long target, long candidate)
+    {
+        long current = Interlocked.Read(ref target);
+        while (candidate > current)
+        {
+            long observed = Interlocked.CompareExchange(ref target, candidate, current);
+            if (observed == current)
+                return;
+
+            current = observed;
+        }
     }
 }
 
