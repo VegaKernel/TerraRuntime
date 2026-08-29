@@ -1,0 +1,169 @@
+name: Generated World Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
+      - 'src/TerraRuntime/RuntimeWorldCreationPersistencePipeline.cs'
+      - 'src/TerraRuntime/RuntimeWorldCreationPipeline.cs'
+      - 'src/TerraRuntime/RuntimeWorldGenerationCandidateService.cs'
+      - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
+      - 'src/TerraRuntime/StartupWorldGeneratorSource.cs'
+      - 'src/TerraRuntime/StartupProgram.cs'
+      - 'src/TerraRuntime.Core/RuntimeWorldGenerationExecutor.cs'
+      - 'src/TerraRuntime.Core/RuntimeWorldGenerationPlanner.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldGenerationFinalizer.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
+      - 'src/TerraRuntime.World/VanillaFreshWorldHeader326.cs'
+      - 'src/TerraRuntime.World/VanillaWorldEnvelope326.cs'
+      - 'src/TerraRuntime.World/VanillaWorldFrameImportance326.cs'
+      - 'src/TerraRuntime.World/WorldFileFreshRuntimeMetadata326Encoder.cs'
+      - 'src/TerraRuntime.World/WorldFileFreshComposer326.cs'
+      - 'src/TerraRuntime.World/WorldFileAtomicPublisher.cs'
+      - 'src/TerraRuntime.World/WorldFile*Encoder.cs'
+      - '.github/workflows/terraria-generated-world-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-generated-world-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  official-load:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Build TerraRuntime
+        run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+
+      - name: Generate TerraRuntime flat world
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          dotnet run \
+            --project src/TerraRuntime/TerraRuntime.csproj \
+            -c Release \
+            --no-build \
+            -- --worldgen-create-smoke "$GITHUB_WORKSPACE/artifacts/terraruntime-generated-flat.wld"
+          test -s artifacts/terraruntime-generated-flat.wld
+
+      - name: Verify generated world with TerraRuntime loader
+        run: >-
+          dotnet run
+          --project tools/TerraRuntime.WorldVerify/TerraRuntime.WorldVerify.csproj
+          -c Release
+          -- artifacts/terraruntime-generated-flat.wld
+
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+          expected="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          echo "Pinned TerrariaServer.exe SHA-256 verified."
+
+      - name: Load TerraRuntime world in official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server="$(realpath "$server")"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/terraruntime-generated-flat.wld"
+          config="$GITHUB_WORKSPACE/artifacts/generated-world-official-serverconfig.txt"
+          host_log="$GITHUB_WORKSPACE/artifacts/generated-world-official-server.log"
+          fifo="$GITHUB_WORKSPACE/artifacts/generated-world-official-server.stdin"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=0
+          maxplayers=1
+          port=17789
+          password=
+          motd=TerraRuntime generated world acceptance
+          secure=0
+          upnp=0
+          npcstream=0
+          priority=0
+          EOF
+
+          rm -f "$fifo"
+          mkfifo "$fifo"
+          exec 9<> "$fifo"
+          (
+            cd "$server_dir"
+            "./$server_name" -config "$config" < "$fifo"
+          ) > "$host_log" 2>&1 &
+          official_pid=$!
+
+          cleanup() {
+            printf 'exit\n' >&9 2>/dev/null || true
+            sleep 1
+            kill "$official_pid" 2>/dev/null || true
+            wait "$official_pid" 2>/dev/null || true
+            exec 9>&- || true
+          }
+          trap cleanup EXIT
+
+          listener=false
+          for _ in $(seq 1 180); do
+            if ! kill -0 "$official_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "Official TerrariaServer exited while loading the TerraRuntime-generated world." >&2
+              exit 1
+            fi
+            if ss -ltn | grep -q ':17789 '; then
+              listener=true
+              break
+            fi
+            sleep 0.5
+          done
+
+          cat "$host_log"
+          if [[ "$listener" != true ]]; then
+            echo "Official TerrariaServer did not open port 17789 for the TerraRuntime-generated world." >&2
+            exit 1
+          fi
+          grep -q ':17789 ' < <(ss -ltn)
+          echo "Official TerrariaServer accepted the TerraRuntime-generated world and opened the listener."
+
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-world-acceptance-${{ github.sha }}
+          path: |
+            artifacts/terraruntime-generated-flat.wld
+            artifacts/generated-world-official-server.log
+            artifacts/generated-world-official-serverconfig.txt
+          if-no-files-found: warn
+          retention-days: 7
