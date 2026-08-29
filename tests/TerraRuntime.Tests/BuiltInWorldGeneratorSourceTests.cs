@@ -65,7 +65,7 @@ public sealed class BuiltInWorldGeneratorSourceTests
             in request,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.True(result.Succeeded, result.Execution.Error?.ToString());
+        Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
         Assert.NotNull(result.Candidate);
         Assert.True(result.Metadata.Layers.WorldSurface > 0d);
         Assert.True(result.Metadata.Layers.RockLayer > result.Metadata.Layers.WorldSurface);
@@ -93,7 +93,7 @@ public sealed class BuiltInWorldGeneratorSourceTests
             in request,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.True(result.Succeeded, result.Execution.Error?.ToString());
+        Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
         Assert.True(result.Metadata.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Zenith));
         Assert.True(result.Metadata.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy));
         Assert.True(result.Metadata.VanillaSeedProfile.Has(VanillaSecretWorldSeed1458.Planetoids));
