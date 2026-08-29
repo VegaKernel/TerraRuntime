@@ -59,6 +59,49 @@ public sealed class TerrariaSocketConnectionTests
     }
 
     [Fact]
+    public async Task Keeps_connection_alive_after_handshake_when_idle_timeout_is_infinite()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        listener.Listen(1);
+        var endpoint = (IPEndPoint)listener.LocalEndPoint!;
+
+        using var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        ValueTask connectTask = client.ConnectAsync(endpoint, cancellationToken);
+        Socket serverSocket = await listener.AcceptAsync(cancellationToken);
+        await connectTask;
+
+        var outbound = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 32));
+        var sink = new HelloCountingSink();
+        var policy = new TerrariaConnectionPolicyOptions(
+            handshakeTimeout: TimeSpan.FromMilliseconds(50),
+            idleTimeout: Timeout.InfiniteTimeSpan);
+
+        Task<TerrariaSocketRunResult> run = TerrariaSocketConnection.RunAsync(
+            serverSocket,
+            sink,
+            outbound,
+            TerrariaFrameDecoderOptions.Default,
+            policy,
+            cancellationToken).AsTask();
+
+        byte[] hello = CurrentHelloPacket();
+        Assert.Equal(hello.Length, await client.SendAsync(hello, SocketFlags.None, cancellationToken));
+
+        await Task.Delay(TimeSpan.FromMilliseconds(150), cancellationToken);
+        Assert.False(run.IsCompleted);
+        Assert.Equal(1, sink.HelloCount);
+
+        client.Shutdown(SocketShutdown.Send);
+        TerrariaSocketRunResult result = await run;
+
+        Assert.Equal(TerrariaPipePumpResult.Completed, result.Inbound);
+        Assert.Equal(OutboundWriterStopReason.Completed, result.Outbound.Reason);
+        Assert.Equal(TerrariaConnectionStopReason.PeerClosed, result.StopReason);
+    }
+
+    [Fact]
     public async Task Disconnects_when_the_connection_outbound_queue_overflows()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
