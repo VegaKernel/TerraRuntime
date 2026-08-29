@@ -239,7 +239,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                         new MenuItem("_NPCs", "Authoritative NPC read model", ShowNpcs),
                         new MenuItem("P_rojectiles", "Grouped authoritative projectile read model", ShowProjectiles),
                         new MenuItem("_Items", "Grouped authoritative dropped-item read model", ShowItems),
-                        new MenuItem("_Network", "Connection and replication counters", ShowNetwork),
+                        new MenuItem("N_etwork", "Connection and replication counters", ShowNetwork),
                         new MenuItem("_World", "World and cache state", ShowWorld),
                         new MenuItem("_Logs", "Recent runtime log events", ShowLogs)
                     ]),
