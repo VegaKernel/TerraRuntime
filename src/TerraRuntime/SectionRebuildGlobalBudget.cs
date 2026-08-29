@@ -2,6 +2,13 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
+internal enum SectionRebuildGlobalBudgetRequestResult : byte
+{
+    Accepted = 0,
+    GlobalRateLimited = 1,
+    RequesterRejected = 2
+}
+
 internal readonly record struct SectionRebuildGlobalBudgetOptions(
     TimeSpan Window,
     int MaxUniqueRequests)
@@ -85,6 +92,16 @@ internal sealed class SectionRebuildGlobalBudget
         WorldSectionId section,
         Func<WorldSectionId, SectionRebuildRequestTicket> requester)
     {
+        _ = RequestDetailed(sectionIndex, section, requester, out SectionRebuildRequestTicket ticket);
+        return ticket;
+    }
+
+    public SectionRebuildGlobalBudgetRequestResult RequestDetailed(
+        int sectionIndex,
+        WorldSectionId section,
+        Func<WorldSectionId, SectionRebuildRequestTicket> requester,
+        out SectionRebuildRequestTicket ticket)
+    {
         ArgumentOutOfRangeException.ThrowIfNegative(sectionIndex);
         ArgumentNullException.ThrowIfNull(requester);
 
@@ -99,7 +116,8 @@ internal sealed class SectionRebuildGlobalBudget
                 {
                     _activeGenerations.Remove(sectionIndex);
                     _rejectedRequests++;
-                    return duplicate;
+                    ticket = duplicate;
+                    return SectionRebuildGlobalBudgetRequestResult.RequesterRejected;
                 }
 
                 if (duplicate.Generation != activeGeneration)
@@ -109,28 +127,32 @@ internal sealed class SectionRebuildGlobalBudget
                 }
 
                 _deduplicatedRequests++;
-                return duplicate;
+                ticket = duplicate;
+                return SectionRebuildGlobalBudgetRequestResult.Accepted;
             }
 
             RefreshWindowLocked();
             if (_currentWindowUniqueAdmissions >= _options.MaxUniqueRequests)
             {
                 _rejectedRequests++;
-                return SectionRebuildRequestTicket.Rejected;
+                ticket = SectionRebuildRequestTicket.Rejected;
+                return SectionRebuildGlobalBudgetRequestResult.GlobalRateLimited;
             }
 
             _currentWindowUniqueAdmissions++;
-            SectionRebuildRequestTicket ticket = requester(section);
-            if (!ticket.Accepted)
+            SectionRebuildRequestTicket accepted = requester(section);
+            if (!accepted.Accepted)
             {
                 _currentWindowUniqueAdmissions--;
                 _rejectedRequests++;
-                return ticket;
+                ticket = accepted;
+                return SectionRebuildGlobalBudgetRequestResult.RequesterRejected;
             }
 
-            _activeGenerations[sectionIndex] = ticket.Generation;
+            _activeGenerations[sectionIndex] = accepted.Generation;
             _uniqueAdmissions++;
-            return ticket;
+            ticket = accepted;
+            return SectionRebuildGlobalBudgetRequestResult.Accepted;
         }
     }
 
