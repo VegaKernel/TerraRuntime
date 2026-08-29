@@ -23,14 +23,17 @@ public static class VanillaNpcAiStyles
 }
 
 /// <summary>
-/// TerrariaServer 1.4.5.8 item content bounds. The count is pinned to ItemID.Count as independently
-/// exercised by packet-5 Item.netDefaults normalization tests.
+/// TerrariaServer 1.4.5.8 item content bounds and named identities currently consumed by gameplay.
+/// The count is pinned to ItemID.Count as independently exercised by packet-5 Item.netDefaults normalization tests.
+/// Named ids are added only after source verification against the pinned TerrariaServer binary.
 /// </summary>
 public static class VanillaItemIds
 {
     public const int Count = 6196;
 
     public static ItemTypeId None => default;
+    public static readonly ItemTypeId DirtBlock = new(2);
+    public static readonly ItemTypeId CopperPickaxe = new(3509);
 
     public static bool TryCreate(int rawType, out ItemTypeId type)
     {
@@ -88,6 +91,7 @@ public static class VanillaTileIds
 {
     public const int Count = 754;
 
+    public static readonly TileTypeId Dirt = new(0);
     public static readonly TileTypeId Platforms = new(19);
     public static readonly TileTypeId Containers = new(21);
     public static readonly TileTypeId Signs = new(55);
