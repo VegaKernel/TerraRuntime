@@ -148,7 +148,7 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        WorldFileTileChestPatchWriteResult result = WorldFileTileChestPatchWriter.TryWrite(
+        WorldFileTileChestRewriteResult result = WorldFileTileChestRewriter.TryRewrite(
             sourceEnvelope,
             sourceHeader,
             preserved,
@@ -156,7 +156,7 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             snapshot.Chests,
             destination,
             out _);
-        if (result != WorldFileTileChestPatchWriteResult.Written)
+        if (result != WorldFileTileChestRewriteResult.Rewritten)
             throw new InvalidDataException($"Authoritative tile/chest world save failed: {result}.");
 
         return Task.CompletedTask;
