@@ -1,5 +1,7 @@
 name: Migrate Documentation Style
 
+# Temporary self-removing migration. A second commit is intentional so the workflow
+# already exists on the default branch before the triggering push is evaluated.
 on:
   push:
     branches: [main]
