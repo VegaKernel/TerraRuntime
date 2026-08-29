@@ -45,6 +45,27 @@ def find_action_semantics(source: str) -> re.Match[str]:
     return match
 
 
+def verify_kill_fail_semantics(source: str, action_match: re.Match[str]) -> None:
+    action_block = action_match.group(0)
+    kill = re.search(
+        r"WorldGen\.KillTile\((?P<x>[A-Za-z_]\w*), (?P<y>[A-Za-z_]\w*), (?P<fail>[A-Za-z_]\w*)\);",
+        action_block,
+    )
+    if kill is None:
+        raise SystemExit("Could not isolate packet 17 action-0 KillTile fail argument.")
+
+    fail = re.escape(kill.group("fail"))
+    context = source[max(0, action_match.start() - 1800):action_match.start()]
+    assignment = re.search(
+        rf"bool {fail} = (?P<data>[A-Za-z_]\w*) == 1;",
+        context,
+    )
+    if assignment is None:
+        raise SystemExit(
+            "Terraria 1.4.5.8 packet 17 action-0 fail flag is no longer derived as data == 1."
+        )
+
+
 def verify_server_relay(source: str, action_match: re.Match[str]) -> None:
     action = re.escape(action_match.group("action"))
     context = source[action_match.start():min(len(source), action_match.end() + 6500)]
@@ -70,12 +91,14 @@ def main() -> int:
     message_buffer = compact(Path(args.message_buffer).read_text(encoding="utf-8"))
     verify_wire_contract(net_message)
     action_match = find_action_semantics(message_buffer)
+    verify_kill_fail_semantics(message_buffer, action_match)
     verify_server_relay(message_buffer, action_match)
 
     print("tile_manipulation_message_id=17")
     print("tile_manipulation_payload_bytes=8")
     print("tile_manipulation_wire=byte,int16,int16,int16,byte")
     print("tile_manipulation_action_0=KillTile")
+    print("tile_manipulation_action_0_fail=data==1")
     print("tile_manipulation_action_1=PlaceTile")
     print("tile_manipulation_action_2=KillWall")
     print("tile_manipulation_action_3=PlaceWall")
