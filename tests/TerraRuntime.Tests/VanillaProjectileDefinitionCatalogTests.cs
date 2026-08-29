@@ -46,6 +46,25 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     }
 
     [Fact]
+    public void Terraria_1458_enchanted_boomerang_definition_matches_source()
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            VanillaProjectileIds.EnchantedBoomerang,
+            out VanillaProjectileDefinition definition));
+
+        Assert.Equal(22, definition.Width);
+        Assert.Equal(22, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Boomerang, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
+        Assert.Equal(10, definition.CollisionWidth);
+        Assert.Equal(10, definition.CollisionHeight);
+        Assert.Equal(6f, definition.CollisionOffsetX);
+        Assert.Equal(6f, definition.CollisionOffsetY);
+    }
+
+    [Fact]
     public void Terraria_1458_bullet_definition_matches_source()
     {
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
