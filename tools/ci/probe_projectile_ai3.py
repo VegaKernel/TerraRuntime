@@ -82,11 +82,6 @@ def all_contexts(source: str, needle: str, radius: int = 240, limit: int = 12) -
     return " || ".join(contexts) if contexts else "<none>"
 
 
-def matching_lines(source: str, needle: str, limit: int = 40) -> str:
-    lines = [compact(line) for line in source.splitlines() if needle in line]
-    return " | ".join(lines[:limit]) if lines else "<none>"
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--projectile", required=True, type=Path)
@@ -96,20 +91,24 @@ def main() -> int:
     set_defaults = extract_method(source, "SetDefaults")
     boomerang = extract_method(source, "AI_003_Boomerang")
     handle_movement = extract_method(source, "HandleMovement")
-    kill = extract_method(source, "Kill")
+    can_cut_tiles = extract_method(source, "CanCutTiles")
+    collision_params = extract_method(source, "GetCollisionParams")
+    update = extract_method(source, "Update")
 
     print("projectile_type6_defaults=" + around_optional(set_defaults, "type == 6", radius=850))
-    print("projectile_ai003_symbols=" + matching_lines(source, "AI_003", limit=20))
-    print("projectile_boomerang_length=" + str(len(compact(boomerang))))
-    print("projectile_boomerang_type6=" + all_contexts(boomerang, "type == 6", radius=420, limit=8))
+    print("projectile_boomerang_outbound=" + all_contexts(boomerang, "if (ai[0] == 0f)", radius=1700, limit=2))
     print("projectile_boomerang_return_entry=" + all_contexts(boomerang, "tileCollide = false", radius=1200, limit=4))
     print("projectile_boomerang_owner_speed=" + all_contexts(boomerang, "meleeSpeed", radius=700, limit=4))
-    print("projectile_boomerang_owner_center=" + all_contexts(boomerang, "Main.player[owner].position", radius=850, limit=6))
     print("projectile_boomerang_distance_kill=" + all_contexts(boomerang, "3000f", radius=850, limit=6))
-    print("projectile_boomerang_owner_intersection=" + all_contexts(boomerang, "Intersects(val9)", radius=850, limit=4))
-    print("projectile_handle_movement_ai3=" + all_contexts(handle_movement, "aiStyle == 3", radius=1500, limit=12))
-    print("projectile_handle_movement_ai0=" + all_contexts(handle_movement, "ai[0]", radius=1000, limit=12))
-    print("projectile_kill_type6=" + around_optional(kill, "type == 6", radius=850))
+    print("projectile_handle_movement_ai3=" + all_contexts(handle_movement, "aiStyle == 3 || aiStyle == 13", radius=1800, limit=4))
+    print("projectile_can_cut_tiles_length=" + str(len(compact(can_cut_tiles))))
+    print("projectile_can_cut_tiles_type6=" + all_contexts(can_cut_tiles, "type == 6", radius=900, limit=6))
+    print("projectile_can_cut_tiles_tail=" + compact(can_cut_tiles)[-2200:])
+    print("projectile_collision_params_length=" + str(len(compact(collision_params))))
+    print("projectile_collision_params_type6=" + all_contexts(collision_params, "type == 6", radius=900, limit=6))
+    print("projectile_collision_params_head=" + compact(collision_params)[:2600])
+    print("projectile_update_handle_movement=" + all_contexts(update, "HandleMovement", radius=1800, limit=6))
+    print("projectile_update_position=" + all_contexts(update, "position +=", radius=1200, limit=8))
     return 0
 
 
