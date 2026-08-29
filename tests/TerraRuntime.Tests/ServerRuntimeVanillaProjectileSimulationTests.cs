@@ -239,6 +239,48 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(598, lifecycle.TimeLeft);
     }
 
+    [Fact]
+    public async Task Authoritative_tick_runs_player_owned_green_laser_three_subupdates()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
+        ProjectileStateUpdate projectile = CreateProjectile(20, spawner: 3);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot updated));
+        Assert.Equal(VanillaProjectileIds.GreenLaser, updated.Type);
+        Assert.Equal(new ProjectileRevision(2), updated.Revision);
+        Assert.Equal(112f, updated.PositionX, 5);
+        Assert.Equal(100f, updated.PositionY, 5);
+        Assert.Equal(3f, updated.Ai.Ai0, 5);
+        Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
+        Assert.Equal(597, lifecycle.TimeLeft);
+    }
+
+    [Fact]
+    public async Task Server_owned_green_laser_remains_authoritative_due_to_unmodeled_owner_ai_mutation()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
+        ProjectileStateUpdate projectile = CreateProjectile(20, VanillaProjectileOwnership.ServerOwner);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 0, 0, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot unchanged));
+        Assert.Equal(spawned, unchanged);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]

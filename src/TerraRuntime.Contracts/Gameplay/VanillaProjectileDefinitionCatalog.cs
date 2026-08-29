@@ -83,6 +83,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    private static readonly VanillaProjectileDefinition GreenLaserDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
     private static readonly VanillaProjectileDefinition ShurikenDefinition = new(
         Width: 22,
         Height: 22,
@@ -152,6 +162,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.Bullet)
         {
             definition = BulletDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GreenLaser)
+        {
+            definition = GreenLaserDefinition;
             return true;
         }
 

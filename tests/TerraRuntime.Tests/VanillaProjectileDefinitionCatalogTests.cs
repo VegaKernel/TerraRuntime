@@ -65,6 +65,25 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     }
 
     [Fact]
+    public void Terraria_1458_green_laser_definition_matches_source()
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            VanillaProjectileIds.GreenLaser,
+            out VanillaProjectileDefinition definition));
+
+        Assert.Equal(4, definition.Width);
+        Assert.Equal(4, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
+        Assert.Equal(4, definition.CollisionWidth);
+        Assert.Equal(4, definition.CollisionHeight);
+        Assert.Equal(0f, definition.CollisionOffsetX);
+        Assert.Equal(0f, definition.CollisionOffsetY);
+    }
+
+    [Fact]
     public void Terraria_1458_shuriken_definition_matches_source()
     {
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(

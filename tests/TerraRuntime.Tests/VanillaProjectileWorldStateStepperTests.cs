@@ -584,6 +584,77 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
+    public void Player_owned_green_laser_uses_basic_ai001_motion_and_generic_liquid_scaling()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot laser = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f) with
+        {
+            Type = VanillaProjectileIds.GreenLaser,
+            Spawner = 3
+        };
+        ProjectileSimulationStepContext context = CreateContext(laser, timeLeft: 600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.GreenLaser, next.State.Type);
+        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(2f, next.State.VelocityY, 5);
+        Assert.Equal(102f, next.State.PositionX, 5);
+        Assert.Equal(101f, next.State.PositionY, 5);
+        Assert.Equal(599, next.TimeLeft);
+        Assert.True(next.Liquid.GetValueOrDefault().Wet);
+    }
+
+    [Fact]
+    public void Server_owned_green_laser_is_rejected_before_unmodeled_owner_ai_mutation()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot laser = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.GreenLaser,
+            Spawner = VanillaProjectileOwnership.ServerOwner
+        };
+        ProjectileSimulationStepContext context = CreateContext(laser, timeLeft: 600);
+
+        Assert.False(stepper.TryStepState(in context, out _));
+    }
+
+    [Fact]
+    public void Green_laser_tile_impact_uses_four_pixel_collision_box_and_generic_kill_path()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot laser = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.GreenLaser,
+            Spawner = 3
+        };
+        ProjectileSimulationStepContext context = CreateContext(laser, timeLeft: 600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.GreenLaser, next.State.Type);
+        Assert.Equal(0, next.TimeLeft);
+    }
+
+    [Fact]
     public void Jesters_arrow_free_flight_ignores_water_and_uses_ordinary_ai001_path()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
