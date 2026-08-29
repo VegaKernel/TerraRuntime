@@ -175,7 +175,7 @@ Use a single-writer simulation model initially, borrowing the useful actor-style
 - [ ] No socket callback, TUI thread, timer callback or background worker mutates game state directly.
 - [ ] No locks on the main simulation hot path.
 - [x] Preserve packet order per connection.
-- [ ] Bound inbound work processed per tick so one connection cannot monopolize a frame.
+- [x] Bound inbound work processed per tick so one connection cannot monopolize a frame.
 - [ ] Use global operation budgets per subsystem; never multiply a full subsystem budget by player count.
 - [x] The command loop keeps a hard global operation cap, per-source fairness quota and optional authoritative-thread CPU-time cap, with deferred-work and backlog-age telemetry.
 - [x] Fixed 60 Hz simulation schedule with an explicit missed-tick policy.
