@@ -48,4 +48,9 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long StopSlowClient = 0,
     long StopApplicationStopped = 0,
     long StopHandshakeTimeout = 0,
-    long StopIdleTimeout = 0);
+    long StopIdleTimeout = 0,
+    long RejectedMalformedProtocol = 0,
+    long RejectedRateLimited = 0,
+    long RejectedInvalidState = 0,
+    long RejectedGameplay = 0,
+    long RejectedBackpressure = 0);
