@@ -72,6 +72,16 @@ internal static class TerminalUiSmoke
                     workspace.SetInterestManagementEnabled(false);
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "Admin: queued interest management disable command");
+
+                    app.Keyboard.RaiseKeyDownEvent(Key.A.WithAlt);
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Save world checkpoint");
+
+                    app.Keyboard.RaiseKeyDownEvent(Key.S);
+                    AssertWorkspaceRow(workspace, "WORLD");
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Save        shadow ready");
+                    AssertRendered(app.Driver!, "request pending");
                 }
                 finally
                 {
@@ -81,7 +91,8 @@ internal static class TerminalUiSmoke
 
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the System Dashboard, external-dashboard transition, " +
-                "all Details menu hotkeys, section-cache/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
+                "all Details menu hotkeys, Actions/manual-save path, section-cache/world-save telemetry, " +
+                "Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -183,6 +194,7 @@ internal static class TerminalUiSmoke
         IWorldOperations
     {
         private bool interestManagementEnabled;
+        private bool saveRequested;
 
         public RuntimeDashboardSnapshot CaptureSnapshot() =>
             new(
@@ -223,6 +235,12 @@ internal static class TerminalUiSmoke
         public bool TrySetInterestManagementEnabled(bool enabled)
         {
             interestManagementEnabled = enabled;
+            return true;
+        }
+
+        public bool TryRequestSave()
+        {
+            saveRequested = true;
             return true;
         }
 
@@ -451,7 +469,7 @@ internal static class TerminalUiSmoke
                     TileShadowReady: true,
                     RemainingBootstrapSections: 0,
                     PendingDirtyTileSections: 2,
-                    SaveRequested: false,
+                    SaveRequested: saveRequested,
                     WriteActive: false,
                     PendingWrite: true,
                     AcceptedSnapshots: 8,
