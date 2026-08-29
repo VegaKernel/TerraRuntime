@@ -80,7 +80,9 @@ public sealed class RuntimeWorldClockOperationsTelemetryTests
             OnDemandRequests: 9,
             OnDemandUniqueRequests: 4,
             OnDemandDeduplicatedRequests: 5,
-            OnDemandPendingRequests: 2);
+            OnDemandPendingRequests: 2,
+            OnDemandRejectedRequests: 3,
+            OnDemandCapacity: 8);
         var operations = new LocalRuntimeWorldOperations(
             CreateStaticSnapshot(),
             sectionCacheSnapshotProvider: () => sectionCache);
@@ -112,6 +114,8 @@ public sealed class RuntimeWorldClockOperationsTelemetryTests
         Assert.Equal(4, snapshot.SectionCacheOnDemandUniqueRequests);
         Assert.Equal(5, snapshot.SectionCacheOnDemandDeduplicatedRequests);
         Assert.Equal(2, snapshot.SectionCacheOnDemandPendingRequests);
+        Assert.Equal(3, snapshot.SectionCacheOnDemandRejectedRequests);
+        Assert.Equal(8, snapshot.SectionCacheOnDemandCapacity);
     }
 
     [Fact]
