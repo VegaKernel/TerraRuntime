@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace TerraRuntime.World;
 
 public enum WorldFileAtomicPublishResult : byte
@@ -17,6 +19,7 @@ public readonly record struct WorldFileAtomicPublishDiagnostic(
 /// <summary>
 /// Publishes a newly composed canonical world without ever exposing a partial destination file. The temporary file
 /// is created in the destination directory, flushed to stable storage, then renamed into place without overwrite.
+/// On Linux the parent directory is fsynced after publication so the rename itself is durable across sudden power loss.
 /// Existing worlds are therefore protected both by the initial check and by the final filesystem operation.
 /// </summary>
 public static class WorldFileAtomicPublisher
@@ -72,14 +75,17 @@ public static class WorldFileAtomicPublisher
 
             File.Move(tempPath, fullPath, overwrite: false);
             published = true;
+            FlushDirectoryMetadata(directory);
             return new WorldFileAtomicPublishDiagnostic(WorldFileAtomicPublishResult.Published);
         }
         catch (IOException)
         {
             return new WorldFileAtomicPublishDiagnostic(
-                File.Exists(fullPath)
-                    ? WorldFileAtomicPublishResult.AlreadyExists
-                    : WorldFileAtomicPublishResult.IoError);
+                published
+                    ? WorldFileAtomicPublishResult.IoError
+                    : File.Exists(fullPath)
+                        ? WorldFileAtomicPublishResult.AlreadyExists
+                        : WorldFileAtomicPublishResult.IoError);
         }
         catch (UnauthorizedAccessException)
         {
@@ -89,6 +95,34 @@ public static class WorldFileAtomicPublisher
         {
             if (!published)
                 TryDelete(tempPath);
+        }
+    }
+
+    private static void FlushDirectoryMetadata(string directory)
+    {
+        if (!OperatingSystem.IsLinux())
+            return;
+
+        int descriptor = NativeMethods.Open(
+            directory,
+            NativeMethods.OpenReadOnly | NativeMethods.OpenDirectory);
+        if (descriptor < 0)
+        {
+            int error = Marshal.GetLastPInvokeError();
+            throw new IOException($"Failed to open world directory for durability flush (errno {error}).");
+        }
+
+        try
+        {
+            if (NativeMethods.Fsync(descriptor) != 0)
+            {
+                int error = Marshal.GetLastPInvokeError();
+                throw new IOException($"Failed to flush world directory metadata (errno {error}).");
+            }
+        }
+        finally
+        {
+            _ = NativeMethods.Close(descriptor);
         }
     }
 
@@ -102,5 +136,20 @@ public static class WorldFileAtomicPublisher
         {
             // A failed publication must never make cleanup failure look like success.
         }
+    }
+
+    private static class NativeMethods
+    {
+        internal const int OpenReadOnly = 0;
+        internal const int OpenDirectory = 0x10000;
+
+        [DllImport("libc", EntryPoint = "open", SetLastError = true, CharSet = CharSet.Ansi)]
+        internal static extern int Open(string path, int flags);
+
+        [DllImport("libc", EntryPoint = "fsync", SetLastError = true)]
+        internal static extern int Fsync(int descriptor);
+
+        [DllImport("libc", EntryPoint = "close", SetLastError = true)]
+        internal static extern int Close(int descriptor);
     }
 }
