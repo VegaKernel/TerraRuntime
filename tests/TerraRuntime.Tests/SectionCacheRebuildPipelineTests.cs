@@ -49,11 +49,13 @@ public sealed class SectionCacheRebuildPipelineTests
     }
 
     [Fact]
-    public async Task Deduplicates_concurrent_on_demand_misses_into_one_worker_rebuild()
+    public async Task Deduplicates_concurrent_on_demand_stale_reads_into_one_worker_rebuild()
     {
         WorldFileData world = LoadCompleteWorld();
         PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
-        WorldSectionId section = FindUncachedSection(world, packets);
+        int x = world.RuntimeMetadata.SpawnX;
+        int y = world.RuntimeMetadata.SpawnY;
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(world.Header.Dimensions, x, y);
         using var encodeStarted = new ManualResetEventSlim(false);
         using var releaseEncode = new ManualResetEventSlim(false);
         int encodeCalls = 0;
@@ -81,6 +83,10 @@ public sealed class SectionCacheRebuildPipelineTests
             Encode);
         pipeline.Start();
 
+        WorldTile tile = world.Tiles.Get(x, y);
+        tile.Flags ^= WorldTileFlags.WireBlue;
+        world.Tiles.Set(x, y, tile);
+
         Task<ReadOnlyMemory<byte>> first = StartLookupAsync(packets, section);
         Task<ReadOnlyMemory<byte>> second = StartLookupAsync(packets, section);
 
@@ -88,11 +94,12 @@ public sealed class SectionCacheRebuildPipelineTests
         {
             SectionCacheRebuildPipelineSnapshot requested = await WaitForObservedAsync(
                 pipeline,
-                static value => value.OnDemandRequests >= 2);
+                static value => value.OnDemandRequests >= 2 && value.CacheWaits >= 2);
             Assert.Equal(1, requested.OnDemandUniqueRequests);
             Assert.Equal(1, requested.OnDemandDeduplicatedRequests);
             Assert.Equal(1, requested.OnDemandPendingRequests);
             Assert.Equal(2, requested.CacheMisses);
+            Assert.Equal(2, requested.CacheStaleReads);
             Assert.Equal(2, requested.CacheWaits);
 
             pipeline.Tick();
@@ -111,7 +118,7 @@ public sealed class SectionCacheRebuildPipelineTests
             Assert.Equal(0, published.OnDemandPendingRequests);
             Assert.Equal(2, published.CacheWaitCompletions);
             Assert.Equal(0, published.CacheWaitTimeouts);
-            Assert.All(frames, frame => Assert.Equal(0x5a, frame.Span[3]));
+            Assert.All(frames, frame => Assert.Equal((byte)0x5a, frame.Span[3]));
         }
         finally
         {
@@ -153,7 +160,7 @@ public sealed class SectionCacheRebuildPipelineTests
         Task<ReadOnlyMemory<byte>> lookup = StartLookupAsync(packets, section);
         SectionCacheRebuildPipelineSnapshot requested = await WaitForObservedAsync(
             pipeline,
-            static value => value.OnDemandRequests >= 1);
+            static value => value.OnDemandRequests >= 1 && value.CacheWaits >= 1);
         Assert.Equal(1, requested.CacheMisses);
         Assert.Equal(1, requested.CacheStaleReads);
         Assert.Equal(1, requested.CacheWaits);
@@ -163,7 +170,7 @@ public sealed class SectionCacheRebuildPipelineTests
             static value => value.PublishedFrames >= 1 && value.CacheWaitCompletions >= 1);
         ReadOnlyMemory<byte> frame = await lookup;
 
-        Assert.Equal(0x6b, frame.Span[3]);
+        Assert.Equal((byte)0x6b, frame.Span[3]);
         Assert.Equal(1, published.OnDemandUniqueRequests);
         Assert.Equal(0, published.OnDemandPendingRequests);
         Assert.Equal(1, published.CacheWaitCompletions);
@@ -349,21 +356,6 @@ public sealed class SectionCacheRebuildPipelineTests
             $"Section cache rebuild did not reach the expected state. " +
             $"dirty={final.DirtyBacklog}, inFlight={final.InFlight}, submitted={final.SubmittedRebuilds}, " +
             $"published={final.PublishedFrames}, stale={final.StaleResults}, failures={final.EncodeFailures}.");
-    }
-
-    private static WorldSectionId FindUncachedSection(
-        WorldFileData world,
-        PlayerBootstrapPacketSet packets)
-    {
-        for (int index = 0; index < world.Header.Dimensions.SectionCount; index++)
-        {
-            WorldSectionId section = TerrariaSectionGeometry.FromLinearIndex(world.Header.Dimensions, index);
-            long revision = world.Tiles.GetSectionVersion(section);
-            if (!packets.TryGetCachedSectionFrame(section, revision, out _))
-                return section;
-        }
-
-        throw new InvalidOperationException("The generated test world unexpectedly cached every network section.");
     }
 
     private static WorldFileData LoadCompleteWorld()
