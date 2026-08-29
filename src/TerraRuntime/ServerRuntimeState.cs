@@ -14,6 +14,7 @@ internal sealed class ServerRuntimeState
 
     private readonly Dictionary<byte, RuntimePlayerState> _players = [];
     private readonly PendingPlayerVitals?[] _pendingVitals = new PendingPlayerVitals?[MaxPlayerSlots];
+    private readonly RuntimePlayerInventoryStore _playerInventory = new();
     private readonly VanillaNpcTargetCandidate[] _npcTargetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly IRuntimePlayerEventSink? _playerEvents;
@@ -193,6 +194,25 @@ internal sealed class ServerRuntimeState
 
         snapshot = state.CaptureSnapshot();
         return true;
+    }
+
+    /// <summary>
+    /// Captures one source-verified packet-5 inventory slot for an exact live player generation.
+    /// Authoritative-thread only; callers outside the game loop must use a command/result boundary.
+    /// </summary>
+    internal bool TryCapturePlayerInventoryItem(
+        PlayerHandle player,
+        int inventorySlot,
+        out RuntimePlayerInventoryItem item)
+    {
+        if (!_players.TryGetValue(player.Slot.Value, out RuntimePlayerState? state) ||
+            state.Connection.Player != player)
+        {
+            item = default;
+            return false;
+        }
+
+        return _playerInventory.TryGet(state.Connection, inventorySlot, out item);
     }
 
     /// <summary>
@@ -671,6 +691,22 @@ internal sealed class ServerRuntimeState
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (!equipment.Connection.IsAssigned ||
+            equipment.Connection.Player.Slot != request.PlayerSlot)
+        {
+            RejectedPlayerEquipmentUpdates++;
+            return;
+        }
+
+        bool inventorySlot = VanillaPlayerItemSlotCatalog.IsInventorySlot(request.SlotId);
+        if (inventorySlot &&
+            (!RuntimePlayerInventoryItem.TryFromNormalized(in request, out _) ||
+             !_playerInventory.CanAccept(equipment.Connection)))
+        {
+            RejectedPlayerEquipmentUpdates++;
+            return;
+        }
+
         if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer) &&
             activePlayer.Connection != equipment.Connection)
         {
@@ -679,6 +715,12 @@ internal sealed class ServerRuntimeState
         }
 
         if (activePlayer is not null && !activePlayer.TryAdvanceRevision())
+        {
+            RejectedPlayerEquipmentUpdates++;
+            return;
+        }
+
+        if (inventorySlot && !_playerInventory.TrySet(equipment.Connection, in request))
         {
             RejectedPlayerEquipmentUpdates++;
             return;
@@ -784,10 +826,19 @@ internal sealed class ServerRuntimeState
             return;
         }
 
+        if (!_playerInventory.CanAccept(spawn.Connection))
+        {
+            Volatile.Write(ref lastSpawnCommitResult, (int)PlayerSpawnCommitResult.InvalidJoinState);
+            return;
+        }
+
         PlayerSpawnCommitResult commit = spawn.Session.TryCommitSpawn(request.ClaimedSlot);
         Volatile.Write(ref lastSpawnCommitResult, (int)commit);
         if (commit != PlayerSpawnCommitResult.Committed)
             return;
+
+        if (!_playerInventory.TryAttach(spawn.Connection))
+            throw new InvalidOperationException("Player inventory ownership changed during authoritative spawn commit.");
 
         PendingPlayerVitals? pending = _pendingVitals[request.ClaimedSlot.Value];
         bool hasPending = pending is not null && pending.Connection == spawn.Connection;
@@ -876,6 +927,8 @@ internal sealed class ServerRuntimeState
         PendingPlayerVitals? pending = _pendingVitals[connection.Player.Slot.Value];
         if (pending is not null && pending.Connection == connection)
             _pendingVitals[connection.Player.Slot.Value] = null;
+
+        _playerInventory.Clear(connection);
 
         if (!_players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) ||
             player.Connection != disconnect.Connection)
