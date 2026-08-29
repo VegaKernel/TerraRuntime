@@ -16,7 +16,10 @@ public sealed class WorldTileSaveShadowSynchronizer
         ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
 
         this.liveTiles = liveTiles;
-        dirtyBatcher = new DirtySectionSnapshotBatcher(liveTiles, dirtyBatchCapacity);
+        dirtyBatcher = new DirtySectionSnapshotBatcher(
+            liveTiles,
+            liveTiles.PersistenceDirtySections,
+            dirtyBatchCapacity);
         Shadow = new IncrementalWorldTileSaveShadow(liveTiles.Dimensions);
     }
 
@@ -27,11 +30,10 @@ public sealed class WorldTileSaveShadowSynchronizer
     public int RemainingBootstrapSections => liveTiles.Dimensions.SectionCount - nextBootstrapSectionIndex;
 
     /// <summary>
-    /// Number of authoritative sections still marked dirty. This is the readiness signal for persistence callers:
-    /// a capture attempt can requeue a section, so applied-count heuristics must not be used to infer that the shadow
-    /// has caught up with live state.
+    /// Number of authoritative sections still marked dirty for persistence. Network section-cache consumers own a
+    /// separate tracker, so draining either backlog cannot hide mutations from the other subsystem.
     /// </summary>
-    public int PendingDirtySections => liveTiles.DirtySections.DirtyCount;
+    public int PendingDirtySections => liveTiles.PersistenceDirtySections.DirtyCount;
 
     /// <summary>
     /// Captures at most <paramref name="maximumSections"/> initial sections in deterministic linear order.
@@ -64,8 +66,8 @@ public sealed class WorldTileSaveShadowSynchronizer
     }
 
     /// <summary>
-    /// Applies up to <paramref name="maximumSections"/> dirty sections after bootstrap. Calling this before bootstrap
-    /// is complete is a no-op so dirty markers remain intact for the first steady-state synchronization pass.
+    /// Applies up to <paramref name="maximumSections"/> persistence-dirty sections after bootstrap. Calling this before
+    /// bootstrap is complete is a no-op so persistence markers remain intact for the first steady-state synchronization.
     /// </summary>
     public int CaptureDirty(int maximumSections)
     {
