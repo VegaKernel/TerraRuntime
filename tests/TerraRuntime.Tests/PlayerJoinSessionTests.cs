@@ -94,4 +94,21 @@ public sealed class PlayerJoinSessionTests
 
         Assert.Throws<ArgumentException>(() => new PlayerJoinSession(acquired));
     }
+
+    [Fact]
+    public void Refuses_server_owned_slot_lease_and_keeps_it_reserved()
+    {
+        var pool = new PlayerSlotPool(1);
+        Assert.True(pool.TryAcquireServerOwned(out PlayerSlotPool.PlayerSlotLease? lease));
+        PlayerSlotPool.PlayerSlotLease serverOwned = Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease);
+
+        Assert.Equal(PlayerSlotLeaseKind.ServerOwned, serverOwned.Kind);
+        Assert.Throws<ArgumentException>(() => new PlayerJoinSession(serverOwned));
+        Assert.False(serverOwned.IsReleased);
+        Assert.Equal(1, pool.ServerOwnedLeasedCount);
+        Assert.False(pool.TryAcquireConnection(out _));
+
+        serverOwned.Dispose();
+        Assert.Equal(0, pool.LeasedCount);
+    }
 }
