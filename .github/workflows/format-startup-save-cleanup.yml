@@ -1,0 +1,74 @@
+name: Format Startup Save Cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/format-startup-save-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Normalize host block
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/TerraRuntime/TerrariaServerHost.cs')
+          text = path.read_text(encoding='utf-8')
+          old = '''        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
+    Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
+
+string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
+if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
+    Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
+
+'''
+          new = '''        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
+            Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
+
+        string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
+        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
+            Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
+
+'''
+          if old not in text:
+              if new in text:
+                  print('host block already normalized')
+              else:
+                  raise SystemExit('startup cleanup block changed unexpectedly')
+          else:
+              path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+      - name: Build host
+        run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+
+      - name: Commit formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/TerraRuntime/TerrariaServerHost.cs
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'style: normalize startup save cleanup'
+          for attempt in 1 2 3 4 5 6 7 8; do
+            git fetch origin main
+            if git rebase origin/main && git push origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep 2
+          done
+          exit 1
