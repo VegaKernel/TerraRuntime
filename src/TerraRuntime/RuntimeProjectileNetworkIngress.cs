@@ -12,18 +12,15 @@ internal interface IProjectileNetworkIngress
 }
 
 /// <summary>
-/// Connection-authenticated projectile packet ingress. The socket thread may decode and validate bounded
-/// packet state, but exact ProjectileKey lookup, physical slot allocation and all authoritative mutations are
-/// deferred to ServerRuntimeState through the bounded game-command queue.
+/// Connection-authenticated projectile packet ingress. The production instance also carries packet-17 state via
+/// <see cref="RuntimeTileNetworkIngress"/>, so one bounded command ingress is shared by client gameplay packets.
+/// Exact entity lookup and every world mutation remain authoritative-thread responsibilities.
 /// </summary>
-internal sealed class RuntimeProjectileNetworkIngress : IProjectileNetworkIngress
+internal sealed class RuntimeProjectileNetworkIngress : RuntimeTileNetworkIngress, IProjectileNetworkIngress
 {
-    private readonly IGameCommandIngress<RuntimeCommand> ingress;
-
     public RuntimeProjectileNetworkIngress(IGameCommandIngress<RuntimeCommand> ingress)
+        : base(ingress)
     {
-        ArgumentNullException.ThrowIfNull(ingress);
-        this.ingress = ingress;
     }
 
     public bool TryPostUpdate(ConnectionHandle connection, in TerrariaProjectileUpdateState state)
@@ -31,7 +28,7 @@ internal sealed class RuntimeProjectileNetworkIngress : IProjectileNetworkIngres
         if (!connection.IsAssigned || !state.IsValid)
             return false;
 
-        return ingress.TryPost(
+        return Ingress.TryPost(
             connection.Source,
             new ClientProjectileUpdateRuntimeCommand(connection, state));
     }
@@ -41,7 +38,7 @@ internal sealed class RuntimeProjectileNetworkIngress : IProjectileNetworkIngres
         if (!connection.IsAssigned || !state.IsValid)
             return false;
 
-        return ingress.TryPost(
+        return Ingress.TryPost(
             connection.Source,
             new ClientProjectileDestroyRuntimeCommand(connection, state));
     }
