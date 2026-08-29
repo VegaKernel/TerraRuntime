@@ -18,7 +18,7 @@ public enum SignInteractionFrameStopReason : byte
 /// Connection-owned protocol-326 sign boundary for packets 46 and 47. The socket thread decodes only; every sign
 /// lookup/update is posted with the exact playing-session identity to the authoritative game loop.
 /// </summary>
-public sealed class SignInteractionFrameSink : ITerrariaFrameSink
+public sealed class SignInteractionFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -44,6 +44,16 @@ public sealed class SignInteractionFrameSink : ITerrariaFrameSink
     }
 
     public SignInteractionFrameStopReason StopReason { get; private set; }
+
+    public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
+    {
+        SignInteractionFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
+        SignInteractionFrameStopReason.MalformedSignPacket => TerrariaFrameRejectionCategory.MalformedProtocol,
+        SignInteractionFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
+        _ => inner is ITerrariaFrameRejectionSource source
+            ? source.RejectionCategory
+            : TerrariaFrameRejectionCategory.None
+    };
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
