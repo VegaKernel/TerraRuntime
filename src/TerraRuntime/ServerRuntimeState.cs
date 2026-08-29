@@ -594,16 +594,17 @@ internal sealed class ServerRuntimeState
                 return;
             }
 
-            WorldItemDropStateUpdate drop = VanillaDirtWorldItemDrop.Create(
-                tileState.TileX,
-                tileState.TileY,
-                _worldItemSpawnRandom);
-            if (!_worldItems.TryReserveDrop(in drop, out WorldItemDropReservation reservation))
+            if (!_worldItems.TryReserveDropSlot(out WorldItemDropReservation reservation))
             {
                 RejectedClientTileManipulations++;
                 RejectedWorldItemAllocations++;
                 return;
             }
+
+            WorldItemDropStateUpdate drop = VanillaDirtWorldItemDrop.Create(
+                tileState.TileX,
+                tileState.TileY,
+                _worldItemSpawnRandom);
 
             if (!VanillaDirtPlacement.TryKillIsolatedWithoutDrop(
                     _worldTiles,
@@ -615,7 +616,7 @@ internal sealed class ServerRuntimeState
                 return;
             }
 
-            if (!_worldItems.TryCommitReservedDrop(in reservation, out _))
+            if (!_worldItems.TryCommitReservedDrop(in reservation, in drop, out _))
             {
                 throw new InvalidOperationException(
                     "Reserved Dirt drop could not commit after authoritative tile mutation.");
