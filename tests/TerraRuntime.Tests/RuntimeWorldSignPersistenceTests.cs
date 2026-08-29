@@ -71,7 +71,7 @@ public sealed class RuntimeWorldSignPersistenceTests
     }
 
     [Fact]
-    public async Task Noncanonical_sign_table_keeps_original_opaque_sign_section()
+    public async Task Sparse_runtime_sign_slots_are_compacted_and_persisted_canonically()
     {
         byte[] sourceFile = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
         WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
@@ -86,9 +86,17 @@ public sealed class RuntimeWorldSignPersistenceTests
         var sparseStore = new RuntimeSignStore([
             new WorldSign(3, "sparse", 1, 2)
         ]);
-        Assert.False(sparseStore.CanPersistMutations);
-        var submitted = new TerrariaSignState(3, 1, 2, "must not persist", 0, 0);
-        Assert.False(sparseStore.TryApply(in submitted, out _, out _));
+        Assert.True(sparseStore.CanPersistMutations);
+        var submitted = new TerrariaSignState(3, 1, 2, "persist after restart", 0, 0);
+        Assert.True(sparseStore.TryApply(in submitted, out WorldSign? committed, out bool changed));
+        Assert.True(changed);
+        Assert.NotNull(committed);
+        Assert.Equal((short)3, committed!.SlotId);
+
+        Assert.True(sparseStore.TryCaptureCanonicalSnapshot(out WorldSign[] canonical));
+        WorldSign canonicalSign = Assert.Single(canonical);
+        Assert.Equal((short)0, canonicalSign.SlotId);
+        Assert.Equal("persist after restart", canonicalSign.Text);
 
         string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-sparse-sign-save-{Guid.NewGuid():N}");
         string destinationPath = Path.Combine(directory, "world.wld");
@@ -109,13 +117,13 @@ public sealed class RuntimeWorldSignPersistenceTests
             await service.CompleteAsync(TestContext.Current.CancellationToken);
 
             byte[] savedFile = File.ReadAllBytes(destinationPath);
-            Assert.Equal(
-                WorldFileEnvelopeParseResult.Parsed,
-                WorldFileEnvelopeParser.TryParse(savedFile, out WorldFileEnvelope? envelope, out _));
-            WorldFileEnvelope savedEnvelope = Assert.IsType<WorldFileEnvelope>(envelope);
-            int signStart = savedEnvelope.SectionOffsets[3];
-            int signEnd = savedEnvelope.SectionOffsets[4];
-            Assert.Equal(preserved!.Signs.ToArray(), savedFile.AsSpan(signStart, signEnd - signStart).ToArray());
+            Assert.True(WorldFileLoader.TryLoad(savedFile, limits, out WorldFileData? savedWorld).IsLoaded);
+            WorldFileData loaded = Assert.IsType<WorldFileData>(savedWorld);
+            WorldSign savedSign = Assert.Single(loaded.Signs);
+            Assert.Equal((short)0, savedSign.SlotId);
+            Assert.Equal(1, savedSign.X);
+            Assert.Equal(2, savedSign.Y);
+            Assert.Equal("persist after restart", savedSign.Text);
         }
         finally
         {
