@@ -1,0 +1,44 @@
+name: Validate G6 dry player physics v3
+
+on:
+  push:
+    branches:
+      - gameplay/g6-player-dry-physics-v3
+    paths:
+      - .github/workflows/g6-player-dry-physics-v3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: gameplay/g6-player-dry-physics-v3
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Apply and test dry player physics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_g6_player_dry_physics_v3.py
+          git diff --check
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+
+      - name: Commit validated production wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/scripts/apply_g6_player_dry_physics_v3.py .github/workflows/g6-player-dry-physics-v3.yml
+          git add src/TerraRuntime/ServerRuntimeState.cs
+          git diff --cached --check
+          git commit -m "gameplay: integrate runtime-owned dry player physics"
+          git push origin HEAD:gameplay/g6-player-dry-physics-v3
