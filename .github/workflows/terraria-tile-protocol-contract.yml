@@ -77,6 +77,8 @@ jobs:
             > artifacts/source-contract/message-buffer.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Player "$assembly" \
             > artifacts/source-contract/player.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.PlayerItemSlotID "$assembly" \
+            > artifacts/source-contract/player-item-slot-id.cs
 
           python3 tools/ci/probe_tile_protocol.py \
             --net-message artifacts/source-contract/net-message.cs \
@@ -84,4 +86,5 @@ jobs:
 
           python3 tools/ci/probe_player_inventory.py \
             --message-buffer artifacts/source-contract/message-buffer.cs \
-            --player artifacts/source-contract/player.cs
+            --player artifacts/source-contract/player.cs \
+            --player-item-slot-id artifacts/source-contract/player-item-slot-id.cs
