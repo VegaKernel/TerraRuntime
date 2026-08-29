@@ -195,6 +195,12 @@ int released = await runtime.NpcActors.ReleaseControllerAsync(
 
 `QueueRejected` is not confirmation that an operation probably applied.
 
+### NPC shop purchase commit observations
+
+`INpcShopPurchaseCommitSink` receives an immutable `NpcShopPurchaseCommit` only after the complete coin and inventory transaction commits atomically. The record carries exact-generation buyer/vendor handles, stable shop/offer IDs, the catalog revision, price/change, destination slot and mutation count. It is an observer boundary with no inventory mutation authority; observer failures do not change an already committed purchase result.
+
+`RuntimeActorInteractionBoundary` validates semantic `ActorInteractionRequest` values before policy dispatch. It requires exact-generation player/NPC handles, live available state, a source-backed target definition and intersection with vanilla's `TileReachCheckSettings.Simple` region. Accepted requests capture both authoritative revisions; raw wire slots and final policy/UI decisions remain outside this boundary.
+
 ## 8. Connection-free runtime-owned players
 
 `IServerPlayerOperations` creates runtime-owned player actors without a network connection while using the normal Terraria player-slot pool.
@@ -211,6 +217,23 @@ if (!result.IsCreated)
 
 PlayerHandle handle = result.Player;
 ```
+
+Appearance, vitals and packet-valid equipment/inventory slots are also authoritative commands keyed by the stable `ServerPlayerId`:
+
+```csharp
+await runtime.ServerPlayers.SetAppearanceAsync(serverPlayerId, appearance, cancellationToken);
+await runtime.ServerPlayers.SetVitalsAsync(
+    serverPlayerId,
+    new ServerPlayerVitalsState(Life: 100, MaxLife: 100, Mana: 20, MaxMana: 20),
+    cancellationToken);
+await runtime.ServerPlayers.SetItemAsync(serverPlayerId, item, cancellationToken);
+```
+
+TerraRuntime applies the same source-backed appearance, life and item-ID/slot normalization used at connection boundaries. State is exact-generation and is retired with the server-player lease; sparse item storage is allocated only after the first non-empty item.
+
+Committed server-player lifecycle, appearance, relayable equipment, vitals and movement are projected to playing real clients through ordinary protocol `326` player packets. A newly playing client receives existing server-player baselines in stable active/appearance/equipment/vitals/movement order, and despawn emits the inactive player state. This first replication slice conservatively sends server-player state to every playing client; fake-player AOI routing remains separate work.
+
+Connection-owned player ingress accepts appearance, equipment, vitals and movement only for that connection's exact allocated slot. Because connection and server-player leases share one exclusive slot pool, a client packet claiming a server-owned slot is rejected before it reaches the authoritative command queue.
 
 The host does not receive direct position/velocity setters after creation. Control is semantic intent:
 
@@ -229,11 +252,23 @@ await runtime.ServerPlayers.SetJumpIntentAsync(
     serverPlayerId,
     ServerPlayerJumpIntent.Released,
     cancellationToken);
+
+bool moving = await runtime.ServerPlayers.SetMovementIntentAsync(
+    serverPlayerId,
+    ServerPlayerMovementIntent.MoveTo(targetX: 800f, targetY: 320f),
+    cancellationToken);
+
+bool following = await runtime.ServerPlayers.SetMovementIntentAsync(
+    serverPlayerId,
+    ServerPlayerMovementIntent.FollowPlayer(targetPlayer),
+    cancellationToken);
 ```
 
 `ServerPlayerJumpIntent` is button-level semantic input, not a velocity command. TerraRuntime owns ordinary vanilla jump speed/duration, release gate, gravity and collision. Holding jump through landing does not start another jump until `Released` rearms the vanilla release gate.
 
-Liquid contact is derived by TerraRuntime from authoritative world tiles; the host still supplies no liquid or velocity data. The verified collision/displacement slice uses the vanilla movement factors $0.5$ in water/lava, $0.25$ in honey and $0.375$ in shimmer. These factors scale position advance only: the authoritative collision velocity remains unscaled, and an axis clamped by tile collision advances by that clamped component without applying the liquid factor again. Liquid-specific gravity/fall-speed, swimming/jump control, floating and wet-entry/exit state are not yet claimed source-backed by this slice. Mounts, grapples and extra-jump families also remain separate gameplay work.
+`MoveTo` and `FollowPlayer` resolve on the authoritative tick into the same horizontal/jump button intents. They never write position or velocity directly. Follow targets are exact-generation `PlayerHandle` values; disconnect or slot reuse stops the controller instead of redirecting it to a replacement player. Bounded stop, vertical-jump and maximum-distance policy is supplied through `ServerPlayerMovementOptions`.
+
+Liquid contact is derived by TerraRuntime from authoritative world tiles; the host still supplies no liquid or velocity data. The verified ordinary unmounted path carries exact-generation contact state between ticks and selects the source-backed dry/water/lava/honey/shimmer gravity, fall-speed and jump profile from the preceding contact pass. Current contact selects vanilla position factors $0.5$ in water/lava, $0.25$ in honey and $0.375$ in shimmer; authoritative collision velocity remains unscaled, and an axis clamped by tile collision advances without applying the factor twice. Leaving liquid also clamps the remaining ordinary jump counter at the source-backed transition point. Accessory swimming/floating, mounts, grapples and extra-jump families remain separate gameplay work and fail outside this supported baseline.
 
 Despawn:
 

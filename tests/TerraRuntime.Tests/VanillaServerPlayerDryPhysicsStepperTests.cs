@@ -76,8 +76,8 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
 
         Assert.True(stepper.TryStep(player.Snapshot, out ServerPlayerDryPhysicsStepResult next));
 
-        Assert.Equal(90f, next.PositionY, 5);
-        Assert.Equal(10f, next.VelocityY, 5);
+        Assert.Equal(90.01f, next.PositionY, 5);
+        Assert.Equal(10.01f, next.VelocityY, 5);
     }
 
     [Fact]
@@ -134,6 +134,7 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
         Assert.Equal(42, VanillaServerPlayerDryPhysicsStepper.PlayerHeight);
         Assert.Equal(0.4f, VanillaServerPlayerDryPhysicsStepper.Gravity);
         Assert.Equal(10f, VanillaServerPlayerDryPhysicsStepper.MaximumFallSpeed);
+        Assert.Equal(0.01f, VanillaServerPlayerPhysicsProfile.FallSpeedNudge);
         Assert.Equal(0.5f, VanillaServerPlayerLiquidMovement.WaterMovementScale);
         Assert.Equal(0.5f, VanillaServerPlayerLiquidMovement.LavaMovementScale);
         Assert.Equal(0.25f, VanillaServerPlayerLiquidMovement.HoneyMovementScale);

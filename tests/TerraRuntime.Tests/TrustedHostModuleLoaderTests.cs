@@ -198,6 +198,42 @@ public sealed class TrustedHostModuleLoaderTests
             return ValueTask.FromResult(false);
         }
 
+        public ValueTask<bool> SetMovementIntentAsync(
+            ServerPlayerId id,
+            ServerPlayerMovementIntent intent,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
+        }
+
+        public ValueTask<bool> SetAppearanceAsync(
+            ServerPlayerId id,
+            ServerPlayerAppearanceState appearance,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
+        }
+
+        public ValueTask<bool> SetVitalsAsync(
+            ServerPlayerId id,
+            ServerPlayerVitalsState vitals,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
+        }
+
+        public ValueTask<bool> SetItemAsync(
+            ServerPlayerId id,
+            ServerPlayerItemState item,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
+        }
+
         public ValueTask<bool> DespawnAsync(
             ServerPlayerId id,
             CancellationToken cancellationToken = default)

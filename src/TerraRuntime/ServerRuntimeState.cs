@@ -24,9 +24,14 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
     private readonly RuntimeNpcActorControlCommandService _npcActorCommands;
     private readonly RuntimeServerPlayerStateStore? _serverPlayerStates;
     private readonly RuntimeServerPlayerCommandService? _serverPlayerCommands;
+    private readonly IRuntimeServerPlayerEventSink? _serverPlayerEvents;
     private readonly VanillaServerPlayerDryPhysicsStepper? _serverPlayerDryPhysics;
     private readonly PlayerStateSnapshot[] _serverPlayerSnapshots =
         new PlayerStateSnapshot[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
+    private readonly PlayerHandle[] _serverPlayerLiquidOwners =
+        new PlayerHandle[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
+    private readonly VanillaLiquidContactState[] _serverPlayerLiquidContacts =
+        new VanillaLiquidContactState[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly INpcAiStateStepper _npcAiStepper;
     private readonly VanillaNpcTargetingAiStepper? _vanillaNpcTargetingAiStepper;
     private readonly VanillaNpcCheckActiveAiStepper? _vanillaNpcCheckActiveAiStepper;
@@ -54,7 +59,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
         RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null,
         RuntimeServerPlayerStateStore? serverPlayerStates = null,
-        RuntimeServerPlayerSlotRegistry? serverPlayerIdentities = null)
+        RuntimeServerPlayerSlotRegistry? serverPlayerIdentities = null,
+        IRuntimeServerPlayerEventSink? serverPlayerEvents = null)
     {
         _playerEvents = playerEvents;
         _worldTiles = worldTiles;
@@ -62,10 +68,11 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         _npcs = npcs ?? new RuntimeNpcStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
         _serverPlayerStates = serverPlayerStates;
+        _serverPlayerEvents = serverPlayerEvents;
         if (serverPlayerIdentities is not null && serverPlayerStates is null)
             throw new ArgumentException("Server-player identities require an authoritative state store.", nameof(serverPlayerIdentities));
         _serverPlayerCommands = serverPlayerIdentities is not null && serverPlayerStates is not null
-            ? new RuntimeServerPlayerCommandService(serverPlayerIdentities, serverPlayerStates)
+            ? new RuntimeServerPlayerCommandService(serverPlayerIdentities, serverPlayerStates, serverPlayerEvents)
             : null;
         _serverPlayerDryPhysics = serverPlayerStates is not null && worldTiles is not null
             ? new VanillaServerPlayerDryPhysicsStepper(worldTiles)
@@ -391,17 +398,38 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         for (int index = 0; index < count; index++)
         {
             PlayerStateSnapshot player = _serverPlayerSnapshots[index];
-            ServerPlayerHorizontalIntent horizontalIntent =
-                _serverPlayerCommands?.GetHorizontalIntent(player.Player) ?? ServerPlayerHorizontalIntent.Stop;
-            ServerPlayerJumpIntent jumpIntent =
-                _serverPlayerCommands?.GetJumpIntent(player.Player) ?? ServerPlayerJumpIntent.Released;
+            ServerPlayerMovementIntent movementIntent =
+                _serverPlayerCommands?.GetMovementIntent(player.Player) ?? ServerPlayerMovementIntent.Stop();
+            ServerPlayerHorizontalIntent horizontalIntent;
+            ServerPlayerJumpIntent jumpIntent;
+            if (movementIntent.Kind != ServerPlayerMovementIntentKind.Stop)
+            {
+                RuntimeServerPlayerMovementIntentController.TryResolve(
+                    in player,
+                    in movementIntent,
+                    this,
+                    out horizontalIntent,
+                    out jumpIntent);
+            }
+            else
+            {
+                horizontalIntent =
+                    _serverPlayerCommands?.GetHorizontalIntent(player.Player) ?? ServerPlayerHorizontalIntent.Stop;
+                jumpIntent =
+                    _serverPlayerCommands?.GetJumpIntent(player.Player) ?? ServerPlayerJumpIntent.Released;
+            }
             VanillaServerPlayerJumpState jumpState =
                 _serverPlayerCommands?.GetJumpState(player.Player) ?? VanillaServerPlayerJumpState.Initial;
+            int slot = player.Player.Slot.Value;
+            VanillaLiquidContactState liquidContacts = _serverPlayerLiquidOwners[slot] == player.Player
+                ? _serverPlayerLiquidContacts[slot]
+                : default;
             if (!_serverPlayerDryPhysics.TryStep(
                     in player,
                     horizontalIntent,
                     jumpIntent,
                     in jumpState,
+                    in liquidContacts,
                     out ServerPlayerDryPhysicsStepResult next,
                     out VanillaServerPlayerJumpState nextJumpState))
             {
@@ -409,6 +437,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
             }
 
             _serverPlayerCommands?.CommitJumpState(player.Player, in nextJumpState);
+            VanillaLiquidContactState nextLiquidContacts = next.LiquidContacts;
+            _serverPlayerLiquidOwners[slot] = player.Player;
+            _serverPlayerLiquidContacts[slot] = nextLiquidContacts;
 
             if (next.PositionX == player.PositionX &&
                 next.PositionY == player.PositionY &&
@@ -418,13 +449,16 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
                 continue;
             }
 
-            _serverPlayerStates.TrySetMotion(
+            if (_serverPlayerStates.TrySetMotion(
                 player.Player,
                 next.PositionX,
                 next.PositionY,
                 next.VelocityX,
                 next.VelocityY,
-                out _);
+                out PlayerStateSnapshot committed))
+            {
+                _serverPlayerEvents?.ServerPlayerMoved(in committed);
+            }
         }
     }
 

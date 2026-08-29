@@ -133,27 +133,27 @@ Vega owns permissions/config/plugin lifetime; TerraRuntime owns actor simulation
 
 ### G6-B - NPC interactions and shops
 
-- [ ] actor interaction request boundary;
+- [x] actor interaction request boundary;
 - [x] stable `ShopId` and registration lease;
 - [x] immutable shop catalog snapshot;
 - [x] vanilla item/price validation;
 - [x] atomic inventory + coin transaction path;
-- [ ] purchase commit diagnostics/events;
+- [x] purchase commit diagnostics/events;
 - [ ] Vega adapter proof-of-concept with a custom merchant NPC.
 
 ### G6-C - Fake player foundation
 
 - [x] server-owned player identity/slot allocation separate from connection ownership;
-- [ ] fake-player appearance/vitals/equipment/inventory state;
-- [ ] replication to real players;
-- [ ] rejection of client control packets for server-owned slots.
+- [x] fake-player appearance/vitals/equipment/inventory state;
+- [x] replication to real players;
+- [x] rejection of client control packets for server-owned slots.
 
 ### G6-D - Runtime player physics
 
 - [x] server-owned player physics stepper;
-- [ ] source-backed movement/collision/gravity/jump/liquid semantics;
-- [ ] fake-player `MoveTo`/`FollowPlayer` controller;
-- [ ] deterministic tick integration and performance gate.
+- [x] source-backed movement/collision/gravity/jump/liquid semantics;
+- [x] fake-player `MoveTo`/`FollowPlayer` controller;
+- [x] deterministic tick integration and performance gate.
 
 ### G6-E - Gameplay integration
 

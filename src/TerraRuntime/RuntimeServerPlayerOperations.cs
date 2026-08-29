@@ -20,6 +20,26 @@ internal sealed record ServerPlayerJumpIntentRuntimeCommand(
     ServerPlayerJumpIntent Intent,
     TaskCompletionSource<bool> Completion) : RuntimeCommand;
 
+internal sealed record ServerPlayerMovementIntentRuntimeCommand(
+    ServerPlayerId Id,
+    ServerPlayerMovementIntent Intent,
+    TaskCompletionSource<bool> Completion) : RuntimeCommand;
+
+internal sealed record ServerPlayerAppearanceRuntimeCommand(
+    ServerPlayerId Id,
+    ServerPlayerAppearanceState Appearance,
+    TaskCompletionSource<bool> Completion) : RuntimeCommand;
+
+internal sealed record ServerPlayerVitalsRuntimeCommand(
+    ServerPlayerId Id,
+    ServerPlayerVitalsState Vitals,
+    TaskCompletionSource<bool> Completion) : RuntimeCommand;
+
+internal sealed record ServerPlayerItemRuntimeCommand(
+    ServerPlayerId Id,
+    ServerPlayerItemState Item,
+    TaskCompletionSource<bool> Completion) : RuntimeCommand;
+
 internal sealed record ServerPlayerDespawnRuntimeCommand(
     ServerPlayerId Id,
     TaskCompletionSource<bool> Completion) : RuntimeCommand;
@@ -33,17 +53,21 @@ internal sealed class RuntimeServerPlayerCommandService
 {
     private readonly RuntimeServerPlayerSlotRegistry identities;
     private readonly RuntimeServerPlayerStateStore states;
+    private readonly IRuntimeServerPlayerEventSink? events;
     private readonly Dictionary<ServerPlayerId, RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease> leases = [];
     private readonly Dictionary<PlayerHandle, ServerPlayerHorizontalIntent> horizontalIntents = [];
     private readonly Dictionary<PlayerHandle, ServerPlayerJumpIntent> jumpIntents = [];
     private readonly Dictionary<PlayerHandle, VanillaServerPlayerJumpState> jumpStates = [];
+    private readonly Dictionary<PlayerHandle, ServerPlayerMovementIntent> movementIntents = [];
 
     public RuntimeServerPlayerCommandService(
         RuntimeServerPlayerSlotRegistry identities,
-        RuntimeServerPlayerStateStore states)
+        RuntimeServerPlayerStateStore states,
+        IRuntimeServerPlayerEventSink? events = null)
     {
         this.identities = identities ?? throw new ArgumentNullException(nameof(identities));
         this.states = states ?? throw new ArgumentNullException(nameof(states));
+        this.events = events;
     }
 
     public bool TryApply(RuntimeCommand command)
@@ -61,6 +85,34 @@ internal sealed class RuntimeServerPlayerCommandService
             case ServerPlayerJumpIntentRuntimeCommand jump:
                 jump.Completion.TrySetResult(SetJumpIntent(jump.Id, jump.Intent));
                 return true;
+
+            case ServerPlayerMovementIntentRuntimeCommand movement:
+                {
+                    ServerPlayerMovementIntent intent = movement.Intent;
+                    movement.Completion.TrySetResult(SetMovementIntent(movement.Id, in intent));
+                    return true;
+                }
+
+            case ServerPlayerAppearanceRuntimeCommand appearance:
+                {
+                    ServerPlayerAppearanceState value = appearance.Appearance;
+                    appearance.Completion.TrySetResult(SetAppearance(appearance.Id, in value));
+                    return true;
+                }
+
+            case ServerPlayerVitalsRuntimeCommand vitals:
+                {
+                    ServerPlayerVitalsState value = vitals.Vitals;
+                    vitals.Completion.TrySetResult(SetVitals(vitals.Id, in value));
+                    return true;
+                }
+
+            case ServerPlayerItemRuntimeCommand item:
+                {
+                    ServerPlayerItemState value = item.Item;
+                    item.Completion.TrySetResult(SetItem(item.Id, in value));
+                    return true;
+                }
 
             case ServerPlayerDespawnRuntimeCommand despawn:
                 despawn.Completion.TrySetResult(Despawn(despawn.Id));
@@ -103,6 +155,7 @@ internal sealed class RuntimeServerPlayerCommandService
         }
 
         leases.Add(id, lease);
+        events?.ServerPlayerCreated(in snapshot);
         return new ServerPlayerCreateResult(ServerPlayerCreateStatus.Created, snapshot.Player);
     }
 
@@ -120,6 +173,7 @@ internal sealed class RuntimeServerPlayerCommandService
             horizontalIntents.Remove(lease.Player);
         else
             horizontalIntents[lease.Player] = intent;
+        movementIntents.Remove(lease.Player);
 
         return true;
     }
@@ -148,14 +202,76 @@ internal sealed class RuntimeServerPlayerCommandService
         {
             jumpIntents[lease.Player] = intent;
         }
+        movementIntents.Remove(lease.Player);
 
         return true;
     }
+
+    public bool SetMovementIntent(ServerPlayerId id, in ServerPlayerMovementIntent intent)
+    {
+        if (!intent.IsValid || !TryGetPlayer(id, out PlayerHandle player))
+            return false;
+
+        horizontalIntents.Remove(player);
+        jumpIntents.Remove(player);
+        jumpStates.Remove(player);
+        if (intent.Kind == ServerPlayerMovementIntentKind.Stop)
+            movementIntents.Remove(player);
+        else
+            movementIntents[player] = intent;
+        return true;
+    }
+
+    public ServerPlayerMovementIntent GetMovementIntent(PlayerHandle player) =>
+        player.IsAssigned && movementIntents.TryGetValue(player, out ServerPlayerMovementIntent intent)
+            ? intent
+            : ServerPlayerMovementIntent.Stop();
 
     public ServerPlayerJumpIntent GetJumpIntent(PlayerHandle player) =>
         player.IsAssigned && jumpIntents.TryGetValue(player, out ServerPlayerJumpIntent intent)
             ? intent
             : ServerPlayerJumpIntent.Released;
+
+    public bool SetAppearance(ServerPlayerId id, in ServerPlayerAppearanceState appearance)
+    {
+        if (!TryGetPlayer(id, out PlayerHandle player) ||
+            !states.TrySetAppearance(player, in appearance, out ServerPlayerAppearanceState normalized))
+        {
+            return false;
+        }
+
+        events?.ServerPlayerAppearanceUpdated(player, in normalized);
+        return true;
+    }
+
+    public bool SetVitals(ServerPlayerId id, in ServerPlayerVitalsState vitals)
+    {
+        if (!TryGetPlayer(id, out PlayerHandle player) ||
+            !states.TrySetVitals(player, in vitals, out PlayerStateSnapshot normalized))
+        {
+            return false;
+        }
+
+        var committed = new ServerPlayerVitalsState(
+            normalized.Life,
+            normalized.MaxLife,
+            normalized.Mana,
+            normalized.MaxMana);
+        events?.ServerPlayerVitalsUpdated(player, in committed);
+        return true;
+    }
+
+    public bool SetItem(ServerPlayerId id, in ServerPlayerItemState item)
+    {
+        if (!TryGetPlayer(id, out PlayerHandle player) ||
+            !states.TrySetItem(player, in item, out ServerPlayerItemState normalized))
+        {
+            return false;
+        }
+
+        events?.ServerPlayerItemUpdated(player, in normalized);
+        return true;
+    }
 
     public VanillaServerPlayerJumpState GetJumpState(PlayerHandle player) =>
         player.IsAssigned && jumpStates.TryGetValue(player, out VanillaServerPlayerJumpState state)
@@ -191,9 +307,25 @@ internal sealed class RuntimeServerPlayerCommandService
         horizontalIntents.Remove(lease.Player);
         jumpIntents.Remove(lease.Player);
         jumpStates.Remove(lease.Player);
+        movementIntents.Remove(lease.Player);
         leases.Remove(id);
+        events?.ServerPlayerDespawned(lease.Player);
         lease.Dispose();
         return true;
+    }
+
+    private bool TryGetPlayer(ServerPlayerId id, out PlayerHandle player)
+    {
+        if (id.IsAssigned &&
+            leases.TryGetValue(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) &&
+            states.TryGet(lease.Player, out _))
+        {
+            player = lease.Player;
+            return true;
+        }
+
+        player = default;
+        return false;
     }
 
     private static bool IsValidHorizontalIntent(ServerPlayerHorizontalIntent intent) =>
@@ -269,6 +401,78 @@ internal sealed class RuntimeServerPlayerOperations : IServerPlayerOperations
         {
             throw new InvalidOperationException(
                 "The authoritative command queue rejected the server-player jump intent command.");
+        }
+
+        return await completion.Task.ConfigureAwait(false);
+    }
+
+    public async ValueTask<bool> SetMovementIntentAsync(
+        ServerPlayerId id,
+        ServerPlayerMovementIntent intent,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!ingress.TryPost(
+                GameCommandSourceId.System,
+                new ServerPlayerMovementIntentRuntimeCommand(id, intent, completion)))
+        {
+            throw new InvalidOperationException(
+                "The authoritative command queue rejected the server-player movement intent command.");
+        }
+
+        return await completion.Task.ConfigureAwait(false);
+    }
+
+    public async ValueTask<bool> SetAppearanceAsync(
+        ServerPlayerId id,
+        ServerPlayerAppearanceState appearance,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!ingress.TryPost(
+                GameCommandSourceId.System,
+                new ServerPlayerAppearanceRuntimeCommand(id, appearance, completion)))
+        {
+            throw new InvalidOperationException(
+                "The authoritative command queue rejected the server-player appearance command.");
+        }
+
+        return await completion.Task.ConfigureAwait(false);
+    }
+
+    public async ValueTask<bool> SetVitalsAsync(
+        ServerPlayerId id,
+        ServerPlayerVitalsState vitals,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!ingress.TryPost(
+                GameCommandSourceId.System,
+                new ServerPlayerVitalsRuntimeCommand(id, vitals, completion)))
+        {
+            throw new InvalidOperationException(
+                "The authoritative command queue rejected the server-player vitals command.");
+        }
+
+        return await completion.Task.ConfigureAwait(false);
+    }
+
+    public async ValueTask<bool> SetItemAsync(
+        ServerPlayerId id,
+        ServerPlayerItemState item,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!ingress.TryPost(
+                GameCommandSourceId.System,
+                new ServerPlayerItemRuntimeCommand(id, item, completion)))
+        {
+            throw new InvalidOperationException(
+                "The authoritative command queue rejected the server-player item command.");
         }
 
         return await completion.Task.ConfigureAwait(false);

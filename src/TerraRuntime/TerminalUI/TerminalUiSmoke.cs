@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
@@ -47,9 +48,21 @@ internal static class TerminalUiSmoke
                     AssertWorkspaceRow(workspace, "Running");
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "Running");
-                    AssertRendered(app.Driver!, "wall 0.25/1.50 ms  cpu 0.20/1.20 ms  slow Update 0.15 ms");
-                    AssertRendered(app.Driver!, "Process     CPU 12.5%  heap 32.0 MiB  working 64.0 MiB  allocated 96.0 MiB");
-                    AssertRendered(app.Driver!, "Commands    done 2  pending 3  deferred 1  rejected 4  budget 2  oldest 12.5 ms");
+                    AssertRendered(
+                        app.Driver!,
+                        string.Create(
+                            CultureInfo.CurrentCulture,
+                            $"wall {0.25:F2}/{1.5:F2} ms  cpu {0.2:F2}/{1.2:F2} ms  slow Update {0.15:F2} ms"));
+                    AssertRendered(
+                        app.Driver!,
+                        string.Create(
+                            CultureInfo.CurrentCulture,
+                            $"Process     CPU {12.5:F1}%  heap 32.0 MiB  working 64.0 MiB  allocated 96.0 MiB"));
+                    AssertRendered(
+                        app.Driver!,
+                        string.Create(
+                            CultureInfo.CurrentCulture,
+                            $"Commands    done 2  pending 3  deferred 1  rejected 4  budget 2  oldest {12.5:F1} ms"));
 
                     // Exercise the exact production transition that regressed: an external root is visible,
                     // then every built-in Details screen must become visible through the real MenuBar path.

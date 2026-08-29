@@ -5,10 +5,9 @@ namespace TerraRuntime;
 
 /// <summary>
 /// One authoritative ordinary-world physics step for the verified TerrariaServer 1.4.5.8 player path.
-/// This slice owns source-backed baseline horizontal/jump input, the base hitbox, gravity/fall-speed clamp,
-/// walk-down-slope, ordinary StepDown/StepUp, tile collision, liquid-aware position advance and post-move
-/// slope collision. Mounts and the remaining liquid-specific jump/gravity/floating semantics remain outside
-/// this slice.
+/// This slice owns source-backed baseline horizontal/jump input, the base hitbox, gravity/fall-speed profiles,
+/// walk-down-slope, ordinary StepDown/StepUp, tile collision, liquid-aware position advance, contact transitions
+/// and post-move slope collision. Accessory swimming/floating, mounts, grapples and extra jumps remain outside it.
 /// </summary>
 internal sealed class VanillaServerPlayerDryPhysicsStepper
 {
@@ -52,6 +51,26 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         out ServerPlayerDryPhysicsStepResult next,
         out VanillaServerPlayerJumpState nextJumpState)
     {
+        VanillaLiquidContactState previousContacts = default;
+        return TryStep(
+            in player,
+            horizontalIntent,
+            jumpIntent,
+            in jumpState,
+            in previousContacts,
+            out next,
+            out nextJumpState);
+    }
+
+    public bool TryStep(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent,
+        ServerPlayerJumpIntent jumpIntent,
+        in VanillaServerPlayerJumpState jumpState,
+        in VanillaLiquidContactState previousContacts,
+        out ServerPlayerDryPhysicsStepResult next,
+        out VanillaServerPlayerJumpState nextJumpState)
+    {
         if (!IsValidHorizontalIntent(horizontalIntent))
         {
             next = default;
@@ -59,6 +78,8 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             return false;
         }
 
+        VanillaServerPlayerPhysicsParameters profile =
+            VanillaServerPlayerPhysicsProfile.Resolve(in previousContacts);
         float velocityX = VanillaServerPlayerHorizontalControl.Apply(
             player.VelocityX,
             player.VelocityY,
@@ -67,6 +88,8 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
                 player.VelocityY,
                 jumpIntent,
                 in jumpState,
+                profile.JumpSpeed,
+                profile.JumpHeight,
                 out float velocityY,
                 out nextJumpState))
         {
@@ -74,7 +97,14 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             return false;
         }
 
-        return TryStepCore(in player, velocityX, velocityY, ref nextJumpState, out next);
+        return TryStepCore(
+            in player,
+            velocityX,
+            velocityY,
+            in previousContacts,
+            in profile,
+            ref nextJumpState,
+            out next);
     }
 
     private bool TryStepCore(
@@ -83,13 +113,25 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         out ServerPlayerDryPhysicsStepResult next)
     {
         VanillaServerPlayerJumpState jumpState = VanillaServerPlayerJumpState.Initial;
-        return TryStepCore(in player, velocityX, player.VelocityY, ref jumpState, out next);
+        VanillaLiquidContactState previousContacts = default;
+        VanillaServerPlayerPhysicsParameters profile =
+            VanillaServerPlayerPhysicsProfile.Resolve(in previousContacts);
+        return TryStepCore(
+            in player,
+            velocityX,
+            player.VelocityY,
+            in previousContacts,
+            in profile,
+            ref jumpState,
+            out next);
     }
 
     private bool TryStepCore(
         in PlayerStateSnapshot player,
         float velocityX,
         float controlledVelocityY,
+        in VanillaLiquidContactState previousContacts,
+        in VanillaServerPlayerPhysicsParameters profile,
         ref VanillaServerPlayerJumpState jumpState,
         out ServerPlayerDryPhysicsStepResult next)
     {
@@ -115,7 +157,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
 
         float positionX = player.PositionX;
         float positionY = player.PositionY;
-        float velocityY = Math.Min(controlledVelocityY + Gravity, MaximumFallSpeed);
+        float velocityY = Math.Min(controlledVelocityY + profile.Gravity, profile.MaximumFallSpeed);
 
         velocityY = VanillaWorldWalkDownSlope.ResolveVelocityY(
             tiles,
@@ -125,11 +167,11 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             velocityY,
             PlayerWidth,
             PlayerHeight,
-            Gravity);
+            profile.Gravity);
 
         // TerrariaServer 1.4.5.8 Player.Update performs these after SlopeDownMovement and before
         // the ordinary tile-collision/position update for an unmounted, normal-gravity player.
-        if (velocityY == Gravity)
+        if (velocityY == profile.Gravity)
         {
             positionY = VanillaWorldPlayerStepCollision.StepDown(
                 tiles,
@@ -141,7 +183,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
                 PlayerHeight).PositionY;
         }
 
-        if (velocityY >= Gravity)
+        if (velocityY >= profile.Gravity)
         {
             positionY = VanillaWorldPlayerStepCollision.StepUp(
                 tiles,
@@ -187,6 +229,13 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             PlayerHeight,
             fall: false);
 
+        if (previousContacts.Wet &&
+            !liquidContacts.Wet &&
+            jumpState.RemainingTicks > profile.JumpHeight / 5)
+        {
+            jumpState = new VanillaServerPlayerJumpState(profile.JumpHeight / 5, jumpState.ReleaseReady);
+        }
+
         next = new ServerPlayerDryPhysicsStepResult(
             slope.PositionX,
             slope.PositionY,
@@ -195,7 +244,8 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             CollideX: preCollisionVelocityX != collision.VelocityX,
             CollideY: preCollisionVelocityY != collision.VelocityY,
             collision.HitFloor,
-            collision.HitCeiling);
+            collision.HitCeiling,
+            liquidContacts);
         return true;
     }
 
@@ -213,4 +263,5 @@ internal readonly record struct ServerPlayerDryPhysicsStepResult(
     bool CollideX,
     bool CollideY,
     bool HitFloor,
-    bool HitCeiling);
+    bool HitCeiling,
+    VanillaLiquidContactState LiquidContacts);

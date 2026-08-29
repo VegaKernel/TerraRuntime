@@ -41,11 +41,11 @@ public static class TerrariaServerHost
             runtimeInterestManagement.SetEnabled(true);
 
         if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
-    Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
+            Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
 
-string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
-if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
-    Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
+        string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
+        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
+            Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
 
         if (!File.Exists(options.WorldPath))
         {
@@ -338,7 +338,8 @@ if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
             projectileReplication: projectileReplication,
             tileManipulationReplication: tileManipulationReplication,
             serverPlayerStates: serverPlayerStates,
-            serverPlayerIdentities: serverPlayerIdentities);
+            serverPlayerIdentities: serverPlayerIdentities,
+            serverPlayerEvents: runtimeConnections);
         using var sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,
             bootstrapPackets,

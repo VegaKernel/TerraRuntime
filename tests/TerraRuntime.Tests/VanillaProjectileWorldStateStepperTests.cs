@@ -7,6 +7,27 @@ namespace TerraRuntime.Tests;
 
 public sealed class VanillaProjectileWorldStateStepperTests
 {
+    [Theory]
+    [InlineData(0f, 100f)]
+    [InlineData(1578f, 100f)]
+    [InlineData(100f, 0f)]
+    [InlineData(100f, 1578f)]
+    public void Non_boomerang_world_edge_deactivates_before_ai(float positionX, float positionY)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot projectile = CreateSnapshot(positionX, positionY, velocityX: 4f, velocityY: 2f);
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 3600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(positionX, next.State.PositionX);
+        Assert.Equal(positionY, next.State.PositionY);
+        Assert.Equal(0f, next.State.Ai.Ai0);
+        Assert.Equal(0, next.TimeLeft);
+        Assert.Equal(ProjectileSimulationTerminationReason.WorldBounds, next.TerminationReason);
+    }
+
     [Fact]
     public void Shuriken_empty_world_advances_ai_motion_and_lifetime()
     {

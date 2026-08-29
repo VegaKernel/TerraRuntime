@@ -12,6 +12,31 @@ public readonly record struct NpcShopPurchaseRequest(
     ShopId ShopId,
     ShopOfferId OfferId);
 
+/// <summary>
+/// Immutable post-commit observation of an authoritative shop purchase.
+/// </summary>
+public readonly record struct NpcShopPurchaseCommit(
+    PlayerHandle Buyer,
+    NpcHandle Vendor,
+    ShopId ShopId,
+    ShopOfferId OfferId,
+    ItemTypeId ItemType,
+    short Stack,
+    ShopCurrencyKind Currency,
+    long Price,
+    long Change,
+    ulong CatalogRevision,
+    short DestinationSlot,
+    int InventoryMutationCount);
+
+/// <summary>
+/// Observer boundary invoked only after the complete inventory transaction commits.
+/// </summary>
+public interface INpcShopPurchaseCommitSink
+{
+    void PurchaseCommitted(in NpcShopPurchaseCommit purchase);
+}
+
 public enum NpcShopPurchaseResult : byte
 {
     Committed = 0,

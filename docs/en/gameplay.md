@@ -221,6 +221,8 @@ Current architecture includes runtime projectile store, ownership/provenance fac
 
 Generic supported tile impacts now retain `TileCollision` as their semantic termination reason through the generation-safe authoritative commit. Post-behavior decorators and termination observers can therefore distinguish an impact from ordinary lifetime expiry without inspecting wire state.
 
+The source-backed world step also applies vanilla's pre-AI inclusive world-edge deactivation for supported non-boomerang families and reports `WorldBounds` separately. This prevents out-of-world state from being simulated for another tick while preserving the vanilla boomerang exemption for its future behavior slice.
+
 | Verified family | Vanilla AI style |
 |---|---:|
 | Arrow | `1` |

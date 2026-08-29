@@ -50,6 +50,29 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             return false;
         }
 
+        // Projectile.Update deactivates non-boomerang projectiles crossing Main's inclusive world edges before AI.
+        // WorldTileStore dimensions map to Main.rightWorld/bottomWorld through the verified 16 px tile scale.
+        if (definition.AiStyle != VanillaProjectileAiStyles.Boomerang && IsOutsideWorld(in current, in definition))
+        {
+            next = new ProjectileSimulationStepResult(
+                new ProjectileStateUpdate(
+                    current.Type,
+                    current.Spawner,
+                    current.PositionX,
+                    current.PositionY,
+                    current.VelocityX,
+                    current.VelocityY,
+                    current.Ai,
+                    current.BannerIdToRespondTo,
+                    current.Damage,
+                    current.KnockBack,
+                    current.OriginalDamage),
+                TimeLeft: 0,
+                Liquid: projectile.Lifecycle.Liquid,
+                TerminationReason: ProjectileSimulationTerminationReason.WorldBounds);
+            return true;
+        }
+
         var behaviorContext = new VanillaProjectileBehaviorContext(
             windPhysics,
             windSpeedCurrent,
@@ -71,4 +94,12 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             in behaviorContext,
             out next);
     }
+
+    private bool IsOutsideWorld(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition definition) =>
+        projectile.PositionX <= 0f ||
+        projectile.PositionX + definition.Width >= worldMotion.WorldWidthPixels ||
+        projectile.PositionY <= 0f ||
+        projectile.PositionY + definition.Height >= worldMotion.WorldHeightPixels;
 }

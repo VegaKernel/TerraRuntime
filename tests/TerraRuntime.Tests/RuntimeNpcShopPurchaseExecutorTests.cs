@@ -30,6 +30,19 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
         Assert.True(fixture.Inventory.TryGet(fixture.Buyer, 53, out RuntimePlayerInventoryItem unusedCoinSlot));
         Assert.True(unusedCoinSlot.IsEmpty);
         Assert.Equal(4, fixture.Events.EquipmentUpdates.Count);
+        NpcShopPurchaseCommit purchase = Assert.Single(fixture.Purchases.Commits);
+        Assert.Equal(fixture.Buyer.Player, purchase.Buyer);
+        Assert.Equal(fixture.Vendor.Handle, purchase.Vendor);
+        Assert.Equal(new ShopId("test:shop"), purchase.ShopId);
+        Assert.Equal(new ShopOfferId("test:dirt"), purchase.OfferId);
+        Assert.Equal(VanillaItemIds.DirtBlock, purchase.ItemType);
+        Assert.Equal((short)1, purchase.Stack);
+        Assert.Equal(ShopCurrencyKind.VanillaCoins, purchase.Currency);
+        Assert.Equal(1, purchase.Price);
+        Assert.Equal(999999, purchase.Change);
+        Assert.Equal(fixture.Shops.Snapshot.Revision, purchase.CatalogRevision);
+        Assert.Equal((short)0, purchase.DestinationSlot);
+        Assert.Equal(4, purchase.InventoryMutationCount);
     }
 
     [Fact]
@@ -47,6 +60,19 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
         Assert.True(fixture.Inventory.TryGet(fixture.Buyer, 0, out RuntimePlayerInventoryItem item));
         Assert.True(item.IsEmpty);
         Assert.Empty(fixture.Events.EquipmentUpdates);
+        Assert.Empty(fixture.Purchases.Commits);
+    }
+
+    [Fact]
+    public void Purchase_commit_observer_failure_does_not_change_committed_result()
+    {
+        Fixture fixture = new(purchaseEvents: new ThrowingPurchaseCommitSink());
+        fixture.SetInventory(50, 1, VanillaCoinFacts.CopperCoin);
+        NpcShopPurchaseRequest request = fixture.Request(price: 1);
+
+        Assert.Equal(NpcShopPurchaseResult.Committed, fixture.Executor.TryPurchase(fixture.Buyer, in request));
+        Assert.True(fixture.Inventory.TryGet(fixture.Buyer, 0, out RuntimePlayerInventoryItem bought));
+        Assert.Equal(VanillaItemIds.DirtBlock, bought.ItemType);
     }
 
     [Fact]
@@ -152,7 +178,10 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
         private readonly ShopOfferId offerId = new("test:dirt");
         private readonly NpcShopRegistrationLease shopLease;
 
-        public Fixture(GameplayArchetypeId? shopArchetypeId = null, short offerStack = 1)
+        public Fixture(
+            GameplayArchetypeId? shopArchetypeId = null,
+            short offerStack = 1,
+            INpcShopPurchaseCommitSink? purchaseEvents = null)
         {
             Buyer = new ConnectionHandle(
                 GameCommandSourceId.FromConnection(9001),
@@ -186,7 +215,14 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
             Assert.True(Shops.CommitPending());
 
             Events = new RecordingPlayerEventSink();
-            Executor = new RuntimeNpcShopPurchaseExecutor(Npcs, NpcIdentities, Shops, Inventory, Events);
+            Purchases = purchaseEvents as RecordingPurchaseCommitSink ?? new RecordingPurchaseCommitSink();
+            Executor = new RuntimeNpcShopPurchaseExecutor(
+                Npcs,
+                NpcIdentities,
+                Shops,
+                Inventory,
+                Events,
+                purchaseEvents ?? Purchases);
         }
 
         public ConnectionHandle Buyer { get; }
@@ -197,6 +233,7 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
         public GameplayArchetypeId VendorArchetypeId { get; }
         public NpcSnapshot Vendor { get; }
         public RecordingPlayerEventSink Events { get; }
+        public RecordingPurchaseCommitSink Purchases { get; }
         public RuntimeNpcShopPurchaseExecutor Executor { get; }
 
         public void SetInventory(short slot, short stack, ItemTypeId itemType)
@@ -233,6 +270,19 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
             Assert.True(Shops.Snapshot.TryGetById(shopId, out NpcShopCatalog? catalog));
             return Assert.IsType<NpcShopCatalog>(catalog);
         }
+    }
+
+    private sealed class RecordingPurchaseCommitSink : INpcShopPurchaseCommitSink
+    {
+        public List<NpcShopPurchaseCommit> Commits { get; } = [];
+
+        public void PurchaseCommitted(in NpcShopPurchaseCommit purchase) => Commits.Add(purchase);
+    }
+
+    private sealed class ThrowingPurchaseCommitSink : INpcShopPurchaseCommitSink
+    {
+        public void PurchaseCommitted(in NpcShopPurchaseCommit purchase) =>
+            throw new InvalidOperationException("observer failure");
     }
 
     private sealed class RecordingPlayerEventSink : IRuntimePlayerEventSink

@@ -2,8 +2,6 @@ using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
 
-public readonly record struct PlayerRgbColor(byte R, byte G, byte B);
-
 /// <summary>
 /// Server-owned identity plus client-supplied player presentation state accepted for synchronization.
 /// The claimed wire id is intentionally absent.

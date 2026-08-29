@@ -195,6 +195,12 @@ int released = await runtime.NpcActors.ReleaseControllerAsync(
 
 `QueueRejected` не означает «наверное всё равно применилось».
 
+### Наблюдение за commit покупки в NPC shop
+
+`INpcShopPurchaseCommitSink` получает immutable `NpcShopPurchaseCommit` только после atomic commit всей транзакции с монетами и inventory. Record содержит exact-generation handles покупателя и продавца, stable shop/offer IDs, catalog revision, цену/сдачу, destination slot и число mutations. Это observer boundary без права изменять inventory; ошибка observer не меняет результат уже committed покупки.
+
+`RuntimeActorInteractionBoundary` валидирует semantic `ActorInteractionRequest` до policy dispatch. Требуются exact-generation player/NPC handles, live available state, source-backed target definition и пересечение с vanilla-регионом `TileReachCheckSettings.Simple`. Accepted request фиксирует обе authoritative revisions; raw wire slots и финальные policy/UI decisions остаются вне этого boundary.
+
 ## 8. Connection-free runtime-owned players
 
 `IServerPlayerOperations` создаёт runtime-owned player actors без network connection, используя ordinary Terraria player-slot pool.
@@ -211,6 +217,23 @@ if (!result.IsCreated)
 
 PlayerHandle handle = result.Player;
 ```
+
+Appearance, vitals и packet-valid equipment/inventory slots также изменяются authoritative commands по stable `ServerPlayerId`:
+
+```csharp
+await runtime.ServerPlayers.SetAppearanceAsync(serverPlayerId, appearance, cancellationToken);
+await runtime.ServerPlayers.SetVitalsAsync(
+    serverPlayerId,
+    new ServerPlayerVitalsState(Life: 100, MaxLife: 100, Mana: 20, MaxMana: 20),
+    cancellationToken);
+await runtime.ServerPlayers.SetItemAsync(serverPlayerId, item, cancellationToken);
+```
+
+TerraRuntime применяет ту же source-backed normalization appearance, life и item ID/slot, что и на connection boundaries. State привязан к exact generation и удаляется вместе с server-player lease; sparse item storage выделяется только после первого non-empty item.
+
+Зафиксированные изменения жизненного цикла, внешности, пересылаемой экипировки, показателей и движения server-player проецируются активным реальным клиентам обычными пакетами игрока протокола `326`. Новый активный клиент получает базовое состояние существующих server-player в стабильном порядке: активность, внешность, экипировка, показатели и движение; при удалении отправляется неактивное состояние игрока. Первый срез репликации консервативно отправляет состояние server-player всем активным клиентам; AOI-маршрутизация fake-player остаётся отдельной задачей.
+
+Входящие изменения внешности, экипировки, показателей и движения connection-owned игрока принимаются только для точного слота, выделенного этому соединению. Поскольку соединения и server-player используют единый эксклюзивный пул слотов, клиентский пакет с заявленным server-owned слотом отклоняется до authoritative command queue.
 
 После creation host не получает direct position/velocity setters. Control выражается semantic intent:
 
@@ -229,11 +252,23 @@ await runtime.ServerPlayers.SetJumpIntentAsync(
     serverPlayerId,
     ServerPlayerJumpIntent.Released,
     cancellationToken);
+
+bool moving = await runtime.ServerPlayers.SetMovementIntentAsync(
+    serverPlayerId,
+    ServerPlayerMovementIntent.MoveTo(targetX: 800f, targetY: 320f),
+    cancellationToken);
+
+bool following = await runtime.ServerPlayers.SetMovementIntentAsync(
+    serverPlayerId,
+    ServerPlayerMovementIntent.FollowPlayer(targetPlayer),
+    cancellationToken);
 ```
 
 `ServerPlayerJumpIntent` — button-level semantic input, не velocity command. TerraRuntime владеет ordinary vanilla jump speed/duration, release gate, gravity и collision. Holding jump через landing не запускает новый jump, пока `Released` не rearms vanilla release gate.
 
-Liquid contact TerraRuntime определяет самостоятельно по authoritative world tiles; host по-прежнему не передаёт тип жидкости или velocity. Проверенный collision/displacement slice использует vanilla movement factors $0.5$ для воды/лавы, $0.25$ для мёда и $0.375$ для shimmer. Эти коэффициенты масштабируют только position advance: authoritative collision velocity не масштабируется, а component оси, ограниченная tile collision, применяется к позиции без повторного liquid scaling. Liquid-specific gravity/fall-speed, swimming/jump control, floating и wet-entry/exit state этим slice пока не заявляются как source-backed. Mounts, grapples и extra-jump families также остаются отдельной gameplay-работой.
+`MoveTo` и `FollowPlayer` на authoritative tick преобразуются в те же horizontal/jump button intents и никогда не записывают position или velocity напрямую. Follow target задаётся exact-generation `PlayerHandle`: disconnect или slot reuse останавливает controller, а не перенаправляет его на replacement player. Ограниченные stop, vertical-jump и maximum-distance policy задаются через `ServerPlayerMovementOptions`.
+
+Liquid contact TerraRuntime определяет самостоятельно по authoritative world tiles; host по-прежнему не передаёт тип жидкости или velocity. Проверенный ordinary unmounted path переносит exact-generation contact state между тиками и выбирает source-backed gravity, fall-speed и jump profile сухой среды, воды/лавы, мёда или shimmer по предыдущему contact pass. Текущий контакт выбирает vanilla position factors $0.5$ для воды/лавы, $0.25$ для мёда и $0.375$ для shimmer; authoritative collision velocity не масштабируется, а ограниченная tile collision ось применяется без повторного коэффициента. Выход из жидкости также ограничивает оставшийся ordinary jump counter в source-backed transition point. Accessory swimming/floating, mounts, grapples и extra-jump families остаются отдельной gameplay-работой и не входят в поддерживаемый baseline.
 
 Despawn:
 

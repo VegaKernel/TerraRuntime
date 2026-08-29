@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
@@ -165,6 +166,109 @@ public sealed class RuntimeServerPlayerStateStore
         return true;
     }
 
+    public bool TrySetAppearance(
+        PlayerHandle player,
+        in ServerPlayerAppearanceState appearance,
+        out ServerPlayerAppearanceState normalized)
+    {
+        normalized = default;
+        if (!TryGetState(player, out ServerPlayerRuntimeState? state) ||
+            state.Revision == ulong.MaxValue)
+        {
+            return false;
+        }
+
+        PlayerAppearanceCommitRequest request = ToCommitRequest(player.Slot, in appearance);
+        if (!VanillaPlayerAppearanceNormalizer.TryNormalize(in request, out PlayerAppearanceCommitRequest commit))
+            return false;
+
+        normalized = ToServerState(in commit);
+        state.Revision++;
+        state.Appearance = normalized;
+        return true;
+    }
+
+    public bool TryGetAppearance(
+        PlayerHandle player,
+        out ServerPlayerAppearanceState appearance)
+    {
+        if (!TryGetState(player, out ServerPlayerRuntimeState? state) ||
+            state.Appearance is not ServerPlayerAppearanceState current)
+        {
+            appearance = default;
+            return false;
+        }
+
+        appearance = current;
+        return true;
+    }
+
+    public bool TrySetVitals(
+        PlayerHandle player,
+        in ServerPlayerVitalsState vitals,
+        out PlayerStateSnapshot snapshot)
+    {
+        if (!TryGetState(player, out ServerPlayerRuntimeState? state) ||
+            state.Revision == ulong.MaxValue)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        var health = new PlayerHealthCommitRequest(player.Slot, vitals.Life, vitals.MaxLife);
+        PlayerHealthCommitRequest normalizedHealth = VanillaPlayerHealthNormalizer.Normalize(in health);
+        state.Revision++;
+        state.HasHealth = true;
+        state.Life = normalizedHealth.Life;
+        state.MaxLife = normalizedHealth.MaxLife;
+        state.IsDead = normalizedHealth.Life <= 0;
+        state.HasMana = true;
+        state.Mana = vitals.Mana;
+        state.MaxMana = vitals.MaxMana;
+        snapshot = state.CaptureSnapshot();
+        return true;
+    }
+
+    public bool TrySetItem(
+        PlayerHandle player,
+        in ServerPlayerItemState item,
+        out ServerPlayerItemState normalized)
+    {
+        normalized = default;
+        if (!TryGetState(player, out ServerPlayerRuntimeState? state) ||
+            state.Revision == ulong.MaxValue ||
+            !TryNormalizeItem(player.Slot, in item, out normalized))
+        {
+            return false;
+        }
+
+        state.Revision++;
+        if (normalized.IsEmpty)
+            state.Items?.Remove(normalized.Slot);
+        else
+            (state.Items ??= [])[normalized.Slot] = normalized;
+        return true;
+    }
+
+    public bool TryGetItem(
+        PlayerHandle player,
+        short slot,
+        out ServerPlayerItemState item)
+    {
+        if (!VanillaPlayerItemSlotCatalog.IsValid(slot) ||
+            !TryGetState(player, out ServerPlayerRuntimeState? state))
+        {
+            item = default;
+            return false;
+        }
+
+        if (state.Items is not null && state.Items.TryGetValue(slot, out item))
+            return true;
+
+        item = new ServerPlayerItemState(slot, VanillaItemIds.None, 0, default, 0);
+        return true;
+    }
+
     public bool TryRemove(PlayerHandle player, out PlayerStateSnapshot removed)
     {
         if (!TryGetState(player, out ServerPlayerRuntimeState? state))
@@ -195,6 +299,106 @@ public sealed class RuntimeServerPlayerStateStore
         return state is not null && state.Player == player;
     }
 
+    private static PlayerAppearanceCommitRequest ToCommitRequest(
+        PlayerSlotId playerSlot,
+        in ServerPlayerAppearanceState state) =>
+        new(
+            playerSlot,
+            state.SkinVariant,
+            state.VoiceVariant,
+            state.VoicePitchOffset,
+            state.Hair,
+            state.Name,
+            state.HairDye,
+            state.HideVisibleAccessory,
+            state.HideMisc,
+            state.HairColor,
+            state.SkinColor,
+            state.EyeColor,
+            state.ShirtColor,
+            state.UnderShirtColor,
+            state.PantsColor,
+            state.ShoeColor,
+            state.DifficultyFlags,
+            state.TorchAndCartFlags,
+            state.ConsumableUnlockFlags);
+
+    private static ServerPlayerAppearanceState ToServerState(in PlayerAppearanceCommitRequest state) =>
+        new(
+            state.SkinVariant,
+            state.VoiceVariant,
+            state.VoicePitchOffset,
+            state.Hair,
+            state.Name,
+            state.HairDye,
+            state.HideVisibleAccessory,
+            state.HideMisc,
+            state.HairColor,
+            state.SkinColor,
+            state.EyeColor,
+            state.ShirtColor,
+            state.UnderShirtColor,
+            state.PantsColor,
+            state.ShoeColor,
+            state.DifficultyFlags,
+            state.TorchAndCartFlags,
+            state.ConsumableUnlockFlags);
+
+    private static bool TryNormalizeItem(
+        PlayerSlotId playerSlot,
+        in ServerPlayerItemState item,
+        out ServerPlayerItemState normalized)
+    {
+        if (!VanillaPlayerItemSlotCatalog.IsValid(item.Slot))
+        {
+            normalized = default;
+            return false;
+        }
+
+        if (item.IsEmpty)
+        {
+            if (!item.ItemType.IsNone || item.Stack != 0 || item.Prefix.Value != 0 || item.ItemFlags != 0)
+            {
+                normalized = default;
+                return false;
+            }
+
+            normalized = new ServerPlayerItemState(item.Slot, VanillaItemIds.None, 0, default, 0);
+            return true;
+        }
+
+        if (item.Stack <= 0 ||
+            item.Prefix.Value > byte.MaxValue ||
+            !VanillaItemIds.TryCreate(item.ItemType.Value, out ItemTypeId canonical) ||
+            canonical != item.ItemType)
+        {
+            normalized = default;
+            return false;
+        }
+
+        var request = new PlayerEquipmentCommitRequest(
+            playerSlot,
+            item.Slot,
+            item.Stack,
+            checked((byte)item.Prefix.Value),
+            checked((short)item.ItemType.Value),
+            item.ItemFlags);
+        PlayerEquipmentCommitRequest commit = VanillaPlayerItemNormalizer.Normalize(in request);
+        if (!commit.TryGetCanonicalItemType(out ItemTypeId itemType) || itemType.IsNone)
+        {
+            normalized = default;
+            return false;
+        }
+
+        normalized = new ServerPlayerItemState(
+            commit.SlotId,
+            itemType,
+            commit.Stack,
+            commit.PrefixId,
+            commit.ItemFlags);
+        return true;
+    }
+
     private sealed class ServerPlayerRuntimeState
     {
         public ServerPlayerId Id { get; init; }
@@ -205,6 +409,14 @@ public sealed class RuntimeServerPlayerStateStore
         public float VelocityX { get; set; }
         public float VelocityY { get; set; }
         public bool IsDead { get; set; }
+        public ServerPlayerAppearanceState? Appearance { get; set; }
+        public bool HasHealth { get; set; }
+        public short Life { get; set; }
+        public short MaxLife { get; set; }
+        public bool HasMana { get; set; }
+        public short Mana { get; set; }
+        public short MaxMana { get; set; }
+        public Dictionary<short, ServerPlayerItemState>? Items { get; set; }
 
         public PlayerStateSnapshot CaptureSnapshot() =>
             new(
@@ -228,7 +440,13 @@ public sealed class RuntimeServerPlayerStateStore
                 CameraTargetX: 0f,
                 CameraTargetY: 0f)
             {
-                IsDead = IsDead
+                HasHealth = HasHealth,
+                Life = Life,
+                MaxLife = MaxLife,
+                IsDead = IsDead,
+                HasMana = HasMana,
+                Mana = Mana,
+                MaxMana = MaxMana
             };
     }
 }

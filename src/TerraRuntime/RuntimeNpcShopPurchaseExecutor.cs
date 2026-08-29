@@ -25,13 +25,15 @@ internal sealed class RuntimeNpcShopPurchaseExecutor
     private readonly RuntimeNpcShopCatalogRegistry shops;
     private readonly RuntimePlayerInventoryStore inventory;
     private readonly IRuntimePlayerEventSink? playerEvents;
+    private readonly INpcShopPurchaseCommitSink? purchaseEvents;
 
     public RuntimeNpcShopPurchaseExecutor(
         RuntimeNpcStore npcs,
         RuntimeNpcArchetypeIdentityStore archetypes,
         RuntimeNpcShopCatalogRegistry shops,
         RuntimePlayerInventoryStore inventory,
-        IRuntimePlayerEventSink? playerEvents = null)
+        IRuntimePlayerEventSink? playerEvents = null,
+        INpcShopPurchaseCommitSink? purchaseEvents = null)
     {
         ArgumentNullException.ThrowIfNull(npcs);
         ArgumentNullException.ThrowIfNull(archetypes);
@@ -42,6 +44,7 @@ internal sealed class RuntimeNpcShopPurchaseExecutor
         this.shops = shops;
         this.inventory = inventory;
         this.playerEvents = playerEvents;
+        this.purchaseEvents = purchaseEvents;
     }
 
     public NpcShopPurchaseResult TryPurchase(
@@ -146,6 +149,28 @@ internal sealed class RuntimeNpcShopPurchaseExecutor
             PlayerEquipmentCommitRequest equipment =
                 mutation.Item.ToCommitRequest(buyerConnection.Player.Slot, mutation.Slot);
             playerEvents?.PlayerEquipmentUpdated(buyerConnection, in equipment);
+        }
+
+        var purchase = new NpcShopPurchaseCommit(
+            request.Buyer,
+            request.Vendor,
+            request.ShopId,
+            request.OfferId,
+            offer.ItemType,
+            offer.Stack,
+            offer.Currency,
+            price,
+            price == 0 ? 0 : totalCoinValue - price,
+            snapshot.Revision,
+            checked((short)destination),
+            mutationCount);
+        try
+        {
+            purchaseEvents?.PurchaseCommitted(in purchase);
+        }
+        catch
+        {
+            // Observer failures cannot roll back or reinterpret the already committed transaction.
         }
 
         return NpcShopPurchaseResult.Committed;

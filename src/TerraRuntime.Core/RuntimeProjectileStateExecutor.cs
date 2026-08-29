@@ -8,7 +8,8 @@ public enum ProjectileSimulationTerminationReason : byte
     None = 0,
     LifetimeExpired = 1,
     TileCollision = 2,
-    BehaviorKill = 3
+    BehaviorKill = 3,
+    WorldBounds = 4
 }
 
 /// <summary>
@@ -252,7 +253,8 @@ public sealed class RuntimeProjectileStateExecutor
         if (reason is not ProjectileSimulationTerminationReason.None and
             not ProjectileSimulationTerminationReason.LifetimeExpired and
             not ProjectileSimulationTerminationReason.TileCollision and
-            not ProjectileSimulationTerminationReason.BehaviorKill)
+            not ProjectileSimulationTerminationReason.BehaviorKill and
+            not ProjectileSimulationTerminationReason.WorldBounds)
         {
             normalized = default;
             return false;
