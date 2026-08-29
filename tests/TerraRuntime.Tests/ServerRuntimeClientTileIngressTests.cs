@@ -194,7 +194,7 @@ public sealed class ServerRuntimeClientTileIngressTests
     }
 
     [Fact]
-    public void Normal_kill_tile_action_remains_unsupported_until_drop_authority_exists()
+    public void Normal_kill_tile_without_supported_pickaxe_is_rejected_without_commit()
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 909);
@@ -216,8 +216,8 @@ public sealed class ServerRuntimeClientTileIngressTests
         Assert.Equal(1, fixture.State.ClientTileManipulationRequests);
         Assert.Equal(1, fixture.State.ValidatedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
-        Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
-        Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(before, fixture.Tiles.Get(10, 10));
         Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
         Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
