@@ -21,6 +21,8 @@ internal static class StartupWorldCreationRequestParser
         "--world-seed",
         "--world-width",
         "--world-height",
+        "--world-game-mode",
+        "--world-evil",
         "--world-output"
     ];
 
@@ -104,7 +106,16 @@ internal static class StartupWorldCreationRequestParser
             return false;
         }
 
-        var generation = new WorldGenerationRequest(generatorId, worldName!, seed, width, height);
+        if (!TryReadGameMode(args, out WorldGenerationGameMode gameMode, out error) ||
+            !TryReadWorldEvil(args, out WorldGenerationEvil evil, out error))
+        {
+            return false;
+        }
+
+        var generation = new WorldGenerationRequest(generatorId, worldName!, seed, width, height)
+        {
+            Options = new WorldGenerationOptions(gameMode, evil)
+        };
         try
         {
             generation.Validate();
@@ -135,6 +146,56 @@ internal static class StartupWorldCreationRequestParser
 
         request = new StartupWorldCreationRequest(generation, outputPath);
         return true;
+    }
+
+    private static bool TryReadGameMode(
+        IReadOnlyList<string> args,
+        out WorldGenerationGameMode gameMode,
+        out string? error)
+    {
+        if (!TryReadOptionalValue(args, "--world-game-mode", out string? value, out error))
+        {
+            if (error is not null)
+            {
+                gameMode = default;
+                return false;
+            }
+
+            gameMode = WorldGenerationGameMode.Classic;
+            return true;
+        }
+
+        if (Enum.TryParse(value, ignoreCase: true, out gameMode) && Enum.IsDefined(gameMode))
+            return true;
+
+        error = "--world-game-mode must be classic, expert, master, or journey.";
+        gameMode = default;
+        return false;
+    }
+
+    private static bool TryReadWorldEvil(
+        IReadOnlyList<string> args,
+        out WorldGenerationEvil evil,
+        out string? error)
+    {
+        if (!TryReadOptionalValue(args, "--world-evil", out string? value, out error))
+        {
+            if (error is not null)
+            {
+                evil = default;
+                return false;
+            }
+
+            evil = WorldGenerationEvil.Corruption;
+            return true;
+        }
+
+        if (Enum.TryParse(value, ignoreCase: true, out evil) && Enum.IsDefined(evil))
+            return true;
+
+        error = "--world-evil must be corruption or crimson.";
+        evil = default;
+        return false;
     }
 
     private static bool IsCreationOption(string value)
