@@ -23,7 +23,8 @@ public enum PlayerBootstrapStopReason : byte
     MalformedPlayerEquipment = 11,
     MalformedPlayerSpawn = 12,
     DynamicEntityBootstrapFailure = 13,
-    MalformedChat = 14
+    MalformedChat = 14,
+    SectionWorkRateLimited = 15
 }
 
 /// <summary>
@@ -322,7 +323,14 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (_session.State != PlayerJoinState.AwaitingSectionRequest)
             return Stop(PlayerBootstrapStopReason.InvalidJoinState);
 
-        if (!_packets.TryCreateSectionResponse(request.TileX, request.TileY, request.Team, out PlayerBootstrapSectionResponse sectionResponse))
+        PlayerBootstrapSectionResponseResult sectionResult = _packets.CreateSectionResponseDetailed(
+            request.TileX,
+            request.TileY,
+            request.Team,
+            out PlayerBootstrapSectionResponse sectionResponse);
+        if (sectionResult == PlayerBootstrapSectionResponseResult.RateLimited)
+            return Stop(PlayerBootstrapStopReason.SectionWorkRateLimited);
+        if (sectionResult != PlayerBootstrapSectionResponseResult.Created)
             return Stop(PlayerBootstrapStopReason.SectionEncodingFailure);
 
         if (!TryQueue(_packets.WorldInfoFrame) ||
