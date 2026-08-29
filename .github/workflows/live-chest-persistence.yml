@@ -96,7 +96,7 @@ jobs:
           dotnet run \
             --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
             -c Release \
-            -- "$world" > "$selector_log" 2>&1
+            -- "$world" --allow-empty > "$selector_log" 2>&1
           selector_status=$?
           set -e
           cat "$selector_log"
