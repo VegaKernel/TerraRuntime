@@ -37,6 +37,8 @@ public sealed class RuntimeConnectionQueueTelemetryTests
         Assert.Equal(1, snapshot.SlowClients);
         Assert.Equal(2, snapshot.TopQueues.Length);
         Assert.Equal(1, snapshot.TopQueues.Span[0].ConnectionId);
+        Assert.Equal(1, snapshot.TopQueues.Span[0].MaxFrames);
+        Assert.Equal(32, snapshot.TopQueues.Span[0].MaxQueuedBytes);
         Assert.True(snapshot.TopQueues.Span[0].SlowClient);
         Assert.Equal(1, snapshot.TopQueues.Span[0].PeakQueuedFrames);
         Assert.Equal(3, snapshot.TopQueues.Span[0].PeakQueuedBytes);
@@ -58,7 +60,7 @@ public sealed class RuntimeConnectionQueueTelemetryTests
     }
 
     [Fact]
-    public void Peak_pressure_survives_after_the_writer_drains_the_queue()
+    public void Peak_pressure_survives_writer_drain_and_connection_unregister()
     {
         var telemetry = new RuntimeConnectionQueueTelemetry();
         var queue = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 16));
@@ -76,8 +78,20 @@ public sealed class RuntimeConnectionQueueTelemetryTests
         Assert.Equal(2, snapshot.PeakQueuedFrames);
         Assert.Equal(13, snapshot.PeakQueuedBytes);
         Assert.Single(snapshot.TopQueues.ToArray());
+        Assert.Equal(4, snapshot.TopQueues.Span[0].MaxFrames);
+        Assert.Equal(64, snapshot.TopQueues.Span[0].MaxQueuedBytes);
         Assert.Equal(2, snapshot.TopQueues.Span[0].PeakQueuedFrames);
         Assert.Equal(13, snapshot.TopQueues.Span[0].PeakQueuedBytes);
+
+        Assert.True(telemetry.TryUnregister(7));
+        snapshot = telemetry.CaptureSnapshot(maxDetails: 1);
+
+        Assert.Equal(0, snapshot.TrackedQueues);
+        Assert.Equal(0, snapshot.QueuedFrames);
+        Assert.Equal(0, snapshot.QueuedBytes);
+        Assert.Equal(2, snapshot.PeakQueuedFrames);
+        Assert.Equal(13, snapshot.PeakQueuedBytes);
+        Assert.Empty(snapshot.TopQueues.ToArray());
     }
 
     [Fact]
