@@ -40,4 +40,12 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long WorldItemRejectedFrames = 0,
     long WorldItemUnsupportedCommits = 0,
     long AdmissionCapacityRejectedConnections = 0,
-    long AdmissionRateRejectedConnections = 0);
+    long AdmissionRateRejectedConnections = 0,
+    long StopProtocolFailures = 0,
+    long StopRateLimited = 0,
+    long StopInvalidHandshake = 0,
+    long StopUnsupportedProtocol = 0,
+    long StopSlowClient = 0,
+    long StopApplicationStopped = 0,
+    long StopHandshakeTimeout = 0,
+    long StopIdleTimeout = 0);
