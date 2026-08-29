@@ -391,8 +391,15 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         for (int index = 0; index < count; index++)
         {
             PlayerStateSnapshot player = _serverPlayerSnapshots[index];
-            if (!_serverPlayerDryPhysics.TryStep(in player, out ServerPlayerDryPhysicsStepResult next))
+            ServerPlayerHorizontalIntent horizontalIntent =
+                _serverPlayerCommands?.GetHorizontalIntent(player.Player) ?? ServerPlayerHorizontalIntent.Stop;
+            if (!_serverPlayerDryPhysics.TryStep(
+                    in player,
+                    horizontalIntent,
+                    out ServerPlayerDryPhysicsStepResult next))
+            {
                 continue;
+            }
 
             if (next.PositionX == player.PositionX &&
                 next.PositionY == player.PositionY &&

@@ -180,6 +180,15 @@ public sealed class TrustedHostModuleLoaderTests
             return ValueTask.FromResult(new ServerPlayerCreateResult(ServerPlayerCreateStatus.NoAvailableSlot, default));
         }
 
+        public ValueTask<bool> SetHorizontalIntentAsync(
+            ServerPlayerId id,
+            ServerPlayerHorizontalIntent intent,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
+        }
+
         public ValueTask<bool> DespawnAsync(
             ServerPlayerId id,
             CancellationToken cancellationToken = default)
