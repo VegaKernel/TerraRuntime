@@ -18,7 +18,13 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
     private int plainConsoleActive;
 
     public RuntimeHostLog(RuntimeLogBuffer runtimeLogs)
-        : this(runtimeLogs, Console.Out, Console.Error)
+        : this(
+            runtimeLogs,
+            Console.Out,
+            Console.Error,
+            RuntimeHostLoggingOptions.FromEnvironment(),
+            additionalSinks: null,
+            correlationId: null)
     {
     }
 
@@ -29,24 +35,54 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         RuntimeLogPipelineOptions? pipelineOptions = null,
         IReadOnlyList<IRuntimeLogSink>? additionalSinks = null,
         string? correlationId = null)
+        : this(
+            runtimeLogs,
+            standardOutput,
+            standardError,
+            RuntimeHostLoggingOptions.ForCompatibilityTests(pipelineOptions),
+            additionalSinks,
+            correlationId)
+    {
+    }
+
+    private RuntimeHostLog(
+        RuntimeLogBuffer runtimeLogs,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        RuntimeHostLoggingOptions loggingOptions,
+        IReadOnlyList<IRuntimeLogSink>? additionalSinks,
+        string? correlationId)
     {
         ArgumentNullException.ThrowIfNull(runtimeLogs);
         ArgumentNullException.ThrowIfNull(standardOutput);
         ArgumentNullException.ThrowIfNull(standardError);
+        ArgumentNullException.ThrowIfNull(loggingOptions);
 
         this.correlationId = string.IsNullOrWhiteSpace(correlationId)
             ? Guid.NewGuid().ToString("N")
             : correlationId;
 
-        var sinks = new List<IRuntimeLogSink>(2 + (additionalSinks?.Count ?? 0))
+        var sinks = new List<IRuntimeLogSink>(3 + (additionalSinks?.Count ?? 0))
         {
-            new RuntimeOperationsLogSink(runtimeLogs),
-            new RuntimeHostConsoleSink(standardOutput, standardError)
+            runtimeLogs
         };
+
+        if (loggingOptions.ConsoleEnabled)
+            sinks.Add(new RuntimeHostConsoleSink(standardOutput, standardError));
+
+        if (loggingOptions.JsonLinesEnabled)
+        {
+            sinks.Add(new RuntimeJsonLinesLogSink(
+                loggingOptions.JsonLinesDirectory,
+                maximumFileBytes: loggingOptions.MaximumFileBytes,
+                maximumRetainedFiles: loggingOptions.MaximumRetainedFiles,
+                flushEveryRecords: loggingOptions.FlushEveryRecords));
+        }
+
         if (additionalSinks is not null)
             sinks.AddRange(additionalSinks);
 
-        pipeline = new RuntimeLogPipeline(sinks, pipelineOptions);
+        pipeline = new RuntimeLogPipeline(sinks, loggingOptions.ToPipelineOptions());
 
         processExitHandler = (_, _) => DisposeForProcessExit();
         AppDomain.CurrentDomain.ProcessExit += processExitHandler;
@@ -209,31 +245,6 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         OperationsLogLevel.Error => StructuredLogLevel.Error,
         _ => throw new ArgumentOutOfRangeException(nameof(level))
     };
-
-    private sealed class RuntimeOperationsLogSink(RuntimeLogBuffer runtimeLogs) : IRuntimeLogSink
-    {
-        public string Name => "operations-read-model";
-
-        public ValueTask WriteAsync(RuntimeLogRecord record, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            runtimeLogs.Publish(MapLevel(record.Level), record.Subsystem, record.Message);
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask FlushAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
-
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-
-        private static OperationsLogLevel MapLevel(StructuredLogLevel level) => level switch
-        {
-            StructuredLogLevel.Trace or StructuredLogLevel.Debug => OperationsLogLevel.Debug,
-            StructuredLogLevel.Information => OperationsLogLevel.Information,
-            StructuredLogLevel.Warning => OperationsLogLevel.Warning,
-            StructuredLogLevel.Error or StructuredLogLevel.Critical => OperationsLogLevel.Error,
-            _ => throw new ArgumentOutOfRangeException(nameof(level))
-        };
-    }
 
     private sealed class RuntimeHostConsoleSink(
         TextWriter standardOutput,

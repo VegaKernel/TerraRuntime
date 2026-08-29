@@ -1,36 +1,37 @@
+using TerraRuntime.Contracts.Diagnostics;
+using TerraRuntime.Diagnostics;
+using StructuredLogLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel;
+
 namespace TerraRuntime.Operations;
 
 /// <summary>
-/// Bounded operations read model for recent runtime log events. This is not the public logging API;
-/// it is a small sink that a future structured logging pipeline can feed without redirecting Console.Out.
-/// The reserved read-only source "Chat" projects the separate bounded public-chat telemetry into the
-/// operator UI without turning chat routing itself into logging.
+/// Bounded operations read model backed by the same structured recent-log store used by runtime logging.
+/// The reserved read-only source "Chat" projects separate bounded public-chat telemetry without turning
+/// chat routing itself into logging.
 /// </summary>
-internal sealed class RuntimeLogBuffer : ILogOperations
+internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
 {
-    public const int DefaultCapacity = 512;
-    public const int MaximumCapacity = 8_192;
+    public const int DefaultCapacity = RuntimeRecentLogStore.DefaultCapacity;
+    public const int MaximumCapacity = RuntimeRecentLogStore.MaximumCapacity;
     public const int MaximumSourceLength = 64;
     public const int MaximumMessageLength = 2_048;
 
     private const string ChatSource = "Chat";
 
-    private readonly object gate = new();
-    private readonly RuntimeLogEntry[] entries;
-    private int count;
-    private int nextIndex;
-    private long publishedEntries;
-    private long overwrittenEntries;
+    private readonly RuntimeRecentLogStore store;
+    private long localSequence;
 
     public RuntimeLogBuffer(int capacity = DefaultCapacity)
     {
         if (capacity <= 0 || capacity > MaximumCapacity)
             throw new ArgumentOutOfRangeException(nameof(capacity));
 
-        entries = new RuntimeLogEntry[capacity];
+        store = new RuntimeRecentLogStore(capacity);
     }
 
-    public int Capacity => entries.Length;
+    public string Name => "operations-recent";
+
+    public int Capacity => store.Capacity;
 
     public void Publish(RuntimeLogLevel level, string source, string message)
     {
@@ -39,26 +40,28 @@ internal sealed class RuntimeLogBuffer : ILogOperations
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(message);
 
-        string boundedSource = Normalize(source, MaximumSourceLength, "Runtime");
-        string boundedMessage = Normalize(message, MaximumMessageLength, string.Empty);
+        var record = new RuntimeLogRecord(
+            Sequence: 0,
+            TimestampUtc: DateTimeOffset.UtcNow,
+            Level: ToStructuredLevel(level),
+            EventId: RuntimeLogEventIds.HostBridgeBuffered,
+            Category: RuntimeLogCategory.Operations,
+            Subsystem: Normalize(source, MaximumSourceLength, "Runtime"),
+            Message: Normalize(message, MaximumMessageLength, string.Empty),
+            Context: default);
 
-        lock (gate)
-        {
-            long sequence = ++publishedEntries;
-            entries[nextIndex] = new RuntimeLogEntry(
-                sequence,
-                DateTimeOffset.UtcNow,
-                level,
-                boundedSource,
-                boundedMessage);
-            nextIndex = (nextIndex + 1) % entries.Length;
-
-            if (count < entries.Length)
-                count++;
-            else
-                overwrittenEntries++;
-        }
+        WriteAsync(record, CancellationToken.None).GetAwaiter().GetResult();
     }
+
+    public ValueTask WriteAsync(RuntimeLogRecord record, CancellationToken cancellationToken)
+    {
+        long sequence = Interlocked.Increment(ref localSequence);
+        return store.WriteAsync(record with { Sequence = sequence }, cancellationToken);
+    }
+
+    public ValueTask FlushAsync(CancellationToken cancellationToken) => store.FlushAsync(cancellationToken);
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     public RuntimeLogSnapshot CaptureSnapshot(RuntimeLogLevel minimumLevel, int maxEntries) =>
         CaptureSnapshot(minimumLevel, source: null, maxEntries);
@@ -76,75 +79,72 @@ internal sealed class RuntimeLogBuffer : ILogOperations
         if (string.Equals(source, ChatSource, StringComparison.Ordinal))
             return CaptureChatSnapshot(minimumLevel, maxEntries);
 
-        lock (gate)
+        if (maxEntries == 0)
+            return EmptySnapshot(minimumLevel);
+
+        RuntimeLogRecord[] records = store.Capture(
+            ToStructuredLevel(minimumLevel),
+            category: null,
+            maximumEntries: source is null ? maxEntries : store.Capacity);
+
+        RuntimeLogEntry[] snapshot;
+        if (source is null)
         {
-            int maximum = Math.Min(maxEntries, count);
-            if (maximum == 0)
-            {
-                return new RuntimeLogSnapshot(
-                    ReadOnlyMemory<RuntimeLogEntry>.Empty,
-                    publishedEntries,
-                    overwrittenEntries,
-                    minimumLevel,
-                    DateTimeOffset.UtcNow);
-            }
-
-            RuntimeLogEntry[] snapshot = new RuntimeLogEntry[maximum];
-            int found = 0;
-            for (int offset = 0; offset < count && found < maximum; offset++)
-            {
-                int index = nextIndex - 1 - offset;
-                if (index < 0)
-                    index += entries.Length;
-
-                RuntimeLogEntry entry = entries[index];
-                if (entry.Level < minimumLevel ||
-                    (source is not null && !string.Equals(entry.Source, source, StringComparison.Ordinal)))
-                {
-                    continue;
-                }
-
-                snapshot[found++] = entry;
-            }
-
-            Array.Reverse(snapshot, 0, found);
-            if (found != snapshot.Length)
-                Array.Resize(ref snapshot, found);
-
-            return new RuntimeLogSnapshot(
-                snapshot.AsMemory(),
-                publishedEntries,
-                overwrittenEntries,
-                minimumLevel,
-                DateTimeOffset.UtcNow);
+            snapshot = new RuntimeLogEntry[records.Length];
+            for (int i = 0; i < records.Length; i++)
+                snapshot[i] = ToOperationsEntry(records[i]);
         }
+        else
+        {
+            var newest = new RuntimeLogEntry[Math.Min(maxEntries, records.Length)];
+            int found = 0;
+            for (int i = records.Length - 1; i >= 0 && found < newest.Length; i--)
+            {
+                RuntimeLogRecord record = records[i];
+                if (!string.Equals(record.Subsystem, source, StringComparison.Ordinal))
+                    continue;
+
+                newest[found++] = ToOperationsEntry(record);
+            }
+
+            if (found != newest.Length)
+                Array.Resize(ref newest, found);
+            Array.Reverse(newest);
+            snapshot = newest;
+        }
+
+        return new RuntimeLogSnapshot(
+            snapshot.AsMemory(),
+            store.Published,
+            store.Overwritten,
+            minimumLevel,
+            DateTimeOffset.UtcNow);
     }
 
     public ReadOnlyMemory<string> CaptureSources(int maxSources)
     {
         if (maxSources < 0)
             throw new ArgumentOutOfRangeException(nameof(maxSources));
-        if (maxSources == 0)
+        if (maxSources == 0 || store.Published == 0)
             return ReadOnlyMemory<string>.Empty;
 
-        lock (gate)
-        {
-            if (count == 0)
-                return ReadOnlyMemory<string>.Empty;
+        RuntimeLogRecord[] records = store.Capture(maximumEntries: store.Capacity);
+        var sources = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < records.Length && sources.Count < maxSources; i++)
+            sources.Add(Normalize(records[i].Subsystem, MaximumSourceLength, "Runtime"));
 
-            var sources = new HashSet<string>(StringComparer.Ordinal);
-            int oldestIndex = count == entries.Length ? nextIndex : 0;
-            for (int offset = 0; offset < count && sources.Count < maxSources; offset++)
-            {
-                int index = (oldestIndex + offset) % entries.Length;
-                sources.Add(entries[index].Source);
-            }
-
-            string[] snapshot = sources.ToArray();
-            Array.Sort(snapshot, StringComparer.Ordinal);
-            return snapshot.AsMemory();
-        }
+        string[] snapshot = sources.ToArray();
+        Array.Sort(snapshot, StringComparer.Ordinal);
+        return snapshot.AsMemory();
     }
+
+    private RuntimeLogSnapshot EmptySnapshot(RuntimeLogLevel minimumLevel) =>
+        new(
+            ReadOnlyMemory<RuntimeLogEntry>.Empty,
+            store.Published,
+            store.Overwritten,
+            minimumLevel,
+            DateTimeOffset.UtcNow);
 
     private static RuntimeLogSnapshot CaptureChatSnapshot(
         RuntimeLogLevel minimumLevel,
@@ -182,6 +182,32 @@ internal sealed class RuntimeLogBuffer : ILogOperations
             DateTimeOffset.UtcNow);
     }
 
+    private static RuntimeLogEntry ToOperationsEntry(RuntimeLogRecord record) =>
+        new(
+            record.Sequence,
+            record.TimestampUtc,
+            ToOperationsLevel(record.Level),
+            Normalize(record.Subsystem, MaximumSourceLength, "Runtime"),
+            Normalize(record.Message, MaximumMessageLength, string.Empty));
+
+    private static StructuredLogLevel ToStructuredLevel(RuntimeLogLevel level) => level switch
+    {
+        RuntimeLogLevel.Debug => StructuredLogLevel.Debug,
+        RuntimeLogLevel.Information => StructuredLogLevel.Information,
+        RuntimeLogLevel.Warning => StructuredLogLevel.Warning,
+        RuntimeLogLevel.Error => StructuredLogLevel.Error,
+        _ => throw new ArgumentOutOfRangeException(nameof(level))
+    };
+
+    private static RuntimeLogLevel ToOperationsLevel(StructuredLogLevel level) => level switch
+    {
+        StructuredLogLevel.Trace or StructuredLogLevel.Debug => RuntimeLogLevel.Debug,
+        StructuredLogLevel.Information => RuntimeLogLevel.Information,
+        StructuredLogLevel.Warning => RuntimeLogLevel.Warning,
+        StructuredLogLevel.Error or StructuredLogLevel.Critical => RuntimeLogLevel.Error,
+        _ => throw new ArgumentOutOfRangeException(nameof(level))
+    };
+
     private static string Normalize(string value, int maximumLength, string fallback)
     {
         if (value.Length == 0)
@@ -190,9 +216,7 @@ internal sealed class RuntimeLogBuffer : ILogOperations
         int length = Math.Min(value.Length, maximumLength);
         bool requiresCopy = value.Length > maximumLength;
         for (int i = 0; i < length && !requiresCopy; i++)
-        {
             requiresCopy = char.IsControl(value[i]);
-        }
 
         if (!requiresCopy)
             return value;

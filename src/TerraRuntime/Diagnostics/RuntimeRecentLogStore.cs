@@ -11,6 +11,7 @@ internal sealed class RuntimeRecentLogStore : IRuntimeLogSink
     private readonly RuntimeLogRecord[] entries;
     private int next;
     private int count;
+    private long published;
     private long overwritten;
 
     public RuntimeRecentLogStore(int capacity = DefaultCapacity)
@@ -23,6 +24,10 @@ internal sealed class RuntimeRecentLogStore : IRuntimeLogSink
 
     public string Name => "recent";
 
+    public int Capacity => entries.Length;
+
+    public long Published => Interlocked.Read(ref published);
+
     public long Overwritten => Interlocked.Read(ref overwritten);
 
     public ValueTask WriteAsync(RuntimeLogRecord record, CancellationToken cancellationToken)
@@ -31,6 +36,7 @@ internal sealed class RuntimeRecentLogStore : IRuntimeLogSink
 
         lock (gate)
         {
+            Interlocked.Increment(ref published);
             if (count == entries.Length)
                 Interlocked.Increment(ref overwritten);
             else
