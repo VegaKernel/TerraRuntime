@@ -65,3 +65,17 @@ jobs:
           name: jesters-arrow-source
           path: artifacts/source-contract/jesters-arrow.txt
           retention-days: 1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jesters-arrow-edit-surface
+          path: |
+            src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs
+            src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs
+            src/TerraRuntime/VanillaProjectileWorldStateStepper.cs
+            tools/ci/probe_projectile_tile_cut.py
+            tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs
+            tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs
+            tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs
+            tests/TerraRuntime.Tests/VanillaProjectileUpdateFactsTests.cs
+          retention-days: 1
