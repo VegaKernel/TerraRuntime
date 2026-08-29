@@ -84,12 +84,14 @@ def main() -> int:
     parser.add_argument("--unified-random", required=True)
     parser.add_argument("--gen-base", required=True)
     parser.add_argument("--world-generator", required=True)
+    parser.add_argument("--world-gen", required=True)
     parser.add_argument("--output")
     args = parser.parse_args()
 
     unified = Path(args.unified_random).read_text(encoding="utf-8")
     gen_base = Path(args.gen_base).read_text(encoding="utf-8")
     generator = Path(args.world_generator).read_text(encoding="utf-8")
+    world_gen = Path(args.world_gen).read_text(encoding="utf-8")
     lines = ["source=TerrariaServer 1.4.5.8"]
 
     source_fingerprint("UnifiedRandom", unified, lines)
@@ -101,38 +103,51 @@ def main() -> int:
         raise SystemExit("Pinned UnifiedRandom exposes no constructors.")
     emit_bodies("UnifiedRandom_ctor", unified, unified_constructors, lines)
 
-    unified_methods = method_signatures(unified, {"Sample", "Next", "NextDouble", "NextBytes"})
-    if not unified_methods:
-        raise SystemExit("Pinned UnifiedRandom exposes no sampled RNG methods.")
+    unified_methods = method_signatures(
+        unified,
+        {"SetSeed", "InternalSample", "GetSampleForLargeRange", "Sample", "Next", "NextDouble", "NextBytes"},
+    )
+    expected_helpers = {"SetSeed", "InternalSample", "GetSampleForLargeRange", "Sample", "Next", "NextDouble"}
+    found_helpers = {
+        signature.split("(", 1)[0].rsplit(" ", 1)[-1]
+        for signature in unified_methods
+    }
+    missing_helpers = sorted(expected_helpers - found_helpers)
+    if missing_helpers:
+        raise SystemExit(f"Pinned UnifiedRandom is missing required RNG helpers: {missing_helpers}")
     emit_bodies("UnifiedRandom_method", unified, unified_methods, lines)
 
-    random_fields = [compact(match.group(0)) for match in re.finditer(r"^[^\r\n;]*\b_random\b[^\r\n;]*;", gen_base, re.MULTILINE)]
-    if not random_fields:
-        raise SystemExit("Pinned GenBase source exposes no _random field declaration.")
-    lines.append(f"GenBase_random_field_count={len(random_fields)}")
-    print(f"GenBase_random_field_count={len(random_fields)}")
-    for index, value in enumerate(random_fields):
-        lines.append(f"GenBase_random_field_{index:02d}={value}")
-        print(f"GenBase_random_field_{index:02d}={value}")
+    random_fields = [
+        compact(match.group(0))
+        for match in re.finditer(r"^[^\r\n;]*\b_random\b[^\r\n;]*;", gen_base, re.MULTILINE)
+    ]
+    if random_fields != ["protected static UnifiedRandom _random => WorldGen.genRand;"]:
+        raise SystemExit(f"Pinned GenBase._random ownership changed: {random_fields}")
+    lines.append("GenBase_random=protected static UnifiedRandom _random => WorldGen.genRand;")
+    print("GenBase_random=protected static UnifiedRandom _random => WorldGen.genRand;")
 
     generator_constructors = constructor_signatures(generator, "WorldGenerator")
     if not generator_constructors:
         raise SystemExit("Pinned WorldGenerator exposes no constructors.")
     emit_bodies("WorldGenerator_ctor", generator, generator_constructors, lines)
 
-    generator_methods = method_signatures(generator, {"GenerateWorld"})
-    if not generator_methods:
+    generator_methods = method_signatures(generator, {"GenerateWorld", "RunPass"})
+    if not any("GenerateWorld(" in signature for signature in generator_methods):
         raise SystemExit("Pinned WorldGenerator exposes no GenerateWorld method.")
     emit_bodies("WorldGenerator_method", generator, generator_methods, lines)
 
-    random_assignments = [compact(match.group(0)) for match in re.finditer(r"[^;\r\n]*\b_random\b\s*=\s*[^;\r\n]+;", generator)]
-    if not random_assignments:
-        raise SystemExit("Pinned WorldGenerator source exposes no _random assignment.")
-    lines.append(f"WorldGenerator_random_assignment_count={len(random_assignments)}")
-    print(f"WorldGenerator_random_assignment_count={len(random_assignments)}")
-    for index, value in enumerate(random_assignments):
-        lines.append(f"WorldGenerator_random_assignment_{index:02d}={value}")
-        print(f"WorldGenerator_random_assignment_{index:02d}={value}")
+    reset_signatures = method_signatures(world_gen, {"Reset"})
+    if len(reset_signatures) != 1:
+        raise SystemExit(f"Pinned WorldGen must expose exactly one Reset method; found {len(reset_signatures)}.")
+    reset_body = extract_method(world_gen, reset_signatures[0])
+    seed_assignments = [
+        compact(match.group(0))
+        for match in re.finditer(r"Main\.rand\s*=\s*new\s+UnifiedRandom\s*\([^;]+;", reset_body)
+    ]
+    if seed_assignments != ["Main.rand = new UnifiedRandom(seed);"]:
+        raise SystemExit(f"Pinned WorldGen.Reset RNG seed ownership changed: {seed_assignments}")
+    lines.append("WorldGen_Reset_rng_seed=Main.rand = new UnifiedRandom(seed);")
+    print("WorldGen_Reset_rng_seed=Main.rand = new UnifiedRandom(seed);")
 
     if args.output:
         output = Path(args.output)
