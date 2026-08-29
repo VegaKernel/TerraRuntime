@@ -10,7 +10,9 @@ on:
       - 'src/TerraRuntime.Protocol.Multiplicity/**'
       - 'src/TerraRuntime.World/**'
       - 'tools/TerraRuntime.WorldVerify/**'
+      - 'tools/TerraRuntime.ChestLocate/**'
       - 'tools/ci/live_join_relay_probe.py'
+      - 'tools/ci/live_chest_open_probe.py'
       - '.github/workflows/vanilla-world-load.yml'
   workflow_dispatch:
 
@@ -132,6 +134,81 @@ jobs:
           grep -q "bootstrap_cache_hit=false" "$host_log"
           grep -q "TerraRuntime listening on 0.0.0.0:17780" "$host_log"
           python3 tools/ci/live_join_relay_probe.py --port 17780 2>&1 | tee "$client_log"
+          cat "$host_log"
+
+      - name: Probe live chest open and contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-smoke.wld"
+          host_log="$GITHUB_WORKSPACE/artifacts/terraruntime-chest-server.log"
+          client_log="$GITHUB_WORKSPACE/artifacts/terraruntime-chest-client.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          chest_info="$(dotnet run \
+            --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
+            -c Release \
+            -- "$world" | tail -1)"
+          echo "selected_chest $chest_info" | tee "$GITHUB_WORKSPACE/artifacts/terraruntime-chest-selection.txt"
+
+          chest_id="" x="" y="" slots="" item_slot="" item_stack="" item_prefix="" item_net_id=""
+          for field in $chest_info; do
+            case "$field" in
+              slot=*) chest_id="${field#slot=}" ;;
+              x=*) x="${field#x=}" ;;
+              y=*) y="${field#y=}" ;;
+              slots=*) slots="${field#slots=}" ;;
+              itemSlot=*) item_slot="${field#itemSlot=}" ;;
+              itemStack=*) item_stack="${field#itemStack=}" ;;
+              itemPrefix=*) item_prefix="${field#itemPrefix=}" ;;
+              itemNetId=*) item_net_id="${field#itemNetId=}" ;;
+            esac
+          done
+          test -n "$chest_id" -a -n "$x" -a -n "$y" -a -n "$slots"
+          test -n "$item_slot" -a -n "$item_stack" -a -n "$item_prefix" -a -n "$item_net_id"
+
+          # Force this probe back through the canonical official .wld instead of relying on
+          # the cache produced by the preceding join probe.
+          rm -f "$GITHUB_WORKSPACE/artifacts/vanilla-smoke.runtime-world"
+          rm -f "$GITHUB_WORKSPACE/artifacts/vanilla-smoke.runtime-bootstrap"
+
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17782 \
+            --max-players 1 \
+            > "$host_log" 2>&1 &
+          host_pid=$!
+
+          cleanup_chest() {
+            kill "$host_pid" 2>/dev/null || true
+            wait "$host_pid" 2>/dev/null || true
+          }
+          trap cleanup_chest EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "Chest-probe TerraRuntime host exited before opening the listener." >&2
+              exit 1
+            fi
+            if grep -q "TerraRuntime listening on 0.0.0.0:17782" "$host_log"; then
+              break
+            fi
+            sleep 0.5
+          done
+
+          grep -q "startup_profile source=canonical-wld" "$host_log"
+          python3 tools/ci/live_chest_open_probe.py \
+            --port 17782 \
+            --chest-id "$chest_id" \
+            --x "$x" \
+            --y "$y" \
+            --slots "$slots" \
+            --item-slot "$item_slot" \
+            --item-stack "$item_stack" \
+            --item-prefix "$item_prefix" \
+            --item-net-id "$item_net_id" \
+            2>&1 | tee "$client_log"
           cat "$host_log"
 
       - name: Prove warm world and bootstrap snapshot startup without reading source world
@@ -287,6 +364,9 @@ jobs:
             artifacts/vanilla-serverconfig.txt
             artifacts/terraruntime-server.log
             artifacts/terraruntime-client.log
+            artifacts/terraruntime-chest-server.log
+            artifacts/terraruntime-chest-client.log
+            artifacts/terraruntime-chest-selection.txt
             artifacts/terraruntime-warm-cache.log
             artifacts/runtime-cache-parallel.txt
           retention-days: 3
