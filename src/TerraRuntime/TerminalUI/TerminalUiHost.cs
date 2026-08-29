@@ -96,14 +96,32 @@ internal sealed class TerminalUiHost : IDisposable
 
     private void Run()
     {
-        bool announcedActive = false;
+        while (!stopUi.IsCancellationRequested)
+        {
+            RunDashboardSession();
+            if (stopUi.IsCancellationRequested)
+                return;
+
+            if (!RunPlainConsole())
+                return;
+        }
+    }
+
+    private void RunDashboardSession()
+    {
+        bool activityAnnounced = false;
         try
         {
             using IApplication app = Application.Create();
             if (OperatingSystem.IsWindows())
                 app.ForceDriver = DriverRegistry.Names.WINDOWS;
 
+            // Mark the terminal as owned before driver initialization. If initialization fails,
+            // the finally block still performs a real TUI -> plain-console transition.
+            NotifyActivity(active: true);
+            activityAnnounced = true;
             app.Init();
+
             using var window = new DashboardWindow(
                 dashboardOperations,
                 playerOperations,
@@ -115,7 +133,6 @@ internal sealed class TerminalUiHost : IDisposable
                 worldItemOperations);
 
             long nextRefresh = 0;
-
             app.Iteration += (_, _) =>
             {
                 long now = Stopwatch.GetTimestamp();
@@ -139,26 +156,81 @@ internal sealed class TerminalUiHost : IDisposable
             });
 
             window.RefreshSnapshot();
-            NotifyActivity(active: true);
-            announcedActive = true;
             app.Run(window);
         }
         catch (Exception exception)
         {
-            if (announcedActive)
-            {
-                NotifyActivity(active: false);
-                announcedActive = false;
-            }
-
             ReportFailure(
-                $"Terminal UI stopped or could not initialize; server remains available: {exception.Message}");
+                $"Terminal UI stopped or could not initialize; switching to plain console: {exception.Message}");
         }
         finally
         {
-            if (announcedActive)
+            if (activityAnnounced)
                 NotifyActivity(active: false);
         }
+    }
+
+    private bool RunPlainConsole()
+    {
+        Console.WriteLine("[console] Plain console active. Type 'tui' to reopen the dashboard or 'help' for console commands.");
+
+        while (!stopUi.IsCancellationRequested)
+        {
+            Console.Write("> ");
+            string? line;
+            try
+            {
+                line = Console.ReadLine();
+            }
+            catch (Exception exception)
+            {
+                ReportFailure($"Console input failed: {exception.Message}");
+                return false;
+            }
+
+            if (line is null)
+            {
+                // Redirected/closed stdin must not turn this background host into a busy loop.
+                if (stopUi.Token.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(250)))
+                    return false;
+                continue;
+            }
+
+            string command = line.Trim();
+            if (command.Length == 0)
+                continue;
+
+            switch (command.ToLowerInvariant())
+            {
+                case "tui":
+                case "ui":
+                case "dashboard":
+                    return true;
+
+                case "help":
+                    Console.WriteLine("tui | ui | dashboard  Reopen the TerraRuntime dashboard");
+                    Console.WriteLine("clear                 Clear the plain console");
+                    Console.WriteLine("help                  Show these console commands");
+                    break;
+
+                case "clear":
+                    try
+                    {
+                        Console.Clear();
+                    }
+                    catch (IOException)
+                    {
+                        // Some redirected terminals do not support clearing; keep the console usable.
+                    }
+                    break;
+
+                default:
+                    Console.WriteLine($"Unknown console command '{command}'. Type 'help'.");
+                    break;
+            }
+        }
+
+        return false;
     }
 
     private void NotifyActivity(bool active)
