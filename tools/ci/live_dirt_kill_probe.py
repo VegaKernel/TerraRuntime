@@ -166,6 +166,11 @@ def run(host, port, tile_x, tile_y):
 
         origin_drop = receive_world_item(origin)
         peer_drop = receive_world_item(peer)
+        if 17 in origin_drop["skipped"]:
+            fail(
+                "origin observed sender-excluded packet17 before packet21 during authoritative Dirt kill: "
+                f"skipped={origin_drop['skipped'][:64]}"
+            )
         if 17 in peer_drop["skipped"]:
             fail(
                 "peer observed packet17 before packet21 during authoritative Dirt kill: "
