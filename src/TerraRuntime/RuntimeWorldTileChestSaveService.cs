@@ -12,9 +12,9 @@ internal enum RuntimeWorldTileChestSaveTickResult : byte
 }
 
 /// <summary>
-/// Bridges thread-safe save requests into game-thread-owned snapshot capture. Tile shadow maintenance and chest cloning
-/// happen only from <see cref="Tick"/> (or after the authoritative owner has stopped); serialization and atomic file
-/// replacement happen on the save coordinator's background worker.
+/// Bridges thread-safe save requests into game-thread-owned snapshot capture. Tile shadow maintenance and chest/clock
+/// capture happen only from <see cref="Tick"/> (or after the authoritative owner has stopped); serialization and
+/// atomic file replacement happen on the save coordinator's background worker.
 /// </summary>
 internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
 {
@@ -33,6 +33,7 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         WorldFilePreservedSections preserved,
         WorldTileStore tiles,
         RuntimeChestStore chestStore,
+        RuntimeWorldClock? worldClock = null,
         int synchronizationSectionsPerTick = DefaultSynchronizationSectionsPerTick)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
@@ -47,7 +48,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         snapshotSource = new RuntimeWorldTileChestSaveSnapshotSource(
             tiles,
             chestStore,
-            synchronizationSectionsPerTick);
+            synchronizationSectionsPerTick,
+            worldClock);
         coordinator = new WorldSaveCoordinator<RuntimeWorldTileChestSaveSnapshot>(
             destinationPath,
             CaptureSnapshotOnOwner,
@@ -94,8 +96,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         if (!IsSaveRequested)
             return RuntimeWorldTileChestSaveTickResult.Idle;
 
-        // Capture readiness is based on the tracker itself rather than the number successfully applied this tick.
-        // A failed section snapshot is requeued and must keep the save pending until a later owner tick captures it.
+        // Capture readiness is based on the persistence tracker itself rather than the number successfully applied
+        // this tick. A failed section snapshot is requeued and must keep the save pending until a later owner tick.
         if (snapshotSource.PendingDirtyTileSections != 0)
             return RuntimeWorldTileChestSaveTickResult.SaveWaitingForSynchronization;
 
@@ -150,9 +152,29 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        ReadOnlySpan<byte> headerSection = preserved.Header.Span;
+        byte[]? patchedHeader = null;
+        if (snapshot.Clock is RuntimeWorldClockSaveState clock)
+        {
+            WorldFileClockHeaderPatchResult patchResult = WorldFileClockHeaderPatcher.TryPatch(
+                headerSection,
+                sourceHeader,
+                clock.Time,
+                clock.DayTime,
+                clock.MoonPhase,
+                clock.SlimeRainTime,
+                out patchedHeader);
+            if (patchResult != WorldFileClockHeaderPatchResult.Patched)
+                throw new InvalidDataException($"Authoritative world clock header patch failed: {patchResult}.");
+
+            headerSection = patchedHeader;
+        }
+
         WorldFileTileChestRewriteResult result = WorldFileTileChestRewriter.TryRewrite(
             sourceEnvelope,
             sourceHeader,
+            headerSection,
             preserved,
             snapshot.Tiles,
             snapshot.Chests,
