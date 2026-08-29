@@ -21,7 +21,10 @@ public enum WorldItemFrameStopReason : byte
 /// packet identities are decoded through Multiplicity and converted into packet-neutral Core updates before
 /// bounded authoritative queue admission.
 /// </summary>
-public sealed class WorldItemFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
+public sealed class WorldItemFrameSink :
+    ITerrariaFrameSink,
+    ITerrariaFrameRejectionSource,
+    ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId _source;
     private readonly PlayerBootstrapFrameSink _bootstrap;
@@ -47,6 +50,11 @@ public sealed class WorldItemFrameSink : ITerrariaFrameSink, ITerrariaFrameRejec
     }
 
     public WorldItemFrameStopReason StopReason { get; private set; }
+
+    public TerrariaConnectionStopReason ConnectionStopReason =>
+        StopReason == WorldItemFrameStopReason.None && _inner is ITerrariaConnectionStopReasonSource source
+            ? source.ConnectionStopReason
+            : TerrariaConnectionStopReason.None;
 
     public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
     {
