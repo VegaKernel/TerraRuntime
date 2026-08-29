@@ -7,6 +7,34 @@ namespace TerraRuntime.Tests;
 public sealed class TerrariaConnectionPolicyRateLimitTests
 {
     [Fact]
+    public void Default_policy_enables_only_hard_abuse_message_ceilings()
+    {
+        ConnectionMessageRateLimits limits = TerrariaConnectionPolicyOptions.Default.MessageRateLimits;
+
+        Assert.Equal(8, limits.Count);
+        Assert.True(limits.TryGet((byte)TerrariaMessageId.ProjectileNew, out ConnectionRateBudgetOptions projectileBudget));
+        Assert.Equal(TimeSpan.FromSeconds(1), projectileBudget.Window);
+        Assert.Equal(1_200, projectileBudget.MaxFrames);
+        Assert.Equal(256 * 1024, projectileBudget.MaxBytes);
+        Assert.True(limits.TryGet((byte)TerrariaMessageId.PlayerControls, out ConnectionRateBudgetOptions movementBudget));
+        Assert.Equal(600, movementBudget.MaxFrames);
+
+        Assert.False(limits.TryGet((byte)TerrariaMessageId.Hello, out _));
+        Assert.False(limits.TryGet((byte)TerrariaMessageId.RequestWorldData, out _));
+        Assert.False(limits.TryGet((byte)TerrariaMessageId.SpawnTileData, out _));
+    }
+
+    [Fact]
+    public void Explicit_policy_constructor_remains_message_limit_free()
+    {
+        var options = new TerrariaConnectionPolicyOptions(
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(30));
+
+        Assert.Equal(0, options.MessageRateLimits.Count);
+    }
+
+    [Fact]
     public void Stops_before_forwarding_a_frame_that_exceeds_the_configured_rate_budget()
     {
         var state = new TerrariaConnectionPolicyState(
