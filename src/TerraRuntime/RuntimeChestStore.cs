@@ -150,14 +150,33 @@ internal sealed class RuntimeChestStore
         if (!TryGetOpenChest(connection, out WorldChest chest) ||
             submitted.ChestId != chest.SlotId ||
             submitted.ChestX != chest.X ||
-            submitted.ChestY != chest.Y ||
-            submitted.NameLength > global::Multiplicity.Packets.ChestOpen.MaxChestNameLength ||
-            submitted.NameLength != submitted.ChestName.Length)
+            submitted.ChestY != chest.Y)
         {
             return false;
         }
 
-        string name = submitted.ChestName;
+        // Packet 33 uses NameLength=0 when this is only an active-chest update. A real rename uses
+        // 1..MaxChestNameLength, while vanilla reserves 255 to mean "set the chest name to empty".
+        if (submitted.NameLength == 0)
+            return true;
+
+        string name;
+        if (submitted.NameLength == global::Multiplicity.Packets.ChestOpen.InvalidNameLength)
+        {
+            if (submitted.ChestName.Length != 0)
+                return false;
+            name = string.Empty;
+        }
+        else
+        {
+            if (submitted.NameLength > global::Multiplicity.Packets.ChestOpen.MaxChestNameLength ||
+                submitted.NameLength != submitted.ChestName.Length)
+            {
+                return false;
+            }
+            name = submitted.ChestName;
+        }
+
         if (string.Equals(name, chest.Name, StringComparison.Ordinal))
             return true;
 
@@ -169,6 +188,36 @@ internal sealed class RuntimeChestStore
             chest.Items);
         chests[chest.SlotId] = updated;
         renamedChest = updated;
+        return true;
+    }
+
+    public bool TryResolveNameLookup(
+        in TerrariaChestNameLookupRequest request,
+        out WorldChest chest)
+    {
+        short chestId = request.ChestId;
+        if (chestId < NoChest || chestId >= chests.Length)
+        {
+            chest = null!;
+            return false;
+        }
+
+        if (chestId == NoChest &&
+            !chestByCoordinates.TryGetValue(GetCoordinateKey(request.ChestX, request.ChestY), out chestId))
+        {
+            chest = null!;
+            return false;
+        }
+
+        if (chests[chestId] is not WorldChest existing ||
+            existing.X != request.ChestX ||
+            existing.Y != request.ChestY)
+        {
+            chest = null!;
+            return false;
+        }
+
+        chest = existing;
         return true;
     }
 
