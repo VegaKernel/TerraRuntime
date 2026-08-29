@@ -41,6 +41,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         RuntimeConnectionQueueSnapshot queues = queueTelemetry.CaptureSnapshot(MaximumQueueDetails);
         RuntimeConnectionRateTelemetrySnapshot rates = rateTelemetry.CaptureSnapshot(MaximumRateDetails);
         RuntimeConnectionStopTelemetrySnapshot stops = stopTelemetry?.CaptureSnapshot() ?? default;
+        TerrariaFrameRejectionTelemetrySnapshot rejections = TerrariaFrameRejectionTelemetry.CaptureSnapshot();
         return new RuntimeNetworkSnapshot(
             ActiveConnections: admission.ActiveConnections,
             RegisteredConnections: connections.Count,
@@ -89,6 +90,11 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             StopSlowClient: stops.SlowClient,
             StopApplicationStopped: stops.ApplicationStopped,
             StopHandshakeTimeout: stops.HandshakeTimeout,
-            StopIdleTimeout: stops.IdleTimeout);
+            StopIdleTimeout: stops.IdleTimeout,
+            RejectedMalformedProtocol: rejections.MalformedProtocol,
+            RejectedRateLimited: rejections.RateLimited,
+            RejectedInvalidState: rejections.InvalidState,
+            RejectedGameplay: rejections.GameplayRejected,
+            RejectedBackpressure: rejections.Backpressure);
     }
 }
