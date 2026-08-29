@@ -1,0 +1,28 @@
+name: Projectile Edit Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/projectile-edit-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectile-edit-snapshot
+          path: |
+            src/TerraRuntime.Core/RuntimeProjectileStateExecutor.cs
+            src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs
+            src/TerraRuntime/VanillaProjectileWorldStateStepper.cs
+            tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs
+            tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs
+            tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs
+          retention-days: 1
