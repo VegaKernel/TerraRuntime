@@ -65,9 +65,13 @@ jobs:
               if needle not in workflow:
                   raise SystemExit('authoritative save test insertion point changed')
               block = '''      - name: Prove startup orphan save cleanup
-            run: >-
-              dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
-              --TestCaseFilter:"FullyQualifiedName~TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests|FullyQualifiedName~TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests"
+            shell: bash
+            run: |
+              set -euo pipefail
+              dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll \\
+                --TestCaseFilter:FullyQualifiedName~TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests
+              dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll \\
+                --TestCaseFilter:FullyQualifiedName~TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests
 
           '''
               workflow = workflow.replace(needle, block + needle, 1)
@@ -76,10 +80,15 @@ jobs:
       - name: Build persistence tests
         run: dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
 
-      - name: Prove startup cleanup contract
+      - name: Prove startup cleanup helper
         run: >-
           dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
-          --TestCaseFilter:"FullyQualifiedName~TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests|FullyQualifiedName~TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests"
+          --TestCaseFilter:FullyQualifiedName~TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests
+
+      - name: Prove host startup cleanup ordering
+        run: >-
+          dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+          --TestCaseFilter:FullyQualifiedName~TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests
 
       - name: Commit wiring and remove one-time workflow
         shell: bash
