@@ -1,5 +1,6 @@
 name: Validate G6 dry player physics v3
 
+# Rerun after the save-service cancellation baseline fix.
 on:
   push:
     branches:
