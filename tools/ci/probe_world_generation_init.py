@@ -68,7 +68,7 @@ def emit(label: str, source: str, names: set[str]) -> set[str]:
     return emitted
 
 
-def inspect_add_passes(source: str) -> list[str]:
+def inspect_add_passes(source: str) -> tuple[str, str, list[str]]:
     signatures = named_signatures(source, {"AddPasses"})
     if len(signatures) != 1:
         raise SystemExit(
@@ -89,7 +89,23 @@ def inspect_add_passes(source: str) -> list[str]:
     print(f"WorldGen_AddPasses_passlegacy_count={len(pass_names)}")
     for index, name in enumerate(pass_names):
         print(f"WorldGen_AddPasses_passlegacy_{index:03d}={name}")
-    return pass_names
+    return compact(signature), fingerprint, pass_names
+
+
+def write_pass_catalog(path: Path, signature: str, fingerprint: str, pass_names: list[str]) -> None:
+    lines = [
+        "source=TerrariaServer 1.4.5.8",
+        "decompiler=ilspycmd 11.0.0.9375",
+        f"WorldGen_AddPasses_signature={signature}",
+        f"WorldGen_AddPasses_sha256={fingerprint}",
+        f"WorldGen_AddPasses_passlegacy_count={len(pass_names)}",
+    ]
+    lines.extend(
+        f"WorldGen_AddPasses_passlegacy_{index:03d}={name}"
+        for index, name in enumerate(pass_names)
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main() -> int:
@@ -98,6 +114,7 @@ def main() -> int:
     )
     parser.add_argument("--world-gen", required=True)
     parser.add_argument("--main", required=True)
+    parser.add_argument("--pass-catalog-output")
     args = parser.parse_args()
 
     world_gen = Path(args.world_gen).read_text(encoding="utf-8")
@@ -123,7 +140,7 @@ def main() -> int:
 
     emitted_world_gen = emit("WorldGen", world_gen, world_gen_names)
     emitted_main = emit("Main", main_source, main_names)
-    add_passes = inspect_add_passes(world_gen)
+    signature, fingerprint, add_passes = inspect_add_passes(world_gen)
 
     required_world_gen = {"GenerateWorld", "Reset", "Finish"}
     missing_world_gen = sorted(required_world_gen - emitted_world_gen)
@@ -131,6 +148,9 @@ def main() -> int:
         raise SystemExit(f"Pinned Terraria.WorldGen is missing required generation methods: {missing_world_gen}")
     if not ({"clearWorld", "ClearWorld"} & emitted_world_gen):
         raise SystemExit("Pinned Terraria.WorldGen did not expose clearWorld/ClearWorld.")
+
+    if args.pass_catalog_output:
+        write_pass_catalog(Path(args.pass_catalog_output), signature, fingerprint, add_passes)
 
     print(f"worldgen_methods_emitted={sorted(emitted_world_gen)}")
     print(f"main_methods_emitted={sorted(emitted_main)}")
