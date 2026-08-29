@@ -74,7 +74,9 @@ Well-formed packet может быть illegal до handshake, slot assignment �
 
 Generation/revision-aware handles также защищают от stale commands после numeric-slot reuse.
 
-Client-originated world-item команды allocate/drop/remove/owner сохраняют точный `ConnectionHandle`, который допустил их в bounded authoritative queue. Непосредственно перед мутацией `RuntimeWorldItemStore` game-thread owner проверяет, что этому connection всё ещё принадлежат тот же player slot **и та же generation**. Работа, поставленная в очередь предыдущей disconnected generation, reject'ится даже если уже переиспользованы тот же connection source или numeric player slot. Это закрывает stale-command race по connection generation; exact binding к generation самого world-item slot остаётся отдельным hardening шагом, потому что Terraria item slots тоже переиспользуются.
+Client-originated world-item команды allocate/drop/remove/owner сохраняют точный `ConnectionHandle`, который допустил их в bounded authoritative queue. Непосредственно перед мутацией `RuntimeWorldItemStore` game-thread owner проверяет, что этому connection всё ещё принадлежат тот же player slot **и та же generation**. Работа, поставленная в очередь предыдущей disconnected generation, reject'ится даже если уже переиспользованы тот же connection source или numeric player slot.
+
+Explicit packet-21/22 операции по item slots `0..399` дополнительно захватывают на ingress точный активный `WorldItemHandle` (`slot + generation`). Перед drop/update, owner-state или remove mutation authoritative owner повторно проверяет этот handle. Если в момент ingress слот не содержал active item, команда получает unassigned target и reject'ится вместо скрытого восстановления слота; delayed command для generation A не может перескочить на последующую generation B, занявшую тот же numeric slot. Создание нового предмета остаётся отдельным packet-21 request с индексом `400`, а реальный slot выбирает runtime.
 
 ## 9. Bounded queues и authoritative work
 
