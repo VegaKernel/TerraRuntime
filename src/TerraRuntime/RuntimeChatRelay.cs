@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
+using TerraRuntime.Operations;
+using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime;
 
@@ -51,6 +53,9 @@ internal sealed class RuntimeChatRelay
     {
         if (!endpoints.TryGetValue(source, out Endpoint? origin) || !origin.IsPlaying(author))
             return 0;
+
+        if (TerrariaChatCodec.TryDecodeServerFrame(encodedFrame, out TerrariaServerChatMessage message))
+            RuntimeChatTelemetry.Publish(author.Slot.Value, message.Text);
 
         var frame = new OutboundFrame(encodedFrame);
         int enqueued = 0;
