@@ -156,6 +156,7 @@ public static class WorldFileTileEncoder
         Stream destination,
         ref long bytesWritten)
     {
+        Span<byte> encoded = stackalloc byte[18];
         for (int y = 0; y < column.Length; y++)
         {
             WorldTile tile = column[y];
@@ -171,7 +172,6 @@ public static class WorldFileTileEncoder
                     repeat++;
             }
 
-            Span<byte> encoded = stackalloc byte[18];
             int encodedLength = EncodeTile(
                 in tile,
                 repeat,
