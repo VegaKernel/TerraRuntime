@@ -22,7 +22,7 @@ public enum ProjectileLifecycleFrameStopReason : byte
 /// composes packet 17 through <see cref="TileManipulationFrameSink"/>, preserving the existing host sink chain.
 /// Exact entity lookup, ownership validation and every world mutation are authoritative-thread responsibilities.
 /// </summary>
-public sealed class ProjectileLifecycleFrameSink : ITerrariaFrameSink
+public sealed class ProjectileLifecycleFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -56,6 +56,32 @@ public sealed class ProjectileLifecycleFrameSink : ITerrariaFrameSink
 
     public TileManipulationFrameStopReason TileStopReason =>
         tileManipulation?.StopReason ?? TileManipulationFrameStopReason.None;
+
+    public TerrariaFrameRejectionCategory RejectionCategory
+    {
+        get
+        {
+            TerrariaFrameRejectionCategory own = StopReason switch
+            {
+                ProjectileLifecycleFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
+                ProjectileLifecycleFrameStopReason.MalformedUpdate or ProjectileLifecycleFrameStopReason.MalformedDestroy => TerrariaFrameRejectionCategory.MalformedProtocol,
+                ProjectileLifecycleFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
+                _ => TerrariaFrameRejectionCategory.None
+            };
+            if (own != TerrariaFrameRejectionCategory.None)
+                return own;
+
+            if (tileManipulation is ITerrariaFrameRejectionSource tileSource &&
+                tileSource.RejectionCategory != TerrariaFrameRejectionCategory.None)
+            {
+                return tileSource.RejectionCategory;
+            }
+
+            return inner is ITerrariaFrameRejectionSource source
+                ? source.RejectionCategory
+                : TerrariaFrameRejectionCategory.None;
+        }
+    }
 
     public long DroppedAuthorityUpdates => Interlocked.Read(ref droppedAuthorityUpdates);
 
