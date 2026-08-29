@@ -4,13 +4,16 @@ import re
 from pathlib import Path
 
 
+ECHO_FURNITURE_TILE_IDS = [647, 648, 706, 650, 649, 652, 651, 693, 694]
+
+
 def compact(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Inspect TerrariaServer 1.4.5.8 Dirt tile frame-importance writers."
+        description="Verify TerrariaServer 1.4.5.8 Dirt tile frame-importance contract."
     )
     parser.add_argument("--main", required=True)
     parser.add_argument("--tile-id", required=True)
@@ -27,28 +30,50 @@ def main() -> int:
     if allocation is None or allocation.group(1) != "TileID.Count":
         raise SystemExit("Expected Main.tileFrameImportant to be a zero-initialized bool[TileID.Count].")
 
-    bracket_uses = re.findall(r"tileFrameImportant\[([^\]]+)\]", main_source)
     numeric_writes = re.findall(r"tileFrameImportant\[(\d+)\]\s*=\s*(true|false)", main_source)
-    dynamic_write_matches = list(re.finditer(
-        r"tileFrameImportant\[(?!\d+\])([^\]]+)\]\s*=\s*(true|false)",
-        main_source,
-    ))
     dirt_writes = [(index, value) for index, value in numeric_writes if index == "0"]
-
     if dirt_writes:
         raise SystemExit(f"Pinned source writes tileFrameImportant[0]: {dirt_writes}.")
 
+    dynamic_writes = re.findall(
+        r"tileFrameImportant\[(?!\d+\])([^\]]+)\]\s*=\s*(true|false)",
+        main_source,
+    )
+    if sorted(dynamic_writes) != sorted([("tileId", "true"), ("num2", "true")]):
+        raise SystemExit(f"Unexpected dynamic tileFrameImportant writers: {dynamic_writes}.")
+
+    echo_helper = compact(
+        """
+        private static void AddEchoFurnitureTile(int tileId) {
+            tileFrameImportant[tileId] = true;
+            tileNoFail[tileId] = true;
+            tileObsidianKill[tileId] = true;
+        }
+        """
+    )
+    if echo_helper not in main_source:
+        raise SystemExit("AddEchoFurnitureTile frame-importance writer changed.")
+
+    echo_calls = [int(value) for value in re.findall(r"AddEchoFurnitureTile\((\d+)\);", main_source)]
+    if echo_calls != ECHO_FURNITURE_TILE_IDS:
+        raise SystemExit(f"Unexpected AddEchoFurnitureTile ids: {echo_calls}.")
+    if 0 in echo_calls:
+        raise SystemExit("Dirt unexpectedly entered AddEchoFurnitureTile initialization.")
+
+    team_platform_loop = re.search(
+        r"for \(int num2 = 435; num2 <= 439; num2\+\+\) \{ tileFrameImportant\[num2\] = true;",
+        main_source,
+    )
+    if team_platform_loop is None:
+        raise SystemExit("Expected the only num2 frame-importance writer to remain bounded to 435..439.")
+
     print("tile_id_dirt=0")
     print(f"tile_frame_important_allocation={allocation.group(0)}")
-    print(f"tile_frame_important_bracket_uses={len(bracket_uses)}")
     print(f"tile_frame_important_direct_numeric_writes={len(numeric_writes)}")
     print("tile_frame_important_dirt_writes=none")
-    print(f"tile_frame_important_dynamic_writes={len(dynamic_write_matches)}")
-    for index, match in enumerate(dynamic_write_matches):
-        start = max(0, match.start() - 2400)
-        end = min(len(main_source), match.end() + 3200)
-        print(f"tile_frame_important_dynamic_write_{index}={match.group(0)}")
-        print(f"tile_frame_important_dynamic_write_context_{index}={main_source[start:end]}")
+    print(f"tile_frame_important_echo_ids={echo_calls}")
+    print("tile_frame_important_team_platform_range=435..439")
+    print("tile_frame_important_dirt=false")
     return 0
 
 
