@@ -13,8 +13,8 @@ public sealed class RuntimeNpcDeathLootFinalizerTests
         NpcSnapshot slime = Spawn(store, slot: 0, VanillaNpcIds.BlueSlime.Value, 48f, 64f);
         Kill(store, slime.Handle);
         var rolls = new ScriptedLootRollSource(
-            luckResults: new[] { true, true },
-            randomResults: new[] { 2 });
+            luckResults: new[] { 0, 0 },
+            randomResults: new[] { 2, 1 });
         var finalizer = new RuntimeNpcDeathLootFinalizer(store);
         Span<NpcLootDrop> drops = stackalloc NpcLootDrop[2];
 
@@ -38,7 +38,7 @@ public sealed class RuntimeNpcDeathLootFinalizerTests
         Assert.Equal((short)1, drops[1].Stack);
         Assert.False(store.TryGet(slime.Handle, out _));
         Assert.Equal(
-            new[] { "luck:1", "rng:1:3", "luck:10000" },
+            new[] { "luck:1", "rng:1:3", "luck:10000", "rng:1:2" },
             rolls.Calls);
     }
 
@@ -49,7 +49,7 @@ public sealed class RuntimeNpcDeathLootFinalizerTests
         NpcSnapshot slime = Spawn(store, slot: 0, VanillaNpcIds.BlueSlime.Value, 0f, 0f);
         Kill(store, slime.Handle);
         var firstRolls = new ScriptedLootRollSource(
-            luckResults: new[] { true, false },
+            luckResults: new[] { 0, 1 },
             randomResults: new[] { 1 });
         var finalizer = new RuntimeNpcDeathLootFinalizer(store);
         Span<NpcLootDrop> firstDrops = stackalloc NpcLootDrop[2];
@@ -62,9 +62,7 @@ public sealed class RuntimeNpcDeathLootFinalizerTests
             out NpcDeathLootResult first));
         Assert.Equal(1, first.DropCount);
 
-        var secondRolls = new ScriptedLootRollSource(
-            luckResults: Array.Empty<bool>(),
-            randomResults: Array.Empty<int>());
+        var secondRolls = EmptyRolls();
         Span<NpcLootDrop> secondDrops = stackalloc NpcLootDrop[2];
         Assert.False(finalizer.TryFinalize(
             slime.Handle,
@@ -146,7 +144,7 @@ public sealed class RuntimeNpcDeathLootFinalizerTests
     }
 
     private static ScriptedLootRollSource EmptyRolls() =>
-        new(Array.Empty<bool>(), Array.Empty<int>());
+        new(Array.Empty<int>(), Array.Empty<int>());
 
     private static NpcSnapshot Spawn(
         RuntimeNpcStore store,
@@ -182,15 +180,15 @@ public sealed class RuntimeNpcDeathLootFinalizerTests
     }
 
     private sealed class ScriptedLootRollSource(
-        IEnumerable<bool> luckResults,
+        IEnumerable<int> luckResults,
         IEnumerable<int> randomResults) : INpcLootRollSource
     {
-        private readonly Queue<bool> _luckResults = new(luckResults);
+        private readonly Queue<int> _luckResults = new(luckResults);
         private readonly Queue<int> _randomResults = new(randomResults);
 
         public List<string> Calls { get; } = new();
 
-        public bool RollLuck(int chanceDenominator)
+        public int RollLuck(int chanceDenominator)
         {
             Calls.Add($"luck:{chanceDenominator}");
             return _luckResults.Dequeue();
