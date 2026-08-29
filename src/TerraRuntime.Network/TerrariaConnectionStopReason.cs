@@ -15,5 +15,6 @@ public enum TerrariaConnectionStopReason : byte
     OutboundFailure = 10,
     SlowClient = 11,
     RateLimited = 12,
-    JoinTimeout = 13
+    JoinTimeout = 13,
+    FrameRejected = 14
 }
