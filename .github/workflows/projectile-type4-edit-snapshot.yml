@@ -1,0 +1,24 @@
+name: Projectile Type4 Edit Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/projectile-type4-edit-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectile-type4-edit-snapshot
+          path: |
+            tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs
+            tools/ci/probe_projectile_tile_cut.py
+          retention-days: 1
