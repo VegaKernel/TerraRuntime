@@ -5,10 +5,14 @@ namespace TerraRuntime.Core;
 /// <summary>
 /// Writes a complete save to a same-directory temporary file before replacing the destination.
 /// Optional checkpoint validation and previous-generation backup publication happen before the canonical replace.
+/// Temporary files are protected by an exclusive lease for the complete transaction so a later writer can reap only
+/// abandoned temporaries without racing a live writer that is still validating or publishing its candidate.
 /// </summary>
 public static partial class AtomicSaveFileWriter
 {
     private const int IoBufferSize = 64 * 1024;
+    private const string TemporarySuffix = ".tmp";
+    private const string LeaseSuffix = ".lease";
 
     public static Task WriteAsync(
         string destinationPath,
@@ -38,7 +42,12 @@ public static partial class AtomicSaveFileWriter
                 throw new ArgumentException("Backup path must differ from the destination path.", nameof(options));
         }
 
-        string temporaryPath = CreateTemporaryPath(destinationDirectory, fullDestinationPath);
+        CleanupAbandonedTemporaries(fullDestinationPath);
+        if (fullBackupPath is not null)
+            CleanupAbandonedTemporaries(fullBackupPath);
+
+        using TemporaryFileLease temporaryLease = CreateTemporaryLease(destinationDirectory, fullDestinationPath);
+        string temporaryPath = temporaryLease.TemporaryPath;
         bool temporaryConsumed = false;
 
         try
@@ -84,7 +93,8 @@ public static partial class AtomicSaveFileWriter
             ?? throw new ArgumentException("Backup path has no directory.", nameof(backupPath));
         Directory.CreateDirectory(backupDirectory);
 
-        string backupTemporaryPath = CreateTemporaryPath(backupDirectory, backupPath);
+        using TemporaryFileLease backupLease = CreateTemporaryLease(backupDirectory, backupPath);
+        string backupTemporaryPath = backupLease.TemporaryPath;
         bool temporaryConsumed = false;
         try
         {
@@ -137,8 +147,85 @@ public static partial class AtomicSaveFileWriter
         stream.Flush(flushToDisk: true);
     }
 
-    private static string CreateTemporaryPath(string directory, string targetPath) =>
-        Path.Combine(directory, $".{Path.GetFileName(targetPath)}.{Guid.NewGuid():N}.tmp");
+    private static TemporaryFileLease CreateTemporaryLease(string directory, string targetPath)
+    {
+        string targetName = Path.GetFileName(targetPath);
+        string token = Guid.NewGuid().ToString("N");
+        string temporaryPath = Path.Combine(directory, $".{targetName}.{token}{TemporarySuffix}");
+        string leasePath = temporaryPath + LeaseSuffix;
+        var leaseStream = new FileStream(
+            leasePath,
+            new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.ReadWrite,
+                Share = FileShare.None,
+                BufferSize = 1,
+                Options = FileOptions.WriteThrough
+            });
+        return new TemporaryFileLease(temporaryPath, leasePath, leaseStream);
+    }
+
+    private static void CleanupAbandonedTemporaries(string targetPath)
+    {
+        string directory = Path.GetDirectoryName(targetPath)
+            ?? throw new ArgumentException("Target path has no directory.", nameof(targetPath));
+        string targetName = Path.GetFileName(targetPath);
+
+        foreach (string leasePath in Directory.EnumerateFiles(directory, $"*{TemporarySuffix}{LeaseSuffix}"))
+        {
+            if (!IsLeaseForTarget(leasePath, targetName))
+                continue;
+
+            FileStream? orphanLease = null;
+            try
+            {
+                orphanLease = new FileStream(
+                    leasePath,
+                    new FileStreamOptions
+                    {
+                        Mode = FileMode.Open,
+                        Access = FileAccess.ReadWrite,
+                        Share = FileShare.None,
+                        BufferSize = 1,
+                        Options = FileOptions.None
+                    });
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException or FileNotFoundException)
+            {
+                continue;
+            }
+
+            string temporaryPath = leasePath[..^LeaseSuffix.Length];
+            try
+            {
+                TryDelete(temporaryPath);
+            }
+            finally
+            {
+                orphanLease.Dispose();
+                TryDelete(leasePath);
+            }
+        }
+    }
+
+    private static bool IsLeaseForTarget(string leasePath, string targetName)
+    {
+        string name = Path.GetFileName(leasePath);
+        string prefix = $".{targetName}.";
+        string suffix = TemporarySuffix + LeaseSuffix;
+        StringComparison comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        if (!name.StartsWith(prefix, comparison) || !name.EndsWith(suffix, comparison))
+            return false;
+
+        int tokenLength = name.Length - prefix.Length - suffix.Length;
+        return tokenLength == 32 &&
+            Guid.TryParseExact(name.AsSpan(prefix.Length, tokenLength), "N", out _);
+    }
 
     private static void PublishTemporaryFile(string temporaryPath, string destinationPath)
     {
@@ -199,6 +286,31 @@ public static partial class AtomicSaveFileWriter
         finally
         {
             _ = NativeMethods.Close(descriptor);
+        }
+    }
+
+    private sealed class TemporaryFileLease : IDisposable
+    {
+        private FileStream? leaseStream;
+
+        public TemporaryFileLease(string temporaryPath, string leasePath, FileStream leaseStream)
+        {
+            TemporaryPath = temporaryPath;
+            LeasePath = leasePath;
+            this.leaseStream = leaseStream;
+        }
+
+        public string TemporaryPath { get; }
+        public string LeasePath { get; }
+
+        public void Dispose()
+        {
+            FileStream? stream = Interlocked.Exchange(ref leaseStream, null);
+            if (stream is null)
+                return;
+
+            stream.Dispose();
+            TryDelete(LeasePath);
         }
     }
 
