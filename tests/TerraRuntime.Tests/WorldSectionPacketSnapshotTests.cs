@@ -38,7 +38,7 @@ public sealed class WorldSectionPacketSnapshotTests
     {
         WorldFileData source = LoadCompleteWorld();
         WorldTile signTile = source.Tiles.Get(0, 0);
-        signTile.Type = VanillaTileIds.Signs;
+        Assert.True(signTile.TrySetTileType(VanillaTileIds.Signs));
         signTile.Flags |= WorldTileFlags.Active;
         signTile.FrameX = 0;
         signTile.FrameY = 0;
