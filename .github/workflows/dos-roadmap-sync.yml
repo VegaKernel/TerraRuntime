@@ -1,0 +1,71 @@
+name: DoS Roadmap Sync
+
+on:
+  push:
+    paths:
+      - .github/workflows/dos-roadmap-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Sync verified roadmap and KDF note
+        shell: python
+        run: |
+          from pathlib import Path
+
+          roadmap = Path('docs/roadmap.md')
+          text = roadmap.read_text(encoding='utf-8')
+          for old, new in [
+              ('- [ ] Batch already queued small frames into fewer socket writes without intentionally delaying latency-sensitive traffic.',
+               '- [x] Batch already queued small frames into fewer socket writes without intentionally delaying latency-sensitive traffic.'),
+              ('- [ ] Global and per-connection budgets for expensive work.',
+               '- [x] Global and per-connection budgets for expensive work.'),
+              ('- [ ] Bound password/KDF work, compression and section requests.',
+               '- [x] Bound password/KDF work, compression and section requests.'),
+          ]:
+              if old in text:
+                  text = text.replace(old, new, 1)
+              elif new not in text:
+                  raise SystemExit(f'roadmap anchor changed: {old}')
+          roadmap.write_text(text, encoding='utf-8')
+
+          docs = {
+              Path('docs/en/security.md'): (
+                  'Global-budget exhaustion is propagated as structured `RateLimited` rejection rather than being mislabeled as an encoding failure.\n',
+                  'Global-budget exhaustion is propagated as structured `RateLimited` rejection rather than being mislabeled as an encoding failure.\n\nThe current runtime exposes no password/KDF execution path, so hostile clients cannot trigger password hashing work. Any future password authentication must enter the same bounded-work model before it can be enabled in production.\n'
+              ),
+              Path('docs/ru/security.md'): (
+                  'Exhaustion global budget публикуется как structured `RateLimited`, а не маскируется под encoding failure.\n',
+                  'Exhaustion global budget публикуется как structured `RateLimited`, а не маскируется под encoding failure.\n\nВ текущем runtime отсутствует password/KDF execution path, поэтому hostile client не может запустить password hashing work. Любая будущая password authentication должна сначала получить такой же bounded-work contract и только после этого включаться в production.\n'
+              )
+          }
+          for path, (old, new) in docs.items():
+              value = path.read_text(encoding='utf-8')
+              if old in value and new not in value:
+                  value = value.replace(old, new, 1)
+              elif new not in value:
+                  raise SystemExit(f'doc anchor changed: {path}')
+              path.write_text(value, encoding='utf-8')
+
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name Xekep
+          git config user.email Xekep@users.noreply.github.com
+          git rm .github/workflows/dos-roadmap-sync.yml
+          git add docs/roadmap.md docs/en/security.md docs/ru/security.md
+          git commit -m "docs: close verified network DoS budgets"
+          for attempt in 1 2 3 4 5 6; do
+            if git push origin HEAD:main; then exit 0; fi
+            git pull --rebase origin main
+          done
+          git push origin HEAD:main
