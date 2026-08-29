@@ -1,9 +1,9 @@
 name: World Item Reference Probe
 
 on:
-  push:
-    paths:
-      - .github/workflows/world-item-reference-probe.yml
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: main
 
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
@@ -105,5 +107,3 @@ jobs:
 
           print('WORLD_ITEM_PACKET_FACTS=' + json.dumps(summary, sort_keys=True))
           print('WORLD_ITEM_PACKET_EVIDENCE=' + json.dumps(evidence, sort_keys=True))
-
-# Touch 2026-08-29: rerun probe after concurrent main activity.
