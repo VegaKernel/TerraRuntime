@@ -22,6 +22,11 @@ public readonly record struct TerrariaActiveChestState(
     byte NameLength,
     string ChestName);
 
+public readonly record struct TerrariaChestNameLookupRequest(
+    short ChestId,
+    short ChestX,
+    short ChestY);
+
 public enum TerrariaChestDecodeResult : byte
 {
     Decoded = 0,
@@ -40,6 +45,7 @@ public static class TerrariaChestCodec
     private const int ChestItemPayloadLength = 8;
     private const int MinimumActiveChestPayloadLength = 7;
     private const int MaximumActiveChestPayloadLength = 96;
+    private const int ChestNameLookupPayloadLength = 6;
 
     public static TerrariaChestDecodeResult TryDecodeOpenRequest(
         in TerrariaFrame frame,
@@ -102,6 +108,30 @@ public static class TerrariaChestCodec
             chest.ChestY,
             chest.NameLength,
             chest.ChestName ?? string.Empty);
+        return TerrariaChestDecodeResult.Decoded;
+    }
+
+    public static TerrariaChestDecodeResult TryDecodeNameLookup(
+        in TerrariaFrame frame,
+        out TerrariaChestNameLookupRequest request)
+    {
+        request = default;
+        if (frame.MessageId != (byte)TerrariaMessageId.ChestName)
+            return TerrariaChestDecodeResult.WrongMessageId;
+        if (frame.Payload.Length != ChestNameLookupPayloadLength)
+            return TerrariaChestDecodeResult.InvalidPayloadLength;
+
+        if (!TryDeserialize(in frame, out TerrariaPacket packet) ||
+            packet is not ChestName chest ||
+            chest.HasName)
+        {
+            return TerrariaChestDecodeResult.Malformed;
+        }
+
+        request = new TerrariaChestNameLookupRequest(
+            chest.ChestId,
+            chest.ChestX,
+            chest.ChestY);
         return TerrariaChestDecodeResult.Decoded;
     }
 
