@@ -1,4 +1,5 @@
 using TerraRuntime.HostContracts;
+using TerraRuntime.HostContracts.TerminalUI;
 
 namespace TerraRuntime;
 
@@ -8,7 +9,8 @@ public static class StartupProgram
 
     public static int Run(
         string[] args,
-        ITerraRuntimeHostLifecycle? hostLifecycle = null)
+        ITerraRuntimeHostLifecycle? hostLifecycle = null,
+        ITerraRuntimeTerminalDashboardSource? terminalDashboards = null)
     {
         ArgumentNullException.ThrowIfNull(args);
 
@@ -56,7 +58,8 @@ public static class StartupProgram
 
         return TerrariaServerHost.RunAsync(
                 options,
-                hostLifecycle: hostLifecycle)
+                hostLifecycle: hostLifecycle,
+                terminalDashboards: terminalDashboards)
             .GetAwaiter()
             .GetResult();
     }
