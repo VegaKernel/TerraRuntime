@@ -1,4 +1,4 @@
-name: Projectile Type20 Source Snapshot
+name: Apply Player-Owned Green Laser Slice
 
 on:
   push:
@@ -8,107 +8,42 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Extract pinned type20 facts
+      - name: Apply source-backed player-owned Green Laser slice
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .cache/terraria-1458 artifacts/type20 .tools
-          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
-          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
-          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
-
-          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
-          assembly=""
-          while IFS= read -r -d '' candidate; do
-            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
-            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then
-              assembly="$candidate"
+          git fetch origin main
+          git reset --hard origin/main
+          printf '%s' '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' | base64 -d | gzip -dc > /tmp/apply_type20.py
+          python3 /tmp/apply_type20.py
+          python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
+          git diff --check
+          git rm .github/workflows/type20-source-snapshot.yml
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+          git config user.name 'OpenAI'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src tools tests .github/workflows
+          git commit -m 'feat: simulate player-owned green laser world flight'
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
             fi
-          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
-          test -n "$assembly"
-          assembly_dir="$(dirname "$assembly")"
-
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/type20/projectile.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/type20/projectile-id.cs
-
-          python3 - <<'PY'
-          import re
-          from pathlib import Path
-
-          projectile = Path('artifacts/type20/projectile.cs').read_text(encoding='utf-8')
-          projectile_id = Path('artifacts/type20/projectile-id.cs').read_text(encoding='utf-8')
-
-          def method(source, name):
-              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', source)
-              if not m:
-                  raise SystemExit(f'method not found: {name}')
-              opening = source.find('{', m.end())
-              depth = 0
-              in_string = in_char = escaped = False
-              for i in range(opening, len(source)):
-                  c = source[i]
-                  if escaped:
-                      escaped = False
-                      continue
-                  if c == '\\' and (in_string or in_char):
-                      escaped = True
-                      continue
-                  if c == '"' and not in_char:
-                      in_string = not in_string
-                      continue
-                  if c == "'" and not in_string:
-                      in_char = not in_char
-                      continue
-                  if in_string or in_char:
-                      continue
-                  if c == '{': depth += 1
-                  elif c == '}':
-                      depth -= 1
-                      if depth == 0: return source[m.start():i+1]
-              raise SystemExit(f'unterminated: {name}')
-
-          def compact(text): return ' '.join(text.split())
-          def contexts(source, pattern, radius=2600):
-              text = compact(source)
-              out = []
-              for m in re.finditer(pattern, text):
-                  out.append(text[max(0,m.start()-radius):min(len(text),m.end()+radius)])
-              return ' | '.join(out) if out else '<none>'
-
-          defaults = method(projectile, 'SetDefaults')
-          ai = method(projectile, 'AI_001')
-          update = method(projectile, 'Update')
-          movement = method(projectile, 'HandleMovement')
-          kill = method(projectile, 'Kill')
-          can_cut = method(projectile, 'CanCutTiles')
-
-          lines = [
-              'projectile_id_type20=' + contexts(projectile_id, r'\b[A-Za-z0-9_]+\s*=\s*20\s*;', 300),
-              'projectile_type20_defaults=' + contexts(defaults, r'(?<!\d)type\s*==\s*20(?!\d)', 1800),
-              'projectile_ai001_type20_contexts=' + contexts(ai, r'(?<!\d)type\s*==\s*20(?!\d)', 2600),
-              'projectile_update_type20_contexts=' + contexts(update, r'(?<!\d)type\s*==\s*20(?!\d)', 2600),
-              'projectile_handle_movement_type20_contexts=' + contexts(movement, r'(?<!\d)type\s*==\s*20(?!\d)', 2600),
-              'projectile_kill_type20_contexts=' + contexts(kill, r'(?<!\d)type\s*==\s*20(?!\d)', 3200),
-              'projectile_can_cut_tiles_type20_context=' + contexts(can_cut, r'(?<!\d)20(?!\d)', 1000),
-          ]
-          Path('artifacts/type20/type20-source.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
-          print('\n'.join(lines))
-          PY
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: projectile-type20-source
-          path: artifacts/type20/type20-source.txt
-          retention-days: 1
+          done
+          echo 'main kept advancing; refusing to force-push' >&2
+          exit 1
