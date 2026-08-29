@@ -38,7 +38,7 @@ def extract_braced_member(source: str, signature: str) -> str:
     raise SystemExit(f"Could not locate closing brace for {signature!r}.")
 
 
-def print_context(source: str, needle: str, label: str, radius: int = 500) -> None:
+def print_context(source: str, needle: str, label: str, radius: int = 550) -> None:
     index = source.find(needle)
     if index < 0:
         print(f"{label}=<none>")
@@ -48,16 +48,34 @@ def print_context(source: str, needle: str, label: str, radius: int = 500) -> No
     print(f"{label}=" + source[start:end])
 
 
+def print_all_contexts(source: str, needle: str, label: str, radius: int = 450, limit: int = 8) -> None:
+    cursor = 0
+    count = 0
+    while count < limit:
+        index = source.find(needle, cursor)
+        if index < 0:
+            break
+        start = max(0, index - radius)
+        end = min(len(source), index + len(needle) + radius)
+        count += 1
+        print(f"{label}_{count}=" + source[start:end])
+        cursor = index + len(needle)
+    if count == 0:
+        print(f"{label}=<none>")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--common-code", required=True, type=Path)
     parser.add_argument("--common-drop", required=True, type=Path)
     parser.add_argument("--item", required=True, type=Path)
+    parser.add_argument("--item-id", required=True, type=Path)
     args = parser.parse_args()
 
     common_code = compact(args.common_code.read_text(encoding="utf-8"))
     common_drop = compact(args.common_drop.read_text(encoding="utf-8"))
     item = compact(args.item.read_text(encoding="utf-8"))
+    item_id = compact(args.item_id.read_text(encoding="utf-8"))
 
     drop_from_npc = extract_braced_member(
         common_code,
@@ -80,6 +98,10 @@ def main() -> int:
     )
     require(vector_new_item, "PickAnItemSlotToSpawnItemOn()", "Item.NewItem slot selection changed")
     require(vector_new_item, "Item item = new Item(); item.SetDefaults(type); item.stack = stack; item.Prefix(prefix);", "Item.NewItem defaults/stack/prefix ordering changed")
+    require(vector_new_item, "worldItem.Center = center;", "Item.NewItem center placement changed")
+    require(vector_new_item, "if (velocity.HasValue) { worldItem.velocity = velocity.Value; }", "explicit velocity branch changed")
+    require(vector_new_item, "worldItem.velocity.X = (float)Main.rand.Next(-30, 31) * 0.1f;", "default X velocity changed")
+    require(vector_new_item, "worldItem.velocity.Y = (float)Main.rand.Next(-40, -15) * 0.1f;", "gravity-item Y velocity changed")
 
     print("npc_loot_spawn_center=x:npc.position.X+npc.width/2,y:npc.position.Y+npc.height/2")
     print("npc_loot_spawn_scattered_default=false")
@@ -87,17 +109,20 @@ def main() -> int:
     print("npc_loot_new_item_prefix=-1")
     print("npc_loot_new_item_broadcast=false")
     print("npc_loot_source=npc.GetItemSource_Loot()")
-    print("item_new_item_slot_selection=before_materialized_world_item_state")
+    print("item_new_item_center_assignment=worldItem.Center=center")
+    print("item_new_item_velocity_x=0.1*rand[-30,30]")
+    print("item_new_item_gravity_velocity_y=0.1*rand[-40,-16]")
 
-    for needle, label in (
-        ("WorldItem world", "item_new_item_world_item_context"),
-        ("item.position", "item_new_item_position_context"),
-        ("item.velocity", "item_new_item_velocity_context"),
-        ("item.owner", "item_new_item_owner_context"),
-        ("velocity.HasValue", "item_new_item_explicit_velocity_context"),
-        ("ownership", "item_new_item_ownership_context"),
-    ):
-        print_context(vector_new_item, needle, label)
+    print_context(vector_new_item, "ItemID.Sets.ItemNoGravity", "item_new_item_no_gravity_context")
+    print_context(vector_new_item, "worldItem.timeSinceItemSpawned", "item_new_item_spawn_time_context")
+    print_context(vector_new_item, "_DefaultAssignItemsToNewPlayer", "item_new_item_default_owner_context")
+    print_context(vector_new_item, "noBroadcast", "item_new_item_broadcast_context")
+
+    # The exact SetDefaults cases are intentionally exploratory here. They are promoted into assertions only after
+    # the pinned source exposes which occurrence belongs to the defaults table for Gel and Slime Staff.
+    print_all_contexts(item, "case 23:", "item_defaults_gel_case")
+    print_all_contexts(item, "case 1309:", "item_defaults_slime_staff_case")
+    print_context(item_id, "ItemNoGravity", "item_id_no_gravity_set_context", radius=900)
 
     return 0
 
