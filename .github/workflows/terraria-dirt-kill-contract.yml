@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'tools/ci/probe_dirt_kill.py'
+      - 'tools/ci/probe_dirt_item_drop.py'
       - '.github/workflows/terraria-dirt-kill-contract.yml'
   workflow_dispatch:
 
@@ -40,4 +41,6 @@ jobs:
           assembly_dir="$(dirname "$assembly")"
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.TileID "$assembly" > artifacts/source-contract/tile-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" > artifacts/source-contract/item.cs
           python3 tools/ci/probe_dirt_kill.py --world-gen artifacts/source-contract/world-gen.cs --tile-id artifacts/source-contract/tile-id.cs
+          python3 tools/ci/probe_dirt_item_drop.py --world-gen artifacts/source-contract/world-gen.cs --item artifacts/source-contract/item.cs
