@@ -16,6 +16,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [World loading and persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state and recovery.
 - [Gameplay and vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat and explicit parity gaps.
 - [Synchronization and interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis and current passthrough policy.
+- [Performance and tick scheduling](performance-runtime.md) — 60 Hz authoritative loop, bounded mailbox/ingress/apply budgets, per-source fairness, missed-tick policy and performance evidence rules.
 - [Operations and Terminal UI](operations-tui.md) — no-argument startup, CLI defaults, TUI lifecycle, fallback console, telemetry and dashboard extension rules.
 - [Observability and logging](observability-logging.md) — bounded runtime telemetry/log buffers, current host-log behavior and the incomplete async structured logging target.
 - [World generation](world-generation.md) — provider/pass/workspace/RNG contracts, trusted-host registration and current non-vanilla flat baseline.
