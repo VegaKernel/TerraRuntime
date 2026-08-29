@@ -16,9 +16,10 @@ public static class VanillaCoinFacts
     public const long GoldValue = 10_000;
     public const long PlatinumValue = 1_000_000;
 
-    // Copper/silver/gold naturally carry at most 99 after vanilla normalization; platinum is the terminal
-    // denomination and uses the modern item stack ceiling. These bounds are used only when materializing change.
-    public const short LowerDenominationCanonicalMaximum = 99;
+    // Lower denominations convert upward at the vanilla 100-coin boundary. Platinum is terminal and uses the
+    // modern 9999 stack ceiling. Purchase accounting rejects larger client-supplied stacks instead of treating
+    // packet-5's signed-short capacity as legitimate money.
+    public const short LowerDenominationMaximumStack = 100;
     public const short PlatinumMaximumStack = 9_999;
 
     public static bool TryGetValue(ItemTypeId itemType, out long value)
@@ -48,6 +49,17 @@ public static class VanillaCoinFacts
         }
 
         value = 0;
+        return false;
+    }
+
+    public static bool IsValidStack(ItemTypeId itemType, short stack)
+    {
+        if (stack <= 0)
+            return false;
+        if (itemType == PlatinumCoin)
+            return stack <= PlatinumMaximumStack;
+        if (itemType == CopperCoin || itemType == SilverCoin || itemType == GoldCoin)
+            return stack <= LowerDenominationMaximumStack;
         return false;
     }
 }
