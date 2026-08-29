@@ -37,8 +37,25 @@ public static class RuntimeWorldSnapshotPreservedSections
         WorldFileData world,
         out WorldFilePreservedSections? preserved)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
         ArgumentNullException.ThrowIfNull(world);
+        return TryLoad(
+            cachePath,
+            sourceStamp,
+            world.Envelope,
+            world.Header.Dimensions,
+            out preserved);
+    }
+
+    public static RuntimeWorldPreservedSectionsLoadDiagnostic TryLoad(
+        string cachePath,
+        RuntimeWorldSourceStamp sourceStamp,
+        WorldFileEnvelope envelope,
+        WorldDimensions dimensions,
+        out WorldFilePreservedSections? preserved)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
+        ArgumentNullException.ThrowIfNull(envelope);
+        ArgumentNullException.ThrowIfNull(dimensions);
         preserved = null;
 
         if (!File.Exists(cachePath))
@@ -92,14 +109,13 @@ public static class RuntimeWorldSnapshotPreservedSections
                     RuntimeWorldPreservedSectionsLoadResult.SourceNewer);
             }
 
-            if (cachedWorldFormat != world.Envelope.FormatVersion)
+            if (cachedWorldFormat != envelope.FormatVersion)
             {
                 return new RuntimeWorldPreservedSectionsLoadDiagnostic(
                     RuntimeWorldPreservedSectionsLoadResult.WorldFormatMismatch);
             }
 
-            if (cachedWidth != world.Header.Dimensions.WidthTiles ||
-                cachedHeight != world.Header.Dimensions.HeightTiles)
+            if (cachedWidth != dimensions.WidthTiles || cachedHeight != dimensions.HeightTiles)
             {
                 return new RuntimeWorldPreservedSectionsLoadDiagnostic(
                     RuntimeWorldPreservedSectionsLoadResult.DimensionsMismatch);
@@ -109,7 +125,7 @@ public static class RuntimeWorldSnapshotPreservedSections
                     stream,
                     CacheHeaderSize,
                     canonicalLength,
-                    world.Envelope,
+                    envelope,
                     out preserved) ||
                 preserved is null)
             {
