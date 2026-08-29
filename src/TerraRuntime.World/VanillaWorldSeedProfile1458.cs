@@ -182,7 +182,7 @@ internal readonly record struct VanillaWorldSeedProfile1458(
     {
         "abandonedmanors" => VanillaSecretSeedModifier1458.AbandonedManors,
         "arachnophobia" => VanillaSecretSeedModifier1458.Arachnophobia,
-        "beamMeup" => VanillaSecretSeedModifier1458.BeamMeUp,
+        "beammeup" => VanillaSecretSeedModifier1458.BeamMeUp,
         "bringatowel" => VanillaSecretSeedModifier1458.BringATowel,
         "calmbeforethestorm" => VanillaSecretSeedModifier1458.CalmBeforeTheStorm,
         "doubledaringdangers" => VanillaSecretSeedModifier1458.DoubleDaringDangers,
