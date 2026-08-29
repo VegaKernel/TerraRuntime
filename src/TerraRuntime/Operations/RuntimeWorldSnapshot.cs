@@ -1,5 +1,19 @@
 namespace TerraRuntime.Operations;
 
+internal readonly record struct RuntimeWorldPersistenceSnapshot(
+    bool AcceptingRequests,
+    bool TileShadowReady,
+    int RemainingBootstrapSections,
+    int PendingDirtyTileSections,
+    bool SaveRequested,
+    bool WriteActive,
+    bool PendingWrite,
+    long AcceptedSnapshots,
+    long StartedWrites,
+    long CompletedWrites,
+    long CoalescedSnapshots,
+    long FailedWrites);
+
 internal readonly record struct RuntimeWorldSnapshot(
     bool Ready,
     string Name,
@@ -60,4 +74,5 @@ internal readonly record struct RuntimeWorldSnapshot(
     long SectionCacheOnDemandDeduplicatedRequests = 0,
     int SectionCacheOnDemandPendingRequests = 0,
     long SectionCacheOnDemandRejectedRequests = 0,
-    int SectionCacheOnDemandCapacity = 0);
+    int SectionCacheOnDemandCapacity = 0,
+    RuntimeWorldPersistenceSnapshot? Persistence = null);
