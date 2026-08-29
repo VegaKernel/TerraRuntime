@@ -422,15 +422,19 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             $"port {runtime.Port} | interest {(runtime.InterestManagementEnabled ? "ON" : "OFF")}";
         rows[1].Text =
             $"TPS {runtime.ObservedTicksPerSecond,5:F1}/{runtime.TargetTicksPerSecond,-3} {RenderTpsGraph(runtime.TargetTicksPerSecond)}";
+        string tickCpu = runtime.CpuTimeAvailable
+            ? $"{runtime.LastTickCpuMilliseconds:F2}/{runtime.WorstTickCpuMilliseconds:F2} ms"
+            : "n/a";
         rows[2].Text =
-            $"Tick #{runtime.Tick:N0}  last {runtime.LastTickMilliseconds:F2} ms  worst {runtime.WorstTickMilliseconds:F2} ms  " +
-            $"missed {runtime.MissedTickDeadlines:N0}  CPU {runtime.ProcessCpuPercent:F1}%  heap {FormatMebibytes(runtime.ManagedHeapBytes)}";
+            $"Tick #{runtime.Tick:N0}  wall {runtime.LastTickMilliseconds:F2}/{runtime.WorstTickMilliseconds:F2} ms  cpu {tickCpu}  " +
+            $"slow {SanitizeText(runtime.SlowestPhase, 18)} {runtime.SlowestPhaseMilliseconds:F2} ms  missed {runtime.MissedTickDeadlines:N0}";
         rows[3].Text =
-            $"Network  active {network.ActiveConnections}  inbound {network.InboundWindowFrames:N0} f/s {FormatKibibytes(network.InboundWindowBytes)}/s  " +
-            $"queued {network.QueuedOutboundFrames:N0} frames/{FormatKibibytes(network.QueuedOutboundBytes)}  slow {network.SlowClients}";
+            $"Process     CPU {runtime.ProcessCpuPercent:F1}%  heap {FormatMebibytes(runtime.ManagedHeapBytes)}  working {FormatMebibytes(runtime.WorkingSetBytes)}  " +
+            $"allocated {FormatMebibytes(runtime.TotalAllocatedBytes)}  GC {runtime.Gen0Collections:N0}/{runtime.Gen1Collections:N0}/{runtime.Gen2Collections:N0} pause {runtime.GcPauseTimePercentage:F2}%";
         rows[4].Text =
-            $"Relay    move {network.RelayedMovementFrames:N0}  npc {network.NpcRelayedFrames:N0}  projectile {network.ProjectileRelayedFrames:N0}  " +
-            $"items {network.WorldItemRelayedFrames:N0}  rejected-in {network.RejectedInboundFrames:N0}";
+            $"Commands    done {runtime.CommandsProcessed:N0}  pending {runtime.PendingCommands:N0}  deferred {runtime.DeferredCommands:N0}  " +
+            $"rejected {runtime.RejectedCommands:N0}  budget {runtime.CommandBudgetExhaustions:N0}  oldest {runtime.OldestPendingCommandAgeMilliseconds:F1} ms  " +
+            $"connections {runtime.ActiveConnections} accepted {runtime.AcceptedConnections:N0} rejected {runtime.RejectedConnections:N0} slow {network.SlowClients}";
 
         rows[5].Text = "WORLDS";
         rows[6].Text =
