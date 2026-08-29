@@ -77,7 +77,7 @@ public sealed class ManualWorldCheckpointOperationsTests
     }
 
     [Fact]
-    public void Actions_menu_manual_save_uses_world_operations_and_renders_world_view()
+    public void Actions_menu_manual_save_uses_world_operations_and_renders_pending_status()
     {
         var operations = new ManualSaveOperations();
         var logs = new RuntimeLogBuffer(capacity: 4);
@@ -107,6 +107,7 @@ public sealed class ManualWorldCheckpointOperationsTests
             app.LayoutAndDraw();
             AssertRendered(app.Driver!, "WORLD");
             AssertRendered(app.Driver!, "Save        shadow ready");
+            AssertRendered(app.Driver!, "request pending");
         }
         finally
         {
@@ -114,7 +115,7 @@ public sealed class ManualWorldCheckpointOperationsTests
         }
     }
 
-    private static RuntimeWorldSnapshot CreateWorldSnapshot() =>
+    private static RuntimeWorldSnapshot CreateWorldSnapshot(bool saveRequested = false) =>
         new(
             Ready: true,
             Name: "Manual-Save-Test",
@@ -148,7 +149,7 @@ public sealed class ManualWorldCheckpointOperationsTests
                 TileShadowReady: true,
                 RemainingBootstrapSections: 0,
                 PendingDirtyTileSections: 0,
-                SaveRequested: false,
+                SaveRequested: saveRequested,
                 WriteActive: false,
                 PendingWrite: false,
                 AcceptedSnapshots: 0,
@@ -194,6 +195,8 @@ public sealed class ManualWorldCheckpointOperationsTests
         INetworkOperations,
         IWorldOperations
     {
+        private bool saveRequested;
+
         public int SaveRequests { get; private set; }
 
         RuntimeDashboardSnapshot IRuntimeDashboardOperations.CaptureSnapshot() => default;
@@ -206,11 +209,12 @@ public sealed class ManualWorldCheckpointOperationsTests
 
         RuntimeNetworkSnapshot INetworkOperations.CaptureSnapshot() => default;
 
-        RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() => CreateWorldSnapshot();
+        RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() => CreateWorldSnapshot(saveRequested);
 
         public bool TryRequestSave()
         {
             SaveRequests++;
+            saveRequested = true;
             return true;
         }
     }
