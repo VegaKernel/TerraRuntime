@@ -41,10 +41,12 @@ Current defaults are:
 $$
 T_{\mathrm{handshake}}=10\,\mathrm{s},
 \qquad
-T_{\mathrm{join}}=2\,\mathrm{min}.
+T_{\mathrm{join}}=2\,\mathrm{min},
+\qquad
+T_{\mathrm{idle}}=10\,\mathrm{min}.
 $$
 
-A valid `Hello` ends the handshake deadline but does not grant an unlimited player-slot lease. Until runtime readiness reaches `Playing`, the join-abuse deadline remains active. After `Playing`, the current normal idle timeout is infinite unless configured otherwise.
+A valid `Hello` ends the handshake deadline but does not grant an unlimited player-slot lease. Until runtime readiness reaches `Playing`, the join-abuse deadline remains active. After `Playing`, accepted inbound traffic refreshes the normal `$10\,\mathrm{min}$` inactivity deadline.
 
 `HandshakeTimeout`, `JoinTimeout` and `IdleTimeout` remain distinct telemetry categories.
 
@@ -85,6 +87,14 @@ Inbound commands, outbound frames, section/compression work and diagnostics rete
 The authoritative loop combines global capacity, per-tick operation limits, per-source fairness and per-source pending ceilings. Shared work that bypasses the loop but multiplies across recipients requires its own server-global budget before multiplication.
 
 Security budgets are global when work competes for one shared tick/resource; multiplying a full expensive-work allowance by player count merely scales the DoS surface.
+
+Client-triggered packet-10 section compression is bounded at both connection and server scope. Packet 8 has a per-connection hard-abuse ceiling of `$120\,\mathrm{frames/s}$`. Cache misses then cross a server-global fixed-window admission budget
+
+$$
+R_{\mathrm{section}}=255\ \text{unique rebuild generations}/\mathrm{s},
+$$
+
+independent of configured player count. Concurrent waiters for the same single-flight section generation consume one global admission, not one per connection. The rebuild pipeline additionally bounds distinct pending on-demand generations to `$255$`; production uses one compression worker with one queued work item and one queued completion. Global-budget exhaustion is propagated as structured `RateLimited` rejection rather than being mislabeled as an encoding failure.
 
 ## 10. Single-writer containment
 

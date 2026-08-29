@@ -41,10 +41,12 @@ Current defaults:
 $$
 T_{\mathrm{handshake}}=10\,\mathrm{s},
 \qquad
-T_{\mathrm{join}}=2\,\mathrm{min}.
+T_{\mathrm{join}}=2\,\mathrm{min},
+\qquad
+T_{\mathrm{idle}}=10\,\mathrm{min}.
 $$
 
-Valid `Hello` завершает handshake deadline, но не выдаёт unlimited player-slot lease. До readiness `Playing` active join-abuse deadline. После `Playing` current normal idle timeout infinite, если deployment не configured иначе.
+Valid `Hello` завершает handshake deadline, но не выдаёт unlimited player-slot lease. До readiness `Playing` active join-abuse deadline. После `Playing` accepted inbound traffic обновляет normal inactivity deadline `$10\,\mathrm{min}$`.
 
 `HandshakeTimeout`, `JoinTimeout`, `IdleTimeout` остаются distinct telemetry categories.
 
@@ -85,6 +87,14 @@ Inbound commands, outbound frames, section/compression work и diagnostics reten
 Authoritative loop сочетает global capacity, per-tick operation limits, per-source fairness и per-source pending ceilings. Shared work, которое bypass'ит loop и multiplicates recipients, требует own server-global budget до multiplication.
 
 Security budgets global, когда work конкурирует за shared tick/resource; умножение full allowance на player count лишь увеличивает DoS surface.
+
+Client-triggered packet-10 section compression bounded одновременно на connection и server scope. Для packet 8 действует per-connection hard-abuse ceiling `$120\,\mathrm{frames/s}$`. Cache miss затем проходит server-global fixed-window admission budget
+
+$$
+R_{\mathrm{section}}=255\ \text{unique rebuild generations}/\mathrm{s},
+$$
+
+который не умножается на configured player count. Concurrent waiters одной single-flight section generation потребляют один global admission, а не по одному на connection. Rebuild pipeline дополнительно ограничивает число distinct pending on-demand generations значением `$255$`; production использует один compression worker, один queued work item и один queued completion. Exhaustion global budget публикуется как structured `RateLimited`, а не маскируется под encoding failure.
 
 ## 10. Single-writer containment
 
