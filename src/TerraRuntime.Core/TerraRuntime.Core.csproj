@@ -8,6 +8,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="TerraRuntime.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
   </ItemGroup>
 </Project>
