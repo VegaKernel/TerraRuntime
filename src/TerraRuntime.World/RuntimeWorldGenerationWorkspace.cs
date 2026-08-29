@@ -88,11 +88,11 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace
         if ((tile.Flags & ~KnownFlags) != 0 || tile.Shape > 5 || !Enum.IsDefined(tile.LiquidKind))
             return false;
 
-        // Official-client-compatible generation may only emit tile IDs known by Terraria 1.4.5.8. Wall content
-        // gets the same catalog validation once a source-verified WallID.Count catalog is admitted to Contracts;
-        // inventing that bound here would be worse than leaving the storage-width check explicit.
-        if (tile.Type >= VanillaTileIds.Count)
+        if (tile.Type >= VanillaWorldFormat326.TileTypeCount ||
+            tile.Wall >= VanillaWorldFormat326.WallTypeCount)
+        {
             return false;
+        }
 
         return true;
     }
