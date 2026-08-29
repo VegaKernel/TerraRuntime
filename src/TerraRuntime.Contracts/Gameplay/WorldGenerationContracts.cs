@@ -122,7 +122,16 @@ public interface IWorldGenerationContext
     /// </summary>
     IWorldGenerationMetadataWorkspace? Metadata { get; }
 
+    /// <summary>Independent TerraRuntime RNG used by <see cref="WorldGenerationRngMode.IsolatedDeterministic"/>.</summary>
     IWorldGenerationRandom Random { get; }
+
+    /// <summary>
+    /// Exact Terraria-compatible RNG operations for <see cref="WorldGenerationRngMode.VanillaSharedRng"/> passes.
+    /// This is null for non-vanilla RNG modes. The separate surface is deliberate: Terraria 1.4.5.8 UnifiedRandom
+    /// has no native UInt32/UInt64 operations, so synthesizing them would silently change RNG consumption.
+    /// </summary>
+    IWorldGenerationVanillaRandom? VanillaRandom { get; }
+
     CancellationToken CancellationToken { get; }
     void ReportProgress(double fraction, string? message = null);
 }
@@ -167,6 +176,20 @@ public interface IWorldGenerationRandom
     ulong NextUInt64();
     uint NextUInt32();
     int NextInt32(int exclusiveMax);
+}
+
+/// <summary>
+/// Exact operation surface used by TerrariaServer 1.4.5.8 world-generation passes. The runtime supplies a fresh
+/// world-seeded instance for each vanilla pass once <see cref="WorldGenerationRngMode.VanillaSharedRng"/> execution
+/// is enabled. These methods intentionally mirror UnifiedRandom instead of extending it with invented operations.
+/// </summary>
+public interface IWorldGenerationVanillaRandom
+{
+    int Next();
+    int Next(int maxValue);
+    int Next(int minValue, int maxValue);
+    double NextDouble();
+    void NextBytes(byte[] buffer);
 }
 
 /// <summary>Optional bounded progress sink supplied by the caller.</summary>
