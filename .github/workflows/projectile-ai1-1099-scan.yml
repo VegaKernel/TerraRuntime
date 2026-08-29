@@ -1,0 +1,128 @@
+name: Projectile AI1 1099 Proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/projectile-ai1-1099-scan.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/ai1-1099 .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+      - name: Install pinned ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+      - name: Prove SoundGun type 1099
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256='d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e'
+          assembly=''
+          while IFS= read -r -d '' candidate; do
+            sha="$(sha256sum "$candidate" | awk '{print $1}')"
+            if [[ "$sha" == "$expected_sha256" ]]; then assembly="$candidate"; break; fi
+          done < <(find .cache/terraria-1458/extracted -type f -name TerrariaServer.exe -print0)
+          test -n "$assembly"
+          dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.Projectile "$assembly" > artifacts/ai1-1099/projectile.cs
+          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/ai1-1099/projectile-id.cs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          projectile = Path('artifacts/ai1-1099/projectile.cs').read_text(encoding='utf-8')
+          projectile_id = Path('artifacts/ai1-1099/projectile-id.cs').read_text(encoding='utf-8')
+          target = 1099
+
+          def method(source, name):
+              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', source)
+              if not m: raise SystemExit(f'method not found: {name}')
+              op = source.find('{', m.end())
+              depth = 0
+              for i in range(op, len(source)):
+                  if source[i] == '{': depth += 1
+                  elif source[i] == '}':
+                      depth -= 1
+                      if depth == 0: return source[m.start():i+1]
+              raise SystemExit(f'unterminated method: {name}')
+
+          def type_block(source, raw_type):
+              m = re.search(rf'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*{raw_type}(?!\d)\s*\)', source)
+              if not m: raise SystemExit(f'type block not found: {raw_type}')
+              op = source.find('{', m.end())
+              depth = 0
+              for i in range(op, len(source)):
+                  if source[i] == '{': depth += 1
+                  elif source[i] == '}':
+                      depth -= 1
+                      if depth == 0: return source[m.start():i+1]
+              raise SystemExit(f'unterminated type block: {raw_type}')
+
+          def count_type(source, raw_type):
+              compact=' '.join(source.split())
+              p=re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{raw_type}(?!\d)|\bcase\s+{raw_type}\s*:')
+              return len(p.findall(compact))
+
+          def initializer(source, field):
+              m=re.search(rf'{re.escape(field)}\s*=\s*Factory\.CreateCustomSet<bool\?>\s*\(', source)
+              if not m: raise SystemExit(f'initializer not found: {field}')
+              op=source.find('(', m.start())
+              depth=0
+              for i in range(op, len(source)):
+                  if source[i] == '(': depth += 1
+                  elif source[i] == ')':
+                      depth -= 1
+                      if depth == 0: return source[m.start():i+1]
+              raise SystemExit(f'unterminated initializer: {field}')
+
+          if not re.search(r'public const (?:short|int)\s+SoundGun\s*=\s*1099\s*;', projectile_id):
+              raise SystemExit('ProjectileID.SoundGun != 1099')
+
+          defaults=type_block(method(projectile,'SetDefaults'), target)
+          for token in ('width = 66;', 'height = 66;', 'aiStyle = 1;', 'friendly = true;', 'penetrate = -1;', 'timeLeft = 600;', 'tileCollide = false;', 'magic = true;'):
+              if token not in defaults: raise SystemExit(f'type1099 default missing: {token}')
+          for forbidden in ('ignoreWater = true;', 'extraUpdates ='):
+              if forbidden in defaults: raise SystemExit(f'type1099 unexpected default: {forbidden}')
+
+          for name in ('AI_001','AI','Update','HandleMovement','GetCollisionParams','Kill'):
+              count=count_type(method(projectile,name), target)
+              if count != 0: raise SystemExit(f'type1099 unexpectedly special in {name}: {count}')
+
+          can_cut=method(projectile,'CanCutTiles')
+          if count_type(can_cut,target) != 0: raise SystemExit('type1099 explicit CanCutTiles branch')
+
+          wind=' '.join(initializer(projectile_id,'WindPhysicsImmunity').split())
+          if 'CreateCustomSet<bool?>(null' not in wind: raise SystemExit('unexpected wind default semantics')
+          if re.search(r'(?<!\d)1099(?!\d)', wind): raise SystemExit('type1099 unexpectedly overrides WindPhysicsImmunity')
+
+          report='\n'.join([
+              'projectile_id=SoundGun:1099',
+              'defaults=' + ' '.join(defaults.split()),
+              'special_branches=none',
+              'can_cut_tiles=' + ' '.join(can_cut.split()),
+              'wind_override=none',
+          ]) + '\n'
+          Path('artifacts/ai1-1099/report.txt').write_text(report, encoding='utf-8')
+          print(report)
+          PY
+          rm artifacts/ai1-1099/projectile.cs artifacts/ai1-1099/projectile-id.cs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectile-ai1-1099-proof
+          path: artifacts/ai1-1099/report.txt
+          if-no-files-found: error
