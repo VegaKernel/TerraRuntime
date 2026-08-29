@@ -27,5 +27,6 @@ public enum TerrariaMessageId : byte
     ProjectileDestroy = 29,
     PlayerMana = 42,
     PlayerSpawnSelf = 49,
+    LoadNetModule = 82,
     FinishedConnectingToServer = 129
 }
