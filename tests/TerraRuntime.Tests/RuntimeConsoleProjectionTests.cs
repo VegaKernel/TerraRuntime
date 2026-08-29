@@ -1,8 +1,9 @@
-using TerraRuntime.Contracts.Diagnostics;
 using TerraRuntime.Diagnostics;
 using TerraRuntime.Operations;
 using StructuredLogCategory = TerraRuntime.Contracts.Diagnostics.RuntimeLogCategory;
 using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEventIds;
+using StructuredLogLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel;
+using OperationsLogLevel = TerraRuntime.Operations.RuntimeLogLevel;
 
 namespace TerraRuntime.Tests;
 
@@ -16,26 +17,26 @@ public sealed class RuntimeConsoleProjectionTests
         using var standardError = new StringWriter();
         var loggingOptions = new RuntimeHostLoggingOptions
         {
-            MinimumLevel = RuntimeLogLevel.Debug,
-            ConsoleMinimumLevel = RuntimeLogLevel.Warning,
+            MinimumLevel = StructuredLogLevel.Debug,
+            ConsoleMinimumLevel = StructuredLogLevel.Warning,
             JsonLinesEnabled = false
         };
         var log = new RuntimeHostLog(runtimeLogs, standardOutput, standardError, loggingOptions);
 
         log.Log(
-            TerraRuntime.Operations.RuntimeLogLevel.Information,
+            OperationsLogLevel.Information,
             StructuredLogEventIds.LifecycleInformation,
             StructuredLogCategory.Lifecycle,
             "Server",
             "hidden-info");
         log.Log(
-            TerraRuntime.Operations.RuntimeLogLevel.Warning,
+            OperationsLogLevel.Warning,
             StructuredLogEventIds.LifecycleWarning,
             StructuredLogCategory.Lifecycle,
             "Server",
             "visible-warning");
         log.Log(
-            TerraRuntime.Operations.RuntimeLogLevel.Error,
+            OperationsLogLevel.Error,
             StructuredLogEventIds.LifecycleError,
             StructuredLogCategory.Lifecycle,
             "Server",
@@ -48,7 +49,7 @@ public sealed class RuntimeConsoleProjectionTests
         Assert.Equal("visible-error" + Environment.NewLine, standardError.ToString());
 
         RuntimeLogSnapshot snapshot = runtimeLogs.CaptureSnapshot(
-            TerraRuntime.Operations.RuntimeLogLevel.Debug,
+            OperationsLogLevel.Debug,
             maxEntries: 16);
         Assert.Equal(3, snapshot.Entries.Length);
         Assert.Contains(snapshot.Entries.ToArray(), entry => entry.Message == "hidden-info");
