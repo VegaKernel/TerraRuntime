@@ -8,11 +8,10 @@ namespace TerraRuntime;
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile simulation slices that already have enough runtime/world
 /// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden
-/// Arrow free flight (aiStyle 1) plus Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2).
-/// Wooden Arrow tile-impact Kill() effects remain an explicit unsupported boundary. Server-owned simulation is
-/// allowed only when its committed movement sweep cannot reach a source-backed CutTiles candidate; irreversible
-/// KillTile/drop effects remain a separate world-effect slice. Entity damage and visual-only rotation/dust/sound
-/// also remain separate systems.
+/// Arrow (aiStyle 1) plus Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2), including their
+/// generic tile-impact Kill() path. Server-owned simulation is allowed only when its committed movement sweep
+/// cannot reach a source-backed CutTiles candidate; irreversible KillTile/drop effects remain a separate
+/// world-effect slice. Entity damage and visual-only rotation/dust/sound also remain separate systems.
 /// </summary>
 internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepper
 {
@@ -151,14 +150,6 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         }
 
         bool tileImpact = collideX || collideY;
-        if (isWoodenArrow && tileImpact)
-        {
-            // Vanilla routes this through projectile collision handling and Kill(). Type-1 recovery/drop and
-            // other kill side effects are not source-pinned in TerraRuntime yet, so do not commit a partial hit.
-            next = default;
-            return false;
-        }
-
         float movementX = collidedVelocityX;
         float movementY = collidedVelocityY;
         if (wet)
@@ -176,10 +167,11 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
 
         float positionX = current.PositionX;
         float positionY = current.PositionY;
-        if (isThrown && tileImpact)
+        if (tileImpact)
         {
-            // Generic HandleMovement collision handling for aiStyle 2 advances by the clamped velocity before
-            // Kill(), then the method still reaches UpdatePosition. Kill side effects for this family are visual.
+            // The ordinary aiStyle-1 Wooden Arrow and supported aiStyle-2 family both reach HandleMovement's
+            // generic collision fallback: advance by the collision-clamped velocity, Kill(), then continue into
+            // the common UpdatePosition tail. Their Kill() branches add only visual/sound effects in this slice.
             positionX += collidedVelocityX;
             positionY += collidedVelocityY;
         }
@@ -219,7 +211,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             current.KnockBack,
             current.OriginalDamage);
 
-        int timeLeft = isThrown && tileImpact ? 0 : projectile.Lifecycle.TimeLeft - 1;
+        int timeLeft = tileImpact ? 0 : projectile.Lifecycle.TimeLeft - 1;
         next = new ProjectileSimulationStepResult(state, timeLeft);
         return true;
     }
