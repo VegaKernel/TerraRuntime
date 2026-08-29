@@ -222,6 +222,7 @@ public static class TerrariaSocketConnection
             TerrariaPipePumpResult.FrameTooLarge or
             TerrariaPipePumpResult.TruncatedFrame)
         {
+            TerrariaFrameRejectionTelemetry.Record(TerrariaFrameRejectionCategory.MalformedProtocol);
             return TerrariaConnectionStopReason.ProtocolFailure;
         }
 
