@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'tests/TerraRuntime.HostModuleFixture/**'
+      - 'tests/TerraRuntime.Tests/TrustedHostWorldGenerationIntegrationTests.cs'
       - 'src/TerraRuntime.ExtensibleHost/**'
       - 'src/TerraRuntime/StartupWorldGeneratorSource.cs'
       - 'src/TerraRuntime/StartupWorldCreationRequest.cs'
@@ -30,6 +31,7 @@ concurrency:
 jobs:
   custom-generator:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
 
     steps:
       - name: Checkout
@@ -44,6 +46,12 @@ jobs:
         run: |
           dotnet build src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj -c Release
           dotnet build tests/TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj -c Release
+
+      - name: Prove trusted host generator in-process
+        run: >-
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          -c Release
+          --filter FullyQualifiedName~TrustedHostWorldGenerationIntegrationTests
 
       - name: Install fixture as trusted host module
         shell: bash
