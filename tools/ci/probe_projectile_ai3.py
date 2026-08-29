@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Extract the narrow TerrariaServer 1.4.5.8 contract needed for projectile aiStyle 3.
 
-The probe intentionally emits only Enchanted Boomerang defaults, the AI_003 body, and the relevant
-movement/Kill contexts. The official server binary remains the source of truth; this script does not
-encode expected gameplay values.
+The official server binary remains the source of truth. Keep the emitted contexts deliberately small
+so CI logs expose the behavioral contract without persisting or dumping the decompiled type.
 """
 
 from __future__ import annotations
@@ -58,7 +57,7 @@ def extract_method(source: str, method_name: str) -> str:
     return "<none>"
 
 
-def around_optional(source: str, needle: str, radius: int) -> str:
+def around_optional(source: str, needle: str, radius: int = 360) -> str:
     normalized = compact(source)
     index = normalized.find(needle)
     if index < 0:
@@ -68,9 +67,19 @@ def around_optional(source: str, needle: str, radius: int) -> str:
     return normalized[start:end]
 
 
-def matching_lines(source: str, needle: str, limit: int = 80) -> str:
-    lines = [compact(line) for line in source.splitlines() if needle in line]
-    return " | ".join(lines[:limit]) if lines else "<none>"
+def all_contexts(source: str, needle: str, radius: int = 240, limit: int = 12) -> str:
+    normalized = compact(source)
+    contexts: list[str] = []
+    offset = 0
+    while len(contexts) < limit:
+        index = normalized.find(needle, offset)
+        if index < 0:
+            break
+        start = max(0, index - radius)
+        end = min(len(normalized), index + len(needle) + radius)
+        contexts.append(normalized[start:end])
+        offset = index + len(needle)
+    return " || ".join(contexts) if contexts else "<none>"
 
 
 def main() -> int:
@@ -84,14 +93,16 @@ def main() -> int:
     handle_movement = extract_method(source, "HandleMovement")
     kill = extract_method(source, "Kill")
 
-    print("projectile_type6_defaults=" + around_optional(set_defaults, "type == 6", radius=2600))
-    print("projectile_ai003_declarations=" + matching_lines(source, "AI_003", limit=40))
-    print("projectile_ai_style3_dispatch=" + matching_lines(source, "aiStyle == 3", limit=40))
+    print("projectile_type6_defaults=" + around_optional(set_defaults, "type == 6", radius=850))
     print("projectile_ai003_length=" + str(len(compact(ai003))))
-    print("projectile_ai003=" + compact(ai003))
-    print("projectile_type6_mentions=" + matching_lines(source, "type == 6", limit=80))
-    print("projectile_handle_movement_ai3=" + around_optional(handle_movement, "aiStyle == 3", radius=3200))
-    print("projectile_kill_type6=" + around_optional(kill, "type == 6", radius=3600))
+    print("projectile_ai003_type6=" + all_contexts(ai003, "type == 6", radius=320, limit=8))
+    print("projectile_ai003_ai0=" + all_contexts(ai003, "ai[0]", radius=300, limit=12))
+    print("projectile_ai003_owner=" + all_contexts(ai003, "owner", radius=300, limit=12))
+    print("projectile_ai003_tile_collide=" + all_contexts(ai003, "tileCollide", radius=300, limit=8))
+    print("projectile_ai003_velocity=" + all_contexts(ai003, "velocity", radius=260, limit=16))
+    print("projectile_ai003_kill=" + all_contexts(ai003, "Kill", radius=300, limit=8))
+    print("projectile_handle_movement_ai3=" + around_optional(handle_movement, "aiStyle == 3", radius=850))
+    print("projectile_kill_type6=" + around_optional(kill, "type == 6", radius=850))
     return 0
 
 
