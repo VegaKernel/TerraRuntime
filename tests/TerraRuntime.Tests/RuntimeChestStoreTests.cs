@@ -195,6 +195,37 @@ public sealed class RuntimeChestStoreTests
         Assert.False(store.TryResolveNameLookup(in missing, out _));
     }
 
+    [Fact]
+    public void Capture_snapshot_is_detached_from_later_live_item_and_name_mutations()
+    {
+        var store = new RuntimeChestStore([Chest()]);
+        ConnectionHandle owner = Connection(1, 0, 1);
+        Assert.True(store.TryOpen(owner, 10, 20, out WorldChest opened));
+
+        WorldChest[] snapshot = store.CaptureSnapshot();
+
+        Assert.Single(snapshot);
+        Assert.Equal((short)3, snapshot[0].SlotId);
+        Assert.Equal("Base", snapshot[0].Name);
+        Assert.Equal(new WorldChestItem(1, 1, 0), snapshot[0].Items[0]);
+        Assert.NotSame(opened.Items, snapshot[0].Items);
+
+        var itemUpdate = new TerrariaChestItemState(3, 0, 7, 2, 1);
+        Assert.True(store.TrySetItem(owner, in itemUpdate, out _));
+
+        var rename = new TerrariaActiveChestState(3, 10, 20, 4, "Loot");
+        Assert.True(store.TryApplyActiveState(owner, in rename, out _, out _));
+
+        Assert.Equal("Base", snapshot[0].Name);
+        Assert.Equal(new WorldChestItem(1, 1, 0), snapshot[0].Items[0]);
+
+        WorldChest[] current = store.CaptureSnapshot();
+        Assert.Single(current);
+        Assert.Equal("Loot", current[0].Name);
+        Assert.Equal(new WorldChestItem(7, 1, 2), current[0].Items[0]);
+        Assert.NotSame(snapshot[0].Items, current[0].Items);
+    }
+
     private static WorldChest Chest() =>
         new(
             SlotId: 3,
