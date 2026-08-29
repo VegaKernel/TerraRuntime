@@ -56,6 +56,7 @@ public sealed class TerrariaSocketConnectionTests
         Assert.Equal(TerrariaConnectionStopReason.PeerClosed, result.StopReason);
         Assert.Equal(1, result.Outbound.FramesWritten);
         Assert.Equal(response.Length, result.Outbound.BytesWritten);
+        Assert.True(outbound.IsCompleted);
     }
 
     [Fact]
@@ -99,6 +100,40 @@ public sealed class TerrariaSocketConnectionTests
         Assert.Equal(TerrariaPipePumpResult.Completed, result.Inbound);
         Assert.Equal(OutboundWriterStopReason.Completed, result.Outbound.Reason);
         Assert.Equal(TerrariaConnectionStopReason.PeerClosed, result.StopReason);
+        Assert.True(outbound.IsCompleted);
+    }
+
+    [Fact]
+    public async Task Cancellation_completes_the_outbound_queue_and_closes_the_peer_socket()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        listener.Listen(1);
+        var endpoint = (IPEndPoint)listener.LocalEndPoint!;
+
+        using var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        ValueTask connectTask = client.ConnectAsync(endpoint, cancellationToken);
+        Socket serverSocket = await listener.AcceptAsync(cancellationToken);
+        await connectTask;
+
+        var outbound = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 32));
+        using var connectionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task<TerrariaSocketRunResult> run = TerrariaSocketConnection.RunAsync(
+            serverSocket,
+            new HelloCountingSink(),
+            outbound,
+            TerrariaFrameDecoderOptions.Default,
+            connectionCancellation.Token).AsTask();
+
+        connectionCancellation.Cancel();
+        TerrariaSocketRunResult result = await run;
+
+        Assert.Equal(TerrariaPipePumpResult.Cancelled, result.Inbound);
+        Assert.Equal(OutboundWriterStopReason.Cancelled, result.Outbound.Reason);
+        Assert.Equal(TerrariaConnectionStopReason.Cancelled, result.StopReason);
+        Assert.True(outbound.IsCompleted);
+        await AssertPeerClosedAsync(client, cancellationToken);
     }
 
     [Fact]
@@ -128,6 +163,25 @@ public sealed class TerrariaSocketConnectionTests
             cancellationToken);
 
         Assert.Equal(TerrariaConnectionStopReason.SlowClient, result.StopReason);
+        Assert.True(outbound.IsCompleted);
+        await AssertPeerClosedAsync(client, cancellationToken);
+    }
+
+    private static async Task AssertPeerClosedAsync(Socket socket, CancellationToken cancellationToken)
+    {
+        byte[] buffer = new byte[1];
+        try
+        {
+            int received = await socket.ReceiveAsync(buffer, SocketFlags.None, cancellationToken);
+            Assert.Equal(0, received);
+        }
+        catch (SocketException exception) when (exception.SocketErrorCode is
+            SocketError.ConnectionReset or
+            SocketError.ConnectionAborted or
+            SocketError.Shutdown)
+        {
+            // Shutdown/dispose may surface as EOF or a reset depending on the platform TCP stack.
+        }
     }
 
     private static byte[] CurrentHelloPacket() =>
