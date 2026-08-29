@@ -8,16 +8,27 @@ namespace TerraRuntime.World;
 public sealed class DirtySectionSnapshotBatcher
 {
     private readonly WorldTileStore _tiles;
+    private readonly DirtySectionTracker _dirtySections;
     private readonly WorldSectionId[] _drainedSections;
     private readonly WorldSectionTileSnapshot?[] _capturedSnapshots;
     private int _count;
 
     public DirtySectionSnapshotBatcher(WorldTileStore tiles, int capacity)
+        : this(tiles, tiles?.DirtySections ?? throw new ArgumentNullException(nameof(tiles)), capacity)
+    {
+    }
+
+    public DirtySectionSnapshotBatcher(
+        WorldTileStore tiles,
+        DirtySectionTracker dirtySections,
+        int capacity)
     {
         ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentNullException.ThrowIfNull(dirtySections);
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
 
         _tiles = tiles;
+        _dirtySections = dirtySections;
         _drainedSections = new WorldSectionId[capacity];
         _capturedSnapshots = new WorldSectionTileSnapshot?[capacity];
     }
@@ -37,11 +48,10 @@ public sealed class DirtySectionSnapshotBatcher
     public int Capture(int maximum) => Capture(maximum, excludedLinearIndices: null);
 
     /// <summary>
-    /// Drains and snapshots at most <paramref name="maximum"/> dirty sections. Callers can therefore match
-    /// snapshot allocation to currently available downstream capacity instead of capturing work that a bounded
-    /// worker queue would immediately reject. Sections listed in <paramref name="excludedLinearIndices"/> remain
-    /// dirty and are not snapshotted. A section that cannot be captured consistently is marked dirty again instead
-    /// of being silently lost.
+    /// Drains and snapshots at most <paramref name="maximum"/> dirty sections from this batcher's tracker. Callers can
+    /// therefore give network rebuild and persistence independent backlogs over the same tile store. Sections listed
+    /// in <paramref name="excludedLinearIndices"/> remain dirty. A section that cannot be captured consistently is
+    /// marked dirty again on the same tracker instead of being silently lost.
     /// </summary>
     public int Capture(int maximum, IReadOnlySet<int>? excludedLinearIndices)
     {
@@ -58,7 +68,7 @@ public sealed class DirtySectionSnapshotBatcher
         if (maximum == 0)
             return 0;
 
-        int drained = _tiles.DirtySections.Drain(
+        int drained = _dirtySections.Drain(
             _drainedSections.AsSpan(0, maximum),
             excludedLinearIndices);
         int written = 0;
@@ -71,7 +81,7 @@ public sealed class DirtySectionSnapshotBatcher
                 continue;
             }
 
-            _tiles.DirtySections.MarkDirty(section);
+            _dirtySections.MarkDirty(section);
         }
 
         _count = written;
