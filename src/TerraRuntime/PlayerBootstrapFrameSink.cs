@@ -22,7 +22,8 @@ public enum PlayerBootstrapStopReason : byte
     MalformedPlayerAppearance = 10,
     MalformedPlayerEquipment = 11,
     MalformedPlayerSpawn = 12,
-    DynamicEntityBootstrapFailure = 13
+    DynamicEntityBootstrapFailure = 13,
+    MalformedChat = 14
 }
 
 /// <summary>
@@ -48,6 +49,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private readonly IPlayerAppearanceIngress? _appearanceIngress;
     private readonly IPlayerEquipmentIngress? _equipmentIngress;
     private readonly IPlayerMovementIngress? _movementIngress;
+    private readonly RuntimeChatRelay? _chatRelay;
     private PlayerJoinSession? _session;
     private PlayerHandle? _assignedPlayerHandle;
     private bool _spawnSubmitted;
@@ -69,6 +71,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _appearanceIngress = null;
         _equipmentIngress = null;
         _movementIngress = null;
+        _chatRelay = null;
         _inner = inner;
     }
 
@@ -135,6 +138,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _appearanceIngress = appearanceIngress;
         _equipmentIngress = equipmentIngress;
         _movementIngress = movementIngress;
+        _chatRelay = RuntimeChatRelay.For(slots);
+        _chatRelay.Register(source, outbound);
         _ = worldItems;
         _inner = inner;
     }
@@ -177,6 +182,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             case TerrariaMessageId.PlayerControls:
                 return HandlePlayerMovement(frame);
 
+            case TerrariaMessageId.LoadNetModule:
+                return HandleNetModule(frame);
+
             default:
                 return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
         }
@@ -184,6 +192,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     public void Dispose()
     {
+        _chatRelay?.Unregister(_source);
         _session?.Dispose();
         _session = null;
     }
@@ -387,6 +396,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             if (!TryQueue(FinishedConnectingFrame))
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 
+            _chatRelay?.MarkPlaying(_source, _session.Handle);
             return TerrariaFrameSinkResult.Continue;
         }
 
@@ -439,12 +449,44 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         return TerrariaFrameSinkResult.Continue;
     }
 
+    private TerrariaFrameSinkResult HandleNetModule(in TerrariaFrame frame)
+    {
+        PlayerJoinSession session = _session!;
+        if (!_spawnSubmitted && session.State != PlayerJoinState.Playing)
+            return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
+
+        TerrariaClientChatDecodeResult decode = TerrariaChatCodec.TryDecodeClientMessage(
+            in frame,
+            out TerrariaClientChatMessage message);
+        if (decode is TerrariaClientChatDecodeResult.WrongModule or TerrariaClientChatDecodeResult.WrongDirection)
+            return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
+        if (decode != TerrariaClientChatDecodeResult.Decoded)
+            return Stop(PlayerBootstrapStopReason.MalformedChat);
+
+        string text = message.Text.TrimEnd('\r', '\n');
+        if (text.Length == 0)
+            return TerrariaFrameSinkResult.Continue;
+
+        // Vanilla slash/command processing is a separate server feature. Do not accidentally turn
+        // an unsupported command into public chat while bringing the basic Say path online.
+        if (text[0] == '/')
+            return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
+
+        byte[] encoded = TerrariaChatCodec.EncodeServerMessage(
+            session.Slot.Value,
+            text,
+            new TerrariaRgbColor(255, 255, 255));
+        _chatRelay?.Broadcast(_source, session.Handle, encoded);
+        return TerrariaFrameSinkResult.Continue;
+    }
+
     private bool TryQueue(ReadOnlyMemory<byte> frame) =>
         _outbound.TryEnqueue(new OutboundFrame(frame)) == OutboundEnqueueResult.Enqueued;
 
     private TerrariaFrameSinkResult Stop(PlayerBootstrapStopReason reason)
     {
         StopReason = reason;
+        _chatRelay?.Unregister(_source);
         _session?.Dispose();
         _session = null;
         return TerrariaFrameSinkResult.Stop;
