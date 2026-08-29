@@ -62,6 +62,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId WoodenArrowFriendly = new(1);
     public static readonly ProjectileTypeId FireArrow = new(2);
     public static readonly ProjectileTypeId Shuriken = new(3);
+    public static readonly ProjectileTypeId UnholyArrow = new(4);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
     public static readonly ProjectileTypeId BoneDagger = new(599);
