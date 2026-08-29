@@ -60,7 +60,7 @@ public sealed class PlayerBootstrapFrameSinkTests
     }
 
     [Fact]
-    public void Packet12_is_submitted_without_committing_playing_state_on_network_thread()
+    public void Packet12_queues_finished_connecting_without_committing_playing_state_on_network_thread()
     {
         var slots = new PlayerSlotPool(1);
         var outbound = CreateOutbound();
@@ -74,18 +74,31 @@ public sealed class PlayerBootstrapFrameSinkTests
                 enterWorldFrame: new byte[] { 3, 0, (byte)TerrariaMessageId.PlayerSpawnSelf }),
             GameCommandSourceId.FromConnection(42),
             ingress);
+        BoundedOutboundQueue queue = GetInnerQueue(outbound);
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Hello()));
         Assert.Equal(PlayerJoinState.AwaitingWorldRequest, sink.JoinState);
         Assert.Equal((byte)0, sink.PlayerSlot);
+        Assert.Equal((byte)TerrariaMessageId.PlayerInfo, DequeueMessageId(queue));
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.RequestWorldData, [])));
         Assert.Equal(PlayerJoinState.AwaitingSectionRequest, sink.JoinState);
+        Assert.Equal((byte)TerrariaMessageId.WorldData, DequeueMessageId(queue));
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.SpawnTileData, new byte[9])));
         Assert.Equal(PlayerJoinState.AwaitingSpawn, sink.JoinState);
+        Assert.Equal(
+            new byte[]
+            {
+                (byte)TerrariaMessageId.WorldData,
+                (byte)TerrariaMessageId.StatusTextSize,
+                (byte)TerrariaMessageId.PlayerSpawnSelf
+            },
+            DrainMessageIds(queue));
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(PlayerSpawn(claimedSlot: 0)));
+        Assert.Equal((byte)TerrariaMessageId.FinishedConnectingToServer, DequeueMessageId(queue));
+        Assert.Empty(DrainMessageIds(queue));
         Assert.Equal(PlayerBootstrapStopReason.None, sink.StopReason);
         Assert.Equal(PlayerJoinState.AwaitingSpawn, sink.JoinState);
         Assert.Equal(1, ingress.PostCount);
