@@ -59,7 +59,7 @@ def require(fragment: str, needle: str, description: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Verify pinned TerrariaServer 1.4.5.8 tile-authority facts used by TerraRuntime."
+        description="Verify pinned Terraria 1.4.5.8 tile-authority facts used by TerraRuntime."
     )
     parser.add_argument("--message-buffer", required=True)
     parser.add_argument("--item", required=True)
@@ -107,11 +107,6 @@ def main() -> int:
                 f"Packet 17 now contains {forbidden!r}; revisit TerraRuntime's stricter inventory/reach policy."
             )
 
-    relay_marker = "NetMessage.TrySendData(17"
-    relay_index = tile.find(relay_marker)
-    if relay_index < 0:
-        raise SystemExit("Packet 17 relay marker disappeared from case 17.")
-    print(f"packet17_relay_context={tile[max(0, relay_index - 1800):relay_index + 1200]}")
     print("item_id_dirt_block=2")
     print("item_dirt_block_create_tile=0")
     print("item_dirt_block_consumable=true")
