@@ -18,12 +18,16 @@ public enum PlayerVitalsStopReason : byte
 /// Connection-owned player-vitals layer. The wire player id is deliberately discarded and replaced
 /// with the exact generation-safe player handle assigned by the bootstrap session.
 /// </summary>
-public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
+public sealed class PlayerVitalsFrameSink :
+    ITerrariaFrameSink,
+    ITerrariaFrameRejectionSource,
+    ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId _source;
     private readonly PlayerBootstrapFrameSink _bootstrap;
     private readonly IPlayerHealthIngress _healthIngress;
     private readonly IPlayerManaIngress _manaIngress;
+    private TerrariaConnectionStopReason _connectionStopReason;
 
     public PlayerVitalsFrameSink(
         GameCommandSourceId source,
@@ -45,12 +49,23 @@ public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
 
     public PlayerVitalsStopReason StopReason { get; private set; }
 
-    public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
+    public TerrariaConnectionStopReason ConnectionStopReason => _connectionStopReason;
+
+    public TerrariaFrameRejectionCategory RejectionCategory
     {
-        PlayerVitalsStopReason.MalformedHealth or PlayerVitalsStopReason.MalformedMana => TerrariaFrameRejectionCategory.MalformedProtocol,
-        PlayerVitalsStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
-        _ => ClassifyBootstrapRejection(_bootstrap.StopReason)
-    };
+        get
+        {
+            if (_connectionStopReason == TerrariaConnectionStopReason.UnsupportedProtocol)
+                return TerrariaFrameRejectionCategory.None;
+
+            return StopReason switch
+            {
+                PlayerVitalsStopReason.MalformedHealth or PlayerVitalsStopReason.MalformedMana => TerrariaFrameRejectionCategory.MalformedProtocol,
+                PlayerVitalsStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
+                _ => ClassifyBootstrapRejection(_bootstrap.StopReason)
+            };
+        }
+    }
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
@@ -61,14 +76,14 @@ public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
         {
             TerrariaMessageId.PlayerHp => HandleHealth(frame),
             TerrariaMessageId.PlayerMana => HandleMana(frame),
-            _ => _bootstrap.OnFrame(in frame)
+            _ => DelegateToBootstrap(in frame)
         };
     }
 
     private TerrariaFrameSinkResult HandleHealth(in TerrariaFrame frame)
     {
         if (_bootstrap.AssignedPlayerHandle is not PlayerHandle player)
-            return _bootstrap.OnFrame(in frame);
+            return DelegateToBootstrap(in frame);
 
         TerrariaPlayerHealthDecodeResult decode = TerrariaPlayerVitalsCodec.TryDecodeHealth(
             frame,
@@ -86,7 +101,7 @@ public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
     private TerrariaFrameSinkResult HandleMana(in TerrariaFrame frame)
     {
         if (_bootstrap.AssignedPlayerHandle is not PlayerHandle player)
-            return _bootstrap.OnFrame(in frame);
+            return DelegateToBootstrap(in frame);
 
         TerrariaPlayerManaDecodeResult decode = TerrariaPlayerVitalsCodec.TryDecodeMana(
             frame,
@@ -99,6 +114,24 @@ public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
         return _manaIngress.TryPost(connection, in request)
             ? TerrariaFrameSinkResult.Continue
             : Stop(PlayerVitalsStopReason.GameIngressBackpressure);
+    }
+
+    private TerrariaFrameSinkResult DelegateToBootstrap(in TerrariaFrame frame)
+    {
+        bool initialHello =
+            _bootstrap.AssignedPlayerHandle is null &&
+            frame.MessageId == (byte)TerrariaMessageId.Hello;
+        if (initialHello &&
+            TerrariaConnectRequestDecoder.TryDecode(in frame, out TerrariaConnectRequest request) == ConnectRequestDecodeResult.Decoded &&
+            !request.IsCurrentProtocol)
+        {
+            _connectionStopReason = TerrariaConnectionStopReason.UnsupportedProtocol;
+        }
+
+        TerrariaFrameSinkResult result = _bootstrap.OnFrame(in frame);
+        if (result != TerrariaFrameSinkResult.Stop)
+            _connectionStopReason = TerrariaConnectionStopReason.None;
+        return result;
     }
 
     private static TerrariaFrameRejectionCategory ClassifyBootstrapRejection(PlayerBootstrapStopReason reason) => reason switch
