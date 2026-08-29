@@ -15,7 +15,8 @@ public enum WorldFileTileChestRewriteResult : byte
     EnvelopeEncodingFailed = 10,
     FooterEncodingFailed = 11,
     WriteFailed = 12,
-    InvalidHeaderSection = 13
+    InvalidHeaderSection = 13,
+    InvalidSignSection = 14
 }
 
 /// <summary>
@@ -57,6 +58,32 @@ public static class WorldFileTileChestRewriter
         WorldTileSaveImage tiles,
         ReadOnlySpan<WorldChest> chests,
         Stream destination,
+        out long bytesWritten) =>
+        TryRewrite(
+            sourceEnvelope,
+            header,
+            headerSection,
+            preserved,
+            tiles,
+            chests,
+            preserved.Signs.Span,
+            destination,
+            out bytesWritten);
+
+    /// <summary>
+    /// Rewrites using validated header and sign section replacements while preserving every other opaque section.
+    /// The sign section must already be encoded in the current world format; semantic validation belongs to the
+    /// authoritative sign encoder before this byte-level composition step.
+    /// </summary>
+    public static WorldFileTileChestRewriteResult TryRewrite(
+        WorldFileEnvelope sourceEnvelope,
+        WorldFileHeader header,
+        ReadOnlySpan<byte> headerSection,
+        WorldFilePreservedSections preserved,
+        WorldTileSaveImage tiles,
+        ReadOnlySpan<WorldChest> chests,
+        ReadOnlySpan<byte> signSection,
+        Stream destination,
         out long bytesWritten)
     {
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
@@ -68,6 +95,8 @@ public static class WorldFileTileChestRewriter
 
         if (headerSection.Length != preserved.Header.Length || headerSection.IsEmpty)
             return WorldFileTileChestRewriteResult.InvalidHeaderSection;
+        if (signSection.IsEmpty)
+            return WorldFileTileChestRewriteResult.InvalidSignSection;
         if (!destination.CanWrite)
             return WorldFileTileChestRewriteResult.DestinationNotWritable;
         if (!destination.CanSeek)
@@ -117,7 +146,7 @@ public static class WorldFileTileChestRewriter
 
             if (!TryRecordOffset(destination, offsets, 3))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
-            destination.Write(preserved.Signs.Span);
+            destination.Write(signSection);
             if (!TryRecordOffset(destination, offsets, 4))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
             destination.Write(preserved.Npcs.Span);
