@@ -264,6 +264,9 @@ public static class TerrariaServerHost
             chestReplication,
             tileAndEntityReplicationEvents);
         var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, chestAndEntityReplicationEvents);
+        var slots = new PlayerSlotPool(options.MaxPlayers);
+        var serverPlayerIdentities = new RuntimeServerPlayerSlotRegistry(slots);
+        var serverPlayerStates = new RuntimeServerPlayerStateStore(serverPlayerIdentities, slots.Capacity);
         var state = new ServerRuntimeState(
             playerEvents,
             npcs: npcStore,
@@ -272,7 +275,8 @@ public static class TerrariaServerHost
             projectiles: projectileStore,
             worldItems: worldItems,
             projectileReplication: projectileReplication,
-            tileManipulationReplication: tileManipulationReplication);
+            tileManipulationReplication: tileManipulationReplication,
+            serverPlayerStates: serverPlayerStates);
         using var sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,
             bootstrapPackets,
@@ -303,7 +307,6 @@ public static class TerrariaServerHost
         var projectileIngress = new RuntimeProjectileNetworkIngress(commandIngress);
         var chestIngress = new RuntimeChestNetworkIngress(commandIngress);
         var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
-        var slots = new PlayerSlotPool(options.MaxPlayers);
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
         var queueTelemetry = new RuntimeConnectionQueueTelemetry();
         var rateTelemetry = new RuntimeConnectionRateTelemetry();

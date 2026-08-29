@@ -6,7 +6,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
-internal sealed class ServerRuntimeState
+internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 {
     private const int MaxPlayerSlots = 256;
     private const float VanillaBasePlayerWidth = 20f;
@@ -20,6 +20,11 @@ internal sealed class ServerRuntimeState
     private readonly IRuntimePlayerEventSink? _playerEvents;
     private readonly RuntimeNpcStore _npcs;
     private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
+    private readonly RuntimeNpcActorControlRegistry _npcActorControls;
+    private readonly RuntimeNpcActorControlCommandService _npcActorCommands;
+    private readonly RuntimeServerPlayerStateStore? _serverPlayerStates;
+    private readonly PlayerStateSnapshot[] _serverPlayerSnapshots =
+        new PlayerStateSnapshot[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly INpcAiStateStepper _npcAiStepper;
     private readonly VanillaNpcTargetingAiStepper? _vanillaNpcTargetingAiStepper;
     private readonly VanillaNpcCheckActiveAiStepper? _vanillaNpcCheckActiveAiStepper;
@@ -45,13 +50,17 @@ internal sealed class ServerRuntimeState
         IProjectileStateStepper? projectileStepper = null,
         RuntimeWorldItemStore? worldItems = null,
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
-        RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null)
+        RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null,
+        RuntimeServerPlayerStateStore? serverPlayerStates = null)
     {
         _playerEvents = playerEvents;
         _worldTiles = worldTiles;
         _worldClock = worldClock;
         _npcs = npcs ?? new RuntimeNpcStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
+        _serverPlayerStates = serverPlayerStates;
+        _npcActorControls = new RuntimeNpcActorControlRegistry(_npcs);
+        _npcActorCommands = new RuntimeNpcActorControlCommandService(_npcs, _npcActorControls);
         _projectiles = projectiles ?? new RuntimeProjectileStore();
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
         _projectileStepper = projectileStepper ??
@@ -63,13 +72,24 @@ internal sealed class ServerRuntimeState
         if (npcAiStepper is null)
         {
             _vanillaNpcTargetingAiStepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+            var actorIntent = new RuntimeNpcActorIntentStateStepper(
+                _vanillaNpcTargetingAiStepper,
+                _npcActorControls,
+                this);
             if (worldTiles is null)
             {
-                _npcAiStepper = _vanillaNpcTargetingAiStepper;
+                _npcAiStepper = actorIntent;
             }
             else
             {
-                var worldMotion = new VanillaNpcWorldMotionAiStepper(_vanillaNpcTargetingAiStepper, worldTiles);
+                double worldSurfaceTiles = worldTiles.WorldSurfaceTiles ??
+                    Math.Max(1d, worldTiles.Dimensions.HeightTiles / 3d);
+                _vanillaNpcTargetingAiStepper.EnableBlueSlimeMotion(worldSurfaceTiles);
+                _vanillaNpcTargetingAiStepper.EnableZombieMotion(worldSurfaceTiles);
+                var worldMotion = new VanillaNpcWorldMotionAiStepper(
+                    actorIntent,
+                    worldTiles,
+                    worldSurfaceTiles);
                 _vanillaNpcCheckActiveAiStepper = new VanillaNpcCheckActiveAiStepper(worldMotion);
                 _npcAiStepper = _vanillaNpcCheckActiveAiStepper;
             }
@@ -198,6 +218,23 @@ internal sealed class ServerRuntimeState
         return true;
     }
 
+    private bool TryCaptureRuntimePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
+    {
+        if (TryCapturePlayerSnapshot(player, out snapshot))
+            return true;
+
+        if (_serverPlayerStates is not null && _serverPlayerStates.TryGet(player, out snapshot))
+            return true;
+
+        snapshot = default;
+        return false;
+    }
+
+    bool IRuntimePlayerSnapshotLookup.TryGetPlayer(
+        PlayerHandle player,
+        out PlayerStateSnapshot snapshot) =>
+        TryCaptureRuntimePlayerSnapshot(player, out snapshot);
+
     internal bool TryCapturePlayerInventoryItem(
         PlayerHandle player,
         int inventorySlot,
@@ -226,6 +263,9 @@ internal sealed class ServerRuntimeState
     {
         ArgumentNullException.ThrowIfNull(command);
         AppliedCommands++;
+
+        if (_npcActorCommands.TryApply(command))
+            return;
 
         switch (command)
         {
@@ -303,6 +343,8 @@ internal sealed class ServerRuntimeState
 
     public void Tick()
     {
+        _npcActorCommands.CommitPending();
+
         if (_vanillaNpcTargetingAiStepper is not null)
         {
             int candidateCount = CopyVanillaNpcTargetCandidates(_npcTargetCandidates);
@@ -328,21 +370,52 @@ internal sealed class ServerRuntimeState
 
     private int CopyVanillaNpcTargetCandidates(Span<VanillaNpcTargetCandidate> destination)
     {
+        int serverPlayerCount = _serverPlayerStates?.CopySnapshots(_serverPlayerSnapshots) ?? 0;
+        int serverPlayerIndex = 0;
         int written = 0;
+
         for (int slot = 0; slot < VanillaNpcTargetingAiStepper.MaximumPlayerCandidates; slot++)
         {
-            if (!_players.TryGetValue(checked((byte)slot), out RuntimePlayerState? player))
+            if (_players.TryGetValue(checked((byte)slot), out RuntimePlayerState? player))
+            {
+                if (player.MountType != 0)
+                    continue;
+
+                destination[written++] = new VanillaNpcTargetCandidate(
+                    Slot: checked((byte)slot),
+                    CenterX: player.PositionX + VanillaBasePlayerWidth * 0.5f,
+                    CenterY: player.PositionY + VanillaBasePlayerHeight * 0.5f,
+                    Aggro: 0,
+                    Active: true,
+                    Dead: player.IsDead,
+                    Ghost: false,
+                    NoAggro: false);
                 continue;
-            if (player.MountType != 0)
+            }
+
+            while (serverPlayerIndex < serverPlayerCount &&
+                   _serverPlayerSnapshots[serverPlayerIndex].Player.Slot.Value < slot)
+            {
+                serverPlayerIndex++;
+            }
+
+            if (serverPlayerIndex >= serverPlayerCount ||
+                _serverPlayerSnapshots[serverPlayerIndex].Player.Slot.Value != slot)
+            {
+                continue;
+            }
+
+            PlayerStateSnapshot serverPlayer = _serverPlayerSnapshots[serverPlayerIndex++];
+            if (serverPlayer.MountType != 0)
                 continue;
 
             destination[written++] = new VanillaNpcTargetCandidate(
                 Slot: checked((byte)slot),
-                CenterX: player.PositionX + VanillaBasePlayerWidth * 0.5f,
-                CenterY: player.PositionY + VanillaBasePlayerHeight * 0.5f,
+                CenterX: serverPlayer.PositionX + VanillaBasePlayerWidth * 0.5f,
+                CenterY: serverPlayer.PositionY + VanillaBasePlayerHeight * 0.5f,
                 Aggro: 0,
                 Active: true,
-                Dead: player.IsDead,
+                Dead: serverPlayer.IsDead,
                 Ghost: false,
                 NoAggro: false);
         }
@@ -1038,7 +1111,7 @@ internal sealed class ServerRuntimeState
 
     private void CompletePlayerSnapshot(PlayerStateSnapshotRuntimeCommand command)
     {
-        PlayerStateSnapshot? result = TryCapturePlayerSnapshot(command.Player, out PlayerStateSnapshot snapshot)
+        PlayerStateSnapshot? result = TryCaptureRuntimePlayerSnapshot(command.Player, out PlayerStateSnapshot snapshot)
             ? snapshot
             : null;
         command.Completion.TrySetResult(result);
