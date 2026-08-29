@@ -1,0 +1,94 @@
+name: Apply Startup Save Cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-startup-save-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Wire cleanup into startup and persistence CI
+        shell: python
+        run: |
+          from pathlib import Path
+
+          host_path = Path('src/TerraRuntime/TerrariaServerHost.cs')
+          host = host_path.read_text(encoding='utf-8')
+          if 'TryCleanupAbandonedWrites(options.WorldPath)' not in host:
+              needle = '        if (!File.Exists(options.WorldPath))\n'
+              if needle not in host:
+                  raise SystemExit('TerrariaServerHost startup insertion point changed')
+              block = '''        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
+              Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
+
+          string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
+          if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
+              Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
+
+          '''
+              host = host.replace(needle, block + needle, 1)
+              host_path.write_text(host, encoding='utf-8')
+
+          workflow_path = Path('.github/workflows/authoritative-world-save.yml')
+          workflow = workflow_path.read_text(encoding='utf-8')
+          additions = [
+              ("      - 'src/TerraRuntime.Core/AtomicSaveFileWriter.cs'\n",
+               "      - 'src/TerraRuntime.Core/AtomicSaveFileWriter.cs'\n      - 'src/TerraRuntime.Core/AtomicSaveFileWriter.Cleanup.cs'\n"),
+              ("      - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterTests.cs'\n",
+               "      - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterTests.cs'\n      - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterCleanupTests.cs'\n      - 'tests/TerraRuntime.Tests/TerrariaServerHostStartupCleanupTests.cs'\n"),
+          ]
+          for needle, replacement in additions:
+              if replacement.strip().splitlines()[-1].strip(" -'") not in workflow:
+                  if needle not in workflow:
+                      raise SystemExit(f'authoritative save workflow insertion point changed: {needle!r}')
+                  workflow = workflow.replace(needle, replacement, 1)
+
+          if 'Prove startup orphan save cleanup' not in workflow:
+              needle = '      - name: Prove embedded cache save template\n'
+              if needle not in workflow:
+                  raise SystemExit('authoritative save test insertion point changed')
+              block = '''      - name: Prove startup orphan save cleanup
+            run: >-
+              dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+              --TestCaseFilter:"FullyQualifiedName~TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests|FullyQualifiedName~TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests"
+
+          '''
+              workflow = workflow.replace(needle, block + needle, 1)
+          workflow_path.write_text(workflow, encoding='utf-8')
+
+      - name: Build persistence tests
+        run: dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+
+      - name: Prove startup cleanup contract
+        run: >-
+          dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+          --TestCaseFilter:"FullyQualifiedName~TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests|FullyQualifiedName~TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests"
+
+      - name: Commit wiring and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/apply-startup-save-cleanup.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: clean abandoned saves on startup'
+          git pull --rebase origin main
+          git push origin HEAD:main
