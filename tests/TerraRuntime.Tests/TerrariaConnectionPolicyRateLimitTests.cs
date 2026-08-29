@@ -25,6 +25,67 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
         Assert.Equal(1, accountant.Snapshot.RejectedFrames);
     }
 
+    [Fact]
+    public void Stops_only_when_the_configured_message_budget_is_exceeded()
+    {
+        var messageLimits = new ConnectionMessageRateLimits(
+            new ConnectionMessageRateRule(
+                (byte)TerrariaMessageId.ProjectileNew,
+                new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 1, maxBytes: null)));
+        var options = new TerrariaConnectionPolicyOptions(
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(30),
+            ConnectionRateBudgetOptions.AccountingOnly,
+            messageLimits);
+        var state = new TerrariaConnectionPolicyState(options);
+        var inner = new CountingSink();
+        var policy = new TerrariaConnectionPolicySink(inner, state);
+        TerrariaFrame hello = Decode(CurrentHelloPacket());
+        TerrariaFrame firstProjectile = Decode([3, 0, (byte)TerrariaMessageId.ProjectileNew]);
+        TerrariaFrame movement = Decode([3, 0, (byte)TerrariaMessageId.PlayerControls]);
+        TerrariaFrame secondProjectile = Decode([3, 0, (byte)TerrariaMessageId.ProjectileNew]);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in hello));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in firstProjectile));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in movement));
+        Assert.Equal(TerrariaFrameSinkResult.Stop, policy.OnFrame(in secondProjectile));
+        Assert.Equal(TerrariaConnectionStopReason.RateLimited, state.StopReason);
+        Assert.Equal(3, inner.Count);
+    }
+
+    [Fact]
+    public void Rejects_duplicate_message_rate_rules()
+    {
+        var budget = new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 1, maxBytes: null);
+
+        Assert.Throws<ArgumentException>(() => new ConnectionMessageRateLimits(
+            new ConnectionMessageRateRule((byte)TerrariaMessageId.ProjectileNew, budget),
+            new ConnectionMessageRateRule((byte)TerrariaMessageId.ProjectileNew, budget)));
+    }
+
+    [Fact]
+    public void Unconfigured_message_ids_do_not_get_message_specific_accounting()
+    {
+        var limits = new ConnectionMessageRateLimits(
+            new ConnectionMessageRateRule(
+                (byte)TerrariaMessageId.ProjectileNew,
+                new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 1, maxBytes: null)));
+        var accountant = new TerrariaMessageRateAccountant(limits);
+
+        Assert.Equal(
+            ConnectionRateDecision.Allowed,
+            accountant.Observe((byte)TerrariaMessageId.PlayerControls, 3));
+        Assert.Equal(default, accountant.GetSnapshot((byte)TerrariaMessageId.PlayerControls));
+        Assert.Equal(
+            ConnectionRateDecision.Allowed,
+            accountant.Observe((byte)TerrariaMessageId.ProjectileNew, 3));
+        Assert.Equal(
+            ConnectionRateDecision.FrameLimitExceeded,
+            accountant.Observe((byte)TerrariaMessageId.ProjectileNew, 3));
+        Assert.Equal(2, accountant.GetSnapshot((byte)TerrariaMessageId.ProjectileNew).TotalFrames);
+        Assert.Equal(1, accountant.GetSnapshot((byte)TerrariaMessageId.ProjectileNew).RejectedFrames);
+    }
+
     private static TerrariaFrame Decode(byte[] packet)
     {
         var input = new ReadOnlySequence<byte>(packet);
