@@ -15,7 +15,8 @@ public enum WorldFileTileChestPatchWriteResult : byte
     ChestEncodeFailed = 10,
     EnvelopeEncodeFailed = 11,
     FileTooLarge = 12,
-    WriteFailed = 13
+    WriteFailed = 13,
+    FooterEncodeFailed = 14
 }
 
 /// <summary>
@@ -165,10 +166,154 @@ public static class WorldFileTileChestPatchWriter
         }
     }
 
+    /// <summary>
+    /// Writes the same tile/chest patch from a detached source template that excludes the original tile and chest
+    /// sections. This overload is intended for background persistence: keeping the template alive does not retain
+    /// a second copy of the potentially huge canonical tile payload. The footer is regenerated from the validated
+    /// header while every preserved body section remains byte-for-byte identical to the source world.
+    /// </summary>
+    public static WorldFileTileChestPatchWriteResult TryWrite(
+        WorldFileEnvelope sourceEnvelope,
+        WorldFileHeader sourceHeader,
+        WorldFilePreservedSections preserved,
+        WorldTileSaveImage tiles,
+        ReadOnlySpan<WorldChest> chests,
+        Stream destination,
+        out long bytesWritten)
+    {
+        ArgumentNullException.ThrowIfNull(sourceEnvelope);
+        ArgumentNullException.ThrowIfNull(sourceHeader);
+        ArgumentNullException.ThrowIfNull(preserved);
+        ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentNullException.ThrowIfNull(destination);
+        bytesWritten = 0;
+
+        if (!destination.CanWrite)
+            return WorldFileTileChestPatchWriteResult.DestinationNotWritable;
+        if (!destination.CanSeek)
+            return WorldFileTileChestPatchWriteResult.DestinationNotSeekable;
+        if (sourceEnvelope.FormatVersion != WorldFileFormatPolicy.CurrentVersion)
+            return WorldFileTileChestPatchWriteResult.UnsupportedSourceVersion;
+        if (sourceEnvelope.SectionOffsets.Count != VanillaWorldFormat326.SectionCount ||
+            sourceEnvelope.SectionOffsets[0] != WorldFileEnvelopeEncoder.CurrentEncodedLength)
+        {
+            return WorldFileTileChestPatchWriteResult.InvalidSectionLayout;
+        }
+        if (sourceHeader.Dimensions.WidthTiles != tiles.Dimensions.WidthTiles ||
+            sourceHeader.Dimensions.HeightTiles != tiles.Dimensions.HeightTiles)
+        {
+            return WorldFileTileChestPatchWriteResult.DimensionMismatch;
+        }
+
+        try
+        {
+            if (destination.Position != 0 || destination.Length != 0)
+                return WorldFileTileChestPatchWriteResult.DestinationNotEmpty;
+
+            destination.Position = WorldFileEnvelopeEncoder.CurrentEncodedLength;
+            var sectionOffsets = new int[VanillaWorldFormat326.SectionCount];
+
+            if (!TryGetSectionOffset(destination, out sectionOffsets[0]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            destination.Write(preserved.Header.Span);
+
+            if (!TryGetSectionOffset(destination, out sectionOffsets[1]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            WorldFileTileEncodeResult tileResult = WorldFileTileEncoder.TryEncode(
+                tiles,
+                sourceEnvelope.FrameImportanceCount,
+                sourceEnvelope.FrameImportanceBits.Span,
+                destination,
+                out _);
+            if (tileResult != WorldFileTileEncodeResult.Encoded)
+                return WorldFileTileChestPatchWriteResult.TileEncodeFailed;
+
+            if (!TryGetSectionOffset(destination, out sectionOffsets[2]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            WorldFileChestEncodeResult chestResult = WorldFileChestEncoder.TryEncode(
+                chests,
+                sourceHeader.Dimensions,
+                destination,
+                out _);
+            if (chestResult != WorldFileChestEncodeResult.Encoded)
+                return WorldFileTileChestPatchWriteResult.ChestEncodeFailed;
+
+            if (!TryGetSectionOffset(destination, out sectionOffsets[3]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            destination.Write(preserved.Signs.Span);
+            if (!TryGetSectionOffset(destination, out sectionOffsets[4]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            destination.Write(preserved.Npcs.Span);
+            if (!TryGetSectionOffset(destination, out sectionOffsets[5]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            destination.Write(preserved.TileEntities.Span);
+            if (!TryGetSectionOffset(destination, out sectionOffsets[6]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            destination.Write(preserved.PressurePlates.Span);
+            if (!TryGetSectionOffset(destination, out sectionOffsets[7]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            destination.Write(preserved.TownRooms.Span);
+            if (!TryGetSectionOffset(destination, out sectionOffsets[8]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            destination.Write(preserved.Bestiary.Span);
+            if (!TryGetSectionOffset(destination, out sectionOffsets[9]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            destination.Write(preserved.CreativePowers.Span);
+
+            if (!TryGetSectionOffset(destination, out sectionOffsets[10]))
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+            WorldFileFooterEncodeResult footerResult = WorldFileFooterEncoder.TryEncode(
+                sourceHeader,
+                destination,
+                out _);
+            if (footerResult != WorldFileFooterEncodeResult.Encoded)
+                return WorldFileTileChestPatchWriteResult.FooterEncodeFailed;
+
+            long outputLength = destination.Position;
+            if (outputLength > int.MaxValue)
+                return WorldFileTileChestPatchWriteResult.FileTooLarge;
+
+            var outputEnvelope = new WorldFileEnvelope(
+                sourceEnvelope.FormatVersion,
+                sourceEnvelope.Revision,
+                sourceEnvelope.FavoriteFlags,
+                sectionOffsets,
+                sourceEnvelope.FrameImportanceCount,
+                sourceEnvelope.FrameImportanceBits.ToArray());
+
+            destination.Position = 0;
+            WorldFileEnvelopeEncodeResult envelopeResult = WorldFileEnvelopeEncoder.TryEncode(
+                outputEnvelope,
+                destination,
+                out long encodedEnvelopeLength);
+            if (envelopeResult != WorldFileEnvelopeEncodeResult.Encoded ||
+                encodedEnvelopeLength != WorldFileEnvelopeEncoder.CurrentEncodedLength)
+            {
+                return WorldFileTileChestPatchWriteResult.EnvelopeEncodeFailed;
+            }
+
+            destination.Position = outputLength;
+            destination.SetLength(outputLength);
+            bytesWritten = outputLength;
+            return WorldFileTileChestPatchWriteResult.Written;
+        }
+        catch (OverflowException)
+        {
+            bytesWritten = 0;
+            return WorldFileTileChestPatchWriteResult.FileTooLarge;
+        }
+        catch (Exception exception) when (
+            exception is IOException or NotSupportedException or ObjectDisposedException or ArgumentException)
+        {
+            bytesWritten = 0;
+            return WorldFileTileChestPatchWriteResult.WriteFailed;
+        }
+    }
+
     private static bool TryGetSectionOffset(Stream destination, out int offset)
     {
         long position = destination.Position;
-        if (position > int.MaxValue)
+        if (position < 0 || position > int.MaxValue)
         {
             offset = 0;
             return false;
