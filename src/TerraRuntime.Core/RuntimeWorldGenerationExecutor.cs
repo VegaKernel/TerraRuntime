@@ -220,6 +220,7 @@ public static class RuntimeWorldGenerationExecutor
         {
             Request = request;
             Workspace = workspace;
+            Metadata = workspace as IWorldGenerationMetadataWorkspace;
             Random = random;
             this.progress = progress;
             this.passId = passId;
@@ -230,6 +231,7 @@ public static class RuntimeWorldGenerationExecutor
 
         public WorldGenerationRequest Request { get; }
         public IWorldGenerationWorkspace Workspace { get; }
+        public IWorldGenerationMetadataWorkspace? Metadata { get; }
         public IWorldGenerationRandom Random { get; }
         public CancellationToken CancellationToken { get; }
 
