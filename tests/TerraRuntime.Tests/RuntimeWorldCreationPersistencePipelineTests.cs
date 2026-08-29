@@ -11,7 +11,7 @@ public sealed class RuntimeWorldCreationPersistencePipelineTests
         string directory = Path.Combine(Path.GetTempPath(), "TerraRuntime.Tests", Guid.NewGuid().ToString("N"));
         string worldPath = Path.Combine(directory, "flat.wld");
         var source = new StartupWorldGeneratorSource(host: null);
-        var pipeline = new RuntimeWorldCreationPersistencePipeline(source);
+        var pipeline = new RuntimeWorldCreationPersistencePipeline(source, maxTileCount: 32_000_000);
         var request = new WorldGenerationRequest(
             new WorldGeneratorId("terraruntime:flat"),
             "Flat",
@@ -66,7 +66,7 @@ public sealed class RuntimeWorldCreationPersistencePipelineTests
         Directory.CreateDirectory(directory);
         File.WriteAllBytes(worldPath, [7, 8, 9]);
         var source = new StartupWorldGeneratorSource(host: null);
-        var pipeline = new RuntimeWorldCreationPersistencePipeline(source);
+        var pipeline = new RuntimeWorldCreationPersistencePipeline(source, maxTileCount: 32_000_000);
         var request = new WorldGenerationRequest(
             new WorldGeneratorId("missing:generator"),
             "WouldNotRun",
@@ -95,6 +95,33 @@ public sealed class RuntimeWorldCreationPersistencePipelineTests
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    [Fact]
+    public void Pipeline_rejects_tile_budget_before_resolving_generator()
+    {
+        var source = new StartupWorldGeneratorSource(host: null);
+        var pipeline = new RuntimeWorldCreationPersistencePipeline(source, maxTileCount: 10_000);
+        var request = new WorldGenerationRequest(
+            new WorldGeneratorId("missing:generator"),
+            "Oversized",
+            Seed: 1UL,
+            WidthTiles: 101,
+            HeightTiles: 100);
+
+        RuntimeWorldCreationPersistenceResult result = pipeline.TryCreateAndPersist(
+            request,
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "oversized.wld"),
+            Guid.Parse("d9b150ac-c39d-4bbb-b574-d376d055fd96"),
+            worldId: 1,
+            gameMode: 0,
+            crimson: false,
+            creationTimeBinary: 0,
+            lastPlayedBinary: 0,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(RuntimeWorldCreationPersistenceStatus.GenerationBudgetExceeded, result.Status);
+        Assert.Null(result.Creation);
     }
 
     private static WorldFileLoadLimits CreateLimits(long tileCount) =>
