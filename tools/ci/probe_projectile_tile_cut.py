@@ -183,6 +183,7 @@ def main() -> int:
     wooden_arrow_defaults = around_optional(set_defaults, "type == 1", radius=1400)
     fire_arrow_defaults = around_optional(set_defaults, "type == 2", radius=1400)
     unholy_arrow_defaults = around_optional(set_defaults, "type == 4", radius=1800)
+    jesters_arrow_defaults = around_optional(set_defaults, "type == 5", radius=2200)
     arrow_ai = extract_method(projectile_source, "AI_001")
     should_use_wind = compact(extract_method(projectile_source, "ShouldUseWindPhysics"))
     transform_type = compact(extract_method(projectile_source, "TransformType"))
@@ -192,10 +193,12 @@ def main() -> int:
     print("projectile_wooden_arrow_defaults=" + wooden_arrow_defaults)
     print("projectile_fire_arrow_defaults=" + fire_arrow_defaults)
     print("projectile_unholy_arrow_defaults=" + unholy_arrow_defaults)
+    print("projectile_jesters_arrow_defaults=" + jesters_arrow_defaults)
     print("projectile_ai001_ai0_increment=" + around_optional(arrow_ai, "ai[0]++;", radius=1200))
     print("projectile_ai001_gravity=" + around_optional(arrow_ai, "ai[0] >= 15f", radius=1500))
     print("projectile_ai001_fall_cap=" + around_last(arrow_ai, "velocity.Y > 16f", radius=900))
     print("projectile_ai001_type4_contexts=" + all_contexts(arrow_ai, "type == 4", radius=2600, limit=20))
+    print("projectile_ai001_type5_contexts=" + all_contexts(arrow_ai, "type == 5", radius=3200, limit=20))
     print("projectile_should_use_wind_physics=" + should_use_wind)
     print("projectile_wind_speed_context=" + around_optional(projectile_source, "ShouldUseWindPhysics() &&", radius=2200))
     print("projectile_transform_type=" + transform_type)
@@ -217,6 +220,7 @@ def main() -> int:
         radius=4200))
     print("projectile_kill_type2_contexts=" + all_contexts(projectile_kill, "type == 2", radius=3000, limit=20))
     print("projectile_kill_type4_contexts=" + all_contexts(projectile_kill, "type == 4", radius=3000, limit=20))
+    print("projectile_kill_type5_contexts=" + all_contexts(projectile_kill, "type == 5", radius=3600, limit=20))
     print("projectile_kill_request_new_item=" + around_optional(
         projectile_kill,
         "Item.RequestNewItem(GetItemSource_DropAsItem()",
