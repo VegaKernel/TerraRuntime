@@ -9,7 +9,21 @@
 - [Руководство по проекту](project-guide.md) — назначение TerraRuntime, структура репозитория, сборка, запуск, жизненный цикл, сетевой и игровой поток, миры, сохранение и эксплуатация.
 - [Архитектура](architecture.md) — границы подсистем, владение состоянием, потоки данных, threading model, NativeAOT/CoreCLR profiles, persistence и extension boundaries.
 - [Интерфейсы host-интеграции](host-interfaces.md) — публичные контракты `TerraRuntime.HostContracts`, порядок жизни trusted host module и правила безопасного взаимодействия с runtime.
+
+## Руководства по подсистемам
+
+- [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
+- [Загрузка мира и persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state и recovery.
+- [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.
+- [Synchronization и interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis и текущая passthrough policy.
+- [Operations и Terminal UI](operations-tui.md) — startup без аргументов, CLI defaults, lifecycle TUI, fallback console, telemetry и правила dashboard extensions.
+- [World generation](world-generation.md) — provider/pass/workspace/RNG contracts, trusted-host registration и текущий non-vanilla flat baseline.
+- [Security и trust boundaries](security.md) — admission limits, rate/size bounds, failure isolation, persistence safety и незавершённая hardening work.
+
+## Нормативные документы проекта
+
 - [Основная дорожная карта](../roadmap.md) — текущее состояние реализации и обязательные следующие этапы.
+- [Roadmap документации](../roadmap/documentation.md) — постоянное правило ведения RU/EN документации и coverage plan.
 - [NativeAOT baseline](../native-aot-baseline.md) — требования к NativeAOT-совместимости и shipping gate.
 - [Reference policy](../reference-policy.md) — иерархия источников при восстановлении vanilla-поведения.
 
@@ -36,7 +50,7 @@
 7. persistence/networking implications, если применимо;
 8. observability и диагностика;
 9. известные несовпадения с vanilla и ещё не реализованные возможности;
-10. ссылки на релевантные тесты/roadmap/ADR-подобные документы, когда решение требует отдельного обоснования.
+10. ссылки на релевантные tests/roadmap/decision documents, когда решение требует отдельного обоснования.
 
 ## Языковая политика
 
