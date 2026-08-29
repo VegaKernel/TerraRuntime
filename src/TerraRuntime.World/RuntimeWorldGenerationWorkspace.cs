@@ -24,6 +24,7 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
     private WorldGenerationPoint? spawn;
     private WorldGenerationPoint? dungeon;
     private WorldGenerationLayers? layers;
+    private VanillaWorldSeedProfile1458 vanillaSeedProfile;
 
     public RuntimeWorldGenerationWorkspace(int widthTiles, int heightTiles)
     {
@@ -35,6 +36,11 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
     public WorldTileStore TileStore { get; }
     public int WidthTiles => Dimensions.WidthTiles;
     public int HeightTiles => Dimensions.HeightTiles;
+
+    internal VanillaWorldSeedProfile1458 VanillaSeedProfile => vanillaSeedProfile;
+
+    internal void SetVanillaSeedProfile(VanillaWorldSeedProfile1458 profile) =>
+        vanillaSeedProfile = profile;
 
     public bool TryGetTile(int x, int y, out WorldGenerationTile tile)
     {
