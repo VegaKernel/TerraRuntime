@@ -72,6 +72,7 @@ public sealed class AtomicSaveFileWriterTests
     {
         string directory = CreateTempDirectory();
         string destination = Path.Combine(directory, "world.wld");
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var writerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseWriter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -86,15 +87,15 @@ public sealed class AtomicSaveFileWriterTests
                     byte[] payload = Encoding.UTF8.GetBytes("complete");
                     await stream.WriteAsync(payload, token);
                 },
-                TestContext.Current.CancellationToken);
+                cancellationToken);
 
-            await writerStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await writerStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
             Assert.False(File.Exists(destination));
 
             releaseWriter.TrySetResult();
             await write;
 
-            Assert.Equal("complete", await File.ReadAllTextAsync(destination, TestContext.Current.CancellationToken));
+            Assert.Equal("complete", await File.ReadAllTextAsync(destination, cancellationToken));
         }
         finally
         {
