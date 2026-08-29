@@ -5,9 +5,9 @@ namespace TerraRuntime;
 
 /// <summary>
 /// One authoritative dry-world physics step for the verified ordinary TerrariaServer 1.4.5.8 player path.
-/// This slice owns source-backed baseline horizontal input, the base hitbox, gravity/fall-speed clamp,
+/// This slice owns source-backed baseline horizontal/jump input, the base hitbox, gravity/fall-speed clamp,
 /// walk-down-slope, ordinary StepDown/StepUp, tile collision, position advance and post-move slope collision.
-/// Mounts, liquids and jump-control state remain outside this slice.
+/// Mounts, liquids and extended jump families remain outside this slice.
 /// </summary>
 internal sealed class VanillaServerPlayerDryPhysicsStepper
 {
@@ -33,9 +33,28 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         ServerPlayerHorizontalIntent horizontalIntent,
         out ServerPlayerDryPhysicsStepResult next)
     {
+        VanillaServerPlayerJumpState jumpState = VanillaServerPlayerJumpState.Initial;
+        return TryStep(
+            in player,
+            horizontalIntent,
+            ServerPlayerJumpIntent.Released,
+            in jumpState,
+            out next,
+            out _);
+    }
+
+    public bool TryStep(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent,
+        ServerPlayerJumpIntent jumpIntent,
+        in VanillaServerPlayerJumpState jumpState,
+        out ServerPlayerDryPhysicsStepResult next,
+        out VanillaServerPlayerJumpState nextJumpState)
+    {
         if (!IsValidHorizontalIntent(horizontalIntent))
         {
             next = default;
+            nextJumpState = default;
             return false;
         }
 
@@ -43,12 +62,34 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             player.VelocityX,
             player.VelocityY,
             horizontalIntent);
-        return TryStepCore(in player, velocityX, out next);
+        if (!VanillaServerPlayerJumpControl.TryApply(
+                player.VelocityY,
+                jumpIntent,
+                in jumpState,
+                out float velocityY,
+                out nextJumpState))
+        {
+            next = default;
+            return false;
+        }
+
+        return TryStepCore(in player, velocityX, velocityY, ref nextJumpState, out next);
     }
 
     private bool TryStepCore(
         in PlayerStateSnapshot player,
         float velocityX,
+        out ServerPlayerDryPhysicsStepResult next)
+    {
+        VanillaServerPlayerJumpState jumpState = VanillaServerPlayerJumpState.Initial;
+        return TryStepCore(in player, velocityX, player.VelocityY, ref jumpState, out next);
+    }
+
+    private bool TryStepCore(
+        in PlayerStateSnapshot player,
+        float velocityX,
+        float controlledVelocityY,
+        ref VanillaServerPlayerJumpState jumpState,
         out ServerPlayerDryPhysicsStepResult next)
     {
         if (!player.Player.IsAssigned ||
@@ -57,7 +98,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             !float.IsFinite(player.PositionX) ||
             !float.IsFinite(player.PositionY) ||
             !float.IsFinite(velocityX) ||
-            !float.IsFinite(player.VelocityY))
+            !float.IsFinite(controlledVelocityY))
         {
             next = default;
             return false;
@@ -65,7 +106,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
 
         float positionX = player.PositionX;
         float positionY = player.PositionY;
-        float velocityY = Math.Min(player.VelocityY + Gravity, MaximumFallSpeed);
+        float velocityY = Math.Min(controlledVelocityY + Gravity, MaximumFallSpeed);
 
         velocityY = VanillaWorldWalkDownSlope.ResolveVelocityY(
             tiles,
@@ -114,6 +155,9 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             PlayerHeight,
             fallThrough: false,
             fall2: false);
+
+        if (collision.HitCeiling && jumpState.RemainingTicks > 0)
+            jumpState = new VanillaServerPlayerJumpState(0, jumpState.ReleaseReady);
 
         positionX += collision.VelocityX;
         positionY += collision.VelocityY;

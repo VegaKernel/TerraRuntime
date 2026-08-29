@@ -37,6 +37,11 @@ public interface IServerPlayerOperations
         ServerPlayerHorizontalIntent intent,
         CancellationToken cancellationToken = default);
 
+    ValueTask<bool> SetJumpIntentAsync(
+        ServerPlayerId id,
+        ServerPlayerJumpIntent intent,
+        CancellationToken cancellationToken = default);
+
     ValueTask<bool> DespawnAsync(
         ServerPlayerId id,
         CancellationToken cancellationToken = default);

@@ -15,6 +15,11 @@ internal sealed record ServerPlayerHorizontalIntentRuntimeCommand(
     ServerPlayerHorizontalIntent Intent,
     TaskCompletionSource<bool> Completion) : RuntimeCommand;
 
+internal sealed record ServerPlayerJumpIntentRuntimeCommand(
+    ServerPlayerId Id,
+    ServerPlayerJumpIntent Intent,
+    TaskCompletionSource<bool> Completion) : RuntimeCommand;
+
 internal sealed record ServerPlayerDespawnRuntimeCommand(
     ServerPlayerId Id,
     TaskCompletionSource<bool> Completion) : RuntimeCommand;
@@ -30,6 +35,8 @@ internal sealed class RuntimeServerPlayerCommandService
     private readonly RuntimeServerPlayerStateStore states;
     private readonly Dictionary<ServerPlayerId, RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease> leases = [];
     private readonly Dictionary<PlayerHandle, ServerPlayerHorizontalIntent> horizontalIntents = [];
+    private readonly Dictionary<PlayerHandle, ServerPlayerJumpIntent> jumpIntents = [];
+    private readonly Dictionary<PlayerHandle, VanillaServerPlayerJumpState> jumpStates = [];
 
     public RuntimeServerPlayerCommandService(
         RuntimeServerPlayerSlotRegistry identities,
@@ -49,6 +56,10 @@ internal sealed class RuntimeServerPlayerCommandService
 
             case ServerPlayerHorizontalIntentRuntimeCommand horizontal:
                 horizontal.Completion.TrySetResult(SetHorizontalIntent(horizontal.Id, horizontal.Intent));
+                return true;
+
+            case ServerPlayerJumpIntentRuntimeCommand jump:
+                jump.Completion.TrySetResult(SetJumpIntent(jump.Id, jump.Intent));
                 return true;
 
             case ServerPlayerDespawnRuntimeCommand despawn:
@@ -118,6 +129,54 @@ internal sealed class RuntimeServerPlayerCommandService
             ? intent
             : ServerPlayerHorizontalIntent.Stop;
 
+    public bool SetJumpIntent(ServerPlayerId id, ServerPlayerJumpIntent intent)
+    {
+        if (!id.IsAssigned ||
+            !IsValidJumpIntent(intent) ||
+            !leases.TryGetValue(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) ||
+            !states.TryGet(lease.Player, out _))
+        {
+            return false;
+        }
+
+        if (intent == ServerPlayerJumpIntent.Released)
+        {
+            jumpIntents.Remove(lease.Player);
+            jumpStates.Remove(lease.Player);
+        }
+        else
+        {
+            jumpIntents[lease.Player] = intent;
+        }
+
+        return true;
+    }
+
+    public ServerPlayerJumpIntent GetJumpIntent(PlayerHandle player) =>
+        player.IsAssigned && jumpIntents.TryGetValue(player, out ServerPlayerJumpIntent intent)
+            ? intent
+            : ServerPlayerJumpIntent.Released;
+
+    public VanillaServerPlayerJumpState GetJumpState(PlayerHandle player) =>
+        player.IsAssigned && jumpStates.TryGetValue(player, out VanillaServerPlayerJumpState state)
+            ? state
+            : VanillaServerPlayerJumpState.Initial;
+
+    public void CommitJumpState(PlayerHandle player, in VanillaServerPlayerJumpState state)
+    {
+        if (!player.IsAssigned || !states.TryGet(player, out _))
+        {
+            jumpIntents.Remove(player);
+            jumpStates.Remove(player);
+            return;
+        }
+
+        if (state == VanillaServerPlayerJumpState.Initial)
+            jumpStates.Remove(player);
+        else
+            jumpStates[player] = state;
+    }
+
     public bool Despawn(ServerPlayerId id)
     {
         if (!id.IsAssigned || !leases.TryGetValue(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease))
@@ -130,6 +189,8 @@ internal sealed class RuntimeServerPlayerCommandService
         }
 
         horizontalIntents.Remove(lease.Player);
+        jumpIntents.Remove(lease.Player);
+        jumpStates.Remove(lease.Player);
         leases.Remove(id);
         lease.Dispose();
         return true;
@@ -139,6 +200,9 @@ internal sealed class RuntimeServerPlayerCommandService
         intent is ServerPlayerHorizontalIntent.Left or
             ServerPlayerHorizontalIntent.Stop or
             ServerPlayerHorizontalIntent.Right;
+
+    private static bool IsValidJumpIntent(ServerPlayerJumpIntent intent) =>
+        intent is ServerPlayerJumpIntent.Released or ServerPlayerJumpIntent.Held;
 }
 
 /// <summary>
@@ -187,6 +251,24 @@ internal sealed class RuntimeServerPlayerOperations : IServerPlayerOperations
         {
             throw new InvalidOperationException(
                 "The authoritative command queue rejected the server-player horizontal intent command.");
+        }
+
+        return await completion.Task.ConfigureAwait(false);
+    }
+
+    public async ValueTask<bool> SetJumpIntentAsync(
+        ServerPlayerId id,
+        ServerPlayerJumpIntent intent,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!ingress.TryPost(
+                GameCommandSourceId.System,
+                new ServerPlayerJumpIntentRuntimeCommand(id, intent, completion)))
+        {
+            throw new InvalidOperationException(
+                "The authoritative command queue rejected the server-player jump intent command.");
         }
 
         return await completion.Task.ConfigureAwait(false);
