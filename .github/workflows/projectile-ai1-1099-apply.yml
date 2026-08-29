@@ -27,6 +27,7 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
 
+          # The 66x66 projectile uses Terraria's narrow centered WetCollision probe.
           python3 -m py_compile .github/scripts/apply_sound_gun_1099.py
           python3 .github/scripts/apply_sound_gun_1099.py
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
