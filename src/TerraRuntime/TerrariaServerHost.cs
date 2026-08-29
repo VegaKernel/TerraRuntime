@@ -301,7 +301,6 @@ public static class TerrariaServerHost
         var movementIngress = new RuntimePlayerMovementIngress(commandIngress);
         var worldItemIngress = new RuntimeWorldItemIngress(commandIngress);
         var projectileIngress = new RuntimeProjectileNetworkIngress(commandIngress);
-        var tileIngress = new RuntimeTileNetworkIngress(commandIngress);
         var chestIngress = new RuntimeChestNetworkIngress(commandIngress);
         var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
         var slots = new PlayerSlotPool(options.MaxPlayers);
@@ -493,7 +492,6 @@ public static class TerrariaServerHost
                     movementIngress,
                     worldItemIngress,
                     projectileIngress,
-                    tileIngress,
                     chestIngress,
                     disconnectIngress,
                     runtimeConnections,
@@ -579,7 +577,6 @@ public static class TerrariaServerHost
         IPlayerMovementIngress movementIngress,
         IWorldItemIngress worldItemIngress,
         IProjectileNetworkIngress projectileIngress,
-        ITileNetworkIngress tileIngress,
         IChestNetworkIngress chestIngress,
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
@@ -725,11 +722,6 @@ public static class TerrariaServerHost
                 bootstrapSink,
                 projectileSink,
                 chestIngress);
-            var tileSink = new TileManipulationFrameSink(
-                source,
-                bootstrapSink,
-                chestSink,
-                tileIngress);
 
             try
             {
@@ -737,7 +729,7 @@ public static class TerrariaServerHost
                 {
                     TerrariaSocketRunResult result = await TerrariaSocketConnection.RunAsync(
                         socket,
-                        tileSink,
+                        chestSink,
                         outbound,
                         TerrariaFrameDecoderOptions.Default,
                         policyOptions,
@@ -745,7 +737,7 @@ public static class TerrariaServerHost
                         cancellationToken).ConfigureAwait(false);
                     string message =
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
-                        $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, chests={chestSink.StopReason}, tiles={tileSink.StopReason}, state={bootstrapSink.JoinState}; " +
+                        $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, chests={chestSink.StopReason}, tiles={projectileSink.TileStopReason}, state={bootstrapSink.JoinState}; " +
                         $"inbound={result.Inbound}; rate={result.Rate}; outbound={result.Outbound.Reason}.";
                     hostLog.Write(RuntimeLogLevel.Information, "Network", message);
                 }
