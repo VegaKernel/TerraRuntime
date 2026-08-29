@@ -122,6 +122,44 @@ public sealed class RuntimeChestStoreTests
     }
 
     [Fact]
+    public void Zero_name_marker_is_active_state_only_and_does_not_clear_name()
+    {
+        var store = new RuntimeChestStore([Chest()]);
+        ConnectionHandle owner = Connection(1, 0, 1);
+        Assert.True(store.TryOpen(owner, 10, 20, out _));
+
+        var activeOnly = new TerrariaActiveChestState(3, 10, 20, 0, string.Empty);
+        Assert.True(store.TryApplyActiveState(owner, in activeOnly, out WorldChest? renamed, out bool closed));
+
+        Assert.Null(renamed);
+        Assert.False(closed);
+        Assert.True(store.TryGetOpenChest(owner, out WorldChest current));
+        Assert.Equal("Base", current.Name);
+    }
+
+    [Fact]
+    public void Invalid_name_sentinel_clears_existing_name()
+    {
+        var store = new RuntimeChestStore([Chest()]);
+        ConnectionHandle owner = Connection(1, 0, 1);
+        Assert.True(store.TryOpen(owner, 10, 20, out _));
+
+        var clear = new TerrariaActiveChestState(
+            3,
+            10,
+            20,
+            global::Multiplicity.Packets.ChestOpen.InvalidNameLength,
+            string.Empty);
+        Assert.True(store.TryApplyActiveState(owner, in clear, out WorldChest? renamed, out bool closed));
+
+        Assert.False(closed);
+        Assert.NotNull(renamed);
+        Assert.Empty(renamed!.Name);
+        Assert.True(store.TryGetOpenChest(owner, out WorldChest current));
+        Assert.Empty(current.Name);
+    }
+
+    [Fact]
     public void Rename_requires_exact_open_chest_coordinates_and_name_marker()
     {
         var store = new RuntimeChestStore([Chest()]);
@@ -133,6 +171,28 @@ public sealed class RuntimeChestStoreTests
 
         Assert.False(store.TryApplyActiveState(owner, in wrongCoordinates, out _, out _));
         Assert.False(store.TryApplyActiveState(owner, in wrongMarker, out _, out _));
+    }
+
+    [Fact]
+    public void Name_lookup_resolves_minus_one_by_coordinates_and_requires_exact_identity()
+    {
+        var store = new RuntimeChestStore([Chest()]);
+
+        var byCoordinates = new TerrariaChestNameLookupRequest(-1, 10, 20);
+        Assert.True(store.TryResolveNameLookup(in byCoordinates, out WorldChest resolved));
+        Assert.Equal((short)3, resolved.SlotId);
+        Assert.Equal("Base", resolved.Name);
+
+        var byId = new TerrariaChestNameLookupRequest(3, 10, 20);
+        Assert.True(store.TryResolveNameLookup(in byId, out resolved));
+        Assert.Equal((short)3, resolved.SlotId);
+
+        var wrongCoordinates = new TerrariaChestNameLookupRequest(3, 11, 20);
+        var invalidNegative = new TerrariaChestNameLookupRequest(-2, 10, 20);
+        var missing = new TerrariaChestNameLookupRequest(-1, 99, 99);
+        Assert.False(store.TryResolveNameLookup(in wrongCoordinates, out _));
+        Assert.False(store.TryResolveNameLookup(in invalidNegative, out _));
+        Assert.False(store.TryResolveNameLookup(in missing, out _));
     }
 
     private static WorldChest Chest() =>
