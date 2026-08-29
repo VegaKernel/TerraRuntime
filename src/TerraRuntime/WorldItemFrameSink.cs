@@ -21,7 +21,7 @@ public enum WorldItemFrameStopReason : byte
 /// packet identities are decoded through Multiplicity and converted into packet-neutral Core updates before
 /// bounded authoritative queue admission.
 /// </summary>
-public sealed class WorldItemFrameSink : ITerrariaFrameSink
+public sealed class WorldItemFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
 {
     private readonly GameCommandSourceId _source;
     private readonly PlayerBootstrapFrameSink _bootstrap;
@@ -47,6 +47,17 @@ public sealed class WorldItemFrameSink : ITerrariaFrameSink
     }
 
     public WorldItemFrameStopReason StopReason { get; private set; }
+
+    public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
+    {
+        WorldItemFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
+        WorldItemFrameStopReason.MalformedDrop or WorldItemFrameStopReason.MalformedOwner => TerrariaFrameRejectionCategory.MalformedProtocol,
+        WorldItemFrameStopReason.PlayerOwnershipMismatch => TerrariaFrameRejectionCategory.GameplayRejected,
+        WorldItemFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
+        _ => _inner is ITerrariaFrameRejectionSource source
+            ? source.RejectionCategory
+            : TerrariaFrameRejectionCategory.None
+    };
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
