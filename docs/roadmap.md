@@ -155,9 +155,9 @@ Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the typed pa
 - [ ] Size queue limits from measured real workloads and configured player count rather than a guessed constant.
 - [ ] Batch already queued small frames into fewer socket writes without intentionally delaying latency-sensitive traffic.
 - [x] Use `TCP_NODELAY` unless measurement demonstrates a better policy.
-- [ ] Handshake deadline plus normal idle timeout.
+- [x] Handshake deadline plus normal idle timeout.
 - [x] Gate maximum concurrent connections before allocating expensive player state.
-- [ ] Cancellation must release all connection resources on every exit path.
+- [x] Cancellation must release all connection resources on every exit path.
 
 ### DoS hardening
 
