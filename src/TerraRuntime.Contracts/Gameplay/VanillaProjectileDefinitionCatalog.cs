@@ -5,6 +5,7 @@ public static class VanillaProjectileAiStyles
 {
     public static readonly ProjectileAiStyleId Arrow = new(1);
     public static readonly ProjectileAiStyleId Thrown = new(2);
+    public static readonly ProjectileAiStyleId Boomerang = new(3);
 }
 
 /// <summary>
@@ -69,6 +70,16 @@ public static class VanillaProjectileDefinitionCatalog
         AiStyle: VanillaProjectileAiStyles.Arrow,
         TileCollide: true,
         IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
+    private static readonly VanillaProjectileDefinition EnchantedBoomerangDefinition = new(
+        Width: 22,
+        Height: 22,
+        AiStyle: VanillaProjectileAiStyles.Boomerang,
+        TileCollide: true,
+        IgnoreWater: false,
         CanCutTiles: true,
         CollisionWidth: 10,
         CollisionHeight: 10);
@@ -166,6 +177,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.JestersArrow)
         {
             definition = JestersArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.EnchantedBoomerang)
+        {
+            definition = EnchantedBoomerangDefinition;
             return true;
         }
 
