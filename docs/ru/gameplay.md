@@ -219,6 +219,8 @@ Projectile support уже вышел из relay-only design.
 
 Current architecture включает runtime projectile store, ownership/provenance facts, lifecycle handling, definition catalog, behavior state executor/stepper, world physics/collision, tile-cut integration supported cases и packet projection/replication.
 
+Generic supported tile impacts теперь сохраняют `TileCollision` как semantic termination reason через generation-safe authoritative commit. Post-behavior decorators и termination observers могут отличить столкновение от обычного lifetime expiry без анализа wire state.
+
 | Verified family | Vanilla AI style |
 |---|---:|
 | Arrow | `1` |

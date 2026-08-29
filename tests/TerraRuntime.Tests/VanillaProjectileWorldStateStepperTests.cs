@@ -167,6 +167,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.Equal(104f, next.State.PositionX, 5);
         Assert.Equal(160f, next.State.PositionY, 5);
         Assert.Equal(0, next.TimeLeft);
+        Assert.Equal(ProjectileSimulationTerminationReason.TileCollision, next.TerminationReason);
     }
 
     [Fact]

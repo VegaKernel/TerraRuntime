@@ -25,6 +25,10 @@ internal sealed class VanillaProjectileWorldMotionResolver
         worldSurfaceTiles = tiles.WorldSurfaceTiles ?? Math.Max(1d, tiles.Dimensions.HeightTiles / 3d);
     }
 
+    public int WorldWidthPixels => checked(tiles.Dimensions.WidthTiles * 16);
+
+    public int WorldHeightPixels => checked(tiles.Dimensions.HeightTiles * 16);
+
     public bool TryResolve(
         in ProjectileSimulationStepContext projectile,
         in VanillaProjectileDefinition definition,
@@ -149,7 +153,10 @@ internal sealed class VanillaProjectileWorldMotionResolver
             current.OriginalDamage);
 
         int timeLeft = tileImpact ? 0 : projectile.Lifecycle.TimeLeft - 1;
-        next = new ProjectileSimulationStepResult(state, timeLeft, liquid);
+        ProjectileSimulationTerminationReason terminationReason = tileImpact
+            ? ProjectileSimulationTerminationReason.TileCollision
+            : ProjectileSimulationTerminationReason.None;
+        next = new ProjectileSimulationStepResult(state, timeLeft, liquid, terminationReason);
         return true;
     }
 
