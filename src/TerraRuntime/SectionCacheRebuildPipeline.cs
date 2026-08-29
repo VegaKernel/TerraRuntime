@@ -20,6 +20,9 @@ internal readonly record struct SectionCacheRebuildResult(
 internal readonly record struct SectionCacheRebuildPipelineSnapshot(
     int DirtyBacklog,
     int InFlight,
+    int CacheEntries,
+    long CacheBytes,
+    int CacheMaximumEntries,
     long CapturedSnapshots,
     long SubmittedRebuilds,
     long RejectedSubmissions,
@@ -45,6 +48,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
     private readonly Func<WorldSectionTileSnapshot, SectionCacheRebuildResult> _encode;
     private readonly int _workCapacity;
     private readonly int _maximumInFlight;
+    private int _dirtyBacklog;
     private int _inFlight;
     private long _capturedSnapshots;
     private long _submittedRebuilds;
@@ -94,21 +98,32 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             completionCapacity,
             ExecuteSafely,
             threadNamePrefix: "TerraRuntime Section Cache");
+        _dirtyBacklog = world.Tiles.DirtySections.DirtyCount;
     }
 
-    public SectionCacheRebuildPipelineSnapshot Snapshot => new(
-        DirtyBacklog: _world.Tiles.DirtySections.DirtyCount,
-        InFlight: Volatile.Read(ref _inFlight),
-        CapturedSnapshots: Interlocked.Read(ref _capturedSnapshots),
-        SubmittedRebuilds: Interlocked.Read(ref _submittedRebuilds),
-        RejectedSubmissions: Interlocked.Read(ref _rejectedSubmissions),
-        EncodedFrames: Interlocked.Read(ref _encodedFrames),
-        EncodeFailures: Interlocked.Read(ref _encodeFailures),
-        PublishedFrames: Interlocked.Read(ref _publishedFrames),
-        StaleResults: Interlocked.Read(ref _staleResults),
-        PublishRejections: Interlocked.Read(ref _publishRejections),
-        TotalEncodeDuration: TimeSpan.FromTicks(Interlocked.Read(ref _totalEncodeDurationTicks)),
-        WorkerPool: _workers.Snapshot);
+    public SectionCacheRebuildPipelineSnapshot Snapshot
+    {
+        get
+        {
+            SectionPacketCacheSnapshot cache = _packets.CaptureSectionCacheSnapshot();
+            return new SectionCacheRebuildPipelineSnapshot(
+                DirtyBacklog: Volatile.Read(ref _dirtyBacklog),
+                InFlight: Volatile.Read(ref _inFlight),
+                CacheEntries: cache.Entries,
+                CacheBytes: cache.Bytes,
+                CacheMaximumEntries: cache.MaximumEntries,
+                CapturedSnapshots: Interlocked.Read(ref _capturedSnapshots),
+                SubmittedRebuilds: Interlocked.Read(ref _submittedRebuilds),
+                RejectedSubmissions: Interlocked.Read(ref _rejectedSubmissions),
+                EncodedFrames: Interlocked.Read(ref _encodedFrames),
+                EncodeFailures: Interlocked.Read(ref _encodeFailures),
+                PublishedFrames: Interlocked.Read(ref _publishedFrames),
+                StaleResults: Interlocked.Read(ref _staleResults),
+                PublishRejections: Interlocked.Read(ref _publishRejections),
+                TotalEncodeDuration: TimeSpan.FromTicks(Interlocked.Read(ref _totalEncodeDurationTicks)),
+                WorkerPool: _workers.Snapshot);
+        }
+    }
 
     public void Start()
     {
@@ -131,7 +146,20 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             throw new InvalidOperationException("The section cache rebuild pipeline has not been started.");
 
         DrainCompletions();
+        SubmitDirtyWork();
+        Volatile.Write(ref _dirtyBacklog, _world.Tiles.DirtySections.DirtyCount);
+    }
 
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
+
+        _workers.Dispose();
+    }
+
+    private void SubmitDirtyWork()
+    {
         int inFlightCapacity = _maximumInFlight - Volatile.Read(ref _inFlight);
         if (inFlightCapacity <= 0 || _world.Tiles.DirtySections.DirtyCount == 0)
             return;
@@ -166,14 +194,6 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             _world.Tiles.DirtySections.MarkDirty(snapshot.Section);
             Interlocked.Increment(ref _rejectedSubmissions);
         }
-    }
-
-    public void Dispose()
-    {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0)
-            return;
-
-        _workers.Dispose();
     }
 
     private void DrainCompletions()
