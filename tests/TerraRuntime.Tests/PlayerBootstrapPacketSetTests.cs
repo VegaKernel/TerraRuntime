@@ -69,6 +69,91 @@ public sealed class PlayerBootstrapPacketSetTests
         }
     }
 
+    [Fact]
+    public async Task Section_response_waits_for_worker_publication_after_base_section_mutation()
+    {
+        byte[] source = CreateCompleteWorld();
+        WorldFileLoadLimits limits = CreateLimits();
+        Assert.True(WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded).IsLoaded);
+        WorldFileData world = Assert.IsType<WorldFileData>(loaded);
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+
+        Assert.True(packets.TryCreateSectionResponse(
+            world.RuntimeMetadata.SpawnX,
+            world.RuntimeMetadata.SpawnY,
+            team: 0,
+            out PlayerBootstrapSectionResponse before));
+
+        using var pipeline = new SectionCacheRebuildPipeline(
+            world,
+            packets,
+            workerCount: 1,
+            workCapacity: 1,
+            completionCapacity: 1);
+        pipeline.Start();
+
+        WorldTile tile = world.Tiles.Get(world.RuntimeMetadata.SpawnX, world.RuntimeMetadata.SpawnY);
+        tile.Flags ^= WorldTileFlags.WireBlue;
+        world.Tiles.Set(world.RuntimeMetadata.SpawnX, world.RuntimeMetadata.SpawnY, tile);
+
+        Task<(bool Success, PlayerBootstrapSectionResponse Response)> responseTask = Task.Run(
+            () =>
+            {
+                bool success = packets.TryCreateSectionResponse(
+                    world.RuntimeMetadata.SpawnX,
+                    world.RuntimeMetadata.SpawnY,
+                    team: 0,
+                    out PlayerBootstrapSectionResponse response);
+                return (success, response);
+            },
+            TestContext.Current.CancellationToken);
+
+        SectionCacheRebuildPipelineSnapshot waiting = await WaitForObservedRequestAsync(pipeline);
+        Assert.False(responseTask.IsCompleted);
+        Assert.True(waiting.CacheMisses >= 1);
+        Assert.True(waiting.CacheStaleReads >= 1);
+        Assert.True(waiting.CacheWaits >= 1);
+        Assert.True(waiting.OnDemandRequests >= 1);
+
+        for (int attempt = 0; attempt < 500 && !responseTask.IsCompleted; attempt++)
+        {
+            pipeline.Tick();
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+
+        (bool success, PlayerBootstrapSectionResponse after) = await responseTask;
+        Assert.True(success);
+
+        SectionCacheRebuildPipelineSnapshot completed = pipeline.Snapshot;
+        Assert.True(completed.SubmittedRebuilds >= 1);
+        Assert.True(completed.PublishedFrames >= 1);
+        Assert.True(completed.CacheWaitCompletions >= 1);
+        Assert.Equal(0, completed.CacheWaitTimeouts);
+        Assert.Equal(0, completed.OnDemandPendingRequests);
+
+        Assert.Equal(before.BaseSectionFrames.Length, after.BaseSectionFrames.Length);
+        Assert.True(
+            before.BaseSectionFrames
+                .Where((frame, index) => !frame.Span.SequenceEqual(after.BaseSectionFrames[index].Span))
+                .Any(),
+            "The join response must consume the worker-published frame for the mutated base section.");
+    }
+
+    private static async Task<SectionCacheRebuildPipelineSnapshot> WaitForObservedRequestAsync(
+        SectionCacheRebuildPipeline pipeline)
+    {
+        for (int attempt = 0; attempt < 200; attempt++)
+        {
+            SectionCacheRebuildPipelineSnapshot snapshot = pipeline.Snapshot;
+            if (snapshot.OnDemandRequests >= 1 && snapshot.CacheWaits >= 1)
+                return snapshot;
+
+            await Task.Delay(5, TestContext.Current.CancellationToken);
+        }
+
+        throw new TimeoutException("Bootstrap section response did not enter the worker-backed cache wait path.");
+    }
+
     private static byte[] CreateCompleteWorld() =>
         (byte[])InvokeWorldLoaderTestHelper("CreateCompleteCurrentWorld")!;
 
