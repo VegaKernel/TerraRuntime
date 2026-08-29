@@ -13,7 +13,7 @@ namespace TerraRuntime.Tests;
 public sealed class PlayerBootstrapFrameSinkTests
 {
     [Fact]
-    public void Packet8_queues_all_sections_contiguously_before_global_state_and_packet49()
+    public void Packet8_queues_all_sections_contiguously_then_packet49_before_global_state()
     {
         var slots = new PlayerSlotPool(1);
         var outbound = CreateOutbound();
@@ -52,8 +52,6 @@ public sealed class PlayerBootstrapFrameSinkTests
                 (byte)TerrariaMessageId.StatusTextSize,
                 (byte)TerrariaMessageId.TileSection,
                 (byte)TerrariaMessageId.TileSection,
-                23,
-                54,
                 (byte)TerrariaMessageId.PlayerSpawnSelf
             },
             DrainMessageIds(queue));
