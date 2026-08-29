@@ -4,10 +4,11 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 /// <summary>
-/// One authoritative dry-world physics step for the verified ordinary TerrariaServer 1.4.5.8 player path.
+/// One authoritative ordinary-world physics step for the verified TerrariaServer 1.4.5.8 player path.
 /// This slice owns source-backed baseline horizontal/jump input, the base hitbox, gravity/fall-speed clamp,
-/// walk-down-slope, ordinary StepDown/StepUp, tile collision, position advance and post-move slope collision.
-/// Mounts, liquids and extended jump families remain outside this slice.
+/// walk-down-slope, ordinary StepDown/StepUp, tile collision, liquid-aware position advance and post-move
+/// slope collision. Mounts and the remaining liquid-specific jump/gravity/floating semantics remain outside
+/// this slice.
 /// </summary>
 internal sealed class VanillaServerPlayerDryPhysicsStepper
 {
@@ -104,6 +105,14 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             return false;
         }
 
+        VanillaLiquidContactState liquidContacts = VanillaWorldCollision.GetLiquidContacts(
+            tiles,
+            player.PositionX,
+            player.PositionY,
+            PlayerWidth,
+            PlayerHeight);
+        float liquidMovementScale = VanillaServerPlayerLiquidMovement.ResolveMovementScale(in liquidContacts);
+
         float positionX = player.PositionX;
         float positionY = player.PositionY;
         float velocityY = Math.Min(controlledVelocityY + Gravity, MaximumFallSpeed);
@@ -159,8 +168,15 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         if (collision.HitCeiling && jumpState.RemainingTicks > 0)
             jumpState = new VanillaServerPlayerJumpState(0, jumpState.ReleaseReady);
 
-        positionX += collision.VelocityX;
-        positionY += collision.VelocityY;
+        VanillaServerPlayerLiquidDisplacement displacement =
+            VanillaServerPlayerLiquidMovement.ResolveDisplacement(
+                preCollisionVelocityX,
+                preCollisionVelocityY,
+                collision.VelocityX,
+                collision.VelocityY,
+                liquidMovementScale);
+        positionX += displacement.X;
+        positionY += displacement.Y;
         VanillaSlopeCollisionResult slope = VanillaWorldSlopeCollision.Resolve(
             tiles,
             positionX,
