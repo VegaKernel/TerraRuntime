@@ -46,7 +46,7 @@ jobs:
           --tool-path .tools
           --version 11.0.0.9375
 
-      - name: Probe projectile tile-cut source contract
+      - name: Decompile pinned Projectile source
         shell: bash
         run: |
           set -euo pipefail
@@ -68,33 +68,13 @@ jobs:
 
           assembly_dir="$(dirname "$assembly")"
           printf 'source_assembly_sha256=%s path=%s\n' "$expected_sha256" "$assembly"
-
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" \
             > artifacts/source-contract/projectile.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.DelegateMethods "$assembly" \
-            > artifacts/source-contract/delegate-methods.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Player "$assembly" \
-            > artifacts/source-contract/player.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" \
-            > artifacts/source-contract/worldgen.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Main "$assembly" \
-            > artifacts/source-contract/main.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.TileID "$assembly" \
-            > artifacts/source-contract/tile-id.cs
 
-          python3 tools/ci/probe_projectile_tile_cut.py \
-            --projectile artifacts/source-contract/projectile.cs \
-            --delegate-methods artifacts/source-contract/delegate-methods.cs \
-            --player artifacts/source-contract/player.cs \
-            --worldgen artifacts/source-contract/worldgen.cs \
-            --main artifacts/source-contract/main.cs \
-            --tile-id artifacts/source-contract/tile-id.cs \
-            | tee artifacts/source-contract/probe.txt
-
-      - name: Upload source probe
+      - name: Upload pinned Projectile source
         uses: actions/upload-artifact@v4
         with:
-          name: projectile-source-probe
-          path: artifacts/source-contract/probe.txt
+          name: pinned-projectile-source
+          path: artifacts/source-contract/projectile.cs
           if-no-files-found: error
           retention-days: 1
