@@ -59,42 +59,63 @@ if (args.Length == 7)
 }
 
 WorldChest? selected = null;
-int nonEmptySlot = -1;
-for (int chestIndex = 0; chestIndex < world.Chests.Length && selected is null; chestIndex++)
+int selectedSlot = -1;
+WorldChest? fallback = null;
+int fallbackSlot = -1;
+
+for (int chestIndex = 0; chestIndex < world.Chests.Length; chestIndex++)
 {
     WorldChest chest = world.Chests[chestIndex];
-    if (chest.SlotId < 0 || chest.X is < short.MinValue or > short.MaxValue ||
-        chest.Y is < short.MinValue or > short.MaxValue || chest.Items.Length > byte.MaxValue + 1)
+    if (chest.SlotId is < 0 or > short.MaxValue ||
+        chest.X is < short.MinValue or > short.MaxValue ||
+        chest.Y is < short.MinValue or > short.MaxValue ||
+        chest.Items.Length is 0 or > byte.MaxValue + 1)
     {
         continue;
     }
 
+    if (fallback is null)
+    {
+        fallback = chest;
+        fallbackSlot = 0;
+    }
+
     for (int slot = 0; slot < chest.Items.Length; slot++)
     {
-        if (!chest.Items[slot].IsEmpty)
-        {
-            selected = chest;
-            nonEmptySlot = slot;
-            break;
-        }
+        if (chest.Items[slot].IsEmpty)
+            continue;
+
+        selected = chest;
+        selectedSlot = slot;
+        break;
     }
+
+    if (selected is not null)
+        break;
 }
 
-if (selected is null || nonEmptySlot < 0)
+if (selected is null)
 {
-    Console.Error.WriteLine("Official world contains no addressable non-empty chest for the live probe.");
+    selected = fallback;
+    selectedSlot = fallbackSlot;
+}
+
+if (selected is null || selectedSlot < 0)
+{
+    Console.Error.WriteLine("Official world contains no addressable chest for the live persistence probe.");
     return 3;
 }
 
-WorldChestItem item = selected.Items[nonEmptySlot];
+WorldChestItem item = selected.Items[selectedSlot];
 Console.WriteLine(
     $"slot={selected.SlotId} x={selected.X} y={selected.Y} slots={selected.Items.Length} " +
-    $"itemSlot={nonEmptySlot} itemStack={item.Stack} itemPrefix={item.Prefix} itemNetId={item.ItemType}");
+    $"itemSlot={selectedSlot} itemStack={item.Stack} itemPrefix={item.Prefix} itemNetId={item.ItemType} " +
+    $"itemEmpty={(item.IsEmpty ? "true" : "false")}");
 return 0;
 
 static WorldFileLoadLimits CreateLimits() =>
     new(
-        MaxTileCount: 6_000_000,
+        MaxTileCount: 32_000_000,
         MaxItemsPerChest: 100,
         MaxTotalChestItems: 1_000_000,
         MaxTextBytesPerSign: 64 * 1024,
