@@ -37,16 +37,14 @@ public sealed partial class PlayerBootstrapPacketSet
             if (_world.Tiles.GetSectionVersion(section) != revision)
                 return false;
 
-            if (_sectionCache.TryGetValue(index, out SectionCacheEntry existing) && existing.Version == revision)
-            {
-                Monitor.PulseAll(_sectionCacheGate);
-                return true;
-            }
+            if (!_sectionCache.TryGetValue(index, out SectionCacheEntry existing) || existing.Version != revision)
+                _sectionCache[index] = new SectionCacheEntry(frame, [], revision);
 
-            _sectionCache[index] = new SectionCacheEntry(frame, [], revision);
             Monitor.PulseAll(_sectionCacheGate);
-            return true;
         }
+
+        _sectionRebuildGlobalBudget.Complete(index);
+        return true;
     }
 
     internal bool TryGetCachedSectionFrame(
