@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'tools/ci/probe_world_generation_init.py'
+      - 'src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs'
+      - 'tests/TerraRuntime.Tests/VanillaWorldGenerationPassCatalog1458Tests.cs'
       - '.github/workflows/terraria-worldgen-pass-catalog.yml'
   workflow_dispatch:
 
@@ -84,6 +86,12 @@ jobs:
             --jungle-pass artifacts/source-contract/jungle-pass.cs \
             --dither-snake-pass artifacts/source-contract/dither-snake-pass.cs \
             --pass-catalog-output artifacts/source-contract/world-generation-pass-catalog.txt
+
+      - name: Verify runtime catalog against pinned fingerprint
+        run: >-
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          -c Release
+          --filter FullyQualifiedName~VanillaWorldGenerationPassCatalog1458Tests
 
       - name: Upload pass registration evidence
         uses: actions/upload-artifact@v4
