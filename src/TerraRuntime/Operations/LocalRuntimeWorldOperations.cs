@@ -64,7 +64,9 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
                 SectionCacheOnDemandRequests = sectionCache.OnDemandRequests,
                 SectionCacheOnDemandUniqueRequests = sectionCache.OnDemandUniqueRequests,
                 SectionCacheOnDemandDeduplicatedRequests = sectionCache.OnDemandDeduplicatedRequests,
-                SectionCacheOnDemandPendingRequests = sectionCache.OnDemandPendingRequests
+                SectionCacheOnDemandPendingRequests = sectionCache.OnDemandPendingRequests,
+                SectionCacheOnDemandRejectedRequests = sectionCache.OnDemandRejectedRequests,
+                SectionCacheOnDemandCapacity = sectionCache.OnDemandCapacity
             };
         }
 
