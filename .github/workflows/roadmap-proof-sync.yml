@@ -29,14 +29,8 @@ jobs:
           path = Path("docs/roadmap.md")
           text = path.read_text(encoding="utf-8")
           replacements = {
-              "- [ ] Protocol fuzz tests and a permanent malformed-packet corpus.":
-                  "- [x] Protocol fuzz tests and a permanent malformed-packet corpus.",
               "- [ ] Handshake deadline plus normal idle timeout.":
                   "- [x] Handshake deadline plus normal idle timeout.",
-              "- [ ] Cancellation must release all connection resources on every exit path.":
-                  "- [x] Cancellation must release all connection resources on every exit path.",
-              "- [ ] Independent rate limits for tile edits, liquids, chat, item operations and other expensive packet classes.":
-                  "- [x] Independent rate limits for tile edits, liquids, chat, item operations and other expensive packet classes.",
               "- [ ] Distinguish malformed protocol, rate limit, invalid state and gameplay rejection in structured telemetry.":
                   "- [x] Distinguish malformed protocol, rate limit, invalid state and gameplay rejection in structured telemetry.",
           }
