@@ -33,17 +33,51 @@ public sealed class WorldTileStoreTests
     }
 
     [Fact]
+    public void Tile_mutations_mark_only_their_network_sections_dirty()
+    {
+        var dimensions = new WorldDimensions(401, 301);
+        var store = new WorldTileStore(dimensions);
+
+        store.Set(0, 0, default);
+        store.Set(199, 149, default);
+        store.Set(200, 150, default);
+
+        Assert.Equal(2, store.DirtySections.DirtyCount);
+        Assert.True(store.DirtySections.IsDirty(new WorldSectionId(0, 0)));
+        Assert.True(store.DirtySections.IsDirty(new WorldSectionId(1, 1)));
+        Assert.False(store.DirtySections.IsDirty(new WorldSectionId(2, 2)));
+    }
+
+    [Fact]
+    public void Repeated_mutations_in_one_section_are_coalesced_until_drained()
+    {
+        var store = new WorldTileStore(new WorldDimensions(400, 300));
+
+        store.Set(10, 10, default);
+        store.Set(20, 20, default);
+        store.Set(199, 149, default);
+
+        Assert.Equal(1, store.DirtySections.DirtyCount);
+
+        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
+        Assert.Equal(1, store.DirtySections.Drain(drained));
+        Assert.Equal(new WorldSectionId(0, 0), drained[0]);
+        Assert.Equal(0, store.DirtySections.DirtyCount);
+    }
+
+    [Fact]
     public void Runtime_tile_stays_within_sixteen_bytes()
     {
         Assert.True(Unsafe.SizeOf<WorldTile>() <= 16, $"WorldTile grew to {Unsafe.SizeOf<WorldTile>()} bytes.");
     }
 
     [Fact]
-    public void Rejects_out_of_bounds_coordinates()
+    public void Rejects_out_of_bounds_coordinates_without_dirtying_a_section()
     {
         var store = new WorldTileStore(new WorldDimensions(2, 2));
 
         Assert.Throws<ArgumentOutOfRangeException>(() => store.Get(2, 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => store.Set(0, -1, default));
+        Assert.Equal(0, store.DirtySections.DirtyCount);
     }
 }
