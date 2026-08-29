@@ -547,6 +547,23 @@ internal sealed class ServerRuntimeState
         }
 
         ValidatedClientTileManipulations++;
+        var tileState = command.State;
+        if (action == TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.KillTileNoItem)
+        {
+            if (!VanillaDirtPlacement.TryKillIsolatedWithoutDrop(
+                    _worldTiles,
+                    tileState.TileX,
+                    tileState.TileY))
+            {
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            AppliedClientTileManipulations++;
+            _tileManipulationReplication?.TryPublishCommitted(command.Connection.Source, in tileState);
+            return;
+        }
+
         if (action != TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.PlaceTile)
         {
             UnsupportedClientTileManipulations++;
@@ -562,7 +579,6 @@ internal sealed class ServerRuntimeState
             return;
         }
 
-        var tileState = command.State;
         ClientTileManipulationConsistencyResult consistency =
             ClientTileManipulationConsistency.Evaluate(in tileState, in selectedItem);
         switch (consistency)
