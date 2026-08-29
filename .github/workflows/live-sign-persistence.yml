@@ -114,23 +114,27 @@ jobs:
 
           sign_info="$(grep '^seeded_sign ' "$seed_log" | tail -1)"
           test -n "$sign_info"
+          sign_id=''
+          sign_x=''
+          sign_y=''
           for field in $sign_info; do
             case "$field" in
-              slot=*) echo "SIGN_ID=${field#slot=}" >> "$GITHUB_ENV" ;;
-              x=*) echo "SIGN_X=${field#x=}" >> "$GITHUB_ENV" ;;
-              y=*) echo "SIGN_Y=${field#y=}" >> "$GITHUB_ENV" ;;
+              slot=*) sign_id="${field#slot=}" ;;
+              x=*) sign_x="${field#x=}" ;;
+              y=*) sign_y="${field#y=}" ;;
             esac
           done
+          test -n "$sign_id" -a -n "$sign_x" -a -n "$sign_y"
+          echo "SIGN_ID=$sign_id" >> "$GITHUB_ENV"
+          echo "SIGN_X=$sign_x" >> "$GITHUB_ENV"
+          echo "SIGN_Y=$sign_y" >> "$GITHUB_ENV"
           echo "SEED_TEXT=$seed_text" >> "$GITHUB_ENV"
           echo "COMMITTED_TEXT=$committed_text" >> "$GITHUB_ENV"
 
-          test -n "${SIGN_ID:-}" -o -s "$GITHUB_ENV"
           dotnet run \
             --project tools/TerraRuntime.SignLocate/TerraRuntime.SignLocate.csproj \
             -c Release \
-            -- "$world" --assert "$(echo "$sign_info" | sed -n 's/.* slot=\([^ ]*\).*/\1/p')" \
-            "$(echo "$sign_info" | sed -n 's/.* x=\([^ ]*\).*/\1/p')" \
-            "$(echo "$sign_info" | sed -n 's/.* y=\([^ ]*\).*/\1/p')" "$seed_text" \
+            -- "$world" --assert "$sign_id" "$sign_x" "$sign_y" "$seed_text" \
             2>&1 | tee artifacts/sign-seed-assert.log
           grep -q 'persisted_sign_ok' artifacts/sign-seed-assert.log
 
