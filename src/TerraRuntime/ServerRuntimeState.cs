@@ -564,26 +564,66 @@ internal sealed class ServerRuntimeState
     {
         ClientTileManipulationRequests++;
         if (_worldTiles is null ||
-            !IsCurrentPlayerConnection(command.Connection) ||
-            (uint)command.State.TileX >= (uint)_worldTiles.Dimensions.WidthTiles ||
-            (uint)command.State.TileY >= (uint)_worldTiles.Dimensions.HeightTiles)
+            !command.Connection.IsAssigned ||
+            !_players.TryGetValue(command.Connection.Player.Slot.Value, out RuntimePlayerState? player) ||
+            player.Connection != command.Connection ||
+            !VanillaTileManipulationWorldRules.IsInPacket17WorldBounds(
+                _worldTiles.Dimensions,
+                command.State.TileX,
+                command.State.TileY))
         {
             RejectedClientTileManipulations++;
             return;
         }
 
-        if (!command.State.TryGetKnownAction(out _))
+        if (!command.State.TryGetKnownAction(out TerrariaTileManipulationAction action))
         {
             UnsupportedClientTileManipulations++;
             return;
         }
 
-        // Packet shape, live session, world bounds and the source-verified action identity are now validated on
-        // the authoritative thread. Applying the request is deliberately blocked until inventory/tool authority,
-        // reach rules and action-specific WorldGen semantics are modeled server-side. Trusting Data/Style here
-        // would turn a correct protocol decoder into a remote free-build primitive.
+        // TerrariaServer 1.4.5.8 dispatches packet 17 after the world-margin/section checks without comparing
+        // selectedItem or inventory. TerraRuntime intentionally applies a stricter consistency policy here before
+        // any future world mutation. This is a security boundary, not a claim of vanilla packet-17 parity.
         ValidatedClientTileManipulations++;
-        UnsupportedClientTileManipulations++;
+        if (action != TerrariaTileManipulationAction.PlaceTile)
+        {
+            UnsupportedClientTileManipulations++;
+            return;
+        }
+
+        if (!_playerInventory.TryGet(
+                command.Connection,
+                player.SelectedItem,
+                out RuntimePlayerInventoryItem selectedItem))
+        {
+            RejectedClientTileManipulations++;
+            return;
+        }
+
+        ClientTileManipulationConsistencyResult consistency =
+            ClientTileManipulationConsistency.Evaluate(in command.State, in selectedItem);
+        switch (consistency)
+        {
+            case ClientTileManipulationConsistencyResult.Mismatch:
+                RejectedClientTileManipulations++;
+                return;
+
+            case ClientTileManipulationConsistencyResult.Unsupported:
+                UnsupportedClientTileManipulations++;
+                return;
+
+            case ClientTileManipulationConsistencyResult.Consistent:
+                // Dirt placement is now source-verified through the generic WorldGen.PlaceTile path, but a
+                // successful vanilla commit also calls SquareTileFrame. Until that framing behavior is modeled,
+                // mutating WorldTileStore here would create a subtly incorrect world state. Keep the validated
+                // request inert rather than turning protocol correctness into a free-build shortcut.
+                UnsupportedClientTileManipulations++;
+                return;
+
+            default:
+                throw new InvalidOperationException("Unknown client tile-manipulation consistency result.");
+        }
     }
 
     private static bool TryConvertClientProjectileUpdate(
