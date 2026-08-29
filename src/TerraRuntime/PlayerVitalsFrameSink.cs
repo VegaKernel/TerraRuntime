@@ -49,9 +49,7 @@ public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
     {
         PlayerVitalsStopReason.MalformedHealth or PlayerVitalsStopReason.MalformedMana => TerrariaFrameRejectionCategory.MalformedProtocol,
         PlayerVitalsStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
-        _ => _bootstrap is ITerrariaFrameRejectionSource source
-            ? source.RejectionCategory
-            : TerrariaFrameRejectionCategory.None
+        _ => TerrariaFrameRejectionCategory.None
     };
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
