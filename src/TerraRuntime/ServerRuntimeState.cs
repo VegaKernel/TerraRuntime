@@ -27,6 +27,7 @@ internal sealed class ServerRuntimeState
     private readonly IProjectileStateStepper? _projectileStepper;
     private readonly RuntimeProjectileReplicationRegistry? _projectileReplication;
     private readonly RuntimeWorldItemStore _worldItems;
+    private readonly WorldTileStore? _worldTiles;
     private readonly RuntimeWorldClock? _worldClock;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
@@ -43,6 +44,7 @@ internal sealed class ServerRuntimeState
         RuntimeProjectileReplicationRegistry? projectileReplication = null)
     {
         _playerEvents = playerEvents;
+        _worldTiles = worldTiles;
         _worldClock = worldClock;
         _npcs = npcs ?? new RuntimeNpcStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
@@ -130,6 +132,14 @@ internal sealed class ServerRuntimeState
     public long RejectedClientProjectileDestroys { get; private set; }
 
     public long RelayedUnknownProjectileDestroys { get; private set; }
+
+    public long ClientTileManipulationRequests { get; private set; }
+
+    public long ValidatedClientTileManipulations { get; private set; }
+
+    public long RejectedClientTileManipulations { get; private set; }
+
+    public long UnsupportedClientTileManipulations { get; private set; }
 
     public long AppliedWorldItemAllocations { get; private set; }
 
@@ -248,6 +258,10 @@ internal sealed class ServerRuntimeState
 
             case ClientProjectileDestroyRuntimeCommand destroy:
                 ApplyClientProjectileDestroy(destroy);
+                break;
+
+            case ClientTileManipulationRuntimeCommand tile:
+                ApplyClientTileManipulation(tile);
                 break;
 
             case WorldItemAllocateRuntimeCommand allocate:
@@ -524,6 +538,32 @@ internal sealed class ServerRuntimeState
 
         RejectedProjectileDespawns++;
         RejectedClientProjectileDestroys++;
+    }
+
+    private void ApplyClientTileManipulation(ClientTileManipulationRuntimeCommand command)
+    {
+        ClientTileManipulationRequests++;
+        if (_worldTiles is null ||
+            !IsCurrentPlayerConnection(command.Connection) ||
+            (uint)command.State.TileX >= (uint)_worldTiles.Dimensions.WidthTiles ||
+            (uint)command.State.TileY >= (uint)_worldTiles.Dimensions.HeightTiles)
+        {
+            RejectedClientTileManipulations++;
+            return;
+        }
+
+        if (!command.State.TryGetKnownAction(out _))
+        {
+            UnsupportedClientTileManipulations++;
+            return;
+        }
+
+        // Packet shape, live session, world bounds and the source-verified action identity are now validated on
+        // the authoritative thread. Applying the request is deliberately blocked until inventory/tool authority,
+        // reach rules and action-specific WorldGen semantics are modeled server-side. Trusting Data/Style here
+        // would turn a correct protocol decoder into a remote free-build primitive.
+        ValidatedClientTileManipulations++;
+        UnsupportedClientTileManipulations++;
     }
 
     private static bool TryConvertClientProjectileUpdate(
