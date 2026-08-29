@@ -69,7 +69,7 @@ def emit(label: str, source: str, names: set[str]) -> set[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Inspect pinned TerrariaServer 1.4.5.8 fresh-world initialization."
+        description="Inspect pinned TerrariaServer 1.4.5.8 fresh-world initialization and finalization."
     )
     parser.add_argument("--world-gen", required=True)
     parser.add_argument("--main", required=True)
@@ -82,6 +82,8 @@ def main() -> int:
         "GenerateWorld",
         "clearWorld",
         "ClearWorld",
+        "Reset",
+        "Finish",
         "SetWorldSize",
         "setWorldSize",
         "RandomizeTreeStyle",
@@ -97,8 +99,10 @@ def main() -> int:
     emitted_world_gen = emit("WorldGen", world_gen, world_gen_names)
     emitted_main = emit("Main", main_source, main_names)
 
-    if "GenerateWorld" not in emitted_world_gen:
-        raise SystemExit("Pinned Terraria.WorldGen did not expose GenerateWorld.")
+    required_world_gen = {"GenerateWorld", "Reset", "Finish"}
+    missing_world_gen = sorted(required_world_gen - emitted_world_gen)
+    if missing_world_gen:
+        raise SystemExit(f"Pinned Terraria.WorldGen is missing required generation methods: {missing_world_gen}")
     if not ({"clearWorld", "ClearWorld"} & emitted_world_gen):
         raise SystemExit("Pinned Terraria.WorldGen did not expose clearWorld/ClearWorld.")
 
