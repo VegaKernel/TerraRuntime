@@ -1,0 +1,52 @@
+name: Sign Persistence Deliver
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sign-persistence-deliver.yml
+
+permissions:
+  contents: write
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Apply previously tested host wiring and push through main churn
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+          git rebase origin/main
+          python3 .github/scripts/apply_sign_persistence.py
+
+          if git diff --quiet -- src/TerraRuntime/TerrariaServerHost.cs; then
+            echo "Sign persistence host wiring is already present."
+            exit 0
+          fi
+
+          git add src/TerraRuntime/TerrariaServerHost.cs
+          git commit -m "world: wire sign persistence into production"
+
+          for attempt in $(seq 1 20); do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              echo "Rebase conflict while delivering tested host wiring."
+              exit 1
+            fi
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "main moved during push attempt ${attempt}; retrying"
+            sleep 1
+          done
+
+          echo "Could not publish tested sign persistence wiring after 20 CAS retries."
+          exit 1
