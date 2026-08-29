@@ -268,6 +268,38 @@ internal sealed class RuntimeChestStore
         return true;
     }
 
+    /// <summary>
+    /// Captures a detached persistence image of the authoritative chest state. The store is game-thread owned;
+    /// cloning every item array here ensures later background serialization cannot observe subsequent live mutations.
+    /// Ownership/session state is intentionally excluded because it is transport lifecycle, not world persistence.
+    /// </summary>
+    public WorldChest[] CaptureSnapshot()
+    {
+        int count = 0;
+        for (int chestId = 0; chestId < chests.Length; chestId++)
+        {
+            if (chests[chestId] is not null)
+                count++;
+        }
+
+        var snapshot = new WorldChest[count];
+        int index = 0;
+        for (int chestId = 0; chestId < chests.Length; chestId++)
+        {
+            if (chests[chestId] is not WorldChest chest)
+                continue;
+
+            snapshot[index++] = new WorldChest(
+                chest.SlotId,
+                chest.X,
+                chest.Y,
+                chest.Name,
+                (WorldChestItem[])chest.Items.Clone());
+        }
+
+        return snapshot;
+    }
+
     public void Clear(ConnectionHandle connection) => TryClose(connection, out _);
 
     private static long GetCoordinateKey(int x, int y) =>
