@@ -43,6 +43,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
     private readonly DirtySectionSnapshotBatcher _batcher;
     private readonly BoundedWorkerPool<WorldSectionTileSnapshot, SectionCacheRebuildResult> _workers;
     private readonly Func<WorldSectionTileSnapshot, SectionCacheRebuildResult> _encode;
+    private readonly int _workCapacity;
     private readonly int _maximumInFlight;
     private int _inFlight;
     private long _capturedSnapshots;
@@ -83,6 +84,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
 
         _world = world;
         _packets = packets;
+        _workCapacity = workCapacity;
         _maximumInFlight = checked(workerCount + workCapacity);
         _batcher = new DirtySectionSnapshotBatcher(world.Tiles, _maximumInFlight);
         _encode = encode ?? EncodeSection;
@@ -130,8 +132,17 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
 
         DrainCompletions();
 
-        int available = _maximumInFlight - Volatile.Read(ref _inFlight);
-        if (available <= 0 || _world.Tiles.DirtySections.DirtyCount == 0)
+        int inFlightCapacity = _maximumInFlight - Volatile.Read(ref _inFlight);
+        if (inFlightCapacity <= 0 || _world.Tiles.DirtySections.DirtyCount == 0)
+            return;
+
+        // TrySubmit writes into the bounded work channel, not directly into an idle worker. Capture only the
+        // number of snapshots guaranteed to fit that channel at this observation point. Workers may consume
+        // entries concurrently, which can make this conservative for one tick but can never make it overcapture.
+        WorkerPoolSnapshot workerSnapshot = _workers.Snapshot;
+        int queueCapacity = _workCapacity - workerSnapshot.PendingWork;
+        int available = Math.Min(inFlightCapacity, queueCapacity);
+        if (available <= 0)
             return;
 
         int captured = _batcher.Capture(Math.Min(available, _batcher.Capacity));
@@ -150,8 +161,8 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
                 continue;
             }
 
-            // The pool is bounded independently as a second line of defense. Preserve the work if its
-            // capacity changed underneath the coordinator rather than losing a committed dirty section.
+            // A worker/channel race may still consume capacity between observation and submission. Preserve
+            // committed work instead of losing the section if the bounded queue rejects this snapshot.
             _world.Tiles.DirtySections.MarkDirty(snapshot.Section);
             Interlocked.Increment(ref _rejectedSubmissions);
         }
