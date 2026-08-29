@@ -1,12 +1,17 @@
 # TerraRuntime
 
-High-performance clean-room **.NET 11 NativeAOT-first** server runtime for Terraria, focused on vanilla behavioral parity, security, fast startup and scalability.
+High-performance clean-room **.NET 11** server runtime for Terraria, focused on vanilla behavioral parity, security, fast startup and scalability.
 
-Production target: a native server executable with no JIT requirement and no arbitrary managed plugin loading inside the runtime process.
+TerraRuntime deliberately keeps two shipping profiles:
+
+- an extensible CoreCLR host for Vega and ordinary drop-in managed DLL plugins;
+- a standalone NativeAOT host with no arbitrary managed plugin loading.
+
+The runtime core stays NativeAOT-compatible and continues to pass Linux x64 and Windows x64 native publication/smoke gates even though the Vega-enabled plugin host uses CoreCLR.
 
 ## Runtime directory layout
 
-A normal server startup uses the executable directory as the TerraRuntime root and ensures a small runtime-owned directory layout exists:
+A normal standalone runtime startup uses the executable directory as the TerraRuntime root and ensures a small runtime-owned directory layout exists:
 
 ```text
 TerraRuntime.Server[.exe]
@@ -18,9 +23,11 @@ logs/      # reserved for standalone runtime diagnostics/log output
 
 `--world <path.wld>` may still point to an explicit world anywhere on disk. Interactive startup without `--world` only enumerates the canonical `Worlds/` directory, avoiding ambiguous current-working-directory lookup.
 
-A production NativeAOT publish is intentionally **not** a copied `dotnet build` directory. TerraRuntime project/package assemblies are linked into the native host, so the deployment root must not accumulate loose `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll`, `*.deps.json` or `*.runtimeconfig.json` files.
+## NativeAOT standalone deployment
 
-Publishing automatically creates a clean ready-to-run deployment tree under `artifacts/deploy/<RID>/`. For example:
+A production NativeAOT publish is intentionally **not** a copied `dotnet build` directory. TerraRuntime project/package assemblies are linked into the native host, so the clean NativeAOT deployment root must not accumulate loose `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll`, `*.deps.json` or `*.runtimeconfig.json` files.
+
+Publishing the current standalone NativeAOT host automatically creates a clean ready-to-run deployment tree under `artifacts/deploy/<RID>/`. For example:
 
 ```text
 dotnet publish src/TerraRuntime/TerraRuntime.csproj -c Release -r win-x64
@@ -33,13 +40,42 @@ artifacts/deploy/win-x64/
 └── logs/
 ```
 
-The intermediate SDK publish output may contain build/debug artifacts and is not the deployment directory. CI launches all NativeAOT smoke tests from the generated clean deployment tree and rejects any unexpected root entries.
+The intermediate SDK publish output may contain build/debug artifacts and is not the deployment directory. CI launches NativeAOT smoke tests from the generated clean deployment tree and rejects unexpected root entries.
 
-The normal Vega topology is also single-process: Vega hosts the TerraRuntime implementation in the same NativeAOT executable and consumes its stable API through `TerraRuntime.Contracts`. The standalone `TerraRuntime.Server[.exe]` remains available for development, smoke tests and runtime-only deployments.
+## Vega and managed plugins
+
+The target Vega topology uses a .NET 11 CoreCLR host so ordinary managed DLL plugins can be loaded and hot-replaced:
+
+```text
+TerraRuntime.Server.exe
+├── runtime/
+├── HostModules/
+│   └── Vega.dll
+├── ServerPlugins/
+│   └── *.dll
+├── Worlds/
+├── config/
+├── data/
+└── logs/
+```
+
+Vega is a trusted host module and receives a narrow privileged TerraRuntime host contract. Ordinary plugins remain behind `Vega.PluginSdk`; they do not receive TerraRuntime implementation objects or mutable authoritative state directly.
+
+The CoreCLR production baseline is:
+
+```xml
+<ServerGarbageCollection>true</ServerGarbageCollection>
+<TieredCompilation>true</TieredCompilation>
+<TieredPGO>true</TieredPGO>
+<PublishReadyToRun>true</PublishReadyToRun>
+```
+
+NativeAOT is not removed by this model. It remains a standalone deployment profile, benchmark target and mandatory architectural/CI gate for the TerraRuntime core.
 
 See:
 
-- [`docs/native-aot-baseline.md`](docs/native-aot-baseline.md) for the mandatory NativeAOT architecture, Vega hosting and clean-deployment rules;
+- [`docs/roadmap/runtime-host-plugin-architecture.md`](docs/roadmap/runtime-host-plugin-architecture.md) for the CoreCLR host, trusted Vega DLL, Plugin SDK boundary and dual-host acceptance criteria;
+- [`docs/native-aot-baseline.md`](docs/native-aot-baseline.md) for the NativeAOT/CoreCLR hosting split and native build gates;
 - [`docs/aot-dependency-audit.md`](docs/aot-dependency-audit.md) for the dependency audit;
 - [`docs/roadmap.md`](docs/roadmap.md) for the broader implementation plan;
 - [`docs/roadmap/performance-tick-stability.md`](docs/roadmap/performance-tick-stability.md) for the detailed performance, tick-budget and interest-management roadmap;
