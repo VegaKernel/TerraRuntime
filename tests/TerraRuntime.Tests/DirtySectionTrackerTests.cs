@@ -17,6 +17,24 @@ public sealed class DirtySectionTrackerTests
     }
 
     [Fact]
+    public void Targeted_clear_removes_only_the_requested_dirty_section()
+    {
+        var dimensions = new WorldDimensions(widthTiles: 600, heightTiles: 300);
+        var tracker = new DirtySectionTracker(dimensions);
+        WorldSectionId first = new(0, 0);
+        WorldSectionId second = new(2, 1);
+        Assert.True(tracker.MarkDirty(first));
+        Assert.True(tracker.MarkDirty(second));
+
+        Assert.True(tracker.ClearDirty(second));
+        Assert.False(tracker.ClearDirty(second));
+
+        Assert.Equal(1, tracker.DirtyCount);
+        Assert.True(tracker.IsDirty(first));
+        Assert.False(tracker.IsDirty(second));
+    }
+
+    [Fact]
     public void Drain_is_bounded_and_leaves_the_remainder_dirty()
     {
         var dimensions = new WorldDimensions(widthTiles: 600, heightTiles: 300);
