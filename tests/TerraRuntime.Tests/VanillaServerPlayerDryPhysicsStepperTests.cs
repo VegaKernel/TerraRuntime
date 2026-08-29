@@ -23,6 +23,50 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
         Assert.False(next.CollideY);
     }
 
+    [Theory]
+    [InlineData(WorldLiquidKind.Water, 0.5f)]
+    [InlineData(WorldLiquidKind.Lava, 0.5f)]
+    [InlineData(WorldLiquidKind.Honey, 0.25f)]
+    [InlineData(WorldLiquidKind.Shimmer, 0.375f)]
+    public void Liquid_contact_scales_position_advance_without_scaling_authoritative_velocity(
+        WorldLiquidKind liquidKind,
+        float movementScale)
+    {
+        WorldTileStore tiles = CreateWorld();
+        tiles.Set(6, 6, LiquidTile(liquidKind));
+        using SpawnedServerPlayer player = Spawn(positionX: 96f, positionY: 80f, velocityX: 2f);
+        var stepper = new VanillaServerPlayerDryPhysicsStepper(tiles);
+
+        Assert.True(stepper.TryStep(player.Snapshot, out ServerPlayerDryPhysicsStepResult next));
+
+        Assert.Equal(96f + 2f * movementScale, next.PositionX, 5);
+        Assert.Equal(80f + 0.4f * movementScale, next.PositionY, 5);
+        Assert.Equal(2f, next.VelocityX, 5);
+        Assert.Equal(0.4f, next.VelocityY, 5);
+        Assert.False(next.CollideX);
+        Assert.False(next.CollideY);
+    }
+
+    [Fact]
+    public void Liquid_scale_does_not_dilute_a_tile_collision_clamp()
+    {
+        WorldTileStore tiles = CreateWorld();
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        for (int y = 5; y <= 7; y++)
+            tiles.Set(8, y, SolidTile());
+        using SpawnedServerPlayer player = Spawn(positionX: 100f, positionY: 80f, velocityX: 20f);
+        var stepper = new VanillaServerPlayerDryPhysicsStepper(tiles);
+
+        Assert.True(stepper.TryStep(player.Snapshot, out ServerPlayerDryPhysicsStepResult next));
+
+        Assert.Equal(108f, next.PositionX, 5);
+        Assert.Equal(80.2f, next.PositionY, 5);
+        Assert.Equal(8f, next.VelocityX, 5);
+        Assert.Equal(0.4f, next.VelocityY, 5);
+        Assert.True(next.CollideX);
+        Assert.False(next.CollideY);
+    }
+
     [Fact]
     public void Falling_speed_is_clamped_to_source_backed_vanilla_terminal_speed()
     {
@@ -90,6 +134,10 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
         Assert.Equal(42, VanillaServerPlayerDryPhysicsStepper.PlayerHeight);
         Assert.Equal(0.4f, VanillaServerPlayerDryPhysicsStepper.Gravity);
         Assert.Equal(10f, VanillaServerPlayerDryPhysicsStepper.MaximumFallSpeed);
+        Assert.Equal(0.5f, VanillaServerPlayerLiquidMovement.WaterMovementScale);
+        Assert.Equal(0.5f, VanillaServerPlayerLiquidMovement.LavaMovementScale);
+        Assert.Equal(0.25f, VanillaServerPlayerLiquidMovement.HoneyMovementScale);
+        Assert.Equal(0.375f, VanillaServerPlayerLiquidMovement.ShimmerMovementScale);
     }
 
     private static WorldTileStore CreateWorld() =>
@@ -100,6 +148,13 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
         {
             Type = 1,
             Flags = WorldTileFlags.Active
+        };
+
+    private static WorldTile LiquidTile(WorldLiquidKind liquidKind) =>
+        new()
+        {
+            LiquidAmount = byte.MaxValue,
+            LiquidKind = liquidKind
         };
 
     private static SpawnedServerPlayer Spawn(
