@@ -178,6 +178,78 @@ public sealed class SectionCacheRebuildPipelineTests
     }
 
     [Fact]
+    public async Task On_demand_rebuild_preempts_existing_dirty_backlog()
+    {
+        WorldFileData world = CreateMultiSectionWorld();
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+        WorldSectionId backlogSection = new(0, 0);
+        WorldSectionId requestedSection = new(1, 1);
+        Assert.True(world.Tiles.DirtySections.MarkDirty(backlogSection));
+
+        WorldTileBounds requestedBounds = TerrariaSectionGeometry.GetBounds(
+            world.Header.Dimensions,
+            requestedSection);
+        WorldTile tile = world.Tiles.Get(requestedBounds.X, requestedBounds.Y);
+        tile.Flags ^= WorldTileFlags.WireGreen;
+        world.Tiles.Set(requestedBounds.X, requestedBounds.Y, tile);
+
+        using var encodeStarted = new ManualResetEventSlim(false);
+        using var releaseEncode = new ManualResetEventSlim(false);
+        WorldSectionId? firstEncodedSection = null;
+
+        SectionCacheRebuildResult Encode(WorldSectionTileSnapshot snapshot)
+        {
+            firstEncodedSection ??= snapshot.Section;
+            encodeStarted.Set();
+            releaseEncode.Wait(TestContext.Current.CancellationToken);
+            return new SectionCacheRebuildResult(
+                snapshot.Section,
+                snapshot.Revision,
+                WorldSectionPacketEncodeResult.Encoded,
+                new byte[] { 4, 0, (byte)TerrariaMessageId.TileSection, 0x7c },
+                TimeSpan.Zero,
+                Error: null);
+        }
+
+        using var pipeline = new SectionCacheRebuildPipeline(
+            world,
+            packets,
+            workerCount: 1,
+            workCapacity: 1,
+            completionCapacity: 1,
+            Encode);
+        pipeline.Start();
+        Task<ReadOnlyMemory<byte>> lookup = StartLookupAsync(packets, requestedSection);
+
+        try
+        {
+            await WaitForObservedAsync(
+                pipeline,
+                static value => value.OnDemandRequests >= 1 && value.CacheWaits >= 1);
+
+            pipeline.Tick();
+            Assert.True(encodeStarted.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+            Assert.Equal(requestedSection, firstEncodedSection);
+            Assert.True(world.Tiles.DirtySections.IsDirty(backlogSection));
+            Assert.False(world.Tiles.DirtySections.IsDirty(requestedSection));
+            releaseEncode.Set();
+
+            SectionCacheRebuildPipelineSnapshot published = await WaitForAsync(
+                pipeline,
+                static value => value.PublishedFrames >= 1 && value.CacheWaitCompletions >= 1);
+            ReadOnlyMemory<byte> frame = await lookup;
+
+            Assert.Equal((byte)0x7c, frame.Span[3]);
+            Assert.Equal(0, published.OnDemandPendingRequests);
+        }
+        finally
+        {
+            releaseEncode.Set();
+        }
+    }
+
+    [Fact]
     public async Task Discards_stale_worker_result_and_rebuilds_latest_revision()
     {
         WorldFileData world = LoadCompleteWorld();
@@ -356,6 +428,23 @@ public sealed class SectionCacheRebuildPipelineTests
             $"Section cache rebuild did not reach the expected state. " +
             $"dirty={final.DirtyBacklog}, inFlight={final.InFlight}, submitted={final.SubmittedRebuilds}, " +
             $"published={final.PublishedFrames}, stale={final.StaleResults}, failures={final.EncodeFailures}.");
+    }
+
+    private static WorldFileData CreateMultiSectionWorld()
+    {
+        WorldFileData source = LoadCompleteWorld();
+        var dimensions = new WorldDimensions(widthTiles: 201, heightTiles: 151);
+        WorldFileHeader header = source.Header with
+        {
+            RightWorld = dimensions.WidthTiles * 16,
+            BottomWorld = dimensions.HeightTiles * 16,
+            Dimensions = dimensions
+        };
+        return source with
+        {
+            Header = header,
+            Tiles = new WorldTileStore(dimensions)
+        };
     }
 
     private static WorldFileData LoadCompleteWorld()
