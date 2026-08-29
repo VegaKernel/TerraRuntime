@@ -49,10 +49,40 @@ jobs:
           assembly_dir="$(dirname "$assembly")"
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Main "$assembly" > artifacts/source-contract/main.cs
+          .tools/ilspycmd --disable-updatecheck -l c "$assembly" > artifacts/source-contract/classes.txt
+
+          find_type() {
+            local simple="$1"
+            local line
+            line="$(grep -E "(^|[.])${simple}$" artifacts/source-contract/classes.txt | head -n 1 || true)"
+            if [[ -z "$line" ]]; then
+              echo "Could not locate pinned support type ${simple}." >&2
+              return 1
+            fi
+            echo "${line#* }"
+          }
+
+          gen_pass_name_id="$(find_type GenPassNameID)"
+          terrain_pass="$(find_type TerrainPass)"
+          jungle_pass="$(find_type JunglePass)"
+          dither_snake_pass="$(find_type DitherSnakePass)"
+          echo "GenPassNameID type: $gen_pass_name_id"
+          echo "TerrainPass type: $terrain_pass"
+          echo "JunglePass type: $jungle_pass"
+          echo "DitherSnakePass type: $dither_snake_pass"
+
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_pass_name_id" "$assembly" > artifacts/source-contract/gen-pass-name-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$terrain_pass" "$assembly" > artifacts/source-contract/terrain-pass.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$jungle_pass" "$assembly" > artifacts/source-contract/jungle-pass.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$dither_snake_pass" "$assembly" > artifacts/source-contract/dither-snake-pass.cs
 
           python3 tools/ci/probe_world_generation_init.py \
             --world-gen artifacts/source-contract/world-gen.cs \
             --main artifacts/source-contract/main.cs \
+            --gen-pass-name-id artifacts/source-contract/gen-pass-name-id.cs \
+            --terrain-pass artifacts/source-contract/terrain-pass.cs \
+            --jungle-pass artifacts/source-contract/jungle-pass.cs \
+            --dither-snake-pass artifacts/source-contract/dither-snake-pass.cs \
             --pass-catalog-output artifacts/source-contract/world-generation-pass-catalog.txt
 
       - name: Upload pass registration evidence
