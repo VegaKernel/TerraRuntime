@@ -17,6 +17,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Gameplay and vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat and explicit parity gaps.
 - [Synchronization and interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis and current passthrough policy.
 - [Operations and Terminal UI](operations-tui.md) — no-argument startup, CLI defaults, TUI lifecycle, fallback console, telemetry and dashboard extension rules.
+- [Observability and logging](observability-logging.md) — bounded runtime telemetry/log buffers, current host-log behavior and the incomplete async structured logging target.
 - [World generation](world-generation.md) — provider/pass/workspace/RNG contracts, trusted-host registration and current non-vanilla flat baseline.
 - [Security and trust boundaries](security.md) — admission limits, rate/size bounds, failure isolation, persistence safety and incomplete hardening work.
 
