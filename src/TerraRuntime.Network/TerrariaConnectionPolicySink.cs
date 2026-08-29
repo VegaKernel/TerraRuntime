@@ -45,9 +45,15 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
     {
         _state.ObserveInbound();
 
-        if (_rateAccountant.Observe(frame.PacketLength) != ConnectionRateDecision.Allowed ||
-            _messageRateAccountant.Observe(frame.MessageId, frame.PacketLength) != ConnectionRateDecision.Allowed)
+        if (_rateAccountant.Observe(frame.PacketLength) != ConnectionRateDecision.Allowed)
         {
+            _state.TryStop(TerrariaConnectionStopReason.RateLimited);
+            return TerrariaFrameSinkResult.Stop;
+        }
+
+        if (_messageRateAccountant.Observe(frame.MessageId, frame.PacketLength) != ConnectionRateDecision.Allowed)
+        {
+            _rateAccountant.RecordSecondaryRateRejection();
             _state.TryStop(TerrariaConnectionStopReason.RateLimited);
             return TerrariaFrameSinkResult.Stop;
         }
