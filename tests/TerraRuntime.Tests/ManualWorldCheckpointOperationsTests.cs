@@ -108,6 +108,45 @@ public sealed class ManualWorldCheckpointOperationsTests
             AssertRendered(app.Driver!, "WORLD");
             AssertRendered(app.Driver!, "Save        shadow ready");
             AssertRendered(app.Driver!, "request pending");
+            AssertRendered(app.Driver!, "Admin: queued world save checkpoint");
+        }
+        finally
+        {
+            app.End(token);
+        }
+    }
+
+    [Fact]
+    public void Actions_menu_manual_save_reports_rejected_ingress()
+    {
+        var operations = new ManualSaveOperations(acceptSave: false);
+        var logs = new RuntimeLogBuffer(capacity: 4);
+
+        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        app.Driver!.SetScreenSize(SmokeWidth, SmokeHeight);
+        using var workspace = new DashboardWorkspaceWindow(
+            operations,
+            operations,
+            operations,
+            operations,
+            operations,
+            logs,
+            terminalDashboards: null);
+
+        SessionToken token = app.Begin(workspace)!;
+        try
+        {
+            app.Keyboard.RaiseKeyDownEvent(Key.A.WithAlt);
+            app.LayoutAndDraw();
+            AssertRendered(app.Driver!, "Save world checkpoint");
+
+            app.Keyboard.RaiseKeyDownEvent(Key.S);
+            Assert.Equal(1, operations.SaveRequests);
+            Assert.True(workspace.GetRowTextForSmoke(0).StartsWith("WORLD", StringComparison.Ordinal));
+
+            app.LayoutAndDraw();
+            AssertRendered(app.Driver!, "request idle");
+            AssertRendered(app.Driver!, "Admin: rejected world save checkpoint");
         }
         finally
         {
@@ -195,7 +234,13 @@ public sealed class ManualWorldCheckpointOperationsTests
         INetworkOperations,
         IWorldOperations
     {
+        private readonly bool acceptSave;
         private bool saveRequested;
+
+        public ManualSaveOperations(bool acceptSave = true)
+        {
+            this.acceptSave = acceptSave;
+        }
 
         public int SaveRequests { get; private set; }
 
@@ -214,6 +259,9 @@ public sealed class ManualWorldCheckpointOperationsTests
         public bool TryRequestSave()
         {
             SaveRequests++;
+            if (!acceptSave)
+                return false;
+
             saveRequested = true;
             return true;
         }
