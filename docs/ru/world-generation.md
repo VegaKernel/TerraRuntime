@@ -98,14 +98,18 @@ Current identities: `IsolatedDeterministic`, `VanillaSharedRng`, `CustomProvider
 ```mermaid
 flowchart TD
     Pass["Generation pass"] --> Mode{"RNG mode"}
-    Mode --> Isolated["Isolated deterministic stream"]
-    Mode --> Vanilla["Vanilla shared/order-sensitive stream"]
-    Mode --> Custom["Custom-provider stream"]
+    Mode --> Isolated["TerraRuntime isolated stream\nseed + stable pass ID"]
+    Mode --> Vanilla["Terraria 1.4.5.8 UnifiedRandom\nповторный seed перед каждым pass"]
+    Mode --> Custom["Reserved provider-owned stream"]
 ```
 
-Future vanilla parity должна сохранять official shared RNG consumption/order. Passes нельзя parallelize/reorder только потому, что они кажутся computationally independent.
+`IsolatedDeterministic` — текущий executable режим для custom providers. Каждый pass получает отдельный TerraRuntime stream, выведенный из world seed и stable pass ID. Поэтому добавление постороннего custom pass не сдвигает random sequence другого pass.
 
-Pass code использует `IWorldGenerationRandom`, не process-global `Random`.
+Название `VanillaSharedRng` не означает один непрерывный stream на весь vanilla plan. Pinned evidence TerrariaServer 1.4.5.8 показывает: `GenBase._random` ссылается на `WorldGen.genRand`, тот ссылается на global `Main.rand`, а `WorldGenerator.RunPass` непосредственно перед каждым enabled generation pass заменяет `Main.rand` на `new UnifiedRandom(_seed)`. То есть RNG общий для vanilla code **внутри одного pass**, но каждый pass снова начинает с одного и того же world seed.
+
+В TerraRuntime уже добавлена source-pinned реализация `VanillaUnifiedRandom1458` с fingerprints официальных `SetSeed`, `InternalSample`, `Sample` и large-range алгоритмов. Общий executor пока fail-closed reject'ит `VanillaSharedRng`, пока не интегрированы точное official преобразование seed text в `int` и non-lossy vanilla RNG context. Мы не отображаем Terraria RNG на выдуманные `UInt32`/`UInt64` semantics только ради того, чтобы enum выглядел реализованным.
+
+Passes нельзя parallelize/reorder только потому, что они кажутся computationally independent. Custom pass code использует `IWorldGenerationRandom`, а не process-global `Random`.
 
 ## 10. Progress
 
@@ -181,13 +185,17 @@ Provider/pass не должен mutate running world, retain candidate workspace
 
 ## 17. Vanilla WorldGen work
 
-Actual vanilla WorldGen остаётся large late-stage work: official pass order/shared RNG, terrain/biomes, caves/ores/liquids, structures/dungeons, chests/objects/tile entities, progression metadata, framing/support rules и deterministic/reference-seed validation against TerrariaServer 1.4.5.8.
+Pinned source contract TerrariaServer 1.4.5.8 сейчас разрешает все `$109$` registrations `WorldGen.AddPasses()` в точные имена passes, unresolved entries равны нулю. Ordered sequence имён fingerprinted, а special-seed filtering fingerprinted отдельно, чтобы conditional behavior не путать с базовым registration order.
+
+Первый implementation target — `TerrainPass`. Его constructor, feature enum, `ApplyPass`, surface-offset logic, column fill и beach-retarget helpers source-fingerprinted. Official behavior подтверждает Dirt tile type `$0$` между surface и rock layer и Stone tile type `$1$` ниже rock layer, а выше generated surface tiles inactive. Terrain также вычисляет generation-time диапазоны surface/rock и water/lava lines.
+
+После Terrain vanilla WorldGen всё ещё требует существенной работы: exact pre-pass bootstrap state, jungle/desert/ocean shaping, caves/ores/liquids, structures/dungeons, chests/objects/tile entities, progression metadata, framing/support rules, special seeds и deterministic/reference-seed validation против TerrariaServer 1.4.5.8.
 
 ## 18. Evidence и limitations
 
-Current evidence покрывает planner validation/order, executor behavior, RNG, workspace/finalization, registry lifetime, startup world-creation parsing и trusted-host generation integration.
+Current evidence покрывает planner validation/order, executor behavior, custom RNG isolation, exact Terraria 1.4.5.8 `UnifiedRandom`, каталог `$109$` registrations, initial `TerrainPass` source behavior, workspace/finalization, registry lifetime, startup world-creation parsing и trusted-host generation integration.
 
-Built-in generator остаётся flat; vanilla structures/biomes/progression incomplete; semantic metadata surface intentionally narrow; canonical fresh `.wld` writer продолжает развиваться.
+Built-in selectable generator пока остаётся flat. Vanilla Terrain ещё не exposed как selectable generator, vanilla structures/biomes/progression incomplete, semantic metadata surface intentionally narrow, а canonical fresh `.wld` должен продолжать проходить acceptance как TerraRuntime, так и official server.
 
 ## 19. Checklist изменения worldgen
 
