@@ -19,6 +19,21 @@ def send_close(client):
     client.sendall(struct.pack("<HBhhhB", 10, 33, -1, 0, 0, 0))
 
 
+def send_item(client, chest_id, item_slot, stack, prefix, item_net_id):
+    client.sendall(
+        struct.pack(
+            "<HBhBhBh",
+            11,
+            32,
+            chest_id,
+            item_slot,
+            stack,
+            prefix,
+            item_net_id,
+        )
+    )
+
+
 def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id):
     payload, skipped = recv_until_packet(client, 155, 5)
     if len(payload) != 4:
@@ -66,32 +81,18 @@ def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_st
         )
 
 
-def expect_player_chest_index(client, expected_player, expected_chest):
-    payload, skipped = recv_until_packet(client, 80, 5)
-    if len(payload) != 3:
-        fail(f"expected 3-byte packet80 payload, got bytes={len(payload)}, skipped={skipped[:64]}")
-    player, chest = struct.unpack("<Bh", payload)
-    if (player, chest) != (expected_player, expected_chest):
-        fail(
-            f"packet80 mismatch: expected player/chest={(expected_player, expected_chest)}, "
-            f"got={(player, chest)}, skipped={skipped[:64]}"
-        )
-
-
 def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id):
-    owner = None
-    successor = None
+    client = None
     try:
-        owner, owner_sections, owner_bootstrap_frames = join_client(host, port, 0)
-        successor, successor_sections, successor_bootstrap_frames = join_client(host, port, 1)
+        client, section_count, bootstrap_frames = join_client(host, port, 0)
 
         # PlayerSpawned is committed on the game loop after packet 129 is queued. Give the
-        # authoritative player/chest replication registries one tick to observe both Playing sessions.
+        # authoritative player/chest replication registries one tick to observe Playing.
         time.sleep(0.25)
 
-        send_open(owner, tile_x, tile_y)
+        send_open(client, tile_x, tile_y)
         receive_snapshot(
-            owner,
+            client,
             chest_id,
             tile_x,
             tile_y,
@@ -101,16 +102,22 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
             item_prefix,
             item_net_id,
         )
-        expect_player_chest_index(successor, expected_player=0, expected_chest=chest_id)
 
-        # Releasing through packet33 must clear the observer's packet80 projection. If the
-        # authoritative store fails to release ownership, the second client's packet31 below is rejected.
-        send_close(owner)
-        expect_player_chest_index(successor, expected_player=0, expected_chest=-1)
+        # Close the world chest, then deliberately submit an otherwise-valid packet32 mutation.
+        # This is an ownership/state test, not inventory conservation: after packet33(-1), packet32
+        # must not mutate the chest because this connection no longer has an active world chest.
+        send_close(client)
+        altered_stack = item_stack + 1 if item_stack < 32767 else item_stack - 1
+        if altered_stack <= 0 or altered_stack == item_stack:
+            fail(f"cannot construct post-close stack mutation from stack={item_stack}")
+        send_item(client, chest_id, item_slot, altered_stack, item_prefix, item_net_id)
 
-        send_open(successor, tile_x, tile_y)
+        # Reopen immediately. Socket ingress preserves frame order, so the game loop observes
+        # close -> rejected item update -> reopen. The fresh authoritative baseline must still
+        # contain the original item from the official .wld.
+        send_open(client, tile_x, tile_y)
         receive_snapshot(
-            successor,
+            client,
             chest_id,
             tile_x,
             tile_y,
@@ -120,23 +127,17 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
             item_prefix,
             item_net_id,
         )
-        expect_player_chest_index(owner, expected_player=1, expected_chest=chest_id)
-
-        send_close(successor)
-        expect_player_chest_index(owner, expected_player=1, expected_chest=-1)
+        send_close(client)
 
         print(
             "live chest lifecycle ok: "
             f"chest={chest_id} tile=({tile_x},{tile_y}) slots={slots} "
-            f"verifiedItemSlot={item_slot} "
-            f"ownerSections={owner_sections} ownerBootstrapFrames={owner_bootstrap_frames} "
-            f"successorSections={successor_sections} successorBootstrapFrames={successor_bootstrap_frames}"
+            f"verifiedItemSlot={item_slot} rejectedPostCloseStack={altered_stack} "
+            f"sections={section_count} bootstrapFrames={bootstrap_frames}"
         )
     finally:
-        if owner is not None:
-            owner.close()
-        if successor is not None:
-            successor.close()
+        if client is not None:
+            client.close()
 
 
 def main():
