@@ -78,9 +78,9 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
             LiquidKind = (WorldLiquidKind)tile.LiquidKind
         };
 
-        // Generation owns this unpublished store exclusively. Marking every generated section dirty would only
-        // manufacture network invalidation work for a world that no connection can observe yet.
-        TileStore.Tiles[TileStore.GetUncheckedIndex(x, y)] = target;
+        // Generation owns this unpublished store exclusively. Initial-population writes deliberately avoid
+        // manufacturing network/persistence dirty work for a world that no consumer can observe yet.
+        TileStore.SetInitialPopulationTile(x, y, target);
         return true;
     }
 

@@ -85,6 +85,15 @@ public sealed class WorldTileStore
     }
 
     /// <summary>
+    /// Writes one tile while constructing an unpublished world candidate. This deliberately bypasses section
+    /// revisions and both dirty trackers: no network/save consumer can observe the store before publication, and
+    /// treating initial population as live mutation would manufacture a full-world backlog before runtime starts.
+    /// Callers must use <see cref="Set"/> after the store becomes authoritative.
+    /// </summary>
+    internal void SetInitialPopulationTile(int x, int y, in WorldTile tile) =>
+        _tiles[GetIndex(x, y)] = tile;
+
+    /// <summary>
     /// Returns the current section version token. Stable sections have an even token; an odd token means a
     /// mutation is currently being committed. Consumers should compare tokens for equality, not interpret them.
     /// </summary>
