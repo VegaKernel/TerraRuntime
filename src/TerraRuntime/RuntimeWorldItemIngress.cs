@@ -5,7 +5,8 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Connection-authenticated world-item ingress. Validation happens before bounded queue admission so malformed
-/// packet state never becomes an authoritative command.
+/// packet state never becomes an authoritative command. The exact connection/player generation is retained in the
+/// command so authoritative application can reject work that became stale while queued.
 /// </summary>
 internal sealed class RuntimeWorldItemIngress : IWorldItemIngress
 {
@@ -22,7 +23,7 @@ internal sealed class RuntimeWorldItemIngress : IWorldItemIngress
         if (!connection.IsAssigned || !IsValidDrop(in state))
             return false;
 
-        return _ingress.TryPost(connection.Source, new WorldItemAllocateRuntimeCommand(state));
+        return _ingress.TryPost(connection.Source, new WorldItemAllocateRuntimeCommand(connection, state));
     }
 
     public bool TryPostDrop(ConnectionHandle connection, short slot, in WorldItemDropStateUpdate state)
@@ -30,7 +31,7 @@ internal sealed class RuntimeWorldItemIngress : IWorldItemIngress
         if (!connection.IsAssigned || !IsValidSlot(slot) || !IsValidDrop(in state))
             return false;
 
-        return _ingress.TryPost(connection.Source, new WorldItemDropRuntimeCommand(slot, state));
+        return _ingress.TryPost(connection.Source, new WorldItemDropRuntimeCommand(connection, slot, state));
     }
 
     public bool TryPostRemove(ConnectionHandle connection, short slot)
@@ -38,7 +39,7 @@ internal sealed class RuntimeWorldItemIngress : IWorldItemIngress
         if (!connection.IsAssigned || !IsValidSlot(slot))
             return false;
 
-        return _ingress.TryPost(connection.Source, new WorldItemRemoveRuntimeCommand(slot));
+        return _ingress.TryPost(connection.Source, new WorldItemRemoveRuntimeCommand(connection, slot));
     }
 
     public bool TryPostOwner(ConnectionHandle connection, short slot, in WorldItemOwnerStateUpdate state)
@@ -46,7 +47,7 @@ internal sealed class RuntimeWorldItemIngress : IWorldItemIngress
         if (!connection.IsAssigned || !IsValidSlot(slot) || !IsValidOwner(in state))
             return false;
 
-        return _ingress.TryPost(connection.Source, new WorldItemOwnerRuntimeCommand(slot, state));
+        return _ingress.TryPost(connection.Source, new WorldItemOwnerRuntimeCommand(connection, slot, state));
     }
 
     private static bool IsValidSlot(short slot) =>

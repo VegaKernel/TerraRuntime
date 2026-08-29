@@ -849,6 +849,13 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 
     private void ApplyWorldItemAllocate(WorldItemAllocateRuntimeCommand command)
     {
+        if (!IsCurrentPlayerConnection(command.Connection))
+        {
+            RejectedWorldItemAllocations++;
+            command.Completion?.TrySetResult(null);
+            return;
+        }
+
         WorldItemDropStateUpdate state = command.State;
         if (_worldItems.TryAllocateDrop(in state, out WorldItemSnapshot snapshot))
         {
@@ -863,6 +870,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 
     private void ApplyWorldItemDrop(WorldItemDropRuntimeCommand command)
     {
+        if (!IsCurrentPlayerConnection(command.Connection))
+        {
+            RejectedWorldItemDrops++;
+            return;
+        }
+
         WorldItemDropStateUpdate state = command.State;
         if (_worldItems.TryApplyDrop(command.Slot, in state, out _))
         {
@@ -875,6 +888,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 
     private void ApplyWorldItemRemove(WorldItemRemoveRuntimeCommand command)
     {
+        if (!IsCurrentPlayerConnection(command.Connection))
+        {
+            RejectedWorldItemRemovals++;
+            return;
+        }
+
         if (_worldItems.TryRemove(command.Slot, out _))
         {
             AppliedWorldItemRemovals++;
@@ -886,6 +905,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 
     private void ApplyWorldItemOwner(WorldItemOwnerRuntimeCommand command)
     {
+        if (!IsCurrentPlayerConnection(command.Connection))
+        {
+            RejectedWorldItemOwners++;
+            return;
+        }
+
         WorldItemOwnerStateUpdate state = command.State;
         if (_worldItems.TryApplyOwner(command.Slot, in state, out _))
         {
