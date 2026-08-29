@@ -132,7 +132,9 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         }
 
         ref SlotState state = ref _slots[handle.Slot];
-        if (!state.Active || state.Generation != handle.Generation.Value)
+        if (!state.Active ||
+            state.Generation != handle.Generation.Value ||
+            state.Update.Spawner != update.Spawner)
         {
             snapshot = default;
             return false;
@@ -164,6 +166,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
     /// lifecycle and publishes exactly one Update commit for the whole world tick. A non-positive timeLeft
     /// atomically removes the projectile with the final simulated state: player-owned generations use the
     /// silent Remove path, while owner 255 follows the dedicated-server Kill path and publishes Despawn.
+    /// Spawner/owner is generation identity and cannot be rewritten by simulation.
     /// </summary>
     public bool TryCommitSimulationStep(
         ProjectileHandle handle,
@@ -180,7 +183,9 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         }
 
         ref SlotState state = ref _slots[handle.Slot];
-        if (!state.Active || state.Generation != handle.Generation.Value)
+        if (!state.Active ||
+            state.Generation != handle.Generation.Value ||
+            state.Update.Spawner != update.Spawner)
         {
             snapshot = default;
             return false;
@@ -197,7 +202,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
             _activeCount--;
             expired = true;
 
-            ProjectileStateCommitKind kind = VanillaProjectileOwnership.IsServerOwned(update.Spawner)
+            ProjectileStateCommitKind kind = VanillaProjectileOwnership.IsServerOwned(snapshot.Spawner)
                 ? ProjectileStateCommitKind.Despawn
                 : ProjectileStateCommitKind.Remove;
             _commitSink?.ProjectileStateCommitted(kind, in snapshot);
