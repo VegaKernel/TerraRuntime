@@ -11,6 +11,8 @@ internal interface IChestNetworkIngress
     bool TryPostItem(ConnectionHandle connection, in TerrariaChestItemState state);
 
     bool TryPostActiveState(ConnectionHandle connection, in TerrariaActiveChestState state);
+
+    bool TryPostNameLookup(ConnectionHandle connection, in TerrariaChestNameLookupRequest request);
 }
 
 /// <summary>
@@ -38,4 +40,8 @@ internal sealed class RuntimeChestNetworkIngress : IChestNetworkIngress
     public bool TryPostActiveState(ConnectionHandle connection, in TerrariaActiveChestState state) =>
         connection.IsAssigned &&
         ingress.TryPost(connection.Source, new ClientActiveChestRuntimeCommand(connection, state));
+
+    public bool TryPostNameLookup(ConnectionHandle connection, in TerrariaChestNameLookupRequest request) =>
+        connection.IsAssigned &&
+        ingress.TryPost(connection.Source, new ClientChestNameLookupRuntimeCommand(connection, request));
 }
