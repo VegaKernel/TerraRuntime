@@ -29,27 +29,6 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
 
-          # Repair the unrelated chest/tile-ingress compile regression found by the first full test run.
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('src/TerraRuntime/ServerRuntimeState.cs')
-          text = path.read_text(encoding='utf-8')
-          old = '''                    out RuntimePlayerInventoryItem selectedItem) ||
-                selectedItem.IsEmpty ||
-                selectedItem.ItemType != VanillaItemIds.CopperPickaxe ||
-                !VanillaTileInteractionItemFacts.TryGetPickPower(selectedItem.ItemType, out _, out _))'''
-          new = '''                    out RuntimePlayerInventoryItem selectedPickaxe) ||
-                selectedPickaxe.IsEmpty ||
-                selectedPickaxe.ItemType != VanillaItemIds.CopperPickaxe ||
-                !VanillaTileInteractionItemFacts.TryGetPickPower(selectedPickaxe.ItemType, out _, out _))'''
-          if old in text:
-              if text.count(old) != 1:
-                  raise SystemExit('unexpected duplicate selectedItem pickaxe block')
-              path.write_text(text.replace(old, new, 1), encoding='utf-8')
-          elif 'out RuntimePlayerInventoryItem selectedPickaxe)' not in text:
-              raise SystemExit('tile-ingress pickaxe block changed unexpectedly')
-          PY
-
           # The update-facts table already contains type 1124. Drop the stale documentation-only tail from
           # the staged patch script rather than overwriting newer explanatory text.
           python3 - <<'PY'
@@ -66,15 +45,9 @@ jobs:
           python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
 
+          git rm .github/workflows/projectile-ai1-candidates-snapshot.yml .github/scripts/apply_seed_bone_shard.py
           git config user.name OpenAI
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
-          if ! git diff --quiet -- src/TerraRuntime/ServerRuntimeState.cs; then
-            git add src/TerraRuntime/ServerRuntimeState.cs
-            git commit -m 'fix: avoid tile manipulation item shadowing'
-          fi
-
-          git rm .github/workflows/projectile-ai1-candidates-snapshot.yml .github/scripts/apply_seed_bone_shard.py
           git add .github/workflows/terraria-source-contract.yml \
                   src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
                   src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs \
