@@ -82,6 +82,10 @@ The UI reads operations snapshots rather than walking mutable player/NPC/project
 
 Current operations read models cover lifecycle/runtime status, tick/TPS and phase timing, players, NPCs, projectiles, world items, networking/queues, world state/clock, save/persistence state and bounded logs/warnings.
 
+The System Dashboard is an operational health summary rather than a duplicate of the detail screens. It renders last/worst tick wall time, tick CPU time when available, the slowest game-loop phase, missed deadlines, process CPU, managed heap, working set, total allocation, GC collection/pause state, command queue pressure and connection/admission totals. Detailed replication and queue diagnostics remain on the Network screen.
+
+The World screen also surfaces section-cache pipeline health from `RuntimeWorldSnapshot`: in-flight/submitted/rejected rebuilds, stale results, encode failures, publish rejections and accumulated encode time. Its on-demand row shows requests, unique/deduplicated requests, pending work versus bounded capacity, rejected requests and completed/timed-out waits. These values come from the runtime-owned rebuild pipeline snapshot; the TUI does not inspect cache workers directly.
+
 The window layout may evolve; snapshot ownership is the invariant.
 
 ## 7. Save telemetry and manual checkpoint
@@ -111,7 +115,9 @@ The ANSI TUI smoke exercises the actual menu path (`Alt+A`, then `S`) and verifi
 
 ## 8. Network telemetry
 
-`INetworkOperations` exposes bounded network state without transferring connection ownership to the UI. It includes active/registered connections, admission totals/rejections, inbound rate, per-connection inbound details, outbound backpressure/high-water state, slow clients, replication counters, typed terminal stop categories and normalized frame-rejection categories.
+`INetworkOperations` exposes bounded network state without transferring connection ownership to the UI. It includes active/registered connections, admission totals/rejections, inbound one-second and lifetime totals, per-connection inbound details, outbound current/capacity/high-water/rejection state, slow clients, player lifecycle and replication counters, unsupported replication commits, typed terminal stop categories and normalized frame-rejection categories.
+
+The terminal stop projection distinguishes protocol, admission-rate, invalid-handshake, unsupported-protocol, slow-client, timeout/application-stop and frame-rejected outcomes. Frame-rejection categories remain a separate view of why frames were rejected, rather than being conflated with terminal connection-stop counts.
 
 TUI projections consume subsystem-owned counters; they do not parse log text or add packet-hot-path counters of their own.
 
