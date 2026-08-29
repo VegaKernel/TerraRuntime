@@ -1,3 +1,4 @@
+# Temporary one-shot host wiring; restore the permanent persistence proof after this run.
 name: Authoritative World Save
 
 on:
