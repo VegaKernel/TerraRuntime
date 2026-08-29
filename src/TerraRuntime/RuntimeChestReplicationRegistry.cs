@@ -77,9 +77,9 @@ internal sealed class RuntimeChestReplicationRegistry : IRuntimePlayerEventSink
     {
         byte[] encoded = TerrariaChestCodec.EncodeChestItem(in state);
         var frame = new OutboundFrame(encoded);
-        foreach ((GameCommandSourceId _, Endpoint endpoint) in endpoints)
+        foreach ((GameCommandSourceId endpointSource, Endpoint endpoint) in endpoints)
         {
-            if (!endpoint.IsPlaying())
+            if (endpointSource == source.Source || !endpoint.IsPlaying())
                 continue;
 
             if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
