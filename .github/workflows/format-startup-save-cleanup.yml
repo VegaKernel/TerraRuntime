@@ -1,5 +1,6 @@
 name: Format Startup Save Cleanup
 
+# One-shot formatter; deleted after the host block is normalized.
 on:
   push:
     branches: [main]
