@@ -847,6 +847,11 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         _players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) &&
         player.Connection == connection;
 
+    private bool IsCurrentWorldItemTarget(WorldItemHandle target) =>
+        target.IsAssigned &&
+        _worldItems.TryGetActive(target.Slot, out WorldItemSnapshot snapshot) &&
+        snapshot.Handle == target;
+
     private void ApplyWorldItemAllocate(WorldItemAllocateRuntimeCommand command)
     {
         if (!IsCurrentPlayerConnection(command.Connection))
@@ -870,14 +875,15 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 
     private void ApplyWorldItemDrop(WorldItemDropRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection))
+        if (!IsCurrentPlayerConnection(command.Connection) ||
+            !IsCurrentWorldItemTarget(command.Target))
         {
             RejectedWorldItemDrops++;
             return;
         }
 
         WorldItemDropStateUpdate state = command.State;
-        if (_worldItems.TryApplyDrop(command.Slot, in state, out _))
+        if (_worldItems.TryApplyDrop(command.Target.Slot, in state, out _))
         {
             AppliedWorldItemDrops++;
             return;
@@ -888,13 +894,14 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 
     private void ApplyWorldItemRemove(WorldItemRemoveRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection))
+        if (!IsCurrentPlayerConnection(command.Connection) ||
+            !IsCurrentWorldItemTarget(command.Target))
         {
             RejectedWorldItemRemovals++;
             return;
         }
 
-        if (_worldItems.TryRemove(command.Slot, out _))
+        if (_worldItems.TryRemove(command.Target.Slot, out _))
         {
             AppliedWorldItemRemovals++;
             return;
@@ -905,14 +912,15 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 
     private void ApplyWorldItemOwner(WorldItemOwnerRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection))
+        if (!IsCurrentPlayerConnection(command.Connection) ||
+            !IsCurrentWorldItemTarget(command.Target))
         {
             RejectedWorldItemOwners++;
             return;
         }
 
         WorldItemOwnerStateUpdate state = command.State;
-        if (_worldItems.TryApplyOwner(command.Slot, in state, out _))
+        if (_worldItems.TryApplyOwner(command.Target.Slot, in state, out _))
         {
             AppliedWorldItemOwners++;
             return;

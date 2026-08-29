@@ -361,7 +361,7 @@ public static class TerrariaServerHost
         var healthIngress = new RuntimePlayerHealthIngress(commandIngress);
         var manaIngress = new RuntimePlayerManaIngress(commandIngress);
         var movementIngress = new RuntimePlayerMovementIngress(commandIngress);
-        var worldItemIngress = new RuntimeWorldItemIngress(commandIngress);
+        var worldItemIngress = new RuntimeWorldItemIngress(commandIngress, worldItems);
         var projectileIngress = new RuntimeProjectileNetworkIngress(commandIngress);
         var chestIngress = new RuntimeChestNetworkIngress(commandIngress);
         var signIngress = new RuntimeSignNetworkIngress(commandIngress);

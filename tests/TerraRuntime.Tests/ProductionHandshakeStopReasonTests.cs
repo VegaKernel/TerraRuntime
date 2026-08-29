@@ -64,7 +64,7 @@ public sealed class ProductionHandshakeStopReasonTests
             source,
             bootstrap,
             vitals,
-            new RuntimeWorldItemIngress(commands));
+            new RuntimeWorldItemIngress(commands, new RuntimeWorldItemStore()));
         var projectiles = new ProjectileLifecycleFrameSink(
             source,
             bootstrap,

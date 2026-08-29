@@ -5,8 +5,9 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Authoritative-loop commands for runtime-owned dropped items. Packet 21/22 wire state is mapped into
-/// packet-neutral Core updates before crossing this boundary. Every client-originated command retains the exact
-/// connection/player generation that admitted it so delayed work cannot mutate state after disconnect or slot reuse.
+/// packet-neutral Core updates before crossing this boundary. Every client-originated command retains both the exact
+/// connection/player generation and, for explicit item-slot operations, the exact active world-item generation that
+/// existed when ingress admitted the frame.
 /// </summary>
 internal sealed record WorldItemAllocateRuntimeCommand(
     ConnectionHandle Connection,
@@ -15,14 +16,14 @@ internal sealed record WorldItemAllocateRuntimeCommand(
 
 internal sealed record WorldItemDropRuntimeCommand(
     ConnectionHandle Connection,
-    short Slot,
+    WorldItemHandle Target,
     WorldItemDropStateUpdate State) : RuntimeCommand;
 
 internal sealed record WorldItemRemoveRuntimeCommand(
     ConnectionHandle Connection,
-    short Slot) : RuntimeCommand;
+    WorldItemHandle Target) : RuntimeCommand;
 
 internal sealed record WorldItemOwnerRuntimeCommand(
     ConnectionHandle Connection,
-    short Slot,
+    WorldItemHandle Target,
     WorldItemOwnerStateUpdate State) : RuntimeCommand;
