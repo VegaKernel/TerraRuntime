@@ -349,6 +349,7 @@ public static class TerrariaServerHost
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
         var queueTelemetry = new RuntimeConnectionQueueTelemetry();
         var rateTelemetry = new RuntimeConnectionRateTelemetry();
+        var stopTelemetry = new RuntimeConnectionStopTelemetry();
         var networkOperations = new LocalRuntimeNetworkOperations(
             admission,
             runtimeConnections,
@@ -356,7 +357,8 @@ public static class TerrariaServerHost
             rateTelemetry,
             npcReplication,
             projectileReplication,
-            worldItemReplication);
+            worldItemReplication,
+            stopTelemetry);
         var connectionTasks = new ConcurrentDictionary<long, Task>();
         long nextConnectionId = 0;
 
@@ -559,6 +561,7 @@ public static class TerrariaServerHost
                     worldItems,
                     queueTelemetry,
                     rateTelemetry,
+                    stopTelemetry,
                     hostLog,
                     shutdown.Token);
                 connectionTasks[connectionId] = connectionTask;
@@ -688,6 +691,7 @@ public static class TerrariaServerHost
         RuntimeWorldItemStore worldItems,
         RuntimeConnectionQueueTelemetry queueTelemetry,
         RuntimeConnectionRateTelemetry rateTelemetry,
+        RuntimeConnectionStopTelemetry stopTelemetry,
         RuntimeHostLog hostLog,
         CancellationToken cancellationToken)
     {
@@ -784,8 +788,7 @@ public static class TerrariaServerHost
                 queueTelemetry.TryUnregister(connectionId);
                 worldItemReplication.TryUnregister(source);
                 projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source);
-                runtimeConnections.TryUnregister(source, out _);
+                npcReplication.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
             }
@@ -854,6 +857,7 @@ public static class TerrariaServerHost
                         policyOptions,
                         rateAccountant,
                         cancellationToken).ConfigureAwait(false);
+                    stopTelemetry.Record(result.StopReason);
                     string message =
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
                         $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, chests={chestSink.StopReason}, signs={signSink.StopReason}, tiles={projectileSink.TileStopReason}, state={bootstrapSink.JoinState}; " +
