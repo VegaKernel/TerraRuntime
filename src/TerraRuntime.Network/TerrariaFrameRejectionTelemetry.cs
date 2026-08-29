@@ -50,6 +50,7 @@ public static class TerrariaFrameRejectionTelemetry
                 return;
             case TerrariaFrameRejectionCategory.MalformedProtocol:
                 Interlocked.Increment(ref malformedProtocol);
+                TerrariaMessageTrafficTelemetry.Shared.RecordMalformed(TerrariaMessageDirection.Inbound);
                 return;
             case TerrariaFrameRejectionCategory.RateLimited:
                 Interlocked.Increment(ref rateLimited);

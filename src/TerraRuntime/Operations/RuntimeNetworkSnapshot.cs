@@ -1,3 +1,5 @@
+using TerraRuntime.Network;
+
 namespace TerraRuntime.Operations;
 
 internal readonly record struct RuntimeNetworkSnapshot(
@@ -57,4 +59,15 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long RejectedInvalidState = 0,
     long RejectedGameplay = 0,
     long RejectedBackpressure = 0,
-    long StopFrameRejected = 0);
+    long StopFrameRejected = 0,
+    long MessageInboundFrames = 0,
+    long MessageInboundBytes = 0,
+    long MessageOutboundFrames = 0,
+    long MessageOutboundBytes = 0,
+    long UnknownInboundMessages = 0,
+    long UnknownOutboundMessages = 0,
+    long MalformedInboundMessages = 0,
+    long MalformedOutboundMessages = 0,
+    TimeSpan MessageTrafficWindow = default,
+    ReadOnlyMemory<TerrariaMessageTrafficDetail> MessageTraffic = default,
+    ReadOnlyMemory<TerrariaMessageTrafficDetail> TopMessageTraffic = default);

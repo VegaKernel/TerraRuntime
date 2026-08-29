@@ -6,6 +6,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
 {
     private const int MaximumQueueDetails = 2;
     private const int MaximumRateDetails = 2;
+    private const int MaximumMessageTrafficDetails = 8;
 
     private readonly TerrariaConnectionAdmissionGate admission;
     private readonly global::TerraRuntime.RuntimeConnectionRegistry connections;
@@ -42,6 +43,8 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         RuntimeConnectionRateTelemetrySnapshot rates = rateTelemetry.CaptureSnapshot(MaximumRateDetails);
         RuntimeConnectionStopTelemetrySnapshot stops = stopTelemetry?.CaptureSnapshot() ?? default;
         TerrariaFrameRejectionTelemetrySnapshot rejections = TerrariaFrameRejectionTelemetry.CaptureSnapshot();
+        TerrariaMessageTrafficTelemetrySnapshot messages =
+            TerrariaMessageTrafficTelemetry.Shared.CaptureSnapshot(MaximumMessageTrafficDetails);
         return new RuntimeNetworkSnapshot(
             ActiveConnections: admission.ActiveConnections,
             RegisteredConnections: connections.Count,
@@ -99,6 +102,17 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             RejectedInvalidState: rejections.InvalidState,
             RejectedGameplay: rejections.GameplayRejected,
             RejectedBackpressure: rejections.Backpressure,
-            StopFrameRejected: stops.FrameRejected);
+            StopFrameRejected: stops.FrameRejected,
+            MessageInboundFrames: messages.InboundFrames,
+            MessageInboundBytes: messages.InboundBytes,
+            MessageOutboundFrames: messages.OutboundFrames,
+            MessageOutboundBytes: messages.OutboundBytes,
+            UnknownInboundMessages: messages.UnknownInboundFrames,
+            UnknownOutboundMessages: messages.UnknownOutboundFrames,
+            MalformedInboundMessages: messages.MalformedInboundFrames,
+            MalformedOutboundMessages: messages.MalformedOutboundFrames,
+            MessageTrafficWindow: messages.Window,
+            MessageTraffic: messages.Messages,
+            TopMessageTraffic: messages.TopMessages);
     }
 }

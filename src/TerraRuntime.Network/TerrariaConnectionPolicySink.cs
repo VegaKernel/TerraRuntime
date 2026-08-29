@@ -44,6 +44,10 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
         _state.ObserveInbound();
+        TerrariaMessageTrafficTelemetry.Shared.Observe(
+            TerrariaMessageDirection.Inbound,
+            frame.MessageId,
+            frame.PacketLength);
 
         if (_rateAccountant.Observe(frame.PacketLength) != ConnectionRateDecision.Allowed)
         {

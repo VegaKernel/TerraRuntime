@@ -83,6 +83,7 @@ public static class TerrariaOutboundFrameWriter
             try
             {
                 await stream.WriteAsync(writeBuffer, cancellationToken).ConfigureAwait(false);
+                TerrariaMessageTrafficTelemetry.Shared.ObserveEncodedOutbound(writeBuffer.Span);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
