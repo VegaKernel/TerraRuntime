@@ -80,6 +80,7 @@ jobs:
           gen_base="$(find_type GenBase)"
           world_generator="$(find_type WorldGenerator)"
           world_file_data="$(find_type WorldFileData)"
+          crc32="$(find_type Crc32)"
           echo "GenPassNameID type: $gen_pass_name_id"
           echo "TerrainPass type: $terrain_pass"
           echo "JunglePass type: $jungle_pass"
@@ -88,6 +89,7 @@ jobs:
           echo "GenBase type: $gen_base"
           echo "WorldGenerator type: $world_generator"
           echo "WorldFileData type: $world_file_data"
+          echo "Crc32 type: $crc32"
 
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_pass_name_id" "$assembly" > artifacts/source-contract/gen-pass-name-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$terrain_pass" "$assembly" > artifacts/source-contract/terrain-pass.cs
@@ -97,6 +99,7 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_base" "$assembly" > artifacts/source-contract/gen-base.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_generator" "$assembly" > artifacts/source-contract/world-generator.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_file_data" "$assembly" > artifacts/source-contract/world-file-data.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$crc32" "$assembly" > artifacts/source-contract/crc32.cs
 
           resource_probe=.tools/resource-probe
           mkdir -p "$resource_probe"
@@ -195,6 +198,7 @@ jobs:
 
           python3 tools/ci/probe_worldgen_seed.py \
             --world-file-data artifacts/source-contract/world-file-data.cs \
+            --crc32 artifacts/source-contract/crc32.cs \
             --output artifacts/source-contract/worldgen-seed-contract.txt
 
           python3 tools/ci/probe_worldgen_config.py \
