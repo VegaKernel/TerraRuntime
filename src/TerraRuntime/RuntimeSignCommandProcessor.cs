@@ -62,19 +62,21 @@ internal sealed class RuntimeSignCommandProcessor
     private void ApplyUpdate(ClientSignUpdateRuntimeCommand command)
     {
         TerrariaSignState submitted = command.State;
-        if (!store.TryApply(in submitted, out WorldSign committed, out bool changed))
+        if (!store.TryApply(in submitted, out WorldSign? committed, out bool textChanged))
         {
             RejectedUpdates++;
             return;
         }
 
-        if (changed)
+        if (textChanged && committed is not null)
         {
             // TerrariaServer 1.4.5.8 rewrites packet 47's player field to whoAmI and sends it with the default
             // number3 argument, so the replicated flags byte is always zero rather than the client-submitted value.
             replication.PublishChanged(command.Connection, committed);
         }
 
+        // TextSign may deliberately clear the slot when submitted coordinates do not point at an active sign tile.
+        // That is still an applied authoritative mutation. There is no valid sign object to serialize in that case.
         AppliedUpdates++;
     }
 }
