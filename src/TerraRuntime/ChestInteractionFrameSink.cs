@@ -94,10 +94,12 @@ public sealed class ChestInteractionFrameSink : ITerrariaFrameSink
 
             case TerrariaMessageId.ChestName:
             {
-                TerrariaChestDecodeResult decode = TerrariaChestCodec.TryDecodeNameLookup(in frame, out TerrariaChestNameLookupRequest request);
+                TerrariaChestDecodeResult decode = TerrariaChestCodec.TryDecodeNameLookup(
+                    in frame,
+                    out TerrariaChestNameLookupRequest lookupRequest);
                 if (decode != TerrariaChestDecodeResult.Decoded)
                     return Stop(ChestInteractionFrameStopReason.MalformedChestPacket);
-                posted = ingress.TryPostNameLookup(connection, in request);
+                posted = ingress.TryPostNameLookup(connection, in lookupRequest);
                 break;
             }
 
