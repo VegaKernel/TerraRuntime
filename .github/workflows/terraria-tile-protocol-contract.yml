@@ -9,6 +9,7 @@ on:
       - 'tests/TerraRuntime.Tests/TerrariaTileManipulationCodecTests.cs'
       - 'tools/ci/probe_tile_protocol.py'
       - 'tools/ci/probe_player_inventory.py'
+      - 'tools/ci/probe_tile_authority.py'
       - '.github/workflows/terraria-tile-protocol-contract.yml'
   workflow_dispatch:
 
@@ -77,6 +78,10 @@ jobs:
             > artifacts/source-contract/message-buffer.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Player "$assembly" \
             > artifacts/source-contract/player.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" \
+            > artifacts/source-contract/item.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" \
+            > artifacts/source-contract/item-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.PlayerItemSlotID "$assembly" \
             > artifacts/source-contract/player-item-slot-id.cs
 
@@ -88,3 +93,8 @@ jobs:
             --message-buffer artifacts/source-contract/message-buffer.cs \
             --player artifacts/source-contract/player.cs \
             --player-item-slot-id artifacts/source-contract/player-item-slot-id.cs
+
+          python3 tools/ci/probe_tile_authority.py \
+            --message-buffer artifacts/source-contract/message-buffer.cs \
+            --item artifacts/source-contract/item.cs \
+            --item-id artifacts/source-contract/item-id.cs
