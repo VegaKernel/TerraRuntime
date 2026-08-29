@@ -6,4 +6,8 @@
     <IsAotCompatible>true</IsAotCompatible>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
+  </ItemGroup>
 </Project>

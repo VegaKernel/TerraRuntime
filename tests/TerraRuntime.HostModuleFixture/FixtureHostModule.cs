@@ -21,6 +21,32 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule
             cancellationToken).ConfigureAwait(false);
     }
 
+    public async ValueTask AttachRuntimeAsync(
+        ITerraRuntimeHostRuntime runtime,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(runtime);
+        if (dataDirectory is null)
+            throw new InvalidOperationException("The fixture host module has not been started.");
+
+        string runtimeSummary = $"{runtime.Info.WorldName}|{runtime.Info.Port}|{runtime.InterestManagement.IsEnabled}";
+        await File.WriteAllTextAsync(
+            Path.Combine(dataDirectory, "fixture-host-module.attached"),
+            runtimeSummary,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async ValueTask DetachRuntimeAsync(CancellationToken cancellationToken = default)
+    {
+        if (dataDirectory is null)
+            return;
+
+        await File.WriteAllTextAsync(
+            Path.Combine(dataDirectory, "fixture-host-module.detached"),
+            "detached",
+            cancellationToken).ConfigureAwait(false);
+    }
+
     public async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
         if (dataDirectory is null)

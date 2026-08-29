@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.ExtensibleHost;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostModuleFixture;
@@ -7,7 +8,7 @@ namespace TerraRuntime.Tests;
 public sealed class TrustedHostModuleLoaderTests
 {
     [Fact]
-    public async Task StartAllAsync_LoadsDropInModule_AndStopsIt()
+    public async Task StartAttachDetachStop_LoadsDropInModule_ThroughContractBoundary()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string root = Path.Combine(Path.GetTempPath(), $"terraruntime-host-{Guid.NewGuid():N}");
@@ -35,11 +36,23 @@ public sealed class TrustedHostModuleLoaderTests
             config,
             data,
             logs);
+        var interestManagement = new TestInterestManagementControl();
+        var runtime = new TestHostRuntime(
+            new TerraRuntimeHostRuntimeInfo(
+                "Fixture World",
+                Path.Combine(worlds, "fixture.wld"),
+                8400,
+                2400,
+                7777,
+                32),
+            interestManagement,
+            new TestPlayerStateSnapshotReader());
         var loader = new TrustedHostModuleLoader(hostModules);
 
         try
         {
             int loaded = await loader.StartAllAsync(environment, cancellationToken);
+            await loader.AttachRuntimeAsync(runtime, cancellationToken);
 
             Assert.Equal(1, loaded);
             string startedMarker = Path.Combine(data, "fixture-host-module.started");
@@ -47,6 +60,15 @@ public sealed class TrustedHostModuleLoaderTests
             Assert.Equal(
                 serverPlugins,
                 await File.ReadAllTextAsync(startedMarker, cancellationToken));
+
+            string attachedMarker = Path.Combine(data, "fixture-host-module.attached");
+            Assert.True(File.Exists(attachedMarker));
+            Assert.Equal(
+                "Fixture World|7777|False",
+                await File.ReadAllTextAsync(attachedMarker, cancellationToken));
+
+            await loader.DetachRuntimeAsync(cancellationToken);
+            Assert.True(File.Exists(Path.Combine(data, "fixture-host-module.detached")));
         }
         finally
         {
@@ -77,4 +99,34 @@ public sealed class TrustedHostModuleLoaderTests
         string ConfigDirectory,
         string DataDirectory,
         string LogsDirectory) : ITerraRuntimeHostEnvironment;
+
+    private sealed record TestHostRuntime(
+        TerraRuntimeHostRuntimeInfo Info,
+        IInterestManagementControl InterestManagement,
+        IPlayerStateSnapshotReader PlayerStates) : ITerraRuntimeHostRuntime;
+
+    private sealed class TestInterestManagementControl : IInterestManagementControl
+    {
+        public bool IsEnabled { get; private set; }
+
+        public bool SetEnabled(bool enabled)
+        {
+            if (IsEnabled == enabled)
+                return false;
+
+            IsEnabled = enabled;
+            return true;
+        }
+    }
+
+    private sealed class TestPlayerStateSnapshotReader : IPlayerStateSnapshotReader
+    {
+        public ValueTask<PlayerStateSnapshot?> CaptureAsync(
+            PlayerHandle player,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult<PlayerStateSnapshot?>(null);
+        }
+    }
 }

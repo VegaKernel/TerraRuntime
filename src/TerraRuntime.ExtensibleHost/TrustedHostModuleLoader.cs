@@ -3,7 +3,7 @@ using TerraRuntime.HostContracts;
 
 namespace TerraRuntime.ExtensibleHost;
 
-internal sealed class TrustedHostModuleLoader : IAsyncDisposable
+internal sealed class TrustedHostModuleLoader : ITerraRuntimeHostLifecycle, IAsyncDisposable
 {
     private static readonly HashSet<string> AllowedTerraRuntimeReferences = new(StringComparer.Ordinal)
     {
@@ -14,6 +14,7 @@ internal sealed class TrustedHostModuleLoader : IAsyncDisposable
     private readonly string directory;
     private readonly List<LoadedHostModule> loaded = [];
     private bool started;
+    private bool runtimeAttached;
     private bool disposed;
 
     public TrustedHostModuleLoader(string directory)
@@ -54,12 +55,54 @@ internal sealed class TrustedHostModuleLoader : IAsyncDisposable
         }
     }
 
+    public async ValueTask AttachRuntimeAsync(
+        ITerraRuntimeHostRuntime runtime,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        ArgumentNullException.ThrowIfNull(runtime);
+
+        if (!started)
+            throw new InvalidOperationException("Trusted host modules must be started before runtime attachment.");
+        if (runtimeAttached)
+            throw new InvalidOperationException("A TerraRuntime world is already attached to the trusted host modules.");
+
+        int attachedCount = 0;
+        try
+        {
+            foreach (LoadedHostModule loadedModule in loaded)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await loadedModule.Module.AttachRuntimeAsync(runtime, cancellationToken).ConfigureAwait(false);
+                attachedCount++;
+            }
+
+            runtimeAttached = true;
+        }
+        catch
+        {
+            await DetachPrefixAsync(attachedCount, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async ValueTask DetachRuntimeAsync(CancellationToken cancellationToken = default)
+    {
+        if (!runtimeAttached)
+            return;
+
+        await DetachPrefixAsync(loaded.Count, cancellationToken).ConfigureAwait(false);
+        runtimeAttached = false;
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (disposed)
             return;
 
         disposed = true;
+        if (runtimeAttached)
+            await DetachRuntimeAsync(CancellationToken.None).ConfigureAwait(false);
         await StopLoadedModulesAsync(CancellationToken.None).ConfigureAwait(false);
     }
 
@@ -133,6 +176,26 @@ internal sealed class TrustedHostModuleLoader : IAsyncDisposable
             loadContext.Unload();
             throw;
         }
+    }
+
+    private async ValueTask DetachPrefixAsync(int count, CancellationToken cancellationToken)
+    {
+        List<Exception>? failures = null;
+        for (int index = count - 1; index >= 0; index--)
+        {
+            try
+            {
+                await loaded[index].Module.DetachRuntimeAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                failures ??= [];
+                failures.Add(exception);
+            }
+        }
+
+        if (failures is { Count: > 0 })
+            throw new AggregateException("One or more trusted host modules failed to detach from TerraRuntime.", failures);
     }
 
     private async ValueTask StopLoadedModulesAsync(CancellationToken cancellationToken)
