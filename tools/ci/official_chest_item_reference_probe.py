@@ -232,7 +232,7 @@ def run(host, port, chest_id, tile_x, tile_y, item_slot, item_stack, item_prefix
         receive_open_snapshot(owner, chest_id, item_slot, original)
         send_close(owner)
 
-        print(
+        routing = (
             "official1458 chest item routing: "
             f"senderMatches={owner_matches} observerMatches={observer_matches} "
             f"slotFrames={slot_frames} packet155Slots={announced_slots} activeCoords={active_coords} "
@@ -242,6 +242,16 @@ def run(host, port, chest_id, tile_x, tile_y, item_slot, item_stack, item_prefix
             f"ownerBootstrap={owner_bootstrap}/{owner_post_spawn} "
             f"observerBootstrap={observer_bootstrap}/{observer_post_spawn}"
         )
+        print(routing, flush=True)
+
+        # Current 1.4.5.8 vanilla semantics are expected to accept the client-authoritative item
+        # mutation without emitting a packet32 echo or fanout. Keep this assertion against the
+        # official binary so any future protocol/runtime drift becomes a visible CI failure.
+        if owner_matches != 0 or observer_matches != 0:
+            fail(
+                "official 1.4.5.8 packet32 routing changed: "
+                f"senderMatches={owner_matches} observerMatches={observer_matches}"
+            )
     finally:
         for client in (owner, observer):
             if client is not None:
