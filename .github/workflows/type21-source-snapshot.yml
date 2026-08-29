@@ -1,4 +1,4 @@
-name: Projectile Type21 Source Snapshot
+name: Apply Bone Runtime Slice
 
 on:
   push:
@@ -8,79 +8,158 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Extract pinned Bone facts
+
+      - name: Apply source-backed Bone slice
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .cache/terraria-1458 artifacts/type21 .tools
-          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
-          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
-          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
-          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
-          assembly=""
-          while IFS= read -r -d '' candidate; do
-            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected_sha256" ]]; then assembly="$candidate"; fi
-          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
-          test -n "$assembly"
-          assembly_dir="$(dirname "$assembly")"
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/type21/projectile.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/type21/projectile-id.cs
+          git fetch origin main
+          git reset --hard origin/main
+
           python3 - <<'PY'
-          import re
           from pathlib import Path
-          p=Path('artifacts/type21/projectile.cs').read_text(encoding='utf-8')
-          ids=Path('artifacts/type21/projectile-id.cs').read_text(encoding='utf-8')
-          def compact(x): return ' '.join(x.split())
-          def ctx(src,pat,radius=2200,limit=10):
-              s=compact(src); out=[]
-              for m in re.finditer(pat,s):
-                  if len(out)>=limit: break
-                  out.append(s[max(0,m.start()-radius):min(len(s),m.end()+radius)])
-              return ' | '.join(out) if out else '<none>'
-          def method(src,name):
-              m=re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$',src)
-              if not m:return '<method-not-found>'
-              o=src.find('{',m.end()); d=0; ins=inc=esc=False
-              for i in range(o,len(src)):
-                  c=src[i]
-                  if esc:esc=False;continue
-                  if c=='\\' and (ins or inc):esc=True;continue
-                  if c=='"' and not inc:ins=not ins;continue
-                  if c=="'" and not ins:inc=not inc;continue
-                  if ins or inc:continue
-                  if c=='{':d+=1
-                  elif c=='}':
-                      d-=1
-                      if d==0:return src[m.start():i+1]
-              return '<unterminated>'
-          defaults=method(p,'SetDefaults'); ai=method(p,'AI'); movement=method(p,'HandleMovement')
-          collision=method(p,'GetCollisionParams'); kill=method(p,'Kill'); cancut=method(p,'CanCutTiles')
-          lines=[
-            'projectile_id_type21='+ctx(ids,r'\b[A-Za-z0-9_]+\s*=\s*21\s*;',350),
-            'projectile_type21_defaults='+ctx(defaults,r'(?<!\d)type\s*==\s*21(?!\d)',1800),
-            'projectile_ai_type21='+ctx(ai,r'(?<!\d)type\s*==\s*21(?!\d)',2800,20),
-            'projectile_ai_style2_dispatch='+ctx(ai,r'aiStyle\s*==\s*2|case\s+2\s*:',2200,10),
-            'projectile_collision_params='+compact(collision),
-            'projectile_collision_params_type21='+ctx(collision,r'(?<!\d)type\s*==\s*21(?!\d)',1600),
-            'projectile_handle_movement_type21='+ctx(movement,r'(?<!\d)type\s*==\s*21(?!\d)',2400),
-            'projectile_kill_type21='+ctx(kill,r'(?<!\d)type\s*==\s*21(?!\d)',2800),
-            'projectile_can_cut_tiles_type21='+ctx(cancut,r'(?<!\d)21(?!\d)',1200),
-          ]
-          Path('artifacts/type21/type21-source.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
-          print('\n'.join(lines))
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one match, found {count}: {old[:140]!r}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_once(
+              'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs',
+              '    public static readonly ProjectileTypeId GreenLaser = new(20);\n    public static readonly ProjectileTypeId ThrowingKnife = new(48);',
+              '    public static readonly ProjectileTypeId GreenLaser = new(20);\n    public static readonly ProjectileTypeId Bone = new(21);\n    public static readonly ProjectileTypeId ThrowingKnife = new(48);')
+
+          replace_once(
+              'src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs',
+              '''    private static readonly VanillaProjectileDefinition ShurikenDefinition = new(
+        Width: 22,''',
+              '''    private static readonly VanillaProjectileDefinition BoneDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
+
+    private static readonly VanillaProjectileDefinition ShurikenDefinition = new(
+        Width: 22,''')
+
+          replace_once(
+              'src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs',
+              '''        if (type == VanillaProjectileIds.Shuriken)
+        {
+            definition = ShurikenDefinition;
+            return true;
+        }''',
+              '''        if (type == VanillaProjectileIds.Bone)
+        {
+            definition = BoneDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.Shuriken)
+        {
+            definition = ShurikenDefinition;
+            return true;
+        }''')
+
+          replace_once(
+              'src/TerraRuntime/VanillaProjectileWorldStateStepper.cs',
+              "/// Poisoned Knife, and Bone Dagger (aiStyle 2).",
+              "/// Poisoned Knife, Bone, and Bone Dagger (aiStyle 2).")
+
+          replace_once(
+              'tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs',
+              '''    [Theory]
+    [InlineData(48, 12, 12, 12, 12, 0f, 0f)]''',
+              '''    [Theory]
+    [InlineData(21, 16, 16, 16, 16, 0f, 0f)]
+    [InlineData(48, 12, 12, 12, 12, 0f, 0f)]''')
+
+          replace_once(
+              'tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs',
+              '''    [Theory]
+    [InlineData(48)]
+    [InlineData(54)]
+    [InlineData(599)]
+    public void Player_owned_thrown_family_uses_the_source_backed_ai_style_two_path''',
+              '''    [Theory]
+    [InlineData(21)]
+    [InlineData(48)]
+    [InlineData(54)]
+    [InlineData(599)]
+    public void Player_owned_thrown_family_uses_the_source_backed_ai_style_two_path''')
+
+          integration = Path('tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs')
+          text = integration.read_text(encoding='utf-8')
+          marker = '''    [InlineData(3)]
+    [InlineData(48)]
+    [InlineData(54)]
+    [InlineData(599)]'''
+          count = text.count(marker)
+          if count != 3:
+              raise SystemExit(f'{integration}: expected three thrown-family theory blocks, found {count}')
+          integration.write_text(text.replace(
+              marker,
+              '''    [InlineData(3)]
+    [InlineData(21)]
+    [InlineData(48)]
+    [InlineData(54)]
+    [InlineData(599)]'''), encoding='utf-8')
+
+          replace_once(
+              'tools/ci/probe_projectile_tile_cut.py',
+              '''    green_laser_defaults = around_optional(set_defaults, "type == 20", radius=1800)
+    arrow_ai = extract_method(projectile_source, "AI_001")''',
+              '''    green_laser_defaults = around_optional(set_defaults, "type == 20", radius=1800)
+    bone_defaults = around_optional(set_defaults, "type == 21", radius=1800)
+    arrow_ai = extract_method(projectile_source, "AI_001")''')
+
+          replace_once(
+              'tools/ci/probe_projectile_tile_cut.py',
+              '''    print("projectile_green_laser_defaults=" + green_laser_defaults)
+    print("projectile_ai001_ai0_increment="''',
+              '''    print("projectile_green_laser_defaults=" + green_laser_defaults)
+    print("projectile_bone_defaults=" + bone_defaults)
+    print("projectile_ai_type21_contexts=" + all_type_comparison_contexts(extract_method(projectile_source, "AI"), 21, radius=2600, limit=20))
+    print("projectile_collision_params_type21_contexts=" + all_type_comparison_contexts(extract_method(projectile_source, "GetCollisionParams"), 21, radius=1800, limit=20))
+    print("projectile_handle_movement_type21_contexts=" + all_type_comparison_contexts(handle_movement, 21, radius=2200, limit=20))
+    print("projectile_kill_type21_contexts=" + all_type_comparison_contexts(projectile_kill, 21, radius=2600, limit=20))
+    print("projectile_ai001_ai0_increment="''')
           PY
-      - uses: actions/upload-artifact@v4
-        with:
-          name: projectile-type21-source
-          path: artifacts/type21/type21-source.txt
-          retention-days: 1
+
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
+
+          git rm .github/workflows/type21-source-snapshot.yml
+          git config user.name OpenAI
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
+                  src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs \
+                  src/TerraRuntime/VanillaProjectileWorldStateStepper.cs \
+                  tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs \
+                  tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs \
+                  tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs \
+                  tools/ci/probe_projectile_tile_cut.py
+          git commit -m 'feat: simulate vanilla bone world flight'
+
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
