@@ -39,6 +39,15 @@ public readonly record struct WorldItemStateUpdate(
 }
 
 /// <summary>
+/// Generation-safe unpublished reservation for one future world-item drop. A reservation is not active,
+/// is invisible to snapshots/replication, and must be committed or released by the authoritative owner.
+/// </summary>
+public readonly record struct WorldItemDropReservation(short Slot, WorldItemGeneration Generation)
+{
+    public bool IsAssigned => Slot >= 0 && Generation.IsAssigned;
+}
+
+/// <summary>
 /// Bounded runtime-owned world-item state. Terraria reuses item slots, so identity is slot + generation;
 /// revision changes only within one generation. Reads are copied under a short lock for join/replication snapshots.
 /// Commit notifications are emitted only after the internal lock has been released.
@@ -109,6 +118,103 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         if (committed)
             Publish(WorldItemStateCommitKind.Drop, in snapshot);
         return committed;
+    }
+
+    /// <summary>
+    /// Reserves the first available bounded slot for a validated drop without making it active or publishing it.
+    /// This supports authoritative transactions that must prove item capacity before mutating another subsystem.
+    /// </summary>
+    public bool TryReserveDrop(in WorldItemDropStateUpdate drop, out WorldItemDropReservation reservation)
+    {
+        if (!IsValidDrop(in drop))
+        {
+            reservation = default;
+            return false;
+        }
+
+        WorldItemStateUpdate initial = CreateInitial(in drop);
+        lock (_gate)
+        {
+            for (short slot = 0; slot < _slots.Length; slot++)
+            {
+                ref SlotState state = ref _slots[slot];
+                if (state.Active || state.Reserved || !TryAdvance(ref state.Generation))
+                    continue;
+
+                state.Revision = 0;
+                state.Reserved = true;
+                state.Update = initial;
+                reservation = new WorldItemDropReservation(slot, new WorldItemGeneration(state.Generation));
+                return true;
+            }
+        }
+
+        reservation = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Commits an exact unpublished reservation as revision one and publishes one drop notification.
+    /// </summary>
+    public bool TryCommitReservedDrop(
+        in WorldItemDropReservation reservation,
+        out WorldItemSnapshot snapshot)
+    {
+        if (!reservation.IsAssigned || !IsValidSlot(reservation.Slot))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        bool committed = false;
+        lock (_gate)
+        {
+            ref SlotState state = ref _slots[reservation.Slot];
+            if (state.Reserved &&
+                !state.Active &&
+                state.Generation == reservation.Generation.Value)
+            {
+                state.Reserved = false;
+                state.Active = true;
+                state.Revision = 1;
+                _activeCount++;
+                snapshot = Capture(reservation.Slot, in state);
+                committed = true;
+            }
+            else
+            {
+                snapshot = default;
+            }
+        }
+
+        if (committed)
+            Publish(WorldItemStateCommitKind.Drop, in snapshot);
+        return committed;
+    }
+
+    /// <summary>
+    /// Releases an exact unpublished reservation without publishing anything. The consumed generation is not reused.
+    /// </summary>
+    public bool TryReleaseDropReservation(in WorldItemDropReservation reservation)
+    {
+        if (!reservation.IsAssigned || !IsValidSlot(reservation.Slot))
+            return false;
+
+        lock (_gate)
+        {
+            ref SlotState state = ref _slots[reservation.Slot];
+            if (!state.Reserved ||
+                state.Active ||
+                state.Generation != reservation.Generation.Value)
+            {
+                return false;
+            }
+
+            state.Reserved = false;
+            state.Revision = 0;
+            state.Update = default;
+            return true;
+        }
     }
 
     public bool TryUpsert(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
@@ -280,7 +386,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         for (short slot = 0; slot < _slots.Length; slot++)
         {
             ref SlotState state = ref _slots[slot];
-            if (state.Active || !TryAdvance(ref state.Generation))
+            if (state.Active || state.Reserved || !TryAdvance(ref state.Generation))
                 continue;
 
             state.Revision = 1;
@@ -298,6 +404,12 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
     private bool TryUpsertLocked(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
     {
         ref SlotState state = ref _slots[slot];
+        if (state.Reserved)
+        {
+            snapshot = default;
+            return false;
+        }
+
         if (!state.Active)
         {
             if (!TryAdvance(ref state.Generation))
@@ -421,6 +533,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
     private struct SlotState
     {
         public bool Active;
+        public bool Reserved;
         public ulong Generation;
         public ulong Revision;
         public WorldItemStateUpdate Update;
