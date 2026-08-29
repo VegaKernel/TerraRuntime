@@ -70,6 +70,7 @@ public sealed partial class PlayerBootstrapPacketSet
                 _sectionCache.TryGetValue(index, out SectionCacheEntry cached) &&
                 cached.Version == version)
             {
+                TouchDynamicSectionCacheEntryUnderLock(index);
                 Interlocked.Increment(ref _sectionCacheHits);
                 frame = cached.TileSectionFrame;
                 return SectionFrameLookupResult.Available;
@@ -77,15 +78,19 @@ public sealed partial class PlayerBootstrapPacketSet
 
             Interlocked.Increment(ref _sectionCacheMisses);
             if (_sectionCache.ContainsKey(index))
+            {
                 Interlocked.Increment(ref _sectionCacheStaleReads);
+                RemoveStaleDynamicSectionCacheEntryUnderLock(index);
+            }
         }
 
         Func<WorldSectionId, SectionRebuildRequestTicket>? requester = Volatile.Read(ref _sectionRebuildRequester);
         if (requester is null)
         {
             // Startup/tests that intentionally use the packet set without the runtime pipeline retain the
-            // correctness-first synchronous fallback. The production host attaches the pipeline before accept.
-            if (!TryGetOrEncodeSection(section, out SectionCacheEntry entry))
+            // correctness-first synchronous fallback, but its published dynamic frames still obey the same
+            // byte budget and LRU policy as production worker results.
+            if (!TryGetOrEncodeSectionBounded(section, out SectionCacheEntry entry))
                 return SectionFrameLookupResult.Unavailable;
 
             frame = entry.TileSectionFrame;
@@ -113,6 +118,7 @@ public sealed partial class PlayerBootstrapPacketSet
                     _sectionCache.TryGetValue(index, out SectionCacheEntry current) &&
                     current.Version == currentVersion)
                 {
+                    TouchDynamicSectionCacheEntryUnderLock(index);
                     Interlocked.Increment(ref _sectionCacheWaitCompletions);
                     frame = current.TileSectionFrame;
                     return SectionFrameLookupResult.Available;

@@ -159,6 +159,25 @@ flowchart LR
 
 Dirty world sections, replication registries и prepared startup state должны заменять full scans там, где correctness допускает. Fast stale cache всё равно bug.
 
+### 13.1 Ограничение памяти encoded section cache
+
+Packet-10 frames являются shared immutable values, привязанными к revision секции. Spawn/bootstrap sections остаются pinned, потому что нужны каждому joining connection. Остальные frames живут в deterministic least-recently-used cache с correctness-first default budget
+
+$$
+B_{\mathrm{dynamic}}=64\,\mathrm{MiB}.
+$$
+
+Wire length Terraria ограничивает один валидный frame величиной `$65\,535\,\mathrm{B}$`. При `$N_{\mathrm{base}}$` pinned bootstrap sections получаем явный process-local ceiling:
+
+$$
+B_{\mathrm{cache,max}}=
+B_{\mathrm{dynamic}}+N_{\mathrm{base}}\cdot65\,535\,\mathrm{B}.
+$$
+
+Hit динамической секции обновляет LRU order. При admission вытесняются самые старые dynamic frames, пока новый frame не помещается в byte budget. Stale dynamic entry удаляется сразу после обнаружения revision mismatch; pinned base entry остаётся ограничен фиксированным количеством base sections и заменяется только успешно encoded frame текущей committed revision.
+
+Cache snapshot публикует current total bytes, dynamic bytes, dynamic byte limit, derived total byte ceiling и eviction count вместе с hit/miss/stale/wait counters. Значение `$64\,\mathrm{MiB}$` является безопасным bounded default, а не финальным measurement-derived tuning.
+
 ## 14. Allocation и GC discipline
 
 Spans, owned/pooled buffers, immutable frame sharing и compact values применяются where measured. `unsafe`, custom allocators и broad pooling требуют evidence material benefit и проверки memory costs.
@@ -189,7 +208,7 @@ Complexity, которая не улучшает intended metric materially ил
 
 ## 18. Текущие ограничения
 
-Active work: final measurement-derived queue limits, complete subsystem budgets, real production interest-management suppression/resync, complete packet allocation/throughput baselines, broad `$24$`-player / `$255$`-connection soak coverage, large-world startup/save/GC profiling и final section-cache/dirty synchronization tuning.
+Active work: final measurement-derived queue limits, complete subsystem budgets, real production interest-management suppression/resync, complete packet allocation/throughput baselines, broad `$24$`-player / `$255$`-connection soak coverage, large-world startup/save/GC profiling, measurement-derived tuning section-cache budget и complete dirty synchronization.
 
 ## 19. Checklist performance/scheduler change
 
