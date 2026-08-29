@@ -80,19 +80,29 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--projectile", required=True, type=Path)
     parser.add_argument("--delegate-methods", required=True, type=Path)
+    parser.add_argument("--player", required=True, type=Path)
+    parser.add_argument("--worldgen", required=True, type=Path)
     args = parser.parse_args()
 
     projectile_source = args.projectile.read_text(encoding="utf-8")
     delegate_source = args.delegate_methods.read_text(encoding="utf-8")
+    player_source = args.player.read_text(encoding="utf-8")
+    worldgen_source = args.worldgen.read_text(encoding="utf-8")
 
     can_cut_tiles = compact(extract_method(projectile_source, "CanCutTiles"))
     cut_tiles = compact(extract_method(projectile_source, "CutTiles"))
+    cut_tiles_at = compact(extract_method(projectile_source, "CutTilesAt"))
     delegate_cut_tiles = compact(extract_method(delegate_source, "CutTiles"))
+    tile_cut_ignorance = compact(extract_method(player_source, "GetTileCutIgnorance"))
+    can_cut_tile = compact(extract_method(worldgen_source, "CanCutTile"))
 
     print("projectile_can_cut_tiles=" + can_cut_tiles)
     print("projectile_cut_tiles=" + cut_tiles)
+    print("projectile_cut_tiles_at=" + cut_tiles_at)
     print("projectile_cut_tiles_callsite=" + around_first(projectile_source, "CutTiles();"))
     print("delegate_methods_cut_tiles=" + delegate_cut_tiles)
+    print("player_get_tile_cut_ignorance=" + tile_cut_ignorance)
+    print("worldgen_can_cut_tile=" + can_cut_tile)
     return 0
 
 

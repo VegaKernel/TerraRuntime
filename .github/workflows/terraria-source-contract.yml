@@ -73,7 +73,13 @@ jobs:
             > artifacts/source-contract/projectile.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.DelegateMethods "$assembly" \
             > artifacts/source-contract/delegate-methods.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Player "$assembly" \
+            > artifacts/source-contract/player.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" \
+            > artifacts/source-contract/worldgen.cs
 
           python3 tools/ci/probe_projectile_tile_cut.py \
             --projectile artifacts/source-contract/projectile.cs \
-            --delegate-methods artifacts/source-contract/delegate-methods.cs
+            --delegate-methods artifacts/source-contract/delegate-methods.cs \
+            --player artifacts/source-contract/player.cs \
+            --worldgen artifacts/source-contract/worldgen.cs
