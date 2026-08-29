@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text;
 using TerraRuntime.Operations;
-using Terminal.Gui.Configuration;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -16,6 +15,8 @@ internal sealed class RuntimeOverviewDashboard : View
 {
     private const int HistoryLength = 48;
     private const string ActiveTitlePrefix = "▶ ";
+    private const string BaseSchemeName = "Base";
+    private const string AccentSchemeName = "Accent";
 
     private readonly FrameView consoleFrame;
     private readonly FrameView serverFrame;
@@ -108,13 +109,14 @@ internal sealed class RuntimeOverviewDashboard : View
         {
             Title = title,
             CanFocus = true,
-            SchemeName = nameof(Schemes.Base)
+            SchemeName = BaseSchemeName
         };
 
-        frame.HasFocusChanged += (_, args) =>
+        frame.HasFocusChanged += (_, _) =>
         {
-            frame.Title = args.Value ? ActiveTitlePrefix + title : title;
-            frame.SchemeName = args.Value ? nameof(Schemes.Accent) : nameof(Schemes.Base);
+            bool focused = frame.HasFocus;
+            frame.Title = focused ? ActiveTitlePrefix + title : title;
+            frame.SchemeName = focused ? AccentSchemeName : BaseSchemeName;
             frame.SetNeedsDraw();
         };
         return frame;
