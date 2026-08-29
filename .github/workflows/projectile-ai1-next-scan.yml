@@ -1,0 +1,132 @@
+name: Projectile AI1 Next Candidate Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/projectile-ai1-next-scan.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 .tools artifacts/ai1-next
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+      - name: Install pinned ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+      - name: Rank unimplemented explicit aiStyle-1 defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256='d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e'
+          assembly=''
+          while IFS= read -r -d '' candidate; do
+            sha="$(sha256sum "$candidate" | awk '{print $1}')"
+            if [[ "$sha" == "$expected_sha256" ]]; then assembly="$candidate"; break; fi
+          done < <(find .cache/terraria-1458/extracted -type f -name TerrariaServer.exe -print0)
+          test -n "$assembly"
+          dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.Projectile "$assembly" > artifacts/ai1-next/projectile.cs
+          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/ai1-next/projectile-id.cs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          src=Path('artifacts/ai1-next/projectile.cs').read_text(encoding='utf-8')
+          ids=Path('artifacts/ai1-next/projectile-id.cs').read_text(encoding='utf-8')
+
+          def method(name):
+              m=re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$',src)
+              if not m: raise SystemExit(f'method not found: {name}')
+              op=src.find('{',m.end()); d=0
+              for i in range(op,len(src)):
+                  if src[i]=='{': d+=1
+                  elif src[i]=='}':
+                      d-=1
+                      if d==0: return src[m.start():i+1]
+              raise SystemExit(f'unterminated: {name}')
+
+          def block_after(text,pos):
+              op=text.find('{',pos)
+              if op<0: return ''
+              d=0
+              for i in range(op,len(text)):
+                  if text[i]=='{': d+=1
+                  elif text[i]=='}':
+                      d-=1
+                      if d==0: return text[op:i+1]
+              return ''
+
+          def count_type(text,t):
+              c=' '.join(text.split())
+              return len(re.findall(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|\bcase\s+{t}\s*:',c))
+
+          def init(field):
+              m=re.search(rf'{re.escape(field)}\s*=\s*Factory\.CreateCustomSet<bool\?>\s*\(',ids)
+              if not m: return ''
+              op=ids.find('(',m.start()); d=0
+              for i in range(op,len(ids)):
+                  if ids[i]=='(': d+=1
+                  elif ids[i]==')':
+                      d-=1
+                      if d==0: return ids[m.start():i+1]
+              return ''
+
+          names={}
+          for m in re.finditer(r'public const (?:short|int)\s+([A-Za-z0-9_]+)\s*=\s*(\d+)\s*;',ids):
+              names[int(m.group(2))]=m.group(1)
+
+          supported={1,2,3,4,5,6,14,20,21,48,51,54,318,330,474,583,589,599,1012,1099,1111,1124}
+          parts={n:method(n) for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams','Kill','CanCutTiles')}
+          defaults=method('SetDefaults')
+          wind=' '.join(init('WindPhysicsImmunity').split())
+          rows=[]; seen=set()
+          pat=re.compile(r'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*(\d+)\s*\)')
+          for m in pat.finditer(defaults):
+              t=int(m.group(1))
+              if t in seen or t in supported: continue
+              block=block_after(defaults,m.end())
+              if not re.search(r'\baiStyle\s*=\s*1\s*;',block): continue
+              seen.add(t)
+              counts={n:count_type(s,t) for n,s in parts.items()}
+              nonkill=sum(counts[n] for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams','CanCutTiles'))
+              width=re.search(r'\bwidth\s*=\s*(-?\d+)\s*;',block)
+              height=re.search(r'\bheight\s*=\s*(-?\d+)\s*;',block)
+              tl=re.search(r'\btimeLeft\s*=\s*(-?\d+)\s*;',block)
+              eu=re.search(r'\bextraUpdates\s*=\s*(-?\d+)\s*;',block)
+              flags=[]
+              if 'tileCollide = false;' in block: flags.append('no-tile')
+              if 'ignoreWater = true;' in block: flags.append('ignore-water')
+              if 'friendly = true;' in block: flags.append('friendly')
+              if 'hostile = true;' in block: flags.append('hostile')
+              if re.search(rf'(?<!\d){t}(?!\d)',wind): flags.append('wind-override')
+              rows.append((nonkill,counts['Kill'],t,names.get(t,'?'),width.group(1) if width else '?',height.group(1) if height else '?',tl.group(1) if tl else '3600',eu.group(1) if eu else '0',','.join(flags) or '-',counts,' '.join(block.split())[:700]))
+
+          rows.sort(key=lambda r:(r[0],r[1],r[2]))
+          out=['nonkill | kill | type | name | size | timeLeft | extra | flags | counts | defaults']
+          for r in rows[:80]:
+              nonkill,kill,t,name,w,h,tl,eu,flags,counts,block=r
+              out.append(f'{nonkill:02d} | {kill:02d} | {t:4d} | {name} | {w}x{h} | {tl} | {eu} | {flags} | {counts} | {block}')
+          report='\n'.join(out)+'\n'
+          Path('artifacts/ai1-next/report.txt').write_text(report,encoding='utf-8')
+          print(report)
+          PY
+          rm artifacts/ai1-next/projectile.cs artifacts/ai1-next/projectile-id.cs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectile-ai1-next-candidates
+          path: artifacts/ai1-next/report.txt
+          if-no-files-found: error
