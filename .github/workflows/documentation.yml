@@ -7,11 +7,11 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: terra-runtime-docs-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   validate-documentation:
@@ -39,42 +39,3 @@ jobs:
 
       - name: Validate bilingual documentation
         run: python3 tools/ci/check_documentation.py --changed-base "${{ steps.docs-base.outputs.sha }}"
-
-  migrate-root-roadmap-style:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Migrate exact legacy roadmap blocks
-        run: python3 tools/ci/migrate_documentation_style.py
-
-      - name: Commit migration when needed
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- docs/roadmap.md; then
-            echo 'root roadmap already migrated'
-            exit 0
-          fi
-
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add docs/roadmap.md
-          git commit -m 'docs: migrate root roadmap diagrams to Mermaid'
-
-          for attempt in 1 2 3 4 5 6 7 8; do
-            git fetch origin main
-            if git rebase origin/main && git push origin HEAD:main; then
-              exit 0
-            fi
-            git rebase --abort 2>/dev/null || true
-            sleep 2
-          done
-
-          echo 'failed to fast-forward root roadmap migration' >&2
-          exit 1
