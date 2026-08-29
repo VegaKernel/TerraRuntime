@@ -76,9 +76,13 @@ Successful handshake фиксирует completion и будит watchdog. Produ
 
 ## 6. Stop и rejection categories
 
-`TerrariaConnectionStopReason` различает `PeerClosed`, `ApplicationStopped`, `Cancelled`, `HandshakeTimeout`, `JoinTimeout`, `IdleTimeout`, `InvalidHandshake`, `UnsupportedProtocol`, `ProtocolFailure`, `InboundIoFailure`, `OutboundFailure`, `SlowClient` и `RateLimited`.
+`TerrariaConnectionStopReason` различает `PeerClosed`, `ApplicationStopped`, `Cancelled`, `HandshakeTimeout`, `JoinTimeout`, `IdleTimeout`, `InvalidHandshake`, `UnsupportedProtocol`, `ProtocolFailure`, `InboundIoFailure`, `OutboundFailure`, `SlowClient`, `RateLimited` и `FrameRejected`.
 
-Frame-rejection telemetry отдельно нормализует malformed protocol, rate-limited, invalid-state, gameplay-rejected и backpressure failures. Эти причины нельзя сплющивать в generic network error.
+`FrameRejected` является connection-lifetime outcome, когда downstream protocol/gameplay sink намеренно останавливается из-за classified frame rejection. `ApplicationStopped` сохраняется для unclassified/intentional inner-sink stop и больше не используется как generic label для malformed, invalid-state, gameplay или backpressure rejection.
+
+Frame-rejection telemetry остаётся отдельной diagnostic dimension и нормализует malformed protocol, rate-limited, invalid-state, gameplay-rejected и backpressure failures. Lifetime reason отвечает, почему завершился connection; rejection category отвечает, какой класс frame был отклонён. Эти две оси нельзя сплющивать в generic network error.
+
+Production sink chain протаскивает rejection category через sign, chest, projectile/tile, world-item и vitals/bootstrap layers. Поэтому bootstrap failures, включая malformed join/player packets, illegal join state, player-slot mismatch и ingress/outbound backpressure, остаются видимыми, хотя `PlayerVitalsFrameSink` является первым rejection-source wrapper вокруг bootstrap layer.
 
 ## 7. Handshake и legality состояния
 
@@ -240,16 +244,17 @@ flowchart TD
     Class --> Timeout["Handshake / join timeout"]
     Class --> State["Illegal state"]
     Class --> Gameplay["Gameplay rejection"]
+    Class --> Backpressure["Backpressure"]
     Class --> IO["I/O failure"]
     Class --> Slow["Slow client"]
-    Class --> Shutdown["Runtime shutdown"]
+    Class --> Shutdown["Runtime / unclassified sink stop"]
 ```
 
-Malformed/abusive traffic остаётся connection-local. Shared non-authoritative work вроде chat fan-out может drop только over-budget operation, не disconnect unrelated peers.
+Malformed/abusive traffic остаётся connection-local. Classified downstream frame rejection завершает connection как `FrameRejected`, сохраняя granular rejection category. Shared non-authoritative work вроде chat fan-out может drop только over-budget operation, не disconnect unrelated peers.
 
 ## 16. Tests и executable evidence
 
-Evidence включает framing/socket tests, handshake/join/idle watchdog tests, connection/fan-out rate tests, Multiplicity decoder/mapper tests, deterministic malformed framing/typed-decoder fuzz tests, real-process slow-client tests, `Vanilla World Load` live join/movement probes и official-server reference workflows.
+Evidence включает framing/socket tests, handshake/join/idle watchdog tests, connection/fan-out rate tests, rejection-stop normalization и production bootstrap-propagation tests, Multiplicity decoder/mapper tests, deterministic malformed framing/typed-decoder fuzz tests, real-process slow-client tests, `Vanilla World Load` live join/movement probes и official-server reference workflows.
 
 Regression test обязан падать при removal guarded fix.
 
@@ -264,6 +269,7 @@ Networking/protocol change не завершён, пока по необходи
 - malformed/valid framing/decoder behavior tested;
 - connection-state legality и deadlines tested;
 - rate/queue/fan-out work bounded;
+- rejection lifetime reason и granular rejection category остаются различимыми;
 - NativeAOT paths valid;
 - wire-sensitive claims имеют independent evidence;
 - diagrams используют Mermaid вместо pseudographics;
