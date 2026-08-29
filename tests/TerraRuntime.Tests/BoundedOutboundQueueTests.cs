@@ -41,19 +41,28 @@ public sealed class BoundedOutboundQueueTests
     }
 
     [Fact]
-    public async Task Dequeue_releases_both_budgets()
+    public async Task Dequeue_releases_both_budgets_without_erasing_high_water_marks()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        var queue = new BoundedOutboundQueue(new OutboundQueueOptions(1, 8, 8));
-        byte[] bytes = [3, 0, 1];
+        var queue = new BoundedOutboundQueue(new OutboundQueueOptions(2, 16, 8));
+        byte[] first = [3, 0, 1];
+        byte[] second = [4, 0, 2, 9];
 
-        Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(bytes)));
-        OutboundFrame dequeued = await queue.ReadAsync(cancellationToken);
+        Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(first)));
+        Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(second)));
+        Assert.Equal(2, queue.PeakQueuedFrames);
+        Assert.Equal(7, queue.PeakQueuedBytes);
 
-        Assert.Equal(bytes, dequeued.Bytes.ToArray());
+        OutboundFrame firstDequeued = await queue.ReadAsync(cancellationToken);
+        OutboundFrame secondDequeued = await queue.ReadAsync(cancellationToken);
+
+        Assert.Equal(first, firstDequeued.Bytes.ToArray());
+        Assert.Equal(second, secondDequeued.Bytes.ToArray());
         Assert.Equal(0, queue.QueuedFrames);
         Assert.Equal(0, queue.QueuedBytes);
-        Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(bytes)));
+        Assert.Equal(2, queue.PeakQueuedFrames);
+        Assert.Equal(7, queue.PeakQueuedBytes);
+        Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(first)));
     }
 
     [Fact]
