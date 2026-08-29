@@ -8,6 +8,8 @@ internal readonly record struct RuntimeNetworkSnapshot(
     int TrackedOutboundQueues,
     long QueuedOutboundFrames,
     long QueuedOutboundBytes,
+    long PeakQueuedOutboundFrames,
+    long PeakQueuedOutboundBytes,
     long RejectedOutboundFrames,
     int SlowClients,
     ReadOnlyMemory<RuntimeConnectionQueueDetail> TopOutboundQueues,
