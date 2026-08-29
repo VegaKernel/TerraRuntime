@@ -589,7 +589,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         ClearRows();
         RuntimeNetworkSnapshot snapshot = networkOperations.CaptureSnapshot();
         rows[0].Text = $"NETWORK  active {snapshot.ActiveConnections}  registered {snapshot.RegisteredConnections}";
-        rows[1].Text = $"Admission   accepted {snapshot.AcceptedConnections:N0}  rejected {snapshot.RejectedConnections:N0}";
+        rows[1].Text =
+            $"Admission   accepted {snapshot.AcceptedConnections:N0}  rejected {snapshot.RejectedConnections:N0}  " +
+            $"capacity {snapshot.AdmissionCapacityRejectedConnections:N0}  rate {snapshot.AdmissionRateRejectedConnections:N0}";
         rows[2].Text = $"Inbound 1s  {snapshot.InboundWindowFrames:N0} frames  {FormatKibibytes(snapshot.InboundWindowBytes)}  rejected {snapshot.RejectedInboundFrames:N0}";
         rows[3].Text = $"Outbound    queues {snapshot.TrackedOutboundQueues}  frames {snapshot.QueuedOutboundFrames:N0}  {FormatKibibytes(snapshot.QueuedOutboundBytes)}  slow {snapshot.SlowClients}";
         rows[4].Text = $"Movement    relay {snapshot.RelayedMovementFrames:N0}  AOI resync {snapshot.MovementResyncFrames:N0}";
@@ -598,6 +600,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         rows[7].Text = $"NPC         relay {snapshot.NpcRelayedFrames:N0}  baseline {snapshot.NpcBaselineFrames:N0}  rejected {snapshot.NpcRejectedFrames:N0}";
         rows[8].Text = $"Projectile  relay {snapshot.ProjectileRelayedFrames:N0}  baseline {snapshot.ProjectileBaselineFrames:N0}  rejected {snapshot.ProjectileRejectedFrames:N0}";
         rows[9].Text = $"Items       relay {snapshot.WorldItemRelayedFrames:N0}  rejected {snapshot.WorldItemRejectedFrames:N0}";
+        rows[10].Text =
+            $"Stops       protocol {snapshot.StopProtocolFailures:N0}  rate {snapshot.StopRateLimited:N0}  " +
+            $"handshake {snapshot.StopInvalidHandshake:N0}  unsupported {snapshot.StopUnsupportedProtocol:N0}  slow {snapshot.StopSlowClient:N0}";
 
         ReadOnlySpan<RuntimeConnectionRateDetail> rates = snapshot.TopInboundRates.Span;
         for (int i = 0; i < Math.Min(rates.Length, 3); i++)
@@ -619,6 +624,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         if (queues.Length == 0)
             rows[14].Text = "OUT <no queued/rejected/slow clients>";
 
+        rows[16].Text =
+            $"Timeouts    handshake {snapshot.StopHandshakeTimeout:N0}  idle {snapshot.StopIdleTimeout:N0}  " +
+            $"application-stop {snapshot.StopApplicationStopped:N0}";
         rows[17].Text = "F2 returns to System Dashboard";
     }
 
