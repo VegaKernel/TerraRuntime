@@ -17,54 +17,39 @@ TerraRuntime reproduces observable TerrariaServer 1.4.5.8 behavior without prese
 
 ## 2. High-level shape
 
-```text
-                        +------------------------------+
-                        |        CoreCLR profile       |
-                        | trusted host module (Vega)   |
-                        +---------------+--------------+
-                                        |
-                              TerraRuntime.HostContracts
-                                        |
-                                        v
-+-------------+     +-------------------+-------------------+     +-------------+
-| TCP clients | --> | Network / Protocol / command ingress  | --> | Game loop   |
-+-------------+     +-------------------+-------------------+     | single owner|
-                                                                    +------+------+ 
-                                                                           |
-                     +----------------------+-------------------------------+--------------------+
-                     |                      |                               |                    |
-                     v                      v                               v                    v
-                  Players                  World                            NPCs             Projectiles/Items
-                     |                      |                               |                    |
-                     +----------------------+-------------------------------+--------------------+
-                                                                           |
-                                                                           v
-                                                              sync/replication planning
-                                                                           |
-                                                                           v
-                                                              bounded outbound queues
-                                                                           |
-                                                                           v
-                                                                    socket writers
+```mermaid
+flowchart TB
+    Clients["TCP clients"] --> Ingress["Network / Protocol<br/>bounded command ingress"]
+    Ingress --> Loop["Authoritative game loop<br/>single mutable-state owner"]
+
+    Vega["CoreCLR profile<br/>trusted host module: Vega"] --> Contracts["TerraRuntime.HostContracts"]
+    Contracts --> Loop
+
+    Loop --> Players["Players"]
+    Loop --> World["World / tiles / objects"]
+    Loop --> NPCs["NPCs"]
+    Loop --> Projectiles["Projectiles / world items"]
+
+    Players --> Replication["Synchronization / replication planning"]
+    World --> Replication
+    NPCs --> Replication
+    Projectiles --> Replication
+
+    Replication --> Queues["Bounded per-connection outbound queues"]
+    Queues --> Writers["Socket writers"]
 ```
+
+The game loop is the ownership center. Transport, UI and trusted-host code surround it through bounded contracts rather than sharing mutable runtime objects.
 
 ## 3. Dependency direction
 
 The architecture must not collapse into circular dependencies between networking, gameplay, and host integration.
 
-Conceptually dependencies flow as follows:
-
-```text
-Contracts
-   ^
-   |
-Core / World / Protocol abstractions
-   ^
-   |
-composition and adapters
-   ^
-   |
-standalone host / extensible host / TUI
+```mermaid
+flowchart BT
+    Hosts["Standalone host / Extensible host / TUI"] --> Composition["Composition and adapters"]
+    Composition --> Runtime["Core / World / Protocol abstractions"]
+    Runtime --> Contracts["Contracts"]
 ```
 
 `TerraRuntime.HostContracts` must not reference internal concrete runtime classes. A trusted host receives contracts and snapshots, not `ServerRuntimeState`, mutable stores, or socket objects.
@@ -82,39 +67,19 @@ Owned state includes, as implementation grows:
 - mutable world/tile/progression state;
 - connection-associated gameplay state after network input has been converted into commands.
 
-Other threads may:
-
-- receive network data;
-- decode bounded input;
-- build immutable work products;
-- perform disk I/O;
-- serialize snapshots;
-- update UI from immutable telemetry;
-- return results through explicit completion/command boundaries.
-
-They may not mutate authoritative collections directly.
+Other threads may receive network data, decode bounded input, build immutable work products, perform disk I/O, serialize snapshots, update UI from immutable telemetry, and return results through explicit completion/command boundaries. They may not mutate authoritative collections directly.
 
 ## 5. Command boundary
 
 Network input transfers ownership before entering the game loop.
 
-```text
-borrowed receive bytes
-      |
-      v
-frame validation
-      |
-      v
-owned decoded data / typed command
-      |
-      v
-bounded authoritative queue
-      |
-      v
-gameplay/state validation
-      |
-      v
-mutation
+```mermaid
+flowchart TD
+    Bytes["Borrowed receive bytes"] --> Frame["Frame validation"]
+    Frame --> Decode["Owned decoded data / typed command"]
+    Decode --> Queue["Bounded authoritative queue"]
+    Queue --> Validate["Gameplay / session validation"]
+    Validate --> Mutation["Authoritative mutation"]
 ```
 
 This separates two different questions:
@@ -126,7 +91,7 @@ The decoder must not make gameplay policy decisions, and gameplay must not depen
 
 ## 6. Scheduling and fairness
 
-The baseline simulation schedule runs at 60 Hz.
+The baseline simulation schedule runs at $60\,\mathrm{Hz}$, corresponding to a nominal tick interval of approximately $16.67\,\mathrm{ms}$.
 
 Inbound command processing is budgeted. One connection must not be able to turn an unbounded `while(queue.TryRead(...))` into a private DoS primitive.
 
@@ -145,26 +110,21 @@ Subsystem budgets are global when work competes for one simulation tick. They mu
 
 Each connection has independent read and write paths.
 
-### Inbound
+```mermaid
+flowchart LR
+    SocketIn["Socket read"] --> Framing["Incremental framing"]
+    Framing --> Decode["Bounded protocol decode"]
+    Decode --> State["Connection-state legality<br/>+ rate/work accounting"]
+    State --> Command["Owned typed command"]
+    Command --> Loop["Authoritative game loop"]
+    Loop --> Recipients["Recipient decision"]
+    Recipients --> Encode["Packet projection / encode"]
+    Encode --> Outbound["Bounded per-client queue"]
+    Outbound --> Slow["Slow-client policy"]
+    Slow --> SocketOut["Socket writer"]
+```
 
-- socket read;
-- incremental framing `[u16 length][u8 message id][payload]`;
-- hard frame/message ceilings;
-- protocol decode;
-- connection-state legality;
-- rate/work accounting;
-- enqueue typed/owned command.
-
-### Outbound
-
-- authoritative state/event;
-- recipient decision;
-- packet projection/encode;
-- bounded per-client queue;
-- slow-client policy;
-- socket writer.
-
-A slow client must never force the game loop to wait for socket-buffer capacity.
+Terraria framing is `[u16 length][u8 message id][payload]`. A slow client must never force the game loop to wait for socket-buffer capacity.
 
 ## 8. Protocol boundary
 
@@ -172,59 +132,35 @@ A slow client must never force the game loop to wait for socket-buffer capacity.
 
 Gameplay code should not depend on concrete Multiplicity packet classes where it can work with domain commands/state instead.
 
-Protocol-layer responsibilities:
+Protocol-layer responsibilities are wire framing, packet IDs and flags, bounded decode/encode, conversion into owned semantic input, and conversion from runtime projections back into wire representation.
 
-- wire framing;
-- packet IDs and wire flags;
-- bounded decode/encode;
-- conversion from wire representation into owned semantic input;
-- conversion from runtime projection into wire representation.
-
-Gameplay-layer responsibilities:
-
-- legality;
-- domain invariants;
-- state transitions;
-- authoritative outcomes.
+Gameplay-layer responsibilities are legality, domain invariants, state transitions and authoritative outcomes.
 
 ## 9. Entity identity
 
 Content type and live runtime identity are different concepts.
 
-```text
-ProjectileTypeId  != projectile slot/handle
-NpcTypeId         != NPC slot/handle
-ItemTypeId        != inventory/world item identity
-```
+| Content identity | Live runtime identity |
+|---|---|
+| `ProjectileTypeId` | projectile slot/handle |
+| `NpcTypeId` | NPC slot/handle |
+| `ItemTypeId` | inventory/world-item identity |
 
 The runtime uses generation/revision-style identity where slot reuse can make stale references dangerous. This prevents a command intended for an old entity from mutating a new entity that reused the same slot.
 
 ## 10. World architecture
 
-The world subsystem separates:
+The world subsystem separates canonical persistence, live representation and disposable derived data.
 
-- canonical persistence (`.wld`);
-- runtime tile/world representation;
-- derived indexes/section state;
-- encoded/compressed network sections;
-- disposable runtime cache (`.runtime-world`).
-
-Target dependency flow:
-
-```text
-.wld parser/serializer
-       |
-       v
-validated world snapshot/state
-       |
-       v
-runtime representation
-       |
-       +--> world queries/collision/liquids
-       +--> gameplay mutations
-       +--> section/sync state
-       +--> save snapshot
-       +--> derived runtime cache
+```mermaid
+flowchart TD
+    Wld["Canonical .wld<br/>parser / targeted serializer"] --> Validated["Validated world snapshot/state"]
+    Validated --> Runtime["Runtime world representation"]
+    Runtime --> Queries["Queries / collision / liquids"]
+    Runtime --> Gameplay["Gameplay mutations"]
+    Runtime --> Sync["Section / synchronization state"]
+    Runtime --> Save["Detached save snapshot"]
+    Runtime --> Cache["Disposable .runtime-world cache"]
 ```
 
 The derived cache must never be the only recovery source for a world.
@@ -233,22 +169,14 @@ The derived cache must never be the only recovery source for a world.
 
 The save pipeline minimizes stop-the-world work on the authoritative thread.
 
-```text
-game loop
-   |
-short bounded snapshot handoff
-   |
-   v
-background serializer/writer
-   |
-   v
-temporary file
-   |
-flush/validate
-   |
-atomic replace
-   |
-canonical .wld
+```mermaid
+flowchart TD
+    Loop["Authoritative game loop"] --> Handoff["Short bounded snapshot handoff"]
+    Handoff --> Worker["Background serializer / writer"]
+    Worker --> Temp["Temporary file"]
+    Temp --> Flush["Flush / validate"]
+    Flush --> Replace["Atomic replace"]
+    Replace --> Canonical["Canonical .wld"]
 ```
 
 The runtime coalesces redundant save requests instead of accumulating serialization work. Shutdown semantics must ensure newer authoritative state cannot lose to an older background save.
@@ -260,7 +188,7 @@ The runtime coalesces redundant save requests instead of accumulating serializat
 Rules:
 
 - a cache miss is normal;
-- invalid cache → fall back to `.wld`;
+- invalid cache means fallback to `.wld`;
 - cache rebuild does not precede a successful canonical save;
 - cache corruption is not world corruption;
 - the optimization is accepted only when it produces a measured `WorldReady`/`NetworkReady` improvement.
@@ -271,15 +199,7 @@ Replication does not need to preserve an inefficient vanilla broadcast algorithm
 
 Interest management is an internal TerraRuntime subsystem. External hosts only receive an `IInterestManagementControl` enable/disable surface.
 
-The following remain internal:
-
-- spatial partitioning;
-- recipient sets;
-- enter/leave transitions;
-- hysteresis;
-- forced resync deadlines;
-- full-state-on-entry;
-- entity-specific visibility rules.
+The following remain internal: spatial partitioning, recipient sets, enter/leave transitions, hysteresis, forced resync deadlines, full-state-on-entry and entity-specific visibility rules.
 
 Until those semantics are proven, packet suppression must fail open.
 
@@ -287,51 +207,43 @@ Until those semantics are proven, packet suppression must fail open.
 
 Gameplay must not become one giant packet switch.
 
-Target ownership domains include:
-
-```text
-Players
-Items / Inventory / Use
-NPC definitions / lifecycle / AI / combat / spawning
-Projectile definitions / lifecycle / behavior / collision / combat
-World tiles / objects / chests / signs / tile entities
-Wiring / Liquids / Growth
-Combat / Buffs / Loot
-Events / Progression / Housing
-World generation
+```mermaid
+flowchart TB
+    Loop["Authoritative gameplay loop"] --> Players["Players"]
+    Loop --> Items["Items / Inventory / Use"]
+    Loop --> NPC["NPC definitions / lifecycle / AI / combat / spawning"]
+    Loop --> Projectile["Projectile definitions / lifecycle / behavior / collision / combat"]
+    Loop --> World["Tiles / objects / chests / signs / tile entities"]
+    Loop --> Simulation["Wiring / Liquids / Growth"]
+    Loop --> Combat["Combat / Buffs / Loot"]
+    Loop --> Progression["Events / Progression / Housing"]
+    Loop --> Worldgen["World generation"]
 ```
 
 Definition catalogs contain version-pinned vanilla facts. Runtime stores contain live state. Packet projection stays at the outer boundary.
 
 ## 15. World-generation architecture
 
-Worldgen separates discovery from execution:
+Worldgen separates discovery from execution.
 
-```text
-generator registry
-   -> selected provider
-   -> plan builder
-   -> validated pass graph/order
-   -> isolated workspace
-   -> deterministic execution
-   -> final validation
-   -> accepted runtime world candidate
+```mermaid
+flowchart TD
+    Registry["Generator registry"] --> Provider["Selected provider"]
+    Provider --> Plan["Plan builder"]
+    Plan --> Graph["Validated pass graph / order"]
+    Graph --> Workspace["Isolated workspace"]
+    Workspace --> Execute["Deterministic execution"]
+    Execute --> Validate["Final validation"]
+    Validate --> Candidate["Accepted runtime world candidate"]
 ```
 
-A trusted host registers a provider, while TerraRuntime retains control over execution boundaries and acceptance of the result.
-
-The built-in flat generator is an infrastructure baseline, not a vanilla-parity implementation.
+A trusted host registers a provider, while TerraRuntime retains control over execution boundaries and acceptance of the result. The built-in flat generator is an infrastructure baseline, not a vanilla-parity implementation.
 
 ## 16. NativeAOT and CoreCLR split
 
 ### NativeAOT profile
 
-It proves the core architecture:
-
-- does not depend on JIT-only behavior;
-- does not require arbitrary managed DLL loading;
-- does not rely on reflection-driven discovery;
-- survives Linux/Windows native smoke paths.
+It proves the core architecture does not depend on JIT-only behavior, does not require arbitrary managed DLL loading, does not rely on reflection-driven discovery, and survives Linux/Windows native smoke paths.
 
 ### CoreCLR extensible profile
 
@@ -343,21 +255,11 @@ A trusted host module receives API in two stages.
 
 ### Bootstrap environment
 
-`ITerraRuntimeHostEnvironment` is available before a live runtime and contains:
-
-- root/deployment paths;
-- dashboard registry;
-- world-generator registry.
+`ITerraRuntimeHostEnvironment` is available before a live runtime and contains root/deployment paths, the dashboard registry and the world-generator registry.
 
 ### Live runtime
 
-`ITerraRuntimeHostRuntime` is attached after the authoritative runtime starts and provides:
-
-- runtime info;
-- interest-management control;
-- player snapshots;
-- NPC actor operations;
-- controlled server-player operations.
+`ITerraRuntimeHostRuntime` is attached after the authoritative runtime starts and provides runtime info, interest-management control, player snapshots, NPC actor operations and controlled server-player operations.
 
 None of these contracts permit retaining mutable references to internal stores.
 
@@ -365,20 +267,12 @@ None of these contracts permit retaining mutable references to internal stores.
 
 The TUI consumes the operations/read-model boundary.
 
-```text
-authoritative runtime
-      |
-immutable/bounded projections
-      |
-      v
-TUI thread
-
-TUI action
-      |
-controlled operation/command
-      |
-      v
-authoritative runtime
+```mermaid
+flowchart LR
+    Runtime["Authoritative runtime"] --> Projection["Immutable / bounded projections"]
+    Projection --> TUI["TUI thread"]
+    TUI --> Action["Controlled operation / command"]
+    Action --> Runtime
 ```
 
 The UI toolkit must not become a gameplay-core dependency.
@@ -404,16 +298,7 @@ Trust boundaries localize failures.
 
 Telemetry should explain where runtime time is spent and why work is rejected without turning every packet into an allocation festival.
 
-Key groups include:
-
-- tick CPU/wall and worst phase;
-- command backlog/budget exhaustion;
-- queue depth/slow-client drops;
-- active entity counts;
-- spatial membership;
-- save/cache state;
-- malformed/rejected protocol categories;
-- GC/memory where safely available.
+Key groups include tick CPU/wall and worst phase, command backlog/budget exhaustion, queue depth/slow-client drops, active entity counts, spatial membership, save/cache state, malformed/rejected protocol categories and GC/memory where safely available.
 
 ## 22. Architectural Definition of Done
 

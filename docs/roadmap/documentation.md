@@ -70,6 +70,30 @@ A code change must update both RU and EN documentation in the same change when i
 
 A mismatch between code and documentation is a defect.
 
+## Presentation standard
+
+Architecture/process diagrams use GitHub-rendered Mermaid instead of ASCII or pseudographic boxes/arrows.
+
+Use the diagram type that matches the concept:
+
+- `flowchart` for ownership, dependency and data-flow structure;
+- `sequenceDiagram` for protocol/lifecycle ordering;
+- `stateDiagram-v2` for connection, entity or persistence states;
+- another GitHub-supported Mermaid form only when it expresses the concept more clearly.
+
+Plain fenced text/code blocks remain valid for literal CLI commands, directory trees, byte layouts, protocol envelopes and code samples. They must not be used to imitate a diagram.
+
+Quantitative values with units are written as LaTeX math where applicable. Examples:
+
+- `$60\,\mathrm{Hz}$`;
+- `$16.67\,\mathrm{ms}$`;
+- `$16\,\mathrm{MiB}$`;
+- `$4\,\text{sections/tick}$`.
+
+Identifiers remain code literals rather than math: packet IDs, protocol versions, enum values, type names, configuration keys and file-format identifiers such as `packet 47`, protocol `326`, Terraria `1.4.5.8` and `MaxCommandsPerTick`.
+
+Derived quantities should use equations when the relationship matters, with symbols defined near the formula. Do not invent decimal precision beyond the source measurement.
+
 ## Required content for each subsystem
 
 Every significant subsystem guide must eventually answer:
@@ -130,14 +154,7 @@ The checker validates structural invariants rather than attempting machine trans
 - repository-local Markdown links in `docs/**/*.md`, root `README.md` and `AGENTS.md` must resolve to an existing path;
 - relative links may not escape the repository root.
 
-The dedicated `.github/workflows/documentation.yml` workflow checks out full Git history and invokes the same checker with `--changed-base`. That adds a change-set invariant:
-
-```text
-docs/en/<page>.md changed
-    -> docs/ru/<page>.md must also be changed in the same push/PR diff
-
-and vice versa
-```
+The dedicated `.github/workflows/documentation.yml` workflow checks out full Git history and invokes the same checker with `--changed-base`. That adds a change-set invariant: every changed `docs/en/<page>.md` requires the matching changed `docs/ru/<page>.md` in the same push/PR diff, and vice versa.
 
 For direct work on `main`, paired language edits should therefore be committed atomically where possible. A sequence of single-file pushes is intentionally considered incomplete until a push contains the complete bilingual pair in its checked change set.
 
@@ -166,28 +183,23 @@ The `--changed-base <sha>` form is used by CI when a concrete push/PR base is av
 - [x] Dedicated world/persistence guide: `.wld` support, save pipeline, atomic recovery, runtime cache and warm-start behavior.
 - [x] Dedicated gameplay guide: players, inventory/items, NPCs, projectiles, combat and authoritative validation, with explicit parity status.
 - [x] Dedicated synchronization guide: sections, bootstrap/join, interest management and resync invariants.
-- [x] Dedicated performance/tick-runtime guide: 60 Hz schedule, command mailbox/ingress/apply budgets, per-source fairness, missed-deadline policy and measurement discipline.
+- [x] Dedicated performance/tick-runtime guide: $60\,\mathrm{Hz}$ schedule, command mailbox/ingress/apply budgets, per-source fairness, missed-deadline policy and measurement discipline.
 - [x] Dedicated operations/TUI guide: startup modes, dashboard model, telemetry and safe administrative operations.
 - [x] Dedicated observability/logging guide: bounded current read models and telemetry, TUI consumption, and explicit separation from the incomplete async structured logging target.
 - [x] Dedicated worldgen guide: provider contracts, plan/pass lifecycle, workspace model and vanilla-worldgen status.
 - [x] Dedicated security guide: trust boundaries, budgets, rate limits, malformed input handling and failure isolation.
 - [x] Dedicated testing/evidence guide: source hierarchy, roadmap checkbox policy, independent compatibility evidence, official/live probes, runtime publish gates and performance proof rules.
-- [x] Add diagrams/examples when they clarify an actual interaction path; subsystem guides now contain maintained text diagrams and API/flow examples where useful.
 - [x] Add documentation-link validation in CI.
 - [x] Add lightweight RU/EN structural parity validation without machine translation or line-by-line equality.
 - [x] Enforce paired RU/EN page changes in the same push/PR diff through the dedicated Documentation workflow.
+- [x] Adopt Mermaid + LaTeX as the documentation presentation standard and migrate the main architecture guide.
+- [ ] Migrate remaining legacy pseudographic subsystem diagrams to Mermaid and normalize dimensional numeric values to LaTeX.
 
 ## Continuing work
 
 Documentation does not become "finished" after the baseline pages exist. The permanent work is to keep those pages synchronized with implementation and split out new stable subsystem guides only when a concept becomes too large for the existing structure.
 
-Useful future improvements, when justified by real maintenance needs, include:
-
-- source/API link generation for stable public contracts without mirroring every class into Markdown;
-- additional executable examples for host integrations;
-- version/support matrices when TerraRuntime supports more than one Terraria/protocol baseline;
-- documentation coverage for new gameplay domains as bosses, events, housing, wiring and progression become authoritative;
-- CI checks that validate specific machine-readable support tables if those tables later become canonical project data.
+Useful future improvements, when justified by real maintenance needs, include source/API link generation for stable public contracts without mirroring every class into Markdown, additional executable examples for host integrations, version/support matrices when TerraRuntime supports more than one Terraria/protocol baseline, documentation coverage for new gameplay domains as bosses/events/housing/wiring/progression become authoritative, and CI checks for machine-readable support tables if those tables later become canonical project data.
 
 ## Definition of done for documentation work
 
@@ -197,6 +209,8 @@ Documentation work is complete when:
 - examples compile conceptually against the current public signatures;
 - implemented behavior and target behavior are clearly distinguished;
 - ownership/threading/failure rules are explicit where relevant;
+- diagrams use Mermaid rather than pseudographic boxes/arrows;
+- dimensional quantitative values use LaTeX units where applicable;
 - links are relative and repository-safe;
 - `python3 tools/ci/check_documentation.py` passes;
 - the dedicated Documentation workflow passes for a change that touches bilingual pages;

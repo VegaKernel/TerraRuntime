@@ -127,6 +127,16 @@ Use `docs/ru/README.md` and `docs/en/README.md` as the documentation entry point
 
 Do not mechanically mirror every source file into a Markdown file. Document stable concepts, boundaries, contracts, workflows and examples. XML comments remain useful for local API semantics; the bilingual docs explain how the system works and how external code should interact with it.
 
+### Documentation presentation rules
+
+- Use GitHub-rendered Mermaid for architecture, lifecycle, dependency, state, sequence and data-flow diagrams. Do not use ASCII/pseudographic boxes/arrows as diagrams.
+- Use the Mermaid diagram type that matches the concept: `flowchart`, `sequenceDiagram`, `stateDiagram-v2`, or another supported diagram when it improves meaning.
+- Plain fenced code blocks remain appropriate for literal CLI commands, directory layouts, byte layouts, identifiers and code examples; they are not a substitute for diagrams.
+- Write measured or dimensional numeric values using LaTeX math with explicit units where applicable, for example `$60\,\mathrm{Hz}$`, `$16.67\,\mathrm{ms}$`, `$16\,\mathrm{MiB}$`, or `$4\,\text{sections/tick}$`.
+- Keep protocol IDs, versions, enum values, file-format identifiers and API names as code literals when they are identifiers rather than measurements, for example `packet 47`, protocol `326`, Terraria `1.4.5.8`, and `MaxCommandsPerTick`.
+- Prefer equations for derived quantitative relationships when the formula itself matters, and define every symbol near the equation.
+- Do not fabricate precision. Preserve the precision justified by the measurement/source.
+
 When a public interface changes, update its usage documentation immediately. When implementation changes what is actually supported, update roadmap/status documentation immediately. A code change that leaves the docs describing a different runtime is incomplete.
 
 Run `python3 tools/ci/check_documentation.py` after documentation changes. The checker validates the mirrored RU/EN page set and repository-local links. CI additionally runs it with `--changed-base` so any changed `docs/en/<page>.md` must have the matching `docs/ru/<page>.md` in the same push/PR change set and vice versa. The checker does not replace human review for semantic translation parity.
@@ -145,6 +155,7 @@ A non-trivial change is not done until the relevant checks are green:
 - independent verification when the change is protocol/gameplay/world-format shaped;
 - before/after measurement when the claim is performance-related;
 - matching Russian and English documentation updates when behavior, architecture, contracts, operations or supported scope changed;
+- Mermaid diagrams instead of pseudographic diagrams and LaTeX units for quantitative documentation where applicable;
 - `python3 tools/ci/check_documentation.py` when documentation or documentation-linked behavior changed;
 - the dedicated Documentation workflow when a push/PR touches bilingual documentation.
 
