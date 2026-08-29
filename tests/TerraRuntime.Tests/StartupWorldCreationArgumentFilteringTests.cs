@@ -13,6 +13,8 @@ public sealed class StartupWorldCreationArgumentFilteringTests
             "--world-seed", "42",
             "--world-width", "4200",
             "--world-height", "1200",
+            "--world-game-mode", "master",
+            "--world-evil", "crimson",
             "--world-output", "generated.wld",
             "--max-players", "4",
             "--no-tui"
