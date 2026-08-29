@@ -5,7 +5,7 @@ namespace TerraRuntime.Tests;
 public sealed class IncrementalWorldTileSaveShadowTests
 {
     [Fact]
-    public void Shadow_requires_full_bootstrap_and_preserves_column_major_world_image()
+    public void Shadow_requires_full_bootstrap_and_exposes_detached_sections()
     {
         var dimensions = new WorldDimensions(201, 150);
         var live = new WorldTileStore(dimensions);
@@ -34,10 +34,9 @@ public sealed class IncrementalWorldTileSaveShadowTests
         Assert.Equal((ushort)1, image!.Get(0, 0).Type);
         Assert.Equal((ushort)2, image.Get(200, 149).Type);
         Assert.Equal(dimensions.WidthTiles * dimensions.HeightTiles, image.Count);
-
-        ReadOnlySpan<WorldTile> columnMajor = image.ColumnMajorTiles.Span;
-        Assert.Equal((ushort)1, columnMajor[0].Type);
-        Assert.Equal((ushort)2, columnMajor[(200 * dimensions.HeightTiles) + 149].Type);
+        Assert.Equal(2, image.SectionCount);
+        Assert.Same(first, image.GetSection(new WorldSectionId(0, 0)));
+        Assert.Same(second, image.GetSection(new WorldSectionId(1, 0)));
     }
 
     [Fact]
@@ -65,8 +64,10 @@ public sealed class IncrementalWorldTileSaveShadowTests
 
         Assert.True(shadow.TryCaptureImage(out WorldTileSaveImage? after));
         Assert.NotNull(after);
-        Assert.Equal((ushort)1, before!.Get(5, 6).Type);
-        Assert.Equal((ushort)2, after!.Get(5, 6).Type);
+        Assert.Same(first, before!.GetSection(new WorldSectionId(0, 0)));
+        Assert.Same(second, after!.GetSection(new WorldSectionId(0, 0)));
+        Assert.Equal((ushort)1, before.Get(5, 6).Type);
+        Assert.Equal((ushort)2, after.Get(5, 6).Type);
         Assert.Equal(1, shadow.InitializedSectionCount);
     }
 
