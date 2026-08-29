@@ -39,12 +39,27 @@ public static class WorldSectionPacketEncoder
             width,
             height,
             out byte[] uncompressed);
-        if (payloadResult == WorldSectionPayloadAssemblyResult.InvalidObjectMetadata)
-            return WorldSectionPacketEncodeResult.InvalidObjectMetadata;
-        if (payloadResult != WorldSectionPayloadAssemblyResult.Encoded)
-            return WorldSectionPacketEncodeResult.InvalidSection;
+        return CompletePacket(payloadResult, uncompressed, out frame);
+    }
 
-        return TryCompressFrame(uncompressed, out frame);
+    /// <summary>
+    /// Builds packet 10 from an immutable tile snapshot. This is the asynchronous rebuild path: compression
+    /// never observes live WorldTileStore mutations while the authoritative thread continues ticking.
+    /// </summary>
+    public static WorldSectionPacketEncodeResult TryEncode(
+        WorldFileData world,
+        WorldSectionTileSnapshot snapshot,
+        out byte[] frame)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(snapshot);
+        frame = [];
+
+        WorldSectionPayloadAssemblyResult payloadResult = WorldSectionPayloadAssembler.TryEncode(
+            world,
+            snapshot,
+            out byte[] uncompressed);
+        return CompletePacket(payloadResult, uncompressed, out frame);
     }
 
     public static WorldSectionPacketEncodeResult TryEncodeTileOnly(
@@ -66,6 +81,20 @@ public static class WorldSectionPacketEncoder
             height,
             out byte[] uncompressed);
         if (payloadResult != WorldSectionPayloadEncodeResult.Encoded)
+            return WorldSectionPacketEncodeResult.InvalidSection;
+
+        return TryCompressFrame(uncompressed, out frame);
+    }
+
+    private static WorldSectionPacketEncodeResult CompletePacket(
+        WorldSectionPayloadAssemblyResult payloadResult,
+        byte[] uncompressed,
+        out byte[] frame)
+    {
+        frame = [];
+        if (payloadResult == WorldSectionPayloadAssemblyResult.InvalidObjectMetadata)
+            return WorldSectionPacketEncodeResult.InvalidObjectMetadata;
+        if (payloadResult != WorldSectionPayloadAssemblyResult.Encoded)
             return WorldSectionPacketEncodeResult.InvalidSection;
 
         return TryCompressFrame(uncompressed, out frame);
