@@ -1,0 +1,87 @@
+name: Projectile Type22 Source Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/type22-source-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Extract pinned type22 facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/type22 .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected_sha256" ]]; then assembly="$candidate"; fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          assembly_dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/type22/projectile.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/type22/projectile-id.cs
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          p=Path('artifacts/type22/projectile.cs').read_text(encoding='utf-8')
+          ids=Path('artifacts/type22/projectile-id.cs').read_text(encoding='utf-8')
+          def compact(x): return ' '.join(x.split())
+          def ctx(src,pat,radius=2200,limit=20):
+              s=compact(src); out=[]
+              for m in re.finditer(pat,s):
+                  if len(out)>=limit: break
+                  out.append(s[max(0,m.start()-radius):min(len(s),m.end()+radius)])
+              return ' | '.join(out) if out else '<none>'
+          def method(src,name):
+              m=re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$',src)
+              if not m:return '<method-not-found>'
+              o=src.find('{',m.end()); d=0; ins=inc=esc=False
+              for i in range(o,len(src)):
+                  c=src[i]
+                  if esc:esc=False;continue
+                  if c=='\\' and (ins or inc):esc=True;continue
+                  if c=='"' and not inc:ins=not ins;continue
+                  if c=="'" and not ins:inc=not inc;continue
+                  if ins or inc:continue
+                  if c=='{':d+=1
+                  elif c=='}':
+                      d-=1
+                      if d==0:return src[m.start():i+1]
+              return '<unterminated>'
+          defaults=method(p,'SetDefaults'); ai=method(p,'AI'); update=method(p,'Update')
+          collision=method(p,'GetCollisionParams'); movement=method(p,'HandleMovement')
+          kill=method(p,'Kill'); cancut=method(p,'CanCutTiles'); wind=method(p,'ShouldUseWindPhysics')
+          lines=[
+            'projectile_id_type22='+ctx(ids,r'\b[A-Za-z0-9_]+\s*=\s*22\s*;',350),
+            'projectile_type22_defaults='+ctx(defaults,r'(?<!\d)type\s*==\s*22(?!\d)',2000),
+            'projectile_ai_type22='+ctx(ai,r'(?<!\d)type\s*==\s*22(?!\d)',3000),
+            'projectile_update_type22='+ctx(update,r'(?<!\d)type\s*==\s*22(?!\d)',2600),
+            'projectile_collision_params_type22='+ctx(collision,r'(?<!\d)type\s*==\s*22(?!\d)',2200),
+            'projectile_handle_movement_type22='+ctx(movement,r'(?<!\d)type\s*==\s*22(?!\d)',2600),
+            'projectile_kill_type22='+ctx(kill,r'(?<!\d)type\s*==\s*22(?!\d)',3200),
+            'projectile_can_cut_tiles_type22='+ctx(cancut,r'(?<!\d)22(?!\d)',1200),
+            'projectile_should_use_wind_type22='+ctx(wind,r'(?<!\d)22(?!\d)',1200),
+          ]
+          Path('artifacts/type22/type22-source.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectile-type22-source
+          path: artifacts/type22/type22-source.txt
+          retention-days: 1
