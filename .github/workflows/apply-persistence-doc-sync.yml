@@ -1,0 +1,115 @@
+name: Apply Persistence Documentation Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-persistence-doc-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Patch roadmap and bilingual persistence docs
+        shell: python
+        run: |
+          from pathlib import Path
+
+          roadmap_path = Path('docs/roadmap.md')
+          roadmap = roadmap_path.read_text(encoding='utf-8')
+          replacements = {
+              '- [x] Keep disk I/O off the simulation thread; tile-shadow synchronization uses a bounded default budget of \\\\(4\\\\ \\\\text{sections/tick}\\\\).':
+                  '- [x] Keep disk I/O off the simulation thread; tile-shadow synchronization uses a bounded default budget of `4 sections/tick`.',
+              '- [ ] Add automatic known-good backup rotation plus validated rollback; atomic publication alone does not recover from a logically bad but complete checkpoint.':
+                  '- [x] Keep one validated previous-generation backup and perform fail-closed automatic rollback for structurally/content-corrupt canonical checkpoints. `World Checkpoint Recovery` run `33269875235` proved backup rotation, exact recovery, invalid-backup refusal, official TerrariaServer 1.4.5.8 reload, and no rollback for unsupported future version `327`.',
+              '- [x] Add safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process. Verified by `Authoritative World Save` run `33270005299` with real `SIGKILL`, leased orphan detection, canonical preservation and next-write cleanup.':
+                  '- [x] Add lease-safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process. `Authoritative World Save` run `33270924996` proved cleanup helper `5/5`, real host startup cleanup before world load `1/1`, plus the SIGKILL durability contract; cleanup also runs before later writes, while unleased legacy temporaries are left untouched because ownership cannot be proven.'
+          }
+          for old, new in replacements.items():
+              if old not in roadmap:
+                  if new in roadmap:
+                      continue
+                  raise SystemExit(f'roadmap persistence text changed: {old}')
+              roadmap = roadmap.replace(old, new, 1)
+          roadmap_path.write_text(roadmap, encoding='utf-8')
+
+          en_path = Path('docs/en/world-persistence.md')
+          en = en_path.read_text(encoding='utf-8')
+          en_anchor = ('A process killed before publication can leave an orphaned random-name `.tmp` file, but it does not replace the canonical world. '
+              '`AtomicSaveFileWriter` now pairs every managed temporary with a sibling `.tmp.lease` file held open with `FileShare.None` for the complete write/flush/validation/backup/publication transaction. '
+              'Before a later save starts, it scans only correctly named leased temporaries for the same target and reaps one only when it can acquire that lease exclusively. '
+              'A live writer therefore keeps its temporary protected across processes. A legacy `.tmp` that has no TerraRuntime lease is deliberately left untouched because ownership cannot be proven safely.')
+          en_extra = ('\n\nHost startup applies the same lease-safe cleanup to both the canonical world target and its checkpoint-backup target before cache/stat/load processing. '
+              'This means an abandoned managed transaction is reclaimed even when no later save occurs. A live lease still wins and an unleased legacy temporary is still left untouched. '
+              '`Authoritative World Save` run `33270924996` independently executed `AtomicSaveFileWriterCleanupTests` (`5/5`) and a real `TerrariaServerHost.RunAsync` startup-order test (`1/1`) before the rest of the save pipeline.')
+          if en_extra.strip() not in en:
+              if en_anchor not in en:
+                  raise SystemExit('English orphan-cleanup anchor changed')
+              en = en.replace(en_anchor, en_anchor + en_extra, 1)
+          en_old_limit = ('Managed orphan `.tmp` files are reclaimed on the next save only when their TerraRuntime lease can be acquired exclusively; '
+              'unknown legacy temporaries without a lease are intentionally not deleted automatically.')
+          en_new_limit = ('Managed orphan `.tmp` files are reclaimed on host startup and before later saves only when their TerraRuntime lease can be acquired exclusively; '
+              'unknown legacy temporaries without a lease are intentionally not deleted automatically.')
+          if en_old_limit in en:
+              en = en.replace(en_old_limit, en_new_limit, 1)
+          elif en_new_limit not in en:
+              raise SystemExit('English limitation text changed')
+          en_path.write_text(en, encoding='utf-8')
+
+          ru_path = Path('docs/ru/world-persistence.md')
+          ru = ru_path.read_text(encoding='utf-8')
+          ru_anchor = ('Process kill до publication может оставить orphan random-name `.tmp`, но не заменяет canonical world. '
+              '`AtomicSaveFileWriter` теперь создаёт рядом с каждым managed temporary файл `.tmp.lease` и держит его открытым с `FileShare.None` на протяжении всей transaction: write, flush, validation, backup и publication. '
+              'Перед следующим save runtime сканирует только корректно именованные leased temporary для того же target и удаляет orphan только если lease удалось получить эксклюзивно. '
+              'Поэтому temporary живого writer защищён даже между процессами. Legacy `.tmp` без TerraRuntime lease намеренно не удаляется автоматически: безопасно доказать ownership такого файла нельзя.')
+          ru_extra = ('\n\nПри startup host выполняет тот же lease-safe cleanup для canonical world target и checkpoint-backup target ещё до cache/stat/load processing. '
+              'Поэтому abandoned managed transaction убирается даже если после crash новый save ещё не происходил. Live lease по-прежнему защищает active writer, а legacy temporary без lease остаётся untouched. '
+              '`Authoritative World Save` run `33270924996` независимо прогнал `AtomicSaveFileWriterCleanupTests` (`5/5`) и реальный startup-order test через `TerrariaServerHost.RunAsync` (`1/1`) перед остальным save pipeline.')
+          if ru_extra.strip() not in ru:
+              if ru_anchor not in ru:
+                  raise SystemExit('Russian orphan-cleanup anchor changed')
+              ru = ru.replace(ru_anchor, ru_anchor + ru_extra, 1)
+          ru_old_limit = ('Managed orphan `.tmp` удаляются при следующем save только если TerraRuntime lease удаётся получить эксклюзивно; '
+              'unknown legacy temporaries без lease намеренно не удаляются автоматически.')
+          ru_new_limit = ('Managed orphan `.tmp` удаляются при startup host и перед следующими save только если TerraRuntime lease удаётся получить эксклюзивно; '
+              'unknown legacy temporaries без lease намеренно не удаляются автоматически.')
+          if ru_old_limit in ru:
+              ru = ru.replace(ru_old_limit, ru_new_limit, 1)
+          elif ru_new_limit not in ru:
+              raise SystemExit('Russian limitation text changed')
+          ru_path.write_text(ru, encoding='utf-8')
+
+      - name: Verify changed documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'World Checkpoint Recovery` run `33269875235' docs/roadmap.md
+          grep -F 'Authoritative World Save` run `33270924996' docs/roadmap.md docs/en/world-persistence.md docs/ru/world-persistence.md
+          git diff --check
+
+      - name: Commit documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/roadmap.md docs/en/world-persistence.md docs/ru/world-persistence.md
+          git commit -m 'docs: record startup persistence recovery proofs'
+          for attempt in 1 2 3 4 5 6; do
+            git fetch origin main
+            if git rebase origin/main && git push origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep 2
+          done
+          exit 1
