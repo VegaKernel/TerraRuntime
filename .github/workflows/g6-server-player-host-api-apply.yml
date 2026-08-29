@@ -1,0 +1,46 @@
+name: Apply G6 Server Player Host API
+
+on:
+  push:
+    branches:
+      - gameplay/g6-server-player-host-api
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: gameplay/g6-server-player-host-api
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Apply and validate server-player host API
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin gameplay/g6-server-player-host-api
+          git reset --hard origin/gameplay/g6-server-player-host-api
+
+          python3 .github/scripts/apply_g6_server_player_host_api.py
+          git diff --check
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
+
+          git config user.name OpenAI
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/scripts/apply_g6_server_player_host_api.py \
+                 .github/workflows/g6-server-player-host-api-apply.yml
+          git add src/TerraRuntime.HostContracts/ITerraRuntimeHostRuntime.cs \
+                  src/TerraRuntime/TerraRuntimeHostRuntime.cs \
+                  src/TerraRuntime/ServerRuntimeState.cs \
+                  src/TerraRuntime/TerrariaServerHost.cs \
+                  tests/TerraRuntime.Tests/TrustedHostModuleLoaderTests.cs
+          git commit -m 'gameplay: expose server-player lifecycle to host'
+          git push origin HEAD:gameplay/g6-server-player-host-api
