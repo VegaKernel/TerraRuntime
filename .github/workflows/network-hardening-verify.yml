@@ -30,3 +30,5 @@ jobs:
 
       - name: Network smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --network-smoke
+
+      # Refresh marker: 2
