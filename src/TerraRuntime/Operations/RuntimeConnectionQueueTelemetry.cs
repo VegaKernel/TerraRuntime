@@ -25,6 +25,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
         int slowClients = 0;
         long queuedFrames = 0;
         long queuedBytes = 0;
+        long peakQueuedFrames = 0;
+        long peakQueuedBytes = 0;
         long rejectedFrames = 0;
         RuntimeConnectionQueueDetail[] details = maxDetails == 0
             ? []
@@ -36,18 +38,25 @@ internal sealed class RuntimeConnectionQueueTelemetry
             TerrariaConnectionOutboundQueue queue = pair.Value;
             int connectionQueuedFrames = queue.QueuedFrames;
             long connectionQueuedBytes = queue.QueuedBytes;
+            long connectionPeakQueuedFrames = queue.PeakQueuedFrames;
+            long connectionPeakQueuedBytes = queue.PeakQueuedBytes;
             long connectionRejectedFrames = queue.RejectedFrames;
             bool slowClient = queue.IsSlowClient;
 
             trackedQueues++;
             queuedFrames += connectionQueuedFrames;
             queuedBytes += connectionQueuedBytes;
+            peakQueuedFrames = Math.Max(peakQueuedFrames, connectionPeakQueuedFrames);
+            peakQueuedBytes = Math.Max(peakQueuedBytes, connectionPeakQueuedBytes);
             rejectedFrames += connectionRejectedFrames;
             if (slowClient)
                 slowClients++;
 
             if (maxDetails == 0 ||
-                (connectionQueuedFrames == 0 && connectionRejectedFrames == 0 && !slowClient))
+                (connectionQueuedFrames == 0 &&
+                 connectionPeakQueuedFrames == 0 &&
+                 connectionRejectedFrames == 0 &&
+                 !slowClient))
             {
                 continue;
             }
@@ -59,6 +68,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
                     ConnectionId: pair.Key,
                     QueuedFrames: connectionQueuedFrames,
                     QueuedBytes: connectionQueuedBytes,
+                    PeakQueuedFrames: connectionPeakQueuedFrames,
+                    PeakQueuedBytes: connectionPeakQueuedBytes,
                     RejectedFrames: connectionRejectedFrames,
                     SlowClient: slowClient));
         }
@@ -70,6 +81,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
             TrackedQueues: trackedQueues,
             QueuedFrames: queuedFrames,
             QueuedBytes: queuedBytes,
+            PeakQueuedFrames: peakQueuedFrames,
+            PeakQueuedBytes: peakQueuedBytes,
             RejectedFrames: rejectedFrames,
             SlowClients: slowClients,
             TopQueues: details.AsMemory());
@@ -110,6 +123,10 @@ internal sealed class RuntimeConnectionQueueTelemetry
     {
         if (left.SlowClient != right.SlowClient)
             return left.SlowClient;
+        if (left.PeakQueuedBytes != right.PeakQueuedBytes)
+            return left.PeakQueuedBytes > right.PeakQueuedBytes;
+        if (left.PeakQueuedFrames != right.PeakQueuedFrames)
+            return left.PeakQueuedFrames > right.PeakQueuedFrames;
         if (left.QueuedBytes != right.QueuedBytes)
             return left.QueuedBytes > right.QueuedBytes;
         if (left.QueuedFrames != right.QueuedFrames)
@@ -125,6 +142,8 @@ internal readonly record struct RuntimeConnectionQueueDetail(
     long ConnectionId,
     int QueuedFrames,
     long QueuedBytes,
+    long PeakQueuedFrames,
+    long PeakQueuedBytes,
     long RejectedFrames,
     bool SlowClient);
 
@@ -132,6 +151,8 @@ internal readonly record struct RuntimeConnectionQueueSnapshot(
     int TrackedQueues,
     long QueuedFrames,
     long QueuedBytes,
+    long PeakQueuedFrames,
+    long PeakQueuedBytes,
     long RejectedFrames,
     int SlowClients,
     ReadOnlyMemory<RuntimeConnectionQueueDetail> TopQueues);
