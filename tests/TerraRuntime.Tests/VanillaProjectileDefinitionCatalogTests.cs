@@ -26,6 +26,27 @@ public sealed class VanillaProjectileDefinitionCatalogTests
         Assert.Equal(0f, definition.CollisionOffsetY);
     }
 
+    [Theory]
+    [InlineData(51, 8, 8)]
+    [InlineData(1124, 6, 6)]
+    public void Terraria_1458_simple_ai_style_one_definitions_match_source(int type, int width, int height)
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            new ProjectileTypeId(type),
+            out VanillaProjectileDefinition definition));
+
+        Assert.Equal(width, definition.Width);
+        Assert.Equal(height, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
+        Assert.Equal(width, definition.CollisionWidth);
+        Assert.Equal(height, definition.CollisionHeight);
+        Assert.Equal(0f, definition.CollisionOffsetX);
+        Assert.Equal(0f, definition.CollisionOffsetY);
+    }
+
     [Fact]
     public void Terraria_1458_jesters_arrow_definition_matches_source()
     {

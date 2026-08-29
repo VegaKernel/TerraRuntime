@@ -174,6 +174,7 @@ def main() -> int:
     parser.add_argument("--worldgen", required=True, type=Path)
     parser.add_argument("--main", required=True, type=Path)
     parser.add_argument("--tile-id", required=True, type=Path)
+    parser.add_argument("--projectile-id", required=True, type=Path)
     args = parser.parse_args()
 
     projectile_source = args.projectile.read_text(encoding="utf-8")
@@ -182,6 +183,7 @@ def main() -> int:
     worldgen_source = args.worldgen.read_text(encoding="utf-8")
     main_source = args.main.read_text(encoding="utf-8")
     tile_id_source = args.tile_id.read_text(encoding="utf-8")
+    projectile_id_source = args.projectile_id.read_text(encoding="utf-8")
 
     can_cut_tiles = compact(extract_method(projectile_source, "CanCutTiles"))
     cut_tiles = compact(extract_method(projectile_source, "CutTiles"))
@@ -200,6 +202,8 @@ def main() -> int:
     bullet_defaults = around_optional(set_defaults, "type == 14", radius=1800)
     green_laser_defaults = around_optional(set_defaults, "type == 20", radius=1800)
     bone_defaults = around_optional(set_defaults, "type == 21", radius=1800)
+    seed_defaults = around_optional(set_defaults, "type == 51", radius=1400)
+    bone_shard_defaults = around_optional(set_defaults, "type == 1124", radius=1800)
     arrow_ai = extract_method(projectile_source, "AI_001")
     should_use_wind = compact(extract_method(projectile_source, "ShouldUseWindPhysics"))
     transform_type = compact(extract_method(projectile_source, "TransformType"))
@@ -215,7 +219,23 @@ def main() -> int:
     print("projectile_jesters_arrow_defaults=" + jesters_arrow_defaults)
     print("projectile_bullet_defaults=" + bullet_defaults)
     print("projectile_green_laser_defaults=" + green_laser_defaults)
+    wind_immunity = matching_lines(projectile_id_source, "WindPhysicsImmunity", limit=5)
+    if "public const short Seed = 51;" not in projectile_id_source:
+        raise SystemExit("ProjectileID.Seed != 51 in pinned source")
+    if "public const short BoneShard = 1124;" not in projectile_id_source:
+        raise SystemExit("ProjectileID.BoneShard != 1124 in pinned source")
+    for raw_type in (51, 1124):
+        if re.search(rf"\(short\){raw_type}(?!\d)", wind_immunity):
+            raise SystemExit(f"type {raw_type} unexpectedly overrides WindPhysicsImmunity")
+
     print("projectile_bone_defaults=" + bone_defaults)
+    print("projectile_seed_defaults=" + seed_defaults)
+    print("projectile_bone_shard_defaults=" + bone_shard_defaults)
+    print("projectile_seed_ai001_contexts=" + all_type_comparison_contexts(arrow_ai, 51, radius=1800, limit=20))
+    print("projectile_bone_shard_ai001_contexts=" + all_type_comparison_contexts(arrow_ai, 1124, radius=2600, limit=20))
+    print("projectile_seed_kill_contexts=" + all_type_comparison_contexts(projectile_kill, 51, radius=1800, limit=20))
+    print("projectile_bone_shard_kill_contexts=" + all_type_comparison_contexts(projectile_kill, 1124, radius=1800, limit=20))
+    print("projectile_seed_bone_shard_wind_immunity=" + wind_immunity)
     print("projectile_ai_type21_contexts=" + all_type_comparison_contexts(extract_method(projectile_source, "AI"), 21, radius=2600, limit=20))
     print("projectile_collision_params_type21_contexts=" + all_type_comparison_contexts(extract_method(projectile_source, "GetCollisionParams"), 21, radius=1800, limit=20))
     print("projectile_handle_movement_type21_contexts=" + all_type_comparison_contexts(handle_movement, 21, radius=2200, limit=20))

@@ -134,6 +134,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 12,
         CollisionHeight: 12);
 
+    private static readonly VanillaProjectileDefinition SeedDefinition = new(
+        Width: 8,
+        Height: 8,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 8,
+        CollisionHeight: 8);
+
     private static readonly VanillaProjectileDefinition PoisonedKnifeDefinition = new(
         Width: 12,
         Height: 12,
@@ -203,6 +213,16 @@ public static class VanillaProjectileDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 16,
         CollisionHeight: 16);
+
+    private static readonly VanillaProjectileDefinition BoneShardDefinition = new(
+        Width: 6,
+        Height: 6,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 6,
+        CollisionHeight: 6);
 
     private static readonly VanillaProjectileDefinition BoneDaggerDefinition = new(
         Width: 22,
@@ -276,6 +296,12 @@ public static class VanillaProjectileDefinitionCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.Seed)
+        {
+            definition = SeedDefinition;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.PoisonedKnife)
         {
             definition = PoisonedKnifeDefinition;
@@ -321,6 +347,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.MeleeBone)
         {
             definition = MeleeBoneDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.BoneShard)
+        {
+            definition = BoneShardDefinition;
             return true;
         }
 

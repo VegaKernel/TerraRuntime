@@ -85,6 +85,34 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.Equal(3599, next.TimeLeft);
     }
 
+    [Theory]
+    [InlineData(51, 3600)]
+    [InlineData(1124, 600)]
+    public void Simple_ai_style_one_family_uses_source_backed_world_trajectory(int type, int timeLeft)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f) with
+        {
+            Type = new ProjectileTypeId(type)
+        };
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(new ProjectileTypeId(type), next.State.Type);
+        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(0f, next.State.VelocityY, 5);
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(100f, next.State.PositionY, 5);
+        Assert.Equal(timeLeft - 1, next.TimeLeft);
+    }
+
     [Fact]
     public void Wooden_arrow_free_flight_matches_ai001_before_gravity()
     {

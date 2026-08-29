@@ -40,6 +40,31 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(1f, updated.Ai.Ai0, 5);
     }
 
+    [Theory]
+    [InlineData(51, 104f, 1f)]
+    [InlineData(1124, 108f, 2f)]
+    public async Task Authoritative_tick_runs_source_backed_simple_ai_style_one_family_by_default(
+        int type, float expectedPositionX, float expectedAi0)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
+        ProjectileStateUpdate projectile = CreateProjectile(type, spawner: 3);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot updated));
+        Assert.Equal(new ProjectileTypeId(type), updated.Type);
+        Assert.Equal(new ProjectileRevision(2), updated.Revision);
+        Assert.Equal(expectedPositionX, updated.PositionX, 5);
+        Assert.Equal(100f, updated.PositionY, 5);
+        Assert.Equal(expectedAi0, updated.Ai.Ai0, 5);
+    }
+
     [Fact]
     public async Task Authoritative_tick_runs_source_backed_player_owned_wooden_arrow_free_flight_by_default()
     {
@@ -129,6 +154,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(3)]
     [InlineData(21)]
     [InlineData(48)]
+    [InlineData(51)]
     [InlineData(54)]
     [InlineData(318)]
     [InlineData(330)]
@@ -137,7 +163,8 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(599)]
     [InlineData(1012)]
     [InlineData(1111)]
-    public async Task Server_owned_thrown_projectile_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)
+    [InlineData(1124)]
+    public async Task Server_owned_source_backed_projectile_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         tiles.Set(6, 6, new WorldTile { Type = 3, Flags = WorldTileFlags.Active });
