@@ -34,6 +34,17 @@ def send_item(client, chest_id, item_slot, stack, prefix, item_net_id):
     )
 
 
+def receive_item_echo(client, chest_id, item_slot, stack, prefix, item_net_id):
+    payload, skipped = recv_until_packet(client, 32, 5)
+    if len(payload) != 8:
+        fail(f"expected 8-byte packet32 echo, got bytes={len(payload)}, skipped={skipped[:64]}")
+
+    observed = struct.unpack("<hBhBh", payload)
+    expected = (chest_id, item_slot, stack, prefix, item_net_id)
+    if observed != expected:
+        fail(f"packet32 echo mismatch: expected={expected}, got={observed}")
+
+
 def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id):
     payload, skipped = recv_until_packet(client, 155, 5)
     if len(payload) != 4:
@@ -45,7 +56,7 @@ def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_st
             f"got chest={received_chest_id} slots={received_slots}"
         )
 
-    observed_non_empty = None
+    observed_item = None
     for expected_slot in range(slots):
         payload, skipped = recv_until_packet(client, 32, 5)
         if len(payload) != 8:
@@ -61,12 +72,12 @@ def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_st
                 f"chest={received_id}, slot={received_slot}"
             )
         if expected_slot == item_slot:
-            observed_non_empty = (stack, prefix, net_id)
+            observed_item = (stack, prefix, net_id)
 
-    if observed_non_empty != (item_stack, item_prefix, item_net_id):
+    if observed_item != (item_stack, item_prefix, item_net_id):
         fail(
             f"real chest item mismatch at slot {item_slot}: "
-            f"expected={(item_stack, item_prefix, item_net_id)}, got={observed_non_empty}"
+            f"expected={(item_stack, item_prefix, item_net_id)}, got={observed_item}"
         )
 
     payload, skipped = recv_until_packet(client, 33, 5)
@@ -108,13 +119,61 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
         # This is an ownership/state test, not inventory conservation: after packet33(-1), packet32
         # must not mutate the chest because this connection no longer has an active world chest.
         send_close(owner)
-        altered_stack = item_stack + 1 if item_stack < 32767 else item_stack - 1
-        if altered_stack <= 0 or altered_stack == item_stack:
-            fail(f"cannot construct post-close stack mutation from stack={item_stack}")
-        send_item(owner, chest_id, item_slot, altered_stack, item_prefix, item_net_id)
+        rejected_stack = item_stack - 1
+        rejected_prefix = item_prefix if rejected_stack > 0 else 0
+        rejected_net_id = item_net_id if rejected_stack > 0 else 0
+        send_item(owner, chest_id, item_slot, rejected_stack, item_prefix, item_net_id)
 
         # Socket ingress preserves frame order, so the game loop observes close -> rejected item update
         # -> reopen. The fresh baseline must still contain the original item from the official .wld.
+        send_open(owner, tile_x, tile_y)
+        receive_snapshot(
+            owner,
+            chest_id,
+            tile_x,
+            tile_y,
+            slots,
+            item_slot,
+            item_stack,
+            item_prefix,
+            item_net_id,
+        )
+
+        # Packet 5 inventory conservation is intentionally not enforced yet. While this world chest is
+        # actively owned by the exact live connection, packet32 remains client-authoritative. Commit a
+        # universally valid stack decrement (1 -> empty is canonicalized), require the server echo, then
+        # close/reopen and verify the authoritative baseline contains the committed value.
+        committed_stack = item_stack - 1
+        committed_prefix = item_prefix if committed_stack > 0 else 0
+        committed_net_id = item_net_id if committed_stack > 0 else 0
+        send_item(owner, chest_id, item_slot, committed_stack, item_prefix, item_net_id)
+        receive_item_echo(
+            owner,
+            chest_id,
+            item_slot,
+            committed_stack,
+            committed_prefix,
+            committed_net_id,
+        )
+        send_close(owner)
+        send_open(owner, tile_x, tile_y)
+        receive_snapshot(
+            owner,
+            chest_id,
+            tile_x,
+            tile_y,
+            slots,
+            item_slot,
+            committed_stack,
+            committed_prefix,
+            committed_net_id,
+        )
+
+        # Restore the source-world item through the same production packet32 path. The probe must not
+        # leave its in-memory authoritative world mutated just because a CI assertion needed a write.
+        send_item(owner, chest_id, item_slot, item_stack, item_prefix, item_net_id)
+        receive_item_echo(owner, chest_id, item_slot, item_stack, item_prefix, item_net_id)
+        send_close(owner)
         send_open(owner, tile_x, tile_y)
         receive_snapshot(
             owner,
@@ -154,10 +213,10 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
         print(
             "live chest lifecycle ok: "
             f"chest={chest_id} tile=({tile_x},{tile_y}) slots={slots} "
-            f"verifiedItemSlot={item_slot} rejectedPostCloseStack={altered_stack} "
-            f"disconnectReplacement=ok ownerSections={owner_sections} "
-            f"ownerBootstrapFrames={owner_bootstrap_frames} replacementSections={replacement_sections} "
-            f"replacementBootstrapFrames={replacement_bootstrap_frames}"
+            f"verifiedItemSlot={item_slot} rejectedPostCloseStack={rejected_stack} "
+            f"committedStack={committed_stack} restoredItem=ok disconnectReplacement=ok "
+            f"ownerSections={owner_sections} ownerBootstrapFrames={owner_bootstrap_frames} "
+            f"replacementSections={replacement_sections} replacementBootstrapFrames={replacement_bootstrap_frames}"
         )
     finally:
         if owner is not None:
