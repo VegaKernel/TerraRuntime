@@ -56,6 +56,16 @@ def require(text: str, needle: str, label: str) -> None:
         raise SystemExit(f"Pinned source contract changed: missing {label}: {needle}")
 
 
+def print_context(text: str, marker: str) -> None:
+    index = text.find(marker)
+    if index < 0:
+        print(f"diagnostic_marker_missing={marker}")
+        return
+    start = max(0, index - 700)
+    end = min(len(text), index + len(marker) + 1400)
+    print(f"diagnostic_context[{marker}]={text[start:end]}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Verify pinned TerrariaServer 1.4.5.8 WorldGen.KillTile for conservative Dirt authority."
@@ -72,6 +82,8 @@ def main() -> int:
 
     kill_signature = first_signature(raw, "KillTile")
     kill_method = compact(extract_method(raw, kill_signature))
+    drop_signature = first_signature(raw, "KillTile_DropItems")
+    drop_method = compact(extract_method(raw, drop_signature))
     breakability_signature = first_signature(raw, "CheckTileBreakability")
     breakability_method = compact(extract_method(raw, breakability_signature))
     survive_signature = first_signature(raw, "CheckTileBreakability2_ShouldTileSurvive")
@@ -119,6 +131,10 @@ def main() -> int:
         raise SystemExit("Dirt unexpectedly entered CheckTileBreakability2 survivor branches.")
     if not survive_method.endswith("return false; }"):
         raise SystemExit("CheckTileBreakability2_ShouldTileSurvive no longer ends in false.")
+
+    print(f"drop_signature={drop_signature}")
+    for marker in ("TileID.Dirt", "DirtBlock", "tile.type == 0", "case 0:"):
+        print_context(drop_method, marker)
 
     print("tile_id_dirt=0")
     print("dirt_kill_no_item_drop_gate=verified")
