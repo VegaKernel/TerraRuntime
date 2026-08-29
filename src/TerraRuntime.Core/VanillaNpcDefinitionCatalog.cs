@@ -3,13 +3,29 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.Core;
 
 /// <summary>
+/// Runtime-owned implementation family selected for one verified vanilla NPC definition.
+/// AiStyle remains source metadata; this family is an explicit opt-in to a TerraRuntime behavior
+/// implementation so a future NPC that happens to share an aiStyle cannot silently inherit a
+/// behavior path that has not been verified for that type.
+/// </summary>
+public enum VanillaNpcBehaviorFamily : byte
+{
+    None = 0,
+    SlimeGround = 1,
+    FlyingEye = 2,
+    GroundFighter = 3
+}
+
+/// <summary>
 /// Source-backed vanilla NPC defaults required by authoritative lifecycle and AI bring-up.
 /// Values are clean-room facts extracted from TerrariaServer 1.4.5.8 SetDefaults; behavior stays
-/// independently implemented in TerraRuntime.
+/// independently implemented in TerraRuntime. <see cref="BehaviorFamily"/> is runtime-owned metadata
+/// and is assigned only after the corresponding implementation has been verified for this definition.
 /// </summary>
 public readonly record struct VanillaNpcDefinition(
     NpcTypeId Type,
     NpcAiStyleId AiStyle,
+    VanillaNpcBehaviorFamily BehaviorFamily,
     int Width,
     int Height,
     int Damage,
@@ -50,6 +66,7 @@ public static class VanillaNpcDefinitionCatalog
             definition = new VanillaNpcDefinition(
                 Type: VanillaNpcIds.BlueSlime,
                 AiStyle: VanillaNpcAiStyles.Slime,
+                BehaviorFamily: VanillaNpcBehaviorFamily.SlimeGround,
                 Width: 24,
                 Height: 18,
                 Damage: 7,
@@ -65,6 +82,7 @@ public static class VanillaNpcDefinitionCatalog
             definition = new VanillaNpcDefinition(
                 Type: VanillaNpcIds.DemonEye,
                 AiStyle: VanillaNpcAiStyles.DemonEye,
+                BehaviorFamily: VanillaNpcBehaviorFamily.FlyingEye,
                 Width: 30,
                 Height: 32,
                 Damage: 18,
@@ -80,6 +98,7 @@ public static class VanillaNpcDefinitionCatalog
             definition = new VanillaNpcDefinition(
                 Type: VanillaNpcIds.Zombie,
                 AiStyle: VanillaNpcAiStyles.Fighter,
+                BehaviorFamily: VanillaNpcBehaviorFamily.GroundFighter,
                 Width: 18,
                 Height: 40,
                 Damage: 14,

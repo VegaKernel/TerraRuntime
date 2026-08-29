@@ -31,12 +31,40 @@ public sealed class VanillaNpcDefinitionCatalogTests
         Assert.Equal(1f, definition.Scale);
     }
 
+    [Theory]
+    [InlineData(1, VanillaNpcBehaviorFamily.SlimeGround)]
+    [InlineData(2, VanillaNpcBehaviorFamily.FlyingEye)]
+    [InlineData(3, VanillaNpcBehaviorFamily.GroundFighter)]
+    public void Verified_definitions_explicitly_opt_into_runtime_behavior_families(
+        int type,
+        VanillaNpcBehaviorFamily expectedFamily)
+    {
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition));
+        Assert.Equal(expectedFamily, definition.BehaviorFamily);
+    }
+
+    [Fact]
+    public void Runtime_behavior_family_is_distinct_from_source_ai_style()
+    {
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BlueSlime, out VanillaNpcDefinition slime));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.DemonEye, out VanillaNpcDefinition eye));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Zombie, out VanillaNpcDefinition fighter));
+
+        Assert.Equal(VanillaNpcAiStyles.Slime, slime.AiStyle);
+        Assert.Equal(VanillaNpcBehaviorFamily.SlimeGround, slime.BehaviorFamily);
+        Assert.Equal(VanillaNpcAiStyles.DemonEye, eye.AiStyle);
+        Assert.Equal(VanillaNpcBehaviorFamily.FlyingEye, eye.BehaviorFamily);
+        Assert.Equal(VanillaNpcAiStyles.Fighter, fighter.AiStyle);
+        Assert.Equal(VanillaNpcBehaviorFamily.GroundFighter, fighter.BehaviorFamily);
+    }
+
     [Fact]
     public void Named_npc_ids_address_the_same_verified_catalog()
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.DemonEye, out VanillaNpcDefinition definition));
         Assert.Equal(VanillaNpcIds.DemonEye, definition.Type);
         Assert.Equal(VanillaNpcAiStyles.DemonEye, definition.AiStyle);
+        Assert.Equal(VanillaNpcBehaviorFamily.FlyingEye, definition.BehaviorFamily);
     }
 
     [Fact]
