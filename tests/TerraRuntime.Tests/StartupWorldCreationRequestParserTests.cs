@@ -28,6 +28,7 @@ public sealed class StartupWorldCreationRequestParserTests
         Assert.Equal(new WorldGeneratorId("fixture:worldgen"), request.Generation.GeneratorId);
         Assert.Equal("GeneratedWorld", request.Generation.WorldName);
         Assert.Equal(ulong.MaxValue, request.Generation.Seed);
+        Assert.Equal("18446744073709551615", request.Generation.SeedText);
         Assert.Equal(4200, request.Generation.WidthTiles);
         Assert.Equal(1200, request.Generation.HeightTiles);
         Assert.Equal(WorldGenerationGameMode.Classic, request.Generation.Options.GameMode);
@@ -35,6 +36,29 @@ public sealed class StartupWorldCreationRequestParserTests
         Assert.Equal(
             Path.GetFullPath(Path.Combine(worldsDirectory, "GeneratedWorld.wld")),
             request.OutputPath);
+    }
+
+    [Fact]
+    public void Preserves_seed_text_that_has_a_different_vanilla_crc_than_its_numeric_value()
+    {
+        string[] args =
+        [
+            "--create-world", "GeneratedWorld",
+            "--world-generator", "fixture:worldgen",
+            "--world-seed", "00000000002147483648",
+            "--world-width", "4200",
+            "--world-height", "1200"
+        ];
+
+        Assert.True(
+            StartupWorldCreationRequestParser.TryParse(
+                args,
+                Path.GetTempPath(),
+                out StartupWorldCreationRequest request,
+                out string? error),
+            error);
+        Assert.Equal(2147483648UL, request.Generation.Seed);
+        Assert.Equal("00000000002147483648", request.Generation.SeedText);
     }
 
     [Fact]
