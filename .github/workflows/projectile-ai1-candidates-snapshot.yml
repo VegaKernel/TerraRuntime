@@ -1,4 +1,4 @@
-name: Projectile AI1 Candidates Snapshot
+name: Apply Seed Bone Shard Runtime Slice
 
 on:
   push:
@@ -8,125 +8,55 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Inspect pinned aiStyle1 set-backed facts
+
+      - name: Apply source-backed Seed and Bone Shard slice
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .cache/terraria-1458 artifacts/ai1 .tools
-          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
-          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
-          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
-          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
-          assembly=""
-          while IFS= read -r -d '' candidate; do
-            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected_sha256" ]]; then assembly="$candidate"; fi
-          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
-          test -n "$assembly"
-          assembly_dir="$(dirname "$assembly")"
+          git fetch origin main
+          git reset --hard origin/main
 
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/ai1/projectile.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/ai1/projectile-id.cs
-          .tools/ilspycmd --disable-updatecheck -l c "$assembly" > artifacts/ai1/classes.txt
-
-          nested="$(grep -E 'Terraria\.ID\.ProjectileID.*Sets' artifacts/ai1/classes.txt | head -n 1 | sed -E 's/^[^ ]+ //')"
-          if [[ -n "$nested" ]]; then
-            .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$nested" "$assembly" > artifacts/ai1/projectile-id-sets.cs || true
-          fi
-
+          # The update-facts table already contains type 1124. Drop the stale documentation-only tail from
+          # the staged patch script rather than rewriting a parallel documentation edit.
           python3 - <<'PY'
-          import re
           from pathlib import Path
-
-          projectile = Path('artifacts/ai1/projectile.cs').read_text(encoding='utf-8')
-          projectile_id = Path('artifacts/ai1/projectile-id.cs').read_text(encoding='utf-8')
-          sets_path = Path('artifacts/ai1/projectile-id-sets.cs')
-          sets = sets_path.read_text(encoding='utf-8') if sets_path.exists() else ''
-          classes = Path('artifacts/ai1/classes.txt').read_text(encoding='utf-8')
-          candidates = (51, 1124)
-
-          def compact(text):
-              return ' '.join(text.split())
-
-          def method(src, name):
-              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', src)
-              if not m:
-                  return '<method-not-found>'
-              opening = src.find('{', m.end())
-              depth = 0
-              in_string = in_char = escaped = False
-              for i in range(opening, len(src)):
-                  c = src[i]
-                  if escaped:
-                      escaped = False
-                      continue
-                  if c == '\\' and (in_string or in_char):
-                      escaped = True
-                      continue
-                  if c == '"' and not in_char:
-                      in_string = not in_string
-                      continue
-                  if c == "'" and not in_string:
-                      in_char = not in_char
-                      continue
-                  if in_string or in_char:
-                      continue
-                  if c == '{': depth += 1
-                  elif c == '}':
-                      depth -= 1
-                      if depth == 0:
-                          return src[m.start():i+1]
-              return '<unterminated>'
-
-          def around(text, needle, radius=1800):
-              s = compact(text)
-              p = s.find(needle)
-              if p < 0:
-                  return '<none>'
-              return s[max(0, p-radius):min(len(s), p+len(needle)+radius)]
-
-          def all_number_contexts(text, number, radius=450, limit=20):
-              s = compact(text)
-              out=[]
-              for m in re.finditer(rf'(?<!\d){number}(?!\d)', s):
-                  out.append(s[max(0,m.start()-radius):min(len(s),m.end()+radius)])
-                  if len(out) >= limit: break
-              return ' | '.join(out) if out else '<none>'
-
-          combined_sets = projectile_id + '\n' + sets
-          wind_method = method(projectile, 'ShouldUseWindPhysics')
-          can_cut_method = method(projectile, 'CanCutTiles')
-          set_defaults = method(projectile, 'SetDefaults')
-
-          lines = [
-              'projectile_should_use_wind=' + compact(wind_method),
-              'projectile_can_cut_tiles=' + compact(can_cut_method),
-              'wind_set_context=' + around(combined_sets, 'WindPhysicsImmunity', 3500),
-              'tile_cut_set_context=' + around(combined_sets, 'CanCutTiles', 2600),
-              'sets_type_listing=' + ' | '.join(line.strip() for line in classes.splitlines() if 'ProjectileID' in line and 'Sets' in line),
-          ]
-          for t in candidates:
-              lines.extend([
-                  f'type{t}_projectile_id_context=' + all_number_contexts(projectile_id, t, 260, 8),
-                  f'type{t}_sets_context=' + all_number_contexts(combined_sets, t, 520, 30),
-                  f'type{t}_defaults_context=' + all_number_contexts(set_defaults, t, 900, 4),
-              ])
-
-          Path('artifacts/ai1/seed-bone-shard-sets.txt').write_text('\n'.join(lines)+'\n', encoding='utf-8')
-          print('\n'.join(lines))
+          path = Path('.github/scripts/apply_seed_bone_shard.py')
+          text = path.read_text(encoding='utf-8')
+          marker = '# Explain the newly live extra-update case in the pinned update-facts contract.'
+          if text.count(marker) != 1:
+              raise SystemExit('expected one update-facts tail marker')
+          path.write_text(text.split(marker, 1)[0].rstrip() + '\n', encoding='utf-8')
           PY
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: projectile-seed-bone-shard-sets
-          path: artifacts/ai1/seed-bone-shard-sets.txt
-          retention-days: 1
+          python3 .github/scripts/apply_seed_bone_shard.py
+          python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
+
+          git rm .github/workflows/projectile-ai1-candidates-snapshot.yml .github/scripts/apply_seed_bone_shard.py
+          git config user.name OpenAI
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/terraria-source-contract.yml \
+                  src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
+                  src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs \
+                  src/TerraRuntime/VanillaProjectileWorldStateStepper.cs \
+                  tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs \
+                  tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs \
+                  tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs \
+                  tools/ci/probe_projectile_tile_cut.py
+          git commit -m 'feat: simulate seed and bone shard world flight'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
