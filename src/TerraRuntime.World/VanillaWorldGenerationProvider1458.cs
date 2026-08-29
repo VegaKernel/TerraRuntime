@@ -55,7 +55,7 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
         public void Execute(IWorldGenerationContext context)
         {
             IWorldGenerationVanillaRandom random = RequireVanillaRandom(context);
-            VanillaWorldSeedProfile1458 seeds = VanillaWorldSeedResolver1458.Resolve(in context.Request);
+            VanillaWorldSeedProfile1458 seeds = ResolveSeedProfile(context);
             int width = context.Workspace.WidthTiles;
             int height = context.Workspace.HeightTiles;
 
@@ -107,7 +107,7 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
         public void Execute(IWorldGenerationContext context)
         {
             IWorldGenerationVanillaRandom random = RequireVanillaRandom(context);
-            VanillaWorldSeedProfile1458 seeds = VanillaWorldSeedResolver1458.Resolve(in context.Request);
+            VanillaWorldSeedProfile1458 seeds = ResolveSeedProfile(context);
             if (seeds.Has(VanillaSpecialWorldSeed1458.Skyblock))
                 return;
 
@@ -155,7 +155,7 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
         public void Execute(IWorldGenerationContext context)
         {
             IWorldGenerationVanillaRandom random = RequireVanillaRandom(context);
-            VanillaWorldSeedProfile1458 seeds = VanillaWorldSeedResolver1458.Resolve(in context.Request);
+            VanillaWorldSeedProfile1458 seeds = ResolveSeedProfile(context);
             if (seeds.Has(VanillaSpecialWorldSeed1458.Skyblock))
                 return;
 
@@ -196,7 +196,7 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
         public void Execute(IWorldGenerationContext context)
         {
             IWorldGenerationVanillaRandom random = RequireVanillaRandom(context);
-            VanillaWorldSeedProfile1458 seeds = VanillaWorldSeedResolver1458.Resolve(in context.Request);
+            VanillaWorldSeedProfile1458 seeds = ResolveSeedProfile(context);
             if (seeds.Has(VanillaSpecialWorldSeed1458.Skyblock))
                 return;
 
@@ -215,7 +215,7 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
         public void Execute(IWorldGenerationContext context)
         {
             IWorldGenerationVanillaRandom random = RequireVanillaRandom(context);
-            VanillaWorldSeedProfile1458 seeds = VanillaWorldSeedResolver1458.Resolve(in context.Request);
+            VanillaWorldSeedProfile1458 seeds = ResolveSeedProfile(context);
             if (seeds.Has(VanillaSpecialWorldSeed1458.Skyblock))
                 return;
 
@@ -235,7 +235,7 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
         public void Execute(IWorldGenerationContext context)
         {
             IWorldGenerationVanillaRandom random = RequireVanillaRandom(context);
-            VanillaWorldSeedProfile1458 seeds = VanillaWorldSeedResolver1458.Resolve(in context.Request);
+            VanillaWorldSeedProfile1458 seeds = ResolveSeedProfile(context);
 
             if (seeds.Has(VanillaSecretWorldSeed1458.Planetoids) || seeds.Has(VanillaSecretWorldSeed1458.BeamMeUp))
                 GenerateFloatingIslands(context, random, seeds.Has(VanillaSecretWorldSeed1458.Planetoids) ? 8 : 3);
@@ -268,7 +268,7 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
             IWorldGenerationVanillaRandom random = RequireVanillaRandom(context);
             IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
                 throw new InvalidOperationException("Vanilla generation requires the runtime metadata workspace.");
-            VanillaWorldSeedProfile1458 seeds = VanillaWorldSeedResolver1458.Resolve(in context.Request);
+            VanillaWorldSeedProfile1458 seeds = ResolveSeedProfile(context);
             int width = context.Workspace.WidthTiles;
             int height = context.Workspace.HeightTiles;
 
@@ -304,6 +304,12 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
 
     private static IWorldGenerationVanillaRandom RequireVanillaRandom(IWorldGenerationContext context) =>
         context.VanillaRandom ?? throw new InvalidOperationException("Vanilla pass executed without Terraria UnifiedRandom semantics.");
+
+    private static VanillaWorldSeedProfile1458 ResolveSeedProfile(IWorldGenerationContext context)
+    {
+        WorldGenerationRequest request = context.Request;
+        return VanillaWorldSeedResolver1458.Resolve(in request);
+    }
 
     private static void GenerateSkyblock(IWorldGenerationContext context, IWorldGenerationVanillaRandom random, int width, int height)
     {
