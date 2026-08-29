@@ -271,6 +271,7 @@ public static class TerrariaServerHost
             world.Tiles,
             chestStore,
             worldClock: worldClock);
+        var worldAutosave = new VanillaWorldAutosaveScheduler();
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
         var playerOperations = new RuntimePlayerOperationsTelemetry();
         var playerNetworkEvents = new RuntimePlayerEventDispatcher(
@@ -321,6 +322,8 @@ public static class TerrariaServerHost
             {
                 runtime.Tick();
                 sectionCacheRebuild.Tick();
+                if (worldAutosave.Tick())
+                    worldSaveService.RequestSave();
                 worldSaveService.Tick();
             });
         var commandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(gameLoop);
