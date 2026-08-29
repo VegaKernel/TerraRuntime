@@ -28,6 +28,7 @@ The routing boundary does **not** mean spatial culling is complete. Suppression 
 
 - [x] Dedicated authoritative loop with wall/CPU timing.
 - [x] Bounded worker pool with explicit completion handoff.
+- [x] Join-critical on-demand section rebuild admission has deterministic tick priority over background dirty rebuilds.
 - [x] Bounded per-connection outbound queues with slow-client signaling.
 - [x] Server-authoritative player identity/movement relay with a real two-client TCP movement smoke.
 - [x] Runtime-owned interest-management control/routing boundary.
@@ -76,6 +77,10 @@ stateDiagram-v2
 ```
 
 First-time section encoding is spread across ticks, spawn-critical data has priority, all joining players share one section-work budget, scheduling is fair and already-playing clients retain tick stability during mass join.
+
+The first scheduling guarantee is implemented: if a tick begins with pending on-demand section rebuilds, that tick admits join-critical rebuild work but no new background dirty-section rebuilds. Existing in-flight dirty work is not cancelled. This removes a scheduler race where a fast worker dequeue could make background admission depend on OS timing. See [`section-cache-scheduling.md`](../en/section-cache-scheduling.md).
+
+Telemetry now includes the count of ticks where dirty work was deliberately deferred for on-demand priority, in addition to pending/unique/deduplicated/rejected on-demand requests and cache-wait completion/timeout counters. Full multi-player fairness, oldest-join age, CPU-time budgets and mass-join acceptance remain open.
 
 Metrics include currently joining players, pending sections, oldest pending join, sections encoded/tick, section CPU time and join completion average plus $p_{95}/p_{99}$.
 

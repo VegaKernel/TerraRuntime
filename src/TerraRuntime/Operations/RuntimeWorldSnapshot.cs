@@ -75,4 +75,5 @@ internal readonly record struct RuntimeWorldSnapshot(
     int SectionCacheOnDemandPendingRequests = 0,
     long SectionCacheOnDemandRejectedRequests = 0,
     int SectionCacheOnDemandCapacity = 0,
+    long SectionCacheDirtyDeferredForOnDemand = 0,
     RuntimeWorldPersistenceSnapshot? Persistence = null);

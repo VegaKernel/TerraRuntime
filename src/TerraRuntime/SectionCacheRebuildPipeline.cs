@@ -50,15 +50,17 @@ internal readonly record struct SectionCacheRebuildPipelineSnapshot(
     long OnDemandDeduplicatedRequests = 0,
     int OnDemandPendingRequests = 0,
     long OnDemandRejectedRequests = 0,
-    int OnDemandCapacity = 0);
+    int OnDemandCapacity = 0,
+    long DirtyDeferredForOnDemand = 0);
 
 /// <summary>
 /// Authoritative-thread coordinator for rebuilding packet-10 section cache entries outside the game loop.
 /// The owner thread captures immutable tile state plus section-local object metadata and publishes completions;
 /// dedicated bounded workers receive only <see cref="WorldSectionPacketSnapshot"/> values and never read live
 /// world state or mutate the shared cache. Connection threads may request missing sections through a bounded,
-/// generation-aware deduplicated handoff, while the authoritative tick gives those join-critical snapshots
-/// priority over the ordinary dirty-section backlog. At most one worker rebuild may be in flight per section.
+/// generation-aware deduplicated handoff. A tick that begins with join-critical on-demand work does not admit
+/// ordinary dirty-section work, so priority is deterministic and independent from worker dequeue timing.
+/// At most one worker rebuild may be in flight per section.
 /// </summary>
 internal sealed class SectionCacheRebuildPipeline : IDisposable
 {
@@ -97,6 +99,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
     private long _onDemandUniqueRequestCount;
     private long _onDemandDeduplicatedRequestCount;
     private long _onDemandRejectedRequestCount;
+    private long _dirtyDeferredForOnDemand;
     private int _started;
     private int _disposed;
 
@@ -221,7 +224,8 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
                 OnDemandDeduplicatedRequests: Interlocked.Read(ref _onDemandDeduplicatedRequestCount),
                 OnDemandPendingRequests: Volatile.Read(ref _onDemandPendingRequests),
                 OnDemandRejectedRequests: Interlocked.Read(ref _onDemandRejectedRequestCount),
-                OnDemandCapacity: _onDemandCapacity);
+                OnDemandCapacity: _onDemandCapacity,
+                DirtyDeferredForOnDemand: Interlocked.Read(ref _dirtyDeferredForOnDemand));
         }
     }
 
@@ -277,8 +281,9 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
     }
 
     /// <summary>
-    /// Runs at an authoritative tick commit point. Completed work is published first, then join-critical
-    /// requests get the available worker slots before background dirty-section maintenance.
+    /// Runs at an authoritative tick commit point. Completed work is published first. If any join-critical
+    /// request is pending at tick entry, that tick is reserved for on-demand admission and ordinary dirty work
+    /// is deferred. This makes priority independent from whether a worker dequeues concurrently during Tick().
     /// </summary>
     public void Tick()
     {
@@ -287,8 +292,17 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             throw new InvalidOperationException("The section cache rebuild pipeline has not been started.");
 
         DrainCompletions();
-        SubmitOnDemandWork();
-        SubmitDirtyWork();
+        bool reservedForOnDemand = SubmitOnDemandWork();
+        if (reservedForOnDemand)
+        {
+            if (_world.Tiles.DirtySections.DirtyCount > 0)
+                Interlocked.Increment(ref _dirtyDeferredForOnDemand);
+        }
+        else
+        {
+            SubmitDirtyWork();
+        }
+
         Volatile.Write(ref _dirtyBacklog, _world.Tiles.DirtySections.DirtyCount);
     }
 
@@ -301,11 +315,11 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         _workers.Dispose();
     }
 
-    private void SubmitOnDemandWork()
+    private bool SubmitOnDemandWork()
     {
         int initialPending = Volatile.Read(ref _onDemandPendingRequests);
         if (initialPending <= 0)
-            return;
+            return false;
 
         // Consider each request that was pending at tick entry at most once. A transient snapshot failure or an
         // already-running background rebuild can therefore requeue it without spinning in the same tick.
@@ -315,7 +329,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             if (GetAvailableSubmissionCapacity() <= 0 ||
                 !_onDemandRequests.TryDequeue(out WorldSectionId section))
             {
-                return;
+                return true;
             }
 
             int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
@@ -362,8 +376,10 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             _world.Tiles.DirtySections.MarkDirty(section);
             _onDemandRequests.Enqueue(section);
             Interlocked.Increment(ref _rejectedSubmissions);
-            return;
+            return true;
         }
+
+        return true;
     }
 
     private void SubmitDirtyWork()
