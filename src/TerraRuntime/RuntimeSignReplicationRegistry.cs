@@ -64,11 +64,11 @@ internal sealed class RuntimeSignReplicationRegistry : IRuntimePlayerEventSink
         return true;
     }
 
-    public void PublishChanged(ConnectionHandle source, WorldSign sign, byte flags)
+    public void PublishChanged(ConnectionHandle source, WorldSign sign)
     {
         ArgumentNullException.ThrowIfNull(sign);
         if (!source.IsAssigned ||
-            !TryCreateState(sign, source.Player.Slot.Value, flags, out TerrariaSignState state))
+            !TryCreateState(sign, source.Player.Slot.Value, flags: 0, out TerrariaSignState state))
         {
             RejectedFrames++;
             return;
