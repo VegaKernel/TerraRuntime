@@ -40,6 +40,22 @@ public interface IProjectileStateStepper
         out ProjectileSimulationStepResult next);
 }
 
+/// <summary>
+/// Observes only projectile simulation paths whose final generation-safe state commit succeeded. The span is
+/// backed by executor-owned scratch storage and is valid only for the synchronous callback. This boundary is
+/// suitable for side effects that must never escape a rejected speculative simulation. Effects whose mutation
+/// must influence a later extraUpdate still require transactional/in-step modeling rather than deferred replay.
+/// </summary>
+public interface IProjectileSimulationCommitSink
+{
+    void ProjectileSimulationCommitted(
+        in ProjectileSnapshot initialProjectile,
+        in ProjectileLifecycleState initialLifecycle,
+        ReadOnlySpan<ProjectileSimulationStepResult> subupdates,
+        in ProjectileSnapshot finalProjectile,
+        bool expired);
+}
+
 /// <summary>Bounded accounting for one projectile state-transition pass.</summary>
 public readonly record struct ProjectileStateTickSummary(
     int Examined,
@@ -57,13 +73,19 @@ public readonly record struct ProjectileStateTickSummary(
 public sealed class RuntimeProjectileStateExecutor
 {
     private readonly RuntimeProjectileStore _projectiles;
+    private readonly IProjectileSimulationCommitSink? _commitSink;
     private readonly ProjectileSnapshot[] _snapshotBuffer;
+    private readonly ProjectileSimulationStepResult[] _stepBuffer;
 
-    public RuntimeProjectileStateExecutor(RuntimeProjectileStore projectiles)
+    public RuntimeProjectileStateExecutor(
+        RuntimeProjectileStore projectiles,
+        IProjectileSimulationCommitSink? commitSink = null)
     {
         ArgumentNullException.ThrowIfNull(projectiles);
         _projectiles = projectiles;
+        _commitSink = commitSink;
         _snapshotBuffer = new ProjectileSnapshot[projectiles.Capacity];
+        _stepBuffer = new ProjectileSimulationStepResult[VanillaProjectileUpdateFacts.MaximumExtraUpdates + 1];
     }
 
     public ProjectileStateTickSummary Tick(IProjectileStateStepper stepper)
@@ -93,6 +115,7 @@ public sealed class RuntimeProjectileStateExecutor
             ProjectileSnapshot currentProjectile = projectile;
             ProjectileLifecycleState currentLifecycle = lifecycle;
             ProjectileSimulationStepResult finalResult = default;
+            int recordedSubupdates = 0;
             bool hasProposal = false;
             bool invalid = false;
 
@@ -130,6 +153,7 @@ public sealed class RuntimeProjectileStateExecutor
                     proposed++;
                 }
 
+                _stepBuffer[recordedSubupdates++] = next;
                 finalResult = next;
                 currentProjectile = Project(in currentProjectile, in nextState);
                 currentLifecycle = nextLifecycle;
@@ -152,10 +176,19 @@ public sealed class RuntimeProjectileStateExecutor
                     projectile.Handle,
                     in finalState,
                     finalResult.TimeLeft,
-                    out _,
-                    out _))
+                    out ProjectileSnapshot committed,
+                    out bool expired))
             {
                 applied++;
+                if (_commitSink is not null)
+                {
+                    _commitSink.ProjectileSimulationCommitted(
+                        in projectile,
+                        in lifecycle,
+                        _stepBuffer.AsSpan(0, recordedSubupdates),
+                        in committed,
+                        expired);
+                }
             }
             else
             {

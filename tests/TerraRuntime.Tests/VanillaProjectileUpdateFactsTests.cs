@@ -47,6 +47,19 @@ public sealed class VanillaProjectileUpdateFactsTests
     }
 
     [Theory]
+    [InlineData(3)]
+    [InlineData(48)]
+    [InlineData(54)]
+    [InlineData(599)]
+    public void Supported_thrown_family_has_one_subupdate_per_world_tick(int rawType)
+    {
+        var type = new ProjectileTypeId(rawType);
+
+        Assert.Equal(0, VanillaProjectileUpdateFacts.GetExtraUpdates(type));
+        Assert.Equal(1, VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(type));
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(457)]
     [InlineData(458)]
