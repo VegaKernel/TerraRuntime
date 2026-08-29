@@ -24,7 +24,7 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Apply jump slice and validate against moving main
+      - name: Apply jump slice and validate against current main
         shell: bash
         run: |
           set -euo pipefail
@@ -32,44 +32,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git fetch origin main
+          baseline="$(git rev-parse origin/main)"
+          echo "validating against ${baseline}"
           git merge --no-edit origin/main
           python3 tools/ci/apply_g6_player_jump_control.py
           git diff --check
-
-          for attempt in 1 2 3 4; do
-            baseline="$(git rev-parse origin/main)"
-            echo "validation attempt ${attempt} against ${baseline}"
-
-            set +e
-            dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
-            test_status=$?
-            set -e
-
-            git fetch origin main
-            latest="$(git rev-parse origin/main)"
-
-            if [ "$test_status" -eq 0 ] && [ "$latest" = "$baseline" ]; then
-              break
-            fi
-
-            if [ "$latest" != "$baseline" ]; then
-              echo "main moved to ${latest}; merging and retrying"
-              git merge --no-edit origin/main
-              git diff --check
-              continue
-            fi
-
-            exit "$test_status"
-          done
-
-          if [ "$test_status" -ne 0 ]; then
-            exit "$test_status"
-          fi
-
-          if [ "$(git rev-parse origin/main)" != "$baseline" ]; then
-            echo "main kept moving through all validation attempts"
-            exit 1
-          fi
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
 
       - name: Finalize validated branch
         shell: bash
