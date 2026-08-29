@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime;
@@ -88,11 +89,7 @@ internal static class StartupWorldCreationRequestParser
             return false;
         }
 
-        if (!ulong.TryParse(seedValue, NumberStyles.None, CultureInfo.InvariantCulture, out ulong seed))
-        {
-            error = "--world-seed must be an unsigned 64-bit integer.";
-            return false;
-        }
+        ulong seed = ResolvePortableSeed(seedValue!);
 
         if (!int.TryParse(widthValue, NumberStyles.None, CultureInfo.InvariantCulture, out int width) || width < 1)
         {
@@ -327,5 +324,22 @@ internal static class StartupWorldCreationRequestParser
         }
 
         return true;
+    }
+
+    private static ulong ResolvePortableSeed(string value)
+    {
+        if (ulong.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out ulong numeric))
+            return numeric;
+
+        // Non-vanilla custom generators still need a stable numeric request seed when textual seed syntax is used.
+        // Vanilla ignores this fallback and resolves SeedText through the Terraria CRC32 path in Core.
+        ulong hash = 14695981039346656037UL;
+        foreach (byte item in Encoding.UTF8.GetBytes(value))
+        {
+            hash ^= item;
+            hash *= 1099511628211UL;
+        }
+
+        return hash;
     }
 }
