@@ -11,6 +11,9 @@ using TerraRuntime.Operations;
 using TerraRuntime.Protocol;
 using TerraRuntime.TerminalUI;
 using TerraRuntime.World;
+using StructuredLogCategory = TerraRuntime.Contracts.Diagnostics.RuntimeLogCategory;
+using StructuredLogContext = TerraRuntime.Contracts.Diagnostics.RuntimeLogContext;
+using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEventIds;
 
 namespace TerraRuntime;
 
@@ -33,7 +36,7 @@ public static class TerrariaServerHost
     {
         ArgumentNullException.ThrowIfNull(options);
         var runtimeLogs = new RuntimeLogBuffer();
-        var hostLog = new RuntimeHostLog(runtimeLogs);
+        await using var hostLog = new RuntimeHostLog(runtimeLogs);
 
         IInterestManagementControl runtimeInterestManagement =
             interestManagement ?? new InterestManagementControl(options.InterestManagementEnabled);
@@ -41,15 +44,37 @@ public static class TerrariaServerHost
             runtimeInterestManagement.SetEnabled(true);
 
         if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
-            Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
+        {
+            hostLog.Log(
+                RuntimeLogLevel.Warning,
+                StructuredLogEventIds.PersistenceCanonicalCleanupFailed,
+                StructuredLogCategory.Persistence,
+                "WorldSave",
+                $"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.",
+                useStandardError: true);
+        }
 
         string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
         if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
-            Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
+        {
+            hostLog.Log(
+                RuntimeLogLevel.Warning,
+                StructuredLogEventIds.PersistenceBackupCleanupFailed,
+                StructuredLogCategory.Persistence,
+                "WorldSave",
+                $"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.",
+                useStandardError: true);
+        }
 
         if (!File.Exists(options.WorldPath))
         {
-            Console.Error.WriteLine($"World file not found: {options.WorldPath}");
+            hostLog.Log(
+                RuntimeLogLevel.Error,
+                StructuredLogEventIds.WorldFileMissing,
+                StructuredLogCategory.World,
+                "World",
+                $"World file not found: {options.WorldPath}",
+                useStandardError: true);
             return 24;
         }
 
@@ -70,7 +95,13 @@ public static class TerrariaServerHost
         if (!RuntimeWorldSnapshotCache.TryCaptureSourceStamp(options.WorldPath, out RuntimeWorldSourceStamp sourceStamp))
         {
             sourceStatDuration = Stopwatch.GetElapsedTime(sourceStatStart);
-            Console.Error.WriteLine($"Failed to stat world file '{options.WorldPath}'.");
+            hostLog.Log(
+                RuntimeLogLevel.Error,
+                StructuredLogEventIds.WorldSourceStatFailed,
+                StructuredLogCategory.World,
+                "World",
+                $"Failed to stat world file '{options.WorldPath}'.",
+                useStandardError: true);
             return 25;
         }
         sourceStatDuration = Stopwatch.GetElapsedTime(sourceStatStart);
@@ -94,7 +125,13 @@ public static class TerrariaServerHost
             sourceStatDuration += Stopwatch.GetElapsedTime(verifyStatStart);
             if (!statOk)
             {
-                Console.Error.WriteLine($"Failed to re-stat world file '{options.WorldPath}' after cache load.");
+                hostLog.Log(
+                    RuntimeLogLevel.Error,
+                    StructuredLogEventIds.WorldSourceRestatFailed,
+                    StructuredLogCategory.World,
+                    "World",
+                    $"Failed to re-stat world file '{options.WorldPath}' after cache load.",
+                    useStandardError: true);
                 return 25;
             }
 
@@ -109,15 +146,24 @@ public static class TerrariaServerHost
         TimeSpan worldReadyDuration;
         if (cacheDiagnostic.IsLoaded && world is not null)
         {
+            hostLog.SetWorldId(world.Header.WorldId.ToString());
             runtimeCacheHit = true;
             worldReadyDuration = Stopwatch.GetElapsedTime(startupStart);
-            Console.WriteLine($"Runtime world cache hit: '{runtimeCachePath}'.");
+            hostLog.Log(
+                RuntimeLogLevel.Information,
+                StructuredLogEventIds.WorldCacheHit,
+                StructuredLogCategory.World,
+                "World",
+                $"Runtime world cache hit: '{runtimeCachePath}'.");
         }
         else
         {
-            Console.WriteLine(
-                $"Runtime world cache miss: result={cacheDiagnostic.Result}, code={cacheDiagnostic.DetailCode}; " +
-                "falling back to canonical .wld.");
+            hostLog.Log(
+                RuntimeLogLevel.Information,
+                StructuredLogEventIds.WorldCacheMiss,
+                StructuredLogCategory.World,
+                "World",
+                $"Runtime world cache miss: result={cacheDiagnostic.Result}, code={cacheDiagnostic.DetailCode}; falling back to canonical .wld.");
 
             StableWorldReadResult stableRead = await ReadStableWorldAsync(
                 options.WorldPath,
@@ -125,7 +171,13 @@ public static class TerrariaServerHost
             fileReadDuration = stableRead.Duration;
             if (!stableRead.Success || stableRead.Bytes is null)
             {
-                Console.Error.WriteLine(stableRead.Error ?? $"Failed to read world file '{options.WorldPath}'.");
+                hostLog.Log(
+                    RuntimeLogLevel.Error,
+                    StructuredLogEventIds.WorldReadFailed,
+                    StructuredLogCategory.World,
+                    "World",
+                    stableRead.Error ?? $"Failed to read world file '{options.WorldPath}'.",
+                    useStandardError: true);
                 return 25;
             }
 
@@ -138,13 +190,23 @@ public static class TerrariaServerHost
                 out canonicalLoadProfile);
             if (!diagnostic.IsLoaded || world is null)
             {
-                Console.Error.WriteLine(
-                    $"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.");
+                hostLog.Log(
+                    RuntimeLogLevel.Error,
+                    StructuredLogEventIds.WorldLoadFailed,
+                    StructuredLogCategory.World,
+                    "World",
+                    $"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.",
+                    useStandardError: true);
 
                 if (!RuntimeWorldCheckpointRecovery.CanAutomaticallyRestoreAfter(diagnostic))
                 {
-                    Console.Error.WriteLine(
-                        "Automatic checkpoint recovery is suppressed for an explicitly incompatible world-file version.");
+                    hostLog.Log(
+                        RuntimeLogLevel.Error,
+                        StructuredLogEventIds.WorldRecoverySuppressed,
+                        StructuredLogCategory.World,
+                        "World",
+                        "Automatic checkpoint recovery is suppressed for an explicitly incompatible world-file version.",
+                        useStandardError: true);
                     return 26;
                 }
 
@@ -154,18 +216,27 @@ public static class TerrariaServerHost
                         worldLoadLimits).ConfigureAwait(false);
                 if (!recovery.IsRestored)
                 {
-                    Console.Error.WriteLine(
-                        $"World checkpoint recovery failed: result={recovery.Result}, " +
-                        $"load_result={recovery.LoadResult}, stage={recovery.LoadStage}, code={recovery.StageResultCode}.");
+                    hostLog.Log(
+                        RuntimeLogLevel.Error,
+                        StructuredLogEventIds.WorldCheckpointRecoveryFailed,
+                        StructuredLogCategory.World,
+                        "World",
+                        $"World checkpoint recovery failed: result={recovery.Result}, load_result={recovery.LoadResult}, stage={recovery.LoadStage}, code={recovery.StageResultCode}.",
+                        useStandardError: true);
                     return 26;
                 }
 
-                Console.WriteLine(
-                    $"Canonical world recovered from validated checkpoint backup: " +
-                    $"{RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath)}.");
+                hostLog.Log(
+                    RuntimeLogLevel.Information,
+                    StructuredLogEventIds.WorldCheckpointRecovered,
+                    StructuredLogCategory.World,
+                    "World",
+                    $"Canonical world recovered from validated checkpoint backup: {RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath)}.");
+                await hostLog.DisposeAsync().ConfigureAwait(false);
                 return await RunAsync(options, runtimeInterestManagement, hostLifecycle).ConfigureAwait(false);
             }
 
+            hostLog.SetWorldId(world.Header.WorldId.ToString());
             worldReadyDuration = Stopwatch.GetElapsedTime(startupStart);
             long cacheWriteStart = Stopwatch.GetTimestamp();
             RuntimeWorldSnapshotWriteDiagnostic cacheWrite = RuntimeWorldSnapshotCache.TryWriteAtomic(
@@ -176,13 +247,22 @@ public static class TerrariaServerHost
             cacheWriteDuration = Stopwatch.GetElapsedTime(cacheWriteStart);
             if (cacheWrite.IsWritten)
             {
-                Console.WriteLine($"Runtime world cache rebuilt: '{runtimeCachePath}'.");
+                hostLog.Log(
+                    RuntimeLogLevel.Information,
+                    StructuredLogEventIds.PersistenceWorldCacheRebuilt,
+                    StructuredLogCategory.Persistence,
+                    "WorldCache",
+                    $"Runtime world cache rebuilt: '{runtimeCachePath}'.");
             }
             else
             {
-                Console.Error.WriteLine(
-                    $"Runtime world cache rebuild skipped/failed: result={cacheWrite.Result}. " +
-                    "The canonical .wld remains the recovery checkpoint.");
+                hostLog.Log(
+                    RuntimeLogLevel.Warning,
+                    StructuredLogEventIds.PersistenceWorldCacheWriteFailed,
+                    StructuredLogCategory.Persistence,
+                    "WorldCache",
+                    $"Runtime world cache rebuild skipped/failed: result={cacheWrite.Result}. The canonical .wld remains the recovery checkpoint.",
+                    useStandardError: true);
             }
         }
 
@@ -194,14 +274,21 @@ public static class TerrariaServerHost
             out WorldFilePreservedSections? worldSaveTemplate);
         if (!saveTemplateLoad.Success || worldSaveTemplate is null)
         {
-            Console.Error.WriteLine(
-                $"World save template load failed: source={saveTemplateLoad.Source}, " +
-                $"cache_result={saveTemplateLoad.CacheResult}, error={saveTemplateLoad.Error ?? "unknown"}. " +
-                "Refusing to start a mutable world without a canonical persistence checkpoint.");
+            hostLog.Log(
+                RuntimeLogLevel.Error,
+                StructuredLogEventIds.PersistenceSaveTemplateLoadFailed,
+                StructuredLogCategory.Persistence,
+                "WorldSave",
+                $"World save template load failed: source={saveTemplateLoad.Source}, cache_result={saveTemplateLoad.CacheResult}, error={saveTemplateLoad.Error ?? "unknown"}. Refusing to start a mutable world without a canonical persistence checkpoint.",
+                useStandardError: true);
             return 30;
         }
 
-        Console.WriteLine(
+        hostLog.Log(
+            RuntimeLogLevel.Information,
+            StructuredLogEventIds.PersistenceSaveTemplateReady,
+            StructuredLogCategory.Persistence,
+            "WorldSave",
             $"World save template ready: source={saveTemplateLoad.Source}, cache_result={saveTemplateLoad.CacheResult}.");
 
         string runtimeBootstrapCachePath = RuntimeBootstrapSnapshotCache.GetCachePath(options.WorldPath);
@@ -220,7 +307,12 @@ public static class TerrariaServerHost
             bootstrapPackets = cachedBootstrapPackets;
             bootstrapCacheHit = true;
             bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
-            Console.WriteLine($"Runtime bootstrap cache hit: '{runtimeBootstrapCachePath}'.");
+            hostLog.Log(
+                RuntimeLogLevel.Information,
+                StructuredLogEventIds.WorldBootstrapCacheHit,
+                StructuredLogCategory.World,
+                "Bootstrap",
+                $"Runtime bootstrap cache hit: '{runtimeBootstrapCachePath}'.");
         }
         else
         {
@@ -232,7 +324,13 @@ public static class TerrariaServerHost
             catch (Exception exception) when (exception is InvalidOperationException or OverflowException)
             {
                 bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
-                Console.Error.WriteLine($"Failed to prepare join bootstrap packets: {exception.Message}");
+                hostLog.Log(
+                    RuntimeLogLevel.Error,
+                    StructuredLogEventIds.WorldBootstrapPreparationFailed,
+                    StructuredLogCategory.World,
+                    "Bootstrap",
+                    $"Failed to prepare join bootstrap packets: {exception.Message}",
+                    useStandardError: true);
                 return 27;
             }
 
@@ -245,12 +343,22 @@ public static class TerrariaServerHost
             bootstrapCacheWriteDuration = Stopwatch.GetElapsedTime(bootstrapCacheWriteStart);
             if (bootstrapCacheWrite.IsWritten)
             {
-                Console.WriteLine($"Runtime bootstrap cache rebuilt: '{runtimeBootstrapCachePath}'.");
+                hostLog.Log(
+                    RuntimeLogLevel.Information,
+                    StructuredLogEventIds.PersistenceBootstrapCacheRebuilt,
+                    StructuredLogCategory.Persistence,
+                    "Bootstrap",
+                    $"Runtime bootstrap cache rebuilt: '{runtimeBootstrapCachePath}'.");
             }
             else
             {
-                Console.Error.WriteLine(
-                    $"Runtime bootstrap cache rebuild skipped/failed: result={bootstrapCacheWrite.Result}.");
+                hostLog.Log(
+                    RuntimeLogLevel.Warning,
+                    StructuredLogEventIds.PersistenceBootstrapCacheWriteFailed,
+                    StructuredLogCategory.Persistence,
+                    "Bootstrap",
+                    $"Runtime bootstrap cache rebuild skipped/failed: result={bootstrapCacheWrite.Result}.",
+                    useStandardError: true);
             }
         }
 
@@ -439,7 +547,13 @@ public static class TerrariaServerHost
                 catch (Exception exception)
                 {
                     string message = $"Trusted host runtime attachment failed: {exception.Message}";
-                    hostLog.Write(RuntimeLogLevel.Error, "HostModule", message, useStandardError: true);
+                    hostLog.Log(
+                        RuntimeLogLevel.Error,
+                        StructuredLogEventIds.PluginHostRuntimeAttachFailed,
+                        StructuredLogCategory.Plugin,
+                        "HostModule",
+                        message,
+                        useStandardError: true);
                     return 29;
                 }
             }
@@ -449,8 +563,12 @@ public static class TerrariaServerHost
                 0L,
                 GC.GetTotalAllocatedBytes(precise: false) - allocatedBytesAtStart);
             string startupProfile = FormattableString.Invariant($"startup_profile source={(runtimeCacheHit ? "runtime-cache" : "canonical-wld")} cache_result={cacheDiagnostic.Result} cache_parallel_reads={RuntimeWorldCacheReadOptions.Default.MaxParallelReads} source_stat_ms={sourceStatDuration.TotalMilliseconds:F3} file_read_ms={fileReadDuration.TotalMilliseconds:F3} cache_load_ms={cacheLoadDuration.TotalMilliseconds:F3} wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} bootstrap_cache_hit={(bootstrapCacheHit ? "true" : "false")} bootstrap_cache_result={bootstrapCacheDiagnostic.Result} bootstrap_cache_load_ms={bootstrapCacheLoadDuration.TotalMilliseconds:F3} bootstrap_cache_write_ms={bootstrapCacheWriteDuration.TotalMilliseconds:F3} bootstrap_ms={bootstrapDuration.TotalMilliseconds:F3} world_ready_ms={worldReadyDuration.TotalMilliseconds:F3} network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
-            Console.WriteLine(startupProfile);
-            runtimeLogs.Publish(RuntimeLogLevel.Debug, "Startup", startupProfile);
+            hostLog.Log(
+                RuntimeLogLevel.Debug,
+                StructuredLogEventIds.StartupProfile,
+                StructuredLogCategory.Lifecycle,
+                "Startup",
+                startupProfile);
 
             string listeningMessage =
                 $"TerraRuntime listening on 0.0.0.0:{options.Port}; " +
@@ -458,8 +576,12 @@ public static class TerrariaServerHost
                 $"maxPlayers={options.MaxPlayers}; " +
                 $"interestManagement={(runtimeInterestManagement.IsEnabled ? "enabled" : "disabled")}; " +
                 $"tui={(options.TerminalUiEnabled ? "enabled" : "disabled")}.";
-            Console.WriteLine(listeningMessage);
-            runtimeLogs.Publish(RuntimeLogLevel.Information, "Server", listeningMessage);
+            hostLog.Log(
+                RuntimeLogLevel.Information,
+                StructuredLogEventIds.NetworkListenerReady,
+                StructuredLogCategory.Network,
+                "Server",
+                listeningMessage);
 
             if (options.TerminalUiEnabled)
             {
@@ -516,8 +638,10 @@ public static class TerrariaServerHost
                         worldOperations,
                         runtimeLogs,
                         hostLog.SetTerminalUiActive,
-                        message => hostLog.Write(
+                        message => hostLog.Log(
                             RuntimeLogLevel.Error,
+                            StructuredLogEventIds.OperationsTerminalUiFailed,
+                            StructuredLogCategory.Operations,
                             "TerminalUI",
                             message,
                             useStandardError: true),
@@ -529,7 +653,13 @@ public static class TerrariaServerHost
                 {
                     string message =
                         $"Terminal UI could not start; continuing in plain-console mode: {exception.Message}";
-                    hostLog.Write(RuntimeLogLevel.Error, "TerminalUI", message, useStandardError: true);
+                    hostLog.Log(
+                        RuntimeLogLevel.Error,
+                        StructuredLogEventIds.OperationsTerminalUiFailed,
+                        StructuredLogCategory.Operations,
+                        "TerminalUI",
+                        message,
+                        useStandardError: true);
                 }
             }
 
@@ -546,8 +676,10 @@ public static class TerrariaServerHost
                 }
                 catch (SocketException exception) when (!shutdown.IsCancellationRequested)
                 {
-                    hostLog.Write(
+                    hostLog.Log(
                         RuntimeLogLevel.Warning,
+                        StructuredLogEventIds.NetworkAcceptFailed,
+                        StructuredLogCategory.Network,
                         "Network",
                         $"Accept failed: {exception.SocketErrorCode}.",
                         useStandardError: true);
@@ -603,7 +735,13 @@ public static class TerrariaServerHost
         catch (SocketException exception)
         {
             string message = $"Failed to start listener on port {options.Port}: {exception.Message}";
-            hostLog.Write(RuntimeLogLevel.Error, "Network", message, useStandardError: true);
+            hostLog.Log(
+                RuntimeLogLevel.Error,
+                StructuredLogEventIds.NetworkListenerStartFailed,
+                StructuredLogCategory.Network,
+                "Network",
+                message,
+                useStandardError: true);
             return 28;
         }
         finally
@@ -622,7 +760,13 @@ public static class TerrariaServerHost
                 catch (Exception exception)
                 {
                     string message = $"Connection shutdown observed a fault: {exception.Message}";
-                    hostLog.Write(RuntimeLogLevel.Error, "Runtime", message, useStandardError: true);
+                    hostLog.Log(
+                        RuntimeLogLevel.Error,
+                        StructuredLogEventIds.NetworkShutdownFault,
+                        StructuredLogCategory.Network,
+                        "Network",
+                        message,
+                        useStandardError: true);
                 }
             }
 
@@ -635,7 +779,13 @@ public static class TerrariaServerHost
                 catch (Exception exception)
                 {
                     string message = $"Trusted host runtime detach failed: {exception.Message}";
-                    hostLog.Write(RuntimeLogLevel.Error, "HostModule", message, useStandardError: true);
+                    hostLog.Log(
+                        RuntimeLogLevel.Error,
+                        StructuredLogEventIds.PluginHostRuntimeDetachFailed,
+                        StructuredLogCategory.Plugin,
+                        "HostModule",
+                        message,
+                        useStandardError: true);
                 }
             }
 
@@ -646,14 +796,26 @@ public static class TerrariaServerHost
             {
                 const string message =
                     "Accepted authoritative commands did not drain before shutdown; the canonical world checkpoint will not be replaced.";
-                hostLog.Write(RuntimeLogLevel.Error, "WorldSave", message, useStandardError: true);
+                hostLog.Log(
+                    RuntimeLogLevel.Error,
+                    StructuredLogEventIds.ShutdownCommandDrainTimedOut,
+                    StructuredLogCategory.Lifecycle,
+                    "Runtime",
+                    message,
+                    useStandardError: true);
             }
 
             bool gameLoopStopped = gameLoop.Stop(TimeSpan.FromSeconds(5));
             if (!gameLoopStopped)
             {
                 const string message = "Authoritative game loop did not stop within the shutdown deadline.";
-                hostLog.Write(RuntimeLogLevel.Error, "Runtime", message, useStandardError: true);
+                hostLog.Log(
+                    RuntimeLogLevel.Error,
+                    StructuredLogEventIds.GameLoopStopTimedOut,
+                    StructuredLogCategory.Lifecycle,
+                    "Runtime",
+                    message,
+                    useStandardError: true);
             }
             else if (commandsDrained && gameLoop.Fault is null)
             {
@@ -663,16 +825,20 @@ public static class TerrariaServerHost
                     await worldSaveService.CompleteAsync(CancellationToken.None).ConfigureAwait(false);
                     InvalidateRuntimeCache(runtimeCachePath, hostLog);
                     InvalidateRuntimeCache(runtimeBootstrapCachePath, hostLog);
-                    hostLog.Write(
+                    hostLog.Log(
                         RuntimeLogLevel.Information,
+                        StructuredLogEventIds.PersistenceWorldCheckpointCommitted,
+                        StructuredLogCategory.Persistence,
                         "WorldSave",
                         $"Canonical tile/chest/clock world checkpoint committed: '{options.WorldPath}'.");
                 }
                 catch (Exception exception) when (
                     exception is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
                 {
-                    hostLog.Write(
+                    hostLog.Log(
                         RuntimeLogLevel.Error,
+                        StructuredLogEventIds.PersistenceWorldCheckpointSaveFailed,
+                        StructuredLogCategory.Persistence,
                         "WorldSave",
                         $"Canonical world save failed; the previous checkpoint remains authoritative: {exception.Message}",
                         useStandardError: true);
@@ -680,8 +846,10 @@ public static class TerrariaServerHost
             }
             else if (gameLoop.Fault is Exception gameLoopFault)
             {
-                hostLog.Write(
+                hostLog.Log(
                     RuntimeLogLevel.Error,
+                    StructuredLogEventIds.PersistenceWorldCheckpointSuppressedByLoopFault,
+                    StructuredLogCategory.Persistence,
                     "WorldSave",
                     $"Authoritative loop faulted; refusing to overwrite the last canonical checkpoint: {gameLoopFault.Message}",
                     useStandardError: true);
@@ -725,7 +893,17 @@ public static class TerrariaServerHost
     {
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
         GameCommandSourceId source = GameCommandSourceId.FromConnection(connectionId);
-        hostLog.Publish(RuntimeLogLevel.Information, "Network", $"Connection {connectionId} accepted from {remote}.");
+        var connectionContext = new StructuredLogContext(
+            CorrelationId: $"connection-{connectionId}",
+            ConnectionId: connectionId.ToString());
+        hostLog.Log(
+            RuntimeLogLevel.Information,
+            StructuredLogEventIds.NetworkConnectionAccepted,
+            StructuredLogCategory.Network,
+            "Network",
+            $"Connection {connectionId} accepted from {remote}.",
+            connectionContext,
+            bufferedOnly: !hostLog.IsPlainConsoleActive);
 
         using (admissionLease)
         {
@@ -891,14 +1069,27 @@ public static class TerrariaServerHost
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
                         $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, chests={chestSink.StopReason}, signs={signSink.StopReason}, tiles={projectileSink.TileStopReason}, state={bootstrapSink.JoinState}; " +
                         $"inbound={result.Inbound}; rate={result.Rate}; outbound={result.Outbound.Reason}.";
-                    hostLog.Write(RuntimeLogLevel.Information, "Network", message);
+                    hostLog.Log(
+                        RuntimeLogLevel.Information,
+                        StructuredLogEventIds.NetworkConnectionStopped,
+                        StructuredLogCategory.Network,
+                        "Network",
+                        message,
+                        connectionContext);
                 }
                 catch (Exception exception) when (exception is IOException or SocketException or OperationCanceledException)
                 {
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         string message = $"Connection {connectionId} ({remote}) failed: {exception.Message}";
-                        hostLog.Write(RuntimeLogLevel.Warning, "Network", message, useStandardError: true);
+                        hostLog.Log(
+                            RuntimeLogLevel.Warning,
+                            StructuredLogEventIds.NetworkConnectionFailed,
+                            StructuredLogCategory.Network,
+                            "Network",
+                            message,
+                            connectionContext,
+                            useStandardError: true);
                     }
                 }
                 catch
@@ -927,7 +1118,14 @@ public static class TerrariaServerHost
                     {
                         string message =
                             $"Connection {connectionId} ({remote}) could not enqueue authoritative disconnect for {player}.";
-                        hostLog.Write(RuntimeLogLevel.Warning, "Runtime", message, useStandardError: true);
+                        hostLog.Log(
+                            RuntimeLogLevel.Warning,
+                            StructuredLogEventIds.NetworkDisconnectEnqueueFailed,
+                            StructuredLogCategory.Network,
+                            "Network",
+                            message,
+                            connectionContext with { PlayerHandle = player.ToString() },
+                            useStandardError: true);
                     }
                 }
             }
@@ -965,8 +1163,10 @@ public static class TerrariaServerHost
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            hostLog.Write(
+            hostLog.Log(
                 RuntimeLogLevel.Warning,
+                StructuredLogEventIds.PersistenceRuntimeCacheInvalidationFailed,
+                StructuredLogCategory.Persistence,
                 "WorldSave",
                 $"Saved canonical world but could not invalidate runtime cache '{path}': {exception.Message}",
                 useStandardError: true);

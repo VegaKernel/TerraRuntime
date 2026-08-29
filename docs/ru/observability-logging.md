@@ -2,25 +2,27 @@
 
 [English](../en/observability-logging.md) · [Документация](README.md) · [Operations/TUI](operations-tui.md) · [Logging roadmap](../roadmap/runtime-logging-pipeline.md)
 
-TerraRuntime уже имеет **L0-L2 structured logging foundation** и первый live-host slice этапа L3. `RuntimeHostLog` теперь публикует события в bounded structured pipeline; legacy operations read model и совместимое поведение stdout/stderr стали worker-owned sinks вместо synchronous работы producer thread. Оставшиеся прямые `Console.*` в startup/world-host остаются явной задачей L3.
+В TerraRuntime уже есть **L0-L2 structured logging foundation**, а live-host путь L3 существенно продвинут. Startup, загрузка/cache/recovery мира, persistence, lifecycle listener/connection, lifecycle trusted host module, shutdown failures и TUI failures теперь идут в bounded structured pipeline с semantic event IDs. Обычный lifetime `TerrariaServerHost.RunAsync` явно dispose'ит и drain'ит logger на любом return path.
 
 ## Архитектура
 
 ```mermaid
 graph LR
-    P[RuntimeHostLog producer] -->|TryPublish, never waits| Q[Bounded MPSC channel]
+    P[Runtime producer] -->|semantic event + detached context + TryPublish| Q[Bounded MPSC channel]
     Q --> W[Single background drain worker]
     W --> O[Legacy RuntimeLogBuffer adapter]
-    W --> C[Compatibility stdout/stderr sink]
+    W --> C[Compatibility stdout/stderr delivery]
     W --> J[Rotating JSONL sink при composition]
     W --> R[Structured recent-log store при composition]
 ```
 
-Мигрированный bridge фиксирует маршрут консоли в момент enqueue. Record заранее получает режим buffered-only, stdout или stderr, поэтому последующее изменение состояния TUI не может задним числом перенаправить уже принятое сообщение.
+Semantic identity и локальная console delivery теперь намеренно разделены. `RuntimeLogRecord.EventId` описывает **что произошло**. Host-local delivery hint идёт рядом с record во внутреннем pipeline envelope и сообщает только delivery-aware sink, нужно ли принятое событие оставить buffered, отправить в stdout или stderr. Обычные structured sinks получают только `RuntimeLogRecord`, поэтому console routing не может случайно превратиться в semantic event identity.
+
+Delivery hint фиксируется до enqueue, поэтому последующее изменение состояния TUI не может задним числом перенаправить уже принятое событие.
 
 ## Ограничение producer path
 
-Producer path только нормализует bounded scalar text, назначает sequence/timestamp и вызывает `ChannelWriter.TryWrite`. Disk I/O, console I/O, JSON encoding, flush, rotation, retention и обработка sink failure выполняются вне authoritative producer path.
+Producer path нормализует bounded scalar text/context, назначает sequence/timestamp и вызывает `ChannelWriter.TryWrite`. Disk I/O, console I/O, JSON encoding, flush, rotation, retention и обработка sink failure выполняются вне authoritative producer path.
 
 При capacity очереди \(N_q\) и reserve для warning/error \(N_r\) normal records могут занять не больше
 
@@ -48,30 +50,42 @@ Defaults остаются \(N_q=2048\) и \(N_r=256\). `Warning`, `Error` и `Cr
 | `8000-8999` | Operations |
 | `9000-9999` | Security |
 
-L3 compatibility bridge резервирует `8000-8002` для buffered-only, stdout и stderr delivery. Это transitional routing IDs, а не финальные semantic IDs исходных call sites. При миграции конкретных subsystem families они получают свои стабильные semantic IDs.
+Legacy bridge по-прежнему резервирует `8000-8002` для старых callers `RuntimeHostLog.Write`/`Publish`. Новые live-host call sites эти ID больше не используют. Для lifecycle, network, world, persistence, plugin/host integration и operations событий назначены финальные category-specific IDs. `8003` является semantic event для отказа Terminal UI.
 
-## Миграция RuntimeHostLog
+Protocol, gameplay и security IDs выделяются тогда, когда реально мигрируют соответствующие semantic call-site families; runtime не выдумывает события только ради заполнения диапазонов.
 
-`RuntimeHostLog.Write` и `RuntimeHostLog.Publish` больше не вызывают `TextWriter.WriteLine` или `RuntimeLogBuffer.Publish` на caller thread. Оба действия выполняются sinks за `RuntimeLogPipeline`.
+## Live-host context
 
-Совместимое поведение сохраняется:
+`RuntimeHostLog` добавляет run-scoped correlation identifier к semantic events, если caller не передал более узкую correlation. После загрузки мира также добавляется стабильный world ID. Connection lifecycle events используют один connection-scoped correlation ID и `ConnectionId`; если при ошибке disconnect уже известен authoritative player handle, он добавляется как `PlayerHandle`.
 
-- при active TUI host messages сохраняются, но не ломают terminal dashboard;
-- после fallback TUI в plain console `Publish` снова может идти в stdout;
-- явные stderr writes остаются stderr writes;
-- существующий `RuntimeLogBuffer` продолжает кормить current TUI/read model на переходном этапе.
+Entity и packet context остаются полями того же detached contract, но заполняются только call sites, которые действительно владеют проверенными entity/packet identifiers. Raw packet payload и mutable runtime object в logging не удерживаются.
 
-Bridge имеет bounded process-exit drain fallback и `DisposeAsync` для explicit lifecycle ownership. Подключение explicit disposal к полному normal server-host shutdown остаётся открытой задачей L3; fallback нужен, чтобы обычный process exit не бросал worker без bounded попытки drain.
+## RuntimeHostLog adoption
+
+Следующие families в `TerrariaServerHost` теперь structured и больше не вызывают напрямую `Console.WriteLine`, `Console.Error.WriteLine` или `RuntimeLogBuffer.Publish`:
+
+- cleanup abandoned-save и подготовка save template;
+- stat/read/load world source, runtime cache hit/miss/rebuild, checkpoint recovery и bootstrap cache preparation;
+- startup profile и listener-ready/failure events;
+- failures attach/detach trusted host module;
+- connection accept/stop/failure и shutdown faults;
+- TUI startup/runtime failures;
+- дедлайны authoritative command drain и остановки game loop;
+- success/failure финального canonical world save и failures invalidation runtime cache.
+
+`Console.CancelKeyPress` остаётся control/lifecycle signal, а не logging call, поэтому намеренно не меняется. `TerminalUiHost` продолжает владеть интерактивным console rendering/input в plain-console mode; пользовательский интерфейс не является runtime log sink.
+
+`TerrariaServerHost.RunAsync` владеет `RuntimeHostLog` через `await using`. Поэтому early startup failure, listener failure, normal shutdown и успешный return проходят один и тот же bounded drain/disposal pipeline. Process-exit handler остаётся только fallback для аварийной потери ownership.
 
 ## Backpressure и sink health
 
 `RuntimeLogPipeline` публикует accepted/filtered counts, per-severity drops, drained count, sink failures, queue depth и high-water mark. Sink failures изолированы; repeatedly failing sink quarantine'ится, а healthy sinks продолжают работу.
 
-Blocked compatibility console writer больше не блокирует caller, который создал runtime event. Тест специально удерживает writer и проверяет, что producer завершился до release worker'а.
+Blocked compatibility console writer не может блокировать producer. Delivery-aware console routing всё равно выполняется только drain worker'ом.
 
 ## Built-in sinks
 
-`RuntimeConsoleLogSink` даёт structured human-readable console output. `RuntimeJsonLinesLogSink` пишет NativeAOT-safe JSONL через explicit `Utf8JsonWriter`, с size/day rotation и bounded retention. `RuntimeRecentLogStore` является structured bounded ring, который должен заменить transitional `RuntimeLogBuffer` adapter в следующем L3/L4 slice.
+`RuntimeConsoleLogSink` даёт structured human-readable console output. `RuntimeJsonLinesLogSink` пишет NativeAOT-safe JSONL через explicit `Utf8JsonWriter`, с size/day rotation и bounded retention. `RuntimeRecentLogStore` остаётся structured bounded ring, который должен заменить transitional `RuntimeLogBuffer` adapter в следующем L3 slice.
 
 Default JSONL policy:
 
@@ -87,17 +101,15 @@ Default JSONL policy:
 
 ## NativeAOT constraints
 
-Pipeline использует BCL channels, explicit contracts и manual JSON writing. Runtime type discovery, dynamic serializer generation и reflection-driven log schema отсутствуют.
+Pipeline использует BCL channels, explicit contracts и manual JSON writing. Host-local delivery envelope не добавляет dependency, reflection, runtime type discovery, dynamic serializer generation или runtime code generation.
 
 ## Оставшаяся L3 adoption
 
-Следующий live-host slice должен:
+Оставшаяся работа L3 теперь уже:
 
-- заменить оставшиеся прямые `Console.*` startup/world-host на structured events;
-- выделить финальные semantic IDs для lifecycle, world, persistence, network, protocol, gameplay, plugin и security call-site families;
-- протащить detached correlation/world/connection/player/entity/packet context;
 - перевести TUI operations consumption с compatibility `RuntimeLogBuffer` adapter на `RuntimeRecentLogStore`;
 - определить runtime logging configuration для minimum level, enabled sinks, directory, capacities, retention и timeouts;
-- сделать explicit logging disposal частью normal server-host shutdown вместо зависимости от process-exit fallback.
+- выделять semantic event IDs и detached entity/packet context при фактической миграции protocol/gameplay/security families;
+- закончить оставшиеся legacy callers `RuntimeHostLog.Write`/`Publish` вне уже мигрированных families `TerrariaServerHost`, после чего убрать bridge IDs `8000-8002`.
 
 Подробный milestone state находится в [`../roadmap/runtime-logging-pipeline.md`](../roadmap/runtime-logging-pipeline.md).

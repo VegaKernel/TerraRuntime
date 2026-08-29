@@ -10,6 +10,8 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
 {
     private readonly RuntimeLogPipeline pipeline;
     private readonly EventHandler processExitHandler;
+    private readonly string correlationId;
+    private string? worldId;
     private int processExitRegistered = 1;
     private int terminalUiActive;
     private int terminalUiSeen;
@@ -24,18 +26,27 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         RuntimeLogBuffer runtimeLogs,
         TextWriter standardOutput,
         TextWriter standardError,
-        RuntimeLogPipelineOptions? pipelineOptions = null)
+        RuntimeLogPipelineOptions? pipelineOptions = null,
+        IReadOnlyList<IRuntimeLogSink>? additionalSinks = null,
+        string? correlationId = null)
     {
         ArgumentNullException.ThrowIfNull(runtimeLogs);
         ArgumentNullException.ThrowIfNull(standardOutput);
         ArgumentNullException.ThrowIfNull(standardError);
 
-        pipeline = new RuntimeLogPipeline(
-            [
-                new RuntimeOperationsLogSink(runtimeLogs),
-                new RuntimeHostConsoleSink(standardOutput, standardError)
-            ],
-            pipelineOptions);
+        this.correlationId = string.IsNullOrWhiteSpace(correlationId)
+            ? Guid.NewGuid().ToString("N")
+            : correlationId;
+
+        var sinks = new List<IRuntimeLogSink>(2 + (additionalSinks?.Count ?? 0))
+        {
+            new RuntimeOperationsLogSink(runtimeLogs),
+            new RuntimeHostConsoleSink(standardOutput, standardError)
+        };
+        if (additionalSinks is not null)
+            sinks.AddRange(additionalSinks);
+
+        pipeline = new RuntimeLogPipeline(sinks, pipelineOptions);
 
         processExitHandler = (_, _) => DisposeForProcessExit();
         AppDomain.CurrentDomain.ProcessExit += processExitHandler;
@@ -62,12 +73,51 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
             Volatile.Write(ref plainConsoleActive, 1);
     }
 
+    public void SetWorldId(string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        Volatile.Write(ref worldId, value);
+    }
+
+    /// <summary>
+    /// Publishes one semantic host event. Event identity/category remain independent from the local
+    /// stdout/stderr delivery hint carried beside the record inside the bounded pipeline.
+    /// </summary>
+    public void Log(
+        OperationsLogLevel level,
+        RuntimeLogEventId eventId,
+        RuntimeLogCategory category,
+        string source,
+        string message,
+        RuntimeLogContext context = default,
+        bool useStandardError = false,
+        bool bufferedOnly = false)
+    {
+        RuntimeLogDelivery delivery = bufferedOnly || IsTerminalUiActive
+            ? RuntimeLogDelivery.Buffered
+            : useStandardError
+                ? RuntimeLogDelivery.StandardError
+                : RuntimeLogDelivery.StandardOutput;
+
+        TryPublish(level, source, message, eventId, category, MergeContext(context), delivery);
+    }
+
     public void Publish(OperationsLogLevel level, string source, string message)
     {
         RuntimeLogEventId eventId = IsPlainConsoleActive
             ? RuntimeLogEventIds.HostBridgeStandardOutput
             : RuntimeLogEventIds.HostBridgeBuffered;
-        TryPublish(level, source, message, eventId);
+        RuntimeLogDelivery delivery = IsPlainConsoleActive
+            ? RuntimeLogDelivery.StandardOutput
+            : RuntimeLogDelivery.Buffered;
+        TryPublish(
+            level,
+            source,
+            message,
+            eventId,
+            RuntimeLogCategory.Operations,
+            MergeContext(default),
+            delivery);
     }
 
     public void Write(
@@ -81,7 +131,19 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
             : useStandardError
                 ? RuntimeLogEventIds.HostBridgeStandardError
                 : RuntimeLogEventIds.HostBridgeStandardOutput;
-        TryPublish(level, source, message, eventId);
+        RuntimeLogDelivery delivery = IsTerminalUiActive
+            ? RuntimeLogDelivery.Buffered
+            : useStandardError
+                ? RuntimeLogDelivery.StandardError
+                : RuntimeLogDelivery.StandardOutput;
+        TryPublish(
+            level,
+            source,
+            message,
+            eventId,
+            RuntimeLogCategory.Operations,
+            MergeContext(default),
+            delivery);
     }
 
     public async ValueTask DisposeAsync()
@@ -90,11 +152,21 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         await pipeline.DisposeAsync().ConfigureAwait(false);
     }
 
+    private RuntimeLogContext MergeContext(RuntimeLogContext context) =>
+        context with
+        {
+            CorrelationId = context.CorrelationId ?? correlationId,
+            WorldId = context.WorldId ?? Volatile.Read(ref worldId)
+        };
+
     private void TryPublish(
         OperationsLogLevel level,
         string source,
         string message,
-        RuntimeLogEventId eventId)
+        RuntimeLogEventId eventId,
+        RuntimeLogCategory category,
+        RuntimeLogContext context,
+        RuntimeLogDelivery delivery)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(message);
@@ -102,9 +174,11 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         pipeline.TryPublish(
             MapLevel(level),
             eventId,
-            RuntimeLogCategory.Operations,
+            category,
             source,
-            message);
+            message,
+            context,
+            delivery: delivery);
     }
 
     private void DisposeForProcessExit()
@@ -163,17 +237,23 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
 
     private sealed class RuntimeHostConsoleSink(
         TextWriter standardOutput,
-        TextWriter standardError) : IRuntimeLogSink
+        TextWriter standardError) : IRuntimeLogDeliverySink
     {
         public string Name => "host-console";
 
-        public ValueTask WriteAsync(RuntimeLogRecord record, CancellationToken cancellationToken)
+        public ValueTask WriteAsync(RuntimeLogRecord record, CancellationToken cancellationToken) =>
+            WriteAsync(record, RuntimeLogDelivery.Buffered, cancellationToken);
+
+        public ValueTask WriteAsync(
+            RuntimeLogRecord record,
+            RuntimeLogDelivery delivery,
+            CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (record.EventId == RuntimeLogEventIds.HostBridgeStandardOutput)
+            if (delivery == RuntimeLogDelivery.StandardOutput)
                 standardOutput.WriteLine(record.Message);
-            else if (record.EventId == RuntimeLogEventIds.HostBridgeStandardError)
+            else if (delivery == RuntimeLogDelivery.StandardError)
                 standardError.WriteLine(record.Message);
 
             return ValueTask.CompletedTask;

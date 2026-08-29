@@ -10,7 +10,7 @@ namespace TerraRuntime.Diagnostics;
 internal sealed class RuntimeLogPipeline : IAsyncDisposable
 {
     private readonly RuntimeLogPipelineOptions options;
-    private readonly Channel<RuntimeLogRecord> channel;
+    private readonly Channel<RuntimeLogEnvelope> channel;
     private readonly SinkState[] sinks;
     private readonly CancellationTokenSource stop = new();
     private readonly Task drainTask;
@@ -51,7 +51,7 @@ internal sealed class RuntimeLogPipeline : IAsyncDisposable
             throw new ArgumentException("At least one runtime log sink is required.", nameof(sinks));
 
         normalCapacity = this.options.QueueCapacity - this.options.PriorityReserve;
-        channel = Channel.CreateBounded<RuntimeLogRecord>(
+        channel = Channel.CreateBounded<RuntimeLogEnvelope>(
             new BoundedChannelOptions(this.options.QueueCapacity)
             {
                 FullMode = BoundedChannelFullMode.Wait,
@@ -70,7 +70,8 @@ internal sealed class RuntimeLogPipeline : IAsyncDisposable
         string subsystem,
         string message,
         RuntimeLogContext context = default,
-        Exception? exception = null)
+        Exception? exception = null,
+        RuntimeLogDelivery delivery = RuntimeLogDelivery.Buffered)
     {
         if (level < options.MinimumLevel)
         {
@@ -92,7 +93,7 @@ internal sealed class RuntimeLogPipeline : IAsyncDisposable
         }
 
         RuntimeLogRecord record = CreateRecord(level, eventId, category, subsystem, message, context, exception);
-        if (!channel.Writer.TryWrite(record))
+        if (!channel.Writer.TryWrite(new RuntimeLogEnvelope(record, delivery)))
         {
             if (normal)
                 Interlocked.Decrement(ref normalQueued);
@@ -218,8 +219,9 @@ internal sealed class RuntimeLogPipeline : IAsyncDisposable
     {
         try
         {
-            await foreach (RuntimeLogRecord record in channel.Reader.ReadAllAsync(stop.Token).ConfigureAwait(false))
+            await foreach (RuntimeLogEnvelope envelope in channel.Reader.ReadAllAsync(stop.Token).ConfigureAwait(false))
             {
+                RuntimeLogRecord record = envelope.Record;
                 if (record.Level < RuntimeLogLevel.Warning)
                     Interlocked.Decrement(ref normalQueued);
 
@@ -231,7 +233,7 @@ internal sealed class RuntimeLogPipeline : IAsyncDisposable
                     if (Volatile.Read(ref sink.Quarantined) != 0)
                         continue;
 
-                    await WriteToSinkAsync(sink, record).ConfigureAwait(false);
+                    await WriteToSinkAsync(sink, envelope).ConfigureAwait(false);
                 }
             }
         }
@@ -240,11 +242,13 @@ internal sealed class RuntimeLogPipeline : IAsyncDisposable
         }
     }
 
-    private async ValueTask WriteToSinkAsync(SinkState state, RuntimeLogRecord record)
+    private async ValueTask WriteToSinkAsync(SinkState state, RuntimeLogEnvelope envelope)
     {
         try
         {
-            ValueTask write = state.Sink.WriteAsync(record, stop.Token);
+            ValueTask write = state.Sink is IRuntimeLogDeliverySink deliverySink
+                ? deliverySink.WriteAsync(envelope.Record, envelope.Delivery, stop.Token)
+                : state.Sink.WriteAsync(envelope.Record, stop.Token);
             if (!write.IsCompletedSuccessfully)
                 await write.AsTask().WaitAsync(options.SinkTimeout, stop.Token).ConfigureAwait(false);
             else
@@ -383,6 +387,10 @@ internal sealed class RuntimeLogPipeline : IAsyncDisposable
             }
         });
     }
+
+    private readonly record struct RuntimeLogEnvelope(
+        RuntimeLogRecord Record,
+        RuntimeLogDelivery Delivery);
 
     private sealed class SinkState(IRuntimeLogSink sink)
     {

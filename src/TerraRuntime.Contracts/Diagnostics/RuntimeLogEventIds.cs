@@ -20,9 +20,57 @@ public static class RuntimeLogEventIds
     public static readonly RuntimeLogEventId LifecycleWarning = new(LifecycleBase + 1);
     public static readonly RuntimeLogEventId LifecycleError = new(LifecycleBase + 2);
 
-    // Transitional L3 bridge IDs. These IDs describe delivery semantics for legacy RuntimeHostLog
-    // call sites until each call site receives its final subsystem-specific semantic event ID.
+    // Live-host lifecycle events. Values 1000-1002 remain the generic lifecycle seed IDs above.
+    public static readonly RuntimeLogEventId StartupProfile = new(LifecycleBase + 10);
+    public static readonly RuntimeLogEventId ShutdownCommandDrainTimedOut = new(LifecycleBase + 11);
+    public static readonly RuntimeLogEventId GameLoopStopTimedOut = new(LifecycleBase + 12);
+
+    // Live-host network events.
+    public static readonly RuntimeLogEventId NetworkListenerReady = new(NetworkBase);
+    public static readonly RuntimeLogEventId NetworkListenerStartFailed = new(NetworkBase + 1);
+    public static readonly RuntimeLogEventId NetworkAcceptFailed = new(NetworkBase + 2);
+    public static readonly RuntimeLogEventId NetworkConnectionAccepted = new(NetworkBase + 3);
+    public static readonly RuntimeLogEventId NetworkConnectionStopped = new(NetworkBase + 4);
+    public static readonly RuntimeLogEventId NetworkConnectionFailed = new(NetworkBase + 5);
+    public static readonly RuntimeLogEventId NetworkShutdownFault = new(NetworkBase + 6);
+    public static readonly RuntimeLogEventId NetworkDisconnectEnqueueFailed = new(NetworkBase + 7);
+
+    // Live-host world/bootstrap events.
+    public static readonly RuntimeLogEventId WorldFileMissing = new(WorldBase);
+    public static readonly RuntimeLogEventId WorldSourceStatFailed = new(WorldBase + 1);
+    public static readonly RuntimeLogEventId WorldSourceRestatFailed = new(WorldBase + 2);
+    public static readonly RuntimeLogEventId WorldCacheHit = new(WorldBase + 3);
+    public static readonly RuntimeLogEventId WorldCacheMiss = new(WorldBase + 4);
+    public static readonly RuntimeLogEventId WorldReadFailed = new(WorldBase + 5);
+    public static readonly RuntimeLogEventId WorldLoadFailed = new(WorldBase + 6);
+    public static readonly RuntimeLogEventId WorldRecoverySuppressed = new(WorldBase + 7);
+    public static readonly RuntimeLogEventId WorldCheckpointRecoveryFailed = new(WorldBase + 8);
+    public static readonly RuntimeLogEventId WorldCheckpointRecovered = new(WorldBase + 9);
+    public static readonly RuntimeLogEventId WorldBootstrapCacheHit = new(WorldBase + 10);
+    public static readonly RuntimeLogEventId WorldBootstrapPreparationFailed = new(WorldBase + 11);
+
+    // Live-host persistence events.
+    public static readonly RuntimeLogEventId PersistenceCanonicalCleanupFailed = new(PersistenceBase);
+    public static readonly RuntimeLogEventId PersistenceBackupCleanupFailed = new(PersistenceBase + 1);
+    public static readonly RuntimeLogEventId PersistenceWorldCacheRebuilt = new(PersistenceBase + 2);
+    public static readonly RuntimeLogEventId PersistenceWorldCacheWriteFailed = new(PersistenceBase + 3);
+    public static readonly RuntimeLogEventId PersistenceSaveTemplateLoadFailed = new(PersistenceBase + 4);
+    public static readonly RuntimeLogEventId PersistenceSaveTemplateReady = new(PersistenceBase + 5);
+    public static readonly RuntimeLogEventId PersistenceBootstrapCacheRebuilt = new(PersistenceBase + 6);
+    public static readonly RuntimeLogEventId PersistenceBootstrapCacheWriteFailed = new(PersistenceBase + 7);
+    public static readonly RuntimeLogEventId PersistenceWorldCheckpointCommitted = new(PersistenceBase + 8);
+    public static readonly RuntimeLogEventId PersistenceWorldCheckpointSaveFailed = new(PersistenceBase + 9);
+    public static readonly RuntimeLogEventId PersistenceWorldCheckpointSuppressedByLoopFault = new(PersistenceBase + 10);
+    public static readonly RuntimeLogEventId PersistenceRuntimeCacheInvalidationFailed = new(PersistenceBase + 11);
+
+    // Trusted host-module lifecycle is a plugin/host integration concern rather than generic runtime lifecycle.
+    public static readonly RuntimeLogEventId PluginHostRuntimeAttachFailed = new(PluginBase);
+    public static readonly RuntimeLogEventId PluginHostRuntimeDetachFailed = new(PluginBase + 1);
+
+    // Transitional L3 bridge IDs. These describe legacy delivery semantics only. New semantic call sites
+    // keep their category-specific IDs and carry stdout/stderr routing separately inside RuntimeLogPipeline.
     public static readonly RuntimeLogEventId HostBridgeBuffered = new(OperationsBase);
     public static readonly RuntimeLogEventId HostBridgeStandardOutput = new(OperationsBase + 1);
     public static readonly RuntimeLogEventId HostBridgeStandardError = new(OperationsBase + 2);
+    public static readonly RuntimeLogEventId OperationsTerminalUiFailed = new(OperationsBase + 3);
 }

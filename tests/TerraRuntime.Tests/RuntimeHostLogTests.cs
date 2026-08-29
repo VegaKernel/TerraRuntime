@@ -1,6 +1,10 @@
 using System.Text;
 using TerraRuntime.Diagnostics;
 using TerraRuntime.Operations;
+using StructuredLogCategory = TerraRuntime.Contracts.Diagnostics.RuntimeLogCategory;
+using StructuredLogContext = TerraRuntime.Contracts.Diagnostics.RuntimeLogContext;
+using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEventIds;
+using StructuredLogRecord = TerraRuntime.Contracts.Diagnostics.RuntimeLogRecord;
 
 namespace TerraRuntime.Tests;
 
@@ -80,6 +84,44 @@ public sealed class RuntimeHostLogTests
         RuntimeLogSnapshot snapshot = runtimeLogs.CaptureSnapshot(RuntimeLogLevel.Debug, maxEntries: 8);
         Assert.Single(snapshot.Entries.ToArray());
         Assert.Equal("non-blocking", snapshot.Entries.Span[0].Message);
+    }
+
+    [Fact]
+    public async Task Semantic_event_keeps_identity_context_and_delivery_separate()
+    {
+        var runtimeLogs = new RuntimeLogBuffer(capacity: 8);
+        var recent = new RuntimeRecentLogStore(capacity: 8);
+        using var standardOutput = new StringWriter();
+        using var standardError = new StringWriter();
+        var log = new RuntimeHostLog(
+            runtimeLogs,
+            standardOutput,
+            standardError,
+            additionalSinks: [recent],
+            correlationId: "run-42");
+
+        log.SetWorldId("world-17");
+        log.Log(
+            RuntimeLogLevel.Information,
+            StructuredLogEventIds.NetworkConnectionAccepted,
+            StructuredLogCategory.Network,
+            "Network",
+            "accepted",
+            new StructuredLogContext(
+                CorrelationId: "connection-7",
+                ConnectionId: "7"),
+            bufferedOnly: true);
+
+        await log.DisposeAsync();
+
+        StructuredLogRecord record = Assert.Single(recent.Capture());
+        Assert.Equal(StructuredLogEventIds.NetworkConnectionAccepted, record.EventId);
+        Assert.Equal(StructuredLogCategory.Network, record.Category);
+        Assert.Equal("connection-7", record.Context.CorrelationId);
+        Assert.Equal("world-17", record.Context.WorldId);
+        Assert.Equal("7", record.Context.ConnectionId);
+        Assert.Equal(string.Empty, standardOutput.ToString());
+        Assert.Equal(string.Empty, standardError.ToString());
     }
 
     private sealed class BlockingTextWriter : TextWriter
