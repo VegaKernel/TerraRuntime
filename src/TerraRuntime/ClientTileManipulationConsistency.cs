@@ -19,7 +19,7 @@ internal enum ClientTileManipulationConsistencyResult : byte
 internal static class ClientTileManipulationConsistency
 {
     public static ClientTileManipulationConsistencyResult Evaluate(
-        in TerrariaTileManipulationState state,
+        TerrariaTileManipulationState state,
         in RuntimePlayerInventoryItem selectedItem)
     {
         if (!state.TryGetKnownAction(out TerrariaTileManipulationAction action))
