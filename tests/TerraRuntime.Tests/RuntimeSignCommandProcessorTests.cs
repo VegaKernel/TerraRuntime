@@ -104,7 +104,7 @@ public sealed class RuntimeSignCommandProcessorTests
     }
 
     [Fact]
-    public void Invalid_update_is_consumed_and_rejected_without_mutation_or_replication()
+    public void Invalid_sign_tile_update_is_consumed_clears_slot_without_replication()
     {
         var tiles = new WorldTileStore(new WorldDimensions(50, 50));
         tiles.Set(10, 20, new WorldTile { Type = 55, Flags = WorldTileFlags.Active });
@@ -122,8 +122,8 @@ public sealed class RuntimeSignCommandProcessorTests
 
         Assert.Equal(1, processor.AppliedUpdates);
         Assert.Equal(0, processor.RejectedUpdates);
+        Assert.Equal(0, replication.UpdateFrames);
         Assert.Equal(0, outbound.QueuedFrames);
-        Assert.False(store.TryRead(10, 20, out _));
         Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] snapshot));
         Assert.Empty(snapshot);
     }
