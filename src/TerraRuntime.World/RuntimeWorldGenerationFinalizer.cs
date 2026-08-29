@@ -17,7 +17,10 @@ public enum RuntimeWorldGenerationFinalizationStatus : byte
 public readonly record struct RuntimeWorldGenerationMetadataSnapshot(
     WorldGenerationPoint Spawn,
     WorldGenerationPoint Dungeon,
-    WorldGenerationLayers Layers);
+    WorldGenerationLayers Layers)
+{
+    internal VanillaWorldSeedProfile1458 VanillaSeedProfile { get; init; }
+}
 
 public readonly record struct RuntimeWorldGenerationFinalizationResult(
     RuntimeWorldGenerationFinalizationStatus Status,
@@ -54,8 +57,12 @@ public static class RuntimeWorldGenerationFinalizer
                 RuntimeWorldGenerationFinalizationStatus.MissingLayers);
         }
 
+        var metadata = new RuntimeWorldGenerationMetadataSnapshot(spawn, dungeon, layers)
+        {
+            VanillaSeedProfile = candidate.VanillaSeedProfile
+        };
         return new RuntimeWorldGenerationFinalizationResult(
             RuntimeWorldGenerationFinalizationStatus.Finalized,
-            new RuntimeWorldGenerationMetadataSnapshot(spawn, dungeon, layers));
+            metadata);
     }
 }
