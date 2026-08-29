@@ -8,6 +8,7 @@ public sealed class RuntimeWorldItemStoreConcurrencyTests
     [Fact]
     public async Task Concurrent_readers_observe_only_complete_single_writer_snapshots()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var store = new RuntimeWorldItemStore();
         WorldItemStateUpdate first = CreateFirst();
         WorldItemStateUpdate second = CreateSecond();
@@ -16,36 +17,45 @@ public sealed class RuntimeWorldItemStoreConcurrencyTests
         using var start = new ManualResetEventSlim(false);
         Task writer = Task.Run(() =>
         {
-            start.Wait();
+            start.Wait(cancellationToken);
             for (int i = 0; i < 25_000; i++)
             {
+                if ((i & 255) == 0)
+                    cancellationToken.ThrowIfCancellationRequested();
+
                 WorldItemStateUpdate update = (i & 1) == 0 ? first : second;
                 Assert.True(store.TryUpsert(7, in update, out _));
             }
-        });
+        }, cancellationToken);
 
         Task pointReader = Task.Run(() =>
         {
-            start.Wait();
+            start.Wait(cancellationToken);
             for (int i = 0; i < 25_000; i++)
             {
+                if ((i & 255) == 0)
+                    cancellationToken.ThrowIfCancellationRequested();
+
                 Assert.True(store.TryGetActive(7, out WorldItemSnapshot snapshot));
                 AssertConsistent(snapshot);
             }
-        });
+        }, cancellationToken);
 
         Task bulkReader = Task.Run(() =>
         {
-            start.Wait();
+            start.Wait(cancellationToken);
             var snapshots = new WorldItemSnapshot[RuntimeWorldItemStore.VanillaCapacity];
             for (int i = 0; i < 10_000; i++)
             {
+                if ((i & 127) == 0)
+                    cancellationToken.ThrowIfCancellationRequested();
+
                 int count = store.CopyActive(snapshots);
                 Assert.Equal(1, count);
                 Assert.Equal((short)7, snapshots[0].Handle.Slot);
                 AssertConsistent(snapshots[0]);
             }
-        });
+        }, cancellationToken);
 
         start.Set();
         await Task.WhenAll(writer, pointReader, bulkReader);
