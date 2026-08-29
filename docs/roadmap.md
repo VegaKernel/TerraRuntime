@@ -220,15 +220,15 @@ Borrow the useful terrustia pattern, adapted to .NET 11:
 - [x] Snapshot required mutable state on the authoritative game-loop owner.
 - [x] Serialize and write detached save snapshots outside the game loop.
 - [x] Atomically replace the canonical save only after successful complete serialization.
-- [x] Keep disk I/O off the simulation thread; tile-shadow synchronization uses a bounded default budget of \\(4\\ \\text{sections/tick}\\).
+- [x] Keep disk I/O off the simulation thread; tile-shadow synchronization uses a bounded default budget of `4 sections/tick`.
 - [x] Permit only one save serialization at a time; coalesce redundant autosave requests rather than building a backlog.
 - [x] Graceful shutdown (`Ctrl+C` / POSIX `SIGTERM`) stops the authoritative owner, captures the newest final state and waits for the save coordinator to commit it.
 - [x] Maintain the save tile shadow incrementally from dirty sections instead of copying the complete tile array in one save tick.
 - [x] Flush save contents before publication and, on Linux, `fsync` the parent directory after replace/move so the directory entry has an explicit durability barrier.
 - [x] Regression-test the pre-publication process-crash invariant with a real `SIGKILL`: an existing canonical save stays byte-identical, a first save stays hidden, and the next normal save can still commit (`Authoritative World Save` run `33267501627`).
 - [ ] Complete broad interrupted-save/crash recovery beyond the proven pre-publication atomicity invariant.
-- [ ] Add automatic known-good backup rotation plus validated rollback; atomic publication alone does not recover from a logically bad but complete checkpoint.
-- [x] Add safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process. Verified by `Authoritative World Save` run `33270005299` with real `SIGKILL`, leased orphan detection, canonical preservation and next-write cleanup.
+- [x] Keep one validated previous-generation backup and perform fail-closed automatic rollback for structurally/content-corrupt canonical checkpoints. `World Checkpoint Recovery` run `33269875235` proved backup rotation, exact recovery, invalid-backup refusal, official TerrariaServer 1.4.5.8 reload, and no rollback for unsupported future version `327`.
+- [x] Add lease-safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process. `Authoritative World Save` run `33270924996` proved cleanup helper `5/5`, real host startup cleanup before world load `1/1`, plus the SIGKILL durability contract; cleanup also runs before later writes, while unleased legacy temporaries are left untouched because ownership cannot be proven.
 
 ## Phase 5 - Fast startup / cached runtime world image
 
