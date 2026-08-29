@@ -10,6 +10,7 @@ on:
       - 'src/TerraRuntime.Core/AtomicSaveFileWriter.cs'
       - 'src/TerraRuntime.Core/AtomicSaveFileWriterOptions.cs'
       - 'src/TerraRuntime.World/**'
+      - 'tests/TerraRuntime.Tests/RuntimeWorldCheckpointRecoveryTests.cs'
       - '.github/workflows/world-checkpoint-recovery.yml'
   workflow_dispatch:
 
@@ -239,6 +240,57 @@ jobs:
           cmp "$expected" "$world"
           echo 'checkpoint_invalid_backup_ok startup_rejected=true canonical_untouched=true'
 
+      - name: Prove unsupported future world version is never replaced by backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/future-version-recovery.wld"
+          backup="$world.bak"
+          expected="$GITHUB_WORKSPACE/artifacts/future-version-recovery.expected"
+          original="$GITHUB_WORKSPACE/artifacts/recovery-original.wld"
+          log="$GITHUB_WORKSPACE/artifacts/recovery-future-version.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          cp "$original" "$world"
+          cp "$original" "$backup"
+          python3 - "$world" <<'PY'
+          import pathlib
+          import struct
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          data = bytearray(path.read_bytes())
+          current = struct.unpack_from('<i', data, 0)[0]
+          if current != 326:
+              raise SystemExit(f'expected official 1.4.5.8 world version 326, got {current}')
+          struct.pack_into('<i', data, 0, 327)
+          path.write_bytes(data)
+          PY
+          cp "$world" "$expected"
+          rm -f "${world%.wld}.runtime-world" "${world%.wld}.runtime-bootstrap"
+
+          set +e
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17805 \
+            --max-players 1 \
+            --no-tui \
+            > "$log" 2>&1
+          status=$?
+          set -e
+
+          cat "$log"
+          test "$status" -eq 26
+          grep -q 'World load failed: result=InvalidHeader, stage=Header' "$log"
+          grep -q 'Automatic checkpoint recovery is suppressed for an explicitly incompatible world-file version.' "$log"
+          if grep -q 'Canonical world recovered from validated checkpoint backup:' "$log"; then
+            echo 'Future world version was incorrectly replaced by backup.' >&2
+            exit 1
+          fi
+          cmp "$expected" "$world"
+          cmp "$original" "$backup"
+          echo 'checkpoint_future_version_ok startup_rejected=true recovery_suppressed=true canonical_untouched=true backup_untouched=true'
+
       - name: Reload recovered world with official TerrariaServer 1.4.5.8
         shell: bash
         run: |
@@ -287,6 +339,7 @@ jobs:
             artifacts/recovery-first-save.log
             artifacts/recovery-restore.log
             artifacts/recovery-invalid-backup.log
+            artifacts/recovery-future-version.log
             artifacts/recovery-official-reload.log
           if-no-files-found: warn
           retention-days: 7
