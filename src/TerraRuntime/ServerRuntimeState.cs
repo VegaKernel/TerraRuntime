@@ -6,7 +6,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
-internal sealed class ServerRuntimeState
+internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 {
     private const int MaxPlayerSlots = 256;
     private const float VanillaBasePlayerWidth = 20f;
@@ -19,6 +19,8 @@ internal sealed class ServerRuntimeState
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly IRuntimePlayerEventSink? _playerEvents;
     private readonly RuntimeNpcStore _npcs;
+    private readonly RuntimeNpcActorControlRegistry _npcActorControls;
+    private readonly RuntimeNpcActorControlCommandService _npcActorCommands;
     private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
     private readonly INpcAiStateStepper _npcAiStepper;
     private readonly VanillaNpcTargetingAiStepper? _vanillaNpcTargetingAiStepper;
@@ -50,6 +52,8 @@ internal sealed class ServerRuntimeState
         _worldTiles = worldTiles;
         _worldClock = worldClock;
         _npcs = npcs ?? new RuntimeNpcStore();
+        _npcActorControls = new RuntimeNpcActorControlRegistry(_npcs);
+        _npcActorCommands = new RuntimeNpcActorControlCommandService(_npcs, _npcActorControls);
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
         _projectiles = projectiles ?? new RuntimeProjectileStore();
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
@@ -62,13 +66,21 @@ internal sealed class ServerRuntimeState
         if (npcAiStepper is null)
         {
             _vanillaNpcTargetingAiStepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+            var actorIntent = new RuntimeNpcActorIntentStateStepper(
+                _vanillaNpcTargetingAiStepper,
+                _npcActorControls,
+                this);
             if (worldTiles is null)
             {
-                _npcAiStepper = _vanillaNpcTargetingAiStepper;
+                _npcAiStepper = actorIntent;
             }
             else
             {
-                var worldMotion = new VanillaNpcWorldMotionAiStepper(_vanillaNpcTargetingAiStepper, worldTiles);
+                double worldSurfaceTiles = worldTiles.WorldSurfaceTiles ??
+                    Math.Max(1d, worldTiles.Dimensions.HeightTiles / 3d);
+                _vanillaNpcTargetingAiStepper.EnableBlueSlimeMotion(worldSurfaceTiles);
+                _vanillaNpcTargetingAiStepper.EnableZombieMotion(worldSurfaceTiles);
+                var worldMotion = new VanillaNpcWorldMotionAiStepper(actorIntent, worldTiles, worldSurfaceTiles);
                 _vanillaNpcCheckActiveAiStepper = new VanillaNpcCheckActiveAiStepper(worldMotion);
                 _npcAiStepper = _vanillaNpcCheckActiveAiStepper;
             }
@@ -197,6 +209,9 @@ internal sealed class ServerRuntimeState
         return true;
     }
 
+    bool IRuntimePlayerSnapshotLookup.TryGetPlayer(PlayerHandle player, out PlayerStateSnapshot snapshot) =>
+        TryCapturePlayerSnapshot(player, out snapshot);
+
     internal bool TryCapturePlayerInventoryItem(
         PlayerHandle player,
         int inventorySlot,
@@ -225,6 +240,9 @@ internal sealed class ServerRuntimeState
     {
         ArgumentNullException.ThrowIfNull(command);
         AppliedCommands++;
+
+        if (_npcActorCommands.TryApply(command))
+            return;
 
         switch (command)
         {
@@ -302,6 +320,8 @@ internal sealed class ServerRuntimeState
 
     public void Tick()
     {
+        _npcActorCommands.CommitPending();
+
         if (_vanillaNpcTargetingAiStepper is not null)
         {
             int candidateCount = CopyVanillaNpcTargetCandidates(_npcTargetCandidates);
