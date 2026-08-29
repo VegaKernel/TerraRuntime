@@ -26,7 +26,7 @@ public sealed class TerrariaFrameRejectionTelemetryTests
 
         TerrariaFrameRejectionTelemetrySnapshot after = TerrariaFrameRejectionTelemetry.CaptureSnapshot();
         Assert.True(Count(after, category) - Count(before, category) >= 1);
-        Assert.Equal(TerrariaConnectionStopReason.ApplicationStopped, state.StopReason);
+        Assert.Equal(TerrariaConnectionStopReason.FrameRejected, state.StopReason);
     }
 
     [Fact]
