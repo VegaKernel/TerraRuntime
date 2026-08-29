@@ -4,99 +4,55 @@
 
 ## 1. Why this guide exists
 
-TerraRuntime is reconstructing observable TerrariaServer 1.4.5.8 behavior without using the original implementation architecture. A normal green unit-test suite is necessary, but it is not sufficient proof of vanilla parity.
+TerraRuntime reconstructs observable TerrariaServer 1.4.5.8 behavior without copying its internal architecture. A green unit-test suite is necessary, but it is not proof of vanilla parity by itself.
 
-The project therefore uses multiple evidence layers. Each layer answers a different question.
-
-```text
-build/static checks
-      |
-unit/integration tests
-      |
-NativeAOT/CoreCLR smoke paths
-      |
-independent packet/world fixtures
-      |
-official-source contract probes
-      |
-real official-world/client/server behavior
+```mermaid
+flowchart TD
+    Build["Build / static checks"] --> Unit["Unit + integration tests"]
+    Unit --> Smoke["NativeAOT + CoreCLR smoke paths"]
+    Smoke --> Fixtures["Independent packet / world fixtures"]
+    Fixtures --> Contract["Official-source contract probes"]
+    Contract --> Live["Real official-world / client / server behavior"]
 ```
 
-Higher layers are used when lower layers can share the same wrong assumption as the implementation under test.
+Higher evidence layers are required whenever a lower layer can share the same wrong assumption as the implementation under test.
 
 ## 2. Source hierarchy
 
 When sources disagree, use this order:
 
-1. locally decompiled official `TerrariaServer.exe` **1.4.5.8** for gameplay behavior, `.wld` layout, ordering, constants and server semantics;
-2. `VegaKernel/Multiplicity` 2.7.x for protocol **326** typed wire models;
+1. locally decompiled official `TerrariaServer.exe` 1.4.5.8 for gameplay behavior, `.wld` layout, ordering, constants and server semantics;
+2. `VegaKernel/Multiplicity` 2.7.x for protocol 326 typed wire models;
 3. `bybrooklyn/terrustia` as an independent implementation cross-check and source of testing/performance ideas;
-4. TShock/OTAPI for historical compatibility and exploit lessons only.
+4. TShock/OTAPI only for historical compatibility and exploit lessons.
 
-A secondary implementation never overrides verified current official behavior.
-
-Decompiled source remains local reference material. Do not commit copied method bodies, game assets or game text.
+Secondary implementations never override verified current official behavior. Decompiled source remains local reference material and copied method bodies, game assets or game text must not be committed.
 
 ## 3. Roadmap checkbox policy
 
-A roadmap `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof.
+A roadmap `[x]` means the claim is verified on `main` by implementation plus tests/CI or equivalent executable proof.
 
-Do not mark `[x]` because:
-
-- a type/interface exists;
-- code compiles;
-- a stub returns the desired value;
-- a self-round-trip succeeds;
-- one architecture layer is present while the behavior is incomplete;
-- the implementation merely resembles decompiled source.
-
-Partial/foundation-only work remains `[ ]`.
+A type/interface existing, a successful compile, a stub, a self-round-trip, an incomplete architectural layer or code that merely resembles decompiled source is not enough. Foundation-only work remains `[ ]`.
 
 ## 4. Build and test baseline
 
-The main CI build/test job performs, at minimum:
+The main CI baseline covers bilingual documentation structure/link validation, .NET 11 restore, Release build/analyzers, `TerraRuntime.Tests`, authoritative loop smoke, protocol smoke, network smoke, world smoke and Terminal UI smoke.
 
-- bilingual documentation structure/link validation;
-- .NET 11 restore;
-- Release build with repository warning/analyzer policy;
-- `TerraRuntime.Tests` execution;
-- authoritative loop smoke;
-- protocol smoke;
-- network smoke;
-- world smoke;
-- Terminal UI smoke.
-
-A failure here blocks the basic implementation baseline, but a pass here does not automatically prove vanilla compatibility for a behavior-sensitive change.
+A failure blocks the basic implementation baseline. A pass does not automatically prove vanilla compatibility for behavior-sensitive work.
 
 ## 5. Dual-host runtime gates
 
-TerraRuntime maintains two shipping/runtime profiles and tests both architectural directions.
+TerraRuntime verifies both shipping profiles.
 
-### NativeAOT standalone
+**NativeAOT standalone:** Linux x64 and Windows x64 native artifacts are published, validated for the intended runnable layout/native sidecars, then exercised from the published directory through loop/protocol/network/world/TUI smoke paths.
 
-CI publishes and executes Linux x64 and Windows x64 NativeAOT artifacts.
+**CoreCLR extensible:** self-contained Linux x64 and Windows x64 hosts are published; a drop-in trusted host-module fixture is installed and exercised through the extensible-host smoke path.
 
-The artifact checks validate the intended runnable deployment layout and required native sidecars before the smoke tests run from the published directory itself.
-
-NativeAOT smoke coverage includes loop, protocol, network, world and TUI paths.
-
-### CoreCLR extensible host
-
-CI also publishes self-contained CoreCLR extensible hosts for Linux x64 and Windows x64.
-
-A drop-in host-module fixture is built, installed as the trusted Vega-shaped host module, and exercised through the extensible-host smoke path.
-
-This protects the rule that the core remains AOT-compatible while the managed extensible profile can load explicit trusted host modules.
+This protects the rule that runtime core remains AOT-compatible while the managed profile can explicitly load trusted host modules.
 
 ## 6. Regression tests must detect the regression
 
-A bug-fix test is useful only when it distinguishes broken behavior from fixed behavior.
-
-For a non-trivial fix, verify that the new test would fail if:
-
-- the fix is removed;
-- the previous behavior is restored;
-- the incorrect constant/order/path is reintroduced.
+A bug-fix test is useful only if it distinguishes broken behavior from fixed behavior. For non-trivial fixes, verify that the test fails when the fix is removed, the old behavior is restored or the wrong constant/order/path is reintroduced.
 
 A test that passes before and after the fix proves almost nothing about the bug.
 
@@ -104,271 +60,122 @@ A test that passes before and after the fix proves almost nothing about the bug.
 
 Protocol and persistence code are especially vulnerable to false confidence from self-round-trips.
 
-Example:
-
-```text
-our encoder -> our decoder -> same model
+```mermaid
+flowchart LR
+    Encoder["Our encoder"] --> Decoder["Our decoder"] --> Model["Same model"]
+    Writer["Our writer"] --> Reader["Our reader"] --> State["Same state"]
 ```
 
-Both sides can implement the same wrong byte layout and still pass.
-
-Likewise:
-
-```text
-our writer -> our reader -> same state
-```
-
-can pass even if the resulting `.wld` is not accepted or interpreted correctly by Terraria.
-
-Round-trip tests remain useful for internal consistency, but wire/file compatibility requires independent evidence.
+Both sides can implement the same wrong layout and still pass. Round-trip tests are useful for internal consistency, while wire/file compatibility requires independent evidence.
 
 ## 8. Golden bytes and independent fixtures
 
-Critical packet layouts should be pinned to known-good bytes or independent captures where practical.
+Critical packet layouts should be pinned to independently known-good evidence where practical: official client/server captures, official-server `.wld` files, independently derived header/section values and failure artifacts from live workflows.
 
-Useful independent fixtures include:
-
-- raw packet bytes captured from an official client/server session;
-- `.wld` files produced by the official TerrariaServer;
-- selected expected header/section values derived independently;
-- failure artifacts from live workflows.
-
-The important property is that the expected data is not generated by the same code path being tested.
+The expected data must not come from the same code path being tested.
 
 ## 9. Official-source contract workflows
 
-The repository contains dedicated workflows that download/use the official TerrariaServer 1.4.5.8 reference under the project reference policy and exercise narrow behavior contracts.
+Dedicated repository workflows exercise narrow TerrariaServer 1.4.5.8 contracts under the reference policy, including source/reference probes, tile protocol/framing, dirt/stone mutations, projectile/NPC behavior, signs/chests and world generation/load/save slices.
 
-Examples of contract areas represented by repository workflows include:
-
-- general Terraria source/reference probes;
-- tile protocol and framing behavior;
-- dirt/stone tile mutation behavior;
-- projectile reference behavior;
-- NPC reference behavior;
-- sign behavior/persistence;
-- chest behavior/persistence;
-- world generation/load/save compatibility slices.
-
-These workflows should stay narrow enough that a failure identifies a real contract rather than a 20-minute black-box mystery.
+A contract workflow should be narrow enough that failure identifies a concrete rule rather than becoming a long black-box integration mystery.
 
 ## 10. Live official-world verification
 
-The `Vanilla World Load` family of checks is an important integration layer.
+The `Vanilla World Load` family can generate an official world and exercise TerraRuntime against that artifact. Current end-to-end coverage includes world verification/loading, join/bootstrap, movement relay, selected chest/sign behavior, warm runtime-snapshot startup, canonical checkpoint restore/export and startup/cache evidence.
 
-The workflow can generate a real world using the official TerrariaServer, then exercise TerraRuntime against that world. Current probes cover important end-to-end paths such as:
-
-- world verification/loading;
-- live join/bootstrap;
-- movement relay;
-- selected chest open/content behavior;
-- warm runtime-snapshot startup;
-- canonical `.wld` checkpoint restore/export;
-- startup/cache timing evidence.
-
-This is stronger than loading a synthetic unit-test world because it verifies assumptions against an official-world artifact.
+An official-world artifact is stronger than a synthetic world generated by the implementation under test.
 
 ## 11. Differential behavior
 
-For behavior where exact output/order matters, prefer differential scenarios:
+When exact output or ordering matters, use the same scenario against both implementations:
 
-```text
-same input/scenario
-   -> official TerrariaServer
-   -> TerraRuntime
-   -> compare observable output/state
+```mermaid
+flowchart TD
+    Scenario["Same input / scenario"] --> Official["Official TerrariaServer 1.4.5.8"]
+    Scenario --> Terra["TerraRuntime"]
+    Official --> Compare["Compare observable packets / state / persistence"]
+    Terra --> Compare
+    Compare --> Classify["Bug / deliberate divergence / unsupported behavior / measurement noise"]
 ```
 
-Useful comparison targets include packet sequences, world mutations, AI state transitions, projectiles, drops and persistence effects.
+Useful targets include packet sequences, world mutations, AI transitions, projectiles, drops and persistence effects.
 
-Differences must be classified: implementation bug, known deliberate divergence, unsupported behavior or measurement noise.
+## 12. Network and process tests
 
-## 12. Network/process tests
-
-In-process tests can hide operating-system scheduling, socket backpressure and process-lifecycle behavior.
-
-For networking/queue/shutdown claims, prefer real process/socket tests where practical.
-
-Important scenarios include:
-
-- slow readers;
-- connection admission churn;
-- join bursts;
-- queue saturation;
-- SIGTERM/shutdown behavior;
-- malformed traffic followed by a valid connection;
-- save during/after connection failure.
+In-process tests can hide OS scheduling, socket backpressure and process-lifecycle behavior. Real process/socket tests are preferred for slow readers, admission churn, join bursts, queue saturation, `SIGTERM`, malformed traffic followed by a valid connection, and save behavior around connection failure.
 
 ## 13. Malformed input and fuzzing
 
-Trust-boundary tests should prove bounded failure.
+Trust-boundary tests should prove bounded failure. Important targets include framing, variable-length packet decoders, section/tile input, `.wld` parsing and command/text parsing.
 
-Targets include:
+A strong adversarial test proves both that malformed input cannot crash/create unbounded allocation or work and that the server remains healthy enough to process a valid operation afterward.
 
-- frame parser;
-- variable-length packet decoders;
-- section/tile input;
-- `.wld` parsing;
-- command/text parsing.
-
-A strong fuzz/adversarial test proves two properties:
-
-1. malformed input does not crash or allocate/work without bound;
-2. the server remains healthy enough to process a valid operation afterward.
-
-The permanent broad fuzz corpus remains incomplete and should not be described as finished coverage.
+The permanent broad fuzz corpus remains incomplete.
 
 ## 14. Persistence evidence
 
-Persistence changes need stronger evidence than ordinary unit state equality.
+Persistence changes may require official `.wld` inputs, preserved-section byte checks, interrupted/failed save recovery, atomic publication checks, runtime-cache corruption fallback, cold/warm startup comparison, live chest/sign/tile persistence and reload verification from the resulting canonical checkpoint.
 
-Depending on the change, use:
+Unknown/newer layouts fail conservatively instead of receiving green tests through guessed offsets.
 
-- official `.wld` inputs;
-- preserved-section byte checks;
-- interrupted/failed save recovery tests;
-- atomic replacement checks;
-- runtime-cache corruption fallback;
-- cold/warm startup comparison;
-- live chest/sign/tile persistence probes;
-- reload verification from the resulting canonical checkpoint.
+## 15. Gameplay and RNG evidence
 
-Unknown/newer layouts should fail conservatively rather than gain a green test through guessed offsets.
+Gameplay parity is proved subsystem by subsystem with deterministic state-transition tests, verified catalogs/defaults, generation-safe slot-reuse tests, collision/world-query tests, replication tests, official-source AI/default probes and real client/server behavior for ordering-sensitive interactions.
 
-## 15. Gameplay evidence
+NPC AI, loot and world generation may depend on RNG call order, not merely distributions. Preserve RNG consumption order, avoid parallelism that changes it, use deterministic scenarios and compare against official behavior where possible.
 
-Gameplay parity is built subsystem by subsystem.
+## 16. Performance evidence
 
-Useful evidence includes:
+Performance claims require before/after measurement on the same hardware/environment, world and workload.
 
-- deterministic state-transition tests;
-- verified definition/catalog constants;
-- runtime slot/generation-reuse tests;
-- collision/world-query tests;
-- replication tests;
-- official-source AI/default reference probes;
-- real client/server behavior for ordering-sensitive interactions.
+Relevant metrics can include wall/CPU time, allocation rate, GC counts/pauses, queue depth/backlog age, throughput, RSS/working set and latency percentiles such as $p_{50}$, $p_{95}$ and $p_{99}$.
 
-A generic NPC/projectile framework does not prove coverage of every NPC/projectile type.
+Do not merge an optimization merely because it should be faster.
 
-## 16. RNG-sensitive work
+## 17. CPU time versus wall time
 
-NPC AI, loot and world generation may depend on RNG ordering, not merely probability distributions.
+A large wall-time spike with low authoritative-thread CPU can indicate scheduler/OS contention rather than expensive simulation. Timing data from incompatible clocks or workloads is not comparable evidence.
 
-When vanilla ordering matters:
+## 18. Production-like scale matrix
 
-- preserve the sequence of RNG consumption;
-- avoid parallel execution that changes order;
-- prefer deterministic seeds/scenarios;
-- compare outputs/state transitions with official behavior where possible.
+Useful connection/player checkpoints include
 
-A statistically similar result is not automatically vanilla parity.
+$$
+P\in\{1,8,24,64,128,255\}.
+$$
 
-## 17. Performance evidence
+$P=24$ is a realistic optimization baseline; $P=255$ is a stress/scalability target. Neither replaces idle, normal-play, join-burst, slow-reader and persistence workloads.
 
-Performance work requires before/after measurement on the same workload and world.
+## 19. Failure artifacts
 
-Measure the thing being changed, including relevant:
+Live/reference failures should upload small artifacts that answer what happened: packet-sequence summary, expected/observed counters, selected bytes/metadata, startup profile, world/checkpoint identity, typed stop/rejection reason and bounded logs.
 
-- wall time;
-- CPU time;
-- allocation rate;
-- GC counts/pauses;
-- queue depth/backlog age;
-- throughput;
-- p50/p95/p99 tick or operation latency;
-- RSS/working set when pooling/cache changes affect memory.
+Artifacts must not include copied copyrighted decompiled source or unnecessary large game assets.
 
-Do not merge an optimization because it "should" be faster.
+## 20. CI cancellation and concurrent main work
 
-## 18. CPU time versus wall time
+Main CI uses concurrency cancellation. A run can be `cancelled` because a newer push superseded it; that is not a test failure. Pending/queued is not green either.
 
-TerraRuntime reports/uses both CPU and wall timing because they answer different questions.
+Status claims must refer to the workflow run for the exact current SHA.
 
-A large wall-time spike with low authoritative-thread CPU can indicate OS contention/scheduling rather than expensive simulation logic.
+## 21. Documentation validation
 
-Do not compare timing data collected from incompatible clocks or workloads.
+`tools/ci/check_documentation.py` verifies mirrored RU/EN page sets, required baseline pages and valid repository-local relative Markdown links that do not escape the repository root.
 
-## 19. Production-like scale matrix
+It does not prove semantic translation equivalence; factual RU/EN parity still requires review.
 
-The scalability roadmap treats realistic player load and maximum connection stress separately.
+## 22. Evidence strength must match the claim
 
-The direction is to exercise connection counts such as:
+| Claim | Minimum useful evidence |
+|---|---|
+| Interface exists | code + API tests may be sufficient |
+| Packet bytes match Terraria | independent bytes / live reference |
+| World saves safely | real world + recovery / reload evidence |
+| AI matches vanilla | state tests + official behavior reference |
+| Optimization improves performance | reproducible before/after measurement |
+| NativeAOT deployable | publish + execute published artifact |
 
-```text
-1
-8
-24
-64
-128
-255
-```
+## 23. Change checklist
 
-`24` is a meaningful realistic optimization baseline; `255` is a stress/scalability target, not the only workload worth measuring.
-
-## 20. Failure artifacts
-
-When a live/reference workflow fails, upload a small artifact that answers what actually happened rather than only preserving a generic exit code.
-
-Useful failure evidence can include:
-
-- packet sequence summary;
-- exact expected/observed counters;
-- selected bytes/metadata;
-- startup profile;
-- world/checkpoint identity;
-- runtime stop/rejection reason;
-- relevant bounded logs.
-
-Artifacts must avoid copying copyrighted decompiled source or unnecessary large game assets.
-
-## 21. CI cancellation and concurrent main work
-
-The main CI workflow uses concurrency cancellation. A run may be `cancelled` simply because a newer push to the same branch superseded it.
-
-Do not report a cancelled superseded run as a test failure. Likewise, do not report a pending/queued run as green.
-
-For the current head, verify the workflow run associated with that exact SHA before claiming status.
-
-## 22. Documentation validation
-
-`tools/ci/check_documentation.py` is part of the build-test gate.
-
-It verifies:
-
-- mirrored RU/EN page sets;
-- required baseline documentation pages;
-- repository-local relative Markdown link targets;
-- no relative documentation link escaping repository root.
-
-It does not prove semantic translation equivalence. Human review remains responsible for factual RU/EN parity.
-
-## 23. Evidence for roadmap completion
-
-Before marking a roadmap item complete, identify the proof that corresponds to the claim.
-
-Examples:
-
-```text
-"interface exists"                 -> code + API tests may be enough
-"packet bytes match Terraria"      -> independent bytes/live reference needed
-"world saves safely"               -> real world + recovery/round-trip evidence
-"AI matches vanilla"               -> state tests + official behavior reference
-"optimization improves performance"-> reproducible before/after measurement
-"NativeAOT deployable"             -> publish + run published artifact
-```
-
-The strength of evidence should match the strength of the claim.
-
-## 24. Change checklist
-
-A test/evidence change is incomplete unless, where relevant:
-
-- the test can fail for the regression it claims to guard;
-- expected values are independent when compatibility/parity is being proven;
-- official reference version is pinned;
-- copyrighted local decompile material is not committed;
-- process/network behavior is tested at the process/socket level when in-process tests hide the risk;
-- performance claims include reproducible before/after data;
-- roadmap checkboxes reflect the evidence, not optimism;
-- this page and `docs/ru/testing-evidence.md` are updated together.
+A test/evidence change is incomplete unless the test can fail on the regression it claims to guard, compatibility expectations are independent where required, the official reference version is pinned, local decompile material is not committed, process/socket risks are tested at the correct layer, performance claims carry reproducible measurements, roadmap checkboxes reflect evidence rather than optimism, diagrams use Mermaid, measured quantities use LaTeX where applicable, and this page changes together with `docs/ru/testing-evidence.md`.
