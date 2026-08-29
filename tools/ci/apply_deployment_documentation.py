@@ -15,7 +15,6 @@ EN_INDEX = ROOT / "docs/en/README.md"
 RU_INDEX = ROOT / "docs/ru/README.md"
 CHECKER = ROOT / "tools/ci/check_documentation.py"
 DOC_ROADMAP = ROOT / "docs/roadmap/documentation.md"
-WORKFLOW = ROOT / ".github/workflows/documentation.yml"
 
 EN_INDEX_LINE = (
     "- [Deployment and configuration](deployment-configuration.md) — NativeAOT/CoreCLR packaging, "
@@ -25,52 +24,6 @@ RU_INDEX_LINE = (
     "- [Развёртывание и конфигурация](deployment-configuration.md) — NativeAOT/CoreCLR packaging, "
     "runtime directories, CLI configuration, trusted host-module loading и текущие deployment limitations."
 )
-
-FINAL_WORKFLOW = """name: Documentation
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-permissions:
-  contents: read
-
-concurrency:
-  group: terra-runtime-docs-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  validate-documentation:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Test documentation checker
-        run: python3 tools/ci/test_check_documentation.py
-
-      - name: Resolve documentation diff base
-        id: docs-base
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          PUSH_BEFORE: ${{ github.event.before }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            echo "sha=$PR_BASE_SHA" >> "$GITHUB_OUTPUT"
-          else
-            echo "sha=$PUSH_BEFORE" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Validate bilingual documentation
-        run: python3 tools/ci/check_documentation.py --changed-base "${{ steps.docs-base.outputs.sha }}"
-"""
 
 
 def insert_after(text: str, marker: str, line: str, label: str) -> str:
@@ -105,7 +58,6 @@ def main() -> None:
         EN_INDEX_LINE,
         "EN index",
     )
-    # Normalize the dimensional tick-rate value while touching this index.
     en_index = en_index.replace("— 60 Hz authoritative loop,", "— $60\\,\\mathrm{Hz}$ authoritative loop,")
     EN_INDEX.write_text(en_index, encoding="utf-8")
 
@@ -157,8 +109,6 @@ def main() -> None:
     )
     DOC_ROADMAP.write_text(roadmap, encoding="utf-8")
 
-    # The migration cleans up its own write-capable workflow and staging payloads in the same commit.
-    WORKFLOW.write_text(FINAL_WORKFLOW, encoding="utf-8")
     EN_PAYLOAD.unlink()
     RU_PAYLOAD.unlink()
     Path(__file__).unlink()
