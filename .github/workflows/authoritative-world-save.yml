@@ -1,6 +1,7 @@
 name: Authoritative World Save
 
 # Persistence proof is intentionally isolated from unrelated gameplay/TUI test churn.
+# Refresh marker: startup orphan cleanup and validated checkpoint recovery.
 on:
   push:
     branches: [main]
