@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Extract a narrow, reviewable projectile tile-cut contract from ILSpy C# output.
+"""Extract narrow, reviewable projectile/world contracts from ILSpy C# output.
 
-The script deliberately does not persist or print the complete decompiled Terraria types. It emits only the
-small methods and call-site context needed to validate TerraRuntime's source-backed projectile side effects.
+The script deliberately does not persist or print complete decompiled Terraria types. It emits only the
+small methods and call-site contexts needed to validate TerraRuntime's source-backed projectile behavior.
 """
 
 from __future__ import annotations
@@ -116,80 +116,6 @@ def called_helpers(source: str, prefix: str) -> str:
     return " -> ".join(calls) if calls else "<none>"
 
 
-def extract_top_level_switch_case(method_source: str, switch_expression: str, case_value: int) -> str:
-    switch_token = f"switch ({switch_expression})"
-    switch_index = method_source.find(switch_token)
-    if switch_index < 0:
-        raise SystemExit(f"switch not found in method: {switch_token}")
-
-    opening = method_source.find("{", switch_index + len(switch_token))
-    if opening < 0:
-        raise SystemExit(f"switch body not found: {switch_token}")
-
-    depth = 1
-    in_string = False
-    in_char = False
-    escaped = False
-    case_start = -1
-    index = opening + 1
-
-    while index < len(method_source):
-        char = method_source[index]
-        if escaped:
-            escaped = False
-            index += 1
-            continue
-
-        if char == "\\" and (in_string or in_char):
-            escaped = True
-            index += 1
-            continue
-
-        if char == '"' and not in_char:
-            in_string = not in_string
-            index += 1
-            continue
-
-        if char == "'" and not in_string:
-            in_char = not in_char
-            index += 1
-            continue
-
-        if in_string or in_char:
-            index += 1
-            continue
-
-        if char == "{":
-            depth += 1
-            index += 1
-            continue
-        if char == "}":
-            depth -= 1
-            if depth == 0:
-                break
-            index += 1
-            continue
-
-        if depth == 1:
-            case_match = re.match(rf"case\s+{case_value}\s*:", method_source[index:])
-            if case_match and case_start < 0:
-                case_start = index
-                index += case_match.end()
-                continue
-
-            if case_start >= 0:
-                next_label = re.match(r"(?:case\s+[^:]+|default)\s*:", method_source[index:])
-                if next_label:
-                    return method_source[case_start:index].strip()
-
-        index += 1
-
-    if case_start >= 0:
-        return method_source[case_start:index].strip()
-
-    raise SystemExit(f"case {case_value} not found in {switch_token}")
-
-
 def relevant_drop_contexts(source: str) -> str:
     normalized = compact(source)
     contexts: list[str] = []
@@ -237,17 +163,34 @@ def main() -> int:
     can_cut_tile = compact(extract_method(worldgen_source, "CanCutTile"))
     kill_tile = extract_method(worldgen_source, "KillTile")
     kill_tile_drops = extract_method(worldgen_source, "KillTile_GetItemDrops")
+
     set_defaults = extract_method(projectile_source, "SetDefaults")
     wooden_arrow_defaults = around_optional(set_defaults, "case 1:", radius=1400)
     wooden_arrow_defaults_if = around_optional(set_defaults, "type == 1", radius=1400)
-    arrow_ai = compact(extract_method(projectile_source, "AI_001"))
+    arrow_ai = extract_method(projectile_source, "AI_001")
+    handle_movement = extract_method(projectile_source, "HandleMovement")
+    projectile_kill = extract_method(projectile_source, "Kill")
 
     print("projectile_wooden_arrow_defaults=" + wooden_arrow_defaults)
     print("projectile_wooden_arrow_defaults_if=" + wooden_arrow_defaults_if)
-    print("projectile_ai001=" + arrow_ai)
+    print("projectile_ai001_ai0_increment=" + around_optional(arrow_ai, "ai[0]++;", radius=1200))
+    print("projectile_ai001_gravity=" + around_optional(arrow_ai, "ai[0] >= 15f", radius=1500))
+    print("projectile_ai001_fall_cap=" + around_last(arrow_ai, "velocity.Y > 16f", radius=900))
     print("projectile_ai001_mentions=" + matching_lines(projectile_source, "AI_001", limit=80))
     print("projectile_ai_style1_mentions=" + matching_lines(projectile_source, "aiStyle == 1", limit=80))
     print("projectile_ai_style1_context=" + around_optional(projectile_source, "aiStyle == 1", radius=3200))
+    print("projectile_wind_physics_mentions=" + matching_lines(projectile_source, "windPhysics", limit=80))
+    print("projectile_wind_speed_context=" + around_optional(projectile_source, "windSpeedCurrent", radius=2400))
+
+    print(f"projectile_handle_movement_length={len(compact(handle_movement))}")
+    print("projectile_handle_movement_kill_context=" + around_optional(handle_movement, "Kill();", radius=2600))
+    print("projectile_handle_movement_tile_collide_context=" + around_optional(handle_movement, "tileCollide", radius=2600))
+    print(f"projectile_kill_length={len(compact(projectile_kill))}")
+    print("projectile_kill_helpers=" + called_helpers(projectile_kill, "Kill_"))
+    print("projectile_kill_type1_mentions=" + matching_lines(projectile_kill, "type == 1", limit=80))
+    print("projectile_kill_case1_context=" + around_optional(projectile_kill, "case 1:", radius=3200))
+    print("projectile_kill_arrow_context=" + around_optional(projectile_kill, "arrow", radius=3200))
+    print("projectile_kill_new_item_mentions=" + matching_lines(projectile_kill, "NewItem", limit=80))
 
     print("projectile_can_cut_tiles=" + can_cut_tiles)
     print("projectile_cut_tiles=" + cut_tiles)
@@ -272,8 +215,6 @@ def main() -> int:
     print("worldgen_kill_tile_framey_reset_last=" + around_last(kill_tile, "frameY = -1", radius=1200))
     print(f"worldgen_kill_tile_get_item_drops_length={len(compact_drops)}")
     print("worldgen_cuttable_drop_contexts=" + relevant_drop_contexts(kill_tile_drops))
-    if len(compact_drops) <= 24000:
-        print("worldgen_kill_tile_get_item_drops=" + compact_drops)
     return 0
 
 
