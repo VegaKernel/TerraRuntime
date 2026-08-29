@@ -207,8 +207,8 @@ def run(host, port, chest_id, tile_x, tile_y, item_slot, item_stack, item_prefix
         owner_matches, owner_after_update = collect_matching_item(owner, committed)
         observer_matches, observer_after_update = collect_matching_item(observer, committed)
 
-        # Prove the client submission was actually accepted even if vanilla intentionally emits no
-        # packet32 response: close/reopen must expose the committed value from server chest state.
+        # Prove the client submission was actually accepted even though vanilla does not echo the
+        # packet32 update to its sender: close/reopen must expose the committed value from server state.
         send_close(owner)
         time.sleep(0.1)
         drain(observer, 0.1)
@@ -221,7 +221,7 @@ def run(host, port, chest_id, tile_x, tile_y, item_slot, item_stack, item_prefix
         )
 
         # Restore the copied reference world in memory before shutdown. This follows the same client
-        # packet32 path and then reopens once more to prove restoration independently of echo behavior.
+        # packet32 path and then reopens once more to prove restoration independently of routing behavior.
         send_item(owner, chest_id, item_slot, item_stack, item_prefix, item_net_id)
         time.sleep(0.2)
         drain(owner, 0.1)
@@ -244,10 +244,10 @@ def run(host, port, chest_id, tile_x, tile_y, item_slot, item_stack, item_prefix
         )
         print(routing, flush=True)
 
-        # Current 1.4.5.8 vanilla semantics are expected to accept the client-authoritative item
-        # mutation without emitting a packet32 echo or fanout. Keep this assertion against the
-        # official binary so any future protocol/runtime drift becomes a visible CI failure.
-        if owner_matches != 0 or observer_matches != 0:
+        # Official TerrariaServer 1.4.5.8 accepts the client-authoritative mutation, does not echo
+        # packet32 to the sender, and fans the committed item update out once to another playing client.
+        # Keep this assertion against the official binary so future protocol drift is visible in CI.
+        if owner_matches != 0 or observer_matches != 1:
             fail(
                 "official 1.4.5.8 packet32 routing changed: "
                 f"senderMatches={owner_matches} observerMatches={observer_matches}"
