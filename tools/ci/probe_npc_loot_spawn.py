@@ -39,11 +39,9 @@ def main() -> int:
     common_flat = compact(common_code)
     if "Item.NewItem" not in common_flat:
         raise SystemExit("Could not locate Item.NewItem in ItemDropRules.CommonCode.")
-    if "GetSource_Loot" not in common_flat:
-        raise SystemExit("Could not locate NPC loot entity-source creation in ItemDropRules.CommonCode.")
 
-    # Emit the narrow call-site and implementation contexts. A follow-up contract pins the exact overload,
-    # rectangle/position arguments and item initialization only after this exact-version evidence is visible.
+    # The loot entity source may be constructed by the caller rather than CommonCode itself. Do not assume its
+    # ownership location before the exact-version call site is visible. The Item.NewItem call itself is mandatory.
     print("loot_common_code_new_item_context=" + context(common_code, "Item.NewItem"))
 
     item_flat = compact(item)
