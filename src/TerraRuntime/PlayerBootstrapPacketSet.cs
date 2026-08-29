@@ -50,7 +50,11 @@ public sealed class PlayerBootstrapPacketSet
             for (int i = 0; i < baseSections.Length; i++)
             {
                 int index = TerrariaSectionGeometry.ToLinearIndex(world.Header.Dimensions, baseSections[i]);
-                _sectionCache[index] = new SectionCacheEntry(baseSectionFrames[i], baseSectionPostFrames[i]);
+                long version = world.Tiles.GetSectionVersion(baseSections[i]);
+                _sectionCache[index] = new SectionCacheEntry(
+                    baseSectionFrames[i],
+                    baseSectionPostFrames[i],
+                    version);
             }
         }
     }
@@ -251,6 +255,35 @@ public sealed class PlayerBootstrapPacketSet
     }
 
     /// <summary>
+    /// Resolves the base spawn section frames against current tile versions. Testing packet sets have no live
+    /// world and simply return their immutable fixtures; production sets refresh only sections that changed.
+    /// </summary>
+    public bool TryGetBaseSectionFrames(out ReadOnlyMemory<byte>[] frames)
+    {
+        if (_world is null)
+        {
+            frames = new ReadOnlyMemory<byte>[BaseSectionFrames.Count];
+            for (int i = 0; i < frames.Length; i++)
+                frames[i] = BaseSectionFrames[i];
+            return true;
+        }
+
+        frames = new ReadOnlyMemory<byte>[_baseSections.Length];
+        for (int i = 0; i < _baseSections.Length; i++)
+        {
+            if (!TryGetOrEncodeSection(_baseSections[i], out SectionCacheEntry entry))
+            {
+                frames = [];
+                return false;
+            }
+
+            frames[i] = entry.TileSectionFrame;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Creates the additional packet-10 section sync selected by packet 8. The client-requested window and,
     /// for team-based-spawn worlds, the team's extra-spawn window are deduplicated against already sent sections.
     /// Persistence-backed chest/NPC payloads are deliberately not interleaved into initial tile transfer.
@@ -352,14 +385,8 @@ public sealed class PlayerBootstrapPacketSet
     {
         WorldFileData world = _world!;
         int index = TerrariaSectionGeometry.ToLinearIndex(world.Header.Dimensions, section);
-
-        lock (_sectionCacheGate)
-        {
-            if (_sectionCache.TryGetValue(index, out entry))
-                return true;
-        }
-
-        if (!TryEncodeSection(world, section, out SectionCacheEntry encoded))
+        long version = world.Tiles.GetSectionVersion(section);
+        if ((version & 1L) != 0)
         {
             entry = default;
             return false;
@@ -367,10 +394,41 @@ public sealed class PlayerBootstrapPacketSet
 
         lock (_sectionCacheGate)
         {
-            if (_sectionCache.TryGetValue(index, out entry))
+            if (_sectionCache.TryGetValue(index, out entry) && entry.Version == version)
                 return true;
+        }
 
-            _sectionCache.Add(index, encoded);
+        if (!world.Tiles.TryCaptureSectionSnapshot(section, out WorldSectionTileSnapshot? snapshot) || snapshot is null ||
+            !TryEncodeSection(world, snapshot, out SectionCacheEntry encoded))
+        {
+            entry = default;
+            return false;
+        }
+
+        long currentVersion = world.Tiles.GetSectionVersion(section);
+        if (currentVersion != snapshot.Revision)
+        {
+            entry = default;
+            return false;
+        }
+
+        lock (_sectionCacheGate)
+        {
+            currentVersion = world.Tiles.GetSectionVersion(section);
+            if (currentVersion != snapshot.Revision)
+            {
+                entry = default;
+                return false;
+            }
+
+            if (_sectionCache.TryGetValue(index, out SectionCacheEntry existing) &&
+                existing.Version == currentVersion)
+            {
+                entry = existing;
+                return true;
+            }
+
+            _sectionCache[index] = encoded;
             entry = encoded;
             return true;
         }
@@ -381,6 +439,13 @@ public sealed class PlayerBootstrapPacketSet
         WorldSectionId section,
         out SectionCacheEntry entry)
     {
+        long before = world.Tiles.GetSectionVersion(section);
+        if ((before & 1L) != 0)
+        {
+            entry = default;
+            return false;
+        }
+
         WorldTileBounds bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, section);
         WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncode(
             world,
@@ -389,13 +454,33 @@ public sealed class PlayerBootstrapPacketSet
             bounds.Width,
             bounds.Height,
             out byte[] encoded);
+        long after = world.Tiles.GetSectionVersion(section);
+        if (result != WorldSectionPacketEncodeResult.Encoded || before != after || (after & 1L) != 0)
+        {
+            entry = default;
+            return false;
+        }
+
+        entry = new SectionCacheEntry(encoded, [], after);
+        return true;
+    }
+
+    private static bool TryEncodeSection(
+        WorldFileData world,
+        WorldSectionTileSnapshot snapshot,
+        out SectionCacheEntry entry)
+    {
+        WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncode(
+            world,
+            snapshot,
+            out byte[] encoded);
         if (result != WorldSectionPacketEncodeResult.Encoded)
         {
             entry = default;
             return false;
         }
 
-        entry = new SectionCacheEntry(encoded, []);
+        entry = new SectionCacheEntry(encoded, [], snapshot.Revision);
         return true;
     }
 
@@ -438,7 +523,8 @@ public sealed class PlayerBootstrapPacketSet
 
     private readonly record struct SectionCacheEntry(
         ReadOnlyMemory<byte> TileSectionFrame,
-        ReadOnlyMemory<byte>[] PostSectionFrames);
+        ReadOnlyMemory<byte>[] PostSectionFrames,
+        long Version);
 }
 
 internal sealed record PlayerBootstrapPacketSnapshot(
