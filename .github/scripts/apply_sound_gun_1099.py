@@ -98,7 +98,7 @@ replace_once(
     "    public void Sound_gun_water_contact_uses_generic_half_speed_liquid_motion()\n"
     "    {\n"
     "        var tiles = new WorldTileStore(new WorldDimensions(100, 100));\n"
-    "        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));\n"
+    "        tiles.Set(8, 8, LiquidTile(WorldLiquidKind.Water));\n"
     "        var stepper = new VanillaProjectileWorldStateStepper(tiles);\n"
     "        ProjectileSnapshot projectile = CreateSnapshot(\n"
     "            positionX: 100f,\n"
