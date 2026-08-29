@@ -101,14 +101,13 @@ def main() -> int:
     print("projectile_boomerang_owner_speed=" + all_contexts(boomerang, "meleeSpeed", radius=700, limit=4))
     print("projectile_boomerang_distance_kill=" + all_contexts(boomerang, "3000f", radius=850, limit=6))
     print("projectile_handle_movement_ai3=" + all_contexts(handle_movement, "aiStyle == 3 || aiStyle == 13", radius=1800, limit=4))
-    print("projectile_can_cut_tiles_length=" + str(len(compact(can_cut_tiles))))
-    print("projectile_can_cut_tiles_type6=" + all_contexts(can_cut_tiles, "type == 6", radius=900, limit=6))
-    print("projectile_can_cut_tiles_tail=" + compact(can_cut_tiles)[-2200:])
-    print("projectile_collision_params_length=" + str(len(compact(collision_params))))
-    print("projectile_collision_params_type6=" + all_contexts(collision_params, "type == 6", radius=900, limit=6))
-    print("projectile_collision_params_head=" + compact(collision_params)[:2600])
-    print("projectile_update_handle_movement=" + all_contexts(update, "HandleMovement", radius=1800, limit=6))
-    print("projectile_update_position=" + all_contexts(update, "position +=", radius=1200, limit=8))
+    print("projectile_can_cut_tiles=" + compact(can_cut_tiles))
+    print("projectile_collision_params_boomerang_branch=" + around_optional(
+        collision_params, "type == 481 || type == 491", radius=5200))
+    print("projectile_handle_movement_position_add=" + all_contexts(handle_movement, "position +=", radius=1500, limit=20))
+    print("projectile_handle_movement_wet_velocity=" + all_contexts(handle_movement, "wetVelocity", radius=1400, limit=12))
+    print("projectile_handle_movement_tail=" + compact(handle_movement)[-3600:])
+    print("projectile_update_handle_movement=" + all_contexts(update, "HandleMovement(wetVelocity)", radius=2200, limit=2))
     return 0
 
 
