@@ -10,10 +10,12 @@
     <PublishAot>true</PublishAot>
     <IlcTreatWarningsAsErrors>true</IlcTreatWarningsAsErrors>
     <ServerGarbageCollection>true</ServerGarbageCollection>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
 
-    <CleanDeploymentRoot Condition="'$(CleanDeploymentRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../artifacts/deploy/$(RuntimeIdentifier)'))</CleanDeploymentRoot>
-    <CleanDeploymentExecutableName Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">$(AssemblyName).exe</CleanDeploymentExecutableName>
-    <CleanDeploymentExecutableName Condition="'$(CleanDeploymentExecutableName)' == ''">$(AssemblyName)</CleanDeploymentExecutableName>
+    <DeploymentExecutableName Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">$(AssemblyName).exe</DeploymentExecutableName>
+    <DeploymentExecutableName Condition="'$(DeploymentExecutableName)' == ''">$(AssemblyName)</DeploymentExecutableName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,22 +36,24 @@
     <ProjectReference Include="../TerraRuntime.World/TerraRuntime.World.csproj" />
   </ItemGroup>
 
-  <Target Name="CreateCleanNativeDeployment"
+  <Target Name="PrepareNativeDeployment"
           AfterTargets="Publish"
           Condition="'$(PublishAot)' == 'true' and '$(RuntimeIdentifier)' != ''">
     <PropertyGroup>
-      <CleanDeploymentSourceExecutable>$([System.IO.Path]::Combine('$(PublishDir)', '$(CleanDeploymentExecutableName)'))</CleanDeploymentSourceExecutable>
+      <DeploymentExecutable>$([System.IO.Path]::Combine('$(PublishDir)', '$(DeploymentExecutableName)'))</DeploymentExecutable>
     </PropertyGroup>
 
-    <Error Condition="!Exists('$(CleanDeploymentSourceExecutable)')"
-           Text="NativeAOT publish completed without expected executable '$(CleanDeploymentSourceExecutable)'." />
+    <Error Condition="!Exists('$(DeploymentExecutable)')"
+           Text="NativeAOT publish completed without expected executable '$(DeploymentExecutable)'." />
 
-    <RemoveDir Directories="$(CleanDeploymentRoot)" />
-    <MakeDir Directories="$(CleanDeploymentRoot);$(CleanDeploymentRoot)/Worlds;$(CleanDeploymentRoot)/config;$(CleanDeploymentRoot)/data;$(CleanDeploymentRoot)/logs" />
-    <Copy SourceFiles="$(CleanDeploymentSourceExecutable)"
-          DestinationFolder="$(CleanDeploymentRoot)" />
+    <ItemGroup>
+      <DeploymentDebugSymbols Include="$(PublishDir)**/*.pdb;$(PublishDir)**/*.dbg" />
+    </ItemGroup>
+
+    <Delete Files="@(DeploymentDebugSymbols)" />
+    <MakeDir Directories="$(PublishDir)Worlds;$(PublishDir)config;$(PublishDir)data;$(PublishDir)logs" />
 
     <Message Importance="high"
-             Text="Clean TerraRuntime deployment: $(CleanDeploymentRoot)" />
+             Text="Runnable TerraRuntime NativeAOT deployment: $(PublishDir)" />
   </Target>
 </Project>
