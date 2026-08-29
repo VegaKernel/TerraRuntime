@@ -64,6 +64,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId Shuriken = new(3);
     public static readonly ProjectileTypeId UnholyArrow = new(4);
     public static readonly ProjectileTypeId JestersArrow = new(5);
+    public static readonly ProjectileTypeId EnchantedBoomerang = new(6);
     public static readonly ProjectileTypeId Bullet = new(14);
     public static readonly ProjectileTypeId GreenLaser = new(20);
     public static readonly ProjectileTypeId Bone = new(21);
