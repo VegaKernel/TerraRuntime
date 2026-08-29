@@ -1,54 +1,101 @@
-# NPC death and loot finalization
+# NPC death, loot and world-item finalization
 
-TerraRuntime keeps damage, death finalization, loot evaluation and world-item spawning as separate gameplay boundaries. The initial finalizer connects the already verified NPC damage state to the source-backed NPC-specific loot catalog without pretending that world-item placement is solved as a side effect.
+TerraRuntime keeps damage, death detection, loot evaluation, world-item materialization and replication as separate gameplay boundaries. The source-backed Blue Slime slice now has two finalization paths:
 
-## Flow
+- `RuntimeNpcDeathLootFinalizer` evaluates NPC-specific loot and returns semantic `NpcLootDrop` values before despawning the exact NPC generation;
+- `RuntimeNpcLootWorldItemTransaction` additionally coordinates those rolls with `RuntimeWorldItemStore` reservations so a server-owned death path can publish world-item drops without inventing a client `ConnectionHandle`.
+
+The transaction does **not** itself decide Terraria item defaults, prefixes or spawn RNG. Those facts belong to an `INpcLootWorldItemMaterializer`, which must be source-backed for every item it advertises.
+
+## Transaction flow
 
 ```mermaid
-flowchart LR
-    Damage["RuntimeNpcDamageExecutor\nLife -> 0"] --> Dead["active dead NPC\nexact NpcHandle"]
-    Dead --> Finalizer["RuntimeNpcDeathLootFinalizer"]
-    Finalizer --> Validate["generation + Life == 0\nsource-backed loot available"]
-    Validate --> Loot["VanillaNpcLootEvaluator"]
-    Loot --> Despawn["TryDespawn(exact handle)"]
-    Despawn --> Result["NpcDeathLootResult + drops"]
-    Result --> Future["future server-owned\nworld-item transaction"]
+flowchart TD
+    Dead["active dead NPC\nexact NpcHandle"] --> Validate["validate generation, Life == 0,\nverified NPC definition + loot rules"]
+    Validate --> Support["preflight materializer support\nfor every potential rule item"]
+    Support --> Capacity["reserve worst-case world-item capacity\nbefore consuming loot RNG"]
+    Capacity --> Loot["VanillaNpcLootEvaluator\nverified luck/RNG order"]
+    Loot --> Materialize["materialize successful drops\ninto WorldItemDropStateUpdate"]
+    Materialize --> Stage["convert capacity reservations\nto validated unpublished drops"]
+    Stage --> Despawn["TryDespawn(exact NpcHandle)"]
+    Despawn --> Commit["commit exact world-item reservations"]
+    Commit --> Result["NpcLootWorldItemTransactionResult"]
 ```
 
-The finalizer is deliberately not a network API. It consumes runtime-owned identity and state only.
+## Generation safety and exactly-once behavior
 
-## Exactly-once generation boundary
-
-A Terraria NPC slot can be reused. Therefore `slot` alone is not a death identity. Finalization requires the exact
+NPC slots are reusable, therefore a slot number is not a death identity. The transaction requires
 
 $$
 H_{npc}=(slot, generation).
 $$
 
-The finalizer first reads that exact handle and later despawns that same handle. After a successful finalization a second call with the old handle fails before consuming loot RNG because the generation is no longer active.
+The initial lookup and the final despawn both use that exact handle. A stale generation cannot finalize a replacement NPC in the same slot. After a successful transaction the old generation is inactive, so a repeated call fails before loot RNG or item materialization is touched.
 
-This also means a stale handle cannot finalize a replacement NPC that happens to reuse the same byte slot.
+The result preserves the last active NPC revision observed before despawn. Despawn itself intentionally clears runtime slot state; the pre-despawn revision is therefore the meaningful final state revision for diagnostics and downstream bookkeeping.
 
-## Ordering
+## Capacity ordering
 
-For the currently imported Blue Slime slice:
+`RuntimeWorldItemStore` exposes unpublished generation-safe reservations. The transaction reserves enough slots for the maximum number of drops represented by the currently imported NPC-specific rule sequence **before** calling `VanillaNpcLootEvaluator`.
 
-1. the exact NPC generation must still be active;
-2. combat state must be materialized and `Life == 0`;
-3. the source-backed NPC-specific loot set must exist;
-4. the caller-provided drop buffer must be large enough;
-5. loot rules consume luck/RNG in their verified source order;
-6. the exact NPC generation is despawned;
-7. `NpcDeathLootResult` preserves the final pre-despawn revision, type and coordinates for the next stage.
+This is deliberately conservative. It guarantees that capacity exhaustion cannot consume player-luck or stack RNG and then leave a dead NPC pending for a retry with a different random outcome. For the current Blue Slime slice the maximum is two world items: Gel and Slime Staff.
 
-Invalid/live/stale/unsupported/short-buffer paths do not consume loot RNG.
+Reservations are invisible to snapshots and replication until committed. Unused reservations are released without publishing an item.
 
-## Why world items are not spawned here
+## Materializer contract
 
-The runtime world-item store already has reservation primitives, but NPC loot still needs pinned TerrariaServer 1.4.5.8 evidence for the relevant `NPC.NPCLoot` / `Item.NewItem` placement, sizing, velocity and ownership ordering. Reusing tile-drop constants or inventing a generic spawn point would create plausible-looking but false vanilla parity.
+`INpcLootWorldItemMaterializer.CanMaterialize(ItemTypeId)` is a side-effect-free preflight. If it returns `true`, `TryMaterialize` must be able to convert a valid rolled `NpcLootDrop` of that item type into a valid `WorldItemDropStateUpdate`. A materializer that advertises support and then fails is treated as an internal contract violation rather than silently deleting loot.
 
-The next integration stage can therefore reserve server-owned world-item capacity, materialize source-backed item spawn state, and commit drops without requiring a fake `ConnectionHandle`.
+The materializer receives the source-backed NPC loot origin. TerrariaServer 1.4.5.8 establishes the ordinary NPC-drop center as
+
+$$
+x_c=\lfloor x_{npc}\rfloor+\left\lfloor\frac{w_{npc}}{2}\right\rfloor,
+\qquad
+y_c=\lfloor y_{npc}\rfloor+\left\lfloor\frac{h_{npc}}{2}\right\rfloor.
+$$
+
+For Blue Slime, the verified NPC definition is `24×18`, so an NPC at `(10.9, 20.9)` yields center `(22, 29)` exactly as the runtime tests assert.
+
+## Source-backed spawn facts already pinned
+
+The permanent `NPC Loot Source Contract` downloads the official TerrariaServer 1.4.5.8 Windows assembly with SHA-256
+
+`d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e`
+
+and verifies the relevant `CommonCode.DropItemFromNPC` / `Item.NewItem` path. Current pinned facts include:
+
+- ordinary NPC loot uses the NPC center and `scattered = false`;
+- `Item.NewItem` is called with natural prefix request `-1` and normal broadcast behavior;
+- Gel defaults are `10×12` and Slime Staff defaults are `26×28`;
+- neither item is in `ItemID.Sets.ItemNoGravity`;
+- default velocity therefore follows
+
+$$
+v_x=0.1R_x,\quad R_x\in[-30,30],
+$$
+
+$$
+v_y=0.1R_y,\quad R_y\in[-40,-16].
+$$
+
+- Slime Staff is in the summon-prefix family;
+- the summon rollable prefix list contains 22 verified prefix IDs;
+- natural `Prefix(-1)` first has a `1/4` no-prefix branch and applies the `ReducedNaturalChance` `1/3` survival rule to the relevant selected prefixes.
+
+These facts are source evidence for the concrete vanilla materializer; the transaction itself remains independent of any specific prefix table.
+
+## Failure behavior
+
+The following paths fail before loot RNG is consumed:
+
+- invalid, live or stale NPC handle;
+- unsupported NPC-specific loot table;
+- caller output buffer smaller than the rule count;
+- materializer does not support one of the potential rule items;
+- insufficient world-item capacity.
+
+If materialization fails after `CanMaterialize` promised support, or an exact staged world-item reservation becomes impossible under the authoritative single-writer contract, the runtime throws because continuing would silently corrupt the death/loot transaction.
 
 ## Current scope
 
-`RuntimeNpcDeathLootFinalizer` currently succeeds only where `VanillaNpcLootEvaluator` has an imported NPC-specific rule set. At present that is Blue Slime. Unsupported dead NPCs are left active and dead so a higher layer cannot silently erase an unimplemented loot path.
+The catalog still contains only the source-backed Blue Slime NPC-specific rule slice. Global loot rules, chained conditions, world/event conditions and other NPCs remain outside this transaction. The concrete Gel/Slime Staff vanilla world-item materializer is the next layer; until it is wired, the transaction boundary is production-capable but intentionally dependency-injected rather than guessing item defaults or prefix behavior.
