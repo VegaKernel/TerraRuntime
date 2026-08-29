@@ -5,25 +5,27 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 /// <summary>
-/// Game-thread-owned projection of loaded world signs. The first runtime slice deliberately does not allocate or
-/// remove sign slots: existing top-left signs can be read, while text mutation is admitted only when the loaded sign
-/// table is persistence-canonical (slot id equals file-order index). Packet 46 reads stay top-left-only until the
-/// runtime owns vanilla tile-frame sign normalization; guessing neighboring coordinates would let a non-sign tile
-/// accidentally resolve to an adjacent sign. Sparse/corrupt sign tables are never silently renumbered by save.
+/// Game-thread-owned projection of loaded world signs. Existing signs can be read through the pinned
+/// TerrariaServer 1.4.5.8 tile-frame normalization when a world tile store is supplied. Text mutation is admitted only
+/// when the loaded sign table is persistence-canonical (slot id equals file-order index). This slice deliberately does
+/// not allocate or remove sign slots yet; a valid sign tile with no loaded sign therefore fails closed instead of
+/// inventing packet-visible slot identity. Sparse/corrupt sign tables are never silently renumbered by save.
 /// </summary>
 internal sealed class RuntimeSignStore
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly WorldSign?[] signs = new WorldSign?[VanillaWorldFormat326.MaximumSignSlots];
     private readonly Dictionary<long, short> signByCoordinates = [];
+    private readonly WorldTileStore? tiles;
     private readonly bool persistenceCanonical;
     private readonly int sourceCount;
 
-    public RuntimeSignStore(ReadOnlySpan<WorldSign> source)
+    public RuntimeSignStore(ReadOnlySpan<WorldSign> source, WorldTileStore? tiles = null)
     {
         if (source.Length > signs.Length)
             throw new ArgumentOutOfRangeException(nameof(source));
 
+        this.tiles = tiles;
         bool canonical = true;
         for (int index = 0; index < source.Length; index++)
         {
@@ -49,7 +51,15 @@ internal sealed class RuntimeSignStore
 
     public bool TryRead(short tileX, short tileY, out WorldSign sign)
     {
-        if (signByCoordinates.TryGetValue(GetCoordinateKey(tileX, tileY), out short id) &&
+        int x = tileX;
+        int y = tileY;
+        if (tiles is not null && !VanillaSignTileResolver.TryResolve(tiles, x, y, out x, out y))
+        {
+            sign = null!;
+            return false;
+        }
+
+        if (signByCoordinates.TryGetValue(GetCoordinateKey(x, y), out short id) &&
             signs[id] is WorldSign existing)
         {
             sign = existing;
