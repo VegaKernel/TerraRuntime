@@ -15,6 +15,10 @@ def compact(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def decode_csharp_string(value: str) -> str:
+    return bytes(value, "utf-8").decode("unicode_escape") if "\\" in value else value
+
+
 def extract_method(source: str, signature: str) -> str:
     start = source.find(signature)
     if start < 0:
@@ -106,11 +110,13 @@ def extract_invocations(method: str, callee: str) -> list[str]:
                     invocations.append(method[open_paren + 1:index])
                     break
         else:
-            raise SystemExit(f"Unterminated {callee}(...) invocation in pinned Terraria.WorldGen.{method_name(method)}.")
+            raise SystemExit(f"Unterminated {callee}(...) invocation in pinned Terraria.WorldGen.AddPasses.")
     return invocations
 
 
-def first_argument(arguments: str) -> str:
+def split_top_level_arguments(arguments: str) -> list[str]:
+    result: list[str] = []
+    start = 0
     paren_depth = 0
     bracket_depth = 0
     brace_depth = 0
@@ -146,9 +152,18 @@ def first_argument(arguments: str) -> str:
         elif ch == "}":
             brace_depth -= 1
         elif ch == "," and paren_depth == 0 and bracket_depth == 0 and brace_depth == 0:
-            return compact(arguments[:index])
+            result.append(compact(arguments[start:index]))
+            start = index + 1
 
-    return compact(arguments)
+    tail = compact(arguments[start:])
+    if tail or result:
+        result.append(tail)
+    return result
+
+
+def first_argument(arguments: str) -> str:
+    values = split_top_level_arguments(arguments)
+    return values[0] if values else ""
 
 
 def inspect_add_passes(source: str) -> dict[str, object]:
@@ -210,10 +225,114 @@ def inspect_special_seed_filter(source: str) -> dict[str, str]:
     return {"signature": compact(signature), "fingerprint": fingerprint}
 
 
+def parse_gen_pass_name_ids(source: str) -> dict[str, str]:
+    pattern = re.compile(
+        r'public\s+(?:const\s+|static\s+readonly\s+|static\s+)string\s+([A-Za-z_]\w*)\s*=\s*"((?:\\.|[^"\\])*)"\s*;'
+    )
+    result = {match.group(1): decode_csharp_string(match.group(2)) for match in pattern.finditer(source)}
+    if not result:
+        raise SystemExit("Pinned GenPassNameID source exposed no string identifiers.")
+    print(f"GenPassNameID_entry_count={len(result)}")
+    print(f"GenPassNameID_sha256={hashlib.sha256(source.encode('utf-8')).hexdigest()}")
+    return result
+
+
+def resolve_name_expression(expression: str, name_ids: dict[str, str]) -> str | None:
+    expression = compact(expression)
+    match = re.fullmatch(r"GenPassNameID\.([A-Za-z_]\w*)", expression)
+    if match:
+        return name_ids.get(match.group(1))
+    match = re.fullmatch(r'"((?:\\.|[^"\\])*)"', expression)
+    if match:
+        return decode_csharp_string(match.group(1))
+    return None
+
+
+def parse_typed_constructor(source: str, class_name: str) -> tuple[list[str], str]:
+    pattern = re.compile(
+        rf"\b{re.escape(class_name)}\s*\(([^)]*)\)\s*:\s*base\s*\(([^)]*)\)",
+        re.MULTILINE,
+    )
+    matches = list(pattern.finditer(source))
+    if len(matches) != 1:
+        raise SystemExit(
+            f"Pinned {class_name} must expose exactly one constructor with an explicit base call; "
+            f"found {len(matches)}."
+        )
+    parameters = []
+    for parameter in split_top_level_arguments(matches[0].group(1)):
+        parameter = parameter.split("=", 1)[0].strip()
+        if not parameter:
+            continue
+        parameters.append(parameter.rsplit(" ", 1)[-1])
+    base_arguments = split_top_level_arguments(matches[0].group(2))
+    if not base_arguments:
+        raise SystemExit(f"Pinned {class_name} constructor base call has no arguments.")
+    return parameters, base_arguments[0]
+
+
+def resolve_typed_registration(
+    expression: str,
+    class_sources: dict[str, str],
+    name_ids: dict[str, str],
+) -> str | None:
+    match = re.fullmatch(r"new\s+([A-Za-z_]\w*)\s*\((.*)\)", compact(expression))
+    if not match:
+        return None
+    class_name = match.group(1)
+    source = class_sources.get(class_name)
+    if source is None:
+        return None
+
+    new_arguments = split_top_level_arguments(match.group(2))
+    parameters, base_name_expression = parse_typed_constructor(source, class_name)
+    direct = resolve_name_expression(base_name_expression, name_ids)
+    if direct is not None:
+        return direct
+
+    if base_name_expression in parameters:
+        index = parameters.index(base_name_expression)
+        if index < len(new_arguments):
+            return resolve_name_expression(new_arguments[index], name_ids)
+    return None
+
+
+def resolve_registration_names(
+    registrations: list[str],
+    gen_pass_name_id_source: str,
+    class_sources: dict[str, str],
+) -> dict[str, object]:
+    name_ids = parse_gen_pass_name_ids(gen_pass_name_id_source)
+    resolved: list[str] = []
+    unresolved: list[str] = []
+    for expression in registrations:
+        name = resolve_name_expression(expression, name_ids)
+        if name is None and expression.startswith("new "):
+            name = resolve_typed_registration(expression, class_sources, name_ids)
+        if name is None:
+            unresolved.append(expression)
+            resolved.append(f"<unresolved:{expression}>")
+        else:
+            resolved.append(name)
+
+    sequence_fingerprint = hashlib.sha256("\n".join(resolved).encode("utf-8")).hexdigest()
+    print(f"WorldGen_resolved_registration_count={len(resolved)}")
+    print(f"WorldGen_resolved_registration_sequence_sha256={sequence_fingerprint}")
+    print(f"WorldGen_resolved_registration_unresolved_count={len(unresolved)}")
+    for index, value in enumerate(resolved):
+        print(f"WorldGen_resolved_registration_{index:03d}={value}")
+    for index, value in enumerate(unresolved):
+        print(f"WorldGen_resolved_registration_unresolved_{index:03d}={value}")
+    if unresolved:
+        raise SystemExit(f"Pinned worldgen pass-name resolution left unresolved registrations: {unresolved}")
+    return {"values": resolved, "sequence_fingerprint": sequence_fingerprint}
+
+
 def write_pass_catalog(
     path: Path,
     registrations: dict[str, object],
     special_seed_filter: dict[str, str],
+    resolved: dict[str, object] | None,
 ) -> None:
     values = list(registrations["registrations"])
     typed_passes = list(registrations["typed_passes"])
@@ -244,6 +363,16 @@ def write_pass_catalog(
         f"WorldGen_AddPasses_unresolved_{index:03d}={value}"
         for index, value in enumerate(unresolved)
     )
+    if resolved is not None:
+        resolved_values = list(resolved["values"])
+        lines.append(f"WorldGen_resolved_registration_count={len(resolved_values)}")
+        lines.append(
+            f"WorldGen_resolved_registration_sequence_sha256={resolved['sequence_fingerprint']}"
+        )
+        lines.extend(
+            f"WorldGen_resolved_registration_{index:03d}={value}"
+            for index, value in enumerate(resolved_values)
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -254,6 +383,10 @@ def main() -> int:
     )
     parser.add_argument("--world-gen", required=True)
     parser.add_argument("--main", required=True)
+    parser.add_argument("--gen-pass-name-id")
+    parser.add_argument("--terrain-pass")
+    parser.add_argument("--jungle-pass")
+    parser.add_argument("--dither-snake-pass")
     parser.add_argument("--pass-catalog-output")
     args = parser.parse_args()
 
@@ -284,6 +417,30 @@ def main() -> int:
     registrations = inspect_add_passes(world_gen)
     special_seed_filter = inspect_special_seed_filter(world_gen)
 
+    support_paths = {
+        "GenPassNameID": args.gen_pass_name_id,
+        "TerrainPass": args.terrain_pass,
+        "JunglePass": args.jungle_pass,
+        "DitherSnakePass": args.dither_snake_pass,
+    }
+    supplied_support = [value is not None for value in support_paths.values()]
+    if any(supplied_support) and not all(supplied_support):
+        raise SystemExit("Pass-name resolution requires all four pinned support type sources.")
+
+    resolved = None
+    if all(supplied_support):
+        name_id_source = Path(args.gen_pass_name_id).read_text(encoding="utf-8")
+        class_sources = {
+            name: Path(path).read_text(encoding="utf-8")
+            for name, path in support_paths.items()
+            if name != "GenPassNameID" and path is not None
+        }
+        resolved = resolve_registration_names(
+            list(registrations["registrations"]),
+            name_id_source,
+            class_sources,
+        )
+
     required_world_gen = {"GenerateWorld", "Reset", "Finish", "DisablePassesForSpecialSeeds"}
     missing_world_gen = sorted(required_world_gen - emitted_world_gen)
     if missing_world_gen:
@@ -292,7 +449,7 @@ def main() -> int:
         raise SystemExit("Pinned Terraria.WorldGen did not expose clearWorld/ClearWorld.")
 
     if args.pass_catalog_output:
-        write_pass_catalog(Path(args.pass_catalog_output), registrations, special_seed_filter)
+        write_pass_catalog(Path(args.pass_catalog_output), registrations, special_seed_filter, resolved)
 
     print(f"worldgen_methods_emitted={sorted(emitted_world_gen)}")
     print(f"main_methods_emitted={sorted(emitted_main)}")
