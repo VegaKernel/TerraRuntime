@@ -10,13 +10,112 @@ def fail(message):
     raise SystemExit(message)
 
 
+def encode_7bit_int(value):
+    if value < 0:
+        raise ValueError("7-bit encoded integer must be non-negative")
+    encoded = bytearray()
+    while value >= 0x80:
+        encoded.append((value & 0x7F) | 0x80)
+        value >>= 7
+    encoded.append(value)
+    return bytes(encoded)
+
+
+def encode_dotnet_string(value):
+    encoded = value.encode("utf-8")
+    return encode_7bit_int(len(encoded)) + encoded
+
+
+def decode_7bit_int(buffer, offset):
+    value = 0
+    shift = 0
+    for _ in range(5):
+        if offset >= len(buffer):
+            fail("truncated 7-bit encoded integer in chest name")
+        current = buffer[offset]
+        offset += 1
+        value |= (current & 0x7F) << shift
+        if (current & 0x80) == 0:
+            return value, offset
+        shift += 7
+    fail("invalid 7-bit encoded integer in chest name")
+
+
+def decode_dotnet_string(buffer, offset):
+    length, offset = decode_7bit_int(buffer, offset)
+    end = offset + length
+    if end > len(buffer):
+        fail("truncated UTF-8 chest name")
+    try:
+        value = buffer[offset:end].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        fail(f"invalid UTF-8 chest name: {exc}")
+    return value, end
+
+
 def send_open(client, tile_x, tile_y):
     client.sendall(struct.pack("<HBhh", 7, 31, tile_x, tile_y))
 
 
 def send_close(client):
-    # Packet 33 ChestOpen with chestId=-1 and an empty name is vanilla's world-chest close shape.
+    # Packet 33 ChestOpen with chestId=-1 and an empty name marker is vanilla's world-chest close shape.
     client.sendall(struct.pack("<HBhhhB", 10, 33, -1, 0, 0, 0))
+
+
+def send_rename(client, chest_id, tile_x, tile_y, name):
+    if not 1 <= len(name) <= 20:
+        fail(f"rename test requires 1..20 characters, got {len(name)}")
+    payload = struct.pack("<hhhB", chest_id, tile_x, tile_y, len(name)) + encode_dotnet_string(name)
+    client.sendall(struct.pack("<HB", 3 + len(payload), 33) + payload)
+
+
+def send_clear_name(client, chest_id, tile_x, tile_y):
+    # Vanilla reserves NameLength=255 as the explicit "set name to empty" marker.
+    client.sendall(struct.pack("<HBhhhB", 10, 33, chest_id, tile_x, tile_y, 255))
+
+
+def send_name_lookup(client, chest_id, tile_x, tile_y):
+    # Packet 69 client request is exactly the fixed six-byte id/x/y payload with no trailing string.
+    client.sendall(struct.pack("<HBhhh", 9, 69, chest_id, tile_x, tile_y))
+
+
+def receive_name(client, expected_chest_id, tile_x, tile_y, expected_name):
+    payload, skipped = recv_until_packet(client, 69, 5)
+    if len(payload) < 7:
+        fail(f"expected packet69 name response, got bytes={len(payload)}, skipped={skipped[:64]}")
+
+    chest_id, chest_x, chest_y = struct.unpack_from("<hhh", payload, 0)
+    if (chest_id, chest_x, chest_y) != (expected_chest_id, tile_x, tile_y):
+        fail(
+            f"packet69 identity mismatch: expected={(expected_chest_id, tile_x, tile_y)}, "
+            f"got={(chest_id, chest_x, chest_y)}"
+        )
+
+    name, offset = decode_dotnet_string(payload, 6)
+    if offset != len(payload):
+        fail(f"packet69 has trailing bytes: parsed={offset}, payload={len(payload)}")
+    if name != expected_name:
+        fail(f"packet69 name mismatch: expected={expected_name!r}, got={name!r}")
+    return name
+
+
+def lookup_name(client, expected_chest_id, tile_x, tile_y):
+    # Use -1 deliberately: vanilla resolves the chest id from coordinates, then replies with the real id.
+    send_name_lookup(client, -1, tile_x, tile_y)
+    payload, skipped = recv_until_packet(client, 69, 5)
+    if len(payload) < 7:
+        fail(f"expected packet69 lookup response, got bytes={len(payload)}, skipped={skipped[:64]}")
+
+    chest_id, chest_x, chest_y = struct.unpack_from("<hhh", payload, 0)
+    if (chest_id, chest_x, chest_y) != (expected_chest_id, tile_x, tile_y):
+        fail(
+            f"packet69 lookup identity mismatch: expected={(expected_chest_id, tile_x, tile_y)}, "
+            f"got={(chest_id, chest_x, chest_y)}"
+        )
+    name, offset = decode_dotnet_string(payload, 6)
+    if offset != len(payload):
+        fail(f"packet69 lookup has trailing bytes: parsed={offset}, payload={len(payload)}")
+    return name
 
 
 def send_item(client, chest_id, item_slot, stack, prefix, item_net_id):
@@ -115,13 +214,31 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
             item_net_id,
         )
 
+        # Packet 69 lookup is independent from ownership and resolves chestId=-1 by exact coordinates.
+        # Capture the source-world name before mutating it so the probe can restore any legitimate value.
+        original_name = lookup_name(owner, chest_id, tile_x, tile_y)
+        if len(original_name) > 20:
+            fail(f"official world chest name exceeds protocol326 rename limit: {len(original_name)}")
+
+        temporary_name = "TerraRuntimeCI" if original_name != "TerraRuntimeCI" else "TerraRuntimeCI2"
+        send_rename(owner, chest_id, tile_x, tile_y, temporary_name)
+        send_name_lookup(owner, -1, tile_x, tile_y)
+        receive_name(owner, chest_id, tile_x, tile_y, temporary_name)
+
+        # Restore the exact original name. Empty names use vanilla's explicit 255 marker; non-empty
+        # names use the normal 1..20 marker plus BinaryWriter/.NET string payload.
+        if original_name:
+            send_rename(owner, chest_id, tile_x, tile_y, original_name)
+        else:
+            send_clear_name(owner, chest_id, tile_x, tile_y)
+        send_name_lookup(owner, -1, tile_x, tile_y)
+        receive_name(owner, chest_id, tile_x, tile_y, original_name)
+
         # Explicit close, then deliberately submit an otherwise-valid packet32 mutation.
         # This is an ownership/state test, not inventory conservation: after packet33(-1), packet32
         # must not mutate the chest because this connection no longer has an active world chest.
         send_close(owner)
         rejected_stack = item_stack - 1
-        rejected_prefix = item_prefix if rejected_stack > 0 else 0
-        rejected_net_id = item_net_id if rejected_stack > 0 else 0
         send_item(owner, chest_id, item_slot, rejected_stack, item_prefix, item_net_id)
 
         # Socket ingress preserves frame order, so the game loop observes close -> rejected item update
@@ -186,6 +303,8 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
             item_prefix,
             item_net_id,
         )
+        if lookup_name(owner, chest_id, tile_x, tile_y) != original_name:
+            fail("chest name was not restored before disconnect lifecycle probe")
 
         # Leave the chest open and tear down transport without packet33(-1). The disconnect command must
         # release ownership. With max-players=1 the next connection reuses slot 0 with a new generation,
@@ -208,13 +327,17 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
             item_prefix,
             item_net_id,
         )
+        replacement_name = lookup_name(replacement, chest_id, tile_x, tile_y)
+        if replacement_name != original_name:
+            fail(f"replacement session saw wrong chest name: expected={original_name!r}, got={replacement_name!r}")
         send_close(replacement)
 
         print(
             "live chest lifecycle ok: "
             f"chest={chest_id} tile=({tile_x},{tile_y}) slots={slots} "
-            f"verifiedItemSlot={item_slot} rejectedPostCloseStack={rejected_stack} "
-            f"committedStack={committed_stack} restoredItem=ok disconnectReplacement=ok "
+            f"verifiedItemSlot={item_slot} originalName={original_name!r} renameLookup=ok "
+            f"rejectedPostCloseStack={rejected_stack} committedStack={committed_stack} "
+            f"restoredItem=ok restoredName=ok disconnectReplacement=ok "
             f"ownerSections={owner_sections} ownerBootstrapFrames={owner_bootstrap_frames} "
             f"replacementSections={replacement_sections} replacementBootstrapFrames={replacement_bootstrap_frames}"
         )
