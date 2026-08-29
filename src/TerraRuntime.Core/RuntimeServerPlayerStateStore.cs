@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
@@ -154,7 +155,9 @@ public sealed class RuntimeServerPlayerStateStore
         return true;
     }
 
-    private bool TryGetState(PlayerHandle player, out ServerPlayerRuntimeState? state)
+    private bool TryGetState(
+        PlayerHandle player,
+        [NotNullWhen(true)] out ServerPlayerRuntimeState? state)
     {
         if (!player.IsAssigned ||
             player.Slot.Value >= states.Length ||
