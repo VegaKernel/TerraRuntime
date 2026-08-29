@@ -1,0 +1,165 @@
+name: Live Dirt Action0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/**'
+      - 'src/TerraRuntime.Network/**'
+      - 'src/TerraRuntime.Protocol/**'
+      - 'src/TerraRuntime.Protocol.Multiplicity/**'
+      - 'src/TerraRuntime.World/**'
+      - 'src/TerraRuntime.Core/**'
+      - 'tools/TerraRuntime.TileLocate/**'
+      - 'tools/ci/live_join_relay_probe.py'
+      - 'tools/ci/live_dirt_kill_probe.py'
+      - '.github/workflows/live-dirt-action0.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-live-dirt-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-dirt-action0:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Generate official small world
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/live-dirt.wld"
+          config="$GITHUB_WORKSPACE/artifacts/live-dirt-official.txt"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=1
+          worldname=TerraRuntimeLiveDirt
+          difficulty=0
+          maxplayers=1
+          port=17785
+          password=
+          motd=TerraRuntime live Dirt action0 verification
+          secure=1
+          upnp=0
+          EOF
+
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$GITHUB_WORKSPACE/artifacts/live-dirt-official.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$GITHUB_WORKSPACE/artifacts/live-dirt-official.log"
+          test -s "$world"
+          if [[ $status -ne 0 && $status -ne 124 ]]; then
+            echo "Official server exited with status $status" >&2
+            exit "$status"
+          fi
+
+      - name: Locate packet17-safe empty tile
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.TileLocate/TerraRuntime.TileLocate.csproj \
+            -c Release \
+            -- artifacts/live-dirt.wld \
+            | tee artifacts/live-dirt-tile.txt
+          grep -Eq '^x=[0-9]+ y=[0-9]+$' artifacts/live-dirt-tile.txt
+
+      - name: Build TerraRuntime host
+        run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+
+      - name: Probe live Dirt placement and action0 drop
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/live-dirt.wld"
+          host_log="$GITHUB_WORKSPACE/artifacts/live-dirt-host.log"
+          client_log="$GITHUB_WORKSPACE/artifacts/live-dirt-client.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+          tile_info="$(tail -1 artifacts/live-dirt-tile.txt)"
+          x="" y=""
+          for field in $tile_info; do
+            case "$field" in
+              x=*) x="${field#x=}" ;;
+              y=*) y="${field#y=}" ;;
+            esac
+          done
+          test -n "$x" -a -n "$y"
+
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17784 \
+            --max-players 2 \
+            > "$host_log" 2>&1 &
+          host_pid=$!
+
+          cleanup() {
+            kill "$host_pid" 2>/dev/null || true
+            wait "$host_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "TerraRuntime host exited before opening the listener." >&2
+              exit 1
+            fi
+            if grep -q "TerraRuntime listening on 0.0.0.0:17784" "$host_log"; then
+              break
+            fi
+            sleep 0.5
+          done
+          grep -q "TerraRuntime listening on 0.0.0.0:17784" "$host_log"
+
+          python3 tools/ci/live_dirt_kill_probe.py \
+            --port 17784 \
+            --x "$x" \
+            --y "$y" \
+            2>&1 | tee "$client_log"
+          cat "$host_log"
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-dirt-action0-failure
+          path: |
+            artifacts/live-dirt-official.log
+            artifacts/live-dirt-official.txt
+            artifacts/live-dirt-tile.txt
+            artifacts/live-dirt-host.log
+            artifacts/live-dirt-client.log
+          retention-days: 3
