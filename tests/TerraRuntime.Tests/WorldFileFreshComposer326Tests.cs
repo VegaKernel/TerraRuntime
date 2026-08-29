@@ -73,10 +73,10 @@ public sealed class WorldFileFreshComposer326Tests
         Assert.Empty(world.PressurePlates);
         Assert.Empty(world.TownRooms);
         Assert.Empty(world.Bestiary.Kills);
-        Assert.Equal(generation.Spawn.X, world.RuntimeMetadata.SpawnX);
-        Assert.Equal(generation.Spawn.Y, world.RuntimeMetadata.SpawnY);
-        Assert.Equal(generation.Dungeon.X, world.RuntimeMetadata.DungeonX);
-        Assert.Equal(generation.Dungeon.Y, world.RuntimeMetadata.DungeonY);
+        Assert.Equal((short)generation.Spawn.X, world.RuntimeMetadata.SpawnX);
+        Assert.Equal((short)generation.Spawn.Y, world.RuntimeMetadata.SpawnY);
+        Assert.Equal((short)generation.Dungeon.X, world.RuntimeMetadata.DungeonX);
+        Assert.Equal((short)generation.Dungeon.Y, world.RuntimeMetadata.DungeonY);
         Assert.Equal((short)generation.Layers.WorldSurface, world.RuntimeMetadata.WorldSurface);
         Assert.Equal((short)generation.Layers.RockLayer, world.RuntimeMetadata.RockLayer);
         Assert.Equal(WorldFileFreshRuntimeMetadata326Encoder.InitialTime, world.RuntimeMetadata.Time);
