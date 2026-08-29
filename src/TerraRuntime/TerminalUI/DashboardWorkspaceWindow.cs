@@ -633,6 +633,20 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             rows[14].Text = $"Lookups     hit {snapshot.SectionCacheHits:N0}  miss {snapshot.SectionCacheMisses:N0}  stale {snapshot.SectionCacheStaleReads:N0}  waits {snapshot.SectionCacheWaits:N0}";
             rows[15].Text = $"Rebuild     queued {snapshot.SectionCachePendingWork:N0}  active {snapshot.SectionCacheActiveWorkers:N0}  published {snapshot.SectionCachePublished:N0}";
         }
+        if (snapshot.Persistence is RuntimeWorldPersistenceSnapshot persistence)
+        {
+            string shadow = persistence.TileShadowReady
+                ? "ready"
+                : $"sync({persistence.RemainingBootstrapSections:N0})";
+            string request = persistence.SaveRequested ? "pending" : "idle";
+            string write = persistence.WriteActive
+                ? "active"
+                : persistence.PendingWrite ? "pending" : "idle";
+            rows[16].Text =
+                $"Save        shadow {shadow} dirty {persistence.PendingDirtyTileSections:N0} request {request} write {write} " +
+                $"done {persistence.CompletedWrites:N0}/{persistence.StartedWrites:N0} accepted {persistence.AcceptedSnapshots:N0} " +
+                $"coalesced {persistence.CoalescedSnapshots:N0} failed {persistence.FailedWrites:N0}";
+        }
         rows[17].Text = "F2 returns to System Dashboard";
     }
 
