@@ -128,6 +128,49 @@ public sealed class RuntimeSignCommandProcessorTests
         Assert.Empty(snapshot);
     }
 
+    [Fact]
+    public void Stale_session_generation_cannot_read_or_mutate_sign_state()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(50, 50));
+        tiles.Set(10, 20, new WorldTile { Type = 55, Flags = WorldTileFlags.Active });
+        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)], tiles);
+        var replication = new RuntimeSignReplicationRegistry();
+        var processor = new RuntimeSignCommandProcessor(store, replication);
+        ConnectionHandle stale = Connection(41, playerSlot: 6, generation: 1);
+        ConnectionHandle current = Connection(41, playerSlot: 6, generation: 2);
+        var outbound = Outbound();
+
+        Assert.True(replication.TryRegister(current.Source, outbound));
+        MarkPlaying(replication, current);
+        Assert.False(replication.IsPlaying(stale));
+        Assert.True(replication.IsPlaying(current));
+
+        Assert.True(processor.TryApply(
+            new ClientSignReadRuntimeCommand(stale, new TerrariaSignReadRequest(10, 20))));
+        Assert.True(processor.TryApply(
+            new ClientSignUpdateRuntimeCommand(
+                stale,
+                new TerrariaSignState(0, 10, 20, "stale", stale.Player.Slot.Value, Flags: 0))));
+
+        Assert.Equal(0, processor.AppliedReads);
+        Assert.Equal(1, processor.RejectedReads);
+        Assert.Equal(0, processor.AppliedUpdates);
+        Assert.Equal(1, processor.RejectedUpdates);
+        Assert.Equal(0, replication.ReadFrames);
+        Assert.Equal(0, replication.UpdateFrames);
+        Assert.Equal(0, outbound.QueuedFrames);
+        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] snapshot));
+        Assert.Equal("before", Assert.Single(snapshot).Text);
+
+        Assert.True(processor.TryApply(
+            new ClientSignUpdateRuntimeCommand(
+                current,
+                new TerrariaSignState(0, 10, 20, "current", current.Player.Slot.Value, Flags: 0))));
+        Assert.Equal(1, processor.AppliedUpdates);
+        Assert.True(store.TryCaptureCanonicalSnapshot(out snapshot));
+        Assert.Equal("current", Assert.Single(snapshot).Text);
+    }
+
     private static TerrariaSignState ReadState(TerrariaConnectionOutboundQueue outbound)
     {
         FieldInfo? field = typeof(TerrariaConnectionOutboundQueue).GetField(
