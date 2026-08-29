@@ -13,6 +13,7 @@ on:
       - 'tests/TerraRuntime.Tests/*ItemUse*.cs'
       - 'tests/TerraRuntime.Tests/*ItemDefinition*.cs'
       - 'tests/TerraRuntime.Tests/*NpcLoot*.cs'
+      - 'docs/roadmap/gameplay-decomposition-and-catalogs.md'
       - '.github/workflows/gameplay-ai-verify.yml'
   workflow_dispatch:
 
