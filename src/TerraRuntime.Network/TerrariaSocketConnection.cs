@@ -164,6 +164,7 @@ public static class TerrariaSocketConnection
                 TimeSpan remaining = state.GetRemainingTimeout();
                 if (remaining == Timeout.InfiniteTimeSpan)
                 {
+                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
                     return TerrariaConnectionStopReason.None;
                 }
 
