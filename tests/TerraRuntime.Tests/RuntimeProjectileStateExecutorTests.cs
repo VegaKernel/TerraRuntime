@@ -205,7 +205,8 @@ public sealed class RuntimeProjectileStateExecutorTests
             in ProjectileSimulationStepContext projectile,
             out ProjectileSimulationStepResult next)
         {
-            ProjectileStateUpdate state = Integrate(in projectile.Projectile);
+            ProjectileSnapshot current = projectile.Projectile;
+            ProjectileStateUpdate state = Integrate(in current);
             next = new ProjectileSimulationStepResult(state, projectile.Lifecycle.TimeLeft);
             return true;
         }
@@ -220,7 +221,8 @@ public sealed class RuntimeProjectileStateExecutorTests
             out ProjectileSimulationStepResult next)
         {
             Calls++;
-            ProjectileStateUpdate state = Integrate(in projectile.Projectile);
+            ProjectileSnapshot current = projectile.Projectile;
+            ProjectileStateUpdate state = Integrate(in current);
             next = new ProjectileSimulationStepResult(state, projectile.Lifecycle.TimeLeft - 1);
             return true;
         }
@@ -232,7 +234,8 @@ public sealed class RuntimeProjectileStateExecutorTests
             in ProjectileSimulationStepContext projectile,
             out ProjectileSimulationStepResult next)
         {
-            ProjectileStateUpdate state = Integrate(in projectile.Projectile);
+            ProjectileSnapshot current = projectile.Projectile;
+            ProjectileStateUpdate state = Integrate(in current);
             next = new ProjectileSimulationStepResult(state, timeLeft);
             return true;
         }
@@ -244,7 +247,8 @@ public sealed class RuntimeProjectileStateExecutorTests
             in ProjectileSimulationStepContext projectile,
             out ProjectileSimulationStepResult next)
         {
-            ProjectileStateUpdate state = Integrate(in projectile.Projectile);
+            ProjectileSnapshot current = projectile.Projectile;
+            ProjectileStateUpdate state = Integrate(in current);
             next = new ProjectileSimulationStepResult(state, 0);
             return true;
         }
