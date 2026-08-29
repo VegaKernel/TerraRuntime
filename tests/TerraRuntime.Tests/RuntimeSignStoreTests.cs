@@ -34,6 +34,49 @@ public sealed class RuntimeSignStoreTests
     }
 
     [Fact]
+    public void Tile_backed_store_normalizes_bottom_right_sign_frame_to_loaded_top_left_slot()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(50, 50));
+        tiles.Set(10, 20, new WorldTile
+        {
+            Type = 55,
+            FrameX = 0,
+            FrameY = 0,
+            Flags = WorldTileFlags.Active
+        });
+        tiles.Set(11, 21, new WorldTile
+        {
+            Type = 55,
+            FrameX = 18,
+            FrameY = 18,
+            Flags = WorldTileFlags.Active
+        });
+        var store = new RuntimeSignStore([new WorldSign(0, "framed", 10, 20)], tiles);
+
+        Assert.True(store.TryRead(11, 21, out WorldSign sign));
+        Assert.Equal((short)0, sign.SlotId);
+        Assert.Equal(10, sign.X);
+        Assert.Equal(20, sign.Y);
+        Assert.Equal("framed", sign.Text);
+    }
+
+    [Fact]
+    public void Tile_backed_store_rejects_non_sign_tiles_even_when_coordinates_match_loaded_sign()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(50, 50));
+        tiles.Set(10, 20, new WorldTile
+        {
+            Type = 54,
+            FrameX = 0,
+            FrameY = 0,
+            Flags = WorldTileFlags.Active
+        });
+        var store = new RuntimeSignStore([new WorldSign(0, "stale", 10, 20)], tiles);
+
+        Assert.False(store.TryRead(10, 20, out _));
+    }
+
+    [Fact]
     public void Sparse_source_remains_readable_but_rejects_mutation_and_semantic_persistence()
     {
         var store = new RuntimeSignStore(
