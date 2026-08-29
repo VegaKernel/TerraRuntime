@@ -17,8 +17,8 @@ public sealed record GameLoopOptions
 
     /// <summary>
     /// Maximum queued authoritative commands retained for one external source such as a connection.
-    /// Runtime/system work is exempt. This prevents one producer from occupying the entire global mailbox
-    /// while the separate per-tick source quota bounds how much of one tick that producer can consume.
+    /// Runtime/system work is exempt. Values above <see cref="CommandCapacity"/> are harmless because
+    /// the global mailbox remains the tighter ceiling for such configurations.
     /// </summary>
     public int MaxPendingCommandsPerSource { get; init; } = 1024;
 
@@ -40,7 +40,6 @@ public sealed record GameLoopOptions
         ArgumentOutOfRangeException.ThrowIfLessThan(MaxCommandsPerSourcePerTick, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(MaxCommandsPerSourcePerTick, MaxCommandsPerTick);
         ArgumentOutOfRangeException.ThrowIfLessThan(MaxPendingCommandsPerSource, 1);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(MaxPendingCommandsPerSource, CommandCapacity);
 
         if (MaxCommandCpuMillisecondsPerTick is double commandCpuBudget &&
             (!double.IsFinite(commandCpuBudget) ||
