@@ -1,7 +1,7 @@
 name: Authoritative World Save
 
 # Persistence proof is intentionally isolated from unrelated gameplay/TUI test churn.
-# Refresh marker: startup orphan cleanup and validated checkpoint recovery.
+# Refresh marker: startup orphan cleanup, validated checkpoint recovery and save timing telemetry.
 on:
   push:
     branches: [main]
@@ -27,6 +27,7 @@ on:
       - 'tests/TerraRuntime.Tests/RuntimeWorldSnapshotPreservedSectionsTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldTileChestSaveServiceTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldCheckpointRecoveryTests.cs'
+      - 'tests/TerraRuntime.Tests/WorldSaveTimingTelemetryTests.cs'
       - 'tools/TerraRuntime.AtomicSaveCrashProbe/**'
       - '.github/workflows/authoritative-world-save.yml'
   workflow_dispatch:
@@ -243,6 +244,11 @@ jobs:
 
       - name: Build persistence test assembly
         run: dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+
+      - name: Prove save timing telemetry
+        run: >-
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --
+          -class "TerraRuntime.Tests.WorldSaveTimingTelemetryTests"
 
       - name: Prove startup orphan save cleanup helper
         run: >-
