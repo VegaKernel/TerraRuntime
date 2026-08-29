@@ -18,6 +18,8 @@ internal enum RuntimeWorldTileChestSaveTickResult : byte
 /// </summary>
 internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
 {
+    public const int DefaultSynchronizationSectionsPerTick = 4;
+
     private readonly RuntimeWorldTileChestSaveSnapshotSource snapshotSource;
     private readonly WorldSaveCoordinator<RuntimeWorldTileChestSaveSnapshot> coordinator;
     private readonly int synchronizationSectionsPerTick;
@@ -31,7 +33,7 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         WorldFilePreservedSections preserved,
         WorldTileStore tiles,
         RuntimeChestStore chestStore,
-        int synchronizationSectionsPerTick)
+        int synchronizationSectionsPerTick = DefaultSynchronizationSectionsPerTick)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
