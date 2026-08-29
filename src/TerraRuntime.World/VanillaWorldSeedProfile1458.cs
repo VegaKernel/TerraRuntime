@@ -105,12 +105,13 @@ internal readonly record struct VanillaWorldSeedProfile1458(
             flags |= ResolvePersistentSecretFlag(modifier);
         }
 
-        // Zenith is the vanilla aggregate special world. Keeping its constituent flags explicit is important because
-        // existing save/runtime paths query those booleans independently rather than treating Zenith as an alias.
+        // Terraria's Everything/Zenith world enables the legacy special-world attributes individually. Keep the
+        // aggregate bit and those independent attributes so fresh .wld metadata observes the same composite mode.
         if ((flags & VanillaWorldSeedFlags1458.ZenithWorld) != 0)
         {
             flags |= VanillaWorldSeedFlags1458.DrunkWorld |
                 VanillaWorldSeedFlags1458.GetGoodWorld |
+                VanillaWorldSeedFlags1458.TenthAnniversaryWorld |
                 VanillaWorldSeedFlags1458.DontStarveWorld |
                 VanillaWorldSeedFlags1458.NotTheBeesWorld |
                 VanillaWorldSeedFlags1458.RemixWorld |
@@ -168,7 +169,7 @@ internal readonly record struct VanillaWorldSeedProfile1458(
     {
         "05162020" or "5162020" => VanillaWorldSeedFlags1458.DrunkWorld,
         "fortheworthy" => VanillaWorldSeedFlags1458.GetGoodWorld,
-        "05162021" or "5162021" or "celebrationmk10" => VanillaWorldSeedFlags1458.TenthAnniversaryWorld,
+        "05162021" or "5162021" or "5162011" or "celebrationmk10" => VanillaWorldSeedFlags1458.TenthAnniversaryWorld,
         "constant" or "theconstant" or "eye4aneye" or "eyeforaneye" => VanillaWorldSeedFlags1458.DontStarveWorld,
         "notthebees" => VanillaWorldSeedFlags1458.NotTheBeesWorld,
         "dontdigup" => VanillaWorldSeedFlags1458.RemixWorld,
