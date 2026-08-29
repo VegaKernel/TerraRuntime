@@ -14,6 +14,7 @@
 
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
 - [Загрузка мира и persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state и recovery.
+- [Телеметрия времени save pipeline](save-pipeline-telemetry.md) — границы времени authoritative snapshot, serializer и полной atomic-write транзакции и правила их интерпретации.
 - [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.
 - [Synchronization и interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis и текущая passthrough policy.
 - [Performance и tick scheduling](performance-runtime.md) — $60\,\mathrm{Hz}$ authoritative loop, bounded mailbox/ingress/apply budgets, per-source fairness, missed-tick policy и правила performance evidence.
@@ -39,7 +40,7 @@
 
 Изменение не считается завершённым, если код и документация описывают разные версии TerraRuntime.
 
-Для новой подсистемы сначала выбирается её каноническое место в документации. Не нужно создавать новый Markdown-файл на каждый класс: документация группируется по пользовательским и архитектурным концепциям, а не повторяет структуру исходников.
+Для новой подсистемы сначала выбирается её каноническое место в документации. Не нужно создавать новый Markdown-файл на каждый класс: документация группируется по пользовательским и архитектурным концепциям, а не повторяет структуру исходников механически.
 
 ## Что документируем
 
