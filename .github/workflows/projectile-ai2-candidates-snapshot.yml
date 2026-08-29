@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Extract pinned simple aiStyle2 candidate details
+      - name: Extract exact simple aiStyle2 branches
         shell: bash
         run: |
           set -euo pipefail
@@ -58,38 +58,44 @@ jobs:
                       d-=1
                       if d==0:return src[m.start():i+1]
               raise SystemExit(f'unterminated: {name}')
-          def exact_context(src,t,radius=2600):
-              s=compact(src)
-              pat=re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|(?<!\d){t}\s*(?:==|!=)\s*type(?!\d)')
-              out=[]
-              for m in pat.finditer(s):out.append(s[max(0,m.start()-radius):min(len(s),m.end()+radius)])
-              return ' | '.join(out) if out else '<none>'
+          def condition_blocks(method_source,t):
+              s=compact(method_source); blocks=[]
+              pattern=re.compile(rf'(?:else if|if) \(([^)]*(?<!\d){t}(?!\d)[^)]*)\) \{{')
+              for m in pattern.finditer(s):
+                  condition=m.group(1)
+                  if 'type' not in condition: continue
+                  opening=s.find('{',m.start()); depth=0
+                  for i in range(opening,len(s)):
+                      if s[i]=='{': depth+=1
+                      elif s[i]=='}':
+                          depth-=1
+                          if depth==0:
+                              blocks.append(s[m.start():i+1]); break
+              return ' | '.join(blocks) if blocks else '<none>'
           names={int(v):n for n,v in re.findall(r'public const short\s+([A-Za-z0-9_]+)\s*=\s*(\d+)\s*;',ids)}
-          defaults=method(source,'SetDefaults'); ai=method(source,'AI'); update=method(source,'Update')
-          collision=method(source,'GetCollisionParams'); movement=method(source,'HandleMovement'); kill=method(source,'Kill'); cancut=method(source,'CanCutTiles')
+          defaults=method(source,'SetDefaults'); kill=method(source,'Kill')
+          ai=method(source,'AI'); update=method(source,'Update'); collision=method(source,'GetCollisionParams'); movement=method(source,'HandleMovement')
           lines=[]
           for t in candidates:
-              kill_ctx=exact_context(kill,t,3200)
-              authoritative=[]
-              for needle in ['NewProjectile','KillTile','PlaceTile','NewItem','NewNPC','SendData','netUpdate','Transform','Explosion','TileRunner']:
-                  if needle in kill_ctx: authoritative.append(needle)
+              defaults_block=condition_blocks(defaults,t)
+              kill_block=condition_blocks(kill,t)
+              tokens=[n for n in ['NewProjectile','KillTile','PlaceTile','NewItem','NewNPC','SendData','netUpdate','Damage()','AI_','Explosion'] if n in kill_block]
               lines.extend([
-                  f'type={t} name={names.get(t,"<unnamed>")}',
-                  'defaults='+exact_context(defaults,t,1800),
-                  'ai='+exact_context(ai,t,2200),
-                  'update='+exact_context(update,t,1800),
-                  'collision='+exact_context(collision,t,1800),
-                  'movement='+exact_context(movement,t,1800),
-                  'kill='+kill_ctx,
-                  'kill_authoritative_tokens='+(','.join(authoritative) if authoritative else '<none>'),
-                  'can_cut='+exact_context(cancut,t,1000),
-                  '---'
+                f'type={t} name={names.get(t,"<unnamed>")}',
+                'defaults_block='+defaults_block,
+                'ai_blocks='+condition_blocks(ai,t),
+                'update_blocks='+condition_blocks(update,t),
+                'collision_blocks='+condition_blocks(collision,t),
+                'movement_blocks='+condition_blocks(movement,t),
+                'kill_block='+kill_block,
+                'kill_authoritative_tokens='+(','.join(tokens) if tokens else '<none>'),
+                '---'
               ])
-          Path('artifacts/ai2/simple-ai2-details.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          Path('artifacts/ai2/exact-simple-ai2.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
           print('\n'.join(lines))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: projectile-simple-ai2-details
-          path: artifacts/ai2/simple-ai2-details.txt
+          name: projectile-exact-simple-ai2
+          path: artifacts/ai2/exact-simple-ai2.txt
           retention-days: 1
