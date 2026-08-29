@@ -16,12 +16,26 @@ docs/
 │   ├── README.md
 │   ├── project-guide.md
 │   ├── architecture.md
-│   └── host-interfaces.md
+│   ├── host-interfaces.md
+│   ├── networking-protocol.md
+│   ├── world-persistence.md
+│   ├── gameplay.md
+│   ├── synchronization.md
+│   ├── operations-tui.md
+│   ├── world-generation.md
+│   └── security.md
 ├── en/
 │   ├── README.md
 │   ├── project-guide.md
 │   ├── architecture.md
-│   └── host-interfaces.md
+│   ├── host-interfaces.md
+│   ├── networking-protocol.md
+│   ├── world-persistence.md
+│   ├── gameplay.md
+│   ├── synchronization.md
+│   ├── operations-tui.md
+│   ├── world-generation.md
+│   └── security.md
 ├── roadmap.md
 └── roadmap/
 ```
@@ -82,7 +96,7 @@ Practical descriptions of supported external integration contracts, lifecycle, s
 
 ### Subsystem guides
 
-Added for complex domains such as protocol, world persistence, synchronization/interest management, NPCs/projectiles/combat, worldgen, security and observability as they mature.
+Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, operations/TUI, world generation and security.
 
 ### Roadmaps
 
@@ -96,6 +110,25 @@ Describe target state, acceptance criteria and incomplete work. They must not ma
 - A feature must not be documented as supported in one language and experimental/missing in the other.
 - When exact sentence-by-sentence translation harms clarity, semantic equivalence is required instead.
 
+## CI documentation gate
+
+`tools/ci/check_documentation.py` runs in the main `build-test` CI job before restore/build/test.
+
+The check deliberately validates structural invariants rather than attempting machine translation:
+
+- `docs/en/` and `docs/ru/` must contain the same set of Markdown pages;
+- the required baseline pages listed by the checker must exist in both languages;
+- repository-local Markdown links in `docs/**/*.md`, root `README.md` and `AGENTS.md` must resolve to an existing path;
+- relative links may not escape the repository root.
+
+The gate does **not** claim to prove semantic translation equivalence. Review remains responsible for meaning and factual parity between the two language versions.
+
+Run it locally from the repository root:
+
+```text
+python3 tools/ci/check_documentation.py
+```
+
 ## Initial implementation
 
 - [x] Create `docs/ru/` and `docs/en/` entry points.
@@ -105,18 +138,30 @@ Describe target state, acceptance criteria and incomplete work. They must not ma
 - [x] Add same-change documentation discipline to `AGENTS.md`.
 - [x] Link the bilingual documentation from the main repository documentation surface.
 
-## Next documentation coverage
+## Documentation coverage
 
-- [ ] Dedicated protocol/networking guide: framing, connection states, Multiplicity boundary, inbound/outbound queues and rejection categories.
-- [ ] Dedicated world/persistence guide: `.wld` support matrix, save pipeline, atomic recovery, runtime cache and warm-start behavior.
-- [ ] Dedicated gameplay guide: players, inventory/items, NPCs, projectiles, combat and authoritative validation, with explicit parity status.
-- [ ] Dedicated synchronization guide: sections, bootstrap/join, interest management and resync invariants.
-- [ ] Dedicated operations/TUI guide: startup modes, dashboard model, telemetry and safe administrative operations.
-- [ ] Dedicated worldgen guide: provider contracts, plan/pass lifecycle, workspace model and vanilla-worldgen status.
-- [ ] Dedicated security guide: trust boundaries, budgets, rate limits, malformed input handling and failure isolation.
-- [ ] Add diagrams/examples when they clarify an actual interaction path; do not add decorative architecture art that cannot be kept current.
-- [ ] Add documentation-link validation in CI once the bilingual tree stabilizes.
-- [ ] Consider a lightweight RU/EN parity check for required mirrored pages without attempting machine translation or line-by-line equality.
+- [x] Dedicated protocol/networking guide: framing, connection states, Multiplicity boundary, inbound/outbound queues and rejection categories.
+- [x] Dedicated world/persistence guide: `.wld` support, save pipeline, atomic recovery, runtime cache and warm-start behavior.
+- [x] Dedicated gameplay guide: players, inventory/items, NPCs, projectiles, combat and authoritative validation, with explicit parity status.
+- [x] Dedicated synchronization guide: sections, bootstrap/join, interest management and resync invariants.
+- [x] Dedicated operations/TUI guide: startup modes, dashboard model, telemetry and safe administrative operations.
+- [x] Dedicated worldgen guide: provider contracts, plan/pass lifecycle, workspace model and vanilla-worldgen status.
+- [x] Dedicated security guide: trust boundaries, budgets, rate limits, malformed input handling and failure isolation.
+- [x] Add diagrams/examples when they clarify an actual interaction path; subsystem guides now contain maintained text diagrams and API/flow examples where useful.
+- [x] Add documentation-link validation in CI.
+- [x] Add lightweight RU/EN structural parity validation without machine translation or line-by-line equality.
+
+## Continuing work
+
+Documentation does not become "finished" after the baseline pages exist. The permanent work is to keep those pages synchronized with implementation and split out new stable subsystem guides only when a concept becomes too large for the existing structure.
+
+Useful future improvements, when justified by real maintenance needs, include:
+
+- source/API link generation for stable public contracts without mirroring every class into Markdown;
+- additional executable examples for host integrations;
+- version/support matrices when TerraRuntime supports more than one Terraria/protocol baseline;
+- documentation coverage for new gameplay domains as bosses, events, housing, wiring and progression become authoritative;
+- CI checks that validate specific machine-readable support tables if those tables later become canonical project data.
 
 ## Definition of done for documentation work
 
@@ -127,4 +172,5 @@ Documentation work is complete when:
 - implemented behavior and target behavior are clearly distinguished;
 - ownership/threading/failure rules are explicit where relevant;
 - links are relative and repository-safe;
-- the associated roadmap status is updated when support changed.
+- `python3 tools/ci/check_documentation.py` passes;
+- the associated roadmap/status is updated when support changed.
