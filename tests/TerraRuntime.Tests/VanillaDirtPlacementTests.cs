@@ -71,6 +71,26 @@ public sealed class VanillaDirtPlacementTests
     }
 
     [Fact]
+    public void Kill_preflight_accepts_isolated_dirt_without_world_side_effects()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(400, 300));
+        const int x = 210;
+        const int y = 160;
+        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(tiles, x, y));
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(tiles.Dimensions, x, y);
+        long beforeVersion = tiles.GetSectionVersion(section);
+        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
+        Assert.Equal(1, tiles.DirtySections.Drain(drained));
+        WorldTile before = tiles.Get(x, y);
+
+        Assert.True(VanillaDirtPlacement.CanKillIsolated(tiles, x, y));
+
+        Assert.Equal(before, tiles.Get(x, y));
+        Assert.Equal(beforeVersion, tiles.GetSectionVersion(section));
+        Assert.Equal(0, tiles.DirtySections.DirtyCount);
+    }
+
+    [Fact]
     public void Active_neighbor_rejects_dirt_kill_without_world_side_effects()
     {
         var tiles = new WorldTileStore(new WorldDimensions(400, 300));
@@ -84,6 +104,7 @@ public sealed class VanillaDirtPlacementTests
         _ = tiles.DirtySections.Drain(drained);
         WorldTile before = tiles.Get(x, y);
 
+        Assert.False(VanillaDirtPlacement.CanKillIsolated(tiles, x, y));
         Assert.False(VanillaDirtPlacement.TryKillIsolatedWithoutDrop(tiles, x, y));
 
         Assert.Equal(before, tiles.Get(x, y));
