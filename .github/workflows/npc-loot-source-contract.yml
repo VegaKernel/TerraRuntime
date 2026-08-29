@@ -75,6 +75,7 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.CommonDrop "$assembly" > artifacts/source-contract/common-drop.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.DropBasedOnExtraGel "$assembly" > artifacts/source-contract/extra-gel.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.DropBasedOnExpertMode "$assembly" > artifacts/source-contract/expert-mode.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.Conditions "$assembly" > artifacts/source-contract/conditions.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.NPCID "$assembly" > artifacts/source-contract/npc-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" > artifacts/source-contract/item-id.cs
 
@@ -84,5 +85,6 @@ jobs:
             --common-drop artifacts/source-contract/common-drop.cs \
             --extra-gel artifacts/source-contract/extra-gel.cs \
             --expert-mode artifacts/source-contract/expert-mode.cs \
+            --conditions artifacts/source-contract/conditions.cs \
             --npc-id artifacts/source-contract/npc-id.cs \
             --item-id artifacts/source-contract/item-id.cs

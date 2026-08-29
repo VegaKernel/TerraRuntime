@@ -40,6 +40,7 @@ def main() -> int:
     parser.add_argument("--common-drop", required=True, type=Path)
     parser.add_argument("--extra-gel", required=True, type=Path)
     parser.add_argument("--expert-mode", required=True, type=Path)
+    parser.add_argument("--conditions", required=True, type=Path)
     parser.add_argument("--npc-id", required=True, type=Path)
     parser.add_argument("--item-id", required=True, type=Path)
     args = parser.parse_args()
@@ -49,6 +50,7 @@ def main() -> int:
     common_drop = args.common_drop.read_text(encoding="utf-8")
     extra_gel = args.extra_gel.read_text(encoding="utf-8")
     expert_mode = args.expert_mode.read_text(encoding="utf-8")
+    conditions = args.conditions.read_text(encoding="utf-8")
     npc_ids = args.npc_id.read_text(encoding="utf-8")
     item_ids = args.item_id.read_text(encoding="utf-8")
 
@@ -89,7 +91,6 @@ def main() -> int:
         "NormalvsExpert factory changed",
     )
 
-    # CommonDrop is luck-scaled: chance roll occurs before the stack roll, and stack max is inclusive.
     require(common_drop, "info.player.RollLuck(chanceDenominator)", "CommonDrop no longer uses player RollLuck")
     require(common_drop, "< chanceNumerator", "CommonDrop chance numerator comparison changed")
     require(
@@ -98,9 +99,11 @@ def main() -> int:
         "CommonDrop stack range/order changed",
     )
 
-    require(extra_gel, "info.player.extraGel", "DropBasedOnExtraGel condition changed")
-    require(extra_gel, "ruleForGel", "DropBasedOnExtraGel normal rule branch changed")
-    require(extra_gel, "ruleForGelExtra", "DropBasedOnExtraGel extra-gel branch changed")
+    # Keep the selection input semantic. The wrapper owns the branch; Conditions owns why the branch is active.
+    require(extra_gel, "DropExtraGel", "DropBasedOnExtraGel no longer references the DropExtraGel condition")
+    require(extra_gel, "NotDropExtraGel", "DropBasedOnExtraGel no longer references the inverse condition")
+    require(conditions, "class DropExtraGel", "DropExtraGel condition type disappeared")
+    require(conditions, "class NotDropExtraGel", "NotDropExtraGel condition type disappeared")
 
     require(expert_mode, "info.IsExpertMode", "DropBasedOnExpertMode condition changed")
     require(expert_mode, "ruleForNormalMode", "DropBasedOnExpertMode normal branch changed")
@@ -114,7 +117,7 @@ def main() -> int:
     print("blue_slime_rule_order=gel_then_slime_staff")
     print("common_drop_chance=player.RollLuck(denominator)<numerator")
     print("common_drop_stack=rng.Next(min,max+1)")
-    print("gel_branch=player.extraGel?doubled:normal")
+    print("gel_branch=DropExtraGel_condition?doubled:normal")
     print("difficulty_branch=IsExpertMode?expert:normal")
     return 0
 
