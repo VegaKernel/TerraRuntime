@@ -20,6 +20,10 @@ public sealed class TerrariaConnectionPolicyState
         _lastInboundTimestamp = _connectedTimestamp;
     }
 
+    internal TerrariaConnectionPolicyOptions Options => _options;
+
+    internal TimeProvider TimeProvider => _timeProvider;
+
     public bool HandshakeComplete
     {
         get
