@@ -27,6 +27,7 @@ internal sealed class ServerRuntimeState
     private readonly RuntimeProjectileStateExecutor _projectileExecutor;
     private readonly IProjectileStateStepper? _projectileStepper;
     private readonly RuntimeProjectileReplicationRegistry? _projectileReplication;
+    private readonly RuntimeTileManipulationReplicationRegistry? _tileManipulationReplication;
     private readonly RuntimeWorldItemStore _worldItems;
     private readonly WorldTileStore? _worldTiles;
     private readonly RuntimeWorldClock? _worldClock;
@@ -42,7 +43,8 @@ internal sealed class ServerRuntimeState
         RuntimeProjectileStore? projectiles = null,
         IProjectileStateStepper? projectileStepper = null,
         RuntimeWorldItemStore? worldItems = null,
-        RuntimeProjectileReplicationRegistry? projectileReplication = null)
+        RuntimeProjectileReplicationRegistry? projectileReplication = null,
+        RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null)
     {
         _playerEvents = playerEvents;
         _worldTiles = worldTiles;
@@ -54,6 +56,7 @@ internal sealed class ServerRuntimeState
         _projectileStepper = projectileStepper ??
             (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles));
         _projectileReplication = projectileReplication;
+        _tileManipulationReplication = tileManipulationReplication;
         _worldItems = worldItems ?? new RuntimeWorldItemStore();
 
         if (npcAiStepper is null)
@@ -583,6 +586,7 @@ internal sealed class ServerRuntimeState
                 }
 
                 AppliedClientTileManipulations++;
+                _tileManipulationReplication?.TryPublishCommitted(command.Connection.Source, in tileState);
                 return;
 
             default:
