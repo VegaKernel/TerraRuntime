@@ -49,8 +49,8 @@ internal readonly record struct SectionCacheRebuildPipelineSnapshot(
 /// Authoritative-thread coordinator for rebuilding packet-10 section cache entries outside the game loop.
 /// The owner thread captures immutable snapshots and publishes completions; dedicated bounded workers only
 /// encode/compress those snapshots and never read mutable tile storage or mutate the shared cache.
-/// Connection threads may request missing sections through a deduplicated concurrent handoff, but only the
-/// authoritative tick is allowed to convert those requests into dirty world work.
+/// Connection threads may request missing sections through a deduplicated concurrent handoff, while the
+/// authoritative tick gives those join-critical snapshots priority over the ordinary dirty-section backlog.
 /// </summary>
 internal sealed class SectionCacheRebuildPipeline : IDisposable
 {
@@ -188,9 +188,8 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
     }
 
     /// <summary>
-    /// Runs at an authoritative tick commit point. Completion publication happens before new snapshots are
-    /// submitted, allowing a stale worker result to re-dirty its section and immediately schedule the latest
-    /// committed revision when bounded capacity is available.
+    /// Runs at an authoritative tick commit point. Completed work is published first, then join-critical
+    /// requests get the available worker slots before background dirty-section maintenance.
     /// </summary>
     public void Tick()
     {
@@ -199,7 +198,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             throw new InvalidOperationException("The section cache rebuild pipeline has not been started.");
 
         DrainCompletions();
-        DrainOnDemandRequests();
+        SubmitOnDemandWork();
         SubmitDirtyWork();
         Volatile.Write(ref _dirtyBacklog, _world.Tiles.DirtySections.DirtyCount);
     }
@@ -213,12 +212,23 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         _workers.Dispose();
     }
 
-    private void DrainOnDemandRequests()
+    private void SubmitOnDemandWork()
     {
-        // Keep connection-originated work bounded at the same scale as the worker pipeline. A flood of distinct
-        // section requests therefore cannot turn one authoritative tick into an unbounded queue-drain phase.
-        for (int i = 0; i < _maximumInFlight && _onDemandRequests.TryDequeue(out WorldSectionId section); i++)
+        int initialPending = Volatile.Read(ref _onDemandPendingRequests);
+        if (initialPending <= 0)
+            return;
+
+        // Consider each request that was pending at tick entry at most once. A transient snapshot failure can
+        // therefore requeue the section without being immediately dequeued again in the same authoritative tick.
+        int attempts = Math.Min(initialPending, _maximumInFlight);
+        for (int i = 0; i < attempts; i++)
         {
+            if (GetAvailableSubmissionCapacity() <= 0 ||
+                !_onDemandRequests.TryDequeue(out WorldSectionId section))
+            {
+                return;
+            }
+
             long revision = _world.Tiles.GetSectionVersion(section);
             if ((revision & 1L) == 0 && _packets.TryGetCachedSectionFrame(section, revision, out _))
             {
@@ -227,22 +237,36 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
                 continue;
             }
 
+            if (!_world.Tiles.TryCaptureSectionSnapshot(section, out WorldSectionTileSnapshot? snapshot) || snapshot is null)
+            {
+                _onDemandRequests.Enqueue(section);
+                continue;
+            }
+
+            Interlocked.Increment(ref _capturedSnapshots);
+            _world.Tiles.DirtySections.ClearDirty(section);
+            if (_workers.TrySubmit(snapshot))
+            {
+                Interlocked.Increment(ref _inFlight);
+                Interlocked.Increment(ref _submittedRebuilds);
+                continue;
+            }
+
+            // Capacity can race with a worker between the snapshot observation and TrySubmit. Preserve both the
+            // normal dirty signal and the join-priority request rather than throwing the snapshot work away.
             _world.Tiles.DirtySections.MarkDirty(section);
+            _onDemandRequests.Enqueue(section);
+            Interlocked.Increment(ref _rejectedSubmissions);
+            return;
         }
     }
 
     private void SubmitDirtyWork()
     {
-        int inFlightCapacity = _maximumInFlight - Volatile.Read(ref _inFlight);
-        if (inFlightCapacity <= 0 || _world.Tiles.DirtySections.DirtyCount == 0)
+        if (_world.Tiles.DirtySections.DirtyCount == 0)
             return;
 
-        // TrySubmit writes into the bounded work channel, not directly into an idle worker. Capture only the
-        // number of snapshots guaranteed to fit that channel at this observation point. Workers may consume
-        // entries concurrently, which can make this conservative for one tick but can never make it overcapture.
-        WorkerPoolSnapshot workerSnapshot = _workers.Snapshot;
-        int queueCapacity = _workCapacity - workerSnapshot.PendingWork;
-        int available = Math.Min(inFlightCapacity, queueCapacity);
+        int available = GetAvailableSubmissionCapacity();
         if (available <= 0)
             return;
 
@@ -267,6 +291,20 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             _world.Tiles.DirtySections.MarkDirty(snapshot.Section);
             Interlocked.Increment(ref _rejectedSubmissions);
         }
+    }
+
+    private int GetAvailableSubmissionCapacity()
+    {
+        int inFlightCapacity = _maximumInFlight - Volatile.Read(ref _inFlight);
+        if (inFlightCapacity <= 0)
+            return 0;
+
+        // TrySubmit writes into the bounded channel rather than directly into an idle worker. This conservative
+        // observation may leave one slot unused for a tick if a worker consumes concurrently, but never captures
+        // a large immutable section snapshot that cannot be queued.
+        WorkerPoolSnapshot workerSnapshot = _workers.Snapshot;
+        int queueCapacity = _workCapacity - workerSnapshot.PendingWork;
+        return Math.Max(0, Math.Min(inFlightCapacity, queueCapacity));
     }
 
     private void DrainCompletions()
@@ -297,6 +335,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             if (currentRevision != result.Revision)
             {
                 _world.Tiles.DirtySections.MarkDirty(result.Section);
+                RequeueOnDemandRequest(result.Section);
                 Interlocked.Increment(ref _staleResults);
                 continue;
             }
@@ -312,6 +351,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             if (currentRevision != result.Revision)
             {
                 _world.Tiles.DirtySections.MarkDirty(result.Section);
+                RequeueOnDemandRequest(result.Section);
                 Interlocked.Increment(ref _staleResults);
             }
             else
@@ -321,6 +361,13 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
                 Interlocked.Increment(ref _publishRejections);
             }
         }
+    }
+
+    private void RequeueOnDemandRequest(WorldSectionId section)
+    {
+        int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
+        if (_onDemandSections.ContainsKey(index))
+            _onDemandRequests.Enqueue(section);
     }
 
     private void CompleteOnDemandRequest(WorldSectionId section)
