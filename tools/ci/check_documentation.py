@@ -34,6 +34,11 @@ REQUIRED_MIRRORS = {
 
 # Deliberately simple: repository docs use ordinary inline Markdown links.
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+TEXT_FENCE_RE = re.compile(r"^```text\s*$\n(.*?)^```\s*$", re.MULTILINE | re.DOTALL)
+ASCII_BOX_CORNERS = frozenset("┌┐└┘┏┓┗┛╔╗╚╝")
+CONNECTOR_ONLY_RE = re.compile(r"^\s*(?:\||\^|[vV]|\|[-=|+ ]+\||\+[-=|+ ]+)\s*$")
+ASCII_BRANCH_RE = re.compile(r"^\s*\+--")
+LITERAL_TEXT_MARKER = "<!-- docs-style: literal-text -->"
 
 
 def markdown_files(directory: Path) -> set[str]:
@@ -97,6 +102,62 @@ def validate_links(paths: list[Path]) -> list[str]:
                 errors.append(
                     f"{source.relative_to(ROOT)}:{line}: missing relative link target: {target}"
                 )
+
+    return errors
+
+
+def looks_like_ascii_process_diagram(block: str) -> bool:
+    lines = [line.rstrip() for line in block.splitlines() if line.strip()]
+    if len(lines) < 3:
+        return False
+
+    joined = "\n".join(lines)
+    if any(corner in joined for corner in ASCII_BOX_CORNERS):
+        return True
+
+    arrow_lines = sum("->" in line or "<-" in line for line in lines)
+    branch_lines = sum(bool(ASCII_BRANCH_RE.match(line)) for line in lines)
+    connector_lines = sum(bool(CONNECTOR_ONLY_RE.match(line)) for line in lines)
+
+    if arrow_lines >= 2:
+        return True
+    if arrow_lines >= 1 and connector_lines >= 1:
+        return True
+    if branch_lines >= 2 and connector_lines >= 1:
+        return True
+    if connector_lines >= 2 and any("|" in line for line in lines):
+        return True
+
+    return False
+
+
+def validate_diagram_style(paths: list[Path]) -> list[str]:
+    """Reject obvious ASCII process/architecture diagrams while allowing literal text data.
+
+    Directory trees, CLI examples, binary layouts, enum/schema lists and captured output remain
+    valid `text` fences. A rare literal block that intentionally resembles a process diagram may
+    opt out by placing `<!-- docs-style: literal-text -->` immediately before the fence.
+    """
+
+    errors: list[str] = []
+
+    for source in paths:
+        text = source.read_text(encoding="utf-8")
+        for match in TEXT_FENCE_RE.finditer(text):
+            prefix = text[max(0, match.start() - 160) : match.start()]
+            if prefix.rstrip().endswith(LITERAL_TEXT_MARKER):
+                continue
+
+            block = match.group(1)
+            if not looks_like_ascii_process_diagram(block):
+                continue
+
+            line = text.count("\n", 0, match.start()) + 1
+            errors.append(
+                f"{source.relative_to(ROOT)}:{line}: ASCII process diagram in a text fence; "
+                "use Mermaid (flowchart/sequenceDiagram/stateDiagram-v2) or mark genuinely "
+                f"literal data with {LITERAL_TEXT_MARKER}"
+            )
 
     return errors
 
@@ -192,12 +253,14 @@ def main() -> int:
     if only_ru:
         errors.append("pages present only in docs/ru: " + ", ".join(only_ru))
 
-    markdown = sorted(DOCS.rglob("*.md"))
+    docs_markdown = sorted(DOCS.rglob("*.md"))
+    markdown = list(docs_markdown)
     for extra in (ROOT / "README.md", ROOT / "AGENTS.md"):
         if extra.is_file():
             markdown.append(extra)
 
     errors.extend(validate_links(markdown))
+    errors.extend(validate_diagram_style(docs_markdown))
 
     try:
         errors.extend(validate_changed_language_pairs(args.changed_base))
@@ -216,7 +279,8 @@ def main() -> int:
 
     print(
         "Documentation validation passed: "
-        f"{len(en_files)} mirrored RU/EN pages, {len(markdown)} Markdown files checked"
+        f"{len(en_files)} mirrored RU/EN pages, {len(markdown)} Markdown files checked, "
+        "Mermaid process-diagram style enforced"
         f"{pair_note}."
     )
     return 0
