@@ -1,0 +1,111 @@
+name: Projectile AI1 Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/projectile-ai1-scan.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/ai1-scan .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+      - name: Install pinned ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+      - name: Scan exact aiStyle 1 defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256='d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e'
+          assembly=''
+          while IFS= read -r -d '' candidate; do
+            sha="$(sha256sum "$candidate" | awk '{print $1}')"
+            if [[ "$sha" == "$expected_sha256" ]]; then assembly="$candidate"; break; fi
+          done < <(find .cache/terraria-1458/extracted -type f -name TerrariaServer.exe -print0)
+          test -n "$assembly"
+          dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.Projectile "$assembly" > artifacts/ai1-scan/projectile.cs
+          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/ai1-scan/projectile-id.cs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          src = Path('artifacts/ai1-scan/projectile.cs').read_text(encoding='utf-8')
+          ids = Path('artifacts/ai1-scan/projectile-id.cs').read_text(encoding='utf-8')
+
+          def method(name):
+              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', src)
+              if not m: return ''
+              op = src.find('{', m.end())
+              d = 0
+              for i in range(op, len(src)):
+                  if src[i] == '{': d += 1
+                  elif src[i] == '}':
+                      d -= 1
+                      if d == 0: return src[m.start():i+1]
+              return ''
+
+          def block_after(pos):
+              op = src.find('{', pos)
+              if op < 0: return ''
+              d = 0
+              for i in range(op, len(src)):
+                  if src[i] == '{': d += 1
+                  elif src[i] == '}':
+                      d -= 1
+                      if d == 0: return src[op:i+1]
+              return ''
+
+          names = {}
+          for m in re.finditer(r'public const (?:short|int)\s+([A-Za-z0-9_]+)\s*=\s*(\d+)\s*;', ids):
+              names[int(m.group(2))] = m.group(1)
+
+          defaults = method('SetDefaults')
+          methods = {n: method(n) for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams','Kill')}
+          known = {1,2,3,4,5,14,20,21,48,51,54,318,330,583,589,599,981,1006,1012,1111,1124}
+          rows=[]
+          pat = re.compile(r'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*(\d+)\s*\)')
+          seen=set()
+          for m in pat.finditer(defaults):
+              t=int(m.group(1))
+              if t in seen: continue
+              b=block_after(m.end())
+              if not re.search(r'\baiStyle\s*=\s*1\s*;', b): continue
+              seen.add(t)
+              counts={}
+              for n,s in methods.items():
+                  p=re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|\bcase\s+{t}\s*:')
+                  counts[n]=len(p.findall(s))
+              compact=' '.join(b.split())
+              rows.append((sum(counts[n] for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams')), counts['Kill'], t, names.get(t,'?'), compact, counts))
+
+          rows.sort()
+          out=[]
+          out.append('rank | type | name | nonkill_special | kill_special | defaults')
+          for rank,(nonkill,kill,t,name,b,c) in enumerate(rows,1):
+              if t in known: continue
+              out.append(f'{rank:03d} | {t} | {name} | {nonkill} {c} | {kill} | {b[:900]}')
+          Path('artifacts/ai1-scan/report.txt').write_text('\n'.join(out)+'\n', encoding='utf-8')
+          print('\n'.join(out[:80]))
+          PY
+          rm artifacts/ai1-scan/projectile.cs artifacts/ai1-scan/projectile-id.cs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectile-ai1-scan
+          path: artifacts/ai1-scan/report.txt
+          if-no-files-found: error
