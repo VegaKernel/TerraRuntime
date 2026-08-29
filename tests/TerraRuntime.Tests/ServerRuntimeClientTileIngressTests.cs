@@ -46,7 +46,8 @@ public sealed class ServerRuntimeClientTileIngressTests
         fixture.Tiles.Set(10, 10, in existing);
         WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
         long beforeVersion = fixture.Tiles.GetSectionVersion(section);
-        _ = fixture.Tiles.DirtySections.Drain(1);
+        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
+        _ = fixture.Tiles.DirtySections.Drain(drained);
         var request = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.PlaceTile,
             TileX: 10,
