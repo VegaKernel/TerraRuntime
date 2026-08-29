@@ -1,0 +1,114 @@
+name: Projectile Type20 Source Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/type20-source-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Extract pinned type20 facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/type20 .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+
+          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
+            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then
+              assembly="$candidate"
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          assembly_dir="$(dirname "$assembly")"
+
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/type20/projectile.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/type20/projectile-id.cs
+
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          projectile = Path('artifacts/type20/projectile.cs').read_text(encoding='utf-8')
+          projectile_id = Path('artifacts/type20/projectile-id.cs').read_text(encoding='utf-8')
+
+          def method(source, name):
+              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', source)
+              if not m:
+                  raise SystemExit(f'method not found: {name}')
+              opening = source.find('{', m.end())
+              depth = 0
+              in_string = in_char = escaped = False
+              for i in range(opening, len(source)):
+                  c = source[i]
+                  if escaped:
+                      escaped = False
+                      continue
+                  if c == '\\' and (in_string or in_char):
+                      escaped = True
+                      continue
+                  if c == '"' and not in_char:
+                      in_string = not in_string
+                      continue
+                  if c == "'" and not in_string:
+                      in_char = not in_char
+                      continue
+                  if in_string or in_char:
+                      continue
+                  if c == '{': depth += 1
+                  elif c == '}':
+                      depth -= 1
+                      if depth == 0: return source[m.start():i+1]
+              raise SystemExit(f'unterminated: {name}')
+
+          def compact(text): return ' '.join(text.split())
+          def contexts(source, pattern, radius=2600):
+              text = compact(source)
+              out = []
+              for m in re.finditer(pattern, text):
+                  out.append(text[max(0,m.start()-radius):min(len(text),m.end()+radius)])
+              return ' | '.join(out) if out else '<none>'
+
+          defaults = method(projectile, 'SetDefaults')
+          ai = method(projectile, 'AI_001')
+          update = method(projectile, 'Update')
+          movement = method(projectile, 'HandleMovement')
+          kill = method(projectile, 'Kill')
+          can_cut = method(projectile, 'CanCutTiles')
+
+          lines = [
+              'projectile_id_type20=' + contexts(projectile_id, r'\b[A-Za-z0-9_]+\s*=\s*20\s*;', 300),
+              'projectile_type20_defaults=' + contexts(defaults, r'(?<!\d)type\s*==\s*20(?!\d)', 1800),
+              'projectile_ai001_type20_contexts=' + contexts(ai, r'(?<!\d)type\s*==\s*20(?!\d)', 2600),
+              'projectile_update_type20_contexts=' + contexts(update, r'(?<!\d)type\s*==\s*20(?!\d)', 2600),
+              'projectile_handle_movement_type20_contexts=' + contexts(movement, r'(?<!\d)type\s*==\s*20(?!\d)', 2600),
+              'projectile_kill_type20_contexts=' + contexts(kill, r'(?<!\d)type\s*==\s*20(?!\d)', 3200),
+              'projectile_can_cut_tiles_type20_context=' + contexts(can_cut, r'(?<!\d)20(?!\d)', 1000),
+          ]
+          Path('artifacts/type20/type20-source.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectile-type20-source
+          path: artifacts/type20/type20-source.txt
+          retention-days: 1
