@@ -57,6 +57,8 @@ public sealed class RuntimeNpcActorControlSnapshot
 /// Control-plane registry for one authoritative NPC store. The only initially supported physical actor family is
 /// ordinary Zombie presentation because TerraRuntime already has source-backed walking/gravity/step/collision
 /// motion for it. More motion families can be admitted deliberately as their authoritative physics paths exist.
+/// Control-plane mutations may serialize on a private gate, but the authoritative CommitPending tick boundary is
+/// monitor-free: staged arrays are immutable once published and the game thread commits them with atomics only.
 /// </summary>
 public sealed class RuntimeNpcActorControlRegistry
 {
@@ -100,7 +102,7 @@ public sealed class RuntimeNpcActorControlRegistry
 
         lock (_gate)
         {
-            NpcActorControlBinding?[] working = GetPendingForMutation();
+            NpcActorControlBinding?[] working = CreatePendingCopyForMutation();
             NpcActorControlBinding? current = working[npc.Slot];
             if (current is not null && current.Value.Npc == npc)
             {
@@ -112,28 +114,34 @@ public sealed class RuntimeNpcActorControlRegistry
                 controllerId,
                 npc,
                 NpcActorIntent.Stop());
+            Volatile.Write(ref _pending, working);
             lease = new NpcActorControlLease(this, npc, controllerId);
             return NpcActorControlAcquireResult.Acquired;
         }
     }
 
-    /// <summary>Publishes all staged control changes atomically. Returns true only when a new snapshot was published.</summary>
+    /// <summary>
+    /// Publishes the latest staged immutable control snapshot without taking the control-plane monitor. If a control
+    /// mutation races the commit, it either appears in this publication or remains staged for the next tick; it is
+    /// never discarded.
+    /// </summary>
     public bool CommitPending()
     {
-        lock (_gate)
-        {
-            if (_pending is null)
-                return false;
+        NpcActorControlBinding?[]? pending = Volatile.Read(ref _pending);
+        if (pending is null)
+            return false;
 
-            if (_nextRevision == ulong.MaxValue)
-                throw new InvalidOperationException("NPC actor control snapshot revision exhausted.");
+        if (_nextRevision == ulong.MaxValue)
+            throw new InvalidOperationException("NPC actor control snapshot revision exhausted.");
 
-            _nextRevision++;
-            var snapshot = new RuntimeNpcActorControlSnapshot(_pending, _nextRevision);
-            _pending = null;
-            Volatile.Write(ref _published, snapshot);
-            return true;
-        }
+        _nextRevision++;
+        var snapshot = new RuntimeNpcActorControlSnapshot(pending, _nextRevision);
+
+        // Publish before clearing the exact staged array. A producer that observes _pending == null therefore also
+        // observes a published snapshot containing everything that was just committed.
+        Volatile.Write(ref _published, snapshot);
+        Interlocked.CompareExchange(ref _pending, null, pending);
+        return true;
     }
 
     internal bool TrySetIntent(
@@ -146,7 +154,7 @@ public sealed class RuntimeNpcActorControlRegistry
 
         lock (_gate)
         {
-            NpcActorControlBinding?[] working = GetPendingForMutation();
+            NpcActorControlBinding?[] working = CreatePendingCopyForMutation();
             NpcActorControlBinding? current = working[npc.Slot];
             if (current is null ||
                 current.Value.Npc != npc ||
@@ -156,6 +164,7 @@ public sealed class RuntimeNpcActorControlRegistry
             }
 
             working[npc.Slot] = current.Value with { Intent = intent };
+            Volatile.Write(ref _pending, working);
             return true;
         }
     }
@@ -164,7 +173,7 @@ public sealed class RuntimeNpcActorControlRegistry
     {
         lock (_gate)
         {
-            NpcActorControlBinding?[] working = GetPendingForMutation();
+            NpcActorControlBinding?[] working = CreatePendingCopyForMutation();
             NpcActorControlBinding? current = working[npc.Slot];
             if (current is null ||
                 current.Value.Npc != npc ||
@@ -174,13 +183,15 @@ public sealed class RuntimeNpcActorControlRegistry
             }
 
             working[npc.Slot] = null;
+            Volatile.Write(ref _pending, working);
         }
     }
 
-    private NpcActorControlBinding?[] GetPendingForMutation()
+    private NpcActorControlBinding?[] CreatePendingCopyForMutation()
     {
-        if (_pending is not null)
-            return _pending;
+        NpcActorControlBinding?[]? pending = Volatile.Read(ref _pending);
+        if (pending is not null)
+            return (NpcActorControlBinding?[])pending.Clone();
 
         RuntimeNpcActorControlSnapshot published = Snapshot;
         var copy = new NpcActorControlBinding?[_npcs.Capacity];
@@ -194,7 +205,6 @@ public sealed class RuntimeNpcActorControlRegistry
             }
         }
 
-        _pending = copy;
         return copy;
     }
 }
