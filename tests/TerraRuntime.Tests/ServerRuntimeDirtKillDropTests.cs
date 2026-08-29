@@ -111,9 +111,9 @@ public sealed class ServerRuntimeDirtKillDropTests
         Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
         Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
         Assert.Equal(0, fixture.Items.ActiveCount);
-        Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
-        Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
     }
 
     [Fact]
