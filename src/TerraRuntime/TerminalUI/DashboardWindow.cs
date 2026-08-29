@@ -411,7 +411,25 @@ internal sealed class DashboardWindow : Runnable
             rows[10].Text = "Clock      : <runtime clock telemetry unavailable>";
         }
 
-        rows[12].Text = $"Snapshot   : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+        if (snapshot.SectionCacheAvailable)
+        {
+            rows[12].Text =
+                $"Section cache: {snapshot.SectionCacheEntries:N0}/{snapshot.SectionCacheMaximumEntries:N0} entries   " +
+                $"{FormatMebibytes(snapshot.SectionCacheBytes)}   dirty {snapshot.SectionCacheDirtyBacklog:N0}   in-flight {snapshot.SectionCacheInFlight:N0}";
+            rows[13].Text =
+                $"Rebuilds    : submitted {snapshot.SectionCacheSubmitted:N0}   published {snapshot.SectionCachePublished:N0}   " +
+                $"stale {snapshot.SectionCacheStaleResults:N0}   rejected {snapshot.SectionCacheRejected:N0}";
+            rows[14].Text =
+                $"Workers     : active {snapshot.SectionCacheActiveWorkers:N0}   queued {snapshot.SectionCachePendingWork:N0}   " +
+                $"encode failures {snapshot.SectionCacheEncodeFailures:N0}   publish failures {snapshot.SectionCachePublishRejections:N0}   " +
+                $"encode {FormatMilliseconds(snapshot.SectionCacheTotalEncodeMilliseconds)} total";
+        }
+        else
+        {
+            rows[12].Text = "Section cache: <runtime rebuild telemetry unavailable>";
+        }
+
+        rows[15].Text = $"Snapshot   : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
     private void RefreshLogs()
