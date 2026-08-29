@@ -139,7 +139,7 @@ stateDiagram-v2
     Writing --> Idle: write complete / no pending snapshot
 ```
 
-Operations/TUI telemetry публикует accepted/started/completed/coalesced/failed writes, active/pending state, shadow bootstrap progress и dirty-section counts без mutable world collections.
+Operations/TUI telemetry публикует accepted/started/completed/coalesced/failed writes, active/pending state, shadow bootstrap progress и dirty-section counts без mutable world collections. Также публикуются последние времена snapshot capture, serializer callback и полной atomic-write транзакции; вложенная семантика этих величин описана в [телеметрии времени save pipeline](save-pipeline-telemetry.md).
 
 ## 13. Atomic и crash-durable publication
 

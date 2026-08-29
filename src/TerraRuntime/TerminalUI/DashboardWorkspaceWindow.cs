@@ -719,7 +719,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             rows[16].Text =
                 $"Save        shadow {shadow} dirty {persistence.PendingDirtyTileSections:N0} request {request} write {write} " +
                 $"done {persistence.CompletedWrites:N0}/{persistence.StartedWrites:N0} accepted {persistence.AcceptedSnapshots:N0} " +
-                $"coalesced {persistence.CoalescedSnapshots:N0} failed {persistence.FailedWrites:N0}";
+                $"coalesced {persistence.CoalescedSnapshots:N0} failed {persistence.FailedWrites:N0}  " +
+                $"last-ms snap/ser/write {persistence.LastSnapshotCaptureMilliseconds:F2}/" +
+                $"{persistence.LastSerializationMilliseconds:F2}/{persistence.LastWriteMilliseconds:F2}";
         }
         rows[17].Text = lastAdminAction ?? "F2 returns to System Dashboard";
     }

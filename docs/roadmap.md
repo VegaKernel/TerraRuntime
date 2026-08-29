@@ -458,7 +458,7 @@ flowchart TD
 - [ ] Invalid/malformed/rejected packet counters.
 - [x] Active players/NPCs/projectiles/items.
 - [x] Spatial-index membership/section changes/invalid-position counters.
-- [ ] Save snapshot duration, serialization duration and write duration separately.
+- [x] Save snapshot duration, serialization duration and write duration separately.
 - [ ] World-cache hit/miss/invalidation reason and load/build times.
 - [ ] GC allocation rate, collections, pause time and heap size where available.
 

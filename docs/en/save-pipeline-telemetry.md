@@ -2,7 +2,7 @@
 
 [World persistence](world-persistence.md) · [Operations/TUI](operations-tui.md) · [Roadmap](../roadmap.md)
 
-TerraRuntime exposes persistence timing through immutable world-operations snapshots. The timings are measured at the ownership boundary rather than by sampling mutable save internals from the TUI or another background observer.
+TerraRuntime exposes persistence timing through immutable world-operations snapshots, and the built-in World TUI screen renders the latest three timings in milliseconds. The timings are measured at the ownership boundary rather than by sampling mutable save internals from the TUI or another background observer.
 
 ## Measurements
 
