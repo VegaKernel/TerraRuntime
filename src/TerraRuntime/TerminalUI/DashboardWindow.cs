@@ -421,7 +421,7 @@ internal sealed class DashboardWindow : Runnable
                 $"stale {snapshot.SectionCacheStaleReads:N0}   waits {snapshot.SectionCacheWaits:N0}";
             rows[14].Text =
                 $"Waits       : completed {snapshot.SectionCacheWaitCompletions:N0}   timeout {snapshot.SectionCacheWaitTimeouts:N0}   " +
-                $"on-demand pending {snapshot.SectionCacheOnDemandPendingRequests:N0}";
+                $"on-demand {snapshot.SectionCacheOnDemandPendingRequests:N0}/{snapshot.SectionCacheOnDemandCapacity:N0} pending   rejected {snapshot.SectionCacheOnDemandRejectedRequests:N0}";
             rows[15].Text =
                 $"Rebuilds    : submitted {snapshot.SectionCacheSubmitted:N0}   published {snapshot.SectionCachePublished:N0}   " +
                 $"stale {snapshot.SectionCacheStaleResults:N0}   rejected {snapshot.SectionCacheRejected:N0}";
