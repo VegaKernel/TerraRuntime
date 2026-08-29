@@ -13,6 +13,7 @@ internal static class TerminalUiTheme
 {
     private const string Background = "#020604";
     private const string Panel = "#07120A";
+    private const string FocusedPanel = "#123B1D";
     private const string MenuBackground = "#0A2112";
     private const string Primary = "#78FF98";
     private const string Bright = "#B8FFC5";
@@ -71,13 +72,16 @@ internal static class TerminalUiTheme
 
     internal static Scheme CreateAccentScheme() => new()
     {
-        Normal = new TgAttribute(Bright, Panel),
+        Normal = new TgAttribute(Bright, FocusedPanel, TextStyle.Bold),
         Focus = new TgAttribute(Background, Accent, TextStyle.Bold),
-        HotNormal = new TgAttribute(Accent, Panel, TextStyle.Bold | TextStyle.Underline),
+        HotNormal = new TgAttribute(Accent, FocusedPanel, TextStyle.Bold | TextStyle.Underline),
         HotFocus = new TgAttribute(Background, Bright, TextStyle.Bold | TextStyle.Underline),
+        Active = new TgAttribute(Bright, FocusedPanel, TextStyle.Bold),
+        HotActive = new TgAttribute(Accent, FocusedPanel, TextStyle.Bold | TextStyle.Underline),
         Highlight = new TgAttribute(Background, Accent, TextStyle.Bold),
-        ReadOnly = new TgAttribute(Muted, Panel),
-        Disabled = new TgAttribute(Disabled, Panel, TextStyle.Faint)
+        Editable = new TgAttribute(Bright, FocusedPanel),
+        ReadOnly = new TgAttribute(Muted, FocusedPanel),
+        Disabled = new TgAttribute(Disabled, FocusedPanel, TextStyle.Faint)
     };
 
     internal static Scheme CreateErrorScheme() => new()

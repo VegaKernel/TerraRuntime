@@ -74,15 +74,42 @@ On Windows, TerraRuntime deliberately selects Terminal.Gui's cross-platform `dot
 
 The production TUI also installs an explicit high-contrast TerraRuntime scheme after Terminal.Gui initialization. Base, Menu, Dialog, Accent and Error roles use opaque near-black backgrounds with green foreground/accent colors instead of inheriting `Color.None` terminal defaults.
 
-## 5. Refresh model
+## 5. Refresh and input-responsiveness model
 
-The dashboard refreshes from the Terminal.Gui application iteration callback at approximately
+Runtime data still targets an approximately
 
 $$
-T_{\mathrm{refresh}}\approx500\,\mathrm{ms}.
+T_{\mathrm{snapshot}}\approx500\,\mathrm{ms}
 $$
 
-The UI reads operations snapshots rather than walking mutable player/NPC/projectile/world collections.
+snapshot cadence, but snapshot capture no longer runs on the Terminal.Gui thread. `TerminalUiOperationsCache` captures detached operations state on a worker task and publishes the complete cache through one atomic reference swap. The UI thread only reads the already-published state and formats it into views.
+
+A lightweight Terminal.Gui timer checks for a newly published cache version approximately every
+
+$$
+T_{\mathrm{ui\ pump}}\approx25\,\mathrm{ms}.
+$$
+
+This timer does not capture gameplay/network/world state. Therefore a slow operations snapshot cannot pause keyboard navigation, mouse focus, menu movement, or panel interaction. If a background capture is still running, the UI keeps rendering the previous complete snapshot instead of waiting for it.
+
+```mermaid
+sequenceDiagram
+    participant R as Runtime operations
+    participant B as Snapshot worker
+    participant C as Atomic TUI cache
+    participant U as Terminal.Gui thread
+
+    B->>R: Capture detached snapshots
+    R-->>B: bounded read models
+    B->>C: publish complete cache version
+    U->>C: read latest published version
+    C-->>U: immediate cached values
+    U->>U: render / process input
+```
+
+The overview always refreshes the dashboard/player/network/world/log state it needs. Detail-only NPC, projectile, dropped-item and full-debug-log snapshots are demand-driven: they are refreshed while their detail screen is actually being read, avoiding a permanent allocation/copy cost merely to make the UI responsive.
+
+Administrative operations are not cached writes. Interest-management changes and world-save requests still delegate directly to their authoritative bounded ingress.
 
 ## 6. Tiled System Dashboard
 
@@ -103,7 +130,9 @@ flowchart LR
 
 The Console tile includes current tick/process/command pressure followed by recent runtime events. The performance and memory tiles maintain short in-memory histories only for rendering local sparklines; those histories are UI-owned and are never authoritative telemetry.
 
-Double-clicking a tile toggles it between the tiled layout and full-workspace view. This is a presentation-only operation. Existing Details screens for Players, NPCs, Projectiles, Items, Network, World and Logs remain available and keep their existing bounded read-model contracts. External trusted-host dashboards remain separate roots.
+Focusable tiles now have an explicit selection state. Keyboard focus or a mouse press applies the Accent scheme with a distinct dark-green selected-panel background and prefixes the focused tile title with `▶`. This textual marker deliberately remains useful even when a terminal reduces or remaps colors. Focus changes remove the marker and restore the Base scheme.
+
+Double-clicking a tile first focuses it and then toggles it between the tiled layout and full-workspace view. This is a presentation-only operation. Existing Details screens for Players, NPCs, Projectiles, Items, Network, World and Logs remain available and keep their existing bounded read-model contracts. External trusted-host dashboards remain separate roots.
 
 The System Dashboard shows lifecycle/world state, player and connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events and public chat.
 
@@ -176,6 +205,8 @@ Registration is metadata/factory-oriented and grants no mutable runtime state.
 
 Terminal.Gui views remain UI-thread objects. A dashboard provider may update its view from `Refresh`, while gameplay/runtime work is requested through safe contracts. A `View` must not become a synchronization primitive for authoritative state.
 
+Built-in TerraRuntime snapshot acquisition is explicitly excluded from the UI thread. Only formatting, view mutation and trusted host dashboard `Refresh(View)` callbacks run there. A trusted host that performs blocking work from its own `Refresh(View)` can still make its own dashboard unresponsive and must move that work behind its own detached snapshot/cache boundary.
+
 ## 13. Administrative mutation rule
 
 ```mermaid
@@ -203,4 +234,4 @@ Still evolving are final dashboard layout/UX, future remote/web adapters, richer
 
 ## 16. Change checklist
 
-An operations/TUI change is incomplete unless UI work stays off the authoritative thread, read models stay immutable/bounded, mutations return through safe operations, UI failure degrades without killing the server, terminal input cannot busy-loop, host dashboards receive no mutable implementation state, diagrams use Mermaid, dimensional timings use LaTeX, and this page changes together with `docs/ru/operations-tui.md`.
+An operations/TUI change is incomplete unless UI work stays off the authoritative thread, built-in snapshot acquisition stays off the Terminal.Gui thread, read models stay immutable/bounded, mutations return through safe operations, UI failure degrades without killing the server, terminal input cannot busy-loop, host dashboards receive no mutable implementation state, diagrams use Mermaid, dimensional timings use LaTeX, and this page changes together with `docs/ru/operations-tui.md`.

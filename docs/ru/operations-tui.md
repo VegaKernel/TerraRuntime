@@ -74,19 +74,46 @@ UI работает на собственном background thread `TerraRuntime 
 
 Production TUI после initialization Terminal.Gui также устанавливает явную high-contrast схему TerraRuntime. Base, Menu, Dialog, Accent и Error используют opaque near-black backgrounds и зелёные foreground/accent colors вместо наследования terminal-default `Color.None`.
 
-## 5. Refresh model
+## 5. Refresh model и отзывчивость input
 
-Dashboard refresh идёт из Terminal.Gui application iteration callback примерно с периодом
+Runtime data сохраняет целевой период snapshot примерно
 
 $$
-T_{\mathrm{refresh}}\approx500\,\mathrm{ms}.
+T_{\mathrm{snapshot}}\approx500\,\mathrm{ms},
 $$
 
-UI читает operations snapshots и не ходит напрямую по mutable player/NPC/projectile/world collections.
+но сбор snapshot больше не выполняется на Terminal.Gui thread. `TerminalUiOperationsCache` собирает detached operations state в worker task и публикует целый cache одним atomic reference swap. UI thread только читает уже опубликованное состояние и форматирует его во views.
+
+Лёгкий Terminal.Gui timer проверяет появление новой cache version примерно каждые
+
+$$
+T_{\mathrm{ui\ pump}}\approx25\,\mathrm{ms}.
+$$
+
+Этот timer не захватывает gameplay/network/world state. Поэтому медленный operations snapshot не может остановить keyboard navigation, mouse focus, перемещение по menu или interaction с панелями. Если background capture ещё идёт, UI продолжает показывать предыдущий полный snapshot вместо ожидания.
+
+```mermaid
+sequenceDiagram
+    participant R as Runtime operations
+    participant B as Snapshot worker
+    participant C as Atomic TUI cache
+    participant U as Terminal.Gui thread
+
+    B->>R: Capture detached snapshots
+    R-->>B: bounded read models
+    B->>C: publish complete cache version
+    U->>C: read latest published version
+    C-->>U: immediate cached values
+    U->>U: render / process input
+```
+
+Overview постоянно обновляет dashboard/player/network/world/log state, который ему нужен. Detail-only snapshots NPC, projectiles, dropped items и full-debug log обновляются demand-driven: пока соответствующий detail screen реально читается. Так отзывчивость UI не превращается в постоянный allocation/copy tax для всех сущностей каждые полсекунды.
+
+Administrative operations не становятся cached writes. Interest-management changes и world-save requests по-прежнему напрямую делегируются в authoritative bounded ingress.
 
 ## 6. Плиточный System Dashboard
 
-Default System Dashboard теперь является tiled operational workspace в стиле operations view Vega, но остаётся полностью runtime-owned. Слева находится большая плитка **Console**. В правой колонке расположены **Server**, **TPS / CPU**, **Memory / GC** и **Chat**.
+Default System Dashboard является tiled operational workspace в стиле operations view Vega, но остаётся полностью runtime-owned. Слева находится большая плитка **Console**. В правой колонке расположены **Server**, **TPS / CPU**, **Memory / GC** и **Chat**.
 
 ```mermaid
 flowchart LR
@@ -103,7 +130,9 @@ flowchart LR
 
 Console tile показывает текущие tick/process/command pressure и затем recent runtime events. Performance и memory tiles держат короткие in-memory histories только для local sparklines; эти histories принадлежат UI и не являются authoritative telemetry.
 
-Double-click по плитке переключает её между tiled layout и full-workspace view. Это presentation-only operation. Existing Details screens для Players, NPCs, Projectiles, Items, Network, World и Logs остаются доступны и сохраняют прежние bounded read-model contracts. External trusted-host dashboards остаются отдельными roots.
+Focusable tiles теперь имеют явное состояние selection. Keyboard focus или mouse press включает Accent scheme с отдельным тёмно-зелёным фоном выбранной панели и добавляет к title активной плитки префикс `▶`. Этот текстовый marker намеренно остаётся полезным даже если terminal урезает или переназначает цвета. При уходе focus marker снимается и возвращается Base scheme.
+
+Double-click сначала фокусирует плитку, затем переключает её между tiled layout и full-workspace view. Это presentation-only operation. Existing Details screens для Players, NPCs, Projectiles, Items, Network, World и Logs остаются доступны и сохраняют прежние bounded read-model contracts. External trusted-host dashboards остаются отдельными roots.
 
 System Dashboard показывает lifecycle/world state, player/connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events и public chat.
 
@@ -176,6 +205,8 @@ Registration metadata/factory-oriented и не выдаёт mutable runtime stat
 
 Terminal.Gui views остаются UI-thread objects. Dashboard provider обновляет свой view из `Refresh`, а gameplay/runtime work запрашивает через safe contracts. `View` не может становиться synchronization primitive authoritative state.
 
+Built-in TerraRuntime snapshot acquisition теперь явно исключён из UI thread. На нём остаются только formatting, view mutation и trusted-host callback `Refresh(View)`. Если trusted host выполняет blocking work внутри собственного `Refresh(View)`, он всё ещё может затормозить свой dashboard и должен вынести такую работу за собственную detached snapshot/cache boundary.
+
 ## 13. Правило administrative mutation
 
 ```mermaid
@@ -203,4 +234,4 @@ CoreCLR может загрузить trusted host modules вроде Vega за 
 
 ## 16. Checklist изменения operations/TUI
 
-Operations/TUI change не завершён, пока UI work остаётся вне authoritative thread, read models immutable/bounded, mutations проходят safe operations, UI failure деградирует без shutdown server, terminal input не busy-loop'ит, host dashboards не получают mutable implementation state, diagrams используют Mermaid, dimensional timings используют LaTeX, и эта page изменена вместе с `docs/en/operations-tui.md`.
+Operations/TUI change не завершён, пока UI work остаётся вне authoritative thread, built-in snapshot acquisition остаётся вне Terminal.Gui thread, read models immutable/bounded, mutations проходят safe operations, UI failure деградирует без shutdown server, terminal input не busy-loop'ит, host dashboards не получают mutable implementation state, diagrams используют Mermaid, dimensional timings используют LaTeX, и эта page изменена вместе с `docs/en/operations-tui.md`.

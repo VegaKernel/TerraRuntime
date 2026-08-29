@@ -9,6 +9,7 @@ namespace TerraRuntime.TerminalUI;
 internal sealed class TerminalUiHost : IDisposable
 {
     private static readonly long RefreshIntervalTicks = Math.Max(1L, Stopwatch.Frequency / 2);
+    private static readonly TimeSpan UiPumpInterval = TimeSpan.FromMilliseconds(25);
 
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
@@ -128,29 +129,72 @@ internal sealed class TerminalUiHost : IDisposable
             app.Init();
             TerminalUiTheme.Apply();
 
-            ITerraRuntimeTerminalDashboardSource? terminalDashboards =
-                StartupProgram.CurrentTerminalDashboards;
-            using var window = new DashboardWorkspaceWindow(
+            var snapshotCache = new TerminalUiOperationsCache(
                 dashboardOperations,
                 playerOperations,
                 npcOperations,
                 networkOperations,
                 worldOperations,
                 logOperations,
-                terminalDashboards,
                 projectileOperations,
                 worldItemOperations);
+            IProjectileOperations? cachedProjectileOperations = projectileOperations is null ? null : snapshotCache;
+            IWorldItemOperations? cachedWorldItemOperations = worldItemOperations is null ? null : snapshotCache;
 
-            long nextRefresh = 0;
-            app.Iteration += (_, _) =>
+            ITerraRuntimeTerminalDashboardSource? terminalDashboards =
+                StartupProgram.CurrentTerminalDashboards;
+            using var window = new DashboardWorkspaceWindow(
+                snapshotCache,
+                snapshotCache,
+                snapshotCache,
+                snapshotCache,
+                snapshotCache,
+                snapshotCache,
+                terminalDashboards,
+                cachedProjectileOperations,
+                cachedWorldItemOperations);
+
+            Task? backgroundRefresh = null;
+            long nextRefresh = Stopwatch.GetTimestamp() + RefreshIntervalTicks;
+            long appliedVersion = snapshotCache.Version;
+            app.AddTimeout(UiPumpInterval, () =>
             {
-                long now = Stopwatch.GetTimestamp();
-                if (now < nextRefresh)
-                    return;
+                if (stopUi.IsCancellationRequested)
+                {
+                    app.RequestStop(window);
+                    return false;
+                }
 
-                window.RefreshSnapshot();
-                nextRefresh = now + RefreshIntervalTicks;
-            };
+                if (backgroundRefresh is { IsCompleted: true } completed)
+                {
+                    try
+                    {
+                        completed.GetAwaiter().GetResult();
+                    }
+                    catch (Exception exception)
+                    {
+                        ReportFailure(
+                            $"Terminal UI snapshot refresh failed; keeping the previous detached snapshot: {exception.Message}");
+                    }
+                    backgroundRefresh = null;
+                }
+
+                long publishedVersion = snapshotCache.Version;
+                if (publishedVersion != appliedVersion)
+                {
+                    window.RefreshSnapshot();
+                    appliedVersion = publishedVersion;
+                }
+
+                long now = Stopwatch.GetTimestamp();
+                if (backgroundRefresh is null && now >= nextRefresh)
+                {
+                    backgroundRefresh = Task.Run(snapshotCache.Refresh);
+                    nextRefresh = now + RefreshIntervalTicks;
+                }
+
+                return true;
+            });
 
             using CancellationTokenRegistration registration = stopUi.Token.Register(() =>
             {
@@ -164,6 +208,8 @@ internal sealed class TerminalUiHost : IDisposable
                 }
             });
 
+            // The initial cache is captured before the window becomes interactive; from this point on the
+            // Terminal.Gui thread only formats/publishes cached data and remains available for input processing.
             window.RefreshSnapshot();
             app.Run(window);
         }

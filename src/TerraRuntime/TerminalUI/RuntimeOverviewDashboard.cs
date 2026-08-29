@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using TerraRuntime.Operations;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -14,6 +15,7 @@ namespace TerraRuntime.TerminalUI;
 internal sealed class RuntimeOverviewDashboard : View
 {
     private const int HistoryLength = 48;
+    private const string ActiveTitlePrefix = "▶ ";
 
     private readonly FrameView consoleFrame;
     private readonly FrameView serverFrame;
@@ -63,6 +65,8 @@ internal sealed class RuntimeOverviewDashboard : View
 
         Add(consoleFrame, serverFrame, performanceFrame, memoryFrame, chatFrame);
         ApplyTiledLayout();
+
+        Initialized += (_, _) => consoleFrame.SetFocus();
     }
 
     public void Refresh(
@@ -88,23 +92,33 @@ internal sealed class RuntimeOverviewDashboard : View
 
     internal void TogglePanelForSmoke(string panelTitle)
     {
-        FrameView frame = panelTitle switch
-        {
-            "Console" => consoleFrame,
-            "Server" => serverFrame,
-            "TPS / CPU" => performanceFrame,
-            "Memory / GC" => memoryFrame,
-            "Chat" => chatFrame,
-            _ => throw new ArgumentOutOfRangeException(nameof(panelTitle))
-        };
+        FrameView frame = GetFrame(panelTitle);
         ToggleMaximize(frame);
     }
 
-    private static FrameView CreateFrame(string title) => new()
+    internal string GetPanelTitleForSmoke(string panelTitle) =>
+        GetFrame(panelTitle).Title?.ToString() ?? string.Empty;
+
+    internal string? GetPanelSchemeForSmoke(string panelTitle) =>
+        GetFrame(panelTitle).SchemeName;
+
+    private static FrameView CreateFrame(string title)
     {
-        Title = title,
-        CanFocus = true
-    };
+        var frame = new FrameView
+        {
+            Title = title,
+            CanFocus = true,
+            SchemeName = nameof(Schemes.Base)
+        };
+
+        frame.HasFocusChanged += (_, args) =>
+        {
+            frame.Title = args.Value ? ActiveTitlePrefix + title : title;
+            frame.SchemeName = args.Value ? nameof(Schemes.Accent) : nameof(Schemes.Base);
+            frame.SetNeedsDraw();
+        };
+        return frame;
+    }
 
     private static Label CreateContentLabel() => new()
     {
@@ -118,9 +132,13 @@ internal sealed class RuntimeOverviewDashboard : View
     {
         frame.MouseEvent += (_, mouse) =>
         {
+            if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed))
+                frame.SetFocus();
+
             if (!mouse.Flags.HasFlag(MouseFlags.LeftButtonDoubleClicked))
                 return;
 
+            frame.SetFocus();
             ToggleMaximize(frame);
             mouse.Handled = true;
         };
@@ -128,6 +146,7 @@ internal sealed class RuntimeOverviewDashboard : View
 
     private void ToggleMaximize(FrameView frame)
     {
+        frame.SetFocus();
         if (ReferenceEquals(maximized, frame))
         {
             maximized = null;
@@ -183,6 +202,16 @@ internal sealed class RuntimeOverviewDashboard : View
         SetNeedsLayout();
         SetNeedsDraw();
     }
+
+    private FrameView GetFrame(string panelTitle) => panelTitle switch
+    {
+        "Console" => consoleFrame,
+        "Server" => serverFrame,
+        "TPS / CPU" => performanceFrame,
+        "Memory / GC" => memoryFrame,
+        "Chat" => chatFrame,
+        _ => throw new ArgumentOutOfRangeException(nameof(panelTitle))
+    };
 
     private IEnumerable<FrameView> EnumerateFrames()
     {
