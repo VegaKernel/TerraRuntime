@@ -2,32 +2,42 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
+internal readonly record struct RuntimeWorldClockSaveState(
+    double Time,
+    bool DayTime,
+    byte MoonPhase,
+    double SlimeRainTime);
+
 /// <summary>
-/// Deliberately partial persistence snapshot containing only the subsystems that currently have source-backed
-/// canonical encoders: world tiles and world chests. It must not be treated as a complete .wld image.
+/// Deliberately partial persistence snapshot containing the authoritative subsystems currently supported by the
+/// lossless world rewriter: world tiles, world chests and the runtime clock fields patched into the opaque header.
 /// </summary>
 internal sealed record RuntimeWorldTileChestSaveSnapshot(
     WorldTileSaveImage Tiles,
-    WorldChest[] Chests);
+    WorldChest[] Chests,
+    RuntimeWorldClockSaveState? Clock = null);
 
 /// <summary>
 /// Game-thread-owned snapshot source for the current tile/chest persistence slice. Tile copying is spread across
-/// bounded section captures; requesting a snapshot then copies only section references plus detached chest state.
+/// bounded section captures; requesting a snapshot then copies only section references plus detached chest/clock state.
 /// </summary>
 internal sealed class RuntimeWorldTileChestSaveSnapshotSource
 {
     private readonly WorldTileSaveShadowSynchronizer tileSynchronizer;
     private readonly RuntimeChestStore chestStore;
+    private readonly RuntimeWorldClock? worldClock;
 
     public RuntimeWorldTileChestSaveSnapshotSource(
         WorldTileStore tiles,
         RuntimeChestStore chestStore,
-        int dirtyBatchCapacity)
+        int dirtyBatchCapacity,
+        RuntimeWorldClock? worldClock = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
         ArgumentNullException.ThrowIfNull(chestStore);
         this.chestStore = chestStore;
+        this.worldClock = worldClock;
         tileSynchronizer = new WorldTileSaveShadowSynchronizer(tiles, dirtyBatchCapacity);
     }
 
@@ -44,8 +54,8 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
         tileSynchronizer.CaptureDirty(maximumSections);
 
     /// <summary>
-    /// Captures one detached tile/chest persistence image. The caller must invoke this on the authoritative owner so
-    /// no chest mutation can interleave between the tile-image reference capture and chest cloning.
+    /// Captures one detached persistence image. The caller must invoke this on the authoritative owner so chest and
+    /// clock state cannot interleave with the tile-image reference capture.
     /// </summary>
     public bool TryCapture(out RuntimeWorldTileChestSaveSnapshot? snapshot)
     {
@@ -55,9 +65,17 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
             return false;
         }
 
+        RuntimeWorldClockSaveState? clock = worldClock is null
+            ? null
+            : new RuntimeWorldClockSaveState(
+                worldClock.Time,
+                worldClock.DayTime,
+                worldClock.MoonPhase,
+                worldClock.SlimeRainTime);
         snapshot = new RuntimeWorldTileChestSaveSnapshot(
             tiles,
-            chestStore.CaptureSnapshot());
+            chestStore.CaptureSnapshot(),
+            clock);
         return true;
     }
 }
