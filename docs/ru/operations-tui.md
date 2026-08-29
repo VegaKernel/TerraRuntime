@@ -4,37 +4,29 @@
 
 ## 1. Назначение
 
-Operations layer предоставляет bounded read models и safe command surfaces для local administration, не позволяя UI code напрямую обходить или мутировать authoritative runtime collections.
+Operations layer предоставляет bounded read models и safe control surfaces, не позволяя UI code напрямую обходить или мутировать authoritative runtime collections.
 
-Terminal.Gui v2 является первой local UI implementation, но architectural boundary toolkit-independent:
+```mermaid
+flowchart LR
+    Runtime["Authoritative runtime"] --> Snapshots["Immutable / bounded operations snapshots"]
+    Snapshots --> TUI["Terminal UI"]
+    Snapshots --> Console["Plain console"]
+    Snapshots --> Host["Trusted host integration"]
+    Snapshots --> Future["Future API adapters"]
 
-```text
-authoritative runtime
-       |
-       v
-immutable/bounded operations snapshots
-       |
-       +--> Terminal UI
-       +--> plain console
-       +--> trusted host integration
-       +--> future API surfaces
-
-administrative action
-       -> operations/command boundary
-       -> authoritative owner
+    TUI --> Control["Validated operation / command"]
+    Console --> Control
+    Host --> Control
+    Control --> Runtime
 ```
+
+Terminal.Gui v2 является current local UI implementation, но boundary toolkit-independent.
 
 ## 2. Startup без аргументов
 
-Обычный server entry point без `--world` не завершает процесс только потому, что world не указан в command line.
+Normal startup без `--world` создаёт required runtime directories и сканирует canonical `Worlds/` через local selector. Selected `.wld` становится effective `--world`. Cancel selection завершает startup чисто.
 
-`StartupProgram` создаёт runtime directory layout и сканирует canonical `Worlds/` через local world selector. Выбранный `.wld` затем добавляется как effective `--world` argument.
-
-Если пользователь отменяет selection, startup завершается чисто и не делает вид, что world был загружен.
-
-## 3. Runtime directories
-
-Standalone runtime владеет небольшой directory layout относительно executable deployment directory:
+Directory layout остаётся literal filesystem structure:
 
 ```text
 Worlds/
@@ -43,13 +35,7 @@ data/
 logs/
 ```
 
-`Worlds/` является canonical directory для interactive local world selection. Explicit `--world <path>` по-прежнему может указывать в другое место.
-
-Ошибка создания required runtime directories является startup error и сообщается до world loading.
-
-## 4. Основные server options
-
-Normal server startup сейчас поддерживает:
+## 3. Основные server options
 
 ```text
 --world <path.wld>
@@ -60,185 +46,130 @@ Normal server startup сейчас поддерживает:
 --no-tui
 ```
 
-Текущие defaults:
+Defaults: `port = 7777`, `max players = 8`, TUI enabled, interest management disabled. Это configuration values/identifiers, а не dimensional measurements, поэтому они остаются code literals.
 
-```text
-port        = 7777
-max players = 8
-TUI         = enabled
-interest management = disabled
+`--tui` accepted explicitly, хотя TUI default-on. `--no-tui` выключает его.
+
+Special startup paths включают `--help`, `--list-world-generators`, CI smoke modes и `--save-wld`.
+
+## 4. TUI lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Starting
+    Starting --> Dashboard: Terminal.Gui starts successfully
+    Starting --> PlainConsole: initialization failure
+    Dashboard --> PlainConsole: dashboard exits / fails
+    PlainConsole --> Dashboard: tui / ui / dashboard command
+    Dashboard --> Stopping: runtime shutdown
+    PlainConsole --> Stopping: runtime shutdown
+    Stopping --> [*]
 ```
 
-`--tui` принимается явно, но TUI уже enabled по умолчанию. `--no-tui` выключает его.
+UI работает на собственном background thread `TerraRuntime Terminal UI`, не на authoritative game-loop thread. `TerminalUiHost` владеет linked cancellation и ждёт UI thread только bounded interval при disposal.
 
-No-argument path сначала выполняет interactive world selection, а уже потом `ServerHostOptions` validation, поэтому lower-level options record всё ещё требует resolved world path.
+## 5. Refresh model
 
-## 5. Другие startup modes
+Dashboard refresh идёт из Terminal.Gui application iteration callback примерно с периодом
 
-`StartupProgram` также распознаёт специальные paths:
+$$
+T_{\mathrm{refresh}}\approx500\,\mathrm{ms}.
+$$
 
-- `--help` / `-h`;
-- `--list-world-generators`;
-- smoke modes CI, включая loop/protocol/network/world/TUI smoke paths;
-- `--save-wld` checkpoint export/restore mode.
+UI читает operations snapshots и не ходит напрямую по mutable player/NPC/projectile/world collections.
 
-Special smoke/checkpoint modes идут через standalone program path, а не normal world-selection startup.
+## 6. Dashboard data
 
-## 6. TUI lifecycle
+Current operations read models покрывают lifecycle/runtime status, tick/TPS/phase timing, players, NPCs, projectiles, world items, networking/queues, world state/clock, save/persistence и bounded logs/warnings.
 
-TUI работает на собственном background thread с именем `TerraRuntime Terminal UI`.
+Window layout может эволюционировать; snapshot ownership остаётся invariant.
 
-Она не выполняется на authoritative game-loop thread и не блокирует server readiness обычной UI refresh работой.
+## 7. Save telemetry и manual checkpoint
 
-`TerminalUiHost` владеет linked cancellation source и при dispose ждёт UI thread только bounded interval.
+World-save status публикует persistence acceptance, tile-shadow readiness, remaining bootstrap/dirty sections, requested state, active/pending writes и accepted/started/completed/coalesced/failed counters.
 
-## 7. Refresh model
+**Actions → Save world checkpoint** вызывает `IWorldOperations.TryRequestSave()` и проходит persistence ingress, не получая save service или mutable tile shadow.
 
-Dashboard refresh loop выполняется из Terminal.Gui application iteration callback.
+```mermaid
+sequenceDiagram
+    participant U as Operator / TUI
+    participant O as IWorldOperations
+    participant G as Authoritative owner
+    participant S as Persistence pipeline
 
-Текущий refresh interval примерно **500 ms** (`Stopwatch.Frequency / 2`).
+    U->>O: TryRequestSave()
+    O->>G: bounded save request
+    alt accepted
+        G->>S: capture when authoritative snapshot is ready
+        O-->>U: accepted
+    else rejected
+        O-->>U: explicit administrative rejection
+    end
+```
 
-UI refresh читает operations snapshots. Он не должен обходить mutable player/NPC/projectile/world collections напрямую.
+ANSI TUI smoke проходит реальный menu path (`Alt+A`, затем `S`) и проверяет pending-save state; unit tests покрывают accepted/rejected requests.
 
-Так terminal rendering и toolkit callbacks остаются вне simulation ownership boundary.
+## 8. Network telemetry
 
-## 8. Dashboard data
+`INetworkOperations` отдаёт bounded network state без передачи UI ownership connection lifecycle. Он включает active/registered connections, admission totals/rejections, inbound rate/per-connection details, outbound backpressure/high-water state, slow clients, replication counters, typed terminal stops и normalized frame-rejection categories.
 
-Runtime operations surface уже содержит read models/telemetry для областей вроде lifecycle/runtime status, tick/TPS и phase timing, players, NPCs, projectiles, world items, networking/queues, world state, world clock, save/persistence state и logs/warnings.
+TUI потребляет subsystem-owned counters, а не парсит log text и не создаёт duplicate packet-hot-path counters.
 
-Exact window layout может меняться. Инвариант: dashboard потребляет bounded snapshots, а не implementation stores.
+## 9. Logs
 
-## 9. Save telemetry и manual checkpoint
+TUI потребляет bounded log state и не является logging backend. UI failure не теряет authoritative state, rendering не блокирует game loop, retained history bounded, future structured pipeline сохраняет event/category identity.
 
-World save status публикуется в operations/TUI через detached status capture.
+См. [Observability и logging](observability-logging.md) и logging roadmap.
 
-Status содержит, среди прочего:
+## 10. Plain console fallback
 
-- принимает ли persistence requests;
-- tile-shadow readiness;
-- remaining bootstrap sections;
-- pending dirty tile sections;
-- установлен ли save request;
-- active/pending background write state;
-- accepted/started/completed/coalesced/failed write counters.
-
-TUI также предоставляет **Actions → Save world checkpoint**. Action вызывает `IWorldOperations.TryRequestSave()`, то есть проходит через persistence ingress и не получает прямую ссылку на save service или mutable tile shadow. При успешном запросе UI переходит в World view, где persistence snapshot показывает pending request; при отказе оператору явно отображается rejected administrative action.
-
-ANSI TUI smoke проходит настоящий MenuBar path (`Alt+A`, затем `S`) и проверяет отрисованный pending-save state. Unit regression coverage отдельно проверяет accepted и rejected request paths.
-
-## 10. Network telemetry
-
-`INetworkOperations` публикует bounded network state, не передавая UI владение lifecycle соединений. Network view сейчас показывает:
-
-- active и registered connections;
-- accepted/rejected admission totals с отдельными `capacity` и `rate` reject counters;
-- aggregate inbound rate и bounded per-connection inbound details;
-- bounded outbound queue/backpressure details и slow-client state;
-- player/NPC/projectile/world-item replication counters;
-- категоризированные terminal connection stops: protocol failure, rate limiting, invalid handshake, unsupported protocol, slow client, handshake timeout, idle timeout и application stop;
-- нормализованные frame-rejection categories: malformed protocol, rate limited, invalid state, gameplay rejected и backpressure.
-
-Connection-stop и frame-rejection категории приходят из network/subsystem-owned telemetry. TUI только проецирует immutable snapshot: он не разбирает строки логов и не добавляет дублирующие counters в packet hot path.
-
-UI не становится владельцем connection lifetime. Disconnect или иная mutation проходит через explicit safe operation/command path.
-
-High-frequency telemetry агрегируется до display. Форматирование отдельной UI-строки для каждого packet в hot path здесь считается неправильной архитектурой.
-
-## 11. Logs
-
-Logging развивается в сторону runtime-owned structured asynchronous pipeline. TUI/log operations boundary должна потреблять уже bounded log state, а не становиться logging backend.
-
-Важные правила: UI failure не теряет authoritative state, log rendering не блокирует game loop, retained history bounded, а future structured events сохраняют category/event identity вместо одной готовой строки.
-
-Незавершённая logging work описана в `docs/roadmap/runtime-logging-pipeline.md`.
-
-## 12. Fallback при UI failure
-
-TUI failure не является server failure.
-
-Если Terminal.Gui initialization или dashboard session падает, `TerminalUiHost` сообщает проблему и переключается в plain console session.
-
-Runtime предпочитает degraded local control surface вместо shutdown здорового game server из-за проблем terminal capabilities.
-
-## 13. Plain console fallback
-
-После выхода или failure TUI local fallback console сейчас поддерживает:
+Literal fallback commands:
 
 ```text
 tui | ui | dashboard   снова открыть dashboard
-clear                  очистить console, если terminal это умеет
+clear                  очистить console, если поддерживается
 help                   показать fallback-console commands
 ```
 
-Unknown commands сообщаются явно, а не превращаются в runtime mutations.
+Unknown commands reported, а не превращаются в runtime mutations. Closed/redirected stdin ждёт, а не busy-loop'ит.
 
-Closed/redirected stdin обрабатывается ожиданием, а не busy loop.
+## 11. Trusted host dashboards
 
-## 14. Trusted host dashboards
+CoreCLR trusted hosts могут регистрировать complete dashboards через `ITerraRuntimeTerminalDashboardRegistry`.
 
-CoreCLR extensible host может добавлять complete dashboards через `ITerraRuntimeTerminalDashboardRegistry`.
-
-Provider отдаёт stable `Id`, display `Title`, `CreateDashboard()` на Terminal.Gui UI thread и `Refresh(View rootView)` на UI thread.
-
-Trusted provider предоставляет собственный root view. Он не может произвольно внедрять controls в built-in system dashboard TerraRuntime.
+Provider задаёт stable `Id`, display `Title`, `CreateDashboard()` и `Refresh(View rootView)` на Terminal.Gui UI thread. Он предоставляет собственный root view и не inject'ит arbitrary controls в built-in TerraRuntime dashboard.
 
 Registration metadata/factory-oriented и не выдаёт mutable runtime state.
 
-## 15. UI-thread ownership
+## 12. UI-thread ownership
 
-Terminal.Gui views являются UI-thread objects.
+Terminal.Gui views остаются UI-thread objects. Dashboard provider обновляет свой view из `Refresh`, а gameplay/runtime work запрашивает через safe contracts. `View` не может становиться synchronization primitive authoritative state.
 
-Dashboard provider может обновлять свой view из `Refresh`, но runtime/gameplay work всё равно запрашивается через safe contracts. Нельзя передавать `View` в game loop или использовать UI controls как synchronization primitive authoritative state.
+## 13. Правило administrative mutation
 
-## 16. Правило administrative mutation
-
-Любая operation, меняющая runtime state, проходит ту же ownership boundary, что и другие control paths.
-
-Уже реализованные безопасные local administrative operations:
-
-- enable/disable interest management через authoritative command ingress;
-- manual world checkpoint request через `IWorldOperations.TryRequestSave()` и persistence ingress.
-
-Другие player, world-item или server-controlled actor actions должны следовать тому же правилу после появления явных runtime operations.
-
-TUI не получает direct-mutation shortcut только потому, что работает в одном process.
-
-## 17. Headless/plain operation
-
-Отключение TUI не отключает server runtime. UI является operations adapter, а не dependency simulation correctness.
-
-NativeAOT и CoreCLR deployment profiles должны выполнять server functionality независимо от successful graphical terminal session.
-
-CI имеет dedicated TUI smoke path, но normal network/world smoke tests не должны зависеть от terminal rendering.
-
-## 18. Extensible host boundary
-
-CoreCLR profile может загружать trusted host modules вроде Vega за `TerraRuntime.HostContracts`. Эти modules могут регистрировать complete terminal dashboards и после attach получать narrow runtime operations.
-
-Обычные Vega plugins остаются за Vega Plugin SDK и автоматически не становятся TerraRuntime trusted host modules.
-
-Standalone NativeAOT profile не выполняет arbitrary managed DLL loading.
-
-## 19. Observability и control
-
-Хороший operations API разделяет reads и mutations:
-
-```text
-read path
-  immutable snapshot -> display/export
-
-write path
-  validated command -> authoritative owner -> result
+```mermaid
+flowchart LR
+    UI["TUI / console / trusted host"] --> Validate["Safe operations boundary"]
+    Validate --> Command["Validated authoritative command / ingress"]
+    Command --> Owner["Runtime owner"]
+    Owner --> Result["Explicit result / snapshot"]
+    Result --> UI
 ```
 
-Объединить это в mutable `ServerState` object означало бы развалить single-writer architecture и сделать future web/API/TUI adapters небезопасными по определению.
+Implemented examples: interest-management enable/disable через authoritative command ingress и manual checkpoint через `IWorldOperations.TryRequestSave()`.
 
-## 20. Текущие ограничения
+Работа в одном process не даёт TUI direct-mutation shortcut.
 
-Operations/TUI уже usable, но это не финальная administration platform.
+## 14. Headless и extensible profiles
 
-Ещё развиваются complete structured logging/event IDs, более глубокая packet/security telemetry там, где subsystem-owned counters дают достоверные данные, final configurable dashboard layout и long-term UX, future remote/web API adapters за тем же operations model, более богатые safe administrative actions и документация каждого dashboard panel после стабилизации layout.
+Отключение TUI не отключает server. NativeAOT/CoreCLR profiles остаются functional без successful graphical terminal session.
 
-## 21. Checklist изменения operations/TUI
+CoreCLR может загрузить trusted host modules вроде Vega за `TerraRuntime.HostContracts`; ordinary Vega plugins остаются за Vega plugin SDK. NativeAOT не выполняет arbitrary managed DLL loading.
 
-Operations/TUI change не завершён, пока по необходимости UI work остаётся вне authoritative thread, read models immutable/bounded, mutations возвращаются через command/operations boundary, TUI failure деградирует без убийства server, redirected/closed input не создаёт busy-loop, host dashboard providers не получают mutable implementation state, а startup CLI/default behavior обновлены здесь и в `docs/en/operations-tui.md` тем же change.
+## 15. Текущие ограничения
+
+Ещё развиваются complete structured event IDs/logging, deeper subsystem-owned packet/security telemetry, final dashboard layout/UX, future remote/web adapters, richer safe administrative actions и panel-specific docs.
+
+## 16. Checklist изменения operations/TUI
+
+Operations/TUI change не завершён, пока UI work остаётся вне authoritative thread, read models immutable/bounded, mutations проходят safe operations, UI failure деградирует без shutdown server, terminal input не busy-loop'ит, host dashboards не получают mutable implementation state, diagrams используют Mermaid, dimensional timings используют LaTeX, и эта page изменена вместе с `docs/en/operations-tui.md`.
