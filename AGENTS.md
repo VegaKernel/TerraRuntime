@@ -126,6 +126,8 @@ Do not mechanically mirror every source file into a Markdown file. Document stab
 
 When a public interface changes, update its usage documentation immediately. When implementation changes what is actually supported, update roadmap/status documentation immediately. A code change that leaves the docs describing a different runtime is incomplete.
 
+Run `python3 tools/ci/check_documentation.py` after documentation changes. The checker enforces the mirrored RU/EN page set and repository-local link validity; it does not replace human review for semantic translation parity.
+
 ## 11. Definition of done
 
 A non-trivial change is not done until the relevant checks are green:
@@ -137,7 +139,8 @@ A non-trivial change is not done until the relevant checks are green:
 - Windows NativeAOT publish + exercised smoke path;
 - independent verification when the change is protocol/gameplay/world-format shaped;
 - before/after measurement when the claim is performance-related;
-- matching Russian and English documentation updates when behavior, architecture, contracts, operations or supported scope changed.
+- matching Russian and English documentation updates when behavior, architecture, contracts, operations or supported scope changed;
+- `python3 tools/ci/check_documentation.py` when documentation or documentation-linked behavior changed.
 
 If CI or a smoke path is red, fix it before stacking unrelated roadmap work on top.
 
