@@ -138,6 +138,8 @@ internal sealed class ServerRuntimeState
 
     public long ValidatedClientTileManipulations { get; private set; }
 
+    public long AppliedClientTileManipulations { get; private set; }
+
     public long RejectedClientTileManipulations { get; private set; }
 
     public long UnsupportedClientTileManipulations { get; private set; }
@@ -179,10 +181,6 @@ internal sealed class ServerRuntimeState
         }
     }
 
-    /// <summary>
-    /// Captures an immutable projection for an exact live session. This method is authoritative-thread
-    /// only; asynchronous consumers must receive the value through a command/result boundary.
-    /// </summary>
     internal bool TryCapturePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
     {
         if (!_players.TryGetValue(player.Slot.Value, out RuntimePlayerState? state) ||
@@ -196,10 +194,6 @@ internal sealed class ServerRuntimeState
         return true;
     }
 
-    /// <summary>
-    /// Captures one source-verified packet-5 inventory slot for an exact live player generation.
-    /// Authoritative-thread only; callers outside the game loop must use a command/result boundary.
-    /// </summary>
     internal bool TryCapturePlayerInventoryItem(
         PlayerHandle player,
         int inventorySlot,
@@ -215,21 +209,12 @@ internal sealed class ServerRuntimeState
         return _playerInventory.TryGet(state.Connection, inventorySlot, out item);
     }
 
-    /// <summary>
-    /// Captures an exact generation-safe NPC snapshot on the authoritative thread.
-    /// </summary>
     internal bool TryCaptureNpcSnapshot(NpcHandle npc, out NpcSnapshot snapshot) =>
         _npcs.TryGet(npc, out snapshot);
 
-    /// <summary>
-    /// Captures an exact generation-safe projectile snapshot on the authoritative thread.
-    /// </summary>
     internal bool TryCaptureProjectileSnapshot(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
         _projectiles.TryGet(projectile, out snapshot);
 
-    /// <summary>
-    /// Captures the currently active occupation of one vanilla world-item slot on the authoritative thread.
-    /// </summary>
     internal bool TryCaptureWorldItemSnapshot(short slot, out WorldItemSnapshot snapshot) =>
         _worldItems.TryGetActive(slot, out snapshot);
 
@@ -243,91 +228,69 @@ internal sealed class ServerRuntimeState
             case WorkerResultCommand result:
                 Volatile.Write(ref lastWorkerResult, result.Value);
                 break;
-
             case SetInterestManagementRuntimeCommand interestManagement:
                 interestManagement.Control.SetEnabled(interestManagement.Enabled);
                 break;
-
             case NpcSpawnRuntimeCommand spawn:
                 ApplyNpcSpawn(spawn);
                 break;
-
             case NpcUpdateRuntimeCommand update:
                 ApplyNpcUpdate(update);
                 break;
-
             case NpcDespawnRuntimeCommand despawn:
                 ApplyNpcDespawn(despawn);
                 break;
-
             case ProjectileSpawnRuntimeCommand spawn:
                 ApplyProjectileSpawn(spawn);
                 break;
-
             case ProjectileUpdateRuntimeCommand update:
                 ApplyProjectileUpdate(update);
                 break;
-
             case ProjectileDespawnRuntimeCommand despawn:
                 ApplyProjectileDespawn(despawn);
                 break;
-
             case ClientProjectileUpdateRuntimeCommand update:
                 ApplyClientProjectileUpdate(update);
                 break;
-
             case ClientProjectileDestroyRuntimeCommand destroy:
                 ApplyClientProjectileDestroy(destroy);
                 break;
-
             case ClientTileManipulationRuntimeCommand tile:
                 ApplyClientTileManipulation(tile);
                 break;
-
             case WorldItemAllocateRuntimeCommand allocate:
                 ApplyWorldItemAllocate(allocate);
                 break;
-
             case WorldItemDropRuntimeCommand drop:
                 ApplyWorldItemDrop(drop);
                 break;
-
             case WorldItemRemoveRuntimeCommand remove:
                 ApplyWorldItemRemove(remove);
                 break;
-
             case WorldItemOwnerRuntimeCommand owner:
                 ApplyWorldItemOwner(owner);
                 break;
-
             case PlayerAppearanceRuntimeCommand appearance:
                 ApplyPlayerAppearance(appearance);
                 break;
-
             case PlayerEquipmentRuntimeCommand equipment:
                 ApplyPlayerEquipment(equipment);
                 break;
-
             case PlayerHealthRuntimeCommand health:
                 ApplyPlayerHealth(health);
                 break;
-
             case PlayerManaRuntimeCommand mana:
                 ApplyPlayerMana(mana);
                 break;
-
             case PlayerSpawnRuntimeCommand spawn:
                 ApplyPlayerSpawn(spawn);
                 break;
-
             case PlayerMovementRuntimeCommand movement:
                 ApplyPlayerMovement(movement);
                 break;
-
             case PlayerDisconnectRuntimeCommand disconnect:
                 ApplyPlayerDisconnect(disconnect);
                 break;
-
             case PlayerStateSnapshotRuntimeCommand snapshot:
                 CompletePlayerSnapshot(snapshot);
                 break;
@@ -366,9 +329,6 @@ internal sealed class ServerRuntimeState
         {
             if (!_players.TryGetValue(checked((byte)slot), out RuntimePlayerState? player))
                 continue;
-
-            // Vanilla Player starts at 20x42. Mount delegates may override the hitbox, so mounted
-            // players stay outside this verified baseline until mount-specific sizing is modeled.
             if (player.MountType != 0)
                 continue;
 
@@ -583,9 +543,6 @@ internal sealed class ServerRuntimeState
             return;
         }
 
-        // TerrariaServer 1.4.5.8 dispatches packet 17 after the world-margin/section checks without comparing
-        // selectedItem or inventory. TerraRuntime intentionally applies a stricter consistency policy here before
-        // any future world mutation. This is a security boundary, not a claim of vanilla packet-17 parity.
         ValidatedClientTileManipulations++;
         if (action != TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.PlaceTile)
         {
@@ -616,11 +573,16 @@ internal sealed class ServerRuntimeState
                 return;
 
             case ClientTileManipulationConsistencyResult.Consistent:
-                // Dirt placement is now source-verified through the generic WorldGen.PlaceTile path, but a
-                // successful vanilla commit also calls SquareTileFrame. Until that framing behavior is modeled,
-                // mutating WorldTileStore here would create a subtly incorrect world state. Keep the validated
-                // request inert rather than turning protocol correctness into a free-build shortcut.
-                UnsupportedClientTileManipulations++;
+                if (!VanillaDirtPlacement.TryPlaceOnEmpty(
+                        _worldTiles,
+                        tileState.TileX,
+                        tileState.TileY))
+                {
+                    RejectedClientTileManipulations++;
+                    return;
+                }
+
+                AppliedClientTileManipulations++;
                 return;
 
             default:
