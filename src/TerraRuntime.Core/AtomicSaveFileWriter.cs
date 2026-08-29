@@ -5,7 +5,7 @@ namespace TerraRuntime.Core;
 /// <summary>
 /// Writes a complete save to a same-directory temporary file before replacing the destination.
 /// </summary>
-public static class AtomicSaveFileWriter
+public static partial class AtomicSaveFileWriter
 {
     public static async Task WriteAsync(
         string destinationPath,
