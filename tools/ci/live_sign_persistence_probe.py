@@ -51,7 +51,7 @@ def decode_sign_state(payload):
     return sign_id, tile_x, tile_y, text, player, flags
 
 
-def read_sign(client, sign_id, tile_x, tile_y, expected_text):
+def read_sign(client, sign_id, tile_x, tile_y, expected_text, expected_player):
     client.sendall(create_read_frame(tile_x, tile_y))
     payload, skipped = recv_until_packet(client, 47, 5)
     actual = decode_sign_state(payload)
@@ -67,15 +67,15 @@ def read_sign(client, sign_id, tile_x, tile_y, expected_text):
             "packet46 read returned the wrong text: "
             f"expected={expected_text!r} actual={actual_text!r} skipped={skipped[:64]}"
         )
-    if player != 0 or flags != 0:
+    if player != expected_player or flags != 0:
         fail(
             "packet46 read did not project authoritative slot/flags: "
-            f"player={player} flags={flags}"
+            f"expectedPlayer={expected_player} player={player} flags={flags}"
         )
     return len(skipped)
 
 
-def assert_no_update_echo(client, timeout=0.5):
+def assert_no_packet47(client, label, timeout=0.5):
     deadline = time.monotonic() + timeout
     observed = []
     while time.monotonic() < deadline:
@@ -88,21 +88,69 @@ def assert_no_update_echo(client, timeout=0.5):
         observed.append(message_id)
         if message_id == 47:
             state = decode_sign_state(payload)
-            fail(f"packet47 update unexpectedly echoed to its sender: state={state!r}")
+            fail(f"{label}: unexpected packet47 state={state!r}")
     return observed
 
 
+def receive_observer_update(client, sign_id, tile_x, tile_y, expected_text, expected_player):
+    payload, skipped = recv_until_packet(client, 47, 5)
+    actual = decode_sign_state(payload)
+    actual_id, actual_x, actual_y, actual_text, player, flags = actual
+    expected_identity = (sign_id, tile_x, tile_y)
+    if (actual_id, actual_x, actual_y) != expected_identity:
+        fail(
+            "observer packet47 targeted the wrong sign: "
+            f"expected={expected_identity} actual={(actual_id, actual_x, actual_y)} "
+            f"skipped={skipped[:64]}"
+        )
+    if actual_text != expected_text:
+        fail(
+            "observer packet47 carried the wrong committed text: "
+            f"expected={expected_text!r} actual={actual_text!r}"
+        )
+    if player != expected_player:
+        fail(
+            "observer packet47 trusted the submitted player id instead of the authoritative sender slot: "
+            f"expected={expected_player} actual={player}"
+        )
+    if flags != 0:
+        fail(
+            "observer packet47 trusted submitted flags instead of vanilla flags=0: "
+            f"actual={flags}"
+        )
+
+    trailing = assert_no_packet47(client, "observer duplicate update")
+    return len(skipped), trailing, player, flags
+
+
 def mutate(host, port, sign_id, tile_x, tile_y, initial_text, committed_text):
-    client = None
+    sender = None
+    observer = None
     try:
-        client, sections, bootstrap_frames = join_client(host, port, 0)
+        sender, sender_sections, sender_bootstrap_frames = join_client(host, port, 0)
+        observer, observer_sections, observer_bootstrap_frames = join_client(host, port, 1)
         time.sleep(0.25)
 
-        initial_skipped = read_sign(client, sign_id, tile_x, tile_y, initial_text)
+        sender_initial_skipped = read_sign(
+            sender,
+            sign_id,
+            tile_x,
+            tile_y,
+            initial_text,
+            expected_player=0,
+        )
+        observer_initial_skipped = read_sign(
+            observer,
+            sign_id,
+            tile_x,
+            tile_y,
+            initial_text,
+            expected_player=1,
+        )
         if committed_text == initial_text:
             fail("committed sign text must differ from the initial text")
 
-        client.sendall(
+        sender.sendall(
             create_update_frame(
                 sign_id,
                 tile_x,
@@ -112,19 +160,44 @@ def mutate(host, port, sign_id, tile_x, tile_y, initial_text, committed_text):
                 flags=7,
             )
         )
-        observed_after_update = assert_no_update_echo(client)
-        committed_skipped = read_sign(client, sign_id, tile_x, tile_y, committed_text)
+
+        observer_skipped, observer_trailing, observer_player, observer_flags = (
+            receive_observer_update(
+                observer,
+                sign_id,
+                tile_x,
+                tile_y,
+                committed_text,
+                expected_player=0,
+            )
+        )
+        sender_after_update = assert_no_packet47(sender, "sender update echo")
+        committed_skipped = read_sign(
+            sender,
+            sign_id,
+            tile_x,
+            tile_y,
+            committed_text,
+            expected_player=0,
+        )
 
         print(
             "live_sign_persistence_mutation "
             f"slot={sign_id} x={tile_x} y={tile_y} initial={initial_text} committed={committed_text} "
-            f"sections={sections} bootstrapFrames={bootstrap_frames} "
-            f"initialSkipped={initial_skipped} committedSkipped={committed_skipped} "
-            f"postUpdateFrames={observed_after_update} senderEcho=false"
+            f"senderSections={sender_sections} observerSections={observer_sections} "
+            f"bootstrapFrames=({sender_bootstrap_frames},{observer_bootstrap_frames}) "
+            f"senderInitialSkipped={sender_initial_skipped} observerInitialSkipped={observer_initial_skipped} "
+            f"observerSkipped={observer_skipped} observerTrailing={observer_trailing} "
+            f"committedSkipped={committed_skipped} postUpdateFrames={sender_after_update} "
+            f"senderEcho=false observerBroadcasts=1 observerPlayer={observer_player} observerFlags={observer_flags}"
         )
     finally:
-        if client is not None:
-            client.close()
+        for client in (sender, observer):
+            if client is not None:
+                try:
+                    client.close()
+                except OSError:
+                    pass
 
 
 def read(host, port, sign_id, tile_x, tile_y, expected_text):
@@ -132,7 +205,14 @@ def read(host, port, sign_id, tile_x, tile_y, expected_text):
     try:
         client, sections, bootstrap_frames = join_client(host, port, 0)
         time.sleep(0.25)
-        skipped = read_sign(client, sign_id, tile_x, tile_y, expected_text)
+        skipped = read_sign(
+            client,
+            sign_id,
+            tile_x,
+            tile_y,
+            expected_text,
+            expected_player=0,
+        )
         print(
             "live_sign_read_ok "
             f"slot={sign_id} x={tile_x} y={tile_y} text={expected_text} "
