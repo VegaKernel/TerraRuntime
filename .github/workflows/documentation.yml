@@ -7,11 +7,11 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: terra-runtime-docs-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   validate-documentation:
@@ -42,52 +42,3 @@ jobs:
 
       - name: Validate bilingual documentation
         run: python3 tools/ci/check_documentation.py --changed-base "${{ steps.docs-base.outputs.sha }}"
-
-  publish-deployment-documentation:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Apply, validate and fast-forward deployment documentation
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-
-          for attempt in $(seq 1 24); do
-            git fetch origin main
-            git reset --hard origin/main
-
-            if [ ! -f tools/ci/apply_deployment_documentation.py ]; then
-              echo 'deployment documentation migration already finalized'
-              exit 0
-            fi
-
-            python3 tools/ci/apply_deployment_documentation.py
-            python3 tools/ci/test_check_documentation.py
-            python3 tools/ci/check_documentation.py
-
-            if git diff --quiet && git diff --cached --quiet; then
-              echo 'deployment documentation already current'
-              exit 0
-            fi
-
-            git add -A
-            git commit -m 'docs: add bilingual deployment and configuration guide'
-
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-
-            echo "main advanced during attempt ${attempt}; rebuilding on the newest head"
-            sleep 1
-          done
-
-          echo 'failed to publish deployment documentation without force push' >&2
-          exit 1
