@@ -133,11 +133,8 @@ public static class RuntimeWorldGenerationExecutor
             RuntimeWorldGenerationPlanEntry<IWorldGenerationPass> entry = entries[passIndex];
             WorldGenerationPassDescriptor descriptor = entry.Descriptor;
 
-            if (descriptor.RngMode != WorldGenerationRngMode.IsolatedDeterministic)
+            if (descriptor.RngMode == WorldGenerationRngMode.CustomProviderRng)
             {
-                // VanillaSharedRng cannot be approximated: it needs the verified Terraria 1.4.5.8 worldgen RNG
-                // seed semantics and exact operation surface. CustomProviderRng likewise needs a future explicit
-                // provider-owned RNG contract. Reject both rather than silently producing a non-vanilla world.
                 return new WorldGenerationExecutionResult(
                     WorldGenerationExecutionStatus.UnsupportedRngMode,
                     descriptor.Id);
@@ -148,10 +145,14 @@ public static class RuntimeWorldGenerationExecutor
                 cancellationToken.ThrowIfCancellationRequested();
                 var random = new WorldGenerationRandomAdapter(
                     WorldGenerationPassRandom.Create(request.Seed, descriptor.Id));
+                IWorldGenerationVanillaRandom? vanillaRandom = descriptor.RngMode == WorldGenerationRngMode.VanillaSharedRng
+                    ? new VanillaRandomAdapter(new VanillaUnifiedRandom1458(VanillaWorldSeedResolver1458.Resolve(in request)))
+                    : null;
                 var context = new PassContext(
                     request,
                     workspace,
                     random,
+                    vanillaRandom,
                     progress,
                     descriptor.Id,
                     passIndex,
@@ -212,6 +213,7 @@ public static class RuntimeWorldGenerationExecutor
             WorldGenerationRequest request,
             IWorldGenerationWorkspace workspace,
             IWorldGenerationRandom random,
+            IWorldGenerationVanillaRandom? vanillaRandom,
             IWorldGenerationProgressSink? progress,
             WorldGenerationPassId passId,
             int passIndex,
@@ -222,6 +224,7 @@ public static class RuntimeWorldGenerationExecutor
             Workspace = workspace;
             Metadata = workspace as IWorldGenerationMetadataWorkspace;
             Random = random;
+            VanillaRandom = vanillaRandom;
             this.progress = progress;
             this.passId = passId;
             this.passIndex = passIndex;
@@ -233,7 +236,7 @@ public static class RuntimeWorldGenerationExecutor
         public IWorldGenerationWorkspace Workspace { get; }
         public IWorldGenerationMetadataWorkspace? Metadata { get; }
         public IWorldGenerationRandom Random { get; }
-        public IWorldGenerationVanillaRandom? VanillaRandom => null;
+        public IWorldGenerationVanillaRandom? VanillaRandom { get; }
         public CancellationToken CancellationToken { get; }
 
         public void ReportProgress(double fraction, string? message = null)
@@ -260,6 +263,19 @@ public static class RuntimeWorldGenerationExecutor
         public ulong NextUInt64() => random.NextUInt64();
         public uint NextUInt32() => random.NextUInt32();
         public int NextInt32(int exclusiveMax) => random.NextInt32(exclusiveMax);
+    }
+
+    private sealed class VanillaRandomAdapter : IWorldGenerationVanillaRandom
+    {
+        private readonly VanillaUnifiedRandom1458 random;
+
+        public VanillaRandomAdapter(VanillaUnifiedRandom1458 random) => this.random = random;
+
+        public int Next() => random.Next();
+        public int Next(int maxValue) => random.Next(maxValue);
+        public int Next(int minValue, int maxValue) => random.Next(minValue, maxValue);
+        public double NextDouble() => random.NextDouble();
+        public void NextBytes(byte[] buffer) => random.NextBytes(buffer);
     }
 
     private sealed class InvalidWorldGenerationPlanException : InvalidOperationException
