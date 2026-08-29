@@ -57,6 +57,9 @@ internal static class TerminalUiSmoke
                     SelectDetailsScreen(app, workspace, Key.R, "Projectiles", "PROJECTILES");
                     SelectDetailsScreen(app, workspace, Key.I, "Items", "ITEMS");
                     SelectDetailsScreen(app, workspace, Key.E, "Network", "NETWORK");
+                    AssertRendered(app.Driver!, "capacity 2");
+                    AssertRendered(app.Driver!, "Stops       protocol 2");
+                    AssertRendered(app.Driver!, "Timeouts    handshake 7");
                     SelectDetailsScreen(app, workspace, Key.W, "World", "WORLD");
                     AssertRendered(app.Driver!, "Sections");
                     AssertRendered(app.Driver!, "Lookups");
@@ -91,8 +94,8 @@ internal static class TerminalUiSmoke
 
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the System Dashboard, external-dashboard transition, " +
-                "all Details menu hotkeys, Actions/manual-save path, section-cache/world-save telemetry, " +
-                "Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
+                "all Details menu hotkeys, Actions/manual-save path, categorized admission/connection-stop telemetry, " +
+                "section-cache/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -374,8 +377,8 @@ internal static class TerminalUiSmoke
             new(
                 ActiveConnections: 1,
                 RegisteredConnections: 1,
-                AcceptedConnections: 1,
-                RejectedConnections: 0,
+                AcceptedConnections: 6,
+                RejectedConnections: 5,
                 TrackedOutboundQueues: 1,
                 QueuedOutboundFrames: 2,
                 QueuedOutboundBytes: 128,
@@ -415,7 +418,17 @@ internal static class TerminalUiSmoke
                 ProjectileUnsupportedCommits: 1,
                 WorldItemRelayedFrames: 9,
                 WorldItemRejectedFrames: 1,
-                WorldItemUnsupportedCommits: 1);
+                WorldItemUnsupportedCommits: 1,
+                AdmissionCapacityRejectedConnections: 2,
+                AdmissionRateRejectedConnections: 3,
+                StopProtocolFailures: 2,
+                StopRateLimited: 3,
+                StopInvalidHandshake: 4,
+                StopUnsupportedProtocol: 5,
+                StopSlowClient: 6,
+                StopApplicationStopped: 8,
+                StopHandshakeTimeout: 7,
+                StopIdleTimeout: 9);
 
         RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() =>
             new(
