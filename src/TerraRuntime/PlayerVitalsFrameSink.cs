@@ -18,7 +18,7 @@ public enum PlayerVitalsStopReason : byte
 /// Connection-owned player-vitals layer. The wire player id is deliberately discarded and replaced
 /// with the exact generation-safe player handle assigned by the bootstrap session.
 /// </summary>
-public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink
+public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
 {
     private readonly GameCommandSourceId _source;
     private readonly PlayerBootstrapFrameSink _bootstrap;
@@ -44,6 +44,13 @@ public sealed class PlayerVitalsFrameSink : ITerrariaFrameSink
     }
 
     public PlayerVitalsStopReason StopReason { get; private set; }
+
+    public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
+    {
+        PlayerVitalsStopReason.MalformedHealth or PlayerVitalsStopReason.MalformedMana => TerrariaFrameRejectionCategory.MalformedProtocol,
+        PlayerVitalsStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
+        _ => _bootstrap.RejectionCategory
+    };
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
