@@ -20,7 +20,7 @@ internal enum RuntimeWorldCreationPersistenceStatus : byte
 
 internal readonly record struct RuntimeWorldCreationPersistenceResult(
     RuntimeWorldCreationPersistenceStatus Status,
-    RuntimeWorldCreationResult? Creation = null,
+    RuntimeWorldCreationPipelineResult? Creation = null,
     WorldFileFreshCompose326Diagnostic? Composition = null,
     WorldFileAtomicPublishDiagnostic? Publication = null,
     string? WorldPath = null)
@@ -86,14 +86,17 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
                 Publication: new WorldFileAtomicPublishDiagnostic(WorldFileAtomicPublishResult.AlreadyExists));
         }
 
-        RuntimeWorldCreationResult created = creation.TryCreate(request, cancellationToken, progressSink);
+        RuntimeWorldCreationPipelineResult created = creation.CreateCandidate(
+            in request,
+            progressSink,
+            cancellationToken);
         if (!created.Succeeded || created.Candidate is null)
         {
-            RuntimeWorldCreationPersistenceStatus status = created.Status switch
+            RuntimeWorldCreationPersistenceStatus status = created.Generation.Status switch
             {
-                RuntimeWorldCreationStatus.GeneratorNotFound => RuntimeWorldCreationPersistenceStatus.GeneratorNotFound,
-                RuntimeWorldCreationStatus.GenerationFailed => RuntimeWorldCreationPersistenceStatus.GenerationFailed,
-                RuntimeWorldCreationStatus.FinalizationFailed => RuntimeWorldCreationPersistenceStatus.FinalizationFailed,
+                RuntimeWorldGenerationCandidateStatus.GeneratorNotFound => RuntimeWorldCreationPersistenceStatus.GeneratorNotFound,
+                _ when created.Status == RuntimeWorldCreationPipelineStatus.FinalizationFailed =>
+                    RuntimeWorldCreationPersistenceStatus.FinalizationFailed,
                 _ => RuntimeWorldCreationPersistenceStatus.GenerationFailed
             };
             return new RuntimeWorldCreationPersistenceResult(status, Creation: created);
