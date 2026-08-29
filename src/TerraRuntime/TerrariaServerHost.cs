@@ -20,6 +20,12 @@ public static class TerrariaServerHost
         maxQueuedBytes: 16L * 1024 * 1024,
         maxFrameBytes: TerrariaFrameDecoderOptions.AbsoluteMaximumFrameLength);
 
+    // Correctness-first ceiling until section rebuild throughput is measured on representative worlds.
+    // One worker plus one queued item bounds live rebuild snapshots to at most two network sections.
+    private const int SectionCacheWorkerCount = 1;
+    private const int SectionCacheWorkCapacity = 1;
+    private const int SectionCacheCompletionCapacity = 1;
+
     /// <summary>
     /// Runs one Terraria world. The optional interest-management control is the only supported
     /// external switch for runtime visibility optimization; spatial policy remains owned by TerraRuntime.
@@ -256,10 +262,20 @@ public static class TerrariaServerHost
             projectiles: projectileStore,
             worldItems: worldItems,
             projectileReplication: projectileReplication);
+        using var sectionCacheRebuild = new SectionCacheRebuildPipeline(
+            world,
+            bootstrapPackets,
+            workerCount: SectionCacheWorkerCount,
+            workCapacity: SectionCacheWorkCapacity,
+            completionCapacity: SectionCacheCompletionCapacity);
         using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             state,
             static (runtime, command) => runtime.Apply(command),
-            static runtime => runtime.Tick());
+            runtime =>
+            {
+                runtime.Tick();
+                sectionCacheRebuild.Tick();
+            });
         var commandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(gameLoop);
         var playerStateSnapshots = new RuntimePlayerStateSnapshotReader(commandIngress);
         var spawnIngress = new RuntimePlayerSpawnCommitIngress(commandIngress);
@@ -303,6 +319,7 @@ public static class TerrariaServerHost
         {
             listener.Bind(new IPEndPoint(IPAddress.Any, options.Port));
             listener.Listen(backlog: Math.Max(32, options.MaxPlayers * 2));
+            sectionCacheRebuild.Start();
             gameLoop.Start();
 
             if (hostLifecycle is not null)
