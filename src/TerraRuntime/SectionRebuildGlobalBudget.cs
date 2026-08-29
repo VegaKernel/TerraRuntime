@@ -95,23 +95,21 @@ internal sealed class SectionRebuildGlobalBudget
             if (_activeGenerations.TryGetValue(sectionIndex, out long activeGeneration))
             {
                 SectionRebuildRequestTicket duplicate = requester(section);
-                if (duplicate.Accepted && duplicate.Generation == activeGeneration)
-                {
-                    _deduplicatedRequests++;
-                    return duplicate;
-                }
-
-                // A rejected or unexpectedly replaced generation must not leave stale single-flight ownership.
-                _activeGenerations.Remove(sectionIndex);
                 if (!duplicate.Accepted)
                 {
+                    _activeGenerations.Remove(sectionIndex);
                     _rejectedRequests++;
                     return duplicate;
                 }
 
-                // The coordinator advanced generation ownership without observing completion here. Treat the
-                // replacement as a new expensive generation and account it below instead of silently bypassing
-                // the global limit.
+                if (duplicate.Generation != activeGeneration)
+                {
+                    throw new InvalidOperationException(
+                        "Section rebuild generation changed before the active budget generation completed.");
+                }
+
+                _deduplicatedRequests++;
+                return duplicate;
             }
 
             RefreshWindowLocked();
