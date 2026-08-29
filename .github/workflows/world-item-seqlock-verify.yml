@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
 
+# Fresh run after making the concurrency stress cancellation-aware.
 jobs:
   verify:
     runs-on: ubuntu-latest
