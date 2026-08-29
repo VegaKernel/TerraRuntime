@@ -2,7 +2,7 @@
 """Extract the narrow TerrariaServer 1.4.5.8 contract needed for projectile aiStyle 3.
 
 The official server binary remains the source of truth. Keep the emitted contexts deliberately small
-so CI logs expose the behavioral contract without persisting or dumping the decompiled type.
+so CI logs expose the behavioral contract without persisting the decompiled type in the repository.
 """
 
 from __future__ import annotations
@@ -95,19 +95,20 @@ def main() -> int:
     source = args.projectile.read_text(encoding="utf-8")
     set_defaults = extract_method(source, "SetDefaults")
     ai = extract_method(source, "AI")
+    boomerang = extract_method(source, "AI_003_Boomerang")
     handle_movement = extract_method(source, "HandleMovement")
     kill = extract_method(source, "Kill")
 
     print("projectile_type6_defaults=" + around_optional(set_defaults, "type == 6", radius=850))
-    print("projectile_ai_length=" + str(len(compact(ai))))
     print("projectile_ai003_symbols=" + matching_lines(source, "AI_003", limit=20))
     print("projectile_ai_style3_symbols=" + matching_lines(source, "aiStyle == 3", limit=30))
-    print("projectile_ai_case3=" + all_contexts(ai, "case 3:", radius=1000, limit=4))
-    print("projectile_ai_style3=" + all_contexts(ai, "aiStyle == 3", radius=1000, limit=8))
-    print("projectile_ai_owner=" + all_contexts(ai, "owner", radius=360, limit=16))
-    print("projectile_ai_ai0=" + all_contexts(ai, "ai[0]", radius=360, limit=16))
-    print("projectile_ai_tile_collide=" + all_contexts(ai, "tileCollide", radius=360, limit=12))
-    print("projectile_ai_velocity=" + all_contexts(ai, "velocity", radius=300, limit=20))
+    print("projectile_boomerang_length=" + str(len(compact(boomerang))))
+    print("projectile_boomerang_body=" + compact(boomerang))
+    print("projectile_boomerang_type6=" + all_contexts(boomerang, "type == 6", radius=420, limit=8))
+    print("projectile_boomerang_owner=" + all_contexts(boomerang, "Main.player[owner]", radius=420, limit=12))
+    print("projectile_boomerang_ai0=" + all_contexts(boomerang, "ai[0]", radius=420, limit=16))
+    print("projectile_boomerang_tile_collide=" + all_contexts(boomerang, "tileCollide", radius=420, limit=8))
+    print("projectile_boomerang_kill=" + all_contexts(boomerang, "Kill", radius=420, limit=8))
     print("projectile_handle_movement_ai3=" + around_optional(handle_movement, "aiStyle == 3", radius=850))
     print("projectile_kill_type6=" + around_optional(kill, "type == 6", radius=850))
     return 0
