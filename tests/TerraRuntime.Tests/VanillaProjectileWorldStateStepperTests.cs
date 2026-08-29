@@ -157,7 +157,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
     public void Wooden_arrow_tile_impact_is_left_for_kill_effect_slice()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        tiles.Set(8, 10, SolidTile(1));
+        tiles.Set(7, 10, SolidTile(1));
         var stepper = new VanillaProjectileWorldStateStepper(tiles);
         ProjectileSnapshot arrow = CreateSnapshot(
             positionX: 100f,
