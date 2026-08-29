@@ -1,4 +1,4 @@
-name: Confetti Projectile Source Proof
+name: Apply Confetti Projectile Runtime Slice
 
 on:
   push:
@@ -8,101 +8,41 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  prove:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Download pinned TerrariaServer 1.4.5.8
+      - name: Apply source-backed confetti slice
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .cache/terraria-1458 .tools artifacts/confetti-proof
-          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
-          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
-      - name: Install pinned ILSpy
-        run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
-      - name: Inspect ConfettiGun 178 and ConfettiMelee 289
-        shell: bash
-        run: |
-          set -euo pipefail
-          expected_sha256='d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e'
-          assembly=''
-          while IFS= read -r -d '' candidate; do
-            sha="$(sha256sum "$candidate" | awk '{print $1}')"
-            if [[ "$sha" == "$expected_sha256" ]]; then assembly="$candidate"; break; fi
-          done < <(find .cache/terraria-1458/extracted -type f -name TerrariaServer.exe -print0)
-          test -n "$assembly"
-          dir="$(dirname "$assembly")"
-          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.Projectile "$assembly" > artifacts/confetti-proof/projectile.cs
-          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/confetti-proof/projectile-id.cs
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
+          git fetch origin main
+          git reset --hard origin/main
 
-          src=Path('artifacts/confetti-proof/projectile.cs').read_text(encoding='utf-8')
-          ids=Path('artifacts/confetti-proof/projectile-id.cs').read_text(encoding='utf-8')
+          python3 -m py_compile .github/scripts/apply_confetti_projectile_slice.py
+          python3 .github/scripts/apply_confetti_projectile_slice.py
+          python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
 
-          def method(name):
-              m=re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$',src)
-              if not m: raise SystemExit(f'method not found: {name}')
-              op=src.find('{',m.end()); d=0
-              for i in range(op,len(src)):
-                  if src[i]=='{': d+=1
-                  elif src[i]=='}':
-                      d-=1
-                      if d==0: return src[m.start():i+1]
-              raise SystemExit(f'unterminated: {name}')
-
-          def type_block(text,t):
-              m=re.search(rf'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*{t}(?!\d)\s*\)',text)
-              if not m: raise SystemExit(f'type block not found: {t}')
-              op=text.find('{',m.end()); d=0
-              for i in range(op,len(text)):
-                  if text[i]=='{': d+=1
-                  elif text[i]=='}':
-                      d-=1
-                      if d==0: return text[m.start():i+1]
-              raise SystemExit(f'unterminated type block: {t}')
-
-          def contexts(text,t,radius=1800):
-              c=' '.join(text.split())
-              p=re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|\bcase\s+{t}\s*:')
-              out=[]
-              for m in p.finditer(c): out.append(c[max(0,m.start()-radius):min(len(c),m.end()+radius)])
-              return out
-
-          def count(text,t): return len(contexts(text,t,100))
-
-          defaults=method('SetDefaults')
-          kill=method('Kill')
-          parts={n:method(n) for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams','CanCutTiles')}
-          lines=[]
-          for t,name in ((178,'ConfettiGun'),(289,'ConfettiMelee')):
-              if not re.search(rf'public const (?:short|int)\s+{name}\s*=\s*{t}\s*;',ids):
-                  raise SystemExit(f'ProjectileID.{name} != {t}')
-              block=' '.join(type_block(defaults,t).split())
-              for token in ('width = 10;','height = 10;','aiStyle = 1;','alpha = 255;','penetrate = -1;','timeLeft = 2;'):
-                  if token not in block: raise SystemExit(f'{name} default missing: {token}')
-              for token in ('tileCollide = false;','ignoreWater = true;','extraUpdates ='):
-                  if token in block: raise SystemExit(f'{name} unexpected default: {token}')
-              for part_name,part in parts.items():
-                  if count(part,t): raise SystemExit(f'{name} unexpectedly special in {part_name}')
-              kc=contexts(kill,t,2200)
-              if len(kc)!=1: raise SystemExit(f'{name} Kill contexts={len(kc)}')
-              lines += [f'{name}_defaults={block}',f'{name}_kill_context={kc[0]}']
-          report='\n'.join(lines)+'\n'
-          Path('artifacts/confetti-proof/report.txt').write_text(report,encoding='utf-8')
-          print(report)
-          PY
-          rm artifacts/confetti-proof/projectile.cs artifacts/confetti-proof/projectile-id.cs
-      - uses: actions/upload-artifact@v4
-        with:
-          name: confetti-projectile-source-proof
-          path: artifacts/confetti-proof/report.txt
-          if-no-files-found: error
+          git config user.name OpenAI
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/scripts/apply_confetti_projectile_slice.py
+          git add src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
+                  src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs \
+                  src/TerraRuntime/VanillaProjectileWorldStateStepper.cs \
+                  tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs \
+                  tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs \
+                  tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs \
+                  tools/ci/probe_projectile_tile_cut.py
+          git commit -m 'feat: simulate confetti projectile world flight'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
