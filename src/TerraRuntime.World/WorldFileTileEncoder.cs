@@ -47,13 +47,12 @@ public static class WorldFileTileEncoder
         if (!destination.CanWrite)
             return WorldFileTileEncodeResult.DestinationNotWritable;
 
-        if (frameImportanceCount < VanillaWorldFormat326.TileTypeCount ||
-            frameImportanceBits.Length < (frameImportanceCount + 7) / 8)
+        if (frameImportanceCount != VanillaWorldFormat326.TileTypeCount ||
+            frameImportanceBits.Length < (VanillaWorldFormat326.TileTypeCount + 7) / 8)
         {
             return WorldFileTileEncodeResult.InvalidFrameImportance;
         }
 
-        long startPosition = destination.CanSeek ? destination.Position : 0;
         int height = source.Dimensions.HeightTiles;
         ReadOnlySpan<WorldTile> allTiles = source.Tiles;
 
@@ -92,20 +91,8 @@ public static class WorldFileTileEncoder
         }
         catch (Exception exception) when (exception is IOException or NotSupportedException or ObjectDisposedException)
         {
-            if (destination.CanSeek)
-            {
-                try
-                {
-                    destination.Position = startPosition;
-                    destination.SetLength(startPosition);
-                }
-                catch (Exception rollbackException) when (
-                    rollbackException is IOException or NotSupportedException or ObjectDisposedException)
-                {
-                    // Best-effort rollback only. The caller owns the destination and must discard it after WriteFailed.
-                }
-            }
-
+            // The destination is caller-owned. A failed stream write may have emitted a prefix, so callers must
+            // discard/replace the destination instead of attempting to publish it as a complete tile section.
             bytesWritten = 0;
             return WorldFileTileEncodeResult.WriteFailed;
         }
