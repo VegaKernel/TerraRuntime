@@ -162,6 +162,10 @@ flowchart LR
 
 Process kill до publication может оставить orphan random-name `.tmp`, но не заменяет canonical world. Orphan cleanup является housekeeping, а не ambiguity canonical selection.
 
+Successful validated replacement existing canonical checkpoint также сохраняет предыдущую canonical generation в `<world>.wld.bak`. При startup, если canonical `.wld` не проходит structural/content validation, TerraRuntime может проверить этот backup полным supported world loader и atomically восстановить его. Invalid backup fail'ится closed и оставляет canonical file untouched; broken canonical во время recovery никогда не ротируется поверх known-good backup.
+
+Automatic recovery намеренно подавляется при explicit format incompatibility. Structurally readable world с unsupported version, например `327`, является compatibility decision, а не corruption: startup fail'ится вместо замены future-world файла более старым `326` backup. Canonical и backup bytes в этом случае остаются unchanged.
+
 ## 14. Shutdown и termination save
 
 `Ctrl+C` и POSIX `SIGTERM` входят в graceful shutdown path. На non-Windows host регистрирует `PosixSignal.SIGTERM`, cancel'ит runtime shutdown, drains accepted connection/game-loop work, останавливает authoritative owner, capture'ит final save image и waits save coordinator.
@@ -196,7 +200,7 @@ Runtime emits machine-readable startup profile для source metadata/stat, cano
 
 ## 18. Evidence и tests
 
-Persistence evidence включает world loader/parser tests, runtime snapshot/cache tests, liquid snapshots, preserved-section tests, save coordinator/coalescing tests, authoritative tile/chest/sign/clock save-service tests, sign persistence round trips, world patch checks, official-world load workflows, live chest/sign persistence probes, atomic writer tests и process-level `SIGKILL` crash probe.
+Persistence evidence включает world loader/parser tests, runtime snapshot/cache tests, liquid snapshots, preserved-section tests, save coordinator/coalescing tests, authoritative tile/chest/sign/clock save-service tests, sign persistence round trips, world patch checks, official-world load workflows, live chest/sign persistence probes, atomic writer tests и process-level crash/recovery probes.
 
 Live persistence proof использует world, созданный official TerrariaServer 1.4.5.8, выполняет live `packet 32` chest mutation, gracefully terminates TerraRuntime, проверяет exact `.wld`, restart'ит TerraRuntime, reload/save через official server и проверяет снова.
 
@@ -208,13 +212,15 @@ atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent
 
 Это доказывает pre-publication process-crash contract: existing canonical destination остаётся byte-for-byte unchanged, first save не exposed partially, later normal save всё ещё commit'ится успешно.
 
+`World Checkpoint Recovery` run `33269875235` использовал world из official TerrariaServer 1.4.5.8 и доказал rotation previous-generation backup, exact recovery из structurally corrupted canonical checkpoint, fail-closed behavior invalid backup, official-server reload после recovery и suppression rollback для otherwise intact world, где изменилось только little-endian format version field с `326` на `327`. Future-version canonical и его valid `326` backup оба остались byte-for-byte unchanged.
+
 World-format changes требуют independent evidence real Terraria 1.4.5.8 worlds или official layout. Self-generated round trip alone не sufficient compatibility proof.
 
 ## 19. Текущие ограничения
 
 TerraRuntime ещё не реализует каждый field/section complete fresh vanilla `WorldFileWriter`. Future progression/events/housing/tile-entity systems требуют explicit persistence integration при переходе authoritative.
 
-Runtime snapshot layout остаётся disposable, не stable external storage API. Automatic backup rotation/rollback отдельно от atomic-save guarantee. Orphan `.tmp` cleanup после uncatchable death пока не имеет dedicated startup policy. Linux parent-directory `fsync` усиливает power-loss durability; equivalent filesystem semantics вне этого path platform-dependent. `.wld` остаётся canonical recovery boundary.
+Runtime snapshot layout остаётся disposable, не stable external storage API. Validated previous-generation backup rotation и automatic corruption recovery уже реализованы, но multi-generation retention/history policy отсутствует. Orphan `.tmp` cleanup после uncatchable death пока не имеет dedicated startup policy. Linux parent-directory `fsync` усиливает power-loss durability; equivalent filesystem semantics вне этого path platform-dependent. `.wld` остаётся canonical recovery boundary.
 
 ## 20. Checklist изменения world/persistence
 
@@ -224,6 +230,7 @@ World/persistence change не завершён, пока по необходим
 - game-thread snapshot work bounded;
 - background I/O не читает mutable authoritative collections directly;
 - temporary-file/atomic-publication behavior tested;
+- backup recovery валидирует candidate и никогда не трактует explicit format incompatibility как corruption;
 - `SIGTERM` graceful shutdown и `SIGKILL` pre-publication crash safety tested на correct layer;
 - durable publication включает required filesystem metadata barriers на supported platforms;
 - format-sensitive changes имеют real `.wld` evidence;
