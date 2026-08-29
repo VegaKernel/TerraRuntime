@@ -53,8 +53,10 @@ public sealed class VanillaWorldSeedResolver1458Tests
             "Ordinary",
             Seed: 123456,
             WidthTiles: 160,
-            HeightTiles: 112,
-            SeedText: "123456");
+            HeightTiles: 112)
+        {
+            SeedText = "123456"
+        };
 
         Assert.True(VanillaWorldSeedResolver1458.Resolve(in request).IsDefault);
     }
