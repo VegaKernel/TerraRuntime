@@ -1,8 +1,14 @@
+using TerraRuntime.HostContracts;
+
 namespace TerraRuntime;
 
 public static class StartupProgram
 {
-    public static int Main(string[] args)
+    public static int Main(string[] args) => Run(args);
+
+    public static int Run(
+        string[] args,
+        ITerraRuntimeHostLifecycle? hostLifecycle = null)
     {
         ArgumentNullException.ThrowIfNull(args);
 
@@ -48,7 +54,11 @@ public static class StartupProgram
             return 23;
         }
 
-        return TerrariaServerHost.RunAsync(options).GetAwaiter().GetResult();
+        return TerrariaServerHost.RunAsync(
+                options,
+                hostLifecycle: hostLifecycle)
+            .GetAwaiter()
+            .GetResult();
     }
 
     private static bool ContainsStandaloneMode(IEnumerable<string> args)

@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.HostContracts;
 using TerraRuntime.Network;
 using TerraRuntime.Operations;
 using TerraRuntime.Protocol;
@@ -25,7 +26,8 @@ public static class TerrariaServerHost
     /// </summary>
     public static async Task<int> RunAsync(
         ServerHostOptions options,
-        IInterestManagementControl? interestManagement = null)
+        IInterestManagementControl? interestManagement = null,
+        ITerraRuntimeHostLifecycle? hostLifecycle = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         var runtimeLogs = new RuntimeLogBuffer();
@@ -259,6 +261,7 @@ public static class TerrariaServerHost
             static (runtime, command) => runtime.Apply(command),
             static runtime => runtime.Tick());
         var commandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(gameLoop);
+        var playerStateSnapshots = new RuntimePlayerStateSnapshotReader(commandIngress);
         var spawnIngress = new RuntimePlayerSpawnCommitIngress(commandIngress);
         var appearanceIngress = new RuntimePlayerAppearanceIngress(commandIngress);
         var equipmentIngress = new RuntimePlayerEquipmentIngress(commandIngress);
@@ -294,12 +297,38 @@ public static class TerrariaServerHost
         using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
         TerminalUiHost? terminalUi = null;
+        bool hostRuntimeAttached = false;
 
         try
         {
             listener.Bind(new IPEndPoint(IPAddress.Any, options.Port));
             listener.Listen(backlog: Math.Max(32, options.MaxPlayers * 2));
             gameLoop.Start();
+
+            if (hostLifecycle is not null)
+            {
+                var hostRuntime = new TerraRuntimeHostRuntime(
+                    new TerraRuntimeHostRuntimeInfo(
+                        world.Header.Name,
+                        options.WorldPath,
+                        world.Header.Dimensions.WidthTiles,
+                        world.Header.Dimensions.HeightTiles,
+                        options.Port,
+                        options.MaxPlayers),
+                    runtimeInterestManagement,
+                    playerStateSnapshots);
+                try
+                {
+                    await hostLifecycle.AttachRuntimeAsync(hostRuntime, shutdown.Token).ConfigureAwait(false);
+                    hostRuntimeAttached = true;
+                }
+                catch (Exception exception)
+                {
+                    string message = $"Trusted host runtime attachment failed: {exception.Message}";
+                    hostLog.Write(RuntimeLogLevel.Error, "HostModule", message, useStandardError: true);
+                    return 29;
+                }
+            }
 
             TimeSpan networkReadyDuration = Stopwatch.GetElapsedTime(startupStart);
             long allocatedBytes = Math.Max(
@@ -471,6 +500,19 @@ public static class TerrariaServerHost
                 {
                     string message = $"Connection shutdown observed a fault: {exception.Message}";
                     hostLog.Write(RuntimeLogLevel.Error, "Runtime", message, useStandardError: true);
+                }
+            }
+
+            if (hostRuntimeAttached && hostLifecycle is not null)
+            {
+                try
+                {
+                    await hostLifecycle.DetachRuntimeAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    string message = $"Trusted host runtime detach failed: {exception.Message}";
+                    hostLog.Write(RuntimeLogLevel.Error, "HostModule", message, useStandardError: true);
                 }
             }
 

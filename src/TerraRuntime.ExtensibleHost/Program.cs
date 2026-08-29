@@ -38,7 +38,7 @@ internal static class Program
             return 31;
         }
 
-        return global::TerraRuntime.StartupProgram.Main(args);
+        return global::TerraRuntime.StartupProgram.Run(args, loader);
     }
 
     private static bool ShouldBypassHostModules(IEnumerable<string> args)
