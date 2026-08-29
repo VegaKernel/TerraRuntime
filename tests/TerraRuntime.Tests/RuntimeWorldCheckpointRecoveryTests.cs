@@ -22,7 +22,7 @@ public sealed class RuntimeWorldCheckpointRecoveryTests
         var diagnostic = new WorldFileLoadDiagnostic(
             WorldFileLoadResult.InvalidFooter,
             WorldFileLoadStage.Footer,
-            stageResultCode: 1);
+            StageResultCode: 1);
 
         Assert.True(RuntimeWorldCheckpointRecovery.CanAutomaticallyRestoreAfter(diagnostic));
     }
