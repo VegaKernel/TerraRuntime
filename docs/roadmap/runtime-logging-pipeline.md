@@ -4,106 +4,60 @@ This document defines the logging architecture that belongs to TerraRuntime itse
 
 The runtime must be independently observable without Vega, and logging I/O must never become part of the authoritative simulation critical path. Vega may consume TerraRuntime log events, render them in its TUI/API and combine them with application/plugin logs, but TerraRuntime remains the source of runtime/network/gameplay diagnostics.
 
-The governing rule is:
-
 > **Producing a runtime log event must be bounded and non-blocking on simulation/network hot paths; formatting and I/O happen outside the authoritative loop.**
 
----
-
-
-> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or equivalent executable proof. Partial/foundation-only work remains `[ ]`.
 
 ## 1. Migration decision from Vega
 
 Take the useful concepts from Vega's operations logging layer, but do not mechanically move its current implementation.
 
-The currently visible `Vega.Operations.Logging.StructuredOperationsLogger` on `general-devel` constructs an immutable record and invokes every sink synchronously on the caller thread. Its JSON file sink serializes and writes directly and uses `AutoFlush = true`. Those are useful semantics and a good source of invariants, but they are not the target TerraRuntime hot-path architecture.
+The currently visible `Vega.Operations.Logging.StructuredOperationsLogger` on `general-devel` constructs an immutable record and invokes sinks synchronously on the caller thread. Its JSON file sink writes directly with `AutoFlush = true`. Those semantics are useful reference material, but not the TerraRuntime hot-path target.
 
-TerraRuntime should instead own:
+TerraRuntime should own immutable structured records, stable levels/categories/event IDs, a bounded producer queue, dedicated background drain worker, sink fan-out/failure isolation, bounded recent-log retention, drop/backpressure telemetry, shutdown drain/flush semantics and optional Vega/MEL adapters.
 
-- immutable structured runtime log records;
-- stable levels, categories and event IDs;
-- a bounded producer queue;
-- a dedicated background drain worker;
-- sink fan-out and sink failure isolation;
-- bounded recent-log retention;
-- drop/backpressure telemetry;
-- shutdown drain/flush semantics;
-- optional adapters for Vega and `Microsoft.Extensions.Logging`.
-
-Vega should retain Vega/application/plugin-specific logs and consume TerraRuntime runtime logs through an adapter/sink.
-
----
+Vega retains application/plugin-policy logs and consumes TerraRuntime records through an adapter/sink. TerraRuntime never references Vega assemblies.
 
 ## 2. Ownership boundary
 
 ### TerraRuntime owns
 
-- runtime lifecycle logs;
-- networking, protocol and connection-state logs;
-- gameplay/runtime validation logs;
-- world load/save/cache/worldgen logs;
-- NPC/projectile/item/world simulation diagnostics;
-- runtime queueing and prioritization;
-- runtime log sequence numbers and timestamps;
-- structured runtime context fields;
-- the background drain worker;
-- standalone console/file/recent-buffer sinks;
-- queue and sink health metrics;
-- lifecycle-aware final flush.
+Runtime lifecycle, networking/protocol/session, gameplay validation, world load/save/cache/worldgen, entity simulation diagnostics, runtime queueing/prioritization, sequence/timestamps, runtime context, drain worker, standalone sinks, queue/sink health and lifecycle-aware final flush.
 
 ### Vega owns
 
-- accounts, permissions, moderation and application-policy logs;
-- module/plugin lifecycle logs;
-- plugin-specific arbitrary events and properties;
-- operator policy for application-level retention/export;
-- UI/API presentation and filtering;
-- integration with external logging infrastructure selected by a Vega deployment.
+Accounts/permissions/moderation/application-policy logs, module/plugin lifecycle, plugin-specific events, operator retention/export policy, UI/API presentation/filtering and external logging infrastructure selected by deployment.
 
 ### Shared integration
 
-Vega may install a TerraRuntime sink/observer that forwards immutable runtime records into Vega's operations layer. This does not transfer ownership of runtime logging back to Vega.
-
-TerraRuntime must never reference Vega assemblies.
-
----
+Vega may install a TerraRuntime sink/observer that forwards immutable runtime records into Vega's operations layer. That does not transfer runtime logging ownership back to Vega.
 
 ## 3. Proposed project/boundary shape
 
-Prefer a small dedicated diagnostics layer rather than putting file writers inside `TerraRuntime.Core`.
+```mermaid
+flowchart TD
+    Contracts["TerraRuntime.Contracts / Diagnostics\nlevels, event IDs, records, sink contracts"]
+    Core["TerraRuntime.Core\nhot-path producers + context"]
+    Diagnostics["TerraRuntime.Diagnostics / host diagnostics\nbounded queue + drain worker"]
+    Console["Console sink"]
+    Json["JSONL file sink"]
+    Recent["Bounded recent-log store"]
+    Adapter["Optional MEL / Vega adapter"]
 
-Conceptual structure:
-
-```text
-TerraRuntime.Contracts/Diagnostics
-    RuntimeLogLevel
-    RuntimeLogEventId
-    RuntimeLogRecord
-    IRuntimeLogSink / IRuntimeLogObserver
-
-TerraRuntime.Core
-    hot-path producers
-    runtime context enrichment
-
-TerraRuntime.Diagnostics or host diagnostics implementation
-    bounded queue
-    drain worker
-    console sink
-    JSONL file sink
-    bounded recent-log store
-    optional MEL/Vega adapter
+    Core --> Contracts
+    Core --> Diagnostics
+    Diagnostics --> Contracts
+    Diagnostics --> Console
+    Diagnostics --> Json
+    Diagnostics --> Recent
+    Diagnostics --> Adapter
 ```
 
-Exact project names may change. The dependency rule is normative: core simulation code must not depend on the filesystem, console UI frameworks, Vega or external exporters.
-
----
+Exact project names may change. The dependency rule is normative: core simulation code does not depend on filesystem sinks, console UI frameworks, Vega or external exporters.
 
 ## 4. Structured event model
 
-A runtime log record should contain machine-readable context rather than only a preformatted text line.
-
-Candidate fields:
+Candidate fields remain literal schema identifiers:
 
 ```text
 Sequence
@@ -127,296 +81,133 @@ PacketId/Type
 Properties
 ```
 
-Rules:
+Records are immutable; context is optional/meaningful; mutable world/entity objects and large arbitrary payloads are never retained; exception capture does not force expensive formatting on every event; endpoint/IP exposure follows explicit privacy policy; frequent events prefer typed compact fields over allocating `Dictionary<string, object>`.
 
-- records are immutable after publication;
-- context fields are optional and populated only when meaningful;
-- no record retains mutable world/entity objects;
-- exceptions are captured safely without forcing expensive formatting on every normal event;
-- large payloads, packet bodies, tile arrays and arbitrary object graphs are never attached to records;
-- endpoint/IP exposure follows an explicit diagnostics/privacy policy rather than being copied to every event;
-- do not require `Dictionary<string, object>` allocation for every event;
-- hot events should prefer typed fields and compact predefined properties.
-
-Stable event IDs should be grouped by subsystem rather than allocated ad hoc across the repository.
-
----
+Stable event IDs are grouped by subsystem rather than allocated ad hoc.
 
 ## 5. Producer path
 
-The common producer path must be cheap enough to call from the authoritative loop and network runtime.
-
-Target shape:
-
-```text
-runtime code
-   -> cheap level/category gate
-   -> create compact immutable record
-   -> TryWrite to bounded queue
-   -> return immediately
+```mermaid
+flowchart LR
+    Producer["Runtime producer"] --> Gate["Cheap level / category gate"]
+    Gate --> Record["Compact immutable record"]
+    Record --> TryWrite["Non-blocking TryWrite"]
+    TryWrite --> Queue["Bounded runtime log queue"]
+    TryWrite --> Return["Return immediately"]
 ```
 
-Requirements:
+Requirements: no disk write, console lock, sink wait, unbounded allocation, synchronous JSON serialization or blocking `ChannelWriter.WriteAsync` from the game loop. Avoid interpolation/formatting when filtered out. Frequent events should prefer source-generated/static logging methods or equivalent precompiled templates.
 
-- no disk write;
-- no console lock;
-- no waiting for a sink;
-- no unbounded allocation;
-- no synchronous JSON serialization;
-- no blocking `ChannelWriter.WriteAsync` from the game loop;
-- avoid interpolation/formatting when an event is filtered out;
-- prefer source-generated/static logging methods or equivalent precompiled templates for frequent events;
-- rare startup/shutdown paths may accept richer allocation when outside the tick hot path.
-
-Use a BCL primitive such as a bounded `Channel<T>` initially unless measurement demonstrates a better specialized queue.
-
----
+Use a bounded BCL primitive such as `Channel<T>` initially unless measurement demonstrates a better specialized queue.
 
 ## 6. Queue architecture and backpressure
 
-The queue is bounded because a dead disk or slow sink must not turn diagnostics into an attacker-controlled memory leak.
-
-Recommended baseline:
-
-```text
-producers (MPSC)
-      |
-      v
-bounded runtime log queue
-      |
-      v
-dedicated drain worker
-      |
-      +--> console sink
-      +--> JSONL/file sink
-      +--> bounded recent-log store
-      +--> optional Vega/MEL/export sink
+```mermaid
+flowchart TD
+    Producers["MPSC runtime producers"] --> Queue["Bounded runtime log queue"]
+    Queue --> Drain["Dedicated drain worker"]
+    Drain --> Console["Console sink"]
+    Drain --> Json["JSONL / file sink"]
+    Drain --> Recent["Bounded recent-log store"]
+    Drain --> Export["Optional Vega / MEL / exporter sink"]
 ```
 
-### Overflow policy
+Overflow policy is preferential: `Trace`/`Debug` drop first; `Information` may sample/coalesce/drop; `Warning`/`Error` receive reserved/preferential capacity; `Critical` may use one bounded emergency fallback if the worker is unavailable.
 
-Not every level needs identical guarantees.
-
-A practical policy should reserve capacity or priority for important events:
-
-- `Trace`/`Debug`: drop first under pressure;
-- `Information`: may be sampled, coalesced or dropped when saturated;
-- `Warning`/`Error`: preserve preferentially through reserved capacity or a small high-priority lane;
-- `Critical`: attempt normal queueing, then use a bounded emergency fallback if the logging worker is unavailable.
-
-The exact implementation may use one queue with reserved accounting or two bounded lanes. Measure before adding a complicated scheduler.
-
-The runtime must expose:
-
-- current queue depth/capacity;
-- high-water mark;
-- dropped count by level/category;
-- oldest queued event age where practical;
-- drain rate;
-- sink failure counts;
-- last sink failure information.
-
-Never block the authoritative game loop waiting for log queue space.
-
----
+Expose queue depth/capacity, high-water mark, dropped count by level/category, oldest queued age where practical, drain rate, sink failures and last failure information. The authoritative loop never waits for log queue space.
 
 ## 7. Drain worker
 
-The logging worker is background infrastructure and never owns simulation state.
+The drain worker never owns simulation state. Start with one long-lived loop, batch when useful, fan out outside the game loop, isolate sink exceptions, quarantine repeatedly broken sinks with health telemetry, perform explicit bounded shutdown and avoid unbounded `Task.Run` fan-out.
 
-Requirements:
-
-- one dedicated long-lived drain loop is sufficient initially;
-- batch queued events where that reduces file/console overhead;
-- fan out to sinks outside the game loop;
-- catch sink exceptions independently so one broken sink does not stop the others;
-- repeated sink failure may disable/quarantine that sink with health telemetry;
-- shutdown is explicit and lifecycle-aware;
-- no unbounded `Task.Run` fan-out per record or per sink;
-- external network exporters, if later added, require their own bounded buffering and cannot stall the primary drain loop indefinitely.
-
-A sink must have documented blocking behavior. Network exporters should normally be decoupled behind another bounded queue.
-
----
+Network exporters require their own bounded buffering and cannot indefinitely stall the primary drain loop.
 
 ## 8. File sink
 
-The standalone runtime should support a simple durable structured file format without introducing a database into the server process.
+Durable baseline: newline-delimited JSON (`.jsonl`). Writes occur only from the background worker, with configurable directory/prefix, size/day rotation, bounded retention, safe directory creation, append/recovery tolerant of a truncated final line, batched writes, explicit flush policy and final graceful-shutdown flush.
 
-Recommended baseline: newline-delimited JSON (`.jsonl`).
-
-Requirements:
-
-- file writes occur only from the background logging worker;
-- configurable directory and filename prefix;
-- rotation by size and/or UTC day;
-- bounded retained file count/total bytes when retention is enabled;
-- safe directory creation;
-- append/recovery semantics that tolerate a truncated final line after a crash;
-- batched writes where appropriate;
-- explicit flush policy rather than `AutoFlush` after every normal record;
-- explicit final flush on graceful shutdown;
-- file failure never crashes the game loop.
-
-Human-readable plain-text output may remain a console presentation concern. Structured JSONL is the durable baseline.
-
----
+File failure never crashes the game loop.
 
 ## 9. Recent-log store and TUI/API consumption
 
-The existing Operations/TUI roadmap needs a bounded recent-log feed. It should consume the same immutable runtime records rather than maintain a second logging path.
+The operations/TUI layer consumes the same immutable runtime records rather than maintaining a second logging path.
 
-Requirements:
-
-- bounded ring-buffer retention by record count and optionally approximate bytes;
-- lock-free or low-contention reads where practical, but correctness first;
-- filtering by level/category/source/event ID and selected entity/connection context;
-- sequence-based incremental reads for follow/tail views;
-- explicit gap indication when a slow UI consumer has fallen behind retention;
-- UI never blocks the drain worker;
-- no TUI object is referenced from logging core.
-
-Vega may expose the same model through REST/debug APIs without duplicating logging ownership.
-
----
+Requirements include bounded ring retention, filtering by level/category/source/event/context, sequence-based follow/tail reads, explicit gap indication for slow consumers, non-blocking UI consumption and no TUI object references in logging core.
 
 ## 10. `Microsoft.Extensions.Logging` interoperability
 
-TerraRuntime should be friendly to the .NET ecosystem without forcing `ILogger` internals into every hot path.
-
-Recommended direction:
-
-- provide an adapter from TerraRuntime runtime records to `Microsoft.Extensions.Logging` for hosts that want it;
-- optionally provide an `ILoggerProvider`/sink bridge if NativeAOT behavior remains clean;
-- do not let arbitrary external `ILogger` providers execute synchronously on the authoritative game-loop thread;
-- if MEL is accepted as the public producer abstraction for some non-hot subsystems, route it into the same bounded TerraRuntime pipeline;
-- frequent gameplay/network events should still have allocation-aware/source-generated producer paths.
-
-The runtime owns the queue and backpressure semantics even when a host consumes records through MEL.
-
----
+Provide adapters without letting arbitrary external `ILogger` providers execute synchronously on the authoritative game-loop thread. If MEL is used as a producer abstraction in non-hot subsystems, it routes into the same bounded TerraRuntime pipeline. Frequent gameplay/network events still need allocation-aware producer paths.
 
 ## 11. Correlation and scopes
 
-Useful runtime context should flow without manually rebuilding the same fields in every log call.
+Useful correlation includes connection/session, player handle/generation, join/bootstrap, save, world load/worldgen and operations-command correlation.
 
-Potential correlation scopes:
-
-- connection/session;
-- player handle/generation;
-- join/bootstrap operation;
-- save operation;
-- world load/generation operation;
-- command/request correlation when the operations layer submits an authoritative command.
-
-Do not implement scopes as a mutable ambient bag that leaks across unrelated async work. Prefer explicit immutable context or carefully bounded `AsyncLocal` usage only outside the authoritative hot path.
-
-The game loop should normally have enough explicit entity/command identity to enrich an event without ambient state.
-
----
+Avoid mutable ambient bags that leak across async work. Prefer explicit immutable context or carefully bounded `AsyncLocal` usage outside authoritative hot paths.
 
 ## 12. Logging versus telemetry
 
-Logs and metrics are complementary.
-
-Do not emit one log record for every high-frequency state change just to reconstruct metrics later.
-
-Examples:
-
-- packet count/bytes -> counters, not per-packet information logs;
-- tick duration -> metric/histogram, with a warning log only for threshold events;
-- queue depth -> gauge, with a warning when sustained pressure crosses policy thresholds;
-- malformed packet -> counter plus sampled/limited diagnostic log;
-- extension failure -> counter plus error log with provider identity.
-
-Rate-limit repetitive diagnostics so a malicious client cannot fill the log queue or disk with one malformed request class.
-
----
+Logs and metrics are complementary. High-frequency packet counts/bytes, tick duration and queue depth belong primarily in counters/histograms/gauges. Threshold events may emit bounded warning/error logs. Repetitive hostile diagnostics are rate-limited so a malicious client cannot fill queue or disk.
 
 ## 13. Security and sensitive data
 
-Logging is part of the trust boundary.
+Sanitize control characters, never log credentials/tokens/raw secrets, avoid full packet payloads by default, bound untrusted strings/properties, distinguish client text from trusted fields, make endpoint/IP logging policy explicit and prevent exception rendering from recursively serializing arbitrary state graphs.
 
-Requirements:
-
-- sanitize control characters in human-readable output;
-- never log passwords, authentication secrets, tokens or raw credential payloads;
-- do not log full arbitrary packet payloads by default;
-- bound string/property lengths from untrusted input;
-- distinguish client-provided text from trusted runtime fields;
-- endpoint/IP logging is configurable where privacy policy requires it;
-- exception rendering must not recursively serialize arbitrary state graphs.
-
-Security events should use stable event IDs and categories so Vega/operations tooling can consume them without parsing message text.
-
----
+Security events use stable IDs/categories so tooling does not parse message text.
 
 ## 14. Shutdown and crash behavior
 
-Graceful shutdown sequence should be explicit:
+```mermaid
+sequenceDiagram
+    participant Runtime as Runtime lifecycle
+    participant Queue as Logging queue
+    participant Drain as Drain worker
+    participant Sinks as Sinks
 
-```text
-stop accepting new runtime work
-    -> stop normal log producers at lifecycle boundary
-    -> complete logging queue
-    -> drain queued records
-    -> flush sinks
-    -> dispose sinks
+    Runtime->>Runtime: stop accepting normal runtime work
+    Runtime->>Queue: stop normal producers / complete queue
+    Queue->>Drain: drain queued records
+    Drain->>Sinks: flush remaining batches
+    Drain->>Sinks: bounded final flush + dispose
 ```
 
-Use a bounded shutdown policy. A permanently blocked sink must not hang process shutdown forever.
-
-For process-fatal failures where the normal worker cannot drain, a minimal emergency path may write one bounded critical message to `Console.Error`/OS stderr. It must not attempt complex serialization or acquire game-loop locks.
-
----
+Shutdown is bounded. A permanently blocked sink cannot hang process shutdown forever. Fatal emergencies may write one bounded message to stderr without complex serialization or game-loop locks.
 
 ## 15. Testing requirements
 
 ### Functional
 
-- events preserve sequence/order within the published queue semantics;
-- filtered-out events do not reach sinks;
-- structured fields survive sink fan-out;
-- recent-log retention reports sequence gaps correctly;
+- preserve sequence/order under queue semantics;
+- filtered events do not reach sinks;
+- fields survive fan-out;
+- recent retention reports sequence gaps;
 - rotation/retention works;
 - shutdown drains expected queued records;
-- sink exception does not stop other sinks;
-- Vega adapter receives immutable records without owning runtime state.
+- sink failure does not stop other sinks;
+- Vega adapter receives immutable records without runtime-state ownership.
 
 ### Backpressure
 
-- bounded queue never grows beyond capacity;
-- low-priority events are dropped according to policy;
+- queue never grows beyond capacity;
+- low-priority drops follow policy;
 - warning/error reserve behavior is deterministic;
 - drop counters are correct;
-- stalled file/external sink cannot block the authoritative game loop.
+- stalled sinks cannot block authoritative progress.
 
 ### Security
 
 - oversized untrusted fields are bounded;
-- credentials are never rendered by dedicated security paths;
-- control characters cannot corrupt plain console framing unexpectedly.
+- credentials never render on dedicated security paths;
+- control characters cannot corrupt console framing.
 
 ### NativeAOT
 
-- Linux and Windows native publish remains warning-free;
-- exercised native smoke path writes console/file events and shuts down cleanly;
+- Linux/Windows native publish remains warning-free;
+- native smoke exercises console/file events and clean shutdown;
 - JSON serialization uses an explicit AOT-safe source-generated context or another verified AOT-safe path.
 
 ### Performance
 
-Benchmark:
-
-- disabled/filtered log call;
-- enabled hot-path log enqueue;
-- queue saturation/drop path;
-- batch drain throughput;
-- JSONL serialization throughput;
-- recent-buffer read while producers are active.
-
-The producer benchmark matters most. A slow file sink is survivable if isolated; a slow producer path taxes every tick.
-
----
+Benchmark filtered call cost, enabled hot-path enqueue, saturation/drop path, batch drain throughput, JSONL serialization throughput and recent-buffer reads under active production. Producer cost matters most because it taxes hot paths directly.
 
 ## 16. Delivery order
 
@@ -444,8 +235,6 @@ The producer benchmark matters most. A slow file sink is survivable if isolated;
 
 ### L3 - Runtime adoption
 
-Replace ad hoc console/log output subsystem by subsystem:
-
 - [ ] startup/lifecycle;
 - [ ] networking/protocol;
 - [ ] world load/save/cache;
@@ -460,7 +249,7 @@ Do not convert hot paths into chatty per-tick logs while migrating.
 - [ ] Vega runtime-log sink/adapter;
 - [ ] TUI recent-log consumption;
 - [ ] REST/debug projection where appropriate;
-- [ ] remove duplicate runtime-origin logging from Vega once TerraRuntime is the authoritative source.
+- [ ] remove duplicate runtime-origin logging from Vega once TerraRuntime is authoritative source.
 
 ### L5 - Enforcement and performance gate
 
@@ -469,18 +258,6 @@ Do not convert hot paths into chatty per-tick logs while migrating.
 - [ ] NativeAOT smoke;
 - [ ] producer-path benchmark and documented budget.
 
----
-
 ## Definition of done
 
-This roadmap slice is complete when:
-
-- [ ] TerraRuntime is independently observable without Vega;
-- [ ] no normal runtime log sink performs file/console/network I/O on the authoritative game-loop thread;
-- [ ] the producer path is bounded and non-blocking;
-- [ ] queue overflow has explicit deterministic policy and telemetry;
-- [ ] file/console/recent sinks are isolated from one another;
-- [ ] graceful shutdown drains/flushed logs under a bounded policy;
-- [ ] Vega consumes runtime logs instead of owning TerraRuntime diagnostics;
-- [ ] frequent runtime events use stable structured IDs/categories rather than text parsing;
-- [ ] Linux and Windows NativeAOT smoke paths exercise the logging pipeline successfully.
+This slice is complete when TerraRuntime is independently observable without Vega, normal sinks never perform I/O on the authoritative thread, producer path is bounded/non-blocking, overflow has explicit policy/telemetry, sinks are isolated, graceful shutdown drains under a bounded policy, Vega consumes runtime records rather than owning runtime diagnostics, frequent events use stable structured IDs/categories and Linux/Windows NativeAOT smoke exercises the pipeline.
