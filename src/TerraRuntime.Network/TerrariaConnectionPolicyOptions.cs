@@ -4,7 +4,7 @@ public readonly record struct TerrariaConnectionPolicyOptions
 {
     public static TerrariaConnectionPolicyOptions Default { get; } = new(
         handshakeTimeout: TimeSpan.FromSeconds(10),
-        idleTimeout: TimeSpan.FromSeconds(60),
+        idleTimeout: Timeout.InfiniteTimeSpan,
         rateBudget: ConnectionRateBudgetOptions.AccountingOnly,
         messageRateLimits: ConnectionMessageRateLimits.HardAbuse);
 
@@ -36,7 +36,7 @@ public readonly record struct TerrariaConnectionPolicyOptions
             throw new ArgumentOutOfRangeException(nameof(handshakeTimeout));
         }
 
-        if (idleTimeout <= TimeSpan.Zero)
+        if (idleTimeout != Timeout.InfiniteTimeSpan && idleTimeout <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(idleTimeout));
         }

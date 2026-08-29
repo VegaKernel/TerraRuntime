@@ -100,6 +100,11 @@ public sealed class TerrariaConnectionPolicyState
                 return Timeout.InfiniteTimeSpan;
             }
 
+            if (_handshakeComplete && _options.IdleTimeout == Timeout.InfiniteTimeSpan)
+            {
+                return Timeout.InfiniteTimeSpan;
+            }
+
             long origin = _handshakeComplete ? _lastInboundTimestamp : _connectedTimestamp;
             TimeSpan timeout = _handshakeComplete ? _options.IdleTimeout : _options.HandshakeTimeout;
             TimeSpan elapsed = _timeProvider.GetElapsedTime(origin, _timeProvider.GetTimestamp());
@@ -115,6 +120,12 @@ public sealed class TerrariaConnectionPolicyState
             if (_stopReason != TerrariaConnectionStopReason.None)
             {
                 reason = _stopReason;
+                return false;
+            }
+
+            if (_handshakeComplete && _options.IdleTimeout == Timeout.InfiniteTimeSpan)
+            {
+                reason = TerrariaConnectionStopReason.None;
                 return false;
             }
 

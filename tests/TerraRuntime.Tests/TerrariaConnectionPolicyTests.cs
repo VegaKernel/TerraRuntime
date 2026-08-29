@@ -88,7 +88,7 @@ public sealed class TerrariaConnectionPolicyTests
     }
 
     [Fact]
-    public void Expires_an_idle_connection_after_handshake()
+    public void Expires_an_idle_connection_after_handshake_when_explicitly_configured()
     {
         var time = new ManualTimeProvider();
         var state = new TerrariaConnectionPolicyState(
@@ -104,6 +104,23 @@ public sealed class TerrariaConnectionPolicyTests
 
         Assert.True(state.TryExpire(out TerrariaConnectionStopReason reason));
         Assert.Equal(TerrariaConnectionStopReason.IdleTimeout, reason);
+    }
+
+    [Fact]
+    public void Default_policy_does_not_expire_an_established_idle_connection()
+    {
+        var time = new ManualTimeProvider();
+        var state = new TerrariaConnectionPolicyState(TerrariaConnectionPolicyOptions.Default, time);
+        var policy = new TerrariaConnectionPolicySink(new CountingSink(), state);
+        TerrariaFrame hello = Decode(CurrentHelloPacket());
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in hello));
+
+        time.Advance(TimeSpan.FromHours(24));
+
+        Assert.Equal(Timeout.InfiniteTimeSpan, state.GetRemainingTimeout());
+        Assert.False(state.TryExpire(out TerrariaConnectionStopReason reason));
+        Assert.Equal(TerrariaConnectionStopReason.None, reason);
+        Assert.Equal(TerrariaConnectionStopReason.None, state.StopReason);
     }
 
     private static TerrariaFrame Decode(byte[] packet)
