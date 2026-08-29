@@ -1,143 +1,111 @@
-# Observability and logging
+# Observability and structured runtime logging
 
-[Русский](../ru/observability-logging.md) · [Documentation](README.md) · [Operations/TUI](operations-tui.md) · [Logging roadmap](../roadmap/runtime-logging-pipeline.md)
+TerraRuntime now has the **L0-L2 structured logging foundation**: stable diagnostic contracts, a bounded non-blocking runtime pipeline, and background sinks. The live host still uses the legacy `RuntimeHostLog` path until the L3 adoption milestone converts call sites. This separation is deliberate: the new pipeline is complete and testable without changing authoritative runtime behavior in the same commit.
 
-## 1. Current status
-
-TerraRuntime already has bounded operations telemetry, a bounded recent-log read model and TUI consumption. The full runtime-owned asynchronous structured logging pipeline is **not complete yet**.
+## Architecture
 
 ```mermaid
-flowchart LR
-    Runtime["Runtime producers"] --> Current["Current bounded telemetry / RuntimeLogBuffer"]
-    Current --> TUI["TUI / local diagnostics"]
-
-    Runtime -. target .-> Gate["Cheap level/category gate"]
-    Gate -. target .-> Queue["Bounded non-blocking structured queue"]
-    Queue -. target .-> Drain["Background drain worker"]
-    Drain -. target .-> Sinks["Console / JSONL / recent buffer / host adapters"]
+graph LR
+    P[Runtime producers] -->|TryPublish, never waits| Q[Bounded MPSC channel]
+    Q --> W[Single background drain worker]
+    W --> C[Console sink]
+    W --> J[Rotating JSONL sink]
+    W --> R[Bounded recent-log store]
+    W --> H[Future sinks]
 ```
 
-Solid arrows describe the current foundation. Dashed target path remains roadmap work.
+The producer path only builds a compact immutable `RuntimeLogRecord`, bounds free-form scalar text, assigns sequence/timestamp data, and calls `ChannelWriter.TryWrite`. Disk I/O, console I/O, JSON encoding, flushing, rotation, retention, and sink failure handling happen on the drain worker.
 
-## 2. Ownership boundary
+With queue capacity \(N_{q}\) and warning/error reserve \(N_{r}\), normal records may occupy at most
 
-Observability never becomes owner of simulation state. High-frequency owners publish bounded counters, immutable snapshots or bounded log records; TUI/exporters consume detached data instead of scanning mutable runtime stores.
+\[
+N_{normal}=N_q-N_r.
+\]
 
-## 3. Current recent-log limits
+The defaults are \(N_q=2048\) and \(N_r=256\). `Warning`, `Error`, and `Critical` records may use the reserved capacity. The producer never blocks when the queue is saturated; rejection is counted per severity.
 
-`RuntimeLogBuffer` is a bounded operations read model, not the final public logging API.
+## Stable record contract
 
-| Limit | Current value |
-|---|---:|
-| Default retained entries | `$512$` entries |
-| Maximum retained entries | `$8\,192$` entries |
-| Maximum source length | `$64$` characters |
-| Maximum message length | `$2\,048$` characters |
+`TerraRuntime.Contracts.Diagnostics.RuntimeLogRecord` contains:
 
-When full, the ring overwrites the oldest retained entry and increments an overwrite counter. Control characters are normalized, empty source falls back to `Runtime`, and retained history cannot grow by attaching arbitrary object graphs or packet payloads.
+- monotonically increasing process-local sequence;
+- UTC timestamp;
+- severity;
+- stable numeric event ID;
+- top-level category;
+- subsystem;
+- bounded message text;
+- detached correlation context;
+- bounded exception type/message fields.
 
-## 4. Current record shape
+The detached context deliberately contains scalar handles only: correlation, world, connection, player, entity, packet direction, and packet ID. Runtime entities and raw packet payloads are not held by log records.
 
-The current operations record contains `Sequence`, `TimestampUtc`, `Level`, `Source` and `Message`, with levels `Debug`, `Information`, `Warning` and `Error`.
+### Event ID allocation
 
-Snapshots also expose published/overwritten counts, minimum level and capture time.
+Event IDs are stable machine identifiers. Message text may change without changing the event ID. The reserved ranges are:
 
-This is intentionally smaller than the future structured record model.
+| Range | Category |
+| ---: | --- |
+| `1000-1999` | Lifecycle |
+| `2000-2999` | Network |
+| `3000-3999` | Protocol |
+| `4000-4999` | World |
+| `5000-5999` | Persistence |
+| `6000-6999` | Plugin |
+| `7000-7999` | Gameplay |
+| `8000-8999` | Operations |
+| `9000-9999` | Security |
 
-## 5. Reads and filtering
+New events must be allocated inside the owning range and must not recycle an old ID for unrelated meaning.
 
-Consumers can request a bounded snapshot by minimum level, optional exact source and maximum entry count. The newest matching records are returned in chronological order. A bounded sorted source list supports UI filtering.
+## Backpressure and metrics
 
-## 6. Chat is not logging
+`RuntimeLogPipeline` exposes a snapshot with accepted/filtered counts, per-severity drops, drained count, sink failures, current queue depth, and queue high-water mark. Sink health is tracked independently so one failed destination cannot silently poison the rest of the pipeline.
 
-The read-only `Chat` source projects separate bounded public-chat telemetry into the operator log view. Chat routing remains its own subsystem and does not become generic logging ownership just because operators can inspect it.
+On shutdown the pipeline stops accepting new records, completes the writer, and drains accepted records within a bounded shutdown window. A stuck sink is bounded by its per-operation timeout. Repeated failures quarantine only that sink; healthy sinks continue receiving records.
 
-## 7. Current host-log behavior
+## Built-in sinks
 
-`RuntimeHostLog` bridges runtime messages to the bounded recent-log buffer and local console behavior.
+### Console
 
-When TUI is active, normal console writes are suppressed to avoid corrupting the dashboard. After fallback to plain console, output may return to stdout/stderr as appropriate.
+`RuntimeConsoleLogSink` writes one compact human-readable line per record. It is invoked only by the drain worker, never by the authoritative producer path.
 
-The current bridge is still synchronous at the call site. Sink formatting/I/O must move off hot runtime paths in the future structured pipeline.
+### Rotating JSONL
 
-## 8. Telemetry versus logs
+`RuntimeJsonLinesLogSink` emits one structured JSON object per line. Serialization uses `Utf8JsonWriter` directly, so the sink does not depend on reflection-based serialization and stays compatible with NativeAOT.
 
-High-frequency facts belong in counters/snapshots rather than one text line per occurrence. Examples include connection/admission counts, inbound/outbound frame/byte totals, queue depth/high-water marks, rate rejects, typed stop reasons, normalized frame rejections and entity replication counters.
+Defaults:
 
-```mermaid
-flowchart TD
-    Fact["High-frequency runtime fact"] --> Choice{"Needs individual diagnostic record?"}
-    Choice -->|no| Counter["Typed counter / aggregate snapshot"]
-    Choice -->|yes| Log["Bounded log / future structured event"]
-```
+- maximum file size: \(16\,\mathrm{MiB}\);
+- day-boundary rotation in UTC;
+- retained files: \(8\);
+- periodic flush every \(64\) records;
+- immediate flush for `Error` and `Critical`.
 
-## 9. Connection rejection telemetry
+Rotation and retention run on the background sink path. File names include UTC time, process ID, and an ordinal to avoid collisions.
 
-Network telemetry keeps malformed protocol, rate limit, invalid state, gameplay rejection and backpressure separate. Terminal stop categories also remain typed, including protocol failure, invalid handshake, unsupported protocol, slow client, handshake/join/idle timeout and application stop.
+### Recent-log store
 
-Flattening these into `connection failed` would discard useful operational evidence.
+`RuntimeRecentLogStore` is an in-memory bounded ring used for future TUI/API retrieval. It stores at most \(512\) records by default, supports level/category filtering, and counts overwritten records. Its hard capacity limit is \(8192\).
 
-## 10. TUI consumption
+## Sensitive-data rules
 
-The TUI reads operations snapshots on its UI thread approximately every
+The structured contract is intentionally narrow. Do not put passwords, authentication tokens, secrets, raw packet bodies, private keys, or arbitrary object dumps into `Message` or context fields. Prefer opaque handles over personal or mutable runtime data. Operational identifiers should be included only when required for diagnosis and should already be scrubbed at the call site.
 
-$$
-T_{\mathrm{refresh}}\approx500\,\mathrm{ms}.
-$$
+Free-form fields are bounded and control characters are normalized before enqueueing. This prevents log amplification and basic terminal/line-injection abuse, but it does not make secret material safe to log.
 
-The log view consumes `ILogOperations` / `RuntimeLogBuffer` snapshots and does not block runtime publishers. Future tail/follow behavior should remain sequence-based and bounded so a slow consumer reports a gap instead of forcing unbounded retention.
+## NativeAOT constraints
 
-## 11. Target structured event model
+The foundation adds no runtime NuGet dependency. It uses BCL channels, explicit contracts, and manual JSON writing. There is no runtime type discovery, dynamic serializer generation, or reflection-driven log schema.
 
-The logging roadmap proposes immutable machine-readable records with fields such as `Sequence`, `TimestampUtc`, `Level`, `EventId`, `Category`, `Subsystem`, message template/key, exception, correlation IDs, world/connection/player/entity context, packet direction/ID and bounded properties.
+## Remaining adoption work
 
-This is **target architecture**, not the current public record shape.
+L3 and later milestones still need to:
 
-## 12. Target queue and backpressure
+- replace live `RuntimeHostLog`/direct console call sites with stable event IDs and structured context;
+- propagate correlation context across connection, world, gameplay, persistence, plugin, and command paths;
+- export pipeline/drop/sink-health metrics through the runtime observability surface;
+- add benchmark/load gates and Linux/Windows NativeAOT smoke coverage for the adopted pipeline;
+- expose bounded recent logs through the TUI/API and add optional external sinks.
 
-```mermaid
-flowchart LR
-    Producer["Runtime producer"] --> Gate["Cheap gate"]
-    Gate --> Queue["Bounded non-blocking queue"]
-    Queue --> Drain["Background drain"]
-    Drain --> Console["Console"]
-    Drain --> File["Structured JSONL"]
-    Drain --> Recent["Recent-log buffer"]
-    Drain --> Host["Host/export adapters"]
-```
-
-Expected pressure policy is preferential: Debug/Trace drop first, Information may sample/coalesce/drop, Warning/Error receive stronger retention, and Critical requires a bounded emergency fallback rather than an unbounded synchronous path.
-
-Exact queue sizes remain measurement work.
-
-## 13. Sink failure isolation target
-
-A future sink failure must not stop simulation or disable every other sink. The roadmap calls for one long-lived drain worker initially, batching where useful, independent sink exception isolation, bounded health telemetry, graceful shutdown drain/flush and separate bounded buffering for future network exporters.
-
-The existing ring buffer alone does not prove those guarantees.
-
-## 14. File logging status
-
-The durable target is newline-delimited structured JSON (`.jsonl`) with rotation/retention and explicit flush semantics from the background logging worker. That complete file-sink pipeline is not yet implemented.
-
-Do not close the gap with synchronous JSON/file output from gameplay or network hot paths.
-
-## 15. Host/Vega boundary
-
-TerraRuntime owns runtime/network/gameplay/world diagnostics. Vega owns Vega/application/plugin policy logs. Future integration may consume immutable TerraRuntime records through an adapter, but TerraRuntime must not reference Vega assemblies or hand out mutable runtime objects.
-
-Arbitrary external `ILogger` providers must not execute synchronously on the authoritative game-loop thread.
-
-## 16. Performance rule
-
-Observability changes on hot paths require before/after measurement. No log sink, file flush, terminal rendering or exporter may become required progress for the authoritative simulation tick.
-
-## 17. Evidence and limitations
-
-Current tests cover recent-log buffer behavior, host-log behavior, chat projection and operations/network telemetry mappings.
-
-Still incomplete are the bounded async structured producer/drain pipeline, universal stable event IDs/categories, JSONL rotation/retention, Vega/MEL adapter contract, broad saturation/drop-policy/sink-failure tests and full subsystem telemetry coverage.
-
-## 18. Change checklist
-
-An observability/logging change is incomplete unless hot-path work stays bounded/non-blocking, retained data stays bounded, counters are preferred for high-frequency facts, consumers receive immutable data, sink failure cannot become gameplay failure, current versus target architecture is explicit, diagrams use Mermaid, dimensional quantities use LaTeX, and this page changes together with `docs/ru/observability-logging.md`.
+The detailed milestone state is tracked in [`../roadmap/runtime-logging-pipeline.md`](../roadmap/runtime-logging-pipeline.md).
