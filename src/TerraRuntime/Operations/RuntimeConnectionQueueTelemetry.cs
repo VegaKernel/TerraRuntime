@@ -66,6 +66,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
                 ref detailCount,
                 new RuntimeConnectionQueueDetail(
                     ConnectionId: pair.Key,
+                    MaxFrames: queue.MaxFrames,
+                    MaxQueuedBytes: queue.MaxQueuedBytes,
                     QueuedFrames: connectionQueuedFrames,
                     QueuedBytes: connectionQueuedBytes,
                     PeakQueuedFrames: connectionPeakQueuedFrames,
@@ -140,6 +142,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
 
 internal readonly record struct RuntimeConnectionQueueDetail(
     long ConnectionId,
+    int MaxFrames,
+    long MaxQueuedBytes,
     int QueuedFrames,
     long QueuedBytes,
     long PeakQueuedFrames,
