@@ -605,7 +605,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             $"handshake {snapshot.StopInvalidHandshake:N0}  unsupported {snapshot.StopUnsupportedProtocol:N0}  slow {snapshot.StopSlowClient:N0}";
 
         ReadOnlySpan<RuntimeConnectionRateDetail> rates = snapshot.TopInboundRates.Span;
-        for (int i = 0; i < Math.Min(rates.Length, 3); i++)
+        for (int i = 0; i < Math.Min(rates.Length, 2); i++)
         {
             RuntimeConnectionRateDetail rate = rates[i];
             rows[11 + i].Text =
@@ -613,6 +613,10 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         }
         if (rates.Length == 0)
             rows[11].Text = "IN  <no active inbound traffic>";
+
+        rows[13].Text =
+            $"Frame reject malformed {snapshot.RejectedMalformedProtocol:N0}  rate {snapshot.RejectedRateLimited:N0}  " +
+            $"state {snapshot.RejectedInvalidState:N0}  gameplay {snapshot.RejectedGameplay:N0}  backpressure {snapshot.RejectedBackpressure:N0}";
 
         ReadOnlySpan<RuntimeConnectionQueueDetail> queues = snapshot.TopOutboundQueues.Span;
         for (int i = 0; i < Math.Min(queues.Length, 2); i++)
