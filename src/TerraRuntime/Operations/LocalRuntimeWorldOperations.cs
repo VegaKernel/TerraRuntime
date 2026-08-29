@@ -6,17 +6,20 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
     private readonly RuntimeWorldClockOperationsTelemetry? clockTelemetry;
     private readonly Func<global::TerraRuntime.SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider;
     private readonly Func<global::TerraRuntime.RuntimeWorldSaveStatus>? persistenceSnapshotProvider;
+    private readonly Func<bool>? persistenceSaveRequest;
 
     public LocalRuntimeWorldOperations(
         RuntimeWorldSnapshot snapshot,
         RuntimeWorldClockOperationsTelemetry? clockTelemetry = null,
         Func<global::TerraRuntime.SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider = null,
-        Func<global::TerraRuntime.RuntimeWorldSaveStatus>? persistenceSnapshotProvider = null)
+        Func<global::TerraRuntime.RuntimeWorldSaveStatus>? persistenceSnapshotProvider = null,
+        Func<bool>? persistenceSaveRequest = null)
     {
         this.snapshot = snapshot;
         this.clockTelemetry = clockTelemetry;
         this.sectionCacheSnapshotProvider = sectionCacheSnapshotProvider;
         this.persistenceSnapshotProvider = persistenceSnapshotProvider;
+        this.persistenceSaveRequest = persistenceSaveRequest;
     }
 
     public RuntimeWorldSnapshot CaptureSnapshot()
@@ -96,4 +99,6 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
 
         return current;
     }
+
+    public bool TryRequestSave() => persistenceSaveRequest?.Invoke() ?? false;
 }
