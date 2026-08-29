@@ -159,6 +159,105 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     }
 
     [Fact]
+    public async Task Authoritative_tick_persists_fire_arrow_wet_latch_and_transforms_on_second_water_update()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        WorldTile water = default;
+        water.LiquidAmount = byte.MaxValue;
+        water.LiquidKind = WorldLiquidKind.Water;
+        tiles.Set(6, 6, water);
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(
+            worldTiles: tiles,
+            projectiles: projectiles);
+        ProjectileStateUpdate projectile = new(
+            VanillaProjectileIds.FireArrow,
+            Spawner: 3,
+            PositionX: 96f,
+            PositionY: 96f,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Ai: default,
+            BannerIdToRespondTo: 0,
+            Damage: 20,
+            KnockBack: 1f,
+            OriginalDamage: 20);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot first));
+        Assert.Equal(VanillaProjectileIds.FireArrow, first.Type);
+        Assert.Equal(new ProjectileRevision(2), first.Revision);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot transformed));
+        Assert.Equal(VanillaProjectileIds.WoodenArrowFriendly, transformed.Type);
+        Assert.Equal(new ProjectileRevision(3), transformed.Revision);
+        Assert.Equal(2f, transformed.Ai.Ai0, 5);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Server_owned_arrow_simulates_when_tile_cut_effect_is_empty(int type)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(
+            worldTiles: tiles,
+            projectiles: projectiles);
+        ProjectileStateUpdate projectile = CreateProjectile(type, VanillaProjectileOwnership.ServerOwner);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot updated));
+        Assert.Equal(new ProjectileTypeId(type), updated.Type);
+        Assert.Equal(new ProjectileRevision(2), updated.Revision);
+        Assert.Equal(104f, updated.PositionX, 5);
+        Assert.Equal(100f, updated.PositionY, 5);
+        Assert.Equal(1f, updated.Ai.Ai0, 5);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Server_owned_arrow_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, new WorldTile
+        {
+            Type = 3,
+            Flags = WorldTileFlags.Active
+        });
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(
+            worldTiles: tiles,
+            projectiles: projectiles);
+        ProjectileStateUpdate projectile = CreateProjectile(type, VanillaProjectileOwnership.ServerOwner);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 0, 0, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot unchanged));
+        Assert.Equal(spawned, unchanged);
+        Assert.True(tiles.Get(6, 6).IsActive);
+    }
+
+    [Fact]
     public async Task Uncatalogued_projectile_remains_authoritative_but_unsimulated_by_default()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
