@@ -592,16 +592,25 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         rows[1].Text =
             $"Admission   accepted {snapshot.AcceptedConnections:N0}  rejected {snapshot.RejectedConnections:N0}  " +
             $"capacity {snapshot.AdmissionCapacityRejectedConnections:N0}  rate {snapshot.AdmissionRateRejectedConnections:N0}";
-        rows[2].Text = $"Inbound 1s  {snapshot.InboundWindowFrames:N0} frames  {FormatKibibytes(snapshot.InboundWindowBytes)}  rejected {snapshot.RejectedInboundFrames:N0}";
+        rows[2].Text =
+            $"Inbound 1s  {snapshot.InboundWindowFrames:N0} frames  {FormatKibibytes(snapshot.InboundWindowBytes)}  rejected {snapshot.RejectedInboundFrames:N0}  " +
+            $"total {snapshot.InboundTotalFrames:N0}/{FormatKibibytes(snapshot.InboundTotalBytes)}";
         rows[3].Text =
             $"Outbound    queues {snapshot.TrackedOutboundQueues}  frames {snapshot.QueuedOutboundFrames:N0}  {FormatKibibytes(snapshot.QueuedOutboundBytes)}  " +
-            $"peak {snapshot.PeakQueuedOutboundFrames:N0}/{FormatKibibytes(snapshot.PeakQueuedOutboundBytes)}  slow {snapshot.SlowClients}";
-        rows[4].Text = $"Movement    relay {snapshot.RelayedMovementFrames:N0}  AOI resync {snapshot.MovementResyncFrames:N0}";
+            $"peak {snapshot.PeakQueuedOutboundFrames:N0}/{FormatKibibytes(snapshot.PeakQueuedOutboundBytes)}  rejected {snapshot.RejectedOutboundFrames:N0}  slow {snapshot.SlowClients}";
+        rows[4].Text =
+            $"Movement    relay {snapshot.RelayedMovementFrames:N0}  AOI resync {snapshot.MovementResyncFrames:N0}  " +
+            $"player active {snapshot.PlayerActiveBaselineFrames:N0}  deactivated {snapshot.PlayerDeactivationFrames:N0}";
         rows[5].Text = $"Appearance  relay {snapshot.RelayedAppearanceFrames:N0}  baseline {snapshot.AppearanceBaselineFrames:N0}";
         rows[6].Text = $"Equipment   relay {snapshot.RelayedEquipmentFrames:N0}  baseline {snapshot.EquipmentBaselineFrames:N0}  dropped {snapshot.DroppedEquipmentSnapshotUpdates:N0}";
-        rows[7].Text = $"NPC         relay {snapshot.NpcRelayedFrames:N0}  baseline {snapshot.NpcBaselineFrames:N0}  rejected {snapshot.NpcRejectedFrames:N0}";
-        rows[8].Text = $"Projectile  relay {snapshot.ProjectileRelayedFrames:N0}  baseline {snapshot.ProjectileBaselineFrames:N0}  rejected {snapshot.ProjectileRejectedFrames:N0}";
-        rows[9].Text = $"Items       relay {snapshot.WorldItemRelayedFrames:N0}  rejected {snapshot.WorldItemRejectedFrames:N0}";
+        rows[7].Text =
+            $"NPC         relay {snapshot.NpcRelayedFrames:N0}  baseline {snapshot.NpcBaselineFrames:N0}  rejected {snapshot.NpcRejectedFrames:N0}  " +
+            $"unsupported {snapshot.NpcUnsupportedCommits:N0}";
+        rows[8].Text =
+            $"Projectile  relay {snapshot.ProjectileRelayedFrames:N0}  baseline {snapshot.ProjectileBaselineFrames:N0}  rejected {snapshot.ProjectileRejectedFrames:N0}  " +
+            $"unsupported {snapshot.ProjectileUnsupportedCommits:N0}";
+        rows[9].Text =
+            $"Items       relay {snapshot.WorldItemRelayedFrames:N0}  rejected {snapshot.WorldItemRejectedFrames:N0}  unsupported {snapshot.WorldItemUnsupportedCommits:N0}";
         rows[10].Text =
             $"Stops       protocol {snapshot.StopProtocolFailures:N0}  rate {snapshot.StopRateLimited:N0}  " +
             $"handshake {snapshot.StopInvalidHandshake:N0}  unsupported {snapshot.StopUnsupportedProtocol:N0}  slow {snapshot.StopSlowClient:N0}  " +
