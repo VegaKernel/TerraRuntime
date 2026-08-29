@@ -80,7 +80,7 @@ public sealed class WorldFileSignEncoderTests
     }
 
     [Fact]
-    public void Rejects_duplicate_coordinates_and_text_budget_before_writing()
+    public void Allows_duplicate_coordinates_and_rejects_text_budget_before_writing()
     {
         var dimensions = new WorldDimensions(20, 20);
         using var duplicateStream = new MemoryStream();
@@ -91,10 +91,44 @@ public sealed class WorldFileSignEncoderTests
         ];
 
         Assert.Equal(
-            WorldFileSignEncodeResult.DuplicateCoordinates,
+            WorldFileSignEncodeResult.Encoded,
             WorldFileSignEncoder.TryEncode(duplicates, dimensions, 1024, 4096, duplicateStream, out long duplicateBytes));
-        Assert.Equal(0, duplicateBytes);
-        Assert.Equal(0, duplicateStream.Length);
+        Assert.Equal(duplicateStream.Length, duplicateBytes);
+        Assert.True(duplicateBytes > 0);
+
+        byte[] section = duplicateStream.ToArray();
+        var envelope = new WorldFileEnvelope(
+            WorldFileFormatPolicy.CurrentVersion,
+            revision: 1,
+            favoriteFlags: 0,
+            sectionOffsets: [0, 0, 0, 0, section.Length],
+            frameImportanceCount: VanillaWorldFormat326.TileTypeCount,
+            frameImportanceBits: new byte[(VanillaWorldFormat326.TileTypeCount + 7) >> 3]);
+        var header = new WorldFileHeader(
+            "test",
+            "seed",
+            1,
+            Guid.Empty,
+            1,
+            0,
+            dimensions.WidthTiles * 16,
+            0,
+            dimensions.HeightTiles * 16,
+            dimensions);
+        Assert.Equal(
+            WorldFileSignDecodeResult.Decoded,
+            WorldFileSignDecoder.TryDecode(
+                section,
+                envelope,
+                header,
+                maxTextBytesPerSign: 1024,
+                maxTotalTextBytes: 4096,
+                out WorldSign[] decoded,
+                out int consumed));
+        Assert.Equal(section.Length, consumed);
+        WorldSign surviving = Assert.Single(decoded);
+        Assert.Equal((short)0, surviving.SlotId);
+        Assert.Equal("first", surviving.Text);
 
         using var budgetStream = new MemoryStream();
         WorldSign[] oversized = [new WorldSign(0, "12345", 1, 2)];
