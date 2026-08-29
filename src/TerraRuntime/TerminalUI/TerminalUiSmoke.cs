@@ -61,6 +61,7 @@ internal static class TerminalUiSmoke
                     AssertRendered(app.Driver!, "Sections");
                     AssertRendered(app.Driver!, "Lookups");
                     AssertRendered(app.Driver!, "Rebuild");
+                    AssertRendered(app.Driver!, "Save        shadow ready");
                     SelectDetailsScreen(app, workspace, Key.L, "Logs", "LOG");
                     SelectDetailsScreen(app, workspace, Key.O, "Overview", "Running");
 
@@ -80,7 +81,7 @@ internal static class TerminalUiSmoke
 
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the System Dashboard, external-dashboard transition, " +
-                "all Details menu hotkeys, section-cache telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
+                "all Details menu hotkeys, section-cache/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -444,6 +445,19 @@ internal static class TerminalUiSmoke
                 SectionCacheHits: 100,
                 SectionCacheMisses: 8,
                 SectionCacheStaleReads: 2,
-                SectionCacheWaits: 3);
+                SectionCacheWaits: 3,
+                Persistence: new RuntimeWorldPersistenceSnapshot(
+                    AcceptingRequests: true,
+                    TileShadowReady: true,
+                    RemainingBootstrapSections: 0,
+                    PendingDirtyTileSections: 2,
+                    SaveRequested: false,
+                    WriteActive: false,
+                    PendingWrite: true,
+                    AcceptedSnapshots: 8,
+                    StartedWrites: 7,
+                    CompletedWrites: 6,
+                    CoalescedSnapshots: 1,
+                    FailedWrites: 0));
     }
 }
