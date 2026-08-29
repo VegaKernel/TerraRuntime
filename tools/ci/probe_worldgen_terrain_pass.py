@@ -72,6 +72,18 @@ def find_constructor(source: str) -> str:
     return compact(matches[0].group(0))
 
 
+def find_surface_history_constructor(source: str) -> tuple[str, str]:
+    pattern = re.compile(
+        r"^[ \t]*(?:public|private|internal|protected)\s+SurfaceHistory\([^\r\n)]*\)",
+        re.MULTILINE,
+    )
+    signatures = [match.group(0).strip() for match in pattern.finditer(source)]
+    if len(signatures) != 1:
+        raise SystemExit(f"Pinned TerrainPass must expose one SurfaceHistory constructor; found {len(signatures)}.")
+    signature = signatures[0]
+    return signature, extract_method(source, signature)
+
+
 def extract_enum(source: str, enum_name: str) -> str:
     pattern = re.compile(rf"\benum\s+{re.escape(enum_name)}\b[^{{]*{{")
     match = pattern.search(source)
@@ -98,6 +110,22 @@ def emit_method(lines: list[str], label: str, signature: str, method: str) -> No
     print(f"BEGIN_TerrainPass_{label}")
     print(compact(method))
     print(f"END_TerrainPass_{label}")
+
+
+def emit_surface_history_declarations(source: str, lines: list[str]) -> None:
+    declarations: list[str] = []
+    for raw in source.splitlines():
+        value = compact(raw)
+        if not value:
+            continue
+        if any(token in value for token in ("_heights", "_index", "Length =>", "this[int")):
+            declarations.append(value)
+    declarations = list(dict.fromkeys(declarations))
+    lines.append(f"TerrainPass_SurfaceHistory_declaration_count={len(declarations)}")
+    print(f"TerrainPass_SurfaceHistory_declaration_count={len(declarations)}")
+    for index, value in enumerate(declarations):
+        lines.append(f"TerrainPass_SurfaceHistory_declaration_{index:02d}={value}")
+        print(f"TerrainPass_SurfaceHistory_declaration_{index:02d}={value}")
 
 
 def main() -> int:
@@ -128,18 +156,18 @@ def main() -> int:
         "GenerateWorldSurfaceOffset",
         "FillColumn",
         "RetargetSurfaceHistory",
+        "RetargetColumn",
     ]
     for name in helper_names:
         prefix = "protected override" if name == "ApplyPass" else None
         signature, method = find_unique_method(source, name, prefix)
         emit_method(lines, name, signature, method)
 
-    # SurfaceHistory is nested in the pinned TerrainPass source. Its tiny ring-buffer behavior affects the beach
-    # retarget path, so fingerprint and emit the constructor/Record helpers rather than treating it as an incidental
-    # implementation detail.
-    for name in ["Record"]:
-        signature, method = find_unique_method(source, name)
-        emit_method(lines, f"SurfaceHistory_{name}", signature, method)
+    surface_constructor_signature, surface_constructor = find_surface_history_constructor(source)
+    emit_method(lines, "SurfaceHistory_constructor", surface_constructor_signature, surface_constructor)
+    signature, method = find_unique_method(source, "Record")
+    emit_method(lines, "SurfaceHistory_Record", signature, method)
+    emit_surface_history_declarations(source, lines)
 
     if args.output:
         output = Path(args.output)
