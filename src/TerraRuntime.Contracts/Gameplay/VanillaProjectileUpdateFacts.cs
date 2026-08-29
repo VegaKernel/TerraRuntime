@@ -3,9 +3,9 @@ namespace TerraRuntime.Contracts.Gameplay;
 /// <summary>
 /// Version-pinned TerrariaServer 1.4.5.8 Projectile.extraUpdates defaults. Vanilla executes one ordinary
 /// projectile Update body plus <c>extraUpdates</c> additional subupdates per world tick, and timeLeft is
-/// decremented once inside each subupdate. Jester's Arrow (type 5) and Bullet (type 14) are the currently
-/// simulated world-flight projectiles in this catalog with extraUpdates=1, so one world tick executes two
-/// authoritative subupdates for either type.
+/// decremented once inside each subupdate. Jester's Arrow (type 5) and Bullet (type 14) use extraUpdates=1,
+/// while the currently simulated player-owned Green Laser (type 20) uses extraUpdates=2. One world tick
+/// therefore executes two authoritative subupdates for types 5/14 and three for player-owned type 20.
 /// The source assembly SHA-256 is d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e.
 /// </summary>
 public static class VanillaProjectileUpdateFacts
