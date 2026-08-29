@@ -20,18 +20,28 @@ def isolate_case(source: str, case_id: int, next_case_id: int) -> str:
 
 
 def find_item_id(item_ids: str, name: str) -> int:
-    patterns = (
+    for pattern in (
         rf"\b{name}\s*=\s*(-?\d+)\s*;",
         rf"\b{name}\s*=\s*unchecked\(\(short\)(-?\d+)\)\s*;",
-    )
-    for pattern in patterns:
+    ):
         match = re.search(pattern, item_ids)
         if match is not None:
             return int(match.group(1))
     raise SystemExit(f"Could not locate ItemID.{name} in pinned source.")
 
 
-def case_context(source: str, value: int, radius: int = 1800) -> str:
+def isolate_method(source: str, name: str, next_name: str) -> str:
+    match = re.search(
+        rf"\b{name}\(int type\).*?(?=\b{next_name}\(int type\))",
+        source,
+        re.DOTALL,
+    )
+    if match is None:
+        raise SystemExit(f"Could not isolate Item.{name} in pinned source.")
+    return match.group(0)
+
+
+def case_context(source: str, value: int, radius: int = 2200) -> str:
     match = re.search(rf"case\s+{value}\s*:", source)
     if match is None:
         return "<no direct case>"
@@ -55,6 +65,7 @@ def main() -> int:
 
     movement = isolate_case(message_buffer, 13, 14)
     tile = isolate_case(message_buffer, 17, 18)
+    defaults1 = isolate_method(item, "SetDefaults1", "SetDefaults2")
 
     dirt = find_item_id(item_ids, "DirtBlock")
     copper_pickaxe = find_item_id(item_ids, "CopperPickaxe")
@@ -63,7 +74,7 @@ def main() -> int:
     print(f"item_id_copper_pickaxe={copper_pickaxe}")
     print(f"packet13_context={movement[:9000]}")
     print(f"packet17_context={tile[:12000]}")
-    print(f"dirt_item_context={case_context(item, dirt)}")
+    print(f"dirt_setdefaults1_context={case_context(defaults1, dirt)}")
     print(f"copper_pickaxe_item_context={case_context(item, copper_pickaxe)}")
     return 0
 
