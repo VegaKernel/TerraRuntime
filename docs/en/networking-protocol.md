@@ -87,12 +87,15 @@ This rule is especially important for `Span<T>`, `ReadOnlySpan<T>`, `ReadOnlySeq
 
 The current default policy uses:
 
-- **10 seconds** for handshake completion;
-- no normal post-handshake idle timeout (`Timeout.InfiniteTimeSpan`);
+- **10 seconds** for protocol handshake completion;
+- **2 minutes** as a conservative hard-abuse ceiling for completing join after `Hello` until the runtime reports ready/`Playing`;
+- no normal post-join idle timeout (`Timeout.InfiniteTimeSpan`);
 - the `HardAbuse` connection rate budget;
 - the `HardAbuse` per-message rate-limit set.
 
-A successful handshake resets the last-inbound timestamp and wakes the watchdog so the policy transition is observed immediately.
+The two-minute join deadline is not a vanilla gameplay timing rule. It prevents a peer from completing the cheap protocol `Hello` step and then retaining an admitted player slot indefinitely without entering the world.
+
+A successful handshake records the handshake-completion timestamp and wakes the watchdog immediately. Production sink composition exposes only a narrow `ITerrariaConnectionReadinessSource` signal to the network layer; it does not leak gameplay objects into network policy. While the connection is not ready the watchdog applies the join deadline. Once readiness becomes true it stops applying the join deadline and follows the configured ordinary idle policy instead.
 
 Timeout state is monotonic: once a terminal stop reason is recorded, later activity cannot replace it with a different reason.
 
@@ -105,8 +108,9 @@ Timeout state is monotonic: once a terminal stop reason is recorded, later activ
 | `PeerClosed` | remote endpoint closed normally |
 | `ApplicationStopped` | runtime shutdown requested |
 | `Cancelled` | connection execution was cancelled |
-| `HandshakeTimeout` | required handshake was not completed before the deadline |
-| `IdleTimeout` | configured post-handshake inactivity deadline expired |
+| `HandshakeTimeout` | required protocol handshake was not completed before the deadline |
+| `JoinTimeout` | `Hello` completed but the connection did not reach ready/`Playing` before the join deadline |
+| `IdleTimeout` | configured post-join inactivity deadline expired |
 | `InvalidHandshake` | handshake bytes/state were structurally invalid |
 | `UnsupportedProtocol` | client protocol/version is not accepted |
 | `ProtocolFailure` | protocol processing failed after framing |
@@ -115,7 +119,9 @@ Timeout state is monotonic: once a terminal stop reason is recorded, later activ
 | `SlowClient` | bounded outbound policy closed a client that could not drain data |
 | `RateLimited` | configured connection/message budget rejected traffic |
 
-These categories are intentionally different. Operators and tests should not flatten them into one generic "network error" because malformed input, abusive rate, unsupported client version and an I/O failure require different diagnosis.
+These categories are intentionally different. Operators and tests should not flatten them into one generic "network error" because malformed input, abusive rate, a stalled join, unsupported client version and an I/O failure require different diagnosis.
+
+Frame rejection telemetry separately normalizes malformed protocol, rate-limited, invalid-state, gameplay-rejected and backpressure failures so a sink-chain rejection does not need to be inferred from arbitrary text logs.
 
 ## 7. Handshake and connection-state legality
 
@@ -144,22 +150,25 @@ This keeps three things separable:
 
 Critical layouts require independent evidence such as golden bytes, official traffic or differential probes. A successful Multiplicity encode/decode round trip only proves that the encoder and decoder agree with each other.
 
-## 9. Inbound rate accounting
+## 9. Inbound and fan-out rate accounting
 
 Rate accounting occurs before expensive gameplay work. The policy has both connection-wide and message-class controls.
 
 The objective is not to punish legitimate bursty Terraria traffic. The objective is to establish a hard upper boundary beyond which one client cannot convert packet rate into unbounded CPU, memory or queue growth.
 
-The roadmap still contains broader work-budget tasks, including complete subsystem-level budgets for expensive operations. Therefore current connection/message limiting must not be described as complete DoS protection for every gameplay subsystem.
+Some legal input does not enter the authoritative command loop before doing shared work. Public `Say` chat is the current important example: one accepted chat frame can fan out to every playing connection. `RuntimeChatRelay` therefore applies a **server-global 256 broadcasts per 1 second** hard-abuse ceiling before iterating recipients. Over-budget broadcasts are dropped and counted as rate-limited rejection rather than multiplying per-connection allowances across the whole server.
+
+The roadmap still contains broader work-budget tasks, including complete subsystem-level budgets for expensive operations. Therefore current connection/message/fan-out limiting must not be described as complete DoS protection for every gameplay subsystem.
 
 ## 10. Authoritative command queue
 
-Decoded network input crosses into simulation through a bounded command path. The game loop applies global and per-source fairness limits so one connection cannot monopolize a tick simply by keeping its queue non-empty.
+Decoded network input crosses into simulation through a bounded command path. The game loop applies a global operation ceiling, a per-source processing quota and a per-source pending/reservation ceiling so one connection cannot monopolize a tick or occupy the entire shared mailbox simply by submitting faster than the loop drains.
 
 Important invariants:
 
 - packet order is preserved where Terraria semantics require it;
 - inbound work is bounded by runtime budgets;
+- one source cannot reserve the complete shared command capacity;
 - the authoritative thread decides whether the action is legal;
 - deferred work is observable rather than silently executed without limit;
 - networking does not hold the game loop waiting for socket I/O.
@@ -177,6 +186,10 @@ Queue sizing is still an active measurement task. A queue being bounded is an in
 Join is a special high-burst phase. A newly connected player may need world metadata, player state, sections and object data before normal movement synchronization begins.
 
 The current implementation has live probes for join/movement and selected chest/bootstrap behavior against worlds generated by the official TerrariaServer 1.4.5.8. These workflows protect ordering and compatibility assumptions that are difficult to validate from unit tests alone.
+
+The network policy separately bounds incomplete joins: after a valid `Hello`, production readiness must reach `Playing` within the conservative default two-minute abuse ceiling or the connection stops with `JoinTimeout`. Reaching `Playing` disables this join deadline; normal idle policy is independent.
+
+The section-heavy bootstrap path is state-gated. The first valid section request can enqueue the bootstrap section sequence; after the session has advanced to `AwaitingSpawn`/`Playing`, repeated section requests do not regenerate and re-enqueue the full section transfer.
 
 Long-term join work remains staged in the roadmap: section generation/compression and initial-state transfer must stay under a **global** per-tick budget rather than granting a complete expensive-work budget to every joining player.
 
@@ -198,7 +211,8 @@ Allowed off-thread work includes:
 - framing;
 - bounded protocol decode/encode;
 - immutable packet/frame construction;
-- connection-local accounting.
+- connection-local accounting;
+- bounded transport-only fan-out that has an explicit server-global work ceiling.
 
 Not allowed off-thread:
 
@@ -208,13 +222,14 @@ Not allowed off-thread:
 
 ## 15. Failure isolation
 
-Malformed or abusive client traffic should close or reject that connection without crashing the server process or skipping world-save shutdown behavior.
+Malformed or abusive client traffic should close or reject that connection without crashing the server process or skipping world-save shutdown behavior. Shared non-authoritative work such as chat fan-out may instead drop only the over-budget operation so one attacker does not force unrelated peers to disconnect.
 
 Network failure handling should preserve the distinction between:
 
 ```text
 malformed bytes
 rate/work limit
+stalled handshake/join
 illegal connection state
 legal protocol but rejected gameplay action
 I/O failure
@@ -229,9 +244,11 @@ This distinction is part of the observability contract and should remain stable 
 Relevant evidence lives across:
 
 - framing and socket connection tests;
+- handshake/join/idle watchdog tests;
 - connection policy and rate-accounting tests;
+- global chat fan-out budget tests;
 - Multiplicity decoder/mapper tests;
-- malformed packet tests;
+- permanent deterministic malformed framing and typed-decoder fuzz tests;
 - real-process/slow-client tests;
 - `Vanilla World Load` live join/movement probes;
 - official-server reference workflows for packet/world behavior.
@@ -242,8 +259,8 @@ When changing a non-trivial network rule, add a test that fails when the fix is 
 
 The following areas are intentionally not presented as finished:
 
-- permanent protocol fuzz corpus for all variable-length decoders;
-- complete global/per-subsystem expensive-work budgets;
+- broader protocol/world fuzz corpora beyond the current framing and typed-decoder regression floor;
+- complete global/per-subsystem expensive-work budgets beyond the command loop and chat fan-out already bounded;
 - measurement-derived final queue sizing;
 - complete packet-count/byte telemetry by message ID;
 - full section-aware suppression/resync semantics;
@@ -258,7 +275,7 @@ A networking/protocol change is not complete until, where relevant:
 
 - framing/decoder tests cover malformed and valid input;
 - connection-state legality is tested;
-- rate/queue behavior is bounded;
+- rate/queue/fan-out behavior is bounded;
 - NativeAOT paths remain compatible;
 - independent official-client/server evidence exists for wire-sensitive changes;
 - this page and `docs/ru/networking-protocol.md` are updated in the same change.
