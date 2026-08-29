@@ -45,6 +45,9 @@ internal static class TerminalUiSmoke
                     AssertWorkspaceRow(workspace, "Running");
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "Running");
+                    AssertRendered(app.Driver!, "wall 0.25/1.50 ms  cpu 0.20/1.20 ms  slow Update 0.15 ms");
+                    AssertRendered(app.Driver!, "Process     CPU 12.5%  heap 32.0 MiB  working 64.0 MiB  allocated 96.0 MiB");
+                    AssertRendered(app.Driver!, "Commands    done 2  pending 3  deferred 1  rejected 4  budget 2  oldest 12.5 ms");
 
                     // Exercise the exact production transition that regressed: an external root is visible,
                     // then every built-in Details screen must become visible through the real MenuBar path.
@@ -105,7 +108,7 @@ internal static class TerminalUiSmoke
             }
 
             Console.WriteLine(
-                "Terminal UI smoke passed: ANSI framebuffer rendered the production System Dashboard, external-dashboard transition, " +
+                "Terminal UI smoke passed: ANSI framebuffer rendered production runtime health, the external-dashboard transition, " +
                 "all Details menu hotkeys, Actions/manual-save path, complete bounded network telemetry, " +
                 "section-cache pipeline/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
@@ -232,13 +235,16 @@ internal static class TerminalUiSmoke
                 SlowestPhaseMilliseconds: 0.15d,
                 MissedTickDeadlines: 0,
                 CommandsProcessed: 2,
-                PendingCommands: 0,
-                DeferredCommands: 0,
-                RejectedCommands: 0,
-                CommandBudgetExhaustions: 0,
-                OldestPendingCommandAgeMilliseconds: 0d,
+                PendingCommands: 3,
+                DeferredCommands: 1,
+                RejectedCommands: 4,
+                CommandBudgetExhaustions: 2,
+                OldestPendingCommandAgeMilliseconds: 12.5d,
                 ManagedHeapBytes: 32L * 1024 * 1024,
                 TotalAllocatedBytes: 96L * 1024 * 1024,
+                WorkingSetBytes: 64L * 1024 * 1024,
+                ProcessCpuPercent: 12.5d,
+                GcPauseTimePercentage: 1.25d,
                 Gen0Collections: 3,
                 Gen1Collections: 1,
                 Gen2Collections: 0,
