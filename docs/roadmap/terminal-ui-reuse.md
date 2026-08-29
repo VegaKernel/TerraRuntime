@@ -21,6 +21,7 @@ Views consume immutable, bounded operations snapshots. Mutations cross explicit 
 - [x] Administrative interest-management mutation crosses the authoritative command boundary.
 - [x] TUI runs independently from the authoritative loop and TUI failure/exit does not stop the server.
 - [x] Dashboard, Players, NPCs, Projectiles, Items, Network, World and Logs views are implemented.
+- [x] World view exposes bounded runtime-owned save/checkpoint status without exposing the persistence service or mutable tile shadow.
 - [x] Trusted CoreCLR host modules may contribute independent local dashboard roots through host contracts.
 - [x] CoreCLR and Linux/Windows NativeAOT CI exercise the TUI smoke path.
 - [x] The smoke path exercises the real Details MenuBar hotkeys and framebuffer rendering for every built-in detail view.
@@ -38,7 +39,7 @@ The standalone server has eight exercised runtime-owned operational views:
 - **Projectiles** consumes `IProjectileOperations` and `RuntimeProjectilesSnapshot`. It groups committed authoritative projectiles by `(spawner, projectile type)`, sorts the largest groups first and exposes representative motion plus bounded damage/knockback maxima.
 - **Items** consumes `IWorldItemOperations` and `RuntimeWorldItemsSnapshot`. It groups authoritative dropped items by item net ID and exposes drop count, aggregate stack, reservation/shimmer counts, maximum stack and representative position.
 - **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It shows admission/registration state, player/NPC/projectile/item replication counters, inbound rates, bounded outbound queue/backpressure telemetry and rejected traffic.
-- **World** consumes `IWorldOperations` and `RuntimeWorldSnapshot`. It exposes world identity, dimensions, persisted object/NPC counts, startup/cache timings, authoritative world-clock state and section-cache lookup/rebuild telemetry.
+- **World** consumes `IWorldOperations` and `RuntimeWorldSnapshot`. It exposes world identity, dimensions, persisted object/NPC counts, startup/cache timings, authoritative world-clock state, section-cache lookup/rebuild telemetry and bounded save/checkpoint lifecycle status.
 - **Logs** consumes `ILogOperations` over a bounded `RuntimeLogBuffer`. It supports bounded runtime log observation independently of the plain-console sink.
 
 Trusted host modules may also contribute **independent dashboard roots** through `ITerraRuntimeTerminalDashboardSource` / `ITerraRuntimeTerminalDashboardProvider`. TerraRuntime keeps its System Dashboard intact; host modules do not inject arbitrary controls into the built-in runtime-owned detail screens.
@@ -53,9 +54,11 @@ Trusted host modules may also contribute **independent dashboard roots** through
 - `Console.Out` and `Console.Error` are not globally replaced. Host-owned console output is suppressed only while the full-screen UI is active; the bounded log read model continues receiving events.
 - Runtime/network telemetry comes from subsystem-owned counters rather than being reconstructed in the view.
 - NPC/projectile/item UI projections are observers of authoritative state. They do not become primary replication owners merely because the operator can see them.
-- World-clock and section-cache telemetry are exposed through bounded operations snapshots rather than direct mutable runtime references.
+- World-clock, section-cache and persistence telemetry are exposed through bounded operations snapshots rather than direct mutable runtime references.
+- Persistence status is published by the save subsystem: the TUI does not inspect `WorldSaveCoordinator`, mutable tile-shadow state or file-writer internals directly.
 - `--tui-smoke` uses the Terminal.Gui ANSI test driver and validates actual framebuffer contents.
 - The smoke enters `Details` through the real MenuBar and selects Overview, Players, NPCs, Projectiles, Items, Network, World and Logs through their mnemonics. This prevents duplicated/ambiguous hotkeys from silently surviving CI.
+- The World smoke verifies rendered section-cache and world-save telemetry, not merely the World screen heading.
 - CoreCLR CI and Linux/Windows NativeAOT jobs exercise the same TUI smoke path.
 
 ## Dependency shape
@@ -105,7 +108,7 @@ Shared toolkit-independent read models/contracts may move to `TerraRuntime.Contr
 
 ## UI-facing operations boundary
 
-Views must not depend directly on `ServerRuntimeState`, mutable world/player/NPC/projectile/item collections, sockets, connection queues, or authoritative-thread-owned objects.
+Views must not depend directly on `ServerRuntimeState`, mutable world/player/NPC/projectile/item collections, sockets, connection queues, persistence coordinators, mutable save shadows or authoritative-thread-owned objects.
 
 Current screen-facing interfaces are deliberately small:
 
@@ -148,6 +151,7 @@ TerraRuntime currently owns and publishes UI-facing measurements for:
 - authoritative world-clock state;
 - world/cache startup state and timings;
 - section-cache entries/bytes/dirty backlog, lookup hit/miss/stale/wait counters and rebuild queue/worker/publication telemetry;
+- world-save tile-shadow synchronization, pending dirty sections, requested/active/pending writes and accepted/started/completed/coalesced/failed save counters;
 - bounded runtime log events.
 
 The TUI formats these values but does not invent them.
@@ -180,7 +184,9 @@ Network detail reuses subsystem-owned accounting for inbound traffic, outbound q
 
 ### World
 
-World detail includes identity, dimensions, persisted object counts, startup/cache timings and authoritative clock state. Section-cache status is already implemented: entries/capacity/bytes/dirty backlog, lookup hit/miss/stale/waits and rebuild queued/active/published values are visible when the cache telemetry source is available.
+World detail includes identity, dimensions, persisted object counts, startup/cache timings and authoritative clock state. Section-cache status exposes entries/capacity/bytes/dirty backlog, lookup hit/miss/stale/waits and rebuild queued/active/published values when the cache telemetry source is available.
+
+Persistence status is also projected through `RuntimeWorldPersistenceSnapshot`: tile-shadow synchronization/readiness, pending dirty tile sections, pending save request, active/pending background write, and accepted/started/completed/coalesced/failed save counts. `RuntimeWorldTileChestSaveService` publishes the thread-safe status; `LocalRuntimeWorldOperations` maps it into the UI-facing immutable snapshot, so the TUI never reaches into the coordinator or mutable persistence state.
 
 ### Logs
 
@@ -209,12 +215,12 @@ Future slices should be driven by operational need rather than by filling screen
 
 Useful candidates now are:
 
-- save/checkpoint status once persistence publishes a bounded runtime-owned operations snapshot;
 - richer player/NPC/projectile/item navigation and sorting only when compact/grouped views become operationally limiting;
 - additional packet/category telemetry only where the network subsystem already owns trustworthy counters;
+- a manual save/checkpoint administrative action only after it is exposed through an explicit operations/command boundary rather than by handing the UI the persistence service;
 - more administrative actions only after explicit runtime operations exist.
 
-Section-cache rebuild status is no longer future work: it is already exposed by the World snapshot/view.
+Section-cache rebuild status and save/checkpoint status are no longer future work: both are already exposed by the World operations snapshot/view and exercised by the framebuffer smoke.
 
 ## Future remote client, deferred
 
