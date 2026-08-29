@@ -94,20 +94,15 @@ def main() -> int:
         print(signature)
     print("new_item_signatures_end")
 
-    candidate = next(
-        (
-            signature
-            for signature in new_item_signatures
-            if "int X" in signature
-            and "int Y" in signature
-            and "int Width" in signature
-            and "int Height" in signature
-            and "int Type" in signature
-        ),
-        None,
+    expected_prefix = (
+        "public static int NewItem(IEntitySource source, int X, int Y, int Width, int Height, "
+        "int type, int stack = 1, bool noBroadcast = false, int prefix = 0, "
+        "NewItemOwnership ownership = NewItemOwnership.None, Vector2? velocity = null, "
+        "NewItemModifier modifier = null)"
     )
+    candidate = next((signature for signature in new_item_signatures if signature == expected_prefix), None)
     if candidate is None:
-        raise SystemExit("Could not locate rectangle-based Item.NewItem overload.")
+        raise SystemExit("Pinned rectangle-based Item.NewItem signature changed.")
 
     body = compact(extract_method(item, candidate))
     print(f"new_item_candidate={candidate}")
