@@ -454,8 +454,8 @@ flowchart TD
 - [x] Tick CPU/wall duration and worst phase.
 - [x] Command processed/deferred counts, budget exhaustion count and oldest pending command age.
 - [x] Queue depth and slow-client drops, including the packet type that filled the queue.
-- [ ] Packet counts/bytes by message ID and direction.
-- [ ] Invalid/malformed/rejected packet counters.
+- [x] Packet counts/bytes by message ID and direction.
+- [x] Invalid/malformed/rejected packet counters.
 - [x] Active players/NPCs/projectiles/items.
 - [x] Spatial-index membership/section changes/invalid-position counters.
 - [x] Save snapshot duration, serialization duration and write duration separately.
