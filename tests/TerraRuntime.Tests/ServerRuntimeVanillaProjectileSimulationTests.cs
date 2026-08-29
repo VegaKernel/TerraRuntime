@@ -9,6 +9,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
 {
     [Theory]
     [InlineData(3)]
+    [InlineData(21)]
     [InlineData(48)]
     [InlineData(54)]
     [InlineData(599)]
@@ -88,6 +89,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
 
     [Theory]
     [InlineData(3)]
+    [InlineData(21)]
     [InlineData(48)]
     [InlineData(54)]
     [InlineData(599)]
@@ -113,6 +115,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
 
     [Theory]
     [InlineData(3)]
+    [InlineData(21)]
     [InlineData(48)]
     [InlineData(54)]
     [InlineData(599)]

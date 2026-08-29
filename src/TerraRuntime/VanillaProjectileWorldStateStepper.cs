@@ -9,7 +9,7 @@ namespace TerraRuntime;
 /// Source-backed TerrariaServer 1.4.5.8 projectile simulation slices that already have enough runtime/world
 /// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden,
 /// Fire, Unholy, and Jester's Arrows, Bullet, and player-owned Green Laser (aiStyle 1), plus Shuriken, Throwing Knife,
-/// Poisoned Knife, and Bone Dagger (aiStyle 2).
+/// Poisoned Knife, Bone, and Bone Dagger (aiStyle 2).
 /// including their generic tile-impact Kill() path. Server-owned simulation is allowed only when its committed
 /// movement sweep cannot reach a source-backed CutTiles candidate; irreversible KillTile/drop effects remain a
 /// separate world-effect slice. Entity damage and visual-only rotation/dust/sound also remain separate systems.

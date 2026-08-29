@@ -103,6 +103,7 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     }
 
     [Theory]
+    [InlineData(21, 16, 16, 16, 16, 0f, 0f)]
     [InlineData(48, 12, 12, 12, 12, 0f, 0f)]
     [InlineData(54, 12, 12, 12, 12, 0f, 0f)]
     [InlineData(599, 22, 22, 10, 10, 6f, 6f)]

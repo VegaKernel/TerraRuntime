@@ -93,6 +93,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    private static readonly VanillaProjectileDefinition BoneDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
+
     private static readonly VanillaProjectileDefinition ShurikenDefinition = new(
         Width: 22,
         Height: 22,
@@ -168,6 +178,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.GreenLaser)
         {
             definition = GreenLaserDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.Bone)
+        {
+            definition = BoneDefinition;
             return true;
         }
 

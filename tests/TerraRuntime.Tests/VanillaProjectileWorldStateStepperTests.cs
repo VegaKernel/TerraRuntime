@@ -49,6 +49,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Theory]
+    [InlineData(21)]
     [InlineData(48)]
     [InlineData(54)]
     [InlineData(599)]
