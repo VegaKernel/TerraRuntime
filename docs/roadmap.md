@@ -134,7 +134,7 @@ Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the typed pa
 
 - [x] `ReadOnlySpan<byte>` / `Span<byte>` codecs.
 - [x] `SequenceReader<byte>` where segmented input is useful.
-- [ ] `IBufferWriter<byte>` for encoding.
+- [x] `IBufferWriter<byte>` for encoding.
 - [x] `PipeReader` / `PipeWriter` compatible framing.
 - [ ] Avoid `MemoryStream`, `BinaryReader`, LINQ and temporary arrays on common packet paths.
 - [ ] Use `ArrayPool<T>` or `MemoryPool<T>` for large temporary buffers when measurement justifies pooling.
@@ -144,7 +144,7 @@ Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the typed pa
 - [x] Separate byte decoding from gameplay/state validation.
 - [x] Per-message size ceilings.
 - [x] Per-connection rate accounting.
-- [ ] Protocol fuzz tests and a permanent malformed-packet corpus.
+- [x] Protocol fuzz tests and a permanent malformed-packet corpus.
 - [x] Parsing failure returns a bounded error and never crashes the server process.
 
 ## Phase 2 - Networking runtime
@@ -163,8 +163,8 @@ Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the typed pa
 
 - [ ] Global and per-connection budgets for expensive work.
 - [ ] Bound password/KDF work, compression and section requests.
-- [ ] Independent rate limits for tile edits, liquids, chat, item operations and other expensive packet classes.
-- [ ] Distinguish malformed protocol, rate limit, invalid state and gameplay rejection in structured telemetry.
+- [x] Independent rate limits for tile edits, liquids, chat, item operations and other expensive packet classes.
+- [x] Distinguish malformed protocol, rate limit, invalid state and gameplay rejection in structured telemetry.
 
 ## Phase 3 - Authoritative game loop and threading
 
