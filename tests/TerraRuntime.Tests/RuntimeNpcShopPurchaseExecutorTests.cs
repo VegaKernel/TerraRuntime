@@ -111,6 +111,25 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
         Assert.Empty(fixture.Events.EquipmentUpdates);
     }
 
+    [Theory]
+    [InlineData(71, 101)]
+    [InlineData(74, 10000)]
+    public void Forged_coin_stack_is_rejected_without_spending_or_replication(int itemType, int stack)
+    {
+        Fixture fixture = new();
+        fixture.SetInventory(50, checked((short)stack), new ItemTypeId(itemType));
+        NpcShopPurchaseRequest request = fixture.Request(price: 1);
+
+        Assert.Equal(NpcShopPurchaseResult.InvalidCurrencyState, fixture.Executor.TryPurchase(fixture.Buyer, in request));
+
+        Assert.True(fixture.Inventory.TryGet(fixture.Buyer, 50, out RuntimePlayerInventoryItem coins));
+        Assert.Equal(new ItemTypeId(itemType), coins.ItemType);
+        Assert.Equal((short)stack, coins.Stack);
+        Assert.True(fixture.Inventory.TryGet(fixture.Buyer, 0, out RuntimePlayerInventoryItem destination));
+        Assert.True(destination.IsEmpty);
+        Assert.Empty(fixture.Events.EquipmentUpdates);
+    }
+
     [Fact]
     public void Stale_buyer_generation_cannot_spend_current_players_inventory()
     {
