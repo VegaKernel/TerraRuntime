@@ -38,8 +38,9 @@ public sealed class RuntimeChestCommandProcessorTests
         Assert.Equal(1, processor.AppliedItemUpdates);
         Assert.True(store.TryGetOpenChest(owner, out WorldChest chest));
         Assert.Equal(9, chest.Items[1].Stack);
-        Assert.Equal(ownerFramesAfterOpen + 1, ownerOutbound.QueuedFrames);
+        Assert.Equal(ownerFramesAfterOpen, ownerOutbound.QueuedFrames);
         Assert.Equal(observerFramesAfterOpen + 1, observerOutbound.QueuedFrames);
+        Assert.Equal(1, replication.ItemFrames);
 
         int observerFramesBeforeClose = observerOutbound.QueuedFrames;
         var close = new TerrariaActiveChestState(-1, 0, 0, 0, string.Empty);
