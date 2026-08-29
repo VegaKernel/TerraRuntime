@@ -32,12 +32,13 @@ public static class WorldSectionPayloadEncoder
         ArgumentNullException.ThrowIfNull(world);
         payload = [];
 
-        WorldSectionPayloadEncodeResult validation = ValidateArea(world, xStart, yStart, width, height);
+        WorldSectionEncodingContext context = WorldSectionEncodingContext.Capture(world);
+        WorldSectionPayloadEncodeResult validation = ValidateArea(context, xStart, yStart, width, height);
         if (validation != WorldSectionPayloadEncodeResult.Encoded)
             return validation;
 
         return TryEncodeCore(
-            world,
+            context,
             new LiveTileSource(world.Tiles),
             xStart,
             yStart,
@@ -47,8 +48,8 @@ public static class WorldSectionPayloadEncoder
     }
 
     /// <summary>
-    /// Encodes a previously captured immutable network-section image. This overload is safe for asynchronous
-    /// compression workers because it never reads the mutable WorldTileStore backing array.
+    /// Encodes a previously captured immutable network-section image. This compatibility overload captures the
+    /// immutable format rules from <paramref name="world"/> before delegating to the worker-safe overload.
     /// </summary>
     public static WorldSectionPayloadEncodeResult TryEncodeTileOnly(
         WorldFileData world,
@@ -56,12 +57,25 @@ public static class WorldSectionPayloadEncoder
         out byte[] payload)
     {
         ArgumentNullException.ThrowIfNull(world);
+        return TryEncodeTileOnly(WorldSectionEncodingContext.Capture(world), snapshot, out payload);
+    }
+
+    /// <summary>
+    /// Encodes an immutable network-section image using only immutable world-format rules. This overload is safe
+    /// for asynchronous workers and does not retain or read a live <see cref="WorldFileData"/> instance.
+    /// </summary>
+    public static WorldSectionPayloadEncodeResult TryEncodeTileOnly(
+        WorldSectionEncodingContext context,
+        WorldSectionTileSnapshot snapshot,
+        out byte[] payload)
+    {
+        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(snapshot);
         payload = [];
 
         WorldTileBounds bounds = snapshot.Bounds;
         WorldSectionPayloadEncodeResult validation = ValidateArea(
-            world,
+            context,
             bounds.X,
             bounds.Y,
             bounds.Width,
@@ -72,7 +86,7 @@ public static class WorldSectionPayloadEncoder
         WorldTileBounds expectedBounds;
         try
         {
-            expectedBounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, snapshot.Section);
+            expectedBounds = TerrariaSectionGeometry.GetBounds(context.Dimensions, snapshot.Section);
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -83,7 +97,7 @@ public static class WorldSectionPayloadEncoder
             return WorldSectionPayloadEncodeResult.InvalidArea;
 
         return TryEncodeCore(
-            world,
+            context,
             new SnapshotTileSource(snapshot),
             bounds.X,
             bounds.Y,
@@ -93,25 +107,25 @@ public static class WorldSectionPayloadEncoder
     }
 
     private static WorldSectionPayloadEncodeResult ValidateArea(
-        WorldFileData world,
+        WorldSectionEncodingContext context,
         int xStart,
         int yStart,
         int width,
         int height)
     {
-        if (world.Envelope.FormatVersion != WorldFileFormatPolicy.CurrentVersion)
+        if (context.FormatVersion != WorldFileFormatPolicy.CurrentVersion)
             return WorldSectionPayloadEncodeResult.UnsupportedVersion;
         if (width is < 1 or > MaximumWidth || height is < 1 or > MaximumHeight || xStart < 0 || yStart < 0)
             return WorldSectionPayloadEncodeResult.InvalidArea;
 
-        WorldDimensions dimensions = world.Header.Dimensions;
+        WorldDimensions dimensions = context.Dimensions;
         return xStart > dimensions.WidthTiles - width || yStart > dimensions.HeightTiles - height
             ? WorldSectionPayloadEncodeResult.AreaOutOfBounds
             : WorldSectionPayloadEncodeResult.Encoded;
     }
 
     private static WorldSectionPayloadEncodeResult TryEncodeCore<TTileSource>(
-        WorldFileData world,
+        WorldSectionEncodingContext context,
         TTileSource source,
         int xStart,
         int yStart,
@@ -144,7 +158,7 @@ public static class WorldSectionPayloadEncoder
                     return WorldSectionPayloadEncodeResult.InvalidTileState;
                 }
 
-                bool frameImportant = tile.IsActive && world.Envelope.IsFrameImportant(tile.Type);
+                bool frameImportant = tile.IsActive && context.IsFrameImportant(tile.Type);
                 if (hasPrevious &&
                     VanillaWorldFormat326.AllowsSaveCompressionBatching(tile.Type) &&
                     TilesEncodeIdentically(previous, tile, frameImportant))
