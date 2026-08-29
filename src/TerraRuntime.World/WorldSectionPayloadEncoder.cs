@@ -32,15 +32,94 @@ public static class WorldSectionPayloadEncoder
         ArgumentNullException.ThrowIfNull(world);
         payload = [];
 
+        WorldSectionPayloadEncodeResult validation = ValidateArea(world, xStart, yStart, width, height);
+        if (validation != WorldSectionPayloadEncodeResult.Encoded)
+            return validation;
+
+        return TryEncodeCore(
+            world,
+            new LiveTileSource(world.Tiles),
+            xStart,
+            yStart,
+            width,
+            height,
+            out payload);
+    }
+
+    /// <summary>
+    /// Encodes a previously captured immutable network-section image. This overload is safe for asynchronous
+    /// compression workers because it never reads the mutable WorldTileStore backing array.
+    /// </summary>
+    public static WorldSectionPayloadEncodeResult TryEncodeTileOnly(
+        WorldFileData world,
+        WorldSectionTileSnapshot snapshot,
+        out byte[] payload)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(snapshot);
+        payload = [];
+
+        WorldTileBounds bounds = snapshot.Bounds;
+        WorldSectionPayloadEncodeResult validation = ValidateArea(
+            world,
+            bounds.X,
+            bounds.Y,
+            bounds.Width,
+            bounds.Height);
+        if (validation != WorldSectionPayloadEncodeResult.Encoded)
+            return validation;
+
+        WorldTileBounds expectedBounds;
+        try
+        {
+            expectedBounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, snapshot.Section);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return WorldSectionPayloadEncodeResult.AreaOutOfBounds;
+        }
+
+        if (expectedBounds != bounds)
+            return WorldSectionPayloadEncodeResult.InvalidArea;
+
+        return TryEncodeCore(
+            world,
+            new SnapshotTileSource(snapshot),
+            bounds.X,
+            bounds.Y,
+            bounds.Width,
+            bounds.Height,
+            out payload);
+    }
+
+    private static WorldSectionPayloadEncodeResult ValidateArea(
+        WorldFileData world,
+        int xStart,
+        int yStart,
+        int width,
+        int height)
+    {
         if (world.Envelope.FormatVersion != WorldFileFormatPolicy.CurrentVersion)
             return WorldSectionPayloadEncodeResult.UnsupportedVersion;
         if (width is < 1 or > MaximumWidth || height is < 1 or > MaximumHeight || xStart < 0 || yStart < 0)
             return WorldSectionPayloadEncodeResult.InvalidArea;
 
         WorldDimensions dimensions = world.Header.Dimensions;
-        if (xStart > dimensions.WidthTiles - width || yStart > dimensions.HeightTiles - height)
-            return WorldSectionPayloadEncodeResult.AreaOutOfBounds;
+        return xStart > dimensions.WidthTiles - width || yStart > dimensions.HeightTiles - height
+            ? WorldSectionPayloadEncodeResult.AreaOutOfBounds
+            : WorldSectionPayloadEncodeResult.Encoded;
+    }
 
+    private static WorldSectionPayloadEncodeResult TryEncodeCore<TTileSource>(
+        WorldFileData world,
+        TTileSource source,
+        int xStart,
+        int yStart,
+        int width,
+        int height,
+        out byte[] payload)
+        where TTileSource : struct, ITileSource
+    {
         var output = new ArrayBufferWriter<byte>(Math.Min(64 * 1024, checked(width * height * 4 + 18)));
         WriteInt32(output, xStart);
         WriteInt32(output, yStart);
@@ -58,9 +137,12 @@ public static class WorldSectionPayloadEncoder
         {
             for (int x = xStart; x < xStart + width; x++)
             {
-                WorldTile tile = world.Tiles.Get(x, y);
+                WorldTile tile = source.Get(x, y);
                 if (!ValidateTile(tile))
+                {
+                    payload = [];
                     return WorldSectionPayloadEncodeResult.InvalidTileState;
+                }
 
                 bool frameImportant = tile.IsActive && world.Envelope.IsFrameImportant(tile.Type);
                 if (hasPrevious &&
@@ -277,5 +359,20 @@ public static class WorldSectionPayloadEncoder
     {
         value.CopyTo(output.GetSpan(value.Length));
         output.Advance(value.Length);
+    }
+
+    private interface ITileSource
+    {
+        WorldTile Get(int x, int y);
+    }
+
+    private readonly struct LiveTileSource(WorldTileStore tiles) : ITileSource
+    {
+        public WorldTile Get(int x, int y) => tiles.Get(x, y);
+    }
+
+    private readonly struct SnapshotTileSource(WorldSectionTileSnapshot snapshot) : ITileSource
+    {
+        public WorldTile Get(int x, int y) => snapshot.GetUnchecked(x, y);
     }
 }
