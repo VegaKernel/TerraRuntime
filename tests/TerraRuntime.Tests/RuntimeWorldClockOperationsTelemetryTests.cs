@@ -70,7 +70,17 @@ public sealed class RuntimeWorldClockOperationsTelemetryTests
                 AcceptedWork: 20,
                 RejectedWork: 1,
                 CompletedWork: 18,
-                FailedWork: 2));
+                FailedWork: 2),
+            CacheHits: 31,
+            CacheMisses: 7,
+            CacheStaleReads: 3,
+            CacheWaits: 6,
+            CacheWaitCompletions: 5,
+            CacheWaitTimeouts: 1,
+            OnDemandRequests: 9,
+            OnDemandUniqueRequests: 4,
+            OnDemandDeduplicatedRequests: 5,
+            OnDemandPendingRequests: 2);
         var operations = new LocalRuntimeWorldOperations(
             CreateStaticSnapshot(),
             sectionCacheSnapshotProvider: () => sectionCache);
@@ -92,6 +102,16 @@ public sealed class RuntimeWorldClockOperationsTelemetryTests
         Assert.Equal(1, snapshot.SectionCacheActiveWorkers);
         Assert.Equal(1, snapshot.SectionCachePendingWork);
         Assert.Equal(42d, snapshot.SectionCacheTotalEncodeMilliseconds);
+        Assert.Equal(31, snapshot.SectionCacheHits);
+        Assert.Equal(7, snapshot.SectionCacheMisses);
+        Assert.Equal(3, snapshot.SectionCacheStaleReads);
+        Assert.Equal(6, snapshot.SectionCacheWaits);
+        Assert.Equal(5, snapshot.SectionCacheWaitCompletions);
+        Assert.Equal(1, snapshot.SectionCacheWaitTimeouts);
+        Assert.Equal(9, snapshot.SectionCacheOnDemandRequests);
+        Assert.Equal(4, snapshot.SectionCacheOnDemandUniqueRequests);
+        Assert.Equal(5, snapshot.SectionCacheOnDemandDeduplicatedRequests);
+        Assert.Equal(2, snapshot.SectionCacheOnDemandPendingRequests);
     }
 
     private static RuntimeWorldSnapshot CreateStaticSnapshot() =>
