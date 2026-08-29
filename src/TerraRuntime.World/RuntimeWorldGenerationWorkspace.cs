@@ -6,7 +6,7 @@ namespace TerraRuntime.World;
 /// Isolated mutable tile workspace for a candidate generated world. Writes bypass live-world dirty tracking because
 /// the store is not authoritative or network-visible until the caller explicitly accepts the completed candidate.
 /// </summary>
-public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace
+public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace, IWorldGenerationMetadataWorkspace
 {
     private const WorldGenerationTileFlags KnownFlags =
         WorldGenerationTileFlags.Active |
@@ -20,6 +20,10 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace
         WorldGenerationTileFlags.InvisibleWall |
         WorldGenerationTileFlags.FullbrightBlock |
         WorldGenerationTileFlags.FullbrightWall;
+
+    private WorldGenerationPoint? spawn;
+    private WorldGenerationPoint? dungeon;
+    private WorldGenerationLayers? layers;
 
     public RuntimeWorldGenerationWorkspace(int widthTiles, int heightTiles)
     {
@@ -77,6 +81,76 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace
         // Generation owns this unpublished store exclusively. Marking every generated section dirty would only
         // manufacture network invalidation work for a world that no connection can observe yet.
         TileStore.Tiles[TileStore.GetUncheckedIndex(x, y)] = target;
+        return true;
+    }
+
+    public bool TryGetSpawn(out WorldGenerationPoint value)
+    {
+        if (spawn is not WorldGenerationPoint current)
+        {
+            value = default;
+            return false;
+        }
+
+        value = current;
+        return true;
+    }
+
+    public bool TrySetSpawn(int x, int y)
+    {
+        if (!Contains(x, y))
+            return false;
+
+        spawn = new WorldGenerationPoint(x, y);
+        return true;
+    }
+
+    public bool TryGetDungeon(out WorldGenerationPoint value)
+    {
+        if (dungeon is not WorldGenerationPoint current)
+        {
+            value = default;
+            return false;
+        }
+
+        value = current;
+        return true;
+    }
+
+    public bool TrySetDungeon(int x, int y)
+    {
+        if (!Contains(x, y))
+            return false;
+
+        dungeon = new WorldGenerationPoint(x, y);
+        return true;
+    }
+
+    public bool TryGetLayers(out WorldGenerationLayers value)
+    {
+        if (layers is not WorldGenerationLayers current)
+        {
+            value = default;
+            return false;
+        }
+
+        value = current;
+        return true;
+    }
+
+    public bool TrySetLayers(double worldSurface, double rockLayer)
+    {
+        if (!double.IsFinite(worldSurface) ||
+            !double.IsFinite(rockLayer) ||
+            worldSurface <= 0d ||
+            worldSurface >= HeightTiles ||
+            rockLayer <= worldSurface ||
+            rockLayer >= HeightTiles)
+        {
+            return false;
+        }
+
+        layers = new WorldGenerationLayers(worldSurface, rockLayer);
         return true;
     }
 
