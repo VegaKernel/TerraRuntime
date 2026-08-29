@@ -73,47 +73,46 @@ public static class StartupProgram
                 return 25;
             }
 
-            long maxTileCount = TerrariaServerHost.CreateServerWorldLoadLimits().MaxTileCount;
-            var persistence = new RuntimeWorldCreationPersistencePipeline(
-                startupWorldGenerators,
-                maxTileCount);
-            long nowBinary = DateTime.UtcNow.ToBinary();
-            Console.WriteLine(
-                $"Generating world '{creationRequest.Generation.WorldName}' with " +
-                $"'{creationRequest.Generation.GeneratorId.Value}' " +
-                $"({creationRequest.Generation.WidthTiles}x{creationRequest.Generation.HeightTiles}, " +
-                $"seed={creationRequest.Generation.Seed})...");
-
-            RuntimeWorldCreationPersistenceResult creation = persistence.TryCreateAndPersist(
-                creationRequest.Generation,
-                creationRequest.OutputPath,
-                Guid.NewGuid(),
-                worldId: RandomNumberGenerator.GetInt32(1, int.MaxValue),
-                gameMode: 0,
-                crimson: false,
-                creationTimeBinary: nowBinary,
-                lastPlayedBinary: nowBinary);
-            if (!creation.Succeeded || string.IsNullOrWhiteSpace(creation.WorldPath))
-            {
-                PrintWorldCreationFailure(creationRequest, creation, startupWorldGenerators, maxTileCount);
+            if (!TryCreateStartupWorld(creationRequest, startupWorldGenerators, out string? createdPath))
                 return 25;
-            }
 
-            Console.WriteLine($"World created: '{creation.WorldPath}'.");
             serverArgs =
             [
                 .. StartupWorldCreationRequestParser.RemoveCreationArguments(serverArgs),
                 "--world",
-                creation.WorldPath
+                createdPath!
             ];
         }
         else if (!HasWorldArgument(serverArgs))
         {
-            if (!LocalWorldSelector.TrySelect(directories.WorldsDirectory, out string? worldPath) ||
-                string.IsNullOrWhiteSpace(worldPath))
+            if (!LocalWorldSelector.TrySelectOrCreate(
+                    directories.WorldsDirectory,
+                    out LocalWorldSelection selection))
             {
                 return 0;
             }
+
+            string? worldPath;
+            if (selection.Kind == LocalWorldSelectionKind.CreateWorld)
+            {
+                if (!InteractiveWorldCreationPrompt.TryPrompt(
+                        directories.WorldsDirectory,
+                        startupWorldGenerators,
+                        out StartupWorldCreationRequest creationRequest))
+                {
+                    return 0;
+                }
+
+                if (!TryCreateStartupWorld(creationRequest, startupWorldGenerators, out worldPath))
+                    return 25;
+            }
+            else
+            {
+                worldPath = selection.WorldPath;
+            }
+
+            if (string.IsNullOrWhiteSpace(worldPath))
+                return 0;
 
             serverArgs = [.. serverArgs, "--world", worldPath];
         }
@@ -142,6 +141,41 @@ public static class StartupProgram
         {
             Interlocked.Exchange(ref currentTerminalDashboards, previous);
         }
+    }
+
+    private static bool TryCreateStartupWorld(
+        StartupWorldCreationRequest request,
+        ITerraRuntimeWorldGeneratorSource generators,
+        out string? worldPath)
+    {
+        long maxTileCount = TerrariaServerHost.CreateServerWorldLoadLimits().MaxTileCount;
+        var persistence = new RuntimeWorldCreationPersistencePipeline(generators, maxTileCount);
+        long nowBinary = DateTime.UtcNow.ToBinary();
+        Console.WriteLine(
+            $"Generating world '{request.Generation.WorldName}' with " +
+            $"'{request.Generation.GeneratorId.Value}' " +
+            $"({request.Generation.WidthTiles}x{request.Generation.HeightTiles}, " +
+            $"seed={request.Generation.Seed})...");
+
+        RuntimeWorldCreationPersistenceResult creation = persistence.TryCreateAndPersist(
+            request.Generation,
+            request.OutputPath,
+            Guid.NewGuid(),
+            worldId: RandomNumberGenerator.GetInt32(1, int.MaxValue),
+            gameMode: 0,
+            crimson: false,
+            creationTimeBinary: nowBinary,
+            lastPlayedBinary: nowBinary);
+        if (!creation.Succeeded || string.IsNullOrWhiteSpace(creation.WorldPath))
+        {
+            PrintWorldCreationFailure(request, creation, generators, maxTileCount);
+            worldPath = null;
+            return false;
+        }
+
+        worldPath = creation.WorldPath;
+        Console.WriteLine($"World created: '{worldPath}'.");
+        return true;
     }
 
     private static void PrintWorldCreationFailure(
@@ -243,7 +277,7 @@ public static class StartupProgram
         Console.WriteLine();
         Console.WriteLine("Interactive startup:");
         Console.WriteLine("  TerraRuntime.Server");
-        Console.WriteLine("    Scans the runtime Worlds folder and lets you choose a .wld world.");
+        Console.WriteLine("    Scans the runtime Worlds folder and lets you load or create a .wld world.");
         Console.WriteLine();
         Console.WriteLine("Server startup:");
         Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--no-tui]");
