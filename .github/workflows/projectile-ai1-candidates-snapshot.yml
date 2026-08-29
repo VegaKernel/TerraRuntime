@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Extract targeted pinned aiStyle1 facts
+      - name: Inspect pinned aiStyle1 set-backed facts
         shell: bash
         run: |
           set -euo pipefail
@@ -33,15 +33,26 @@ jobs:
           done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
           test -n "$assembly"
           assembly_dir="$(dirname "$assembly")"
+
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/ai1/projectile.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/ai1/projectile-id.cs
+          .tools/ilspycmd --disable-updatecheck -l c "$assembly" > artifacts/ai1/classes.txt
+
+          nested="$(grep -E 'Terraria\.ID\.ProjectileID.*Sets' artifacts/ai1/classes.txt | head -n 1 | sed -E 's/^[^ ]+ //')"
+          if [[ -n "$nested" ]]; then
+            .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$nested" "$assembly" > artifacts/ai1/projectile-id-sets.cs || true
+          fi
+
           python3 - <<'PY'
           import re
           from pathlib import Path
 
-          source = Path('artifacts/ai1/projectile.cs').read_text(encoding='utf-8')
-          ids = Path('artifacts/ai1/projectile-id.cs').read_text(encoding='utf-8')
-          candidates = [51, 88, 981, 1006, 1124]
+          projectile = Path('artifacts/ai1/projectile.cs').read_text(encoding='utf-8')
+          projectile_id = Path('artifacts/ai1/projectile-id.cs').read_text(encoding='utf-8')
+          sets_path = Path('artifacts/ai1/projectile-id-sets.cs')
+          sets = sets_path.read_text(encoding='utf-8') if sets_path.exists() else ''
+          classes = Path('artifacts/ai1/classes.txt').read_text(encoding='utf-8')
+          candidates = (51, 1124)
 
           def compact(text):
               return ' '.join(text.split())
@@ -49,7 +60,7 @@ jobs:
           def method(src, name):
               m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', src)
               if not m:
-                  raise SystemExit(f'method not found: {name}')
+                  return '<method-not-found>'
               opening = src.find('{', m.end())
               depth = 0
               in_string = in_char = escaped = False
@@ -69,96 +80,53 @@ jobs:
                       continue
                   if in_string or in_char:
                       continue
-                  if c == '{':
-                      depth += 1
+                  if c == '{': depth += 1
                   elif c == '}':
                       depth -= 1
                       if depth == 0:
-                          return src[m.start():i + 1]
-              raise SystemExit(f'unterminated: {name}')
-
-          def exact_context(src, t, radius=1800, limit=20):
-              s = compact(src)
-              pattern = re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|(?<!\d){t}\s*(?:==|!=)\s*type(?!\d)')
-              out = []
-              for m in pattern.finditer(s):
-                  if len(out) >= limit:
-                      break
-                  out.append(s[max(0, m.start()-radius):min(len(s), m.end()+radius)])
-              return ' | '.join(out) if out else '<none>'
-
-          def exact_if_blocks(src, t):
-              s = compact(src)
-              blocks = []
-              pattern = re.compile(r'(?:else if|if) \(([^)]*type[^)]*)\) \{')
-              for m in pattern.finditer(s):
-                  condition = m.group(1)
-                  if not re.search(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|(?<!\d){t}\s*(?:==|!=)\s*type(?!\d)', condition):
-                      continue
-                  opening = s.find('{', m.start())
-                  depth = 0
-                  for i in range(opening, len(s)):
-                      if s[i] == '{':
-                          depth += 1
-                      elif s[i] == '}':
-                          depth -= 1
-                          if depth == 0:
-                              blocks.append(s[m.start():i+1])
-                              break
-              return ' | '.join(blocks) if blocks else '<none>'
-
-          def defaults_block(src, t):
-              s = compact(src)
-              m = re.search(rf'(?:else if|if) \(type == {t}\) \{{', s)
-              if not m:
-                  return '<none>'
-              opening = s.find('{', m.start())
-              depth = 0
-              for i in range(opening, len(s)):
-                  if s[i] == '{':
-                      depth += 1
-                  elif s[i] == '}':
-                      depth -= 1
-                      if depth == 0:
-                          return s[m.start():i+1]
+                          return src[m.start():i+1]
               return '<unterminated>'
 
-          set_defaults = method(source, 'SetDefaults')
-          ai001 = method(source, 'AI_001')
-          update = method(source, 'Update')
-          collision = method(source, 'GetCollisionParams')
-          movement = method(source, 'HandleMovement')
-          kill = method(source, 'Kill')
-          wind = method(source, 'ShouldUseWindPhysics')
-          can_cut = method(source, 'CanCutTiles')
+          def around(text, needle, radius=1800):
+              s = compact(text)
+              p = s.find(needle)
+              if p < 0:
+                  return '<none>'
+              return s[max(0, p-radius):min(len(s), p+len(needle)+radius)]
 
-          names = {int(v): n for n, v in re.findall(r'public const short\s+([A-Za-z0-9_]+)\s*=\s*(\d+)\s*;', ids)}
-          lines = []
+          def all_number_contexts(text, number, radius=450, limit=20):
+              s = compact(text)
+              out=[]
+              for m in re.finditer(rf'(?<!\d){number}(?!\d)', s):
+                  out.append(s[max(0,m.start()-radius):min(len(s),m.end()+radius)])
+                  if len(out) >= limit: break
+              return ' | '.join(out) if out else '<none>'
+
+          combined_sets = projectile_id + '\n' + sets
+          wind_method = method(projectile, 'ShouldUseWindPhysics')
+          can_cut_method = method(projectile, 'CanCutTiles')
+          set_defaults = method(projectile, 'SetDefaults')
+
+          lines = [
+              'projectile_should_use_wind=' + compact(wind_method),
+              'projectile_can_cut_tiles=' + compact(can_cut_method),
+              'wind_set_context=' + around(combined_sets, 'WindPhysicsImmunity', 3500),
+              'tile_cut_set_context=' + around(combined_sets, 'CanCutTiles', 2600),
+              'sets_type_listing=' + ' | '.join(line.strip() for line in classes.splitlines() if 'ProjectileID' in line and 'Sets' in line),
+          ]
           for t in candidates:
-              kill_block = exact_if_blocks(kill, t)
-              authoritative = [token for token in (
-                  'NewProjectile', 'KillTile', 'PlaceTile', 'NewItem', 'NewNPC',
-                  'SendData', 'netUpdate', 'WorldGen.', 'Explosion', 'Damage()')
-                  if token in kill_block]
               lines.extend([
-                  f'type={t} name={names.get(t,"<unnamed>")}',
-                  'defaults=' + defaults_block(set_defaults, t),
-                  'ai001=' + exact_context(ai001, t, 2600),
-                  'update=' + exact_context(update, t, 2200),
-                  'collision=' + exact_context(collision, t, 1800),
-                  'movement=' + exact_context(movement, t, 2200),
-                  'kill=' + kill_block,
-                  'kill_authoritative_tokens=' + (','.join(authoritative) if authoritative else '<none>'),
-                  'wind=' + exact_context(wind, t, 1800),
-                  'can_cut=' + exact_context(can_cut, t, 1800),
-                  '---'
+                  f'type{t}_projectile_id_context=' + all_number_contexts(projectile_id, t, 260, 8),
+                  f'type{t}_sets_context=' + all_number_contexts(combined_sets, t, 520, 30),
+                  f'type{t}_defaults_context=' + all_number_contexts(set_defaults, t, 900, 4),
               ])
 
-          Path('artifacts/ai1/targeted-ai1-facts.txt').write_text('\n'.join(lines)+'\n', encoding='utf-8')
+          Path('artifacts/ai1/seed-bone-shard-sets.txt').write_text('\n'.join(lines)+'\n', encoding='utf-8')
           print('\n'.join(lines))
           PY
+
       - uses: actions/upload-artifact@v4
         with:
-          name: projectile-targeted-ai1-facts
-          path: artifacts/ai1/targeted-ai1-facts.txt
+          name: projectile-seed-bone-shard-sets
+          path: artifacts/ai1/seed-bone-shard-sets.txt
           retention-days: 1
