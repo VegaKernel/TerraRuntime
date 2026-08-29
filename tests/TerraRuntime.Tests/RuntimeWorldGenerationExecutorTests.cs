@@ -100,9 +100,18 @@ public sealed class RuntimeWorldGenerationExecutorTests
         var request = new WorldGenerationRequest(provider.Id, "Deterministic", 0x1234UL, 64, 32);
         var first = new RuntimeWorldGenerationWorkspace(request.WidthTiles, request.HeightTiles);
         var second = new RuntimeWorldGenerationWorkspace(request.WidthTiles, request.HeightTiles);
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
-        WorldGenerationExecutionResult firstResult = RuntimeWorldGenerationExecutor.Execute(provider, in request, first);
-        WorldGenerationExecutionResult secondResult = RuntimeWorldGenerationExecutor.Execute(provider, in request, second);
+        WorldGenerationExecutionResult firstResult = RuntimeWorldGenerationExecutor.Execute(
+            provider,
+            in request,
+            first,
+            cancellationToken: cancellationToken);
+        WorldGenerationExecutionResult secondResult = RuntimeWorldGenerationExecutor.Execute(
+            provider,
+            in request,
+            second,
+            cancellationToken: cancellationToken);
 
         Assert.Equal(WorldGenerationExecutionStatus.Completed, firstResult.Status);
         Assert.Equal(WorldGenerationExecutionStatus.Completed, secondResult.Status);
@@ -125,7 +134,11 @@ public sealed class RuntimeWorldGenerationExecutorTests
         var request = new WorldGenerationRequest(provider.Id, "Broken", 1, 16, 16);
         var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
 
-        WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(provider, in request, workspace);
+        WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
+            provider,
+            in request,
+            workspace,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(WorldGenerationExecutionStatus.InvalidPlan, result.Status);
         Assert.Equal(id, result.PassId);
@@ -144,7 +157,11 @@ public sealed class RuntimeWorldGenerationExecutorTests
         var request = new WorldGenerationRequest(provider.Id, "Rng", 1, 16, 16);
         var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
 
-        WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(provider, in request, workspace);
+        WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
+            provider,
+            in request,
+            workspace,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(WorldGenerationExecutionStatus.UnsupportedRngMode, result.Status);
         Assert.Equal(id, result.PassId);
@@ -200,7 +217,8 @@ public sealed class RuntimeWorldGenerationExecutorTests
             provider,
             in request,
             workspace,
-            progress);
+            progress,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(WorldGenerationExecutionStatus.Completed, result.Status);
         Assert.Equal(RuntimeWorldGenerationExecutor.MaxProgressReportsPerPass, progress.Count);
