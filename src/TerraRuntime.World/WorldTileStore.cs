@@ -29,6 +29,7 @@ public sealed class WorldTileStore
             ? GC.AllocateUninitializedArray<WorldTile>((int)tileCount)
             : new WorldTile[(int)tileCount];
         LiquidUpdates = new WorldLiquidUpdateQueue(dimensions);
+        DirtySections = new DirtySectionTracker(dimensions);
     }
 
     /// <summary>
@@ -43,6 +44,12 @@ public sealed class WorldTileStore
     public WorldLiquidUpdateQueue LiquidUpdates { get; }
 
     /// <summary>
+    /// Network sections dirtied through the authoritative tile mutation API. Canonical world and snapshot
+    /// loaders write the private backing span directly, so publishing an initial world does not dirty every section.
+    /// </summary>
+    public DirtySectionTracker DirtySections { get; }
+
+    /// <summary>
     /// Validated immutable world-surface geometry from the canonical runtime metadata. It is attached only
     /// after the complete .wld has passed transactional validation, so ad-hoc/test stores may leave it unset.
     /// </summary>
@@ -52,7 +59,12 @@ public sealed class WorldTileStore
 
     public WorldTile Get(int x, int y) => _tiles[GetIndex(x, y)];
 
-    public void Set(int x, int y, in WorldTile tile) => _tiles[GetIndex(x, y)] = tile;
+    public void Set(int x, int y, in WorldTile tile)
+    {
+        int index = GetIndex(x, y);
+        _tiles[index] = tile;
+        DirtySections.MarkTileDirty(x, y);
+    }
 
     internal Span<WorldTile> Tiles => _tiles;
 
