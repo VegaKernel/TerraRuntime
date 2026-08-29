@@ -1,5 +1,7 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
+using TerraRuntime.HostContracts.WorldGeneration;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -8,6 +10,7 @@ namespace TerraRuntime.HostModuleFixture;
 public sealed class FixtureHostModule : ITerraRuntimeHostModule
 {
     public const string DashboardId = "fixture.dashboard";
+    public const string WorldGeneratorId = "fixture:worldgen";
 
     private string? dataDirectory;
     private ITerraRuntimeTerminalDashboardRegistry? terminalDashboards;
@@ -23,6 +26,14 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule
         terminalDashboards = environment.TerminalDashboards;
         if (!terminalDashboards.TryRegister(new FixtureDashboardProvider()))
             throw new InvalidOperationException("The fixture terminal dashboard could not be registered.");
+
+        TerraRuntimeWorldGeneratorRegistrationResult generatorRegistration =
+            environment.WorldGenerators.TryRegister(new FixtureWorldGenerator(), out _);
+        if (generatorRegistration != TerraRuntimeWorldGeneratorRegistrationResult.Registered)
+        {
+            throw new InvalidOperationException(
+                $"The fixture world generator could not be registered: {generatorRegistration}.");
+        }
 
         Directory.CreateDirectory(dataDirectory);
         await File.WriteAllTextAsync(
@@ -69,6 +80,26 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule
             Path.Combine(dataDirectory, "fixture-host-module.stopped"),
             "stopped",
             cancellationToken).ConfigureAwait(false);
+    }
+
+    private sealed class FixtureWorldGenerator : IWorldGenerationProvider
+    {
+        public WorldGeneratorId Id => new(WorldGeneratorId);
+
+        public void BuildPlan(in WorldGenerationRequest request, IWorldGenerationPlanBuilder builder)
+        {
+            builder.Add(
+                new WorldGenerationPassDescriptor(new WorldGenerationPassId("fixture:terrain")),
+                new FixtureWorldGenerationPass());
+        }
+    }
+
+    private sealed class FixtureWorldGenerationPass : IWorldGenerationPass
+    {
+        public void Execute(IWorldGenerationContext context)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+        }
     }
 
     private sealed class FixtureDashboardProvider : ITerraRuntimeTerminalDashboardProvider
