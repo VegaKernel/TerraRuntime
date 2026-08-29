@@ -58,6 +58,9 @@ internal static class TerminalUiSmoke
                     SelectDetailsScreen(app, workspace, Key.I, "Items", "ITEMS");
                     SelectDetailsScreen(app, workspace, Key.E, "Network", "NETWORK");
                     SelectDetailsScreen(app, workspace, Key.W, "World", "WORLD");
+                    AssertRendered(app.Driver!, "Sections");
+                    AssertRendered(app.Driver!, "Lookups");
+                    AssertRendered(app.Driver!, "Rebuild");
                     SelectDetailsScreen(app, workspace, Key.L, "Logs", "LOG");
                     SelectDetailsScreen(app, workspace, Key.O, "Overview", "Running");
 
@@ -77,7 +80,7 @@ internal static class TerminalUiSmoke
 
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the System Dashboard, external-dashboard transition, " +
-                "all Details menu hotkeys, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
+                "all Details menu hotkeys, section-cache telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -429,6 +432,18 @@ internal static class TerminalUiSmoke
                 RuntimeDayTime: true,
                 RuntimeMoonPhase: 2,
                 RuntimeSlimeRainTime: 300d,
-                RuntimeDayRate: 1);
+                RuntimeDayRate: 1,
+                SectionCacheAvailable: true,
+                SectionCacheDirtyBacklog: 3,
+                SectionCacheEntries: 12,
+                SectionCacheMaximumEntries: 64,
+                SectionCacheBytes: 2L * 1024 * 1024,
+                SectionCachePublished: 9,
+                SectionCacheActiveWorkers: 2,
+                SectionCachePendingWork: 4,
+                SectionCacheHits: 100,
+                SectionCacheMisses: 8,
+                SectionCacheStaleReads: 2,
+                SectionCacheWaits: 3);
     }
 }
