@@ -6,6 +6,7 @@ public sealed class TerrariaConnectionPolicyState
     private readonly TerrariaConnectionPolicyOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly long _connectedTimestamp;
+    private readonly TaskCompletionSource<bool> _handshakeSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private long _lastInboundTimestamp;
     private bool _handshakeComplete;
     private TerrariaConnectionStopReason _stopReason;
@@ -23,6 +24,8 @@ public sealed class TerrariaConnectionPolicyState
     internal TerrariaConnectionPolicyOptions Options => _options;
 
     internal TimeProvider TimeProvider => _timeProvider;
+
+    internal Task HandshakeSignal => _handshakeSignal.Task;
 
     public bool HandshakeComplete
     {
@@ -68,8 +71,10 @@ public sealed class TerrariaConnectionPolicyState
 
             _handshakeComplete = true;
             _lastInboundTimestamp = _timeProvider.GetTimestamp();
-            return true;
         }
+
+        _handshakeSignal.TrySetResult(true);
+        return true;
     }
 
     public bool TryStop(TerrariaConnectionStopReason reason)
