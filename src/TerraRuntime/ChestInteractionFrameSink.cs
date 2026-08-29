@@ -15,7 +15,7 @@ public enum ChestInteractionFrameStopReason : byte
 }
 
 /// <summary>
-/// Connection-owned protocol-326 chest boundary for packets 31, 32 and 33. The socket thread decodes only;
+/// Connection-owned protocol-326 chest boundary for packets 31, 32, 33 and 69. The socket thread decodes only;
 /// every world-chest decision is posted with the exact playing-session identity to the authoritative game loop.
 /// </summary>
 public sealed class ChestInteractionFrameSink : ITerrariaFrameSink
@@ -53,7 +53,8 @@ public sealed class ChestInteractionFrameSink : ITerrariaFrameSink
         TerrariaMessageId messageId = (TerrariaMessageId)frame.MessageId;
         if (messageId is not TerrariaMessageId.RequestChestOpen and
             not TerrariaMessageId.SyncChestItem and
-            not TerrariaMessageId.SyncPlayerChest)
+            not TerrariaMessageId.SyncPlayerChest and
+            not TerrariaMessageId.ChestName)
         {
             return inner.OnFrame(in frame);
         }
@@ -82,7 +83,7 @@ public sealed class ChestInteractionFrameSink : ITerrariaFrameSink
                 break;
             }
 
-            default:
+            case TerrariaMessageId.SyncPlayerChest:
             {
                 TerrariaChestDecodeResult decode = TerrariaChestCodec.TryDecodeActiveChest(in frame, out TerrariaActiveChestState state);
                 if (decode != TerrariaChestDecodeResult.Decoded)
@@ -90,6 +91,18 @@ public sealed class ChestInteractionFrameSink : ITerrariaFrameSink
                 posted = ingress.TryPostActiveState(connection, in state);
                 break;
             }
+
+            case TerrariaMessageId.ChestName:
+            {
+                TerrariaChestDecodeResult decode = TerrariaChestCodec.TryDecodeNameLookup(in frame, out TerrariaChestNameLookupRequest request);
+                if (decode != TerrariaChestDecodeResult.Decoded)
+                    return Stop(ChestInteractionFrameStopReason.MalformedChestPacket);
+                posted = ingress.TryPostNameLookup(connection, in request);
+                break;
+            }
+
+            default:
+                return inner.OnFrame(in frame);
         }
 
         return posted
