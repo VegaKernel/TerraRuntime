@@ -60,7 +60,7 @@ internal static class TerminalUiSmoke
                     AssertRendered(app.Driver!, "capacity 2");
                     AssertRendered(app.Driver!, "Stops       protocol 2");
                     AssertRendered(app.Driver!, "Frame reject malformed 11");
-                    AssertRendered(app.Driver!, "Timeouts    handshake 7");
+                    AssertRendered(app.Driver!, "join 10");
                     SelectDetailsScreen(app, workspace, Key.W, "World", "WORLD");
                     AssertRendered(app.Driver!, "Sections");
                     AssertRendered(app.Driver!, "Lookups");
@@ -430,6 +430,7 @@ internal static class TerminalUiSmoke
                 StopApplicationStopped: 8,
                 StopHandshakeTimeout: 7,
                 StopIdleTimeout: 9,
+                StopJoinTimeout: 10,
                 RejectedMalformedProtocol: 11,
                 RejectedRateLimited: 12,
                 RejectedInvalidState: 13,
