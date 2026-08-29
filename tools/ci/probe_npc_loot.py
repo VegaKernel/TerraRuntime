@@ -2,7 +2,7 @@
 """Verify the initial TerrariaServer 1.4.5.8 NPC-loot source contract.
 
 The committed runtime never contains decompiled Terraria source. This probe pins only the narrow facts needed by
-TerraRuntime's first Blue Slime loot slice and emits compact factory contexts for review.
+TerraRuntime's first Blue Slime loot slice: registration order plus Common/Expert/ExtraGel execution semantics.
 """
 
 from __future__ import annotations
@@ -33,31 +33,22 @@ def require(source: str, needle: str, description: str) -> None:
         raise SystemExit(f"Pinned Terraria 1.4.5.8 contract changed: {description}.")
 
 
-def contexts(source: str, needle: str, radius: int = 700, limit: int = 8) -> str:
-    normalized = compact(source)
-    found: list[str] = []
-    offset = 0
-    while len(found) < limit:
-        index = normalized.find(needle, offset)
-        if index < 0:
-            break
-        start = max(0, index - radius)
-        end = min(len(normalized), index + len(needle) + radius)
-        found.append(normalized[start:end])
-        offset = index + len(needle)
-    return " || ".join(found) if found else "<none>"
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--drop-database", required=True, type=Path)
     parser.add_argument("--drop-rule", required=True, type=Path)
+    parser.add_argument("--common-drop", required=True, type=Path)
+    parser.add_argument("--extra-gel", required=True, type=Path)
+    parser.add_argument("--expert-mode", required=True, type=Path)
     parser.add_argument("--npc-id", required=True, type=Path)
     parser.add_argument("--item-id", required=True, type=Path)
     args = parser.parse_args()
 
     drop_database = args.drop_database.read_text(encoding="utf-8")
     drop_rule = args.drop_rule.read_text(encoding="utf-8")
+    common_drop = args.common_drop.read_text(encoding="utf-8")
+    extra_gel = args.extra_gel.read_text(encoding="utf-8")
+    expert_mode = args.expert_mode.read_text(encoding="utf-8")
     npc_ids = args.npc_id.read_text(encoding="utf-8")
     item_ids = args.item_id.read_text(encoding="utf-8")
 
@@ -71,8 +62,6 @@ def main() -> int:
     if slime_staff != 1309:
         raise SystemExit(f"Expected ItemID.SlimeStaff=1309, got {slime_staff}.")
 
-    # Blue Slime is a member of npcNetIds11 and is not part of the removal set npcNetIds13. The exact
-    # registration order is important: Gel first, Slime Staff second.
     require(
         drop_database,
         "int[] npcNetIds11 = new int[18] { 1, 16, 138, 141, 147, 184, 187, 433, 204, 302, 333, 334, 335, 336, 535, 658, 659, 660 };",
@@ -89,14 +78,44 @@ def main() -> int:
         "standard slime Slime Staff rule changed",
     )
 
+    require(
+        drop_rule,
+        "return new DropBasedOnExtraGel(Common(itemId, chanceDenominator, minimumDropped, maximumDropped), Common(itemId, chanceDenominator, minimumDropped * num, maximumDropped * num));",
+        "Gel factory no longer selects normal vs doubled CommonDrop",
+    )
+    require(
+        drop_rule,
+        "return new DropBasedOnExpertMode(Common(itemId, chanceDenominatorInNormal), Common(itemId, chanceDenominatorInExpert));",
+        "NormalvsExpert factory changed",
+    )
+
+    # CommonDrop is luck-scaled: chance roll occurs before the stack roll, and stack max is inclusive.
+    require(common_drop, "info.player.RollLuck(chanceDenominator)", "CommonDrop no longer uses player RollLuck")
+    require(common_drop, "< chanceNumerator", "CommonDrop chance numerator comparison changed")
+    require(
+        common_drop,
+        "info.rng.Next(amountDroppedMinimum, amountDroppedMaximum + 1)",
+        "CommonDrop stack range/order changed",
+    )
+
+    require(extra_gel, "info.player.extraGel", "DropBasedOnExtraGel condition changed")
+    require(extra_gel, "ruleForGel", "DropBasedOnExtraGel normal rule branch changed")
+    require(extra_gel, "ruleForGelExtra", "DropBasedOnExtraGel extra-gel branch changed")
+
+    require(expert_mode, "info.IsExpertMode", "DropBasedOnExpertMode condition changed")
+    require(expert_mode, "ruleForNormalMode", "DropBasedOnExpertMode normal branch changed")
+    require(expert_mode, "ruleForExpertMode", "DropBasedOnExpertMode expert branch changed")
+
     print("npc_id_blue_slime=1")
     print("item_id_gel=23")
     print("item_id_slime_staff=1309")
     print("blue_slime_gel_rule=Gel(1,1,2)")
     print("blue_slime_slime_staff_rule=NormalvsExpert(1309,10000,7000)")
     print("blue_slime_rule_order=gel_then_slime_staff")
-    print("gel_factory_context=" + contexts(drop_rule, " Gel(", radius=1100))
-    print("normal_vs_expert_factory_context=" + contexts(drop_rule, " NormalvsExpert(", radius=1100))
+    print("common_drop_chance=player.RollLuck(denominator)<numerator")
+    print("common_drop_stack=rng.Next(min,max+1)")
+    print("gel_branch=player.extraGel?doubled:normal")
+    print("difficulty_branch=IsExpertMode?expert:normal")
     return 0
 
 

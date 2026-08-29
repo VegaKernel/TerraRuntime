@@ -70,21 +70,19 @@ jobs:
           assembly_dir="$(dirname "$assembly")"
           printf 'source_assembly_sha256=%s path=%s\n' "$expected_sha256" "$assembly"
 
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" \
-            -t Terraria.GameContent.ItemDropRules.ItemDropDatabase "$assembly" \
-            > artifacts/source-contract/item-drop-database.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" \
-            -t Terraria.GameContent.ItemDropRules.ItemDropRule "$assembly" \
-            > artifacts/source-contract/item-drop-rule.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" \
-            -t Terraria.ID.NPCID "$assembly" \
-            > artifacts/source-contract/npc-id.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" \
-            -t Terraria.ID.ItemID "$assembly" \
-            > artifacts/source-contract/item-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.ItemDropDatabase "$assembly" > artifacts/source-contract/item-drop-database.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.ItemDropRule "$assembly" > artifacts/source-contract/item-drop-rule.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.CommonDrop "$assembly" > artifacts/source-contract/common-drop.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.DropBasedOnExtraGel "$assembly" > artifacts/source-contract/extra-gel.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.DropBasedOnExpertMode "$assembly" > artifacts/source-contract/expert-mode.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.NPCID "$assembly" > artifacts/source-contract/npc-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" > artifacts/source-contract/item-id.cs
 
           python3 tools/ci/probe_npc_loot.py \
             --drop-database artifacts/source-contract/item-drop-database.cs \
             --drop-rule artifacts/source-contract/item-drop-rule.cs \
+            --common-drop artifacts/source-contract/common-drop.cs \
+            --extra-gel artifacts/source-contract/extra-gel.cs \
+            --expert-mode artifacts/source-contract/expert-mode.cs \
             --npc-id artifacts/source-contract/npc-id.cs \
             --item-id artifacts/source-contract/item-id.cs
