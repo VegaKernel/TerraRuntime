@@ -155,15 +155,14 @@ public static class StartupProgram
             $"Generating world '{request.Generation.WorldName}' with " +
             $"'{request.Generation.GeneratorId.Value}' " +
             $"({request.Generation.WidthTiles}x{request.Generation.HeightTiles}, " +
-            $"seed={request.Generation.Seed})...");
+            $"seed={request.Generation.Seed}, mode={request.Generation.Options.GameMode}, " +
+            $"evil={request.Generation.Options.Evil})...");
 
         RuntimeWorldCreationPersistenceResult creation = persistence.TryCreateAndPersist(
             request.Generation,
             request.OutputPath,
             Guid.NewGuid(),
             worldId: RandomNumberGenerator.GetInt32(1, int.MaxValue),
-            gameMode: 0,
-            crimson: false,
             creationTimeBinary: nowBinary,
             lastPlayedBinary: nowBinary);
         if (!creation.Succeeded || string.IsNullOrWhiteSpace(creation.WorldPath))
@@ -285,9 +284,9 @@ public static class StartupProgram
         Console.WriteLine("World generators:");
         Console.WriteLine("  TerraRuntime.Server --list-world-generators");
         Console.WriteLine("    Lists built-in and trusted-host registered generators.");
-        Console.WriteLine("  TerraRuntime.Server --create-world <name> --world-generator <id> --world-seed <uint64> --world-width <tiles> --world-height <tiles> [--world-output <path.wld>] [server options]");
+        Console.WriteLine("  TerraRuntime.Server --create-world <name> --world-generator <id> --world-seed <uint64> --world-width <tiles> --world-height <tiles> [--world-game-mode <classic|expert|master|journey>] [--world-evil <corruption|crimson>] [--world-output <path.wld>] [server options]");
         Console.WriteLine("    Creates a validated Terraria 1.4.5.8 .wld without overwriting an existing world, then starts it.");
-        Console.WriteLine("    Fresh-world defaults currently use Classic difficulty and Corruption.");
+        Console.WriteLine("    Game mode defaults to Classic; world evil defaults to Corruption.");
         Console.WriteLine();
         Console.WriteLine("Terminal UI is enabled by default. Use --no-tui to disable it.");
         Console.WriteLine("Smoke modes: --loop-smoke, --protocol-smoke, --network-smoke, --world-smoke, --tui-smoke.");
