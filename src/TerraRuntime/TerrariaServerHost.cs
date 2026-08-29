@@ -459,7 +459,8 @@ public static class TerrariaServerHost
                             CapturedAtUtc: DateTimeOffset.UtcNow),
                         worldClockTelemetry,
                         () => sectionCacheRebuild.Snapshot,
-                        worldSaveService.CaptureStatus);
+                        worldSaveService.CaptureStatus,
+                        worldSaveService.TryRequestSave);
                     terminalUi = TerminalUiHost.Start(
                         dashboardOperations,
                         playerOperations,
