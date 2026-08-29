@@ -20,7 +20,6 @@ def verify_wire_contract(source: str) -> None:
             break;
         """
     )
-
     if expected not in source:
         raise SystemExit(
             "Terraria 1.4.5.8 packet 17 serialization contract changed: expected "
@@ -29,29 +28,30 @@ def verify_wire_contract(source: str) -> None:
 
 
 def verify_action_semantics(source: str) -> None:
-    candidates = [match.start() for match in re.finditer(r"case 17:", source)]
-    for start in candidates:
-        # MessageBuffer contains several switches. The packet-17 receive branch is the candidate that
-        # reads the fixed packet payload and then dispatches action 0/1 to WorldGen tile mutations.
-        region = source[start : start + 24000]
-        if region.count("ReadInt16()") < 3 or region.count("ReadByte()") < 2:
-            continue
-
+    kill_positions = [match.start() for match in re.finditer(r"WorldGen\.KillTile\(", source)]
+    for kill_position in kill_positions:
+        start = max(0, kill_position - 8000)
+        end = min(len(source), kill_position + 16000)
+        region = source[start:end]
         kill = re.search(r"case 0:.*?WorldGen\.KillTile\(", region, re.DOTALL)
         place = re.search(r"case 1:.*?WorldGen\.PlaceTile\(", region, re.DOTALL)
-        if kill is None or place is None:
+        if kill is None or place is None or kill.start() > place.start():
             continue
 
-        if kill.start() > place.start():
+        prefix = region[: kill.start()]
+        if prefix.count("ReadInt16()") < 3 or prefix.count("ReadByte()") < 2:
             continue
-
-        # Keep the baseline intentionally narrow. More action IDs must be added only when their exact
-        # server behavior is needed by TerraRuntime gameplay.
         return
 
+    # Keep diagnostics intentionally bounded. This is only source-contract evidence, not a vendored source copy.
+    print(f"diagnostic_killtile_occurrences={len(kill_positions)}")
+    for index, position in enumerate(kill_positions[:4]):
+        context = source[max(0, position - 500) : min(len(source), position + 1000)]
+        print(f"diagnostic_killtile_context_{index}={context}")
+
     raise SystemExit(
-        "Terraria 1.4.5.8 packet 17 receive semantics changed: expected action 0 -> "
-        "WorldGen.KillTile and action 1 -> WorldGen.PlaceTile after the fixed payload read."
+        "Terraria 1.4.5.8 packet 17 receive semantics were not recognized: expected action 0/1 "
+        "tile mutation dispatch near the packet payload reader."
     )
 
 
