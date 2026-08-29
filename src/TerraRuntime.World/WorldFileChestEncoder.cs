@@ -14,7 +14,8 @@ public enum WorldFileChestEncodeResult : byte
     InvalidItemState = 6,
     InvalidItemType = 7,
     DestinationNotWritable = 8,
-    WriteFailed = 9
+    WriteFailed = 9,
+    DuplicateChestCoordinates = 10
 }
 
 /// <summary>
@@ -91,6 +92,7 @@ public static class WorldFileChestEncoder
         encodedLength = sizeof(short);
         int width = dimensions.WidthTiles;
         int height = dimensions.HeightTiles;
+        var positions = new HashSet<long>();
 
         for (int index = 0; index < source.Length; index++)
         {
@@ -104,6 +106,11 @@ public static class WorldFileChestEncoder
             {
                 return WorldFileChestEncodeResult.InvalidChestCoordinates;
             }
+
+            long positionKey = ((long)(uint)chest.X << 32) | (uint)chest.Y;
+            if (!positions.Add(positionKey))
+                return WorldFileChestEncodeResult.DuplicateChestCoordinates;
+
             if (chest.Name is null)
                 return WorldFileChestEncodeResult.InvalidName;
             if (chest.Items is null || chest.Items.Length > MaximumRuntimeItemSlots)
