@@ -59,7 +59,7 @@ public sealed class TerrariaFrameDecoderFuzzTests
             Assert.True(
                 exception is null,
                 $"Sample {sample} with {length} bytes escaped the decoder contract: {exception}");
-            Assert.InRange(buffer.Length, 0, bytes.LongLength);
+            Assert.InRange(buffer.Length, 0L, bytes.LongLength);
         }
     }
 
@@ -79,7 +79,9 @@ public sealed class TerrariaFrameDecoderFuzzTests
             frame.PacketLength,
             (ushort)TerrariaFrameDecoderOptions.MinimumFrameLength,
             (ushort)options.MaxFrameLength);
-        Assert.Equal(frame.PacketLength - TerrariaFrameDecoderOptions.MinimumFrameLength, frame.Payload.Length);
+        Assert.Equal(
+            (long)frame.PacketLength - TerrariaFrameDecoderOptions.MinimumFrameLength,
+            frame.Payload.Length);
     }
 
     private static uint Next(ref uint state)
