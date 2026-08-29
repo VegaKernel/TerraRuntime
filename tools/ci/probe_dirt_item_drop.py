@@ -39,9 +39,10 @@ def extract_method(source: str, signature: str) -> str:
     raise SystemExit(f"Method body did not terminate: {signature}")
 
 
-def signatures(source: str, name: str) -> list[str]:
+def signatures(source: str, name: str, require_static: bool = True) -> list[str]:
+    static = r" static" if require_static else r"(?: static)?"
     pattern = re.compile(
-        rf"^[ \t]*(?:public|private|internal) static [^\r\n{{;]*\b{re.escape(name)}\([^\r\n)]*\)",
+        rf"^[ \t]*(?:public|private|internal){static} [^\r\n{{;]*\b{re.escape(name)}\([^\r\n)]*\)",
         re.MULTILINE,
     )
     return [match.group(0).strip() for match in pattern.finditer(source)]
@@ -114,12 +115,41 @@ def main() -> int:
     if vector is None:
         raise SystemExit("Pinned vector-based Item.NewItem signature changed.")
     vector_body = compact(extract_method(item, vector))
+    require(vector_body, "item.Prefix(prefix);", "spawn prefix application")
+    require(
+        vector_body,
+        "worldItem.Center = center;",
+        "spawn center assignment",
+    )
+    require(
+        vector_body,
+        "worldItem.velocity.X = (float)Main.rand.Next(-30, 31) * 0.1f; worldItem.velocity.Y = (float)Main.rand.Next(-40, -15) * 0.1f;",
+        "ordinary-gravity randomized velocity",
+    )
+    require(
+        vector_body,
+        "else if (Main.netMode == 2 && !noBroadcast) { NetMessage.SendData(21, -1, -1, null, num, (float)ownership); worldItem.ApplySpawnOwnership(ownership, _DefaultAssignItemsToNewPlayer ?? Main.myPlayer); }",
+        "server packet-21 broadcast before spawn ownership",
+    )
 
-    print(f"vector_new_item_signature={vector}")
-    print(f"vector_new_item_body={vector_body[:30000]}")
+    prefix_signatures = signatures(item, "Prefix", require_static=False)
+    can_prefix_signatures = signatures(item, "CanHavePrefixes", require_static=False)
+    print("prefix_signatures_begin")
+    for signature in prefix_signatures:
+        print(signature)
+        print(compact(extract_method(item, signature))[:12000])
+    print("prefix_signatures_end")
+    print("can_prefix_signatures_begin")
+    for signature in can_prefix_signatures:
+        print(signature)
+        print(compact(extract_method(item, signature))[:12000])
+    print("can_prefix_signatures_end")
+
     print("dirt_drop_item=2")
     print("dirt_drop_stack=1")
     print("dirt_drop_center=x*16+8,y*16+8")
+    print("dirt_drop_velocity_x=Main.rand.Next(-30,31)*0.1")
+    print("dirt_drop_velocity_y=Main.rand.Next(-40,-15)*0.1")
     return 0
 
 
