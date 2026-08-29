@@ -19,12 +19,15 @@ Views consume immutable, bounded operations snapshots. Mutations cross explicit 
 - [x] No-argument startup scans the runtime `Worlds` directory and lets the operator choose a `.wld` world.
 - [x] Views consume immutable/bounded operations snapshots instead of mutable runtime stores.
 - [x] Administrative interest-management mutation crosses the authoritative command boundary.
+- [x] Manual world checkpoint requests cross `IWorldOperations.TryRequestSave()` and the persistence ingress instead of exposing the save service to the UI.
 - [x] TUI runs independently from the authoritative loop and TUI failure/exit does not stop the server.
 - [x] Dashboard, Players, NPCs, Projectiles, Items, Network, World and Logs views are implemented.
 - [x] World view exposes bounded runtime-owned save/checkpoint status without exposing the persistence service or mutable tile shadow.
+- [x] Network view exposes subsystem-owned admission rejection, categorized connection-stop and normalized frame-rejection telemetry through a bounded snapshot.
 - [x] Trusted CoreCLR host modules may contribute independent local dashboard roots through host contracts.
 - [x] CoreCLR and Linux/Windows NativeAOT CI exercise the TUI smoke path.
 - [x] The smoke path exercises the real Details MenuBar hotkeys and framebuffer rendering for every built-in detail view.
+- [x] The smoke path exercises the real Actions → Save world checkpoint MenuBar path and verifies pending persistence state.
 - [ ] Remote administration protocol/adapter.
 - [ ] Separate reusable remote administration client.
 - [ ] Dynamic client-side/plugin UI windows for a future remote CoreCLR administration client.
@@ -38,8 +41,8 @@ The standalone server has eight exercised runtime-owned operational views:
 - **NPCs** consumes `INpcOperations` and `RuntimeNpcsSnapshot`. It observes committed authoritative NPC state and exposes bounded identity, motion, target/AI and simulation/collision flags without exposing `RuntimeNpcStore`.
 - **Projectiles** consumes `IProjectileOperations` and `RuntimeProjectilesSnapshot`. It groups committed authoritative projectiles by `(spawner, projectile type)`, sorts the largest groups first and exposes representative motion plus bounded damage/knockback maxima.
 - **Items** consumes `IWorldItemOperations` and `RuntimeWorldItemsSnapshot`. It groups authoritative dropped items by item net ID and exposes drop count, aggregate stack, reservation/shimmer counts, maximum stack and representative position.
-- **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It shows admission/registration state, player/NPC/projectile/item replication counters, inbound rates, bounded outbound queue/backpressure telemetry and rejected traffic.
-- **World** consumes `IWorldOperations` and `RuntimeWorldSnapshot`. It exposes world identity, dimensions, persisted object/NPC counts, startup/cache timings, authoritative world-clock state, section-cache lookup/rebuild telemetry and bounded save/checkpoint lifecycle status.
+- **Network** consumes `INetworkOperations` and `RuntimeNetworkSnapshot`. It shows admission/registration state, capacity/rate admission rejects, player/NPC/projectile/item replication counters, inbound rates, bounded outbound queue/backpressure telemetry, categorized terminal connection-stop causes and normalized frame-rejection categories.
+- **World** consumes `IWorldOperations` and `RuntimeWorldSnapshot`. It exposes world identity, dimensions, persisted object/NPC counts, startup/cache timings, authoritative world-clock state, section-cache lookup/rebuild telemetry and bounded save/checkpoint lifecycle status. The same operations interface exposes the bounded manual checkpoint request.
 - **Logs** consumes `ILogOperations` over a bounded `RuntimeLogBuffer`. It supports bounded runtime log observation independently of the plain-console sink.
 
 Trusted host modules may also contribute **independent dashboard roots** through `ITerraRuntimeTerminalDashboardSource` / `ITerraRuntimeTerminalDashboardProvider`. TerraRuntime keeps its System Dashboard intact; host modules do not inject arbitrary controls into the built-in runtime-owned detail screens.
@@ -53,12 +56,16 @@ Trusted host modules may also contribute **independent dashboard roots** through
 - TUI initialization/runtime failure is non-fatal and falls back to plain-console behavior.
 - `Console.Out` and `Console.Error` are not globally replaced. Host-owned console output is suppressed only while the full-screen UI is active; the bounded log read model continues receiving events.
 - Runtime/network telemetry comes from subsystem-owned counters rather than being reconstructed in the view.
+- Admission rejection telemetry distinguishes capacity pressure from rate rejection; terminal connection stops and frame rejections are normalized before reaching the UI snapshot.
 - NPC/projectile/item UI projections are observers of authoritative state. They do not become primary replication owners merely because the operator can see them.
 - World-clock, section-cache and persistence telemetry are exposed through bounded operations snapshots rather than direct mutable runtime references.
 - Persistence status is published by the save subsystem: the TUI does not inspect `WorldSaveCoordinator`, mutable tile-shadow state or file-writer internals directly.
+- The manual save action calls `IWorldOperations.TryRequestSave()`. Accepted requests are observable as pending persistence state; rejected requests are reported explicitly rather than silently disappearing.
 - `--tui-smoke` uses the Terminal.Gui ANSI test driver and validates actual framebuffer contents.
 - The smoke enters `Details` through the real MenuBar and selects Overview, Players, NPCs, Projectiles, Items, Network, World and Logs through their mnemonics. This prevents duplicated/ambiguous hotkeys from silently surviving CI.
+- The Network smoke verifies categorized admission, connection-stop and frame-rejection telemetry with non-zero synthetic values, not only the Network heading.
 - The World smoke verifies rendered section-cache and world-save telemetry, not merely the World screen heading.
+- The smoke opens `Actions` through the real MenuBar, selects `Save world checkpoint`, switches to World and verifies rendered `request pending` state.
 - CoreCLR CI and Linux/Windows NativeAOT jobs exercise the same TUI smoke path.
 
 ## Dependency shape
@@ -127,7 +134,7 @@ Rules:
 
 - snapshots are immutable and bounded;
 - the TUI may poll snapshots from its own event loop/thread;
-- administrative mutations are marshalled through the authoritative command boundary;
+- administrative mutations are marshalled through the authoritative command/persistence ingress boundary;
 - local UI receives no privileged mutable-state access merely because it is in-process;
 - telemetry is calculated or exposed by the subsystem that owns the truth;
 - existing thread-safe counters should be reused instead of adding duplicate hot-path accounting;
@@ -147,6 +154,9 @@ TerraRuntime currently owns and publishes UI-facing measurements for:
 - projectile replication and grouped committed projectile state;
 - world-item replication and grouped authoritative dropped-item state;
 - aggregate and bounded per-connection inbound/outbound pressure/rate detail;
+- admission acceptance/rejection totals including capacity and rate rejection categories;
+- categorized terminal connection-stop causes including protocol/rate/handshake/unsupported/slow-client/timeouts/application-stop;
+- normalized frame-rejection categories including malformed protocol, rate limiting, invalid state, gameplay rejection and backpressure;
 - authoritative player identity/vitals/movement state;
 - authoritative world-clock state;
 - world/cache startup state and timings;
@@ -160,7 +170,7 @@ The TUI formats these values but does not invent them.
 
 ### Dashboard
 
-The dashboard is deliberately compact. It provides lifecycle/world/TPS/process/network summary, a bounded world/player/chat/log overview and the result of the most recent administrative interest-management request.
+The dashboard is deliberately compact. It provides lifecycle/world/TPS/process/network summary, a bounded world/player/chat/log overview and the result of the most recent administrative request.
 
 ### Players
 
@@ -182,11 +192,15 @@ Dropped items are grouped by item net ID. The view intentionally shows operation
 
 Network detail reuses subsystem-owned accounting for inbound traffic, outbound queues and replication counters. It includes player appearance/equipment/movement, NPC, projectile and world-item replication telemetry.
 
+Admission rejects are split into capacity and rate causes. Terminal connection stops are accumulated after the socket run completes and projected as protocol failure, rate-limited, invalid-handshake, unsupported-protocol, slow-client, handshake-timeout, idle-timeout and application-stop counters. Frame rejection telemetry is separately normalized into malformed-protocol, rate-limited, invalid-state, gameplay-rejected and backpressure categories. The view does not reconstruct either classification from logs.
+
 ### World
 
 World detail includes identity, dimensions, persisted object counts, startup/cache timings and authoritative clock state. Section-cache status exposes entries/capacity/bytes/dirty backlog, lookup hit/miss/stale/waits and rebuild queued/active/published values when the cache telemetry source is available.
 
 Persistence status is also projected through `RuntimeWorldPersistenceSnapshot`: tile-shadow synchronization/readiness, pending dirty tile sections, pending save request, active/pending background write, and accepted/started/completed/coalesced/failed save counts. `RuntimeWorldTileChestSaveService` publishes the thread-safe status; `LocalRuntimeWorldOperations` maps it into the UI-facing immutable snapshot, so the TUI never reaches into the coordinator or mutable persistence state.
+
+`Actions → Save world checkpoint` calls `IWorldOperations.TryRequestSave()` and then displays the World view. The action therefore uses the same persistence ingress as other callers. A successful request is visible as `request pending`; a rejected request retains idle persistence state and emits explicit administrative rejection feedback.
 
 ### Logs
 
@@ -197,13 +211,16 @@ Logs remain bounded and independent of console ownership. Full-screen TUI operat
 Implemented:
 
 - enable interest management through the bounded authoritative command ingress;
-- disable interest management through the same boundary.
+- disable interest management through the same boundary;
+- request a canonical world checkpoint through `IWorldOperations.TryRequestSave()` and the persistence ingress.
+
+The manual checkpoint path has regression coverage at the service/operations boundary and through the real Terminal.Gui MenuBar path. Both accepted and rejected requests are covered; the NativeAOT/CoreCLR TUI smoke carries the accepted path through framebuffer rendering.
 
 Rules for future actions:
 
 - no direct mutable runtime references in UI callbacks;
 - no bypass around command queue/budget/lifecycle rules;
-- report queue rejection/failure honestly;
+- report queue/request rejection honestly;
 - separate requesting an operation from observing its eventual result where the operation is asynchronous;
 - keep remote authorization concerns outside the local-only UI until a real remote boundary exists.
 
@@ -216,11 +233,11 @@ Future slices should be driven by operational need rather than by filling screen
 Useful candidates now are:
 
 - richer player/NPC/projectile/item navigation and sorting only when compact/grouped views become operationally limiting;
-- additional packet/category telemetry only where the network subsystem already owns trustworthy counters;
-- a manual save/checkpoint administrative action only after it is exposed through an explicit operations/command boundary rather than by handing the UI the persistence service;
-- more administrative actions only after explicit runtime operations exist.
+- deeper packet/category/security telemetry only where the owning subsystem already exposes trustworthy bounded counters;
+- more administrative actions only after explicit runtime operations exist;
+- configurable layout/long-term UX only after concrete operator pressure justifies the complexity.
 
-Section-cache rebuild status and save/checkpoint status are no longer future work: both are already exposed by the World operations snapshot/view and exercised by the framebuffer smoke.
+Section-cache rebuild status, save/checkpoint status, the manual save/checkpoint action and categorized admission/connection/frame rejection telemetry are no longer future work: they are already exposed through operations/view boundaries and exercised by framebuffer smoke coverage.
 
 ## Future remote client, deferred
 
@@ -266,4 +283,4 @@ small operations/read-model interface
 TerraRuntime snapshot/authoritative-command boundary
 ```
 
-The standalone server exercises that shape without direct mutable-state access, without blocking the authoritative loop and without making TUI availability a server-readiness requirement. A future remote-client milestone should prove reuse by substituting a remote operations implementation only when that client is actually being built.
+The standalone server exercises that shape without direct mutable-state access, without blocking the authoritative loop and without making TUI availability a server-readiness requirement. Manual checkpoint requests and categorized network rejection/stop telemetry now use the same bounded operations model. A future remote-client milestone should prove reuse by substituting a remote operations implementation only when that client is actually being built.
