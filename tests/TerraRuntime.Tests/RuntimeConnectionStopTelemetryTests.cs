@@ -20,4 +20,24 @@ public sealed class RuntimeConnectionStopTelemetryTests
         Assert.Equal(2, snapshot.JoinTimeout);
         Assert.Equal(1, snapshot.ProtocolFailures);
     }
+
+    [Fact]
+    public void Snapshot_keeps_unsupported_protocol_frame_rejection_and_application_stop_distinct()
+    {
+        var telemetry = new RuntimeConnectionStopTelemetry();
+
+        telemetry.Record(TerrariaConnectionStopReason.UnsupportedProtocol);
+        telemetry.Record(TerrariaConnectionStopReason.UnsupportedProtocol);
+        telemetry.Record(TerrariaConnectionStopReason.FrameRejected);
+        telemetry.Record(TerrariaConnectionStopReason.ApplicationStopped);
+        telemetry.Record(TerrariaConnectionStopReason.None);
+
+        RuntimeConnectionStopTelemetrySnapshot snapshot = telemetry.CaptureSnapshot();
+
+        Assert.Equal(2, snapshot.UnsupportedProtocol);
+        Assert.Equal(1, snapshot.FrameRejected);
+        Assert.Equal(1, snapshot.ApplicationStopped);
+        Assert.Equal(0, snapshot.InvalidHandshake);
+        Assert.Equal(0, snapshot.ProtocolFailures);
+    }
 }
