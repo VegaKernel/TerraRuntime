@@ -119,6 +119,10 @@ Authoritative production save path явно поддерживает runtime-own
 
 Authoritative sign persistence переписывает sign section из `RuntimeSignStore`. Current encoder ограничивает текст одного sign `$64\,\mathrm{KiB}$` UTF-8 data, а total sign text одного save snapshot — `$64\,\mathrm{MiB}$`. Выход за accepted contract fail'ит save вместо silent truncation/corruption unrelated world data.
 
+Runtime slot identity табличек следует TerrariaServer 1.4.5.8, пока процесс запущен. Packet `47` может заменить любой valid runtime slot; если переданные coordinates не указывают на active sign tile, vanilla `TextSign` semantics очищают этот slot. Последующий packet `46` для всё ещё active sign tile использует поведение `ReadSign(CreateIfMissing: true)` и может снова выделить первый свободный runtime slot.
+
+Persistence намеренно compact'ит эту runtime identity. Vanilla `SaveSigns` сериализует non-null slots в ascending runtime-slot order, но не сохраняет сами slot IDs, поэтому `RuntimeSignStore` преобразует sparse runtime slots в contiguous file-order IDs `$0,1,\ldots,N-1$`. Duplicate coordinates также записываются, как в vanilla save. При load первое вхождение coordinates выигрывает, более поздние duplicates отбрасываются; surviving signs сохраняют slot IDs, определённые их исходным file order. Поэтому duplicate coordinates не являются encoder error.
+
 Остальные canonical sections намеренно сохраняются из validated source checkpoint вместо regeneration guessed code. TerraRuntime пока не изображает complete Terraria `WorldFileWriter`.
 
 ## 12. Coalescing saves
