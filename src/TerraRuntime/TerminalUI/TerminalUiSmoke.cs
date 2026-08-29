@@ -16,28 +16,54 @@ internal static class TerminalUiSmoke
             var logs = new RuntimeLogBuffer(capacity: 16);
             logs.Publish(RuntimeLogLevel.Information, "Server", "Terminal UI smoke startup");
             logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
-            using var window = new DashboardWindow(
-                operations,
-                operations,
-                operations,
-                operations,
-                operations,
-                logs,
-                operations,
-                operations);
-            window.RefreshSnapshot();
-            window.ShowPlayers();
-            window.ShowNpcs();
-            window.ShowProjectiles();
-            window.ShowItems();
-            window.ShowNetwork();
-            window.ShowWorld();
-            window.ShowLogs();
-            window.ShowDashboard();
-            window.SetInterestManagementEnabled(true);
-            window.SetInterestManagementEnabled(false);
-            app.Run(window);
-            Console.WriteLine("Terminal UI smoke passed: Terminal.Gui initialized and rendered dashboard, players, NPCs, grouped projectiles, grouped world items, network, world and logs views plus authoritative admin actions.");
+            RuntimeChatTelemetry.Publish(0, "Synthetic dashboard chat message");
+
+            using (var legacyWindow = new DashboardWindow(
+                       operations,
+                       operations,
+                       operations,
+                       operations,
+                       operations,
+                       logs,
+                       operations,
+                       operations))
+            {
+                legacyWindow.RefreshSnapshot();
+                legacyWindow.ShowPlayers();
+                legacyWindow.ShowNpcs();
+                legacyWindow.ShowProjectiles();
+                legacyWindow.ShowItems();
+                legacyWindow.ShowNetwork();
+                legacyWindow.ShowWorld();
+                legacyWindow.ShowLogs();
+                legacyWindow.ShowDashboard();
+                legacyWindow.SetInterestManagementEnabled(true);
+                legacyWindow.SetInterestManagementEnabled(false);
+                app.Run(legacyWindow);
+            }
+
+            using (var workspace = new DashboardWorkspaceWindow(
+                       operations,
+                       operations,
+                       operations,
+                       operations,
+                       logs,
+                       terminalDashboards: null))
+            {
+                workspace.RefreshSnapshot();
+                workspace.ShowPlayers();
+                workspace.ShowNetwork();
+                workspace.ShowWorld();
+                workspace.ShowLogs();
+                workspace.ShowSystemDashboard();
+                workspace.SetInterestManagementEnabled(true);
+                workspace.SetInterestManagementEnabled(false);
+                app.Run(workspace);
+            }
+
+            Console.WriteLine(
+                "Terminal UI smoke passed: Terminal.Gui rendered the operational System Dashboard, " +
+                "chat/log/TPS/network/world/player summary, detail views and authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
