@@ -111,19 +111,61 @@ jobs:
           </Project>
           EOF
           cat > "$resource_probe/Program.cs" <<'EOF'
-          using System.Reflection;
+          using System.Buffers.Binary;
+          using System.Reflection.Metadata;
+          using System.Reflection.PortableExecutable;
+
           if (args.Length != 3)
               return 2;
-          Assembly assembly = Assembly.LoadFrom(Path.GetFullPath(args[0]));
-          using Stream? source = assembly.GetManifestResourceStream(args[1]);
-          if (source is null)
+
+          using FileStream assemblyStream = File.OpenRead(Path.GetFullPath(args[0]));
+          using var peReader = new PEReader(assemblyStream);
+          if (!peReader.HasMetadata || peReader.PEHeaders.CorHeader is null)
           {
-              Console.Error.WriteLine($"Embedded resource not found: {args[1]}");
-              Console.Error.WriteLine(string.Join(Environment.NewLine, assembly.GetManifestResourceNames()));
+              Console.Error.WriteLine("Pinned server executable has no managed metadata/CLR header.");
               return 3;
           }
-          using FileStream destination = File.Create(args[2]);
-          source.CopyTo(destination);
+
+          MetadataReader metadata = peReader.GetMetadataReader();
+          ManifestResource resource = default;
+          bool found = false;
+          foreach (ManifestResourceHandle handle in metadata.ManifestResources)
+          {
+              ManifestResource candidate = metadata.GetManifestResource(handle);
+              if (!string.Equals(metadata.GetString(candidate.Name), args[1], StringComparison.Ordinal))
+                  continue;
+              if (!candidate.Implementation.IsNil)
+              {
+                  Console.Error.WriteLine($"Resource is linked rather than embedded: {args[1]}");
+                  return 4;
+              }
+              resource = candidate;
+              found = true;
+              break;
+          }
+
+          if (!found)
+          {
+              Console.Error.WriteLine($"Embedded resource not found: {args[1]}");
+              foreach (ManifestResourceHandle handle in metadata.ManifestResources)
+                  Console.Error.WriteLine(metadata.GetString(metadata.GetManifestResource(handle).Name));
+              return 5;
+          }
+
+          int resourcesRva = peReader.PEHeaders.CorHeader.ResourcesDirectory.RelativeVirtualAddress;
+          int resourceRva = checked(resourcesRva + checked((int)resource.Offset));
+          PEMemoryBlock block = peReader.GetSectionData(resourceRva);
+          byte[] lengthBytes = block.GetContent(0, sizeof(int)).ToArray();
+          int length = BinaryPrimitives.ReadInt32LittleEndian(lengthBytes);
+          if (length < 0)
+          {
+              Console.Error.WriteLine($"Embedded resource has invalid length: {length}");
+              return 6;
+          }
+          byte[] payload = block.GetContent(sizeof(int), length).ToArray();
+          File.WriteAllBytes(args[2], payload);
+          Console.WriteLine($"extracted_resource={args[1]}");
+          Console.WriteLine($"extracted_bytes={payload.Length}");
           return 0;
           EOF
           dotnet run --project "$resource_probe/resource-probe.csproj" -c Release -- \
