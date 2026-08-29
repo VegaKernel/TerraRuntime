@@ -1,0 +1,97 @@
+name: Bullet Source Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bullet-source-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Extract pinned Bullet facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/bullet .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+
+          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
+            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then
+              assembly="$candidate"
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          assembly_dir="$(dirname "$assembly")"
+
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/bullet/projectile.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/bullet/projectile-id.cs
+
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          projectile = Path('artifacts/bullet/projectile.cs').read_text(encoding='utf-8')
+          projectile_id = Path('artifacts/bullet/projectile-id.cs').read_text(encoding='utf-8')
+
+          def method(source, name):
+              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', source)
+              if not m:
+                  raise SystemExit(f'method not found: {name}')
+              opening = source.find('{', m.end())
+              depth = 0
+              for i in range(opening, len(source)):
+                  if source[i] == '{': depth += 1
+                  elif source[i] == '}':
+                      depth -= 1
+                      if depth == 0: return source[m.start():i+1]
+              raise SystemExit(f'unterminated: {name}')
+
+          def compact(text): return ' '.join(text.split())
+          def contexts(source, pattern, radius=2600):
+              text = compact(source)
+              rx = re.compile(pattern)
+              out = []
+              for m in rx.finditer(text):
+                  out.append(text[max(0,m.start()-radius):min(len(text),m.end()+radius)])
+              return ' | '.join(out) if out else '<none>'
+
+          defaults = method(projectile, 'SetDefaults')
+          ai = method(projectile, 'AI_001')
+          update = method(projectile, 'Update')
+          kill = method(projectile, 'Kill')
+          can_cut = compact(method(projectile, 'CanCutTiles'))
+
+          lines = [
+              'projectile_id_bullet=' + contexts(projectile_id, r'\bBullet\b[^;]*;|\bBullet\s*=\s*14\b', 500),
+              'projectile_bullet_defaults=' + contexts(defaults, r'(?<!\d)type\s*==\s*14(?!\d)', 1800),
+              'projectile_ai001_type14_contexts=' + contexts(ai, r'(?<!\d)type\s*==\s*14(?!\d)', 2600),
+              'projectile_update_type14_contexts=' + contexts(update, r'(?<!\d)type\s*==\s*14(?!\d)', 2600),
+              'projectile_kill_type14_contexts=' + contexts(kill, r'(?<!\d)type\s*==\s*14(?!\d)', 3000),
+              'projectile_can_cut_tiles=' + can_cut,
+          ]
+          Path('artifacts/bullet/bullet-source.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bullet-source
+          path: artifacts/bullet/bullet-source.txt
+          retention-days: 1
