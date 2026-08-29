@@ -28,123 +28,8 @@ jobs:
           set -euo pipefail
           git fetch origin main
           git reset --hard origin/main
-
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace_once(path, old, new):
-              p = Path(path)
-              text = p.read_text(encoding='utf-8')
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{path}: expected one match, found {count}: {old[:140]!r}')
-              p.write_text(text.replace(old, new, 1), encoding='utf-8')
-
-          replace_once(
-              'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs',
-              '    public static readonly ProjectileTypeId GreenLaser = new(20);\n    public static readonly ProjectileTypeId ThrowingKnife = new(48);',
-              '    public static readonly ProjectileTypeId GreenLaser = new(20);\n    public static readonly ProjectileTypeId Bone = new(21);\n    public static readonly ProjectileTypeId ThrowingKnife = new(48);')
-
-          replace_once(
-              'src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs',
-              '''    private static readonly VanillaProjectileDefinition ShurikenDefinition = new(
-        Width: 22,''',
-              '''    private static readonly VanillaProjectileDefinition BoneDefinition = new(
-        Width: 16,
-        Height: 16,
-        AiStyle: VanillaProjectileAiStyles.Thrown,
-        TileCollide: true,
-        IgnoreWater: false,
-        CanCutTiles: true,
-        CollisionWidth: 16,
-        CollisionHeight: 16);
-
-    private static readonly VanillaProjectileDefinition ShurikenDefinition = new(
-        Width: 22,''')
-
-          replace_once(
-              'src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs',
-              '''        if (type == VanillaProjectileIds.Shuriken)
-        {
-            definition = ShurikenDefinition;
-            return true;
-        }''',
-              '''        if (type == VanillaProjectileIds.Bone)
-        {
-            definition = BoneDefinition;
-            return true;
-        }
-
-        if (type == VanillaProjectileIds.Shuriken)
-        {
-            definition = ShurikenDefinition;
-            return true;
-        }''')
-
-          replace_once(
-              'src/TerraRuntime/VanillaProjectileWorldStateStepper.cs',
-              "/// Poisoned Knife, and Bone Dagger (aiStyle 2).",
-              "/// Poisoned Knife, Bone, and Bone Dagger (aiStyle 2).")
-
-          replace_once(
-              'tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs',
-              '''    [Theory]
-    [InlineData(48, 12, 12, 12, 12, 0f, 0f)]''',
-              '''    [Theory]
-    [InlineData(21, 16, 16, 16, 16, 0f, 0f)]
-    [InlineData(48, 12, 12, 12, 12, 0f, 0f)]''')
-
-          replace_once(
-              'tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs',
-              '''    [Theory]
-    [InlineData(48)]
-    [InlineData(54)]
-    [InlineData(599)]
-    public void Player_owned_thrown_family_uses_the_source_backed_ai_style_two_path''',
-              '''    [Theory]
-    [InlineData(21)]
-    [InlineData(48)]
-    [InlineData(54)]
-    [InlineData(599)]
-    public void Player_owned_thrown_family_uses_the_source_backed_ai_style_two_path''')
-
-          integration = Path('tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs')
-          text = integration.read_text(encoding='utf-8')
-          marker = '''    [InlineData(3)]
-    [InlineData(48)]
-    [InlineData(54)]
-    [InlineData(599)]'''
-          count = text.count(marker)
-          if count != 3:
-              raise SystemExit(f'{integration}: expected three thrown-family theory blocks, found {count}')
-          integration.write_text(text.replace(
-              marker,
-              '''    [InlineData(3)]
-    [InlineData(21)]
-    [InlineData(48)]
-    [InlineData(54)]
-    [InlineData(599)]'''), encoding='utf-8')
-
-          replace_once(
-              'tools/ci/probe_projectile_tile_cut.py',
-              '''    green_laser_defaults = around_optional(set_defaults, "type == 20", radius=1800)
-    arrow_ai = extract_method(projectile_source, "AI_001")''',
-              '''    green_laser_defaults = around_optional(set_defaults, "type == 20", radius=1800)
-    bone_defaults = around_optional(set_defaults, "type == 21", radius=1800)
-    arrow_ai = extract_method(projectile_source, "AI_001")''')
-
-          replace_once(
-              'tools/ci/probe_projectile_tile_cut.py',
-              '''    print("projectile_green_laser_defaults=" + green_laser_defaults)
-    print("projectile_ai001_ai0_increment="''',
-              '''    print("projectile_green_laser_defaults=" + green_laser_defaults)
-    print("projectile_bone_defaults=" + bone_defaults)
-    print("projectile_ai_type21_contexts=" + all_type_comparison_contexts(extract_method(projectile_source, "AI"), 21, radius=2600, limit=20))
-    print("projectile_collision_params_type21_contexts=" + all_type_comparison_contexts(extract_method(projectile_source, "GetCollisionParams"), 21, radius=1800, limit=20))
-    print("projectile_handle_movement_type21_contexts=" + all_type_comparison_contexts(handle_movement, 21, radius=2200, limit=20))
-    print("projectile_kill_type21_contexts=" + all_type_comparison_contexts(projectile_kill, 21, radius=2600, limit=20))
-    print("projectile_ai001_ai0_increment="''')
-          PY
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpkZWYgcmVwbGFjZV9vbmNlKHBhdGgsIG9sZCwgbmV3KToKICAgIHAgPSBQYXRoKHBhdGgpCiAgICB0ZXh0ID0gcC5yZWFkX3RleHQoZW5jb2Rpbmc9InV0Zi04IikKICAgIGNvdW50ID0gdGV4dC5jb3VudChvbGQpCiAgICBpZiBjb3VudCAhPSAxOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoZiJ7cGF0aH06IGV4cGVjdGVkIG9uZSBtYXRjaCwgZm91bmQge2NvdW50fToge29sZFs6MTQwXSFyfSIpCiAgICBwLndyaXRlX3RleHQodGV4dC5yZXBsYWNlKG9sZCwgbmV3LCAxKSwgZW5jb2Rpbmc9InV0Zi04IikKCnJlcGxhY2Vfb25jZSgKICAgICJzcmMvVGVycmFSdW50aW1lLkNvbnRyYWN0cy9HYW1lcGxheS9WYW5pbGxhQ29udGVudElkcy5jcyIsCiAgICAiICAgIHB1YmxpYyBzdGF0aWMgcmVhZG9ubHkgUHJvamVjdGlsZVR5cGVJZCBHcmVlbkxhc2VyID0gbmV3KDIwKTtcbiAgICBwdWJsaWMgc3RhdGljIHJlYWRvbmx5IFByb2plY3RpbGVUeXBlSWQgVGhyb3dpbmdLbmlmZSA9IG5ldyg0OCk7IiwKICAgICIgICAgcHVibGljIHN0YXRpYyByZWFkb25seSBQcm9qZWN0aWxlVHlwZUlkIEdyZWVuTGFzZXIgPSBuZXcoMjApO1xuICAgIHB1YmxpYyBzdGF0aWMgcmVhZG9ubHkgUHJvamVjdGlsZVR5cGVJZCBCb25lID0gbmV3KDIxKTtcbiAgICBwdWJsaWMgc3RhdGljIHJlYWRvbmx5IFByb2plY3RpbGVUeXBlSWQgVGhyb3dpbmdLbmlmZSA9IG5ldyg0OCk7IikKCnJlcGxhY2Vfb25jZSgKICAgICJzcmMvVGVycmFSdW50aW1lLkNvbnRyYWN0cy9HYW1lcGxheS9WYW5pbGxhUHJvamVjdGlsZURlZmluaXRpb25DYXRhbG9nLmNzIiwKICAgICIgICAgcHJpdmF0ZSBzdGF0aWMgcmVhZG9ubHkgVmFuaWxsYVByb2plY3RpbGVEZWZpbml0aW9uIFNodXJpa2VuRGVmaW5pdGlvbiA9IG5ldygpO1xuICAgICAgICBXaWR0aDogMjIsIiwKICAgICIgICAgcHJpdmF0ZSBzdGF0aWMgcmVhZG9ubHkgVmFuaWxsYVByb2plY3RpbGVEZWZpbml0aW9uIEJvbmVEZWZpbml0aW9uID0gbmV3KFxuICAgICAgICBXaWR0aDogMTYsXG4gICAgICAgIEhlaWdodDogMTYsXG4gICAgICAgIEFpU3R5bGU6IFZhbmlsbGFQcm9qZWN0aWxlQWlTdHlsZXMuVGhyb3duLFxuICAgICAgICBUaWxlQ29sbGlkZTogdHJ1ZSxcbiAgICAgICAgSWdub3JlV2F0ZXI6IGZhbHNlLFxuICAgICAgICBDYW5DdXRUaWxlczogdHJ1ZSxcbiAgICAgICAgQ29sbGlzaW9uV2lkdGg6IDE2LFxuICAgICAgICBDb2xsaXNpb25IZWlnaHQ6IDE2KTtcblxuICAgIHByaXZhdGUgc3RhdGljIHJlYWRvbmx5IFZhbmlsbGFQcm9qZWN0aWxlRGVmaW5pdGlvbiBTaHVyaWtlbkRlZmluaXRpb24gPSBuZXcoKVxuICAgICAgICBXaWR0aDogMjIsIikKCnJlcGxhY2Vfb25jZSgKICAgICJzcmMvVGVycmFSdW50aW1lLkNvbnRyYWN0cy9HYW1lcGxheS9WYW5pbGxhUHJvamVjdGlsZURlZmluaXRpb25DYXRhbG9nLmNzIiwKICAgICIgICAgICAgIGlmICh0eXBlID09IFZhbmlsbGFQcm9qZWN0aWxlSWRzLlNodXJpa2VuKVxuICAgICAgICB7XG4gICAgICAgICAgICBkZWZpbml0aW9uID0gU2h1cmlrZW5EZWZpbml0aW9uO1xuICAgICAgICAgICAgcmV0dXJuIHRydWU7XG4gICAgICAgIH0iLAogICAgIiAgICAgICAgaWYgKHR5cGUgPT0gVmFuaWxsYVByb2plY3RpbGVJZHMuQm9uZSlcbiAgICAgICAge1xuICAgICAgICAgICAgZGVmaW5pdGlvbiA9IEJvbmVEZWZpbml0aW9uO1xuICAgICAgICAgICAgcmV0dXJuIHRydWU7XG4gICAgICAgIH1cblxuICAgICAgICBpZiAodHlwZSA9PSBWYW5pbGxhUHJvamVjdGlsZUlkcy5TaHVyaWtlbilcbiAgICAgICAge1xuICAgICAgICAgICAgZGVmaW5pdGlvbiA9IFNodXJpa2VuRGVmaW5pdGlvbjtcbiAgICAgICAgICAgIHJldHVybiB0cnVlO1xuICAgICAgICB9IikKCnJlcGxhY2Vfb25jZSgKICAgICJzcmMvVGVycmFSdW50aW1lL1ZhbmlsbGFQcm9qZWN0aWxlV29ybGRTdGF0ZVN0ZXBwZXIuY3MiLAogICAgIi8vLyBQb2lzb25lZCBLbmlmZSwgYW5kIEJvbmUgRGFnZ2VyIChhaVN0eWxlIDIpLiIsCiAgICAiLy8vIFBvaXNvbmVkIEtuaWZlLCBCb25lLCBhbmQgQm9uZSBEYWdnZXIgKGFpU3R5bGUgMikuIikKCnJlcGxhY2Vfb25jZSgKICAgICJ0ZXN0cy9UZXJyYVJ1bnRpbWUuVGVzdHMvVmFuaWxsYVByb2plY3RpbGVEZWZpbml0aW9uQ2F0YWxvZ1Rlc3RzLmNzIiwKICAgICIgICAgW1RoZW9yeV1cbiAgICBbSW5saW5lRGF0YSg0OCwgMTIsIDEyLCAxMiwgMTIsIDBmLCAwZildIiwKICAgICIgICAgW1RoZW9yeV1cbiAgICBbSW5saW5lRGF0YSgyMSwgMTYsIDE2LCAxNiwgMTYsIDBmLCAwZildXG4gICAgW0lubGluZURhdGEoNDgsIDEyLCAxMiwgMTIsIDEyLCAwZiwgMGYpXSIpCgpyZXBsYWNlX29uY2UoCiAgICAidGVzdHMvVGVycmFSdW50aW1lLlRlc3RzL1ZhbmlsbGFQcm9qZWN0aWxlV29ybGRTdGF0ZVN0ZXBwZXJUZXN0cy5jcyIsCiAgICAiICAgIFtUaGVvcnldXG4gICAgW0lubGluZURhdGEoNDgpXVxuICAgIFtJbmxpbmVEYXRhKDU0KV1cbiAgICBbSW5saW5lRGF0YSg1OTkpXVxuICAgIHB1YmxpYyB2b2lkIFBsYXllcl9vd25lZF90aHJvd25fZmFtaWx5X3VzZXNfdGhlX3NvdXJjZV9iYWNrZWRfYWlfc3R5bGVfdHdvX3BhdGgiLAogICAgIiAgICBbVGhlb3J5XVxuICAgIFtJbmxpbmVEYXRhKDIxKV1cbiAgICBbSW5saW5lRGF0YSg0OCldXG4gICAgW0lubGluZURhdGEoNTQpXVxuICAgIFtJbmxpbmVEYXRhKDU5OSldXG4gICAgcHVibGljIHZvaWQgUGxheWVyX293bmVkX3Rocm93bl9mYW1pbHlfdXNlc190aGVfc291cmNlX2JhY2tlZF9haV9zdHlsZV90d29fcGF0aCIpCgppbnRlZ3JhdGlvbiA9IFBhdGgoInRlc3RzL1RlcnJhUnVudGltZS5UZXN0cy9TZXJ2ZXJSdW50aW1lVmFuaWxsYVByb2plY3RpbGVTaW11bGF0aW9uVGVzdHMuY3MiKQp0ZXh0ID0gaW50ZWdyYXRpb24ucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIpCm1hcmtlciA9ICIgICAgW0lubGluZURhdGEoMyldXG4gICAgW0lubGluZURhdGEoNDgpXVxuICAgIFtJbmxpbmVEYXRhKDU0KV1cbiAgICBbSW5saW5lRGF0YSg1OTkpXSIKY291bnQgPSB0ZXh0LmNvdW50KG1hcmtlcikKaWYgY291bnQgIT0gMzoKICAgIHJhaXNlIFN5c3RlbUV4aXQoZiJ7aW50ZWdyYXRpb259OiBleHBlY3RlZCB0aHJlZSB0aHJvd24tZmFtaWx5IHRoZW9yeSBibG9ja3MsIGZvdW5kIHtjb3VudH0iKQppbnRlZ3JhdGlvbi53cml0ZV90ZXh0KHRleHQucmVwbGFjZSgKICAgIG1hcmtlciwKICAgICIgICAgW0lubGluZURhdGEoMyldXG4gICAgW0lubGluZURhdGEoMjEpXVxuICAgIFtJbmxpbmVEYXRhKDQ4KV1cbiAgICBbSW5saW5lRGF0YSg1NCldXG4gICAgW0lubGluZURhdGEoNTk5KV0iKSwgZW5jb2Rpbmc9InV0Zi04IikKCnJlcGxhY2Vfb25jZSgKICAgICJ0b29scy9jaS9wcm9iZV9wcm9qZWN0aWxlX3RpbGVfY3V0LnB5IiwKICAgICcgICAgZ3JlZW5fbGFzZXJfZGVmYXVsdHMgPSBhcm91bmRfb3B0aW9uYWwoc2V0X2RlZmF1bHRzLCAidHlwZSA9PSAyMCIsIHJhZGl1cz0xODAwKVxuICAgIGFycm93X2FpID0gZXh0cmFjdF9tZXRob2QocHJvamVjdGlsZV9zb3VyY2UsICJBSV8wMDEiKScsCiAgICAnICAgIGdyZWVuX2xhc2VyX2RlZmF1bHRzID0gYXJvdW5kX29wdGlvbmFsKHNldF9kZWZhdWx0cywgInR5cGUgPT0gMjAiLCByYWRpdXM9MTgwMClcbiAgICBib25lX2RlZmF1bHRzID0gYXJvdW5kX29wdGlvbmFsKHNldF9kZWZhdWx0cywgInR5cGUgPT0gMjEiLCByYWRpdXM9MTgwMClcbiAgICBhcnJvd19haSA9IGV4dHJhY3RfbWV0aG9kKHByb2plY3RpbGVfc291cmNlLCAiQUlfMDAxIiknKQoKcmVwbGFjZV9vbmNlKAogICAgInRvb2xzL2NpL3Byb2JlX3Byb2plY3RpbGVfdGlsZV9jdXQucHkiLAogICAgJyAgICBwcmludCgicHJvamVjdGlsZV9ncmVlbl9sYXNlcl9kZWZhdWx0cz0iICsgZ3JlZW5fbGFzZXJfZGVmYXVsdHMpXG4gICAgcHJpbnQoInByb2plY3RpbGVfYWkwMDFfYWkwX2luY3JlbWVudD0iJywKICAgICAnICAgIHByaW50KCJwcm9qZWN0aWxlX2dyZWVuX2xhc2VyX2RlZmF1bHRzPSIgKyBncmVlbl9sYXNlcl9kZWZhdWx0cylcbiAgICBwcmludCgicHJvamVjdGlsZV9ib25lX2RlZmF1bHRzPSIgKyBib25lX2RlZmF1bHRzKVxuICAgIHByaW50KCJwcm9qZWN0aWxlX2FpX3R5cGUyMV9jb250ZXh0cz0iICsgYWxsX3R5cGVfY29tcGFyaXNvbl9jb250ZXh0cyhleHRyYWN0X21ldGhvZChwcm9qZWN0aWxlX3NvdXJjZSwgIkFJIiksIDIxLCByYWRpdXM9MjYwMCwgbGltaXQ9MjApKVxuICAgIHByaW50KCJwcm9qZWN0aWxlX2NvbGxpc2lvbl9wYXJhbXNfdHlwZTIxX2NvbnRleHRzPSIgKyBhbGxfdHlwZV9jb21wYXJpc29uX2NvbnRleHRzKGV4dHJhY3RfbWV0aG9kKHByb2plY3RpbGVfc291cmNlLCAiR2V0Q29sbGlzaW9uUGFyYW1zIiksIDIxLCByYWRpdXM9MTgwMCwgbGltaXQ9MjApKVxuICAgIHByaW50KCJwcm9qZWN0aWxlX2hhbmRsZV9tb3ZlbWVudF90eXBlMjFfY29udGV4dHM9IiArIGFsbF90eXBlX2NvbXBhcmlzb25fY29udGV4dHMoaGFuZGxlX21vdmVtZW50LCAyMSwgcmFkaXVzPTIyMDAsIGxpbWl0PTIwKSlcbiAgICBwcmludCgicHJvamVjdGlsZV9raWxsX3R5cGUyMV9jb250ZXh0cz0iICsgYWxsX3R5cGVfY29tcGFyaXNvbl9jb250ZXh0cyhwcm9qZWN0aWxlX2tpbGwsIDIxLCByYWRpdXM9MjYwMCwgbGltaXQ9MjApKVxuICAgIHByaW50KCJwcm9qZWN0aWxlX2FpMDAxX2FpMF9pbmNyZW1lbnQ9IicpCg==' | base64 -d > /tmp/apply_bone.py
+          python3 /tmp/apply_bone.py
 
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
 
@@ -159,7 +44,6 @@ jobs:
                   tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs \
                   tools/ci/probe_projectile_tile_cut.py
           git commit -m 'feat: simulate vanilla bone world flight'
-
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
