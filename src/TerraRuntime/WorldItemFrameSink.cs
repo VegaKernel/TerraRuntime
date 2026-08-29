@@ -17,9 +17,11 @@ public enum WorldItemFrameStopReason : byte
 }
 
 /// <summary>
-/// Connection-owned packet 21/22 ingress. World-item mutation is accepted only for a fully playing session;
-/// packet identities are decoded through Multiplicity and converted into packet-neutral Core updates before
-/// bounded authoritative queue admission.
+/// Connection-owned packet-21 ingress for client-originated world-item mutations. World-item mutation is accepted
+/// only for a fully playing session; packet identities are decoded through Multiplicity and converted into
+/// packet-neutral Core updates before bounded authoritative queue admission. TerrariaServer 1.4.5.8 handles packet
+/// 22 only when <c>Main.netMode != 2</c>, so inbound packet 22 is deliberately a server-side no-op. Runtime packet-22
+/// replication remains an outbound projection of authoritative owner/reservation state.
 /// </summary>
 public sealed class WorldItemFrameSink :
     ITerrariaFrameSink,
@@ -75,7 +77,10 @@ public sealed class WorldItemFrameSink :
         return (TerrariaMessageId)frame.MessageId switch
         {
             TerrariaMessageId.WorldItemDrop => HandleDrop(frame),
-            TerrariaMessageId.WorldItemOwner => HandleOwner(frame),
+            // TerrariaServer 1.4.5.8 MessageBuffer case 22 is guarded by Main.netMode != 2. The server therefore
+            // neither decodes nor applies client packet 22. Mirroring that no-op also removes a client-authoritative
+            // owner/reservation mutation path; packet 22 remains valid for server-to-client replication.
+            TerrariaMessageId.WorldItemOwner => TerrariaFrameSinkResult.Continue,
             _ => _inner.OnFrame(in frame)
         };
     }
@@ -118,37 +123,6 @@ public sealed class WorldItemFrameSink :
             ? _ingress.TryPostAllocate(connection, in state)
             : _ingress.TryPostDrop(connection, drop.ItemIndex, in state);
         return posted
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(WorldItemFrameStopReason.GameIngressBackpressure);
-    }
-
-    private TerrariaFrameSinkResult HandleOwner(in TerrariaFrame frame)
-    {
-        if (!TryGetPlayingConnection(out ConnectionHandle connection))
-            return Stop(WorldItemFrameStopReason.InvalidJoinState);
-
-        TerrariaWorldItemOwnerDecodeResult decode = TerrariaWorldItemOwnerDecoder.TryDecode(
-            in frame,
-            out TerrariaWorldItemOwnerState owner);
-        if (decode != TerrariaWorldItemOwnerDecodeResult.Decoded)
-            return Stop(WorldItemFrameStopReason.MalformedOwner);
-
-        byte playerSlot = connection.Player.Slot.Value;
-        if ((owner.OwnerPlayerId != byte.MaxValue && owner.OwnerPlayerId != playerSlot) ||
-            (owner.GrabDelayPlayer != byte.MaxValue && owner.GrabDelayPlayer != playerSlot))
-        {
-            return Stop(WorldItemFrameStopReason.PlayerOwnershipMismatch);
-        }
-
-        var state = new WorldItemOwnerStateUpdate(
-            owner.OwnerPlayerId,
-            owner.TimeToKeepReservation,
-            owner.GrabDelayPlayer,
-            owner.GrabDelayTime,
-            owner.PositionX,
-            owner.PositionY);
-
-        return _ingress.TryPostOwner(connection, owner.ItemIndex, in state)
             ? TerrariaFrameSinkResult.Continue
             : Stop(WorldItemFrameStopReason.GameIngressBackpressure);
     }
