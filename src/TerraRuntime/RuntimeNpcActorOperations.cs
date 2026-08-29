@@ -46,6 +46,33 @@ internal sealed class RuntimeNpcActorControlCommandService
         leases = new NpcActorControlLease?[npcs.Capacity];
     }
 
+    public bool TryApply(RuntimeCommand command)
+    {
+        switch (command)
+        {
+            case NpcActorAcquireRuntimeCommand acquire:
+                acquire.Completion.TrySetResult(Acquire(acquire.Npc, acquire.ControllerId));
+                return true;
+
+            case NpcActorSetIntentRuntimeCommand setIntent:
+                NpcActorIntent intent = setIntent.Intent;
+                setIntent.Completion.TrySetResult(
+                    SetIntent(setIntent.Npc, setIntent.ControllerId, in intent));
+                return true;
+
+            case NpcActorReleaseRuntimeCommand release:
+                release.Completion.TrySetResult(Release(release.Npc, release.ControllerId));
+                return true;
+
+            case NpcActorReleaseControllerRuntimeCommand releaseController:
+                releaseController.Completion.TrySetResult(ReleaseController(releaseController.ControllerId));
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
     public NpcActorAcquireStatus Acquire(NpcHandle npc, ActorControllerId controllerId)
     {
         if (!npc.IsAssigned || npc.Slot >= leases.Length)
