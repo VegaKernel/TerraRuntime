@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.IO;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Models;
@@ -6,6 +7,11 @@ using TerraRuntime.Protocol;
 namespace TerraRuntime.Protocol.Multiplicity;
 
 public readonly record struct TerrariaClientChatMessage(string CommandName, string Text);
+
+public readonly record struct TerrariaServerChatMessage(
+    byte AuthorId,
+    string Text,
+    TerrariaRgbColor Color);
 
 public enum TerrariaClientChatDecodeResult : byte
 {
@@ -77,6 +83,63 @@ public static class TerrariaChatCodec
         {
             message = default;
             return TerrariaClientChatDecodeResult.Malformed;
+        }
+    }
+
+    public static bool TryDecodeServerFrame(
+        ReadOnlyMemory<byte> encodedFrame,
+        out TerrariaServerChatMessage message)
+    {
+        message = default;
+        if (encodedFrame.Length < TerrariaFrameDecoderOptions.MinimumFrameLength ||
+            encodedFrame.Length > TerrariaFrameDecoderOptions.AbsoluteMaximumFrameLength)
+        {
+            return false;
+        }
+
+        try
+        {
+            var input = new ReadOnlySequence<byte>(encodedFrame);
+            if (TerrariaFrameDecoder.TryRead(ref input, out TerrariaFrame frame) != TerrariaFrameReadResult.Frame ||
+                !input.IsEmpty ||
+                frame.MessageId != (byte)TerrariaMessageId.LoadNetModule)
+            {
+                return false;
+            }
+
+            ReadOnlyMemory<byte> payload = CopyPayload(in frame);
+            if (!TerrariaPacket.TryDeserializePayload(
+                    (byte)TerrariaMessageId.LoadNetModule,
+                    payload,
+                    out TerrariaPacket packet) ||
+                packet is not LoadNetModule load ||
+                load.LoadedModule is not NetTextModule textModule ||
+                textModule.PayloadKind != NetTextModulePayloadKind.ServerChatMessage ||
+                textModule.ServerText is null)
+            {
+                return false;
+            }
+
+            string text = textModule.ServerText.Text ?? string.Empty;
+            if (text.Length == 0 || text.Length > MaximumTextLength || text.IndexOf('\0') >= 0)
+                return false;
+
+            ColorStruct color = textModule.MessageColor;
+            message = new TerrariaServerChatMessage(
+                textModule.AuthorId,
+                text,
+                new TerrariaRgbColor(color.R, color.G, color.B));
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or
+            EndOfStreamException or
+            IOException or
+            OverflowException or
+            ArgumentException)
+        {
+            message = default;
+            return false;
         }
     }
 
