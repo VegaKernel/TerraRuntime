@@ -54,6 +54,32 @@ public sealed class RuntimeWorldItemNetworkOperationsTests
         Assert.Equal(1, snapshot.WorldItemUnsupportedCommits);
     }
 
+    [Fact]
+    public void Network_operations_distinguish_capacity_and_admission_rate_rejections()
+    {
+        var admission = new TerrariaConnectionAdmissionGate(
+            maxConnections: 1,
+            maxAdmissionsPerWindow: 2,
+            admissionWindow: TimeSpan.FromSeconds(1));
+        var operations = new LocalRuntimeNetworkOperations(
+            admission,
+            new RuntimeConnectionRegistry(),
+            new RuntimeConnectionQueueTelemetry(),
+            new RuntimeConnectionRateTelemetry());
+
+        Assert.True(admission.TryAcquire(out TerrariaConnectionAdmissionGate.Lease? held));
+        Assert.False(admission.TryAcquire(out _));
+        Assert.False(admission.TryAcquire(out _));
+
+        RuntimeNetworkSnapshot snapshot = operations.CaptureSnapshot();
+
+        Assert.Equal(2, snapshot.RejectedConnections);
+        Assert.Equal(1, snapshot.AdmissionCapacityRejectedConnections);
+        Assert.Equal(1, snapshot.AdmissionRateRejectedConnections);
+
+        held!.Dispose();
+    }
+
     private static ConnectionHandle Connection(
         GameCommandSourceId source,
         byte slot,
