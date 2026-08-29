@@ -75,6 +75,7 @@ jobs:
           defaults = method(projectile, 'SetDefaults')
           ai = method(projectile, 'AI_001')
           update = method(projectile, 'Update')
+          movement = method(projectile, 'HandleMovement')
           kill = method(projectile, 'Kill')
           can_cut = compact(method(projectile, 'CanCutTiles'))
 
@@ -82,7 +83,10 @@ jobs:
               'projectile_id_bullet=' + contexts(projectile_id, r'\bBullet\b[^;]*;|\bBullet\s*=\s*14\b', 500),
               'projectile_bullet_defaults=' + contexts(defaults, r'(?<!\d)type\s*==\s*14(?!\d)', 1800),
               'projectile_ai001_type14_contexts=' + contexts(ai, r'(?<!\d)type\s*==\s*14(?!\d)', 2600),
+              'projectile_ai001_arrow_mentions=' + contexts(ai, r'\barrow\b', 1200),
+              'projectile_ai001_ranged_mentions=' + contexts(ai, r'\branged\b', 1200),
               'projectile_update_type14_contexts=' + contexts(update, r'(?<!\d)type\s*==\s*14(?!\d)', 2600),
+              'projectile_handle_movement_type14_contexts=' + contexts(movement, r'(?<!\d)type\s*==\s*14(?!\d)', 2600),
               'projectile_kill_type14_contexts=' + contexts(kill, r'(?<!\d)type\s*==\s*14(?!\d)', 3000),
               'projectile_can_cut_tiles=' + can_cut,
           ]
