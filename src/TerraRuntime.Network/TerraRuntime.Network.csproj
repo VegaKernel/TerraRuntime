@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="TerraRuntime.Server" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
     <ProjectReference Include="../TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />
   </ItemGroup>
