@@ -11,4 +11,5 @@ public interface ITerraRuntimeHostRuntime
     TerraRuntimeHostRuntimeInfo Info { get; }
     IInterestManagementControl InterestManagement { get; }
     IPlayerStateSnapshotReader PlayerStates { get; }
+    INpcActorOperations NpcActors { get; }
 }
