@@ -205,6 +205,15 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         }
     }
 
+    internal void RequestWorldSaveCheckpoint()
+    {
+        bool queued = worldOperations.TryRequestSave();
+        lastAdminAction = queued
+            ? "Admin: queued world save checkpoint"
+            : "Admin: rejected world save checkpoint";
+        SelectSystemScreen(WorkspaceScreen.World, "TerraRuntime - World");
+    }
+
     private MenuBar CreateMenu()
     {
         var dashboardItems = new List<MenuItem>
@@ -254,6 +263,10 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                             "_Disable interest management",
                             "Queue disabling runtime-owned visibility optimization",
                             () => SetInterestManagementEnabled(false)),
+                        new MenuItem(
+                            "_Save world checkpoint",
+                            "Queue a canonical save through the persistence ingress",
+                            RequestWorldSaveCheckpoint),
                         new MenuItem(
                             "_Move player between worlds",
                             "Requires the future multi-world supervisor and authoritative transfer operation",
@@ -647,7 +660,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                 $"done {persistence.CompletedWrites:N0}/{persistence.StartedWrites:N0} accepted {persistence.AcceptedSnapshots:N0} " +
                 $"coalesced {persistence.CoalescedSnapshots:N0} failed {persistence.FailedWrites:N0}";
         }
-        rows[17].Text = "F2 returns to System Dashboard";
+        rows[17].Text = lastAdminAction ?? "F2 returns to System Dashboard";
     }
 
     private void RefreshLogs()
