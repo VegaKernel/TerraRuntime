@@ -154,7 +154,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
-    public void Wooden_arrow_tile_impact_is_left_for_kill_effect_slice()
+    public void Wooden_arrow_tile_impact_uses_generic_collision_kill_path()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         tiles.Set(7, 10, SolidTile(1));
@@ -169,7 +169,13 @@ public sealed class VanillaProjectileWorldStateStepperTests
         };
         ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
 
-        Assert.False(stepper.TryStepState(in context, out _));
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(2f, next.State.VelocityX, 5);
+        Assert.Equal(0f, next.State.VelocityY, 5);
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(160f, next.State.PositionY, 5);
+        Assert.Equal(0, next.TimeLeft);
     }
 
     [Fact]
