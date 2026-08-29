@@ -24,6 +24,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
     private readonly RuntimeNpcActorControlCommandService _npcActorCommands;
     private readonly RuntimeServerPlayerStateStore? _serverPlayerStates;
     private readonly RuntimeServerPlayerCommandService? _serverPlayerCommands;
+    private readonly VanillaServerPlayerDryPhysicsStepper? _serverPlayerDryPhysics;
     private readonly PlayerStateSnapshot[] _serverPlayerSnapshots =
         new PlayerStateSnapshot[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly INpcAiStateStepper _npcAiStepper;
@@ -65,6 +66,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
             throw new ArgumentException("Server-player identities require an authoritative state store.", nameof(serverPlayerIdentities));
         _serverPlayerCommands = serverPlayerIdentities is not null && serverPlayerStates is not null
             ? new RuntimeServerPlayerCommandService(serverPlayerIdentities, serverPlayerStates)
+            : null;
+        _serverPlayerDryPhysics = serverPlayerStates is not null && worldTiles is not null
+            ? new VanillaServerPlayerDryPhysicsStepper(worldTiles)
             : null;
         _npcActorControls = new RuntimeNpcActorControlRegistry(_npcs);
         _npcActorCommands = new RuntimeNpcActorControlCommandService(_npcs, _npcActorControls);
@@ -353,6 +357,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
     public void Tick()
     {
         _npcActorCommands.CommitPending();
+        TickServerPlayerPhysics();
 
         if (_vanillaNpcTargetingAiStepper is not null)
         {
@@ -375,6 +380,36 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 
         _worldClock?.Tick();
         Updates++;
+    }
+
+    private void TickServerPlayerPhysics()
+    {
+        if (_serverPlayerStates is null || _serverPlayerDryPhysics is null)
+            return;
+
+        int count = _serverPlayerStates.CopySnapshots(_serverPlayerSnapshots);
+        for (int index = 0; index < count; index++)
+        {
+            PlayerStateSnapshot player = _serverPlayerSnapshots[index];
+            if (!_serverPlayerDryPhysics.TryStep(in player, out ServerPlayerDryPhysicsStepResult next))
+                continue;
+
+            if (next.PositionX == player.PositionX &&
+                next.PositionY == player.PositionY &&
+                next.VelocityX == player.VelocityX &&
+                next.VelocityY == player.VelocityY)
+            {
+                continue;
+            }
+
+            _serverPlayerStates.TrySetMotion(
+                player.Player,
+                next.PositionX,
+                next.PositionY,
+                next.VelocityX,
+                next.VelocityY,
+                out _);
+        }
     }
 
     private int CopyVanillaNpcTargetCandidates(Span<VanillaNpcTargetCandidate> destination)
