@@ -33,8 +33,8 @@ public enum PlayerSpawnCommitResult : byte
 }
 
 /// <summary>
-/// Owns a player-slot lease from the moment a valid Hello is accepted until the connection closes.
-/// It models vanilla bootstrap transitions but intentionally contains no packet IDs or socket concerns.
+/// Owns a connection-kind player-slot lease from the moment a valid Hello is accepted until the connection closes.
+/// Runtime-owned players use the same slot pool but never enter this client bootstrap state machine.
 /// </summary>
 public sealed class PlayerJoinSession : IDisposable
 {
@@ -48,6 +48,12 @@ public sealed class PlayerJoinSession : IDisposable
         if (slotLease.IsReleased)
         {
             throw new ArgumentException("A released player-slot lease cannot start a join session.", nameof(slotLease));
+        }
+        if (slotLease.Kind != PlayerSlotLeaseKind.Connection)
+        {
+            throw new ArgumentException(
+                "Only a connection-owned player-slot lease can start a client join session.",
+                nameof(slotLease));
         }
 
         _slotLease = slotLease;
