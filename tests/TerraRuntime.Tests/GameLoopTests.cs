@@ -28,6 +28,96 @@ public sealed class GameLoopTests
     }
 
     [Fact]
+    public void Per_source_pending_budget_prevents_one_connection_from_occupying_the_global_mailbox()
+    {
+        using var loop = new AuthoritativeGameLoop<State, int>(
+            new State(),
+            static (state, command) => state.Apply(command),
+            static state => state.Tick(),
+            new GameLoopOptions
+            {
+                CommandCapacity = 4,
+                MaxCommandIngressPerTick = 4,
+                MaxCommandsPerTick = 4,
+                MaxCommandsPerSourcePerTick = 2,
+                MaxPendingCommandsPerSource = 2
+            });
+
+        GameCommandSourceId noisy = GameCommandSourceId.FromConnection(1);
+        GameCommandSourceId other = GameCommandSourceId.FromConnection(2);
+
+        Assert.True(loop.TryPost(noisy, 1));
+        Assert.True(loop.TryPost(noisy, 2));
+        Assert.False(loop.TryPost(noisy, 3));
+        Assert.True(loop.TryPost(other, 10));
+        Assert.True(loop.TryPost(other, 11));
+
+        Assert.Equal(4, loop.Snapshot.PendingCommands);
+        Assert.Equal(1, loop.Snapshot.RejectedCommands);
+    }
+
+    [Fact]
+    public void System_commands_are_exempt_from_external_source_pending_budget()
+    {
+        using var loop = new AuthoritativeGameLoop<State, int>(
+            new State(),
+            static (state, command) => state.Apply(command),
+            static state => state.Tick(),
+            new GameLoopOptions
+            {
+                CommandCapacity = 2,
+                MaxCommandIngressPerTick = 2,
+                MaxCommandsPerTick = 2,
+                MaxCommandsPerSourcePerTick = 1,
+                MaxPendingCommandsPerSource = 1
+            });
+
+        Assert.True(loop.TryPost(1));
+        Assert.True(loop.TryPost(2));
+        Assert.Equal(2, loop.Snapshot.PendingCommands);
+        Assert.Equal(0, loop.Snapshot.RejectedCommands);
+    }
+
+    [Fact]
+    public void External_source_pending_reservation_is_released_after_command_application()
+    {
+        using var applied = new ManualResetEventSlim();
+        var state = new State(applied);
+        using var loop = new AuthoritativeGameLoop<State, int>(
+            state,
+            static (runtime, command) => runtime.Apply(command),
+            static runtime => runtime.Tick(),
+            new GameLoopOptions
+            {
+                TicksPerSecond = 60,
+                CommandCapacity = 4,
+                MaxCommandIngressPerTick = 4,
+                MaxCommandsPerTick = 4,
+                MaxCommandsPerSourcePerTick = 1,
+                MaxPendingCommandsPerSource = 1
+            });
+
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(1);
+        Assert.True(loop.TryPost(source, 1));
+        Assert.False(loop.TryPost(source, 2));
+
+        loop.Start();
+        Assert.True(applied.Wait(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(1);
+        bool accepted = false;
+        while (!accepted && DateTime.UtcNow < deadline)
+        {
+            accepted = loop.TryPost(source, 3);
+            if (!accepted)
+                Thread.Yield();
+        }
+
+        Assert.True(accepted);
+        Assert.True(loop.Stop(TimeSpan.FromSeconds(1)));
+    }
+
+    [Fact]
     public void Commands_are_applied_on_the_authoritative_game_thread()
     {
         using var applied = new ManualResetEventSlim();
@@ -216,6 +306,22 @@ public sealed class GameLoopTests
                 new GameLoopOptions
                 {
                     MaxCommandCpuMillisecondsPerTick = budgetMilliseconds
+                });
+        });
+    }
+
+    [Fact]
+    public void Invalid_external_source_pending_budget_is_rejected()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            using var loop = new AuthoritativeGameLoop<State, int>(
+                new State(),
+                static (state, command) => state.Apply(command),
+                static state => state.Tick(),
+                new GameLoopOptions
+                {
+                    MaxPendingCommandsPerSource = 0
                 });
         });
     }
