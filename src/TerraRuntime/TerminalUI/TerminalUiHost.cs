@@ -128,10 +128,13 @@ internal sealed class TerminalUiHost : IDisposable
             using var window = new DashboardWorkspaceWindow(
                 dashboardOperations,
                 playerOperations,
+                npcOperations,
                 networkOperations,
                 worldOperations,
                 logOperations,
-                terminalDashboards);
+                terminalDashboards,
+                projectileOperations,
+                worldItemOperations);
 
             long nextRefresh = 0;
             app.Iteration += (_, _) =>

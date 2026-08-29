@@ -1,6 +1,9 @@
+using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace TerraRuntime.TerminalUI;
 
@@ -47,23 +50,36 @@ internal static class TerminalUiSmoke
                        operations,
                        operations,
                        operations,
+                       operations,
                        logs,
-                       terminalDashboards: null))
+                       new SmokeDashboardSource(),
+                       operations,
+                       operations))
             {
                 workspace.RefreshSnapshot();
-                workspace.ShowPlayers();
-                workspace.ShowNetwork();
-                workspace.ShowWorld();
-                workspace.ShowLogs();
-                workspace.ShowSystemDashboard();
+                AssertWorkspaceRow(workspace, "Running");
+
+                // Render an external dashboard first so the smoke path exercises the same root visibility
+                // transition that production uses before returning to a built-in Details screen.
+                workspace.ShowExternalDashboardForSmoke(0);
+                app.Run(workspace);
+
+                RenderWorkspaceScreen(app, workspace, workspace.ShowPlayers, "PLAYERS");
+                RenderWorkspaceScreen(app, workspace, workspace.ShowNpcs, "NPCS");
+                RenderWorkspaceScreen(app, workspace, workspace.ShowProjectiles, "PROJECTILES");
+                RenderWorkspaceScreen(app, workspace, workspace.ShowItems, "ITEMS");
+                RenderWorkspaceScreen(app, workspace, workspace.ShowNetwork, "NETWORK");
+                RenderWorkspaceScreen(app, workspace, workspace.ShowWorld, "WORLD");
+                RenderWorkspaceScreen(app, workspace, workspace.ShowLogs, "LOG");
+                RenderWorkspaceScreen(app, workspace, workspace.ShowSystemDashboard, "Running");
+
                 workspace.SetInterestManagementEnabled(true);
                 workspace.SetInterestManagementEnabled(false);
-                app.Run(workspace);
             }
 
             Console.WriteLine(
-                "Terminal UI smoke passed: Terminal.Gui rendered the operational System Dashboard, " +
-                "chat/log/TPS/network/world/player summary, detail views and authoritative admin actions.");
+                "Terminal UI smoke passed: Terminal.Gui rendered the System Dashboard, external-dashboard transition, " +
+                "Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -71,6 +87,59 @@ internal static class TerminalUiSmoke
             Console.Error.WriteLine($"Terminal UI smoke failed: {exception}");
             return 29;
         }
+    }
+
+    private static void RenderWorkspaceScreen(
+        IApplication app,
+        DashboardWorkspaceWindow workspace,
+        Action showScreen,
+        string expectedRowPrefix)
+    {
+        showScreen();
+        AssertWorkspaceRow(workspace, expectedRowPrefix);
+        app.Run(workspace);
+    }
+
+    private static void AssertWorkspaceRow(DashboardWorkspaceWindow workspace, string expectedPrefix)
+    {
+        string row = workspace.GetRowTextForSmoke(0);
+        if (!row.StartsWith(expectedPrefix, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Workspace detail screen did not populate row 0. Expected prefix '{expectedPrefix}', actual '{row}'.");
+        }
+    }
+
+    private sealed class SmokeDashboardSource : ITerraRuntimeTerminalDashboardSource
+    {
+        private readonly ITerraRuntimeTerminalDashboardProvider[] dashboards = [new SmokeDashboardProvider()];
+
+        public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards() => dashboards;
+    }
+
+    private sealed class SmokeDashboardProvider : ITerraRuntimeTerminalDashboardProvider
+    {
+        public string Id => "smoke.external";
+
+        public string Title => "Smoke External";
+
+        public View CreateDashboard()
+        {
+            var root = new View
+            {
+                Width = Dim.Fill(),
+                Height = Dim.Fill()
+            };
+            root.Add(new Label
+            {
+                X = 1,
+                Y = 0,
+                Text = "EXTERNAL DASHBOARD SMOKE"
+            });
+            return root;
+        }
+
+        public void Refresh(View rootView) => rootView.SetNeedsDraw();
     }
 
     private sealed class SmokeOperations :

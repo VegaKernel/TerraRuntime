@@ -34,6 +34,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
+    private readonly INpcOperations npcOperations;
+    private readonly IProjectileOperations? projectileOperations;
+    private readonly IWorldItemOperations? worldItemOperations;
     private readonly INetworkOperations networkOperations;
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
@@ -52,13 +55,19 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     public DashboardWorkspaceWindow(
         IRuntimeDashboardOperations dashboardOperations,
         IPlayerOperations playerOperations,
+        INpcOperations npcOperations,
         INetworkOperations networkOperations,
         IWorldOperations worldOperations,
         ILogOperations logOperations,
-        ITerraRuntimeTerminalDashboardSource? terminalDashboards)
+        ITerraRuntimeTerminalDashboardSource? terminalDashboards,
+        IProjectileOperations? projectileOperations = null,
+        IWorldItemOperations? worldItemOperations = null)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
+        this.npcOperations = npcOperations ?? throw new ArgumentNullException(nameof(npcOperations));
+        this.projectileOperations = projectileOperations;
+        this.worldItemOperations = worldItemOperations;
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
@@ -132,6 +141,15 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             case WorkspaceScreen.Players:
                 RefreshPlayers();
                 break;
+            case WorkspaceScreen.Npcs:
+                RefreshNpcs();
+                break;
+            case WorkspaceScreen.Projectiles:
+                RefreshProjectiles();
+                break;
+            case WorkspaceScreen.Items:
+                RefreshItems();
+                break;
             case WorkspaceScreen.Network:
                 RefreshNetwork();
                 break;
@@ -151,11 +169,27 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     internal void ShowPlayers() => SelectSystemScreen(WorkspaceScreen.Players, "TerraRuntime - Players");
 
+    internal void ShowNpcs() => SelectSystemScreen(WorkspaceScreen.Npcs, "TerraRuntime - NPCs");
+
+    internal void ShowProjectiles() => SelectSystemScreen(WorkspaceScreen.Projectiles, "TerraRuntime - Projectiles");
+
+    internal void ShowItems() => SelectSystemScreen(WorkspaceScreen.Items, "TerraRuntime - Items");
+
     internal void ShowNetwork() => SelectSystemScreen(WorkspaceScreen.Network, "TerraRuntime - Network");
 
     internal void ShowWorld() => SelectSystemScreen(WorkspaceScreen.World, "TerraRuntime - World");
 
     internal void ShowLogs() => SelectSystemScreen(WorkspaceScreen.Logs, "TerraRuntime - Logs");
+
+    internal string GetRowTextForSmoke(int index)
+    {
+        if ((uint)index >= (uint)rows.Length)
+            throw new ArgumentOutOfRangeException(nameof(index));
+
+        return rows[index].Text?.ToString() ?? string.Empty;
+    }
+
+    internal void ShowExternalDashboardForSmoke(int index) => ShowExternalDashboard(index);
 
     internal void SetInterestManagementEnabled(bool enabled)
     {
@@ -165,7 +199,10 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             : $"Admin: rejected interest management {(enabled ? "enable" : "disable")} command";
 
         if (activeExternalDashboard < 0 && screen == WorkspaceScreen.Dashboard)
+        {
             RefreshSystemDashboard();
+            InvalidateSystemRoot(layout: false);
+        }
     }
 
     private MenuBar CreateMenu()
@@ -195,10 +232,13 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                     [new MenuItem("_Close UI", "Return to the plain server console", () => App?.RequestStop())]),
                 new MenuBarItem("_Dashboards", dashboardItems.ToArray()),
                 new MenuBarItem(
-                    "_Details",
+                    "D_etails",
                     [
                         new MenuItem("_Overview", "Built-in operational dashboard", ShowSystemDashboard),
                         new MenuItem("_Players", "Authoritative player read model", ShowPlayers),
+                        new MenuItem("_NPCs", "Authoritative NPC read model", ShowNpcs),
+                        new MenuItem("P_rojectiles", "Grouped authoritative projectile read model", ShowProjectiles),
+                        new MenuItem("_Items", "Grouped authoritative dropped-item read model", ShowItems),
                         new MenuItem("_Network", "Connection and replication counters", ShowNetwork),
                         new MenuItem("_World", "World and cache state", ShowWorld),
                         new MenuItem("_Logs", "Recent runtime log events", ShowLogs)
@@ -248,6 +288,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         Title = title;
         externalDashboardFailure = null;
         RefreshSnapshot();
+        InvalidateSystemRoot(layout: true);
     }
 
     private void ShowExternalDashboard(int index)
@@ -277,17 +318,12 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Title = $"TerraRuntime - {dashboard.Provider.Title}";
             externalDashboardFailure = null;
             dashboard.Provider.Refresh(dashboard.Root);
+            InvalidateExternalRoot(dashboard.Root);
         }
         catch (Exception exception)
         {
-            activeExternalDashboard = -1;
-            SetExternalVisibility(-1);
-            systemRoot.Visible = true;
-            screen = WorkspaceScreen.Dashboard;
-            externalDashboardFailure =
-                $"Dashboard '{SanitizeText(dashboard.Provider.Title, 32)}' failed: {SanitizeText(exception.Message, 96)}";
-            Title = "TerraRuntime - System Dashboard";
-            RefreshSystemDashboard();
+            RestoreSystemDashboardAfterExternalFailure(
+                $"Dashboard '{SanitizeText(dashboard.Provider.Title, 32)}' failed: {SanitizeText(exception.Message, 96)}");
         }
     }
 
@@ -306,18 +342,25 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         try
         {
             dashboard.Provider.Refresh(dashboard.Root);
+            InvalidateExternalRoot(dashboard.Root);
         }
         catch (Exception exception)
         {
-            activeExternalDashboard = -1;
-            SetExternalVisibility(-1);
-            systemRoot.Visible = true;
-            screen = WorkspaceScreen.Dashboard;
-            externalDashboardFailure =
-                $"Dashboard '{SanitizeText(dashboard.Provider.Title, 32)}' refresh failed: {SanitizeText(exception.Message, 96)}";
-            Title = "TerraRuntime - System Dashboard";
-            RefreshSystemDashboard();
+            RestoreSystemDashboardAfterExternalFailure(
+                $"Dashboard '{SanitizeText(dashboard.Provider.Title, 32)}' refresh failed: {SanitizeText(exception.Message, 96)}");
         }
+    }
+
+    private void RestoreSystemDashboardAfterExternalFailure(string message)
+    {
+        activeExternalDashboard = -1;
+        SetExternalVisibility(-1);
+        systemRoot.Visible = true;
+        screen = WorkspaceScreen.Dashboard;
+        externalDashboardFailure = message;
+        Title = "TerraRuntime - System Dashboard";
+        RefreshSystemDashboard();
+        InvalidateSystemRoot(layout: true);
     }
 
     private void SetExternalVisibility(int visibleIndex)
@@ -327,6 +370,26 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             if (externalDashboards[i].Root is View root)
                 root.Visible = i == visibleIndex;
         }
+    }
+
+    private void InvalidateSystemRoot(bool layout)
+    {
+        if (layout)
+        {
+            systemRoot.SetNeedsLayout();
+            workspace.SetNeedsLayout();
+        }
+
+        systemRoot.SetNeedsDraw();
+        workspace.SetNeedsDraw();
+    }
+
+    private void InvalidateExternalRoot(View root)
+    {
+        root.SetNeedsLayout();
+        root.SetNeedsDraw();
+        workspace.SetNeedsLayout();
+        workspace.SetNeedsDraw();
     }
 
     private void RefreshSystemDashboard()
@@ -402,15 +465,109 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             RuntimePlayerSnapshot player = players[i];
             string health = player.HasHealth ? $"{player.Life}/{player.MaxLife}" : "n/a";
             string mana = player.HasMana ? $"{player.Mana}/{player.MaxMana}" : "n/a";
+            string mount = player.MountType == 0 ? "none" : player.MountType.ToString(CultureInfo.InvariantCulture);
             rows[i + 1].Text =
                 $"#{player.Slot,3} g{player.Generation,-4} c{player.ConnectionId,-5} {SanitizeName(player.Name),-20} " +
                 $"team {player.Team} pos {player.PositionX / 16f:F1},{player.PositionY / 16f:F1}t " +
-                $"vel {player.VelocityX:F1},{player.VelocityY:F1} HP {health} MP {mana}";
+                $"vel {player.VelocityX:F1},{player.VelocityY:F1} item-slot {player.SelectedItem} mount {mount} HP {health} MP {mana}";
         }
 
         rows[rows.Length - 1].Text =
             players.Length > visible
                 ? $"... {players.Length - visible} more | F2 returns to System Dashboard"
+                : "F2 returns to System Dashboard";
+    }
+
+    private void RefreshNpcs()
+    {
+        ClearRows();
+        RuntimeNpcsSnapshot snapshot = npcOperations.CaptureSnapshot();
+        ReadOnlySpan<RuntimeNpcSnapshot> npcs = snapshot.Npcs.Span;
+        rows[0].Text =
+            $"NPCS  {npcs.Length} live | commits spawn {snapshot.CommittedSpawns:N0} update {snapshot.CommittedUpdates:N0} despawn {snapshot.CommittedDespawns:N0}";
+
+        int visible = Math.Min(npcs.Length, rows.Length - 2);
+        for (int i = 0; i < visible; i++)
+        {
+            RuntimeNpcSnapshot npc = npcs[i];
+            string collision = $"{(npc.CollideX ? 'X' : '-')}{(npc.CollideY ? 'Y' : '-')}";
+            string flags =
+                $"{collision}/{(npc.Wet ? "wet" : "dry")}/{(npc.NoGravity ? "ng" : "g")}/{(npc.NoTileCollide ? "ntc" : "tc")}";
+            rows[i + 1].Text =
+                $"#{npc.Slot,3} g{npc.Generation,-4} r{npc.Revision,-5} type {npc.Type}/{npc.NetId} " +
+                $"pos {npc.PositionX / 16f:F1},{npc.PositionY / 16f:F1}t vel {npc.VelocityX:F1},{npc.VelocityY:F1} " +
+                $"target {npc.Target} ai {npc.Ai0:F1}/{npc.Ai1:F1}/{npc.Ai2:F1}/{npc.Ai3:F1} dir {npc.DirectionX},{npc.DirectionY} {flags}";
+        }
+
+        rows[rows.Length - 1].Text =
+            npcs.Length > visible
+                ? $"... {npcs.Length - visible} more | F2 returns to System Dashboard"
+                : "F2 returns to System Dashboard";
+    }
+
+    private void RefreshProjectiles()
+    {
+        ClearRows();
+        if (projectileOperations is null)
+        {
+            rows[0].Text = "PROJECTILES  <telemetry unavailable>";
+            rows[17].Text = "F2 returns to System Dashboard";
+            return;
+        }
+
+        RuntimeProjectilesSnapshot snapshot = projectileOperations.CaptureSnapshot();
+        RuntimePlayersSnapshot playersSnapshot = playerOperations.CaptureSnapshot();
+        ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
+        ReadOnlySpan<RuntimeProjectileGroupSnapshot> groups = snapshot.Groups.Span;
+        rows[0].Text =
+            $"PROJECTILES  {snapshot.ActiveProjectiles} live in {groups.Length} spawner/type groups | " +
+            $"commits {snapshot.CommittedSpawns:N0}/{snapshot.CommittedUpdates:N0}/{snapshot.CommittedDespawns:N0}";
+
+        int visible = Math.Min(groups.Length, rows.Length - 2);
+        for (int i = 0; i < visible; i++)
+        {
+            RuntimeProjectileGroupSnapshot group = groups[i];
+            string type = ProjectileDisplayFormatter.FormatType(group.Type);
+            string owner = ProjectileDisplayFormatter.FormatOwner(group.Spawner, players);
+            rows[i + 1].Text =
+                $"x{group.Count,-4} {type,-28} {owner,-28} " +
+                $"pos~ {group.AveragePositionX / 16f:F1},{group.AveragePositionY / 16f:F1}t " +
+                $"vel~ {group.AverageVelocityX:F1},{group.AverageVelocityY:F1} dmg<={group.MaxDamage} orig<={group.MaxOriginalDamage} kb<={group.MaxKnockBack:F1}";
+        }
+
+        rows[rows.Length - 1].Text =
+            groups.Length > visible
+                ? $"... {groups.Length - visible} more groups | F2 returns to System Dashboard"
+                : "F2 returns to System Dashboard";
+    }
+
+    private void RefreshItems()
+    {
+        ClearRows();
+        if (worldItemOperations is null)
+        {
+            rows[0].Text = "ITEMS  <telemetry unavailable>";
+            rows[17].Text = "F2 returns to System Dashboard";
+            return;
+        }
+
+        RuntimeWorldItemsSnapshot snapshot = worldItemOperations.CaptureSnapshot();
+        ReadOnlySpan<RuntimeWorldItemGroupSnapshot> groups = snapshot.Groups.Span;
+        rows[0].Text = $"ITEMS  {snapshot.ActiveItems} live in {groups.Length} item-type groups";
+
+        int visible = Math.Min(groups.Length, rows.Length - 2);
+        for (int i = 0; i < visible; i++)
+        {
+            RuntimeWorldItemGroupSnapshot group = groups[i];
+            rows[i + 1].Text =
+                $"x{group.DropCount,-4} type #{group.ItemNetId,-6} stack total {group.TotalStack,-8:N0} max {group.MaxStack,-5} " +
+                $"reserved {group.ReservedDrops,-4} shimmer {group.ShimmeredDrops,-4} " +
+                $"pos~ {group.AveragePositionX / 16f:F1},{group.AveragePositionY / 16f:F1}t";
+        }
+
+        rows[rows.Length - 1].Text =
+            groups.Length > visible
+                ? $"... {groups.Length - visible} more groups | F2 returns to System Dashboard"
                 : "F2 returns to System Dashboard";
     }
 
@@ -436,6 +593,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             rows[11 + i].Text =
                 $"IN  #{rate.ConnectionId,-5} {rate.WindowFrames,6:N0} f/s  {FormatKibibytes(rate.WindowBytes),10}/s  total {rate.TotalFrames:N0}";
         }
+        if (rates.Length == 0)
+            rows[11].Text = "IN  <no active inbound traffic>";
 
         ReadOnlySpan<RuntimeConnectionQueueDetail> queues = snapshot.TopOutboundQueues.Span;
         for (int i = 0; i < Math.Min(queues.Length, 2); i++)
@@ -444,6 +603,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             rows[14 + i].Text =
                 $"OUT #{queue.ConnectionId,-5} {queue.QueuedFrames,5:N0} frames  {FormatKibibytes(queue.QueuedBytes),10}  rejected {queue.RejectedFrames:N0}  {(queue.SlowClient ? "SLOW" : "ok")}";
         }
+        if (queues.Length == 0)
+            rows[14].Text = "OUT <no queued/rejected/slow clients>";
 
         rows[17].Text = "F2 returns to System Dashboard";
     }
@@ -612,7 +773,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         MessageBox.Query(
             App!,
             "TerraRuntime",
-            "F2 opens the TerraRuntime System Dashboard. F3-F12 open independent dashboards registered by trusted host modules. Providers cannot inject controls into the system dashboard.",
+            "F2 opens the TerraRuntime System Dashboard. F3-F12 open independent dashboards registered by trusted host modules. Details exposes runtime-owned read models only.",
             "OK");
 
     private sealed class ExternalDashboard(ITerraRuntimeTerminalDashboardProvider provider)
@@ -625,6 +786,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     {
         Dashboard,
         Players,
+        Npcs,
+        Projectiles,
+        Items,
         Network,
         World,
         Logs
