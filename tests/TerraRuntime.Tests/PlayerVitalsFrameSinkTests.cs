@@ -68,6 +68,47 @@ public sealed class PlayerVitalsFrameSinkTests
             TerrariaFrameSinkResult.Stop,
             sink.OnFrame(Frame(TerrariaMessageId.PlayerHp, new byte[4])));
         Assert.Equal(PlayerVitalsStopReason.MalformedHealth, sink.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.MalformedProtocol, sink.RejectionCategory);
+    }
+
+    [Fact]
+    public void Delegated_bootstrap_invalid_state_is_exposed_as_rejection_category()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(45);
+        using var bootstrap = CreateBootstrap(source);
+        var sink = new PlayerVitalsFrameSink(
+            source,
+            bootstrap,
+            new CapturingHealthIngress(),
+            new CapturingManaIngress());
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Hello()));
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(Hello()));
+
+        Assert.Equal(PlayerVitalsStopReason.None, sink.StopReason);
+        Assert.Equal(PlayerBootstrapStopReason.InvalidJoinState, bootstrap.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.InvalidState, sink.RejectionCategory);
+    }
+
+    [Fact]
+    public void Delegated_malformed_bootstrap_packet_is_exposed_as_malformed_protocol()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(46);
+        using var bootstrap = CreateBootstrap(source);
+        var sink = new PlayerVitalsFrameSink(
+            source,
+            bootstrap,
+            new CapturingHealthIngress(),
+            new CapturingManaIngress());
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Hello()));
+        Assert.Equal(
+            TerrariaFrameSinkResult.Stop,
+            sink.OnFrame(Frame(TerrariaMessageId.SyncPlayer, Array.Empty<byte>())));
+
+        Assert.Equal(PlayerVitalsStopReason.None, sink.StopReason);
+        Assert.Equal(PlayerBootstrapStopReason.MalformedPlayerAppearance, bootstrap.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.MalformedProtocol, sink.RejectionCategory);
     }
 
     private static PlayerBootstrapFrameSink CreateBootstrap(GameCommandSourceId source) =>
