@@ -89,19 +89,14 @@ internal sealed class RuntimeChestReplicationRegistry : IRuntimePlayerEventSink
         }
     }
 
-    public void PublishRenamed(WorldChest chest)
+    public void PublishRenamed(ConnectionHandle source, WorldChest chest)
     {
         ArgumentNullException.ThrowIfNull(chest);
-        byte[] encoded = TerrariaChestCodec.EncodeChestName(
-            chest.SlotId,
-            checked((short)chest.X),
-            checked((short)chest.Y),
-            chest.Name);
-        var frame = new OutboundFrame(encoded);
+        OutboundFrame frame = EncodeNameFrame(chest);
 
-        foreach ((GameCommandSourceId _, Endpoint endpoint) in endpoints)
+        foreach ((GameCommandSourceId endpointSource, Endpoint endpoint) in endpoints)
         {
-            if (!endpoint.IsPlaying())
+            if (endpointSource == source.Source || !endpoint.IsPlaying())
                 continue;
 
             if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
@@ -109,6 +104,26 @@ internal sealed class RuntimeChestReplicationRegistry : IRuntimePlayerEventSink
             else
                 RejectedFrames++;
         }
+    }
+
+    public bool TrySendName(ConnectionHandle connection, WorldChest chest)
+    {
+        ArgumentNullException.ThrowIfNull(chest);
+        if (!connection.IsAssigned ||
+            !endpoints.TryGetValue(connection.Source, out Endpoint? endpoint) ||
+            !endpoint.IsPlaying(connection.Player))
+        {
+            return false;
+        }
+
+        if (endpoint.Outbound.TryEnqueue(EncodeNameFrame(chest)) != OutboundEnqueueResult.Enqueued)
+        {
+            RejectedFrames++;
+            return false;
+        }
+
+        NameFrames++;
+        return true;
     }
 
     public void PublishClosed(ConnectionHandle connection) =>
@@ -140,6 +155,13 @@ internal sealed class RuntimeChestReplicationRegistry : IRuntimePlayerEventSink
         if (endpoints.TryGetValue(connection.Source, out Endpoint? endpoint))
             endpoint.ClearPlaying(connection.Player);
     }
+
+    private static OutboundFrame EncodeNameFrame(WorldChest chest) =>
+        new(TerrariaChestCodec.EncodeChestName(
+            chest.SlotId,
+            checked((short)chest.X),
+            checked((short)chest.Y),
+            chest.Name));
 
     private void BroadcastChestIndex(byte playerSlot, short chestId, GameCommandSourceId excludedSource)
     {
