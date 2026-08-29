@@ -156,15 +156,18 @@ The checker validates structural and presentation invariants rather than attempt
 - obvious ASCII/pseudographic process diagrams inside `text` fences are rejected in favor of Mermaid;
 - literal directory trees, CLI/output, byte layouts and similar data remain valid text fences; a rare intentionally diagram-like literal block may use the documented `<!-- docs-style: literal-text -->` marker.
 
+`tools/ci/test_check_documentation.py` regression-tests the checker itself with only the Python standard library. The suite covers diagram detection, literal-directory-tree behavior, the explicit literal marker, relative/external links, repository-root escape rejection and paired RU/EN changes. Both the dedicated Documentation workflow and the main CI run these tests before trusting the checker result.
+
 The dedicated `.github/workflows/documentation.yml` workflow checks out full Git history and invokes the same checker with `--changed-base`. That adds a change-set invariant: every changed `docs/en/<page>.md` requires the matching changed `docs/ru/<page>.md` in the same push/PR diff, and vice versa.
 
 For direct work on `main`, paired language edits should therefore be committed atomically where possible. A sequence of single-file pushes is intentionally considered incomplete until a push contains the complete bilingual pair in its checked change set.
 
 The gate does **not** claim to prove semantic translation equivalence. Review remains responsible for meaning and factual parity between the two language versions.
 
-Run the structural/link/style check locally from the repository root:
+Run the checker regression tests and then the structural/link/style check locally from the repository root:
 
 ```text
+python3 tools/ci/test_check_documentation.py
 python3 tools/ci/check_documentation.py
 ```
 
@@ -196,6 +199,7 @@ The `--changed-base <sha>` form is used by CI when a concrete push/PR base is av
 - [x] Enforce paired RU/EN page changes in the same push/PR diff through the dedicated Documentation workflow.
 - [x] Adopt Mermaid + LaTeX as the documentation presentation standard and migrate the main architecture guide.
 - [x] Migrate legacy pseudographic subsystem/process diagrams to Mermaid, normalize dimensional numeric values to LaTeX where applicable, and enforce the process-diagram rule in CI.
+- [x] Add regression tests for the documentation checker and execute them in both documentation-specific and main CI gates.
 
 ## Continuing work
 
@@ -214,6 +218,7 @@ Documentation work is complete when:
 - diagrams use Mermaid rather than pseudographic boxes/arrows;
 - dimensional quantitative values use LaTeX units where applicable;
 - links are relative and repository-safe;
+- `python3 tools/ci/test_check_documentation.py` passes;
 - `python3 tools/ci/check_documentation.py` passes;
 - the dedicated Documentation workflow passes for a change that touches bilingual pages;
 - the associated roadmap/status is updated when support changed.
