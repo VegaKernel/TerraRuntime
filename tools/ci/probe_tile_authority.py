@@ -59,7 +59,7 @@ def require(fragment: str, needle: str, description: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Verify pinned Terraria 1.4.5.8 tile-authority facts used by TerraRuntime."
+        description="Verify pinned TerrariaServer 1.4.5.8 tile-authority facts used by TerraRuntime."
     )
     parser.add_argument("--message-buffer", required=True)
     parser.add_argument("--item", required=True)
@@ -107,6 +107,7 @@ def main() -> int:
                 f"Packet 17 now contains {forbidden!r}; revisit TerraRuntime's stricter inventory/reach policy."
             )
 
+    print(f"packet17_case={tile}")
     print("item_id_dirt_block=2")
     print("item_dirt_block_create_tile=0")
     print("item_dirt_block_consumable=true")
