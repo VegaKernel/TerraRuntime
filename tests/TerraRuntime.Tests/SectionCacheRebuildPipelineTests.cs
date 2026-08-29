@@ -322,7 +322,7 @@ public sealed class SectionCacheRebuildPipelineTests
     }
 
     [Fact]
-    public void Does_not_capture_more_snapshots_while_all_in_flight_slots_are_occupied()
+    public void Does_not_capture_more_snapshots_while_same_section_is_in_flight()
     {
         WorldFileData world = LoadCompleteWorld();
         PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
@@ -363,7 +363,8 @@ public sealed class SectionCacheRebuildPipelineTests
         tile.Flags ^= WorldTileFlags.WireBlue;
         world.Tiles.Set(x, y, tile);
         pipeline.Tick();
-        Assert.Equal(2, pipeline.Snapshot.InFlight);
+        Assert.Equal(1, pipeline.Snapshot.InFlight);
+        Assert.Equal(1, world.Tiles.DirtySections.DirtyCount);
 
         tile = world.Tiles.Get(x, y);
         tile.Flags ^= WorldTileFlags.WireGreen;
@@ -376,7 +377,7 @@ public sealed class SectionCacheRebuildPipelineTests
 
         SectionCacheRebuildPipelineSnapshot snapshot = pipeline.Snapshot;
         Assert.Equal(capturedBefore, snapshot.CapturedSnapshots);
-        Assert.Equal(2, snapshot.InFlight);
+        Assert.Equal(1, snapshot.InFlight);
         Assert.Equal(1, snapshot.DirtyBacklog);
         Assert.Equal(0, snapshot.RejectedSubmissions);
         releaseEncode.Set();
