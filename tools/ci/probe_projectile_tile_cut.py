@@ -93,11 +93,27 @@ def around_optional(source: str, needle: str, radius: int = 520) -> str:
     return normalized[start:end]
 
 
+def around_last(source: str, needle: str, radius: int = 700) -> str:
+    normalized = compact(source)
+    index = normalized.rfind(needle)
+    if index < 0:
+        return "<none>"
+    start = max(0, index - radius)
+    end = min(len(normalized), index + len(needle) + radius)
+    return normalized[start:end]
+
+
 def matching_lines(source: str, needle: str, limit: int = 300) -> str:
     matches = [compact(line) for line in source.splitlines() if needle in line]
     if not matches:
         return "<none>"
     return " | ".join(matches[:limit])
+
+
+def called_helpers(source: str, prefix: str) -> str:
+    pattern = re.compile(rf"\b({re.escape(prefix)}[A-Za-z0-9_]+)\s*\(")
+    calls = pattern.findall(source)
+    return " -> ".join(calls) if calls else "<none>"
 
 
 def relevant_drop_contexts(source: str) -> str:
@@ -162,11 +178,13 @@ def main() -> int:
     compact_kill_tile = compact(kill_tile)
     compact_drops = compact(kill_tile_drops)
     print(f"worldgen_kill_tile_length={len(compact_kill_tile)}")
+    print("worldgen_kill_tile_helpers=" + called_helpers(kill_tile, "KillTile_"))
     print("worldgen_kill_tile_drop_call=" + around_optional(kill_tile, "KillTile_GetItemDrops", radius=900))
-    print("worldgen_kill_tile_clear_tile=" + around_optional(kill_tile, "ClearTile", radius=900))
-    print("worldgen_kill_tile_active_false=" + around_optional(kill_tile, "active(active: false)", radius=900))
-    print("worldgen_kill_tile_square_frame=" + around_optional(kill_tile, "SquareTileFrame", radius=900))
-    print("worldgen_kill_tile_tile_frame=" + around_optional(kill_tile, "TileFrame", radius=900))
+    print("worldgen_kill_tile_active_false_last=" + around_last(kill_tile, "active(active: false)", radius=1200))
+    print("worldgen_kill_tile_type_zero_last=" + around_last(kill_tile, "type = 0", radius=1200))
+    print("worldgen_kill_tile_square_frame_last=" + around_last(kill_tile, "SquareTileFrame", radius=1200))
+    print("worldgen_kill_tile_framex_reset_last=" + around_last(kill_tile, "frameX = -1", radius=1200))
+    print("worldgen_kill_tile_framey_reset_last=" + around_last(kill_tile, "frameY = -1", radius=1200))
     print(f"worldgen_kill_tile_get_item_drops_length={len(compact_drops)}")
     print("worldgen_cuttable_drop_contexts=" + relevant_drop_contexts(kill_tile_drops))
     if len(compact_drops) <= 24000:
