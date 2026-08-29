@@ -16,15 +16,17 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
         Assert.Equal(4_096, options.RateBudget.MaxFrames);
         Assert.Equal(2L * 1024 * 1024, options.RateBudget.MaxBytes);
 
-        Assert.Equal(16, limits.Count);
+        Assert.Equal(18, limits.Count);
         AssertBudget(limits, TerrariaMessageId.RequestWorldData, 16, 4 * 1024);
         AssertBudget(limits, TerrariaMessageId.SpawnTileData, 120, 16 * 1024);
         AssertBudget(limits, TerrariaMessageId.PlayerControls, 600, 96 * 1024);
         AssertBudget(limits, TerrariaMessageId.SyncEquipment, 600, 64 * 1024);
         AssertBudget(limits, TerrariaMessageId.TileManipulation, 480, 64 * 1024);
         AssertBudget(limits, TerrariaMessageId.WorldItemDrop, 240, 64 * 1024);
+        AssertBudget(limits, TerrariaMessageId.ChatMessage, 120, 128 * 1024);
         AssertBudget(limits, TerrariaMessageId.ProjectileNew, 1_200, 256 * 1024);
         AssertBudget(limits, TerrariaMessageId.RequestChestOpen, 120, 16 * 1024);
+        AssertBudget(limits, TerrariaMessageId.LiquidSet, 600, 64 * 1024);
         AssertBudget(limits, TerrariaMessageId.LoadNetModule, 120, 256 * 1024);
 
         Assert.False(limits.TryGet((byte)TerrariaMessageId.Hello, out _));
@@ -90,6 +92,40 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
         Assert.Equal(3, inner.Count);
         Assert.Equal(4, accountant.Snapshot.TotalFrames);
         Assert.Equal(1, accountant.Snapshot.RejectedFrames);
+    }
+
+    [Fact]
+    public void Expensive_packet_classes_keep_independent_message_budgets()
+    {
+        var limits = new ConnectionMessageRateLimits(
+            new ConnectionMessageRateRule(
+                (byte)TerrariaMessageId.TileManipulation,
+                new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 1, maxBytes: null)),
+            new ConnectionMessageRateRule(
+                (byte)TerrariaMessageId.LiquidSet,
+                new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 2, maxBytes: null)),
+            new ConnectionMessageRateRule(
+                (byte)TerrariaMessageId.ChatMessage,
+                new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 3, maxBytes: null)),
+            new ConnectionMessageRateRule(
+                (byte)TerrariaMessageId.WorldItemDrop,
+                new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 4, maxBytes: null)));
+        var accountant = new TerrariaMessageRateAccountant(limits);
+
+        Assert.Equal(ConnectionRateDecision.Allowed, accountant.Observe((byte)TerrariaMessageId.TileManipulation, 3));
+        Assert.Equal(ConnectionRateDecision.FrameLimitExceeded, accountant.Observe((byte)TerrariaMessageId.TileManipulation, 3));
+
+        Assert.Equal(ConnectionRateDecision.Allowed, accountant.Observe((byte)TerrariaMessageId.LiquidSet, 3));
+        Assert.Equal(ConnectionRateDecision.Allowed, accountant.Observe((byte)TerrariaMessageId.LiquidSet, 3));
+        Assert.Equal(ConnectionRateDecision.FrameLimitExceeded, accountant.Observe((byte)TerrariaMessageId.LiquidSet, 3));
+
+        Assert.Equal(ConnectionRateDecision.Allowed, accountant.Observe((byte)TerrariaMessageId.ChatMessage, 3));
+        Assert.Equal(ConnectionRateDecision.Allowed, accountant.Observe((byte)TerrariaMessageId.WorldItemDrop, 3));
+
+        Assert.Equal(2, accountant.GetSnapshot((byte)TerrariaMessageId.TileManipulation).TotalFrames);
+        Assert.Equal(3, accountant.GetSnapshot((byte)TerrariaMessageId.LiquidSet).TotalFrames);
+        Assert.Equal(1, accountant.GetSnapshot((byte)TerrariaMessageId.ChatMessage).TotalFrames);
+        Assert.Equal(1, accountant.GetSnapshot((byte)TerrariaMessageId.WorldItemDrop).TotalFrames);
     }
 
     [Fact]
