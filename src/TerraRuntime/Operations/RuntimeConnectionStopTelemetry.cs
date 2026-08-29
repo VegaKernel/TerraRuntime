@@ -29,7 +29,8 @@ internal sealed class RuntimeConnectionStopTelemetry
         SlowClient: GetCount(TerrariaConnectionStopReason.SlowClient),
         ApplicationStopped: GetCount(TerrariaConnectionStopReason.ApplicationStopped),
         HandshakeTimeout: GetCount(TerrariaConnectionStopReason.HandshakeTimeout),
-        IdleTimeout: GetCount(TerrariaConnectionStopReason.IdleTimeout));
+        IdleTimeout: GetCount(TerrariaConnectionStopReason.IdleTimeout),
+        JoinTimeout: GetCount(TerrariaConnectionStopReason.JoinTimeout));
 }
 
 internal readonly record struct RuntimeConnectionStopTelemetrySnapshot(
@@ -40,4 +41,5 @@ internal readonly record struct RuntimeConnectionStopTelemetrySnapshot(
     long SlowClient,
     long ApplicationStopped,
     long HandshakeTimeout,
-    long IdleTimeout);
+    long IdleTimeout,
+    long JoinTimeout);
