@@ -69,4 +69,11 @@ public sealed class TerrariaConnectionRateAccountant
 
         return ConnectionRateDecision.Allowed;
     }
+
+    /// <summary>
+    /// Records a frame rejected by a secondary rate policy after this accountant already accepted
+    /// and counted the frame. This keeps aggregate connection telemetry truthful for per-message limits
+    /// without double-counting the frame or its bytes.
+    /// </summary>
+    internal void RecordSecondaryRateRejection() => Interlocked.Increment(ref _rejectedFrames);
 }
