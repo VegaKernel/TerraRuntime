@@ -32,6 +32,7 @@ public sealed class WorldTileStore
         _sectionVersions = new long[dimensions.SectionCount];
         LiquidUpdates = new WorldLiquidUpdateQueue(dimensions);
         DirtySections = new DirtySectionTracker(dimensions);
+        PersistenceDirtySections = new DirtySectionTracker(dimensions);
     }
 
     /// <summary>
@@ -46,10 +47,17 @@ public sealed class WorldTileStore
     public WorldLiquidUpdateQueue LiquidUpdates { get; }
 
     /// <summary>
-    /// Network sections dirtied through the authoritative tile mutation API. Canonical world and snapshot
-    /// loaders write the private backing span directly, so publishing an initial world does not dirty every section.
+    /// Network-section backlog dirtied through the authoritative tile mutation API. Packet-section rebuild consumers
+    /// own and drain this tracker independently from persistence so neither subsystem can steal the other's work.
+    /// Canonical world and snapshot loaders write the private backing span directly, so initial publication stays clean.
     /// </summary>
     public DirtySectionTracker DirtySections { get; }
+
+    /// <summary>
+    /// Persistence-section backlog for incremental save-shadow synchronization. Every authoritative mutation marks
+    /// both this tracker and <see cref="DirtySections"/>; save consumers drain only this tracker.
+    /// </summary>
+    public DirtySectionTracker PersistenceDirtySections { get; }
 
     /// <summary>
     /// Validated immutable world-surface geometry from the canonical runtime metadata. It is attached only
@@ -73,6 +81,7 @@ public sealed class WorldTileStore
         _tiles[index] = tile;
         Interlocked.Increment(ref _sectionVersions[sectionIndex]);
         DirtySections.MarkDirty(section);
+        PersistenceDirtySections.MarkDirty(section);
     }
 
     /// <summary>
