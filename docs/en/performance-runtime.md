@@ -159,6 +159,25 @@ flowchart LR
 
 Dirty world sections, replication registries and prepared startup state should replace full scans where correctness permits. A fast stale cache is still a bug.
 
+### 13.1 Encoded section cache memory bound
+
+Packet-10 frames are shared immutable values keyed by section revision. Spawn/bootstrap sections remain pinned because every joining connection requires them. Non-bootstrap frames use a deterministic least-recently-used cache with the correctness-first default budget
+
+$$
+B_{\mathrm{dynamic}}=64\,\mathrm{MiB}.
+$$
+
+A valid Terraria frame is bounded by the wire length field to at most `$65\,535\,\mathrm{B}$`. With `$N_{\mathrm{base}}$` pinned bootstrap sections, the cache therefore has the explicit process-local ceiling
+
+$$
+B_{\mathrm{cache,max}}=
+B_{\mathrm{dynamic}}+N_{\mathrm{base}}\cdot65\,535\,\mathrm{B}.
+$$
+
+Dynamic cache hits refresh LRU order. Admission evicts the oldest dynamic frames until the byte budget can accept the new frame. Stale dynamic entries are removed as soon as a revision mismatch is observed; pinned base entries remain bounded by their fixed count and are replaced only by a successfully encoded frame at the current committed revision.
+
+The cache snapshot exposes current total bytes, dynamic bytes, the dynamic byte limit, the derived total byte ceiling and eviction count in addition to hit/miss/stale/wait counters. The `$64\,\mathrm{MiB}$` value is a safe bounded default, not a measurement-derived final tuning value.
+
 ## 14. Allocation and GC discipline
 
 Spans, owned/pooled buffers, immutable frame sharing and compact values are preferred where measured. `unsafe`, custom allocators and broad pooling require evidence of material benefit and memory-cost checks.
@@ -189,7 +208,7 @@ Complexity that fails to materially improve its intended metric or harms memory/
 
 ## 18. Current limitations
 
-Active work includes final measurement-derived queue limits, complete subsystem budgets, real production interest-management suppression/resync, complete packet allocation/throughput baselines, broad `$24$`-player / `$255$`-connection soak coverage, large-world startup/save/GC profiling and final section-cache/dirty synchronization tuning.
+Active work includes final measurement-derived queue limits, complete subsystem budgets, real production interest-management suppression/resync, complete packet allocation/throughput baselines, broad `$24$`-player / `$255$`-connection soak coverage, large-world startup/save/GC profiling, measurement-derived section-cache budget tuning and complete dirty synchronization.
 
 ## 19. Change checklist
 

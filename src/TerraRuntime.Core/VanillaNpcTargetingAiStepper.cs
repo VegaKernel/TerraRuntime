@@ -4,9 +4,10 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Coordinates verified player-target selection cadence with state-only NPC AI. Demon Eye refreshes every
-/// ordinary style-2 tick; Blue Slime refreshes at its AI_001 state-machine points; ordinary Zombie follows
-/// verified AI_003 pursuit and discouraged/despawn branches.
+/// Coordinates verified player-target selection cadence with state-only NPC AI. Dispatch is selected by the
+/// runtime-owned behavior family carried by each verified NPC definition rather than by raw content IDs in the
+/// orchestration path. AiStyle remains source metadata; behavior-family opt-in prevents unverified NPC types that
+/// share an aiStyle from silently inheriting an implementation.
 /// </summary>
 public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 {
@@ -67,14 +68,38 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             return false;
         }
 
-        if (npcType == VanillaNpcIds.BlueSlime && _blueSlimeMotionEnabled)
-            return TryStepBlueSlime(in npc, npcType, out next);
+        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition))
+            return _inner.TryStepState(in npc, out next);
 
-        if (npcType == VanillaNpcIds.Zombie && _zombieMotionEnabled)
-            return TryStepZombie(in npc, npcType, out next);
+        switch (definition.BehaviorFamily)
+        {
+            case VanillaNpcBehaviorFamily.SlimeGround when _blueSlimeMotionEnabled:
+                return TryStepSlimeGround(in npc, in definition, out next);
+
+            case VanillaNpcBehaviorFamily.GroundFighter when _zombieMotionEnabled:
+                return TryStepGroundFighter(in npc, in definition, out next);
+
+            case VanillaNpcBehaviorFamily.FlyingEye:
+                return TryStepFlyingEye(in npc, in definition, out next);
+
+            default:
+                return _inner.TryStepState(in npc, out next);
+        }
+    }
+
+    private bool TryStepFlyingEye(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        out NpcStateUpdate next)
+    {
+        if (definition.AiStyle != VanillaNpcAiStyles.DemonEye)
+        {
+            next = default;
+            return false;
+        }
 
         NpcSnapshot targeted = npc;
-        if (npcType == VanillaNpcIds.DemonEye && TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh closest))
+        if (TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest))
         {
             targeted = npc with
             {
@@ -90,17 +115,21 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         return _inner.TryStepState(in targeted, out next);
     }
 
-    private bool TryStepBlueSlime(in NpcSnapshot npc, NpcTypeId npcType, out NpcStateUpdate next)
+    private bool TryStepSlimeGround(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        out NpcStateUpdate next)
     {
-        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) || definition.AiStyle != VanillaNpcAiStyles.Slime)
+        if (definition.AiStyle != VanillaNpcAiStyles.Slime)
         {
             next = default;
             return false;
         }
 
-        VanillaBlueSlimeTargetRefresh closest = TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh selected)
-            ? selected
-            : default;
+        VanillaBlueSlimeTargetRefresh closest =
+            TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
+                ? selected
+                : default;
         NpcSimulationState simulation = npc.Simulation;
         bool damaged = simulation.LifeMax > 0 && simulation.Life != simulation.LifeMax;
         bool engaged = !_dayTime || damaged || _slimeRainActive || npc.PositionY > _worldSurfacePixels;
@@ -127,7 +156,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         }
 
         next = new NpcStateUpdate(
-            npcType.Value,
+            definition.Type.Value,
             npc.NetId,
             result.PositionX,
             npc.PositionY,
@@ -144,9 +173,12 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         return true;
     }
 
-    private bool TryStepZombie(in NpcSnapshot npc, NpcTypeId npcType, out NpcStateUpdate next)
+    private bool TryStepGroundFighter(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        out NpcStateUpdate next)
     {
-        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) || definition.AiStyle != VanillaNpcAiStyles.Fighter)
+        if (definition.AiStyle != VanillaNpcAiStyles.Fighter)
         {
             next = default;
             return false;
@@ -165,23 +197,24 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             startingDirectionY = -1;
         }
 
-        VanillaBlueSlimeTargetRefresh closest = TrySelectClosestTarget(in npc, out VanillaBlueSlimeTargetRefresh selected)
-            ? selected
-            : default;
-        int zombieDirectionY = closest.DirectionY;
+        VanillaBlueSlimeTargetRefresh closest =
+            TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
+                ? selected
+                : default;
+        int fighterDirectionY = closest.DirectionY;
         if (closest.HasTarget &&
-            zombieDirectionY > 0 &&
+            fighterDirectionY > 0 &&
             TryFindCandidate(checked((byte)closest.Target), candidates, out VanillaNpcTargetCandidate selectedCandidate) &&
             selectedCandidate.CenterY <= npc.PositionY + definition.Height)
         {
-            zombieDirectionY = -1;
+            fighterDirectionY = -1;
         }
 
-        var zombieTarget = new VanillaZombieTargetRefresh(
+        var fighterTarget = new VanillaZombieTargetRefresh(
             closest.HasTarget,
             closest.Target,
             closest.DirectionX,
-            zombieDirectionY);
+            fighterDirectionY);
 
         NpcSimulationState simulation = npc.Simulation;
         var input = new VanillaZombieMotionInput(
@@ -194,8 +227,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             Target: npc.Target,
             Ai: npc.Ai,
             Scale: simulation.Scale,
-            TargetOverlaps: TargetOverlapsNpc(in npc, definition),
-            ClosestTarget: zombieTarget)
+            TargetOverlaps: TargetOverlapsNpc(in npc, in definition),
+            ClosestTarget: fighterTarget)
         {
             PursuitAllowed = !daytimeSurface,
             EncourageDespawn = daytimeSurface,
@@ -211,7 +244,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         }
 
         next = new NpcStateUpdate(
-            npcType.Value,
+            definition.Type.Value,
             npc.NetId,
             npc.PositionX,
             npc.PositionY,
@@ -231,10 +264,13 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         return true;
     }
 
-    private bool TrySelectClosestTarget(in NpcSnapshot npc, out VanillaBlueSlimeTargetRefresh target)
+    private bool TrySelectClosestTarget(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        out VanillaBlueSlimeTargetRefresh target)
     {
         target = default;
-        if (_candidateCount == 0 || !VanillaNpcDefinitionCatalog.TryGet(npc.Type, out VanillaNpcDefinition definition))
+        if (_candidateCount == 0)
             return false;
 
         float npcCenterX = npc.PositionX + definition.Width * 0.5f;
@@ -259,7 +295,9 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         return true;
     }
 
-    private bool TargetOverlapsNpc(in NpcSnapshot npc, VanillaNpcDefinition definition)
+    private bool TargetOverlapsNpc(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition)
     {
         if (npc.Target >= byte.MaxValue ||
             !TryFindCandidate((byte)npc.Target, _candidates.AsSpan(0, _candidateCount), out VanillaNpcTargetCandidate candidate) ||

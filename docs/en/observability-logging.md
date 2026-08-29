@@ -1,48 +1,40 @@
 # Observability and structured runtime logging
 
-TerraRuntime now has the **L0-L2 structured logging foundation**: stable diagnostic contracts, a bounded non-blocking runtime pipeline, and background sinks. The live host still uses the legacy `RuntimeHostLog` path until the L3 adoption milestone converts call sites. This separation is deliberate: the new pipeline is complete and testable without changing authoritative runtime behavior in the same commit.
+[Русский](../ru/observability-logging.md) · [Documentation](README.md) · [Operations/TUI](operations-tui.md) · [Logging roadmap](../roadmap/runtime-logging-pipeline.md)
+
+TerraRuntime has the **L0-L2 structured logging foundation** and the first L3 live-host adoption slice. `RuntimeHostLog` now publishes into the bounded structured pipeline; its legacy operations read model and stdout/stderr compatibility behavior are worker-owned sinks instead of synchronous producer work. Remaining direct `Console.*` startup/world-host call sites are still explicit L3 work.
 
 ## Architecture
 
 ```mermaid
 graph LR
-    P[Runtime producers] -->|TryPublish, never waits| Q[Bounded MPSC channel]
+    P[RuntimeHostLog producer] -->|TryPublish, never waits| Q[Bounded MPSC channel]
     Q --> W[Single background drain worker]
-    W --> C[Console sink]
-    W --> J[Rotating JSONL sink]
-    W --> R[Bounded recent-log store]
-    W --> H[Future sinks]
+    W --> O[Legacy RuntimeLogBuffer adapter]
+    W --> C[Compatibility stdout/stderr sink]
+    W --> J[Rotating JSONL sink when composed]
+    W --> R[Structured recent-log store when composed]
 ```
 
-The producer path only builds a compact immutable `RuntimeLogRecord`, bounds free-form scalar text, assigns sequence/timestamp data, and calls `ChannelWriter.TryWrite`. Disk I/O, console I/O, JSON encoding, flushing, rotation, retention, and sink failure handling happen on the drain worker.
+The migrated bridge decides console routing at enqueue time. A record is tagged as buffered-only, standard-output, or standard-error before it enters the queue, so later TUI state changes cannot retroactively reroute an already accepted message.
 
-With queue capacity \(N_{q}\) and warning/error reserve \(N_{r}\), normal records may occupy at most
+## Producer bound
+
+The producer path only normalizes bounded scalar text, assigns sequence/timestamp data, and calls `ChannelWriter.TryWrite`. Disk I/O, console I/O, JSON encoding, flushing, rotation, retention, and sink failure handling happen outside the authoritative producer path.
+
+With queue capacity \(N_q\) and warning/error reserve \(N_r\), normal records may occupy at most
 
 \[
 N_{normal}=N_q-N_r.
 \]
 
-The defaults are \(N_q=2048\) and \(N_r=256\). `Warning`, `Error`, and `Critical` records may use the reserved capacity. The producer never blocks when the queue is saturated; rejection is counted per severity.
+The defaults remain \(N_q=2048\) and \(N_r=256\). `Warning`, `Error`, and `Critical` records may use the reserved capacity. Saturation rejects records instead of waiting and increments per-level drop counters.
 
 ## Stable record contract
 
-`TerraRuntime.Contracts.Diagnostics.RuntimeLogRecord` contains:
-
-- monotonically increasing process-local sequence;
-- UTC timestamp;
-- severity;
-- stable numeric event ID;
-- top-level category;
-- subsystem;
-- bounded message text;
-- detached correlation context;
-- bounded exception type/message fields.
-
-The detached context deliberately contains scalar handles only: correlation, world, connection, player, entity, packet direction, and packet ID. Runtime entities and raw packet payloads are not held by log records.
+`TerraRuntime.Contracts.Diagnostics.RuntimeLogRecord` contains sequence, UTC timestamp, severity, stable event ID, category, subsystem, bounded message text, detached correlation context, and bounded exception type/message fields. Context is scalar-only: logging does not retain mutable runtime entities or raw packet payloads.
 
 ### Event ID allocation
-
-Event IDs are stable machine identifiers. Message text may change without changing the event ID. The reserved ranges are:
 
 | Range | Category |
 | ---: | --- |
@@ -56,56 +48,56 @@ Event IDs are stable machine identifiers. Message text may change without changi
 | `8000-8999` | Operations |
 | `9000-9999` | Security |
 
-New events must be allocated inside the owning range and must not recycle an old ID for unrelated meaning.
+The L3 compatibility bridge reserves `8000-8002` for buffered-only, stdout, and stderr delivery. These are transitional routing IDs, not final semantic IDs for the original call sites. As direct call-site families migrate, they receive stable subsystem-specific IDs instead of reusing the bridge IDs.
 
-## Backpressure and metrics
+## RuntimeHostLog migration
 
-`RuntimeLogPipeline` exposes a snapshot with accepted/filtered counts, per-severity drops, drained count, sink failures, current queue depth, and queue high-water mark. Sink health is tracked independently so one failed destination cannot silently poison the rest of the pipeline.
+`RuntimeHostLog.Write` and `RuntimeHostLog.Publish` no longer call `TextWriter.WriteLine` or `RuntimeLogBuffer.Publish` on the caller thread. Both are sinks behind `RuntimeLogPipeline`.
 
-On shutdown the pipeline stops accepting new records, completes the writer, and drains accepted records within a bounded shutdown window. A stuck sink is bounded by its per-operation timeout. Repeated failures quarantine only that sink; healthy sinks continue receiving records.
+The compatibility behavior remains:
+
+- while TUI is active, normal host messages are retained but do not corrupt the terminal dashboard;
+- after TUI falls back to plain console, `Publish` may again route to stdout;
+- explicit stderr writes remain stderr writes;
+- the existing `RuntimeLogBuffer` still feeds the current TUI/read model during the transition.
+
+The bridge owns a bounded process-exit drain fallback and exposes `DisposeAsync` for explicit lifecycle ownership. Wiring that explicit disposal to the complete server-host shutdown path remains open L3 work; the fallback prevents ordinary process exit from abandoning the worker without a bounded drain attempt.
+
+## Backpressure and sink health
+
+`RuntimeLogPipeline` exposes accepted/filtered counts, per-severity drops, drained count, sink failures, queue depth, and high-water mark. Sink failures are isolated; repeatedly failing sinks are quarantined while healthy sinks keep receiving records.
+
+A blocked compatibility console writer no longer blocks the caller that produced the runtime event. Tests hold the writer deliberately and verify that the producer completes before the worker is released.
 
 ## Built-in sinks
 
-### Console
+`RuntimeConsoleLogSink` provides structured human-readable console output. `RuntimeJsonLinesLogSink` emits NativeAOT-safe JSONL through explicit `Utf8JsonWriter` serialization, with size/day rotation and bounded retention. `RuntimeRecentLogStore` is the structured bounded ring intended to replace the transitional `RuntimeLogBuffer` adapter in a later L3/L4 slice.
 
-`RuntimeConsoleLogSink` writes one compact human-readable line per record. It is invoked only by the drain worker, never by the authoritative producer path.
+Default JSONL policy remains:
 
-### Rotating JSONL
-
-`RuntimeJsonLinesLogSink` emits one structured JSON object per line. Serialization uses `Utf8JsonWriter` directly, so the sink does not depend on reflection-based serialization and stays compatible with NativeAOT.
-
-Defaults:
-
-- maximum file size: \(16\,\mathrm{MiB}\);
-- day-boundary rotation in UTC;
-- retained files: \(8\);
+- maximum file size \(16\,\mathrm{MiB}\);
+- rotate at UTC day boundary;
+- retain \(8\) files;
 - periodic flush every \(64\) records;
 - immediate flush for `Error` and `Critical`.
 
-Rotation and retention run on the background sink path. File names include UTC time, process ID, and an ordinal to avoid collisions.
-
-### Recent-log store
-
-`RuntimeRecentLogStore` is an in-memory bounded ring used for future TUI/API retrieval. It stores at most \(512\) records by default, supports level/category filtering, and counts overwritten records. Its hard capacity limit is \(8192\).
-
 ## Sensitive-data rules
 
-The structured contract is intentionally narrow. Do not put passwords, authentication tokens, secrets, raw packet bodies, private keys, or arbitrary object dumps into `Message` or context fields. Prefer opaque handles over personal or mutable runtime data. Operational identifiers should be included only when required for diagnosis and should already be scrubbed at the call site.
-
-Free-form fields are bounded and control characters are normalized before enqueueing. This prevents log amplification and basic terminal/line-injection abuse, but it does not make secret material safe to log.
+Do not put passwords, authentication tokens, secrets, raw packet bodies, private keys, or arbitrary object dumps into messages or context. Prefer opaque handles over personal or mutable runtime data. Free-form fields are bounded and control characters are normalized, but sanitization does not make secret material safe to log.
 
 ## NativeAOT constraints
 
-The foundation adds no runtime NuGet dependency. It uses BCL channels, explicit contracts, and manual JSON writing. There is no runtime type discovery, dynamic serializer generation, or reflection-driven log schema.
+The pipeline uses BCL channels, explicit contracts, and manual JSON writing. There is no runtime type discovery, dynamic serializer generation, or reflection-driven log schema.
 
-## Remaining adoption work
+## Remaining L3 adoption
 
-L3 and later milestones still need to:
+The next live-host slice must:
 
-- replace live `RuntimeHostLog`/direct console call sites with stable event IDs and structured context;
-- propagate correlation context across connection, world, gameplay, persistence, plugin, and command paths;
-- export pipeline/drop/sink-health metrics through the runtime observability surface;
-- add benchmark/load gates and Linux/Windows NativeAOT smoke coverage for the adopted pipeline;
-- expose bounded recent logs through the TUI/API and add optional external sinks.
+- replace remaining direct `Console.*` startup/world-host output with structured events;
+- allocate final semantic IDs for lifecycle, world, persistence, network, protocol, gameplay, plugin, and security call-site families;
+- propagate detached correlation/world/connection/player/entity/packet context;
+- move TUI operations consumption from the compatibility `RuntimeLogBuffer` adapter to `RuntimeRecentLogStore`;
+- define runtime logging configuration for minimum level, enabled sinks, directory, capacities, retention, and timeouts;
+- make explicit logging disposal part of the normal server-host shutdown sequence rather than relying on the process-exit fallback.
 
 The detailed milestone state is tracked in [`../roadmap/runtime-logging-pipeline.md`](../roadmap/runtime-logging-pipeline.md).

@@ -18,7 +18,7 @@ $$
 
 No subsystem may consume an unbounded share of one tick. Burst-heavy work is bounded, incremental or moved off the authoritative game thread; slow clients, mass join, autosave, section generation, entity synchronization and administrative work cannot create uncontrolled tick stalls; performance changes require reproducible measurements.
 
-Current foundation includes a dedicated authoritative loop with wall/CPU timing, bounded worker pool/completion handoff, bounded per-connection outbound queues, server-authoritative player identity/movement relay, real two-client TCP movement smoke and runtime-owned interest-management control/routing boundary.
+Current foundation includes a dedicated authoritative loop with wall/CPU timing, bounded worker pool/completion handoff, bounded per-connection outbound queues, server-authoritative player identity/movement relay, real two-client TCP movement smoke, runtime-owned interest-management control/routing boundary and a revision-safe encoded section cache with a bounded dynamic-memory LRU.
 
 The routing boundary does **not** mean spatial culling is complete. Suppression remains blocked on enter/leave, hysteresis and resync correctness.
 
@@ -34,7 +34,7 @@ The routing boundary does **not** mean spatial culling is complete. Suppression 
 - [x] Single-active-save coalescing scheduler.
 - [x] Atomic save-file writer.
 - [ ] End-to-end staged/fair join work budget under mass join.
-- [ ] Encoded section cache with section-local invalidation and bounded memory.
+- [x] Encoded section cache with section-local invalidation and bounded memory.
 - [ ] Full dirty-section-driven sync/save architecture.
 - [ ] Actual AOI packet suppression with enter/leave hysteresis and forced resync.
 - [ ] Complete $24/64/128/255$-connection stress acceptance matrix.
@@ -81,7 +81,7 @@ Metrics include currently joining players, pending sections, oldest pending join
 
 ## 3. Encoded section cache
 
-A runtime section should track revision, dirty state, encoded immutable frame and encoded revision. When `encodedRevision == revision`, the frame may be reused for multiple recipients.
+A runtime section tracks revision, dirty state, encoded immutable frame and encoded revision. When `encodedRevision == revision`, the frame may be reused for multiple recipients.
 
 ```mermaid
 flowchart LR
@@ -89,11 +89,33 @@ flowchart LR
     Revision --> Stale["Cached encoded frame becomes stale"]
     Stale --> Encode["Re-encode under bounded section budget"]
     Encode --> Publish["Publish immutable frame at matching revision"]
+    Publish --> Cache["Pinned base or bounded dynamic LRU"]
 ```
 
-One immutable frame can be shared by many outbound queues, invalidation is section-local, stale committed state is never sent, failed encoding never marks a section cached/sent, and cache memory is bounded/observable.
+One immutable frame can be shared by many outbound queues, invalidation is section-local, stale committed state is never sent and failed encoding never marks a section cached/sent. Production rebuilds use bounded dedicated workers and publish only after the authoritative owner confirms the revision still matches.
 
-Metrics: hit/miss, encode count, invalidations, encode CPU, cache bytes and average encoded/compressed section size.
+Bootstrap/base sections are pinned because every join requires them. Non-bootstrap entries use deterministic LRU eviction with default dynamic byte budget
+
+$$
+B_{\mathrm{dynamic}}=64\,\mathrm{MiB}.
+$$
+
+Because one Terraria wire frame is bounded by the 16-bit length field,
+
+$$
+B_{\mathrm{frame,max}}=65\,535\,\mathrm{B},
+$$
+
+and for `$N_{\mathrm{base}}$` pinned bootstrap sections the explicit total ceiling is
+
+$$
+B_{\mathrm{cache,max}}=
+B_{\mathrm{dynamic}}+N_{\mathrm{base}}\cdot B_{\mathrm{frame,max}}.
+$$
+
+Dynamic hits refresh LRU recency; a new dynamic frame evicts oldest dynamic entries until it fits. A stale dynamic entry is reclaimed immediately when a revision mismatch is observed. Snapshot telemetry exposes total/dynamic bytes, byte ceilings, evictions, hit/miss, stale reads, wait/completion/timeout counts, encode counts and encode duration.
+
+The `$64\,\mathrm{MiB}$` budget is a correctness-first bounded default and remains subject to representative Small/Medium/Large-world measurement. Average encoded/compressed section size can be derived from cache bytes/entries and should be recorded explicitly in future benchmark artifacts.
 
 ## 4. Section revision and dirty tracking
 

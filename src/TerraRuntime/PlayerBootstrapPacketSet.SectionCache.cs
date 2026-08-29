@@ -11,14 +11,19 @@ internal readonly record struct SectionPacketCacheSnapshot(
     long StaleReads,
     long Waits,
     long WaitCompletions,
-    long WaitTimeouts);
+    long WaitTimeouts,
+    long MaximumBytes = 0,
+    long DynamicBytes = 0,
+    long DynamicMaximumBytes = 0,
+    long Evictions = 0);
 
 public sealed partial class PlayerBootstrapPacketSet
 {
     /// <summary>
     /// Publishes one pre-encoded packet-10 frame only if it still represents the current committed section
     /// revision. Background encoders never mutate this cache directly; the authoritative thread applies their
-    /// immutable results through this method after validating the world revision.
+    /// immutable results through this method after validating the world revision. Base bootstrap sections remain
+    /// pinned; other sections are admitted through the bounded LRU byte budget.
     /// </summary>
     internal bool TryPublishSectionFrame(
         WorldSectionId section,
@@ -37,9 +42,18 @@ public sealed partial class PlayerBootstrapPacketSet
             if (_world.Tiles.GetSectionVersion(section) != revision)
                 return false;
 
-            if (!_sectionCache.TryGetValue(index, out SectionCacheEntry existing) || existing.Version != revision)
-                _sectionCache[index] = new SectionCacheEntry(frame, [], revision);
+            if (_sectionCache.TryGetValue(index, out SectionCacheEntry existing) && existing.Version == revision)
+            {
+                TouchDynamicSectionCacheEntryUnderLock(index);
+            }
+            else
+            {
+                RemoveStaleDynamicSectionCacheEntryUnderLock(index);
+                if (!TryStoreSectionCacheEntryUnderLock(index, new SectionCacheEntry(frame, [], revision)))
+                    return false;
+            }
 
+            _sectionCacheFailedRebuildGenerations.Remove(index);
             Monitor.PulseAll(_sectionCacheGate);
         }
 
@@ -62,6 +76,7 @@ public sealed partial class PlayerBootstrapPacketSet
             if (!_sectionCache.TryGetValue(index, out SectionCacheEntry entry) || entry.Version != revision)
                 return false;
 
+            TouchDynamicSectionCacheEntryUnderLock(index);
             frame = entry.TileSectionFrame;
             return true;
         }
@@ -74,11 +89,11 @@ public sealed partial class PlayerBootstrapPacketSet
         {
             long bytes = 0;
             foreach (SectionCacheEntry entry in _sectionCache.Values)
-            {
-                bytes += entry.TileSectionFrame.Length;
-                for (int i = 0; i < entry.PostSectionFrames.Length; i++)
-                    bytes += entry.PostSectionFrames[i].Length;
-            }
+                bytes += GetSectionCacheEntryBytes(entry);
+
+            long maximumBytes = _world is null
+                ? bytes
+                : checked((long)_baseSections.Length * ushort.MaxValue + _dynamicSectionCacheByteBudget);
 
             return new SectionPacketCacheSnapshot(
                 Entries: _sectionCache.Count,
@@ -89,7 +104,11 @@ public sealed partial class PlayerBootstrapPacketSet
                 StaleReads: Interlocked.Read(ref _sectionCacheStaleReads),
                 Waits: Interlocked.Read(ref _sectionCacheWaits),
                 WaitCompletions: Interlocked.Read(ref _sectionCacheWaitCompletions),
-                WaitTimeouts: Interlocked.Read(ref _sectionCacheWaitTimeouts));
+                WaitTimeouts: Interlocked.Read(ref _sectionCacheWaitTimeouts),
+                MaximumBytes: maximumBytes,
+                DynamicBytes: _dynamicSectionCacheBytes,
+                DynamicMaximumBytes: _dynamicSectionCacheByteBudget,
+                Evictions: Interlocked.Read(ref _sectionCacheEvictions));
         }
     }
 }

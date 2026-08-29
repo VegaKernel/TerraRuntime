@@ -86,7 +86,9 @@ public static class WorldFileCoreLoader
         stageStart = Stopwatch.GetTimestamp();
         try
         {
-            tiles = new WorldTileStore(header.Dimensions);
+            // A successful .wld tile decode overwrites every tile before publication. Avoid paying for a
+            // redundant managed zero-fill and keep initial construction outside live dirty/revision tracking.
+            tiles = WorldTileStore.CreateForSnapshotLoad(header.Dimensions);
             tileAllocation = Stopwatch.GetElapsedTime(stageStart);
         }
         catch (ArgumentOutOfRangeException)
