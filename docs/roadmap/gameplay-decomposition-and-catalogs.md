@@ -217,7 +217,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 - [ ] item definitions/defaults;
 - [x] typed inventory layout;
 - [x] prefix/stack normalization;
-- [ ] item-use semantic boundary;
+- [x] item-use semantic boundary;
 - [ ] remove raw item/slot IDs from gameplay paths.
 
 ### D3 - Projectiles
@@ -249,7 +249,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 ### D6 - Buffs, combat, loot and progression
 
 - [ ] buff/prefix catalogs;
-- [ ] damage-source model;
+- [x] damage-source model;
 - [ ] loot rules;
 - [ ] event/progression IDs/state;
 - [ ] biome/zone semantics;
