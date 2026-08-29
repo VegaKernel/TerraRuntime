@@ -5,9 +5,9 @@ namespace TerraRuntime;
 
 /// <summary>
 /// One authoritative dry-world physics step for the verified ordinary TerrariaServer 1.4.5.8 player path.
-/// This slice deliberately excludes mounts, liquids, StepUp/StepDown and jump-control state. It owns only the
-/// source-backed base hitbox, gravity/fall-speed clamp, walk-down-slope, tile collision, position advance and
-/// post-move slope collision required before richer G6-D player control is layered on top.
+/// This slice owns source-backed baseline horizontal input, the base hitbox, gravity/fall-speed clamp,
+/// walk-down-slope, tile collision, position advance and post-move slope collision. Mounts, liquids,
+/// StepUp/StepDown and jump-control state remain outside this slice.
 /// </summary>
 internal sealed class VanillaServerPlayerDryPhysicsStepper
 {
@@ -25,11 +25,18 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
 
     public bool TryStep(
         in PlayerStateSnapshot player,
+        out ServerPlayerDryPhysicsStepResult next) =>
+        TryStep(in player, ServerPlayerHorizontalIntent.Stop, out next);
+
+    public bool TryStep(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent,
         out ServerPlayerDryPhysicsStepResult next)
     {
         if (!player.Player.IsAssigned ||
             player.IsDead ||
             player.MountType != 0 ||
+            !IsValidHorizontalIntent(horizontalIntent) ||
             !float.IsFinite(player.PositionX) ||
             !float.IsFinite(player.PositionY) ||
             !float.IsFinite(player.VelocityX) ||
@@ -39,7 +46,12 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             return false;
         }
 
-        float velocityX = player.VelocityX;
+        // HorizontalMovement observes the pre-gravity vertical velocity. In particular, a player standing on the
+        // floor uses the full 0.2 runSlowdown before gravity is added for the collision phase.
+        float velocityX = VanillaServerPlayerHorizontalControl.Apply(
+            player.VelocityX,
+            player.VelocityY,
+            horizontalIntent);
         float velocityY = Math.Min(player.VelocityY + Gravity, MaximumFallSpeed);
 
         velocityY = VanillaWorldWalkDownSlope.ResolveVelocityY(
@@ -88,6 +100,11 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             collision.HitCeiling);
         return true;
     }
+
+    private static bool IsValidHorizontalIntent(ServerPlayerHorizontalIntent intent) =>
+        intent is ServerPlayerHorizontalIntent.Left or
+            ServerPlayerHorizontalIntent.Stop or
+            ServerPlayerHorizontalIntent.Right;
 }
 
 internal readonly record struct ServerPlayerDryPhysicsStepResult(
