@@ -22,6 +22,7 @@ docs/
 │   ├── gameplay.md
 │   ├── synchronization.md
 │   ├── operations-tui.md
+│   ├── observability-logging.md
 │   ├── world-generation.md
 │   └── security.md
 ├── en/
@@ -34,6 +35,7 @@ docs/
 │   ├── gameplay.md
 │   ├── synchronization.md
 │   ├── operations-tui.md
+│   ├── observability-logging.md
 │   ├── world-generation.md
 │   └── security.md
 ├── roadmap.md
@@ -56,6 +58,7 @@ A code change must update both RU and EN documentation in the same change when i
 - persistence, `.wld`, `.runtime-world`, save/recovery behavior;
 - security, rate-limit or failure behavior;
 - TUI/operations integration;
+- logging/observability contracts;
 - world generation extension contracts;
 - known supported/unsupported vanilla behavior.
 
@@ -96,7 +99,7 @@ Practical descriptions of supported external integration contracts, lifecycle, s
 
 ### Subsystem guides
 
-Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, operations/TUI, world generation and security.
+Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, operations/TUI, observability/logging, world generation and security.
 
 ### Roadmaps
 
@@ -145,6 +148,7 @@ python3 tools/ci/check_documentation.py
 - [x] Dedicated gameplay guide: players, inventory/items, NPCs, projectiles, combat and authoritative validation, with explicit parity status.
 - [x] Dedicated synchronization guide: sections, bootstrap/join, interest management and resync invariants.
 - [x] Dedicated operations/TUI guide: startup modes, dashboard model, telemetry and safe administrative operations.
+- [x] Dedicated observability/logging guide: bounded current read models and telemetry, TUI consumption, and explicit separation from the incomplete async structured logging target.
 - [x] Dedicated worldgen guide: provider contracts, plan/pass lifecycle, workspace model and vanilla-worldgen status.
 - [x] Dedicated security guide: trust boundaries, budgets, rate limits, malformed input handling and failure isolation.
 - [x] Add diagrams/examples when they clarify an actual interaction path; subsystem guides now contain maintained text diagrams and API/flow examples where useful.
