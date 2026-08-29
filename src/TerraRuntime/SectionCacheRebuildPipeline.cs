@@ -292,7 +292,9 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         if (available <= 0)
             return;
 
-        int captured = _batcher.Capture(Math.Min(available, _batcher.Capacity));
+        int captured = _batcher.Capture(
+            Math.Min(available, _batcher.Capacity),
+            _inFlightSections);
         Interlocked.Add(ref _capturedSnapshots, captured);
 
         ReadOnlySpan<WorldSectionTileSnapshot?> snapshots = _batcher.Captured;
