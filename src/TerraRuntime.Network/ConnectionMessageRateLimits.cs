@@ -19,18 +19,26 @@ public sealed class ConnectionMessageRateLimits
 
     /// <summary>
     /// Conservative server guardrails for known high-frequency or fan-out-producing inbound packet classes.
-    /// Limits are intentionally far above the 60 Hz simulation rate so they reject obvious floods rather than
-    /// define gameplay cadence. Deployments can replace this profile with measured policy-specific budgets.
+    /// Limits are intentionally far above normal vanilla cadence so they reject obvious floods rather than
+    /// define gameplay behavior. The connection-wide budget remains a final aggregate ceiling for every id.
     /// </summary>
     public static ConnectionMessageRateLimits HardAbuse { get; } = new(
+        Rule(TerrariaMessageId.RequestWorldData, maxFrames: 16, maxBytes: 4 * 1024),
+        Rule(TerrariaMessageId.SpawnTileData, maxFrames: 120, maxBytes: 16 * 1024),
         Rule(TerrariaMessageId.PlayerControls, maxFrames: 600, maxBytes: 96 * 1024),
         Rule(TerrariaMessageId.SyncEquipment, maxFrames: 600, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.PlayerHp, maxFrames: 240, maxBytes: 32 * 1024),
-        Rule(TerrariaMessageId.PlayerMana, maxFrames: 240, maxBytes: 32 * 1024),
+        Rule(TerrariaMessageId.TileManipulation, maxFrames: 480, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.WorldItemDrop, maxFrames: 240, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.WorldItemOwner, maxFrames: 240, maxBytes: 32 * 1024),
         Rule(TerrariaMessageId.ProjectileNew, maxFrames: 1_200, maxBytes: 256 * 1024),
-        Rule(TerrariaMessageId.ProjectileDestroy, maxFrames: 1_200, maxBytes: 128 * 1024));
+        Rule(TerrariaMessageId.ProjectileDestroy, maxFrames: 1_200, maxBytes: 128 * 1024),
+        Rule(TerrariaMessageId.RequestChestOpen, maxFrames: 120, maxBytes: 16 * 1024),
+        Rule(TerrariaMessageId.SyncChestItem, maxFrames: 600, maxBytes: 96 * 1024),
+        Rule(TerrariaMessageId.SyncPlayerChest, maxFrames: 240, maxBytes: 32 * 1024),
+        Rule(TerrariaMessageId.PlayerMana, maxFrames: 240, maxBytes: 32 * 1024),
+        Rule(TerrariaMessageId.ChestName, maxFrames: 120, maxBytes: 64 * 1024),
+        Rule(TerrariaMessageId.LoadNetModule, maxFrames: 120, maxBytes: 256 * 1024));
 
     public ConnectionMessageRateLimits(params ConnectionMessageRateRule[] rules)
     {
