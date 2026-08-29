@@ -81,13 +81,17 @@ Rate limits exist to establish a hard abuse ceiling, not to encode ordinary game
 
 Legitimate Terraria traffic can be bursty during join/sections/chests. Limits must therefore be validated against real workloads before being tightened.
 
-## 7. Per-message rate accounting
+## 7. Per-message and fan-out rate accounting
 
 `TerrariaMessageRateAccountant` maintains optional rate accountants indexed by message ID.
 
 Only explicitly configured message IDs receive a message-specific budget. Other messages still pass through connection-wide accounting.
 
 This lets expensive packet classes receive stricter controls without pretending every packet has the same cost.
+
+Public vanilla `Say` chat has an additional **server-global fan-out ceiling of 256 broadcasts per 1 second window**. The budget is checked before the relay performs its O(players) recipient iteration. This prevents many individually legal senders from multiplying a per-connection allowance into unbounded aggregate outbound-queue work. A broadcast rejected by this global ceiling is dropped and recorded in rate-limit rejection telemetry; it does not grant each player a separate copy of the global budget.
+
+The 256/s value is a deliberately loose hard-abuse ceiling, not a normal chat cadence. Legitimate chat should remain far below it while the server still has a deterministic upper bound on chat fan-out work.
 
 Long-term security work still requires broader subsystem-level budgets where one legal packet can trigger significant world/gameplay work.
 
@@ -151,9 +155,11 @@ When an outbound client cannot drain its bounded queue, it may be disconnected a
 
 A syntactically legal request can still be computationally expensive.
 
-The authoritative loop therefore uses global/per-source fairness and operation limits. The project is continuing toward explicit global subsystem budgets for areas such as tile work, liquids, sections and other expensive operations.
+The authoritative loop therefore uses global/per-source fairness and operation limits. Work that bypasses the authoritative loop but multiplies across recipients, such as public chat fan-out, must have its own server-global subsystem ceiling before the multiplication step.
 
-Security budgets are **global when work shares one tick**. Multiplying a full expensive-work budget by player count simply converts a limit into a larger DoS surface.
+The project is continuing toward explicit global subsystem budgets for areas such as tile work, liquids, sections and other expensive operations.
+
+Security budgets are **global when work shares one tick or one shared fan-out resource**. Multiplying a full expensive-work budget by player count simply converts a limit into a larger DoS surface.
 
 ## 13. Single-writer containment
 
@@ -254,6 +260,7 @@ bad frame          -> reject/close connection
 rate abuse         -> reject/close connection
 stalled handshake  -> close that connection
 stalled join       -> close that connection
+chat fan-out abuse -> drop over-budget broadcast
 slow reader        -> close that connection
 bad runtime cache  -> fall back to .wld
 TUI failure        -> fall back to plain console
@@ -273,6 +280,7 @@ Security-relevant observability should distinguish at least:
 - capacity admission rejects;
 - admission-rate rejects;
 - connection/message rate limits;
+- server-global fan-out rate rejection;
 - connection stop reason mapping, including handshake/join/idle timeouts;
 - malformed/protocol failures;
 - slow-client disconnects;
@@ -303,6 +311,7 @@ Depending on the change, evidence includes:
 - admission-gate churn/capacity tests;
 - handshake/join/idle deadline tests;
 - connection policy/rate tests;
+- global fan-out budget tests;
 - malformed frame/packet tests;
 - slow-reader real-socket tests;
 - runtime queue/fairness tests;
@@ -317,7 +326,7 @@ For a bug fix, the regression test should fail when the fix is removed.
 The following remain active security work:
 
 - broader protocol/world fuzz corpora beyond the current framing and typed-decoder regression floor;
-- complete global/per-subsystem expensive-work budgets;
+- complete global/per-subsystem expensive-work budgets beyond the currently bounded command loop and chat fan-out;
 - complete rate limits for all expensive gameplay classes;
 - richer malformed/rejected packet telemetry;
 - full authoritative movement/inventory/combat validation;
