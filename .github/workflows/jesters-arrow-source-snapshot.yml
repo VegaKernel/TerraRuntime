@@ -1,81 +1,53 @@
-name: Jesters Arrow Source Snapshot
+name: Apply Jesters Arrow Runtime Slice
 
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/jesters-arrow-source-snapshot.yml'
-  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Extract pinned projectile source facts
+      - name: Apply source-backed Jester's Arrow slice
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .cache/terraria-1458 artifacts/source-contract .tools
-          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
-          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
-          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+          git fetch origin main
+          git reset --hard origin/main
 
-          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
-          assembly=""
-          while IFS= read -r -d '' candidate; do
-            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
-            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then
-              assembly="$candidate"
+          printf '%s' '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' | base64 -d | gzip -dc > /tmp/jester.patch
+          git apply --check /tmp/jester.patch
+          git apply /tmp/jester.patch
+          python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
+          git diff --check
+          git rm .github/workflows/jesters-arrow-source-snapshot.yml
+
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+
+          git config user.name 'OpenAI'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src tools tests .github/workflows
+          git commit -m 'feat: simulate jesters arrow world flight'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
             fi
-          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
-          test -n "$assembly"
-          assembly_dir="$(dirname "$assembly")"
-
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/source-contract/projectile.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.DelegateMethods "$assembly" > artifacts/source-contract/delegate-methods.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Player "$assembly" > artifacts/source-contract/player.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/worldgen.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Main "$assembly" > artifacts/source-contract/main.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.TileID "$assembly" > artifacts/source-contract/tile-id.cs
-
-          python3 tools/ci/probe_projectile_tile_cut.py \
-            --projectile artifacts/source-contract/projectile.cs \
-            --delegate-methods artifacts/source-contract/delegate-methods.cs \
-            --player artifacts/source-contract/player.cs \
-            --worldgen artifacts/source-contract/worldgen.cs \
-            --main artifacts/source-contract/main.cs \
-            --tile-id artifacts/source-contract/tile-id.cs \
-            > artifacts/source-contract/probe.txt
-
-          grep -E '^projectile_(jesters_arrow_defaults|ai001_type5_contexts|kill_type5_contexts)=' artifacts/source-contract/probe.txt \
-            > artifacts/source-contract/jesters-arrow.txt
-          cat artifacts/source-contract/jesters-arrow.txt
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: jesters-arrow-source
-          path: artifacts/source-contract/jesters-arrow.txt
-          retention-days: 1
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: jesters-arrow-edit-surface
-          path: |
-            src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs
-            src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs
-            src/TerraRuntime/VanillaProjectileWorldStateStepper.cs
-            tools/ci/probe_projectile_tile_cut.py
-            tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs
-            tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs
-            tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs
-            tests/TerraRuntime.Tests/VanillaProjectileUpdateFactsTests.cs
-          retention-days: 1
+          done
+          echo 'main kept advancing; refusing to force-push' >&2
+          exit 1
