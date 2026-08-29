@@ -25,7 +25,7 @@ jobs:
       - name: Decompile official TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
 
-      - name: Probe packet 21 and 22 server semantics
+      - name: Probe network packet 21 and 22 semantics
         shell: python
         run: |
           import json
@@ -33,33 +33,26 @@ jobs:
           import re
 
           root = pathlib.Path('decompiled/1458')
-          candidates = []
-          for path in root.rglob('*.cs'):
-              text = path.read_text(errors='ignore')
-              score = text.count('case 21:') * 20 + text.count('case 22:') * 20
-              score += text.count('Item.NewItem') * 8
-              score += text.count('playerIndexTheItemIsReservedFor') * 8
-              if score:
-                  candidates.append((score, path, text))
-
-          if not candidates:
-              raise SystemExit('No packet 21/22 candidates found')
-          candidates.sort(key=lambda x: x[0], reverse=True)
-          score, path, text = candidates[0]
+          path = root / 'Terraria' / 'MessageBuffer.cs'
+          if not path.is_file():
+              matches = list(root.rglob('MessageBuffer.cs'))
+              if len(matches) != 1:
+                  raise SystemExit(f'Expected one MessageBuffer.cs, found {len(matches)}')
+              path = matches[0]
+          text = path.read_text(errors='strict')
 
           def case_body(number):
-              match = re.search(rf'\bcase\s+{number}\s*:', text)
-              if not match:
-                  return ''
+              matches = list(re.finditer(rf'^\s*case\s+{number}\s*:', text, re.M))
+              if len(matches) != 1:
+                  raise SystemExit(f'Expected one top-level case {number} in {path}, found {len(matches)}')
+              match = matches[0]
               start = match.start()
-              next_case = re.search(r'\n\s*case\s+\d+\s*:', text[match.end():])
-              end = match.end() + next_case.start() if next_case else min(len(text), start + 20000)
+              next_case = re.search(r'^\s*case\s+\d+\s*:', text[match.end():], re.M)
+              end = match.end() + next_case.start() if next_case else min(len(text), start + 30000)
               return text[start:end]
 
           c21 = case_body(21)
           c22 = case_body(22)
-          if not c21 or not c22:
-              raise SystemExit(f'Could not isolate both packet cases in {path}')
 
           def facts(body):
               return {
@@ -82,17 +75,18 @@ jobs:
 
           summary = {
               'selectedFile': str(path.relative_to(root)),
-              'candidateScore': score,
               'packet21': facts(c21),
               'packet22': facts(c22),
           }
 
           patterns = [
-              r'.{0,100}Item\.NewItem.{0,180}',
-              r'.{0,100}playerIndexTheItemIsReservedFor.{0,180}',
-              r'.{0,100}(?:ownIgnore|ownTime).{0,180}',
-              r'.{0,100}SendData\s*\(\s*(?:21|22)\b.{0,180}',
-              r'.{0,100}\.active\s*=\s*(?:true|false).{0,180}',
+              r'.{0,120}Item\.NewItem.{0,220}',
+              r'.{0,120}playerIndexTheItemIsReservedFor.{0,220}',
+              r'.{0,120}(?:ownIgnore|ownTime).{0,220}',
+              r'.{0,120}SendData\s*\(\s*(?:21|22)\b.{0,220}',
+              r'.{0,120}\.active\s*=\s*(?:true|false).{0,220}',
+              r'.{0,120}\b400\b.{0,220}',
+              r'.{0,120}\bwhoAmI\b.{0,220}',
           ]
           evidence = {}
           for number, body in ((21, c21), (22, c22)):
@@ -102,8 +96,8 @@ jobs:
                   for m in re.finditer(pattern, compact, re.S):
                       line = ' '.join(m.group(0).split())
                       if line not in lines:
-                          lines.append(line[:320])
-              evidence[str(number)] = lines[:20]
+                          lines.append(line[:380])
+              evidence[str(number)] = lines[:30]
 
           print('WORLD_ITEM_PACKET_FACTS=' + json.dumps(summary, sort_keys=True))
           print('WORLD_ITEM_PACKET_EVIDENCE=' + json.dumps(evidence, sort_keys=True))
