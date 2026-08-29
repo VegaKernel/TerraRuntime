@@ -61,6 +61,7 @@ internal static class TerminalUiSmoke
                     AssertRendered(app.Driver!, "2/256 frames");
                     AssertRendered(app.Driver!, "peak 5/0.5 KiB");
                     AssertRendered(app.Driver!, "Stops       protocol 2");
+                    AssertRendered(app.Driver!, "frame-rejected 16");
                     AssertRendered(app.Driver!, "Frame reject malformed 11");
                     AssertRendered(app.Driver!, "join 10");
                     SelectDetailsScreen(app, workspace, Key.W, "World", "WORLD");
@@ -448,7 +449,8 @@ internal static class TerminalUiSmoke
                 RejectedRateLimited: 12,
                 RejectedInvalidState: 13,
                 RejectedGameplay: 14,
-                RejectedBackpressure: 15);
+                RejectedBackpressure: 15,
+                StopFrameRejected: 16);
 
         RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() =>
             new(
