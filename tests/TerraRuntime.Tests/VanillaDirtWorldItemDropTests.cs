@@ -15,8 +15,8 @@ public sealed class VanillaDirtWorldItemDropTests
 
         Assert.Equal(162f, drop.PositionX);
         Assert.Equal(322f, drop.PositionY);
-        Assert.Equal(-0.7f, drop.VelocityX, 5);
-        Assert.Equal(-2.1f, drop.VelocityY, 5);
+        Assert.InRange(drop.VelocityX, -0.700001f, -0.699999f);
+        Assert.InRange(drop.VelocityY, -2.100001f, -2.099999f);
         Assert.Equal(1, drop.Stack);
         Assert.Equal(0, drop.Prefix);
         Assert.Equal(WorldItemOwnershipMode.None, drop.Ownership);
