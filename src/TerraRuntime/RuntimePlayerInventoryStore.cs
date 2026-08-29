@@ -28,7 +28,31 @@ internal readonly record struct RuntimePlayerInventoryItem(
             : new RuntimePlayerInventoryItem(itemType, request.Stack, request.PrefixId, request.ItemFlags);
         return true;
     }
+
+    public bool IsCanonical =>
+        IsEmpty
+            ? ItemType.IsNone && Stack <= 0 && Prefix.Value == 0 && ItemFlags == 0
+            : Stack > 0 &&
+              !ItemType.IsNone &&
+              VanillaItemIds.TryCreate(ItemType.Value, out ItemTypeId canonical) &&
+              canonical == ItemType &&
+              Prefix.Value <= byte.MaxValue;
+
+    public PlayerEquipmentCommitRequest ToCommitRequest(PlayerSlotId player, short slot) =>
+        IsEmpty
+            ? new PlayerEquipmentCommitRequest(player, slot, Stack: 0, Prefix: 0, ItemNetId: 0, ItemFlags: 0)
+            : new PlayerEquipmentCommitRequest(
+                player,
+                slot,
+                Stack,
+                checked((byte)Prefix.Value),
+                checked((short)ItemType.Value),
+                ItemFlags);
 }
+
+internal readonly record struct RuntimePlayerInventoryMutation(
+    short Slot,
+    RuntimePlayerInventoryItem Item);
 
 /// <summary>
 /// Fixed authoritative packet-5 inventory projection keyed by exact connection occupation. Terraria 1.4.5.8 has
@@ -95,6 +119,68 @@ internal sealed class RuntimePlayerInventoryStore
         }
 
         item = items[GetOffset(connection.Player.Slot.Value, inventorySlot)];
+        return true;
+    }
+
+    /// <summary>
+    /// Copies one exact connection generation's entire packet-5 inventory projection. The caller receives a stable
+    /// authoritative-thread working image which can be planned without mutating live state.
+    /// </summary>
+    public bool TryCopyInventory(
+        ConnectionHandle connection,
+        Span<RuntimePlayerInventoryItem> destination)
+    {
+        if (!connection.IsAssigned ||
+            destination.Length < InventorySlotCount ||
+            connections[connection.Player.Slot.Value] != connection)
+        {
+            return false;
+        }
+
+        items.AsSpan(connection.Player.Slot.Value * InventorySlotCount, InventorySlotCount)
+            .CopyTo(destination);
+        return true;
+    }
+
+    /// <summary>
+    /// Validates every mutation first and then publishes all slot changes as one authoritative-thread state commit.
+    /// No slot is changed when the connection generation is stale, a slot is duplicated/out of range, or an item is
+    /// not canonical. Replication is deliberately outside this store and occurs only after a successful commit.
+    /// </summary>
+    public bool TryApplyAtomic(
+        ConnectionHandle connection,
+        ReadOnlySpan<RuntimePlayerInventoryMutation> mutations)
+    {
+        if (!connection.IsAssigned ||
+            connections[connection.Player.Slot.Value] != connection ||
+            mutations.Length > InventorySlotCount)
+        {
+            return false;
+        }
+
+        Span<byte> seen = stackalloc byte[InventorySlotCount];
+        for (int index = 0; index < mutations.Length; index++)
+        {
+            RuntimePlayerInventoryMutation mutation = mutations[index];
+            if (!VanillaPlayerItemSlotCatalog.IsInventorySlot(mutation.Slot) ||
+                !mutation.Item.IsCanonical ||
+                seen[mutation.Slot] != 0)
+            {
+                return false;
+            }
+
+            seen[mutation.Slot] = 1;
+        }
+
+        int playerSlot = connection.Player.Slot.Value;
+        for (int index = 0; index < mutations.Length; index++)
+        {
+            RuntimePlayerInventoryMutation mutation = mutations[index];
+            items[GetOffset(playerSlot, mutation.Slot)] = mutation.Item.IsEmpty
+                ? default
+                : mutation.Item;
+        }
+
         return true;
     }
 
