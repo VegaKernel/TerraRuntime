@@ -1,0 +1,269 @@
+# Физика server-controlled players
+
+[English](../en/server-player-physics.md) · [Индекс документации](README.md) · [Gameplay](gameplay.md) · [Host interfaces](host-interfaces.md)
+
+## 1. Область действия
+
+Это руководство описывает source-backed movement/physics slice для **connection-free runtime-owned server players**, создаваемых через `IServerPlayerOperations`.
+
+Оно **не** описывает полную movement model сетевых Terraria clients. У network player movement остаётся собственный ingress/commit/normalization path и будущая работа по anti-cheat/tolerance. Описанная здесь server-player physics — отдельный authoritative actor path, который уже самостоятельно изменяет position/velocity внутри TerraRuntime game tick.
+
+Behavioral baseline — TerrariaServer `1.4.5.8`. Заявляется только проверенный ordinary unmounted slice.
+
+## 2. Владение и data flow
+
+Trusted host передаёт semantic control intent. Он никогда не записывает final velocity или position напрямую.
+
+```mermaid
+flowchart LR
+    Host["Trusted host module"] --> API["IServerPlayerOperations"]
+    API --> Queue["Bounded authoritative command queue"]
+    Queue --> Commands["RuntimeServerPlayerCommandService"]
+    Commands --> Intent["Generation-bound control intent"]
+    Intent --> Tick["ServerRuntimeState.Tick"]
+    Tick --> Physics["VanillaServerPlayerDryPhysicsStepper"]
+    Physics --> State["RuntimeServerPlayerStateStore"]
+```
+
+Game-loop thread остаётся владельцем mutable state. Host может создать/despawn actor и сообщать buttons/intents; TerraRuntime владеет acceleration, jump duration, gravity, collision, slope/step handling, liquid displacement и итоговым motion state.
+
+## 3. Identity и lifetime
+
+У server-controlled player есть две разные identity:
+
+- `ServerPlayerId` — стабильная host-facing logical identity;
+- `PlayerHandle` — live generation-safe player-slot identity.
+
+Creation резервирует обычный Terraria player slot из общего generation-safe pool runtime. Live slot lease удерживается весь lifetime actor.
+
+Horizontal intent, jump intent и internal jump state индексируются точным `PlayerHandle`, включая generation. Despawn очищает все три и освобождает lease. Поэтому reuse числового slot не может перенести stale input на нового actor.
+
+## 4. Host API
+
+`IServerPlayerOperations` сейчас предоставляет:
+
+```csharp
+ValueTask<ServerPlayerCreateResult> CreateAsync(
+    ServerPlayerId id,
+    float positionX,
+    float positionY,
+    CancellationToken cancellationToken = default);
+
+ValueTask<bool> SetHorizontalIntentAsync(
+    ServerPlayerId id,
+    ServerPlayerHorizontalIntent intent,
+    CancellationToken cancellationToken = default);
+
+ValueTask<bool> SetJumpIntentAsync(
+    ServerPlayerId id,
+    ServerPlayerJumpIntent intent,
+    CancellationToken cancellationToken = default);
+
+ValueTask<bool> DespawnAsync(
+    ServerPlayerId id,
+    CancellationToken cancellationToken = default);
+```
+
+`CreateAsync` возвращает один из статусов:
+
+- `Created`;
+- `InvalidId`;
+- `InvalidPosition`;
+- `AlreadyExists`;
+- `NoAvailableSlot`;
+- `QueueRejected`.
+
+Operations facade отправляет mutations через authoritative queue. Cancellation проверяется до queue admission. После принятия control mutation в queue completion намеренно не cancellable: TerraRuntime не создаёт для caller неоднозначный результат «может быть применено» после того, как command уже стал authoritative work.
+
+## 5. Semantic control intents
+
+Horizontal input намеренно минимален:
+
+| `ServerPlayerHorizontalIntent` | Значение | Смысл |
+|---|---:|---|
+| `Left` | `-1` | удерживается обычное движение влево |
+| `Stop` | `0` | horizontal movement button не удерживается |
+| `Right` | `1` | удерживается обычное движение вправо |
+
+Jump input моделирует состояние кнопки, а не требуемую velocity:
+
+| `ServerPlayerJumpIntent` | Значение | Смысл |
+|---|---:|---|
+| `Released` | `0` | jump button отпущена |
+| `Held` | `1` | jump button удерживается |
+
+`Stop` и `Released` также являются defaults при отсутствии сохранённого explicit intent.
+
+## 6. Интеграция в tick
+
+Server-player physics включается, когда runtime имеет и `RuntimeServerPlayerStateStore`, и world tiles. `ServerRuntimeState.Tick()` выполняет server-player slice до NPC AI.
+
+Для каждого текущего server-player snapshot runtime:
+
+1. получает horizontal intent, default `Stop`;
+2. получает jump intent, default `Released`;
+3. получает internal jump state, default `VanillaServerPlayerJumpState.Initial`;
+4. выполняет один step `VanillaServerPlayerDryPhysicsStepper`;
+5. commits результирующий jump state;
+6. записывает motion только если position или velocity реально изменились.
+
+Поэтому no-op floor collision не создаёт бессмысленную state revision. Это закреплено тестами.
+
+## 7. Проверенный порядок step
+
+Ordinary verified step — не набор независимых формул. Ordering входит в behavioral contract.
+
+```mermaid
+flowchart TD
+    Snapshot["Player snapshot"] --> H["Horizontal control"]
+    H --> J["Jump control"]
+    J --> L["Read liquid contacts / movement scale"]
+    L --> G["Gravity + fall-speed clamp"]
+    G --> DownSlope["WalkDownSlope"]
+    DownSlope --> StepDown{"velocityY == gravity?"}
+    StepDown -->|yes| SD["StepDown"]
+    StepDown -->|no| StepUpGate{"velocityY >= gravity?"}
+    SD --> StepUpGate
+    StepUpGate -->|yes| SU["StepUp"]
+    StepUpGate -->|no| Collision["TileCollision"]
+    SU --> Collision
+    Collision --> Ceiling["Ceiling hit may end active jump"]
+    Ceiling --> Disp["Resolve liquid displacement"]
+    Disp --> Position["Advance position"]
+    Position --> Slope["Post-move slope collision"]
+    Slope --> Result["Authoritative motion result"]
+```
+
+Перестановка этого порядка только потому, что другая последовательность выглядит красивее, может изменить observable motion.
+
+## 8. Source-backed baseline constants
+
+Текущий ordinary slice закрепляет следующие значения TerrariaServer `1.4.5.8`:
+
+| Величина | Значение | Примечание |
+|---|---:|---|
+| base player hitbox | $20 \times 42\,\mathrm{px}$ | width × height |
+| gravity | $0.4\,\mathrm{px/tick^2}$ | добавляется до collision |
+| maximum downward speed | $10\,\mathrm{px/tick}$ | fall-speed clamp |
+| ordinary run-speed threshold | $3\,\mathrm{px/tick}$ | threshold, **не** универсальный hard clamp |
+| run acceleration | $0.08\,\mathrm{px/tick^2}$ | ordinary left/right baseline |
+| grounded run slowdown | $0.2\,\mathrm{px/tick^2}$ | ordinary stop/reversal path |
+| airborne run slowdown | $0.1\,\mathrm{px/tick^2}$ | половина grounded slowdown |
+| jump vertical speed | $-5.01\,\mathrm{px/tick}$ | отрицательный Y направлен вверх |
+| jump counter | $15\,\mathrm{ticks}$ | ordinary held-jump duration state |
+
+Run-speed намеренно назван threshold. Проверенный ordinary path может пересечь его одним acceleration step; regression suite закрепляет, например, $2.99 \rightarrow 3.07\,\mathrm{px/tick}$ вместо выдуманного generic clamp.
+
+## 9. Horizontal control
+
+Текущий baseline моделирует ordinary unmounted, no-track-boost horizontal movement.
+
+При движении влево/вправо ниже соответствующего run-speed threshold runtime при необходимости применяет reversal slowdown, затем source-backed acceleration. Когда активного directional acceleration path нет, horizontal velocity уменьшается через grounded или airborne slowdown.
+
+Различие grounded/airborne slowdown в этом verified slice сейчас определяется vertical velocity: нулевая vertical velocity использует полный slowdown, ненулевая — половину.
+
+Неизвестные enum values reject, а не интерпретируются как направление.
+
+## 10. Jump state и release gating
+
+Jump behavior имеет runtime-owned state:
+
+- `RemainingTicks` соответствует ordinary vanilla jump counter;
+- `ReleaseReady` соответствует release gate, необходимому перед новым jump.
+
+Grounded actor в initial released state начинает jump при `Held`. Пока jump активен и button удерживается, runtime повторно устанавливает source-backed upward speed и уменьшает counter.
+
+Release отменяет оставшийся counter и снова armed release gate. Landing при всё ещё удерживаемом jump **не** запускает jump повторно немедленно. Ceiling collision может очистить активный remaining jump counter.
+
+Host не управляет этим internal jump state напрямую.
+
+## 11. Tile, step и slope collision
+
+Baseline использует проверенный player hitbox $20 \times 42\,\mathrm{px}$ для world collision.
+
+Текущий path включает:
+
+- walk-down-slope до ordinary tile collision;
+- ordinary `StepDown`, когда vertical velocity равна baseline gravity;
+- ordinary `StepUp`, когда vertical velocity не меньше baseline gravity;
+- tile collision с floor, ceiling и walls;
+- post-position slope collision.
+
+Regression tests покрывают floor/wall clamps и ordinary $16\,\mathrm{px}$ step-up/step-down cases. `StepUp` не применяется, пока actor поднимается быстрее baseline gravity.
+
+## 12. Liquid displacement
+
+Liquid contact сейчас изменяет **position displacement**, а не persisted collision velocity.
+
+| Contact | Movement scale |
+|---|---:|
+| water | $0.5$ |
+| lava | $0.5$ |
+| honey | $0.25$ |
+| shimmer | $0.375$ |
+| нет поддержанного liquid contact | $1$ |
+
+Если tile collision изменяет velocity по одной axis, эта clamped axis продвигается без liquid movement scale; неизменённая axis сохраняет scale. Это не даёт collision clamp ошибочно разбавляться water/honey/shimmer scaling.
+
+Эта поддержка **не** означает complete vanilla swimming/floating/jump/gravity behavior в liquids.
+
+## 13. Validation и failure behavior
+
+Creation reject unassigned `ServerPlayerId`, non-finite spawn coordinates, duplicate ID и исчерпанную player-slot capacity.
+
+Control commands reject неизвестный/unassigned actor и invalid intent enum values.
+
+Dry-physics step не двигает:
+
+- unassigned player handle;
+- dead player;
+- mounted player;
+- non-finite position или velocity input.
+
+Rejected/out-of-slice step не заменяется guessed motion.
+
+## 14. Verified slice и оставшаяся работа
+
+### В текущем verified server-player slice
+
+- connection-free runtime-owned player lifecycle;
+- generation-safe slot ownership и control state;
+- semantic horizontal/jump intents;
+- ordinary left/right acceleration и slowdown;
+- ordinary release-gated jump control;
+- baseline gravity и fall-speed clamp;
+- base player hitbox collision;
+- walk-down-slope;
+- ordinary step-up/step-down;
+- tile и post-move slope collision;
+- water/lava/honey/shimmer displacement scaling;
+- runtime-tick integration и revision-preserving no-op behavior.
+
+### Явно вне текущего slice
+
+- использование этой subsystem как anti-cheat/physics authority для обычных network-connected players;
+- dash families;
+- mounts;
+- grapples;
+- auto-jump и extra-jump families;
+- accessories, меняющие movement/jump behavior;
+- minecart/track boosts;
+- wind и sandstorm movement branches;
+- wrong-ground и portal movement branches;
+- оставшиеся liquid-specific jump, gravity и floating rules;
+- broad exceptional movement вроде teleports/respawn transitions.
+
+Unsupported list — contract boundary, а не очередь behavior, которые можно приблизительно угадать.
+
+## 15. Evidence
+
+Текущая regression evidence включает:
+
+- `ServerRuntimeServerPlayerPhysicsTests` — доказывает, что authoritative `Tick()` двигает connection-free actor и не увеличивает revision для настоящего no-op;
+- `VanillaServerPlayerDryPhysicsStepperTests` — gravity, fall-speed clamp, floor/wall collision, liquid displacement и baseline constants;
+- `VanillaServerPlayerHorizontalControlTests` — acceleration, reversal, grounded/airborne slowdown и non-hard-clamp run-speed edge;
+- `VanillaServerPlayerJumpControlTests` — start/hold/release/rearm behavior и invalid intent rejection;
+- `VanillaServerPlayerStepPhysicsTests` — ordinary step-up/step-down и rising-step exclusion;
+- runtime operation/intent tests — command queue, host operations, generation-safe lifecycle и semantic intent behavior.
+
+Эти tests доказывают implemented slice. Они не превращают перечисленные out-of-scope branches в verified vanilla behavior.
