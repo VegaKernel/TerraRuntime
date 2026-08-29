@@ -103,6 +103,21 @@ def around_last(source: str, needle: str, radius: int = 700) -> str:
     return normalized[start:end]
 
 
+def all_contexts(source: str, needle: str, radius: int = 2200, limit: int = 20) -> str:
+    normalized = compact(source)
+    contexts: list[str] = []
+    start_at = 0
+    while len(contexts) < limit:
+        index = normalized.find(needle, start_at)
+        if index < 0:
+            break
+        start = max(0, index - radius)
+        end = min(len(normalized), index + len(needle) + radius)
+        contexts.append(f"#{len(contexts) + 1}:{normalized[start:end]}")
+        start_at = index + len(needle)
+    return " | ".join(contexts) if contexts else "<none>"
+
+
 def matching_lines(source: str, needle: str, limit: int = 300) -> str:
     matches = [compact(line) for line in source.splitlines() if needle in line]
     if not matches:
@@ -179,15 +194,9 @@ def main() -> int:
     print("projectile_wind_speed_context=" + around_optional(projectile_source, "ShouldUseWindPhysics() &&", radius=2200))
 
     print(f"projectile_handle_movement_length={len(compact(handle_movement))}")
-    print("projectile_handle_movement_ai1_collision_response=" + around_optional(
-        handle_movement,
-        "else if (aiStyle == 1 || aiStyle == 16 || aiStyle == 40 || type == 229)",
-        radius=4200))
-    print("projectile_handle_movement_ai1_cut_context=" + around_optional(
-        handle_movement,
-        "if (aiStyle == 1 || aiStyle == 2 || aiStyle == 8 || aiStyle == 21",
-        radius=3200))
-    print("projectile_handle_movement_on_tile_collide=" + around_optional(handle_movement, "OnTileCollide", radius=3200))
+    print("projectile_handle_movement_ai1_contexts=" + all_contexts(handle_movement, "aiStyle == 1", radius=2600, limit=20))
+    print("projectile_handle_movement_last_velocity_contexts=" + all_contexts(handle_movement, "lastVelocity", radius=1800, limit=20))
+    print("projectile_handle_movement_kill_contexts=" + all_contexts(handle_movement, "Kill();", radius=2000, limit=20))
 
     print(f"projectile_kill_length={len(compact(projectile_kill))}")
     print("projectile_kill_helpers=" + called_helpers(projectile_kill, "Kill_"))
