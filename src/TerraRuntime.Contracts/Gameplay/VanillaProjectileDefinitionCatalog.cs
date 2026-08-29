@@ -63,6 +63,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    private static readonly VanillaProjectileDefinition JestersArrowDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     private static readonly VanillaProjectileDefinition ShurikenDefinition = new(
         Width: 22,
         Height: 22,
@@ -120,6 +130,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.UnholyArrow)
         {
             definition = UnholyArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.JestersArrow)
+        {
+            definition = JestersArrowDefinition;
             return true;
         }
 

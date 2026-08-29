@@ -175,6 +175,46 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(2f, transformed.Ai.Ai0, 5);
     }
 
+    [Fact]
+    public async Task Authoritative_tick_runs_jesters_arrow_two_subupdates_and_ignores_water()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        WorldTile water = default;
+        water.LiquidAmount = byte.MaxValue;
+        water.LiquidKind = WorldLiquidKind.Water;
+        tiles.Set(6, 6, water);
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
+        ProjectileStateUpdate projectile = new(
+            VanillaProjectileIds.JestersArrow,
+            Spawner: 3,
+            PositionX: 100f,
+            PositionY: 100f,
+            VelocityX: 4f,
+            VelocityY: 2f,
+            Ai: default,
+            BannerIdToRespondTo: 0,
+            Damage: 20,
+            KnockBack: 1f,
+            OriginalDamage: 20);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot updated));
+        Assert.Equal(VanillaProjectileIds.JestersArrow, updated.Type);
+        Assert.Equal(new ProjectileRevision(2), updated.Revision);
+        Assert.Equal(108f, updated.PositionX, 5);
+        Assert.Equal(104f, updated.PositionY, 5);
+        Assert.Equal(2f, updated.Ai.Ai0, 5);
+        Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
+        Assert.Equal(118, lifecycle.TimeLeft);
+        Assert.False(lifecycle.Liquid.Wet);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -204,6 +244,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(4)]
+    [InlineData(5)]
     public async Task Server_owned_arrow_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));

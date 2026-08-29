@@ -534,6 +534,62 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
+    public void Jesters_arrow_free_flight_ignores_water_and_uses_ordinary_ai001_path()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f) with
+        {
+            Type = VanillaProjectileIds.JestersArrow
+        };
+        ProjectileSimulationStepContext context = CreateContext(
+            arrow,
+            timeLeft: 120,
+            liquid: new ProjectileLiquidState(Wet: true, LavaWet: false, HoneyWet: false, ShimmerWet: false));
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.JestersArrow, next.State.Type);
+        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(2f, next.State.VelocityY, 5);
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(102f, next.State.PositionY, 5);
+        Assert.Equal(119, next.TimeLeft);
+        Assert.True(next.Liquid.GetValueOrDefault().Wet);
+    }
+
+    [Fact]
+    public void Jesters_arrow_tile_impact_uses_generic_collision_kill_path()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.JestersArrow
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 120);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.JestersArrow, next.State.Type);
+        Assert.Equal(2f, next.State.VelocityX, 5);
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(160f, next.State.PositionY, 5);
+        Assert.Equal(0, next.TimeLeft);
+    }
+
+    [Fact]
     public void Uncatalogued_projectile_type_is_left_for_another_behavior_slice()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));

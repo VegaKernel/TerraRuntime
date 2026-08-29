@@ -27,6 +27,25 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     }
 
     [Fact]
+    public void Terraria_1458_jesters_arrow_definition_matches_source()
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            VanillaProjectileIds.JestersArrow,
+            out VanillaProjectileDefinition definition));
+
+        Assert.Equal(10, definition.Width);
+        Assert.Equal(10, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.True(definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
+        Assert.Equal(10, definition.CollisionWidth);
+        Assert.Equal(10, definition.CollisionHeight);
+        Assert.Equal(0f, definition.CollisionOffsetX);
+        Assert.Equal(0f, definition.CollisionOffsetY);
+    }
+
+    [Fact]
     public void Terraria_1458_shuriken_definition_matches_source()
     {
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(

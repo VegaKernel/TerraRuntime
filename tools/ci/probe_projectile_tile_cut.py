@@ -118,6 +118,19 @@ def all_contexts(source: str, needle: str, radius: int = 2200, limit: int = 20) 
     return " | ".join(contexts) if contexts else "<none>"
 
 
+def all_type_comparison_contexts(source: str, raw_type: int, radius: int = 2200, limit: int = 20) -> str:
+    normalized = compact(source)
+    pattern = re.compile(rf"(?<!\d)type\s*==\s*{raw_type}(?!\d)")
+    contexts: list[str] = []
+    for match in pattern.finditer(normalized):
+        if len(contexts) >= limit:
+            break
+        start = max(0, match.start() - radius)
+        end = min(len(normalized), match.end() + radius)
+        contexts.append(f"#{len(contexts) + 1}:{normalized[start:end]}")
+    return " | ".join(contexts) if contexts else "<none>"
+
+
 def matching_lines(source: str, needle: str, limit: int = 300) -> str:
     matches = [compact(line) for line in source.splitlines() if needle in line]
     if not matches:
@@ -187,6 +200,7 @@ def main() -> int:
     arrow_ai = extract_method(projectile_source, "AI_001")
     should_use_wind = compact(extract_method(projectile_source, "ShouldUseWindPhysics"))
     transform_type = compact(extract_method(projectile_source, "TransformType"))
+    projectile_update = extract_method(projectile_source, "Update")
     handle_movement = extract_method(projectile_source, "HandleMovement")
     projectile_kill = extract_method(projectile_source, "Kill")
 
@@ -197,8 +211,9 @@ def main() -> int:
     print("projectile_ai001_ai0_increment=" + around_optional(arrow_ai, "ai[0]++;", radius=1200))
     print("projectile_ai001_gravity=" + around_optional(arrow_ai, "ai[0] >= 15f", radius=1500))
     print("projectile_ai001_fall_cap=" + around_last(arrow_ai, "velocity.Y > 16f", radius=900))
-    print("projectile_ai001_type4_contexts=" + all_contexts(arrow_ai, "type == 4", radius=2600, limit=20))
-    print("projectile_ai001_type5_contexts=" + all_contexts(arrow_ai, "type == 5", radius=3200, limit=20))
+    print("projectile_ai001_type4_contexts=" + all_type_comparison_contexts(arrow_ai, 4, radius=2600, limit=20))
+    print("projectile_ai001_type5_contexts=" + all_type_comparison_contexts(arrow_ai, 5, radius=3200, limit=20))
+    print("projectile_update_type5_contexts=" + all_type_comparison_contexts(projectile_update, 5, radius=2600, limit=20))
     print("projectile_should_use_wind_physics=" + should_use_wind)
     print("projectile_wind_speed_context=" + around_optional(projectile_source, "ShouldUseWindPhysics() &&", radius=2200))
     print("projectile_transform_type=" + transform_type)
@@ -219,8 +234,8 @@ def main() -> int:
         "if (type == 1 || type == 81 || type == 98 || type == 980 || type == 1073)",
         radius=4200))
     print("projectile_kill_type2_contexts=" + all_contexts(projectile_kill, "type == 2", radius=3000, limit=20))
-    print("projectile_kill_type4_contexts=" + all_contexts(projectile_kill, "type == 4", radius=3000, limit=20))
-    print("projectile_kill_type5_contexts=" + all_contexts(projectile_kill, "type == 5", radius=3600, limit=20))
+    print("projectile_kill_type4_contexts=" + all_type_comparison_contexts(projectile_kill, 4, radius=3000, limit=20))
+    print("projectile_kill_type5_contexts=" + all_type_comparison_contexts(projectile_kill, 5, radius=3600, limit=20))
     print("projectile_kill_request_new_item=" + around_optional(
         projectile_kill,
         "Item.RequestNewItem(GetItemSource_DropAsItem()",
