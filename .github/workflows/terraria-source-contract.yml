@@ -88,4 +88,10 @@ jobs:
             --player artifacts/source-contract/player.cs \
             --worldgen artifacts/source-contract/worldgen.cs \
             --main artifacts/source-contract/main.cs \
-            --tile-id artifacts/source-contract/tile-id.cs
+            --tile-id artifacts/source-contract/tile-id.cs \
+            | tee artifacts/source-contract/probe.txt
+
+          for key in projectile_transform_type projectile_fire_arrow_wet_transform projectile_kill_type2_contexts; do
+            value="$(grep -m1 "^${key}=" artifacts/source-contract/probe.txt | cut -d= -f2-)"
+            printf '::notice title=%s::%s\n' "$key" "$value"
+          done
