@@ -17,7 +17,7 @@ public readonly record struct PlayerBootstrapSectionResponse(
 /// Section-local persistence frames intentionally remain empty during initial join so chest inventories
 /// cannot delay the final packet-49 handoff after tile transfer has completed.
 /// </summary>
-public sealed class PlayerBootstrapPacketSet
+public sealed partial class PlayerBootstrapPacketSet
 {
     private const string ReceivingTileDataLocalizationKey = "LegacyInterface.44";
 
