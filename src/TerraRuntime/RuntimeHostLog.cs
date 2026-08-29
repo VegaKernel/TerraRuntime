@@ -14,8 +14,6 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
     private string? worldId;
     private int processExitRegistered = 1;
     private int terminalUiActive;
-    private int terminalUiSeen;
-    private int plainConsoleActive;
 
     public RuntimeHostLog(RuntimeLogBuffer runtimeLogs)
         : this(
@@ -90,24 +88,10 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
 
     public bool IsTerminalUiActive => Volatile.Read(ref terminalUiActive) != 0;
 
-    public bool IsPlainConsoleActive => Volatile.Read(ref plainConsoleActive) != 0;
-
     internal RuntimeLogPipelineMetrics CapturePipelineMetrics() => pipeline.CaptureMetrics();
 
-    public void SetTerminalUiActive(bool active)
-    {
-        if (active)
-        {
-            Volatile.Write(ref terminalUiSeen, 1);
-            Volatile.Write(ref plainConsoleActive, 0);
-            Volatile.Write(ref terminalUiActive, 1);
-            return;
-        }
-
-        Volatile.Write(ref terminalUiActive, 0);
-        if (Volatile.Read(ref terminalUiSeen) != 0)
-            Volatile.Write(ref plainConsoleActive, 1);
-    }
+    public void SetTerminalUiActive(bool active) =>
+        Volatile.Write(ref terminalUiActive, active ? 1 : 0);
 
     public void SetWorldId(string value)
     {
@@ -136,50 +120,6 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
                 : RuntimeLogDelivery.StandardOutput;
 
         TryPublish(level, source, message, eventId, category, MergeContext(context), delivery);
-    }
-
-    public void Publish(OperationsLogLevel level, string source, string message)
-    {
-        RuntimeLogEventId eventId = IsPlainConsoleActive
-            ? RuntimeLogEventIds.HostBridgeStandardOutput
-            : RuntimeLogEventIds.HostBridgeBuffered;
-        RuntimeLogDelivery delivery = IsPlainConsoleActive
-            ? RuntimeLogDelivery.StandardOutput
-            : RuntimeLogDelivery.Buffered;
-        TryPublish(
-            level,
-            source,
-            message,
-            eventId,
-            RuntimeLogCategory.Operations,
-            MergeContext(default),
-            delivery);
-    }
-
-    public void Write(
-        OperationsLogLevel level,
-        string source,
-        string message,
-        bool useStandardError = false)
-    {
-        RuntimeLogEventId eventId = IsTerminalUiActive
-            ? RuntimeLogEventIds.HostBridgeBuffered
-            : useStandardError
-                ? RuntimeLogEventIds.HostBridgeStandardError
-                : RuntimeLogEventIds.HostBridgeStandardOutput;
-        RuntimeLogDelivery delivery = IsTerminalUiActive
-            ? RuntimeLogDelivery.Buffered
-            : useStandardError
-                ? RuntimeLogDelivery.StandardError
-                : RuntimeLogDelivery.StandardOutput;
-        TryPublish(
-            level,
-            source,
-            message,
-            eventId,
-            RuntimeLogCategory.Operations,
-            MergeContext(default),
-            delivery);
     }
 
     public async ValueTask DisposeAsync()

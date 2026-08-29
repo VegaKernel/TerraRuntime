@@ -11,32 +11,58 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeHostLogTests
 {
     [Fact]
-    public async Task Active_terminal_ui_suppresses_console_without_losing_bounded_events()
+    public async Task Active_terminal_ui_suppresses_semantic_console_delivery_without_losing_bounded_events()
     {
         var runtimeLogs = new RuntimeLogBuffer(capacity: 8);
         using var standardOutput = new StringWriter();
         using var standardError = new StringWriter();
         var log = new RuntimeHostLog(runtimeLogs, standardOutput, standardError);
 
-        log.Write(RuntimeLogLevel.Information, "Server", "before");
+        log.Log(
+            RuntimeLogLevel.Information,
+            StructuredLogEventIds.LifecycleInformation,
+            StructuredLogCategory.Lifecycle,
+            "Server",
+            "before");
         log.SetTerminalUiActive(true);
-        log.Write(RuntimeLogLevel.Warning, "Network", "hidden-warning", useStandardError: true);
-        log.Publish(RuntimeLogLevel.Debug, "Runtime", "buffer-only");
+        log.Log(
+            RuntimeLogLevel.Warning,
+            StructuredLogEventIds.NetworkAcceptFailed,
+            StructuredLogCategory.Network,
+            "Network",
+            "hidden-warning",
+            useStandardError: true);
+        log.Log(
+            RuntimeLogLevel.Debug,
+            StructuredLogEventIds.OperationsReadModelMessage,
+            StructuredLogCategory.Operations,
+            "Runtime",
+            "buffer-only",
+            bufferedOnly: true);
 
         Assert.True(log.IsTerminalUiActive);
-        Assert.False(log.IsPlainConsoleActive);
 
         log.SetTerminalUiActive(false);
         Assert.False(log.IsTerminalUiActive);
-        Assert.True(log.IsPlainConsoleActive);
 
-        log.Publish(RuntimeLogLevel.Information, "Network", "plain-publish");
-        log.Write(RuntimeLogLevel.Error, "Runtime", "after", useStandardError: true);
+        log.Log(
+            RuntimeLogLevel.Information,
+            StructuredLogEventIds.NetworkConnectionAccepted,
+            StructuredLogCategory.Network,
+            "Network",
+            "plain-semantic");
+        log.Log(
+            RuntimeLogLevel.Error,
+            StructuredLogEventIds.LifecycleError,
+            StructuredLogCategory.Lifecycle,
+            "Runtime",
+            "after",
+            useStandardError: true);
 
         await log.DisposeAsync();
 
         Assert.Equal(
-            "before" + Environment.NewLine + "plain-publish" + Environment.NewLine,
+            "before" + Environment.NewLine + "plain-semantic" + Environment.NewLine,
             standardOutput.ToString());
         Assert.Equal("after" + Environment.NewLine, standardError.ToString());
 
@@ -44,7 +70,7 @@ public sealed class RuntimeHostLogTests
         Assert.Equal(5, snapshot.Entries.Length);
         Assert.Equal("hidden-warning", snapshot.Entries.Span[1].Message);
         Assert.Equal("buffer-only", snapshot.Entries.Span[2].Message);
-        Assert.Equal("plain-publish", snapshot.Entries.Span[3].Message);
+        Assert.Equal("plain-semantic", snapshot.Entries.Span[3].Message);
         Assert.Equal("after", snapshot.Entries.Span[4].Message);
 
         RuntimeLogPipelineMetrics metrics = log.CapturePipelineMetrics();
@@ -54,7 +80,7 @@ public sealed class RuntimeHostLogTests
     }
 
     [Fact]
-    public async Task Host_log_call_does_not_wait_for_blocked_console_io()
+    public async Task Semantic_host_log_call_does_not_wait_for_blocked_console_io()
     {
         var runtimeLogs = new RuntimeLogBuffer(capacity: 8);
         var blockedOutput = new BlockingTextWriter();
@@ -70,7 +96,12 @@ public sealed class RuntimeHostLogTests
             });
 
         Task producer = Task.Run(
-            () => log.Write(RuntimeLogLevel.Information, "Server", "non-blocking"),
+            () => log.Log(
+                RuntimeLogLevel.Information,
+                StructuredLogEventIds.LifecycleInformation,
+                StructuredLogCategory.Lifecycle,
+                "Server",
+                "non-blocking"),
             TestContext.Current.CancellationToken);
 
         await producer.WaitAsync(TestContext.Current.CancellationToken);

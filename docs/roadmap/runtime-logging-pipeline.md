@@ -1,19 +1,20 @@
 # Runtime structured logging pipeline roadmap
 
-Current status: **L0, L1 and L2 are implemented. L3 live-host adoption is substantially complete; structured recent-store consolidation and runtime logging configuration are complete. L4-L5 remain open.**
+Current status: **L0-L3 are complete. L4-L5 remain open.**
 
 This roadmap tracks the replacement of ad-hoc host logging with a runtime-owned structured logging subsystem. The implementation remains NativeAOT-first and keeps authoritative simulation producers free from blocking console, disk, network, and external-sink I/O.
 
 ## Non-negotiable constraints
 
-- Producers must never synchronously perform sink I/O.
-- Queueing must be bounded and non-blocking for the caller.
+- Producers never synchronously perform sink I/O.
+- Queueing is bounded and non-blocking for the caller.
 - Accepted records keep FIFO order through the single drain worker.
-- Warning/error/critical traffic must retain queue capacity during normal-level floods.
+- Warning/error/critical traffic retains queue capacity during normal-level floods.
 - Record contracts contain detached scalar context, not mutable runtime entities or raw packet payloads.
 - External serialization remains trimming/AOT-safe and does not use reflection-driven runtime schema discovery.
 - Sink failures are observable and isolated from healthy sinks.
-- Semantic event identity must not be overloaded with host-local stdout/stderr routing.
+- Semantic event identity is independent from host-local stdout/stderr routing.
+- Stable event IDs are never recycled for unrelated semantics.
 - Documentation in `docs/en` and `docs/ru` changes atomically with logging code.
 
 ## Data flow
@@ -71,41 +72,24 @@ Default JSONL policy is \(16\,\mathrm{MiB}\) maximum file size, UTC-day rotation
 
 ## L3 - Runtime adoption
 
-### Completed bridge foundation
-
-- [x] Route `RuntimeHostLog.Write` and `RuntimeHostLog.Publish` through `RuntimeLogPipeline` instead of synchronous console/read-model calls.
-- [x] Move compatibility stdout/stderr writes behind a worker-owned sink while preserving TUI suppression and plain-console fallback semantics.
-- [x] Add transitional stable bridge routing IDs `8000-8002` for legacy callers.
-- [x] Verify with tests that a blocked console writer cannot block the producer call.
-- [x] Add bounded process-exit drain fallback plus explicit `DisposeAsync` on the bridge.
-
-### Completed live-host semantic migration
-
-- [x] Replace direct `Console.WriteLine` / `Console.Error.WriteLine` and duplicate `RuntimeLogBuffer.Publish` logging in `TerrariaServerHost` with structured pipeline events.
-- [x] Allocate final semantic IDs for the migrated lifecycle, network, world, persistence, plugin/host-integration and operations families.
+- [x] Route live-host logging through `RuntimeLogPipeline` rather than synchronous console/read-model calls.
+- [x] Replace direct `Console.WriteLine` / `Console.Error.WriteLine` and duplicate `RuntimeLogBuffer.Publish` logging in `TerrariaServerHost` with semantic structured events.
+- [x] Allocate stable semantic IDs for migrated lifecycle, network, world, persistence, plugin/host-integration and operations families.
 - [x] Carry stdout/stderr/buffered delivery separately from semantic event IDs inside the private pipeline envelope.
-- [x] Add run-scoped correlation plus detached world/connection/player context where those verified identifiers exist.
+- [x] Add run-scoped correlation plus detached world/connection/player context where verified identifiers exist.
 - [x] Wire explicit logging disposal into normal `TerrariaServerHost.RunAsync` ownership with `await using`, covering early returns and normal shutdown.
-- [x] Keep every migrated host call-site family free from synchronous sink I/O.
-- [x] Add focused coverage proving semantic event ID/category/context remain intact independently from console delivery.
-
-### Completed recent-store/configuration slice
-
 - [x] Replace the independent legacy recent-log ring with `RuntimeRecentLogStore` behind the existing `RuntimeLogBuffer`/`ILogOperations` TUI facade.
-- [x] Make the TUI facade itself an `IRuntimeLogSink`, removing the extra compatibility operations sink adapter from `RuntimeHostLog`.
-- [x] Preserve bounded source/level filtering and expose one shared published/overwrite count for the retained operations log state.
 - [x] Define bounded runtime configuration for minimum level, console/JSONL enablement, JSONL directory, queue/reserve capacities, rotation/retention, flush cadence and sink/shutdown timeouts.
-- [x] Enable compatibility console plus rotating JSONL by default in production composition while keeping JSONL disabled in injected unit-test composition.
-- [x] Validate malformed/out-of-range configuration through safe fallbacks and normalize the reserve so \(1\le N_r<N_q\).
+- [x] Keep migrated host call sites free from synchronous sink I/O and verify blocked console I/O cannot block the producer.
+- [x] Remove transitional `RuntimeHostLog.Write` / `RuntimeHostLog.Publish` APIs after all production callers migrated.
+- [x] Permanently retire transitional delivery IDs `8000-8002`; they are not reused for new meanings.
+- [x] Give direct local operations-read-model publication its own semantic ID `8004` (`OperationsReadModelMessage`).
 
-Production configuration is read from `TERRARUNTIME_LOG_*` environment variables. The documented defaults remain queue \(2048\), priority reserve \(256\), JSONL rotation at \(16\,\mathrm{MiB}\), retention \(8\) files, flush every \(64\) records, sink timeout \(2000\,\mathrm{ms}\), and shutdown drain \(5000\,\mathrm{ms}\).
+`RuntimeHostLog` now exposes one semantic producer API, `Log(...)`. TUI activation affects only delivery routing; it does not change event identity. Operations ID `8003` remains `OperationsTerminalUiFailed`. IDs `8000-8002` are historical tombstones so old logs cannot be reinterpreted after upgrades.
 
-The host does not invent protocol/gameplay/security events merely to reserve values. Those families receive semantic IDs and packet/entity context when their real logging call sites are migrated.
+Production configuration is read from `TERRARUNTIME_LOG_*` environment variables. Defaults remain queue \(2048\), priority reserve \(256\), JSONL rotation at \(16\,\mathrm{MiB}\), retention \(8\) files, flush every \(64\) records, sink timeout \(2000\,\mathrm{ms}\), and shutdown drain \(5000\,\mathrm{ms}\).
 
-### Remaining L3 work
-
-- [ ] Migrate any legacy `RuntimeHostLog.Write`/`Publish` callers outside the completed `TerrariaServerHost` families and then retire bridge IDs `8000-8002`.
-- [ ] Allocate protocol/gameplay/security semantic IDs and detached packet/entity context as those concrete call-site families enter the structured pipeline.
+Protocol/gameplay/security ranges remain available for future real semantic events. Their absence today is not L3 migration debt; new IDs are allocated when those subsystems actually gain log events.
 
 ## L4 - Metrics, operator surfaces and quality gates
 
@@ -113,7 +97,7 @@ The host does not invent protocol/gameplay/security events merely to reserve val
 - [ ] Expose bounded recent logs and sink health through TUI/API operator surfaces.
 - [ ] Add deterministic filtering by level/category/event ID/subsystem/correlation identifiers.
 - [ ] Add sustained-flood and slow/failing-sink benchmarks with explicit CPU/allocation/latency budgets.
-- [ ] Add Linux and Windows NativeAOT smoke gates for the adopted logging path.
+- [ ] Add Linux and Windows NativeAOT smoke gates for the fully adopted logging path.
 - [ ] Add rotation/retention crash-recovery and disk-full scenarios.
 
 ## L5 - Optional external sinks
@@ -125,21 +109,14 @@ The host does not invent protocol/gameplay/security events merely to reserve val
 
 ## Implementation evidence
 
-L0-L2 contracts and implementation live under:
+L0-L3 are implemented across:
 
 - `src/TerraRuntime.Contracts/Diagnostics/`;
 - `src/TerraRuntime/Diagnostics/`;
-- `tests/TerraRuntime.Tests/RuntimeLogPipelineTests.cs`.
-
-Current L3 evidence includes:
-
 - `src/TerraRuntime/RuntimeHostLog.cs`;
-- `src/TerraRuntime/Diagnostics/RuntimeLogDelivery.cs`;
-- `src/TerraRuntime/Diagnostics/RuntimeHostLoggingOptions.cs`;
-- `src/TerraRuntime/Diagnostics/RuntimeRecentLogStore.cs`;
 - `src/TerraRuntime/Operations/RuntimeLogBuffer.cs`;
 - `src/TerraRuntime/TerrariaServerHost.cs`;
-- `src/TerraRuntime.Contracts/Diagnostics/RuntimeLogEventIds.cs`;
+- `tests/TerraRuntime.Tests/RuntimeLogPipelineTests.cs`;
 - `tests/TerraRuntime.Tests/RuntimeHostLogTests.cs`;
 - `tests/TerraRuntime.Tests/RuntimeHostLoggingOptionsTests.cs`;
 - `tests/TerraRuntime.Tests/RuntimeLogBufferTests.cs`;
@@ -147,4 +124,4 @@ Current L3 evidence includes:
 
 ## Next closure target
 
-The next coherent logging commit should retire the transitional bridge only after its remaining callers are identified and migrated. L4 can then expose structured filtering, queue/sink health and overwrite metrics without creating another logging state store.
+The next coherent logging milestone is **L4 operator observability and quality gates**: expose pipeline/recent-store health without introducing another state store, then add deterministic structured filtering and sustained overload/failure acceptance tests.

@@ -44,7 +44,7 @@ internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
             Sequence: 0,
             TimestampUtc: DateTimeOffset.UtcNow,
             Level: ToStructuredLevel(level),
-            EventId: RuntimeLogEventIds.HostBridgeBuffered,
+            EventId: RuntimeLogEventIds.OperationsReadModelMessage,
             Category: RuntimeLogCategory.Operations,
             Subsystem: Normalize(source, MaximumSourceLength, "Runtime"),
             Message: Normalize(message, MaximumMessageLength, string.Empty),

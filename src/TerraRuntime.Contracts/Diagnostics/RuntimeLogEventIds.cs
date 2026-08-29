@@ -67,10 +67,8 @@ public static class RuntimeLogEventIds
     public static readonly RuntimeLogEventId PluginHostRuntimeAttachFailed = new(PluginBase);
     public static readonly RuntimeLogEventId PluginHostRuntimeDetachFailed = new(PluginBase + 1);
 
-    // Transitional L3 bridge IDs. These describe legacy delivery semantics only. New semantic call sites
-    // keep their category-specific IDs and carry stdout/stderr routing separately inside RuntimeLogPipeline.
-    public static readonly RuntimeLogEventId HostBridgeBuffered = new(OperationsBase);
-    public static readonly RuntimeLogEventId HostBridgeStandardOutput = new(OperationsBase + 1);
-    public static readonly RuntimeLogEventId HostBridgeStandardError = new(OperationsBase + 2);
+    // Operations IDs 8000-8002 belonged to the transitional L3 delivery bridge and are permanently retired.
+    // Stable event IDs are never recycled for unrelated semantics.
     public static readonly RuntimeLogEventId OperationsTerminalUiFailed = new(OperationsBase + 3);
+    public static readonly RuntimeLogEventId OperationsReadModelMessage = new(OperationsBase + 4);
 }
