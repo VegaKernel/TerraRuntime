@@ -14,7 +14,8 @@ public enum WorldFileTileChestRewriteResult : byte
     ChestEncodingFailed = 9,
     EnvelopeEncodingFailed = 10,
     FooterEncodingFailed = 11,
-    WriteFailed = 12
+    WriteFailed = 12,
+    InvalidHeaderSection = 13
 }
 
 /// <summary>
@@ -32,6 +33,30 @@ public static class WorldFileTileChestRewriter
         WorldTileSaveImage tiles,
         ReadOnlySpan<WorldChest> chests,
         Stream destination,
+        out long bytesWritten) =>
+        TryRewrite(
+            sourceEnvelope,
+            header,
+            preserved.Header.Span,
+            preserved,
+            tiles,
+            chests,
+            destination,
+            out bytesWritten);
+
+    /// <summary>
+    /// Rewrites using a same-length validated replacement for the opaque preserved header. This lets callers patch
+    /// runtime-owned header fields such as the world clock without cloning the other preserved sections or exposing
+    /// unmodelled vanilla save flags to a lossy semantic encoder.
+    /// </summary>
+    public static WorldFileTileChestRewriteResult TryRewrite(
+        WorldFileEnvelope sourceEnvelope,
+        WorldFileHeader header,
+        ReadOnlySpan<byte> headerSection,
+        WorldFilePreservedSections preserved,
+        WorldTileSaveImage tiles,
+        ReadOnlySpan<WorldChest> chests,
+        Stream destination,
         out long bytesWritten)
     {
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
@@ -41,6 +66,8 @@ public static class WorldFileTileChestRewriter
         ArgumentNullException.ThrowIfNull(destination);
         bytesWritten = 0;
 
+        if (headerSection.Length != preserved.Header.Length || headerSection.IsEmpty)
+            return WorldFileTileChestRewriteResult.InvalidHeaderSection;
         if (!destination.CanWrite)
             return WorldFileTileChestRewriteResult.DestinationNotWritable;
         if (!destination.CanSeek)
@@ -65,7 +92,7 @@ public static class WorldFileTileChestRewriter
 
             if (!TryRecordOffset(destination, offsets, 0))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
-            destination.Write(preserved.Header.Span);
+            destination.Write(headerSection);
 
             if (!TryRecordOffset(destination, offsets, 1))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
