@@ -178,4 +178,4 @@ G6 is not complete until:
 - [x] real clients cannot seize control of a fake player's slot;
 - [x] actor/shop/plugin unload leaves no stale callbacks, control leases, catalog state or entity-generation state;
 - [x] zero actor/shop registrations keep ordinary vanilla/runtime path allocation-light;
-- [ ] NativeAOT and normal CI remain green.
+- [x] NativeAOT and normal CI remain green (`CI` run `33281551013`: normal build/tests plus Linux/Windows NativeAOT and CoreCLR extensible-host smokes).
