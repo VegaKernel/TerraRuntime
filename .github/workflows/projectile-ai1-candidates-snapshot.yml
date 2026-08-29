@@ -45,7 +45,7 @@ jobs:
           python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
 
-          git rm .github/workflows/projectile-ai1-candidates-snapshot.yml .github/scripts/apply_seed_bone_shard.py
+          git rm -f .github/workflows/projectile-ai1-candidates-snapshot.yml .github/scripts/apply_seed_bone_shard.py
           git config user.name OpenAI
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add .github/workflows/terraria-source-contract.yml \
@@ -60,5 +60,3 @@ jobs:
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
-
-          # Retry marker: dirt-drop float assertions are precision-safe on this base.
