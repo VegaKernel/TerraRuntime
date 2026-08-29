@@ -7,8 +7,8 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile simulation slices that already have enough runtime/world
-/// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden
-/// Arrow and Fire Arrow (aiStyle 1) plus Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2),
+/// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden,
+/// Fire, and Unholy Arrows (aiStyle 1) plus Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2),
 /// including their generic tile-impact Kill() path. Server-owned simulation is allowed only when its committed
 /// movement sweep cannot reach a source-backed CutTiles candidate; irreversible KillTile/drop effects remain a
 /// separate world-effect slice. Entity damage and visual-only rotation/dust/sound also remain separate systems.
@@ -64,7 +64,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         bool isOrdinaryArrow =
             definition.AiStyle == VanillaProjectileAiStyles.Arrow &&
             (current.Type == VanillaProjectileIds.WoodenArrowFriendly ||
-             current.Type == VanillaProjectileIds.FireArrow);
+             current.Type == VanillaProjectileIds.FireArrow ||
+             current.Type == VanillaProjectileIds.UnholyArrow);
         if (!isThrown && !isOrdinaryArrow)
         {
             next = default;
@@ -72,7 +73,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         }
 
         // TerrariaServer AI_001 uses ai[2] as a feature selector for several special arrow families. The
-        // ordinary Wooden/Fire Arrow path has ai[2] == 0; non-default feature state remains a separate slice.
+        // ordinary Wooden/Fire/Unholy Arrow path has ai[2] == 0; non-default feature state remains separate.
         if (isOrdinaryArrow && current.Ai.Ai2 != 0f)
         {
             next = default;
@@ -101,7 +102,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         }
         else
         {
-            // TerrariaServer 1.4.5.8 Projectile.AI_001(), ordinary Wooden/Fire Arrow path. Type-specific
+            // TerrariaServer 1.4.5.8 Projectile.AI_001(), ordinary Wooden/Fire/Unholy Arrow path. Type-specific
             // homing, feature and kill branches do not apply when ai[2] is the default zero value.
             ai0 += 1f;
             if (ai0 >= 15f)
