@@ -49,6 +49,128 @@ public sealed class SectionCacheRebuildPipelineTests
     }
 
     [Fact]
+    public async Task Deduplicates_concurrent_on_demand_misses_into_one_worker_rebuild()
+    {
+        WorldFileData world = LoadCompleteWorld();
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+        WorldSectionId section = FindUncachedSection(world, packets);
+        using var encodeStarted = new ManualResetEventSlim(false);
+        using var releaseEncode = new ManualResetEventSlim(false);
+        int encodeCalls = 0;
+
+        SectionCacheRebuildResult Encode(WorldSectionTileSnapshot snapshot)
+        {
+            Interlocked.Increment(ref encodeCalls);
+            encodeStarted.Set();
+            releaseEncode.Wait(TestContext.Current.CancellationToken);
+            return new SectionCacheRebuildResult(
+                snapshot.Section,
+                snapshot.Revision,
+                WorldSectionPacketEncodeResult.Encoded,
+                new byte[] { 4, 0, (byte)TerrariaMessageId.TileSection, 0x5a },
+                TimeSpan.Zero,
+                Error: null);
+        }
+
+        using var pipeline = new SectionCacheRebuildPipeline(
+            world,
+            packets,
+            workerCount: 1,
+            workCapacity: 1,
+            completionCapacity: 1,
+            Encode);
+        pipeline.Start();
+
+        Task<ReadOnlyMemory<byte>> first = StartLookupAsync(packets, section);
+        Task<ReadOnlyMemory<byte>> second = StartLookupAsync(packets, section);
+
+        try
+        {
+            SectionCacheRebuildPipelineSnapshot requested = await WaitForObservedAsync(
+                pipeline,
+                static value => value.OnDemandRequests >= 2);
+            Assert.Equal(1, requested.OnDemandUniqueRequests);
+            Assert.Equal(1, requested.OnDemandDeduplicatedRequests);
+            Assert.Equal(1, requested.OnDemandPendingRequests);
+            Assert.Equal(2, requested.CacheMisses);
+            Assert.Equal(2, requested.CacheWaits);
+
+            pipeline.Tick();
+            Assert.True(encodeStarted.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            Assert.Equal(1, pipeline.Snapshot.SubmittedRebuilds);
+            releaseEncode.Set();
+
+            SectionCacheRebuildPipelineSnapshot published = await WaitForAsync(
+                pipeline,
+                static value => value.PublishedFrames >= 1 && value.CacheWaitCompletions >= 2);
+            ReadOnlyMemory<byte>[] frames = await Task.WhenAll(first, second);
+
+            Assert.Equal(1, encodeCalls);
+            Assert.Equal(1, published.SubmittedRebuilds);
+            Assert.Equal(1, published.PublishedFrames);
+            Assert.Equal(0, published.OnDemandPendingRequests);
+            Assert.Equal(2, published.CacheWaitCompletions);
+            Assert.Equal(0, published.CacheWaitTimeouts);
+            Assert.All(frames, frame => Assert.Equal(0x5a, frame.Span[3]));
+        }
+        finally
+        {
+            releaseEncode.Set();
+        }
+    }
+
+    [Fact]
+    public async Task Stale_cached_section_waits_for_worker_and_records_stale_lookup()
+    {
+        WorldFileData world = LoadCompleteWorld();
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+        int x = world.RuntimeMetadata.SpawnX;
+        int y = world.RuntimeMetadata.SpawnY;
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(world.Header.Dimensions, x, y);
+
+        SectionCacheRebuildResult Encode(WorldSectionTileSnapshot snapshot) =>
+            new(
+                snapshot.Section,
+                snapshot.Revision,
+                WorldSectionPacketEncodeResult.Encoded,
+                new byte[] { 4, 0, (byte)TerrariaMessageId.TileSection, 0x6b },
+                TimeSpan.Zero,
+                Error: null);
+
+        using var pipeline = new SectionCacheRebuildPipeline(
+            world,
+            packets,
+            workerCount: 1,
+            workCapacity: 1,
+            completionCapacity: 1,
+            Encode);
+        pipeline.Start();
+
+        WorldTile tile = world.Tiles.Get(x, y);
+        tile.Flags ^= WorldTileFlags.WireRed;
+        world.Tiles.Set(x, y, tile);
+
+        Task<ReadOnlyMemory<byte>> lookup = StartLookupAsync(packets, section);
+        SectionCacheRebuildPipelineSnapshot requested = await WaitForObservedAsync(
+            pipeline,
+            static value => value.OnDemandRequests >= 1);
+        Assert.Equal(1, requested.CacheMisses);
+        Assert.Equal(1, requested.CacheStaleReads);
+        Assert.Equal(1, requested.CacheWaits);
+
+        SectionCacheRebuildPipelineSnapshot published = await WaitForAsync(
+            pipeline,
+            static value => value.PublishedFrames >= 1 && value.CacheWaitCompletions >= 1);
+        ReadOnlyMemory<byte> frame = await lookup;
+
+        Assert.Equal(0x6b, frame.Span[3]);
+        Assert.Equal(1, published.OnDemandUniqueRequests);
+        Assert.Equal(0, published.OnDemandPendingRequests);
+        Assert.Equal(1, published.CacheWaitCompletions);
+        Assert.Equal(0, published.CacheWaitTimeouts);
+    }
+
+    [Fact]
     public async Task Discards_stale_worker_result_and_rebuilds_latest_revision()
     {
         WorldFileData world = LoadCompleteWorld();
@@ -181,6 +303,33 @@ public sealed class SectionCacheRebuildPipelineTests
         releaseEncode.Set();
     }
 
+    private static Task<ReadOnlyMemory<byte>> StartLookupAsync(
+        PlayerBootstrapPacketSet packets,
+        WorldSectionId section) =>
+        Task.Run(
+            () =>
+            {
+                Assert.True(packets.TryGetOrRequestSectionFrame(section, out ReadOnlyMemory<byte> frame));
+                return frame;
+            },
+            TestContext.Current.CancellationToken);
+
+    private static async Task<SectionCacheRebuildPipelineSnapshot> WaitForObservedAsync(
+        SectionCacheRebuildPipeline pipeline,
+        Func<SectionCacheRebuildPipelineSnapshot, bool> predicate)
+    {
+        for (int attempt = 0; attempt < 500; attempt++)
+        {
+            SectionCacheRebuildPipelineSnapshot snapshot = pipeline.Snapshot;
+            if (predicate(snapshot))
+                return snapshot;
+
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+
+        throw new TimeoutException("Section cache request was not observed before the test deadline.");
+    }
+
     private static async Task<SectionCacheRebuildPipelineSnapshot> WaitForAsync(
         SectionCacheRebuildPipeline pipeline,
         Func<SectionCacheRebuildPipelineSnapshot, bool> predicate)
@@ -200,6 +349,21 @@ public sealed class SectionCacheRebuildPipelineTests
             $"Section cache rebuild did not reach the expected state. " +
             $"dirty={final.DirtyBacklog}, inFlight={final.InFlight}, submitted={final.SubmittedRebuilds}, " +
             $"published={final.PublishedFrames}, stale={final.StaleResults}, failures={final.EncodeFailures}.");
+    }
+
+    private static WorldSectionId FindUncachedSection(
+        WorldFileData world,
+        PlayerBootstrapPacketSet packets)
+    {
+        for (int index = 0; index < world.Header.Dimensions.SectionCount; index++)
+        {
+            WorldSectionId section = TerrariaSectionGeometry.FromLinearIndex(world.Header.Dimensions, index);
+            long revision = world.Tiles.GetSectionVersion(section);
+            if (!packets.TryGetCachedSectionFrame(section, revision, out _))
+                return section;
+        }
+
+        throw new InvalidOperationException("The generated test world unexpectedly cached every network section.");
     }
 
     private static WorldFileData LoadCompleteWorld()
