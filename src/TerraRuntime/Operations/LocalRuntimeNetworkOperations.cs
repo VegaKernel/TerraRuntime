@@ -14,6 +14,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
     private readonly global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication;
     private readonly global::TerraRuntime.RuntimeProjectileReplicationRegistry? projectileReplication;
     private readonly global::TerraRuntime.RuntimeWorldItemReplicationRegistry? worldItemReplication;
+    private readonly RuntimeConnectionStopTelemetry? stopTelemetry;
 
     public LocalRuntimeNetworkOperations(
         TerrariaConnectionAdmissionGate admission,
@@ -22,7 +23,8 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         RuntimeConnectionRateTelemetry rateTelemetry,
         global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication = null,
         global::TerraRuntime.RuntimeProjectileReplicationRegistry? projectileReplication = null,
-        global::TerraRuntime.RuntimeWorldItemReplicationRegistry? worldItemReplication = null)
+        global::TerraRuntime.RuntimeWorldItemReplicationRegistry? worldItemReplication = null,
+        RuntimeConnectionStopTelemetry? stopTelemetry = null)
     {
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
         this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
@@ -31,12 +33,14 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         this.npcReplication = npcReplication;
         this.projectileReplication = projectileReplication;
         this.worldItemReplication = worldItemReplication;
+        this.stopTelemetry = stopTelemetry;
     }
 
     public RuntimeNetworkSnapshot CaptureSnapshot()
     {
         RuntimeConnectionQueueSnapshot queues = queueTelemetry.CaptureSnapshot(MaximumQueueDetails);
         RuntimeConnectionRateTelemetrySnapshot rates = rateTelemetry.CaptureSnapshot(MaximumRateDetails);
+        RuntimeConnectionStopTelemetrySnapshot stops = stopTelemetry?.CaptureSnapshot() ?? default;
         return new RuntimeNetworkSnapshot(
             ActiveConnections: admission.ActiveConnections,
             RegisteredConnections: connections.Count,
@@ -77,6 +81,14 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             WorldItemRejectedFrames: worldItemReplication?.RejectedFrames ?? 0,
             WorldItemUnsupportedCommits: worldItemReplication?.UnsupportedCommits ?? 0,
             AdmissionCapacityRejectedConnections: admission.CapacityRejectedConnections,
-            AdmissionRateRejectedConnections: admission.RateRejectedConnections);
+            AdmissionRateRejectedConnections: admission.RateRejectedConnections,
+            StopProtocolFailures: stops.ProtocolFailures,
+            StopRateLimited: stops.RateLimited,
+            StopInvalidHandshake: stops.InvalidHandshake,
+            StopUnsupportedProtocol: stops.UnsupportedProtocol,
+            StopSlowClient: stops.SlowClient,
+            StopApplicationStopped: stops.ApplicationStopped,
+            StopHandshakeTimeout: stops.HandshakeTimeout,
+            StopIdleTimeout: stops.IdleTimeout);
     }
 }
