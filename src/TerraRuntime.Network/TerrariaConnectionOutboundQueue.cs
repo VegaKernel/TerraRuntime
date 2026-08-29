@@ -21,6 +21,10 @@ public sealed class TerrariaConnectionOutboundQueue
 
     public bool IsCompleted => _queue.IsCompleted;
 
+    public int MaxFrames => _queue.MaxFrames;
+
+    public long MaxQueuedBytes => _queue.MaxQueuedBytes;
+
     public int QueuedFrames => _queue.QueuedFrames;
 
     public long QueuedBytes => _queue.QueuedBytes;
