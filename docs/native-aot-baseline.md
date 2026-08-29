@@ -1,15 +1,21 @@
-# NativeAOT-first baseline
+# NativeAOT and CoreCLR hosting baseline
 
-TerraRuntime targets a **pure NativeAOT production build on .NET 11**.
+TerraRuntime targets **.NET 11** and deliberately supports two different shipping profiles because the requirements for a pure NativeAOT runtime and a drop-in managed DLL plugin host are not the same.
 
-This is an architectural constraint, not a later optimization pass.
+NativeAOT remains a first-class production capability and CI contract for the TerraRuntime core. The Vega-enabled extensible server uses CoreCLR so it can load ordinary managed DLL plugins, use collectible `AssemblyLoadContext` and retain hot replacement.
 
-## Production rule
+This is an architectural split, not a temporary workaround.
 
-The shipping server is expected to be published as a native executable:
+See [`roadmap/runtime-host-plugin-architecture.md`](roadmap/runtime-host-plugin-architecture.md) for the complete host/plugin trust model.
+
+## Shipping profiles
+
+### NativeAOT standalone profile
+
+TerraRuntime must continue to publish as a native executable:
 
 ```text
-TerraRuntime source graph
+TerraRuntime core/source graph
         |
         v
 .NET 11 NativeAOT publish
@@ -18,37 +24,72 @@ TerraRuntime source graph
         +-- win-x64/TerraRuntime.Server.exe
 ```
 
-CoreCLR may still be used during development when it improves debugging, profiling or iteration speed. It is not the production architecture target.
+This profile has no arbitrary managed plugin loading. It is intended for runtime-only deployments, native smoke testing, benchmarking and environments that do not require the Vega managed plugin ecosystem.
 
-## Vega hosting model
+The current NativeAOT publish and clean-deployment mechanism remains valid and must not be removed merely because an extensible CoreCLR host is introduced.
 
-The normal production topology is **Vega and TerraRuntime in the same NativeAOT process**.
+### Extensible Vega profile
 
-The source graph remains split by explicit contracts even though deployment is a single native host:
+The normal plugin-enabled topology is a .NET 11 CoreCLR host:
 
 ```text
-Vega source graph
-    |
-    +-- Vega application layer
-    +-- TerraRuntime implementation
-    +-- TerraRuntime.Contracts
-    +-- other admitted AOT-safe dependencies
-    |
-    v
-.NET 11 NativeAOT publish
-    |
-    +-- Vega.Server[.exe]
+TerraRuntime.Server[.exe]   CoreCLR
+        |
+        +-- TerraRuntime core
+        +-- privileged host-module boundary
+        |
+        +--> HostModules/Vega.dll
+                       |
+                       +--> Vega.PluginSdk
+                       +--> ServerPlugins/*.dll
 ```
 
-`TerraRuntime.Contracts` is the stable compile-time boundary for Vega-facing runtime interfaces, handles, snapshots and DTOs. Vega should depend on contracts instead of implementation details wherever a public contract is sufficient.
+Vega is a trusted host module, not an ordinary plugin. Ordinary plugins compile against `Vega.PluginSdk` and do not receive TerraRuntime implementation objects or mutable authoritative state.
 
-A standalone `TerraRuntime.Server[.exe]` remains supported for runtime development, smoke tests, debugging and deployments that intentionally do not include Vega. That standalone host does not imply an IPC boundary for the normal Vega topology.
+The CoreCLR production baseline is:
 
-## Clean production layout
+```xml
+<ServerGarbageCollection>true</ServerGarbageCollection>
+<TieredCompilation>true</TieredCompilation>
+<TieredPGO>true</TieredPGO>
+<PublishReadyToRun>true</PublishReadyToRun>
+```
 
-NativeAOT project and package assemblies are build inputs, not files that should be copied wholesale into the production server root. A normal `dotnet build` output may contain many managed DLLs; it is not a deployment layout.
+These defaults are benchmarkable policy. They may change only when production-like measurements demonstrate a better configuration.
 
-The intended standalone TerraRuntime deployment root is:
+ReadyToRun reduces cold-start JIT work while Tiered Compilation and Dynamic PGO remain free to optimize hot methods from real process behavior. Server GC is the default GC policy for the long-lived server workload.
+
+## Contract and trust boundaries
+
+The intended source/API layering is:
+
+```text
+TerraRuntime implementation
+        |
+        v
+TerraRuntime.HostContracts
+        |
+        v
+HostModules/Vega.dll
+        |
+        v
+Vega.PluginSdk
+        |
+        v
+ServerPlugins/*.dll
+```
+
+`TerraRuntime.HostContracts` is privileged and narrow. It may expose snapshots, lifecycle notifications, command ingress and controlled operations required by Vega, but it must not expose mutable runtime collections or implementation classes simply for convenience.
+
+`Vega.PluginSdk` remains the normal public plugin surface. Plugin mutations must cross Vega policy/validation and then enter TerraRuntime through authoritative game-loop commands.
+
+The SDK boundary protects invariants, compatibility and accidental misuse. Same-process managed plugins are not a hostile-code security sandbox; true hostile-code isolation requires a separate process/sandbox and is a different feature.
+
+## Clean deployment layouts
+
+### NativeAOT standalone
+
+The intended standalone NativeAOT deployment root remains:
 
 ```text
 TerraRuntime.Server[.exe]
@@ -58,27 +99,43 @@ data/
 logs/
 ```
 
-A NativeAOT `dotnet publish` of `src/TerraRuntime/TerraRuntime.csproj` automatically recreates this clean tree under:
+A NativeAOT `dotnet publish` of the current standalone host automatically recreates the clean tree under:
 
 ```text
 artifacts/deploy/<RuntimeIdentifier>/
 ```
 
-The clean tree contains only the native executable and the runtime-owned directories above. The SDK/intermediate publish directory is deliberately kept separate and may contain build or debug artifacts that are not part of deployment.
+The clean tree contains only the native executable and runtime-owned directories. SDK/intermediate publish output may contain build or debug artifacts and is not the deployment directory.
 
-The Vega-hosted deployment follows the same rule: the root is centered around `Vega.Server[.exe]` plus application/runtime data directories, not a loose pile of `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll` or other managed build artifacts.
+CI launches NativeAOT smoke paths from the clean deployment tree and rejects unexpected root entries. If the native server accidentally starts depending on a loose managed sidecar, the smoke gate must fail.
 
-CI launches NativeAOT smoke paths from the clean deployment tree and rejects unexpected root entries. That makes the one-file runtime assumption executable evidence: if the native server accidentally starts depending on a loose sidecar, the smoke gate fails.
+### Extensible CoreCLR host
 
-If a dependency genuinely requires a native sidecar library that cannot be statically linked into the executable, it must be admitted explicitly as a deployment dependency. When the platform loader permits it, such sidecars belong under a dedicated `runtime/native/` location rather than turning the server root into a generic library directory.
+The managed profile necessarily ships managed assemblies, but the human-facing root should remain organized:
 
-Debug symbols and other developer-only artifacts belong in build/CI artifacts rather than the normal deployment package unless a deployment explicitly opts into them.
+```text
+TerraRuntime/
+├── TerraRuntime.Server.exe
+├── runtime/              # managed/native implementation dependencies
+├── HostModules/
+│   └── Vega.dll
+├── ServerPlugins/
+│   └── *.dll
+├── Worlds/
+├── config/
+├── data/
+└── logs/
+```
 
-## AOT-safe design rules
+The dependency directory may ultimately be named `runtime/` or `libs/`; the important rule is that ordinary runtime/framework assemblies do not flood the root directory.
 
-Production code must not depend on runtime features that require a JIT or arbitrary managed assembly loading.
+Debug symbols and developer-only artifacts belong in build/CI artifacts unless a deployment explicitly opts into them.
 
-Do not introduce these into the shipping graph:
+## AOT-safe core design rules
+
+The TerraRuntime core and NativeAOT shipping graph must not depend on runtime features that require a JIT or arbitrary managed assembly loading.
+
+Do not introduce these into the AOT/core graph:
 
 - `Assembly.Load*` or arbitrary managed DLL loading;
 - collectible/dynamic plugin `AssemblyLoadContext` use;
@@ -99,22 +156,26 @@ Prefer:
 - `Span<T>`, `ReadOnlySpan<T>`, `IBufferWriter<T>` and bounded buffers;
 - BCL functionality over unnecessary dependencies.
 
+The deliberate exceptions for managed DLL discovery/loading and collectible `AssemblyLoadContext` belong only to the CoreCLR host/plugin layer. They must not leak into TerraRuntime simulation, networking, protocol, world or other core projects.
+
 ## Dependency admission gate
 
-Every package that enters a shipping TerraRuntime project must pass:
+Every dependency that enters the NativeAOT/core shipping graph must pass:
 
 1. .NET 11 build with AOT/trimming analyzers enabled;
-2. NativeAOT publish for every supported production RID;
+2. NativeAOT publish for every supported native RID;
 3. zero unexplained trim/AOT warnings;
 4. startup of the produced native executable;
 5. an exercised smoke path through the dependency, not merely successful linking;
 6. repeat validation on package upgrades.
 
+CoreCLR-only plugin-host dependencies are evaluated separately and must remain outside the NativeAOT graph.
+
 The current dependency audit is recorded in [`aot-dependency-audit.md`](aot-dependency-audit.md).
 
-## Current CI contract
+## CI contract
 
-CI must keep all three gates green:
+CI must continue to keep the NativeAOT gates green even after the CoreCLR extensible host exists:
 
 ```text
 build + tests
@@ -122,16 +183,37 @@ NativeAOT linux-x64 + native smoke from artifacts/deploy/linux-x64
 NativeAOT win-x64 + native smoke from artifacts/deploy/win-x64
 ```
 
-A change that cannot satisfy the NativeAOT jobs is considered an architectural regression unless the runtime architecture itself is deliberately changed.
+The extensible host adds its own CoreCLR build, plugin-load and hot-reload tests rather than replacing the native jobs.
 
-## Internal project policy
+A change to TerraRuntime core that cannot satisfy NativeAOT is an architectural regression unless the core architecture itself is deliberately changed.
 
-`src/Directory.Build.props` applies `IsAotCompatible=true` and trim/AOT analysis to every current and future production project under `src/`. A new production project therefore enters the AOT contract automatically instead of relying on somebody remembering to copy project flags.
+## Project policy
 
-`TerraRuntime.Server` sets `PublishAot=true` and `IlcTreatWarningsAsErrors=true` by default. JIT-specific tuning such as tiered compilation or Dynamic PGO must not become part of the production design assumptions.
+AOT/trimming analyzers remain mandatory for TerraRuntime core projects and the NativeAOT host graph.
+
+When the CoreCLR plugin host is introduced, its dynamic loading code must be isolated in explicitly CoreCLR-only host projects. Do not weaken AOT analysis across the entire source tree merely to make `AssemblyLoadContext` warnings disappear.
+
+The current standalone NativeAOT host may continue to set `PublishAot=true` and `IlcTreatWarningsAsErrors=true`. The extensible CoreCLR host instead uses the production JIT baseline documented above.
+
+## Performance comparison
+
+NativeAOT and CoreCLR are both measured, not treated as religions.
+
+Compare at least:
+
+- startup to `NetworkReady`;
+- idle CPU/RSS;
+- mean/p95/p99 tick time;
+- allocation rate and GC pauses;
+- packet throughput;
+- 24-player realistic load;
+- high-connection stress;
+- plugin dispatch overhead for the CoreCLR profile.
+
+For Vega-enabled deployments, sustained game-server performance plus drop-in DLL extensibility is the governing target. For runtime-only deployments, NativeAOT remains a first-class production option and architectural quality gate.
 
 ## Process boundaries
 
-NativeAOT does **not** require TerraRuntime itself to be split into multiple processes. The core server remains a single native process unless a real isolation or operational requirement justifies another process.
+Neither NativeAOT nor CoreCLR requires TerraRuntime simulation to be split across processes. The authoritative game loop remains in-process with the host unless a real isolation or operational requirement justifies another process.
 
-Optional transport/sandbox processes may exist for isolation, tooling or operations, but IPC is not part of the normal game-loop hot path and is not required merely to achieve AOT.
+Optional transport/sandbox processes may exist for isolation, tooling or operations, but IPC is not introduced into the normal gameplay hot path merely to satisfy a runtime-label preference.
