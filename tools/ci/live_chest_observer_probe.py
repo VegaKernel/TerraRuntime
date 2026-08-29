@@ -11,6 +11,7 @@ from live_chest_open_probe import (
     receive_snapshot,
     send_clear_name,
     send_close,
+    send_item,
     send_open,
     send_rename,
 )
@@ -34,6 +35,17 @@ def receive_chest_index(client, expected_player, expected_chest):
             f"packet80 mismatch: expected={(expected_player, expected_chest)}, "
             f"got={(player, chest)}"
         )
+
+
+def receive_item_update(client, chest_id, item_slot, stack, prefix, item_net_id):
+    payload, skipped = recv_until_packet(client, 32, 5)
+    if len(payload) != 8:
+        fail(f"expected 8-byte packet32 update, got bytes={len(payload)}, skipped={skipped[:64]}")
+
+    observed = struct.unpack("<hBhBh", payload)
+    expected = (chest_id, item_slot, stack, prefix, item_net_id)
+    if observed != expected:
+        fail(f"packet32 update mismatch: expected={expected}, got={observed}")
 
 
 def assert_no_packet(client, forbidden_id, context, duration=0.25):
@@ -105,6 +117,38 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
         )
         receive_chest_index(observer, expected_player=0, expected_chest=chest_id)
 
+        # Official 1.4.5.8 packet32 routing is asymmetric: the active chest owner authors the item
+        # mutation, receives no echo, and every other playing client receives exactly one committed
+        # packet32 update. Exercise the same contract against the production TerraRuntime composition.
+        committed_stack = item_stack - 1
+        committed_prefix = item_prefix if committed_stack > 0 else 0
+        committed_net_id = item_net_id if committed_stack > 0 else 0
+        send_item(
+            owner,
+            chest_id,
+            item_slot,
+            committed_stack,
+            committed_prefix,
+            committed_net_id,
+        )
+        receive_item_update(
+            observer,
+            chest_id,
+            item_slot,
+            committed_stack,
+            committed_prefix,
+            committed_net_id,
+        )
+        item_observer_tail = assert_no_packet(observer, 32, "duplicate chest-item fanout")
+        item_owner_frames = assert_no_packet(owner, 32, "chest-item author exclusion")
+
+        # Restore the source-world item through the same live packet32 path and prove the routing shape
+        # a second time so the remainder of the lifecycle probe continues from the original fixture state.
+        send_item(owner, chest_id, item_slot, item_stack, item_prefix, item_net_id)
+        receive_item_update(observer, chest_id, item_slot, item_stack, item_prefix, item_net_id)
+        restore_item_observer_tail = assert_no_packet(observer, 32, "duplicate restore-item fanout")
+        restore_item_owner_frames = assert_no_packet(owner, 32, "restore-item author exclusion")
+
         # Packet69 lookup is requester-targeted in vanilla. Resolve the real source-world name on the
         # owner and make sure the observer does not receive an unsolicited copy of that lookup response.
         original_name = lookup_name(owner, chest_id, tile_x, tile_y)
@@ -166,8 +210,12 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
         print(
             "live chest observer ok: "
             f"chest={chest_id} tile=({tile_x},{tile_y}) exclusiveOpen=ok "
-            f"observerPacket80OpenClose=ok renameFanout=ok lookupTargeting=ok "
-            f"restoredName={original_name!r} deniedFrames={denied_frames[:32]} "
+            f"observerPacket80OpenClose=ok itemFanout=ok itemAuthorExclusion=ok "
+            f"renameFanout=ok lookupTargeting=ok restoredName={original_name!r} "
+            f"deniedFrames={denied_frames[:32]} itemOwnerFrames={item_owner_frames[:16]} "
+            f"itemObserverTail={item_observer_tail[:16]} "
+            f"restoreItemOwnerFrames={restore_item_owner_frames[:16]} "
+            f"restoreItemObserverTail={restore_item_observer_tail[:16]} "
             f"lookupObserverFrames={lookup_observer_frames[:16]} "
             f"renameOwnerFrames={rename_owner_frames[:16]} restoreOwnerFrames={restore_owner_frames[:16]} "
             f"ownerSections={owner_sections} ownerBootstrapFrames={owner_bootstrap_frames} "
