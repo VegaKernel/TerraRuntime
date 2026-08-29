@@ -70,6 +70,14 @@ public readonly record struct WorldGenerationRequest(
     public const int MaxWorldNameLength = 128;
 
     /// <summary>
+    /// Original textual seed when one exists. Custom deterministic generators continue to use <see cref="Seed"/>.
+    /// Vanilla Terraria generation must use this exact text because values that do not parse as Int32 are translated
+    /// through Terraria's CRC32 routine; normalizing such text through UInt64 can therefore change the vanilla seed.
+    /// Null means the canonical invariant decimal representation of <see cref="Seed"/> may be used.
+    /// </summary>
+    public string? SeedText { get; init; }
+
+    /// <summary>
     /// Supported world options visible to every pass. The default value is Classic + Corruption, preserving the
     /// semantics of existing callers that predate the explicit options surface.
     /// </summary>
@@ -83,6 +91,8 @@ public readonly record struct WorldGenerationRequest(
         ArgumentOutOfRangeException.ThrowIfGreaterThan(WorldName.Length, MaxWorldNameLength);
         ArgumentOutOfRangeException.ThrowIfLessThan(WidthTiles, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(HeightTiles, 1);
+        if (SeedText is not null && SeedText.Any(char.IsControl))
+            throw new ArgumentException("World seed text cannot contain control characters.", nameof(SeedText));
         Options.Validate();
         _ = checked((long)WidthTiles * HeightTiles);
     }
