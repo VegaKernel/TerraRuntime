@@ -56,6 +56,13 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
 
+        if (File.Exists(outputPath))
+        {
+            return new RuntimeWorldCreationPersistenceResult(
+                RuntimeWorldCreationPersistenceStatus.AlreadyExists,
+                Publication: new WorldFileAtomicPublishDiagnostic(WorldFileAtomicPublishResult.AlreadyExists));
+        }
+
         RuntimeWorldCreationResult created = creation.TryCreate(request, cancellationToken, progressSink);
         if (!created.Succeeded || created.Candidate is null)
         {
