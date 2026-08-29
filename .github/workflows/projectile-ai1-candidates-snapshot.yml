@@ -29,15 +29,15 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
 
-          # The update-facts table already contains type 1124. Drop the stale documentation-only tail from
-          # the staged patch script rather than overwriting newer explanatory text.
+          # Workflow files are committed afterward through the normal connector, because the Actions token
+          # cannot update workflow definitions. Keep the production/probe patch here and cut off workflow/docs tails.
           python3 - <<'PY'
           from pathlib import Path
           path = Path('.github/scripts/apply_seed_bone_shard.py')
           text = path.read_text(encoding='utf-8')
-          marker = '# Explain the newly live extra-update case in the pinned update-facts contract.'
+          marker = '# Source workflow now supplies ProjectileID so table-backed wind behavior stays pinned forever.'
           if text.count(marker) != 1:
-              raise SystemExit('expected one update-facts tail marker')
+              raise SystemExit('expected one source-workflow tail marker')
           path.write_text(text.split(marker, 1)[0].rstrip() + '\n', encoding='utf-8')
           PY
 
@@ -45,11 +45,10 @@ jobs:
           python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
 
-          git rm -f .github/workflows/projectile-ai1-candidates-snapshot.yml .github/scripts/apply_seed_bone_shard.py
+          git rm -f .github/scripts/apply_seed_bone_shard.py
           git config user.name OpenAI
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/terraria-source-contract.yml \
-                  src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
+          git add src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
                   src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs \
                   src/TerraRuntime/VanillaProjectileWorldStateStepper.cs \
                   tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs \
