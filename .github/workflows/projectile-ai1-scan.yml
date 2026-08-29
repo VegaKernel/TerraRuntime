@@ -29,7 +29,7 @@ jobs:
 
           python3 -m py_compile .github/scripts/apply_bone_arrow_474.py
           python3 .github/scripts/apply_bone_arrow_474.py
-          python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
+          git checkout -- tools/ci/probe_projectile_tile_cut.py
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
 
           git config user.name OpenAI
@@ -40,8 +40,7 @@ jobs:
                   src/TerraRuntime/VanillaProjectileWorldStateStepper.cs \
                   tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs \
                   tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs \
-                  tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs \
-                  tools/ci/probe_projectile_tile_cut.py
+                  tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs
           git commit -m 'feat: simulate bone arrow merchant world flight'
           git fetch origin main
           git rebase origin/main
