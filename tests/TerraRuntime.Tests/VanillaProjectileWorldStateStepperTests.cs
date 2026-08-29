@@ -198,13 +198,145 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
+    public void Fire_arrow_first_water_contact_slows_without_transforming()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f) with
+        {
+            Type = VanillaProjectileIds.FireArrow
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.FireArrow, next.State.Type);
+        Assert.Equal(102f, next.State.PositionX, 5);
+        Assert.Equal(101f, next.State.PositionY, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(2f, next.State.VelocityY, 5);
+        Assert.Equal(1199, next.TimeLeft);
+        Assert.Equal(
+            new ProjectileLiquidState(Wet: true, LavaWet: false, HoneyWet: false, ShimmerWet: false),
+            next.Liquid.GetValueOrDefault());
+    }
+
+    [Fact]
+    public void Fire_arrow_transforms_to_wooden_arrow_on_following_wet_update()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f) with
+        {
+            Type = VanillaProjectileIds.FireArrow
+        };
+        ProjectileSimulationStepContext context = CreateContext(
+            arrow,
+            timeLeft: 1199,
+            liquid: new ProjectileLiquidState(Wet: true, LavaWet: false, HoneyWet: false, ShimmerWet: false));
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.WoodenArrowFriendly, next.State.Type);
+        Assert.Equal(102f, next.State.PositionX, 5);
+        Assert.Equal(101f, next.State.PositionY, 5);
+        Assert.Equal(1198, next.TimeLeft);
+        Assert.True(next.Liquid.GetValueOrDefault().Wet);
+    }
+
+    [Fact]
+    public void Fire_arrow_current_lava_contact_blocks_wet_transform()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Lava));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f) with
+        {
+            Type = VanillaProjectileIds.FireArrow
+        };
+        ProjectileSimulationStepContext context = CreateContext(
+            arrow,
+            timeLeft: 1199,
+            liquid: new ProjectileLiquidState(Wet: true, LavaWet: false, HoneyWet: false, ShimmerWet: false));
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.FireArrow, next.State.Type);
+        ProjectileLiquidState liquid = next.Liquid.GetValueOrDefault();
+        Assert.True(liquid.Wet);
+        Assert.True(liquid.LavaWet);
+    }
+
+    [Fact]
+    public void Fire_arrow_wet_history_survives_executor_commit_and_transforms_next_tick()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        var store = new RuntimeProjectileStore(capacity: 4);
+        ProjectileStateUpdate state = CreateShuriken(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.FireArrow
+        };
+        Assert.True(store.TrySpawn(0, in state, out ProjectileSnapshot spawned));
+        var executor = new RuntimeProjectileStateExecutor(store);
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), executor.Tick(stepper));
+        Assert.True(store.TryGet(spawned.Handle, out ProjectileSnapshot firstTick));
+        Assert.Equal(VanillaProjectileIds.FireArrow, firstTick.Type);
+        Assert.True(store.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState firstLifecycle));
+        Assert.True(firstLifecycle.Liquid.Wet);
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), executor.Tick(stepper));
+        Assert.True(store.TryGet(spawned.Handle, out ProjectileSnapshot secondTick));
+        Assert.Equal(VanillaProjectileIds.WoodenArrowFriendly, secondTick.Type);
+        Assert.True(store.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState secondLifecycle));
+        Assert.True(secondLifecycle.Liquid.Wet);
+    }
+
+    [Fact]
+    public void Liquid_contact_probe_preserves_overlapping_liquid_kinds()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Lava));
+        tiles.Set(7, 6, LiquidTile(WorldLiquidKind.Honey));
+
+        VanillaLiquidContactState contacts = VanillaWorldCollision.GetLiquidContacts(
+            tiles,
+            positionX: 107f,
+            positionY: 100f,
+            width: 10,
+            height: 10);
+
+        Assert.True(contacts.Wet);
+        Assert.True(contacts.Lava);
+        Assert.True(contacts.Honey);
+        Assert.False(contacts.Shimmer);
+    }
+
+    [Fact]
     public void Shuriken_water_contact_slows_position_without_reducing_velocity()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        WorldTile water = default;
-        water.LiquidAmount = byte.MaxValue;
-        water.LiquidKind = WorldLiquidKind.Water;
-        tiles.Set(6, 6, water);
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
         var stepper = new VanillaProjectileWorldStateStepper(tiles);
         ProjectileSimulationStepContext context = CreateContext(
             CreateSnapshot(positionX: 90f, positionY: 80f, velocityX: 4f, velocityY: 2f),
@@ -326,15 +458,19 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
-    public void Unsupported_projectile_type_is_left_for_another_behavior_slice()
+    public void Uncatalogued_projectile_type_is_left_for_another_behavior_slice()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var stepper = new VanillaProjectileWorldStateStepper(tiles);
-        ProjectileSnapshot arrow = CreateSnapshot(positionX: 100f, positionY: 100f, velocityX: 4f, velocityY: 0f) with
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f) with
         {
-            Type = VanillaProjectileIds.FireArrow
+            Type = new ProjectileTypeId(4)
         };
-        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 1200);
 
         Assert.False(stepper.TryStepState(in context, out _));
     }
@@ -379,10 +515,13 @@ public sealed class VanillaProjectileWorldStateStepperTests
             KnockBack: 1f,
             OriginalDamage: 20);
 
-    private static ProjectileSimulationStepContext CreateContext(ProjectileSnapshot snapshot, int timeLeft) =>
+    private static ProjectileSimulationStepContext CreateContext(
+        ProjectileSnapshot snapshot,
+        int timeLeft,
+        ProjectileLiquidState liquid = default) =>
         new(
             snapshot,
-            new ProjectileLifecycleState(timeLeft, NetImportant: false),
+            new ProjectileLifecycleState(timeLeft, NetImportant: false, liquid),
             SubupdateIndex: 0,
             SubupdatesPerWorldTick: 1);
 
@@ -398,6 +537,13 @@ public sealed class VanillaProjectileWorldStateStepperTests
         {
             Type = type,
             Flags = WorldTileFlags.Active
+        };
+
+    private static WorldTile LiquidTile(WorldLiquidKind kind) =>
+        new()
+        {
+            LiquidAmount = byte.MaxValue,
+            LiquidKind = kind
         };
 
     private sealed class RecordingCommitSink : IProjectileStateCommitSink
