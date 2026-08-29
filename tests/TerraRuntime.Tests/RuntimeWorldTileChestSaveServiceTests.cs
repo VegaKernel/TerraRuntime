@@ -44,16 +44,45 @@ public sealed class RuntimeWorldTileChestSaveServiceTests
 
         try
         {
+            RuntimeWorldSaveStatus initial = service.CaptureStatus();
+            Assert.True(initial.AcceptingRequests);
+            Assert.False(initial.TileShadowReady);
+            Assert.True(initial.RemainingBootstrapSections > 0);
+            Assert.False(initial.SaveRequested);
+            Assert.False(initial.WriteActive);
+            Assert.False(initial.PendingWrite);
+            Assert.Equal(0, initial.AcceptedSnapshots);
+
             service.RequestSave();
+            Assert.True(service.CaptureStatus().SaveRequested);
             Assert.Equal(
                 RuntimeWorldTileChestSaveTickResult.SaveWaitingForSynchronization,
                 service.Tick());
             Assert.True(service.IsTileShadowReady);
             Assert.True(service.IsSaveRequested);
 
+            RuntimeWorldSaveStatus synchronized = service.CaptureStatus();
+            Assert.True(synchronized.TileShadowReady);
+            Assert.Equal(0, synchronized.RemainingBootstrapSections);
+            Assert.True(synchronized.SaveRequested);
+            Assert.Equal(0, synchronized.AcceptedSnapshots);
+
             Assert.Equal(RuntimeWorldTileChestSaveTickResult.SaveQueued, service.Tick());
             Assert.False(service.IsSaveRequested);
+            Assert.Equal(1, service.CaptureStatus().AcceptedSnapshots);
             await service.CompleteAsync(TestContext.Current.CancellationToken);
+
+            RuntimeWorldSaveStatus completed = service.CaptureStatus();
+            Assert.False(completed.AcceptingRequests);
+            Assert.True(completed.TileShadowReady);
+            Assert.False(completed.SaveRequested);
+            Assert.False(completed.WriteActive);
+            Assert.False(completed.PendingWrite);
+            Assert.Equal(1, completed.AcceptedSnapshots);
+            Assert.Equal(1, completed.StartedWrites);
+            Assert.Equal(1, completed.CompletedWrites);
+            Assert.Equal(0, completed.CoalescedSnapshots);
+            Assert.Equal(0, completed.FailedWrites);
 
             byte[] saved = await File.ReadAllBytesAsync(
                 destinationPath,
@@ -113,6 +142,12 @@ public sealed class RuntimeWorldTileChestSaveServiceTests
 
             service.CaptureFinalSaveAfterOwnerStopped();
             await service.CompleteAsync(TestContext.Current.CancellationToken);
+
+            RuntimeWorldSaveStatus completed = service.CaptureStatus();
+            Assert.False(completed.AcceptingRequests);
+            Assert.Equal(1, completed.AcceptedSnapshots);
+            Assert.Equal(1, completed.CompletedWrites);
+            Assert.Equal(0, completed.FailedWrites);
 
             byte[] saved = await File.ReadAllBytesAsync(
                 destinationPath,
