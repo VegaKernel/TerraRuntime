@@ -6,9 +6,10 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Game-thread-owned projection of loaded world signs. The first runtime slice deliberately does not allocate or
-/// remove sign slots: existing signs can be read, while text mutation is admitted only when the loaded sign table is
-/// persistence-canonical (slot id equals file-order index). This prevents a sparse/corrupt source table from being
-/// silently renumbered by a later save.
+/// remove sign slots: existing top-left signs can be read, while text mutation is admitted only when the loaded sign
+/// table is persistence-canonical (slot id equals file-order index). Packet 46 reads stay top-left-only until the
+/// runtime owns vanilla tile-frame sign normalization; guessing neighboring coordinates would let a non-sign tile
+/// accidentally resolve to an adjacent sign. Sparse/corrupt sign tables are never silently renumbered by save.
 /// </summary>
 internal sealed class RuntimeSignStore
 {
@@ -48,14 +49,10 @@ internal sealed class RuntimeSignStore
 
     public bool TryRead(short tileX, short tileY, out WorldSign sign)
     {
-        int x = tileX;
-        int y = tileY;
-
-        if (TryGetAt(x, y, out sign) ||
-            TryGetAt(x - 1, y, out sign) ||
-            TryGetAt(x, y - 1, out sign) ||
-            TryGetAt(x - 1, y - 1, out sign))
+        if (signByCoordinates.TryGetValue(GetCoordinateKey(tileX, tileY), out short id) &&
+            signs[id] is WorldSign existing)
         {
+            sign = existing;
             return true;
         }
 
@@ -125,19 +122,6 @@ internal sealed class RuntimeSignStore
             snapshot[index] = new WorldSign(sign.SlotId, sign.Text, sign.X, sign.Y);
         }
         return true;
-    }
-
-    private bool TryGetAt(int x, int y, out WorldSign sign)
-    {
-        if (signByCoordinates.TryGetValue(GetCoordinateKey(x, y), out short id) &&
-            signs[id] is WorldSign existing)
-        {
-            sign = existing;
-            return true;
-        }
-
-        sign = null!;
-        return false;
     }
 
     private static long GetCoordinateKey(int x, int y) =>
