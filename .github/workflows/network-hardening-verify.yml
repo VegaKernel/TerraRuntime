@@ -4,6 +4,11 @@ on:
   push:
     paths:
       - .github/workflows/network-hardening-verify.yml
+      - src/TerraRuntime.Network/**
+      - src/TerraRuntime/Operations/**
+      - src/TerraRuntime/TerminalUI/**
+      - src/TerraRuntime/TerrariaServerHost.cs
+      - tests/TerraRuntime.Tests/**
 
 permissions:
   contents: read
@@ -31,4 +36,5 @@ jobs:
       - name: Network smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --network-smoke
 
-      # Refresh marker: 3
+      - name: Terminal UI smoke
+        run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --tui-smoke
