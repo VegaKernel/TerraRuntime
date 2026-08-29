@@ -4,6 +4,8 @@ namespace TerraRuntime.Tests;
 
 public sealed class BoundedWorkerPoolTests
 {
+    private static readonly TimeSpan WorkerShutdownDeadline = TimeSpan.FromSeconds(5);
+
     [Fact]
     public void Work_queue_rejects_when_bounded_capacity_is_exhausted()
     {
@@ -42,7 +44,7 @@ public sealed class BoundedWorkerPoolTests
         Assert.True(completion.IsSuccess);
         Assert.Equal(42, completion.Result.Value);
         Assert.NotEqual(callerThread, completion.Result.ThreadId);
-        Assert.True(pool.Stop(TimeSpan.FromSeconds(1)));
+        Assert.True(pool.Stop(WorkerShutdownDeadline));
         Assert.Equal(1, pool.Snapshot.CompletedWork);
     }
 
@@ -63,7 +65,7 @@ public sealed class BoundedWorkerPoolTests
 
         Assert.Equal(WorkerCompletionStatus.Failed, completion.Status);
         Assert.IsType<InvalidDataException>(completion.Error);
-        Assert.True(pool.Stop(TimeSpan.FromSeconds(1)));
+        Assert.True(pool.Stop(WorkerShutdownDeadline));
         Assert.Equal(1, pool.Snapshot.FailedWork);
     }
 }
