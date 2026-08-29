@@ -68,7 +68,7 @@ def print_all_contexts(source: str, needle: str, label: str, radius: int = 650, 
 def parse_bool_set(source: str, name: str) -> set[int]:
     match = re.search(rf"\b{name}\s*=\s*Factory\.CreateBoolSet\((?P<body>.*?)\);", source)
     if match is None:
-        raise SystemExit(f"Could not isolate ItemID.Sets.{name} in pinned source.")
+        raise SystemExit(f"Could not isolate source bool set {name}.")
     return {int(value) for value in re.findall(r"-?\d+", match.group("body"))}
 
 
@@ -126,6 +126,26 @@ def main() -> int:
     require(prefix_method, "RollAPrefix(unifiedRandom, ref rolledPrefix)", "natural-prefix family roll changed")
     require(prefix_method, "PrefixID.Sets.ReducedNaturalChance[rolledPrefix] && unifiedRandom.Next(3) != 0", "reduced natural prefix chance changed")
 
+    expected_summon_prefixes = [85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 55, 38, 54, 53, 57, 40, 56, 41, 39]
+    summon_prefix_literal = "PrefixesForSummons = new int[22] { " + ", ".join(str(value) for value in expected_summon_prefixes) + " };"
+    require(prefix_legacy, summon_prefix_literal, "summon prefix family changed")
+
+    summon_items = parse_bool_set(prefix_legacy, "Summon")
+    if 1309 not in summon_items:
+        raise SystemExit("Slime Staff 1309 left PrefixLegacy.ItemSets.Summon.")
+    if 23 in summon_items:
+        raise SystemExit("Gel 23 unexpectedly entered PrefixLegacy.ItemSets.Summon.")
+
+    reduced_natural = parse_bool_set(prefix_id, "ReducedNaturalChance")
+    expected_reduced_natural = {7, 8, 9, 10, 11, 22, 23, 24, 29, 30, 31, 39, 40, 56, 41, 47, 48, 49}
+    if reduced_natural != expected_reduced_natural:
+        raise SystemExit(
+            "PrefixID.Sets.ReducedNaturalChance changed: "
+            f"expected {sorted(expected_reduced_natural)}, got {sorted(reduced_natural)}"
+        )
+
+    prefix_stats = extract_braced_member(item, "private bool TryGetPrefixStatMultipliersForItem")
+
     print("npc_loot_spawn_center=x:npc.position.X+npc.width/2,y:npc.position.Y+npc.height/2")
     print("npc_loot_spawn_scattered_default=false")
     print("npc_loot_new_item_prefix=-1")
@@ -139,13 +159,17 @@ def main() -> int:
     print("item_defaults_slime_staff_no_gravity=false")
     print("item_natural_prefix_initial_no_prefix_chance=1/4")
     print("item_natural_prefix_reduced_chance=1/3_after_selection")
+    print("slime_staff_prefix_family=summon")
+    print("summon_prefix_ids=" + ",".join(str(value) for value in expected_summon_prefixes))
+    print("summon_reduced_natural_ids=" + ",".join(str(value) for value in expected_summon_prefixes if value in reduced_natural))
 
-    # PrefixLegacy is deliberately exploratory for one more turn: expose the exact summon family membership/list
-    # and PrefixID reduced-natural set before those tables are copied into TerraRuntime.
-    print_all_contexts(prefix_legacy, "PrefixesForSummons", "prefix_legacy_summon_prefixes", radius=1200, limit=8)
-    print_all_contexts(prefix_legacy, "Summon", "prefix_legacy_summon_item_set", radius=1100, limit=10)
-    print_all_contexts(prefix_id, "ReducedNaturalChance", "prefix_id_reduced_natural", radius=1200, limit=8)
-    print_context(item, "TryGetPrefixStatMultipliersForItem", "item_prefix_validation_context", radius=1400)
+    for prefix_id_value in expected_summon_prefixes:
+        print_context(
+            prefix_stats,
+            f"case {prefix_id_value}:",
+            f"prefix_stats_case_{prefix_id_value}",
+            radius=520,
+        )
 
     return 0
 
