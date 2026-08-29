@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Channels;
 using TerraRuntime.Contracts.Runtime;
@@ -16,6 +17,7 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
     private readonly Action<TState> update;
     private readonly GameLoopOptions options;
     private readonly Channel<QueuedCommand> commands;
+    private readonly ConcurrentDictionary<GameCommandSourceId, SourcePendingCounter> pendingSourceCommands = [];
     private readonly Dictionary<GameCommandSourceId, SourceQueue> stagedSources = [];
     private readonly Queue<SourceQueue> readySources = [];
     private readonly List<SourceQueue> throttledSources = [];
@@ -123,16 +125,24 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
 
-        if (!TryReservePendingSlot())
+        if (!TryReserveSourcePendingSlot(source, out SourcePendingCounter? sourcePending))
         {
             RejectCommand();
             return false;
         }
 
-        var queued = new QueuedCommand(source, command, Stopwatch.GetTimestamp());
+        if (!TryReservePendingSlot())
+        {
+            ReleaseSourcePendingSlot(source, sourcePending);
+            RejectCommand();
+            return false;
+        }
+
+        var queued = new QueuedCommand(source, sourcePending, command, Stopwatch.GetTimestamp());
         if (!commands.Writer.TryWrite(queued))
         {
             Interlocked.Decrement(ref pendingCommands);
+            ReleaseSourcePendingSlot(source, sourcePending);
             RejectCommand();
             return false;
         }
@@ -268,6 +278,7 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
 
             QueuedCommand queued = sourceQueue.Commands.Dequeue();
             Interlocked.Decrement(ref pendingCommands);
+            ReleaseSourcePendingSlot(queued.Source, queued.SourcePending);
             applyCommand(state, queued.Command);
             sourceQueue.CommandsProcessedThisTick++;
             processed++;
@@ -333,6 +344,63 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         return oldest == long.MaxValue
             ? 0d
             : Stopwatch.GetElapsedTime(oldest, now).TotalMilliseconds;
+    }
+
+    private bool TryReserveSourcePendingSlot(
+        GameCommandSourceId source,
+        out SourcePendingCounter? sourcePending)
+    {
+        sourcePending = null;
+        if (source.IsSystem)
+            return true;
+
+        while (true)
+        {
+            SourcePendingCounter candidate = pendingSourceCommands.GetOrAdd(
+                source,
+                static _ => new SourcePendingCounter());
+
+            lock (candidate.SyncRoot)
+            {
+                if (!pendingSourceCommands.TryGetValue(source, out SourcePendingCounter? current) ||
+                    !ReferenceEquals(current, candidate))
+                {
+                    continue;
+                }
+
+                if (candidate.Count >= options.MaxPendingCommandsPerSource)
+                    return false;
+
+                candidate.Count++;
+                sourcePending = candidate;
+                return true;
+            }
+        }
+    }
+
+    private void ReleaseSourcePendingSlot(
+        GameCommandSourceId source,
+        SourcePendingCounter? sourcePending)
+    {
+        if (source.IsSystem)
+            return;
+
+        if (sourcePending is null)
+            throw new InvalidOperationException("External command is missing its pending-source reservation.");
+
+        lock (sourcePending.SyncRoot)
+        {
+            if (sourcePending.Count <= 0)
+                throw new InvalidOperationException("External command pending-source reservation underflowed.");
+
+            sourcePending.Count--;
+            if (sourcePending.Count == 0 &&
+                pendingSourceCommands.TryGetValue(source, out SourcePendingCounter? current) &&
+                ReferenceEquals(current, sourcePending))
+            {
+                pendingSourceCommands.TryRemove(source, out _);
+            }
+        }
     }
 
     private bool TryReservePendingSlot()
@@ -445,10 +513,18 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
 
     private readonly record struct QueuedCommand(
         GameCommandSourceId Source,
+        SourcePendingCounter? SourcePending,
         TCommand Command,
         long EnqueuedAt);
 
     private readonly record struct CommandDrainResult(int Processed, bool BudgetExhausted);
+
+    private sealed class SourcePendingCounter
+    {
+        public object SyncRoot { get; } = new();
+
+        public int Count { get; set; }
+    }
 
     private sealed class SourceQueue(GameCommandSourceId source, Queue<QueuedCommand> commands)
     {
