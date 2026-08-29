@@ -122,7 +122,7 @@ Operations может отдавать bounded network state: active connections
 
 UI не становится владельцем connection lifetime. Disconnect или иная mutation проходит через explicit safe operation/command path.
 
-High-frequency telemetry должна агрегироваться до display. Форматировать одну UI string на каждый packet в hot path — ровно та поганая хуйня, от которой архитектура и отделяет operations.
+High-frequency telemetry должна агрегироваться до display. Форматирование отдельной UI-строки для каждого packet в hot path нарушает границы operations layer и создаёт ненужные allocations.
 
 ## 11. Logs
 
