@@ -37,9 +37,9 @@ TPS/CPU uses Terminal.Gui `GraphView`, matching the Vega dashboard model:
 - process CPU history;
 - target TPS reference line.
 
-Network has its own `GraphView` with separate inbound and outbound packet-rate histories. The legend also shows current packet rate and throughput in `KiB/s`. When message-traffic window counters are available they are used directly; the older inbound one-second counters are retained only as a fallback for inbound traffic.
+Network has its own `GraphView` with separate inbound and outbound packet-rate histories. The legend also shows current packet rate and throughput in `KiB/s`. Rates are calculated from deltas of the subsystem-owned process-lifetime inbound/outbound Terraria message counters across consecutive detached network snapshots. The elapsed time comes from the snapshot capture timestamps, so the graph reflects the traffic observed during the UI sampling interval instead of incorrectly dividing lifetime totals by the telemetry rolling-window length. Counter rollback or an invalid/long sampling interval resets the local rate sample rather than emitting a spike.
 
-The histories are UI-local bounded presentation state. They do not become authoritative telemetry and they do not add counters to packet hot paths.
+The histories and previous-counter sample are UI-local bounded presentation state. They do not become authoritative telemetry and they do not add counters to packet hot paths.
 
 ## Console command line
 

@@ -37,9 +37,9 @@ TPS/CPU использует настоящий Terminal.Gui `GraphView` по м
 - history process CPU;
 - reference line целевого TPS.
 
-Network имеет отдельный `GraphView` с раздельными histories входящих и исходящих packet rate. Legend также показывает текущие `pkt/s` и throughput в `KiB/s`. Если доступны message-traffic window counters, используются непосредственно они; старые inbound one-second counters остаются fallback только для входящего traffic.
+Network имеет отдельный `GraphView` с раздельными histories входящих и исходящих packet rate. Legend также показывает текущие `pkt/s` и throughput в `KiB/s`. Rate вычисляется по разнице subsystem-owned process-lifetime counters входящих/исходящих Terraria messages между двумя последовательными detached network snapshots. Интервал берётся из snapshot capture timestamps, поэтому график показывает traffic за фактический UI sampling interval, а не ошибочно делит lifetime totals на длину telemetry rolling window. При откате counters или некорректном/слишком длинном sampling interval локальный rate sample сбрасывается вместо искусственного spike.
 
-Histories являются bounded presentation state самого UI. Они не становятся authoritative telemetry и не добавляют новые counters в packet hot paths.
+Histories и предыдущий counter sample являются bounded presentation state самого UI. Они не становятся authoritative telemetry и не добавляют новые counters в packet hot paths.
 
 ## Строка команд Console
 

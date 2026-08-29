@@ -64,7 +64,23 @@ public sealed class TerminalUiOperationsCacheTests
     }
 
     [Fact]
-    public void Overview_maximize_hides_other_tiles_and_second_toggle_restores_layout()
+    public void Details_use_selectable_read_only_text_surface()
+    {
+        using var source = new BlockingOperations();
+        using var workspace = new DashboardWorkspaceWindow(
+            source,
+            source,
+            source,
+            source,
+            source,
+            source,
+            terminalDashboards: null);
+
+        Assert.True(workspace.DetailTextSupportsSelectionForSmoke);
+    }
+
+    [Fact]
+    public void Overview_maximize_hides_other_tiles_and_title_has_real_double_click_binding()
     {
         using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(120, 28);
@@ -85,6 +101,9 @@ public sealed class TerminalUiOperationsCacheTests
         {
             app.LayoutAndDraw();
             Assert.Equal(6, dashboard.GetVisiblePanelCountForSmoke());
+            Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("Console"));
+            Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("TPS / CPU"));
+            Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("Network"));
 
             dashboard.TogglePanelForSmoke("Network");
             app.LayoutAndDraw();
@@ -98,6 +117,36 @@ public sealed class TerminalUiOperationsCacheTests
         {
             app.End(token);
         }
+    }
+
+    [Fact]
+    public void Network_graph_uses_snapshot_counter_deltas_for_inbound_and_outbound_rates()
+    {
+        using var dashboard = new RuntimeOverviewDashboard();
+        DateTimeOffset startedAt = new(2026, 8, 30, 0, 0, 0, TimeSpan.Zero);
+        RuntimeNetworkSnapshot first = default(RuntimeNetworkSnapshot) with
+        {
+            CapturedAtUtc = startedAt,
+            MessageInboundFrames = 1_000,
+            MessageInboundBytes = 100L * 1024,
+            MessageOutboundFrames = 2_000,
+            MessageOutboundBytes = 200L * 1024
+        };
+        RuntimeNetworkSnapshot second = first with
+        {
+            CapturedAtUtc = startedAt.AddSeconds(2),
+            MessageInboundFrames = 1_020,
+            MessageInboundBytes = 102L * 1024,
+            MessageOutboundFrames = 2_040,
+            MessageOutboundBytes = 204L * 1024
+        };
+
+        dashboard.Refresh(default, first, default, default, default, default, status: null);
+        dashboard.Refresh(default, second, default, default, default, default, status: null);
+
+        string legend = dashboard.GetNetworkLegendForSmoke();
+        Assert.Contains("IN 10.0 pkt/s 1.0 KiB/s", legend);
+        Assert.Contains("OUT 20.0 pkt/s 2.0 KiB/s", legend);
     }
 
     private sealed class BlockingOperations :

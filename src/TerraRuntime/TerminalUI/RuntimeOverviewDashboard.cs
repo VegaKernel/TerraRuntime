@@ -72,6 +72,12 @@ internal sealed class RuntimeOverviewDashboard : View
     private string pendingMemoryText = string.Empty;
     private string appliedChatText = string.Empty;
     private string pendingChatText = string.Empty;
+    private bool hasNetworkCounterSample;
+    private DateTimeOffset lastNetworkCapturedAtUtc;
+    private long lastMessageInboundFrames;
+    private long lastMessageInboundBytes;
+    private long lastMessageOutboundFrames;
+    private long lastMessageOutboundBytes;
 
     public RuntimeOverviewDashboard()
     {
@@ -253,6 +259,17 @@ internal sealed class RuntimeOverviewDashboard : View
 
     internal string? GetPanelSchemeForSmoke(string panelTitle) =>
         GetFrame(panelTitle).SchemeName;
+
+    internal bool HasTitleDoubleClickBindingForSmoke(string panelTitle)
+    {
+        FrameView frame = GetFrame(panelTitle);
+        return frame.Border.View is View borderView &&
+               borderView.MouseBindings
+                   .GetCommands(MouseFlags.LeftButtonDoubleClicked)
+                   .Contains(Command.Accept);
+    }
+
+    internal string GetNetworkLegendForSmoke() => networkLegend.Text?.ToString() ?? string.Empty;
 
     internal bool ConsoleSupportsSelectionForSmoke => consoleText.ReadOnly && consoleText.CanFocus;
 
@@ -587,23 +604,49 @@ internal sealed class RuntimeOverviewDashboard : View
         return samples;
     }
 
-    private static NetworkRates CalculateNetworkRates(RuntimeNetworkSnapshot network)
+    private NetworkRates CalculateNetworkRates(RuntimeNetworkSnapshot network)
     {
-        bool hasMessageWindow = network.MessageTrafficWindow > TimeSpan.Zero;
-        double seconds = hasMessageWindow ? network.MessageTrafficWindow.TotalSeconds : 1d;
-        if (!double.IsFinite(seconds) || seconds <= 0d)
-            seconds = 1d;
+        if (!hasNetworkCounterSample)
+        {
+            SaveNetworkCounterSample(network);
+            return default;
+        }
 
-        long inboundFrames = hasMessageWindow ? network.MessageInboundFrames : network.InboundWindowFrames;
-        long inboundBytes = hasMessageWindow ? network.MessageInboundBytes : network.InboundWindowBytes;
-        long outboundFrames = hasMessageWindow ? network.MessageOutboundFrames : 0L;
-        long outboundBytes = hasMessageWindow ? network.MessageOutboundBytes : 0L;
+        double elapsedSeconds = (network.CapturedAtUtc - lastNetworkCapturedAtUtc).TotalSeconds;
+        bool validInterval = double.IsFinite(elapsedSeconds) && elapsedSeconds > 0d && elapsedSeconds <= 10d;
+        bool countersMonotonic =
+            network.MessageInboundFrames >= lastMessageInboundFrames &&
+            network.MessageInboundBytes >= lastMessageInboundBytes &&
+            network.MessageOutboundFrames >= lastMessageOutboundFrames &&
+            network.MessageOutboundBytes >= lastMessageOutboundBytes;
+
+        if (!validInterval || !countersMonotonic)
+        {
+            SaveNetworkCounterSample(network);
+            return default;
+        }
+
+        long inboundFrames = network.MessageInboundFrames - lastMessageInboundFrames;
+        long inboundBytes = network.MessageInboundBytes - lastMessageInboundBytes;
+        long outboundFrames = network.MessageOutboundFrames - lastMessageOutboundFrames;
+        long outboundBytes = network.MessageOutboundBytes - lastMessageOutboundBytes;
+        SaveNetworkCounterSample(network);
 
         return new NetworkRates(
-            Math.Max(0d, inboundFrames / seconds),
-            Math.Max(0d, outboundFrames / seconds),
-            Math.Max(0d, inboundBytes / 1024d / seconds),
-            Math.Max(0d, outboundBytes / 1024d / seconds));
+            inboundFrames / elapsedSeconds,
+            outboundFrames / elapsedSeconds,
+            inboundBytes / 1024d / elapsedSeconds,
+            outboundBytes / 1024d / elapsedSeconds);
+    }
+
+    private void SaveNetworkCounterSample(RuntimeNetworkSnapshot network)
+    {
+        hasNetworkCounterSample = true;
+        lastNetworkCapturedAtUtc = network.CapturedAtUtc;
+        lastMessageInboundFrames = network.MessageInboundFrames;
+        lastMessageInboundBytes = network.MessageInboundBytes;
+        lastMessageOutboundFrames = network.MessageOutboundFrames;
+        lastMessageOutboundBytes = network.MessageOutboundBytes;
     }
 
     private static void FitGraph(GraphView graph, int sampleCount, float yMaximum)
