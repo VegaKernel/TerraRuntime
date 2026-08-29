@@ -121,6 +121,17 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
     }
 
     /// <summary>
+    /// Reserves the first available bounded slot without constructing drop state. The slot stays inactive and
+    /// unpublished until an exact reservation is committed. This mirrors vanilla Item.NewItem ordering where
+    /// slot selection happens before spawn-velocity RNG is consumed.
+    /// </summary>
+    public bool TryReserveDropSlot(out WorldItemDropReservation reservation)
+    {
+        lock (_gate)
+            return TryReserveDropSlotLocked(out reservation);
+    }
+
+    /// <summary>
     /// Reserves the first available bounded slot for a validated drop without making it active or publishing it.
     /// This supports authoritative transactions that must prove item capacity before mutating another subsystem.
     /// </summary>
@@ -135,61 +146,51 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         WorldItemStateUpdate initial = CreateInitial(in drop);
         lock (_gate)
         {
-            for (short slot = 0; slot < _slots.Length; slot++)
-            {
-                ref SlotState state = ref _slots[slot];
-                if (state.Active || state.Reserved || !TryAdvance(ref state.Generation))
-                    continue;
+            if (!TryReserveDropSlotLocked(out reservation))
+                return false;
 
-                state.Revision = 0;
-                state.Reserved = true;
-                state.Update = initial;
-                reservation = new WorldItemDropReservation(slot, new WorldItemGeneration(state.Generation));
-                return true;
-            }
+            _slots[reservation.Slot].Update = initial;
+            return true;
         }
-
-        reservation = default;
-        return false;
     }
 
     /// <summary>
     /// Commits an exact unpublished reservation as revision one and publishes one drop notification.
+    /// Reservations created with TryReserveDrop already contain validated drop state.
     /// </summary>
     public bool TryCommitReservedDrop(
         in WorldItemDropReservation reservation,
         out WorldItemSnapshot snapshot)
     {
-        if (!reservation.IsAssigned || !IsValidSlot(reservation.Slot))
+        WorldItemStateUpdate replacement = default;
+        return TryCommitReservedDropCore(
+            in reservation,
+            replaceUpdate: false,
+            in replacement,
+            out snapshot);
+    }
+
+    /// <summary>
+    /// Commits a slot-only reservation with validated drop state. This allows capacity to be proven before
+    /// spawn RNG is consumed while still emitting exactly one authoritative drop notification at commit.
+    /// </summary>
+    public bool TryCommitReservedDrop(
+        in WorldItemDropReservation reservation,
+        in WorldItemDropStateUpdate drop,
+        out WorldItemSnapshot snapshot)
+    {
+        if (!IsValidDrop(in drop))
         {
             snapshot = default;
             return false;
         }
 
-        bool committed = false;
-        lock (_gate)
-        {
-            ref SlotState state = ref _slots[reservation.Slot];
-            if (state.Reserved &&
-                !state.Active &&
-                state.Generation == reservation.Generation.Value)
-            {
-                state.Reserved = false;
-                state.Active = true;
-                state.Revision = 1;
-                _activeCount++;
-                snapshot = Capture(reservation.Slot, in state);
-                committed = true;
-            }
-            else
-            {
-                snapshot = default;
-            }
-        }
-
-        if (committed)
-            Publish(WorldItemStateCommitKind.Drop, in snapshot);
-        return committed;
+        WorldItemStateUpdate initial = CreateInitial(in drop);
+        return TryCommitReservedDropCore(
+            in reservation,
+            replaceUpdate: true,
+            in initial,
+            out snapshot);
     }
 
     /// <summary>
@@ -399,6 +400,71 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
         snapshot = default;
         return false;
+    }
+
+    private bool TryReserveDropSlotLocked(out WorldItemDropReservation reservation)
+    {
+        for (short slot = 0; slot < _slots.Length; slot++)
+        {
+            ref SlotState state = ref _slots[slot];
+            if (state.Active || state.Reserved || !TryAdvance(ref state.Generation))
+                continue;
+
+            state.Revision = 0;
+            state.Reserved = true;
+            state.Update = default;
+            reservation = new WorldItemDropReservation(slot, new WorldItemGeneration(state.Generation));
+            return true;
+        }
+
+        reservation = default;
+        return false;
+    }
+
+    private bool TryCommitReservedDropCore(
+        in WorldItemDropReservation reservation,
+        bool replaceUpdate,
+        in WorldItemStateUpdate replacement,
+        out WorldItemSnapshot snapshot)
+    {
+        if (!reservation.IsAssigned || !IsValidSlot(reservation.Slot))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        bool committed = false;
+        lock (_gate)
+        {
+            ref SlotState state = ref _slots[reservation.Slot];
+            if (!state.Reserved ||
+                state.Active ||
+                state.Generation != reservation.Generation.Value)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            if (replaceUpdate)
+                state.Update = replacement;
+
+            if (!IsValid(in state.Update))
+            {
+                snapshot = default;
+                return false;
+            }
+
+            state.Reserved = false;
+            state.Active = true;
+            state.Revision = 1;
+            _activeCount++;
+            snapshot = Capture(reservation.Slot, in state);
+            committed = true;
+        }
+
+        if (committed)
+            Publish(WorldItemStateCommitKind.Drop, in snapshot);
+        return committed;
     }
 
     private bool TryUpsertLocked(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
