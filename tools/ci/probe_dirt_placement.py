@@ -23,23 +23,28 @@ def main() -> int:
     if dirt is None:
         raise SystemExit("Could not locate TileID.Dirt in pinned source.")
 
-    starts = list(re.finditer(r"\bPlaceTile\s*\(", world_gen))
-    if not starts:
-        raise SystemExit("Could not locate WorldGen.PlaceTile in pinned source.")
+    signature = re.search(
+        r"public static bool PlaceTile\(int i, int j, int type,.*?\)",
+        world_gen,
+        re.DOTALL,
+    )
+    if signature is None:
+        raise SystemExit("Could not locate the exact WorldGen.PlaceTile signature in pinned source.")
 
-    candidates = []
-    for match in starts:
-        start = max(0, match.start() - 600)
-        end = min(len(world_gen), match.start() + 24000)
-        region = world_gen[start:end]
-        if "int i" in region[:1200] and "int j" in region[:1200] and "int type" in region[:1200]:
-            candidates.append(region)
+    start = signature.start()
+    next_method = re.search(r" public static | private static ", world_gen[signature.end():])
+    if next_method is None:
+        end = min(len(world_gen), start + 50000)
+    else:
+        end = signature.end() + next_method.start()
+    body = world_gen[start:end]
 
-    if not candidates:
-        raise SystemExit("Could not isolate a plausible WorldGen.PlaceTile implementation.")
+    if "Main.tile[i, j]" not in body:
+        raise SystemExit("WorldGen.PlaceTile implementation no longer references the target tile directly.")
 
     print(f"tile_id_dirt={dirt.group(1)}")
-    print(f"worldgen_place_tile_context={candidates[0]}")
+    print(f"worldgen_place_tile_signature={signature.group(0)}")
+    print(f"worldgen_place_tile_context={body[:30000]}")
     return 0
 
 
