@@ -1,0 +1,108 @@
+name: World Item Reference Probe
+
+on:
+  push:
+    paths:
+      - .github/workflows/world-item-reference-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Decompile official TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+
+      - name: Probe packet 21 and 22 server semantics
+        shell: python
+        run: |
+          import json
+          import pathlib
+          import re
+
+          root = pathlib.Path('decompiled/1458')
+          candidates = []
+          for path in root.rglob('*.cs'):
+              text = path.read_text(errors='ignore')
+              score = text.count('case 21:') * 20 + text.count('case 22:') * 20
+              score += text.count('Item.NewItem') * 8
+              score += text.count('playerIndexTheItemIsReservedFor') * 8
+              if score:
+                  candidates.append((score, path, text))
+
+          if not candidates:
+              raise SystemExit('No packet 21/22 candidates found')
+          candidates.sort(key=lambda x: x[0], reverse=True)
+          score, path, text = candidates[0]
+
+          def case_body(number):
+              match = re.search(rf'\bcase\s+{number}\s*:', text)
+              if not match:
+                  return ''
+              start = match.start()
+              next_case = re.search(r'\n\s*case\s+\d+\s*:', text[match.end():])
+              end = match.end() + next_case.start() if next_case else min(len(text), start + 20000)
+              return text[start:end]
+
+          c21 = case_body(21)
+          c22 = case_body(22)
+          if not c21 or not c22:
+              raise SystemExit(f'Could not isolate both packet cases in {path}')
+
+          def facts(body):
+              return {
+                  'length': len(body),
+                  'hasItemNewItem': 'Item.NewItem' in body,
+                  'hasSentinel400': bool(re.search(r'\b400\b', body)),
+                  'hasActiveFalse': bool(re.search(r'\.active\s*=\s*false', body)),
+                  'hasActiveTrue': bool(re.search(r'\.active\s*=\s*true', body)),
+                  'hasWhoAmI': 'whoAmI' in body,
+                  'hasReservedPlayer': 'playerIndexTheItemIsReservedFor' in body,
+                  'hasKeepTime': 'keepTime' in body or 'timeToKeepReservedFor' in body,
+                  'hasOwnIgnore': 'ownIgnore' in body,
+                  'hasOwnTime': 'ownTime' in body,
+                  'sendData21': len(re.findall(r'SendData\s*\(\s*21\b', body)),
+                  'sendData22': len(re.findall(r'SendData\s*\(\s*22\b', body)),
+                  'newItemCalls': body.count('Item.NewItem'),
+                  'reservedAssignments': len(re.findall(r'playerIndexTheItemIsReservedFor\s*=', body)),
+                  'stackZeroChecks': len(re.findall(r'(?:stack|Stack)\s*==\s*0', body)),
+              }
+
+          summary = {
+              'selectedFile': str(path.relative_to(root)),
+              'candidateScore': score,
+              'packet21': facts(c21),
+              'packet22': facts(c22),
+          }
+
+          # Emit only narrow semantic lines, not whole decompiled methods.
+          patterns = [
+              r'.{0,100}Item\.NewItem.{0,180}',
+              r'.{0,100}playerIndexTheItemIsReservedFor.{0,180}',
+              r'.{0,100}(?:ownIgnore|ownTime).{0,180}',
+              r'.{0,100}SendData\s*\(\s*(?:21|22)\b.{0,180}',
+              r'.{0,100}\.active\s*=\s*(?:true|false).{0,180}',
+          ]
+          evidence = {}
+          for number, body in ((21, c21), (22, c22)):
+              lines = []
+              compact = body.replace('\r', '')
+              for pattern in patterns:
+                  for m in re.finditer(pattern, compact, re.S):
+                      line = ' '.join(m.group(0).split())
+                      if line not in lines:
+                          lines.append(line[:320])
+              evidence[str(number)] = lines[:20]
+
+          print('WORLD_ITEM_PACKET_FACTS=' + json.dumps(summary, sort_keys=True))
+          print('WORLD_ITEM_PACKET_EVIDENCE=' + json.dumps(evidence, sort_keys=True))
