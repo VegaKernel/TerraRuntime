@@ -8,6 +8,7 @@ on:
       - 'src/TerraRuntime.Core/VanillaNpcLoot*.cs'
       - 'tests/TerraRuntime.Tests/*NpcLoot*.cs'
       - 'tools/ci/probe_npc_loot.py'
+      - 'tools/ci/probe_npc_loot_spawn.py'
       - '.github/workflows/npc-loot-source-contract.yml'
   workflow_dispatch:
 
@@ -77,6 +78,8 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.DropBasedOnExtraGel "$assembly" > artifacts/source-contract/extra-gel.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.DropBasedOnExpertMode "$assembly" > artifacts/source-contract/expert-mode.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.Conditions "$assembly" > artifacts/source-contract/conditions.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.CommonCode "$assembly" > artifacts/source-contract/common-code.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" > artifacts/source-contract/item.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.NPCID "$assembly" > artifacts/source-contract/npc-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" > artifacts/source-contract/item-id.cs
 
@@ -89,3 +92,7 @@ jobs:
             --conditions artifacts/source-contract/conditions.cs \
             --npc-id artifacts/source-contract/npc-id.cs \
             --item-id artifacts/source-contract/item-id.cs
+
+          python3 tools/ci/probe_npc_loot_spawn.py \
+            --common-code artifacts/source-contract/common-code.cs \
+            --item artifacts/source-contract/item.cs
