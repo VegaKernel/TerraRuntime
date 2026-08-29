@@ -67,7 +67,8 @@ def verify_kill_fail_semantics(source: str, action_match: re.Match[str]) -> None
 
 
 def verify_server_relay(source: str, action_match: re.Match[str]) -> None:
-    action = re.escape(action_match.group("action"))
+    action_name = action_match.group("action")
+    action = re.escape(action_name)
     context = source[action_match.start():min(len(source), action_match.end() + 6500)]
     relay = re.search(
         rf"NetMessage\.TrySendData\(17, -1, whoAmI, null, {action}, [^;]+\);",
@@ -78,9 +79,19 @@ def verify_server_relay(source: str, action_match: re.Match[str]) -> None:
             "Terraria 1.4.5.8 packet 17 server relay no longer uses ignoreClient=whoAmI."
         )
 
-    start = max(0, relay.start() - 1500)
-    end = min(len(context), relay.end() + 700)
-    print(f"packet17_relay_context={context[start:end]}")
+    relay_tail = context[max(0, relay.start() - 650):relay.end()]
+    failed_hit_relay_guard = re.compile(
+        rf"if \(Main\.netMode == 2\) \{{ "
+        rf"if \([A-Za-z_]\w*\) \{{ NetMessage\.SendTileSquare\([^;]+\); \}} "
+        rf"else if \(\({action} != 1 && {action} != 21\) \|\| "
+        rf"!TileID\.Sets\.Falling\[[^\]]+\] \|\| Main\.tile\[[^\]]+\]\.active\(\)\) \{{ "
+        rf"NetMessage\.TrySendData\(17, -1, whoAmI, null, {action}, [^;]+\); \}} \}}"
+    )
+    if failed_hit_relay_guard.search(relay_tail) is None:
+        raise SystemExit(
+            "Terraria 1.4.5.8 packet 17 relay tail changed: action 0 is no longer proven to relay "
+            "independently of the data==1 fail flag."
+        )
 
 
 def main() -> int:
@@ -103,6 +114,7 @@ def main() -> int:
     print("tile_manipulation_wire=byte,int16,int16,int16,byte")
     print("tile_manipulation_action_0=KillTile")
     print("tile_manipulation_action_0_fail=data==1")
+    print("tile_manipulation_action_0_failed_hit_relay=exclude_sender")
     print("tile_manipulation_action_1=PlaceTile")
     print("tile_manipulation_action_2=KillWall")
     print("tile_manipulation_action_3=PlaceWall")
