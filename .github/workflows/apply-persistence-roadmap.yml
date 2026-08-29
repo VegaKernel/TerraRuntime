@@ -1,0 +1,78 @@
+name: Apply Persistence Roadmap State
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-persistence-roadmap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Update verified save pipeline roadmap
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/roadmap.md')
+          text = path.read_text()
+          old = '''### Save pipeline
+
+- [ ] Snapshot required mutable state on the game loop.
+- [ ] Serialize/compress/write outside the game loop.
+- [x] Atomically replace the save only after successful completion.
+- [ ] Never block simulation on disk I/O except for a short bounded snapshot handoff.
+- [x] Permit only one save serialization at a time; coalesce redundant autosave requests rather than building a backlog.
+- [ ] Shutdown waits for background save work and writes the newest state last.
+- [ ] Regression-test vanilla world round trips and interrupted-save recovery.
+- [ ] Research an incremental shadow snapshot updated from dirty sections so large-world autosaves eventually avoid copying the complete tile array in one tick.
+'''
+          new = '''### Save pipeline
+
+- [x] Snapshot required mutable state on the authoritative game-loop owner.
+- [x] Serialize and write detached save snapshots outside the game loop.
+- [x] Atomically replace the canonical save only after successful complete serialization.
+- [x] Keep disk I/O off the simulation thread; tile-shadow synchronization uses a bounded default budget of \\(4\\ \\text{sections/tick}\\).
+- [x] Permit only one save serialization at a time; coalesce redundant autosave requests rather than building a backlog.
+- [x] Graceful shutdown (`Ctrl+C` / POSIX `SIGTERM`) stops the authoritative owner, captures the newest final state and waits for the save coordinator to commit it.
+- [x] Maintain the save tile shadow incrementally from dirty sections instead of copying the complete tile array in one save tick.
+- [x] Flush save contents before publication and, on Linux, `fsync` the parent directory after replace/move so the directory entry has an explicit durability barrier.
+- [x] Regression-test the pre-publication process-crash invariant with a real `SIGKILL`: an existing canonical save stays byte-identical, a first save stays hidden, and the next normal save can still commit (`Authoritative World Save` run `33267501627`).
+- [ ] Complete broad interrupted-save/crash recovery beyond the proven pre-publication atomicity invariant.
+- [ ] Add automatic known-good backup rotation plus validated rollback; atomic publication alone does not recover from a logically bad but complete checkpoint.
+- [ ] Add safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process.
+'''
+          if old not in text:
+              raise SystemExit('save pipeline roadmap anchor changed; refusing broad rewrite')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Commit roadmap and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/apply-persistence-roadmap.yml
+          git add docs/roadmap.md
+          git commit -m 'docs: record verified world save durability'
+
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git pull --rebase origin main
+          done
+          exit 1
