@@ -76,18 +76,29 @@ def around_first(source: str, needle: str, radius: int = 360) -> str:
     return normalized[start:end]
 
 
+def matching_lines(source: str, needle: str, limit: int = 300) -> str:
+    matches = [compact(line) for line in source.splitlines() if needle in line]
+    if not matches:
+        return "<none>"
+    return " | ".join(matches[:limit])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--projectile", required=True, type=Path)
     parser.add_argument("--delegate-methods", required=True, type=Path)
     parser.add_argument("--player", required=True, type=Path)
     parser.add_argument("--worldgen", required=True, type=Path)
+    parser.add_argument("--main", required=True, type=Path)
+    parser.add_argument("--tile-id", required=True, type=Path)
     args = parser.parse_args()
 
     projectile_source = args.projectile.read_text(encoding="utf-8")
     delegate_source = args.delegate_methods.read_text(encoding="utf-8")
     player_source = args.player.read_text(encoding="utf-8")
     worldgen_source = args.worldgen.read_text(encoding="utf-8")
+    main_source = args.main.read_text(encoding="utf-8")
+    tile_id_source = args.tile_id.read_text(encoding="utf-8")
 
     can_cut_tiles = compact(extract_method(projectile_source, "CanCutTiles"))
     cut_tiles = compact(extract_method(projectile_source, "CutTiles"))
@@ -100,9 +111,12 @@ def main() -> int:
     print("projectile_cut_tiles=" + cut_tiles)
     print("projectile_cut_tiles_at=" + cut_tiles_at)
     print("projectile_cut_tiles_callsite=" + around_first(projectile_source, "CutTiles();"))
+    print("projectile_trap_true_mentions=" + matching_lines(projectile_source, "trap = true"))
     print("delegate_methods_cut_tiles=" + delegate_cut_tiles)
     print("player_get_tile_cut_ignorance=" + tile_cut_ignorance)
     print("worldgen_can_cut_tile=" + can_cut_tile)
+    print("main_tile_cut_mentions=" + matching_lines(main_source, "tileCut"))
+    print("tile_id_cut_ignore_context=" + around_first(tile_id_source, "TileCutIgnore", radius=2600))
     return 0
 
 
