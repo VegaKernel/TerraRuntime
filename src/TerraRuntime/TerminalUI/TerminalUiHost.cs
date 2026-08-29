@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
@@ -122,6 +123,8 @@ internal sealed class TerminalUiHost : IDisposable
             activityAnnounced = true;
             app.Init();
 
+            ITerraRuntimeTerminalDashboardSource? terminalDashboards =
+                StartupProgram.CurrentTerminalDashboards;
             using var window = new DashboardWindow(
                 dashboardOperations,
                 playerOperations,
@@ -130,7 +133,8 @@ internal sealed class TerminalUiHost : IDisposable
                 worldOperations,
                 logOperations,
                 projectileOperations,
-                worldItemOperations);
+                worldItemOperations,
+                terminalDashboards);
 
             long nextRefresh = 0;
             app.Iteration += (_, _) =>
