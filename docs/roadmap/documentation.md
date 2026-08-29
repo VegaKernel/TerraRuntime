@@ -121,22 +121,35 @@ Describe target state, acceptance criteria and incomplete work. They must not ma
 
 ## CI documentation gate
 
-`tools/ci/check_documentation.py` runs in the main `build-test` CI job before restore/build/test.
+`tools/ci/check_documentation.py` runs in the main `build-test` CI job before restore/build/test for repository-wide structural/link validation.
 
-The check deliberately validates structural invariants rather than attempting machine translation:
+The checker validates structural invariants rather than attempting machine translation:
 
 - `docs/en/` and `docs/ru/` must contain the same set of Markdown pages;
 - the required baseline pages listed by the checker must exist in both languages;
 - repository-local Markdown links in `docs/**/*.md`, root `README.md` and `AGENTS.md` must resolve to an existing path;
 - relative links may not escape the repository root.
 
+The dedicated `.github/workflows/documentation.yml` workflow checks out full Git history and invokes the same checker with `--changed-base`. That adds a change-set invariant:
+
+```text
+docs/en/<page>.md changed
+    -> docs/ru/<page>.md must also be changed in the same push/PR diff
+
+and vice versa
+```
+
+For direct work on `main`, paired language edits should therefore be committed atomically where possible. A sequence of single-file pushes is intentionally considered incomplete until a push contains the complete bilingual pair in its checked change set.
+
 The gate does **not** claim to prove semantic translation equivalence. Review remains responsible for meaning and factual parity between the two language versions.
 
-Run it locally from the repository root:
+Run the structural/link check locally from the repository root:
 
 ```text
 python3 tools/ci/check_documentation.py
 ```
+
+The `--changed-base <sha>` form is used by CI when a concrete push/PR base is available.
 
 ## Initial implementation
 
@@ -162,6 +175,7 @@ python3 tools/ci/check_documentation.py
 - [x] Add diagrams/examples when they clarify an actual interaction path; subsystem guides now contain maintained text diagrams and API/flow examples where useful.
 - [x] Add documentation-link validation in CI.
 - [x] Add lightweight RU/EN structural parity validation without machine translation or line-by-line equality.
+- [x] Enforce paired RU/EN page changes in the same push/PR diff through the dedicated Documentation workflow.
 
 ## Continuing work
 
@@ -185,4 +199,5 @@ Documentation work is complete when:
 - ownership/threading/failure rules are explicit where relevant;
 - links are relative and repository-safe;
 - `python3 tools/ci/check_documentation.py` passes;
+- the dedicated Documentation workflow passes for a change that touches bilingual pages;
 - the associated roadmap/status is updated when support changed.
