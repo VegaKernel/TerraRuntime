@@ -114,6 +114,43 @@ public sealed class RuntimeWorldClockOperationsTelemetryTests
         Assert.Equal(2, snapshot.SectionCacheOnDemandPendingRequests);
     }
 
+    [Fact]
+    public void World_operations_map_persistence_status_without_exposing_save_service()
+    {
+        var persistence = new RuntimeWorldSaveStatus(
+            AcceptingRequests: true,
+            TileShadowReady: false,
+            RemainingBootstrapSections: 12,
+            PendingDirtyTileSections: 3,
+            SaveRequested: true,
+            WriteActive: true,
+            PendingWrite: true,
+            AcceptedSnapshots: 9,
+            StartedWrites: 8,
+            CompletedWrites: 7,
+            CoalescedSnapshots: 2,
+            FailedWrites: 1);
+        var operations = new LocalRuntimeWorldOperations(
+            CreateStaticSnapshot(),
+            persistenceSnapshotProvider: () => persistence);
+
+        RuntimeWorldSnapshot snapshot = operations.CaptureSnapshot();
+
+        RuntimeWorldPersistenceSnapshot mapped = Assert.IsType<RuntimeWorldPersistenceSnapshot>(snapshot.Persistence);
+        Assert.True(mapped.AcceptingRequests);
+        Assert.False(mapped.TileShadowReady);
+        Assert.Equal(12, mapped.RemainingBootstrapSections);
+        Assert.Equal(3, mapped.PendingDirtyTileSections);
+        Assert.True(mapped.SaveRequested);
+        Assert.True(mapped.WriteActive);
+        Assert.True(mapped.PendingWrite);
+        Assert.Equal(9, mapped.AcceptedSnapshots);
+        Assert.Equal(8, mapped.StartedWrites);
+        Assert.Equal(7, mapped.CompletedWrites);
+        Assert.Equal(2, mapped.CoalescedSnapshots);
+        Assert.Equal(1, mapped.FailedWrites);
+    }
+
     private static RuntimeWorldSnapshot CreateStaticSnapshot() =>
         new(
             Ready: true,
