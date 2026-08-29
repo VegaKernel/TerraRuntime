@@ -54,25 +54,25 @@ public sealed class RuntimeNpcActorControlSnapshot
 }
 
 /// <summary>
-/// Control-plane registry for one authoritative NPC store. The only initially supported physical actor family is
-/// ordinary Zombie presentation because TerraRuntime already has source-backed walking/gravity/step/collision
-/// motion for it. More motion families can be admitted deliberately as their authoritative physics paths exist.
-/// Control-plane mutations may serialize on a private gate, but the authoritative CommitPending tick boundary is
-/// monitor-free: staged arrays are immutable once published and the game thread commits them with atomics only.
+/// Lock-free staged control registry for one authoritative NPC store. Each mutation clones the latest immutable
+/// staging image and publishes it with CAS. CommitPending() snapshots one staging version at the authoritative tick
+/// boundary; a concurrent newer mutation remains staged automatically for the next tick instead of being lost.
 /// </summary>
 public sealed class RuntimeNpcActorControlRegistry
 {
-    private readonly object _gate = new();
     private readonly RuntimeNpcStore _npcs;
     private RuntimeNpcActorControlSnapshot _published;
-    private NpcActorControlBinding?[]? _pending;
+    private StagedImage _staged;
+    private ulong _committedStagingVersion;
     private ulong _nextRevision;
 
     public RuntimeNpcActorControlRegistry(RuntimeNpcStore npcs)
     {
         ArgumentNullException.ThrowIfNull(npcs);
         _npcs = npcs;
-        _published = new RuntimeNpcActorControlSnapshot(new NpcActorControlBinding?[npcs.Capacity], revision: 0);
+        var empty = new NpcActorControlBinding?[npcs.Capacity];
+        _staged = new StagedImage(empty, version: 0);
+        _published = new RuntimeNpcActorControlSnapshot(empty, revision: 0);
     }
 
     public RuntimeNpcActorControlSnapshot Snapshot => Volatile.Read(ref _published);
@@ -100,47 +100,48 @@ public sealed class RuntimeNpcActorControlRegistry
             return NpcActorControlAcquireResult.UnsupportedNpcType;
         }
 
-        lock (_gate)
+        while (true)
         {
-            NpcActorControlBinding?[] working = CreatePendingCopyForMutation();
-            NpcActorControlBinding? current = working[npc.Slot];
-            if (current is not null && current.Value.Npc == npc)
+            StagedImage current = Volatile.Read(ref _staged);
+            NpcActorControlBinding? existing = current.Bindings[npc.Slot];
+            if (existing is not null && existing.Value.Npc == npc)
             {
                 lease = null;
                 return NpcActorControlAcquireResult.AlreadyControlled;
             }
 
-            working[npc.Slot] = new NpcActorControlBinding(
+            NpcActorControlBinding?[] nextBindings = CloneBindings(current);
+            nextBindings[npc.Slot] = new NpcActorControlBinding(
                 controllerId,
                 npc,
                 NpcActorIntent.Stop());
-            Volatile.Write(ref _pending, working);
+            StagedImage next = CreateNext(current, nextBindings);
+            if (!ReferenceEquals(Interlocked.CompareExchange(ref _staged, next, current), current))
+                continue;
+
             lease = new NpcActorControlLease(this, npc, controllerId);
             return NpcActorControlAcquireResult.Acquired;
         }
     }
 
     /// <summary>
-    /// Publishes the latest staged immutable control snapshot without taking the control-plane monitor. If a control
-    /// mutation races the commit, it either appears in this publication or remains staged for the next tick; it is
-    /// never discarded.
+    /// Publishes one immutable staged image without taking a monitor. If a newer staging image races this commit,
+    /// the newer version remains in <see cref="_staged"/> and is committed at the following tick boundary.
     /// </summary>
     public bool CommitPending()
     {
-        NpcActorControlBinding?[]? pending = Volatile.Read(ref _pending);
-        if (pending is null)
+        StagedImage staged = Volatile.Read(ref _staged);
+        if (staged.Version == _committedStagingVersion)
             return false;
 
         if (_nextRevision == ulong.MaxValue)
             throw new InvalidOperationException("NPC actor control snapshot revision exhausted.");
 
         _nextRevision++;
-        var snapshot = new RuntimeNpcActorControlSnapshot(pending, _nextRevision);
-
-        // Publish before clearing the exact staged array. A producer that observes _pending == null therefore also
-        // observes a published snapshot containing everything that was just committed.
-        Volatile.Write(ref _published, snapshot);
-        Interlocked.CompareExchange(ref _pending, null, pending);
+        Volatile.Write(
+            ref _published,
+            new RuntimeNpcActorControlSnapshot(staged.Bindings, _nextRevision));
+        _committedStagingVersion = staged.Version;
         return true;
     }
 
@@ -149,63 +150,67 @@ public sealed class RuntimeNpcActorControlRegistry
         ActorControllerId controllerId,
         in NpcActorIntent intent)
     {
-        if (!intent.IsValid)
+        if (!intent.IsValid || !npc.IsAssigned || npc.Slot >= _npcs.Capacity)
             return false;
 
-        lock (_gate)
+        while (true)
         {
-            NpcActorControlBinding?[] working = CreatePendingCopyForMutation();
-            NpcActorControlBinding? current = working[npc.Slot];
-            if (current is null ||
-                current.Value.Npc != npc ||
-                current.Value.ControllerId != controllerId)
+            StagedImage current = Volatile.Read(ref _staged);
+            NpcActorControlBinding? existing = current.Bindings[npc.Slot];
+            if (existing is null ||
+                existing.Value.Npc != npc ||
+                existing.Value.ControllerId != controllerId)
             {
                 return false;
             }
 
-            working[npc.Slot] = current.Value with { Intent = intent };
-            Volatile.Write(ref _pending, working);
-            return true;
+            NpcActorControlBinding?[] nextBindings = CloneBindings(current);
+            nextBindings[npc.Slot] = existing.Value with { Intent = intent };
+            StagedImage next = CreateNext(current, nextBindings);
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _staged, next, current), current))
+                return true;
         }
     }
 
     internal void Release(NpcHandle npc, ActorControllerId controllerId)
     {
-        lock (_gate)
+        if (!npc.IsAssigned || npc.Slot >= _npcs.Capacity)
+            return;
+
+        while (true)
         {
-            NpcActorControlBinding?[] working = CreatePendingCopyForMutation();
-            NpcActorControlBinding? current = working[npc.Slot];
-            if (current is null ||
-                current.Value.Npc != npc ||
-                current.Value.ControllerId != controllerId)
+            StagedImage current = Volatile.Read(ref _staged);
+            NpcActorControlBinding? existing = current.Bindings[npc.Slot];
+            if (existing is null ||
+                existing.Value.Npc != npc ||
+                existing.Value.ControllerId != controllerId)
             {
                 return;
             }
 
-            working[npc.Slot] = null;
-            Volatile.Write(ref _pending, working);
+            NpcActorControlBinding?[] nextBindings = CloneBindings(current);
+            nextBindings[npc.Slot] = null;
+            StagedImage next = CreateNext(current, nextBindings);
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _staged, next, current), current))
+                return;
         }
     }
 
-    private NpcActorControlBinding?[] CreatePendingCopyForMutation()
+    private static NpcActorControlBinding?[] CloneBindings(StagedImage image) =>
+        (NpcActorControlBinding?[])image.Bindings.Clone();
+
+    private static StagedImage CreateNext(StagedImage current, NpcActorControlBinding?[] bindings)
     {
-        NpcActorControlBinding?[]? pending = Volatile.Read(ref _pending);
-        if (pending is not null)
-            return (NpcActorControlBinding?[])pending.Clone();
+        if (current.Version == ulong.MaxValue)
+            throw new InvalidOperationException("NPC actor control staging version exhausted.");
 
-        RuntimeNpcActorControlSnapshot published = Snapshot;
-        var copy = new NpcActorControlBinding?[_npcs.Capacity];
-        for (int slot = 0; slot < copy.Length; slot++)
-        {
-            byte runtimeSlot = checked((byte)slot);
-            if (_npcs.TryGetActive(runtimeSlot, out NpcSnapshot active) &&
-                published.TryGet(active.Handle, out NpcActorControlBinding binding))
-            {
-                copy[slot] = binding;
-            }
-        }
+        return new StagedImage(bindings, current.Version + 1);
+    }
 
-        return copy;
+    private sealed class StagedImage(NpcActorControlBinding?[] bindings, ulong version)
+    {
+        public NpcActorControlBinding?[] Bindings { get; } = bindings;
+        public ulong Version { get; } = version;
     }
 }
 
