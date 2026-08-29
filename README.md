@@ -25,7 +25,7 @@ logs/      # reserved for standalone runtime diagnostics/log output
 
 ## NativeAOT standalone deployment
 
-A production NativeAOT publish is intentionally **not** a copied `dotnet build` directory. TerraRuntime project/package assemblies are linked into the native host, so the NativeAOT deployment root must not accumulate loose `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll`, `*.deps.json` or `*.runtimeconfig.json` files.
+A production NativeAOT publish is intentionally **not** a copied `dotnet build` directory. TerraRuntime project/package assemblies are linked into the native host, so the NativeAOT deployment root must not accumulate loose managed `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll`, `*.deps.json` or `*.runtimeconfig.json` files. Required native sidecars emitted by the NativeAOT publish remain next to the executable so the artifact can be started as-is.
 
 Publish directly into the final artifact directory:
 
@@ -34,13 +34,14 @@ dotnet publish src/TerraRuntime/TerraRuntime.csproj -c Release -r win-x64 -o art
 
 artifacts/native-aot/win-x64/
 ├── TerraRuntime.Server.exe
+├── libonigwrap.dll          # required native Terminal.Gui dependency
 ├── Worlds/
 ├── config/
 ├── data/
 └── logs/
 ```
 
-Release publish symbols such as `*.pdb` and `*.dbg` are excluded from the runnable artifact. CI launches every NativeAOT smoke path directly from `artifacts/native-aot/<RID>/` and rejects unexpected root entries or leaked debug symbols.
+The equivalent Linux artifact contains `libonigwrap.so` next to `TerraRuntime.Server`. Release publish symbols such as `*.pdb` and `*.dbg` are excluded from the runnable artifact. CI explicitly requires the platform `libonigwrap` sidecar and launches every NativeAOT smoke path directly from `artifacts/native-aot/<RID>/`, so a missing runtime dependency fails before the artifact can be treated as deployable.
 
 ## Vega and managed plugins
 
