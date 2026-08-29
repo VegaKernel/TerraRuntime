@@ -1,0 +1,179 @@
+name: Official World Patch Roundtrip
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.World/WorldFileTileChestPatchWriter.cs'
+      - 'src/TerraRuntime.World/WorldFileTileEncoder.cs'
+      - 'src/TerraRuntime.World/WorldFileChestEncoder.cs'
+      - 'src/TerraRuntime.World/WorldFileEnvelopeEncoder.cs'
+      - 'src/TerraRuntime.World/IncrementalWorldTileSaveShadow.cs'
+      - 'tools/TerraRuntime.WorldPatchVerify/**'
+      - '.github/workflows/world-patch-roundtrip.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-world-patch-roundtrip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  official-roundtrip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Generate official small world
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/official-source.wld"
+          config="$GITHUB_WORKSPACE/artifacts/official-generate.txt"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=1
+          worldname=TerraRuntimePatchRoundtrip
+          difficulty=0
+          maxplayers=1
+          port=17786
+          password=
+          motd=TerraRuntime world patch roundtrip
+          secure=1
+          upnp=0
+          EOF
+
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$GITHUB_WORKSPACE/artifacts/official-generate.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$GITHUB_WORKSPACE/artifacts/official-generate.log"
+          test -s "$world"
+          if [[ $status -ne 0 && $status -ne 124 ]]; then
+            echo "Official world generation exited with status $status" >&2
+            exit "$status"
+          fi
+
+      - name: Patch detached tiles and one real chest item
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.WorldPatchVerify/TerraRuntime.WorldPatchVerify.csproj \
+            -c Release \
+            -- artifacts/official-source.wld artifacts/official-patched.wld \
+            | tee artifacts/world-patch-verify.log
+
+          test -s artifacts/official-patched.wld
+          dotnet run \
+            --project tools/TerraRuntime.WorldVerify/TerraRuntime.WorldVerify.csproj \
+            -c Release \
+            -- artifacts/official-patched.wld \
+            | tee artifacts/world-patch-before-official-load.log
+          dotnet run \
+            --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
+            -c Release \
+            -- artifacts/official-patched.wld \
+            | tail -1 > artifacts/world-patch-chest-before.txt
+          cat artifacts/world-patch-chest-before.txt
+
+      - name: Load patched world with official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/official-patched.wld"
+          config="$GITHUB_WORKSPACE/artifacts/official-patched-load.txt"
+          log="$GITHUB_WORKSPACE/artifacts/official-patched-load.log"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=0
+          maxplayers=1
+          port=17787
+          password=
+          motd=TerraRuntime patched world validation
+          secure=1
+          upnp=0
+          EOF
+
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$log" 2>&1
+          status=$?
+          set -e
+
+          cat "$log"
+          if [[ $status -ne 0 ]]; then
+            echo "Official server did not cleanly load and exit from patched world: status=$status" >&2
+            exit "$status"
+          fi
+          test -s "$world"
+
+      - name: Prove chest mutation survived official load and save
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.WorldVerify/TerraRuntime.WorldVerify.csproj \
+            -c Release \
+            -- artifacts/official-patched.wld \
+            | tee artifacts/world-patch-after-official-load.log
+          dotnet run \
+            --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
+            -c Release \
+            -- artifacts/official-patched.wld \
+            | tail -1 > artifacts/world-patch-chest-after.txt
+          cat artifacts/world-patch-chest-after.txt
+          cmp -s artifacts/world-patch-chest-before.txt artifacts/world-patch-chest-after.txt
+
+      - name: Upload roundtrip evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-world-patch-roundtrip
+          path: |
+            artifacts/official-generate.log
+            artifacts/official-generate.txt
+            artifacts/world-patch-verify.log
+            artifacts/world-patch-before-official-load.log
+            artifacts/world-patch-after-official-load.log
+            artifacts/world-patch-chest-before.txt
+            artifacts/world-patch-chest-after.txt
+            artifacts/official-patched-load.log
+            artifacts/official-patched-load.txt
+          retention-days: 14
