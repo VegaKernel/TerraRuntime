@@ -335,24 +335,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
 
-        if (_entityBootstrap is not null)
-        {
-            if (_entityBootstrap.TryCapture(out ReadOnlyMemory<byte>[] dynamicEntityFrames) != RuntimeEntityBootstrapCaptureResult.Captured)
-                return Stop(PlayerBootstrapStopReason.DynamicEntityBootstrapFailure);
-
-            foreach (ReadOnlyMemory<byte> dynamicEntityFrame in dynamicEntityFrames)
-            {
-                if (!TryQueue(dynamicEntityFrame))
-                    return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
-            }
-        }
-
-        foreach (ReadOnlyMemory<byte> globalPostSectionFrame in _packets.GlobalPostSectionFrames)
-        {
-            if (!TryQueue(globalPostSectionFrame))
-                return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
-        }
-
+        // Keep the first vanilla-client handoff deliberately minimal. Entity and global
+        // persistence baselines must not sit between the final packet 10 and packet 49;
+        // they can be synchronized after the client has entered the world.
         if (!TryQueue(_packets.EnterWorldFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 
