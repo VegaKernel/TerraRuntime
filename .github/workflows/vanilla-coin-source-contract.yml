@@ -49,7 +49,7 @@ jobs:
           --tool-path .tools
           --version 11.0.0.9375
 
-      - name: Verify vanilla coin item ids
+      - name: Verify vanilla coin item ids and inspect item defaults
         shell: bash
         run: |
           set -euo pipefail
@@ -67,5 +67,8 @@ jobs:
           assembly_dir="$(dirname "$assembly")"
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" \
             > artifacts/source-contract/item-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" \
+            > artifacts/source-contract/item.cs
           python3 tools/ci/probe_vanilla_coins.py \
-            --item-id artifacts/source-contract/item-id.cs
+            --item-id artifacts/source-contract/item-id.cs \
+            --item artifacts/source-contract/item.cs
