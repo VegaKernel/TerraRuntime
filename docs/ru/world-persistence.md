@@ -74,7 +74,7 @@ Runtime snapshot принимается только при compatible source st
 
 Missing, stale, truncated, incompatible или integrity-invalid snapshot является cache miss, а не partial world. Invalid/duplicate liquid queue state и source replacement во время load также ведут к canonical fallback.
 
-Fallback читает/валидирует canonical `.wld`, строит authoritative runtime state и только после этого может rebuild derived snapshot. Partially reconstructed snapshot никогда не публикуется как world.
+Fallback читает/валидирует canonical `.wld`, строит authoritative runtime state и только после этого может rebuild derived snapshot. Partially reconstructed snapshot никогда не публикуется как world. Immutable world-operations/TUI snapshot сохраняет точный `RuntimeWorldSnapshotLoadResult` вместе с `DetailCode`, cache hit/miss state и отдельными временами file read, cache load, canonical load и cache build, поэтому причина stale/invalid cache остаётся диагностируемой после startup.
 
 ## 8. Liquid persistence
 

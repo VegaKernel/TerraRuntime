@@ -618,6 +618,7 @@ public static class TerrariaServerHost
                             RuntimeCacheHit: runtimeCacheHit,
                             InitialCacheResult: cacheDiagnostic.Result.ToString(),
                             CacheParallelReads: RuntimeWorldCacheReadOptions.Default.MaxParallelReads,
+                            InitialCacheDetailCode: cacheDiagnostic.DetailCode,
                             FileReadMilliseconds: fileReadDuration.TotalMilliseconds,
                             CacheLoadMilliseconds: cacheLoadDuration.TotalMilliseconds,
                             CanonicalWorldLoadMilliseconds: canonicalLoadProfile.Total.TotalMilliseconds,

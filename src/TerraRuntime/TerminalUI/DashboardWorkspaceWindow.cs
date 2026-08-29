@@ -685,8 +685,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         rows[3].Text = $"Dimensions  {snapshot.WidthTiles}x{snapshot.HeightTiles}  tiles {snapshot.TileCount:N0}";
         rows[4].Text = $"Objects     chests {snapshot.ChestCount:N0}  signs {snapshot.SignCount:N0}  tile entities {snapshot.TileEntityCount:N0}";
         rows[5].Text = $"NPC state   town {snapshot.TownNpcCount:N0}  persistent {snapshot.PersistentNpcCount:N0}  rooms {snapshot.TownRoomCount:N0}";
-        rows[6].Text = $"Cache       {(snapshot.RuntimeCacheHit ? "hit" : "miss")}  initial {snapshot.InitialCacheResult}  readers {snapshot.CacheParallelReads}";
-        rows[7].Text = $"Load        file {snapshot.FileReadMilliseconds:F2} ms  cache {snapshot.CacheLoadMilliseconds:F2} ms  canonical {snapshot.CanonicalWorldLoadMilliseconds:F2} ms";
+        rows[6].Text = $"Cache       {(snapshot.RuntimeCacheHit ? "hit" : "miss")}  reason {snapshot.InitialCacheResult}/{snapshot.InitialCacheDetailCode}  readers {snapshot.CacheParallelReads}";
+        rows[7].Text = $"Load        file {snapshot.FileReadMilliseconds:F2} ms  cache {snapshot.CacheLoadMilliseconds:F2} ms  canonical {snapshot.CanonicalWorldLoadMilliseconds:F2} ms  build {snapshot.CacheWriteMilliseconds:F2} ms";
         rows[8].Text = $"Ready       world {snapshot.WorldReadyMilliseconds:F2} ms  network {snapshot.NetworkReadyMilliseconds:F2} ms";
         if (snapshot.RuntimeClockAvailable)
         {

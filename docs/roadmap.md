@@ -459,7 +459,7 @@ flowchart TD
 - [x] Active players/NPCs/projectiles/items.
 - [x] Spatial-index membership/section changes/invalid-position counters.
 - [x] Save snapshot duration, serialization duration and write duration separately.
-- [ ] World-cache hit/miss/invalidation reason and load/build times.
+- [x] World-cache hit/miss/invalidation reason and load/build times.
 - [ ] GC allocation rate, collections, pause time and heap size where available.
 
 Telemetry must not add heavy formatting/allocation to every hot-path operation.
