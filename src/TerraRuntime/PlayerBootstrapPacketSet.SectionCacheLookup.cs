@@ -91,6 +91,9 @@ public sealed partial class PlayerBootstrapPacketSet
                     return true;
                 }
 
+                if (Volatile.Read(ref _sectionRebuildRequester) is null)
+                    return false;
+
                 TimeSpan remaining = SectionCacheLookupWaitTimeout - Stopwatch.GetElapsedTime(started);
                 if (remaining <= TimeSpan.Zero)
                 {
