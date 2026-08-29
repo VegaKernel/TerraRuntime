@@ -567,7 +567,7 @@ internal sealed class ServerRuntimeState
 
         if (action == TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.KillTile)
         {
-            if (tileState.Data != 0)
+            if (tileState.Data != 0 && tileState.Data != 1)
             {
                 UnsupportedClientTileManipulations++;
                 return;
@@ -582,6 +582,13 @@ internal sealed class ServerRuntimeState
                 !VanillaTileInteractionItemFacts.TryGetPickPower(toolItem.ItemType, out _, out _))
             {
                 RejectedClientTileManipulations++;
+                return;
+            }
+
+            if (tileState.Data == 1)
+            {
+                AppliedClientTileManipulations++;
+                _tileManipulationReplication?.TryPublishAccepted(command.Connection.Source, in tileState);
                 return;
             }
 
