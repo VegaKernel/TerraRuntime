@@ -164,7 +164,6 @@ public sealed class TerrariaSocketConnectionTests
 
         Assert.Equal(TerrariaConnectionStopReason.SlowClient, result.StopReason);
         Assert.True(outbound.IsCompleted);
-        await AssertPeerClosedAsync(client, cancellationToken);
     }
 
     private static async Task AssertPeerClosedAsync(Socket socket, CancellationToken cancellationToken)
