@@ -15,10 +15,14 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/TerraRuntime/TerraRuntime.csproj" />
+    <ProjectReference Include="../../src/TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Core/TerraRuntime.Core.csproj" />
+    <ProjectReference Include="../../src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj" />
+    <ProjectReference Include="../../src/TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Network/TerraRuntime.Network.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Protocol.Multiplicity/TerraRuntime.Protocol.Multiplicity.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.World/TerraRuntime.World.csproj" />
+    <ProjectReference Include="../TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <RootNamespace>TerraRuntime.HostModuleFixture</RootNamespace>
+    <AssemblyName>TerraRuntime.HostModuleFixture</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
+  </ItemGroup>
+</Project>

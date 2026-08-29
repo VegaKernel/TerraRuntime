@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <RootNamespace>TerraRuntime.ExtensibleHost</RootNamespace>
+    <AssemblyName>TerraRuntime.Extensible.Server</AssemblyName>
+    <StartupObject>TerraRuntime.ExtensibleHost.Program</StartupObject>
+
+    <!-- This host deliberately supports dynamic managed DLL loading. Keep AOT-only rules in the core graph. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <PublishAot>false</PublishAot>
+    <PublishTrimmed>false</PublishTrimmed>
+
+    <!-- Production CoreCLR baseline for the long-running extensible server profile. -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredPGO>true</TieredPGO>
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TerraRuntime.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../TerraRuntime/TerraRuntime.csproj" />
+    <ProjectReference Include="../TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
+  </ItemGroup>
+</Project>

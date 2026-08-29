@@ -1,6 +1,6 @@
 namespace TerraRuntime;
 
-internal static class StartupProgram
+public static class StartupProgram
 {
     public static int Main(string[] args)
     {
