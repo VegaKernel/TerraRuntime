@@ -48,7 +48,7 @@ def print_context(source: str, needle: str, label: str, radius: int = 550) -> No
     print(f"{label}=" + source[start:end])
 
 
-def print_all_contexts(source: str, needle: str, label: str, radius: int = 450, limit: int = 8) -> None:
+def print_all_contexts(source: str, needle: str, label: str, radius: int = 450, limit: int = 12) -> None:
     cursor = 0
     count = 0
     while count < limit:
@@ -103,6 +103,10 @@ def main() -> int:
     require(vector_new_item, "worldItem.velocity.X = (float)Main.rand.Next(-30, 31) * 0.1f;", "default X velocity changed")
     require(vector_new_item, "worldItem.velocity.Y = (float)Main.rand.Next(-40, -15) * 0.1f;", "gravity-item Y velocity changed")
 
+    # Exact item defaults needed to convert Item.NewItem's center into TerraRuntime's top-left snapshot.
+    require(item, "case 23: width = 10; height = 12; alpha = 175; ammo = AmmoID.Gel;", "Gel dimensions/defaults changed")
+    require(item, "case 1309: damage = 8; useStyle = 1; shootSpeed = 10f; shoot = 266; width = 26; height = 28;", "Slime Staff dimensions/defaults changed")
+
     print("npc_loot_spawn_center=x:npc.position.X+npc.width/2,y:npc.position.Y+npc.height/2")
     print("npc_loot_spawn_scattered_default=false")
     print("npc_loot_new_item_rect=width:0,height:0")
@@ -112,17 +116,21 @@ def main() -> int:
     print("item_new_item_center_assignment=worldItem.Center=center")
     print("item_new_item_velocity_x=0.1*rand[-30,30]")
     print("item_new_item_gravity_velocity_y=0.1*rand[-40,-16]")
+    print("item_defaults_gel_size=10x12")
+    print("item_defaults_slime_staff_size=26x28")
 
     print_context(vector_new_item, "ItemID.Sets.ItemNoGravity", "item_new_item_no_gravity_context")
     print_context(vector_new_item, "worldItem.timeSinceItemSpawned", "item_new_item_spawn_time_context")
     print_context(vector_new_item, "_DefaultAssignItemsToNewPlayer", "item_new_item_default_owner_context")
     print_context(vector_new_item, "noBroadcast", "item_new_item_broadcast_context")
 
-    # The exact SetDefaults cases are intentionally exploratory here. They are promoted into assertions only after
-    # the pinned source exposes which occurrence belongs to the defaults table for Gel and Slime Staff.
-    print_all_contexts(item, "case 23:", "item_defaults_gel_case")
-    print_all_contexts(item, "case 1309:", "item_defaults_slime_staff_case")
-    print_context(item_id, "ItemNoGravity", "item_id_no_gravity_set_context", radius=900)
+    # Explore the remaining item-specific branches. Prefix(-1) is especially important for Slime Staff:
+    # the runtime must not silently replace a natural prefix roll with prefix zero.
+    print_all_contexts(item, "GetRollablePrefixes", "item_prefix_rollable_context", radius=900, limit=8)
+    print_all_contexts(item, "prefixWeWant == -1", "item_prefix_natural_context", radius=900, limit=8)
+    print_all_contexts(item, "RollAPrefix", "item_prefix_roll_a_prefix_context", radius=900, limit=8)
+    print_all_contexts(item_id, "ItemNoGravity =", "item_id_no_gravity_assignment_context", radius=1100, limit=8)
+    print_all_contexts(item_id, "CreateBoolSet", "item_id_bool_set_context", radius=700, limit=12)
 
     return 0
 
