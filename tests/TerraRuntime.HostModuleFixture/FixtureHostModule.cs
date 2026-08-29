@@ -1,10 +1,16 @@
 using TerraRuntime.HostContracts;
+using TerraRuntime.HostContracts.TerminalUI;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace TerraRuntime.HostModuleFixture;
 
 public sealed class FixtureHostModule : ITerraRuntimeHostModule
 {
+    public const string DashboardId = "fixture.dashboard";
+
     private string? dataDirectory;
+    private ITerraRuntimeTerminalDashboardRegistry? terminalDashboards;
 
     public string Name => "FixtureHostModule";
 
@@ -14,6 +20,10 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule
     {
         ArgumentNullException.ThrowIfNull(environment);
         dataDirectory = environment.DataDirectory;
+        terminalDashboards = environment.TerminalDashboards;
+        if (!terminalDashboards.TryRegister(new FixtureDashboardProvider()))
+            throw new InvalidOperationException("The fixture terminal dashboard could not be registered.");
+
         Directory.CreateDirectory(dataDirectory);
         await File.WriteAllTextAsync(
             Path.Combine(dataDirectory, "fixture-host-module.started"),
@@ -49,6 +59,9 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule
 
     public async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
+        terminalDashboards?.TryUnregister(DashboardId);
+        terminalDashboards = null;
+
         if (dataDirectory is null)
             return;
 
@@ -56,5 +69,33 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule
             Path.Combine(dataDirectory, "fixture-host-module.stopped"),
             "stopped",
             cancellationToken).ConfigureAwait(false);
+    }
+
+    private sealed class FixtureDashboardProvider : ITerraRuntimeTerminalDashboardProvider
+    {
+        public string Id => DashboardId;
+
+        public string Title => "Fixture Dashboard";
+
+        public View CreateDashboard()
+        {
+            var root = new View
+            {
+                Width = Dim.Fill(),
+                Height = Dim.Fill()
+            };
+            root.Add(new Label
+            {
+                X = 1,
+                Y = 1,
+                Text = "Fixture dashboard"
+            });
+            return root;
+        }
+
+        public void Refresh(View rootView)
+        {
+            ArgumentNullException.ThrowIfNull(rootView);
+        }
     }
 }

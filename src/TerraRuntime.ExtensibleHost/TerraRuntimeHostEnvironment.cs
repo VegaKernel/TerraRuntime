@@ -1,12 +1,16 @@
 using TerraRuntime.HostContracts;
+using TerraRuntime.HostContracts.TerminalUI;
 
 namespace TerraRuntime.ExtensibleHost;
 
 internal sealed class TerraRuntimeHostEnvironment : ITerraRuntimeHostEnvironment
 {
-    public TerraRuntimeHostEnvironment(ExtensibleHostDirectoryLayout layout)
+    public TerraRuntimeHostEnvironment(
+        ExtensibleHostDirectoryLayout layout,
+        ITerraRuntimeTerminalDashboardRegistry terminalDashboards)
     {
         ArgumentNullException.ThrowIfNull(layout);
+        ArgumentNullException.ThrowIfNull(terminalDashboards);
 
         RootDirectory = layout.RootDirectory;
         HostModulesDirectory = layout.HostModulesDirectory;
@@ -15,6 +19,7 @@ internal sealed class TerraRuntimeHostEnvironment : ITerraRuntimeHostEnvironment
         ConfigDirectory = layout.ConfigDirectory;
         DataDirectory = layout.DataDirectory;
         LogsDirectory = layout.LogsDirectory;
+        TerminalDashboards = terminalDashboards;
     }
 
     public string RootDirectory { get; }
@@ -24,4 +29,5 @@ internal sealed class TerraRuntimeHostEnvironment : ITerraRuntimeHostEnvironment
     public string ConfigDirectory { get; }
     public string DataDirectory { get; }
     public string LogsDirectory { get; }
+    public ITerraRuntimeTerminalDashboardRegistry TerminalDashboards { get; }
 }

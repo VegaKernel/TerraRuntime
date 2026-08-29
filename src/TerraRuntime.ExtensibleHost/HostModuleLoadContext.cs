@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.Loader;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
+using Terminal.Gui.ViewBase;
 
 namespace TerraRuntime.ExtensibleHost;
 
@@ -57,12 +58,15 @@ internal sealed class HostModuleLoadContext : AssemblyLoadContext
     {
         Assembly hostContracts = typeof(ITerraRuntimeHostModule).Assembly;
         Assembly runtimeContracts = typeof(IInterestManagementControl).Assembly;
+        Assembly terminalGui = typeof(View).Assembly;
         return new Dictionary<string, Assembly>(StringComparer.Ordinal)
         {
             [hostContracts.GetName().Name
                 ?? throw new InvalidOperationException("TerraRuntime.HostContracts assembly has no simple name.")] = hostContracts,
             [runtimeContracts.GetName().Name
-                ?? throw new InvalidOperationException("TerraRuntime.Contracts assembly has no simple name.")] = runtimeContracts
+                ?? throw new InvalidOperationException("TerraRuntime.Contracts assembly has no simple name.")] = runtimeContracts,
+            [terminalGui.GetName().Name
+                ?? throw new InvalidOperationException("Terminal.Gui assembly has no simple name.")] = terminalGui
         };
     }
 }

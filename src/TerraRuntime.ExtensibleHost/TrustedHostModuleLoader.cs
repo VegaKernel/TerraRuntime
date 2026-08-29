@@ -1,9 +1,13 @@
 using System.Reflection;
 using TerraRuntime.HostContracts;
+using TerraRuntime.HostContracts.TerminalUI;
 
 namespace TerraRuntime.ExtensibleHost;
 
-internal sealed class TrustedHostModuleLoader : ITerraRuntimeHostLifecycle, IAsyncDisposable
+internal sealed class TrustedHostModuleLoader :
+    ITerraRuntimeHostLifecycle,
+    ITerraRuntimeTerminalDashboardSource,
+    IAsyncDisposable
 {
     private static readonly HashSet<string> AllowedTerraRuntimeReferences = new(StringComparer.Ordinal)
     {
@@ -13,6 +17,7 @@ internal sealed class TrustedHostModuleLoader : ITerraRuntimeHostLifecycle, IAsy
 
     private readonly string directory;
     private readonly List<LoadedHostModule> loaded = [];
+    private readonly TerminalDashboardRegistry terminalDashboards = new();
     private bool started;
     private bool runtimeAttached;
     private bool disposed;
@@ -22,6 +27,11 @@ internal sealed class TrustedHostModuleLoader : ITerraRuntimeHostLifecycle, IAsy
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         this.directory = Path.GetFullPath(directory);
     }
+
+    internal ITerraRuntimeTerminalDashboardRegistry TerminalDashboards => terminalDashboards;
+
+    public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards() =>
+        terminalDashboards.CaptureDashboards();
 
     public async ValueTask<int> StartAllAsync(
         ITerraRuntimeHostEnvironment environment,
@@ -200,6 +210,8 @@ internal sealed class TrustedHostModuleLoader : ITerraRuntimeHostLifecycle, IAsy
 
     private async ValueTask StopLoadedModulesAsync(CancellationToken cancellationToken)
     {
+        terminalDashboards.Clear();
+
         for (int index = loaded.Count - 1; index >= 0; index--)
         {
             LoadedHostModule loadedModule = loaded[index];

@@ -1,7 +1,11 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.ExtensibleHost;
 using TerraRuntime.HostContracts;
+using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.HostModuleFixture;
+using Terminal.Gui.App;
+using Terminal.Gui.Drivers;
+using Terminal.Gui.ViewBase;
 
 namespace TerraRuntime.Tests;
 
@@ -28,6 +32,7 @@ public sealed class TrustedHostModuleLoaderTests
         string modulePath = Path.Combine(hostModules, "Vega.dll");
         File.Copy(typeof(FixtureHostModule).Assembly.Location, modulePath);
 
+        var loader = new TrustedHostModuleLoader(hostModules);
         var environment = new TestHostEnvironment(
             root,
             hostModules,
@@ -35,7 +40,8 @@ public sealed class TrustedHostModuleLoaderTests
             worlds,
             config,
             data,
-            logs);
+            logs,
+            loader.TerminalDashboards);
         var interestManagement = new TestInterestManagementControl();
         var runtime = new TestHostRuntime(
             new TerraRuntimeHostRuntimeInfo(
@@ -47,7 +53,6 @@ public sealed class TrustedHostModuleLoaderTests
                 32),
             interestManagement,
             new TestPlayerStateSnapshotReader());
-        var loader = new TrustedHostModuleLoader(hostModules);
 
         try
         {
@@ -60,6 +65,19 @@ public sealed class TrustedHostModuleLoaderTests
             Assert.Equal(
                 serverPlugins,
                 await File.ReadAllTextAsync(startedMarker, cancellationToken));
+
+            ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> dashboardProviders = loader.CaptureDashboards();
+            Assert.Single(dashboardProviders.ToArray());
+            ITerraRuntimeTerminalDashboardProvider provider = dashboardProviders.Span[0];
+            Assert.Equal(FixtureHostModule.DashboardId, provider.Id);
+            Assert.Equal("Fixture Dashboard", provider.Title);
+
+            using (IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI))
+            using (View dashboard = provider.CreateDashboard())
+            {
+                Assert.NotNull(dashboard);
+                provider.Refresh(dashboard);
+            }
 
             string attachedMarker = Path.Combine(data, "fixture-host-module.attached");
             Assert.True(File.Exists(attachedMarker));
@@ -75,6 +93,7 @@ public sealed class TrustedHostModuleLoaderTests
             await loader.DisposeAsync();
         }
 
+        Assert.Empty(loader.CaptureDashboards().ToArray());
         Assert.True(File.Exists(Path.Combine(data, "fixture-host-module.stopped")));
 
         try
@@ -98,7 +117,8 @@ public sealed class TrustedHostModuleLoaderTests
         string WorldsDirectory,
         string ConfigDirectory,
         string DataDirectory,
-        string LogsDirectory) : ITerraRuntimeHostEnvironment;
+        string LogsDirectory,
+        ITerraRuntimeTerminalDashboardRegistry TerminalDashboards) : ITerraRuntimeHostEnvironment;
 
     private sealed record TestHostRuntime(
         TerraRuntimeHostRuntimeInfo Info,

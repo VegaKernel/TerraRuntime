@@ -1,3 +1,5 @@
+using TerraRuntime.HostContracts.TerminalUI;
+
 namespace TerraRuntime.HostContracts;
 
 /// <summary>
@@ -13,4 +15,10 @@ public interface ITerraRuntimeHostEnvironment
     string ConfigDirectory { get; }
     string DataDirectory { get; }
     string LogsDirectory { get; }
+
+    /// <summary>
+    /// Optional local terminal-dashboard registration surface. Providers contribute complete independent
+    /// dashboards only; they cannot inject controls into TerraRuntime's built-in system dashboard.
+    /// </summary>
+    ITerraRuntimeTerminalDashboardRegistry TerminalDashboards { get; }
 }
