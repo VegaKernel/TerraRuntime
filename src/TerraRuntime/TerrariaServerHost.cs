@@ -241,6 +241,7 @@ public static class TerrariaServerHost
             ? projectileReplication
             : new RuntimeProjectileStateCommitFanout(projectileReplication, projectileOperations);
         var projectileStore = new RuntimeProjectileStore(commitSink: projectileCommitSink);
+        var tileManipulationReplication = new RuntimeTileManipulationReplicationRegistry();
         var chestReplication = new RuntimeChestReplicationRegistry();
         var chestStore = new RuntimeChestStore(world.Chests);
         var chestCommands = new RuntimeChestCommandProcessor(chestStore, chestReplication);
@@ -256,9 +257,12 @@ public static class TerrariaServerHost
         var entityReplicationEvents = new RuntimePlayerEventFanout(
             npcReplication,
             projectileAndItemReplicationEvents);
+        var tileAndEntityReplicationEvents = new RuntimePlayerEventFanout(
+            tileManipulationReplication,
+            entityReplicationEvents);
         var chestAndEntityReplicationEvents = new RuntimePlayerEventFanout(
             chestReplication,
-            entityReplicationEvents);
+            tileAndEntityReplicationEvents);
         var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, chestAndEntityReplicationEvents);
         var state = new ServerRuntimeState(
             playerEvents,
@@ -267,7 +271,8 @@ public static class TerrariaServerHost
             worldClock: worldClock,
             projectiles: projectileStore,
             worldItems: worldItems,
-            projectileReplication: projectileReplication);
+            projectileReplication: projectileReplication,
+            tileManipulationReplication: tileManipulationReplication);
         using var sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,
             bootstrapPackets,
@@ -296,6 +301,7 @@ public static class TerrariaServerHost
         var movementIngress = new RuntimePlayerMovementIngress(commandIngress);
         var worldItemIngress = new RuntimeWorldItemIngress(commandIngress);
         var projectileIngress = new RuntimeProjectileNetworkIngress(commandIngress);
+        var tileIngress = new RuntimeTileNetworkIngress(commandIngress);
         var chestIngress = new RuntimeChestNetworkIngress(commandIngress);
         var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
         var slots = new PlayerSlotPool(options.MaxPlayers);
@@ -487,12 +493,14 @@ public static class TerrariaServerHost
                     movementIngress,
                     worldItemIngress,
                     projectileIngress,
+                    tileIngress,
                     chestIngress,
                     disconnectIngress,
                     runtimeConnections,
                     npcReplication,
                     projectileReplication,
                     worldItemReplication,
+                    tileManipulationReplication,
                     chestReplication,
                     vitalsReplication,
                     worldItems,
@@ -571,12 +579,14 @@ public static class TerrariaServerHost
         IPlayerMovementIngress movementIngress,
         IWorldItemIngress worldItemIngress,
         IProjectileNetworkIngress projectileIngress,
+        ITileNetworkIngress tileIngress,
         IChestNetworkIngress chestIngress,
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
         RuntimeNpcReplicationRegistry npcReplication,
         RuntimeProjectileReplicationRegistry projectileReplication,
         RuntimeWorldItemReplicationRegistry worldItemReplication,
+        RuntimeTileManipulationReplicationRegistry tileManipulationReplication,
         RuntimeChestReplicationRegistry chestReplication,
         RuntimePlayerVitalsReplicator vitalsReplication,
         RuntimeWorldItemStore worldItems,
@@ -670,6 +680,20 @@ public static class TerrariaServerHost
                 return;
             }
 
+            if (!tileManipulationReplication.TryRegister(source, outbound))
+            {
+                chestReplication.TryUnregister(source);
+                vitalsReplication.TryUnregister(source);
+                rateTelemetry.TryUnregister(connectionId);
+                queueTelemetry.TryUnregister(connectionId);
+                worldItemReplication.TryUnregister(source);
+                projectileReplication.TryUnregister(source);
+                npcReplication.TryUnregister(source);
+                runtimeConnections.TryUnregister(source, out _);
+                socket.Dispose();
+                return;
+            }
+
             using var bootstrapSink = new PlayerBootstrapFrameSink(
                 slots,
                 outbound,
@@ -701,6 +725,11 @@ public static class TerrariaServerHost
                 bootstrapSink,
                 projectileSink,
                 chestIngress);
+            var tileSink = new TileManipulationFrameSink(
+                source,
+                bootstrapSink,
+                chestSink,
+                tileIngress);
 
             try
             {
@@ -708,7 +737,7 @@ public static class TerrariaServerHost
                 {
                     TerrariaSocketRunResult result = await TerrariaSocketConnection.RunAsync(
                         socket,
-                        chestSink,
+                        tileSink,
                         outbound,
                         TerrariaFrameDecoderOptions.Default,
                         policyOptions,
@@ -716,7 +745,7 @@ public static class TerrariaServerHost
                         cancellationToken).ConfigureAwait(false);
                     string message =
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
-                        $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, chests={chestSink.StopReason}, state={bootstrapSink.JoinState}; " +
+                        $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, chests={chestSink.StopReason}, tiles={tileSink.StopReason}, state={bootstrapSink.JoinState}; " +
                         $"inbound={result.Inbound}; rate={result.Rate}; outbound={result.Outbound.Reason}.";
                     hostLog.Write(RuntimeLogLevel.Information, "Network", message);
                 }
@@ -738,6 +767,7 @@ public static class TerrariaServerHost
             {
                 rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
+                tileManipulationReplication.TryUnregister(source);
                 chestReplication.TryUnregister(source);
                 vitalsReplication.TryUnregister(source);
                 worldItemReplication.TryUnregister(source);
