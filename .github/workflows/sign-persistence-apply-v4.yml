@@ -1,0 +1,48 @@
+name: Sign Persistence Apply V4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sign-persistence-apply-v4.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.x
+      - name: Rebase onto current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git rebase origin/main
+      - name: Apply sign persistence host wiring
+        run: python3 .github/scripts/apply_sign_persistence.py
+      - name: Restore
+        run: dotnet restore TerraRuntime.slnx
+      - name: Test current main plus wiring
+        run: dotnet test TerraRuntime.slnx -c Release --no-restore
+      - name: Commit tested host wiring to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/TerraRuntime/TerrariaServerHost.cs; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/TerraRuntime/TerrariaServerHost.cs
+          git commit -m "world: wire sign persistence into production"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
