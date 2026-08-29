@@ -89,6 +89,10 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
 
     public bool IsTerminalUiActive => Volatile.Read(ref terminalUiActive) != 0;
 
+    // Plain-console routing is now the complement of terminal-UI routing. Keeping this derived query avoids
+    // resurrecting the retired transitional bridge state while the remaining host call site migrates to Log().
+    public bool IsPlainConsoleActive => !IsTerminalUiActive;
+
     internal RuntimeLogPipelineMetrics CapturePipelineMetrics() => pipeline.CaptureMetrics();
 
     public void SetTerminalUiActive(bool active) =>
