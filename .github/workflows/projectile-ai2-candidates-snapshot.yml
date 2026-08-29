@@ -1,0 +1,95 @@
+name: Projectile AI2 Candidates Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/projectile-ai2-candidates-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Extract pinned aiStyle2 candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/ai2 .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected_sha256" ]]; then assembly="$candidate"; fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          assembly_dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/ai2/projectile.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/ai2/projectile-id.cs
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          p=Path('artifacts/ai2/projectile.cs').read_text(encoding='utf-8')
+          ids=Path('artifacts/ai2/projectile-id.cs').read_text(encoding='utf-8')
+          def compact(x): return ' '.join(x.split())
+          def method(src,name):
+              m=re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$',src)
+              if not m: raise SystemExit(f'method not found: {name}')
+              o=src.find('{',m.end()); d=0; ins=inc=esc=False
+              for i in range(o,len(src)):
+                  c=src[i]
+                  if esc:esc=False;continue
+                  if c=='\\' and (ins or inc):esc=True;continue
+                  if c=='"' and not inc:ins=not ins;continue
+                  if c=="'" and not ins:inc=not inc;continue
+                  if ins or inc:continue
+                  if c=='{':d+=1
+                  elif c=='}':
+                      d-=1
+                      if d==0:return src[m.start():i+1]
+              raise SystemExit(f'unterminated: {name}')
+          defaults=compact(method(p,'SetDefaults'))
+          methods={name:compact(method(p,name)) for name in ['AI','Update','GetCollisionParams','HandleMovement','Kill','CanCutTiles']}
+          names={int(v):n for n,v in re.findall(r'public const short\s+([A-Za-z0-9_]+)\s*=\s*(\d+)\s*;',ids)}
+          branch_positions=[(m.start(),int(m.group(1))) for m in re.finditer(r'(?:else if|if) \(type == (\d+)\) \{',defaults)]
+          candidates=[]
+          for m in re.finditer(r'\baiStyle = 2;',defaults):
+              preceding=[item for item in branch_positions if item[0] < m.start()]
+              if not preceding: continue
+              type_id=preceding[-1][1]
+              if type_id not in candidates:candidates.append(type_id)
+          def has_type(src,t):
+              return bool(re.search(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|(?<!\d){t}\s*(?:==|!=)\s*type(?!\d)',src))
+          def default_context(t):
+              pat=re.compile(rf'(?:else if|if) \(type == {t}\) \{{')
+              m=pat.search(defaults)
+              if not m:return '<none>'
+              later=re.search(r' else if \(type == \d+\) \{',defaults[m.end():])
+              end=m.end()+later.start() if later else min(len(defaults),m.end()+1800)
+              return defaults[m.start():min(end,m.start()+1800)]
+          lines=[]
+          lines.append('ai2_candidate_count='+str(len(candidates)))
+          for t in candidates:
+              flags={name:has_type(src,t) for name,src in methods.items()}
+              safe=not any(flags[name] for name in ['AI','Update','GetCollisionParams','HandleMovement','Kill'])
+              lines.append(
+                  f'type={t} name={names.get(t,"<unnamed>")} clean={str(safe).lower()} '
+                  + ' '.join(f'{k}={str(v).lower()}' for k,v in flags.items())
+                  + ' defaults=' + default_context(t))
+          Path('artifacts/ai2/ai2-candidates.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectile-ai2-candidates
+          path: artifacts/ai2/ai2-candidates.txt
+          retention-days: 1
