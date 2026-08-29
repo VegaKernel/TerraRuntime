@@ -14,7 +14,7 @@ def extract_method(source: str, signature: str) -> str:
         raise SystemExit(f"Could not locate exact signature: {signature}")
     brace = source.find("{", start + len(signature))
     if brace < 0:
-        raise SystemExit("KillTile declaration has no body.")
+        raise SystemExit(f"Method declaration has no body: {signature}")
 
     depth = 0
     in_string = False
@@ -37,7 +37,25 @@ def extract_method(source: str, signature: str) -> str:
                 depth -= 1
                 if depth == 0:
                     return source[start:index + 1]
-    raise SystemExit("KillTile body did not terminate.")
+    raise SystemExit(f"Method body did not terminate: {signature}")
+
+
+def first_signature(source: str, name: str) -> str:
+    match = re.search(
+        rf"(?:public|private|internal) static [^{{;]]{{0,600}}\b{re.escape(name)}\([^)]*\)",
+        source,
+        re.DOTALL,
+    )
+    if match is None:
+        # ILSpy output can contain generic/attribute noise which is easier to tolerate with a looser fallback.
+        match = re.search(
+            rf"(?:public|private|internal) static .*?\b{re.escape(name)}\([^)]*\)",
+            source,
+            re.DOTALL,
+        )
+    if match is None:
+        raise SystemExit(f"Could not locate declaration-like WorldGen.{name} signature.")
+    return compact(match.group(0))
 
 
 def main() -> int:
@@ -55,22 +73,20 @@ def main() -> int:
     if dirt is None or dirt.group(1) != "0":
         raise SystemExit("Expected TileID.Dirt=0 in pinned source.")
 
-    declarations = list(re.finditer(
-        r"(?:public|private|internal) static [^{;]{0,400}\bKillTile\([^)]*\)",
-        compact_source,
-        re.DOTALL,
-    ))
-    if not declarations:
-        raise SystemExit("Could not locate declaration-like WorldGen.KillTile signature.")
+    kill_signature = first_signature(raw, "KillTile")
+    kill_method = compact(extract_method(raw, kill_signature))
+    breakability_signature = first_signature(raw, "CheckTileBreakability")
+    breakability_method = compact(extract_method(raw, breakability_signature))
+    survive_signature = first_signature(raw, "CheckTileBreakability2_ShouldTileSurvive")
+    survive_method = compact(extract_method(raw, survive_signature))
 
     print("tile_id_dirt=0")
-    print(f"kill_tile_declarations={len(declarations)}")
-    for index, match in enumerate(declarations[:12]):
-        signature = match.group(0)
-        print(f"worldgen_kill_tile_signature_{index}={signature}")
-        if index == 0:
-            method = compact(extract_method(raw, signature))
-            print(f"worldgen_kill_tile_context={method[:50000]}")
+    print(f"worldgen_kill_tile_signature={kill_signature}")
+    print(f"worldgen_kill_tile_context={kill_method[:50000]}")
+    print(f"worldgen_check_tile_breakability_signature={breakability_signature}")
+    print(f"worldgen_check_tile_breakability_context={breakability_method[:50000]}")
+    print(f"worldgen_check_tile_survive_signature={survive_signature}")
+    print(f"worldgen_check_tile_survive_context={survive_method[:50000]}")
     return 0
 
 
