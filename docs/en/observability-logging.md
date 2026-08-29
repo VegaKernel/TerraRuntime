@@ -4,295 +4,140 @@
 
 ## 1. Current status
 
-TerraRuntime already exposes bounded operations telemetry and a bounded recent-log buffer, but the full runtime-owned asynchronous structured logging pipeline described by the roadmap is **not complete yet**.
+TerraRuntime already has bounded operations telemetry, a bounded recent-log read model and TUI consumption. The full runtime-owned asynchronous structured logging pipeline is **not complete yet**.
 
-Keep the distinction explicit:
+```mermaid
+flowchart LR
+    Runtime["Runtime producers"] --> Current["Current bounded telemetry / RuntimeLogBuffer"]
+    Current --> TUI["TUI / local diagnostics"]
 
-```text
-bounded operations snapshots      implemented for multiple runtime domains
-bounded recent-log read model     implemented
-TUI log consumption               implemented foundation
-fully structured async log queue  incomplete
-background drain + JSONL sinks    incomplete
-stable public runtime log API     incomplete
+    Runtime -. target .-> Gate["Cheap level/category gate"]
+    Gate -. target .-> Queue["Bounded non-blocking structured queue"]
+    Queue -. target .-> Drain["Background drain worker"]
+    Drain -. target .-> Sinks["Console / JSONL / recent buffer / host adapters"]
 ```
 
-The current implementation is useful for local operations, but it must not be documented as the final logging architecture.
+Solid arrows describe the current foundation. Dashed target path remains roadmap work.
 
-## 2. Observability boundary
+## 2. Ownership boundary
 
-Observability must not acquire ownership of simulation state.
+Observability never becomes owner of simulation state. High-frequency owners publish bounded counters, immutable snapshots or bounded log records; TUI/exporters consume detached data instead of scanning mutable runtime stores.
 
-```text
-authoritative runtime
-       |
-       +--> bounded counters/snapshots
-       +--> bounded log/read-model events
-       |
-       v
-operations layer
-       |
-       +--> TUI
-       +--> plain/local diagnostics
-       +--> future host/API/export adapters
-```
-
-The TUI and future exporters consume detached data. They do not traverse mutable runtime stores directly.
-
-## 3. Current recent-log buffer
+## 3. Current recent-log limits
 
 `RuntimeLogBuffer` is a bounded operations read model, not the final public logging API.
 
-Current hard limits are:
+| Limit | Current value |
+|---|---:|
+| Default retained entries | `$512$` entries |
+| Maximum retained entries | `$8\,192$` entries |
+| Maximum source length | `$64$` characters |
+| Maximum message length | `$2\,048$` characters |
 
-```text
-default entries       512
-maximum entries       8192
-maximum source length 64 characters
-maximum message length 2048 characters
+When full, the ring overwrites the oldest retained entry and increments an overwrite counter. Control characters are normalized, empty source falls back to `Runtime`, and retained history cannot grow by attaching arbitrary object graphs or packet payloads.
+
+## 4. Current record shape
+
+The current operations record contains `Sequence`, `TimestampUtc`, `Level`, `Source` and `Message`, with levels `Debug`, `Information`, `Warning` and `Error`.
+
+Snapshots also expose published/overwritten counts, minimum level and capture time.
+
+This is intentionally smaller than the future structured record model.
+
+## 5. Reads and filtering
+
+Consumers can request a bounded snapshot by minimum level, optional exact source and maximum entry count. The newest matching records are returned in chronological order. A bounded sorted source list supports UI filtering.
+
+## 6. Chat is not logging
+
+The read-only `Chat` source projects separate bounded public-chat telemetry into the operator log view. Chat routing remains its own subsystem and does not become generic logging ownership just because operators can inspect it.
+
+## 7. Current host-log behavior
+
+`RuntimeHostLog` bridges runtime messages to the bounded recent-log buffer and local console behavior.
+
+When TUI is active, normal console writes are suppressed to avoid corrupting the dashboard. After fallback to plain console, output may return to stdout/stderr as appropriate.
+
+The current bridge is still synchronous at the call site. Sink formatting/I/O must move off hot runtime paths in the future structured pipeline.
+
+## 8. Telemetry versus logs
+
+High-frequency facts belong in counters/snapshots rather than one text line per occurrence. Examples include connection/admission counts, inbound/outbound frame/byte totals, queue depth/high-water marks, rate rejects, typed stop reasons, normalized frame rejections and entity replication counters.
+
+```mermaid
+flowchart TD
+    Fact["High-frequency runtime fact"] --> Choice{"Needs individual diagnostic record?"}
+    Choice -->|no| Counter["Typed counter / aggregate snapshot"]
+    Choice -->|yes| Log["Bounded log / future structured event"]
 ```
 
-When the ring buffer is full, new events overwrite the oldest retained entries and increment an overwrite counter. Logging history therefore remains bounded even if an operator never opens the log view.
+## 9. Connection rejection telemetry
 
-## 4. Current log entry shape
+Network telemetry keeps malformed protocol, rate limit, invalid state, gameplay rejection and backpressure separate. Terminal stop categories also remain typed, including protocol failure, invalid handshake, unsupported protocol, slow client, handshake/join/idle timeout and application stop.
 
-The current operations record contains:
+Flattening these into `connection failed` would discard useful operational evidence.
 
-```text
-Sequence
-TimestampUtc
-Level
-Source
-Message
+## 10. TUI consumption
+
+The TUI reads operations snapshots on its UI thread approximately every
+
+$$
+T_{\mathrm{refresh}}\approx500\,\mathrm{ms}.
+$$
+
+The log view consumes `ILogOperations` / `RuntimeLogBuffer` snapshots and does not block runtime publishers. Future tail/follow behavior should remain sequence-based and bounded so a slow consumer reports a gap instead of forcing unbounded retention.
+
+## 11. Target structured event model
+
+The logging roadmap proposes immutable machine-readable records with fields such as `Sequence`, `TimestampUtc`, `Level`, `EventId`, `Category`, `Subsystem`, message template/key, exception, correlation IDs, world/connection/player/entity context, packet direction/ID and bounded properties.
+
+This is **target architecture**, not the current public record shape.
+
+## 12. Target queue and backpressure
+
+```mermaid
+flowchart LR
+    Producer["Runtime producer"] --> Gate["Cheap gate"]
+    Gate --> Queue["Bounded non-blocking queue"]
+    Queue --> Drain["Background drain"]
+    Drain --> Console["Console"]
+    Drain --> File["Structured JSONL"]
+    Drain --> Recent["Recent-log buffer"]
+    Drain --> Host["Host/export adapters"]
 ```
 
-Current levels are:
+Expected pressure policy is preferential: Debug/Trace drop first, Information may sample/coalesce/drop, Warning/Error receive stronger retention, and Critical requires a bounded emergency fallback rather than an unbounded synchronous path.
 
-```text
-Debug
-Information
-Warning
-Error
-```
+Exact queue sizes remain measurement work.
 
-Snapshots also expose total published entries, overwritten entries, the applied minimum level and capture time.
+## 13. Sink failure isolation target
 
-This shape is intentionally smaller than the future structured event model proposed by the logging roadmap.
+A future sink failure must not stop simulation or disable every other sink. The roadmap calls for one long-lived drain worker initially, batching where useful, independent sink exception isolation, bounded health telemetry, graceful shutdown drain/flush and separate bounded buffering for future network exporters.
 
-## 5. Source/message normalization
+The existing ring buffer alone does not prove those guarantees.
 
-`RuntimeLogBuffer.Publish` normalizes retained strings before storing them.
+## 14. File logging status
 
-- source is bounded to 64 characters;
-- message is bounded to 2048 characters;
-- control characters are replaced with spaces;
-- an empty source falls back to `Runtime`;
-- retained history cannot grow by attaching arbitrary object graphs or packet payloads.
+The durable target is newline-delimited structured JSON (`.jsonl`) with rotation/retention and explicit flush semantics from the background logging worker. That complete file-sink pipeline is not yet implemented.
 
-This is a retention safety rule, not a substitute for a structured event schema.
+Do not close the gap with synchronous JSON/file output from gameplay or network hot paths.
 
-## 6. Snapshot reads and filtering
+## 15. Host/Vega boundary
 
-Operations consumers can request a bounded log snapshot by:
+TerraRuntime owns runtime/network/gameplay/world diagnostics. Vega owns Vega/application/plugin policy logs. Future integration may consume immutable TerraRuntime records through an adapter, but TerraRuntime must not reference Vega assemblies or hand out mutable runtime objects.
 
-- minimum level;
-- optional exact source;
-- maximum entry count.
+Arbitrary external `ILogger` providers must not execute synchronously on the authoritative game-loop thread.
 
-The buffer returns the newest matching entries while preserving chronological order in the returned snapshot.
+## 16. Performance rule
 
-Consumers can also request a bounded sorted source list for filtering UI.
+Observability changes on hot paths require before/after measurement. No log sink, file flush, terminal rendering or exporter may become required progress for the authoritative simulation tick.
 
-## 7. Chat is not logging
+## 17. Evidence and limitations
 
-The reserved read-only source `Chat` projects the separate bounded public-chat telemetry into the operator log view.
+Current tests cover recent-log buffer behavior, host-log behavior, chat projection and operations/network telemetry mappings.
 
-That projection is intentional: chat routing itself is not converted into generic logging ownership merely because operators may want to inspect recent chat.
+Still incomplete are the bounded async structured producer/drain pipeline, universal stable event IDs/categories, JSONL rotation/retention, Vega/MEL adapter contract, broad saturation/drop-policy/sink-failure tests and full subsystem telemetry coverage.
 
-Chat entries are projected as `Information` records for the UI, while their source telemetry remains separate.
+## 18. Change checklist
 
-## 8. Current host log behavior
-
-`RuntimeHostLog` currently bridges runtime messages to the recent-log buffer and local console output.
-
-Its behavior depends on local UI state:
-
-- every published/written message enters the bounded runtime log buffer;
-- when the TUI is active, ordinary console writes are suppressed to avoid corrupting the terminal dashboard;
-- after a TUI session has existed and falls back to plain console, published messages can also be written to standard output;
-- explicit error writes may use standard error when the TUI is not active.
-
-This host bridge is still synchronous at the call site. The future structured logging pipeline must move sink formatting/I/O off hot runtime paths.
-
-## 9. Why the future pipeline is separate
-
-The logging roadmap requires a runtime-owned producer queue because a slow disk, console, host sink or external exporter must never turn diagnostics into backpressure on gameplay/network hot paths.
-
-Target direction:
-
-```text
-runtime producer
-   -> cheap level/category gate
-   -> compact immutable record
-   -> non-blocking bounded enqueue
-   -> return
-
-background drain worker
-   -> console/file/recent-buffer/host sinks
-```
-
-That target is not yet equivalent to the current `RuntimeHostLog` + `RuntimeLogBuffer` implementation.
-
-## 10. Telemetry is not the same as logs
-
-TerraRuntime uses counters/snapshots for high-frequency operational facts that should not become one log line per occurrence.
-
-Examples include network/runtime counters such as:
-
-- active/registered/accepted/rejected connections;
-- queued outbound frames/bytes and rejected outbound frames;
-- inbound frames/bytes and rate rejects;
-- admission capacity/rate rejection counts;
-- connection stop-reason counters;
-- malformed/rate/invalid-state/gameplay/backpressure rejection categories;
-- relayed/baseline/rejected NPC, projectile and world-item frames.
-
-These belong in bounded telemetry snapshots rather than high-volume textual logging.
-
-## 11. Connection rejection telemetry
-
-`RuntimeNetworkSnapshot` currently keeps rejection classes distinguishable, including counters for:
-
-```text
-malformed protocol
-rate limited
-invalid state
-gameplay rejection
-backpressure
-```
-
-It also tracks selected terminal connection-stop categories such as protocol failure, invalid handshake, unsupported protocol, slow client, handshake/idle timeout and application stop.
-
-This distinction must be preserved as structured logging evolves. Flattening everything into one generic "connection failed" line would throw away useful diagnostic information.
-
-## 12. Runtime-domain telemetry
-
-Operations already has domain-specific telemetry/read models for multiple runtime areas, including players, NPCs, projectiles, world items, networking, world state, world clock and save/persistence state.
-
-The rule is to aggregate high-frequency state near its owner and expose bounded snapshots. The UI should not calculate expensive runtime statistics by scanning live entity collections.
-
-## 13. TUI consumption
-
-The Terminal UI refreshes operations snapshots on its own UI thread, currently at roughly 500 ms intervals.
-
-The log view consumes `ILogOperations`/`RuntimeLogBuffer` snapshots. It does not own the producer path and must not block runtime publishers.
-
-Future follow/tail behavior should remain sequence-based and bounded so a slow UI consumer can report a gap rather than force unbounded retention.
-
-## 14. Planned structured event model
-
-The logging roadmap proposes an immutable machine-readable runtime record with fields such as:
-
-```text
-Sequence
-TimestampUtc
-Level
-EventId
-Category
-Subsystem
-Message template/key
-Exception
-CorrelationId
-World/connection/player/entity context
-Packet direction/id
-bounded properties
-```
-
-This is **target architecture**, not the current public record shape. Documentation and APIs must distinguish the two until implementation plus tests prove the new pipeline.
-
-## 15. Queue/backpressure target
-
-The future logging queue must be bounded and non-blocking for authoritative/network hot paths.
-
-Expected policy direction:
-
-- Debug/Trace are first candidates for dropping under pressure;
-- Information may be sampled/coalesced/dropped when saturated;
-- Warning/Error should receive preferential retention/capacity;
-- Critical events need a bounded emergency fallback, not an unbounded synchronous path.
-
-Exact queue sizes/policies remain implementation work and require measurement.
-
-## 16. Sink failure isolation target
-
-A future sink failure must not stop simulation or disable every other diagnostics sink.
-
-The roadmap calls for:
-
-- one long-lived drain worker initially;
-- batching where useful;
-- independent sink exception isolation;
-- bounded health/failure telemetry;
-- graceful shutdown drain/flush;
-- separate bounded buffering for future network exporters.
-
-None of those future guarantees should be inferred solely from the existing recent-log ring buffer.
-
-## 17. File logging status
-
-The roadmap's durable target is newline-delimited structured JSON (`.jsonl`) written from the background logging worker with rotation/retention and explicit flush behavior.
-
-That complete durable structured file-sink pipeline is not yet documented as implemented.
-
-Do not write synchronous JSON/file output from gameplay or network hot paths just to fill this gap quickly.
-
-## 18. Host/Vega boundary
-
-TerraRuntime owns runtime/network/gameplay/world diagnostics. Vega owns Vega/application/plugin policy logs.
-
-A future Vega integration may consume immutable TerraRuntime log records through a sink/adapter, but TerraRuntime must not reference Vega assemblies or hand Vega mutable runtime objects.
-
-Likewise, arbitrary external `ILogger` providers must not execute synchronously on the authoritative game-loop thread.
-
-## 19. Correlation and context
-
-Useful future correlation includes connection/session, player/entity handle, join/bootstrap, save and world-load/worldgen operations.
-
-Context should be explicit and bounded. Do not attach mutable runtime objects or arbitrary large dictionaries merely to enrich a log record.
-
-## 20. Performance rule
-
-High-frequency runtime observability should prefer counters, compact typed fields and aggregated snapshots over formatted strings.
-
-A logging/telemetry change that claims to be cheap must be measured under the same workload before and after if it affects a hot path.
-
-No log sink, file flush, terminal rendering or exporter may become required progress for the authoritative simulation tick.
-
-## 21. Current evidence
-
-Existing tests include coverage for the recent log buffer, host-log behavior, chat telemetry projection and operations snapshots. Network/security telemetry also has focused mapping tests.
-
-The future async structured pipeline will require additional evidence for queue saturation, drop policy, sink failure isolation, shutdown drain and NativeAOT behavior before roadmap items can be marked complete.
-
-## 22. Current limitations
-
-Current observability/logging limitations include:
-
-- the recent log model is textual and small rather than fully structured;
-- stable event IDs/categories are not yet the universal runtime logging contract;
-- no completed bounded async logging producer/drain pipeline;
-- no completed structured JSONL rotation/retention sink;
-- no completed Vega/MEL adapter contract;
-- high-frequency telemetry coverage is still expanding by subsystem.
-
-## 23. Change checklist
-
-An observability/logging change is incomplete unless, where relevant:
-
-- hot-path work remains bounded and non-blocking;
-- counters are preferred over per-event text for high-frequency facts;
-- retained strings/payloads are bounded;
-- UI/exporters consume snapshots/immutable records, not mutable stores;
-- sink failure cannot become gameplay failure;
-- implemented versus target logging architecture is stated accurately;
-- this page and `docs/ru/observability-logging.md` are updated together.
+An observability/logging change is incomplete unless hot-path work stays bounded/non-blocking, retained data stays bounded, counters are preferred for high-frequency facts, consumers receive immutable data, sink failure cannot become gameplay failure, current versus target architecture is explicit, diagrams use Mermaid, dimensional quantities use LaTeX, and this page changes together with `docs/ru/observability-logging.md`.
