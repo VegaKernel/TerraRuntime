@@ -43,6 +43,38 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     }
 
     [Fact]
+    public async Task Server_owned_thrown_projectile_remains_authoritative_but_unsimulated_by_default()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(
+            worldTiles: tiles,
+            projectiles: projectiles);
+        ProjectileStateUpdate projectile = new(
+            VanillaProjectileIds.Shuriken,
+            Spawner: VanillaProjectileOwnership.ServerOwner,
+            PositionX: 100f,
+            PositionY: 100f,
+            VelocityX: 4f,
+            VelocityY: 0f,
+            Ai: default,
+            BannerIdToRespondTo: 0,
+            Damage: 20,
+            KnockBack: 1f,
+            OriginalDamage: 20);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 0, 0, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot unchanged));
+        Assert.Equal(spawned, unchanged);
+    }
+
+    [Fact]
     public async Task Unsupported_projectile_remains_authoritative_but_unsimulated_by_default()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));

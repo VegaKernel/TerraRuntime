@@ -7,9 +7,10 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile simulation slices that already have enough runtime/world
-/// state to execute without inventing missing gameplay behavior. The first supported path is ProjectileID 3
-/// (Shuriken, aiStyle 2): its deterministic AI, liquid movement, centered 6x6 tile collision, position update
-/// and lifetime are reproduced here. Entity damage and visual-only rotation/dust/sound remain separate systems.
+/// state to execute without inventing missing gameplay behavior. The supported player-owned aiStyle 2 family
+/// currently includes Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger: deterministic AI, liquid
+/// movement, source-backed tile collision, position update, and lifetime are reproduced here. Entity damage
+/// and visual-only rotation/dust/sound remain separate systems.
 /// </summary>
 internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepper
 {
@@ -51,8 +52,12 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
-        if (!VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
-            current.Type != VanillaProjectileIds.Shuriken ||
+
+        // TerrariaServer 1.4.5.8 aiStyle 2 can cut tiles. On a dedicated server that mutation path executes
+        // for owner == Main.myPlayer (255). TerraRuntime does not yet have a projectile world-mutation effect
+        // sink, so server-owned projectiles must remain unsupported rather than silently dropping gameplay.
+        if (!VanillaProjectileOwnership.IsPlayerOwned(current.Spawner) ||
+            !VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
             definition.AiStyle != VanillaProjectileAiStyles.Thrown)
         {
             next = default;
@@ -62,7 +67,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         float velocityX = current.VelocityX;
         float velocityY = current.VelocityY;
 
-        // TerrariaServer 1.4.5.8 AI(), aiStyle == 2. ProjectileID 3 falls through the ordinary branch.
+        // TerrariaServer 1.4.5.8 AI(), aiStyle == 2. The supported family shares this deterministic path.
         if (windPhysics)
             velocityX += windSpeedCurrent * windPhysicsStrength;
 
@@ -133,7 +138,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         if (tileImpact)
         {
             // Generic HandleMovement collision handling for aiStyle 2 advances by the clamped velocity before
-            // Kill(), then the method still reaches UpdatePosition. Kill side effects for Shuriken are visual.
+            // Kill(), then the method still reaches UpdatePosition. Kill side effects for this family are visual.
             positionX += collidedVelocityX;
             positionY += collidedVelocityY;
         }

@@ -59,6 +59,9 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId WoodenArrowFriendly = new(1);
     public static readonly ProjectileTypeId FireArrow = new(2);
     public static readonly ProjectileTypeId Shuriken = new(3);
+    public static readonly ProjectileTypeId ThrowingKnife = new(48);
+    public static readonly ProjectileTypeId PoisonedKnife = new(54);
+    public static readonly ProjectileTypeId BoneDagger = new(599);
 
     public static bool TryCreate(int rawType, out ProjectileTypeId type)
     {

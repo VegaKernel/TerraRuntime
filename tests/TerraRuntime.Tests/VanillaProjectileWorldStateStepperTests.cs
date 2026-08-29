@@ -48,6 +48,36 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.Equal(3599, next.TimeLeft);
     }
 
+    [Theory]
+    [InlineData(48)]
+    [InlineData(54)]
+    [InlineData(599)]
+    public void Player_owned_thrown_family_uses_the_source_backed_ai_style_two_path(int type)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f,
+            ai0: 19f) with
+        {
+            Type = new ProjectileTypeId(type)
+        };
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 3600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(new ProjectileTypeId(type), next.State.Type);
+        Assert.Equal(20f, next.State.Ai.Ai0, 5);
+        Assert.Equal(3.88f, next.State.VelocityX, 5);
+        Assert.Equal(0.4f, next.State.VelocityY, 5);
+        Assert.Equal(103.88f, next.State.PositionX, 5);
+        Assert.Equal(100.4f, next.State.PositionY, 5);
+        Assert.Equal(3599, next.TimeLeft);
+    }
+
     [Fact]
     public void Shuriken_water_contact_slows_position_without_reducing_velocity()
     {
@@ -124,6 +154,29 @@ public sealed class VanillaProjectileWorldStateStepperTests
 
         Assert.Equal(0.2f, next.State.VelocityX, 5);
         Assert.Equal(100.2f, next.State.PositionX, 5);
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(48)]
+    [InlineData(54)]
+    [InlineData(599)]
+    public void Server_owned_thrown_family_is_unsupported_until_projectile_world_effects_exist(int type)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot serverOwned = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f) with
+        {
+            Type = new ProjectileTypeId(type),
+            Spawner = VanillaProjectileOwnership.ServerOwner
+        };
+        ProjectileSimulationStepContext context = CreateContext(serverOwned, timeLeft: 3600);
+
+        Assert.False(stepper.TryStepState(in context, out _));
     }
 
     [Fact]

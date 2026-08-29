@@ -43,6 +43,9 @@ public sealed class GameplayContentIdTests
         Assert.Equal(1, VanillaProjectileIds.WoodenArrowFriendly.Value);
         Assert.Equal(2, VanillaProjectileIds.FireArrow.Value);
         Assert.Equal(3, VanillaProjectileIds.Shuriken.Value);
+        Assert.Equal(48, VanillaProjectileIds.ThrowingKnife.Value);
+        Assert.Equal(54, VanillaProjectileIds.PoisonedKnife.Value);
+        Assert.Equal(599, VanillaProjectileIds.BoneDagger.Value);
     }
 
     [Fact]

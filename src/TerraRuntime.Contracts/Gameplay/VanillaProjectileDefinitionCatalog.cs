@@ -40,11 +40,56 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 6,
         CollisionHeight: 6);
 
+    private static readonly VanillaProjectileDefinition ThrowingKnifeDefinition = new(
+        Width: 12,
+        Height: 12,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CollisionWidth: 12,
+        CollisionHeight: 12);
+
+    private static readonly VanillaProjectileDefinition PoisonedKnifeDefinition = new(
+        Width: 12,
+        Height: 12,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CollisionWidth: 12,
+        CollisionHeight: 12);
+
+    private static readonly VanillaProjectileDefinition BoneDaggerDefinition = new(
+        Width: 22,
+        Height: 22,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     public static bool TryGet(ProjectileTypeId type, out VanillaProjectileDefinition definition)
     {
         if (type == VanillaProjectileIds.Shuriken)
         {
             definition = ShurikenDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.ThrowingKnife)
+        {
+            definition = ThrowingKnifeDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PoisonedKnife)
+        {
+            definition = PoisonedKnifeDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.BoneDagger)
+        {
+            definition = BoneDaggerDefinition;
             return true;
         }
 
