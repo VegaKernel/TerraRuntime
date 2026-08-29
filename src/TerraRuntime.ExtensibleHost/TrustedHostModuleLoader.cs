@@ -1,12 +1,15 @@
 using System.Reflection;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
+using TerraRuntime.HostContracts.WorldGeneration;
 
 namespace TerraRuntime.ExtensibleHost;
 
 internal sealed class TrustedHostModuleLoader :
     ITerraRuntimeHostLifecycle,
     ITerraRuntimeTerminalDashboardSource,
+    ITerraRuntimeWorldGeneratorSource,
     IAsyncDisposable
 {
     private static readonly HashSet<string> AllowedTerraRuntimeReferences = new(StringComparer.Ordinal)
@@ -18,6 +21,7 @@ internal sealed class TrustedHostModuleLoader :
     private readonly string directory;
     private readonly List<LoadedHostModule> loaded = [];
     private readonly TerminalDashboardRegistry terminalDashboards = new();
+    private readonly HostWorldGeneratorRegistry worldGenerators = new();
     private bool started;
     private bool runtimeAttached;
     private bool disposed;
@@ -29,9 +33,18 @@ internal sealed class TrustedHostModuleLoader :
     }
 
     internal ITerraRuntimeTerminalDashboardRegistry TerminalDashboards => terminalDashboards;
+    internal ITerraRuntimeWorldGeneratorRegistry WorldGenerators => worldGenerators;
 
     public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards() =>
         terminalDashboards.CaptureDashboards();
+
+    public ReadOnlyMemory<WorldGeneratorId> CaptureWorldGeneratorIds() =>
+        worldGenerators.CaptureWorldGeneratorIds();
+
+    public bool TryResolveWorldGenerator(
+        WorldGeneratorId id,
+        out IWorldGenerationProvider? provider) =>
+        worldGenerators.TryResolveWorldGenerator(id, out provider);
 
     public async ValueTask<int> StartAllAsync(
         ITerraRuntimeHostEnvironment environment,
@@ -138,6 +151,7 @@ internal sealed class TrustedHostModuleLoader :
             throw;
         }
 
+        HostWorldGeneratorRegistry.Scope? generatorScope = null;
         try
         {
             ValidateRuntimeBoundary(assembly, path);
@@ -177,12 +191,16 @@ internal sealed class TrustedHostModuleLoader :
                 throw new InvalidOperationException($"A trusted host module named '{module.Name}' is already loaded.");
             }
 
-            await module.StartAsync(environment, cancellationToken).ConfigureAwait(false);
-            loaded.Add(new LoadedHostModule(path, module, loadContext));
+            generatorScope = worldGenerators.CreateScope();
+            var moduleEnvironment = new ScopedHostEnvironment(environment, generatorScope);
+            await module.StartAsync(moduleEnvironment, cancellationToken).ConfigureAwait(false);
+            loaded.Add(new LoadedHostModule(path, module, loadContext, generatorScope));
+            generatorScope = null;
             Console.WriteLine($"Trusted host module loaded: {module.Name} ({Path.GetFileName(path)}).");
         }
         catch
         {
+            generatorScope?.Dispose();
             loadContext.Unload();
             throw;
         }
@@ -226,6 +244,9 @@ internal sealed class TrustedHostModuleLoader :
             }
             finally
             {
+                // Retire every provider while its collectible AssemblyLoadContext is still alive. This prevents a
+                // stale provider instance from keeping an unloaded module rooted through the generation registry.
+                loadedModule.WorldGeneratorScope.Dispose();
                 loadedModule.LoadContext.Unload();
             }
         }
@@ -256,8 +277,32 @@ internal sealed class TrustedHostModuleLoader :
             "and explicitly admitted contract assemblies only.");
     }
 
+    private sealed class ScopedHostEnvironment : ITerraRuntimeHostEnvironment
+    {
+        private readonly ITerraRuntimeHostEnvironment source;
+
+        public ScopedHostEnvironment(
+            ITerraRuntimeHostEnvironment source,
+            ITerraRuntimeWorldGeneratorRegistry worldGenerators)
+        {
+            this.source = source;
+            WorldGenerators = worldGenerators;
+        }
+
+        public string RootDirectory => source.RootDirectory;
+        public string HostModulesDirectory => source.HostModulesDirectory;
+        public string ServerPluginsDirectory => source.ServerPluginsDirectory;
+        public string WorldsDirectory => source.WorldsDirectory;
+        public string ConfigDirectory => source.ConfigDirectory;
+        public string DataDirectory => source.DataDirectory;
+        public string LogsDirectory => source.LogsDirectory;
+        public ITerraRuntimeTerminalDashboardRegistry TerminalDashboards => source.TerminalDashboards;
+        public ITerraRuntimeWorldGeneratorRegistry WorldGenerators { get; }
+    }
+
     private sealed record LoadedHostModule(
         string Path,
         ITerraRuntimeHostModule Module,
-        HostModuleLoadContext LoadContext);
+        HostModuleLoadContext LoadContext,
+        IDisposable WorldGeneratorScope);
 }
