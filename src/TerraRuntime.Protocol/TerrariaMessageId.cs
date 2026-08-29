@@ -32,6 +32,7 @@ public enum TerrariaMessageId : byte
     SyncPlayerChest = 33,
     PlayerMana = 42,
     PlayerSpawnSelf = 49,
+    ChestName = 69,
     SyncPlayerChestIndex = 80,
     LoadNetModule = 82,
     FinishedConnectingToServer = 129,
