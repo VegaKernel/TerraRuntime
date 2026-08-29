@@ -27,7 +27,7 @@ jobs:
           unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
       - name: Install pinned ILSpy
         run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
-      - name: Scan exact aiStyle 1 defaults
+      - name: Prove BoneArrowFromMerchant type 474 contract
         shell: bash
         run: |
           set -euo pipefail
@@ -47,61 +47,103 @@ jobs:
 
           src = Path('artifacts/ai1-scan/projectile.cs').read_text(encoding='utf-8')
           ids = Path('artifacts/ai1-scan/projectile-id.cs').read_text(encoding='utf-8')
+          target = 474
 
-          def method(name):
-              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', src)
-              if not m: return ''
-              op = src.find('{', m.end())
+          def extract_method(text, name):
+              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', text)
+              if not m: raise SystemExit(f'method not found: {name}')
+              op = text.find('{', m.end())
               d = 0
-              for i in range(op, len(src)):
-                  if src[i] == '{': d += 1
-                  elif src[i] == '}':
+              for i in range(op, len(text)):
+                  if text[i] == '{': d += 1
+                  elif text[i] == '}':
                       d -= 1
-                      if d == 0: return src[m.start():i+1]
-              return ''
+                      if d == 0: return text[m.start():i+1]
+              raise SystemExit(f'unterminated method: {name}')
 
-          def block_after(text, pos):
+          def extract_block_after(text, pos):
               op = text.find('{', pos)
-              if op < 0: return ''
+              if op < 0: raise SystemExit('block open not found')
               d = 0
               for i in range(op, len(text)):
                   if text[i] == '{': d += 1
                   elif text[i] == '}':
                       d -= 1
                       if d == 0: return text[op:i+1]
-              return ''
+              raise SystemExit('unterminated block')
 
-          names = {}
-          for m in re.finditer(r'public const (?:short|int)\s+([A-Za-z0-9_]+)\s*=\s*(\d+)\s*;', ids):
-              names[int(m.group(2))] = m.group(1)
+          def exact_contexts(text, raw_type, radius=900):
+              compact = ' '.join(text.split())
+              p = re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{raw_type}(?!\d)|\bcase\s+{raw_type}\s*:')
+              out=[]
+              for m in p.finditer(compact):
+                  out.append(compact[max(0,m.start()-radius):min(len(compact),m.end()+radius)])
+              return out
 
-          defaults = method('SetDefaults')
-          methods = {n: method(n) for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams','Kill')}
-          known = {1,2,3,4,5,14,20,21,48,51,54,318,330,583,589,599,981,1006,1012,1111,1124}
-          rows=[]
-          pat = re.compile(r'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*(\d+)\s*\)')
-          seen=set()
-          for m in pat.finditer(defaults):
-              t=int(m.group(1))
-              if t in seen: continue
-              b=block_after(defaults, m.end())
-              if not re.search(r'\baiStyle\s*=\s*1\s*;', b): continue
-              seen.add(t)
-              counts={}
-              for n,s in methods.items():
-                  p=re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|\bcase\s+{t}\s*:')
-                  counts[n]=len(p.findall(s))
-              compact=' '.join(b.split())
-              rows.append((sum(counts[n] for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams')), counts['Kill'], t, names.get(t,'?'), compact, counts))
+          def extract_call_initializer(text, marker):
+              start = text.find(marker)
+              if start < 0: raise SystemExit(f'initializer marker not found: {marker}')
+              op = text.find('(', start + len(marker))
+              if op < 0: raise SystemExit('initializer open paren not found')
+              d = 0
+              in_string = False
+              escaped = False
+              for i in range(op, len(text)):
+                  ch=text[i]
+                  if escaped:
+                      escaped=False; continue
+                  if ch == '\\' and in_string:
+                      escaped=True; continue
+                  if ch == '"':
+                      in_string = not in_string; continue
+                  if in_string: continue
+                  if ch == '(': d += 1
+                  elif ch == ')':
+                      d -= 1
+                      if d == 0: return text[start:i+1]
+              raise SystemExit('unterminated initializer')
 
-          rows.sort()
-          out=[]
-          out.append('rank | type | name | nonkill_special | kill_special | defaults')
-          for rank,(nonkill,kill,t,name,b,c) in enumerate(rows,1):
-              if t in known: continue
-              out.append(f'{rank:03d} | {t} | {name} | {nonkill} {c} | {kill} | {b[:900]}')
-          Path('artifacts/ai1-scan/report.txt').write_text('\n'.join(out)+'\n', encoding='utf-8')
-          print('\n'.join(out[:80]))
+          id_match = re.search(r'public const (?:short|int)\s+BoneArrowFromMerchant\s*=\s*474\s*;', ids)
+          if not id_match: raise SystemExit('ProjectileID.BoneArrowFromMerchant != 474')
+
+          defaults = extract_method(src, 'SetDefaults')
+          dm = re.search(r'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*474\s*\)', defaults)
+          if not dm: raise SystemExit('type 474 defaults branch missing')
+          defaults_block = extract_block_after(defaults, dm.end())
+          required = ('arrow = true;', 'width = 10;', 'height = 10;', 'aiStyle = 1;', 'friendly = true;', 'penetrate = 2;', 'ranged = true;', 'timeLeft = 1200;')
+          for token in required:
+              if token not in defaults_block: raise SystemExit(f'type 474 default missing: {token}')
+          for forbidden in ('tileCollide = false;', 'ignoreWater = true;', 'extraUpdates ='):
+              if forbidden in defaults_block: raise SystemExit(f'type 474 unexpected default: {forbidden}')
+
+          report=[]
+          report.append('projectile_id=BoneArrowFromMerchant:474')
+          report.append('defaults=' + ' '.join(defaults_block.split()))
+
+          for name in ('AI_001','AI','Update','HandleMovement','GetCollisionParams'):
+              contexts=exact_contexts(extract_method(src,name), target)
+              if contexts: raise SystemExit(f'type 474 unexpectedly special in {name}: {len(contexts)}')
+              report.append(f'{name}_type474=<none>')
+
+          kill = extract_method(src, 'Kill')
+          kill_contexts = exact_contexts(kill, target, radius=1300)
+          if len(kill_contexts) != 1: raise SystemExit(f'expected one type474 Kill context, got {len(kill_contexts)}')
+          report.append('kill_context=' + kill_contexts[0])
+
+          can_cut = ' '.join(extract_method(src, 'CanCutTiles').split())
+          if exact_contexts(can_cut, target, radius=200):
+              raise SystemExit('type474 has explicit CanCutTiles branch')
+          report.append('can_cut_tiles=' + can_cut)
+
+          wind = ' '.join(extract_call_initializer(ids, 'WindPhysicsImmunity = Factory.CreateBoolSet').split())
+          # Factory.CreateBoolSet is a default-false set; only listed indices are immune.
+          if re.search(r'(?<!\d)474(?!\d)', wind):
+              raise SystemExit('type474 unexpectedly listed in WindPhysicsImmunity')
+          report.append('wind_physics_immunity=' + wind)
+
+          out='\n'.join(report)+'\n'
+          Path('artifacts/ai1-scan/report.txt').write_text(out, encoding='utf-8')
+          print(out)
           PY
           rm artifacts/ai1-scan/projectile.cs artifacts/ai1-scan/projectile-id.cs
       - uses: actions/upload-artifact@v4
