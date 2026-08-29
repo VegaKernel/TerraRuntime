@@ -22,11 +22,12 @@
     <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
     <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract Condition="'$(RuntimeIdentifier)' != ''">true</IncludeNativeLibrariesForSelfExtract>
-    <DebugType>embedded</DebugType>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
 
-    <CleanExtensibleDeploymentRoot Condition="'$(CleanExtensibleDeploymentRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../artifacts/deploy-coreclr/$(RuntimeIdentifier)'))</CleanExtensibleDeploymentRoot>
-    <CleanExtensibleExecutableName Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">$(AssemblyName).exe</CleanExtensibleExecutableName>
-    <CleanExtensibleExecutableName Condition="'$(CleanExtensibleExecutableName)' == ''">$(AssemblyName)</CleanExtensibleExecutableName>
+    <ExtensibleDeploymentExecutableName Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">$(AssemblyName).exe</ExtensibleDeploymentExecutableName>
+    <ExtensibleDeploymentExecutableName Condition="'$(ExtensibleDeploymentExecutableName)' == ''">$(AssemblyName)</ExtensibleDeploymentExecutableName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,22 +39,24 @@
     <ProjectReference Include="../TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
   </ItemGroup>
 
-  <Target Name="CreateCleanExtensibleDeployment"
+  <Target Name="PrepareExtensibleDeployment"
           AfterTargets="Publish"
           Condition="'$(RuntimeIdentifier)' != '' and '$(PublishSingleFile)' == 'true'">
     <PropertyGroup>
-      <CleanExtensibleSourceExecutable>$([System.IO.Path]::Combine('$(PublishDir)', '$(CleanExtensibleExecutableName)'))</CleanExtensibleSourceExecutable>
+      <ExtensibleDeploymentExecutable>$([System.IO.Path]::Combine('$(PublishDir)', '$(ExtensibleDeploymentExecutableName)'))</ExtensibleDeploymentExecutable>
     </PropertyGroup>
 
-    <Error Condition="!Exists('$(CleanExtensibleSourceExecutable)')"
-           Text="CoreCLR single-file publish completed without expected executable '$(CleanExtensibleSourceExecutable)'." />
+    <Error Condition="!Exists('$(ExtensibleDeploymentExecutable)')"
+           Text="CoreCLR single-file publish completed without expected executable '$(ExtensibleDeploymentExecutable)'." />
 
-    <RemoveDir Directories="$(CleanExtensibleDeploymentRoot)" />
-    <MakeDir Directories="$(CleanExtensibleDeploymentRoot);$(CleanExtensibleDeploymentRoot)/HostModules;$(CleanExtensibleDeploymentRoot)/ServerPlugins;$(CleanExtensibleDeploymentRoot)/Worlds;$(CleanExtensibleDeploymentRoot)/config;$(CleanExtensibleDeploymentRoot)/data;$(CleanExtensibleDeploymentRoot)/logs" />
-    <Copy SourceFiles="$(CleanExtensibleSourceExecutable)"
-          DestinationFolder="$(CleanExtensibleDeploymentRoot)" />
+    <ItemGroup>
+      <ExtensibleDeploymentDebugSymbols Include="$(PublishDir)**/*.pdb;$(PublishDir)**/*.dbg" />
+    </ItemGroup>
+
+    <Delete Files="@(ExtensibleDeploymentDebugSymbols)" />
+    <MakeDir Directories="$(PublishDir)runtime;$(PublishDir)HostModules;$(PublishDir)ServerPlugins;$(PublishDir)Worlds;$(PublishDir)config;$(PublishDir)data;$(PublishDir)logs" />
 
     <Message Importance="high"
-             Text="Clean extensible TerraRuntime deployment: $(CleanExtensibleDeploymentRoot)" />
+             Text="Runnable TerraRuntime CoreCLR deployment: $(PublishDir)" />
   </Target>
 </Project>
