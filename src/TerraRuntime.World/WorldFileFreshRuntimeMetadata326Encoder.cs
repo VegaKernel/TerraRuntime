@@ -61,8 +61,19 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
             using var buffer = new MemoryStream(capacity: 512);
             using (var writer = new BinaryWriter(buffer, System.Text.Encoding.UTF8, leaveOpen: true))
             {
+                VanillaWorldSeedProfile1458 seedProfile = source.Generation.VanillaSeedProfile;
+                VanillaWorldSeedFlags1458 seedFlags = seedProfile.Flags;
+
                 writer.Write((int)source.GameMode);
-                WriteBools(writer, 9, false); // special-world flags
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.DrunkWorld));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.GetGoodWorld));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.TenthAnniversaryWorld));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.DontStarveWorld));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.NotTheBeesWorld));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.RemixWorld));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.NoTrapsWorld));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.ZenithWorld));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.SkyblockWorld));
                 writer.Write(source.CreationTimeBinary);
                 writer.Write(source.LastPlayedBinary);
                 writer.Write((byte)0); // moon type
@@ -80,7 +91,7 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write(InitialTime);
                 writer.Write(true); // day time
                 writer.Write(0); // moon phase
-                writer.Write(false); // blood moon
+                writer.Write(false); // blood moon; seed modifiers that alter startup events need pass-complete support
                 writer.Write(false); // eclipse
                 writer.Write(source.Generation.Dungeon.X);
                 writer.Write(source.Generation.Dungeon.Y);
@@ -93,7 +104,7 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write(false); // spawn meteor
                 writer.Write((byte)0); // shadow orb count
                 writer.Write(0); // altar count
-                writer.Write(false); // hard mode
+                writer.Write(false); // hard mode; do not approximate Too easy without its full vanilla initialization
                 writer.Write(false); // after party of doom
                 writer.Write(0); // invasion delay
                 writer.Write(0); // invasion size
@@ -101,7 +112,7 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write(0d); // invasion X
                 writer.Write(-1d); // inactive slime-rain timer
                 writer.Write((byte)0); // sundial cooldown
-                writer.Write(false); // raining
+                writer.Write(false); // raining; Bring a towel needs verified rain startup scalars as one unit
                 writer.Write(0); // rain time
                 writer.Write(0f); // max rain
                 writer.Write(-1); // cobalt/palladium tier not selected
@@ -161,18 +172,21 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 WriteBools(writer, 7, false); // remaining town slimes
                 writer.Write(false); // fast-forward dusk
                 writer.Write((byte)0); // moondial cooldown
-                writer.Write(false); // Halloween forever
-                writer.Write(false); // Xmas forever
-                writer.Write(false); // vampire seed
-                writer.Write(false); // infected seed
+                writer.Write(seedProfile.HasModifier(VanillaSecretSeedModifier1458.HocusPocus)); // Halloween forever
+                writer.Write(seedProfile.HasModifier(VanillaSecretSeedModifier1458.JingleAllTheWay)); // Xmas forever
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.VampireSeed));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.InfectedSeed));
                 writer.Write(0); // meteor shower count
                 writer.Write(0); // coin rain
-                writer.Write(false); // team-based spawns seed
-                writer.Write((byte)0); // extra spawn points
-                writer.Write(false); // dual dungeons seed
-                writer.Write(false); // more lightning seed
-                writer.Write(false); // no lightning seed
-                writer.Write(string.Empty); // valid empty WorldManifest; custom passes are not vanilla WorldGen passes
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.TeamBasedSpawnsSeed));
+                writer.Write((byte)0); // extra spawn points; modifier-specific coordinates remain a later source-backed pass
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.DualDungeonsSeed));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.MoreLightningSeed));
+                writer.Write(HasFlag(seedFlags, VanillaWorldSeedFlags1458.NoLightningSeed));
+                // WorldManifest is a separate serialized contract. Do not fabricate its 1.4.5.8 layout merely to
+                // advertise modifier coverage: modifiers without dedicated SaveWorldFlags remain parsed generation
+                // policy until their source-backed pass and manifest representation are implemented together.
+                writer.Write(string.Empty);
                 writer.Flush();
             }
 
@@ -209,6 +223,9 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
             metadata.Layers.WorldSurface <= short.MaxValue &&
             metadata.Layers.RockLayer <= short.MaxValue;
     }
+
+    private static bool HasFlag(VanillaWorldSeedFlags1458 flags, VanillaWorldSeedFlags1458 value) =>
+        (flags & value) == value;
 
     private static void WriteBools(BinaryWriter writer, int count, bool value)
     {
