@@ -1,5 +1,6 @@
 name: Apply Save Timing Surface
 
+# Trigger after the workflow exists on main.
 on:
   push:
     branches: [main]
