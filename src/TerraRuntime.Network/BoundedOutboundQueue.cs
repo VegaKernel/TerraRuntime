@@ -27,6 +27,10 @@ public sealed class BoundedOutboundQueue
 
     public bool IsCompleted => Volatile.Read(ref _completed) != 0;
 
+    public int MaxFrames => _options.MaxFrames;
+
+    public long MaxQueuedBytes => _options.MaxQueuedBytes;
+
     public int QueuedFrames => Volatile.Read(ref _queuedFrames);
 
     public long QueuedBytes => Interlocked.Read(ref _queuedBytes);
