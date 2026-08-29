@@ -136,10 +136,74 @@ public sealed class ServerRuntimeClientTileIngressTests
     }
 
     [Fact]
-    public void Known_kill_tile_action_is_validated_but_remains_unsupported()
+    public void Kill_tile_no_item_commits_isolated_canonical_dirt_without_inventory_authority()
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 907);
+        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
+        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
+        Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
+        var request = new TerrariaTileManipulationState(
+            (byte)TerrariaTileManipulationAction.KillTileNoItem,
+            TileX: 10,
+            TileY: 10,
+            Data: 0,
+            Style: 0);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
+
+        Assert.Equal(1, fixture.State.ClientTileManipulationRequests);
+        Assert.Equal(1, fixture.State.ValidatedClientTileManipulations);
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(default, fixture.Tiles.Get(10, 10));
+        Assert.Equal(4, fixture.Tiles.GetSectionVersion(section));
+        Assert.Equal(1, fixture.Tiles.DirtySections.DirtyCount);
+    }
+
+    [Fact]
+    public void Kill_tile_no_item_rejects_dirt_with_active_neighbor_without_commit()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 908);
+        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 11, 10));
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
+        long beforeVersion = fixture.Tiles.GetSectionVersion(section);
+        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
+        Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
+        WorldTile before = fixture.Tiles.Get(10, 10);
+        var request = new TerrariaTileManipulationState(
+            (byte)TerrariaTileManipulationAction.KillTileNoItem,
+            TileX: 10,
+            TileY: 10,
+            Data: 0,
+            Style: 0);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
+
+        Assert.Equal(1, fixture.State.ValidatedClientTileManipulations);
+        Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
+        Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
+    }
+
+    [Fact]
+    public void Normal_kill_tile_action_remains_unsupported_until_drop_authority_exists()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 909);
+        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
+        long beforeVersion = fixture.Tiles.GetSectionVersion(section);
+        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
+        Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
+        WorldTile before = fixture.Tiles.Get(10, 10);
         var request = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.KillTile,
             TileX: 10,
@@ -154,6 +218,8 @@ public sealed class ServerRuntimeClientTileIngressTests
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
         Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
         Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
     }
 
@@ -161,7 +227,7 @@ public sealed class ServerRuntimeClientTileIngressTests
     public void Unknown_action_is_preserved_but_not_treated_as_authorized_gameplay()
     {
         using var fixture = new Fixture();
-        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 908);
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 910);
         var request = new TerrariaTileManipulationState(Action: 5, TileX: 10, TileY: 10, Data: 0, Style: 0);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
