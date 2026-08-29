@@ -41,21 +41,14 @@ def extract_method(source: str, signature: str) -> str:
 
 
 def first_signature(source: str, name: str) -> str:
-    match = re.search(
-        rf"(?:public|private|internal) static [^{{;]]{{0,600}}\b{re.escape(name)}\([^)]*\)",
-        source,
-        re.DOTALL,
+    pattern = re.compile(
+        rf"^[ \t]*(?:public|private|internal) static [^\r\n{{;]*\b{re.escape(name)}\([^\r\n)]*\)",
+        re.MULTILINE,
     )
-    if match is None:
-        # ILSpy output can contain generic/attribute noise which is easier to tolerate with a looser fallback.
-        match = re.search(
-            rf"(?:public|private|internal) static .*?\b{re.escape(name)}\([^)]*\)",
-            source,
-            re.DOTALL,
-        )
+    match = pattern.search(source)
     if match is None:
         raise SystemExit(f"Could not locate declaration-like WorldGen.{name} signature.")
-    return compact(match.group(0))
+    return match.group(0).strip()
 
 
 def main() -> int:
@@ -67,7 +60,6 @@ def main() -> int:
     args = parser.parse_args()
 
     raw = Path(args.world_gen).read_text(encoding="utf-8")
-    compact_source = compact(raw)
     tile_id = compact(Path(args.tile_id).read_text(encoding="utf-8"))
     dirt = re.search(r"\bDirt\s*=\s*(\d+)\s*;", tile_id)
     if dirt is None or dirt.group(1) != "0":
