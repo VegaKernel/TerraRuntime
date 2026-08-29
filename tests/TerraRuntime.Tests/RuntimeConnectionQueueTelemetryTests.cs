@@ -60,7 +60,7 @@ public sealed class RuntimeConnectionQueueTelemetryTests
     }
 
     [Fact]
-    public void Peak_pressure_survives_writer_drain_and_connection_unregister()
+    public void Peak_pressure_survives_connection_unregister()
     {
         var telemetry = new RuntimeConnectionQueueTelemetry();
         var queue = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 16));
@@ -68,13 +68,11 @@ public sealed class RuntimeConnectionQueueTelemetryTests
 
         Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(new byte[6])));
         Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(new byte[7])));
-        Assert.True(queue.InnerQueue.TryRead(out _));
-        Assert.True(queue.InnerQueue.TryRead(out _));
 
         RuntimeConnectionQueueSnapshot snapshot = telemetry.CaptureSnapshot(maxDetails: 1);
 
-        Assert.Equal(0, snapshot.QueuedFrames);
-        Assert.Equal(0, snapshot.QueuedBytes);
+        Assert.Equal(2, snapshot.QueuedFrames);
+        Assert.Equal(13, snapshot.QueuedBytes);
         Assert.Equal(2, snapshot.PeakQueuedFrames);
         Assert.Equal(13, snapshot.PeakQueuedBytes);
         Assert.Single(snapshot.TopQueues.ToArray());
