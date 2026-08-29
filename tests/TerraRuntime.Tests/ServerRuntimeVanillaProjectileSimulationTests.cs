@@ -41,10 +41,11 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     }
 
     [Theory]
-    [InlineData(51, 104f, 1f)]
-    [InlineData(1124, 108f, 2f)]
+    [InlineData(51, 104f, 1f, 3599)]
+    [InlineData(474, 104f, 1f, 1199)]
+    [InlineData(1124, 108f, 2f, 598)]
     public async Task Authoritative_tick_runs_source_backed_simple_ai_style_one_family_by_default(
-        int type, float expectedPositionX, float expectedAi0)
+        int type, float expectedPositionX, float expectedAi0, int expectedTimeLeft)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var projectiles = new RuntimeProjectileStore(capacity: 4);
@@ -63,6 +64,8 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(expectedPositionX, updated.PositionX, 5);
         Assert.Equal(100f, updated.PositionY, 5);
         Assert.Equal(expectedAi0, updated.Ai.Ai0, 5);
+        Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
+        Assert.Equal(expectedTimeLeft, lifecycle.TimeLeft);
     }
 
     [Fact]
@@ -158,6 +161,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(54)]
     [InlineData(318)]
     [InlineData(330)]
+    [InlineData(474)]
     [InlineData(583)]
     [InlineData(589)]
     [InlineData(599)]
@@ -333,6 +337,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(4)]
+    [InlineData(474)]
     public async Task Server_owned_arrow_simulates_when_tile_cut_effect_is_empty(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));

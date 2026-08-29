@@ -73,6 +73,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
     public static readonly ProjectileTypeId RottenEgg = new(318);
     public static readonly ProjectileTypeId StarAnise = new(330);
+    public static readonly ProjectileTypeId BoneArrowFromMerchant = new(474);
     public static readonly ProjectileTypeId NurseSyringeHurt = new(583);
     public static readonly ProjectileTypeId SantaBombs = new(589);
     public static readonly ProjectileTypeId BoneDagger = new(599);

@@ -174,6 +174,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 22,
         CollisionHeight: 22);
 
+    private static readonly VanillaProjectileDefinition BoneArrowFromMerchantDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     private static readonly VanillaProjectileDefinition NurseSyringeHurtDefinition = new(
         Width: 10,
         Height: 10,
@@ -317,6 +327,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.StarAnise)
         {
             definition = StarAniseDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.BoneArrowFromMerchant)
+        {
+            definition = BoneArrowFromMerchantDefinition;
             return true;
         }
 

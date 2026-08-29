@@ -87,6 +87,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
 
     [Theory]
     [InlineData(51, 3600)]
+    [InlineData(474, 1200)]
     [InlineData(1124, 600)]
     public void Simple_ai_style_one_family_uses_source_backed_world_trajectory(int type, int timeLeft)
     {
@@ -111,6 +112,58 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.Equal(104f, next.State.PositionX, 5);
         Assert.Equal(100f, next.State.PositionY, 5);
         Assert.Equal(timeLeft - 1, next.TimeLeft);
+    }
+
+    [Fact]
+    public void Bone_arrow_from_merchant_water_contact_uses_generic_half_speed_liquid_motion()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f) with
+        {
+            Type = VanillaProjectileIds.BoneArrowFromMerchant
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.BoneArrowFromMerchant, next.State.Type);
+        Assert.Equal(102f, next.State.PositionX, 5);
+        Assert.Equal(101f, next.State.PositionY, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(2f, next.State.VelocityY, 5);
+        Assert.Equal(1199, next.TimeLeft);
+        Assert.True(next.Liquid.GetValueOrDefault().Wet);
+    }
+
+    [Fact]
+    public void Bone_arrow_from_merchant_tile_impact_uses_generic_collision_kill_path()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.BoneArrowFromMerchant
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(2f, next.State.VelocityX, 5);
+        Assert.Equal(0f, next.State.VelocityY, 5);
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(160f, next.State.PositionY, 5);
+        Assert.Equal(0, next.TimeLeft);
     }
 
     [Fact]
