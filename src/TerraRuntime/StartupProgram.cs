@@ -1,5 +1,6 @@
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
+using TerraRuntime.HostContracts.WorldGeneration;
 
 namespace TerraRuntime;
 
@@ -15,7 +16,8 @@ public static class StartupProgram
     public static int Run(
         string[] args,
         ITerraRuntimeHostLifecycle? hostLifecycle = null,
-        ITerraRuntimeTerminalDashboardSource? terminalDashboards = null)
+        ITerraRuntimeTerminalDashboardSource? terminalDashboards = null,
+        ITerraRuntimeWorldGeneratorSource? worldGenerators = null)
     {
         ArgumentNullException.ThrowIfNull(args);
 
@@ -27,6 +29,12 @@ public static class StartupProgram
                 string.Equals(arg, "-h", StringComparison.OrdinalIgnoreCase)))
         {
             PrintUsage();
+            return 0;
+        }
+
+        if (args.Contains("--list-world-generators", StringComparer.OrdinalIgnoreCase))
+        {
+            PrintWorldGenerators(worldGenerators);
             return 0;
         }
 
@@ -80,6 +88,20 @@ public static class StartupProgram
         }
     }
 
+    private static void PrintWorldGenerators(ITerraRuntimeWorldGeneratorSource? source)
+    {
+        var ids = StartupWorldGeneratorCatalog.Capture(source);
+        if (ids.Length == 0)
+        {
+            Console.WriteLine("No custom world generators are registered.");
+            return;
+        }
+
+        Console.WriteLine("Registered custom world generators:");
+        foreach (var id in ids)
+            Console.WriteLine($"  {id.Value}");
+    }
+
     private static bool ContainsStandaloneMode(IEnumerable<string> args)
     {
         foreach (string arg in args)
@@ -119,6 +141,10 @@ public static class StartupProgram
         Console.WriteLine();
         Console.WriteLine("Server startup:");
         Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--no-tui]");
+        Console.WriteLine();
+        Console.WriteLine("World generators:");
+        Console.WriteLine("  TerraRuntime.Server --list-world-generators");
+        Console.WriteLine("    Lists custom generators registered by trusted host modules.");
         Console.WriteLine();
         Console.WriteLine("Terminal UI is enabled by default. Use --no-tui to disable it.");
         Console.WriteLine("Smoke modes: --loop-smoke, --protocol-smoke, --network-smoke, --world-smoke, --tui-smoke.");
