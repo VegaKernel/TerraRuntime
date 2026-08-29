@@ -42,6 +42,8 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
 
     [Theory]
     [InlineData(51, 104f, 1f, 3599)]
+    [InlineData(178, 104f, 1f, 1)]
+    [InlineData(289, 104f, 1f, 1)]
     [InlineData(474, 104f, 1f, 1199)]
     [InlineData(1099, 104f, 1f, 599)]
     [InlineData(1124, 108f, 2f, 598)]
@@ -67,6 +69,32 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(expectedAi0, updated.Ai.Ai0, 5);
         Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
         Assert.Equal(expectedTimeLeft, lifecycle.TimeLeft);
+    }
+
+    [Theory]
+    [InlineData(178)]
+    [InlineData(289)]
+    public async Task Authoritative_tick_expires_confetti_projectile_after_second_world_tick(int type)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
+        ProjectileStateUpdate projectile = CreateProjectile(type, spawner: 3);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot first));
+        Assert.Equal(new ProjectileRevision(2), first.Revision);
+        Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState firstLifecycle));
+        Assert.Equal(1, firstLifecycle.TimeLeft);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.False(state.TryCaptureProjectileSnapshot(spawned.Handle, out _));
     }
 
     [Fact]
@@ -160,6 +188,8 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(48)]
     [InlineData(51)]
     [InlineData(54)]
+    [InlineData(178)]
+    [InlineData(289)]
     [InlineData(318)]
     [InlineData(330)]
     [InlineData(474)]
@@ -340,6 +370,8 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(2)]
     [InlineData(4)]
     [InlineData(51)]
+    [InlineData(178)]
+    [InlineData(289)]
     [InlineData(474)]
     [InlineData(1099)]
     public async Task Server_owned_single_subupdate_ai_style_one_simulates_when_tile_cut_effect_is_empty(int type)

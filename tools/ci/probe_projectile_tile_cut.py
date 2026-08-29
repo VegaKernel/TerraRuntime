@@ -271,6 +271,8 @@ def main() -> int:
     bullet_defaults = around_optional(set_defaults, "type == 14", radius=1800)
     green_laser_defaults = around_optional(set_defaults, "type == 20", radius=1800)
     bone_defaults = around_optional(set_defaults, "type == 21", radius=1800)
+    confetti_gun_defaults = compact(extract_type_if_block(set_defaults, 178))
+    confetti_melee_defaults = compact(extract_type_if_block(set_defaults, 289))
     bone_arrow_defaults = compact(extract_type_if_block(set_defaults, 474))
     sound_gun_defaults = compact(extract_type_if_block(set_defaults, 1099))
     seed_defaults = around_optional(set_defaults, "type == 51", radius=1400)
@@ -296,6 +298,8 @@ def main() -> int:
 
     expected_ids = {
         "Seed": 51,
+        "ConfettiGun": 178,
+        "ConfettiMelee": 289,
         "BoneArrowFromMerchant": 474,
         "SoundGun": 1099,
         "BoneShard": 1124,
@@ -375,7 +379,48 @@ def main() -> int:
         if count_type_comparisons(source_text, 1099) != 0:
             raise SystemExit(f"type 1099 unexpectedly special in {source_name}")
 
+    for raw_type, name, defaults in (
+        (178, "ConfettiGun", confetti_gun_defaults),
+        (289, "ConfettiMelee", confetti_melee_defaults),
+    ):
+        for token in (
+            "width = 10;",
+            "height = 10;",
+            "aiStyle = 1;",
+            "alpha = 255;",
+            "penetrate = -1;",
+            "timeLeft = 2;",
+        ):
+            if token not in defaults:
+                raise SystemExit(f"{name} default missing: {token}")
+        for forbidden in ("tileCollide = false;", "ignoreWater = true;", "extraUpdates ="):
+            if forbidden in defaults:
+                raise SystemExit(f"{name} unexpected default: {forbidden}")
+
+        for source_name, source_text in (
+            ("AI_001", arrow_ai),
+            ("AI", projectile_ai),
+            ("Update", projectile_update),
+            ("HandleMovement", handle_movement),
+            ("GetCollisionParams", collision_params),
+            ("CanCutTiles", can_cut_tiles),
+        ):
+            if count_type_comparisons(source_text, raw_type) != 0:
+                raise SystemExit(f"{name} unexpectedly special in {source_name}")
+
+        if count_type_comparisons(projectile_kill, raw_type) != 1:
+            raise SystemExit(f"{name} Kill branch count changed")
+        kill_block = compact(extract_type_if_block(projectile_kill, raw_type))
+        for token in ("Dust.NewDust", "Gore.NewGore"):
+            if token not in kill_block:
+                raise SystemExit(f"{name} visual Kill token missing: {token}")
+        for token in ("NewProjectile(", "NewItem(", "KillTile(", "RequestNewItem("):
+            if token in kill_block:
+                raise SystemExit(f"{name} Kill gained authoritative side effect: {token}")
+
     print("projectile_bone_defaults=" + bone_defaults)
+    print("projectile_confetti_gun_defaults=" + confetti_gun_defaults)
+    print("projectile_confetti_melee_defaults=" + confetti_melee_defaults)
     print("projectile_bone_arrow_from_merchant_defaults=" + bone_arrow_defaults)
     print("projectile_bone_arrow_from_merchant_kill=" + bone_arrow_kill)
     print("projectile_sound_gun_defaults=" + sound_gun_defaults)

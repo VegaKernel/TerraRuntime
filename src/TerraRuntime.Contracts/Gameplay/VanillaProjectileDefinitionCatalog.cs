@@ -154,6 +154,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 12,
         CollisionHeight: 12);
 
+    private static readonly VanillaProjectileDefinition ConfettiDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     private static readonly VanillaProjectileDefinition RottenEggDefinition = new(
         Width: 12,
         Height: 14,
@@ -325,6 +335,13 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.PoisonedKnife)
         {
             definition = PoisonedKnifeDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.ConfettiGun ||
+            type == VanillaProjectileIds.ConfettiMelee)
+        {
+            definition = ConfettiDefinition;
             return true;
         }
 
