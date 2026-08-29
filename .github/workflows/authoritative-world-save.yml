@@ -1,0 +1,51 @@
+name: Authoritative World Save
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/RuntimeWorldTileChestSaveService.cs'
+      - 'src/TerraRuntime/RuntimeWorldTileChestSaveSnapshotSource.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldSnapshotPreservedSections.cs'
+      - 'src/TerraRuntime.World/WorldFilePreservedSections.cs'
+      - 'src/TerraRuntime.World/WorldFileTileChestRewriter.cs'
+      - 'src/TerraRuntime.World/WorldFileTileEncoder.cs'
+      - 'src/TerraRuntime.World/WorldFileChestEncoder.cs'
+      - 'src/TerraRuntime.Core/WorldSaveCoordinator.cs'
+      - 'src/TerraRuntime.Core/AtomicSaveFileWriter.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeWorldSnapshotPreservedSectionsTests.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeWorldTileChestSaveServiceTests.cs'
+      - '.github/workflows/authoritative-world-save.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-authoritative-world-save-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  save-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Prove embedded cache save template
+        run: >-
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          -c Release
+          --filter FullyQualifiedName~RuntimeWorldSnapshotPreservedSectionsTests
+
+      - name: Prove authoritative save service
+        run: >-
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          -c Release
+          --no-restore
+          --filter FullyQualifiedName~RuntimeWorldTileChestSaveServiceTests
