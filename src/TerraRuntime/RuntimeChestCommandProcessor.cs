@@ -5,9 +5,9 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Authoritative-thread processor for protocol-326 world-chest commands. Socket-owned sinks only decode and enqueue;
-/// this processor owns the actual open/item/rename/close decision and projects committed state through the chest
-/// replication registry. Phase-7 inventory conservation remains a separate validation layer so gameplay parity is
-/// not blocked on anti-cheat policy that packet 5 itself does not yet enforce.
+/// this processor owns the actual open/item/rename/close/name-lookup decision and projects committed state through
+/// the chest replication registry. Phase-7 inventory conservation remains a separate validation layer so gameplay
+/// parity is not blocked on anti-cheat policy that packet 5 itself does not yet enforce.
 /// </summary>
 internal sealed class RuntimeChestCommandProcessor
 {
@@ -36,6 +36,10 @@ internal sealed class RuntimeChestCommandProcessor
 
     public long RejectedActiveStates { get; private set; }
 
+    public long AppliedNameLookups { get; private set; }
+
+    public long RejectedNameLookups { get; private set; }
+
     /// <summary>
     /// Returns true when the command belongs exclusively to the chest subsystem. Player disconnects are observed for
     /// chest cleanup and deliberately return false so the normal player runtime still commits the disconnect.
@@ -56,6 +60,10 @@ internal sealed class RuntimeChestCommandProcessor
 
             case ClientActiveChestRuntimeCommand active:
                 ApplyActiveState(active);
+                return true;
+
+            case ClientChestNameLookupRuntimeCommand lookup:
+                ApplyNameLookup(lookup);
                 return true;
 
             case PlayerDisconnectRuntimeCommand disconnect:
@@ -119,11 +127,24 @@ internal sealed class RuntimeChestCommandProcessor
         }
 
         if (renamedChest is not null)
-            replication.PublishRenamed(renamedChest);
+            replication.PublishRenamed(command.Connection, renamedChest);
         if (closedWorldChest)
             replication.PublishClosed(command.Connection);
 
         AppliedActiveStates++;
+    }
+
+    private void ApplyNameLookup(ClientChestNameLookupRuntimeCommand command)
+    {
+        TerrariaChestNameLookupRequest request = command.Request;
+        if (!store.TryResolveNameLookup(in request, out WorldChest chest) ||
+            !replication.TrySendName(command.Connection, chest))
+        {
+            RejectedNameLookups++;
+            return;
+        }
+
+        AppliedNameLookups++;
     }
 
     private void ApplyDisconnect(PlayerDisconnectRuntimeCommand command)
