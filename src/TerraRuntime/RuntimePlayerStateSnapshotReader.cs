@@ -16,6 +16,8 @@ internal sealed class RuntimePlayerStateSnapshotReader : IPlayerStateSnapshotRea
         _ingress = ingress;
     }
 
+    internal IGameCommandIngress<RuntimeCommand> CommandIngress => _ingress;
+
     public async ValueTask<PlayerStateSnapshot?> CaptureAsync(
         PlayerHandle player,
         CancellationToken cancellationToken = default)

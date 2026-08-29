@@ -1,0 +1,46 @@
+name: Apply G6 Actor Host v6
+
+on:
+  push:
+    branches:
+      - gameplay/g6-actor-host-api-v6
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: gameplay/g6-actor-host-api-v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Apply and validate actor production wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin gameplay/g6-actor-host-api-v6
+          git reset --hard origin/gameplay/g6-actor-host-api-v6
+
+          python3 .github/scripts/apply_g6_actor_host_v5.py
+          python3 .github/scripts/apply_g6_server_player_candidates.py
+          git diff --check
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
+
+          git config user.name OpenAI
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/scripts/apply_g6_actor_host_v5.py \
+                 .github/scripts/apply_g6_server_player_candidates.py \
+                 .github/workflows/g6-actor-host-v6-apply.yml
+          git add src/TerraRuntime/ServerRuntimeState.cs \
+                  src/TerraRuntime/TerrariaServerHost.cs \
+                  src/TerraRuntime.Core/RuntimeServerPlayerStateStore.cs
+          git commit -m 'gameplay: wire actor control into production runtime'
+          git push origin HEAD:gameplay/g6-actor-host-api-v6

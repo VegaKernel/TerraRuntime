@@ -93,6 +93,29 @@ public sealed class RuntimeServerPlayerStateStore
     }
 
     /// <summary>
+    /// Copies live server-owned player snapshots in ascending wire-slot order without allocating. Stale state whose
+    /// identity lease has already been released is deliberately skipped even if its storage slot has not been cleared.
+    /// </summary>
+    public int CopySnapshots(Span<PlayerStateSnapshot> destination)
+    {
+        int written = 0;
+        for (int slot = 0; slot < states.Length && written < destination.Length; slot++)
+        {
+            ServerPlayerRuntimeState? state = states[slot];
+            if (state is null ||
+                !identities.TryGet(state.Player, out ServerPlayerSlotBinding binding) ||
+                binding.Player != state.Player)
+            {
+                continue;
+            }
+
+            destination[written++] = state.CaptureSnapshot();
+        }
+
+        return written;
+    }
+
+    /// <summary>
     /// Commits one server-owned kinematic update. This is deliberately not a physics implementation: G6-D will
     /// compute validated gravity/collision results and call this single-writer commit surface.
     /// </summary>
