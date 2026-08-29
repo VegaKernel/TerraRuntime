@@ -57,8 +57,10 @@ public sealed class BuiltInWorldGeneratorSourceTests
             "Vanilla",
             Seed: 8675309,
             WidthTiles: 192,
-            HeightTiles: 128,
-            SeedText: "8675309");
+            HeightTiles: 128)
+        {
+            SeedText = "8675309"
+        };
         var pipeline = new RuntimeWorldCreationPipeline(source);
 
         RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(
@@ -85,8 +87,10 @@ public sealed class BuiltInWorldGeneratorSourceTests
             "Secret",
             Seed: 123,
             WidthTiles: 160,
-            HeightTiles: 112,
-            SeedText: "get fixed boi|planetoids|bring a towel");
+            HeightTiles: 112)
+        {
+            SeedText = "get fixed boi|planetoids|bring a towel"
+        };
         var pipeline = new RuntimeWorldCreationPipeline(BuiltInWorldGeneratorSource.Instance);
 
         RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(
