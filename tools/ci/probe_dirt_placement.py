@@ -50,9 +50,14 @@ def extract_braced_method(source: str, signature: str) -> str:
     raise SystemExit("WorldGen.PlaceTile method body did not terminate.")
 
 
+def require(source: str, needle: str, description: str) -> None:
+    if needle not in source:
+        raise SystemExit(f"Pinned Terraria 1.4.5.8 PlaceTile contract changed: {description}.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Inspect the pinned Terraria 1.4.5.8 WorldGen dirt PlaceTile path."
+        description="Verify the pinned Terraria 1.4.5.8 generic Dirt PlaceTile path."
     )
     parser.add_argument("--world-gen", required=True)
     parser.add_argument("--tile-id", required=True)
@@ -68,12 +73,40 @@ def main() -> int:
         raise SystemExit(f"Expected TileID.Dirt=0, got {dirt.group(1)}.")
 
     method = compact(extract_braced_method(world_gen_raw, SIGNATURE))
-    if "Main.tile[i, j]" not in method:
-        raise SystemExit("WorldGen.PlaceTile no longer references the target tile directly.")
+    require(method, "int num = Type;", "PlaceTile no longer normalizes Type through num")
+    require(method, "if (num >= TileID.Count) { return false; }", "tile-id range guard changed")
+    require(
+        method,
+        "if (i >= 0 && j >= 0 && i < Main.maxTilesX && j < Main.maxTilesY)",
+        "world bounds guard changed",
+    )
+    require(
+        method,
+        "if (forced || Collision.EmptyTile(i, j) || !Main.tileSolid[num]",
+        "generic placement admission gate changed",
+    )
+    require(
+        method,
+        "default: tile.active(active: true); tile.type = (ushort)num;",
+        "generic one-tile placement mutation changed",
+    )
+    require(
+        method,
+        "if (tile.active()) { if (TileID.Sets.TruncatesWalls[tile.type])",
+        "successful-placement finalization changed",
+    )
+    require(method, "SquareTileFrame(i, j); result = true;", "successful placement no longer frames the tile")
+
+    # Dirt (type 0) is not handled by a dedicated num==0 branch in this method. It therefore reaches the
+    # generic single-tile default path when the common admission gate succeeds. References to tile.type == 0
+    # are conversions for other tile types and are intentionally not treated as Dirt-specific branches.
+    if "num == 0" in method or "case 0:" in method:
+        raise SystemExit("Dirt gained a dedicated PlaceTile branch; revisit the TerraRuntime Dirt subset.")
 
     print("tile_id_dirt=0")
     print(f"worldgen_place_tile_signature={SIGNATURE}")
-    print(f"worldgen_place_tile_context={method[:30000]}")
+    print("worldgen_dirt_path=generic_single_tile_default")
+    print("worldgen_place_tile_finalization=SquareTileFrame+result_true")
     return 0
 
 
