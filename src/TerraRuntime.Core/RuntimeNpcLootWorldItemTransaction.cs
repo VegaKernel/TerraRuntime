@@ -46,8 +46,8 @@ public readonly record struct NpcLootWorldItemTransactionResult(
 
 /// <summary>
 /// Coordinates source-backed NPC-specific loot with the server-owned world-item store. Capacity and materializer
-/// support are proven before loot RNG is consumed. The transaction stages validated unpublished world-item
-/// reservations before despawning the exact NPC generation, then commits those exact reservations.
+/// support are proven before loot RNG is consumed. Successful rules are materialized immediately, before the next
+/// rule is rolled, because TerrariaServer 1.4.5.8 proves DropAttemptInfo.rng and Item.NewItem both consume Main.rand.
 /// </summary>
 public sealed class RuntimeNpcLootWorldItemTransaction
 {
@@ -105,49 +105,50 @@ public sealed class RuntimeNpcLootWorldItemTransaction
             return false;
         }
 
-        Span<NpcLootDrop> drops = stackalloc NpcLootDrop[rules.Length];
-        if (!VanillaNpcLootEvaluator.TryEvaluateNpcSpecificRules(
-                npcType,
-                in lootContext,
-                rolls,
-                drops,
-                out int dropCount))
-        {
-            ReleaseReservations(capacityReservations);
-            return false;
-        }
-
         var origin = new NpcLootWorldItemOrigin(
             CenterX: (int)npc.PositionX + npcDefinition.Width / 2,
             CenterY: (int)npc.PositionY + npcDefinition.Height / 2);
 
-        Span<WorldItemDropStateUpdate> materialized = stackalloc WorldItemDropStateUpdate[rules.Length];
-        for (int index = 0; index < dropCount; index++)
-        {
-            if (materializer.TryMaterialize(in origin, in drops[index], rolls, out materialized[index]))
-                continue;
-
-            ReleaseReservations(capacityReservations);
-            throw new InvalidOperationException(
-                $"NPC loot materializer advertised support for item {drops[index].ItemType} but failed to materialize it.");
-        }
-
-        // Convert the capacity hold into validated staged drops before the NPC generation is removed. Releasing one
-        // placeholder immediately before TryReserveDrop is safe under the stores' authoritative single-writer contract.
         Span<WorldItemDropReservation> stagedReservations = stackalloc WorldItemDropReservation[rules.Length];
         int stagedCount = 0;
-        for (int index = 0; index < dropCount; index++)
+
+        for (int ruleIndex = 0; ruleIndex < rules.Length; ruleIndex++)
         {
-            if (!_worldItemStore.TryReleaseDropReservation(in capacityReservations[index]))
+            if (!VanillaNpcLootEvaluator.TryEvaluateRule(
+                    in rules[ruleIndex],
+                    in lootContext,
+                    rolls,
+                    out bool dropped,
+                    out NpcLootDrop drop))
             {
-                ReleaseReservations(capacityReservations[(index + 1)..]);
+                ReleaseReservations(capacityReservations);
+                ReleaseReservations(stagedReservations[..stagedCount]);
+                return false;
+            }
+
+            if (!dropped)
+                continue;
+
+            if (!materializer.TryMaterialize(in origin, in drop, rolls, out WorldItemDropStateUpdate materialized))
+            {
+                ReleaseReservations(capacityReservations);
+                ReleaseReservations(stagedReservations[..stagedCount]);
+                throw new InvalidOperationException(
+                    $"NPC loot materializer advertised support for item {drop.ItemType} but failed to materialize it.");
+            }
+
+            int capacityIndex = stagedCount;
+            if (!_worldItemStore.TryReleaseDropReservation(in capacityReservations[capacityIndex]))
+            {
+                ReleaseReservations(capacityReservations[(capacityIndex + 1)..]);
                 ReleaseReservations(stagedReservations[..stagedCount]);
                 throw new InvalidOperationException("Failed to release an exact NPC-loot capacity reservation.");
             }
 
-            if (!_worldItemStore.TryReserveDrop(in materialized[index], out stagedReservations[index]))
+            capacityReservations[capacityIndex] = default;
+            if (!_worldItemStore.TryReserveDrop(in materialized, out stagedReservations[stagedCount]))
             {
-                ReleaseReservations(capacityReservations[(index + 1)..]);
+                ReleaseReservations(capacityReservations[(capacityIndex + 1)..]);
                 ReleaseReservations(stagedReservations[..stagedCount]);
                 throw new InvalidOperationException(
                     "A preflighted NPC-loot world-item drop became invalid or lost reserved capacity on the single writer.");
@@ -156,7 +157,7 @@ public sealed class RuntimeNpcLootWorldItemTransaction
             stagedCount++;
         }
 
-        ReleaseReservations(capacityReservations[dropCount..]);
+        ReleaseReservations(capacityReservations[stagedCount..]);
 
         if (!_npcStore.TryDespawn(npc.Handle))
         {

@@ -15,6 +15,7 @@ public sealed class VanillaItemDefinitionCatalogTests
         Assert.Equal(VanillaItemIds.DirtBlock, definition.Type);
         Assert.True(definition.Placement.HasValue);
         Assert.False(definition.PickTool.HasValue);
+        Assert.False(definition.WorldDrop.HasValue);
 
         VanillaItemPlacementDefinition placement = definition.Placement.Value;
         Assert.Equal(VanillaTileIds.Dirt, placement.TileType);
@@ -31,10 +32,32 @@ public sealed class VanillaItemDefinitionCatalogTests
         Assert.Equal(VanillaItemIds.CopperPickaxe, definition.Type);
         Assert.False(definition.Placement.HasValue);
         Assert.True(definition.PickTool.HasValue);
+        Assert.False(definition.WorldDrop.HasValue);
 
         VanillaItemPickToolDefinition pickTool = definition.PickTool.Value;
         Assert.Equal((short)35, pickTool.PickPower);
         Assert.Equal(-1, pickTool.TileBoost);
+    }
+
+    [Theory]
+    [InlineData(23, 10, 12, VanillaItemPrefixFamily.None)]
+    [InlineData(1309, 26, 28, VanillaItemPrefixFamily.Summon)]
+    public void Loot_items_expose_source_backed_world_drop_defaults(
+        int rawType,
+        int width,
+        int height,
+        VanillaItemPrefixFamily prefixFamily)
+    {
+        var type = new ItemTypeId(rawType);
+
+        Assert.True(VanillaItemDefinitionCatalog.TryGetWorldDrop(
+            type,
+            out VanillaItemWorldDropDefinition definition));
+
+        Assert.Equal(width, definition.Width);
+        Assert.Equal(height, definition.Height);
+        Assert.False(definition.NoGravity);
+        Assert.Equal(prefixFamily, definition.PrefixFamily);
     }
 
     [Fact]
@@ -45,6 +68,9 @@ public sealed class VanillaItemDefinitionCatalogTests
             out _));
         Assert.False(VanillaItemDefinitionCatalog.TryGetPlacement(
             VanillaItemIds.CopperPickaxe,
+            out _));
+        Assert.False(VanillaItemDefinitionCatalog.TryGetWorldDrop(
+            VanillaItemIds.DirtBlock,
             out _));
         Assert.False(VanillaItemDefinitionCatalog.TryGet(
             new ItemTypeId(1),

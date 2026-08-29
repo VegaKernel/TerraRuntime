@@ -1,73 +1,67 @@
 # Sparse vanilla item definitions
 
-TerraRuntime now has an initial source-backed item-definition catalog for gameplay facts already verified against the pinned TerrariaServer 1.4.5.8 reference.
-
-This is deliberately a **sparse** catalog. It does not manufacture a complete `Item.SetDefaults` projection from zeros, Wiki values or assumptions. A missing capability means **not verified/imported yet**, not “vanilla value is zero/false”.
+TerraRuntime uses a deliberately sparse, source-backed item-definition catalog. Missing metadata means **not verified/imported**, never an invented vanilla zero or `false`.
 
 ## Ownership
 
 ```mermaid
 flowchart LR
-    Source["TerrariaServer 1.4.5.8 decompile"] --> Probe["Pinned source-contract probe"]
+    Source["TerrariaServer 1.4.5.8"] --> Probe["Pinned source contracts"]
     Probe --> Catalog["VanillaItemDefinitionCatalog"]
-    Catalog --> Placement["Placement gameplay"]
-    Catalog --> Tools["Tool / tile authority"]
-    Catalog --> Use["Future semantic item use"]
+    Catalog --> Placement["Placement"]
+    Catalog --> Tools["Tool authority"]
+    Catalog --> WorldDrop["World-item materialization"]
+    WorldDrop --> Prefixes["VanillaItemPrefixCatalog"]
 ```
 
-`VanillaItemIds` owns item identity. `VanillaItemDefinitionCatalog` owns immutable verified gameplay facts. Inventory state owns stack/prefix/runtime slot state. Packet codecs remain outside this catalog.
+`VanillaItemIds` owns content identity. `VanillaItemDefinitionCatalog` owns immutable verified item facts. Runtime inventory/world-item stores own mutable stack, prefix, slot, generation and revision state.
 
-## Initial verified slice
+## Verified capabilities
 
-The repository source-contract probe currently pins the following official-source facts:
-
-| Item | Verified facts |
+| Item | Verified capability facts |
 |---|---|
-| `DirtBlock` (`ItemTypeId(2)`) | `createTile = 0`, `consumable = true` |
-| `CopperPickaxe` (`ItemTypeId(3509)`) | `pick = 35`, `tileBoost = -1` |
+| `DirtBlock` (`2`) | placement: `createTile = 0`, `consumable = true` |
+| `CopperPickaxe` (`3509`) | pick tool: `pick = 35`, `tileBoost = -1` |
+| `Gel` (`23`) | world drop: size `10×12`, ordinary gravity, no natural prefix family |
+| `SlimeStaff` (`1309`) | world drop: size `26×28`, ordinary gravity, summon natural-prefix family |
 
-Those facts are represented as optional capability records:
+The optional records are now:
 
 - `VanillaItemPlacementDefinition`;
-- `VanillaItemPickToolDefinition`.
+- `VanillaItemPickToolDefinition`;
+- `VanillaItemWorldDropDefinition`.
 
-The definition for Dirt Block therefore has `Placement` but no `PickTool`; Copper Pickaxe has `PickTool` but no `Placement`.
+Code consumes them through `TryGetPlacement`, `TryGetPickTool` and `TryGetWorldDrop`. An absent record fails closed.
 
-## Fail-closed semantics
+## World-drop defaults
 
-Code must use capability queries such as `TryGetPlacement` and `TryGetPickTool`. If the requested capability is absent, the call returns `false`.
+The pinned NPC-loot source contract proves Gel and Slime Staff are not members of `ItemID.Sets.ItemNoGravity`. Their vanilla `Item.NewItem` default velocity therefore uses
 
-That distinction matters. For example, a missing `PickTool` definition does **not** prove
+$$
+v_x=0.1R_x,\quad R_x\in[-30,30],
+$$
 
-\[
-\mathrm{pickPower}=0.
-\]
+$$
+v_y=0.1R_y,\quad R_y\in[-40,-16].
+$$
 
-It proves only that TerraRuntime has no source-backed pick-tool data for that item yet.
+`VanillaItemWorldDropDefinition` stores dimensions, gravity branch and verified natural-prefix family. It does not pretend to be a full `Item.SetDefaults` copy.
 
-Likewise, a missing placement definition does not prove an item cannot place a tile.
+## Prefix metadata
 
-## Existing tile authority
+`VanillaItemPrefixCatalog` contains only source-backed prefix facts currently needed by gameplay. For the initial slice this is the exact 22-entry summon family and the pinned `ReducedNaturalChance` set. Slime Staff's item-specific stat-rounding validation rejects natural prefixes `55`, `89` and `91`, so `Prefix(-1)` must reroll them.
 
-`VanillaTileInteractionItemFacts` remains as a thin compatibility facade because the live packet-17 authority path already consumes that API. It no longer owns a separate table; all values delegate to `VanillaItemDefinitionCatalog`.
+This metadata is consumed by `VanillaNaturalItemPrefixRoller`; it remains separate from mutable `PrefixId` stored on an inventory/world item.
 
-This preserves current production behavior while giving future item-use, tool and placement work one definition source instead of another pile of feature-local constants.
+## Verification
 
-## Source verification
+Two permanent official-source gates currently protect this sparse catalog:
 
-`tools/ci/probe_tile_authority.py` parses the pinned decompiled official server and fails if the currently imported contracts change. It independently checks:
+- `probe_tile_authority.py` verifies Dirt Block and Copper Pickaxe placement/tool facts;
+- `probe_npc_loot_spawn.py` verifies Gel/Slime Staff dimensions, gravity branch, summon family, natural-prefix probability branches and item-specific prefix validity against the pinned TerrariaServer 1.4.5.8 Windows assembly.
 
-- `ItemID.DirtBlock == 2`;
-- Dirt Block `consumable = true`;
-- Dirt Block `createTile = 0`;
-- `ItemID.CopperPickaxe == 3509`;
-- Copper Pickaxe `pick = 35`;
-- Copper Pickaxe `tileBoost = -1`.
+Runtime tests then verify the typed representation and fail-closed capability queries.
 
-`VanillaItemDefinitionCatalogTests` then verifies the runtime representation and compatibility facade.
+## Scope
 
-## Next expansion
-
-Additional fields such as use timing, damage, use style, ammo, shoot type, healing, mana, accessory/equipment behavior or other placement/tool properties are added only when the runtime consumes them **and** the pinned official source has been independently verified.
-
-No giant speculative item table is required to continue D2. The catalog grows vertically with implemented gameplay.
+Use timing, damage, ammo, healing, equipment behavior and other item fields are added only when authoritative gameplay consumes them and official-source evidence is pinned. A giant speculative item table would merely convert unknowns into confidently wrong defaults, which is an impressively inefficient way to create bugs.

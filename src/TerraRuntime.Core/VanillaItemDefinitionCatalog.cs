@@ -19,6 +19,22 @@ public readonly record struct VanillaItemPickToolDefinition(
     int TileBoost);
 
 /// <summary>
+/// Source-backed item defaults required to materialize a world-item spawn. PrefixFamily represents verified
+/// Prefix(-1) capability; None means the source-backed item cannot receive a natural prefix in this path.
+/// </summary>
+public readonly record struct VanillaItemWorldDropDefinition(
+    int Width,
+    int Height,
+    bool NoGravity,
+    VanillaItemPrefixFamily PrefixFamily)
+{
+    public bool IsValid =>
+        Width > 0 &&
+        Height > 0 &&
+        PrefixFamily is VanillaItemPrefixFamily.None or VanillaItemPrefixFamily.Summon;
+}
+
+/// <summary>
 /// Sparse immutable vanilla item definition. Optional capability records distinguish verified facts from fields
 /// TerraRuntime has not yet imported from TerrariaServer 1.4.5.8; an absent capability must never be read as a
 /// guessed zero/default vanilla value.
@@ -26,7 +42,8 @@ public readonly record struct VanillaItemPickToolDefinition(
 public readonly record struct VanillaItemDefinition(
     ItemTypeId Type,
     VanillaItemPlacementDefinition? Placement,
-    VanillaItemPickToolDefinition? PickTool);
+    VanillaItemPickToolDefinition? PickTool,
+    VanillaItemWorldDropDefinition? WorldDrop);
 
 /// <summary>
 /// Initial source-verified TerrariaServer 1.4.5.8 item-definition catalog. The catalog grows only with facts
@@ -42,14 +59,36 @@ public static class VanillaItemDefinitionCatalog
         Placement: new VanillaItemPlacementDefinition(
             TileType: VanillaTileIds.Dirt,
             Consumable: true),
-        PickTool: null);
+        PickTool: null,
+        WorldDrop: null);
 
     private static readonly VanillaItemDefinition CopperPickaxeDefinition = new(
         Type: VanillaItemIds.CopperPickaxe,
         Placement: null,
         PickTool: new VanillaItemPickToolDefinition(
             PickPower: CopperPickaxePickPower,
-            TileBoost: CopperPickaxeTileBoost));
+            TileBoost: CopperPickaxeTileBoost),
+        WorldDrop: null);
+
+    private static readonly VanillaItemDefinition GelDefinition = new(
+        Type: VanillaItemIds.Gel,
+        Placement: null,
+        PickTool: null,
+        WorldDrop: new VanillaItemWorldDropDefinition(
+            Width: 10,
+            Height: 12,
+            NoGravity: false,
+            PrefixFamily: VanillaItemPrefixFamily.None));
+
+    private static readonly VanillaItemDefinition SlimeStaffDefinition = new(
+        Type: VanillaItemIds.SlimeStaff,
+        Placement: null,
+        PickTool: null,
+        WorldDrop: new VanillaItemWorldDropDefinition(
+            Width: 26,
+            Height: 28,
+            NoGravity: false,
+            PrefixFamily: VanillaItemPrefixFamily.Summon));
 
     public static bool TryGet(ItemTypeId type, out VanillaItemDefinition definition)
     {
@@ -62,6 +101,18 @@ public static class VanillaItemDefinitionCatalog
         if (type == VanillaItemIds.CopperPickaxe)
         {
             definition = CopperPickaxeDefinition;
+            return true;
+        }
+
+        if (type == VanillaItemIds.Gel)
+        {
+            definition = GelDefinition;
+            return true;
+        }
+
+        if (type == VanillaItemIds.SlimeStaff)
+        {
+            definition = SlimeStaffDefinition;
             return true;
         }
 
@@ -94,6 +145,22 @@ public static class VanillaItemDefinitionCatalog
         }
 
         pickTool = default;
+        return false;
+    }
+
+    public static bool TryGetWorldDrop(
+        ItemTypeId type,
+        out VanillaItemWorldDropDefinition worldDrop)
+    {
+        if (TryGet(type, out VanillaItemDefinition definition) &&
+            definition.WorldDrop is { } verified &&
+            verified.IsValid)
+        {
+            worldDrop = verified;
+            return true;
+        }
+
+        worldDrop = default;
         return false;
     }
 }

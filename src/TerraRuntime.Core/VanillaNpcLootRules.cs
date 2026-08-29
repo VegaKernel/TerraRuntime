@@ -100,8 +100,8 @@ public readonly record struct VanillaNpcLootContext(
     bool DropExtraGel);
 
 /// <summary>
-/// Semantic random/luck boundary matching Terraria's CommonDrop call order. Implementations own player-luck
-/// semantics; the loot engine deliberately does not silently substitute process Random for Player.RollLuck.
+/// Semantic random/luck boundary matching Terraria's CommonDrop call order. For production NPC loot the source
+/// proves the random side is Main.rand, the same stream later consumed by Item.NewItem prefix/velocity behavior.
 /// </summary>
 public interface INpcLootRollSource
 {
@@ -122,6 +122,43 @@ public readonly record struct NpcLootDrop(ItemTypeId ItemType, short Stack)
 /// </summary>
 public static class VanillaNpcLootEvaluator
 {
+    /// <summary>
+    /// Evaluates one verified rule without buffering later rules. This boundary exists because vanilla CommonDrop
+    /// immediately materializes a successful item before the next rule executes, and both paths consume Main.rand.
+    /// </summary>
+    public static bool TryEvaluateRule(
+        in VanillaNpcLootRule rule,
+        in VanillaNpcLootContext context,
+        INpcLootRollSource rolls,
+        out bool dropped,
+        out NpcLootDrop drop)
+    {
+        ArgumentNullException.ThrowIfNull(rolls);
+        dropped = false;
+        drop = default;
+
+        if (!rule.IsValid)
+            return false;
+
+        int denominator = context.IsExpertMode
+            ? rule.ExpertChanceDenominator
+            : rule.NormalChanceDenominator;
+
+        // CommonDrop always performs Player.RollLuck before any stack RNG, including denominator 1.
+        if (rolls.RollLuck(denominator) >= 1)
+            return true;
+
+        int multiplier = rule.Kind == VanillaNpcLootRuleKind.ExtraGel && context.DropExtraGel
+            ? rule.ExtraGelMultiplier
+            : 1;
+        int inclusiveMin = checked(rule.MinimumStack * multiplier);
+        int inclusiveMax = checked(rule.MaximumStack * multiplier);
+        int stack = rolls.NextInt32(inclusiveMin, checked(inclusiveMax + 1));
+        drop = new NpcLootDrop(rule.ItemType, checked((short)stack));
+        dropped = true;
+        return true;
+    }
+
     public static bool TryEvaluateNpcSpecificRules(
         NpcTypeId npcType,
         in VanillaNpcLootContext context,
@@ -140,28 +177,19 @@ public static class VanillaNpcLootEvaluator
         dropCount = 0;
         for (int index = 0; index < rules.Length; index++)
         {
-            VanillaNpcLootRule rule = rules[index];
-            if (!rule.IsValid)
+            if (!TryEvaluateRule(
+                    in rules[index],
+                    in context,
+                    rolls,
+                    out bool dropped,
+                    out NpcLootDrop drop))
             {
                 dropCount = 0;
                 return false;
             }
 
-            int denominator = context.IsExpertMode
-                ? rule.ExpertChanceDenominator
-                : rule.NormalChanceDenominator;
-
-            // CommonDrop always performs Player.RollLuck before any stack RNG, including denominator 1.
-            if (rolls.RollLuck(denominator) >= 1)
-                continue;
-
-            int multiplier = rule.Kind == VanillaNpcLootRuleKind.ExtraGel && context.DropExtraGel
-                ? rule.ExtraGelMultiplier
-                : 1;
-            int inclusiveMin = checked(rule.MinimumStack * multiplier);
-            int inclusiveMax = checked(rule.MaximumStack * multiplier);
-            int stack = rolls.NextInt32(inclusiveMin, checked(inclusiveMax + 1));
-            destination[dropCount++] = new NpcLootDrop(rule.ItemType, checked((short)stack));
+            if (dropped)
+                destination[dropCount++] = drop;
         }
 
         return true;

@@ -1,73 +1,67 @@
 # Разреженный каталог определений vanilla items
 
-В TerraRuntime появился начальный source-backed каталог item definitions для gameplay-фактов, которые уже проверяются по закреплённому TerrariaServer 1.4.5.8.
-
-Каталог намеренно **разреженный**. Он не изображает полный `Item.SetDefaults`, заполняя неизвестные поля нулями, значениями из Wiki или догадками. Отсутствующая capability означает **ещё не проверено/не импортировано**, а не «vanilla-значение равно нулю/false».
+TerraRuntime использует намеренно разреженный source-backed каталог item definitions. Отсутствующая metadata означает **ещё не проверено/не импортировано**, а не выдуманный vanilla-ноль или `false`.
 
 ## Владение данными
 
 ```mermaid
 flowchart LR
-    Source["TerrariaServer 1.4.5.8 decompile"] --> Probe["Pinned source-contract probe"]
+    Source["TerrariaServer 1.4.5.8"] --> Probe["Pinned source contracts"]
     Probe --> Catalog["VanillaItemDefinitionCatalog"]
-    Catalog --> Placement["Placement gameplay"]
-    Catalog --> Tools["Tool / tile authority"]
-    Catalog --> Use["Будущий semantic item use"]
+    Catalog --> Placement["Placement"]
+    Catalog --> Tools["Tool authority"]
+    Catalog --> WorldDrop["World-item materialization"]
+    WorldDrop --> Prefixes["VanillaItemPrefixCatalog"]
 ```
 
-`VanillaItemIds` владеет item identity. `VanillaItemDefinitionCatalog` владеет неизменяемыми проверенными gameplay-фактами. Inventory state владеет stack/prefix/runtime slot state. Packet codecs в этот каталог не входят.
+`VanillaItemIds` владеет content identity. `VanillaItemDefinitionCatalog` владеет неизменяемыми проверенными item-фактами. Runtime inventory/world-item stores владеют mutable stack, prefix, slot, generation и revision.
 
-## Начальный проверенный срез
+## Проверенные capabilities
 
-Repository source-contract probe сейчас фиксирует следующие факты из официального source:
-
-| Item | Проверенные факты |
+| Item | Проверенные capability-факты |
 |---|---|
-| `DirtBlock` (`ItemTypeId(2)`) | `createTile = 0`, `consumable = true` |
-| `CopperPickaxe` (`ItemTypeId(3509)`) | `pick = 35`, `tileBoost = -1` |
+| `DirtBlock` (`2`) | placement: `createTile = 0`, `consumable = true` |
+| `CopperPickaxe` (`3509`) | pick tool: `pick = 35`, `tileBoost = -1` |
+| `Gel` (`23`) | world drop: размер `10×12`, обычная gravity, без natural-prefix family |
+| `SlimeStaff` (`1309`) | world drop: размер `26×28`, обычная gravity, summon natural-prefix family |
 
-Они представлены отдельными optional capability records:
+Optional records теперь такие:
 
 - `VanillaItemPlacementDefinition`;
-- `VanillaItemPickToolDefinition`.
+- `VanillaItemPickToolDefinition`;
+- `VanillaItemWorldDropDefinition`.
 
-Поэтому definition Dirt Block содержит `Placement`, но не содержит `PickTool`; Copper Pickaxe содержит `PickTool`, но не содержит `Placement`.
+Gameplay запрашивает их через `TryGetPlacement`, `TryGetPickTool` и `TryGetWorldDrop`. Отсутствующая capability завершается fail-closed.
 
-## Fail-closed семантика
+## World-drop defaults
 
-Gameplay-код должен запрашивать capability через `TryGetPlacement`, `TryGetPickTool` и аналогичные API. Если конкретная capability отсутствует, вызов возвращает `false`.
+Pinned NPC-loot source contract доказывает, что Gel и Slime Staff не входят в `ItemID.Sets.ItemNoGravity`. Поэтому vanilla `Item.NewItem` использует
 
-Это важное различие. Например отсутствие `PickTool` не доказывает
+$$
+v_x=0.1R_x,\quad R_x\in[-30,30],
+$$
 
-\[
-\mathrm{pickPower}=0.
-\]
+$$
+v_y=0.1R_y,\quad R_y\in[-40,-16].
+$$
 
-Оно доказывает только отсутствие source-backed pick-tool данных для этого item в TerraRuntime.
+`VanillaItemWorldDropDefinition` хранит размеры, gravity branch и проверенную natural-prefix family. Это не попытка скопировать целиком `Item.SetDefaults`.
 
-Аналогично отсутствие placement definition не означает, что предмет в vanilla гарантированно ничего не размещает.
+## Prefix metadata
 
-## Существующая tile authority
+`VanillaItemPrefixCatalog` содержит только source-backed prefix-факты, которые уже нужны gameplay. Для первого среза это точная summon family из 22 prefix ID и закреплённый набор `ReducedNaturalChance`. Item-specific проверка Slime Staff отвергает natural prefixes `55`, `89` и `91`: после применения их damage multiplier `Math.Round` снова даёт исходные `8` damage, поэтому vanilla `Prefix(-1)` делает reroll.
 
-`VanillaTileInteractionItemFacts` остаётся тонким compatibility facade, потому что production packet-17 authority уже использует этот API. Собственной таблицей он больше не владеет, все значения делегируются в `VanillaItemDefinitionCatalog`.
+Эти данные использует `VanillaNaturalItemPrefixRoller`; они остаются отдельно от mutable `PrefixId` конкретного inventory/world item.
 
-Так сохраняется текущее production-поведение, а будущие item-use, tool и placement механизмы получают один источник item definitions вместо очередной россыпи feature-local констант.
+## Проверка источником
 
-## Source verification
+Два постоянных official-source gate защищают этот разреженный каталог:
 
-`tools/ci/probe_tile_authority.py` разбирает закреплённый decompile официального сервера и падает, если импортированные контракты изменились. Он независимо проверяет:
+- `probe_tile_authority.py` проверяет placement/tool факты Dirt Block и Copper Pickaxe;
+- `probe_npc_loot_spawn.py` проверяет размеры Gel/Slime Staff, gravity branch, summon family, ветки вероятностей natural prefix и item-specific prefix validity по pinned Windows TerrariaServer 1.4.5.8.
 
-- `ItemID.DirtBlock == 2`;
-- Dirt Block `consumable = true`;
-- Dirt Block `createTile = 0`;
-- `ItemID.CopperPickaxe == 3509`;
-- Copper Pickaxe `pick = 35`;
-- Copper Pickaxe `tileBoost = -1`.
+Runtime-тесты затем проверяют typed representation и fail-closed capability queries.
 
-`VanillaItemDefinitionCatalogTests` затем проверяет runtime representation и compatibility facade.
+## Охват
 
-## Дальнейшее расширение
-
-Поля вроде use timing, damage, use style, ammo, shoot type, healing, mana, accessory/equipment behavior и дополнительных placement/tool свойств добавляются только когда runtime реально начинает их использовать **и** соответствующие значения независимо подтверждены pinned official source.
-
-Для продолжения D2 не нужна гигантская спекулятивная item table. Каталог расширяется вертикально вместе с реализованным gameplay.
+Use timing, damage, ammo, healing, equipment behavior и остальные item-поля добавляются только тогда, когда authoritative gameplay действительно начинает их использовать и для них закреплено official-source evidence. Гигантская спекулятивная таблица просто превратила бы неизвестные значения в уверенно неправильные defaults, а подобной инженерной роскоши и без нас хватает.
