@@ -22,6 +22,44 @@ public sealed class VanillaServerPlayerJumpControlTests
     }
 
     [Fact]
+    public void Liquid_selected_profile_starts_jump_with_supplied_speed_and_height()
+    {
+        VanillaServerPlayerJumpState state = VanillaServerPlayerJumpState.Initial;
+
+        Assert.True(VanillaServerPlayerJumpControl.TryApply(
+            0f,
+            ServerPlayerJumpIntent.Held,
+            in state,
+            VanillaServerPlayerLiquidPhysics.WaterJumpSpeed,
+            VanillaServerPlayerLiquidPhysics.WaterJumpHeight,
+            out float velocityY,
+            out VanillaServerPlayerJumpState next));
+
+        Assert.Equal(-6.01f, velocityY, 5);
+        Assert.Equal(30, next.RemainingTicks);
+        Assert.False(next.ReleaseReady);
+    }
+
+    [Fact]
+    public void Liquid_selected_profile_reasserts_current_medium_jump_speed()
+    {
+        var state = new VanillaServerPlayerJumpState(23, false);
+
+        Assert.True(VanillaServerPlayerJumpControl.TryApply(
+            -5.36f,
+            ServerPlayerJumpIntent.Held,
+            in state,
+            VanillaServerPlayerLiquidPhysics.ShimmerJumpSpeed,
+            VanillaServerPlayerLiquidPhysics.ShimmerJumpHeight,
+            out float velocityY,
+            out VanillaServerPlayerJumpState next));
+
+        Assert.Equal(-5.51f, velocityY, 5);
+        Assert.Equal(22, next.RemainingTicks);
+        Assert.False(next.ReleaseReady);
+    }
+
+    [Fact]
     public void Held_active_jump_reasserts_jump_speed_and_decrements_counter()
     {
         var state = new VanillaServerPlayerJumpState(15, false);
@@ -84,6 +122,21 @@ public sealed class VanillaServerPlayerJumpControlTests
 
         Assert.Equal(0f, velocityY, 5);
         Assert.Equal(new VanillaServerPlayerJumpState(0, false), next);
+    }
+
+    [Fact]
+    public void Invalid_jump_profile_is_rejected()
+    {
+        VanillaServerPlayerJumpState state = VanillaServerPlayerJumpState.Initial;
+
+        Assert.False(VanillaServerPlayerJumpControl.TryApply(
+            0f,
+            ServerPlayerJumpIntent.Held,
+            in state,
+            6.01f,
+            VanillaServerPlayerJumpControl.MaximumSupportedJumpHeight + 1,
+            out _,
+            out _));
     }
 
     [Fact]

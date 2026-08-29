@@ -15,6 +15,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Networking and protocol](networking-protocol.md) — framing, connection policy, Multiplicity boundary, queues, rate accounting, stop reasons and join traffic.
 - [World loading and persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state and recovery.
 - [Gameplay and vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat and explicit parity gaps.
+- [Authoritative player physics](player-physics.md) — server-player ownership, previous/current liquid-state ordering, gravity/fall-speed/jump profiles, collision displacement and generation safety.
 - [Synchronization and interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis and current passthrough policy.
 - [Performance and tick scheduling](performance-runtime.md) — $60\,\mathrm{Hz}$ authoritative loop, bounded mailbox/ingress/apply budgets, per-source fairness, missed-tick policy and performance evidence rules.
 - [Operations and Terminal UI](operations-tui.md) — no-argument startup, CLI defaults, TUI lifecycle, fallback console, telemetry and dashboard extension rules.

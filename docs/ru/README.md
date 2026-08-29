@@ -15,6 +15,7 @@
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
 - [Загрузка мира и persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state и recovery.
 - [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.
+- [Авторитетная физика игрока](player-physics.md) — server-player ownership, порядок previous/current liquid state, gravity/fall-speed/jump profiles, collision displacement и generation safety.
 - [Synchronization и interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis и текущая passthrough policy.
 - [Performance и tick scheduling](performance-runtime.md) — $60\,\mathrm{Hz}$ authoritative loop, bounded mailbox/ingress/apply budgets, per-source fairness, missed-tick policy и правила performance evidence.
 - [Operations и Terminal UI](operations-tui.md) — startup без аргументов, CLI defaults, lifecycle TUI, fallback console, telemetry и правила dashboard extensions.

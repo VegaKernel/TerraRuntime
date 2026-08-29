@@ -39,12 +39,166 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
 
         Assert.True(stepper.TryStep(player.Snapshot, out ServerPlayerDryPhysicsStepResult next));
 
+        // Vanilla refreshes wet state after JumpMovement/gravity. Entry therefore uses the previous dry
+        // gravity profile for this tick while current liquid contact already scales collision displacement.
         Assert.Equal(96f + 2f * movementScale, next.PositionX, 5);
         Assert.Equal(80f + 0.4f * movementScale, next.PositionY, 5);
         Assert.Equal(2f, next.VelocityX, 5);
         Assert.Equal(0.4f, next.VelocityY, 5);
         Assert.False(next.CollideX);
         Assert.False(next.CollideY);
+    }
+
+    [Fact]
+    public void Second_water_tick_uses_previous_wet_state_for_gravity_profile()
+    {
+        WorldTileStore tiles = CreateWorld();
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        using SpawnedServerPlayer player = Spawn(positionX: 96f, positionY: 80f);
+        var stepper = new VanillaServerPlayerDryPhysicsStepper(tiles);
+
+        Assert.True(stepper.TryStep(player.Snapshot, out ServerPlayerDryPhysicsStepResult first));
+        PlayerStateSnapshot secondInput = player.Snapshot with
+        {
+            PositionX = first.PositionX,
+            PositionY = first.PositionY,
+            VelocityX = first.VelocityX,
+            VelocityY = first.VelocityY
+        };
+
+        Assert.True(stepper.TryStep(in secondInput, out ServerPlayerDryPhysicsStepResult second));
+
+        Assert.Equal(0.4f, first.VelocityY, 5);
+        Assert.Equal(80.2f, first.PositionY, 5);
+        Assert.Equal(0.6f, second.VelocityY, 5);
+        Assert.Equal(80.5f, second.PositionY, 5);
+    }
+
+    [Fact]
+    public void Grounded_jump_on_second_water_tick_uses_water_jump_profile()
+    {
+        WorldTileStore tiles = CreateWorld();
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        tiles.Set(6, 8, SolidTile());
+        tiles.Set(7, 8, SolidTile());
+        using SpawnedServerPlayer player = Spawn(positionX: 96f, positionY: 86f);
+        var stepper = new VanillaServerPlayerDryPhysicsStepper(tiles);
+        PlayerStateSnapshot firstInput = player.Snapshot;
+        VanillaServerPlayerJumpState initialJump = VanillaServerPlayerJumpState.Initial;
+
+        Assert.True(stepper.TryStep(
+            in firstInput,
+            ServerPlayerHorizontalIntent.Stop,
+            ServerPlayerJumpIntent.Released,
+            in initialJump,
+            out ServerPlayerDryPhysicsStepResult first,
+            out VanillaServerPlayerJumpState firstJump));
+        PlayerStateSnapshot secondInput = player.Snapshot with
+        {
+            PositionX = first.PositionX,
+            PositionY = first.PositionY,
+            VelocityX = first.VelocityX,
+            VelocityY = first.VelocityY
+        };
+
+        Assert.True(stepper.TryStep(
+            in secondInput,
+            ServerPlayerHorizontalIntent.Stop,
+            ServerPlayerJumpIntent.Held,
+            in firstJump,
+            out ServerPlayerDryPhysicsStepResult second,
+            out VanillaServerPlayerJumpState secondJump));
+
+        Assert.Equal(86f, first.PositionY, 5);
+        Assert.Equal(0f, first.VelocityY, 5);
+        Assert.Equal(-5.81f, second.VelocityY, 5);
+        Assert.Equal(83.095f, second.PositionY, 5);
+        Assert.Equal(30, secondJump.RemainingTicks);
+        Assert.False(secondJump.ReleaseReady);
+    }
+
+    [Fact]
+    public void Leaving_water_clamps_remaining_jump_after_current_wet_jump_step()
+    {
+        WorldTileStore tiles = CreateWorld();
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        using SpawnedServerPlayer player = Spawn(positionX: 96f, positionY: 80f, velocityY: -5.81f);
+        var stepper = new VanillaServerPlayerDryPhysicsStepper(tiles);
+        PlayerStateSnapshot firstInput = player.Snapshot;
+        VanillaServerPlayerJumpState initialJump = VanillaServerPlayerJumpState.Initial;
+        var jumpState = new VanillaServerPlayerJumpState(30, false);
+
+        Assert.True(stepper.TryStep(
+            in firstInput,
+            ServerPlayerHorizontalIntent.Stop,
+            ServerPlayerJumpIntent.Released,
+            in initialJump,
+            out ServerPlayerDryPhysicsStepResult first,
+            out _));
+
+        tiles.Set(6, 6, default);
+        PlayerStateSnapshot secondInput = player.Snapshot with
+        {
+            PositionX = first.PositionX,
+            PositionY = first.PositionY,
+            VelocityX = first.VelocityX,
+            VelocityY = -5.81f
+        };
+
+        Assert.True(stepper.TryStep(
+            in secondInput,
+            ServerPlayerHorizontalIntent.Stop,
+            ServerPlayerJumpIntent.Held,
+            in jumpState,
+            out ServerPlayerDryPhysicsStepResult second,
+            out VanillaServerPlayerJumpState nextJump));
+
+        // JumpMovement first reasserts wet jumpSpeed 6.01 and decrements 30 -> 29. Gravity then yields -5.81.
+        // The later wet-state refresh sees dry contact and clamps the remaining counter to 30 / 5 = 6.
+        Assert.Equal(-5.81f, second.VelocityY, 5);
+        Assert.Equal(6, nextJump.RemainingTicks);
+        Assert.False(nextJump.ReleaseReady);
+    }
+
+    [Fact]
+    public void Liquid_state_does_not_cross_player_generation_when_slot_is_reused()
+    {
+        WorldTileStore tiles = CreateWorld();
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        var stepper = new VanillaServerPlayerDryPhysicsStepper(tiles);
+        var slots = new PlayerSlotPool(1);
+        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+
+        var firstId = new ServerPlayerId("test:first-generation");
+        Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(firstId, out var firstLease));
+        Assert.NotNull(firstLease);
+        Assert.True(states.TrySpawn(firstId, 96f, 80f, out PlayerStateSnapshot firstSnapshot));
+        Assert.True(stepper.TryStep(in firstSnapshot, out _));
+        Assert.True(states.TryRemove(firstLease.Player, out _));
+        firstLease.Dispose();
+
+        var secondId = new ServerPlayerId("test:second-generation");
+        Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(secondId, out var secondLease));
+        Assert.NotNull(secondLease);
+        try
+        {
+            Assert.True(states.TrySpawn(secondId, 96f, 80f, out PlayerStateSnapshot secondSnapshot));
+            Assert.Equal(firstSnapshot.Player.Slot, secondSnapshot.Player.Slot);
+            Assert.NotEqual(firstSnapshot.Player, secondSnapshot.Player);
+
+            Assert.True(stepper.TryStep(in secondSnapshot, out ServerPlayerDryPhysicsStepResult second));
+
+            // A reused slot starts with the dry previous-tick profile. If stale Wet leaked across generations,
+            // this would be 0.2 rather than 0.4.
+            Assert.Equal(0.4f, second.VelocityY, 5);
+            Assert.Equal(80.2f, second.PositionY, 5);
+        }
+        finally
+        {
+            states.TryRemove(secondLease.Player, out _);
+            secondLease.Dispose();
+        }
     }
 
     [Fact]
@@ -76,8 +230,8 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
 
         Assert.True(stepper.TryStep(player.Snapshot, out ServerPlayerDryPhysicsStepResult next));
 
-        Assert.Equal(90f, next.PositionY, 5);
-        Assert.Equal(10f, next.VelocityY, 5);
+        Assert.Equal(90.01f, next.PositionY, 5);
+        Assert.Equal(10.01f, next.VelocityY, 5);
     }
 
     [Fact]
@@ -114,7 +268,7 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
     }
 
     [Fact]
-    public void Dead_and_mounted_players_are_outside_the_verified_dry_slice()
+    public void Dead_and_mounted_players_are_outside_the_verified_ordinary_slice()
     {
         WorldTileStore tiles = CreateWorld();
         using SpawnedServerPlayer player = Spawn(positionX: 96f, positionY: 80f);
@@ -133,7 +287,7 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
         Assert.Equal(20, VanillaServerPlayerDryPhysicsStepper.PlayerWidth);
         Assert.Equal(42, VanillaServerPlayerDryPhysicsStepper.PlayerHeight);
         Assert.Equal(0.4f, VanillaServerPlayerDryPhysicsStepper.Gravity);
-        Assert.Equal(10f, VanillaServerPlayerDryPhysicsStepper.MaximumFallSpeed);
+        Assert.Equal(10.01f, VanillaServerPlayerDryPhysicsStepper.MaximumFallSpeed);
         Assert.Equal(0.5f, VanillaServerPlayerLiquidMovement.WaterMovementScale);
         Assert.Equal(0.5f, VanillaServerPlayerLiquidMovement.LavaMovementScale);
         Assert.Equal(0.25f, VanillaServerPlayerLiquidMovement.HoneyMovementScale);
