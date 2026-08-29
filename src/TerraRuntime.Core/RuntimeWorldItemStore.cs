@@ -1,3 +1,4 @@
+using System.Threading;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
@@ -49,17 +50,19 @@ public readonly record struct WorldItemDropReservation(short Slot, WorldItemGene
 
 /// <summary>
 /// Bounded runtime-owned world-item state. Terraria reuses item slots, so identity is slot + generation;
-/// revision changes only within one generation. Reads are copied under a short lock for join/replication snapshots.
-/// Commit notifications are emitted only after the internal lock has been released.
+/// revision changes only within one generation. Mutations are single-writer; concurrent join/replication readers
+/// use a seqlock snapshot and never block the authoritative simulation thread. Commit notifications are emitted
+/// only after the write epoch has closed.
 /// </summary>
 public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
 {
     public const int VanillaCapacity = 400;
 
-    private readonly object _gate = new();
     private readonly SlotState[] _slots = new SlotState[VanillaCapacity];
     private readonly IWorldItemStateCommitSink? _commitSink;
     private int _activeCount;
+    private int _writeSequence;
+    private int _writerActive;
 
     public RuntimeWorldItemStore(IWorldItemStateCommitSink? commitSink = null)
     {
@@ -68,14 +71,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
     public int Capacity => VanillaCapacity;
 
-    public int ActiveCount
-    {
-        get
-        {
-            lock (_gate)
-                return _activeCount;
-        }
-    }
+    public int ActiveCount => Volatile.Read(ref _activeCount);
 
     /// <summary>
     /// Allocates the first available vanilla world-item slot. Wire sentinels such as packet-21 index 400
@@ -90,8 +86,15 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         bool committed;
-        lock (_gate)
-            committed = TryAllocateLocked(in update, out snapshot);
+        BeginWrite();
+        try
+        {
+            committed = TryAllocateSingleWriter(in update, out snapshot);
+        }
+        finally
+        {
+            EndWrite();
+        }
 
         if (committed)
             Publish(WorldItemStateCommitKind.Drop, in snapshot);
@@ -112,8 +115,15 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
         WorldItemStateUpdate initial = CreateInitial(in drop);
         bool committed;
-        lock (_gate)
-            committed = TryAllocateLocked(in initial, out snapshot);
+        BeginWrite();
+        try
+        {
+            committed = TryAllocateSingleWriter(in initial, out snapshot);
+        }
+        finally
+        {
+            EndWrite();
+        }
 
         if (committed)
             Publish(WorldItemStateCommitKind.Drop, in snapshot);
@@ -127,8 +137,15 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
     /// </summary>
     public bool TryReserveDropSlot(out WorldItemDropReservation reservation)
     {
-        lock (_gate)
-            return TryReserveDropSlotLocked(out reservation);
+        BeginWrite();
+        try
+        {
+            return TryReserveDropSlotSingleWriter(out reservation);
+        }
+        finally
+        {
+            EndWrite();
+        }
     }
 
     /// <summary>
@@ -144,13 +161,18 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         WorldItemStateUpdate initial = CreateInitial(in drop);
-        lock (_gate)
+        BeginWrite();
+        try
         {
-            if (!TryReserveDropSlotLocked(out reservation))
+            if (!TryReserveDropSlotSingleWriter(out reservation))
                 return false;
 
             _slots[reservation.Slot].Update = initial;
             return true;
+        }
+        finally
+        {
+            EndWrite();
         }
     }
 
@@ -201,7 +223,8 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         if (!reservation.IsAssigned || !IsValidSlot(reservation.Slot))
             return false;
 
-        lock (_gate)
+        BeginWrite();
+        try
         {
             ref SlotState state = ref _slots[reservation.Slot];
             if (!state.Reserved ||
@@ -216,6 +239,10 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.Update = default;
             return true;
         }
+        finally
+        {
+            EndWrite();
+        }
     }
 
     public bool TryUpsert(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
@@ -227,8 +254,15 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         bool committed;
-        lock (_gate)
-            committed = TryUpsertLocked(slot, in update, out snapshot);
+        BeginWrite();
+        try
+        {
+            committed = TryUpsertSingleWriter(slot, in update, out snapshot);
+        }
+        finally
+        {
+            EndWrite();
+        }
 
         if (committed)
             Publish(WorldItemStateCommitKind.Drop, in snapshot);
@@ -248,13 +282,18 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         bool committed;
-        lock (_gate)
+        BeginWrite();
+        try
         {
             ref SlotState state = ref _slots[slot];
             WorldItemStateUpdate merged = state.Active
                 ? MergeDrop(in state.Update, in drop)
                 : CreateInitial(in drop);
-            committed = TryUpsertLocked(slot, in merged, out snapshot);
+            committed = TryUpsertSingleWriter(slot, in merged, out snapshot);
+        }
+        finally
+        {
+            EndWrite();
         }
 
         if (committed)
@@ -275,7 +314,8 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         bool committed = false;
-        lock (_gate)
+        BeginWrite();
+        try
         {
             ref SlotState state = ref _slots[slot];
             if (state.Active && TryAdvance(ref state.Revision))
@@ -297,6 +337,10 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
                 snapshot = default;
             }
         }
+        finally
+        {
+            EndWrite();
+        }
 
         if (committed)
             Publish(WorldItemStateCommitKind.Owner, in snapshot);
@@ -312,7 +356,8 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         WorldItemSnapshot finalSnapshot;
-        lock (_gate)
+        BeginWrite();
+        try
         {
             ref SlotState state = ref _slots[slot];
             if (!state.Active)
@@ -327,6 +372,10 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.Update = default;
             _activeCount--;
         }
+        finally
+        {
+            EndWrite();
+        }
 
         Publish(WorldItemStateCommitKind.Remove, in finalSnapshot);
         return true;
@@ -340,9 +389,17 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             return false;
         }
 
-        lock (_gate)
+        SpinWait spin = default;
+        while (true)
         {
-            ref readonly SlotState state = ref _slots[slot];
+            int version = ReadStableVersion(ref spin);
+            SlotState state = _slots[slot];
+            if (version != ReadVersion())
+            {
+                spin.SpinOnce();
+                continue;
+            }
+
             if (!state.Active)
             {
                 snapshot = default;
@@ -356,33 +413,52 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
     public int CopyActive(Span<WorldItemSnapshot> destination)
     {
-        lock (_gate)
+        SpinWait spin = default;
+        while (true)
         {
-            if (destination.Length < _activeCount)
+            int version = ReadStableVersion(ref spin);
+            int activeCount = _activeCount;
+            if (destination.Length < activeCount)
             {
-                throw new ArgumentException(
-                    $"Destination length {destination.Length} is smaller than active item count {_activeCount}.",
-                    nameof(destination));
+                if (version == ReadVersion())
+                {
+                    throw new ArgumentException(
+                        $"Destination length {destination.Length} is smaller than active item count {activeCount}.",
+                        nameof(destination));
+                }
+
+                spin.SpinOnce();
+                continue;
             }
 
             int written = 0;
+            bool destinationOverflow = false;
             for (short slot = 0; slot < _slots.Length; slot++)
             {
-                ref readonly SlotState state = ref _slots[slot];
+                SlotState state = _slots[slot];
                 if (!state.Active)
                     continue;
+
+                if (written >= destination.Length)
+                {
+                    destinationOverflow = true;
+                    break;
+                }
 
                 destination[written++] = Capture(slot, in state);
             }
 
-            return written;
+            if (!destinationOverflow && version == ReadVersion())
+                return written;
+
+            spin.SpinOnce();
         }
     }
 
     private void Publish(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot) =>
         _commitSink?.WorldItemStateCommitted(kind, in snapshot);
 
-    private bool TryAllocateLocked(in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
+    private bool TryAllocateSingleWriter(in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
     {
         for (short slot = 0; slot < _slots.Length; slot++)
         {
@@ -402,7 +478,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         return false;
     }
 
-    private bool TryReserveDropSlotLocked(out WorldItemDropReservation reservation)
+    private bool TryReserveDropSlotSingleWriter(out WorldItemDropReservation reservation)
     {
         for (short slot = 0; slot < _slots.Length; slot++)
         {
@@ -434,7 +510,8 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         bool committed = false;
-        lock (_gate)
+        BeginWrite();
+        try
         {
             ref SlotState state = ref _slots[reservation.Slot];
             if (!state.Reserved ||
@@ -461,13 +538,17 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             snapshot = Capture(reservation.Slot, in state);
             committed = true;
         }
+        finally
+        {
+            EndWrite();
+        }
 
         if (committed)
             Publish(WorldItemStateCommitKind.Drop, in snapshot);
         return committed;
     }
 
-    private bool TryUpsertLocked(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
+    private bool TryUpsertSingleWriter(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
     {
         ref SlotState state = ref _slots[slot];
         if (state.Reserved)
@@ -557,6 +638,37 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             update.GrabDelayPlayer,
             update.GrabDelayTime);
     }
+
+    private void BeginWrite()
+    {
+        if (Interlocked.CompareExchange(ref _writerActive, 1, 0) != 0)
+        {
+            throw new InvalidOperationException(
+                "RuntimeWorldItemStore mutations must have one authoritative writer.");
+        }
+
+        Interlocked.Increment(ref _writeSequence);
+    }
+
+    private void EndWrite()
+    {
+        Interlocked.Increment(ref _writeSequence);
+        Volatile.Write(ref _writerActive, 0);
+    }
+
+    private int ReadStableVersion(ref SpinWait spin)
+    {
+        while (true)
+        {
+            int version = ReadVersion();
+            if ((version & 1) == 0)
+                return version;
+
+            spin.SpinOnce();
+        }
+    }
+
+    private int ReadVersion() => Interlocked.CompareExchange(ref _writeSequence, 0, 0);
 
     private static bool IsValidSlot(short slot) => (ushort)slot < VanillaCapacity;
 
