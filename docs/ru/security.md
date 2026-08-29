@@ -59,13 +59,17 @@ Lease idempotent для caller: повторный `Dispose` не делает d
 
 Internal negative active-count state считается invariant violation, а не игнорируется.
 
-## 5. Handshake deadline
+## 5. Handshake и join deadlines
 
-Default connection policy требует завершить handshake за **10 seconds**.
+Default connection policy требует завершить protocol handshake за **10 seconds**.
 
-Это не даёт peer бесконечно держать admitted connection без usable protocol progress.
+Valid `Hello` завершает pre-handshake deadline, но не выдаёт unlimited player-slot lease. Production sink composition сообщает network watchdog узкий readiness signal. После `Hello` connection, который ещё не дошёл до runtime ready/`Playing` state, ограничен default **2 minute join-completion deadline**.
 
-После handshake текущий default normal idle timeout infinite. Это explicit current policy, а не обещание, что future deployment никогда не настроит post-handshake inactivity limit.
+Две минуты — намеренно консервативный hard-abuse ceiling, а не Terraria gameplay cadence и не утверждение о каком-либо official vanilla timeout. Этот budget нужен, чтобы peer не мог отправить valid `Hello` и затем бесконечно удерживать admitted player slot, не завершив вход в мир.
+
+После перехода connection в `Playing` join deadline больше не действует. Текущий default normal post-join idle timeout остаётся infinite. Deployment при необходимости может независимо настроить finite idle timeout.
+
+Watchdog различает handshake, join и обычный idle expiration, поэтому telemetry отдельно показывает `HandshakeTimeout`, `JoinTimeout` и `IdleTimeout`.
 
 ## 6. Connection-wide rate accounting
 
@@ -117,6 +121,7 @@ Current stop reasons включают:
 
 ```text
 HandshakeTimeout
+JoinTimeout
 IdleTimeout
 InvalidHandshake
 UnsupportedProtocol
@@ -127,7 +132,7 @@ SlowClient
 RateLimited
 ```
 
-Это полезно для security telemetry, потому что rate-limited peer, malformed client и broken network adapter — разные incidents.
+Это полезно для security telemetry, потому что stalled join, rate-limited peer, malformed client и broken network adapter — разные incidents.
 
 ## 11. Bounded queues
 
@@ -245,13 +250,15 @@ Runtime reflection scanning, dynamic code generation и serializers с неяс�
 Желаемый failure scope минимален:
 
 ```text
-bad frame         -> reject/close connection
-rate abuse        -> reject/close connection
-slow reader       -> close that connection
-bad runtime cache -> fall back to .wld
-TUI failure       -> fall back to plain console
-save write fail   -> keep previous canonical checkpoint
-invalid worldgen  -> discard candidate world
+bad frame          -> reject/close connection
+rate abuse         -> reject/close connection
+stalled handshake  -> close that connection
+stalled join       -> close that connection
+slow reader        -> close that connection
+bad runtime cache  -> fall back to .wld
+TUI failure        -> fall back to plain console
+save write fail    -> keep previous canonical checkpoint
+invalid worldgen   -> discard candidate world
 ```
 
 Process не должен fail-fast на обычном hostile network input.
@@ -266,7 +273,7 @@ Security-relevant observability должна различать как мини�
 - capacity admission rejects;
 - admission-rate rejects;
 - connection/message rate limits;
-- connection stop reason mapping;
+- connection stop reason mapping, включая handshake/join/idle timeouts;
 - malformed/protocol failures;
 - slow-client disconnects;
 - queue depth/backlog age;
@@ -278,23 +285,23 @@ Telemetry сама bounded, чтобы attacker не превратил error re
 
 ## 24. Fuzzing
 
-Roadmap требует permanent fuzz/malformed corpora для:
+Permanent deterministic malformed/fuzz coverage уже существует для framing layer и typed packet decoders, включая hostile declared lengths и segmented input. Это regression floor, а не заявление, что protocol fuzzing полностью завершён.
 
-- frame parsing;
-- variable-length packet decoders;
+Broader roadmap всё ещё требует fuzz/malformed corpora для:
+
 - section/tile data;
 - `.wld` parsing;
-- command/text parsing.
+- command/text parsing;
+- future complex variable-length gameplay formats.
 
 Хороший fuzz scenario доказывает не только rejection malformed input, но и способность server принять valid connection после атаки.
-
-Эта работа ещё не завершена и не должна изображаться как complete fuzz coverage.
 
 ## 25. Security evidence
 
 В зависимости от change evidence включает:
 
 - admission-gate churn/capacity tests;
+- handshake/join/idle deadline tests;
 - connection policy/rate tests;
 - malformed frame/packet tests;
 - slow-reader real-socket tests;
@@ -309,7 +316,7 @@ Roadmap требует permanent fuzz/malformed corpora для:
 
 Active security work:
 
-- complete protocol fuzz corpus;
+- broader protocol/world fuzz corpora beyond current framing and typed-decoder regression floor;
 - complete global/per-subsystem expensive-work budgets;
 - complete rate limits всех expensive gameplay classes;
 - richer malformed/rejected packet telemetry;
