@@ -118,7 +118,7 @@ internal sealed class RuntimeOverviewDashboard : View
     {
         frame.MouseEvent += (_, mouse) =>
         {
-            if (!mouse.Flags.HasFlag(MouseFlags.Button1DoubleClicked))
+            if (!mouse.Flags.HasFlag(MouseFlags.LeftButtonDoubleClicked))
                 return;
 
             ToggleMaximize(frame);
