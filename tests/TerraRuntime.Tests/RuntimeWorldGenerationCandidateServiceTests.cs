@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Core;
 using TerraRuntime.HostContracts.WorldGeneration;
 
 namespace TerraRuntime.Tests;
