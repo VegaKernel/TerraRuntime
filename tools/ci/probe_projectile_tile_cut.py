@@ -12,6 +12,13 @@ import re
 from pathlib import Path
 
 
+CUTTABLE_TILE_TYPES = (
+    3, 24, 28, 32, 51, 52, 61, 62, 69, 71, 73, 74, 82, 83, 84, 110, 113, 115, 184, 201,
+    205, 231, 236, 254, 352, 382, 444, 454, 484, 485, 518, 519, 528, 529, 549, 636, 637, 638,
+    654, 655, 711,
+)
+
+
 def extract_method(source: str, method_name: str) -> str:
     signature = re.compile(
         rf"(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(method_name)}\s*\([^\n)]*\)[^\n;{{]*$"
@@ -76,11 +83,43 @@ def around_first(source: str, needle: str, radius: int = 360) -> str:
     return normalized[start:end]
 
 
+def around_optional(source: str, needle: str, radius: int = 520) -> str:
+    normalized = compact(source)
+    index = normalized.find(needle)
+    if index < 0:
+        return "<none>"
+    start = max(0, index - radius)
+    end = min(len(normalized), index + len(needle) + radius)
+    return normalized[start:end]
+
+
 def matching_lines(source: str, needle: str, limit: int = 300) -> str:
     matches = [compact(line) for line in source.splitlines() if needle in line]
     if not matches:
         return "<none>"
     return " | ".join(matches[:limit])
+
+
+def relevant_drop_contexts(source: str) -> str:
+    normalized = compact(source)
+    contexts: list[str] = []
+    for tile_type in CUTTABLE_TILE_TYPES:
+        patterns = (
+            f"case {tile_type}:",
+            f"type == {tile_type}",
+            f"type != {tile_type}",
+            f"tile.type == {tile_type}",
+            f"tile.type != {tile_type}",
+        )
+        for pattern in patterns:
+            index = normalized.find(pattern)
+            if index < 0:
+                continue
+            start = max(0, index - 180)
+            end = min(len(normalized), index + len(pattern) + 260)
+            contexts.append(f"{tile_type}:{normalized[start:end]}")
+            break
+    return " | ".join(contexts) if contexts else "<none>"
 
 
 def main() -> int:
@@ -106,6 +145,8 @@ def main() -> int:
     delegate_cut_tiles = compact(extract_method(delegate_source, "CutTiles"))
     tile_cut_ignorance = compact(extract_method(player_source, "GetTileCutIgnorance"))
     can_cut_tile = compact(extract_method(worldgen_source, "CanCutTile"))
+    kill_tile = extract_method(worldgen_source, "KillTile")
+    kill_tile_drops = extract_method(worldgen_source, "KillTile_GetItemDrops")
 
     print("projectile_can_cut_tiles=" + can_cut_tiles)
     print("projectile_cut_tiles=" + cut_tiles)
@@ -117,6 +158,19 @@ def main() -> int:
     print("worldgen_can_cut_tile=" + can_cut_tile)
     print("main_tile_cut_mentions=" + matching_lines(main_source, "tileCut"))
     print("tile_id_cut_ignore_context=" + around_first(tile_id_source, "TileCutIgnore", radius=2600))
+
+    compact_kill_tile = compact(kill_tile)
+    compact_drops = compact(kill_tile_drops)
+    print(f"worldgen_kill_tile_length={len(compact_kill_tile)}")
+    print("worldgen_kill_tile_drop_call=" + around_optional(kill_tile, "KillTile_GetItemDrops", radius=900))
+    print("worldgen_kill_tile_clear_tile=" + around_optional(kill_tile, "ClearTile", radius=900))
+    print("worldgen_kill_tile_active_false=" + around_optional(kill_tile, "active(active: false)", radius=900))
+    print("worldgen_kill_tile_square_frame=" + around_optional(kill_tile, "SquareTileFrame", radius=900))
+    print("worldgen_kill_tile_tile_frame=" + around_optional(kill_tile, "TileFrame", radius=900))
+    print(f"worldgen_kill_tile_get_item_drops_length={len(compact_drops)}")
+    print("worldgen_cuttable_drop_contexts=" + relevant_drop_contexts(kill_tile_drops))
+    if len(compact_drops) <= 24000:
+        print("worldgen_kill_tile_get_item_drops=" + compact_drops)
     return 0
 
 
