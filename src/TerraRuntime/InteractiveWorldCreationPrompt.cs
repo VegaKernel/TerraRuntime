@@ -32,6 +32,10 @@ internal static class InteractiveWorldCreationPrompt
             return false;
         if (!TryReadDimensions(out int width, out int height))
             return false;
+        if (!TryReadGameMode(out WorldGenerationGameMode gameMode))
+            return false;
+        if (!TryReadWorldEvil(out WorldGenerationEvil evil))
+            return false;
 
         string[] syntheticArgs =
         [
@@ -39,7 +43,9 @@ internal static class InteractiveWorldCreationPrompt
             "--world-generator", generatorId.Value,
             "--world-seed", seed.ToString(CultureInfo.InvariantCulture),
             "--world-width", width.ToString(CultureInfo.InvariantCulture),
-            "--world-height", height.ToString(CultureInfo.InvariantCulture)
+            "--world-height", height.ToString(CultureInfo.InvariantCulture),
+            "--world-game-mode", gameMode.ToString(),
+            "--world-evil", evil.ToString()
         ];
 
         if (!StartupWorldCreationRequestParser.TryParse(
@@ -55,7 +61,8 @@ internal static class InteractiveWorldCreationPrompt
 
         Console.WriteLine(
             $"Generation request: name='{request.Generation.WorldName}', generator='{request.Generation.GeneratorId.Value}', " +
-            $"seed={request.Generation.Seed}, size={request.Generation.WidthTiles}x{request.Generation.HeightTiles}.");
+            $"seed={request.Generation.Seed}, size={request.Generation.WidthTiles}x{request.Generation.HeightTiles}, " +
+            $"mode={request.Generation.Options.GameMode}, evil={request.Generation.Options.Evil}.");
         return true;
     }
 
@@ -182,6 +189,80 @@ internal static class InteractiveWorldCreationPrompt
                     return TryReadCustomDimensions(out width, out height);
                 default:
                     Console.Error.WriteLine("Select 1, 2, 3 or 4.");
+                    break;
+            }
+        }
+    }
+
+    private static bool TryReadGameMode(out WorldGenerationGameMode gameMode)
+    {
+        Console.WriteLine();
+        Console.WriteLine("Game mode:");
+        Console.WriteLine("  1. Classic");
+        Console.WriteLine("  2. Expert");
+        Console.WriteLine("  3. Master");
+        Console.WriteLine("  4. Journey");
+
+        while (true)
+        {
+            Console.Write("Select game mode (Enter for Classic, Q to cancel): ");
+            string? input = Console.ReadLine();
+            if (input is null || IsCancel(input.Trim()))
+            {
+                gameMode = default;
+                return false;
+            }
+
+            switch (input.Trim())
+            {
+                case "":
+                case "1":
+                    gameMode = WorldGenerationGameMode.Classic;
+                    return true;
+                case "2":
+                    gameMode = WorldGenerationGameMode.Expert;
+                    return true;
+                case "3":
+                    gameMode = WorldGenerationGameMode.Master;
+                    return true;
+                case "4":
+                    gameMode = WorldGenerationGameMode.Journey;
+                    return true;
+                default:
+                    Console.Error.WriteLine("Select 1, 2, 3 or 4.");
+                    break;
+            }
+        }
+    }
+
+    private static bool TryReadWorldEvil(out WorldGenerationEvil evil)
+    {
+        Console.WriteLine();
+        Console.WriteLine("World evil:");
+        Console.WriteLine("  1. Corruption");
+        Console.WriteLine("  2. Crimson");
+
+        while (true)
+        {
+            Console.Write("Select world evil (Enter for Corruption, Q to cancel): ");
+            string? input = Console.ReadLine();
+            if (input is null || IsCancel(input.Trim()))
+            {
+                evil = default;
+                return false;
+            }
+
+            switch (input.Trim())
+            {
+                case "":
+                case "1":
+                    evil = WorldGenerationEvil.Corruption;
+                    return true;
+                case "2":
+                    evil = WorldGenerationEvil.Crimson;
+                    return true;
+                default:
+                    Console.Error.WriteLine("Select 1 or 2.");
                     break;
             }
         }
