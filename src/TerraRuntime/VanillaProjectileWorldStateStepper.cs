@@ -13,12 +13,6 @@ namespace TerraRuntime;
 /// </summary>
 internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepper
 {
-    private const int ShurikenWidth = 22;
-    private const int ShurikenHeight = 22;
-    private const int ShurikenCollisionWidth = 6;
-    private const int ShurikenCollisionHeight = 6;
-    private const float ShurikenCollisionOffsetX = (ShurikenWidth - ShurikenCollisionWidth) * 0.5f;
-    private const float ShurikenCollisionOffsetY = (ShurikenHeight - ShurikenCollisionHeight) * 0.5f;
     private const float WaterMovementScale = 0.5f;
     private const float HoneyMovementScale = 0.25f;
     private const float ShimmerMovementScale = 0.375f;
@@ -57,7 +51,9 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
-        if (current.Type != VanillaProjectileIds.Shuriken)
+        if (!VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
+            current.Type != VanillaProjectileIds.Shuriken ||
+            definition.AiStyle != VanillaProjectileAiStyles.Thrown)
         {
             next = default;
             return false;
@@ -82,31 +78,38 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
 
         // Projectile.Update performs a second wind-physics pass after AI when the projectile is above the
         // surface, in open air, and its horizontal motion meets the vanilla opposition/low-speed predicate.
-        ApplyPostAiWind(current.PositionX, current.PositionY, ref velocityX);
+        ApplyPostAiWind(in definition, current.PositionX, current.PositionY, ref velocityX);
 
-        bool wet = VanillaWorldCollision.TryGetWetContact(
+        bool wet = !definition.IgnoreWater && VanillaWorldCollision.TryGetWetContact(
             tiles,
             current.PositionX,
             current.PositionY,
-            ShurikenWidth,
-            ShurikenHeight,
+            definition.Width,
+            definition.Height,
             out WorldLiquidKind liquidKind);
 
-        VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
-            tiles,
-            current.PositionX + ShurikenCollisionOffsetX,
-            current.PositionY + ShurikenCollisionOffsetY,
-            velocityX,
-            velocityY,
-            ShurikenCollisionWidth,
-            ShurikenCollisionHeight,
-            fallThrough: true,
-            fall2: true);
+        float collidedVelocityX = velocityX;
+        float collidedVelocityY = velocityY;
+        bool collideX = false;
+        bool collideY = false;
+        if (definition.TileCollide)
+        {
+            VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
+                tiles,
+                current.PositionX + definition.CollisionOffsetX,
+                current.PositionY + definition.CollisionOffsetY,
+                velocityX,
+                velocityY,
+                definition.CollisionWidth,
+                definition.CollisionHeight,
+                fallThrough: true,
+                fall2: true);
 
-        float collidedVelocityX = collision.VelocityX;
-        float collidedVelocityY = collision.VelocityY;
-        bool collideX = collidedVelocityX != velocityX;
-        bool collideY = collidedVelocityY != velocityY;
+            collidedVelocityX = collision.VelocityX;
+            collidedVelocityY = collision.VelocityY;
+            collideX = collidedVelocityX != velocityX;
+            collideY = collidedVelocityY != velocityY;
+        }
 
         float movementX = collidedVelocityX;
         float movementY = collidedVelocityY;
@@ -155,13 +158,17 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         return true;
     }
 
-    private void ApplyPostAiWind(float positionX, float positionY, ref float velocityX)
+    private void ApplyPostAiWind(
+        in VanillaProjectileDefinition definition,
+        float positionX,
+        float positionY,
+        ref float velocityX)
     {
         if (!windPhysics)
             return;
 
-        float centerX = positionX + ShurikenWidth * 0.5f;
-        float centerY = positionY + ShurikenHeight * 0.5f;
+        float centerX = positionX + definition.Width * 0.5f;
+        float centerY = positionY + definition.Height * 0.5f;
         if ((double)centerY >= worldSurfaceTiles * 16d)
             return;
 
