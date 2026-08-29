@@ -4,11 +4,13 @@ namespace TerraRuntime.Tests;
 
 public sealed class VanillaProjectileDefinitionCatalogTests
 {
-    [Fact]
-    public void Terraria_1458_wooden_arrow_definition_matches_source()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Terraria_1458_arrow_family_definitions_match_source(int type)
     {
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
-            VanillaProjectileIds.WoodenArrowFriendly,
+            new ProjectileTypeId(type),
             out VanillaProjectileDefinition definition));
 
         Assert.Equal(10, definition.Width);
@@ -69,13 +71,5 @@ public sealed class VanillaProjectileDefinitionCatalogTests
         Assert.Equal(collisionHeight, definition.CollisionHeight);
         Assert.Equal(collisionOffsetX, definition.CollisionOffsetX);
         Assert.Equal(collisionOffsetY, definition.CollisionOffsetY);
-    }
-
-    [Fact]
-    public void Catalog_does_not_claim_unimplemented_fire_arrow_behavior()
-    {
-        Assert.False(VanillaProjectileDefinitionCatalog.TryGet(
-            VanillaProjectileIds.FireArrow,
-            out _));
     }
 }
