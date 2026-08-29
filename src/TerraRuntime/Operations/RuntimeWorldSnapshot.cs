@@ -48,4 +48,14 @@ internal readonly record struct RuntimeWorldSnapshot(
     long SectionCachePublishRejections = 0,
     int SectionCacheActiveWorkers = 0,
     int SectionCachePendingWork = 0,
-    double SectionCacheTotalEncodeMilliseconds = 0d);
+    double SectionCacheTotalEncodeMilliseconds = 0d,
+    long SectionCacheHits = 0,
+    long SectionCacheMisses = 0,
+    long SectionCacheStaleReads = 0,
+    long SectionCacheWaits = 0,
+    long SectionCacheWaitCompletions = 0,
+    long SectionCacheWaitTimeouts = 0,
+    long SectionCacheOnDemandRequests = 0,
+    long SectionCacheOnDemandUniqueRequests = 0,
+    long SectionCacheOnDemandDeduplicatedRequests = 0,
+    int SectionCacheOnDemandPendingRequests = 0);
