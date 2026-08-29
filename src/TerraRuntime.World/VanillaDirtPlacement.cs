@@ -6,7 +6,7 @@ namespace TerraRuntime.World;
 /// Deliberately narrow authoritative subset of TerrariaServer 1.4.5.8 WorldGen tile mutation for Dirt.
 /// Placement accepts only a completely empty normalized target. Destruction accepts only the canonical Dirt state
 /// produced by this class and an inactive eight-neighbor ring, so the source-verified SquareTileFrame call has no
-/// active neighbor whose state TerraRuntime would need to reproduce. Replacement, attachments and drops remain
+/// active neighbor whose state TerraRuntime would need to reproduce. Replacement, attachments and general drops remain
 /// outside this slice instead of being approximated.
 /// </summary>
 public static class VanillaDirtPlacement
@@ -29,13 +29,11 @@ public static class VanillaDirtPlacement
     }
 
     /// <summary>
-    /// Implements the no-item packet-17 KillTile subset for an isolated canonical Dirt tile.
-    /// TerrariaServer 1.4.5.8 reaches the ordinary successful KillTile tail for this state: Dirt is not a
-    /// CheckTileBreakability2 survivor, while inactive immediate neighbors avoid the attachment/locked-door
-    /// early-return branches of CheckTileBreakability. The runtime canonicalizes the resulting inactive tile to
-    /// default storage; vanilla's frame -1 values are not gameplay-visible for an inactive tile.
+    /// Preflights the same isolated canonical Dirt subset accepted by <see cref="TryKillIsolatedWithoutDrop"/>
+    /// without mutating the world. The authoritative game thread may use this before reserving cross-subsystem
+    /// resources; single-writer ownership keeps the preflight stable until the following commit attempt.
     /// </summary>
-    public static bool TryKillIsolatedWithoutDrop(WorldTileStore tiles, int x, int y)
+    public static bool CanKillIsolated(WorldTileStore tiles, int x, int y)
     {
         ArgumentNullException.ThrowIfNull(tiles);
 
@@ -57,6 +55,21 @@ public static class VanillaDirtPlacement
                     return false;
             }
         }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Implements the no-item packet-17 KillTile subset for an isolated canonical Dirt tile.
+    /// TerrariaServer 1.4.5.8 reaches the ordinary successful KillTile tail for this state: Dirt is not a
+    /// CheckTileBreakability2 survivor, while inactive immediate neighbors avoid the attachment/locked-door
+    /// early-return branches of CheckTileBreakability. The runtime canonicalizes the resulting inactive tile to
+    /// default storage; vanilla's frame -1 values are not gameplay-visible for an inactive tile.
+    /// </summary>
+    public static bool TryKillIsolatedWithoutDrop(WorldTileStore tiles, int x, int y)
+    {
+        if (!CanKillIsolated(tiles, x, y))
+            return false;
 
         WorldTile cleared = default;
         tiles.Set(x, y, in cleared);
