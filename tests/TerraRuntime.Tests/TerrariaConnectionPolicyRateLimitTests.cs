@@ -62,7 +62,7 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
     }
 
     [Fact]
-    public void Stops_only_when_the_configured_message_budget_is_exceeded()
+    public void Stops_only_when_the_configured_message_budget_is_exceeded_and_reports_the_reject_aggregately()
     {
         var messageLimits = new ConnectionMessageRateLimits(
             new ConnectionMessageRateRule(
@@ -74,8 +74,11 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
             ConnectionRateBudgetOptions.AccountingOnly,
             messageLimits);
         var state = new TerrariaConnectionPolicyState(options);
+        var accountant = new TerrariaConnectionRateAccountant(
+            ConnectionRateBudgetOptions.AccountingOnly,
+            state.TimeProvider);
         var inner = new CountingSink();
-        var policy = new TerrariaConnectionPolicySink(inner, state);
+        var policy = new TerrariaConnectionPolicySink(inner, state, accountant);
         TerrariaFrame hello = Decode(CurrentHelloPacket());
         TerrariaFrame firstProjectile = Decode([3, 0, (byte)TerrariaMessageId.ProjectileNew]);
         TerrariaFrame movement = Decode([3, 0, (byte)TerrariaMessageId.PlayerControls]);
@@ -87,6 +90,8 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
         Assert.Equal(TerrariaFrameSinkResult.Stop, policy.OnFrame(in secondProjectile));
         Assert.Equal(TerrariaConnectionStopReason.RateLimited, state.StopReason);
         Assert.Equal(3, inner.Count);
+        Assert.Equal(4, accountant.Snapshot.TotalFrames);
+        Assert.Equal(1, accountant.Snapshot.RejectedFrames);
     }
 
     [Fact]
