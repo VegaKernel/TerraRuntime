@@ -13,8 +13,8 @@ internal enum ClientTileManipulationConsistencyResult : byte
 
 /// <summary>
 /// TerraRuntime's stricter consistency policy for client-originated packet 17. TerrariaServer 1.4.5.8 itself
-/// does not compare packet 17 against selectedItem/inventory; this layer deliberately does. It uses only
-/// source-backed item facts and must not be described as vanilla packet-17 parity.
+/// does not compare packet 17 against selectedItem/inventory; this layer deliberately does. It consumes the
+/// shared source-backed item-definition catalog and must not be described as vanilla packet-17 parity.
 /// </summary>
 internal static class ClientTileManipulationConsistency
 {
@@ -34,15 +34,14 @@ internal static class ClientTileManipulationConsistency
             return ClientTileManipulationConsistencyResult.Mismatch;
         }
 
-        if (!VanillaTileInteractionItemFacts.TryGetPlacementTile(
+        if (!VanillaItemDefinitionCatalog.TryGetPlacement(
                 selectedItem.ItemType,
-                out TileTypeId itemTile,
-                out _))
+                out VanillaItemPlacementDefinition placement))
         {
             return ClientTileManipulationConsistencyResult.Unsupported;
         }
 
-        return requestedTile == itemTile
+        return requestedTile == placement.TileType
             ? ClientTileManipulationConsistencyResult.Consistent
             : ClientTileManipulationConsistencyResult.Mismatch;
     }
