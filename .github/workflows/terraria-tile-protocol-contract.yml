@@ -1,0 +1,77 @@
+name: Terraria Tile Protocol Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Protocol/TerrariaMessageId.cs'
+      - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaTileManipulationCodec.cs'
+      - 'tests/TerraRuntime.Tests/TerrariaTileManipulationCodecTests.cs'
+      - 'tools/ci/probe_tile_protocol.py'
+      - '.github/workflows/terraria-tile-protocol-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-tile-protocol-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tile-protocol:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/source-contract .tools
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Install pinned ILSpy command line
+        run: >-
+          dotnet tool install ilspycmd
+          --tool-path .tools
+          --version 11.0.0.9375
+
+      - name: Probe packet-17 source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+
+          while IFS= read -r -d '' candidate; do
+            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
+            printf 'source_candidate_sha256=%s path=%s\n' "$candidate_sha256" "$candidate"
+            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then
+              assembly="$candidate"
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+
+          if [[ -z "$assembly" ]]; then
+            echo "Pinned TerrariaServer 1.4.5.8 source assembly was not found." >&2
+            exit 1
+          fi
+
+          assembly_dir="$(dirname "$assembly")"
+          printf 'source_assembly_sha256=%s path=%s\n' "$expected_sha256" "$assembly"
+
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.NetMessage "$assembly" \
+            > artifacts/source-contract/net-message.cs
+
+          python3 tools/ci/probe_tile_protocol.py \
+            --net-message artifacts/source-contract/net-message.cs
