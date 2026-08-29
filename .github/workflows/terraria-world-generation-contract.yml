@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           mkdir -p .cache/terraria-1458 artifacts/source-contract .tools
           curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
-          unzip -q -o .cache/terraria-1458/extracted -d .cache/terraria-1458/extracted
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
           dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
           expected="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
           assembly=""
