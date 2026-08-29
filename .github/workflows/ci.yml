@@ -50,6 +50,118 @@ jobs:
       - name: Terminal UI smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --tui-smoke
 
+  coreclr-extensible-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Publish extensible CoreCLR linux-x64
+        run: >-
+          dotnet publish src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj
+          -c Release
+          -r linux-x64
+          -p:PublishAot=false
+          -p:PublishSingleFile=true
+          -p:SelfContained=true
+          -p:PublishReadyToRun=true
+          -o artifacts/coreclr/linux-x64
+
+      - name: Verify clean extensible deployment layout
+        shell: bash
+        run: |
+          root="artifacts/deploy-coreclr/linux-x64"
+          test -x "$root/TerraRuntime.Extensible.Server"
+          for dir in HostModules ServerPlugins Worlds config data logs; do
+            test -d "$root/$dir"
+          done
+          unexpected="$(find "$root" -mindepth 1 -maxdepth 1 \
+            ! -name TerraRuntime.Extensible.Server \
+            ! -name HostModules \
+            ! -name ServerPlugins \
+            ! -name Worlds \
+            ! -name config \
+            ! -name data \
+            ! -name logs -print)"
+          if [ -n "$unexpected" ]; then
+            echo "Unexpected extensible deployment entries:"
+            echo "$unexpected"
+            exit 1
+          fi
+
+      - name: Build drop-in host module fixture
+        run: >-
+          dotnet build tests/TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj
+          -c Release
+          -p:PublishAot=false
+
+      - name: Install drop-in Vega fixture
+        shell: bash
+        run: >-
+          cp tests/TerraRuntime.HostModuleFixture/bin/Release/net11.0/TerraRuntime.HostModuleFixture.dll
+          artifacts/deploy-coreclr/linux-x64/HostModules/Vega.dll
+
+      - name: CoreCLR drop-in host module smoke
+        run: ./artifacts/deploy-coreclr/linux-x64/TerraRuntime.Extensible.Server --host-module-smoke
+
+  coreclr-extensible-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Publish extensible CoreCLR win-x64
+        run: >-
+          dotnet publish src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj
+          -c Release
+          -r win-x64
+          -p:PublishAot=false
+          -p:PublishSingleFile=true
+          -p:SelfContained=true
+          -p:PublishReadyToRun=true
+          -o artifacts/coreclr/win-x64
+
+      - name: Verify clean extensible deployment layout
+        shell: pwsh
+        run: |
+          $root = "artifacts/deploy-coreclr/win-x64"
+          $allowed = @("TerraRuntime.Extensible.Server.exe", "HostModules", "ServerPlugins", "Worlds", "config", "data", "logs")
+          if (-not (Test-Path "$root/TerraRuntime.Extensible.Server.exe" -PathType Leaf)) { throw "Missing TerraRuntime.Extensible.Server.exe" }
+          foreach ($dir in @("HostModules", "ServerPlugins", "Worlds", "config", "data", "logs")) {
+            if (-not (Test-Path "$root/$dir" -PathType Container)) { throw "Missing deployment directory: $dir" }
+          }
+          $unexpected = @(Get-ChildItem $root | Where-Object { $_.Name -notin $allowed })
+          if ($unexpected.Count -ne 0) {
+            $names = $unexpected.Name -join ", "
+            throw "Unexpected extensible deployment entries: $names"
+          }
+
+      - name: Build drop-in host module fixture
+        run: >-
+          dotnet build tests/TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj
+          -c Release
+          -p:PublishAot=false
+
+      - name: Install drop-in Vega fixture
+        shell: pwsh
+        run: Copy-Item tests/TerraRuntime.HostModuleFixture/bin/Release/net11.0/TerraRuntime.HostModuleFixture.dll artifacts/deploy-coreclr/win-x64/HostModules/Vega.dll
+
+      - name: CoreCLR drop-in host module smoke
+        shell: pwsh
+        run: .\artifacts\deploy-coreclr\win-x64\TerraRuntime.Extensible.Server.exe --host-module-smoke
+
   native-aot-linux:
     runs-on: ubuntu-latest
 
