@@ -165,38 +165,47 @@ def main() -> int:
     kill_tile_drops = extract_method(worldgen_source, "KillTile_GetItemDrops")
 
     set_defaults = extract_method(projectile_source, "SetDefaults")
-    wooden_arrow_defaults = around_optional(set_defaults, "case 1:", radius=1400)
-    wooden_arrow_defaults_if = around_optional(set_defaults, "type == 1", radius=1400)
+    wooden_arrow_defaults = around_optional(set_defaults, "type == 1", radius=1400)
     arrow_ai = extract_method(projectile_source, "AI_001")
+    should_use_wind = compact(extract_method(projectile_source, "ShouldUseWindPhysics"))
     handle_movement = extract_method(projectile_source, "HandleMovement")
     projectile_kill = extract_method(projectile_source, "Kill")
 
     print("projectile_wooden_arrow_defaults=" + wooden_arrow_defaults)
-    print("projectile_wooden_arrow_defaults_if=" + wooden_arrow_defaults_if)
     print("projectile_ai001_ai0_increment=" + around_optional(arrow_ai, "ai[0]++;", radius=1200))
     print("projectile_ai001_gravity=" + around_optional(arrow_ai, "ai[0] >= 15f", radius=1500))
     print("projectile_ai001_fall_cap=" + around_last(arrow_ai, "velocity.Y > 16f", radius=900))
-    print("projectile_ai001_mentions=" + matching_lines(projectile_source, "AI_001", limit=80))
-    print("projectile_ai_style1_mentions=" + matching_lines(projectile_source, "aiStyle == 1", limit=80))
-    print("projectile_ai_style1_context=" + around_optional(projectile_source, "aiStyle == 1", radius=3200))
-    print("projectile_wind_physics_mentions=" + matching_lines(projectile_source, "windPhysics", limit=80))
-    print("projectile_wind_speed_context=" + around_optional(projectile_source, "windSpeedCurrent", radius=2400))
+    print("projectile_should_use_wind_physics=" + should_use_wind)
+    print("projectile_wind_speed_context=" + around_optional(projectile_source, "ShouldUseWindPhysics() &&", radius=2200))
 
     print(f"projectile_handle_movement_length={len(compact(handle_movement))}")
-    print("projectile_handle_movement_kill_context=" + around_optional(handle_movement, "Kill();", radius=2600))
-    print("projectile_handle_movement_tile_collide_context=" + around_optional(handle_movement, "tileCollide", radius=2600))
+    print("projectile_handle_movement_ai1_collision_response=" + around_optional(
+        handle_movement,
+        "else if (aiStyle == 1 || aiStyle == 16 || aiStyle == 40 || type == 229)",
+        radius=4200))
+    print("projectile_handle_movement_ai1_cut_context=" + around_optional(
+        handle_movement,
+        "if (aiStyle == 1 || aiStyle == 2 || aiStyle == 8 || aiStyle == 21",
+        radius=3200))
+    print("projectile_handle_movement_on_tile_collide=" + around_optional(handle_movement, "OnTileCollide", radius=3200))
+
     print(f"projectile_kill_length={len(compact(projectile_kill))}")
     print("projectile_kill_helpers=" + called_helpers(projectile_kill, "Kill_"))
-    print("projectile_kill_type1_mentions=" + matching_lines(projectile_kill, "type == 1", limit=80))
-    print("projectile_kill_case1_context=" + around_optional(projectile_kill, "case 1:", radius=3200))
-    print("projectile_kill_arrow_context=" + around_optional(projectile_kill, "arrow", radius=3200))
+    print("projectile_kill_type1_effect=" + around_optional(
+        projectile_kill,
+        "if (type == 1 || type == 81 || type == 98 || type == 980 || type == 1073)",
+        radius=4200))
+    print("projectile_kill_request_new_item=" + around_optional(
+        projectile_kill,
+        "Item.RequestNewItem(GetItemSource_DropAsItem()",
+        radius=5200))
+    print("projectile_kill_no_drop_item=" + around_optional(projectile_kill, "noDropItem", radius=4200))
     print("projectile_kill_new_item_mentions=" + matching_lines(projectile_kill, "NewItem", limit=80))
 
     print("projectile_can_cut_tiles=" + can_cut_tiles)
     print("projectile_cut_tiles=" + cut_tiles)
     print("projectile_cut_tiles_at=" + cut_tiles_at)
     print("projectile_cut_tiles_callsite=" + around_first(projectile_source, "CutTiles();"))
-    print("projectile_trap_true_mentions=" + matching_lines(projectile_source, "trap = true"))
     print("delegate_methods_cut_tiles=" + delegate_cut_tiles)
     print("player_get_tile_cut_ignorance=" + tile_cut_ignorance)
     print("worldgen_can_cut_tile=" + can_cut_tile)
@@ -207,12 +216,9 @@ def main() -> int:
     compact_drops = compact(kill_tile_drops)
     print(f"worldgen_kill_tile_length={len(compact_kill_tile)}")
     print("worldgen_kill_tile_helpers=" + called_helpers(kill_tile, "KillTile_"))
-    print("worldgen_kill_tile_drop_call=" + around_optional(kill_tile, "KillTile_GetItemDrops", radius=900))
     print("worldgen_kill_tile_active_false_last=" + around_last(kill_tile, "active(active: false)", radius=1200))
     print("worldgen_kill_tile_type_zero_last=" + around_last(kill_tile, "type = 0", radius=1200))
     print("worldgen_kill_tile_square_frame_last=" + around_last(kill_tile, "SquareTileFrame", radius=1200))
-    print("worldgen_kill_tile_framex_reset_last=" + around_last(kill_tile, "frameX = -1", radius=1200))
-    print("worldgen_kill_tile_framey_reset_last=" + around_last(kill_tile, "frameY = -1", radius=1200))
     print(f"worldgen_kill_tile_get_item_drops_length={len(compact_drops)}")
     print("worldgen_cuttable_drop_contexts=" + relevant_drop_contexts(kill_tile_drops))
     return 0
