@@ -31,30 +31,6 @@ jobs:
 
           path = Path('src/TerraRuntime/TerrariaServerHost.cs')
           text = path.read_text(encoding='utf-8')
-          ugly = '''        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
-              Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
-
-          string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
-          if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
-              Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
-
-          '''
-          clean = '''        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
-              Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
-
-          string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
-          if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
-              Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
-
-          '''
-          # Triple-quoted YAML/Python indentation is stripped by the shell block. Normalize explicitly
-          # to the host's eight-space method indentation rather than relying on source formatting magic.
-          clean = clean.replace('\n      Console.', '\n            Console.')
-          clean = clean.replace('\n  string checkpoint', '\n        string checkpoint')
-          clean = clean.replace('\n  if (!Atomic', '\n        if (!Atomic')
-          clean = clean.replace('\n          Console.', '\n            Console.')
-          clean = clean.rstrip() + '\n\n'
-
           current = '''        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
     Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
 
@@ -63,9 +39,16 @@ if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
     Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
 
 '''
+          clean = '''        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
+            Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
+
+        string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
+        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
+            Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
+
+'''
           if current in text:
-              text = text.replace(current, clean, 1)
-              path.write_text(text, encoding='utf-8')
+              path.write_text(text.replace(current, clean, 1), encoding='utf-8')
           elif clean not in text:
               raise SystemExit('startup cleanup block changed unexpectedly')
 
@@ -74,13 +57,13 @@ if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
 
       - name: Prove startup cleanup helper
         run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
-          --filter "FullyQualifiedName~TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests"
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --
+          -class "TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests"
 
       - name: Prove host startup cleanup ordering
         run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
-          --filter "FullyQualifiedName~TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests"
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --
+          -class "TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests"
 
       - name: Commit production host formatting
         shell: bash
@@ -94,5 +77,12 @@ if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
             exit 0
           fi
           git commit -m 'style: normalize startup save cleanup'
-          git pull --rebase origin main
-          git push origin HEAD:main
+          for attempt in 1 2 3 4 5 6; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
