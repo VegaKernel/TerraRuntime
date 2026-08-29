@@ -21,6 +21,7 @@ docs/
 │   ├── world-persistence.md
 │   ├── gameplay.md
 │   ├── synchronization.md
+│   ├── performance-runtime.md
 │   ├── operations-tui.md
 │   ├── observability-logging.md
 │   ├── world-generation.md
@@ -35,6 +36,7 @@ docs/
 │   ├── world-persistence.md
 │   ├── gameplay.md
 │   ├── synchronization.md
+│   ├── performance-runtime.md
 │   ├── operations-tui.md
 │   ├── observability-logging.md
 │   ├── world-generation.md
@@ -57,6 +59,7 @@ A code change must update both RU and EN documentation in the same change when i
 - CLI, startup, deployment or directory layout;
 - configuration;
 - networking or synchronization semantics visible to integrators/operators;
+- performance/tick scheduling or work-budget semantics;
 - persistence, `.wld`, `.runtime-world`, save/recovery behavior;
 - security, rate-limit or failure behavior;
 - TUI/operations integration;
@@ -102,7 +105,7 @@ Practical descriptions of supported external integration contracts, lifecycle, s
 
 ### Subsystem and engineering guides
 
-Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, operations/TUI, observability/logging, world generation, security and the project's testing/evidence discipline.
+Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, performance/tick scheduling, operations/TUI, observability/logging, world generation, security and the project's testing/evidence discipline.
 
 ### Roadmaps
 
@@ -150,6 +153,7 @@ python3 tools/ci/check_documentation.py
 - [x] Dedicated world/persistence guide: `.wld` support, save pipeline, atomic recovery, runtime cache and warm-start behavior.
 - [x] Dedicated gameplay guide: players, inventory/items, NPCs, projectiles, combat and authoritative validation, with explicit parity status.
 - [x] Dedicated synchronization guide: sections, bootstrap/join, interest management and resync invariants.
+- [x] Dedicated performance/tick-runtime guide: 60 Hz schedule, command mailbox/ingress/apply budgets, per-source fairness, missed-deadline policy and measurement discipline.
 - [x] Dedicated operations/TUI guide: startup modes, dashboard model, telemetry and safe administrative operations.
 - [x] Dedicated observability/logging guide: bounded current read models and telemetry, TUI consumption, and explicit separation from the incomplete async structured logging target.
 - [x] Dedicated worldgen guide: provider contracts, plan/pass lifecycle, workspace model and vanilla-worldgen status.
