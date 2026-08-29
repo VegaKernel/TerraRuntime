@@ -90,6 +90,7 @@ def main() -> int:
     source = args.projectile.read_text(encoding="utf-8")
     set_defaults = extract_method(source, "SetDefaults")
     boomerang = extract_method(source, "AI_003_Boomerang")
+    update = extract_method(source, "Update")
     handle_movement = extract_method(source, "HandleMovement")
     update_position = extract_method(source, "UpdatePosition")
     can_cut_tiles = extract_method(source, "CanCutTiles")
@@ -99,6 +100,8 @@ def main() -> int:
     print("projectile_boomerang_outbound=" + all_contexts(boomerang, "if (ai[0] == 0f)", radius=1700, limit=2))
     print("projectile_boomerang_return_entry=" + all_contexts(boomerang, "tileCollide = false", radius=1200, limit=4))
     print("projectile_boomerang_owner_speed=" + all_contexts(boomerang, "meleeSpeed", radius=700, limit=4))
+    print("projectile_update_wind_physics=" + all_contexts(update, "windPhysics", radius=1500, limit=8))
+    print("projectile_update_wind_speed=" + all_contexts(update, "windSpeedCurrent", radius=1500, limit=8))
     print("projectile_handle_movement_ai3=" + all_contexts(handle_movement, "aiStyle == 3 || aiStyle == 13", radius=1800, limit=4))
     print("projectile_can_cut_tiles=" + compact(can_cut_tiles))
     print("projectile_collision_params_boomerang_branch=" + around_optional(
