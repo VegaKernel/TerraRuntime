@@ -7,6 +7,7 @@ on:
       - 'tools/ci/probe_world_generation_init.py'
       - 'tools/ci/probe_worldgen_terrain_pass.py'
       - 'tools/ci/probe_worldgen_rng.py'
+      - 'tools/ci/probe_worldgen_seed.py'
       - 'tools/ci/verify_runtime_worldgen_catalog.py'
       - 'src/TerraRuntime.Core/VanillaUnifiedRandom1458.cs'
       - 'src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs'
@@ -76,6 +77,7 @@ jobs:
           unified_random="$(find_type UnifiedRandom)"
           gen_base="$(find_type GenBase)"
           world_generator="$(find_type WorldGenerator)"
+          world_file_data="$(find_type WorldFileData)"
           echo "GenPassNameID type: $gen_pass_name_id"
           echo "TerrainPass type: $terrain_pass"
           echo "JunglePass type: $jungle_pass"
@@ -83,6 +85,7 @@ jobs:
           echo "UnifiedRandom type: $unified_random"
           echo "GenBase type: $gen_base"
           echo "WorldGenerator type: $world_generator"
+          echo "WorldFileData type: $world_file_data"
 
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_pass_name_id" "$assembly" > artifacts/source-contract/gen-pass-name-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$terrain_pass" "$assembly" > artifacts/source-contract/terrain-pass.cs
@@ -91,6 +94,7 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$unified_random" "$assembly" > artifacts/source-contract/unified-random.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_base" "$assembly" > artifacts/source-contract/gen-base.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_generator" "$assembly" > artifacts/source-contract/world-generator.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_file_data" "$assembly" > artifacts/source-contract/world-file-data.cs
 
           python3 tools/ci/probe_world_generation_init.py \
             --world-gen artifacts/source-contract/world-gen.cs \
@@ -112,6 +116,10 @@ jobs:
             --world-gen artifacts/source-contract/world-gen.cs \
             --output artifacts/source-contract/worldgen-rng-contract.txt
 
+          python3 tools/ci/probe_worldgen_seed.py \
+            --world-file-data artifacts/source-contract/world-file-data.cs \
+            --output artifacts/source-contract/worldgen-seed-contract.txt
+
       - name: Verify runtime catalog against pinned fingerprint
         run: >-
           python3 tools/ci/verify_runtime_worldgen_catalog.py
@@ -129,5 +137,6 @@ jobs:
             artifacts/source-contract/world-generation-pass-catalog.txt
             artifacts/source-contract/terrain-pass-contract.txt
             artifacts/source-contract/worldgen-rng-contract.txt
+            artifacts/source-contract/worldgen-seed-contract.txt
           if-no-files-found: error
           retention-days: 7
