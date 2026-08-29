@@ -72,6 +72,9 @@ jobs:
 
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.NetMessage "$assembly" \
             > artifacts/source-contract/net-message.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.MessageBuffer "$assembly" \
+            > artifacts/source-contract/message-buffer.cs
 
           python3 tools/ci/probe_tile_protocol.py \
-            --net-message artifacts/source-contract/net-message.cs
+            --net-message artifacts/source-contract/net-message.cs \
+            --message-buffer artifacts/source-contract/message-buffer.cs
