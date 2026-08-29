@@ -40,6 +40,13 @@ public static class TerrariaServerHost
         if (options.InterestManagementEnabled)
             runtimeInterestManagement.SetEnabled(true);
 
+        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(options.WorldPath))
+    Console.Error.WriteLine($"Failed to clean abandoned save transactions for canonical world: {options.WorldPath}.");
+
+string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath);
+if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
+    Console.Error.WriteLine($"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.");
+
         if (!File.Exists(options.WorldPath))
         {
             Console.Error.WriteLine($"World file not found: {options.WorldPath}");
