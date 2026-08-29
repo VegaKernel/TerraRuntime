@@ -80,11 +80,11 @@ internal static class TerminalUiSmoke
 
                     // Exercise the real operator path through MenuBar, not only the screen callbacks.
                     // Details uses E as its top-level hotkey and Players uses P while the menu is open.
-                    app.InjectKey(Key.E.WithAlt);
+                    app.Keyboard.RaiseKeyDownEvent(Key.E.WithAlt);
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "Players");
 
-                    app.InjectKey(Key.P);
+                    app.Keyboard.RaiseKeyDownEvent(Key.P);
                     AssertWorkspaceRow(workspace, "PLAYERS");
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "PLAYERS");
