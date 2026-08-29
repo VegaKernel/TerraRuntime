@@ -5,6 +5,11 @@ namespace TerraRuntime;
 
 public static class StartupProgram
 {
+    private static ITerraRuntimeTerminalDashboardSource? currentTerminalDashboards;
+
+    internal static ITerraRuntimeTerminalDashboardSource? CurrentTerminalDashboards =>
+        Volatile.Read(ref currentTerminalDashboards);
+
     public static int Main(string[] args) => Run(args);
 
     public static int Run(
@@ -56,12 +61,23 @@ public static class StartupProgram
             return 23;
         }
 
-        return TerrariaServerHost.RunAsync(
-                options,
-                hostLifecycle: hostLifecycle,
-                terminalDashboards: terminalDashboards)
-            .GetAwaiter()
-            .GetResult();
+        // The current server host owns one world per process. Keep the host-level UI source scoped to
+        // this blocking run so the terminal layer can consume trusted dashboard registrations without
+        // exposing the extensible-host implementation to the runtime core.
+        ITerraRuntimeTerminalDashboardSource? previous =
+            Interlocked.Exchange(ref currentTerminalDashboards, terminalDashboards);
+        try
+        {
+            return TerrariaServerHost.RunAsync(
+                    options,
+                    hostLifecycle: hostLifecycle)
+                .GetAwaiter()
+                .GetResult();
+        }
+        finally
+        {
+            Interlocked.Exchange(ref currentTerminalDashboards, previous);
+        }
     }
 
     private static bool ContainsStandaloneMode(IEnumerable<string> args)
