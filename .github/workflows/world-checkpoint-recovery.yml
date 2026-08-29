@@ -1,0 +1,292 @@
+name: World Checkpoint Recovery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/RuntimeWorldCheckpointRecovery.cs'
+      - 'src/TerraRuntime/RuntimeWorldTileChestSaveService.cs'
+      - 'src/TerraRuntime/TerrariaServerHost.cs'
+      - 'src/TerraRuntime.Core/AtomicSaveFileWriter.cs'
+      - 'src/TerraRuntime.Core/AtomicSaveFileWriterOptions.cs'
+      - 'src/TerraRuntime.World/**'
+      - '.github/workflows/world-checkpoint-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-world-checkpoint-recovery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  recovery-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Generate official small world
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/recovery-world.wld"
+          config="$GITHUB_WORKSPACE/artifacts/recovery-worldgen-serverconfig.txt"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=1
+          worldname=TerraRuntimeRecoverySmoke
+          difficulty=0
+          maxplayers=1
+          port=17800
+          password=
+          motd=TerraRuntime recovery verification
+          secure=1
+          upnp=0
+          EOF
+
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$GITHUB_WORKSPACE/artifacts/recovery-worldgen.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$GITHUB_WORKSPACE/artifacts/recovery-worldgen.log"
+          test -s "$world"
+          if [[ $status -ne 0 && $status -ne 124 ]]; then
+            exit "$status"
+          fi
+          cp "$world" "$GITHUB_WORKSPACE/artifacts/recovery-original.wld"
+
+      - name: Build TerraRuntime host
+        run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+
+      - name: Prove previous canonical rotates to validated backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/recovery-world.wld"
+          original="$GITHUB_WORKSPACE/artifacts/recovery-original.wld"
+          backup="$world.bak"
+          log="$GITHUB_WORKSPACE/artifacts/recovery-first-save.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          rm -f "${world%.wld}.runtime-world" "${world%.wld}.runtime-bootstrap" "$backup"
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17801 \
+            --max-players 1 \
+            --no-tui \
+            > "$log" 2>&1 &
+          pid=$!
+
+          cleanup() {
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$pid" 2>/dev/null; then
+              cat "$log" >&2
+              exit 1
+            fi
+            if grep -q 'TerraRuntime listening on 0.0.0.0:17801' "$log"; then
+              break
+            fi
+            sleep 0.5
+          done
+          grep -q 'TerraRuntime listening on 0.0.0.0:17801' "$log"
+
+          kill -TERM "$pid"
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$pid" 2>/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          if kill -0 "$pid" 2>/dev/null; then
+            cat "$log" >&2
+            exit 1
+          fi
+          set +e
+          wait "$pid"
+          status=$?
+          set -e
+          trap - EXIT
+          test "$status" -eq 0
+          grep -q 'Canonical tile/chest/clock world checkpoint committed:' "$log"
+          test -s "$backup"
+          cmp "$original" "$backup"
+          echo 'checkpoint_backup_rotation_ok previous_canonical_preserved=true validated=true'
+
+      - name: Prove startup restores corrupted canonical from validated backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/recovery-world.wld"
+          backup="$world.bak"
+          expected="$GITHUB_WORKSPACE/artifacts/recovery-expected.wld"
+          log="$GITHUB_WORKSPACE/artifacts/recovery-restore.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          cp "$backup" "$expected"
+          printf 'corrupt-canonical-world' > "$world"
+          rm -f "${world%.wld}.runtime-world" "${world%.wld}.runtime-bootstrap"
+
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17802 \
+            --max-players 1 \
+            --no-tui \
+            > "$log" 2>&1 &
+          pid=$!
+
+          cleanup() {
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$pid" 2>/dev/null; then
+              cat "$log" >&2
+              exit 1
+            fi
+            if grep -q 'TerraRuntime listening on 0.0.0.0:17802' "$log"; then
+              break
+            fi
+            sleep 0.5
+          done
+
+          grep -q 'World load failed:' "$log"
+          grep -q 'Canonical world recovered from validated checkpoint backup:' "$log"
+          grep -q 'TerraRuntime listening on 0.0.0.0:17802' "$log"
+          cmp "$expected" "$world"
+          echo 'checkpoint_startup_recovery_ok canonical_corrupt=true backup_validated=true exact_restore=true'
+
+          kill -TERM "$pid"
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$pid" 2>/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          if kill -0 "$pid" 2>/dev/null; then
+            cat "$log" >&2
+            exit 1
+          fi
+          set +e
+          wait "$pid"
+          status=$?
+          set -e
+          trap - EXIT
+          test "$status" -eq 0
+          grep -q 'Canonical tile/chest/clock world checkpoint committed:' "$log"
+
+      - name: Prove invalid backup fails closed without canonical replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/invalid-recovery.wld"
+          backup="$world.bak"
+          expected="$GITHUB_WORKSPACE/artifacts/invalid-recovery.expected"
+          log="$GITHUB_WORKSPACE/artifacts/recovery-invalid-backup.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          printf 'broken-canonical' > "$world"
+          cp "$world" "$expected"
+          printf 'broken-backup' > "$backup"
+
+          set +e
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17803 \
+            --max-players 1 \
+            --no-tui \
+            > "$log" 2>&1
+          status=$?
+          set -e
+
+          cat "$log"
+          test "$status" -eq 26
+          grep -q 'World checkpoint recovery failed: result=InvalidBackup' "$log"
+          cmp "$expected" "$world"
+          echo 'checkpoint_invalid_backup_ok startup_rejected=true canonical_untouched=true'
+
+      - name: Reload recovered world with official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/recovery-world.wld"
+          config="$GITHUB_WORKSPACE/artifacts/recovery-official-serverconfig.txt"
+          log="$GITHUB_WORKSPACE/artifacts/recovery-official-reload.log"
+
+          cat > "$config" <<EOF
+          world=$world
+          maxplayers=1
+          port=17804
+          password=
+          motd=TerraRuntime recovered world official verification
+          secure=1
+          upnp=0
+          EOF
+
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$log" 2>&1
+          status=$?
+          set -e
+
+          cat "$log"
+          test "$status" -eq 0
+          grep -q 'Terraria Server v1.4.5.8' "$log"
+          grep -q 'Saving before exit' "$log"
+          test -s "$world"
+          echo 'checkpoint_official_reload_ok terraria=1.4.5.8'
+
+      - name: Upload recovery proof evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: world-checkpoint-recovery-${{ github.sha }}
+          path: |
+            artifacts/recovery-worldgen.log
+            artifacts/recovery-first-save.log
+            artifacts/recovery-restore.log
+            artifacts/recovery-invalid-backup.log
+            artifacts/recovery-official-reload.log
+          if-no-files-found: warn
+          retention-days: 7
