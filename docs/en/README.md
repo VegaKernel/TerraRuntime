@@ -10,7 +10,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Architecture](architecture.md) — subsystem boundaries, state ownership, data flow, threading model, NativeAOT/CoreCLR profiles, persistence, and extension boundaries.
 - [Host integration interfaces](host-interfaces.md) — public `TerraRuntime.HostContracts`, trusted host module lifecycle, and safe runtime interaction rules.
 
-## Subsystem guides
+## Subsystem and engineering guides
 
 - [Networking and protocol](networking-protocol.md) — framing, connection policy, Multiplicity boundary, queues, rate accounting, stop reasons and join traffic.
 - [World loading and persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state and recovery.
@@ -20,6 +20,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Observability and logging](observability-logging.md) — bounded runtime telemetry/log buffers, current host-log behavior and the incomplete async structured logging target.
 - [World generation](world-generation.md) — provider/pass/workspace/RNG contracts, trusted-host registration and current non-vanilla flat baseline.
 - [Security and trust boundaries](security.md) — admission limits, rate/size bounds, failure isolation, persistence safety and incomplete hardening work.
+- [Testing, verification and evidence](testing-evidence.md) — roadmap checkbox policy, independent evidence, official-source/live-world probes, NativeAOT/CoreCLR gates and performance proof rules.
 
 ## Normative project references
 
