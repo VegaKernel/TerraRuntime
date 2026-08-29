@@ -108,21 +108,41 @@ Runtime operations surface уже содержит read models/telemetry для 
 
 Exact window layout может меняться. Инвариант: dashboard потребляет bounded snapshots, а не implementation stores.
 
-## 9. Save telemetry
+## 9. Save telemetry и manual checkpoint
 
 World save status публикуется в operations/TUI через detached status capture.
 
-Status содержит, среди прочего, принимает ли persistence requests, tile-shadow readiness, remaining bootstrap sections, pending dirty tile sections, save requested, active/pending background write state и accepted/started/completed/coalesced/failed write counters.
+Status содержит, среди прочего:
 
-TUI поэтому не должен лазить напрямую в `WorldTileStore` или save coordinator.
+- принимает ли persistence requests;
+- tile-shadow readiness;
+- remaining bootstrap sections;
+- pending dirty tile sections;
+- установлен ли save request;
+- active/pending background write state;
+- accepted/started/completed/coalesced/failed write counters.
+
+TUI также предоставляет **Actions → Save world checkpoint**. Action вызывает `IWorldOperations.TryRequestSave()`, то есть проходит через persistence ingress и не получает прямую ссылку на save service или mutable tile shadow. При успешном запросе UI переходит в World view, где persistence snapshot показывает pending request; при отказе оператору явно отображается rejected administrative action.
+
+ANSI TUI smoke проходит настоящий MenuBar path (`Alt+A`, затем `S`) и проверяет отрисованный pending-save state. Unit regression coverage отдельно проверяет accepted и rejected request paths.
 
 ## 10. Network telemetry
 
-Operations может отдавать bounded network state: active connections, queue depth и другие runtime counters.
+`INetworkOperations` публикует bounded network state, не передавая UI владение lifecycle соединений. Network view сейчас показывает:
+
+- active и registered connections;
+- accepted/rejected admission totals с отдельными `capacity` и `rate` reject counters;
+- aggregate inbound rate и bounded per-connection inbound details;
+- bounded outbound queue/backpressure details и slow-client state;
+- player/NPC/projectile/world-item replication counters;
+- категоризированные terminal connection stops: protocol failure, rate limiting, invalid handshake, unsupported protocol, slow client, handshake timeout, idle timeout и application stop;
+- нормализованные frame-rejection categories: malformed protocol, rate limited, invalid state, gameplay rejected и backpressure.
+
+Connection-stop и frame-rejection категории приходят из network/subsystem-owned telemetry. TUI только проецирует immutable snapshot: он не разбирает строки логов и не добавляет дублирующие counters в packet hot path.
 
 UI не становится владельцем connection lifetime. Disconnect или иная mutation проходит через explicit safe operation/command path.
 
-High-frequency telemetry должна агрегироваться до display. Форматирование отдельной UI-строки для каждого packet в hot path нарушает границы operations layer и создаёт ненужные allocations.
+High-frequency telemetry агрегируется до display. Форматирование отдельной UI-строки для каждого packet в hot path здесь считается неправильной архитектурой.
 
 ## 11. Logs
 
@@ -174,7 +194,12 @@ Dashboard provider может обновлять свой view из `Refresh`, �
 
 Любая operation, меняющая runtime state, проходит ту же ownership boundary, что и другие control paths.
 
-Примеры существующих/будущих safe operations: player actions, runtime world-item operations, interest-management toggle, save request и server-controlled actor commands.
+Уже реализованные безопасные local administrative operations:
+
+- enable/disable interest management через authoritative command ingress;
+- manual world checkpoint request через `IWorldOperations.TryRequestSave()` и persistence ingress.
+
+Другие player, world-item или server-controlled actor actions должны следовать тому же правилу после появления явных runtime operations.
 
 TUI не получает direct-mutation shortcut только потому, что работает в одном process.
 
@@ -212,7 +237,7 @@ write path
 
 Operations/TUI уже usable, но это не финальная administration platform.
 
-Ещё развиваются complete structured logging/event IDs, более широкая packet/rejection/security telemetry, final configurable dashboard layout и long-term UX, future remote/web API adapters за тем же operations model, более богатые safe administrative actions и документация каждого dashboard panel после стабилизации layout.
+Ещё развиваются complete structured logging/event IDs, более глубокая packet/security telemetry там, где subsystem-owned counters дают достоверные данные, final configurable dashboard layout и long-term UX, future remote/web API adapters за тем же operations model, более богатые safe administrative actions и документация каждого dashboard panel после стабилизации layout.
 
 ## 21. Checklist изменения operations/TUI
 
