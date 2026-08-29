@@ -141,7 +141,10 @@ public sealed class RuntimeWorldGenerationExecutorTests
                         values.Add(context.VanillaRandom!.Next());
                     }));
             });
-        var request = new WorldGenerationRequest(provider.Id, "Rng", 1, 16, 16, SeedText: "123456");
+        var request = new WorldGenerationRequest(provider.Id, "Rng", 1, 16, 16)
+        {
+            SeedText = "123456"
+        };
         var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
 
         WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
