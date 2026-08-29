@@ -23,24 +23,21 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
     }
 
+    /// <summary>
+    /// Preserves the original control-free G6-D dry-physics slice for focused callers and tests.
+    /// Production server-player simulation uses the semantic-intent overload below.
+    /// </summary>
     public bool TryStep(
         in PlayerStateSnapshot player,
         out ServerPlayerDryPhysicsStepResult next) =>
-        TryStep(in player, ServerPlayerHorizontalIntent.Stop, out next);
+        TryStepCore(in player, player.VelocityX, out next);
 
     public bool TryStep(
         in PlayerStateSnapshot player,
         ServerPlayerHorizontalIntent horizontalIntent,
         out ServerPlayerDryPhysicsStepResult next)
     {
-        if (!player.Player.IsAssigned ||
-            player.IsDead ||
-            player.MountType != 0 ||
-            !IsValidHorizontalIntent(horizontalIntent) ||
-            !float.IsFinite(player.PositionX) ||
-            !float.IsFinite(player.PositionY) ||
-            !float.IsFinite(player.VelocityX) ||
-            !float.IsFinite(player.VelocityY))
+        if (!IsValidHorizontalIntent(horizontalIntent))
         {
             next = default;
             return false;
@@ -52,6 +49,26 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             player.VelocityX,
             player.VelocityY,
             horizontalIntent);
+        return TryStepCore(in player, velocityX, out next);
+    }
+
+    private bool TryStepCore(
+        in PlayerStateSnapshot player,
+        float velocityX,
+        out ServerPlayerDryPhysicsStepResult next)
+    {
+        if (!player.Player.IsAssigned ||
+            player.IsDead ||
+            player.MountType != 0 ||
+            !float.IsFinite(player.PositionX) ||
+            !float.IsFinite(player.PositionY) ||
+            !float.IsFinite(velocityX) ||
+            !float.IsFinite(player.VelocityY))
+        {
+            next = default;
+            return false;
+        }
+
         float velocityY = Math.Min(player.VelocityY + Gravity, MaximumFallSpeed);
 
         velocityY = VanillaWorldWalkDownSlope.ResolveVelocityY(
