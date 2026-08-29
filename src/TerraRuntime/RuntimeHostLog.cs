@@ -8,6 +8,8 @@ internal sealed class RuntimeHostLog
     private readonly TextWriter standardOutput;
     private readonly TextWriter standardError;
     private int terminalUiActive;
+    private int terminalUiSeen;
+    private int plainConsoleActive;
 
     public RuntimeHostLog(RuntimeLogBuffer runtimeLogs)
         : this(runtimeLogs, Console.Out, Console.Error)
@@ -26,11 +28,29 @@ internal sealed class RuntimeHostLog
 
     public bool IsTerminalUiActive => Volatile.Read(ref terminalUiActive) != 0;
 
-    public void SetTerminalUiActive(bool active) =>
-        Volatile.Write(ref terminalUiActive, active ? 1 : 0);
+    public bool IsPlainConsoleActive => Volatile.Read(ref plainConsoleActive) != 0;
 
-    public void Publish(RuntimeLogLevel level, string source, string message) =>
+    public void SetTerminalUiActive(bool active)
+    {
+        if (active)
+        {
+            Volatile.Write(ref terminalUiSeen, 1);
+            Volatile.Write(ref plainConsoleActive, 0);
+            Volatile.Write(ref terminalUiActive, 1);
+            return;
+        }
+
+        Volatile.Write(ref terminalUiActive, 0);
+        if (Volatile.Read(ref terminalUiSeen) != 0)
+            Volatile.Write(ref plainConsoleActive, 1);
+    }
+
+    public void Publish(RuntimeLogLevel level, string source, string message)
+    {
         runtimeLogs.Publish(level, source, message);
+        if (IsPlainConsoleActive)
+            standardOutput.WriteLine(message);
+    }
 
     public void Write(
         RuntimeLogLevel level,
