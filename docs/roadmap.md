@@ -228,7 +228,7 @@ Borrow the useful terrustia pattern, adapted to .NET 11:
 - [x] Regression-test the pre-publication process-crash invariant with a real `SIGKILL`: an existing canonical save stays byte-identical, a first save stays hidden, and the next normal save can still commit (`Authoritative World Save` run `33267501627`).
 - [ ] Complete broad interrupted-save/crash recovery beyond the proven pre-publication atomicity invariant.
 - [ ] Add automatic known-good backup rotation plus validated rollback; atomic publication alone does not recover from a logically bad but complete checkpoint.
-- [ ] Add safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process.
+- [x] Add safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process. Verified by `Authoritative World Save` run `33270005299` with real `SIGKILL`, leased orphan detection, canonical preservation and next-write cleanup.
 
 ## Phase 5 - Fast startup / cached runtime world image
 

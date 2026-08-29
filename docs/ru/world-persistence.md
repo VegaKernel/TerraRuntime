@@ -160,7 +160,7 @@ flowchart LR
     New --> DirSync["Linux parent-directory fsync"]
 ```
 
-Process kill до publication может оставить orphan random-name `.tmp`, но не заменяет canonical world. Orphan cleanup является housekeeping, а не ambiguity canonical selection.
+Process kill до publication может оставить orphan random-name `.tmp`, но не заменяет canonical world. `AtomicSaveFileWriter` теперь создаёт рядом с каждым managed temporary файл `.tmp.lease` и держит его открытым с `FileShare.None` на протяжении всей transaction: write, flush, validation, backup и publication. Перед следующим save runtime сканирует только корректно именованные leased temporary для того же target и удаляет orphan только если lease удалось получить эксклюзивно. Поэтому temporary живого writer защищён даже между процессами. Legacy `.tmp` без TerraRuntime lease намеренно не удаляется автоматически: безопасно доказать ownership такого файла нельзя.
 
 Successful validated replacement existing canonical checkpoint также сохраняет предыдущую canonical generation в `<world>.wld.bak`. При startup, если canonical `.wld` не проходит structural/content validation, TerraRuntime может проверить этот backup полным supported world loader и atomically восстановить его. Invalid backup fail'ится closed и оставляет canonical file untouched; broken canonical во время recovery никогда не ротируется поверх known-good backup.
 
@@ -204,13 +204,13 @@ Persistence evidence включает world loader/parser tests, runtime snapsho
 
 Live persistence proof использует world, созданный official TerrariaServer 1.4.5.8, выполняет live `packet 32` chest mutation, gracefully terminates TerraRuntime, проверяет exact `.wld`, restart'ит TerraRuntime, reload/save через official server и проверяет снова.
 
-`Authoritative World Save` run `33266509632` убил writer process через `SIGKILL` до publication и получил:
+`Authoritative World Save` run `33270005299` убил writer processes через `SIGKILL` во время stall до publication как для existing destination, так и для first save, после чего получил:
 
 ```text
-atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true
+atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true orphan_cleanup=true live_lease=true
 ```
 
-Это доказывает pre-publication process-crash contract: existing canonical destination остаётся byte-for-byte unchanged, first save не exposed partially, later normal save всё ещё commit'ится успешно.
+Это доказывает не только pre-publication process-crash contract, но и cross-process orphan cleanup: existing canonical destination остаётся byte-for-byte unchanged, first save не exposed partially, killed process оставляет соответствующую пару `.tmp`/`.tmp.lease`, а следующий successful save удаляет abandoned pair перед commit и не трогает temporary с live lease.
 
 `World Checkpoint Recovery` run `33269875235` использовал world из official TerrariaServer 1.4.5.8 и доказал rotation previous-generation backup, exact recovery из structurally corrupted canonical checkpoint, fail-closed behavior invalid backup, official-server reload после recovery и suppression rollback для otherwise intact world, где изменилось только little-endian format version field с `326` на `327`. Future-version canonical и его valid `326` backup оба остались byte-for-byte unchanged.
 
@@ -220,7 +220,7 @@ World-format changes требуют independent evidence real Terraria 1.4.5.8 w
 
 TerraRuntime ещё не реализует каждый field/section complete fresh vanilla `WorldFileWriter`. Future progression/events/housing/tile-entity systems требуют explicit persistence integration при переходе authoritative.
 
-Runtime snapshot layout остаётся disposable, не stable external storage API. Validated previous-generation backup rotation и automatic corruption recovery уже реализованы, но multi-generation retention/history policy отсутствует. Orphan `.tmp` cleanup после uncatchable death пока не имеет dedicated startup policy. Linux parent-directory `fsync` усиливает power-loss durability; equivalent filesystem semantics вне этого path platform-dependent. `.wld` остаётся canonical recovery boundary.
+Runtime snapshot layout остаётся disposable, не stable external storage API. Validated previous-generation backup rotation и automatic corruption recovery уже реализованы, но multi-generation retention/history policy отсутствует. Managed orphan `.tmp` удаляются при следующем save только если TerraRuntime lease удаётся получить эксклюзивно; unknown legacy temporaries без lease намеренно не удаляются автоматически. Linux parent-directory `fsync` усиливает power-loss durability; equivalent filesystem semantics вне этого path platform-dependent. `.wld` остаётся canonical recovery boundary.
 
 ## 20. Checklist изменения world/persistence
 
