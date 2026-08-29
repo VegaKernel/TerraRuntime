@@ -11,6 +11,8 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
     private readonly RuntimeLogPipeline pipeline;
     private readonly EventHandler processExitHandler;
     private readonly string correlationId;
+    private readonly RuntimePlainConsoleChatSink? plainConsoleChatSink;
+    private readonly IDisposable? plainConsoleChatSubscription;
     private string? worldId;
     private int processExitRegistered = 1;
     private int terminalUiActive;
@@ -22,7 +24,8 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
             Console.Error,
             RuntimeHostLoggingOptions.FromEnvironment(),
             additionalSinks: null,
-            correlationId: null)
+            correlationId: null,
+            enablePlainConsoleChat: true)
     {
     }
 
@@ -39,7 +42,24 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
             standardError,
             RuntimeHostLoggingOptions.ForCompatibilityTests(pipelineOptions),
             additionalSinks,
-            correlationId)
+            correlationId,
+            enablePlainConsoleChat: false)
+    {
+    }
+
+    internal RuntimeHostLog(
+        RuntimeLogBuffer runtimeLogs,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        RuntimeHostLoggingOptions loggingOptions)
+        : this(
+            runtimeLogs,
+            standardOutput,
+            standardError,
+            loggingOptions,
+            additionalSinks: null,
+            correlationId: null,
+            enablePlainConsoleChat: false)
     {
     }
 
@@ -49,7 +69,8 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         TextWriter standardError,
         RuntimeHostLoggingOptions loggingOptions,
         IReadOnlyList<IRuntimeLogSink>? additionalSinks,
-        string? correlationId)
+        string? correlationId,
+        bool enablePlainConsoleChat)
     {
         ArgumentNullException.ThrowIfNull(runtimeLogs);
         ArgumentNullException.ThrowIfNull(standardOutput);
@@ -66,7 +87,12 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         };
 
         if (loggingOptions.ConsoleEnabled)
-            sinks.Add(new RuntimeHostConsoleSink(standardOutput, standardError));
+        {
+            sinks.Add(new RuntimeHostConsoleSink(
+                standardOutput,
+                standardError,
+                loggingOptions.ConsoleMinimumLevel));
+        }
 
         if (loggingOptions.JsonLinesEnabled)
         {
@@ -83,14 +109,22 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         pipeline = new RuntimeLogPipeline(sinks, loggingOptions.ToPipelineOptions());
         runtimeLogs.AttachPipelineDiagnostics(pipeline.CaptureMetrics, pipeline.CaptureSinkHealth);
 
+        if (enablePlainConsoleChat)
+        {
+            plainConsoleChatSink = new RuntimePlainConsoleChatSink(
+                () => IsPlainConsoleActive,
+                standardOutput);
+            plainConsoleChatSubscription = RuntimeChatTelemetry.Subscribe(plainConsoleChatSink.TryPublish);
+        }
+
         processExitHandler = (_, _) => DisposeForProcessExit();
         AppDomain.CurrentDomain.ProcessExit += processExitHandler;
     }
 
     public bool IsTerminalUiActive => Volatile.Read(ref terminalUiActive) != 0;
 
-    // Plain-console routing is now the complement of terminal-UI routing. Keeping this derived query avoids
-    // resurrecting the retired transitional bridge state while the remaining host call site migrates to Log().
+    // Plain-console routing is the complement of terminal-UI routing. Keeping this derived query avoids
+    // parallel mutable state and lets logging/chat projection share one terminal-ownership contract.
     public bool IsPlainConsoleActive => !IsTerminalUiActive;
 
     internal RuntimeLogPipelineMetrics CapturePipelineMetrics() => pipeline.CaptureMetrics();
@@ -130,6 +164,9 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         UnregisterProcessExitHandler();
+        plainConsoleChatSubscription?.Dispose();
+        if (plainConsoleChatSink is not null)
+            await plainConsoleChatSink.DisposeAsync().ConfigureAwait(false);
         await pipeline.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -165,14 +202,17 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
     private void DisposeForProcessExit()
     {
         UnregisterProcessExitHandler();
+        plainConsoleChatSubscription?.Dispose();
         try
         {
+            if (plainConsoleChatSink is not null)
+                plainConsoleChatSink.DisposeAsync().AsTask().GetAwaiter().GetResult();
             pipeline.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
         catch
         {
-            // Process shutdown is already in progress. The pipeline has bounded its own drain/sink waits;
-            // logging must never turn process exit into an unhandled failure.
+            // Process shutdown is already in progress. Both output paths bound their own waits;
+            // observability must never turn process exit into an unhandled failure.
         }
     }
 
@@ -193,7 +233,8 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
 
     private sealed class RuntimeHostConsoleSink(
         TextWriter standardOutput,
-        TextWriter standardError) : IRuntimeLogDeliverySink
+        TextWriter standardError,
+        StructuredLogLevel minimumLevel) : IRuntimeLogDeliverySink
     {
         public string Name => "host-console";
 
@@ -206,6 +247,9 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (record.Level < minimumLevel)
+                return ValueTask.CompletedTask;
 
             if (delivery == RuntimeLogDelivery.StandardOutput)
                 standardOutput.WriteLine(record.Message);

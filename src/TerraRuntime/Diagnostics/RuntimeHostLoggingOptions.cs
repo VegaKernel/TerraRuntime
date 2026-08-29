@@ -5,6 +5,7 @@ namespace TerraRuntime.Diagnostics;
 internal sealed record RuntimeHostLoggingOptions
 {
     public RuntimeLogLevel MinimumLevel { get; init; } = RuntimeLogLevel.Debug;
+    public RuntimeLogLevel ConsoleMinimumLevel { get; init; } = RuntimeLogLevel.Error;
     public int QueueCapacity { get; init; } = RuntimeLogPipelineOptions.DefaultQueueCapacity;
     public int PriorityReserve { get; init; } = RuntimeLogPipelineOptions.DefaultPriorityReserve;
     public bool ConsoleEnabled { get; init; } = true;
@@ -23,6 +24,7 @@ internal sealed record RuntimeHostLoggingOptions
         return (defaults with
         {
             MinimumLevel = ReadLevel(read("TERRARUNTIME_LOG_LEVEL"), defaults.MinimumLevel),
+            ConsoleMinimumLevel = ReadLevel(read("TERRARUNTIME_LOG_CONSOLE_LEVEL"), defaults.ConsoleMinimumLevel),
             QueueCapacity = ReadInt(read("TERRARUNTIME_LOG_QUEUE_CAPACITY"), 2, 1_048_576, defaults.QueueCapacity),
             PriorityReserve = ReadInt(read("TERRARUNTIME_LOG_PRIORITY_RESERVE"), 1, 1_048_575, defaults.PriorityReserve),
             ConsoleEnabled = ReadBool(read("TERRARUNTIME_LOG_CONSOLE"), defaults.ConsoleEnabled),
@@ -42,6 +44,7 @@ internal sealed record RuntimeHostLoggingOptions
         return new RuntimeHostLoggingOptions
         {
             MinimumLevel = pipelineOptions.MinimumLevel,
+            ConsoleMinimumLevel = RuntimeLogLevel.Trace,
             QueueCapacity = pipelineOptions.QueueCapacity,
             PriorityReserve = pipelineOptions.PriorityReserve,
             ConsoleEnabled = true,

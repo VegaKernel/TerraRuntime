@@ -6,11 +6,21 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeHostLoggingOptionsTests
 {
     [Fact]
+    public void Production_console_defaults_to_error_and_critical_without_narrowing_other_sinks()
+    {
+        var options = new RuntimeHostLoggingOptions();
+
+        Assert.Equal(RuntimeLogLevel.Debug, options.MinimumLevel);
+        Assert.Equal(RuntimeLogLevel.Error, options.ConsoleMinimumLevel);
+    }
+
+    [Fact]
     public void Environment_configuration_is_bounded_and_normalizes_priority_reserve()
     {
         var values = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            ["TERRARUNTIME_LOG_LEVEL"] = "Warning",
+            ["TERRARUNTIME_LOG_LEVEL"] = "Debug",
+            ["TERRARUNTIME_LOG_CONSOLE_LEVEL"] = "Warning",
             ["TERRARUNTIME_LOG_QUEUE_CAPACITY"] = "16",
             ["TERRARUNTIME_LOG_PRIORITY_RESERVE"] = "99",
             ["TERRARUNTIME_LOG_CONSOLE"] = "off",
@@ -24,7 +34,8 @@ public sealed class RuntimeHostLoggingOptionsTests
         RuntimeHostLoggingOptions options = RuntimeHostLoggingOptions.FromEnvironment(
             name => values.GetValueOrDefault(name));
 
-        Assert.Equal(RuntimeLogLevel.Warning, options.MinimumLevel);
+        Assert.Equal(RuntimeLogLevel.Debug, options.MinimumLevel);
+        Assert.Equal(RuntimeLogLevel.Warning, options.ConsoleMinimumLevel);
         Assert.Equal(16, options.QueueCapacity);
         Assert.Equal(15, options.PriorityReserve);
         Assert.False(options.ConsoleEnabled);
@@ -44,6 +55,7 @@ public sealed class RuntimeHostLoggingOptionsTests
             _ => "definitely-not-a-valid-value");
 
         Assert.Equal(defaults.MinimumLevel, options.MinimumLevel);
+        Assert.Equal(defaults.ConsoleMinimumLevel, options.ConsoleMinimumLevel);
         Assert.Equal(defaults.QueueCapacity, options.QueueCapacity);
         Assert.Equal(defaults.PriorityReserve, options.PriorityReserve);
         Assert.Equal(defaults.ConsoleEnabled, options.ConsoleEnabled);

@@ -26,6 +26,8 @@ Terminal.Gui v2 является current local UI implementation, но boundary 
 
 Normal startup без `--world` создаёт required runtime directories и сканирует canonical `Worlds/` через local selector. Selected `.wld` становится effective `--world`. Cancel selection завершает startup чисто.
 
+Интерактивный список намеренно показывает только display name мира. Absolute filesystem path больше не повторяется рядом с каждым названием; явный путь по-прежнему можно ввести через `P` или `--world`.
+
 Directory layout остаётся literal filesystem structure:
 
 ```text
@@ -68,9 +70,9 @@ stateDiagram-v2
 
 UI работает на собственном background thread `TerraRuntime Terminal UI`, не на authoritative game-loop thread. `TerminalUiHost` владеет linked cancellation и ждёт UI thread только bounded interval при disposal.
 
-На Windows TerraRuntime намеренно использует cross-platform `dotnet` driver Terminal.Gui вместо принудительного native `windows` driver. Это compatibility policy для Windows 10/conhost-подобных проблем rendering, при которых Terminal.Gui 2.4.x может оставить content area пустой/чёрной, хотя menu chrome продолжает отображаться. На Linux и остальных платформах сохраняется обычный platform selection Terminal.Gui.
+На Windows TerraRuntime намеренно использует cross-platform `dotnet` driver Terminal.Gui вместо принудительного native `windows` driver. Это compatibility policy для Windows 10/conhost-подобных rendering failures, при которых Terminal.Gui 2.4.x может оставить content area пустой/чёрной, хотя menu chrome продолжает отображаться. На Linux и остальных платформах сохраняется обычный platform selection Terminal.Gui.
 
-Production TUI после initialization Terminal.Gui также устанавливает явную high-contrast схему TerraRuntime. Base, Menu, Dialog, Accent и Error используют opaque near-black backgrounds и зелёные foreground/accent colors вместо наследования terminal-default `Color.None`. Помимо нужного terminal/hacker вида это гарантирует, что dashboard text не станет совпадать с background только из-за неудачного определения default colors терминала.
+Production TUI после initialization Terminal.Gui также устанавливает явную high-contrast схему TerraRuntime. Base, Menu, Dialog, Accent и Error используют opaque near-black backgrounds и зелёные foreground/accent colors вместо наследования terminal-default `Color.None`.
 
 ## 5. Refresh model
 
@@ -82,15 +84,30 @@ $$
 
 UI читает operations snapshots и не ходит напрямую по mutable player/NPC/projectile/world collections.
 
-## 6. Dashboard data
+## 6. Плиточный System Dashboard
 
-Current operations read models покрывают lifecycle/runtime status, tick/TPS/phase timing, players, NPCs, projectiles, world items, networking/queues, world state/clock, save/persistence и bounded logs/warnings.
+Default System Dashboard теперь является tiled operational workspace в стиле operations view Vega, но остаётся полностью runtime-owned. Слева находится большая плитка **Console**. В правой колонке расположены **Server**, **TPS / CPU**, **Memory / GC** и **Chat**.
 
-System Dashboard теперь является сводкой operational health, а не дубликатом detail screens. Он показывает last/worst tick wall time, tick CPU при наличии, slowest game-loop phase, missed deadlines, process CPU, managed heap, working set, total allocation, GC collections/pause, command queue pressure и connection/admission totals. Детальные replication/queue diagnostics остаются в Network screen.
+```mermaid
+flowchart LR
+    subgraph Workspace["System Dashboard"]
+        Console["Console\nrecent runtime events"]
+        subgraph Right["Right column"]
+            Server["Server"]
+            Perf["TPS / CPU"]
+            Memory["Memory / GC"]
+            Chat["Chat"]
+        end
+    end
+```
 
-World screen также показывает section-cache pipeline health из `RuntimeWorldSnapshot`: in-flight/submitted/rejected rebuilds, stale results, encode failures, publish rejections и accumulated encode time. Строка on-demand показывает requests, unique/deduplicated requests, pending work относительно bounded capacity, rejected requests и completed/timed-out waits. Эти значения приходят из runtime-owned rebuild pipeline snapshot; TUI не обходит cache workers напрямую.
+Console tile показывает текущие tick/process/command pressure и затем recent runtime events. Performance и memory tiles держат короткие in-memory histories только для local sparklines; эти histories принадлежат UI и не являются authoritative telemetry.
 
-Window layout может эволюционировать; snapshot ownership остаётся invariant.
+Double-click по плитке переключает её между tiled layout и full-workspace view. Это presentation-only operation. Existing Details screens для Players, NPCs, Projectiles, Items, Network, World и Logs остаются доступны и сохраняют прежние bounded read-model contracts. External trusted-host dashboards остаются отдельными roots.
+
+System Dashboard показывает lifecycle/world state, player/connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events и public chat.
+
+World detail screen также показывает section-cache pipeline health из `RuntimeWorldSnapshot`: in-flight/submitted/rejected rebuilds, stale results, encode failures, publish rejections и accumulated encode time. Строка on-demand показывает requests, unique/deduplicated requests, pending work относительно bounded capacity, rejected requests и completed/timed-out waits.
 
 ## 7. Save telemetry и manual checkpoint
 
@@ -115,19 +132,17 @@ sequenceDiagram
     end
 ```
 
-ANSI TUI smoke проходит реальный menu path (`Alt+A`, затем `S`) и проверяет pending-save state; unit tests покрывают accepted/rejected requests. Compatibility tests отдельно фиксируют Windows production-driver policy и явный contrast Base/Menu scheme attributes.
+ANSI TUI smoke проходит реальный menu path и проверяет pending-save state; unit tests покрывают accepted/rejected requests.
 
 ## 8. Network telemetry
 
 `INetworkOperations` отдаёт bounded network state без передачи UI ownership connection lifecycle. Он включает active/registered connections, admission totals/rejections, one-second и lifetime inbound totals, per-connection inbound details, outbound current/capacity/high-water/rejection state, slow clients, player lifecycle/replication counters, unsupported replication commits, typed terminal stops и normalized frame-rejection categories.
 
-Terminal-stop projection различает protocol, admission-rate, invalid-handshake, unsupported-protocol, slow-client, timeout/application-stop и frame-rejected outcomes. Frame-rejection categories остаются отдельным представлением причин отбрасывания frames и не смешиваются с terminal connection-stop counters.
-
 TUI потребляет subsystem-owned counters, а не парсит log text и не создаёт duplicate packet-hot-path counters.
 
 ## 9. Logs
 
-TUI потребляет bounded log state и не является logging backend. UI failure не теряет authoritative state, rendering не блокирует game loop, retained history bounded, future structured pipeline сохраняет event/category identity.
+TUI потребляет bounded log state и не является logging backend. UI failure не теряет authoritative state, rendering не блокирует game loop, retained history bounded.
 
 См. [Observability и logging](observability-logging.md) и logging roadmap.
 
@@ -140,6 +155,12 @@ tui | ui | dashboard   снова открыть dashboard
 clear                  очистить console, если поддерживается
 help                   показать fallback-console commands
 ```
+
+Когда TUI отключён через `--no-tui`, не смог инициализироваться или был закрыт оператором, public chat проецируется в stdout в виде `[chat] #<slot>: <text>`. Проекция использует bounded queue и background writer; authoritative chat relay никогда не ждёт terminal I/O.
+
+Structured console events имеют отдельный sink threshold. Default — `Error`: в тихой plain console остаются error/critical-class events плюс chat, а подробные `Debug`/`Information` records продолжают быть доступны другим включённым sinks. `TERRARUNTIME_LOG_CONSOLE_LEVEL` принимает `Trace`, `Debug`, `Information`, `Warning`, `Error` или `Critical` и меняет только console threshold. `TERRARUNTIME_LOG_LEVEL` остаётся global pipeline acceptance threshold, поэтому более подробная console настройка не может вернуть уже globally filtered events.
+
+`TERRARUNTIME_LOG_CONSOLE=off` отключает structured stdout/stderr delivery; public-chat projection остаётся независимой, чтобы headless server не становился полностью немым относительно player conversation.
 
 Unknown commands reported, а не превращаются в runtime mutations. Closed/redirected stdin ждёт, а не busy-loop'ит.
 
@@ -178,7 +199,7 @@ CoreCLR может загрузить trusted host modules вроде Vega за 
 
 ## 15. Текущие ограничения
 
-Ещё развиваются complete structured event IDs/logging, deeper subsystem-owned packet/security telemetry, final dashboard layout/UX, future remote/web adapters, richer safe administrative actions и panel-specific docs.
+Ещё развиваются final dashboard layout/UX, future remote/web adapters, richer safe administrative actions и panel-specific docs. Tiled dashboard намеренно использует compact local histories и не изображает UI sparklines полноценным metrics time-series store.
 
 ## 16. Checklist изменения operations/TUI
 

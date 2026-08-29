@@ -15,13 +15,18 @@ graph LR
     W --> O[RuntimeLogBuffer operations facade]
     O --> R[RuntimeRecentLogStore]
     R --> T[TUI Logs]
+
+    Chat[Public chat telemetry] --> CQ[Bounded console-chat queue]
+    CQ --> PC[Plain-console chat writer]
 ```
 
 `RuntimeLogRecord.EventId` says **what happened**. A private delivery hint says whether the host console sink should buffer the accepted record, write stdout, or write stderr. Structured sinks never infer semantics from console routing.
 
+Public chat remains a separate operations projection rather than being reclassified as structured logging. The plain-console chat writer subscribes to bounded chat telemetry, performs only `TryWrite` on the publishing path, and writes from a background worker while the TUI does not own the terminal.
+
 ## Producer and queue bounds
 
-Producer code normalizes bounded scalar text/context, assigns sequence/timestamp data, and uses `ChannelWriter.TryWrite`. Console I/O, disk I/O, JSON serialization, flush, rotation, retention and recent-store updates run on the background drain worker.
+Producer code normalizes bounded scalar text/context, assigns sequence/timestamp data, and uses `ChannelWriter.TryWrite`. Console I/O, disk I/O, JSON serialization, flush, rotation, retention and recent-store updates run outside authoritative producers.
 
 For queue capacity \(N_q\) and warning/error reserve \(N_r\), ordinary traffic may occupy at most
 
@@ -29,7 +34,7 @@ For queue capacity \(N_q\) and warning/error reserve \(N_r\), ordinary traffic m
 N_{normal}=N_q-N_r.
 \]
 
-Defaults are \(N_q=2048\) and \(N_r=256\). Saturation drops instead of blocking and increments per-level counters.
+Defaults are \(N_q=2048\) and \(N_r=256\). Saturation drops instead of blocking and increments per-level counters. The public-chat console projection has its own bounded queue of \(256\) entries with oldest-entry shedding under terminal backpressure.
 
 ## Stable event identity
 
@@ -53,7 +58,7 @@ The runtime does not allocate fake protocol/gameplay/security events merely to f
 
 `RuntimeHostLog` exposes one production-facing producer method: `Log(...)`. The old `Write(...)` and `Publish(...)` compatibility APIs were removed after repository-wide search confirmed no production callers remained.
 
-TUI activation only affects delivery routing. While the TUI owns the terminal, semantic events remain accepted by structured sinks and the recent store but compatibility console output is buffered. Once the TUI is inactive, new events may again route to stdout/stderr according to the caller's delivery intent.
+TUI activation only affects terminal delivery routing. While the TUI owns the terminal, semantic events remain accepted by structured sinks and the recent store but compatibility console output is buffered. The plain-console chat projection also stops accepting new terminal writes. Once the TUI is inactive, new eligible events and public chat may again reach stdout/stderr.
 
 The logger attaches run-scoped correlation by default, world ID after world load, and connection/player context where those verified identifiers exist. Mutable runtime objects and raw packet payloads are never retained as context.
 
@@ -75,10 +80,11 @@ Invalid or out-of-range environment values fall back to safe defaults, and the p
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `TERRARUNTIME_LOG_LEVEL` | `Debug` | minimum accepted level |
+| `TERRARUNTIME_LOG_LEVEL` | `Debug` | minimum accepted level for the whole structured pipeline |
+| `TERRARUNTIME_LOG_CONSOLE_LEVEL` | `Error` | independent minimum level for stdout/stderr delivery |
 | `TERRARUNTIME_LOG_QUEUE_CAPACITY` | `2048` | bounded queue capacity |
 | `TERRARUNTIME_LOG_PRIORITY_RESERVE` | `256` | Warning+ reserve |
-| `TERRARUNTIME_LOG_CONSOLE` | `true` | compatibility console sink |
+| `TERRARUNTIME_LOG_CONSOLE` | `true` | structured compatibility console sink |
 | `TERRARUNTIME_LOG_JSONL` | `true` | rotating JSONL sink |
 | `TERRARUNTIME_LOG_DIRECTORY` | `<app>/logs` | JSONL directory |
 | `TERRARUNTIME_LOG_MAX_FILE_BYTES` | `16777216` | \(16\,\mathrm{MiB}\) rotation threshold |
@@ -87,11 +93,17 @@ Invalid or out-of-range environment values fall back to safe defaults, and the p
 | `TERRARUNTIME_LOG_SINK_TIMEOUT_MS` | `2000` | per-sink deadline |
 | `TERRARUNTIME_LOG_SHUTDOWN_TIMEOUT_MS` | `5000` | bounded shutdown drain |
 
-Unit-test composition disables JSONL unless explicitly supplied, avoiding filesystem side effects.
+`TERRARUNTIME_LOG_CONSOLE_LEVEL` accepts `Trace`, `Debug`, `Information`, `Warning`, `Error`, and `Critical`. It is sink-local: raising it does not remove lower-level records from JSONL or the TUI recent store. Conversely, lowering it cannot restore records rejected by the global `TERRARUNTIME_LOG_LEVEL` threshold.
+
+`TERRARUNTIME_LOG_CONSOLE=off` disables structured stdout/stderr delivery only. Public chat remains an independent plain-console projection when the TUI is inactive.
+
+Unit-test composition disables JSONL unless explicitly supplied, avoids production chat subscription by default, and keeps an unrestricted console threshold so compatibility tests remain deterministic.
 
 ## Sink isolation and NativeAOT
 
-A repeatedly failing sink is quarantined without stopping healthy sinks. Pipeline metrics include accepted/filtered records, per-level drops, drained count, sink failures, queue depth and high-water mark.
+A repeatedly failing structured sink is quarantined without stopping healthy sinks. Pipeline metrics include accepted/filtered records, per-level drops, drained count, sink failures, queue depth and high-water mark.
+
+The chat console writer is also isolated from authoritative producers. If stdout is unavailable or blocks beyond the bounded shutdown wait, shutdown does not wait indefinitely for observability.
 
 JSONL serialization uses explicit `Utf8JsonWriter`; the logging graph has no reflection-driven serializer discovery, runtime code generation, or dynamic schema construction.
 

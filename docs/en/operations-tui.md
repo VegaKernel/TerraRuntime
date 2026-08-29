@@ -26,6 +26,8 @@ Terminal.Gui v2 is the current local UI implementation, but the boundary is tool
 
 Normal startup without `--world` creates required runtime directories and scans canonical `Worlds/` through the local selector. The selected `.wld` becomes the effective `--world` value. Cancelling selection exits cleanly.
 
+The interactive list intentionally renders only world display names. Absolute filesystem paths are not repeated beside every world; an explicit path can still be supplied through `P` or `--world`.
+
 The standalone directory layout remains literal filesystem structure:
 
 ```text
@@ -70,7 +72,7 @@ The UI runs on its own background thread `TerraRuntime Terminal UI`, not on the 
 
 On Windows, TerraRuntime deliberately selects Terminal.Gui's cross-platform `dotnet` driver instead of forcing the native `windows` driver. This is a compatibility policy for Windows 10/conhost-class rendering failures where Terminal.Gui 2.4.x can leave the content area blank/black while menu chrome remains visible. Linux and other platforms keep Terminal.Gui's normal platform selection.
 
-The production TUI also installs an explicit high-contrast TerraRuntime scheme after Terminal.Gui initialization. Base, Menu, Dialog, Accent and Error roles use opaque near-black backgrounds with green foreground/accent colors instead of inheriting `Color.None` terminal defaults. Besides the intended terminal/hacker visual identity, this guarantees that dashboard text cannot become foreground-equal-to-background merely because terminal default-color discovery behaved badly.
+The production TUI also installs an explicit high-contrast TerraRuntime scheme after Terminal.Gui initialization. Base, Menu, Dialog, Accent and Error roles use opaque near-black backgrounds with green foreground/accent colors instead of inheriting `Color.None` terminal defaults.
 
 ## 5. Refresh model
 
@@ -82,15 +84,30 @@ $$
 
 The UI reads operations snapshots rather than walking mutable player/NPC/projectile/world collections.
 
-## 6. Dashboard data
+## 6. Tiled System Dashboard
 
-Current operations read models cover lifecycle/runtime status, tick/TPS and phase timing, players, NPCs, projectiles, world items, networking/queues, world state/clock, save/persistence state and bounded logs/warnings.
+The default System Dashboard is a tiled operational workspace inspired by the Vega operations view while remaining runtime-owned. The left side is a large **Console** tile. The right column contains **Server**, **TPS / CPU**, **Memory / GC**, and **Chat** tiles.
 
-The System Dashboard is an operational health summary rather than a duplicate of the detail screens. It renders last/worst tick wall time, tick CPU time when available, the slowest game-loop phase, missed deadlines, process CPU, managed heap, working set, total allocation, GC collection/pause state, command queue pressure and connection/admission totals. Detailed replication and queue diagnostics remain on the Network screen.
+```mermaid
+flowchart LR
+    subgraph Workspace["System Dashboard"]
+        Console["Console\nrecent runtime events"]
+        subgraph Right["Right column"]
+            Server["Server"]
+            Perf["TPS / CPU"]
+            Memory["Memory / GC"]
+            Chat["Chat"]
+        end
+    end
+```
 
-The World screen also surfaces section-cache pipeline health from `RuntimeWorldSnapshot`: in-flight/submitted/rejected rebuilds, stale results, encode failures, publish rejections and accumulated encode time. Its on-demand row shows requests, unique/deduplicated requests, pending work versus bounded capacity, rejected requests and completed/timed-out waits. These values come from the runtime-owned rebuild pipeline snapshot; the TUI does not inspect cache workers directly.
+The Console tile includes current tick/process/command pressure followed by recent runtime events. The performance and memory tiles maintain short in-memory histories only for rendering local sparklines; those histories are UI-owned and are never authoritative telemetry.
 
-The window layout may evolve; snapshot ownership is the invariant.
+Double-clicking a tile toggles it between the tiled layout and full-workspace view. This is a presentation-only operation. Existing Details screens for Players, NPCs, Projectiles, Items, Network, World and Logs remain available and keep their existing bounded read-model contracts. External trusted-host dashboards remain separate roots.
+
+The System Dashboard shows lifecycle/world state, player and connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events and public chat.
+
+The World detail screen also surfaces section-cache pipeline health from `RuntimeWorldSnapshot`: in-flight/submitted/rejected rebuilds, stale results, encode failures, publish rejections and accumulated encode time. Its on-demand row shows requests, unique/deduplicated requests, pending work versus bounded capacity, rejected requests and completed/timed-out waits.
 
 ## 7. Save telemetry and manual checkpoint
 
@@ -115,19 +132,17 @@ sequenceDiagram
     end
 ```
 
-The ANSI TUI smoke exercises the actual menu path (`Alt+A`, then `S`) and verifies rendered pending-save state; unit tests cover accepted and rejected requests. Compatibility tests separately pin the Windows production-driver choice and explicit contrasting Base/Menu scheme attributes.
+The ANSI TUI smoke exercises the real menu path and verifies pending-save state; unit tests cover accepted and rejected requests.
 
 ## 8. Network telemetry
 
 `INetworkOperations` exposes bounded network state without transferring connection ownership to the UI. It includes active/registered connections, admission totals/rejections, inbound one-second and lifetime totals, per-connection inbound details, outbound current/capacity/high-water/rejection state, slow clients, player lifecycle and replication counters, unsupported replication commits, typed terminal stop categories and normalized frame-rejection categories.
 
-The terminal stop projection distinguishes protocol, admission-rate, invalid-handshake, unsupported-protocol, slow-client, timeout/application-stop and frame-rejected outcomes. Frame-rejection categories remain a separate view of why frames were rejected, rather than being conflated with terminal connection-stop counts.
-
 TUI projections consume subsystem-owned counters; they do not parse log text or add packet-hot-path counters of their own.
 
 ## 9. Logs
 
-The TUI consumes bounded log state and is not a logging backend. UI failure must not lose authoritative state, log rendering must not block the game loop, retained history remains bounded, and the future structured pipeline should preserve event/category identity.
+The TUI consumes bounded log state and is not a logging backend. UI failure must not lose authoritative state, log rendering must not block the game loop, and retained history remains bounded.
 
 See [Observability and logging](observability-logging.md) and the logging roadmap.
 
@@ -140,6 +155,12 @@ tui | ui | dashboard   reopen the dashboard
 clear                  clear the console when supported
 help                   show fallback-console commands
 ```
+
+When TUI is disabled with `--no-tui`, fails to initialize, or is closed by the operator, public chat is projected to stdout as `[chat] #<slot>: <text>`. The projection uses a bounded queue and a background writer; authoritative chat relay never waits for terminal I/O.
+
+Structured console events have an independent sink threshold. The default is `Error`, which means error/critical-class events plus chat are visible in a quiet plain console while detailed `Debug`/`Information` records continue to remain available to other enabled sinks. Set `TERRARUNTIME_LOG_CONSOLE_LEVEL` to `Trace`, `Debug`, `Information`, `Warning`, `Error`, or `Critical` to change only the console threshold. `TERRARUNTIME_LOG_LEVEL` remains the global pipeline acceptance threshold and therefore cannot be bypassed by a more verbose console setting.
+
+`TERRARUNTIME_LOG_CONSOLE=off` disables structured stdout/stderr delivery; public-chat projection remains independent so a headless server does not become completely silent about player conversation.
 
 Unknown commands are reported rather than interpreted as runtime mutations. Closed/redirected stdin waits rather than busy-looping.
 
@@ -178,7 +199,7 @@ CoreCLR may load trusted host modules such as Vega behind `TerraRuntime.HostCont
 
 ## 15. Current limitations
 
-Still evolving are complete structured event IDs/logging, deeper subsystem-owned packet/security telemetry, final dashboard layout/UX, future remote/web adapters, richer safe administrative actions and panel-specific documentation.
+Still evolving are final dashboard layout/UX, future remote/web adapters, richer safe administrative actions and panel-specific documentation. The tiled dashboard intentionally uses compact local histories rather than pretending that UI sparklines are a metrics time-series store.
 
 ## 16. Change checklist
 

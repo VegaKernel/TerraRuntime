@@ -8,7 +8,8 @@ internal readonly record struct RuntimeChatEntry(
 
 /// <summary>
 /// Bounded operator read model for public vanilla chat. This is telemetry only: it never owns chat
-/// routing, command handling or authoritative player state.
+/// routing, command handling or authoritative player state. Console observers are notification-only
+/// and must stay non-blocking; authoritative relay success never depends on them.
 /// </summary>
 internal static class RuntimeChatTelemetry
 {
@@ -17,6 +18,7 @@ internal static class RuntimeChatTelemetry
 
     private static readonly object Gate = new();
     private static readonly RuntimeChatEntry[] Entries = new RuntimeChatEntry[Capacity];
+    private static Action<RuntimeChatEntry>? observers;
     private static int count;
     private static int nextIndex;
     private static long sequence;
@@ -28,16 +30,32 @@ internal static class RuntimeChatTelemetry
         if (normalized.Length == 0)
             return;
 
+        RuntimeChatEntry entry;
+        Action<RuntimeChatEntry>? observerSnapshot;
         lock (Gate)
         {
-            Entries[nextIndex] = new RuntimeChatEntry(
+            entry = new RuntimeChatEntry(
                 ++sequence,
                 DateTimeOffset.UtcNow,
                 playerSlot,
                 normalized);
+            Entries[nextIndex] = entry;
             nextIndex = (nextIndex + 1) % Entries.Length;
             if (count < Entries.Length)
                 count++;
+            observerSnapshot = observers;
+        }
+
+        if (observerSnapshot is null)
+            return;
+
+        try
+        {
+            observerSnapshot(entry);
+        }
+        catch (Exception)
+        {
+            // Operator projections must never interfere with authoritative chat routing.
         }
     }
 
@@ -60,6 +78,14 @@ internal static class RuntimeChatTelemetry
         }
     }
 
+    internal static IDisposable Subscribe(Action<RuntimeChatEntry> observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+        lock (Gate)
+            observers += observer;
+        return new Subscription(observer);
+    }
+
     internal static void Reset()
     {
         lock (Gate)
@@ -69,6 +95,12 @@ internal static class RuntimeChatTelemetry
             nextIndex = 0;
             sequence = 0;
         }
+    }
+
+    private static void Unsubscribe(Action<RuntimeChatEntry> observer)
+    {
+        lock (Gate)
+            observers -= observer;
     }
 
     private static string Normalize(string text)
@@ -85,5 +117,17 @@ internal static class RuntimeChatTelemetry
         }
 
         return copy is null ? source.ToString() : new string(copy);
+    }
+
+    private sealed class Subscription(Action<RuntimeChatEntry> observer) : IDisposable
+    {
+        private Action<RuntimeChatEntry>? observer = observer;
+
+        public void Dispose()
+        {
+            Action<RuntimeChatEntry>? current = Interlocked.Exchange(ref observer, null);
+            if (current is not null)
+                Unsubscribe(current);
+        }
     }
 }

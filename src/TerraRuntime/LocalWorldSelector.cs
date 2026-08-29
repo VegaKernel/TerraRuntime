@@ -77,7 +77,7 @@ internal static class LocalWorldSelector
                 if (worlds.Length == 1)
                 {
                     string worldPath = worlds[0];
-                    Console.WriteLine($"No world was specified; using the only local world '{worldPath}'.");
+                    Console.WriteLine($"No world was specified; using the only local world '{Path.GetFileNameWithoutExtension(worldPath)}'.");
                     selection = new LocalWorldSelection(LocalWorldSelectionKind.ExistingWorld, worldPath);
                     return true;
                 }
@@ -168,7 +168,7 @@ internal static class LocalWorldSelector
         else
         {
             for (int i = 0; i < worlds.Count; i++)
-                Console.WriteLine($"  {i + 1}. {Path.GetFileNameWithoutExtension(worlds[i])}  [{worlds[i]}]");
+                Console.WriteLine($"  {i + 1}. {Path.GetFileNameWithoutExtension(worlds[i])}");
         }
 
         if (allowCreation)

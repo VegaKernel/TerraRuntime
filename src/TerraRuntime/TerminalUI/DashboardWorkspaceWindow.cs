@@ -42,6 +42,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private readonly ILogOperations logOperations;
     private readonly View workspace;
     private readonly View systemRoot;
+    private readonly RuntimeOverviewDashboard overviewDashboard;
     private readonly Label[] rows = new Label[RowCount];
     private readonly ExternalDashboard[] externalDashboards;
     private readonly double[] tpsHistory = new double[TpsHistoryLength];
@@ -85,10 +86,17 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Height = Dim.Fill(status)
         };
 
-        systemRoot = new View
+        overviewDashboard = new RuntimeOverviewDashboard
         {
             Width = Dim.Fill(),
             Height = Dim.Fill()
+        };
+
+        systemRoot = new View
+        {
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            Visible = false
         };
 
         Pos y = 0;
@@ -104,7 +112,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             y = Pos.Bottom(rows[i]);
         }
 
-        workspace.Add(systemRoot);
+        workspace.Add(overviewDashboard, systemRoot);
         Add(menu, workspace, status);
 
         KeyDown += (_, key) =>
@@ -296,8 +304,10 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     {
         activeExternalDashboard = -1;
         SetExternalVisibility(-1);
-        systemRoot.Visible = true;
         screen = next;
+        bool overview = next == WorkspaceScreen.Dashboard;
+        overviewDashboard.Visible = overview;
+        systemRoot.Visible = !overview;
         Title = title;
         externalDashboardFailure = null;
         RefreshSnapshot();
@@ -326,6 +336,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             }
 
             activeExternalDashboard = index;
+            overviewDashboard.Visible = false;
             systemRoot.Visible = false;
             SetExternalVisibility(index);
             Title = $"TerraRuntime - {dashboard.Provider.Title}";
@@ -368,7 +379,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     {
         activeExternalDashboard = -1;
         SetExternalVisibility(-1);
-        systemRoot.Visible = true;
+        systemRoot.Visible = false;
+        overviewDashboard.Visible = true;
         screen = WorkspaceScreen.Dashboard;
         externalDashboardFailure = message;
         Title = "TerraRuntime - System Dashboard";
@@ -387,13 +399,14 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     private void InvalidateSystemRoot(bool layout)
     {
+        View root = screen == WorkspaceScreen.Dashboard ? overviewDashboard : systemRoot;
         if (layout)
         {
-            systemRoot.SetNeedsLayout();
+            root.SetNeedsLayout();
             workspace.SetNeedsLayout();
         }
 
-        systemRoot.SetNeedsDraw();
+        root.SetNeedsDraw();
         workspace.SetNeedsDraw();
     }
 
@@ -457,16 +470,26 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             rows[10].Text += $"   ... +{players.Length - playerRows}";
 
         rows[11].Text = "CHAT";
-        RuntimeLogSnapshot chat = logOperations.CaptureSnapshot(RuntimeLogLevel.Debug, "Chat", 2);
+        RuntimeLogSnapshot chat = logOperations.CaptureSnapshot(RuntimeLogLevel.Debug, "Chat", 8);
         FillLogRows(chat.Entries.Span, startRow: 12, rowCount: 2, emptyText: "<no chat yet>");
 
         rows[14].Text = "LOG";
-        RuntimeLogSnapshot logs = logOperations.CaptureSnapshot(RuntimeLogLevel.Information, 2);
+        RuntimeLogSnapshot logs = logOperations.CaptureSnapshot(RuntimeLogLevel.Information, 12);
         FillLogRows(logs.Entries.Span, startRow: 15, rowCount: 2, emptyText: "<no runtime log entries>");
 
-        rows[17].Text = externalDashboardFailure
-            ?? lastAdminAction
+        string? status = externalDashboardFailure
+            ?? lastAdminAction;
+        rows[17].Text = status
             ?? $"F2 System | F3-F12 host dashboards | menu: Dashboards/Details | snapshot {runtime.CapturedAtUtc:HH:mm:ss.fff} UTC";
+
+        overviewDashboard.Refresh(
+            runtime,
+            network,
+            world,
+            playerSnapshot,
+            logs,
+            chat,
+            status);
     }
 
     private void RefreshPlayers()
@@ -838,7 +861,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         MessageBox.Query(
             App!,
             "TerraRuntime",
-            "F2 opens the TerraRuntime System Dashboard. F3-F12 open independent dashboards registered by trusted host modules. Details exposes runtime-owned read models only.",
+            "F2 opens the tiled TerraRuntime System Dashboard. Double-click a tile to maximize/restore it. F3-F12 open independent dashboards registered by trusted host modules. Details exposes runtime-owned read models only.",
             "OK");
 
     private sealed class ExternalDashboard(ITerraRuntimeTerminalDashboardProvider provider)
