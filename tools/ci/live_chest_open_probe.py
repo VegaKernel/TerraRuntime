@@ -133,17 +133,6 @@ def send_item(client, chest_id, item_slot, stack, prefix, item_net_id):
     )
 
 
-def receive_item_echo(client, chest_id, item_slot, stack, prefix, item_net_id):
-    payload, skipped = recv_until_packet(client, 32, 5)
-    if len(payload) != 8:
-        fail(f"expected 8-byte packet32 echo, got bytes={len(payload)}, skipped={skipped[:64]}")
-
-    observed = struct.unpack("<hBhBh", payload)
-    expected = (chest_id, item_slot, stack, prefix, item_net_id)
-    if observed != expected:
-        fail(f"packet32 echo mismatch: expected={expected}, got={observed}")
-
-
 def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id):
     payload, skipped = recv_until_packet(client, 155, 5)
     if len(payload) != 4:
@@ -258,20 +247,13 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
 
         # Packet 5 inventory conservation is intentionally not enforced yet. While this world chest is
         # actively owned by the exact live connection, packet32 remains client-authoritative. Commit a
-        # universally valid stack decrement (1 -> empty is canonicalized), require the server echo, then
-        # close/reopen and verify the authoritative baseline contains the committed value.
+        # universally valid stack decrement (1 -> empty is canonicalized), then close/reopen and verify
+        # the authoritative baseline contains the committed value. Vanilla 1.4.5.8 does not echo this
+        # packet32 back to the author; exact sender/observer routing is covered by the two-client probe.
         committed_stack = item_stack - 1
         committed_prefix = item_prefix if committed_stack > 0 else 0
         committed_net_id = item_net_id if committed_stack > 0 else 0
         send_item(owner, chest_id, item_slot, committed_stack, item_prefix, item_net_id)
-        receive_item_echo(
-            owner,
-            chest_id,
-            item_slot,
-            committed_stack,
-            committed_prefix,
-            committed_net_id,
-        )
         send_close(owner)
         send_open(owner, tile_x, tile_y)
         receive_snapshot(
@@ -289,7 +271,6 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
         # Restore the source-world item through the same production packet32 path. The probe must not
         # leave its in-memory authoritative world mutated just because a CI assertion needed a write.
         send_item(owner, chest_id, item_slot, item_stack, item_prefix, item_net_id)
-        receive_item_echo(owner, chest_id, item_slot, item_stack, item_prefix, item_net_id)
         send_close(owner)
         send_open(owner, tile_x, tile_y)
         receive_snapshot(
