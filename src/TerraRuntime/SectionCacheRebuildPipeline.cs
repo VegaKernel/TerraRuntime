@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
