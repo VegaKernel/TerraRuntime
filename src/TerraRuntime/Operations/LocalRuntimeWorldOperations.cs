@@ -5,15 +5,18 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
     private readonly RuntimeWorldSnapshot snapshot;
     private readonly RuntimeWorldClockOperationsTelemetry? clockTelemetry;
     private readonly Func<global::TerraRuntime.SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider;
+    private readonly Func<global::TerraRuntime.RuntimeWorldSaveStatus>? persistenceSnapshotProvider;
 
     public LocalRuntimeWorldOperations(
         RuntimeWorldSnapshot snapshot,
         RuntimeWorldClockOperationsTelemetry? clockTelemetry = null,
-        Func<global::TerraRuntime.SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider = null)
+        Func<global::TerraRuntime.SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider = null,
+        Func<global::TerraRuntime.RuntimeWorldSaveStatus>? persistenceSnapshotProvider = null)
     {
         this.snapshot = snapshot;
         this.clockTelemetry = clockTelemetry;
         this.sectionCacheSnapshotProvider = sectionCacheSnapshotProvider;
+        this.persistenceSnapshotProvider = persistenceSnapshotProvider;
     }
 
     public RuntimeWorldSnapshot CaptureSnapshot()
@@ -67,6 +70,27 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
                 SectionCacheOnDemandPendingRequests = sectionCache.OnDemandPendingRequests,
                 SectionCacheOnDemandRejectedRequests = sectionCache.OnDemandRejectedRequests,
                 SectionCacheOnDemandCapacity = sectionCache.OnDemandCapacity
+            };
+        }
+
+        if (persistenceSnapshotProvider is not null)
+        {
+            global::TerraRuntime.RuntimeWorldSaveStatus persistence = persistenceSnapshotProvider();
+            current = current with
+            {
+                Persistence = new RuntimeWorldPersistenceSnapshot(
+                    persistence.AcceptingRequests,
+                    persistence.TileShadowReady,
+                    persistence.RemainingBootstrapSections,
+                    persistence.PendingDirtyTileSections,
+                    persistence.SaveRequested,
+                    persistence.WriteActive,
+                    persistence.PendingWrite,
+                    persistence.AcceptedSnapshots,
+                    persistence.StartedWrites,
+                    persistence.CompletedWrites,
+                    persistence.CoalescedSnapshots,
+                    persistence.FailedWrites)
             };
         }
 
