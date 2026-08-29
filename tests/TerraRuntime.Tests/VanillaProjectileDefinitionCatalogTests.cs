@@ -125,7 +125,13 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     [InlineData(21, 16, 16, 16, 16, 0f, 0f)]
     [InlineData(48, 12, 12, 12, 12, 0f, 0f)]
     [InlineData(54, 12, 12, 12, 12, 0f, 0f)]
+    [InlineData(318, 12, 14, 12, 14, 0f, 0f)]
+    [InlineData(330, 22, 22, 22, 22, 0f, 0f)]
+    [InlineData(583, 10, 10, 10, 10, 0f, 0f)]
+    [InlineData(589, 10, 10, 10, 10, 0f, 0f)]
     [InlineData(599, 22, 22, 10, 10, 6f, 6f)]
+    [InlineData(1012, 18, 18, 18, 18, 0f, 0f)]
+    [InlineData(1111, 16, 16, 16, 16, 0f, 0f)]
     public void Terraria_1458_thrown_family_definitions_match_source(
         int type,
         int width,

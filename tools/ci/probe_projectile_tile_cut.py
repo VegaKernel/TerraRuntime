@@ -204,6 +204,8 @@ def main() -> int:
     should_use_wind = compact(extract_method(projectile_source, "ShouldUseWindPhysics"))
     transform_type = compact(extract_method(projectile_source, "TransformType"))
     projectile_update = extract_method(projectile_source, "Update")
+    projectile_ai = extract_method(projectile_source, "AI")
+    collision_params = extract_method(projectile_source, "GetCollisionParams")
     handle_movement = extract_method(projectile_source, "HandleMovement")
     projectile_kill = extract_method(projectile_source, "Kill")
 
@@ -218,6 +220,13 @@ def main() -> int:
     print("projectile_collision_params_type21_contexts=" + all_type_comparison_contexts(extract_method(projectile_source, "GetCollisionParams"), 21, radius=1800, limit=20))
     print("projectile_handle_movement_type21_contexts=" + all_type_comparison_contexts(handle_movement, 21, radius=2200, limit=20))
     print("projectile_kill_type21_contexts=" + all_type_comparison_contexts(projectile_kill, 21, radius=2600, limit=20))
+    for simple_ai2_type in (318, 330, 583, 589, 1012, 1111):
+        print(f"projectile_ai2_type{simple_ai2_type}_defaults=" + around_optional(set_defaults, f"type == {simple_ai2_type}", radius=1600))
+        print(f"projectile_ai2_type{simple_ai2_type}_ai_contexts=" + all_type_comparison_contexts(projectile_ai, simple_ai2_type, radius=1800, limit=20))
+        print(f"projectile_ai2_type{simple_ai2_type}_collision_contexts=" + all_type_comparison_contexts(collision_params, simple_ai2_type, radius=1600, limit=20))
+        print(f"projectile_ai2_type{simple_ai2_type}_movement_contexts=" + all_type_comparison_contexts(handle_movement, simple_ai2_type, radius=1600, limit=20))
+        print(f"projectile_ai2_type{simple_ai2_type}_kill_contexts=" + all_type_comparison_contexts(projectile_kill, simple_ai2_type, radius=2200, limit=20))
+    print("projectile_moon_globe_type996_kill_contexts=" + all_type_comparison_contexts(projectile_kill, 996, radius=2600, limit=20))
     print("projectile_ai001_ai0_increment=" + around_optional(arrow_ai, "ai[0]++;", radius=1200))
     print("projectile_ai001_gravity=" + around_optional(arrow_ai, "ai[0] >= 15f", radius=1500))
     print("projectile_ai001_fall_cap=" + around_last(arrow_ai, "velocity.Y > 16f", radius=900))

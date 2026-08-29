@@ -70,7 +70,13 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId Bone = new(21);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
+    public static readonly ProjectileTypeId RottenEgg = new(318);
+    public static readonly ProjectileTypeId StarAnise = new(330);
+    public static readonly ProjectileTypeId NurseSyringeHurt = new(583);
+    public static readonly ProjectileTypeId SantaBombs = new(589);
     public static readonly ProjectileTypeId BoneDagger = new(599);
+    public static readonly ProjectileTypeId Waffle = new(1012);
+    public static readonly ProjectileTypeId MeleeBone = new(1111);
 
     public static bool TryCreate(int rawType, out ProjectileTypeId type)
     {

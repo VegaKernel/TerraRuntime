@@ -144,6 +144,66 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 12,
         CollisionHeight: 12);
 
+    private static readonly VanillaProjectileDefinition RottenEggDefinition = new(
+        Width: 12,
+        Height: 14,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 12,
+        CollisionHeight: 14);
+
+    private static readonly VanillaProjectileDefinition StarAniseDefinition = new(
+        Width: 22,
+        Height: 22,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 22,
+        CollisionHeight: 22);
+
+    private static readonly VanillaProjectileDefinition NurseSyringeHurtDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
+    private static readonly VanillaProjectileDefinition SantaBombsDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
+    private static readonly VanillaProjectileDefinition WaffleDefinition = new(
+        Width: 18,
+        Height: 18,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 18,
+        CollisionHeight: 18);
+
+    private static readonly VanillaProjectileDefinition MeleeBoneDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
+
     private static readonly VanillaProjectileDefinition BoneDaggerDefinition = new(
         Width: 22,
         Height: 22,
@@ -222,9 +282,45 @@ public static class VanillaProjectileDefinitionCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.RottenEgg)
+        {
+            definition = RottenEggDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.StarAnise)
+        {
+            definition = StarAniseDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.NurseSyringeHurt)
+        {
+            definition = NurseSyringeHurtDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SantaBombs)
+        {
+            definition = SantaBombsDefinition;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.BoneDagger)
         {
             definition = BoneDaggerDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.Waffle)
+        {
+            definition = WaffleDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.MeleeBone)
+        {
+            definition = MeleeBoneDefinition;
             return true;
         }
 

@@ -12,7 +12,13 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(21)]
     [InlineData(48)]
     [InlineData(54)]
+    [InlineData(318)]
+    [InlineData(330)]
+    [InlineData(583)]
+    [InlineData(589)]
     [InlineData(599)]
+    [InlineData(1012)]
+    [InlineData(1111)]
     public async Task Authoritative_tick_runs_source_backed_player_owned_thrown_world_simulation_by_default(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
@@ -92,7 +98,13 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(21)]
     [InlineData(48)]
     [InlineData(54)]
+    [InlineData(318)]
+    [InlineData(330)]
+    [InlineData(583)]
+    [InlineData(589)]
     [InlineData(599)]
+    [InlineData(1012)]
+    [InlineData(1111)]
     public async Task Server_owned_thrown_projectile_simulates_when_tile_cut_effect_is_empty(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
@@ -118,7 +130,13 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(21)]
     [InlineData(48)]
     [InlineData(54)]
+    [InlineData(318)]
+    [InlineData(330)]
+    [InlineData(583)]
+    [InlineData(589)]
     [InlineData(599)]
+    [InlineData(1012)]
+    [InlineData(1111)]
     public async Task Server_owned_thrown_projectile_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));

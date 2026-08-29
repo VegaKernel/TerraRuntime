@@ -52,7 +52,13 @@ public sealed class VanillaProjectileWorldStateStepperTests
     [InlineData(21)]
     [InlineData(48)]
     [InlineData(54)]
+    [InlineData(318)]
+    [InlineData(330)]
+    [InlineData(583)]
+    [InlineData(589)]
     [InlineData(599)]
+    [InlineData(1012)]
+    [InlineData(1111)]
     public void Player_owned_thrown_family_uses_the_source_backed_ai_style_two_path(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
