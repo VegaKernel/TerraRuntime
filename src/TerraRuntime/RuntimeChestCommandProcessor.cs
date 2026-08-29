@@ -69,6 +69,7 @@ internal sealed class RuntimeChestCommandProcessor
 
     private void ApplyOpen(ClientChestOpenRuntimeCommand command)
     {
+        bool hadOpenWorldChest = store.TryGetOpenChest(command.Connection, out _);
         TerrariaChestOpenRequest request = command.Request;
         if (!store.TryOpen(command.Connection, request.TileX, request.TileY, out WorldChest chest))
         {
@@ -79,7 +80,11 @@ internal sealed class RuntimeChestCommandProcessor
         if (!replication.TrySendOpen(command.Connection, chest))
         {
             // Do not leave a world chest permanently owned when the opening client could not receive its baseline.
+            // TryOpen may also have released a previously open chest while switching to this one. If the new baseline
+            // cannot be delivered, observers must not keep the old packet-80 chest index indefinitely.
             store.TryClose(command.Connection, out _);
+            if (hadOpenWorldChest)
+                replication.PublishClosed(command.Connection);
             RejectedOpens++;
             return;
         }
