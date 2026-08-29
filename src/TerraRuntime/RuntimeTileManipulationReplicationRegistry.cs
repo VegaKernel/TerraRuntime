@@ -8,7 +8,8 @@ using TerraRuntime.Protocol.Multiplicity;
 namespace TerraRuntime;
 
 /// <summary>
-/// Relays committed packet-17 tile manipulations to playing peers. The originating connection is excluded,
+/// Relays accepted packet-17 tile effects to playing peers. Most accepted effects follow an authoritative world
+/// commit; vanilla failed-hit action 0 is intentionally relay-only. The originating connection is excluded,
 /// matching the pinned TerrariaServer 1.4.5.8 NetMessage.TrySendData(17, -1, whoAmI, ...) contract.
 /// Join baselines are intentionally omitted because packet 10 already carries authoritative tile state.
 /// </summary>
@@ -32,6 +33,11 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
     public bool TryUnregister(GameCommandSourceId source) => endpoints.TryRemove(source, out _);
 
     public bool TryPublishCommitted(
+        GameCommandSourceId excludedSource,
+        in TerrariaTileManipulationState state) =>
+        TryPublishAccepted(excludedSource, in state);
+
+    public bool TryPublishAccepted(
         GameCommandSourceId excludedSource,
         in TerrariaTileManipulationState state)
     {
