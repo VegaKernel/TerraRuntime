@@ -73,16 +73,22 @@ jobs:
           -p:PublishReadyToRun=true
           -o artifacts/coreclr/linux-x64
 
-      - name: Verify clean extensible deployment layout
+      - name: Verify runnable extensible artifact layout
         shell: bash
         run: |
-          root="artifacts/deploy-coreclr/linux-x64"
+          root="artifacts/coreclr/linux-x64"
           test -x "$root/TerraRuntime.Extensible.Server"
-          for dir in HostModules ServerPlugins Worlds config data logs; do
+          for dir in runtime HostModules ServerPlugins Worlds config data logs; do
             test -d "$root/$dir"
           done
+          if find "$root" -type f \( -name '*.pdb' -o -name '*.dbg' \) -print -quit | grep -q .; then
+            echo "Debug symbols leaked into extensible artifact:"
+            find "$root" -type f \( -name '*.pdb' -o -name '*.dbg' \) -print
+            exit 1
+          fi
           unexpected="$(find "$root" -mindepth 1 -maxdepth 1 \
             ! -name TerraRuntime.Extensible.Server \
+            ! -name runtime \
             ! -name HostModules \
             ! -name ServerPlugins \
             ! -name Worlds \
@@ -105,10 +111,10 @@ jobs:
         shell: bash
         run: >-
           cp tests/TerraRuntime.HostModuleFixture/bin/Release/net11.0/TerraRuntime.HostModuleFixture.dll
-          artifacts/deploy-coreclr/linux-x64/HostModules/Vega.dll
+          artifacts/coreclr/linux-x64/HostModules/Vega.dll
 
       - name: CoreCLR drop-in host module smoke
-        run: ./artifacts/deploy-coreclr/linux-x64/TerraRuntime.Extensible.Server --host-module-smoke
+        run: ./artifacts/coreclr/linux-x64/TerraRuntime.Extensible.Server --host-module-smoke
 
   coreclr-extensible-windows:
     runs-on: windows-latest
@@ -133,14 +139,19 @@ jobs:
           -p:PublishReadyToRun=true
           -o artifacts/coreclr/win-x64
 
-      - name: Verify clean extensible deployment layout
+      - name: Verify runnable extensible artifact layout
         shell: pwsh
         run: |
-          $root = "artifacts/deploy-coreclr/win-x64"
-          $allowed = @("TerraRuntime.Extensible.Server.exe", "HostModules", "ServerPlugins", "Worlds", "config", "data", "logs")
+          $root = "artifacts/coreclr/win-x64"
+          $allowed = @("TerraRuntime.Extensible.Server.exe", "runtime", "HostModules", "ServerPlugins", "Worlds", "config", "data", "logs")
           if (-not (Test-Path "$root/TerraRuntime.Extensible.Server.exe" -PathType Leaf)) { throw "Missing TerraRuntime.Extensible.Server.exe" }
-          foreach ($dir in @("HostModules", "ServerPlugins", "Worlds", "config", "data", "logs")) {
+          foreach ($dir in @("runtime", "HostModules", "ServerPlugins", "Worlds", "config", "data", "logs")) {
             if (-not (Test-Path "$root/$dir" -PathType Container)) { throw "Missing deployment directory: $dir" }
+          }
+          $symbols = @(Get-ChildItem $root -Recurse -File | Where-Object { $_.Extension -in @(".pdb", ".dbg") })
+          if ($symbols.Count -ne 0) {
+            $names = $symbols.FullName -join ", "
+            throw "Debug symbols leaked into extensible artifact: $names"
           }
           $unexpected = @(Get-ChildItem $root | Where-Object { $_.Name -notin $allowed })
           if ($unexpected.Count -ne 0) {
@@ -156,11 +167,11 @@ jobs:
 
       - name: Install drop-in Vega fixture
         shell: pwsh
-        run: Copy-Item tests/TerraRuntime.HostModuleFixture/bin/Release/net11.0/TerraRuntime.HostModuleFixture.dll artifacts/deploy-coreclr/win-x64/HostModules/Vega.dll
+        run: Copy-Item tests/TerraRuntime.HostModuleFixture/bin/Release/net11.0/TerraRuntime.HostModuleFixture.dll artifacts/coreclr/win-x64/HostModules/Vega.dll
 
       - name: CoreCLR drop-in host module smoke
         shell: pwsh
-        run: .\artifacts\deploy-coreclr\win-x64\TerraRuntime.Extensible.Server.exe --host-module-smoke
+        run: .\artifacts\coreclr\win-x64\TerraRuntime.Extensible.Server.exe --host-module-smoke
 
   native-aot-linux:
     runs-on: ubuntu-latest
@@ -183,14 +194,19 @@ jobs:
           -p:IlcTreatWarningsAsErrors=true
           -o artifacts/native-aot/linux-x64
 
-      - name: Verify clean deployment layout
+      - name: Verify runnable NativeAOT artifact layout
         shell: bash
         run: |
-          root="artifacts/deploy/linux-x64"
+          root="artifacts/native-aot/linux-x64"
           test -x "$root/TerraRuntime.Server"
           for dir in Worlds config data logs; do
             test -d "$root/$dir"
           done
+          if find "$root" -type f \( -name '*.pdb' -o -name '*.dbg' \) -print -quit | grep -q .; then
+            echo "Debug symbols leaked into NativeAOT artifact:"
+            find "$root" -type f \( -name '*.pdb' -o -name '*.dbg' \) -print
+            exit 1
+          fi
           unexpected="$(find "$root" -mindepth 1 -maxdepth 1 \
             ! -name TerraRuntime.Server \
             ! -name Worlds \
@@ -204,19 +220,19 @@ jobs:
           fi
 
       - name: NativeAOT loop smoke
-        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --loop-smoke
+        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --loop-smoke
 
       - name: NativeAOT protocol smoke
-        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --protocol-smoke
+        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --protocol-smoke
 
       - name: NativeAOT network smoke
-        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --network-smoke
+        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --network-smoke
 
       - name: NativeAOT world smoke
-        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --world-smoke
+        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --world-smoke
 
       - name: NativeAOT Terminal UI smoke
-        run: ./artifacts/deploy/linux-x64/TerraRuntime.Server --tui-smoke
+        run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --tui-smoke
 
   native-aot-windows:
     runs-on: windows-latest
@@ -239,14 +255,19 @@ jobs:
           -p:IlcTreatWarningsAsErrors=true
           -o artifacts/native-aot/win-x64
 
-      - name: Verify clean deployment layout
+      - name: Verify runnable NativeAOT artifact layout
         shell: pwsh
         run: |
-          $root = "artifacts/deploy/win-x64"
+          $root = "artifacts/native-aot/win-x64"
           $allowed = @("TerraRuntime.Server.exe", "Worlds", "config", "data", "logs")
           if (-not (Test-Path "$root/TerraRuntime.Server.exe" -PathType Leaf)) { throw "Missing TerraRuntime.Server.exe" }
           foreach ($dir in @("Worlds", "config", "data", "logs")) {
             if (-not (Test-Path "$root/$dir" -PathType Container)) { throw "Missing deployment directory: $dir" }
+          }
+          $symbols = @(Get-ChildItem $root -Recurse -File | Where-Object { $_.Extension -in @(".pdb", ".dbg") })
+          if ($symbols.Count -ne 0) {
+            $names = $symbols.FullName -join ", "
+            throw "Debug symbols leaked into NativeAOT artifact: $names"
           }
           $unexpected = @(Get-ChildItem $root | Where-Object { $_.Name -notin $allowed })
           if ($unexpected.Count -ne 0) {
@@ -256,20 +277,20 @@ jobs:
 
       - name: NativeAOT loop smoke
         shell: pwsh
-        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --loop-smoke
+        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --loop-smoke
 
       - name: NativeAOT protocol smoke
         shell: pwsh
-        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --protocol-smoke
+        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --protocol-smoke
 
       - name: NativeAOT network smoke
         shell: pwsh
-        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --network-smoke
+        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --network-smoke
 
       - name: NativeAOT world smoke
         shell: pwsh
-        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --world-smoke
+        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --world-smoke
 
       - name: NativeAOT Terminal UI smoke
         shell: pwsh
-        run: .\artifacts\deploy\win-x64\TerraRuntime.Server.exe --tui-smoke
+        run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --tui-smoke
