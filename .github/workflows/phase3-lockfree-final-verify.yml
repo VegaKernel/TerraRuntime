@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 
-# Fresh run includes CAS-staged actor controls, concurrency stress tests and production TUI layout smoke.
+# Fresh run includes CAS-staged actor controls, concurrency stress tests, fixed persistence tests and production TUI layout smoke.
 jobs:
   verify:
     runs-on: ubuntu-latest
