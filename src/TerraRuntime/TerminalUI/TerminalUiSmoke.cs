@@ -57,6 +57,12 @@ internal static class TerminalUiSmoke
                     SelectDetailsScreen(app, workspace, Key.R, "Projectiles", "PROJECTILES");
                     SelectDetailsScreen(app, workspace, Key.I, "Items", "ITEMS");
                     SelectDetailsScreen(app, workspace, Key.E, "Network", "NETWORK");
+                    AssertRendered(app.Driver!, "total 120/16.0 KiB");
+                    AssertRendered(app.Driver!, "rejected 1  slow 1");
+                    AssertRendered(app.Driver!, "player active 1  deactivated 0");
+                    AssertRendered(app.Driver!, "NPC         relay 8  baseline 2  rejected 1  unsupported 1");
+                    AssertRendered(app.Driver!, "Projectile  relay 15  baseline 4  rejected 2  unsupported 1");
+                    AssertRendered(app.Driver!, "Items       relay 9  rejected 1  unsupported 1");
                     AssertRendered(app.Driver!, "capacity 2");
                     AssertRendered(app.Driver!, "2/256 frames");
                     AssertRendered(app.Driver!, "peak 5/0.5 KiB");
@@ -98,7 +104,7 @@ internal static class TerminalUiSmoke
 
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the production System Dashboard, external-dashboard transition, " +
-                "all Details menu hotkeys, Actions/manual-save path, queue capacity/high-water and categorized network telemetry, " +
+                "all Details menu hotkeys, Actions/manual-save path, complete bounded network telemetry, " +
                 "section-cache/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
