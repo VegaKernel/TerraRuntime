@@ -32,6 +32,23 @@ The existence of the routing boundary does **not** mean spatial culling is compl
 
 ---
 
+## Verified implementation checklist
+
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+
+- [x] Dedicated authoritative loop with wall/CPU timing.
+- [x] Bounded worker pool with explicit completion handoff.
+- [x] Bounded per-connection outbound queues with slow-client signaling.
+- [x] Server-authoritative player identity/movement relay with a real two-client TCP movement smoke.
+- [x] Runtime-owned interest-management control/routing boundary.
+- [x] Single-active-save coalescing scheduler.
+- [x] Atomic save-file writer.
+- [ ] End-to-end staged/fair join work budget under mass join.
+- [ ] Encoded section cache with section-local invalidation and bounded memory.
+- [ ] Full dirty-section-driven sync/save architecture.
+- [ ] Actual AOI packet suppression with enter/leave hysteresis and forced resync.
+- [ ] Complete 24/64/128/255-connection stress acceptance matrix.
+
 ## 1. Global per-tick work budgets
 
 Introduce explicit global budgets for burst-heavy subsystems:

@@ -10,6 +10,9 @@ The governing rule is:
 
 ---
 
+
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+
 ## 1. Migration decision from Vega
 
 Take the useful concepts from Vega's operations logging layer, but do not mechanically move its current implementation.
@@ -419,52 +422,52 @@ The producer benchmark matters most. A slow file sink is survivable if isolated;
 
 ### L0 - Contracts and event taxonomy
 
-- runtime log level/event ID/category types;
-- compact immutable record;
-- subsystem event-ID allocation policy;
-- sensitive-data rules.
+- [ ] runtime log level/event ID/category types;
+- [ ] compact immutable record;
+- [ ] subsystem event-ID allocation policy;
+- [ ] sensitive-data rules.
 
 ### L1 - Bounded queue and worker
 
-- non-blocking producer path;
-- bounded channel;
-- background drain loop;
-- drop/backpressure metrics;
-- lifecycle/shutdown integration.
+- [ ] non-blocking producer path;
+- [ ] bounded channel;
+- [ ] background drain loop;
+- [ ] drop/backpressure metrics;
+- [ ] lifecycle/shutdown integration.
 
 ### L2 - Core sinks
 
-- console sink;
-- JSONL rotating file sink;
-- bounded recent-log store;
-- sink health/failure isolation.
+- [ ] console sink;
+- [ ] JSONL rotating file sink;
+- [ ] bounded recent-log store;
+- [ ] sink health/failure isolation.
 
 ### L3 - Runtime adoption
 
 Replace ad hoc console/log output subsystem by subsystem:
 
-- startup/lifecycle;
-- networking/protocol;
-- world load/save/cache;
-- player/session validation;
-- NPC/projectile/gameplay;
-- worldgen and extension diagnostics.
+- [ ] startup/lifecycle;
+- [ ] networking/protocol;
+- [ ] world load/save/cache;
+- [ ] player/session validation;
+- [ ] NPC/projectile/gameplay;
+- [ ] worldgen and extension diagnostics.
 
 Do not convert hot paths into chatty per-tick logs while migrating.
 
 ### L4 - Vega integration
 
-- Vega runtime-log sink/adapter;
-- TUI recent-log consumption;
-- REST/debug projection where appropriate;
-- remove duplicate runtime-origin logging from Vega once TerraRuntime is the authoritative source.
+- [ ] Vega runtime-log sink/adapter;
+- [ ] TUI recent-log consumption;
+- [ ] REST/debug projection where appropriate;
+- [ ] remove duplicate runtime-origin logging from Vega once TerraRuntime is the authoritative source.
 
 ### L5 - Enforcement and performance gate
 
-- architecture test preventing core dependency on concrete sinks/Vega;
-- saturation stress test;
-- NativeAOT smoke;
-- producer-path benchmark and documented budget.
+- [ ] architecture test preventing core dependency on concrete sinks/Vega;
+- [ ] saturation stress test;
+- [ ] NativeAOT smoke;
+- [ ] producer-path benchmark and documented budget.
 
 ---
 
@@ -472,12 +475,12 @@ Do not convert hot paths into chatty per-tick logs while migrating.
 
 This roadmap slice is complete when:
 
-- TerraRuntime is independently observable without Vega;
-- no normal runtime log sink performs file/console/network I/O on the authoritative game-loop thread;
-- the producer path is bounded and non-blocking;
-- queue overflow has explicit deterministic policy and telemetry;
-- file/console/recent sinks are isolated from one another;
-- graceful shutdown drains/flushed logs under a bounded policy;
-- Vega consumes runtime logs instead of owning TerraRuntime diagnostics;
-- frequent runtime events use stable structured IDs/categories rather than text parsing;
-- Linux and Windows NativeAOT smoke paths exercise the logging pipeline successfully.
+- [ ] TerraRuntime is independently observable without Vega;
+- [ ] no normal runtime log sink performs file/console/network I/O on the authoritative game-loop thread;
+- [ ] the producer path is bounded and non-blocking;
+- [ ] queue overflow has explicit deterministic policy and telemetry;
+- [ ] file/console/recent sinks are isolated from one another;
+- [ ] graceful shutdown drains/flushed logs under a bounded policy;
+- [ ] Vega consumes runtime logs instead of owning TerraRuntime diagnostics;
+- [ ] frequent runtime events use stable structured IDs/categories rather than text parsing;
+- [ ] Linux and Windows NativeAOT smoke paths exercise the logging pipeline successfully.

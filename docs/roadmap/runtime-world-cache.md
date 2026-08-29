@@ -9,6 +9,19 @@ world.runtime-world  # TerraRuntime startup snapshot
 
 A valid warm startup is driven by `.runtime-world`. The original `.wld` contents are not read or hashed on that path. TerraRuntime only reads filesystem metadata for the source `.wld` so an externally newer Terraria checkpoint invalidates the snapshot.
 
+## Verified implementation checklist
+
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+
+- [x] Self-contained warm startup from `.runtime-world` without reading the source `.wld` contents.
+- [x] Integrity-checked embedded canonical checkpoint, tile shards and liquid runtime queues.
+- [x] Missing/stale/corrupt runtime snapshot falls back safely to canonical `.wld`.
+- [x] Snapshot rebuild writes a temporary file, flushes it and atomically replaces the old snapshot.
+- [x] `--save-wld` atomically exports the embedded canonical checkpoint and refreshes the runtime snapshot source stamp.
+- [x] Machine-readable startup profiling plus official cold/warm startup workflow coverage.
+- [ ] Complete vanilla `WorldFileWriter` capable of serializing fresh live runtime state into a new `.wld`.
+- [ ] `--save-wld` exports all runtime-only live mutations rather than only the canonical checkpoint represented by the snapshot.
+
 ## Current runtime snapshot format
 
 The runtime snapshot is intentionally disposable. There is no schema-version or migration system: TerraRuntime has no deployed `.runtime-world` state that needs compatibility preservation. If the current reader does not accept the magic/header/layout or any integrity check fails, the file is treated as invalid and rebuilt from the canonical `.wld` checkpoint.

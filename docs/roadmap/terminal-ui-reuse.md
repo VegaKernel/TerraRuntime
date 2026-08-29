@@ -12,6 +12,20 @@ Do not add a remote management protocol, remote adapters, a separate client exec
 
 Views consume immutable operations snapshots. Mutations cross explicit runtime command boundaries.
 
+## Verified implementation checklist
+
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+
+- [x] Local Terminal.Gui v2 operations UI exists and is exercised.
+- [x] Views consume immutable/bounded operations snapshots instead of mutable runtime stores.
+- [x] Administrative interest-management mutation crosses the authoritative command boundary.
+- [x] TUI runs independently from the authoritative loop and TUI failure/exit does not stop the server.
+- [x] Dashboard, Players, NPCs, Projectiles, Network, World and Logs views are implemented.
+- [x] CoreCLR and Linux/Windows NativeAOT CI exercise the TUI smoke path.
+- [ ] Remote administration protocol/adapter.
+- [ ] Separate reusable remote administration client.
+- [ ] Dynamic external/plugin UI windows for a future CoreCLR administration client.
+
 ## Current implementation
 
 The standalone server has seven exercised operational views:

@@ -28,6 +28,9 @@ Vega must never become a second owner of Terraria simulation, replication, spati
 
 ---
 
+
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+
 ## 1. Ownership matrix
 
 | Capability currently represented in Vega | Target owner | Migration decision |
@@ -931,19 +934,19 @@ Do not expose internal AOI indexes, entity bucket collections, queue buffers or 
 
 Use this order unless a concrete vertical slice requires a small dependency to land earlier:
 
-1. **Connection/session identity + generation**
-2. **Packet ownership enforcement**
-3. **Player/projectile/world/item/chest sanity**
-4. **Entity lifecycle foundation**
-5. **Immutable snapshots + generation/revision mutation model**
-6. **Native authoritative scheduler primitives**
-7. **Replication layer separated from connection registry**
-8. **Hard visibility + runtime-owned AOI**
-9. **Rate limiting + backpressure**
-10. **Runtime/network/security telemetry**
-11. **Save/runtime-world snapshot improvements**
-12. **Vanilla world clock**
-13. **Optional measured replication/network LOD optimizations**
+1. [x] **Connection/session identity + generation**
+2. [ ] **Packet ownership enforcement**
+3. [ ] **Player/projectile/world/item/chest sanity**
+4. [x] **Entity lifecycle foundation**
+5. [x] **Immutable snapshots + generation/revision mutation model**
+6. [x] **Native authoritative scheduler primitives**
+7. [x] **Replication layer separated from connection registry**
+8. [ ] **Hard visibility + runtime-owned AOI**
+9. [ ] **Rate limiting + backpressure**
+10. [x] **Runtime/network/security telemetry**
+11. [x] **Save/runtime-world snapshot improvements**
+12. [ ] **Vanilla world clock**
+13. [ ] **Optional measured replication/network LOD optimizations**
 
 Steps 4 through 8 are conceptually coupled. Do not enable aggressive AOI suppression before lifecycle and resync correctness exist.
 
@@ -977,25 +980,25 @@ A temporary adapter is acceptable only when clearly marked migration debt and co
 
 This ownership migration is considered complete only when:
 
-- TerraRuntime can run a correct Terraria server without Vega being present;
-- connection/player identity enforcement is runtime-owned;
-- all runtime-dangerous coordinate/index/entity sanity checks execute before Vega policy;
-- Vega no longer owns packet-wire parsing beyond consumption of TerraRuntime semantic APIs;
-- Multiplicity remains the shared protocol codec/model implementation;
-- player/NPC/projectile/item lifecycle uses generation-safe identities where slot reuse exists;
-- snapshots are immutable and runtime-owned;
-- revision-guarded mutations reject stale state deterministically;
-- connection registry is not the owner of gameplay/spatial recipient policy;
-- replication has an explicit planner/recipient boundary;
-- hard visibility and spatial interest are modeled separately;
-- AOI internals remain TerraRuntime-owned and Vega can only use documented controls;
-- real AOI culling is enabled only after enter/leave/full-resync correctness is proven;
-- rate limiting/backpressure are runtime security primitives;
-- runtime metrics originate in TerraRuntime and are consumable by Vega/TUI/API;
-- world/save cache formats do not depend on Vega application internals;
-- vanilla world-clock behavior is independently verified before optional correction modes;
-- duplicate migrated implementations are removed from Vega after consumers switch;
-- all migrated slices remain green under CoreCLR tests, Linux NativeAOT, Windows NativeAOT and relevant real-client/live-world smoke tests.
+- [ ] TerraRuntime can run a correct Terraria server without Vega being present;
+- [x] connection/player identity enforcement is runtime-owned;
+- [ ] all runtime-dangerous coordinate/index/entity sanity checks execute before Vega policy;
+- [ ] Vega no longer owns packet-wire parsing beyond consumption of TerraRuntime semantic APIs;
+- [x] Multiplicity remains the shared protocol codec/model implementation;
+- [ ] player/NPC/projectile/item lifecycle uses generation-safe identities where slot reuse exists;
+- [x] snapshots are immutable and runtime-owned;
+- [x] revision-guarded mutations reject stale state deterministically;
+- [x] connection registry is not the owner of gameplay/spatial recipient policy;
+- [x] replication has an explicit planner/recipient boundary;
+- [x] hard visibility and spatial interest are modeled separately;
+- [x] AOI internals remain TerraRuntime-owned and Vega can only use documented controls;
+- [ ] real AOI culling is enabled only after enter/leave/full-resync correctness is proven;
+- [ ] rate limiting/backpressure are runtime security primitives;
+- [x] runtime metrics originate in TerraRuntime and are consumable by Vega/TUI/API;
+- [x] world/save cache formats do not depend on Vega application internals;
+- [ ] vanilla world-clock behavior is independently verified before optional correction modes;
+- [ ] duplicate migrated implementations are removed from Vega after consumers switch;
+- [ ] all migrated slices remain green under CoreCLR tests, Linux NativeAOT, Windows NativeAOT and relevant real-client/live-world smoke tests.
 
 ---
 
