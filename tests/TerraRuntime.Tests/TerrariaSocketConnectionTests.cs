@@ -104,6 +104,111 @@ public sealed class TerrariaSocketConnectionTests
     }
 
     [Fact]
+    public async Task Disconnects_when_handshake_deadline_expires()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        listener.Listen(1);
+        var endpoint = (IPEndPoint)listener.LocalEndPoint!;
+
+        using var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        ValueTask connectTask = client.ConnectAsync(endpoint, cancellationToken);
+        Socket serverSocket = await listener.AcceptAsync(cancellationToken);
+        await connectTask;
+
+        var outbound = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 32));
+        var sink = new HelloCountingSink();
+        var policy = new TerrariaConnectionPolicyOptions(
+            handshakeTimeout: TimeSpan.FromMilliseconds(200),
+            idleTimeout: Timeout.InfiniteTimeSpan);
+        using var connectionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        Task<TerrariaSocketRunResult> run = TerrariaSocketConnection.RunAsync(
+            serverSocket,
+            sink,
+            outbound,
+            TerrariaFrameDecoderOptions.Default,
+            policy,
+            connectionCancellation.Token).AsTask();
+
+        TerrariaSocketRunResult result;
+        try
+        {
+            result = await run.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+        }
+        finally
+        {
+            if (!run.IsCompleted)
+            {
+                connectionCancellation.Cancel();
+                await run;
+            }
+        }
+
+        Assert.Equal(0, sink.HelloCount);
+        Assert.Equal(TerrariaPipePumpResult.Cancelled, result.Inbound);
+        Assert.Equal(OutboundWriterStopReason.Cancelled, result.Outbound.Reason);
+        Assert.Equal(TerrariaConnectionStopReason.HandshakeTimeout, result.StopReason);
+        Assert.True(outbound.IsCompleted);
+        await AssertPeerClosedAsync(client, cancellationToken);
+    }
+
+    [Fact]
+    public async Task Starts_idle_deadline_immediately_after_handshake()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        listener.Listen(1);
+        var endpoint = (IPEndPoint)listener.LocalEndPoint!;
+
+        using var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        ValueTask connectTask = client.ConnectAsync(endpoint, cancellationToken);
+        Socket serverSocket = await listener.AcceptAsync(cancellationToken);
+        await connectTask;
+
+        var outbound = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 32));
+        var sink = new HelloCountingSink();
+        var policy = new TerrariaConnectionPolicyOptions(
+            handshakeTimeout: TimeSpan.FromSeconds(10),
+            idleTimeout: TimeSpan.FromMilliseconds(250));
+        using var connectionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        Task<TerrariaSocketRunResult> run = TerrariaSocketConnection.RunAsync(
+            serverSocket,
+            sink,
+            outbound,
+            TerrariaFrameDecoderOptions.Default,
+            policy,
+            connectionCancellation.Token).AsTask();
+
+        byte[] hello = CurrentHelloPacket();
+        Assert.Equal(hello.Length, await client.SendAsync(hello, SocketFlags.None, cancellationToken));
+
+        TerrariaSocketRunResult result;
+        try
+        {
+            result = await run.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+        }
+        finally
+        {
+            if (!run.IsCompleted)
+            {
+                connectionCancellation.Cancel();
+                await run;
+            }
+        }
+
+        Assert.Equal(1, sink.HelloCount);
+        Assert.Equal(TerrariaPipePumpResult.Cancelled, result.Inbound);
+        Assert.Equal(OutboundWriterStopReason.Cancelled, result.Outbound.Reason);
+        Assert.Equal(TerrariaConnectionStopReason.IdleTimeout, result.StopReason);
+        Assert.True(outbound.IsCompleted);
+        await AssertPeerClosedAsync(client, cancellationToken);
+    }
+
+    [Fact]
     public async Task Cancellation_completes_the_outbound_queue_and_closes_the_peer_socket()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
