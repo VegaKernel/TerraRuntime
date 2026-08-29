@@ -28,6 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 .github/scripts/apply_g6_player_horizontal_intent_v2.py
+          python3 .github/scripts/apply_g6_player_horizontal_fixture_v2.py
           git diff --check
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
 
@@ -37,8 +38,8 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/scripts/apply_g6_player_horizontal_intent_v2.py .github/workflows/g6-player-horizontal-intent-v2.yml
-          git add src/TerraRuntime.HostContracts/IServerPlayerOperations.cs src/TerraRuntime/RuntimeServerPlayerOperations.cs src/TerraRuntime/VanillaServerPlayerDryPhysicsStepper.cs src/TerraRuntime/ServerRuntimeState.cs
+          git rm .github/scripts/apply_g6_player_horizontal_intent_v2.py .github/scripts/apply_g6_player_horizontal_fixture_v2.py .github/workflows/g6-player-horizontal-intent-v2.yml
+          git add src/TerraRuntime.HostContracts/IServerPlayerOperations.cs src/TerraRuntime/RuntimeServerPlayerOperations.cs src/TerraRuntime/VanillaServerPlayerDryPhysicsStepper.cs src/TerraRuntime/ServerRuntimeState.cs tests/TerraRuntime.Tests/TrustedHostModuleLoaderTests.cs
           git diff --cached --check
           git commit -m "gameplay: add semantic horizontal control for runtime players"
           git push origin HEAD:gameplay/g6-player-horizontal-intent-v2
