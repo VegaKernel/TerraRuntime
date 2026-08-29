@@ -5,11 +5,16 @@ namespace TerraRuntime.Operations;
 
 /// <summary>
 /// Samples the network layer's existing per-connection inbound rate accountants. No packet-path
-/// counters are duplicated here; the connection read path remains the sole writer.
+/// counters are duplicated here; the connection read path remains the sole writer. Lifetime totals
+/// are retained when a connection unregisters so a short-lived abusive connection cannot erase its
+/// own rate-limit evidence merely by disconnecting.
 /// </summary>
 internal sealed class RuntimeConnectionRateTelemetry
 {
     private readonly ConcurrentDictionary<long, TerrariaConnectionRateAccountant> accountants = new();
+    private long completedTotalFrames;
+    private long completedTotalBytes;
+    private long completedRejectedFrames;
 
     public bool TryRegister(long connectionId, TerrariaConnectionRateAccountant accountant)
     {
@@ -17,7 +22,17 @@ internal sealed class RuntimeConnectionRateTelemetry
         return connectionId > 0 && accountants.TryAdd(connectionId, accountant);
     }
 
-    public bool TryUnregister(long connectionId) => accountants.TryRemove(connectionId, out _);
+    public bool TryUnregister(long connectionId)
+    {
+        if (!accountants.TryRemove(connectionId, out TerrariaConnectionRateAccountant? accountant))
+            return false;
+
+        ConnectionRateSnapshot completed = accountant.Snapshot;
+        Interlocked.Add(ref completedTotalFrames, completed.TotalFrames);
+        Interlocked.Add(ref completedTotalBytes, completed.TotalBytes);
+        Interlocked.Add(ref completedRejectedFrames, completed.RejectedFrames);
+        return true;
+    }
 
     public RuntimeConnectionRateTelemetrySnapshot CaptureSnapshot(int maximumDetails)
     {
@@ -26,9 +41,9 @@ internal sealed class RuntimeConnectionRateTelemetry
         int trackedConnections = 0;
         long windowFrames = 0;
         long windowBytes = 0;
-        long totalFrames = 0;
-        long totalBytes = 0;
-        long rejectedFrames = 0;
+        long totalFrames = Interlocked.Read(ref completedTotalFrames);
+        long totalBytes = Interlocked.Read(ref completedTotalBytes);
+        long rejectedFrames = Interlocked.Read(ref completedRejectedFrames);
         RuntimeConnectionRateDetail[] top = maximumDetails == 0
             ? []
             : new RuntimeConnectionRateDetail[maximumDetails];
