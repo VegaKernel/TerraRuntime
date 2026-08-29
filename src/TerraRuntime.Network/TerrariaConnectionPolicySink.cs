@@ -86,12 +86,19 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
                     : TerrariaFrameRejectionCategory.None;
 
             TerrariaFrameRejectionTelemetry.Record(rejectionCategory);
-            TerrariaConnectionStopReason stopReason = rejectionCategory switch
-            {
-                TerrariaFrameRejectionCategory.RateLimited => TerrariaConnectionStopReason.RateLimited,
-                TerrariaFrameRejectionCategory.None => TerrariaConnectionStopReason.ApplicationStopped,
-                _ => TerrariaConnectionStopReason.FrameRejected
-            };
+
+            TerrariaConnectionStopReason preciseStop =
+                _inner is ITerrariaConnectionStopReasonSource stopReasonSource
+                    ? stopReasonSource.ConnectionStopReason
+                    : TerrariaConnectionStopReason.None;
+            TerrariaConnectionStopReason stopReason = preciseStop != TerrariaConnectionStopReason.None
+                ? preciseStop
+                : rejectionCategory switch
+                {
+                    TerrariaFrameRejectionCategory.RateLimited => TerrariaConnectionStopReason.RateLimited,
+                    TerrariaFrameRejectionCategory.None => TerrariaConnectionStopReason.ApplicationStopped,
+                    _ => TerrariaConnectionStopReason.FrameRejected
+                };
             _state.TryStop(stopReason);
             return result;
         }
