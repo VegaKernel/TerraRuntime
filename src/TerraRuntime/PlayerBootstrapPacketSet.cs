@@ -8,6 +8,7 @@ namespace TerraRuntime;
 
 public readonly record struct PlayerBootstrapSectionResponse(
     ReadOnlyMemory<byte> StatusFrame,
+    ReadOnlyMemory<byte>[] BaseSectionFrames,
     ReadOnlyMemory<byte>[] AdditionalSectionFrames);
 
 /// <summary>
@@ -284,9 +285,8 @@ public sealed class PlayerBootstrapPacketSet
     }
 
     /// <summary>
-    /// Creates the additional packet-10 section sync selected by packet 8. The client-requested window and,
-    /// for team-based-spawn worlds, the team's extra-spawn window are deduplicated against already sent sections.
-    /// Persistence-backed chest/NPC payloads are deliberately not interleaved into initial tile transfer.
+    /// Creates the packet-10 transfer plan selected by packet 8. Base and additional section frames are resolved
+    /// together so one connection never mixes a stale shared base array with newly encoded additional sections.
     /// </summary>
     public bool TryCreateSectionResponse(
         int tileX,
@@ -294,9 +294,15 @@ public sealed class PlayerBootstrapPacketSet
         byte team,
         out PlayerBootstrapSectionResponse response)
     {
+        if (!TryGetBaseSectionFrames(out ReadOnlyMemory<byte>[] baseSectionFrames))
+        {
+            response = default;
+            return false;
+        }
+
         if (_world is null)
         {
-            response = new PlayerBootstrapSectionResponse(StatusFrame, []);
+            response = new PlayerBootstrapSectionResponse(StatusFrame, baseSectionFrames, []);
             return true;
         }
 
@@ -323,7 +329,7 @@ public sealed class PlayerBootstrapPacketSet
 
         if (requestedCount + teamCount == 0)
         {
-            response = new PlayerBootstrapSectionResponse(StatusFrame, []);
+            response = new PlayerBootstrapSectionResponse(StatusFrame, baseSectionFrames, []);
             return true;
         }
 
@@ -348,8 +354,11 @@ public sealed class PlayerBootstrapPacketSet
 
         ReadOnlyMemory<byte> statusFrame = additionalCount == 0
             ? StatusFrame
-            : EncodeStatusFrame(checked(BaseSectionFrames.Count + additionalCount));
-        response = new PlayerBootstrapSectionResponse(statusFrame, additionalFrames.ToArray());
+            : EncodeStatusFrame(checked(baseSectionFrames.Length + additionalCount));
+        response = new PlayerBootstrapSectionResponse(
+            statusFrame,
+            baseSectionFrames,
+            additionalFrames.ToArray());
         return true;
     }
 
