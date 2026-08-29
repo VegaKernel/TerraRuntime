@@ -145,16 +145,34 @@ public sealed class RuntimeWorldGenerationExecutorTests
     }
 
     [Fact]
-    public void Executor_rejects_unverified_shared_vanilla_rng_instead_of_approximating_it()
+    public void Executor_supplies_fresh_verified_vanilla_rng_for_each_vanilla_pass()
     {
-        bool executed = false;
-        WorldGenerationPassId id = new("test:vanilla-rng");
+        var draws = new List<int>();
+        WorldGenerationPassId firstId = new("test:vanilla-rng/first");
+        WorldGenerationPassId secondId = new("test:vanilla-rng/second");
         var provider = new TestProvider(
-            "test:custom",
-            (request, builder) => builder.Add(
-                new WorldGenerationPassDescriptor(id, WorldGenerationRngMode.VanillaSharedRng),
-                new ActionPass(_ => executed = true)));
-        var request = new WorldGenerationRequest(provider.Id, "Rng", 1, 16, 16);
+            "test:vanilla-rng",
+            (request, builder) =>
+            {
+                builder.Add(
+                    new WorldGenerationPassDescriptor(firstId, WorldGenerationRngMode.VanillaSharedRng),
+                    new ActionPass(context =>
+                    {
+                        Assert.NotNull(context.VanillaRandom);
+                        draws.Add(context.VanillaRandom.Next());
+                    }));
+                builder.Add(
+                    new WorldGenerationPassDescriptor(secondId, WorldGenerationRngMode.VanillaSharedRng, requiredAfter: [firstId]),
+                    new ActionPass(context =>
+                    {
+                        Assert.NotNull(context.VanillaRandom);
+                        draws.Add(context.VanillaRandom.Next());
+                    }));
+            });
+        var request = new WorldGenerationRequest(provider.Id, "Rng", 123, 16, 16)
+        {
+            SeedText = "textual-seed"
+        };
         var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
 
         WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
@@ -163,9 +181,11 @@ public sealed class RuntimeWorldGenerationExecutorTests
             workspace,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal(WorldGenerationExecutionStatus.UnsupportedRngMode, result.Status);
-        Assert.Equal(id, result.PassId);
-        Assert.False(executed);
+        Assert.Equal(WorldGenerationExecutionStatus.Completed, result.Status);
+        Assert.Equal(2, draws.Count);
+        int expected = new VanillaUnifiedRandom1458(VanillaWorldSeedResolver1458.Resolve(in request)).Next();
+        Assert.Equal(expected, draws[0]);
+        Assert.Equal(expected, draws[1]);
     }
 
     [Fact]
