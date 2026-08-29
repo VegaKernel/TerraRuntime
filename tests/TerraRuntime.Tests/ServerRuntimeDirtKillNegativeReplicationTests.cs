@@ -32,7 +32,7 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
     }
 
     [Fact]
-    public void Failed_hit_data_never_allocates_or_replicates_dirt_drop()
+    public void Failed_hit_relays_packet17_to_peer_without_tile_drop_or_origin_echo()
     {
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9511);
@@ -44,7 +44,34 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 1)));
 
         Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
-        Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
+        Assert.Equal(0, fixture.Items.ActiveCount);
+        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(0, fixture.Outbound(origin).QueuedFrames);
+        Assert.Equal(1, fixture.Outbound(peer).QueuedFrames);
+        Assert.Equal(1, fixture.TileReplication.RelayedFrames);
+        Assert.Equal(0, fixture.TileReplication.RejectedFrames);
+        Assert.Equal(0, fixture.TileReplication.EncodeFailures);
+        Assert.Equal(0, fixture.WorldItemReplication.RelayedFrames);
+        Assert.Equal(0, fixture.WorldItemReplication.RejectedFrames);
+        Assert.Equal(0, fixture.WorldItemReplication.UnsupportedCommits);
+    }
+
+    [Fact]
+    public void Failed_hit_without_copper_pickaxe_is_rejected_and_stays_off_wire()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9513);
+        ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9514);
+        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        WorldTile before = fixture.Tiles.Get(10, 10);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 1)));
+
+        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
         Assert.Equal(0, fixture.Items.ActiveCount);
