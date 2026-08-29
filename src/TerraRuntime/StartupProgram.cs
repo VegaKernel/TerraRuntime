@@ -22,6 +22,9 @@ public static class StartupProgram
     {
         ArgumentNullException.ThrowIfNull(args);
 
+        if (WorldGenerationCreateSmoke.TryRun(args, out int worldgenSmokeExitCode))
+            return worldgenSmokeExitCode;
+
         if (ContainsStandaloneMode(args))
             return Program.Main(args);
 
@@ -124,9 +127,6 @@ public static class StartupProgram
             return 23;
         }
 
-        // The current server host owns one world per process. Keep the host-level UI source scoped to
-        // this blocking run so the terminal layer can consume trusted dashboard registrations without
-        // exposing the extensible-host implementation to the runtime core.
         ITerraRuntimeTerminalDashboardSource? previous =
             Interlocked.Exchange(ref currentTerminalDashboards, terminalDashboards);
         try
