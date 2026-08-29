@@ -3,23 +3,25 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Minimal TerrariaServer 1.4.5.8 item facts used by the client tile-manipulation authority boundary.
-/// This is intentionally not a speculative Item database: every entry here is pinned by the source-contract CI.
+/// Compatibility facade for the client tile-manipulation authority boundary. Source-backed item facts now live
+/// in <see cref="VanillaItemDefinitionCatalog"/> so placement/tool gameplay does not grow a second item database.
 /// </summary>
 public static class VanillaTileInteractionItemFacts
 {
-    public const short CopperPickaxePickPower = 35;
-    public const int CopperPickaxeTileBoost = -1;
+    public const short CopperPickaxePickPower = VanillaItemDefinitionCatalog.CopperPickaxePickPower;
+    public const int CopperPickaxeTileBoost = VanillaItemDefinitionCatalog.CopperPickaxeTileBoost;
 
     public static bool TryGetPlacementTile(
         ItemTypeId itemType,
         out TileTypeId tileType,
         out bool consumable)
     {
-        if (itemType == VanillaItemIds.DirtBlock)
+        if (VanillaItemDefinitionCatalog.TryGetPlacement(
+                itemType,
+                out VanillaItemPlacementDefinition placement))
         {
-            tileType = VanillaTileIds.Dirt;
-            consumable = true;
+            tileType = placement.TileType;
+            consumable = placement.Consumable;
             return true;
         }
 
@@ -33,10 +35,12 @@ public static class VanillaTileInteractionItemFacts
         out short pickPower,
         out int tileBoost)
     {
-        if (itemType == VanillaItemIds.CopperPickaxe)
+        if (VanillaItemDefinitionCatalog.TryGetPickTool(
+                itemType,
+                out VanillaItemPickToolDefinition pickTool))
         {
-            pickPower = CopperPickaxePickPower;
-            tileBoost = CopperPickaxeTileBoost;
+            pickPower = pickTool.PickPower;
+            tileBoost = pickTool.TileBoost;
             return true;
         }
 
