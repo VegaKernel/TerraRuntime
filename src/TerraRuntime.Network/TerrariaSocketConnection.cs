@@ -161,6 +161,7 @@ public static class TerrariaSocketConnection
         {
             while (true)
             {
+                bool handshakeComplete = state.HandshakeComplete;
                 TimeSpan remaining = state.GetRemainingTimeout();
                 if (remaining == Timeout.InfiniteTimeSpan)
                 {
@@ -178,7 +179,17 @@ public static class TerrariaSocketConnection
                     continue;
                 }
 
-                await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+                Task delayTask = Task.Delay(remaining, cancellationToken);
+                if (!handshakeComplete)
+                {
+                    Task first = await Task.WhenAny(delayTask, state.HandshakeSignal).ConfigureAwait(false);
+                    if (ReferenceEquals(first, state.HandshakeSignal))
+                    {
+                        continue;
+                    }
+                }
+
+                await delayTask.ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
