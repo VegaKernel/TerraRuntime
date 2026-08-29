@@ -78,6 +78,10 @@ def verify_server_relay(source: str, action_match: re.Match[str]) -> None:
             "Terraria 1.4.5.8 packet 17 server relay no longer uses ignoreClient=whoAmI."
         )
 
+    start = max(0, relay.start() - 1500)
+    end = min(len(context), relay.end() + 700)
+    print(f"packet17_relay_context={context[start:end]}")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
