@@ -1,4 +1,3 @@
-using System.Reflection;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -8,7 +7,7 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeNpcActorControlRegistryConcurrencyTests
 {
     [Fact]
-    public async Task CommitPending_does_not_wait_for_the_control_plane_monitor()
+    public async Task Concurrent_mutation_and_commit_preserve_the_latest_staged_intent()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var store = new RuntimeNpcStore(capacity: 1);
@@ -18,49 +17,80 @@ public sealed class RuntimeNpcActorControlRegistryConcurrencyTests
         var controls = new RuntimeNpcActorControlRegistry(store);
         Assert.Equal(
             NpcActorControlAcquireResult.Acquired,
-            controls.TryAcquire(npc.Handle, new ActorControllerId("test:monitor-free"), out _));
+            controls.TryAcquire(
+                npc.Handle,
+                new ActorControllerId("test:lock-free-staging"),
+                out NpcActorControlLease? lease));
+        Assert.NotNull(lease);
+        Assert.True(controls.CommitPending());
 
-        FieldInfo gateField = typeof(RuntimeNpcActorControlRegistry).GetField(
-            "_gate",
-            BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new Xunit.Sdk.XunitException("Control-plane gate field was not found.");
-        object gate = gateField.GetValue(controls)
-            ?? throw new Xunit.Sdk.XunitException("Control-plane gate was null.");
-
-        using var gateHeld = new ManualResetEventSlim(false);
-        using var releaseGate = new ManualResetEventSlim(false);
-        var holder = new Thread(() =>
+        Task mutator = Task.Run(() =>
         {
-            lock (gate)
+            for (int i = 0; i < 10_000; i++)
             {
-                gateHeld.Set();
-                releaseGate.Wait();
+                if ((i & 255) == 0)
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                Assert.True(lease!.TryMoveTo(i, -i));
             }
-        })
-        {
-            IsBackground = true,
-            Name = "npc-actor-control-gate-holder"
-        };
+        }, cancellationToken);
 
-        holder.Start();
-        gateHeld.Wait(cancellationToken);
-
-        try
+        Task committer = Task.Run(() =>
         {
-            Task<bool> commit = Task.Run(controls.CommitPending, cancellationToken);
-            Task completed = await Task.WhenAny(
-                commit,
-                Task.Delay(TimeSpan.FromSeconds(2), cancellationToken));
+            for (int i = 0; i < 10_000; i++)
+            {
+                if ((i & 255) == 0)
+                    cancellationToken.ThrowIfCancellationRequested();
 
-            Assert.Same(commit, completed);
-            Assert.True(await commit);
-            Assert.True(controls.Snapshot.TryGet(npc.Handle, out _));
-        }
-        finally
+                controls.CommitPending();
+            }
+        }, cancellationToken);
+
+        await Task.WhenAll(mutator, committer);
+
+        Assert.True(lease!.TryMoveTo(12_345f, -54_321f));
+        Assert.True(controls.CommitPending());
+        Assert.True(controls.Snapshot.TryGet(npc.Handle, out NpcActorControlBinding binding));
+        Assert.Equal(NpcActorIntentKind.MoveTo, binding.Intent.Kind);
+        Assert.Equal(12_345f, binding.Intent.TargetX);
+        Assert.Equal(-54_321f, binding.Intent.TargetY);
+    }
+
+    [Fact]
+    public async Task Concurrent_commit_cannot_lose_a_staged_release()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        var store = new RuntimeNpcStore(capacity: 1);
+        NpcStateUpdate initial = CreateNpc(VanillaNpcIds.Zombie.Value);
+        Assert.True(store.TrySpawn(0, in initial, out NpcSnapshot npc));
+
+        var controls = new RuntimeNpcActorControlRegistry(store);
+        Assert.Equal(
+            NpcActorControlAcquireResult.Acquired,
+            controls.TryAcquire(
+                npc.Handle,
+                new ActorControllerId("test:lock-free-release"),
+                out NpcActorControlLease? lease));
+        Assert.NotNull(lease);
+        Assert.True(controls.CommitPending());
+        Assert.True(controls.Snapshot.TryGet(npc.Handle, out _));
+
+        Task committer = Task.Run(() =>
         {
-            releaseGate.Set();
-            Assert.True(holder.Join(TimeSpan.FromSeconds(2)));
-        }
+            for (int i = 0; i < 5_000; i++)
+            {
+                if ((i & 255) == 0)
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                controls.CommitPending();
+            }
+        }, cancellationToken);
+
+        Task releaser = Task.Run(lease!.Dispose, cancellationToken);
+        await Task.WhenAll(committer, releaser);
+
+        controls.CommitPending();
+        Assert.False(controls.Snapshot.TryGet(npc.Handle, out _));
     }
 
     private static NpcStateUpdate CreateNpc(int type) =>
