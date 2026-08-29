@@ -50,6 +50,13 @@ public sealed class TerrariaChatCodecTests
         Assert.Equal(NetTextModulePayloadKind.ServerChatMessage, module.PayloadKind);
         Assert.Equal((byte)7, module.AuthorId);
         Assert.Equal("probe-message", module.ServerText.Text);
+
+        Assert.True(TerrariaChatCodec.TryDecodeServerFrame(
+            serverBytes,
+            out TerrariaServerChatMessage serverMessage));
+        Assert.Equal((byte)7, serverMessage.AuthorId);
+        Assert.Equal("probe-message", serverMessage.Text);
+        Assert.Equal(new TerrariaRgbColor(255, 255, 255), serverMessage.Color);
     }
 
     private static byte[] Serialize(TerrariaPacket packet)
