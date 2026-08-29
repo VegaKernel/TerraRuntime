@@ -60,14 +60,30 @@ jobs:
               print(f'CASE_{number}_CANDIDATES=' + json.dumps(diagnostics, sort_keys=True))
               if len(outer) != 1:
                   raise SystemExit(f'Expected one least-indented case {number}, found {len(outer)}')
-              match = outer[0]
-              indent = match.group('indent')
-              next_case = re.search(
-                  rf'^{re.escape(indent)}case\s+\d+\s*:',
-                  text[match.end():],
-                  re.M)
-              end = match.end() + next_case.start() if next_case else min(len(text), match.start() + 30000)
-              return text[match.start():end]
+
+              first = outer[0]
+              cursor = first
+              indent = first.group('indent')
+              while True:
+                  next_case = re.search(
+                      rf'^{re.escape(indent)}case\s+\d+\s*:',
+                      text[cursor.end():],
+                      re.M)
+                  if next_case is None:
+                      end = min(len(text), first.start() + 30000)
+                      break
+                  next_start = cursor.end() + next_case.start()
+                  next_end = cursor.end() + next_case.end()
+                  between = text[cursor.end():next_start]
+                  if between.strip() == '':
+                      grouped_label = case_pattern.match(text, next_start)
+                      if grouped_label is None:
+                          raise SystemExit('Grouped case label parse failed')
+                      cursor = grouped_label
+                      continue
+                  end = next_start
+                  break
+              return text[first.start():end]
 
           c21 = case_body(21)
           c22 = case_body(22)
@@ -81,9 +97,11 @@ jobs:
                   'hasActiveTrue': bool(re.search(r'\.active\s*=\s*true', body)),
                   'hasWhoAmI': 'whoAmI' in body,
                   'hasReservedPlayer': 'playerIndexTheItemIsReservedFor' in body,
-                  'hasKeepTime': 'keepTime' in body or 'timeToKeepReservedFor' in body,
+                  'hasKeepTime': 'keepTime' in body or 'timeToKeepReservation' in body,
                   'hasOwnIgnore': 'ownIgnore' in body,
                   'hasOwnTime': 'ownTime' in body,
+                  'hasServerBranch': bool(re.search(r'Main\.netMode\s*==\s*2', body)),
+                  'hasNotServerBranch': bool(re.search(r'Main\.netMode\s*!=\s*2', body)),
                   'sendData21': len(re.findall(r'SendData\s*\(\s*21\b', body)),
                   'sendData22': len(re.findall(r'SendData\s*\(\s*22\b', body)),
                   'newItemCalls': body.count('Item.NewItem'),
@@ -105,6 +123,7 @@ jobs:
               r'.{0,120}\.active\s*=\s*(?:true|false).{0,220}',
               r'.{0,120}\b400\b.{0,220}',
               r'.{0,120}\bwhoAmI\b.{0,220}',
+              r'.{0,120}Main\.netMode\s*(?:==|!=)\s*2.{0,220}',
           ]
           evidence = {}
           for number, body in ((21, c21), (22, c22)):
