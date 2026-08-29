@@ -23,6 +23,7 @@ REQUIRED_MIRRORS = {
     "gameplay.md",
     "synchronization.md",
     "operations-tui.md",
+    "observability-logging.md",
     "world-generation.md",
     "security.md",
 }
