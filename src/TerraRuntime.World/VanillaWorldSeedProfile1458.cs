@@ -131,20 +131,18 @@ public static class VanillaWorldSeedResolver1458
     public static VanillaSpecialWorldSeed1458 ResolveSpecial(string seedText)
     {
         ArgumentNullException.ThrowIfNull(seedText);
-        string normalized = NormalizeSpecial(seedText);
-        VanillaSpecialWorldSeed1458 value = normalized switch
+        VanillaSpecialWorldSeed1458 value = VanillaSpecialWorldSeed1458.None;
+        foreach (string rawPart in seedText.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
         {
-            "05162020" or "5162020" => VanillaSpecialWorldSeed1458.DrunkWorld,
-            "fortheworthy" => VanillaSpecialWorldSeed1458.ForTheWorthy,
-            "05162021" or "5162021" or "celebrationmk10" => VanillaSpecialWorldSeed1458.CelebrationMk10,
-            "theconstant" or "eye4aneye" or "eyeforaneye" => VanillaSpecialWorldSeed1458.TheConstant,
-            "notthebees" => VanillaSpecialWorldSeed1458.NotTheBees,
-            "dontdigup" => VanillaSpecialWorldSeed1458.Remix,
-            "notraps" => VanillaSpecialWorldSeed1458.NoTraps,
-            "getfixedboi" => VanillaSpecialWorldSeed1458.Zenith,
-            "skyblock" => VanillaSpecialWorldSeed1458.Skyblock,
-            _ => VanillaSpecialWorldSeed1458.None
-        };
+            VanillaSpecialWorldSeed1458 part = ResolveSpecialToken(rawPart);
+            if (part == VanillaSpecialWorldSeed1458.None)
+            {
+                int prefix = rawPart.LastIndexOf('.');
+                if (prefix >= 0 && prefix + 1 < rawPart.Length)
+                    part = ResolveSpecialToken(rawPart[(prefix + 1)..]);
+            }
+            value |= part;
+        }
 
         if ((value & VanillaSpecialWorldSeed1458.Zenith) != 0)
         {
@@ -177,6 +175,20 @@ public static class VanillaWorldSeedResolver1458
 
         return result;
     }
+
+    private static VanillaSpecialWorldSeed1458 ResolveSpecialToken(string token) => NormalizeSpecial(token) switch
+    {
+        "05162020" or "5162020" => VanillaSpecialWorldSeed1458.DrunkWorld,
+        "fortheworthy" => VanillaSpecialWorldSeed1458.ForTheWorthy,
+        "05162021" or "5162021" or "celebrationmk10" => VanillaSpecialWorldSeed1458.CelebrationMk10,
+        "theconstant" or "eye4aneye" or "eyeforaneye" => VanillaSpecialWorldSeed1458.TheConstant,
+        "notthebees" => VanillaSpecialWorldSeed1458.NotTheBees,
+        "dontdigup" => VanillaSpecialWorldSeed1458.Remix,
+        "notraps" => VanillaSpecialWorldSeed1458.NoTraps,
+        "getfixedboi" => VanillaSpecialWorldSeed1458.Zenith,
+        "skyblock" => VanillaSpecialWorldSeed1458.Skyblock,
+        _ => VanillaSpecialWorldSeed1458.None
+    };
 
     private static string NormalizeSpecial(string value)
     {
