@@ -1,0 +1,38 @@
+name: Repair Projectile Source Proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/projectile-proof-repair.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Patch and validate permanent projectile probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git reset --hard origin/main
+
+          python3 -m py_compile .github/scripts/fix_projectile_wind_probe.py
+          python3 .github/scripts/fix_projectile_wind_probe.py
+          python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
+
+          git config user.name OpenAI
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/scripts/fix_projectile_wind_probe.py
+          git add tools/ci/probe_projectile_tile_cut.py
+          git commit -m 'ci: strengthen projectile wind source proof'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
