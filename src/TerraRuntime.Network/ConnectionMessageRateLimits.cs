@@ -1,3 +1,5 @@
+using TerraRuntime.Protocol;
+
 namespace TerraRuntime.Network;
 
 public readonly record struct ConnectionMessageRateRule(
@@ -6,13 +8,29 @@ public readonly record struct ConnectionMessageRateRule(
 
 /// <summary>
 /// Immutable lookup of optional fixed-window budgets for individual Terraria message ids.
-/// Thresholds are intentionally supplied by policy configuration rather than guessed in the protocol layer.
+/// Gameplay-sensitive tuning stays in policy configuration; the built-in hard-abuse profile only places
+/// deliberately high emergency ceilings on packet classes that otherwise permit cheap flood amplification.
 /// </summary>
 public sealed class ConnectionMessageRateLimits
 {
     private readonly ConnectionRateBudgetOptions?[] _budgets;
 
     public static ConnectionMessageRateLimits None { get; } = new();
+
+    /// <summary>
+    /// Conservative server guardrails for known high-frequency or fan-out-producing inbound packet classes.
+    /// Limits are intentionally far above the 60 Hz simulation rate so they reject obvious floods rather than
+    /// define gameplay cadence. Deployments can replace this profile with measured policy-specific budgets.
+    /// </summary>
+    public static ConnectionMessageRateLimits HardAbuse { get; } = new(
+        Rule(TerrariaMessageId.PlayerControls, maxFrames: 600, maxBytes: 96 * 1024),
+        Rule(TerrariaMessageId.SyncEquipment, maxFrames: 600, maxBytes: 64 * 1024),
+        Rule(TerrariaMessageId.PlayerHp, maxFrames: 240, maxBytes: 32 * 1024),
+        Rule(TerrariaMessageId.PlayerMana, maxFrames: 240, maxBytes: 32 * 1024),
+        Rule(TerrariaMessageId.WorldItemDrop, maxFrames: 240, maxBytes: 64 * 1024),
+        Rule(TerrariaMessageId.WorldItemOwner, maxFrames: 240, maxBytes: 32 * 1024),
+        Rule(TerrariaMessageId.ProjectileNew, maxFrames: 1_200, maxBytes: 256 * 1024),
+        Rule(TerrariaMessageId.ProjectileDestroy, maxFrames: 1_200, maxBytes: 128 * 1024));
 
     public ConnectionMessageRateLimits(params ConnectionMessageRateRule[] rules)
     {
@@ -62,6 +80,17 @@ public sealed class ConnectionMessageRateLimits
         budget = default;
         return false;
     }
+
+    private static ConnectionMessageRateRule Rule(
+        TerrariaMessageId messageId,
+        int maxFrames,
+        long maxBytes) =>
+        new(
+            (byte)messageId,
+            new ConnectionRateBudgetOptions(
+                TimeSpan.FromSeconds(1),
+                maxFrames,
+                maxBytes));
 
     private static void ValidateBudget(ConnectionRateBudgetOptions budget, string parameterName)
     {
