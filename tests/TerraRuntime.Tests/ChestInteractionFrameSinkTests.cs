@@ -11,7 +11,7 @@ namespace TerraRuntime.Tests;
 public sealed class ChestInteractionFrameSinkTests
 {
     [Fact]
-    public void Playing_session_routes_open_item_and_close_with_exact_connection_identity()
+    public void Playing_session_routes_chest_frames_with_exact_connection_identity()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(901);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
@@ -34,17 +34,26 @@ public sealed class ChestInteractionFrameSinkTests
             ChestY = 0,
             ChestName = string.Empty
         });
+        TerrariaFrame lookup = Packet(new ChestName
+        {
+            ChestId = -1,
+            ChestX = 10,
+            ChestY = 20,
+            HasName = false
+        });
 
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(in open));
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(in item));
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(in close));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(in lookup));
 
-        Assert.Equal(3, ingress.Count);
+        Assert.Equal(4, ingress.Count);
         Assert.Equal(source, ingress.Connection.Source);
         Assert.Equal(new PlayerSlotId(0), ingress.Connection.Player.Slot);
         Assert.Equal(new TerrariaChestOpenRequest(10, 20), ingress.OpenRequest);
         Assert.Equal(new TerrariaChestItemState(3, 1, 5, 2, 1), ingress.ItemState);
         Assert.Equal((short)-1, ingress.ActiveState.ChestId);
+        Assert.Equal(new TerrariaChestNameLookupRequest(-1, 10, 20), ingress.NameLookup);
         Assert.Equal(ChestInteractionFrameStopReason.None, sink.StopReason);
     }
 
@@ -167,6 +176,7 @@ public sealed class ChestInteractionFrameSinkTests
         public TerrariaChestOpenRequest OpenRequest { get; private set; }
         public TerrariaChestItemState ItemState { get; private set; }
         public TerrariaActiveChestState ActiveState { get; private set; }
+        public TerrariaChestNameLookupRequest NameLookup { get; private set; }
 
         public bool TryPostOpen(ConnectionHandle connection, in TerrariaChestOpenRequest request)
         {
@@ -191,6 +201,14 @@ public sealed class ChestInteractionFrameSinkTests
             ActiveState = state;
             return true;
         }
+
+        public bool TryPostNameLookup(ConnectionHandle connection, in TerrariaChestNameLookupRequest request)
+        {
+            Count++;
+            Connection = connection;
+            NameLookup = request;
+            return true;
+        }
     }
 
     private sealed class RejectingIngress : IChestNetworkIngress
@@ -200,5 +218,7 @@ public sealed class ChestInteractionFrameSinkTests
         public bool TryPostItem(ConnectionHandle connection, in TerrariaChestItemState state) => false;
 
         public bool TryPostActiveState(ConnectionHandle connection, in TerrariaActiveChestState state) => false;
+
+        public bool TryPostNameLookup(ConnectionHandle connection, in TerrariaChestNameLookupRequest request) => false;
     }
 }
