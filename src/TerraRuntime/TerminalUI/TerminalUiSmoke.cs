@@ -24,32 +24,6 @@ internal static class TerminalUiSmoke
             logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
             RuntimeChatTelemetry.Publish(0, "Synthetic dashboard chat message");
 
-            using (IApplication legacyApp = Application.Create().Init(DriverRegistry.Names.ANSI))
-            {
-                legacyApp.StopAfterFirstIteration = true;
-                using var legacyWindow = new DashboardWindow(
-                    operations,
-                    operations,
-                    operations,
-                    operations,
-                    operations,
-                    logs,
-                    operations,
-                    operations);
-                legacyWindow.RefreshSnapshot();
-                legacyWindow.ShowPlayers();
-                legacyWindow.ShowNpcs();
-                legacyWindow.ShowProjectiles();
-                legacyWindow.ShowItems();
-                legacyWindow.ShowNetwork();
-                legacyWindow.ShowWorld();
-                legacyWindow.ShowLogs();
-                legacyWindow.ShowDashboard();
-                legacyWindow.SetInterestManagementEnabled(true);
-                legacyWindow.SetInterestManagementEnabled(false);
-                legacyApp.Run(legacyWindow);
-            }
-
             using (IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI))
             {
                 app.Driver!.SetScreenSize(SmokeWidth, SmokeHeight);
