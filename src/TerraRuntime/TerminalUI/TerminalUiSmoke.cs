@@ -58,6 +58,7 @@ internal static class TerminalUiSmoke
                     SelectDetailsScreen(app, workspace, Key.I, "Items", "ITEMS");
                     SelectDetailsScreen(app, workspace, Key.E, "Network", "NETWORK");
                     AssertRendered(app.Driver!, "capacity 2");
+                    AssertRendered(app.Driver!, "peak 5/0.5 KiB");
                     AssertRendered(app.Driver!, "Stops       protocol 2");
                     AssertRendered(app.Driver!, "Frame reject malformed 11");
                     AssertRendered(app.Driver!, "join 10");
@@ -383,11 +384,13 @@ internal static class TerminalUiSmoke
                 TrackedOutboundQueues: 1,
                 QueuedOutboundFrames: 2,
                 QueuedOutboundBytes: 128,
+                PeakQueuedOutboundFrames: 5,
+                PeakQueuedOutboundBytes: 512,
                 RejectedOutboundFrames: 1,
                 SlowClients: 1,
                 TopOutboundQueues: new RuntimeConnectionQueueDetail[]
                 {
-                    new(1, 2, 128, 1, true)
+                    new(1, 2, 128, 5, 512, 1, true)
                 }.AsMemory(),
                 TrackedInboundRates: 1,
                 InboundWindowFrames: 12,
