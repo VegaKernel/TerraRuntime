@@ -22,7 +22,10 @@ public enum ProjectileLifecycleFrameStopReason : byte
 /// composes packet 17 through <see cref="TileManipulationFrameSink"/>, preserving the existing host sink chain.
 /// Exact entity lookup, ownership validation and every world mutation are authoritative-thread responsibilities.
 /// </summary>
-public sealed class ProjectileLifecycleFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
+public sealed class ProjectileLifecycleFrameSink :
+    ITerrariaFrameSink,
+    ITerrariaFrameRejectionSource,
+    ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -56,6 +59,13 @@ public sealed class ProjectileLifecycleFrameSink : ITerrariaFrameSink, ITerraria
 
     public TileManipulationFrameStopReason TileStopReason =>
         tileManipulation?.StopReason ?? TileManipulationFrameStopReason.None;
+
+    public TerrariaConnectionStopReason ConnectionStopReason =>
+        StopReason == ProjectileLifecycleFrameStopReason.None &&
+        TileStopReason == TileManipulationFrameStopReason.None &&
+        inner is ITerrariaConnectionStopReasonSource source
+            ? source.ConnectionStopReason
+            : TerrariaConnectionStopReason.None;
 
     public TerrariaFrameRejectionCategory RejectionCategory
     {
