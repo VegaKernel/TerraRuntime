@@ -23,28 +23,17 @@ def main() -> int:
     if dirt is None:
         raise SystemExit("Could not locate TileID.Dirt in pinned source.")
 
-    signature = re.search(
-        r"public static bool PlaceTile\(int i, int j, int type,.*?\)",
+    declarations = list(re.finditer(
+        r"(?:public|private|internal) static [^{;]{0,300}\bPlaceTile\([^)]*\)",
         world_gen,
         re.DOTALL,
-    )
-    if signature is None:
-        raise SystemExit("Could not locate the exact WorldGen.PlaceTile signature in pinned source.")
-
-    start = signature.start()
-    next_method = re.search(r" public static | private static ", world_gen[signature.end():])
-    if next_method is None:
-        end = min(len(world_gen), start + 50000)
-    else:
-        end = signature.end() + next_method.start()
-    body = world_gen[start:end]
-
-    if "Main.tile[i, j]" not in body:
-        raise SystemExit("WorldGen.PlaceTile implementation no longer references the target tile directly.")
+    ))
+    if not declarations:
+        raise SystemExit("Could not locate a declaration-like WorldGen.PlaceTile signature.")
 
     print(f"tile_id_dirt={dirt.group(1)}")
-    print(f"worldgen_place_tile_signature={signature.group(0)}")
-    print(f"worldgen_place_tile_context={body[:30000]}")
+    for index, match in enumerate(declarations[:12]):
+        print(f"worldgen_place_tile_declaration_{index}={match.group(0)}")
     return 0
 
 
