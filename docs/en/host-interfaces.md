@@ -8,9 +8,15 @@ This document describes the public integration surface for a trusted host module
 
 A trusted host module is more privileged than an ordinary Vega plugin, but it does not become a co-owner of internal runtime state.
 
-The core rule is:
-
 > A host receives snapshots, semantic operations, and registration surfaces. It does not receive mutable stores, the game-loop object, socket connection objects, or direct setters for authoritative fields.
+
+```mermaid
+flowchart LR
+    Core["TerraRuntime implementation"] --> Contracts["HostContracts + selected TerraRuntime.Contracts"]
+    Contracts --> Trusted["Trusted CoreCLR host module"]
+    Trusted --> PluginSdk["Host plugin SDK, e.g. Vega.PluginSdk"]
+    PluginSdk --> Plugins["Ordinary plugins"]
+```
 
 Ordinary plugins should use Vega and its Plugin SDK. `TerraRuntime.HostContracts` is not intended to be handed to every plugin DLL.
 
@@ -37,32 +43,21 @@ public interface ITerraRuntimeHostModule
 }
 ```
 
-Lifecycle:
+```mermaid
+sequenceDiagram
+    participant H as Extensible host
+    participant M as ITerraRuntimeHostModule
+    participant R as TerraRuntime
 
-```text
-module load
-   |
-   v
-StartAsync(environment)
-   |
-   |  register bootstrap-only resources
-   |  a live world may not exist yet
-   v
-TerraRuntime starts world/game loop
-   |
-   v
-AttachRuntimeAsync(runtime)
-   |
-   |  runtime snapshots/operations are available
-   v
-normal operation
-   |
-   v
-DetachRuntimeAsync()
-   |
-   |  stop live-runtime work
-   v
-StopAsync()
+    H->>M: load
+    H->>M: StartAsync(environment)
+    Note over M: bootstrap registrations allowed<br/>live world may not exist
+    H->>R: start world + authoritative game loop
+    H->>M: AttachRuntimeAsync(runtime)
+    Note over M,R: normal operation with snapshots / semantic operations
+    H->>M: DetachRuntimeAsync()
+    Note over M: stop live-runtime work and release live leases
+    H->>M: StopAsync()
 ```
 
 ### Lifecycle rules
@@ -151,18 +146,7 @@ bool currentlyEnabled = runtime.InterestManagement.IsEnabled;
 bool changed = runtime.InterestManagement.SetEnabled(true);
 ```
 
-The host controls only whether the mechanism participates.
-
-The host does **not** control:
-
-- spatial cell/section size;
-- enter/leave radii;
-- hysteresis;
-- entity visibility rules;
-- forced resync;
-- packet-specific routing.
-
-Those policies belong to TerraRuntime so Vega does not become a second networking runtime layered on top of the first.
+The host controls only whether the mechanism participates. Spatial cell/section size, enter/leave radii, hysteresis, entity visibility rules, forced resync and packet-specific routing belong to TerraRuntime.
 
 ## 7. Runtime-owned NPC actors
 
@@ -184,13 +168,7 @@ await runtime.NpcActors.SetIntentAsync(
     cancellationToken);
 ```
 
-The host supplies **intent**, not final velocity/position values. TerraRuntime retains ownership of:
-
-- gravity;
-- collision;
-- final motion;
-- lifecycle;
-- replication.
+The host supplies **intent**, not final velocity/position values. TerraRuntime retains gravity, collision, final motion, lifecycle and replication ownership.
 
 Release one actor:
 
@@ -215,13 +193,11 @@ int released = await runtime.NpcActors.ReleaseControllerAsync(
 - `AlreadyControlled` — another controller owns the actor;
 - `QueueRejected` — the authoritative command boundary did not accept the operation.
 
-`QueueRejected` must not be interpreted as "it probably applied anyway". The operation is not confirmed.
+`QueueRejected` is not confirmation that an operation probably applied.
 
 ## 8. Connection-free runtime-owned players
 
 `IServerPlayerOperations` creates runtime-owned player actors without a network connection while using the normal Terraria player-slot pool.
-
-Creation:
 
 ```csharp
 ServerPlayerCreateResult result = await runtime.ServerPlayers.CreateAsync(
@@ -236,7 +212,7 @@ if (!result.IsCreated)
 PlayerHandle handle = result.Player;
 ```
 
-The host does not receive direct position/velocity setters after creation. Control is expressed as semantic intent:
+The host does not receive direct position/velocity setters after creation. Control is semantic intent:
 
 ```csharp
 bool accepted = await runtime.ServerPlayers.SetHorizontalIntentAsync(
@@ -255,10 +231,7 @@ await runtime.ServerPlayers.SetJumpIntentAsync(
     cancellationToken);
 ```
 
-`ServerPlayerJumpIntent` is button-level semantic input, not a velocity command. TerraRuntime owns the ordinary vanilla
-jump speed, jump-duration counter, release gate, gravity and collision. Holding jump through landing therefore does not
-start another jump until a `Released` state has armed the vanilla release gate again. The current source-backed slice is
-the dry, unmounted, normal-gravity path; liquid, mount, grapple and extra-jump families are separate gameplay work.
+`ServerPlayerJumpIntent` is button-level semantic input, not a velocity command. TerraRuntime owns ordinary vanilla jump speed/duration, release gate, gravity and collision. Holding jump through landing does not start another jump until `Released` rearms the vanilla release gate. The current source-backed slice is dry, unmounted and normal-gravity; liquids, mounts, grapples and extra-jump families remain separate gameplay work.
 
 Despawn:
 
@@ -266,20 +239,11 @@ Despawn:
 await runtime.ServerPlayers.DespawnAsync(serverPlayerId, cancellationToken);
 ```
 
-### `ServerPlayerCreateStatus`
+`ServerPlayerCreateStatus` currently includes `Created`, `InvalidId`, `InvalidPosition`, `AlreadyExists`, `NoAvailableSlot` and `QueueRejected`.
 
-- `Created`;
-- `InvalidId`;
-- `InvalidPosition`;
-- `AlreadyExists`;
-- `NoAvailableSlot`;
-- `QueueRejected`.
-
-A created server player uses generation-safe runtime player identity. The host must not treat the raw slot index as a permanent identifier.
+A created server player uses generation-safe runtime identity. Raw slot index is not a permanent identifier.
 
 ## 9. Terminal dashboard registration
-
-Bootstrap surface:
 
 ```csharp
 public interface ITerraRuntimeTerminalDashboardProvider
@@ -291,72 +255,38 @@ public interface ITerraRuntimeTerminalDashboardProvider
 }
 ```
 
-Registration:
+Registration/removal:
 
 ```csharp
 bool registered = environment.TerminalDashboards.TryRegister(provider);
-```
-
-Removal:
-
-```csharp
 environment.TerminalDashboards.TryUnregister(provider.Id);
 ```
 
-### Threading contract
-
-`CreateDashboard()` and `Refresh(...)` run on the Terminal.Gui UI thread.
-
-A provider supplies a **complete independent dashboard root**. It does not inject controls into TerraRuntime's built-in system dashboard.
-
-UI callbacks must not mutate gameplay state directly. Mutations go through runtime operations or host-layer commands.
+`CreateDashboard()` and `Refresh(...)` run on the Terminal.Gui UI thread. A provider supplies a complete independent dashboard root; it does not inject controls into TerraRuntime's built-in system dashboard. UI callbacks do not mutate gameplay state directly.
 
 ## 10. World-generator registration
-
-Bootstrap registry:
 
 ```csharp
 TerraRuntimeWorldGeneratorRegistrationResult result =
     environment.WorldGenerators.TryRegister(provider, out var registration);
 ```
 
-Possible results:
+Possible results are `Registered`, `DuplicateId` and `InvalidProvider`. A successful registration returns `ITerraRuntimeWorldGeneratorRegistration`; `Dispose()` retires it before provider/module unload.
 
-- `Registered`;
-- `DuplicateId`;
-- `InvalidProvider`.
-
-A successful registration returns a lifetime handle:
-
-```csharp
-ITerraRuntimeWorldGeneratorRegistration registration
+```mermaid
+flowchart LR
+    Host["Trusted host"] --> Discover["Discover / own provider lifetime"]
+    Discover --> Register["Register unique WorldGeneratorId"]
+    Register --> Runtime["TerraRuntime"]
+    Runtime --> Plan["Validate plan"]
+    Plan --> Workspace["Isolated workspace"]
+    Workspace --> Execute["Execute passes"]
+    Execute --> Accept["Final validation / world acceptance"]
 ```
 
-It exposes `Id` and `IsRetired`; `Dispose()` retires the registration. Before unloading the provider assembly/module, retire its registration.
-
-### Worldgen ownership
-
-The host owns:
-
-- discovery of its provider;
-- provider lifetime;
-- registration of a unique `WorldGeneratorId`;
-- pass logic implemented through worldgen contracts.
-
-TerraRuntime owns:
-
-- selection of the registered provider;
-- plan validation;
-- isolated workspace;
-- execution boundary;
-- final world acceptance;
-- cancellation/error containment.
-
-Do not scan assemblies from TerraRuntime. Explicit registration exists specifically to avoid reflection-driven discovery.
+The host owns provider discovery/lifetime and pass logic. TerraRuntime owns selection, plan validation, isolated workspace, execution boundary, final acceptance and cancellation/error containment. Explicit registration exists instead of reflection-driven discovery.
 
 ## 11. `ITerraRuntimeHostLifecycle`
-
-This optional bridge lets an extensible host attach its loaded modules to a live runtime:
 
 ```csharp
 public interface ITerraRuntimeHostLifecycle
@@ -369,11 +299,9 @@ public interface ITerraRuntimeHostLifecycle
 }
 ```
 
-The standalone NativeAOT host normally does not provide this lifecycle implementation.
+This optional bridge lets an extensible host attach loaded modules to a live runtime. Standalone NativeAOT normally does not provide it.
 
 ## 12. Host-module implementation pattern
-
-Minimal skeleton:
 
 ```csharp
 public sealed class ExampleHostModule : ITerraRuntimeHostModule
@@ -417,22 +345,10 @@ A real module also retires dashboard/worldgen registrations and releases actor-c
 
 ## 13. Boundary violations
 
-Host integration must not:
-
-- use reflection to reach private/internal runtime state;
-- write directly into NPC/player/world stores;
-- perform gameplay mutations from the TUI thread around the authoritative command boundary;
-- store slot indexes as permanent identity when generation-safe handles exist;
-- block with `.Result`/`.Wait()` on runtime operations inside sensitive host callbacks;
-- continue treating runtime contracts as a live world after detach;
-- leave registrations/controller leases behind after unload.
+Host integration must not use reflection to reach internal runtime state, write directly into NPC/player/world stores, mutate gameplay from the TUI thread around the command boundary, store raw slots as permanent identity, block with `.Result`/`.Wait()` inside sensitive host callbacks, use live-runtime contracts after detach, or leave registrations/controller leases behind after unload.
 
 ## 14. Interface documentation versioning
 
-Any change to a signature, status enum, lifecycle ordering, threading semantics, or ownership guarantee in these contracts requires the same change to update:
+Any change to a signature, status enum, lifecycle ordering, threading semantics or ownership guarantee requires matching source XML docs where appropriate, both EN/RU host-interface pages, `architecture.md` when the boundary changes and roadmap status when readiness/plans change.
 
-- XML documentation in source when the contract needs local explanation;
-- this file in `docs/en/`;
-- mirrored `docs/ru/host-interfaces.md`;
-- `architecture.md` when a system boundary changed;
-- the roadmap when readiness or planned behavior changed.
+Architecture/process diagrams in this guide use Mermaid. Dimensional measurements use LaTeX where such quantities appear; API signatures, enum values and code examples remain literal code.
