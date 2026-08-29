@@ -104,14 +104,24 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
 
     /// <summary>
     /// May be called from any thread. The request is only converted into a detached snapshot by <see cref="Tick"/>
-    /// on the authoritative owner.
+    /// on the authoritative owner. Returns false after persistence has stopped accepting requests.
+    /// </summary>
+    public bool TryRequestSave()
+    {
+        if (Volatile.Read(ref acceptingRequests) == 0)
+            return false;
+
+        Interlocked.Exchange(ref saveRequested, 1);
+        return true;
+    }
+
+    /// <summary>
+    /// May be called from any thread. Throws when persistence is already completing.
     /// </summary>
     public void RequestSave()
     {
-        if (Volatile.Read(ref acceptingRequests) == 0)
+        if (!TryRequestSave())
             throw new InvalidOperationException("The world save service is completing and no longer accepts requests.");
-
-        Interlocked.Exchange(ref saveRequested, 1);
     }
 
     /// <summary>
