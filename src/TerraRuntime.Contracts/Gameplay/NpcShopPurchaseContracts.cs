@@ -23,8 +23,9 @@ public enum NpcShopPurchaseResult : byte
     OfferNotFound = 6,
     UnsupportedCurrency = 7,
     UnsupportedQuantity = 8,
-    InsufficientFunds = 9,
-    InventoryFull = 10,
-    ChangeDoesNotFit = 11,
-    InventoryCommitRejected = 12
+    InvalidCurrencyState = 9,
+    InsufficientFunds = 10,
+    InventoryFull = 11,
+    ChangeDoesNotFit = 12,
+    InventoryCommitRejected = 13
 }
