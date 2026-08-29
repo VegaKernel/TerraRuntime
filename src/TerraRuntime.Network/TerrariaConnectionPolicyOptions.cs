@@ -8,9 +8,16 @@ public readonly record struct TerrariaConnectionPolicyOptions
     /// </summary>
     public static TimeSpan DefaultJoinTimeout { get; } = TimeSpan.FromMinutes(2);
 
+    /// <summary>
+    /// Established connections are expected to keep producing normal Terraria traffic. Ten minutes is deliberately
+    /// conservative: it bounds abandoned half-open sessions without turning short pauses, stalls or AFK play into
+    /// disconnects merely because the server wanted a prettier timeout number.
+    /// </summary>
+    public static TimeSpan DefaultIdleTimeout { get; } = TimeSpan.FromMinutes(10);
+
     public static TerrariaConnectionPolicyOptions Default { get; } = new(
         handshakeTimeout: TimeSpan.FromSeconds(10),
-        idleTimeout: Timeout.InfiniteTimeSpan,
+        idleTimeout: DefaultIdleTimeout,
         rateBudget: ConnectionRateBudgetOptions.HardAbuse,
         messageRateLimits: ConnectionMessageRateLimits.HardAbuse,
         joinTimeout: DefaultJoinTimeout);
