@@ -91,6 +91,32 @@ public sealed class AtomicSaveFileWriterCleanupTests
     }
 
     [Fact]
+    public async Task Startup_cleanup_leaves_unrecognized_lease_name_untouched()
+    {
+        string directory = CreateTempDirectory();
+        string target = Path.Combine(directory, "world.wld");
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string temporary = Path.Combine(directory, ".world.wld.not-a-guid.tmp");
+        string lease = temporary + ".lease";
+
+        try
+        {
+            await File.WriteAllTextAsync(temporary, "foreign", cancellationToken);
+            await File.WriteAllTextAsync(lease, "foreign-lease", cancellationToken);
+
+            Assert.True(AtomicSaveFileWriter.TryCleanupAbandonedWrites(target));
+            Assert.True(File.Exists(temporary));
+            Assert.True(File.Exists(lease));
+            Assert.Equal("foreign", await File.ReadAllTextAsync(temporary, cancellationToken));
+            Assert.Equal("foreign-lease", await File.ReadAllTextAsync(lease, cancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Startup_cleanup_accepts_missing_directory_as_nothing_to_reap()
     {
         string target = Path.Combine(
