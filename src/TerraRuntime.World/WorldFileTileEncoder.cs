@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Buffers.Binary;
 
 namespace TerraRuntime.World;
@@ -44,14 +45,12 @@ public static class WorldFileTileEncoder
         ArgumentNullException.ThrowIfNull(destination);
         bytesWritten = 0;
 
-        if (!destination.CanWrite)
-            return WorldFileTileEncodeResult.DestinationNotWritable;
-
-        if (frameImportanceCount != VanillaWorldFormat326.TileTypeCount ||
-            frameImportanceBits.Length < (VanillaWorldFormat326.TileTypeCount + 7) / 8)
-        {
-            return WorldFileTileEncodeResult.InvalidFrameImportance;
-        }
+        WorldFileTileEncodeResult preflight = ValidateDestinationAndFrameImportance(
+            frameImportanceCount,
+            frameImportanceBits,
+            destination);
+        if (preflight != WorldFileTileEncodeResult.Encoded)
+            return preflight;
 
         int height = source.Dimensions.HeightTiles;
         ReadOnlySpan<WorldTile> allTiles = source.Tiles;
@@ -61,40 +60,127 @@ public static class WorldFileTileEncoder
             for (int x = 0; x < source.Dimensions.WidthTiles; x++)
             {
                 ReadOnlySpan<WorldTile> column = allTiles.Slice(x * height, height);
-                for (int y = 0; y < height; y++)
-                {
-                    WorldTile tile = column[y];
-                    WorldFileTileEncodeResult validation = ValidateTile(in tile);
-                    if (validation != WorldFileTileEncodeResult.Encoded)
-                        return validation;
-
-                    int repeat = 0;
-                    if (VanillaWorldFormat326.AllowsSaveCompressionBatching(tile.Type))
-                    {
-                        int maximumRepeat = Math.Min(short.MaxValue, height - y - 1);
-                        while (repeat < maximumRepeat && TilesEqual(in tile, in column[y + repeat + 1]))
-                            repeat++;
-                    }
-
-                    Span<byte> encoded = stackalloc byte[18];
-                    int encodedLength = EncodeTile(
-                        in tile,
-                        repeat,
-                        frameImportanceCount,
-                        frameImportanceBits,
-                        encoded);
-                    destination.Write(encoded[..encodedLength]);
-                    bytesWritten += encodedLength;
-                    y += repeat;
-                }
+                WorldFileTileEncodeResult result = TryEncodeColumn(
+                    column,
+                    frameImportanceCount,
+                    frameImportanceBits,
+                    destination,
+                    ref bytesWritten);
+                if (result != WorldFileTileEncodeResult.Encoded)
+                    return result;
             }
         }
         catch (Exception exception) when (exception is IOException or NotSupportedException or ObjectDisposedException)
         {
-            // The destination is caller-owned. A failed stream write may have emitted a prefix, so callers must
-            // discard/replace the destination instead of attempting to publish it as a complete tile section.
             bytesWritten = 0;
             return WorldFileTileEncodeResult.WriteFailed;
+        }
+
+        return WorldFileTileEncodeResult.Encoded;
+    }
+
+    /// <summary>
+    /// Encodes an immutable persistence image without touching the live authoritative tile store. A single pooled
+    /// column buffer bridges section snapshots to vanilla's column-major save traversal; no full-world copy occurs.
+    /// </summary>
+    public static WorldFileTileEncodeResult TryEncode(
+        WorldTileSaveImage source,
+        int frameImportanceCount,
+        ReadOnlySpan<byte> frameImportanceBits,
+        Stream destination,
+        out long bytesWritten)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(destination);
+        bytesWritten = 0;
+
+        WorldFileTileEncodeResult preflight = ValidateDestinationAndFrameImportance(
+            frameImportanceCount,
+            frameImportanceBits,
+            destination);
+        if (preflight != WorldFileTileEncodeResult.Encoded)
+            return preflight;
+
+        int height = source.Dimensions.HeightTiles;
+        WorldTile[] rentedColumn = ArrayPool<WorldTile>.Shared.Rent(height);
+        try
+        {
+            Span<WorldTile> column = rentedColumn.AsSpan(0, height);
+            for (int x = 0; x < source.Dimensions.WidthTiles; x++)
+            {
+                source.CopyColumnTo(x, column);
+                WorldFileTileEncodeResult result = TryEncodeColumn(
+                    column,
+                    frameImportanceCount,
+                    frameImportanceBits,
+                    destination,
+                    ref bytesWritten);
+                if (result != WorldFileTileEncodeResult.Encoded)
+                    return result;
+            }
+        }
+        catch (Exception exception) when (exception is IOException or NotSupportedException or ObjectDisposedException)
+        {
+            bytesWritten = 0;
+            return WorldFileTileEncodeResult.WriteFailed;
+        }
+        finally
+        {
+            ArrayPool<WorldTile>.Shared.Return(rentedColumn, clearArray: false);
+        }
+
+        return WorldFileTileEncodeResult.Encoded;
+    }
+
+    private static WorldFileTileEncodeResult ValidateDestinationAndFrameImportance(
+        int frameImportanceCount,
+        ReadOnlySpan<byte> frameImportanceBits,
+        Stream destination)
+    {
+        if (!destination.CanWrite)
+            return WorldFileTileEncodeResult.DestinationNotWritable;
+
+        if (frameImportanceCount != VanillaWorldFormat326.TileTypeCount ||
+            frameImportanceBits.Length < (VanillaWorldFormat326.TileTypeCount + 7) / 8)
+        {
+            return WorldFileTileEncodeResult.InvalidFrameImportance;
+        }
+
+        return WorldFileTileEncodeResult.Encoded;
+    }
+
+    private static WorldFileTileEncodeResult TryEncodeColumn(
+        ReadOnlySpan<WorldTile> column,
+        int frameImportanceCount,
+        ReadOnlySpan<byte> frameImportanceBits,
+        Stream destination,
+        ref long bytesWritten)
+    {
+        for (int y = 0; y < column.Length; y++)
+        {
+            WorldTile tile = column[y];
+            WorldFileTileEncodeResult validation = ValidateTile(in tile);
+            if (validation != WorldFileTileEncodeResult.Encoded)
+                return validation;
+
+            int repeat = 0;
+            if (VanillaWorldFormat326.AllowsSaveCompressionBatching(tile.Type))
+            {
+                int maximumRepeat = Math.Min(short.MaxValue, column.Length - y - 1);
+                while (repeat < maximumRepeat && TilesEqual(in tile, in column[y + repeat + 1]))
+                    repeat++;
+            }
+
+            Span<byte> encoded = stackalloc byte[18];
+            int encodedLength = EncodeTile(
+                in tile,
+                repeat,
+                frameImportanceCount,
+                frameImportanceBits,
+                encoded);
+            destination.Write(encoded[..encodedLength]);
+            bytesWritten += encodedLength;
+            y += repeat;
         }
 
         return WorldFileTileEncodeResult.Encoded;
