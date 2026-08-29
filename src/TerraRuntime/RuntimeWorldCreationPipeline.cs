@@ -21,13 +21,13 @@ public readonly record struct RuntimeWorldCreationPipelineResult(
     RuntimeWorldGenerationWorkspace? Candidate,
     RuntimeWorldGenerationMetadataSnapshot Metadata,
     RuntimeWorldGenerationCandidateResult Generation,
-    RuntimeWorldGenerationFinalizationResult Finalization)
+    RuntimeWorldGenerationFinalizationResult? Finalization)
 {
     public bool Succeeded =>
         Status == RuntimeWorldCreationPipelineStatus.ReadyToPersist &&
         Candidate is not null &&
         Generation.Succeeded &&
-        Finalization.Succeeded;
+        Finalization is { Succeeded: true };
 }
 
 public sealed class RuntimeWorldCreationPipeline
@@ -56,7 +56,7 @@ public sealed class RuntimeWorldCreationPipeline
                 Candidate: null,
                 Metadata: default,
                 generated,
-                Finalization: default);
+                Finalization: null);
         }
 
         RuntimeWorldGenerationFinalizationResult finalized =
