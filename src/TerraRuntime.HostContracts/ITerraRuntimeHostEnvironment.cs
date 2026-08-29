@@ -1,4 +1,5 @@
 using TerraRuntime.HostContracts.TerminalUI;
+using TerraRuntime.HostContracts.WorldGeneration;
 
 namespace TerraRuntime.HostContracts;
 
@@ -21,4 +22,10 @@ public interface ITerraRuntimeHostEnvironment
     /// dashboards only; they cannot inject controls into TerraRuntime's built-in system dashboard.
     /// </summary>
     ITerraRuntimeTerminalDashboardRegistry TerminalDashboards { get; }
+
+    /// <summary>
+    /// Explicit trusted-host registration surface for selectable custom world generators. The host owns discovery
+    /// and provider lifetime; TerraRuntime owns plan validation, isolated execution and final world acceptance.
+    /// </summary>
+    ITerraRuntimeWorldGeneratorRegistry WorldGenerators { get; }
 }
