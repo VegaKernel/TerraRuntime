@@ -458,6 +458,82 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
+    public void Unholy_arrow_free_flight_matches_ordinary_ai001_path()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.UnholyArrow
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.UnholyArrow, next.State.Type);
+        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(0f, next.State.VelocityY, 5);
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(100f, next.State.PositionY, 5);
+        Assert.Equal(1199, next.TimeLeft);
+    }
+
+    [Fact]
+    public void Unholy_arrow_tile_impact_uses_generic_collision_kill_path()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.UnholyArrow
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.UnholyArrow, next.State.Type);
+        Assert.Equal(2f, next.State.VelocityX, 5);
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(160f, next.State.PositionY, 5);
+        Assert.Equal(0, next.TimeLeft);
+    }
+
+    [Fact]
+    public void Unholy_arrow_water_contact_slows_without_changing_type()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f) with
+        {
+            Type = VanillaProjectileIds.UnholyArrow
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.UnholyArrow, next.State.Type);
+        Assert.Equal(102f, next.State.PositionX, 5);
+        Assert.Equal(101f, next.State.PositionY, 5);
+        Assert.Equal(1199, next.TimeLeft);
+        Assert.True(next.Liquid.GetValueOrDefault().Wet);
+    }
+
+    [Fact]
     public void Uncatalogued_projectile_type_is_left_for_another_behavior_slice()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
@@ -468,9 +544,9 @@ public sealed class VanillaProjectileWorldStateStepperTests
             velocityX: 4f,
             velocityY: 0f) with
         {
-            Type = new ProjectileTypeId(4)
+            Type = new ProjectileTypeId(6)
         };
-        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 1200);
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 3600);
 
         Assert.False(stepper.TryStepState(in context, out _));
     }
