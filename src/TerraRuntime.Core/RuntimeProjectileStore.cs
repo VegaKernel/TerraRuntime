@@ -70,7 +70,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
     public bool TrySpawn(ushort slot, in ProjectileStateUpdate update, out ProjectileSnapshot snapshot)
     {
         if (!IsAddressableSlot(slot) ||
-            !IsValid(in update) ||
+            !IsValidState(in update) ||
             !TryCreateLifecycle(update.Type, out ProjectileLifecycleState lifecycle))
         {
             snapshot = default;
@@ -98,7 +98,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
     /// </summary>
     public bool TrySpawnVanilla(in ProjectileStateUpdate update, out ProjectileSnapshot snapshot)
     {
-        if (!IsValid(in update) ||
+        if (!IsValidState(in update) ||
             !TryCreateLifecycle(update.Type, out ProjectileLifecycleState lifecycle) ||
             !TrySelectVanillaAllocationSlot(out ushort slot))
         {
@@ -125,7 +125,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
 
     public bool TryUpdate(ProjectileHandle handle, in ProjectileStateUpdate update, out ProjectileSnapshot snapshot)
     {
-        if (!IsCurrentHandleCandidate(handle) || !IsValid(in update))
+        if (!IsCurrentHandleCandidate(handle) || !IsValidState(in update))
         {
             snapshot = default;
             return false;
@@ -146,6 +146,75 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
             return false;
         }
 
+        if (!TryAdvance(ref state.Revision))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        state.Update = update;
+        state.Lifecycle = lifecycle;
+        snapshot = Capture(handle.Slot, in state);
+        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
+        return true;
+    }
+
+    /// <summary>
+    /// Commits the final state of one completed local simulation pass. Positive timeLeft updates runtime
+    /// lifecycle and publishes exactly one Update commit for the whole world tick. A non-positive timeLeft
+    /// atomically removes the projectile with the final simulated state: player-owned generations use the
+    /// silent Remove path, while owner 255 follows the dedicated-server Kill path and publishes Despawn.
+    /// </summary>
+    public bool TryCommitSimulationStep(
+        ProjectileHandle handle,
+        in ProjectileStateUpdate update,
+        int timeLeft,
+        out ProjectileSnapshot snapshot,
+        out bool expired)
+    {
+        expired = false;
+        if (!IsCurrentHandleCandidate(handle) || !IsValidState(in update))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        ref SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        if (timeLeft <= 0)
+        {
+            state.Update = update;
+            snapshot = Capture(handle.Slot, in state);
+            state.Active = false;
+            state.Revision = 0;
+            state.Update = default;
+            state.Lifecycle = default;
+            _activeCount--;
+            expired = true;
+
+            ProjectileStateCommitKind kind = VanillaProjectileOwnership.IsServerOwned(update.Spawner)
+                ? ProjectileStateCommitKind.Despawn
+                : ProjectileStateCommitKind.Remove;
+            _commitSink?.ProjectileStateCommitted(kind, in snapshot);
+            return true;
+        }
+
+        ProjectileLifecycleState lifecycle = state.Lifecycle;
+        if (state.Update.Type != update.Type)
+        {
+            if (!TryCreateLifecycle(update.Type, out lifecycle))
+            {
+                snapshot = default;
+                return false;
+            }
+        }
+
+        lifecycle = lifecycle with { TimeLeft = timeLeft };
         if (!TryAdvance(ref state.Revision))
         {
             snapshot = default;
@@ -388,7 +457,7 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         return true;
     }
 
-    private static bool IsValid(in ProjectileStateUpdate update) =>
+    internal static bool IsValidState(in ProjectileStateUpdate update) =>
         VanillaProjectileIds.IsLiveWireType(update.Type) &&
         float.IsFinite(update.PositionX) &&
         float.IsFinite(update.PositionY) &&

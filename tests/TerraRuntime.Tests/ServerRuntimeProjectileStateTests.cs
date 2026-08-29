@@ -135,20 +135,24 @@ public sealed class ServerRuntimeProjectileStateTests
 
     private sealed class IntegrateVelocityStepper : IProjectileStateStepper
     {
-        public bool TryStepState(in ProjectileSnapshot projectile, out ProjectileStateUpdate next)
+        public bool TryStepState(
+            in ProjectileSimulationStepContext projectile,
+            out ProjectileSimulationStepResult next)
         {
-            next = new ProjectileStateUpdate(
-                projectile.Type,
-                projectile.Spawner,
-                projectile.PositionX + projectile.VelocityX,
-                projectile.PositionY + projectile.VelocityY,
-                projectile.VelocityX,
-                projectile.VelocityY,
-                projectile.Ai,
-                projectile.BannerIdToRespondTo,
-                projectile.Damage,
-                projectile.KnockBack,
-                projectile.OriginalDamage);
+            ProjectileSnapshot current = projectile.Projectile;
+            var state = new ProjectileStateUpdate(
+                current.Type,
+                current.Spawner,
+                current.PositionX + current.VelocityX,
+                current.PositionY + current.VelocityY,
+                current.VelocityX,
+                current.VelocityY,
+                current.Ai,
+                current.BannerIdToRespondTo,
+                current.Damage,
+                current.KnockBack,
+                current.OriginalDamage);
+            next = new ProjectileSimulationStepResult(state, projectile.Lifecycle.TimeLeft);
             return true;
         }
     }
