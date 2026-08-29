@@ -34,12 +34,13 @@ jobs:
           python3 -c 'from pathlib import Path; p=Path("src/TerraRuntime/TerrariaServerHost.cs"); t=p.read_text(); old="            chestStore,\n            worldClock: worldClock,\n            signStore: signStore);\n"; new="            chestStore,\n            worldClock: worldClock,\n            signStore: signStore,\n            checkpointValidationLimits: worldLoadLimits);\n"; assert t.count(old)==1, t.count(old); p.write_text(t.replace(old,new))'
           python3 -c 'from pathlib import Path; p=Path("src/TerraRuntime/RuntimeWorldTileChestSaveService.cs"); t=p.read_text(); old="                BackupPath: RuntimeWorldCheckpointRecovery.GetBackupPath(destinationPath),\n                ValidateCandidateAsync: (path, cancellationToken) =>\n                    RuntimeWorldCheckpointRecovery.ValidateAsync(path, limits, cancellationToken));\n"; new="                BackupPath: RuntimeWorldCheckpointRecovery.GetBackupPath(destinationPath),\n                ValidateCandidateAsync: (path, cancellationToken) =>\n                    RuntimeWorldCheckpointRecovery.ValidateAsync(path, limits, cancellationToken),\n                ValidateBackupAsync: (path, cancellationToken) =>\n                    RuntimeWorldCheckpointRecovery.ValidateAsync(path, limits, cancellationToken));\n"; assert t.count(old)==1, t.count(old); p.write_text(t.replace(old,new))'
 
+      - name: Build test assembly
+        run: dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+
       - name: Prove focused recovery contract
         run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
-          -c Release
-          --
-          --filter-class TerraRuntime.Tests.RuntimeWorldCheckpointRecoveryTests
+          dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+          --TestCaseFilter:FullyQualifiedName~TerraRuntime.Tests.RuntimeWorldCheckpointRecoveryTests
 
       - name: Build production host
         run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release --no-restore
