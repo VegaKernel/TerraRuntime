@@ -214,6 +214,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 18,
         CollisionHeight: 18);
 
+    private static readonly VanillaProjectileDefinition SoundGunDefinition = new(
+        Width: 66,
+        Height: 66,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: false,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 66,
+        CollisionHeight: 66);
+
     private static readonly VanillaProjectileDefinition MeleeBoneDefinition = new(
         Width: 16,
         Height: 16,
@@ -357,6 +367,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.Waffle)
         {
             definition = WaffleDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SoundGun)
+        {
+            definition = SoundGunDefinition;
             return true;
         }
 

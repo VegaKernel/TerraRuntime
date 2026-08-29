@@ -88,6 +88,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
     [Theory]
     [InlineData(51, 3600)]
     [InlineData(474, 1200)]
+    [InlineData(1099, 600)]
     [InlineData(1124, 600)]
     public void Simple_ai_style_one_family_uses_source_backed_world_trajectory(int type, int timeLeft)
     {
@@ -164,6 +165,58 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.Equal(104f, next.State.PositionX, 5);
         Assert.Equal(160f, next.State.PositionY, 5);
         Assert.Equal(0, next.TimeLeft);
+    }
+
+    [Fact]
+    public void Sound_gun_water_contact_uses_generic_half_speed_liquid_motion()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(8, 8, LiquidTile(WorldLiquidKind.Water));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f) with
+        {
+            Type = VanillaProjectileIds.SoundGun
+        };
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.SoundGun, next.State.Type);
+        Assert.Equal(102f, next.State.PositionX, 5);
+        Assert.Equal(101f, next.State.PositionY, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(2f, next.State.VelocityY, 5);
+        Assert.Equal(599, next.TimeLeft);
+        Assert.True(next.Liquid.GetValueOrDefault().Wet);
+    }
+
+    [Fact]
+    public void Sound_gun_ignores_solid_tile_collision_when_tile_collide_is_false()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.SoundGun
+        };
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(120f, next.State.PositionX, 5);
+        Assert.Equal(160f, next.State.PositionY, 5);
+        Assert.Equal(20f, next.State.VelocityX, 5);
+        Assert.Equal(0f, next.State.VelocityY, 5);
+        Assert.Equal(599, next.TimeLeft);
     }
 
     [Fact]

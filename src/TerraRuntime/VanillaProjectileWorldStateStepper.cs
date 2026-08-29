@@ -8,7 +8,7 @@ namespace TerraRuntime;
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile simulation slices that already have enough runtime/world
 /// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden,
-/// Fire, Unholy, and Jester's Arrows, Bullet, Seed, Bone Arrow, Bone Shard, and player-owned Green Laser (aiStyle 1), plus Shuriken, Throwing Knife,
+/// Fire, Unholy, and Jester's Arrows, Bullet, Seed, Bone Arrow, Sound Gun, Bone Shard, and player-owned Green Laser (aiStyle 1), plus Shuriken, Throwing Knife,
 /// Poisoned Knife, Bone, Rotten Egg, Star Anise, Nurse Syringe, Santa Bombs, Bone Dagger, Waffle, and Melee Bone (aiStyle 2).
 /// including their generic tile-impact Kill() path. Server-owned simulation is allowed only when its committed
 /// movement sweep cannot reach a source-backed CutTiles candidate; irreversible KillTile/drop effects remain a
@@ -81,6 +81,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
              current.Type == VanillaProjectileIds.Bullet ||
              current.Type == VanillaProjectileIds.Seed ||
              current.Type == VanillaProjectileIds.BoneArrowFromMerchant ||
+             current.Type == VanillaProjectileIds.SoundGun ||
              current.Type == VanillaProjectileIds.BoneShard ||
              current.Type == VanillaProjectileIds.GreenLaser);
         if (!isThrown && !isBasicAiStyleOne)
@@ -90,7 +91,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         }
 
         // TerrariaServer AI_001 uses ai[2] as a feature selector for several special aiStyle-1 families. The
-        // source-backed Wooden/Fire/Unholy/Jester/Bullet/Seed/BoneArrow/BoneShard/player-owned-GreenLaser path has ai[2] == 0; non-default
+        // source-backed Wooden/Fire/Unholy/Jester/Bullet/Seed/BoneArrow/SoundGun/BoneShard/player-owned-GreenLaser path has ai[2] == 0; non-default
         // feature state remains separate.
         if (isBasicAiStyleOne && current.Ai.Ai2 != 0f)
         {

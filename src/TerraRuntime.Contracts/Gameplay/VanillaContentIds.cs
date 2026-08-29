@@ -78,6 +78,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId SantaBombs = new(589);
     public static readonly ProjectileTypeId BoneDagger = new(599);
     public static readonly ProjectileTypeId Waffle = new(1012);
+    public static readonly ProjectileTypeId SoundGun = new(1099);
     public static readonly ProjectileTypeId MeleeBone = new(1111);
     public static readonly ProjectileTypeId BoneShard = new(1124);
 

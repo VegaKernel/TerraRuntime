@@ -49,6 +49,25 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     }
 
     [Fact]
+    public void Terraria_1458_sound_gun_definition_matches_source()
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            VanillaProjectileIds.SoundGun,
+            out VanillaProjectileDefinition definition));
+
+        Assert.Equal(66, definition.Width);
+        Assert.Equal(66, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.False(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
+        Assert.Equal(66, definition.CollisionWidth);
+        Assert.Equal(66, definition.CollisionHeight);
+        Assert.Equal(0f, definition.CollisionOffsetX);
+        Assert.Equal(0f, definition.CollisionOffsetY);
+    }
+
+    [Fact]
     public void Terraria_1458_jesters_arrow_definition_matches_source()
     {
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
