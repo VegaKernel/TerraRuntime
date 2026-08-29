@@ -67,7 +67,10 @@ internal static class WorldGenerationCreateSmoke
             "TerraRuntimeGeneratedSmoke",
             Seed: 1458UL,
             WidthTiles: 4200,
-            HeightTiles: 1200);
+            HeightTiles: 1200)
+        {
+            Options = WorldGenerationOptions.Default
+        };
         var generators = new StartupWorldGeneratorSource(host: null);
         var pipeline = new RuntimeWorldCreationPersistencePipeline(
             generators,
@@ -79,8 +82,6 @@ internal static class WorldGenerationCreateSmoke
             outputPath,
             Guid.Parse("14580000-0000-4000-8000-000000000001"),
             worldId: 145800001,
-            gameMode: 0,
-            crimson: false,
             creationTimeBinary: timestamp,
             lastPlayedBinary: timestamp);
         if (!result.Succeeded)
@@ -94,7 +95,8 @@ internal static class WorldGenerationCreateSmoke
 
         Console.WriteLine(
             $"Worldgen create smoke passed: path='{result.WorldPath}', generator={request.GeneratorId.Value}, " +
-            $"seed={request.Seed}, size={request.WidthTiles}x{request.HeightTiles}.");
+            $"seed={request.Seed}, size={request.WidthTiles}x{request.HeightTiles}, " +
+            $"mode={request.Options.GameMode}, evil={request.Options.Evil}.");
         exitCode = 0;
         return true;
     }
