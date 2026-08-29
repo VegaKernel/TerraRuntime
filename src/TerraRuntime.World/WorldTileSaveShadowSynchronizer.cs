@@ -27,6 +27,13 @@ public sealed class WorldTileSaveShadowSynchronizer
     public int RemainingBootstrapSections => liveTiles.Dimensions.SectionCount - nextBootstrapSectionIndex;
 
     /// <summary>
+    /// Number of authoritative sections still marked dirty. This is the readiness signal for persistence callers:
+    /// a capture attempt can requeue a section, so applied-count heuristics must not be used to infer that the shadow
+    /// has caught up with live state.
+    /// </summary>
+    public int PendingDirtySections => liveTiles.DirtySections.DirtyCount;
+
+    /// <summary>
     /// Captures at most <paramref name="maximumSections"/> initial sections in deterministic linear order.
     /// A section that cannot be captured consistently is retried by the next call instead of being skipped.
     /// Dirty tracking is not drained until bootstrap completes, so mutations to sections captured early remain queued.
