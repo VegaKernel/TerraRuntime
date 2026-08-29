@@ -160,6 +160,24 @@ public static class TerrariaServerHost
             }
         }
 
+        RuntimeWorldSaveTemplateLoadResult saveTemplateLoad = RuntimeWorldSaveTemplateLoader.TryLoad(
+            options.WorldPath,
+            runtimeCachePath,
+            sourceStamp,
+            world,
+            out WorldFilePreservedSections? worldSaveTemplate);
+        if (!saveTemplateLoad.Success || worldSaveTemplate is null)
+        {
+            Console.Error.WriteLine(
+                $"World save template load failed: source={saveTemplateLoad.Source}, " +
+                $"cache_result={saveTemplateLoad.CacheResult}, error={saveTemplateLoad.Error ?? "unknown"}. " +
+                "Refusing to start a mutable world without a canonical persistence checkpoint.");
+            return 30;
+        }
+
+        Console.WriteLine(
+            $"World save template ready: source={saveTemplateLoad.Source}, cache_result={saveTemplateLoad.CacheResult}.");
+
         string runtimeBootstrapCachePath = RuntimeBootstrapSnapshotCache.GetCachePath(options.WorldPath);
         long bootstrapStart = Stopwatch.GetTimestamp();
         long bootstrapCacheLoadStart = Stopwatch.GetTimestamp();
@@ -245,6 +263,14 @@ public static class TerrariaServerHost
         var chestReplication = new RuntimeChestReplicationRegistry();
         var chestStore = new RuntimeChestStore(world.Chests);
         var chestCommands = new RuntimeChestCommandProcessor(chestStore, chestReplication);
+        var worldSaveService = new RuntimeWorldTileChestSaveService(
+            options.WorldPath,
+            world.Envelope,
+            world.Header,
+            worldSaveTemplate,
+            world.Tiles,
+            chestStore,
+            worldClock: worldClock);
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
         var playerOperations = new RuntimePlayerOperationsTelemetry();
         var playerNetworkEvents = new RuntimePlayerEventDispatcher(
@@ -295,6 +321,7 @@ public static class TerrariaServerHost
             {
                 runtime.Tick();
                 sectionCacheRebuild.Tick();
+                worldSaveService.Tick();
             });
         var commandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(gameLoop);
         var playerStateSnapshots = new RuntimePlayerStateSnapshotReader(commandIngress);
@@ -557,10 +584,52 @@ public static class TerrariaServerHost
                 }
             }
 
-            if (!gameLoop.Stop(TimeSpan.FromSeconds(5)))
+            bool commandsDrained = await WaitForGameLoopCommandDrainAsync(
+                gameLoop,
+                TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+            if (!commandsDrained)
+            {
+                const string message =
+                    "Accepted authoritative commands did not drain before shutdown; the canonical world checkpoint will not be replaced.";
+                hostLog.Write(RuntimeLogLevel.Error, "WorldSave", message, useStandardError: true);
+            }
+
+            bool gameLoopStopped = gameLoop.Stop(TimeSpan.FromSeconds(5));
+            if (!gameLoopStopped)
             {
                 const string message = "Authoritative game loop did not stop within the shutdown deadline.";
                 hostLog.Write(RuntimeLogLevel.Error, "Runtime", message, useStandardError: true);
+            }
+            else if (commandsDrained && gameLoop.Fault is null)
+            {
+                try
+                {
+                    worldSaveService.CaptureFinalSaveAfterOwnerStopped();
+                    await worldSaveService.CompleteAsync(CancellationToken.None).ConfigureAwait(false);
+                    InvalidateRuntimeCache(runtimeCachePath, hostLog);
+                    InvalidateRuntimeCache(runtimeBootstrapCachePath, hostLog);
+                    hostLog.Write(
+                        RuntimeLogLevel.Information,
+                        "WorldSave",
+                        $"Canonical tile/chest/clock world checkpoint committed: '{options.WorldPath}'.");
+                }
+                catch (Exception exception) when (
+                    exception is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
+                {
+                    hostLog.Write(
+                        RuntimeLogLevel.Error,
+                        "WorldSave",
+                        $"Canonical world save failed; the previous checkpoint remains authoritative: {exception.Message}",
+                        useStandardError: true);
+                }
+            }
+            else if (gameLoop.Fault is Exception gameLoopFault)
+            {
+                hostLog.Write(
+                    RuntimeLogLevel.Error,
+                    "WorldSave",
+                    $"Authoritative loop faulted; refusing to overwrite the last canonical checkpoint: {gameLoopFault.Message}",
+                    useStandardError: true);
             }
         }
 
@@ -782,6 +851,45 @@ public static class TerrariaServerHost
                     }
                 }
             }
+        }
+    }
+
+    private static async Task<bool> WaitForGameLoopCommandDrainAsync(
+        AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> gameLoop,
+        TimeSpan timeout)
+    {
+        ArgumentNullException.ThrowIfNull(gameLoop);
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeout, TimeSpan.Zero);
+
+        long started = Stopwatch.GetTimestamp();
+        while (gameLoop.Snapshot.PendingCommands != 0)
+        {
+            if (!gameLoop.IsRunning ||
+                gameLoop.Fault is not null ||
+                Stopwatch.GetElapsedTime(started) >= timeout)
+            {
+                return false;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(10)).ConfigureAwait(false);
+        }
+
+        return true;
+    }
+
+    private static void InvalidateRuntimeCache(string path, RuntimeHostLog hostLog)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            hostLog.Write(
+                RuntimeLogLevel.Warning,
+                "WorldSave",
+                $"Saved canonical world but could not invalidate runtime cache '{path}': {exception.Message}",
+                useStandardError: true);
         }
     }
 
