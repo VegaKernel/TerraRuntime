@@ -2,6 +2,11 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
+internal readonly record struct SectionPacketCacheSnapshot(
+    int Entries,
+    long Bytes,
+    int MaximumEntries);
+
 public sealed partial class PlayerBootstrapPacketSet
 {
     /// <summary>
@@ -51,6 +56,26 @@ public sealed partial class PlayerBootstrapPacketSet
 
             frame = entry.TileSectionFrame;
             return true;
+        }
+    }
+
+    internal SectionPacketCacheSnapshot CaptureSectionCacheSnapshot()
+    {
+        int maximumEntries = _world?.Header.Dimensions.SectionCount ?? _sectionCache.Count;
+        lock (_sectionCacheGate)
+        {
+            long bytes = 0;
+            foreach (SectionCacheEntry entry in _sectionCache.Values)
+            {
+                bytes += entry.TileSectionFrame.Length;
+                for (int i = 0; i < entry.PostSectionFrames.Length; i++)
+                    bytes += entry.PostSectionFrames[i].Length;
+            }
+
+            return new SectionPacketCacheSnapshot(
+                Entries: _sectionCache.Count,
+                Bytes: bytes,
+                MaximumEntries: maximumEntries);
         }
     }
 }
