@@ -241,15 +241,15 @@ jobs:
 
       - name: Prove embedded cache save template
         run: >-
-          dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
-          --TestCaseFilter:FullyQualifiedName~TerraRuntime.Tests.RuntimeWorldSnapshotPreservedSectionsTests
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+          --filter "FullyQualifiedName~TerraRuntime.Tests.RuntimeWorldSnapshotPreservedSectionsTests"
 
       - name: Prove authoritative save service
         run: >-
-          dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
-          --TestCaseFilter:FullyQualifiedName~TerraRuntime.Tests.RuntimeWorldTileChestSaveServiceTests
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+          --filter "FullyQualifiedName~TerraRuntime.Tests.RuntimeWorldTileChestSaveServiceTests"
 
       - name: Prove validated checkpoint backup and recovery
         run: >-
-          dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
-          --TestCaseFilter:FullyQualifiedName~TerraRuntime.Tests.RuntimeWorldCheckpointRecoveryTests
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+          --filter "FullyQualifiedName~TerraRuntime.Tests.RuntimeWorldCheckpointRecoveryTests"
