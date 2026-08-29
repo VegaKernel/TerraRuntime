@@ -31,12 +31,14 @@ public sealed class ConnectionMessageRateLimits
         Rule(TerrariaMessageId.TileManipulation, maxFrames: 480, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.WorldItemDrop, maxFrames: 240, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.WorldItemOwner, maxFrames: 240, maxBytes: 32 * 1024),
+        Rule(TerrariaMessageId.ChatMessage, maxFrames: 120, maxBytes: 128 * 1024),
         Rule(TerrariaMessageId.ProjectileNew, maxFrames: 1_200, maxBytes: 256 * 1024),
         Rule(TerrariaMessageId.ProjectileDestroy, maxFrames: 1_200, maxBytes: 128 * 1024),
         Rule(TerrariaMessageId.RequestChestOpen, maxFrames: 120, maxBytes: 16 * 1024),
         Rule(TerrariaMessageId.SyncChestItem, maxFrames: 600, maxBytes: 96 * 1024),
         Rule(TerrariaMessageId.SyncPlayerChest, maxFrames: 240, maxBytes: 32 * 1024),
         Rule(TerrariaMessageId.PlayerMana, maxFrames: 240, maxBytes: 32 * 1024),
+        Rule(TerrariaMessageId.LiquidSet, maxFrames: 600, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.ChestName, maxFrames: 120, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.LoadNetModule, maxFrames: 120, maxBytes: 256 * 1024));
 
