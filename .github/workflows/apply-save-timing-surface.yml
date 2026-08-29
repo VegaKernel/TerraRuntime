@@ -1,6 +1,6 @@
 name: Apply Save Timing Surface
 
-# Temporary, idempotent apply helper. Remove after the surface/docs commit lands.
+# Temporary, idempotent apply helper. Remove after the surface/docs commit lands. Retry after unrelated test compile fix.
 on:
   push:
     branches: [main]
