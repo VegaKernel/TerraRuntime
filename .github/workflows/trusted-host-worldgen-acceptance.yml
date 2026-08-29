@@ -1,0 +1,217 @@
+name: Trusted Host Worldgen Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/TerraRuntime.HostModuleFixture/**'
+      - 'src/TerraRuntime.ExtensibleHost/**'
+      - 'src/TerraRuntime/StartupWorldGeneratorSource.cs'
+      - 'src/TerraRuntime/StartupWorldCreationRequest.cs'
+      - 'src/TerraRuntime/StartupProgram.cs'
+      - 'src/TerraRuntime/RuntimeWorldCreationPersistencePipeline.cs'
+      - 'src/TerraRuntime/RuntimeWorldCreationPipeline.cs'
+      - 'src/TerraRuntime/RuntimeWorldGenerationCandidateService.cs'
+      - 'src/TerraRuntime.Core/RuntimeWorldGenerationExecutor.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldGenerationFinalizer.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
+      - 'src/TerraRuntime.World/WorldFileFreshComposer326.cs'
+      - 'src/TerraRuntime.World/WorldFileAtomicPublisher.cs'
+      - '.github/workflows/trusted-host-worldgen-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-trusted-host-worldgen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  custom-generator:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Build extensible host and fixture module
+        run: |
+          dotnet build src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj -c Release
+          dotnet build tests/TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj -c Release
+
+      - name: Install fixture as trusted host module
+        shell: bash
+        run: |
+          set -euo pipefail
+          host_dir="$GITHUB_WORKSPACE/src/TerraRuntime.ExtensibleHost/bin/Release/net11.0"
+          fixture="$GITHUB_WORKSPACE/tests/TerraRuntime.HostModuleFixture/bin/Release/net11.0/TerraRuntime.HostModuleFixture.dll"
+          test -f "$host_dir/TerraRuntime.Extensible.Server.dll"
+          test -f "$fixture"
+          mkdir -p "$host_dir/HostModules"
+          cp "$fixture" "$host_dir/HostModules/Vega.dll"
+
+      - name: Create and start world through fixture custom generator
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          host_dir="$GITHUB_WORKSPACE/src/TerraRuntime.ExtensibleHost/bin/Release/net11.0"
+          world="$GITHUB_WORKSPACE/artifacts/trusted-host-generated.wld"
+          host_log="$GITHUB_WORKSPACE/artifacts/trusted-host-worldgen.log"
+
+          dotnet "$host_dir/TerraRuntime.Extensible.Server.dll" \
+            --create-world TrustedHostGenerated \
+            --world-generator fixture:worldgen \
+            --world-seed 987654321 \
+            --world-width 4200 \
+            --world-height 1200 \
+            --world-game-mode journey \
+            --world-evil crimson \
+            --world-output "$world" \
+            --port 17790 \
+            --max-players 1 \
+            --no-tui \
+            > "$host_log" 2>&1 &
+          host_pid=$!
+
+          cleanup() {
+            kill "$host_pid" 2>/dev/null || true
+            wait "$host_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          listener=false
+          for _ in $(seq 1 240); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "Extensible host exited before custom-generated world startup completed." >&2
+              exit 1
+            fi
+            if [[ -s "$world" ]] && ss -ltn | grep -q ':17790 '; then
+              listener=true
+              break
+            fi
+            sleep 0.5
+          done
+
+          cat "$host_log"
+          test "$listener" = true
+          test -s "$world"
+          grep -q 'Trusted host module loaded: FixtureHostModule' "$host_log"
+          grep -q "'fixture:worldgen'" "$host_log"
+          grep -q "mode=Journey, evil=Crimson" "$host_log"
+          echo "Trusted host generator created a world and TerraRuntime opened the listener."
+
+      - name: Verify custom-generated world with TerraRuntime loader
+        run: >-
+          dotnet run
+          --project tools/TerraRuntime.WorldVerify/TerraRuntime.WorldVerify.csproj
+          -c Release
+          -- artifacts/trusted-host-generated.wld
+
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+          expected="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          echo "Pinned TerrariaServer.exe SHA-256 verified."
+
+      - name: Load custom-generated world in official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server="$(realpath "$server")"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/trusted-host-generated.wld"
+          config="$GITHUB_WORKSPACE/artifacts/trusted-host-official-serverconfig.txt"
+          official_log="$GITHUB_WORKSPACE/artifacts/trusted-host-official-server.log"
+          fifo="$GITHUB_WORKSPACE/artifacts/trusted-host-official-server.stdin"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=0
+          maxplayers=1
+          port=17791
+          password=
+          motd=TerraRuntime trusted host worldgen acceptance
+          secure=0
+          upnp=0
+          npcstream=0
+          priority=0
+          EOF
+
+          rm -f "$fifo"
+          mkfifo "$fifo"
+          exec 9<> "$fifo"
+          (
+            cd "$server_dir"
+            "./$server_name" -config "$config" < "$fifo"
+          ) > "$official_log" 2>&1 &
+          official_pid=$!
+
+          cleanup() {
+            printf 'exit\n' >&9 2>/dev/null || true
+            sleep 1
+            kill "$official_pid" 2>/dev/null || true
+            wait "$official_pid" 2>/dev/null || true
+            exec 9>&- || true
+          }
+          trap cleanup EXIT
+
+          listener=false
+          for _ in $(seq 1 180); do
+            if ! kill -0 "$official_pid" 2>/dev/null; then
+              cat "$official_log" >&2
+              echo "Official TerrariaServer exited while loading the custom-generated world." >&2
+              exit 1
+            fi
+            if ss -ltn | grep -q ':17791 '; then
+              listener=true
+              break
+            fi
+            sleep 0.5
+          done
+
+          cat "$official_log"
+          if [[ "$listener" != true ]]; then
+            echo "Official TerrariaServer did not open port 17791 for the custom-generated world." >&2
+            exit 1
+          fi
+          echo "Official TerrariaServer accepted the trusted-host-generated world."
+
+      - name: Upload custom worldgen evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trusted-host-worldgen-${{ github.sha }}
+          path: |
+            artifacts/trusted-host-generated.wld
+            artifacts/trusted-host-worldgen.log
+            artifacts/trusted-host-official-server.log
+            artifacts/trusted-host-official-serverconfig.txt
+          if-no-files-found: warn
+          retention-days: 7
