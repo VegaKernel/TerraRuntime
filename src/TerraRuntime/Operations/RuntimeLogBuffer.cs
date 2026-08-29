@@ -3,6 +3,8 @@ namespace TerraRuntime.Operations;
 /// <summary>
 /// Bounded operations read model for recent runtime log events. This is not the public logging API;
 /// it is a small sink that a future structured logging pipeline can feed without redirecting Console.Out.
+/// The reserved read-only source "Chat" projects the separate bounded public-chat telemetry into the
+/// operator UI without turning chat routing itself into logging.
 /// </summary>
 internal sealed class RuntimeLogBuffer : ILogOperations
 {
@@ -10,6 +12,8 @@ internal sealed class RuntimeLogBuffer : ILogOperations
     public const int MaximumCapacity = 8_192;
     public const int MaximumSourceLength = 64;
     public const int MaximumMessageLength = 2_048;
+
+    private const string ChatSource = "Chat";
 
     private readonly object gate = new();
     private readonly RuntimeLogEntry[] entries;
@@ -68,6 +72,9 @@ internal sealed class RuntimeLogBuffer : ILogOperations
             throw new ArgumentOutOfRangeException(nameof(minimumLevel));
         if (maxEntries < 0)
             throw new ArgumentOutOfRangeException(nameof(maxEntries));
+
+        if (string.Equals(source, ChatSource, StringComparison.Ordinal))
+            return CaptureChatSnapshot(minimumLevel, maxEntries);
 
         lock (gate)
         {
@@ -137,6 +144,42 @@ internal sealed class RuntimeLogBuffer : ILogOperations
             Array.Sort(snapshot, StringComparer.Ordinal);
             return snapshot.AsMemory();
         }
+    }
+
+    private static RuntimeLogSnapshot CaptureChatSnapshot(
+        RuntimeLogLevel minimumLevel,
+        int maxEntries)
+    {
+        ReadOnlySpan<RuntimeChatEntry> chat = RuntimeChatTelemetry.Capture(maxEntries).Span;
+        if (chat.Length == 0 || minimumLevel > RuntimeLogLevel.Information)
+        {
+            return new RuntimeLogSnapshot(
+                ReadOnlyMemory<RuntimeLogEntry>.Empty,
+                0,
+                0,
+                minimumLevel,
+                DateTimeOffset.UtcNow);
+        }
+
+        var snapshot = new RuntimeLogEntry[chat.Length];
+        for (int i = 0; i < chat.Length; i++)
+        {
+            RuntimeChatEntry entry = chat[i];
+            snapshot[i] = new RuntimeLogEntry(
+                entry.Sequence,
+                entry.TimestampUtc,
+                RuntimeLogLevel.Information,
+                ChatSource,
+                $"#{entry.PlayerSlot}: {entry.Text}");
+        }
+
+        long published = chat[^1].Sequence;
+        return new RuntimeLogSnapshot(
+            snapshot.AsMemory(),
+            published,
+            0,
+            minimumLevel,
+            DateTimeOffset.UtcNow);
     }
 
     private static string Normalize(string value, int maximumLength, string fallback)
