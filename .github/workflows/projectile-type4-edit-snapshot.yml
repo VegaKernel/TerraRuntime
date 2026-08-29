@@ -8,17 +8,55 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  patch-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/upload-artifact@v4
         with:
-          name: projectile-type4-edit-snapshot
-          path: |
-            tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs
-            tools/ci/probe_projectile_tile_cut.py
-          retention-days: 1
+          fetch-depth: 0
+
+      - name: Patch Unholy Arrow unit coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs')
+          source = path.read_text(encoding='utf-8')
+          marker = '''    [Fact]\n    public void Uncatalogued_projectile_type_is_left_for_another_behavior_slice()\n'''
+          tests = '''    [Fact]\n    public void Unholy_arrow_free_flight_matches_ordinary_ai001_path()\n    {\n        var tiles = new WorldTileStore(new WorldDimensions(100, 100));\n        var stepper = new VanillaProjectileWorldStateStepper(tiles);\n        ProjectileSnapshot arrow = CreateSnapshot(\n            positionX: 100f,\n            positionY: 100f,\n            velocityX: 4f,\n            velocityY: 0f) with\n        {\n            Type = VanillaProjectileIds.UnholyArrow\n        };\n        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);\n\n        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));\n\n        Assert.Equal(VanillaProjectileIds.UnholyArrow, next.State.Type);\n        Assert.Equal(1f, next.State.Ai.Ai0, 5);\n        Assert.Equal(4f, next.State.VelocityX, 5);\n        Assert.Equal(0f, next.State.VelocityY, 5);\n        Assert.Equal(104f, next.State.PositionX, 5);\n        Assert.Equal(100f, next.State.PositionY, 5);\n        Assert.Equal(1199, next.TimeLeft);\n    }\n\n    [Fact]\n    public void Unholy_arrow_tile_impact_uses_generic_collision_kill_path()\n    {\n        var tiles = new WorldTileStore(new WorldDimensions(100, 100));\n        tiles.Set(7, 10, SolidTile(1));\n        var stepper = new VanillaProjectileWorldStateStepper(tiles);\n        ProjectileSnapshot arrow = CreateSnapshot(\n            positionX: 100f,\n            positionY: 160f,\n            velocityX: 20f,\n            velocityY: 0f) with\n        {\n            Type = VanillaProjectileIds.UnholyArrow\n        };\n        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);\n\n        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));\n\n        Assert.Equal(VanillaProjectileIds.UnholyArrow, next.State.Type);\n        Assert.Equal(2f, next.State.VelocityX, 5);\n        Assert.Equal(104f, next.State.PositionX, 5);\n        Assert.Equal(160f, next.State.PositionY, 5);\n        Assert.Equal(0, next.TimeLeft);\n    }\n\n    [Fact]\n    public void Unholy_arrow_water_contact_slows_without_changing_type()\n    {\n        var tiles = new WorldTileStore(new WorldDimensions(100, 100));\n        tiles.Set(6, 6, LiquidTile(WorldLiquidKind.Water));\n        var stepper = new VanillaProjectileWorldStateStepper(tiles);\n        ProjectileSnapshot arrow = CreateSnapshot(\n            positionX: 100f,\n            positionY: 100f,\n            velocityX: 4f,\n            velocityY: 2f) with\n        {\n            Type = VanillaProjectileIds.UnholyArrow\n        };\n        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);\n\n        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));\n\n        Assert.Equal(VanillaProjectileIds.UnholyArrow, next.State.Type);\n        Assert.Equal(102f, next.State.PositionX, 5);\n        Assert.Equal(101f, next.State.PositionY, 5);\n        Assert.Equal(1199, next.TimeLeft);\n        Assert.True(next.Liquid.GetValueOrDefault().Wet);\n    }\n\n'''
+          if 'Unholy_arrow_free_flight_matches_ordinary_ai001_path' not in source:
+              if marker not in source:
+                  raise SystemExit('unit insertion marker missing')
+              source = source.replace(marker, tests + marker, 1)
+
+          old = '''Type = new ProjectileTypeId(4)\n        };\n        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 1200);'''
+          new = '''Type = new ProjectileTypeId(6)\n        };\n        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 3600);'''
+          if old in source:
+              source = source.replace(old, new, 1)
+          elif new not in source:
+              raise SystemExit('uncatalogued baseline marker missing')
+
+          path.write_text(source, encoding='utf-8')
+          PY
+
+          git diff --check
+          git diff -- tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs
+
+      - name: Commit patch to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Xekep"
+          git config user.email "Xekep@users.noreply.github.com"
+          git add tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "test: cover unholy arrow world simulation"
+          git pull --rebase origin main
+          git push origin HEAD:main
