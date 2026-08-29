@@ -1,0 +1,319 @@
+name: Live Sign Persistence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/*Sign*.cs'
+      - 'src/TerraRuntime/RuntimeWorld*.cs'
+      - 'src/TerraRuntime/TerrariaServerHost.cs'
+      - 'src/TerraRuntime/ServerRuntimeState.cs'
+      - 'src/TerraRuntime/PlayerBootstrap*.cs'
+      - 'src/TerraRuntime/RuntimeBootstrapSnapshotCache.cs'
+      - 'src/TerraRuntime/TerraRuntime.csproj'
+      - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaSignCodec.cs'
+      - 'src/TerraRuntime.World/**'
+      - 'tools/TerraRuntime.SignLocate/**'
+      - 'tools/TerraRuntime.SignSeed/**'
+      - 'tools/ci/live_join_relay_probe.py'
+      - 'tools/ci/live_sign_persistence_probe.py'
+      - '.github/workflows/live-sign-persistence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-live-sign-persistence-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  restart-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Generate official small world
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-sign-persistence.wld"
+          config="$GITHUB_WORKSPACE/artifacts/vanilla-sign-persistence-serverconfig.txt"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=1
+          worldname=TerraRuntimeSignPersistenceSmoke
+          difficulty=0
+          maxplayers=1
+          port=17790
+          password=
+          motd=TerraRuntime sign persistence verification
+          secure=1
+          upnp=0
+          EOF
+
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$GITHUB_WORKSPACE/artifacts/vanilla-sign-persistence-server.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$GITHUB_WORKSPACE/artifacts/vanilla-sign-persistence-server.log"
+          test -s "$world"
+          if [[ $status -ne 0 && $status -ne 124 ]]; then
+            echo "Official server exited with status $status" >&2
+            exit "$status"
+          fi
+
+      - name: Build TerraRuntime host and sign tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+          dotnet build tools/TerraRuntime.SignSeed/TerraRuntime.SignSeed.csproj -c Release
+          dotnet build tools/TerraRuntime.SignLocate/TerraRuntime.SignLocate.csproj -c Release
+
+      - name: Seed one canonical sign slot
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-sign-persistence.wld"
+          seed_text='terra-sign-seed'
+          committed_text='terra-sign-persisted'
+          seed_log="$GITHUB_WORKSPACE/artifacts/sign-seed.log"
+
+          dotnet run \
+            --project tools/TerraRuntime.SignSeed/TerraRuntime.SignSeed.csproj \
+            -c Release \
+            -- "$world" "$seed_text" \
+            2>&1 | tee "$seed_log"
+
+          sign_info="$(grep '^seeded_sign ' "$seed_log" | tail -1)"
+          test -n "$sign_info"
+          for field in $sign_info; do
+            case "$field" in
+              slot=*) echo "SIGN_ID=${field#slot=}" >> "$GITHUB_ENV" ;;
+              x=*) echo "SIGN_X=${field#x=}" >> "$GITHUB_ENV" ;;
+              y=*) echo "SIGN_Y=${field#y=}" >> "$GITHUB_ENV" ;;
+            esac
+          done
+          echo "SEED_TEXT=$seed_text" >> "$GITHUB_ENV"
+          echo "COMMITTED_TEXT=$committed_text" >> "$GITHUB_ENV"
+
+          test -n "${SIGN_ID:-}" -o -s "$GITHUB_ENV"
+          dotnet run \
+            --project tools/TerraRuntime.SignLocate/TerraRuntime.SignLocate.csproj \
+            -c Release \
+            -- "$world" --assert "$(echo "$sign_info" | sed -n 's/.* slot=\([^ ]*\).*/\1/p')" \
+            "$(echo "$sign_info" | sed -n 's/.* x=\([^ ]*\).*/\1/p')" \
+            "$(echo "$sign_info" | sed -n 's/.* y=\([^ ]*\).*/\1/p')" "$seed_text" \
+            2>&1 | tee artifacts/sign-seed-assert.log
+          grep -q 'persisted_sign_ok' artifacts/sign-seed-assert.log
+
+      - name: Mutate sign and gracefully save canonical world
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-sign-persistence.wld"
+          host_log="$GITHUB_WORKSPACE/artifacts/sign-persistence-host.log"
+          client_log="$GITHUB_WORKSPACE/artifacts/sign-persistence-client.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          test -n "$SIGN_ID" -a -n "$SIGN_X" -a -n "$SIGN_Y"
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17791 \
+            --max-players 2 \
+            --no-tui \
+            > "$host_log" 2>&1 &
+          host_pid=$!
+
+          cleanup() {
+            kill "$host_pid" 2>/dev/null || true
+            wait "$host_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "TerraRuntime exited before sign persistence listener opened." >&2
+              exit 1
+            fi
+            if grep -q 'TerraRuntime listening on 0.0.0.0:17791' "$host_log"; then
+              break
+            fi
+            sleep 0.5
+          done
+          grep -q 'startup_profile source=canonical-wld' "$host_log"
+          grep -q 'TerraRuntime listening on 0.0.0.0:17791' "$host_log"
+
+          python3 tools/ci/live_sign_persistence_probe.py mutate \
+            --port 17791 \
+            --sign-id "$SIGN_ID" \
+            --x "$SIGN_X" \
+            --y "$SIGN_Y" \
+            --text "$SEED_TEXT" \
+            --committed-text "$COMMITTED_TEXT" \
+            2>&1 | tee "$client_log"
+          grep -q 'live_sign_persistence_mutation' "$client_log"
+          grep -q 'senderEcho=false' "$client_log"
+
+          kill -TERM "$host_pid"
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          if kill -0 "$host_pid" 2>/dev/null; then
+            cat "$host_log" >&2
+            echo "TerraRuntime did not exit after SIGTERM." >&2
+            exit 1
+          fi
+
+          set +e
+          wait "$host_pid"
+          host_status=$?
+          set -e
+          trap - EXIT
+          test "$host_status" -eq 0
+          grep -q 'world checkpoint committed:' "$host_log"
+          cat "$host_log"
+
+      - name: Assert exact persisted sign on disk
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.SignLocate/TerraRuntime.SignLocate.csproj \
+            -c Release \
+            -- "$GITHUB_WORKSPACE/artifacts/vanilla-sign-persistence.wld" \
+            --assert "$SIGN_ID" "$SIGN_X" "$SIGN_Y" "$COMMITTED_TEXT" \
+            2>&1 | tee artifacts/sign-persistence-wld-assert.log
+          grep -q 'persisted_sign_ok' artifacts/sign-persistence-wld-assert.log
+
+      - name: Restart and read persisted sign through live protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-sign-persistence.wld"
+          restart_log="$GITHUB_WORKSPACE/artifacts/sign-persistence-restart.log"
+          restart_client_log="$GITHUB_WORKSPACE/artifacts/sign-persistence-restart-client.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17792 \
+            --max-players 2 \
+            --no-tui \
+            > "$restart_log" 2>&1 &
+          restart_pid=$!
+
+          cleanup() {
+            kill "$restart_pid" 2>/dev/null || true
+            wait "$restart_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$restart_pid" 2>/dev/null; then
+              cat "$restart_log" >&2
+              echo "Restarted TerraRuntime exited before listener opened." >&2
+              exit 1
+            fi
+            if grep -q 'TerraRuntime listening on 0.0.0.0:17792' "$restart_log"; then
+              break
+            fi
+            sleep 0.5
+          done
+          grep -q 'startup_profile source=canonical-wld' "$restart_log"
+          grep -q 'TerraRuntime listening on 0.0.0.0:17792' "$restart_log"
+
+          python3 tools/ci/live_sign_persistence_probe.py read \
+            --port 17792 \
+            --sign-id "$SIGN_ID" \
+            --x "$SIGN_X" \
+            --y "$SIGN_Y" \
+            --text "$COMMITTED_TEXT" \
+            2>&1 | tee "$restart_client_log"
+          grep -q 'live_sign_read_ok' "$restart_client_log"
+
+          kill -TERM "$restart_pid"
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$restart_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          if kill -0 "$restart_pid" 2>/dev/null; then
+            cat "$restart_log" >&2
+            echo "Restarted TerraRuntime did not exit after SIGTERM." >&2
+            exit 1
+          fi
+          set +e
+          wait "$restart_pid"
+          restart_status=$?
+          set -e
+          trap - EXIT
+          test "$restart_status" -eq 0
+          cat "$restart_log"
+
+      - name: Upload sign persistence proof evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-sign-persistence-proof-${{ github.sha }}
+          path: |
+            artifacts/vanilla-sign-persistence-server.log
+            artifacts/sign-seed.log
+            artifacts/sign-seed-assert.log
+            artifacts/sign-persistence-host.log
+            artifacts/sign-persistence-client.log
+            artifacts/sign-persistence-wld-assert.log
+            artifacts/sign-persistence-restart.log
+            artifacts/sign-persistence-restart-client.log
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-sign-persistence-failure-${{ github.sha }}
+          path: |
+            artifacts/vanilla-sign-persistence-server.log
+            artifacts/vanilla-sign-persistence-serverconfig.txt
+            artifacts/sign-seed.log
+            artifacts/sign-seed-assert.log
+            artifacts/sign-persistence-host.log
+            artifacts/sign-persistence-client.log
+            artifacts/sign-persistence-wld-assert.log
+            artifacts/sign-persistence-restart.log
+            artifacts/sign-persistence-restart-client.log
+          if-no-files-found: ignore
+          retention-days: 3
