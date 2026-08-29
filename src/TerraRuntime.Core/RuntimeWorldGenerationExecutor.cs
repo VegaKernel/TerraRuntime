@@ -136,8 +136,8 @@ public static class RuntimeWorldGenerationExecutor
             if (descriptor.RngMode != WorldGenerationRngMode.IsolatedDeterministic)
             {
                 // VanillaSharedRng cannot be approximated: it needs the verified Terraria 1.4.5.8 worldgen RNG
-                // stream and ordering. CustomProviderRng likewise needs a future explicit provider-owned RNG
-                // contract. Reject both rather than silently producing a non-reproducible or non-vanilla world.
+                // seed semantics and exact operation surface. CustomProviderRng likewise needs a future explicit
+                // provider-owned RNG contract. Reject both rather than silently producing a non-vanilla world.
                 return new WorldGenerationExecutionResult(
                     WorldGenerationExecutionStatus.UnsupportedRngMode,
                     descriptor.Id);
@@ -233,6 +233,7 @@ public static class RuntimeWorldGenerationExecutor
         public IWorldGenerationWorkspace Workspace { get; }
         public IWorldGenerationMetadataWorkspace? Metadata { get; }
         public IWorldGenerationRandom Random { get; }
+        public IWorldGenerationVanillaRandom? VanillaRandom => null;
         public CancellationToken CancellationToken { get; }
 
         public void ReportProgress(double fraction, string? message = null)
