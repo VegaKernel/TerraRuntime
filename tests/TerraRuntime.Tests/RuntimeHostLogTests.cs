@@ -20,6 +20,7 @@ public sealed class RuntimeHostLogTests
         Assert.Equal("before" + Environment.NewLine, standardOutput.ToString());
         Assert.Equal(string.Empty, standardError.ToString());
         Assert.True(log.IsTerminalUiActive);
+        Assert.False(log.IsPlainConsoleActive);
 
         RuntimeLogSnapshot snapshot = runtimeLogs.CaptureSnapshot(RuntimeLogLevel.Debug, maxEntries: 8);
         Assert.Equal(3, snapshot.Entries.Length);
@@ -27,9 +28,15 @@ public sealed class RuntimeHostLogTests
         Assert.Equal("buffer-only", snapshot.Entries.Span[2].Message);
 
         log.SetTerminalUiActive(false);
+        Assert.False(log.IsTerminalUiActive);
+        Assert.True(log.IsPlainConsoleActive);
+
+        log.Publish(RuntimeLogLevel.Information, "Network", "plain-publish");
         log.Write(RuntimeLogLevel.Error, "Runtime", "after", useStandardError: true);
 
-        Assert.False(log.IsTerminalUiActive);
+        Assert.Equal(
+            "before" + Environment.NewLine + "plain-publish" + Environment.NewLine,
+            standardOutput.ToString());
         Assert.Equal("after" + Environment.NewLine, standardError.ToString());
     }
 }
