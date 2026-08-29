@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
 
+# Fresh run includes lock-free server-player slot lookup.
 jobs:
   verify:
     runs-on: ubuntu-latest
