@@ -116,6 +116,80 @@ def called_helpers(source: str, prefix: str) -> str:
     return " -> ".join(calls) if calls else "<none>"
 
 
+def extract_top_level_switch_case(method_source: str, switch_expression: str, case_value: int) -> str:
+    switch_token = f"switch ({switch_expression})"
+    switch_index = method_source.find(switch_token)
+    if switch_index < 0:
+        raise SystemExit(f"switch not found in method: {switch_token}")
+
+    opening = method_source.find("{", switch_index + len(switch_token))
+    if opening < 0:
+        raise SystemExit(f"switch body not found: {switch_token}")
+
+    depth = 1
+    in_string = False
+    in_char = False
+    escaped = False
+    case_start = -1
+    index = opening + 1
+
+    while index < len(method_source):
+        char = method_source[index]
+        if escaped:
+            escaped = False
+            index += 1
+            continue
+
+        if char == "\\" and (in_string or in_char):
+            escaped = True
+            index += 1
+            continue
+
+        if char == '"' and not in_char:
+            in_string = not in_string
+            index += 1
+            continue
+
+        if char == "'" and not in_string:
+            in_char = not in_char
+            index += 1
+            continue
+
+        if in_string or in_char:
+            index += 1
+            continue
+
+        if char == "{":
+            depth += 1
+            index += 1
+            continue
+        if char == "}":
+            depth -= 1
+            if depth == 0:
+                break
+            index += 1
+            continue
+
+        if depth == 1:
+            case_match = re.match(rf"case\s+{case_value}\s*:", method_source[index:])
+            if case_match and case_start < 0:
+                case_start = index
+                index += case_match.end()
+                continue
+
+            if case_start >= 0:
+                next_label = re.match(r"(?:case\s+[^:]+|default)\s*:", method_source[index:])
+                if next_label:
+                    return method_source[case_start:index].strip()
+
+        index += 1
+
+    if case_start >= 0:
+        return method_source[case_start:index].strip()
+
+    raise SystemExit(f"case {case_value} not found in {switch_token}")
+
+
 def relevant_drop_contexts(source: str) -> str:
     normalized = compact(source)
     contexts: list[str] = []
@@ -163,6 +237,13 @@ def main() -> int:
     can_cut_tile = compact(extract_method(worldgen_source, "CanCutTile"))
     kill_tile = extract_method(worldgen_source, "KillTile")
     kill_tile_drops = extract_method(worldgen_source, "KillTile_GetItemDrops")
+    set_defaults = extract_method(projectile_source, "SetDefaults")
+    wooden_arrow_defaults = compact(extract_top_level_switch_case(set_defaults, "Type", 1))
+
+    print("projectile_wooden_arrow_defaults=" + wooden_arrow_defaults)
+    print("projectile_ai001_mentions=" + matching_lines(projectile_source, "AI_001", limit=80))
+    print("projectile_ai_style1_mentions=" + matching_lines(projectile_source, "aiStyle == 1", limit=80))
+    print("projectile_ai_style1_context=" + around_optional(projectile_source, "aiStyle == 1", radius=3200))
 
     print("projectile_can_cut_tiles=" + can_cut_tiles)
     print("projectile_cut_tiles=" + cut_tiles)
