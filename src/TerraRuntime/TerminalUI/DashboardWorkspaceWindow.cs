@@ -604,7 +604,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         rows[9].Text = $"Items       relay {snapshot.WorldItemRelayedFrames:N0}  rejected {snapshot.WorldItemRejectedFrames:N0}";
         rows[10].Text =
             $"Stops       protocol {snapshot.StopProtocolFailures:N0}  rate {snapshot.StopRateLimited:N0}  " +
-            $"handshake {snapshot.StopInvalidHandshake:N0}  unsupported {snapshot.StopUnsupportedProtocol:N0}  slow {snapshot.StopSlowClient:N0}";
+            $"handshake {snapshot.StopInvalidHandshake:N0}  unsupported {snapshot.StopUnsupportedProtocol:N0}  slow {snapshot.StopSlowClient:N0}  " +
+            $"frame-rejected {snapshot.StopFrameRejected:N0}";
 
         ReadOnlySpan<RuntimeConnectionRateDetail> rates = snapshot.TopInboundRates.Span;
         for (int i = 0; i < Math.Min(rates.Length, 2); i++)
