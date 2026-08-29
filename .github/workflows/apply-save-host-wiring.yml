@@ -202,7 +202,7 @@ jobs:
         run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           --configuration Release
-          --filter FullyQualifiedName~RuntimeWorldTileChestSaveServiceTests
+          --filter-class TerraRuntime.Tests.RuntimeWorldTileChestSaveServiceTests
 
       - name: Commit production wiring
         shell: bash
