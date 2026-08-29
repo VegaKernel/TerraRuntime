@@ -4,7 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime/**'
+      - 'src/TerraRuntime/*Chest*.cs'
+      - 'src/TerraRuntime/RuntimeWorld*.cs'
+      - 'src/TerraRuntime/TerrariaServerHost.cs'
+      - 'src/TerraRuntime/VanillaWorldAutosaveScheduler.cs'
+      - 'src/TerraRuntime/ServerRuntimeState.cs'
+      - 'src/TerraRuntime/PlayerBootstrap*.cs'
+      - 'src/TerraRuntime/RuntimeBootstrapSnapshotCache.cs'
+      - 'src/TerraRuntime/TerraRuntime.csproj'
       - 'src/TerraRuntime.World/**'
       - 'tools/TerraRuntime.ChestLocate/**'
       - 'tools/ci/live_join_relay_probe.py'
