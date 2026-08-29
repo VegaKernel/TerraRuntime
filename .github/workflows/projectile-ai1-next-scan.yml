@@ -1,4 +1,4 @@
-name: Projectile AI1 Next Candidate Scan
+name: Confetti Projectile Source Proof
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  scan:
+  prove:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -22,12 +22,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .cache/terraria-1458 .tools artifacts/ai1-next
+          mkdir -p .cache/terraria-1458 .tools artifacts/confetti-proof
           curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
           unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
       - name: Install pinned ILSpy
         run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
-      - name: Rank unimplemented explicit aiStyle-1 defaults
+      - name: Inspect ConfettiGun 178 and ConfettiMelee 289
         shell: bash
         run: |
           set -euo pipefail
@@ -39,14 +39,14 @@ jobs:
           done < <(find .cache/terraria-1458/extracted -type f -name TerrariaServer.exe -print0)
           test -n "$assembly"
           dir="$(dirname "$assembly")"
-          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.Projectile "$assembly" > artifacts/ai1-next/projectile.cs
-          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/ai1-next/projectile-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.Projectile "$assembly" > artifacts/confetti-proof/projectile.cs
+          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/confetti-proof/projectile-id.cs
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          src=Path('artifacts/ai1-next/projectile.cs').read_text(encoding='utf-8')
-          ids=Path('artifacts/ai1-next/projectile-id.cs').read_text(encoding='utf-8')
+          src=Path('artifacts/confetti-proof/projectile.cs').read_text(encoding='utf-8')
+          ids=Path('artifacts/confetti-proof/projectile-id.cs').read_text(encoding='utf-8')
 
           def method(name):
               m=re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$',src)
@@ -59,74 +59,50 @@ jobs:
                       if d==0: return src[m.start():i+1]
               raise SystemExit(f'unterminated: {name}')
 
-          def block_after(text,pos):
-              op=text.find('{',pos)
-              if op<0: return ''
-              d=0
+          def type_block(text,t):
+              m=re.search(rf'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*{t}(?!\d)\s*\)',text)
+              if not m: raise SystemExit(f'type block not found: {t}')
+              op=text.find('{',m.end()); d=0
               for i in range(op,len(text)):
                   if text[i]=='{': d+=1
                   elif text[i]=='}':
                       d-=1
-                      if d==0: return text[op:i+1]
-              return ''
+                      if d==0: return text[m.start():i+1]
+              raise SystemExit(f'unterminated type block: {t}')
 
-          def count_type(text,t):
+          def contexts(text,t,radius=1800):
               c=' '.join(text.split())
-              return len(re.findall(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|\bcase\s+{t}\s*:',c))
+              p=re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|\bcase\s+{t}\s*:')
+              out=[]
+              for m in p.finditer(c): out.append(c[max(0,m.start()-radius):min(len(c),m.end()+radius)])
+              return out
 
-          def init(field):
-              m=re.search(rf'{re.escape(field)}\s*=\s*Factory\.CreateCustomSet<bool\?>\s*\(',ids)
-              if not m: return ''
-              op=ids.find('(',m.start()); d=0
-              for i in range(op,len(ids)):
-                  if ids[i]=='(': d+=1
-                  elif ids[i]==')':
-                      d-=1
-                      if d==0: return ids[m.start():i+1]
-              return ''
+          def count(text,t): return len(contexts(text,t,100))
 
-          names={}
-          for m in re.finditer(r'public const (?:short|int)\s+([A-Za-z0-9_]+)\s*=\s*(\d+)\s*;',ids):
-              names[int(m.group(2))]=m.group(1)
-
-          supported={1,2,3,4,5,6,14,20,21,48,51,54,318,330,474,583,589,599,1012,1099,1111,1124}
-          parts={n:method(n) for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams','Kill','CanCutTiles')}
           defaults=method('SetDefaults')
-          wind=' '.join(init('WindPhysicsImmunity').split())
-          rows=[]; seen=set()
-          pat=re.compile(r'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*(\d+)\s*\)')
-          for m in pat.finditer(defaults):
-              t=int(m.group(1))
-              if t in seen or t in supported: continue
-              block=block_after(defaults,m.end())
-              if not re.search(r'\baiStyle\s*=\s*1\s*;',block): continue
-              seen.add(t)
-              counts={n:count_type(s,t) for n,s in parts.items()}
-              nonkill=sum(counts[n] for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams','CanCutTiles'))
-              width=re.search(r'\bwidth\s*=\s*(-?\d+)\s*;',block)
-              height=re.search(r'\bheight\s*=\s*(-?\d+)\s*;',block)
-              tl=re.search(r'\btimeLeft\s*=\s*(-?\d+)\s*;',block)
-              eu=re.search(r'\bextraUpdates\s*=\s*(-?\d+)\s*;',block)
-              flags=[]
-              if 'tileCollide = false;' in block: flags.append('no-tile')
-              if 'ignoreWater = true;' in block: flags.append('ignore-water')
-              if 'friendly = true;' in block: flags.append('friendly')
-              if 'hostile = true;' in block: flags.append('hostile')
-              if re.search(rf'(?<!\d){t}(?!\d)',wind): flags.append('wind-override')
-              rows.append((nonkill,counts['Kill'],t,names.get(t,'?'),width.group(1) if width else '?',height.group(1) if height else '?',tl.group(1) if tl else '3600',eu.group(1) if eu else '0',','.join(flags) or '-',counts,' '.join(block.split())[:700]))
-
-          rows.sort(key=lambda r:(r[0],r[1],r[2]))
-          out=['nonkill | kill | type | name | size | timeLeft | extra | flags | counts | defaults']
-          for r in rows[:80]:
-              nonkill,kill,t,name,w,h,tl,eu,flags,counts,block=r
-              out.append(f'{nonkill:02d} | {kill:02d} | {t:4d} | {name} | {w}x{h} | {tl} | {eu} | {flags} | {counts} | {block}')
-          report='\n'.join(out)+'\n'
-          Path('artifacts/ai1-next/report.txt').write_text(report,encoding='utf-8')
+          kill=method('Kill')
+          parts={n:method(n) for n in ('AI_001','AI','Update','HandleMovement','GetCollisionParams','CanCutTiles')}
+          lines=[]
+          for t,name in ((178,'ConfettiGun'),(289,'ConfettiMelee')):
+              if not re.search(rf'public const (?:short|int)\s+{name}\s*=\s*{t}\s*;',ids):
+                  raise SystemExit(f'ProjectileID.{name} != {t}')
+              block=' '.join(type_block(defaults,t).split())
+              for token in ('width = 10;','height = 10;','aiStyle = 1;','alpha = 255;','penetrate = -1;','timeLeft = 2;'):
+                  if token not in block: raise SystemExit(f'{name} default missing: {token}')
+              for token in ('tileCollide = false;','ignoreWater = true;','extraUpdates ='):
+                  if token in block: raise SystemExit(f'{name} unexpected default: {token}')
+              for part_name,part in parts.items():
+                  if count(part,t): raise SystemExit(f'{name} unexpectedly special in {part_name}')
+              kc=contexts(kill,t,2200)
+              if len(kc)!=1: raise SystemExit(f'{name} Kill contexts={len(kc)}')
+              lines += [f'{name}_defaults={block}',f'{name}_kill_context={kc[0]}']
+          report='\n'.join(lines)+'\n'
+          Path('artifacts/confetti-proof/report.txt').write_text(report,encoding='utf-8')
           print(report)
           PY
-          rm artifacts/ai1-next/projectile.cs artifacts/ai1-next/projectile-id.cs
+          rm artifacts/confetti-proof/projectile.cs artifacts/confetti-proof/projectile-id.cs
       - uses: actions/upload-artifact@v4
         with:
-          name: projectile-ai1-next-candidates
-          path: artifacts/ai1-next/report.txt
+          name: confetti-projectile-source-proof
+          path: artifacts/confetti-proof/report.txt
           if-no-files-found: error
