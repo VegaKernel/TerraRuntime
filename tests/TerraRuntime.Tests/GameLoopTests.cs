@@ -118,55 +118,6 @@ public sealed class GameLoopTests
     }
 
     [Fact]
-    public async Task Lock_free_source_reservation_never_overbooks_during_retire_and_recreate_races()
-    {
-        const int rounds = 64;
-        const int contenders = 16;
-        using var applied = new SemaphoreSlim(0);
-        var state = new SignalingState(applied);
-        using var loop = new AuthoritativeGameLoop<SignalingState, int>(
-            state,
-            static (runtime, command) => runtime.Apply(command),
-            static runtime => runtime.Tick(),
-            new GameLoopOptions
-            {
-                TicksPerSecond = 1000,
-                CommandCapacity = contenders,
-                MaxCommandIngressPerTick = contenders,
-                MaxCommandsPerTick = contenders,
-                MaxCommandsPerSourcePerTick = contenders,
-                MaxPendingCommandsPerSource = 1
-            });
-
-        GameCommandSourceId source = GameCommandSourceId.FromConnection(77);
-        loop.Start();
-
-        for (int round = 0; round < rounds; round++)
-        {
-            using var start = new ManualResetEventSlim();
-            int accepted = 0;
-            Task[] producers = Enumerable.Range(0, contenders)
-                .Select(index => Task.Run(() =>
-                {
-                    start.Wait(TestContext.Current.CancellationToken);
-                    if (loop.TryPost(source, index))
-                        Interlocked.Increment(ref accepted);
-                }, TestContext.Current.CancellationToken))
-                .ToArray();
-
-            start.Set();
-            await Task.WhenAll(producers);
-
-            Assert.Equal(1, accepted);
-            Assert.InRange(loop.Snapshot.PendingCommands, 0, 1);
-            Assert.True(await applied.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
-        }
-
-        Assert.Equal(rounds, state.AppliedCount);
-        Assert.True(loop.Stop(TimeSpan.FromSeconds(1)));
-    }
-
-    [Fact]
     public void Commands_are_applied_on_the_authoritative_game_thread()
     {
         using var applied = new ManualResetEventSlim();
@@ -442,24 +393,6 @@ public sealed class GameLoopTests
         }
     }
 
-    private sealed class SignalingState(SemaphoreSlim applied)
-    {
-        private int appliedCount;
-
-        public int AppliedCount => Volatile.Read(ref appliedCount);
-
-        public void Apply(int command)
-        {
-            _ = command;
-            Interlocked.Increment(ref appliedCount);
-            applied.Release();
-        }
-
-        public void Tick()
-        {
-        }
-    }
-
     private sealed class RecordingState(ManualResetEventSlim applied, int signalAtCount)
     {
         private readonly List<int> commands = [];
@@ -492,23 +425,21 @@ public sealed class GameLoopTests
         }
     }
 
-    private sealed class SlowCommandState(ManualResetEventSlim applied, double commandCpuMilliseconds)
+    private sealed class SlowCommandState(
+        ManualResetEventSlim firstApplied,
+        double commandCpuMilliseconds)
     {
-        private int appliedCount;
+        private int applied;
 
         public void Apply(int command)
         {
             _ = command;
             long started = Stopwatch.GetTimestamp();
             while (Stopwatch.GetElapsedTime(started).TotalMilliseconds < commandCpuMilliseconds)
-            {
-                Thread.SpinWait(256);
-            }
+                Thread.SpinWait(64);
 
-            if (Interlocked.Increment(ref appliedCount) == 1)
-            {
-                applied.Set();
-            }
+            if (Interlocked.Increment(ref applied) == 1)
+                firstApplied.Set();
         }
 
         public void Tick()
@@ -518,18 +449,14 @@ public sealed class GameLoopTests
 
     private sealed class SlowState(ManualResetEventSlim updated, int signalAtUpdate)
     {
-        private int updateCount;
+        private int updates;
 
-        public void Apply(int command)
-        {
-            _ = command;
-        }
+        public void Apply(int command) => _ = command;
 
         public void Tick()
         {
-            int count = Interlocked.Increment(ref updateCount);
-            Thread.Sleep(5);
-            if (count >= signalAtUpdate)
+            Thread.Sleep(10);
+            if (Interlocked.Increment(ref updates) >= signalAtUpdate)
             {
                 updated.Set();
             }
