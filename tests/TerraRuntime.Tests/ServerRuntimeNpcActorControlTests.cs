@@ -17,7 +17,7 @@ public sealed class ServerRuntimeNpcActorControlTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var spawn = new NpcStateUpdate(
             Type: VanillaNpcIds.Zombie.Value,
-            NetId: VanillaNpcIds.Zombie.Value,
+            NetId: checked((short)VanillaNpcIds.Zombie.Value),
             PositionX: 100f,
             PositionY: 100f,
             VelocityX: 0f,
@@ -70,7 +70,7 @@ public sealed class ServerRuntimeNpcActorControlTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var spawn = new NpcStateUpdate(
             Type: VanillaNpcIds.Zombie.Value,
-            NetId: VanillaNpcIds.Zombie.Value,
+            NetId: checked((short)VanillaNpcIds.Zombie.Value),
             PositionX: 100f,
             PositionY: 100f,
             VelocityX: 0f,
