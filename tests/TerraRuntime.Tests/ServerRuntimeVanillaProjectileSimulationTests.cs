@@ -8,14 +8,13 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeVanillaProjectileSimulationTests
 {
     [Fact]
-    public void Authoritative_tick_runs_source_backed_shuriken_world_simulation()
+    public void Authoritative_tick_runs_source_backed_shuriken_world_simulation_by_default()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var projectiles = new RuntimeProjectileStore(capacity: 4);
         var state = new ServerRuntimeState(
             worldTiles: tiles,
-            projectiles: projectiles,
-            projectileStepper: new VanillaProjectileWorldStateStepper(tiles));
+            projectiles: projectiles);
         ProjectileStateUpdate projectile = new(
             VanillaProjectileIds.Shuriken,
             Spawner: 3,
@@ -44,14 +43,13 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     }
 
     [Fact]
-    public void Unsupported_projectile_remains_authoritative_but_unsimulated()
+    public void Unsupported_projectile_remains_authoritative_but_unsimulated_by_default()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var projectiles = new RuntimeProjectileStore(capacity: 4);
         var state = new ServerRuntimeState(
             worldTiles: tiles,
-            projectiles: projectiles,
-            projectileStepper: new VanillaProjectileWorldStateStepper(tiles));
+            projectiles: projectiles);
         ProjectileStateUpdate projectile = new(
             VanillaProjectileIds.WoodenArrowFriendly,
             Spawner: 3,
