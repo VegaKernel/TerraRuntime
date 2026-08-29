@@ -21,12 +21,13 @@ public readonly record struct ProjectileSimulationStepContext(
 
 /// <summary>
 /// State produced after one complete local projectile subupdate. TimeLeft is the post-subupdate value after
-/// any AI refresh/adjustment and the ordinary vanilla lifetime decrement. Keeping it explicit lets a vanilla
-/// AI implementation model lifetime mutations without exposing those mutations to client packet ingress.
+/// any AI refresh/adjustment and the ordinary vanilla lifetime decrement. Liquid is an optional runtime-only
+/// lifecycle override; null preserves the prior authoritative liquid history for steppers that do not own it.
 /// </summary>
 public readonly record struct ProjectileSimulationStepResult(
     ProjectileStateUpdate State,
-    int TimeLeft);
+    int TimeLeft,
+    ProjectileLiquidState? Liquid = null);
 
 /// <summary>
 /// State-only projectile simulation stepper. Returning false on the first subupdate means the stepper does
@@ -141,6 +142,7 @@ public sealed class RuntimeProjectileStateExecutor
                         nextState.Type,
                         currentLifecycle,
                         next.TimeLeft,
+                        next.Liquid,
                         out ProjectileLifecycleState nextLifecycle))
                 {
                     invalid = true;
@@ -176,6 +178,7 @@ public sealed class RuntimeProjectileStateExecutor
                     projectile.Handle,
                     in finalState,
                     finalResult.TimeLeft,
+                    currentLifecycle.Liquid,
                     out ProjectileSnapshot committed,
                     out bool expired))
             {
@@ -204,6 +207,7 @@ public sealed class RuntimeProjectileStateExecutor
         ProjectileTypeId nextType,
         ProjectileLifecycleState previous,
         int timeLeft,
+        ProjectileLiquidState? liquid,
         out ProjectileLifecycleState next)
     {
         bool netImportant = previous.NetImportant;
@@ -220,7 +224,10 @@ public sealed class RuntimeProjectileStateExecutor
             netImportant = defaults.NetImportant;
         }
 
-        next = new ProjectileLifecycleState(timeLeft, netImportant);
+        next = new ProjectileLifecycleState(
+            timeLeft,
+            netImportant,
+            liquid ?? previous.Liquid);
         return true;
     }
 
