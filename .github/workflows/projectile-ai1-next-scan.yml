@@ -27,7 +27,7 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
 
-          # Re-run after the save-scheduler tests adopted xUnit cancellation propagation.
+          # Re-run after all known xUnit cancellation analyzer failures were fixed.
           python3 -m py_compile .github/scripts/apply_confetti_projectile_slice.py
           python3 .github/scripts/apply_confetti_projectile_slice.py
           python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
