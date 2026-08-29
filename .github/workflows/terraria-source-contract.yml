@@ -15,7 +15,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: terra-runtime-source-contract-${{ github.ref }}
+  # Source-contract runs are evidence for an exact commit. Do not let a later projectile push cancel the
+  # decompile/probe that proves an earlier source-backed slice while main is moving quickly.
+  group: terra-runtime-source-contract-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
