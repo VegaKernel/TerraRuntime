@@ -5,10 +5,10 @@ namespace TerraRuntime.Tests;
 public sealed class WorldFileFooterEncoderTests
 {
     [Fact]
-    public void Roundtrips_footer_through_current_decoder()
+    public void Encoded_footer_validates_against_current_footer_contract()
     {
         var dimensions = new WorldDimensions(40, 30);
-        WorldFileHeader header = Header("footer-world", worldId: 123, dimensions);
+        WorldFileHeader header = Header("Мир", worldId: 1234, dimensions);
         using var stream = new MemoryStream();
 
         Assert.Equal(
@@ -16,24 +16,65 @@ public sealed class WorldFileFooterEncoderTests
             WorldFileFooterEncoder.TryEncode(header, stream, out long bytesWritten));
         Assert.Equal(stream.Length, bytesWritten);
 
-        byte[] section = stream.ToArray();
+        byte[] footer = stream.ToArray();
+        int[] offsets = new int[VanillaWorldFormat326.SectionCount];
+        offsets[^1] = 0;
+        var envelope = new WorldFileEnvelope(
+            WorldFileFormatPolicy.CurrentVersion,
+            revision: 1,
+            favoriteFlags: 0,
+            sectionOffsets: offsets,
+            frameImportanceCount: VanillaWorldFormat326.TileTypeCount,
+            frameImportanceBits: new byte[(VanillaWorldFormat326.TileTypeCount + 7) >> 3]);
+
         Assert.Equal(
-            WorldFileFooterDecodeResult.Decoded,
-            WorldFileFooterDecoder.TryDecode(
-                section,
-                header,
-                out WorldFileFooter footer,
-                out int consumed));
-        Assert.Equal(section.Length, consumed);
-        Assert.True(footer.IsValid);
+            WorldFileFooterValidationResult.Valid,
+            WorldFileFooterValidator.Validate(footer, envelope, header, out int consumed));
+        Assert.Equal(footer.Length, consumed);
     }
 
     [Fact]
-    public void Rejects_header_with_unencodable_world_name_before_writing()
+    public void Footer_validator_observes_world_identity_from_encoded_header_values()
+    {
+        var dimensions = new WorldDimensions(40, 30);
+        WorldFileHeader encodedHeader = Header("world-a", worldId: 10, dimensions);
+        using var stream = new MemoryStream();
+        Assert.Equal(
+            WorldFileFooterEncodeResult.Encoded,
+            WorldFileFooterEncoder.TryEncode(encodedHeader, stream, out _));
+
+        byte[] footer = stream.ToArray();
+        int[] offsets = new int[VanillaWorldFormat326.SectionCount];
+        offsets[^1] = 0;
+        var envelope = new WorldFileEnvelope(
+            WorldFileFormatPolicy.CurrentVersion,
+            revision: 1,
+            favoriteFlags: 0,
+            sectionOffsets: offsets,
+            frameImportanceCount: VanillaWorldFormat326.TileTypeCount,
+            frameImportanceBits: new byte[(VanillaWorldFormat326.TileTypeCount + 7) >> 3]);
+
+        Assert.Equal(
+            WorldFileFooterValidationResult.WorldNameMismatch,
+            WorldFileFooterValidator.Validate(
+                footer,
+                envelope,
+                Header("world-b", worldId: 10, dimensions),
+                out _));
+        Assert.Equal(
+            WorldFileFooterValidationResult.WorldIdMismatch,
+            WorldFileFooterValidator.Validate(
+                footer,
+                envelope,
+                Header("world-a", worldId: 11, dimensions),
+                out _));
+    }
+
+    [Fact]
+    public void Rejects_invalid_and_oversized_world_names_before_writing()
     {
         var dimensions = new WorldDimensions(40, 30);
         using var invalidStream = new MemoryStream();
-
         Assert.Equal(
             WorldFileFooterEncodeResult.InvalidWorldName,
             WorldFileFooterEncoder.TryEncode(
