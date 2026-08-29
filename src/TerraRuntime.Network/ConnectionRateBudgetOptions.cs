@@ -7,6 +7,17 @@ public readonly record struct ConnectionRateBudgetOptions
         maxFrames: null,
         maxBytes: null);
 
+    /// <summary>
+    /// Conservative connection-wide emergency ceiling. This is intentionally far above normal
+    /// Terraria traffic and exists to bound aggregate parser/policy work even when a packet id has
+    /// no dedicated gameplay-specific budget yet. Per-message limits remain the tighter first line
+    /// for packet classes that can amplify work or fan out to other clients.
+    /// </summary>
+    public static ConnectionRateBudgetOptions HardAbuse { get; } = new(
+        window: TimeSpan.FromSeconds(1),
+        maxFrames: 4_096,
+        maxBytes: 2L * 1024 * 1024);
+
     public ConnectionRateBudgetOptions(TimeSpan window, int? maxFrames, long? maxBytes)
     {
         if (window <= TimeSpan.Zero)
