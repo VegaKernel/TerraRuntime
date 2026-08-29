@@ -25,6 +25,7 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
         int dirtyBatchCapacity)
     {
         ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
         ArgumentNullException.ThrowIfNull(chestStore);
         this.chestStore = chestStore;
         tileSynchronizer = new WorldTileSaveShadowSynchronizer(tiles, dirtyBatchCapacity);
@@ -33,6 +34,8 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
     public bool IsTileShadowReady => tileSynchronizer.IsBootstrapped;
 
     public int RemainingBootstrapSections => tileSynchronizer.RemainingBootstrapSections;
+
+    public int PendingDirtyTileSections => tileSynchronizer.PendingDirtySections;
 
     public int CaptureTileBootstrap(int maximumSections) =>
         tileSynchronizer.CaptureBootstrap(maximumSections);
