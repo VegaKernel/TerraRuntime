@@ -159,7 +159,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     }
 
     [Fact]
-    public async Task Unsupported_projectile_remains_authoritative_but_unsimulated_by_default()
+    public async Task Uncatalogued_projectile_remains_authoritative_but_unsimulated_by_default()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var projectiles = new RuntimeProjectileStore(capacity: 4);
@@ -167,7 +167,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
             worldTiles: tiles,
             projectiles: projectiles);
         ProjectileStateUpdate projectile = new(
-            VanillaProjectileIds.FireArrow,
+            new ProjectileTypeId(4),
             Spawner: 3,
             PositionX: 100f,
             PositionY: 100f,
