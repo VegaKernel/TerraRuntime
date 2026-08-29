@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
 
+# Verifies global section admission plus typed rate-limit propagation.
 jobs:
   verify:
     runs-on: ubuntu-latest
