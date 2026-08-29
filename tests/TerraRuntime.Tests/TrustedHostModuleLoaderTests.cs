@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.ExtensibleHost;
 using TerraRuntime.HostContracts;
@@ -52,7 +53,8 @@ public sealed class TrustedHostModuleLoaderTests
                 7777,
                 32),
             interestManagement,
-            new TestPlayerStateSnapshotReader());
+            new TestPlayerStateSnapshotReader(),
+            new TestNpcActorOperations());
 
         try
         {
@@ -123,7 +125,8 @@ public sealed class TrustedHostModuleLoaderTests
     private sealed record TestHostRuntime(
         TerraRuntimeHostRuntimeInfo Info,
         IInterestManagementControl InterestManagement,
-        IPlayerStateSnapshotReader PlayerStates) : ITerraRuntimeHostRuntime;
+        IPlayerStateSnapshotReader PlayerStates,
+        INpcActorOperations NpcActors) : ITerraRuntimeHostRuntime;
 
     private sealed class TestInterestManagementControl : IInterestManagementControl
     {
@@ -147,6 +150,45 @@ public sealed class TrustedHostModuleLoaderTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return ValueTask.FromResult<PlayerStateSnapshot?>(null);
+        }
+    }
+
+    private sealed class TestNpcActorOperations : INpcActorOperations
+    {
+        public ValueTask<NpcActorAcquireStatus> AcquireAsync(
+            NpcHandle npc,
+            ActorControllerId controllerId,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(NpcActorAcquireStatus.UnsupportedNpcType);
+        }
+
+        public ValueTask<bool> SetIntentAsync(
+            NpcHandle npc,
+            ActorControllerId controllerId,
+            NpcActorIntent intent,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
+        }
+
+        public ValueTask<bool> ReleaseAsync(
+            NpcHandle npc,
+            ActorControllerId controllerId,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
+        }
+
+        public ValueTask<int> ReleaseControllerAsync(
+            ActorControllerId controllerId,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(0);
         }
     }
 }
