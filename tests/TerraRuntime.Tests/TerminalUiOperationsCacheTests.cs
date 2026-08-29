@@ -1,5 +1,9 @@
 using TerraRuntime.Operations;
 using TerraRuntime.TerminalUI;
+using Terminal.Gui.App;
+using Terminal.Gui.Drivers;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace TerraRuntime.Tests;
 
@@ -46,6 +50,54 @@ public sealed class TerminalUiOperationsCacheTests
 
         Assert.NotEqual(baseScheme.Normal.Background, accentScheme.Normal.Background);
         Assert.NotEqual(baseScheme.Normal, accentScheme.Normal);
+    }
+
+    [Fact]
+    public void Overview_console_is_selectable_and_exposes_command_input()
+    {
+        using var dashboard = new RuntimeOverviewDashboard();
+
+        Assert.True(dashboard.ConsoleSupportsSelectionForSmoke);
+        Assert.True(dashboard.CommandInputVisibleForSmoke);
+        Assert.Contains("TPS / CPU", dashboard.GetPanelTitleForSmoke("TPS / CPU"));
+        Assert.Contains("Network", dashboard.GetPanelTitleForSmoke("Network"));
+    }
+
+    [Fact]
+    public void Overview_maximize_hides_other_tiles_and_second_toggle_restores_layout()
+    {
+        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        app.Driver!.SetScreenSize(120, 28);
+        using var window = new Window
+        {
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        var dashboard = new RuntimeOverviewDashboard
+        {
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        window.Add(dashboard);
+
+        SessionToken token = app.Begin(window)!;
+        try
+        {
+            app.LayoutAndDraw();
+            Assert.Equal(6, dashboard.GetVisiblePanelCountForSmoke());
+
+            dashboard.TogglePanelForSmoke("Network");
+            app.LayoutAndDraw();
+            Assert.Equal(1, dashboard.GetVisiblePanelCountForSmoke());
+
+            dashboard.TogglePanelForSmoke("Network");
+            app.LayoutAndDraw();
+            Assert.Equal(6, dashboard.GetVisiblePanelCountForSmoke());
+        }
+        finally
+        {
+            app.End(token);
+        }
     }
 
     private sealed class BlockingOperations :
