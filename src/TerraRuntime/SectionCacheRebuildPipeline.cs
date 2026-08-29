@@ -8,7 +8,7 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 internal readonly record struct SectionCacheRebuildWork(
-    WorldSectionTileSnapshot Snapshot,
+    WorldSectionPacketSnapshot Snapshot,
     long OnDemandGeneration = 0);
 
 internal readonly record struct SectionCacheRebuildResult(
@@ -52,19 +52,20 @@ internal readonly record struct SectionCacheRebuildPipelineSnapshot(
 
 /// <summary>
 /// Authoritative-thread coordinator for rebuilding packet-10 section cache entries outside the game loop.
-/// The owner thread captures immutable snapshots and publishes completions; dedicated bounded workers only
-/// encode/compress those snapshots and never read mutable tile storage or mutate the shared cache.
-/// Connection threads may request missing sections through a generation-aware deduplicated handoff, while the
-/// authoritative tick gives those join-critical snapshots priority over the ordinary dirty-section backlog.
-/// At most one worker rebuild may be in flight for any network section, regardless of why it was scheduled.
+/// The owner thread captures immutable tile state plus section-local object metadata and publishes completions;
+/// dedicated bounded workers receive only <see cref="WorldSectionPacketSnapshot"/> values and never read live
+/// world state or mutate the shared cache. Connection threads may request missing sections through a
+/// generation-aware deduplicated handoff, while the authoritative tick gives those join-critical snapshots
+/// priority over the ordinary dirty-section backlog. At most one worker rebuild may be in flight per section.
 /// </summary>
 internal sealed class SectionCacheRebuildPipeline : IDisposable
 {
     private readonly WorldFileData _world;
     private readonly PlayerBootstrapPacketSet _packets;
+    private readonly WorldSectionEncodingContext _encodingContext;
     private readonly DirtySectionSnapshotBatcher _batcher;
     private readonly BoundedWorkerPool<SectionCacheRebuildWork, SectionCacheRebuildResult> _workers;
-    private readonly Func<WorldSectionTileSnapshot, SectionCacheRebuildResult> _encode;
+    private readonly Func<WorldSectionPacketSnapshot, SectionCacheRebuildResult> _encode;
     private readonly ConcurrentQueue<WorldSectionId> _onDemandRequests = new();
     private readonly ConcurrentDictionary<int, long> _onDemandSections = new();
     private readonly HashSet<int> _inFlightSections = [];
@@ -115,10 +116,13 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
 
         _world = world;
         _packets = packets;
+        _encodingContext = WorldSectionEncodingContext.Capture(world);
         _workCapacity = workCapacity;
         _maximumInFlight = checked(workerCount + workCapacity);
         _batcher = new DirtySectionSnapshotBatcher(world.Tiles, _maximumInFlight);
-        _encode = encode ?? EncodeSection;
+        _encode = encode is null
+            ? EncodeSection
+            : snapshot => encode(snapshot.Tiles);
         _workers = new BoundedWorkerPool<SectionCacheRebuildWork, SectionCacheRebuildResult>(
             workerCount,
             workCapacity,
@@ -263,19 +267,31 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
                 continue;
             }
 
-            if (!_world.Tiles.TryCaptureSectionSnapshot(section, out WorldSectionTileSnapshot? snapshot) || snapshot is null)
+            if (!_world.Tiles.TryCaptureSectionSnapshot(section, out WorldSectionTileSnapshot? tileSnapshot) ||
+                tileSnapshot is null)
             {
                 _onDemandRequests.Enqueue(section);
                 continue;
             }
 
             Interlocked.Increment(ref _capturedSnapshots);
+            WorldSectionPacketSnapshotCaptureResult packetCapture = WorldSectionPacketSnapshotCapture.TryCapture(
+                _world,
+                tileSnapshot,
+                _encodingContext,
+                out WorldSectionPacketSnapshot? packetSnapshot);
+            if (packetCapture != WorldSectionPacketSnapshotCaptureResult.Captured || packetSnapshot is null)
+            {
+                HandlePacketSnapshotCaptureFailure(section, generation, packetCapture);
+                continue;
+            }
+
             _world.Tiles.DirtySections.ClearDirty(section);
-            if (TrySubmit(snapshot, generation))
+            if (TrySubmit(packetSnapshot, generation))
                 continue;
 
             // Capacity can race with a worker between the snapshot observation and TrySubmit. Preserve both the
-            // normal dirty signal and the join-priority request rather than throwing the snapshot work away.
+            // normal dirty signal and the join-priority request rather than throwing the captured work away.
             _world.Tiles.DirtySections.MarkDirty(section);
             _onDemandRequests.Enqueue(section);
             Interlocked.Increment(ref _rejectedSubmissions);
@@ -300,27 +316,55 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         ReadOnlySpan<WorldSectionTileSnapshot?> snapshots = _batcher.Captured;
         for (int i = 0; i < snapshots.Length; i++)
         {
-            WorldSectionTileSnapshot snapshot = snapshots[i]
+            WorldSectionTileSnapshot tileSnapshot = snapshots[i]
                 ?? throw new InvalidOperationException("Dirty section batch contained an empty snapshot slot.");
-            int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, snapshot.Section);
+            int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, tileSnapshot.Section);
 
             if (_inFlightSections.Contains(index))
             {
-                _world.Tiles.DirtySections.MarkDirty(snapshot.Section);
+                _world.Tiles.DirtySections.MarkDirty(tileSnapshot.Section);
                 continue;
             }
 
-            if (TrySubmit(snapshot, onDemandGeneration: 0))
+            WorldSectionPacketSnapshotCaptureResult packetCapture = WorldSectionPacketSnapshotCapture.TryCapture(
+                _world,
+                tileSnapshot,
+                _encodingContext,
+                out WorldSectionPacketSnapshot? packetSnapshot);
+            if (packetCapture != WorldSectionPacketSnapshotCaptureResult.Captured || packetSnapshot is null)
+            {
+                _world.Tiles.DirtySections.MarkDirty(tileSnapshot.Section);
+                if (packetCapture == WorldSectionPacketSnapshotCaptureResult.InvalidObjectMetadata)
+                    Interlocked.Increment(ref _encodeFailures);
+                continue;
+            }
+
+            if (TrySubmit(packetSnapshot, onDemandGeneration: 0))
                 continue;
 
-            // A worker/channel race may still consume capacity between observation and submission. Preserve
-            // committed work instead of losing the section if the bounded queue rejects this snapshot.
-            _world.Tiles.DirtySections.MarkDirty(snapshot.Section);
+            _world.Tiles.DirtySections.MarkDirty(tileSnapshot.Section);
             Interlocked.Increment(ref _rejectedSubmissions);
         }
     }
 
-    private bool TrySubmit(WorldSectionTileSnapshot snapshot, long onDemandGeneration)
+    private void HandlePacketSnapshotCaptureFailure(
+        WorldSectionId section,
+        long generation,
+        WorldSectionPacketSnapshotCaptureResult result)
+    {
+        _world.Tiles.DirtySections.MarkDirty(section);
+        if (result == WorldSectionPacketSnapshotCaptureResult.InvalidObjectMetadata ||
+            result == WorldSectionPacketSnapshotCaptureResult.IncompatibleContext)
+        {
+            Interlocked.Increment(ref _encodeFailures);
+            FailOnDemandGeneration(section, generation);
+            return;
+        }
+
+        _onDemandRequests.Enqueue(section);
+    }
+
+    private bool TrySubmit(WorldSectionPacketSnapshot snapshot, long onDemandGeneration)
     {
         int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, snapshot.Section);
         if (!_inFlightSections.Add(index))
@@ -464,8 +508,6 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         }
         catch (Exception exception)
         {
-            // Returning identity and generation as data lets the authoritative completion path wake exactly the
-            // waiters whose rebuild failed without allowing worker exceptions to touch live state.
             return new SectionCacheRebuildResult(
                 work.Snapshot.Section,
                 work.Snapshot.Revision,
@@ -477,12 +519,9 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         }
     }
 
-    private SectionCacheRebuildResult EncodeSection(WorldSectionTileSnapshot snapshot)
+    private static SectionCacheRebuildResult EncodeSection(WorldSectionPacketSnapshot snapshot)
     {
-        WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncode(
-            _world,
-            snapshot,
-            out byte[] frame);
+        WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncode(snapshot, out byte[] frame);
         return new SectionCacheRebuildResult(
             snapshot.Section,
             snapshot.Revision,
