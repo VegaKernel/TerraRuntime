@@ -41,8 +41,8 @@ public static class WorldSectionPayloadAssembler
     }
 
     /// <summary>
-    /// Assembles packet-10 payload data from an immutable tile snapshot plus the world's immutable
-    /// section-local persistence metadata. No live tile storage is read by this overload.
+    /// Compatibility path for callers that already hold an immutable tile snapshot but still source object
+    /// metadata from the loaded world on the caller thread.
     /// </summary>
     public static WorldSectionPayloadAssemblyResult TryEncode(
         WorldFileData world,
@@ -71,6 +71,27 @@ public static class WorldSectionPayloadAssembler
             out payload);
     }
 
+    /// <summary>
+    /// Worker-safe packet-10 payload assembly. Both tile state and object metadata were captured before the
+    /// snapshot crossed the worker boundary, so this overload never reads live world state.
+    /// </summary>
+    public static WorldSectionPayloadAssemblyResult TryEncode(
+        WorldSectionPacketSnapshot snapshot,
+        out byte[] payload)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        payload = [];
+
+        WorldSectionPayloadEncodeResult tileResult = WorldSectionPayloadEncoder.TryEncodeTileOnly(
+            snapshot.EncodingContext,
+            snapshot.Tiles,
+            out byte[] tileOnly);
+        if (tileResult != WorldSectionPayloadEncodeResult.Encoded)
+            return WorldSectionPayloadAssemblyResult.InvalidTilePayload;
+
+        return TryAssemble(tileOnly, snapshot.ObjectMetadata.Span, out payload);
+    }
+
     private static WorldSectionPayloadAssemblyResult TryAssemble(
         WorldFileData world,
         int xStart,
@@ -81,9 +102,6 @@ public static class WorldSectionPayloadAssembler
         out byte[] payload)
     {
         payload = [];
-        if (tileOnly.Length < EmptyObjectTailLength)
-            return WorldSectionPayloadAssemblyResult.InvalidTilePayload;
-
         WorldSectionObjectMetadataEncodeResult metadataResult = WorldSectionObjectMetadataEncoder.TryEncode(
             world,
             xStart,
@@ -94,10 +112,22 @@ public static class WorldSectionPayloadAssembler
         if (metadataResult != WorldSectionObjectMetadataEncodeResult.Encoded)
             return WorldSectionPayloadAssemblyResult.InvalidObjectMetadata;
 
+        return TryAssemble(tileOnly, metadata, out payload);
+    }
+
+    private static WorldSectionPayloadAssemblyResult TryAssemble(
+        byte[] tileOnly,
+        ReadOnlySpan<byte> metadata,
+        out byte[] payload)
+    {
+        payload = [];
+        if (tileOnly.Length < EmptyObjectTailLength)
+            return WorldSectionPayloadAssemblyResult.InvalidTilePayload;
+
         int tileBytes = tileOnly.Length - EmptyObjectTailLength;
         payload = GC.AllocateUninitializedArray<byte>(checked(tileBytes + metadata.Length));
         tileOnly.AsSpan(0, tileBytes).CopyTo(payload);
-        metadata.CopyTo(payload, tileBytes);
+        metadata.CopyTo(payload.AsSpan(tileBytes));
         return WorldSectionPayloadAssemblyResult.Encoded;
     }
 }
