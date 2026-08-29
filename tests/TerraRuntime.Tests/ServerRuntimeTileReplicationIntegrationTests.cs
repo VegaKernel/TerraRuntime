@@ -67,6 +67,61 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
         Assert.Equal(0, fixture.Replication.RelayedFrames);
     }
 
+    [Fact]
+    public void Successful_no_item_dirt_kill_relays_to_peer_but_not_origin()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle origin = fixture.SpawnPlayer(905);
+        ConnectionHandle peer = fixture.SpawnPlayer(906);
+        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        var request = new TerrariaTileManipulationState(
+            (byte)TerrariaTileManipulationAction.KillTileNoItem,
+            TileX: 10,
+            TileY: 10,
+            Data: 0,
+            Style: 0);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, request));
+
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.False(fixture.Tiles.Get(10, 10).IsActive);
+        Assert.Equal(0, fixture.Outbound(origin).QueuedFrames);
+        Assert.Equal(1, fixture.Outbound(peer).QueuedFrames);
+        TerrariaFrame frame = DequeueFrame(fixture.Outbound(peer));
+        Assert.Equal(
+            TerrariaTileManipulationDecodeResult.Decoded,
+            TerrariaTileManipulationCodec.TryDecode(in frame, out TerrariaTileManipulationState relayed));
+        Assert.Equal(request, relayed);
+        Assert.Equal(1, fixture.Replication.RelayedFrames);
+        Assert.Equal(0, fixture.Replication.RejectedFrames);
+        Assert.Equal(0, fixture.Replication.EncodeFailures);
+    }
+
+    [Fact]
+    public void Rejected_no_item_dirt_kill_never_enters_replication()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle origin = fixture.SpawnPlayer(907);
+        ConnectionHandle peer = fixture.SpawnPlayer(908);
+        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 11, 10));
+        var request = new TerrariaTileManipulationState(
+            (byte)TerrariaTileManipulationAction.KillTileNoItem,
+            TileX: 10,
+            TileY: 10,
+            Data: 0,
+            Style: 0);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, request));
+
+        Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+        Assert.True(fixture.Tiles.Get(10, 10).IsActive);
+        Assert.Equal(0, fixture.Outbound(origin).QueuedFrames);
+        Assert.Equal(0, fixture.Outbound(peer).QueuedFrames);
+        Assert.Equal(0, fixture.Replication.RelayedFrames);
+    }
+
     private sealed class Fixture : IDisposable
     {
         private readonly PlayerSlotPool slots = new(2);
