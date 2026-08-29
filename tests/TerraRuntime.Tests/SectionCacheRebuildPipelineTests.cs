@@ -40,6 +40,10 @@ public sealed class SectionCacheRebuildPipelineTests
         Assert.Equal(1, snapshot.PublishedFrames);
         Assert.Equal(0, snapshot.EncodeFailures);
         Assert.Equal(0, snapshot.StaleResults);
+        Assert.Equal(0, snapshot.RejectedSubmissions);
+        Assert.InRange(snapshot.CacheEntries, 1, snapshot.CacheMaximumEntries);
+        Assert.Equal(world.Header.Dimensions.SectionCount, snapshot.CacheMaximumEntries);
+        Assert.True(snapshot.CacheBytes > 0);
         Assert.True(packets.TryGetCachedSectionFrame(section, revision, out ReadOnlyMemory<byte> frame));
         Assert.Equal((byte)TerrariaMessageId.TileSection, frame.Span[2]);
     }
@@ -110,6 +114,7 @@ public sealed class SectionCacheRebuildPipelineTests
         Assert.True(snapshot.SubmittedRebuilds >= 2);
         Assert.Equal(1, snapshot.StaleResults);
         Assert.Equal(1, snapshot.PublishedFrames);
+        Assert.Equal(0, snapshot.RejectedSubmissions);
         Assert.False(packets.TryGetCachedSectionFrame(section, firstRevision, out _));
         Assert.True(packets.TryGetCachedSectionFrame(section, latestRevision, out ReadOnlyMemory<byte> frame));
         Assert.Equal(unchecked((byte)latestRevision), frame.Span[3]);
@@ -172,6 +177,7 @@ public sealed class SectionCacheRebuildPipelineTests
         Assert.Equal(capturedBefore, snapshot.CapturedSnapshots);
         Assert.Equal(2, snapshot.InFlight);
         Assert.Equal(1, snapshot.DirtyBacklog);
+        Assert.Equal(0, snapshot.RejectedSubmissions);
         releaseEncode.Set();
     }
 
