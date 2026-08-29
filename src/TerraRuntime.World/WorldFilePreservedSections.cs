@@ -93,18 +93,52 @@ public sealed class WorldFilePreservedSections
         out WorldFilePreservedSections? sections)
     {
         ArgumentNullException.ThrowIfNull(file);
-        ArgumentNullException.ThrowIfNull(envelope);
-        sections = null;
-
-        if (!file.CanRead || !file.CanSeek || !HasSupportedLayout(envelope))
-            return false;
-
-        long originalPosition;
         long fileLength;
         try
         {
-            originalPosition = file.Position;
             fileLength = file.Length;
+        }
+        catch (Exception exception) when (exception is IOException or NotSupportedException or ObjectDisposedException)
+        {
+            sections = null;
+            return false;
+        }
+
+        return TryCapture(file, 0, fileLength, envelope, out sections);
+    }
+
+    /// <summary>
+    /// Captures preserved sections from a complete .wld image embedded inside a larger seekable stream. Section
+    /// offsets remain relative to the embedded world image, while <paramref name="worldOffset"/> locates that image
+    /// in the containing stream. This is used by runtime caches so warm startup can prepare background persistence
+    /// without reading the canonical source .wld or materializing its tile/chest payloads.
+    /// </summary>
+    public static bool TryCapture(
+        Stream file,
+        long worldOffset,
+        long worldLength,
+        WorldFileEnvelope envelope,
+        out WorldFilePreservedSections? sections)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        ArgumentNullException.ThrowIfNull(envelope);
+        sections = null;
+
+        if (!file.CanRead || !file.CanSeek ||
+            worldOffset < 0 || worldLength <= 0 ||
+            !HasSupportedLayout(envelope))
+        {
+            return false;
+        }
+
+        long originalPosition;
+        long streamLength;
+        try
+        {
+            originalPosition = file.Position;
+            streamLength = file.Length;
+            if (worldOffset > streamLength || worldLength > streamLength - worldOffset)
+                return false;
         }
         catch (Exception exception) when (exception is IOException or NotSupportedException or ObjectDisposedException)
         {
@@ -114,14 +148,14 @@ public sealed class WorldFilePreservedSections
         try
         {
             IReadOnlyList<int> offsets = envelope.SectionOffsets;
-            if (!TryReadSection(file, fileLength, offsets, 0, out byte[] header) ||
-                !TryReadSection(file, fileLength, offsets, 3, out byte[] signs) ||
-                !TryReadSection(file, fileLength, offsets, 4, out byte[] npcs) ||
-                !TryReadSection(file, fileLength, offsets, 5, out byte[] tileEntities) ||
-                !TryReadSection(file, fileLength, offsets, 6, out byte[] pressurePlates) ||
-                !TryReadSection(file, fileLength, offsets, 7, out byte[] townRooms) ||
-                !TryReadSection(file, fileLength, offsets, 8, out byte[] bestiary) ||
-                !TryReadSection(file, fileLength, offsets, 9, out byte[] creativePowers))
+            if (!TryReadSection(file, worldOffset, worldLength, offsets, 0, out byte[] header) ||
+                !TryReadSection(file, worldOffset, worldLength, offsets, 3, out byte[] signs) ||
+                !TryReadSection(file, worldOffset, worldLength, offsets, 4, out byte[] npcs) ||
+                !TryReadSection(file, worldOffset, worldLength, offsets, 5, out byte[] tileEntities) ||
+                !TryReadSection(file, worldOffset, worldLength, offsets, 6, out byte[] pressurePlates) ||
+                !TryReadSection(file, worldOffset, worldLength, offsets, 7, out byte[] townRooms) ||
+                !TryReadSection(file, worldOffset, worldLength, offsets, 8, out byte[] bestiary) ||
+                !TryReadSection(file, worldOffset, worldLength, offsets, 9, out byte[] creativePowers))
             {
                 return false;
             }
@@ -138,7 +172,7 @@ public sealed class WorldFilePreservedSections
             return true;
         }
         catch (Exception exception) when (
-            exception is IOException or NotSupportedException or ObjectDisposedException or ArgumentException)
+            exception is IOException or NotSupportedException or ObjectDisposedException or ArgumentException or OverflowException)
         {
             sections = null;
             return false;
@@ -178,7 +212,8 @@ public sealed class WorldFilePreservedSections
 
     private static bool TryReadSection(
         Stream file,
-        long fileLength,
+        long worldOffset,
+        long worldLength,
         IReadOnlyList<int> offsets,
         int sectionIndex,
         out byte[] section)
@@ -186,11 +221,11 @@ public sealed class WorldFilePreservedSections
         section = [];
         int start = offsets[sectionIndex];
         int end = offsets[sectionIndex + 1];
-        if (start < 0 || end <= start || end > fileLength)
+        if (start < 0 || end <= start || end > worldLength)
             return false;
 
         section = new byte[end - start];
-        file.Position = start;
+        file.Position = checked(worldOffset + start);
         file.ReadExactly(section);
         return true;
     }
