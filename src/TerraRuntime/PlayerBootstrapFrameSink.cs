@@ -467,9 +467,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (text.Length == 0)
             return TerrariaFrameSinkResult.Continue;
 
-        // Vanilla slash/command processing is a separate server feature. Do not accidentally turn
-        // an unsupported command into public chat while bringing the basic Say path online.
-        if (text[0] == '/')
+        // Packet 82 carries command traffic as well as ordinary chat. Only vanilla Say belongs
+        // on the public chat relay; everything else is reserved for the command/module pipeline.
+        if (!string.Equals(message.CommandName, "Say", StringComparison.OrdinalIgnoreCase) || text[0] == '/')
             return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
 
         byte[] encoded = TerrariaChatCodec.EncodeServerMessage(
