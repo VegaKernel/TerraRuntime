@@ -125,7 +125,7 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
             gameMode,
             crimson,
             creationTimeBinary,
-            lastPlayedTimeBinary: lastPlayedBinary,
+            lastPlayedBinary,
             out byte[] canonicalWorld);
         if (!composition.Succeeded)
         {
