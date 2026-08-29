@@ -9,6 +9,8 @@ public sealed class BoundedOutboundQueue
     private int _completed;
     private int _queuedFrames;
     private long _queuedBytes;
+    private long _peakQueuedFrames;
+    private long _peakQueuedBytes;
     private long _rejectedFrames;
 
     public BoundedOutboundQueue(OutboundQueueOptions options)
@@ -28,6 +30,10 @@ public sealed class BoundedOutboundQueue
     public int QueuedFrames => Volatile.Read(ref _queuedFrames);
 
     public long QueuedBytes => Interlocked.Read(ref _queuedBytes);
+
+    public long PeakQueuedFrames => Interlocked.Read(ref _peakQueuedFrames);
+
+    public long PeakQueuedBytes => Interlocked.Read(ref _peakQueuedBytes);
 
     public long RejectedFrames => Interlocked.Read(ref _rejectedFrames);
 
@@ -73,6 +79,8 @@ public sealed class BoundedOutboundQueue
                 : OutboundEnqueueResult.FrameBudgetExceeded;
         }
 
+        UpdateMaximum(ref _peakQueuedFrames, queuedFrames);
+        UpdateMaximum(ref _peakQueuedBytes, queuedBytes);
         return OutboundEnqueueResult.Enqueued;
     }
 
@@ -113,4 +121,17 @@ public sealed class BoundedOutboundQueue
     }
 
     private void Reject() => Interlocked.Increment(ref _rejectedFrames);
+
+    private static void UpdateMaximum(ref long target, long candidate)
+    {
+        long current = Interlocked.Read(ref target);
+        while (candidate > current)
+        {
+            long observed = Interlocked.CompareExchange(ref target, candidate, current);
+            if (observed == current)
+                return;
+
+            current = observed;
+        }
+    }
 }
