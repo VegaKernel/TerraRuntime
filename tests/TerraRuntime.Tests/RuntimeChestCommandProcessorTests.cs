@@ -50,6 +50,47 @@ public sealed class RuntimeChestCommandProcessorTests
     }
 
     [Fact]
+    public void Failed_switch_clears_observer_index_after_previous_chest_is_released()
+    {
+        var store = new RuntimeChestStore(
+        [
+            Chest(),
+            Chest(slotId: 4, x: 30, y: 40)
+        ]);
+        var replication = new RuntimeChestReplicationRegistry();
+        var processor = new RuntimeChestCommandProcessor(store, replication);
+        ConnectionHandle owner = Connection(1, playerSlot: 0, generation: 1);
+        ConnectionHandle observer = Connection(2, playerSlot: 1, generation: 1);
+        // A two-slot chest baseline is packet155 + 2x packet32 + packet33 = four frames.
+        // Leave exactly one frame of headroom so switching chests fails part-way through the next baseline.
+        var ownerOutbound = Outbound(maxFrames: 5);
+        var observerOutbound = Outbound();
+
+        Assert.True(replication.TryRegister(owner.Source, ownerOutbound));
+        Assert.True(replication.TryRegister(observer.Source, observerOutbound));
+        MarkPlaying(replication, owner);
+        MarkPlaying(replication, observer);
+
+        Assert.True(processor.TryApply(
+            new ClientChestOpenRuntimeCommand(owner, new TerrariaChestOpenRequest(10, 20))));
+        Assert.Equal(1, processor.AppliedOpens);
+        Assert.Equal(1, observerOutbound.QueuedFrames);
+        Assert.Equal(1, replication.ChestIndexFrames);
+        Assert.True(store.TryGetOpenChest(owner, out WorldChest first));
+        Assert.Equal((short)3, first.SlotId);
+
+        Assert.True(processor.TryApply(
+            new ClientChestOpenRuntimeCommand(owner, new TerrariaChestOpenRequest(30, 40))));
+
+        Assert.Equal(1, processor.AppliedOpens);
+        Assert.Equal(1, processor.RejectedOpens);
+        Assert.True(ownerOutbound.IsSlowClient);
+        Assert.False(store.TryGetOpenChest(owner, out _));
+        Assert.Equal(2, observerOutbound.QueuedFrames);
+        Assert.Equal(2, replication.ChestIndexFrames);
+    }
+
+    [Fact]
     public void Disconnect_releases_chest_but_falls_through_to_player_runtime()
     {
         var store = new RuntimeChestStore([Chest()]);
@@ -87,14 +128,14 @@ public sealed class RuntimeChestCommandProcessorTests
         replication.PlayerSpawned(connection, in spawn);
     }
 
-    private static TerrariaConnectionOutboundQueue Outbound() =>
-        new(new OutboundQueueOptions(maxFrames: 512, maxQueuedBytes: 1024 * 1024, maxFrameBytes: 64 * 1024));
+    private static TerrariaConnectionOutboundQueue Outbound(int maxFrames = 512) =>
+        new(new OutboundQueueOptions(maxFrames: maxFrames, maxQueuedBytes: 1024 * 1024, maxFrameBytes: 64 * 1024));
 
-    private static WorldChest Chest() =>
+    private static WorldChest Chest(short slotId = 3, int x = 10, int y = 20) =>
         new(
-            SlotId: 3,
-            X: 10,
-            Y: 20,
+            SlotId: slotId,
+            X: x,
+            Y: y,
             Name: "Base",
             Items:
             [
