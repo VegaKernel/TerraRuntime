@@ -136,7 +136,7 @@ Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the typed pa
 - [x] One read loop and one write path per connection.
 - [x] Bounded outbound queues with an explicit slow-client policy.
 - [ ] Size queue limits from measured real workloads and configured player count rather than a guessed constant.
-- [ ] Batch already queued small frames into fewer socket writes without intentionally delaying latency-sensitive traffic.
+- [x] Batch already queued small frames into fewer socket writes without intentionally delaying latency-sensitive traffic.
 - [x] Use `TCP_NODELAY` unless measurement demonstrates a better policy.
 - [x] Handshake deadline plus normal idle timeout.
 - [x] Gate maximum concurrent connections before allocating expensive player state.
@@ -144,8 +144,8 @@ Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the typed pa
 
 ### DoS hardening
 
-- [ ] Global and per-connection budgets for expensive work.
-- [ ] Bound password/KDF work, compression and section requests.
+- [x] Global and per-connection budgets for expensive work.
+- [x] Bound password/KDF work, compression and section requests.
 - [x] Independent rate limits for tile edits, liquids, chat, item operations and other expensive packet classes.
 - [x] Distinguish malformed protocol, rate limit, invalid state and gameplay rejection in structured telemetry.
 

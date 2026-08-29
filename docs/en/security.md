@@ -96,6 +96,8 @@ $$
 
 independent of configured player count. Concurrent waiters for the same single-flight section generation consume one global admission, not one per connection. The rebuild pipeline additionally bounds distinct pending on-demand generations to `$255$`; production uses one compression worker with one queued work item and one queued completion. Global-budget exhaustion is propagated as structured `RateLimited` rejection rather than being mislabeled as an encoding failure.
 
+The current runtime exposes no password/KDF execution path, so hostile clients cannot trigger password hashing work. Any future password authentication must enter the same bounded-work model before it can be enabled in production.
+
 ## 10. Single-writer containment
 
 ```mermaid

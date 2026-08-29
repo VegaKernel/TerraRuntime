@@ -1,24 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import hashlib
-import json
+import re
 from pathlib import Path
-from typing import Any
-
-
-def find_key(value: Any, key: str, path: str = "$", found: list[tuple[str, Any]] | None = None) -> list[tuple[str, Any]]:
-    if found is None:
-        found = []
-    if isinstance(value, dict):
-        for child_key, child_value in value.items():
-            child_path = f"{path}.{child_key}"
-            if child_key == key:
-                found.append((child_path, child_value))
-            find_key(child_value, key, child_path, found)
-    elif isinstance(value, list):
-        for index, child_value in enumerate(value):
-            find_key(child_value, key, f"{path}[{index}]", found)
-    return found
 
 
 def main() -> int:
@@ -29,20 +13,22 @@ def main() -> int:
 
     path = Path(args.configuration)
     raw = path.read_bytes()
-    data = json.loads(raw.decode("utf-8-sig"))
-    matches = find_key(data, "FlatBeachPadding")
+    text = raw.decode("utf-8-sig")
+
+    # Terraria's embedded worldgen configuration is JSON-like source accepted by its own configuration loader, but
+    # it is not guaranteed to be strict RFC JSON. Extract the one scalar TerrainPass consumes directly and require
+    # it to occur exactly once rather than normalizing/re-serializing the resource through Python's JSON parser.
+    pattern = re.compile(r'(?m)^\s*["\']?FlatBeachPadding["\']?\s*:\s*(-?\d+)\s*,?\s*$')
+    matches = list(pattern.finditer(text))
     if len(matches) != 1:
-        raise SystemExit(f"Expected exactly one FlatBeachPadding entry; found {len(matches)}: {matches}")
+        context = [line.strip() for line in text.splitlines() if "FlatBeachPadding" in line]
+        raise SystemExit(f"Expected exactly one FlatBeachPadding scalar; found {len(matches)}: {context}")
 
-    key_path, value = matches[0]
-    if type(value) is not int:
-        raise SystemExit(f"FlatBeachPadding must be an integer in pinned config; got {type(value).__name__}.")
-
+    value = int(matches[0].group(1))
     lines = [
         "source=TerrariaServer 1.4.5.8",
         "resource=Terraria.GameContent.WorldBuilding.Configuration.json",
         f"WorldGenConfiguration_sha256={hashlib.sha256(raw).hexdigest()}",
-        f"FlatBeachPadding_path={key_path}",
         f"FlatBeachPadding_value={value}",
     ]
     for line in lines:

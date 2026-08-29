@@ -49,6 +49,10 @@ def method_signatures(source: str) -> list[str]:
     return [match.group(0).strip() for match in pattern.finditer(source)]
 
 
+def method_name(signature: str) -> str:
+    return signature.split("(", 1)[0].rsplit(" ", 1)[-1]
+
+
 def constructor_signatures(source: str, type_name: str) -> list[str]:
     pattern = re.compile(
         rf"^[ \t]*(?:public|private|internal|protected)\s+{re.escape(type_name)}\([^\r\n)]*\)(?:\s*:\s*(?:base|this)\([^\r\n)]*\))?",
@@ -69,13 +73,42 @@ def emit_body(prefix: str, source: str, signature: str, lines: list[str]) -> Non
     print(f"END_{prefix}")
 
 
+def emit_crc32(source: str, lines: list[str]) -> None:
+    source_sha = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    lines.append(f"Crc32_source_sha256={source_sha}")
+    print(f"Crc32_source_sha256={source_sha}")
+
+    declarations: list[str] = []
+    for raw in source.splitlines():
+        value = compact(raw)
+        lower = value.lower()
+        if value and ("table" in lower or "polynomial" in lower or "crc" in lower) and value.endswith(";"):
+            declarations.append(value)
+    declarations = list(dict.fromkeys(declarations))
+    lines.append(f"Crc32_declaration_count={len(declarations)}")
+    print(f"Crc32_declaration_count={len(declarations)}")
+    for index, value in enumerate(declarations):
+        lines.append(f"Crc32_declaration_{index:02d}={value}")
+        print(f"Crc32_declaration_{index:02d}={value}")
+
+    calculate_methods = [signature for signature in method_signatures(source) if method_name(signature) == "Calculate"]
+    if not calculate_methods:
+        raise SystemExit("Pinned Crc32 exposes no Calculate methods.")
+    lines.append(f"Crc32_Calculate_count={len(calculate_methods)}")
+    print(f"Crc32_Calculate_count={len(calculate_methods)}")
+    for index, signature in enumerate(calculate_methods):
+        emit_body(f"Crc32_Calculate_{index:02d}", source, signature, lines)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Discover pinned TerrariaServer 1.4.5.8 WorldFileData seed semantics.")
     parser.add_argument("--world-file-data", required=True)
+    parser.add_argument("--crc32", required=True)
     parser.add_argument("--output")
     args = parser.parse_args()
 
     source = Path(args.world_file_data).read_text(encoding="utf-8")
+    crc32_source = Path(args.crc32).read_text(encoding="utf-8")
     lines = [
         "source=TerrariaServer 1.4.5.8",
         "type=Terraria.IO.WorldFileData",
@@ -92,7 +125,6 @@ def main() -> int:
         if any(token in value for token in (" Seed", "SeedText", "seedText", "_seed", "seed =", "seed;")):
             seed_declarations.append(value)
 
-    # Preserve source order and remove duplicates introduced by compact matching.
     seed_declarations = list(dict.fromkeys(seed_declarations))
     lines.append(f"WorldFileData_seed_declaration_count={len(seed_declarations)}")
     print(f"WorldFileData_seed_declaration_count={len(seed_declarations)}")
@@ -122,6 +154,8 @@ def main() -> int:
 
     if not seed_declarations and not seed_methods:
         raise SystemExit("Pinned WorldFileData exposes no discoverable seed surface.")
+
+    emit_crc32(crc32_source, lines)
 
     if args.output:
         output = Path(args.output)
