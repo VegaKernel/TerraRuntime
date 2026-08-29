@@ -41,7 +41,7 @@ internal static class Program
         if (args.Contains("--host-module-smoke", StringComparer.Ordinal))
             return 0;
 
-        return global::TerraRuntime.StartupProgram.Run(args, loader);
+        return global::TerraRuntime.StartupProgram.Run(args, loader, loader);
     }
 
     private static bool ShouldBypassHostModules(IEnumerable<string> args)
