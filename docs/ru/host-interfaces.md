@@ -231,7 +231,9 @@ await runtime.ServerPlayers.SetJumpIntentAsync(
     cancellationToken);
 ```
 
-`ServerPlayerJumpIntent` — button-level semantic input, не velocity command. TerraRuntime владеет ordinary vanilla jump speed/duration, release gate, gravity и collision. Holding jump через landing не запускает новый jump, пока `Released` не rearms vanilla release gate. Current source-backed slice — dry, unmounted, normal-gravity; liquids, mounts, grapples и extra-jump families остаются separate gameplay work.
+`ServerPlayerJumpIntent` — button-level semantic input, не velocity command. TerraRuntime владеет ordinary vanilla jump speed/duration, release gate, gravity и collision. Holding jump через landing не запускает новый jump, пока `Released` не rearms vanilla release gate.
+
+Liquid contact TerraRuntime определяет самостоятельно по authoritative world tiles; host по-прежнему не передаёт тип жидкости или velocity. Проверенный collision/displacement slice использует vanilla movement factors $0.5$ для воды/лавы, $0.25$ для мёда и $0.375$ для shimmer. Эти коэффициенты масштабируют только position advance: authoritative collision velocity не масштабируется, а component оси, ограниченная tile collision, применяется к позиции без повторного liquid scaling. Liquid-specific gravity/fall-speed, swimming/jump control, floating и wet-entry/exit state этим slice пока не заявляются как source-backed. Mounts, grapples и extra-jump families также остаются отдельной gameplay-работой.
 
 Despawn:
 
