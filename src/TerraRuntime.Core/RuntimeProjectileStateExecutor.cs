@@ -3,16 +3,25 @@ using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
 
+public enum ProjectileSimulationTerminationReason : byte
+{
+    None = 0,
+    LifetimeExpired = 1,
+    TileCollision = 2,
+    BehaviorKill = 3
+}
+
 /// <summary>
 /// One local Terraria projectile subupdate. <see cref="VanillaNumUpdates"/> mirrors the value visible after
 /// vanilla decrements Projectile.numUpdates at the start of the while-loop: the final subupdate is -1.
-/// Lifecycle is runtime-only state and is deliberately not projected through packet 27.
+/// TerminationReason is semantic simulation state for the current local pipeline only; it is never a wire field.
 /// </summary>
 public readonly record struct ProjectileSimulationStepContext(
     ProjectileSnapshot Projectile,
     ProjectileLifecycleState Lifecycle,
     int SubupdateIndex,
-    int SubupdatesPerWorldTick)
+    int SubupdatesPerWorldTick,
+    ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None)
 {
     public int VanillaNumUpdates => SubupdatesPerWorldTick - SubupdateIndex - 2;
 
@@ -23,11 +32,14 @@ public readonly record struct ProjectileSimulationStepContext(
 /// State produced after one complete local projectile subupdate. TimeLeft is the post-subupdate value after
 /// any AI refresh/adjustment and the ordinary vanilla lifetime decrement. Liquid is an optional runtime-only
 /// lifecycle override; null preserves the prior authoritative liquid history for steppers that do not own it.
+/// A non-None TerminationReason must accompany a non-positive TimeLeft; a zero lifetime without an explicit
+/// reason is normalized to LifetimeExpired by the runtime for compatibility with existing steppers.
 /// </summary>
 public readonly record struct ProjectileSimulationStepResult(
     ProjectileStateUpdate State,
     int TimeLeft,
-    ProjectileLiquidState? Liquid = null);
+    ProjectileLiquidState? Liquid = null,
+    ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None);
 
 /// <summary>
 /// State-only projectile simulation stepper. Returning false on the first subupdate means the stepper does
@@ -57,6 +69,19 @@ public interface IProjectileSimulationCommitSink
         bool expired);
 }
 
+/// <summary>
+/// Receives a semantic termination only after the authoritative generation-safe removal commit succeeds. Tile
+/// collision is exposed here for observation/cleanup; behavior that must change the collision result should use
+/// the synchronous projectile behavior pipeline, where the termination reason is visible before commit.
+/// </summary>
+public interface IProjectileTerminationCommitSink
+{
+    void ProjectileTerminated(
+        in ProjectileSnapshot initialProjectile,
+        in ProjectileSnapshot finalProjectile,
+        ProjectileSimulationTerminationReason reason);
+}
+
 /// <summary>Bounded accounting for one projectile state-transition pass.</summary>
 public readonly record struct ProjectileStateTickSummary(
     int Examined,
@@ -75,16 +100,19 @@ public sealed class RuntimeProjectileStateExecutor
 {
     private readonly RuntimeProjectileStore _projectiles;
     private readonly IProjectileSimulationCommitSink? _commitSink;
+    private readonly IProjectileTerminationCommitSink? _terminationSink;
     private readonly ProjectileSnapshot[] _snapshotBuffer;
     private readonly ProjectileSimulationStepResult[] _stepBuffer;
 
     public RuntimeProjectileStateExecutor(
         RuntimeProjectileStore projectiles,
-        IProjectileSimulationCommitSink? commitSink = null)
+        IProjectileSimulationCommitSink? commitSink = null,
+        IProjectileTerminationCommitSink? terminationSink = null)
     {
         ArgumentNullException.ThrowIfNull(projectiles);
         _projectiles = projectiles;
         _commitSink = commitSink;
+        _terminationSink = terminationSink;
         _snapshotBuffer = new ProjectileSnapshot[projectiles.Capacity];
         _stepBuffer = new ProjectileSimulationStepResult[VanillaProjectileUpdateFacts.MaximumExtraUpdates + 1];
     }
@@ -128,10 +156,16 @@ public sealed class RuntimeProjectileStateExecutor
                     subupdate,
                     subupdates);
 
-                if (!stepper.TryStepState(in context, out ProjectileSimulationStepResult next))
+                if (!stepper.TryStepState(in context, out ProjectileSimulationStepResult proposedResult))
                 {
                     if (hasProposal)
                         invalid = true;
+                    break;
+                }
+
+                if (!TryNormalizeTermination(in proposedResult, out ProjectileSimulationStepResult next))
+                {
+                    invalid = true;
                     break;
                 }
 
@@ -192,6 +226,14 @@ public sealed class RuntimeProjectileStateExecutor
                         in committed,
                         expired);
                 }
+
+                if (expired && _terminationSink is not null)
+                {
+                    _terminationSink.ProjectileTerminated(
+                        in projectile,
+                        in committed,
+                        finalResult.TerminationReason);
+                }
             }
             else
             {
@@ -200,6 +242,38 @@ public sealed class RuntimeProjectileStateExecutor
         }
 
         return new ProjectileStateTickSummary(examined, proposed, applied, rejected);
+    }
+
+    internal static bool TryNormalizeTermination(
+        in ProjectileSimulationStepResult proposed,
+        out ProjectileSimulationStepResult normalized)
+    {
+        ProjectileSimulationTerminationReason reason = proposed.TerminationReason;
+        if (reason is not ProjectileSimulationTerminationReason.None and
+            not ProjectileSimulationTerminationReason.LifetimeExpired and
+            not ProjectileSimulationTerminationReason.TileCollision and
+            not ProjectileSimulationTerminationReason.BehaviorKill)
+        {
+            normalized = default;
+            return false;
+        }
+
+        if (proposed.TimeLeft > 0)
+        {
+            if (reason != ProjectileSimulationTerminationReason.None)
+            {
+                normalized = default;
+                return false;
+            }
+
+            normalized = proposed;
+            return true;
+        }
+
+        normalized = reason == ProjectileSimulationTerminationReason.None
+            ? proposed with { TerminationReason = ProjectileSimulationTerminationReason.LifetimeExpired }
+            : proposed;
+        return true;
     }
 
     private static bool TryProjectLifecycle(
