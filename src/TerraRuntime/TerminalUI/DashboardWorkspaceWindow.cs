@@ -629,7 +629,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             rows[14].Text = "OUT <no queued/rejected/slow clients>";
 
         rows[16].Text =
-            $"Timeouts    handshake {snapshot.StopHandshakeTimeout:N0}  idle {snapshot.StopIdleTimeout:N0}  " +
+            $"Timeouts    handshake {snapshot.StopHandshakeTimeout:N0}  join {snapshot.StopJoinTimeout:N0}  idle {snapshot.StopIdleTimeout:N0}  " +
             $"application-stop {snapshot.StopApplicationStopped:N0}";
         rows[17].Text = "F2 returns to System Dashboard";
     }
