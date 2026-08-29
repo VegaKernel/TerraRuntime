@@ -47,29 +47,19 @@ internal static class TerminalUiSmoke
                     AssertRendered(app.Driver!, "Running");
 
                     // Exercise the exact production transition that regressed: an external root is visible,
-                    // then a built-in Details screen must become visible and render its populated labels.
+                    // then every built-in Details screen must become visible through the real MenuBar path.
                     workspace.ShowExternalDashboardForSmoke(0);
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "EXTERNAL DASHBOARD SMOKE");
 
-                    // Exercise the real operator path through MenuBar, not only the screen callbacks.
-                    // Details uses E as its top-level hotkey and Players uses P while the menu is open.
-                    app.Keyboard.RaiseKeyDownEvent(Key.E.WithAlt);
-                    app.LayoutAndDraw();
-                    AssertRendered(app.Driver!, "Players");
-
-                    app.Keyboard.RaiseKeyDownEvent(Key.P);
-                    AssertWorkspaceRow(workspace, "PLAYERS");
-                    app.LayoutAndDraw();
-                    AssertRendered(app.Driver!, "PLAYERS");
-
-                    RenderWorkspaceScreen(app, workspace, workspace.ShowNpcs, "NPCS");
-                    RenderWorkspaceScreen(app, workspace, workspace.ShowProjectiles, "PROJECTILES");
-                    RenderWorkspaceScreen(app, workspace, workspace.ShowItems, "ITEMS");
-                    RenderWorkspaceScreen(app, workspace, workspace.ShowNetwork, "NETWORK");
-                    RenderWorkspaceScreen(app, workspace, workspace.ShowWorld, "WORLD");
-                    RenderWorkspaceScreen(app, workspace, workspace.ShowLogs, "LOG");
-                    RenderWorkspaceScreen(app, workspace, workspace.ShowSystemDashboard, "Running");
+                    SelectDetailsScreen(app, workspace, Key.P, "Players", "PLAYERS");
+                    SelectDetailsScreen(app, workspace, Key.N, "NPCs", "NPCS");
+                    SelectDetailsScreen(app, workspace, Key.R, "Projectiles", "PROJECTILES");
+                    SelectDetailsScreen(app, workspace, Key.I, "Items", "ITEMS");
+                    SelectDetailsScreen(app, workspace, Key.E, "Network", "NETWORK");
+                    SelectDetailsScreen(app, workspace, Key.W, "World", "WORLD");
+                    SelectDetailsScreen(app, workspace, Key.L, "Logs", "LOG");
+                    SelectDetailsScreen(app, workspace, Key.O, "Overview", "Running");
 
                     workspace.SetInterestManagementEnabled(true);
                     app.LayoutAndDraw();
@@ -87,7 +77,7 @@ internal static class TerminalUiSmoke
 
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the System Dashboard, external-dashboard transition, " +
-                "Details menu path, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
+                "all Details menu hotkeys, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -97,13 +87,18 @@ internal static class TerminalUiSmoke
         }
     }
 
-    private static void RenderWorkspaceScreen(
+    private static void SelectDetailsScreen(
         IApplication app,
         DashboardWorkspaceWindow workspace,
-        Action showScreen,
+        Key hotKey,
+        string menuText,
         string expectedRowPrefix)
     {
-        showScreen();
+        app.Keyboard.RaiseKeyDownEvent(Key.E.WithAlt);
+        app.LayoutAndDraw();
+        AssertRendered(app.Driver!, menuText);
+
+        app.Keyboard.RaiseKeyDownEvent(hotKey);
         AssertWorkspaceRow(workspace, expectedRowPrefix);
         app.LayoutAndDraw();
         AssertRendered(app.Driver!, expectedRowPrefix);
