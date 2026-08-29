@@ -14,7 +14,8 @@ internal enum RuntimeWorldCreationPersistenceStatus : byte
     HeaderFailed = 4,
     CompositionFailed = 5,
     AlreadyExists = 6,
-    PublishFailed = 7
+    PublishFailed = 7,
+    GenerationBudgetExceeded = 8
 }
 
 internal readonly record struct RuntimeWorldCreationPersistenceResult(
@@ -35,11 +36,16 @@ internal readonly record struct RuntimeWorldCreationPersistenceResult(
 internal sealed class RuntimeWorldCreationPersistencePipeline
 {
     private readonly RuntimeWorldCreationPipeline creation;
+    private readonly long maxTileCount;
 
-    public RuntimeWorldCreationPersistencePipeline(ITerraRuntimeWorldGeneratorSource generators)
+    public RuntimeWorldCreationPersistencePipeline(
+        ITerraRuntimeWorldGeneratorSource generators,
+        long maxTileCount)
     {
         ArgumentNullException.ThrowIfNull(generators);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxTileCount, 1);
         creation = new RuntimeWorldCreationPipeline(generators);
+        this.maxTileCount = maxTileCount;
     }
 
     public RuntimeWorldCreationPersistenceResult TryCreateAndPersist(
@@ -55,6 +61,23 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
         IWorldGenerationProgressSink? progressSink = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+
+        long tileCount;
+        try
+        {
+            tileCount = checked((long)request.WidthTiles * request.HeightTiles);
+        }
+        catch (OverflowException)
+        {
+            return new RuntimeWorldCreationPersistenceResult(
+                RuntimeWorldCreationPersistenceStatus.GenerationBudgetExceeded);
+        }
+
+        if (tileCount <= 0 || tileCount > maxTileCount)
+        {
+            return new RuntimeWorldCreationPersistenceResult(
+                RuntimeWorldCreationPersistenceStatus.GenerationBudgetExceeded);
+        }
 
         if (File.Exists(outputPath))
         {
@@ -102,7 +125,7 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
             gameMode,
             crimson,
             creationTimeBinary,
-            lastPlayedBinary,
+            lastPlayedTimeBinary: lastPlayedBinary,
             out byte[] canonicalWorld);
         if (!composition.Succeeded)
         {
