@@ -16,8 +16,11 @@ on:
       - 'src/TerraRuntime.World/WorldFileAtomicPublisher.cs'
       - 'src/TerraRuntime.Core/WorldSaveCoordinator.cs'
       - 'src/TerraRuntime.Core/AtomicSaveFileWriter.cs'
+      - 'src/TerraRuntime.Core/AtomicSaveFileWriter.Cleanup.cs'
       - 'src/TerraRuntime.Core/AtomicSaveFileWriterOptions.cs'
       - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterTests.cs'
+      - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterCleanupTests.cs'
+      - 'tests/TerraRuntime.Tests/TerrariaServerHostStartupCleanupTests.cs'
       - 'tests/TerraRuntime.Tests/WorldFileAtomicPublisherTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldSnapshotPreservedSectionsTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldTileChestSaveServiceTests.cs'
@@ -238,6 +241,16 @@ jobs:
 
       - name: Build persistence test assembly
         run: dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+
+      - name: Prove startup orphan save cleanup helper
+        run: >-
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --
+          -class "TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests"
+
+      - name: Prove host startup cleanup ordering
+        run: >-
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --
+          -class "TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests"
 
       - name: Prove embedded cache save template
         run: >-
