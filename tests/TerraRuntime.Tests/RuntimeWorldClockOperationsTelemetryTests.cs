@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Operations;
 
 namespace TerraRuntime.Tests;
@@ -42,6 +43,55 @@ public sealed class RuntimeWorldClockOperationsTelemetryTests
         Assert.Equal(122d, frozen.RuntimeTime);
         Assert.Equal(28d, frozen.RuntimeSlimeRainTime);
         Assert.Equal(0, frozen.RuntimeDayRate);
+    }
+
+    [Fact]
+    public void World_operations_map_section_cache_rebuild_snapshot_without_reading_live_world_state()
+    {
+        var sectionCache = new SectionCacheRebuildPipelineSnapshot(
+            DirtyBacklog: 3,
+            InFlight: 2,
+            CacheEntries: 17,
+            CacheBytes: 123_456,
+            CacheMaximumEntries: 48,
+            CapturedSnapshots: 21,
+            SubmittedRebuilds: 20,
+            RejectedSubmissions: 1,
+            EncodedFrames: 18,
+            EncodeFailures: 2,
+            PublishedFrames: 16,
+            StaleResults: 1,
+            PublishRejections: 1,
+            TotalEncodeDuration: TimeSpan.FromMilliseconds(42),
+            WorkerPool: new WorkerPoolSnapshot(
+                WorkerCount: 1,
+                ActiveWorkers: 1,
+                PendingWork: 1,
+                AcceptedWork: 20,
+                RejectedWork: 1,
+                CompletedWork: 18,
+                FailedWork: 2));
+        var operations = new LocalRuntimeWorldOperations(
+            CreateStaticSnapshot(),
+            sectionCacheSnapshotProvider: () => sectionCache);
+
+        RuntimeWorldSnapshot snapshot = operations.CaptureSnapshot();
+
+        Assert.True(snapshot.SectionCacheAvailable);
+        Assert.Equal(3, snapshot.SectionCacheDirtyBacklog);
+        Assert.Equal(2, snapshot.SectionCacheInFlight);
+        Assert.Equal(17, snapshot.SectionCacheEntries);
+        Assert.Equal(48, snapshot.SectionCacheMaximumEntries);
+        Assert.Equal(123_456, snapshot.SectionCacheBytes);
+        Assert.Equal(20, snapshot.SectionCacheSubmitted);
+        Assert.Equal(1, snapshot.SectionCacheRejected);
+        Assert.Equal(16, snapshot.SectionCachePublished);
+        Assert.Equal(1, snapshot.SectionCacheStaleResults);
+        Assert.Equal(2, snapshot.SectionCacheEncodeFailures);
+        Assert.Equal(1, snapshot.SectionCachePublishRejections);
+        Assert.Equal(1, snapshot.SectionCacheActiveWorkers);
+        Assert.Equal(1, snapshot.SectionCachePendingWork);
+        Assert.Equal(42d, snapshot.SectionCacheTotalEncodeMilliseconds);
     }
 
     private static RuntimeWorldSnapshot CreateStaticSnapshot() =>
