@@ -234,7 +234,12 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             current.OriginalDamage);
 
         int timeLeft = tileImpact ? 0 : projectile.Lifecycle.TimeLeft - 1;
-        next = new ProjectileSimulationStepResult(state, timeLeft, liquid);
+        ProjectileSimulationTerminationReason terminationReason = tileImpact
+            ? ProjectileSimulationTerminationReason.TileCollision
+            : timeLeft <= 0
+                ? ProjectileSimulationTerminationReason.LifetimeExpired
+                : ProjectileSimulationTerminationReason.None;
+        next = new ProjectileSimulationStepResult(state, timeLeft, liquid, terminationReason);
         return true;
     }
 
