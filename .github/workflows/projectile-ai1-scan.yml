@@ -1,4 +1,4 @@
-name: Projectile AI1 Scan
+name: Apply Bone Arrow 474 Runtime Slice
 
 on:
   push:
@@ -8,139 +8,41 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  scan:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Download official TerrariaServer 1.4.5.8
+      - name: Apply source-backed BoneArrowFromMerchant slice
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .cache/terraria-1458 artifacts/ai1-scan .tools
-          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
-          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
-      - name: Install pinned ILSpy
-        run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
-      - name: Prove BoneArrowFromMerchant type 474 contract
-        shell: bash
-        run: |
-          set -euo pipefail
-          expected_sha256='d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e'
-          assembly=''
-          while IFS= read -r -d '' candidate; do
-            sha="$(sha256sum "$candidate" | awk '{print $1}')"
-            if [[ "$sha" == "$expected_sha256" ]]; then assembly="$candidate"; break; fi
-          done < <(find .cache/terraria-1458/extracted -type f -name TerrariaServer.exe -print0)
-          test -n "$assembly"
-          dir="$(dirname "$assembly")"
-          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.Projectile "$assembly" > artifacts/ai1-scan/projectile.cs
-          .tools/ilspycmd --disable-updatecheck -r "$dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/ai1-scan/projectile-id.cs
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
+          git fetch origin main
+          git reset --hard origin/main
 
-          src = Path('artifacts/ai1-scan/projectile.cs').read_text(encoding='utf-8')
-          ids = Path('artifacts/ai1-scan/projectile-id.cs').read_text(encoding='utf-8')
-          target = 474
+          python3 -m py_compile .github/scripts/apply_bone_arrow_474.py
+          python3 .github/scripts/apply_bone_arrow_474.py
+          python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
 
-          def extract_method(text, name):
-              m = re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$', text)
-              if not m: raise SystemExit(f'method not found: {name}')
-              op = text.find('{', m.end())
-              d = 0
-              for i in range(op, len(text)):
-                  if text[i] == '{': d += 1
-                  elif text[i] == '}':
-                      d -= 1
-                      if d == 0: return text[m.start():i+1]
-              raise SystemExit(f'unterminated method: {name}')
-
-          def extract_block_after(text, pos):
-              op = text.find('{', pos)
-              if op < 0: raise SystemExit('block open not found')
-              d = 0
-              for i in range(op, len(text)):
-                  if text[i] == '{': d += 1
-                  elif text[i] == '}':
-                      d -= 1
-                      if d == 0: return text[op:i+1]
-              raise SystemExit('unterminated block')
-
-          def exact_contexts(text, raw_type, radius=900):
-              compact = ' '.join(text.split())
-              p = re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{raw_type}(?!\d)|\bcase\s+{raw_type}\s*:')
-              return [compact[max(0,m.start()-radius):min(len(compact),m.end()+radius)] for m in p.finditer(compact)]
-
-          def extract_wind_initializer(text):
-              m = re.search(r'WindPhysicsImmunity\s*=\s*Factory\.CreateCustomSet<bool\?>\s*\(', text)
-              if not m:
-                  lines = [' '.join(line.split()) for line in text.splitlines() if 'WindPhysicsImmunity' in line]
-                  raise SystemExit('wind initializer not found; lines=' + ' | '.join(lines[:5]))
-              op = text.find('(', m.start())
-              d = 0
-              in_string = False
-              escaped = False
-              for i in range(op, len(text)):
-                  ch=text[i]
-                  if escaped:
-                      escaped=False; continue
-                  if ch == '\\' and in_string:
-                      escaped=True; continue
-                  if ch == '"':
-                      in_string = not in_string; continue
-                  if in_string: continue
-                  if ch == '(': d += 1
-                  elif ch == ')':
-                      d -= 1
-                      if d == 0: return text[m.start():i+1]
-              raise SystemExit('unterminated wind initializer')
-
-          if not re.search(r'public const (?:short|int)\s+BoneArrowFromMerchant\s*=\s*474\s*;', ids):
-              raise SystemExit('ProjectileID.BoneArrowFromMerchant != 474')
-
-          defaults = extract_method(src, 'SetDefaults')
-          dm = re.search(r'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*474\s*\)', defaults)
-          if not dm: raise SystemExit('type 474 defaults branch missing')
-          defaults_block = extract_block_after(defaults, dm.end())
-          required = ('arrow = true;', 'width = 10;', 'height = 10;', 'aiStyle = 1;', 'friendly = true;', 'penetrate = 2;', 'ranged = true;', 'timeLeft = 1200;')
-          for token in required:
-              if token not in defaults_block: raise SystemExit(f'type 474 default missing: {token}')
-          for forbidden in ('tileCollide = false;', 'ignoreWater = true;', 'extraUpdates ='):
-              if forbidden in defaults_block: raise SystemExit(f'type 474 unexpected default: {forbidden}')
-
-          report=['projectile_id=BoneArrowFromMerchant:474', 'defaults=' + ' '.join(defaults_block.split())]
-          for name in ('AI_001','AI','Update','HandleMovement','GetCollisionParams'):
-              contexts=exact_contexts(extract_method(src,name), target)
-              if contexts: raise SystemExit(f'type 474 unexpectedly special in {name}: {len(contexts)}')
-              report.append(f'{name}_type474=<none>')
-
-          kill_contexts = exact_contexts(extract_method(src, 'Kill'), target, radius=1300)
-          if len(kill_contexts) != 1: raise SystemExit(f'expected one type474 Kill context, got {len(kill_contexts)}')
-          report.append('kill_context=' + kill_contexts[0])
-
-          can_cut = ' '.join(extract_method(src, 'CanCutTiles').split())
-          if exact_contexts(can_cut, target, radius=200): raise SystemExit('type474 has explicit CanCutTiles branch')
-          report.append('can_cut_tiles=' + can_cut)
-
-          wind = ' '.join(extract_wind_initializer(ids).split())
-          if not wind.startswith('WindPhysicsImmunity') or 'CreateCustomSet<bool?>(null' not in wind:
-              raise SystemExit('unexpected wind table default semantics')
-          if re.search(r'(?<!\d)474(?!\d)', wind): raise SystemExit('type474 unexpectedly listed in WindPhysicsImmunity')
-          report.append('wind_physics_immunity=' + wind)
-
-          out='\n'.join(report)+'\n'
-          Path('artifacts/ai1-scan/report.txt').write_text(out, encoding='utf-8')
-          print(out)
-          PY
-          rm artifacts/ai1-scan/projectile.cs artifacts/ai1-scan/projectile-id.cs
-      - uses: actions/upload-artifact@v4
-        with:
-          name: projectile-ai1-scan
-          path: artifacts/ai1-scan/report.txt
-          if-no-files-found: error
+          git config user.name OpenAI
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/scripts/apply_bone_arrow_474.py
+          git add src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
+                  src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs \
+                  src/TerraRuntime/VanillaProjectileWorldStateStepper.cs \
+                  tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs \
+                  tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs \
+                  tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs \
+                  tools/ci/probe_projectile_tile_cut.py
+          git commit -m 'feat: simulate bone arrow merchant world flight'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
