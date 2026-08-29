@@ -25,6 +25,40 @@ public readonly record struct WorldGeneratorId : IComparable<WorldGeneratorId>
     public override string ToString() => Value;
 }
 
+public enum WorldGenerationGameMode : byte
+{
+    Classic = 0,
+    Expert = 1,
+    Master = 2,
+    Journey = 3
+}
+
+public enum WorldGenerationEvil : byte
+{
+    Corruption = 0,
+    Crimson = 1
+}
+
+/// <summary>
+/// Gameplay-visible world options that affect both generation and the persisted vanilla header state. Keeping these
+/// on the request prevents a host adapter from silently changing world semantics after custom generation completed.
+/// </summary>
+public readonly record struct WorldGenerationOptions(
+    WorldGenerationGameMode GameMode,
+    WorldGenerationEvil Evil)
+{
+    public static WorldGenerationOptions Default =>
+        new(WorldGenerationGameMode.Classic, WorldGenerationEvil.Corruption);
+
+    public void Validate()
+    {
+        if (!Enum.IsDefined(GameMode))
+            throw new ArgumentOutOfRangeException(nameof(GameMode));
+        if (!Enum.IsDefined(Evil))
+            throw new ArgumentOutOfRangeException(nameof(Evil));
+    }
+}
+
 /// <summary>Immutable request used to build and execute one isolated candidate world.</summary>
 public readonly record struct WorldGenerationRequest(
     WorldGeneratorId GeneratorId,
@@ -35,6 +69,12 @@ public readonly record struct WorldGenerationRequest(
 {
     public const int MaxWorldNameLength = 128;
 
+    /// <summary>
+    /// Supported world options visible to every pass. The default value is Classic + Corruption, preserving the
+    /// semantics of existing callers that predate the explicit options surface.
+    /// </summary>
+    public WorldGenerationOptions Options { get; init; } = WorldGenerationOptions.Default;
+
     public void Validate()
     {
         if (!GeneratorId.IsAssigned)
@@ -43,6 +83,7 @@ public readonly record struct WorldGenerationRequest(
         ArgumentOutOfRangeException.ThrowIfGreaterThan(WorldName.Length, MaxWorldNameLength);
         ArgumentOutOfRangeException.ThrowIfLessThan(WidthTiles, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(HeightTiles, 1);
+        Options.Validate();
         _ = checked((long)WidthTiles * HeightTiles);
     }
 }
