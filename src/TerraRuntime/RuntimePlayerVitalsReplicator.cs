@@ -140,11 +140,10 @@ internal sealed class RuntimePlayerVitalsReplicator
 
     private sealed class Endpoint
     {
-        private readonly object _gate = new();
-        private PlayerHandle _snapshotOwner;
-        private PlayerHandle _playingPlayer;
-        private byte[]? _healthFrame;
-        private byte[]? _manaFrame;
+        private OwnedFrame? healthFrame;
+        private OwnedFrame? manaFrame;
+        private int playingSlot = -1;
+        private ulong playingGeneration;
 
         public Endpoint(TerrariaConnectionOutboundQueue outbound)
         {
@@ -156,103 +155,89 @@ internal sealed class RuntimePlayerVitalsReplicator
         public void UpdateHealth(PlayerHandle player, byte[] encoded)
         {
             ArgumentNullException.ThrowIfNull(encoded);
-            lock (_gate)
-            {
-                ResetSnapshotsIfOwnerChanged(player);
-                _healthFrame = encoded;
-            }
+            Volatile.Write(ref healthFrame, new OwnedFrame(player, encoded));
         }
 
         public void UpdateMana(PlayerHandle player, byte[] encoded)
         {
             ArgumentNullException.ThrowIfNull(encoded);
-            lock (_gate)
-            {
-                ResetSnapshotsIfOwnerChanged(player);
-                _manaFrame = encoded;
-            }
+            Volatile.Write(ref manaFrame, new OwnedFrame(player, encoded));
         }
 
         public void MarkPlaying(PlayerHandle player)
         {
-            lock (_gate)
-            {
-                ResetSnapshotsIfOwnerChanged(player);
-                _playingPlayer = player;
-            }
+            Volatile.Write(ref playingGeneration, player.Generation.Value);
+            Volatile.Write(ref playingSlot, player.Slot.Value);
         }
 
-        public bool IsPlaying(PlayerHandle expected)
-        {
-            lock (_gate)
-                return _playingPlayer == expected;
-        }
+        public bool IsPlaying(PlayerHandle expected) =>
+            Volatile.Read(ref playingSlot) == expected.Slot.Value &&
+            Volatile.Read(ref playingGeneration) == expected.Generation.Value;
 
         public bool TryGetPlayingPlayer(out PlayerHandle player)
         {
-            lock (_gate)
+            int slot = Volatile.Read(ref playingSlot);
+            ulong generation = Volatile.Read(ref playingGeneration);
+            if (slot < 0 || generation == 0)
             {
-                player = _playingPlayer;
-                return player.IsAssigned;
+                player = default;
+                return false;
             }
+
+            player = new PlayerHandle(
+                new PlayerSlotId(checked((byte)slot)),
+                new PlayerSessionGeneration(generation));
+            return true;
         }
 
-        public bool TryGetHealth(PlayerHandle expected, out OutboundFrame frame)
-        {
-            lock (_gate)
-            {
-                if (_snapshotOwner != expected || _healthFrame is null)
-                {
-                    frame = default;
-                    return false;
-                }
+        public bool TryGetHealth(PlayerHandle expected, out OutboundFrame frame) =>
+            TryGetFrame(Volatile.Read(ref healthFrame), expected, out frame);
 
-                frame = new OutboundFrame(_healthFrame);
-                return true;
-            }
-        }
-
-        public bool TryGetMana(PlayerHandle expected, out OutboundFrame frame)
-        {
-            lock (_gate)
-            {
-                if (_snapshotOwner != expected || _manaFrame is null)
-                {
-                    frame = default;
-                    return false;
-                }
-
-                frame = new OutboundFrame(_manaFrame);
-                return true;
-            }
-        }
+        public bool TryGetMana(PlayerHandle expected, out OutboundFrame frame) =>
+            TryGetFrame(Volatile.Read(ref manaFrame), expected, out frame);
 
         public void Clear(PlayerHandle expected)
         {
-            lock (_gate)
-            {
-                if (_snapshotOwner == expected)
-                {
-                    _snapshotOwner = default;
-                    _healthFrame = null;
-                    _manaFrame = null;
-                }
+            ClearFrame(ref healthFrame, expected);
+            ClearFrame(ref manaFrame, expected);
 
-                if (_playingPlayer == expected)
-                    _playingPlayer = default;
+            if (Volatile.Read(ref playingGeneration) != expected.Generation.Value ||
+                Interlocked.CompareExchange(ref playingSlot, -1, expected.Slot.Value) != expected.Slot.Value)
+            {
+                return;
+            }
+
+            Volatile.Write(ref playingGeneration, 0);
+        }
+
+        private static bool TryGetFrame(
+            OwnedFrame? owned,
+            PlayerHandle expected,
+            out OutboundFrame frame)
+        {
+            if (owned is null || owned.Owner != expected)
+            {
+                frame = default;
+                return false;
+            }
+
+            frame = new OutboundFrame(owned.Encoded);
+            return true;
+        }
+
+        private static void ClearFrame(ref OwnedFrame? target, PlayerHandle expected)
+        {
+            while (true)
+            {
+                OwnedFrame? current = Volatile.Read(ref target);
+                if (current is null || current.Owner != expected)
+                    return;
+
+                if (ReferenceEquals(Interlocked.CompareExchange(ref target, null, current), current))
+                    return;
             }
         }
-
-        private void ResetSnapshotsIfOwnerChanged(PlayerHandle player)
-        {
-            if (_snapshotOwner == player)
-                return;
-
-            _snapshotOwner = player;
-            _healthFrame = null;
-            _manaFrame = null;
-            if (_playingPlayer != player)
-                _playingPlayer = default;
-        }
     }
+
+    private sealed record OwnedFrame(PlayerHandle Owner, byte[] Encoded);
 }
