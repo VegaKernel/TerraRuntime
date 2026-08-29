@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Extract pinned aiStyle2 candidates
+      - name: Extract pinned simple aiStyle2 candidate details
         shell: bash
         run: |
           set -euo pipefail
@@ -38,8 +38,9 @@ jobs:
           python3 - <<'PY'
           import re
           from pathlib import Path
-          p=Path('artifacts/ai2/projectile.cs').read_text(encoding='utf-8')
+          source=Path('artifacts/ai2/projectile.cs').read_text(encoding='utf-8')
           ids=Path('artifacts/ai2/projectile-id.cs').read_text(encoding='utf-8')
+          candidates=[318,330,583,589,996,1012,1111]
           def compact(x): return ' '.join(x.split())
           def method(src,name):
               m=re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$',src)
@@ -57,39 +58,38 @@ jobs:
                       d-=1
                       if d==0:return src[m.start():i+1]
               raise SystemExit(f'unterminated: {name}')
-          defaults=compact(method(p,'SetDefaults'))
-          methods={name:compact(method(p,name)) for name in ['AI','Update','GetCollisionParams','HandleMovement','Kill','CanCutTiles']}
+          def exact_context(src,t,radius=2600):
+              s=compact(src)
+              pat=re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|(?<!\d){t}\s*(?:==|!=)\s*type(?!\d)')
+              out=[]
+              for m in pat.finditer(s):out.append(s[max(0,m.start()-radius):min(len(s),m.end()+radius)])
+              return ' | '.join(out) if out else '<none>'
           names={int(v):n for n,v in re.findall(r'public const short\s+([A-Za-z0-9_]+)\s*=\s*(\d+)\s*;',ids)}
-          branch_positions=[(m.start(),int(m.group(1))) for m in re.finditer(r'(?:else if|if) \(type == (\d+)\) \{',defaults)]
-          candidates=[]
-          for m in re.finditer(r'\baiStyle = 2;',defaults):
-              preceding=[item for item in branch_positions if item[0] < m.start()]
-              if not preceding: continue
-              type_id=preceding[-1][1]
-              if type_id not in candidates:candidates.append(type_id)
-          def has_type(src,t):
-              return bool(re.search(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|(?<!\d){t}\s*(?:==|!=)\s*type(?!\d)',src))
-          def default_context(t):
-              pat=re.compile(rf'(?:else if|if) \(type == {t}\) \{{')
-              m=pat.search(defaults)
-              if not m:return '<none>'
-              later=re.search(r' else if \(type == \d+\) \{',defaults[m.end():])
-              end=m.end()+later.start() if later else min(len(defaults),m.end()+1800)
-              return defaults[m.start():min(end,m.start()+1800)]
+          defaults=method(source,'SetDefaults'); ai=method(source,'AI'); update=method(source,'Update')
+          collision=method(source,'GetCollisionParams'); movement=method(source,'HandleMovement'); kill=method(source,'Kill'); cancut=method(source,'CanCutTiles')
           lines=[]
-          lines.append('ai2_candidate_count='+str(len(candidates)))
           for t in candidates:
-              flags={name:has_type(src,t) for name,src in methods.items()}
-              safe=not any(flags[name] for name in ['AI','Update','GetCollisionParams','HandleMovement','Kill'])
-              lines.append(
-                  f'type={t} name={names.get(t,"<unnamed>")} clean={str(safe).lower()} '
-                  + ' '.join(f'{k}={str(v).lower()}' for k,v in flags.items())
-                  + ' defaults=' + default_context(t))
-          Path('artifacts/ai2/ai2-candidates.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+              kill_ctx=exact_context(kill,t,3200)
+              authoritative=[]
+              for needle in ['NewProjectile','KillTile','PlaceTile','NewItem','NewNPC','SendData','netUpdate','Transform','Explosion','TileRunner']:
+                  if needle in kill_ctx: authoritative.append(needle)
+              lines.extend([
+                  f'type={t} name={names.get(t,"<unnamed>")}',
+                  'defaults='+exact_context(defaults,t,1800),
+                  'ai='+exact_context(ai,t,2200),
+                  'update='+exact_context(update,t,1800),
+                  'collision='+exact_context(collision,t,1800),
+                  'movement='+exact_context(movement,t,1800),
+                  'kill='+kill_ctx,
+                  'kill_authoritative_tokens='+(','.join(authoritative) if authoritative else '<none>'),
+                  'can_cut='+exact_context(cancut,t,1000),
+                  '---'
+              ])
+          Path('artifacts/ai2/simple-ai2-details.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
           print('\n'.join(lines))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: projectile-ai2-candidates
-          path: artifacts/ai2/ai2-candidates.txt
+          name: projectile-simple-ai2-details
+          path: artifacts/ai2/simple-ai2-details.txt
           retention-days: 1
