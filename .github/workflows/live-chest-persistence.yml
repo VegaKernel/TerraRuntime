@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: terra-runtime-live-chest-persistence-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   restart-proof:
