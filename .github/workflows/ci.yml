@@ -199,6 +199,7 @@ jobs:
         run: |
           root="artifacts/native-aot/linux-x64"
           test -x "$root/TerraRuntime.Server"
+          test -f "$root/libonigwrap.so"
           for dir in Worlds config data logs; do
             test -d "$root/$dir"
           done
@@ -209,6 +210,7 @@ jobs:
           fi
           unexpected="$(find "$root" -mindepth 1 -maxdepth 1 \
             ! -name TerraRuntime.Server \
+            ! -name libonigwrap.so \
             ! -name Worlds \
             ! -name config \
             ! -name data \
@@ -259,8 +261,9 @@ jobs:
         shell: pwsh
         run: |
           $root = "artifacts/native-aot/win-x64"
-          $allowed = @("TerraRuntime.Server.exe", "Worlds", "config", "data", "logs")
+          $allowed = @("TerraRuntime.Server.exe", "libonigwrap.dll", "Worlds", "config", "data", "logs")
           if (-not (Test-Path "$root/TerraRuntime.Server.exe" -PathType Leaf)) { throw "Missing TerraRuntime.Server.exe" }
+          if (-not (Test-Path "$root/libonigwrap.dll" -PathType Leaf)) { throw "Missing required native dependency: libonigwrap.dll" }
           foreach ($dir in @("Worlds", "config", "data", "logs")) {
             if (-not (Test-Path "$root/$dir" -PathType Container)) { throw "Missing deployment directory: $dir" }
           }
