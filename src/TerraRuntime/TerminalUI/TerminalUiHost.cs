@@ -125,15 +125,12 @@ internal sealed class TerminalUiHost : IDisposable
 
             ITerraRuntimeTerminalDashboardSource? terminalDashboards =
                 StartupProgram.CurrentTerminalDashboards;
-            using var window = new DashboardWindow(
+            using var window = new DashboardWorkspaceWindow(
                 dashboardOperations,
                 playerOperations,
-                npcOperations,
                 networkOperations,
                 worldOperations,
                 logOperations,
-                projectileOperations,
-                worldItemOperations,
                 terminalDashboards);
 
             long nextRefresh = 0;
