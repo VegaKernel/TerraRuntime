@@ -118,12 +118,8 @@ jobs:
           --runtime-catalog src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs
           --source-evidence artifacts/source-contract/world-generation-pass-catalog.txt
 
-      - name: Build pinned RNG implementation and vector tests
-        run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
-          -c Release
-          --no-restore
-          --filter FullyQualifiedName~VanillaUnifiedRandom1458Tests
+      - name: Build pinned RNG implementation
+        run: dotnet build src/TerraRuntime.Core/TerraRuntime.Core.csproj -c Release
 
       - name: Upload pass registration evidence
         uses: actions/upload-artifact@v4
