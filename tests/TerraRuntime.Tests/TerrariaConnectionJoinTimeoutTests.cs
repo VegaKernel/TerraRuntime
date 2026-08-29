@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using TerraRuntime.Network;
@@ -15,8 +14,8 @@ public sealed class TerrariaConnectionJoinTimeoutTests
         var options = new TerrariaConnectionPolicyOptions(
             handshakeTimeout: TimeSpan.FromSeconds(10),
             idleTimeout: Timeout.InfiniteTimeSpan,
-            ConnectionRateBudgetOptions.AccountingOnly,
-            ConnectionMessageRateLimits.None,
+            rateBudget: ConnectionRateBudgetOptions.AccountingOnly,
+            messageRateLimits: ConnectionMessageRateLimits.None,
             joinTimeout: TimeSpan.FromSeconds(30));
         var state = new TerrariaConnectionPolicyState(options, time);
 
@@ -53,8 +52,8 @@ public sealed class TerrariaConnectionJoinTimeoutTests
         var policy = new TerrariaConnectionPolicyOptions(
             handshakeTimeout: TimeSpan.FromSeconds(2),
             idleTimeout: Timeout.InfiniteTimeSpan,
-            ConnectionRateBudgetOptions.AccountingOnly,
-            ConnectionMessageRateLimits.None,
+            rateBudget: ConnectionRateBudgetOptions.AccountingOnly,
+            messageRateLimits: ConnectionMessageRateLimits.None,
             joinTimeout: TimeSpan.FromMilliseconds(200));
 
         Task<TerrariaSocketRunResult> run = TerrariaSocketConnection.RunAsync(
@@ -96,8 +95,8 @@ public sealed class TerrariaConnectionJoinTimeoutTests
         var policy = new TerrariaConnectionPolicyOptions(
             handshakeTimeout: TimeSpan.FromSeconds(2),
             idleTimeout: Timeout.InfiniteTimeSpan,
-            ConnectionRateBudgetOptions.AccountingOnly,
-            ConnectionMessageRateLimits.None,
+            rateBudget: ConnectionRateBudgetOptions.AccountingOnly,
+            messageRateLimits: ConnectionMessageRateLimits.None,
             joinTimeout: TimeSpan.FromMilliseconds(100));
 
         Task<TerrariaSocketRunResult> run = TerrariaSocketConnection.RunAsync(
