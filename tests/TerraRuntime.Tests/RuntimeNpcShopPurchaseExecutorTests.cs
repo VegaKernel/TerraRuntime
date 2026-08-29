@@ -27,9 +27,9 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
         Assert.True(fixture.Inventory.TryGet(fixture.Buyer, 52, out RuntimePlayerInventoryItem copper));
         Assert.Equal(VanillaCoinFacts.CopperCoin, copper.ItemType);
         Assert.Equal((short)99, copper.Stack);
-        Assert.True(fixture.Inventory.TryGet(fixture.Buyer, 53, out RuntimePlayerInventoryItem oldPlatinum));
-        Assert.True(oldPlatinum.IsEmpty);
-        Assert.Equal(5, fixture.Events.EquipmentUpdates.Count);
+        Assert.True(fixture.Inventory.TryGet(fixture.Buyer, 53, out RuntimePlayerInventoryItem unusedCoinSlot));
+        Assert.True(unusedCoinSlot.IsEmpty);
+        Assert.Equal(4, fixture.Events.EquipmentUpdates.Count);
     }
 
     [Fact]
