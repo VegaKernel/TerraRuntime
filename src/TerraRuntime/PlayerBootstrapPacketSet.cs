@@ -257,7 +257,8 @@ public sealed partial class PlayerBootstrapPacketSet
 
     /// <summary>
     /// Resolves the base spawn section frames against current tile versions. Testing packet sets have no live
-    /// world and simply return their immutable fixtures; production sets refresh only sections that changed.
+    /// world and simply return their immutable fixtures; production sets wait for the bounded worker pipeline
+    /// when a current section frame has not been published yet.
     /// </summary>
     public bool TryGetBaseSectionFrames(out ReadOnlyMemory<byte>[] frames)
     {
@@ -272,13 +273,13 @@ public sealed partial class PlayerBootstrapPacketSet
         frames = new ReadOnlyMemory<byte>[_baseSections.Length];
         for (int i = 0; i < _baseSections.Length; i++)
         {
-            if (!TryGetOrEncodeSection(_baseSections[i], out SectionCacheEntry entry))
+            if (!TryGetOrRequestSectionFrame(_baseSections[i], out ReadOnlyMemory<byte> frame))
             {
                 frames = [];
                 return false;
             }
 
-            frames[i] = entry.TileSectionFrame;
+            frames[i] = frame;
         }
 
         return true;
@@ -343,13 +344,13 @@ public sealed partial class PlayerBootstrapPacketSet
         var additionalFrames = new List<ReadOnlyMemory<byte>>(additionalCount);
         for (int i = 0; i < additionalCount; i++)
         {
-            if (!TryGetOrEncodeSection(additionalSections[i], out SectionCacheEntry entry))
+            if (!TryGetOrRequestSectionFrame(additionalSections[i], out ReadOnlyMemory<byte> sectionFrame))
             {
                 response = default;
                 return false;
             }
 
-            additionalFrames.Add(entry.TileSectionFrame);
+            additionalFrames.Add(sectionFrame);
         }
 
         ReadOnlyMemory<byte> statusFrame = additionalCount == 0
