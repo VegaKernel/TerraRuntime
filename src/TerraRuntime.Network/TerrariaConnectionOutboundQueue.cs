@@ -25,6 +25,10 @@ public sealed class TerrariaConnectionOutboundQueue
 
     public long QueuedBytes => _queue.QueuedBytes;
 
+    public long PeakQueuedFrames => _queue.PeakQueuedFrames;
+
+    public long PeakQueuedBytes => _queue.PeakQueuedBytes;
+
     public long RejectedFrames => _queue.RejectedFrames;
 
     internal BoundedOutboundQueue InnerQueue => _queue;
