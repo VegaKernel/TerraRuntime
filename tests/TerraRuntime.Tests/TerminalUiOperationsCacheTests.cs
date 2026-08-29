@@ -8,6 +8,7 @@ public sealed class TerminalUiOperationsCacheTests
     [Fact]
     public async Task Ui_reads_keep_previous_snapshot_while_background_capture_is_blocked()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         using var source = new BlockingOperations();
         var cache = new TerminalUiOperationsCache(
             source,
@@ -22,8 +23,8 @@ public sealed class TerminalUiOperationsCacheTests
         Assert.Equal(0, cache.Version);
 
         source.BlockDashboardCapture();
-        Task refresh = Task.Run(cache.Refresh);
-        Assert.True(source.WaitUntilDashboardCaptureStarted(TimeSpan.FromSeconds(2)));
+        Task refresh = Task.Run(cache.Refresh, cancellationToken);
+        Assert.True(source.WaitUntilDashboardCaptureStarted(TimeSpan.FromSeconds(2), cancellationToken));
 
         // The TUI read must not wait for the in-progress source capture. It consumes the last atomically
         // published detached state and remains free to process keyboard/mouse input.
@@ -31,7 +32,7 @@ public sealed class TerminalUiOperationsCacheTests
         Assert.False(refresh.IsCompleted);
 
         source.ReleaseDashboardCapture();
-        await refresh.WaitAsync(TimeSpan.FromSeconds(2));
+        await refresh.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
 
         Assert.Equal(2, dashboard.CaptureSnapshot().Tick);
         Assert.Equal(1, cache.Version);
@@ -89,7 +90,8 @@ public sealed class TerminalUiOperationsCacheTests
 
         public void BlockDashboardCapture() => Volatile.Write(ref blockDashboardCapture, 1);
 
-        public bool WaitUntilDashboardCaptureStarted(TimeSpan timeout) => dashboardCaptureStarted.Wait(timeout);
+        public bool WaitUntilDashboardCaptureStarted(TimeSpan timeout, CancellationToken cancellationToken) =>
+            dashboardCaptureStarted.Wait(timeout, cancellationToken);
 
         public void ReleaseDashboardCapture()
         {
