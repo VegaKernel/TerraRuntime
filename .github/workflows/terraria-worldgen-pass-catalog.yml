@@ -10,6 +10,7 @@ on:
       - 'tools/ci/probe_worldgen_seed.py'
       - 'tools/ci/probe_worldgen_config.py'
       - 'tools/ci/verify_runtime_worldgen_catalog.py'
+      - 'tools/ci/verify_runtime_worldgen_rng.py'
       - 'src/TerraRuntime.Core/VanillaUnifiedRandom1458.cs'
       - 'src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaUnifiedRandom1458Tests.cs'
@@ -163,6 +164,12 @@ jobs:
           python3 tools/ci/verify_runtime_worldgen_catalog.py
           --runtime-catalog src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs
           --source-evidence artifacts/source-contract/world-generation-pass-catalog.txt
+
+      - name: Verify runtime RNG against pinned fingerprints
+        run: >-
+          python3 tools/ci/verify_runtime_worldgen_rng.py
+          --runtime-rng src/TerraRuntime.Core/VanillaUnifiedRandom1458.cs
+          --source-evidence artifacts/source-contract/worldgen-rng-contract.txt
 
       - name: Build pinned RNG implementation
         run: dotnet build src/TerraRuntime.Core/TerraRuntime.Core.csproj -c Release
