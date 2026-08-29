@@ -147,12 +147,14 @@ Describe target state, acceptance criteria and incomplete work. They must not ma
 
 `tools/ci/check_documentation.py` runs in the main `build-test` CI job before restore/build/test for repository-wide structural/link validation.
 
-The checker validates structural invariants rather than attempting machine translation:
+The checker validates structural and presentation invariants rather than attempting machine translation:
 
 - `docs/en/` and `docs/ru/` must contain the same set of Markdown pages;
 - the required baseline pages listed by the checker must exist in both languages;
 - repository-local Markdown links in `docs/**/*.md`, root `README.md` and `AGENTS.md` must resolve to an existing path;
-- relative links may not escape the repository root.
+- relative links may not escape the repository root;
+- obvious ASCII/pseudographic process diagrams inside `text` fences are rejected in favor of Mermaid;
+- literal directory trees, CLI/output, byte layouts and similar data remain valid text fences; a rare intentionally diagram-like literal block may use the documented `<!-- docs-style: literal-text -->` marker.
 
 The dedicated `.github/workflows/documentation.yml` workflow checks out full Git history and invokes the same checker with `--changed-base`. That adds a change-set invariant: every changed `docs/en/<page>.md` requires the matching changed `docs/ru/<page>.md` in the same push/PR diff, and vice versa.
 
@@ -160,7 +162,7 @@ For direct work on `main`, paired language edits should therefore be committed a
 
 The gate does **not** claim to prove semantic translation equivalence. Review remains responsible for meaning and factual parity between the two language versions.
 
-Run the structural/link check locally from the repository root:
+Run the structural/link/style check locally from the repository root:
 
 ```text
 python3 tools/ci/check_documentation.py
@@ -193,7 +195,7 @@ The `--changed-base <sha>` form is used by CI when a concrete push/PR base is av
 - [x] Add lightweight RU/EN structural parity validation without machine translation or line-by-line equality.
 - [x] Enforce paired RU/EN page changes in the same push/PR diff through the dedicated Documentation workflow.
 - [x] Adopt Mermaid + LaTeX as the documentation presentation standard and migrate the main architecture guide.
-- [ ] Migrate remaining legacy pseudographic subsystem diagrams to Mermaid and normalize dimensional numeric values to LaTeX.
+- [x] Migrate legacy pseudographic subsystem/process diagrams to Mermaid, normalize dimensional numeric values to LaTeX where applicable, and enforce the process-diagram rule in CI.
 
 ## Continuing work
 
