@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
