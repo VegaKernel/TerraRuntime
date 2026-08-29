@@ -1,3 +1,4 @@
+using System.Text;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
 using Terminal.Gui.App;
@@ -9,28 +10,31 @@ namespace TerraRuntime.TerminalUI;
 
 internal static class TerminalUiSmoke
 {
+    private const int SmokeWidth = 160;
+    private const int SmokeHeight = 28;
+
     public static int Run()
     {
         try
         {
-            using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
-            app.StopAfterFirstIteration = true;
             var operations = new SmokeOperations();
             var logs = new RuntimeLogBuffer(capacity: 16);
             logs.Publish(RuntimeLogLevel.Information, "Server", "Terminal UI smoke startup");
             logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
             RuntimeChatTelemetry.Publish(0, "Synthetic dashboard chat message");
 
-            using (var legacyWindow = new DashboardWindow(
-                       operations,
-                       operations,
-                       operations,
-                       operations,
-                       operations,
-                       logs,
-                       operations,
-                       operations))
+            using (IApplication legacyApp = Application.Create().Init(DriverRegistry.Names.ANSI))
             {
+                legacyApp.StopAfterFirstIteration = true;
+                using var legacyWindow = new DashboardWindow(
+                    operations,
+                    operations,
+                    operations,
+                    operations,
+                    operations,
+                    logs,
+                    operations,
+                    operations);
                 legacyWindow.RefreshSnapshot();
                 legacyWindow.ShowPlayers();
                 legacyWindow.ShowNpcs();
@@ -42,43 +46,62 @@ internal static class TerminalUiSmoke
                 legacyWindow.ShowDashboard();
                 legacyWindow.SetInterestManagementEnabled(true);
                 legacyWindow.SetInterestManagementEnabled(false);
-                app.Run(legacyWindow);
+                legacyApp.Run(legacyWindow);
             }
 
-            using (var workspace = new DashboardWorkspaceWindow(
-                       operations,
-                       operations,
-                       operations,
-                       operations,
-                       operations,
-                       logs,
-                       new SmokeDashboardSource(),
-                       operations,
-                       operations))
+            using (IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI))
             {
-                workspace.RefreshSnapshot();
-                AssertWorkspaceRow(workspace, "Running");
+                app.Driver!.SetScreenSize(SmokeWidth, SmokeHeight);
+                using var workspace = new DashboardWorkspaceWindow(
+                    operations,
+                    operations,
+                    operations,
+                    operations,
+                    operations,
+                    logs,
+                    new SmokeDashboardSource(),
+                    operations,
+                    operations);
 
-                // Render an external dashboard first so the smoke path exercises the same root visibility
-                // transition that production uses before returning to a built-in Details screen.
-                workspace.ShowExternalDashboardForSmoke(0);
-                app.Run(workspace);
+                SessionToken token = app.Begin(workspace)!;
+                try
+                {
+                    workspace.RefreshSnapshot();
+                    AssertWorkspaceRow(workspace, "Running");
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Running");
 
-                RenderWorkspaceScreen(app, workspace, workspace.ShowPlayers, "PLAYERS");
-                RenderWorkspaceScreen(app, workspace, workspace.ShowNpcs, "NPCS");
-                RenderWorkspaceScreen(app, workspace, workspace.ShowProjectiles, "PROJECTILES");
-                RenderWorkspaceScreen(app, workspace, workspace.ShowItems, "ITEMS");
-                RenderWorkspaceScreen(app, workspace, workspace.ShowNetwork, "NETWORK");
-                RenderWorkspaceScreen(app, workspace, workspace.ShowWorld, "WORLD");
-                RenderWorkspaceScreen(app, workspace, workspace.ShowLogs, "LOG");
-                RenderWorkspaceScreen(app, workspace, workspace.ShowSystemDashboard, "Running");
+                    // Exercise the exact production transition that regressed: an external root is visible,
+                    // then a built-in Details screen must become visible and render its populated labels.
+                    workspace.ShowExternalDashboardForSmoke(0);
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "EXTERNAL DASHBOARD SMOKE");
 
-                workspace.SetInterestManagementEnabled(true);
-                workspace.SetInterestManagementEnabled(false);
+                    RenderWorkspaceScreen(app, workspace, workspace.ShowPlayers, "PLAYERS");
+                    RenderWorkspaceScreen(app, workspace, workspace.ShowNpcs, "NPCS");
+                    RenderWorkspaceScreen(app, workspace, workspace.ShowProjectiles, "PROJECTILES");
+                    RenderWorkspaceScreen(app, workspace, workspace.ShowItems, "ITEMS");
+                    RenderWorkspaceScreen(app, workspace, workspace.ShowNetwork, "NETWORK");
+                    RenderWorkspaceScreen(app, workspace, workspace.ShowWorld, "WORLD");
+                    RenderWorkspaceScreen(app, workspace, workspace.ShowLogs, "LOG");
+                    RenderWorkspaceScreen(app, workspace, workspace.ShowSystemDashboard, "Running");
+
+                    workspace.SetInterestManagementEnabled(true);
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Admin: queued interest management enable command");
+
+                    workspace.SetInterestManagementEnabled(false);
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Admin: queued interest management disable command");
+                }
+                finally
+                {
+                    app.End(token);
+                }
             }
 
             Console.WriteLine(
-                "Terminal UI smoke passed: Terminal.Gui rendered the System Dashboard, external-dashboard transition, " +
+                "Terminal UI smoke passed: ANSI framebuffer rendered the System Dashboard, external-dashboard transition, " +
                 "Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
@@ -97,7 +120,8 @@ internal static class TerminalUiSmoke
     {
         showScreen();
         AssertWorkspaceRow(workspace, expectedRowPrefix);
-        app.Run(workspace);
+        app.LayoutAndDraw();
+        AssertRendered(app.Driver!, expectedRowPrefix);
     }
 
     private static void AssertWorkspaceRow(DashboardWorkspaceWindow workspace, string expectedPrefix)
@@ -108,6 +132,29 @@ internal static class TerminalUiSmoke
             throw new InvalidOperationException(
                 $"Workspace detail screen did not populate row 0. Expected prefix '{expectedPrefix}', actual '{row}'.");
         }
+    }
+
+    private static void AssertRendered(IDriver driver, string expectedText)
+    {
+        if (driver.Contents is null)
+            throw new InvalidOperationException("ANSI driver did not expose framebuffer contents.");
+
+        var screen = new StringBuilder(SmokeWidth * SmokeHeight);
+        for (int row = 0; row < SmokeHeight; row++)
+        {
+            var line = new StringBuilder(SmokeWidth);
+            for (int column = 0; column < SmokeWidth; column++)
+                line.Append(driver.Contents[row, column]!.Grapheme);
+
+            string renderedRow = line.ToString();
+            if (renderedRow.Contains(expectedText, StringComparison.Ordinal))
+                return;
+
+            screen.AppendLine(renderedRow.TrimEnd());
+        }
+
+        throw new InvalidOperationException(
+            $"ANSI framebuffer did not contain expected text '{expectedText}'.{Environment.NewLine}{screen}");
     }
 
     private sealed class SmokeDashboardSource : ITerraRuntimeTerminalDashboardSource
