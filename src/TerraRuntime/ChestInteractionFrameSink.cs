@@ -18,7 +18,10 @@ public enum ChestInteractionFrameStopReason : byte
 /// Connection-owned protocol-326 chest boundary for packets 31, 32, 33 and 69. The socket thread decodes only;
 /// every world-chest decision is posted with the exact playing-session identity to the authoritative game loop.
 /// </summary>
-public sealed class ChestInteractionFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
+public sealed class ChestInteractionFrameSink :
+    ITerrariaFrameSink,
+    ITerrariaFrameRejectionSource,
+    ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -44,6 +47,11 @@ public sealed class ChestInteractionFrameSink : ITerrariaFrameSink, ITerrariaFra
     }
 
     public ChestInteractionFrameStopReason StopReason { get; private set; }
+
+    public TerrariaConnectionStopReason ConnectionStopReason =>
+        StopReason == ChestInteractionFrameStopReason.None && inner is ITerrariaConnectionStopReasonSource source
+            ? source.ConnectionStopReason
+            : TerrariaConnectionStopReason.None;
 
     public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
     {
