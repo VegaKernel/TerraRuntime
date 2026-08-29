@@ -5,7 +5,7 @@ public readonly record struct TerrariaConnectionPolicyOptions
     public static TerrariaConnectionPolicyOptions Default { get; } = new(
         handshakeTimeout: TimeSpan.FromSeconds(10),
         idleTimeout: Timeout.InfiniteTimeSpan,
-        rateBudget: ConnectionRateBudgetOptions.AccountingOnly,
+        rateBudget: ConnectionRateBudgetOptions.HardAbuse,
         messageRateLimits: ConnectionMessageRateLimits.HardAbuse);
 
     public TerrariaConnectionPolicyOptions(TimeSpan handshakeTimeout, TimeSpan idleTimeout)
