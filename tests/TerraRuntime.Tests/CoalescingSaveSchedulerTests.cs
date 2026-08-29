@@ -30,14 +30,43 @@ public sealed class CoalescingSaveSchedulerTests
         scheduler.RequestSave(1);
         await firstWriteStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
 
+        CoalescingSaveSchedulerSnapshot active = scheduler.CaptureSnapshot();
+        Assert.True(active.AcceptingRequests);
+        Assert.True(active.WorkerRunning);
+        Assert.True(active.WriteActive);
+        Assert.False(active.HasPendingSnapshot);
+        Assert.Equal(1, active.RequestedSaves);
+        Assert.Equal(1, active.StartedWrites);
+        Assert.Equal(0, active.CompletedWrites);
+        Assert.Equal(0, active.CoalescedRequests);
+        Assert.Equal(0, active.FailedWrites);
+
         scheduler.RequestSave(2);
         scheduler.RequestSave(3);
         scheduler.RequestSave(4);
+
+        CoalescingSaveSchedulerSnapshot coalesced = scheduler.CaptureSnapshot();
+        Assert.True(coalesced.WriteActive);
+        Assert.True(coalesced.HasPendingSnapshot);
+        Assert.Equal(4, coalesced.RequestedSaves);
+        Assert.Equal(1, coalesced.StartedWrites);
+        Assert.Equal(2, coalesced.CoalescedRequests);
 
         releaseFirstWrite.TrySetResult();
         await scheduler.CompleteAsync(cancellationToken);
 
         Assert.Equal(new[] { 1, 4 }, writes);
+
+        CoalescingSaveSchedulerSnapshot completed = scheduler.CaptureSnapshot();
+        Assert.False(completed.AcceptingRequests);
+        Assert.False(completed.WorkerRunning);
+        Assert.False(completed.WriteActive);
+        Assert.False(completed.HasPendingSnapshot);
+        Assert.Equal(4, completed.RequestedSaves);
+        Assert.Equal(2, completed.StartedWrites);
+        Assert.Equal(2, completed.CompletedWrites);
+        Assert.Equal(2, completed.CoalescedRequests);
+        Assert.Equal(0, completed.FailedWrites);
     }
 
     [Fact]
@@ -71,6 +100,11 @@ public sealed class CoalescingSaveSchedulerTests
         await completion;
 
         Assert.Equal(new[] { "first", "newest" }, writes);
+        CoalescingSaveSchedulerSnapshot snapshot = scheduler.CaptureSnapshot();
+        Assert.Equal(3, snapshot.RequestedSaves);
+        Assert.Equal(2, snapshot.StartedWrites);
+        Assert.Equal(2, snapshot.CompletedWrites);
+        Assert.Equal(1, snapshot.CoalescedRequests);
         await scheduler.DisposeAsync();
     }
 
@@ -86,5 +120,16 @@ public sealed class CoalescingSaveSchedulerTests
         IOException observed = await Assert.ThrowsAsync<IOException>(() => scheduler.CompleteAsync(cancellationToken));
         Assert.Same(expected, observed);
         Assert.Throws<InvalidOperationException>(() => scheduler.RequestSave(2));
+
+        CoalescingSaveSchedulerSnapshot snapshot = scheduler.CaptureSnapshot();
+        Assert.False(snapshot.AcceptingRequests);
+        Assert.False(snapshot.WorkerRunning);
+        Assert.False(snapshot.WriteActive);
+        Assert.False(snapshot.HasPendingSnapshot);
+        Assert.Equal(1, snapshot.RequestedSaves);
+        Assert.Equal(1, snapshot.StartedWrites);
+        Assert.Equal(0, snapshot.CompletedWrites);
+        Assert.Equal(0, snapshot.CoalescedRequests);
+        Assert.Equal(1, snapshot.FailedWrites);
     }
 }
