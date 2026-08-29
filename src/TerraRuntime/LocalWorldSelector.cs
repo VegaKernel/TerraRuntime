@@ -1,75 +1,33 @@
 namespace TerraRuntime;
 
+internal enum LocalWorldSelectionKind : byte
+{
+    ExistingWorld = 0,
+    CreateWorld = 1
+}
+
+internal readonly record struct LocalWorldSelection(
+    LocalWorldSelectionKind Kind,
+    string? WorldPath = null);
+
 internal static class LocalWorldSelector
 {
     public static bool TrySelect(string worldsDirectory, out string? worldPath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(worldsDirectory);
-
-        while (true)
+        if (!TrySelectCore(worldsDirectory, allowCreation: false, out LocalWorldSelection selection) ||
+            selection.Kind != LocalWorldSelectionKind.ExistingWorld ||
+            string.IsNullOrWhiteSpace(selection.WorldPath))
         {
-            string[] worlds = DiscoverWorlds([worldsDirectory]);
-
-            if (Console.IsInputRedirected)
-            {
-                if (worlds.Length == 1)
-                {
-                    worldPath = worlds[0];
-                    Console.WriteLine($"No world was specified; using the only local world '{worldPath}'.");
-                    return true;
-                }
-
-                Console.Error.WriteLine(
-                    worlds.Length == 0
-                        ? $"No world was specified and no local .wld files were found in '{worldsDirectory}'. Use --world <path.wld>."
-                        : $"No world was specified and multiple local .wld files were found in '{worldsDirectory}', but input is redirected. Use --world <path.wld>.");
-                worldPath = null;
-                return false;
-            }
-
-            PrintMenu(worldsDirectory, worlds);
-            string? input = Console.ReadLine();
-            if (input is null)
-            {
-                worldPath = null;
-                return false;
-            }
-
-            input = input.Trim();
-            if (string.Equals(input, "q", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(input, "quit", StringComparison.OrdinalIgnoreCase))
-            {
-                worldPath = null;
-                return false;
-            }
-
-            if (string.Equals(input, "r", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(input, "refresh", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (string.Equals(input, "p", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(input, "path", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.Write("World path: ");
-                string? explicitPath = Console.ReadLine();
-                if (TryValidateWorldPath(explicitPath, out worldPath))
-                    return true;
-
-                Console.Error.WriteLine("That path is not an existing .wld file.");
-                continue;
-            }
-
-            if (int.TryParse(input, out int selection) && selection >= 1 && selection <= worlds.Length)
-            {
-                worldPath = worlds[selection - 1];
-                return true;
-            }
-
-            Console.Error.WriteLine("Select a world number, P for an explicit path, R to refresh, or Q to quit.");
+            worldPath = null;
+            return false;
         }
+
+        worldPath = selection.WorldPath;
+        return true;
     }
+
+    public static bool TrySelectOrCreate(string worldsDirectory, out LocalWorldSelection selection) =>
+        TrySelectCore(worldsDirectory, allowCreation: true, out selection);
 
     internal static string[] DiscoverWorlds(IEnumerable<string> searchDirectories)
     {
@@ -103,7 +61,100 @@ internal static class LocalWorldSelector
             .ToArray();
     }
 
-    private static void PrintMenu(string worldsDirectory, IReadOnlyList<string> worlds)
+    private static bool TrySelectCore(
+        string worldsDirectory,
+        bool allowCreation,
+        out LocalWorldSelection selection)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(worldsDirectory);
+
+        while (true)
+        {
+            string[] worlds = DiscoverWorlds([worldsDirectory]);
+
+            if (Console.IsInputRedirected)
+            {
+                if (worlds.Length == 1)
+                {
+                    string worldPath = worlds[0];
+                    Console.WriteLine($"No world was specified; using the only local world '{worldPath}'.");
+                    selection = new LocalWorldSelection(LocalWorldSelectionKind.ExistingWorld, worldPath);
+                    return true;
+                }
+
+                Console.Error.WriteLine(
+                    worlds.Length == 0
+                        ? $"No world was specified and no local .wld files were found in '{worldsDirectory}'. Use --world <path.wld> or --create-world ... ."
+                        : $"No world was specified and multiple local .wld files were found in '{worldsDirectory}', but input is redirected. Use --world <path.wld>.");
+                selection = default;
+                return false;
+            }
+
+            PrintMenu(worldsDirectory, worlds, allowCreation);
+            string? input = Console.ReadLine();
+            if (input is null)
+            {
+                selection = default;
+                return false;
+            }
+
+            input = input.Trim();
+            if (string.Equals(input, "q", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(input, "quit", StringComparison.OrdinalIgnoreCase))
+            {
+                selection = default;
+                return false;
+            }
+
+            if (string.Equals(input, "r", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(input, "refresh", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (allowCreation &&
+                (string.Equals(input, "n", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(input, "new", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(input, "create", StringComparison.OrdinalIgnoreCase)))
+            {
+                selection = new LocalWorldSelection(LocalWorldSelectionKind.CreateWorld);
+                return true;
+            }
+
+            if (string.Equals(input, "p", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(input, "path", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.Write("World path: ");
+                string? explicitPath = Console.ReadLine();
+                if (TryValidateWorldPath(explicitPath, out string? worldPath))
+                {
+                    selection = new LocalWorldSelection(LocalWorldSelectionKind.ExistingWorld, worldPath);
+                    return true;
+                }
+
+                Console.Error.WriteLine("That path is not an existing .wld file.");
+                continue;
+            }
+
+            if (int.TryParse(input, out int selectedIndex) && selectedIndex >= 1 && selectedIndex <= worlds.Length)
+            {
+                selection = new LocalWorldSelection(
+                    LocalWorldSelectionKind.ExistingWorld,
+                    worlds[selectedIndex - 1]);
+                return true;
+            }
+
+            Console.Error.WriteLine(
+                allowCreation
+                    ? "Select a world number, N to create, P for an explicit path, R to refresh, or Q to quit."
+                    : "Select a world number, P for an explicit path, R to refresh, or Q to quit.");
+        }
+    }
+
+    private static void PrintMenu(
+        string worldsDirectory,
+        IReadOnlyList<string> worlds,
+        bool allowCreation)
     {
         Console.WriteLine();
         Console.WriteLine("TerraRuntime local world selection");
@@ -120,6 +171,8 @@ internal static class LocalWorldSelector
                 Console.WriteLine($"  {i + 1}. {Path.GetFileNameWithoutExtension(worlds[i])}  [{worlds[i]}]");
         }
 
+        if (allowCreation)
+            Console.WriteLine("  N. Create a new world");
         Console.WriteLine("  P. Enter a world path");
         Console.WriteLine("  R. Refresh Worlds folder");
         Console.WriteLine("  Q. Quit");
