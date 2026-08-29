@@ -74,6 +74,9 @@ jobs:
             -t Terraria.GameContent.ItemDropRules.ItemDropDatabase "$assembly" \
             > artifacts/source-contract/item-drop-database.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" \
+            -t Terraria.GameContent.ItemDropRules.ItemDropRule "$assembly" \
+            > artifacts/source-contract/item-drop-rule.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" \
             -t Terraria.ID.NPCID "$assembly" \
             > artifacts/source-contract/npc-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" \
@@ -82,5 +85,6 @@ jobs:
 
           python3 tools/ci/probe_npc_loot.py \
             --drop-database artifacts/source-contract/item-drop-database.cs \
+            --drop-rule artifacts/source-contract/item-drop-rule.cs \
             --npc-id artifacts/source-contract/npc-id.cs \
             --item-id artifacts/source-contract/item-id.cs
