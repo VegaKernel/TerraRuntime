@@ -1,0 +1,41 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-documentation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Resolve documentation diff base
+        id: docs-base
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "sha=$PR_BASE_SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=$PUSH_BEFORE" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate bilingual documentation
+        run: python3 tools/ci/check_documentation.py --changed-base "${{ steps.docs-base.outputs.sha }}"
