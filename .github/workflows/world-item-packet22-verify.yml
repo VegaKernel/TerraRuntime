@@ -1,0 +1,133 @@
+name: World Item Packet22 Verify
+
+on:
+  push:
+    paths:
+      - .github/workflows/world-item-packet22-verify.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Restore and build
+        run: |
+          dotnet restore TerraRuntime.slnx
+          dotnet build TerraRuntime.slnx -c Release --no-restore
+
+      - name: Create isolated packet-22 verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .verify-packet22
+          cat > .verify-packet22/Packet22Verify.csproj <<'EOF'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <OutputType>Exe</OutputType>
+              <TargetFramework>net11.0</TargetFramework>
+              <AssemblyName>TerraRuntime.Tests</AssemblyName>
+              <ImplicitUsings>enable</ImplicitUsings>
+              <Nullable>enable</Nullable>
+              <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+            </PropertyGroup>
+            <ItemGroup>
+              <ProjectReference Include="../src/TerraRuntime/TerraRuntime.csproj" />
+              <ProjectReference Include="../src/TerraRuntime.Core/TerraRuntime.Core.csproj" />
+              <ProjectReference Include="../src/TerraRuntime.Network/TerraRuntime.Network.csproj" />
+              <ProjectReference Include="../src/TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />
+            </ItemGroup>
+          </Project>
+          EOF
+
+          cat > .verify-packet22/Program.cs <<'EOF'
+          using System.Buffers;
+          using TerraRuntime;
+          using TerraRuntime.Contracts.Runtime;
+          using TerraRuntime.Core;
+          using TerraRuntime.Network;
+          using TerraRuntime.Protocol;
+
+          static void Require(bool condition, string message)
+          {
+              if (!condition)
+                  throw new InvalidOperationException(message);
+          }
+
+          static TerrariaFrame Frame(TerrariaMessageId id, byte[] payload) =>
+              new(
+                  checked((ushort)(TerrariaFrameDecoderOptions.MinimumFrameLength + payload.Length)),
+                  (byte)id,
+                  ReadOnlySequence<byte>.Empty,
+                  new ReadOnlySequence<byte>(payload));
+
+          var source = GameCommandSourceId.FromConnection(2201);
+          var ingress = new CapturingIngress();
+          using var bootstrap = new PlayerBootstrapFrameSink(
+              new PlayerSlotPool(1),
+              new TerrariaConnectionOutboundQueue(
+                  new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 8192, maxFrameBytes: 2048)),
+              PlayerBootstrapPacketSet.CreateForTesting(
+                  new byte[] { 3, 0, (byte)TerrariaMessageId.WorldData },
+                  Array.Empty<ReadOnlyMemory<byte>>(),
+                  new byte[] { 3, 0, (byte)TerrariaMessageId.PlayerSpawnSelf }),
+              source,
+              new CommittingSpawnIngress());
+
+          Require(bootstrap.OnFrame(Frame(
+              TerrariaMessageId.Hello,
+              [11, (byte)'T', (byte)'e', (byte)'r', (byte)'r', (byte)'a', (byte)'r', (byte)'i', (byte)'a', (byte)'3', (byte)'2', (byte)'6']))
+              == TerrariaFrameSinkResult.Continue, "Hello failed.");
+          Require(bootstrap.OnFrame(Frame(TerrariaMessageId.RequestWorldData, [])) == TerrariaFrameSinkResult.Continue,
+              "World request failed.");
+          Require(bootstrap.OnFrame(Frame(TerrariaMessageId.SpawnTileData, new byte[9])) == TerrariaFrameSinkResult.Continue,
+              "Section request failed.");
+
+          byte[] spawn = new byte[TerrariaJoinRequestDecoder.PlayerSpawnPayloadLength];
+          spawn[0] = 0;
+          System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(spawn.AsSpan(1), 100);
+          System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(spawn.AsSpan(3), 200);
+          Require(bootstrap.OnFrame(Frame(TerrariaMessageId.PlayerSpawn, spawn)) == TerrariaFrameSinkResult.Continue,
+              "Spawn failed.");
+          Require(bootstrap.JoinState == PlayerJoinState.Playing, "Bootstrap did not reach Playing.");
+
+          var sink = new WorldItemFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+          TerrariaFrame malformedPacket22 = Frame(TerrariaMessageId.WorldItemOwner, []);
+          Require(sink.OnFrame(in malformedPacket22) == TerrariaFrameSinkResult.Continue,
+              "Server-side packet 22 was not ignored.");
+          Require(sink.StopReason == WorldItemFrameStopReason.None, "Packet 22 stopped the connection.");
+          Require(ingress.TotalCount == 0, "Packet 22 reached authoritative world-item ingress.");
+
+          Console.WriteLine("packet22-server-noop: verified");
+
+          sealed class CommittingSpawnIngress : IPlayerSpawnCommitIngress
+          {
+              public bool TryPost(GameCommandSourceId source, PlayerJoinSession session, in PlayerSpawnCommitRequest request) =>
+                  session.TryCommitSpawn(request.ClaimedSlot) == PlayerSpawnCommitResult.Committed;
+          }
+
+          sealed class PassthroughSink : ITerrariaFrameSink
+          {
+              public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame) => TerrariaFrameSinkResult.Continue;
+          }
+
+          sealed class CapturingIngress : IWorldItemIngress
+          {
+              public int TotalCount { get; private set; }
+              public bool TryPostAllocate(ConnectionHandle connection, in WorldItemDropStateUpdate state) { TotalCount++; return true; }
+              public bool TryPostDrop(ConnectionHandle connection, short slot, in WorldItemDropStateUpdate state) { TotalCount++; return true; }
+              public bool TryPostRemove(ConnectionHandle connection, short slot) { TotalCount++; return true; }
+              public bool TryPostOwner(ConnectionHandle connection, short slot, in WorldItemOwnerStateUpdate state) { TotalCount++; return true; }
+          }
+          EOF
+
+      - name: Run isolated packet-22 verifier
+        run: dotnet run --project .verify-packet22/Packet22Verify.csproj -c Release
