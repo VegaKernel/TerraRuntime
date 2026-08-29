@@ -568,7 +568,8 @@ internal sealed class ServerRuntimeState
             !_players.TryGetValue(command.Connection.Player.Slot.Value, out RuntimePlayerState? player) ||
             player.Connection != command.Connection ||
             !VanillaTileManipulationWorldRules.IsInPacket17WorldBounds(
-                _worldTiles.Dimensions,
+                _worldTiles.Dimensions.WidthTiles,
+                _worldTiles.Dimensions.HeightTiles,
                 command.State.TileX,
                 command.State.TileY))
         {
@@ -576,7 +577,7 @@ internal sealed class ServerRuntimeState
             return;
         }
 
-        if (!command.State.TryGetKnownAction(out TerrariaTileManipulationAction action))
+        if (!command.State.TryGetKnownAction(out var action))
         {
             UnsupportedClientTileManipulations++;
             return;
@@ -586,7 +587,7 @@ internal sealed class ServerRuntimeState
         // selectedItem or inventory. TerraRuntime intentionally applies a stricter consistency policy here before
         // any future world mutation. This is a security boundary, not a claim of vanilla packet-17 parity.
         ValidatedClientTileManipulations++;
-        if (action != TerrariaTileManipulationAction.PlaceTile)
+        if (action != TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.PlaceTile)
         {
             UnsupportedClientTileManipulations++;
             return;
@@ -601,8 +602,9 @@ internal sealed class ServerRuntimeState
             return;
         }
 
+        var tileState = command.State;
         ClientTileManipulationConsistencyResult consistency =
-            ClientTileManipulationConsistency.Evaluate(in command.State, in selectedItem);
+            ClientTileManipulationConsistency.Evaluate(in tileState, in selectedItem);
         switch (consistency)
         {
             case ClientTileManipulationConsistencyResult.Mismatch:
