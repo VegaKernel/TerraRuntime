@@ -36,6 +36,36 @@ public sealed class VanillaServerPlayerHorizontalControlTests
     }
 
     [Fact]
+    public void Same_direction_input_at_or_above_max_speed_falls_through_to_ground_slowdown()
+    {
+        Assert.Equal(
+            2.8f,
+            VanillaServerPlayerHorizontalControl.Apply(3f, 0f, ServerPlayerHorizontalIntent.Right),
+            5);
+        Assert.Equal(
+            2.87f,
+            VanillaServerPlayerHorizontalControl.Apply(3.07f, 0f, ServerPlayerHorizontalIntent.Right),
+            5);
+        Assert.Equal(
+            -2.8f,
+            VanillaServerPlayerHorizontalControl.Apply(-3f, 0f, ServerPlayerHorizontalIntent.Left),
+            5);
+    }
+
+    [Fact]
+    public void Acceleration_can_cross_max_speed_because_ordinary_path_has_no_general_clamp()
+    {
+        Assert.Equal(
+            3.07f,
+            VanillaServerPlayerHorizontalControl.Apply(2.99f, 0f, ServerPlayerHorizontalIntent.Right),
+            5);
+        Assert.Equal(
+            -3.07f,
+            VanillaServerPlayerHorizontalControl.Apply(-2.99f, 0f, ServerPlayerHorizontalIntent.Left),
+            5);
+    }
+
+    [Fact]
     public void Grounded_stop_uses_full_vanilla_run_slowdown()
     {
         Assert.Equal(
