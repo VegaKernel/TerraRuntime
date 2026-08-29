@@ -131,6 +131,75 @@ def all_type_comparison_contexts(source: str, raw_type: int, radius: int = 2200,
     return " | ".join(contexts) if contexts else "<none>"
 
 
+def extract_factory_initializer(source: str, field_name: str) -> str:
+    match = re.search(
+        rf"{re.escape(field_name)}\s*=\s*Factory\.CreateCustomSet<bool\?>\s*\(",
+        source)
+    if match is None:
+        raise SystemExit(f"factory initializer not found: {field_name}")
+
+    opening = source.find("(", match.start())
+    depth = 0
+    for index in range(opening, len(source)):
+        char = source[index]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return source[match.start() : index + 1]
+
+    raise SystemExit(f"unterminated factory initializer: {field_name}")
+
+
+def extract_type_if_block(source: str, raw_type: int) -> str:
+    match = re.search(
+        rf"(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*{raw_type}(?!\d)\s*\)",
+        source)
+    if match is None:
+        raise SystemExit(f"type if block not found: {raw_type}")
+
+    opening = source.find("{", match.end())
+    if opening < 0:
+        raise SystemExit(f"type if block body not found: {raw_type}")
+
+    depth = 0
+    in_string = False
+    in_char = False
+    escaped = False
+    for index in range(opening, len(source)):
+        char = source[index]
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\" and (in_string or in_char):
+            escaped = True
+            continue
+        if char == '"' and not in_char:
+            in_string = not in_string
+            continue
+        if char == "'" and not in_string:
+            in_char = not in_char
+            continue
+        if in_string or in_char:
+            continue
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[match.start() : index + 1]
+
+    raise SystemExit(f"unterminated type if block: {raw_type}")
+
+
+def count_type_comparisons(source: str, raw_type: int) -> int:
+    normalized = compact(source)
+    pattern = re.compile(
+        rf"(?<!\d)type\s*(?:==|!=)\s*{raw_type}(?!\d)|\bcase\s+{raw_type}\s*:")
+    return len(pattern.findall(normalized))
+
+
 def matching_lines(source: str, needle: str, limit: int = 300) -> str:
     matches = [compact(line) for line in source.splitlines() if needle in line]
     if not matches:
@@ -202,6 +271,7 @@ def main() -> int:
     bullet_defaults = around_optional(set_defaults, "type == 14", radius=1800)
     green_laser_defaults = around_optional(set_defaults, "type == 20", radius=1800)
     bone_defaults = around_optional(set_defaults, "type == 21", radius=1800)
+    bone_arrow_defaults = compact(extract_type_if_block(set_defaults, 474))
     seed_defaults = around_optional(set_defaults, "type == 51", radius=1400)
     bone_shard_defaults = around_optional(set_defaults, "type == 1124", radius=1800)
     arrow_ai = extract_method(projectile_source, "AI_001")
@@ -219,23 +289,71 @@ def main() -> int:
     print("projectile_jesters_arrow_defaults=" + jesters_arrow_defaults)
     print("projectile_bullet_defaults=" + bullet_defaults)
     print("projectile_green_laser_defaults=" + green_laser_defaults)
-    wind_immunity = matching_lines(projectile_id_source, "WindPhysicsImmunity", limit=5)
-    if "public const short Seed = 51;" not in projectile_id_source:
-        raise SystemExit("ProjectileID.Seed != 51 in pinned source")
-    if "public const short BoneShard = 1124;" not in projectile_id_source:
-        raise SystemExit("ProjectileID.BoneShard != 1124 in pinned source")
-    for raw_type in (51, 1124):
-        if re.search(rf"\(short\){raw_type}(?!\d)", wind_immunity):
+    wind_immunity = compact(extract_factory_initializer(projectile_id_source, "WindPhysicsImmunity"))
+    if "CreateCustomSet<bool?>(null" not in wind_immunity:
+        raise SystemExit("unexpected WindPhysicsImmunity default semantics")
+
+    expected_ids = {
+        "Seed": 51,
+        "BoneArrowFromMerchant": 474,
+        "BoneShard": 1124,
+    }
+    for name, raw_type in expected_ids.items():
+        declaration = re.compile(
+            rf"public const (?:short|int)\s+{re.escape(name)}\s*=\s*{raw_type}\s*;")
+        if declaration.search(projectile_id_source) is None:
+            raise SystemExit(f"ProjectileID.{name} != {raw_type} in pinned source")
+        if re.search(rf"(?<!\d){raw_type}(?!\d)", wind_immunity):
             raise SystemExit(f"type {raw_type} unexpectedly overrides WindPhysicsImmunity")
 
+    required_bone_arrow_defaults = (
+        "arrow = true;",
+        "width = 10;",
+        "height = 10;",
+        "aiStyle = 1;",
+        "friendly = true;",
+        "ranged = true;",
+        "timeLeft = 1200;",
+        "penetrate = 2;",
+    )
+    for token in required_bone_arrow_defaults:
+        if token not in bone_arrow_defaults:
+            raise SystemExit(f"type 474 default missing: {token}")
+    for forbidden in ("tileCollide = false;", "ignoreWater = true;", "extraUpdates ="):
+        if forbidden in bone_arrow_defaults:
+            raise SystemExit(f"type 474 unexpected default: {forbidden}")
+
+    for source_name, source_text in (
+        ("AI_001", arrow_ai),
+        ("AI", projectile_ai),
+        ("Update", projectile_update),
+        ("HandleMovement", handle_movement),
+        ("GetCollisionParams", collision_params),
+        ("CanCutTiles", can_cut_tiles),
+    ):
+        if count_type_comparisons(source_text, 474) != 0:
+            raise SystemExit(f"type 474 unexpectedly special in {source_name}")
+
+    if count_type_comparisons(projectile_kill, 474) != 1:
+        raise SystemExit("type 474 Kill branch count changed")
+    bone_arrow_kill = compact(extract_type_if_block(projectile_kill, 474))
+    for token in ("SoundEngine.PlaySound", "Dust.NewDust"):
+        if token not in bone_arrow_kill:
+            raise SystemExit(f"type 474 visual Kill token missing: {token}")
+    for token in ("NewProjectile(", "NewItem(", "KillTile(", "RequestNewItem("):
+        if token in bone_arrow_kill:
+            raise SystemExit(f"type 474 Kill gained authoritative side effect: {token}")
+
     print("projectile_bone_defaults=" + bone_defaults)
+    print("projectile_bone_arrow_from_merchant_defaults=" + bone_arrow_defaults)
+    print("projectile_bone_arrow_from_merchant_kill=" + bone_arrow_kill)
     print("projectile_seed_defaults=" + seed_defaults)
     print("projectile_bone_shard_defaults=" + bone_shard_defaults)
     print("projectile_seed_ai001_contexts=" + all_type_comparison_contexts(arrow_ai, 51, radius=1800, limit=20))
     print("projectile_bone_shard_ai001_contexts=" + all_type_comparison_contexts(arrow_ai, 1124, radius=2600, limit=20))
     print("projectile_seed_kill_contexts=" + all_type_comparison_contexts(projectile_kill, 51, radius=1800, limit=20))
     print("projectile_bone_shard_kill_contexts=" + all_type_comparison_contexts(projectile_kill, 1124, radius=1800, limit=20))
-    print("projectile_seed_bone_shard_wind_immunity=" + wind_immunity)
+    print("projectile_simple_ai1_wind_immunity=" + wind_immunity)
     print("projectile_ai_type21_contexts=" + all_type_comparison_contexts(extract_method(projectile_source, "AI"), 21, radius=2600, limit=20))
     print("projectile_collision_params_type21_contexts=" + all_type_comparison_contexts(extract_method(projectile_source, "GetCollisionParams"), 21, radius=1800, limit=20))
     print("projectile_handle_movement_type21_contexts=" + all_type_comparison_contexts(handle_movement, 21, radius=2200, limit=20))
