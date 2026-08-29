@@ -74,9 +74,7 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
             ConnectionRateBudgetOptions.AccountingOnly,
             messageLimits);
         var state = new TerrariaConnectionPolicyState(options);
-        var accountant = new TerrariaConnectionRateAccountant(
-            ConnectionRateBudgetOptions.AccountingOnly,
-            state.TimeProvider);
+        var accountant = new TerrariaConnectionRateAccountant(ConnectionRateBudgetOptions.AccountingOnly);
         var inner = new CountingSink();
         var policy = new TerrariaConnectionPolicySink(inner, state, accountant);
         TerrariaFrame hello = Decode(CurrentHelloPacket());
