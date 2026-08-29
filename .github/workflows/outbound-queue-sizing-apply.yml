@@ -1,0 +1,59 @@
+name: Outbound Queue Sizing Apply
+
+on:
+  push:
+    paths:
+      - .github/workflows/outbound-queue-sizing-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Apply sizing to latest main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/TerraRuntime/TerrariaServerHost.cs")
+          text = path.read_text()
+
+          old_field = '''    private static readonly OutboundQueueOptions ConnectionOutboundQueueOptions = new(\n        maxFrames: 4_096,\n        maxQueuedBytes: 16L * 1024 * 1024,\n        maxFrameBytes: TerrariaFrameDecoderOptions.AbsoluteMaximumFrameLength);\n\n'''
+          if text.count(old_field) != 1:
+              raise SystemExit("expected exactly one legacy outbound queue field")
+          text = text.replace(old_field, "", 1)
+
+          old_ctor = "            var outbound = new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueOptions);"
+          new_ctor = "            var outbound = new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueSizing.Create(slots.Capacity));"
+          if text.count(old_ctor) != 1:
+              raise SystemExit("expected exactly one legacy outbound queue construction")
+          text = text.replace(old_ctor, new_ctor, 1)
+
+          path.write_text(text)
+          PY
+
+            git rm .github/workflows/outbound-queue-sizing-apply.yml
+            git add src/TerraRuntime/TerrariaServerHost.cs
+            git commit -m "network: wire structural outbound queue sizing"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+          done
+
+          echo "main kept moving during all retry attempts" >&2
+          exit 1
