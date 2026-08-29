@@ -1,12 +1,9 @@
-using System.Globalization;
-using TerraRuntime.Contracts.Gameplay;
-using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Core;
-using TerraRuntime.Network;
+using System.Text;
+using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
-using TerraRuntime.World;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -14,293 +11,353 @@ namespace TerraRuntime.TerminalUI;
 
 internal static class TerminalUiSmoke
 {
+    private const int SmokeWidth = 160;
+    private const int SmokeHeight = 28;
+
     public static int Run()
     {
-        var operations = new SmokeOperations();
-        var dashboardRegistry = new SmokeDashboardSource();
-        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
-        var window = new RuntimeTerminalWindow(operations, dashboardRegistry, requestStop: static () => { });
         try
         {
-            window.Refresh();
-            window.SelectTab(RuntimeTerminalTab.Players);
-            window.Refresh();
-            window.SelectTab(RuntimeTerminalTab.Npcs);
-            window.Refresh();
-            window.SelectTab(RuntimeTerminalTab.Projectiles);
-            window.Refresh();
-            window.SelectTab(RuntimeTerminalTab.World);
-            window.Refresh();
-            window.SelectTab(RuntimeTerminalTab.Network);
-            window.Refresh();
-            window.SelectTab(RuntimeTerminalTab.Commands);
-            window.Refresh();
-            window.SelectTab(RuntimeTerminalTab.Dashboard);
-            window.Refresh();
-            Console.WriteLine("TerraRuntime terminal UI smoke passed.");
+            var operations = new SmokeOperations();
+            var logs = new RuntimeLogBuffer(capacity: 16);
+            logs.Publish(RuntimeLogLevel.Information, "Server", "Terminal UI smoke startup");
+            logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
+            RuntimeChatTelemetry.Publish(0, "Synthetic dashboard chat message");
+
+            using (IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI))
+            {
+                app.Driver!.SetScreenSize(SmokeWidth, SmokeHeight);
+                using var workspace = new DashboardWorkspaceWindow(
+                    operations,
+                    operations,
+                    operations,
+                    operations,
+                    operations,
+                    logs,
+                    new SmokeDashboardSource(),
+                    operations,
+                    operations);
+
+                SessionToken token = app.Begin(workspace)!;
+                try
+                {
+                    workspace.RefreshSnapshot();
+                    AssertWorkspaceRow(workspace, "Running");
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Running");
+
+                    // Exercise the exact production transition that regressed: an external root is visible,
+                    // then every built-in Details screen must become visible through the real MenuBar path.
+                    workspace.ShowExternalDashboardForSmoke(0);
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "EXTERNAL DASHBOARD SMOKE");
+
+                    SelectDetailsScreen(app, workspace, Key.P, "Players", "PLAYERS");
+                    SelectDetailsScreen(app, workspace, Key.N, "NPCs", "NPCS");
+                    SelectDetailsScreen(app, workspace, Key.R, "Projectiles", "PROJECTILES");
+                    SelectDetailsScreen(app, workspace, Key.I, "Items", "ITEMS");
+                    SelectDetailsScreen(app, workspace, Key.E, "Network", "NETWORK");
+                    AssertRendered(app.Driver!, "capacity 2");
+                    AssertRendered(app.Driver!, "2/256 frames");
+                    AssertRendered(app.Driver!, "peak 5/0.5 KiB");
+                    AssertRendered(app.Driver!, "Stops       protocol 2");
+                    AssertRendered(app.Driver!, "Frame reject malformed 11");
+                    AssertRendered(app.Driver!, "join 10");
+                    SelectDetailsScreen(app, workspace, Key.W, "World", "WORLD");
+                    AssertRendered(app.Driver!, "Sections");
+                    AssertRendered(app.Driver!, "Lookups");
+                    AssertRendered(app.Driver!, "Rebuild");
+                    AssertRendered(app.Driver!, "Save        shadow ready");
+                    SelectDetailsScreen(app, workspace, Key.L, "Logs", "LOG");
+                    SelectDetailsScreen(app, workspace, Key.O, "Overview", "Running");
+
+                    workspace.SetInterestManagementEnabled(true);
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Admin: queued interest management enable command");
+
+                    workspace.SetInterestManagementEnabled(false);
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Admin: queued interest management disable command");
+
+                    app.Keyboard.RaiseKeyDownEvent(Key.A.WithAlt);
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Save world checkpoint");
+
+                    app.Keyboard.RaiseKeyDownEvent(Key.S);
+                    AssertWorkspaceRow(workspace, "WORLD");
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Save        shadow ready");
+                    AssertRendered(app.Driver!, "request pending");
+                }
+                finally
+                {
+                    app.End(token);
+                }
+            }
+
+            Console.WriteLine(
+                "Terminal UI smoke passed: ANSI framebuffer rendered the production System Dashboard, external-dashboard transition, " +
+                "all Details menu hotkeys, Actions/manual-save path, queue capacity/high-water and categorized network telemetry, " +
+                "section-cache/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
-        finally
+        catch (Exception exception)
         {
-            window.Dispose();
-            dashboardRegistry.Dispose();
+            Console.Error.WriteLine($"Terminal UI smoke failed: {exception}");
+            return 29;
         }
     }
 
-    private sealed class SmokeDashboardSource : ITerraRuntimeTerminalDashboardSource, IDisposable
+    private static void SelectDetailsScreen(
+        IApplication app,
+        DashboardWorkspaceWindow workspace,
+        Key hotKey,
+        string menuText,
+        string expectedRowPrefix)
     {
-        private readonly ITerraRuntimeTerminalDashboardProvider[] providers = [new SmokeDashboardProvider()];
+        app.Keyboard.RaiseKeyDownEvent(Key.E.WithAlt);
+        app.LayoutAndDraw();
+        AssertRendered(app.Driver!, menuText);
 
-        public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards() => providers;
+        app.Keyboard.RaiseKeyDownEvent(hotKey);
+        AssertWorkspaceRow(workspace, expectedRowPrefix);
+        app.LayoutAndDraw();
+        AssertRendered(app.Driver!, expectedRowPrefix);
+    }
 
-        public void Dispose()
+    private static void AssertWorkspaceRow(DashboardWorkspaceWindow workspace, string expectedPrefix)
+    {
+        string row = workspace.GetRowTextForSmoke(0);
+        if (!row.StartsWith(expectedPrefix, StringComparison.Ordinal))
         {
-            foreach (ITerraRuntimeTerminalDashboardProvider provider in providers)
-            {
-                if (provider is IDisposable disposable)
-                    disposable.Dispose();
-            }
+            throw new InvalidOperationException(
+                $"Workspace detail screen did not populate row 0. Expected prefix '{expectedPrefix}', actual '{row}'.");
         }
+    }
+
+    private static void AssertRendered(IDriver driver, string expectedText)
+    {
+        if (driver.Contents is null)
+            throw new InvalidOperationException("ANSI driver did not expose framebuffer contents.");
+
+        var screen = new StringBuilder(SmokeWidth * SmokeHeight);
+        for (int row = 0; row < SmokeHeight; row++)
+        {
+            var line = new StringBuilder(SmokeWidth);
+            for (int column = 0; column < SmokeWidth; column++)
+                line.Append(driver.Contents[row, column]!.Grapheme);
+
+            string renderedRow = line.ToString();
+            if (renderedRow.Contains(expectedText, StringComparison.Ordinal))
+                return;
+
+            screen.AppendLine(renderedRow.TrimEnd());
+        }
+
+        throw new InvalidOperationException(
+            $"ANSI framebuffer did not contain expected text '{expectedText}'.{Environment.NewLine}{screen}");
+    }
+
+    private sealed class SmokeDashboardSource : ITerraRuntimeTerminalDashboardSource
+    {
+        private readonly ITerraRuntimeTerminalDashboardProvider[] dashboards = [new SmokeDashboardProvider()];
+
+        public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards() => dashboards;
     }
 
     private sealed class SmokeDashboardProvider : ITerraRuntimeTerminalDashboardProvider
     {
-        public string Id => "smoke.dashboard";
-        public string Title => "Smoke Dashboard";
+        public string Id => "smoke.external";
 
-        public View CreateDashboard() =>
-            new Label
-            {
-                Text = "Smoke dashboard content"
-            };
+        public string Title => "Smoke External";
 
-        public void Refresh(View rootView)
+        public View CreateDashboard()
         {
-            ArgumentNullException.ThrowIfNull(rootView);
+            var root = new View
+            {
+                Width = Dim.Fill(),
+                Height = Dim.Fill()
+            };
+            root.Add(new Label
+            {
+                X = 1,
+                Y = 0,
+                Text = "EXTERNAL DASHBOARD SMOKE"
+            });
+            return root;
         }
+
+        public void Refresh(View rootView) => rootView.SetNeedsDraw();
     }
 
     private sealed class SmokeOperations :
+        IRuntimeDashboardOperations,
         IPlayerOperations,
         INpcOperations,
         IProjectileOperations,
-        IWorldOperations,
+        IWorldItemOperations,
         INetworkOperations,
-        ICommandOperations
+        IWorldOperations
     {
         private bool interestManagementEnabled;
+        private bool saveRequested;
 
-        public RuntimeServerSummary CaptureServerSummary() =>
+        public RuntimeDashboardSnapshot CaptureSnapshot() =>
             new(
-                WorldName: "Smoke World",
-                WidthTiles: 8400,
-                HeightTiles: 2400,
-                Port: 7777,
-                MaxPlayers: 8,
+                Lifecycle: RuntimeLifecycleState.Running,
+                WorldName: "NativeAOT-Smoke",
+                WorldWidthTiles: 4200,
+                WorldHeightTiles: 1200,
+                Port: ServerHostOptions.DefaultPort,
+                MaxPlayers: ServerHostOptions.DefaultMaxPlayers,
                 InterestManagementEnabled: interestManagementEnabled,
-                ConnectedPlayers: 1,
-                ActiveNpcs: 2,
-                ActiveProjectiles: 3,
-                Tick: 1234,
-                StartedAtUtc: DateTimeOffset.UtcNow.AddMinutes(-15));
-
-        RuntimePlayerSnapshot IPlayerOperations.CaptureSnapshot() =>
-            new(
-                ActivePlayers:
-                [
-                    new RuntimePlayerInfo(
-                        Slot: 0,
-                        Name: "SmokePlayer",
-                        PositionX: 120f,
-                        PositionY: 240f,
-                        VelocityX: 1f,
-                        VelocityY: 0f,
-                        Life: 100,
-                        LifeMax: 100,
-                        Mana: 20,
-                        ManaMax: 20,
-                        SelectedItem: 0,
-                        Team: 0,
-                        Hostile: false,
-                        Dead: false,
-                        Difficulty: 0,
-                        ConnectedAtUtc: DateTimeOffset.UtcNow.AddMinutes(-5))
-                ].AsMemory(),
+                Tick: 120,
+                TargetTicksPerSecond: 60,
+                ObservedTicksPerSecond: 60d,
+                LastTickMilliseconds: 0.25d,
+                WorstTickMilliseconds: 1.5d,
+                CpuTimeAvailable: true,
+                LastTickCpuMilliseconds: 0.20d,
+                WorstTickCpuMilliseconds: 1.2d,
+                SlowestPhase: "Update",
+                SlowestPhaseMilliseconds: 0.15d,
+                MissedTickDeadlines: 0,
+                CommandsProcessed: 2,
+                PendingCommands: 0,
+                DeferredCommands: 0,
+                RejectedCommands: 0,
+                CommandBudgetExhaustions: 0,
+                OldestPendingCommandAgeMilliseconds: 0d,
+                ManagedHeapBytes: 32L * 1024 * 1024,
+                TotalAllocatedBytes: 96L * 1024 * 1024,
+                Gen0Collections: 3,
+                Gen1Collections: 1,
+                Gen2Collections: 0,
+                ActiveConnections: 1,
+                AcceptedConnections: 1,
+                RejectedConnections: 0,
                 CapturedAtUtc: DateTimeOffset.UtcNow);
 
-        bool IPlayerOperations.TryKick(int slot, string reason) => slot == 0;
-
-        RuntimeNpcSnapshot INpcOperations.CaptureSnapshot() =>
-            new(
-                ActiveNpcs:
-                [
-                    new RuntimeNpcInfo(
-                        Slot: 1,
-                        Type: 1,
-                        NetId: 1,
-                        Life: 50,
-                        LifeMax: 50,
-                        PositionX: 100f,
-                        PositionY: 200f,
-                        VelocityX: 0f,
-                        VelocityY: 0f,
-                        Target: 0,
-                        Active: true)
-                ].AsMemory(),
-                CapturedAtUtc: DateTimeOffset.UtcNow);
-
-        bool INpcOperations.TryRemove(int slot) => slot == 1;
-
-        RuntimeProjectileSnapshot IProjectileOperations.CaptureSnapshot() =>
-            new(
-                ActiveProjectiles:
-                [
-                    new RuntimeProjectileInfo(
-                        Slot: 1,
-                        Type: 1,
-                        Owner: 0,
-                        Identity: 5,
-                        PositionX: 300f,
-                        PositionY: 400f,
-                        VelocityX: 1f,
-                        VelocityY: -1f,
-                        TimeLeft: 60,
-                        Active: true)
-                ].AsMemory(),
-                CapturedAtUtc: DateTimeOffset.UtcNow);
-
-        bool IProjectileOperations.TryRemove(int slot) => slot == 1;
-
-        RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() =>
-            new(
-                Name: "Smoke World",
-                WidthTiles: 8400,
-                HeightTiles: 2400,
-                SpawnX: 4200,
-                SpawnY: 300,
-                DungeonX: 500,
-                DungeonY: 400,
-                WorldSurface: 300,
-                RockLayer: 600,
-                GameMode: 0,
-                IsCrimson: false,
-                IsHardMode: false,
-                DayTime: true,
-                Time: 13500d,
-                MoonPhase: 0,
-                BloodMoon: false,
-                Eclipse: false,
-                Raining: false,
-                RainTime: 0,
-                MaxRain: 0f,
-                WindSpeed: 0f,
-                MaxWind: 0f,
-                CloudCount: 0,
-                CapturedAtUtc: DateTimeOffset.UtcNow);
-
-        RuntimeWorldTileSnapshot IWorldOperations.CaptureTileSnapshot(int centerX, int centerY, int radius) =>
-            new(
-                CenterX: centerX,
-                CenterY: centerY,
-                Radius: radius,
-                Width: 1,
-                Height: 1,
-                Tiles:
-                [
-                    new RuntimeWorldTileInfo(
-                        X: centerX,
-                        Y: centerY,
-                        Type: 0,
-                        Wall: 0,
-                        IsActive: true,
-                        LiquidAmount: 0,
-                        LiquidKind: 0)
-                ].AsMemory(),
-                CapturedAtUtc: DateTimeOffset.UtcNow);
-
-        bool IWorldOperations.TrySetInterestManagement(bool enabled)
+        public bool TrySetInterestManagementEnabled(bool enabled)
         {
             interestManagementEnabled = enabled;
             return true;
         }
 
-        RuntimeWorldChestsSnapshot IWorldOperations.CaptureChestSnapshot()
+        public bool TryRequestSave()
         {
-            RuntimeWorldChestInfo[] chests =
+            saveRequested = true;
+            return true;
+        }
+
+        RuntimePlayersSnapshot IPlayerOperations.CaptureSnapshot()
+        {
+            RuntimePlayerSnapshot[] players =
             [
-                new RuntimeWorldChestInfo(
-                    ChestId: 0,
-                    X: 100,
-                    Y: 200,
-                    Name: "Smoke Chest",
-                    ItemCount: 2,
-                    TotalStack: 12,
-                    OccupiedSlots: 2)
+                new RuntimePlayerSnapshot(
+                    ConnectionId: 1,
+                    Slot: 0,
+                    Generation: 1,
+                    Name: "SmokePlayer",
+                    Team: 0,
+                    PositionX: 1600f,
+                    PositionY: 3200f,
+                    VelocityX: 1.25f,
+                    VelocityY: -0.5f,
+                    SelectedItem: 4,
+                    MountType: 2,
+                    HasHealth: true,
+                    Life: 100,
+                    MaxLife: 100,
+                    HasMana: true,
+                    Mana: 20,
+                    MaxMana: 20)
             ];
-            return new RuntimeWorldChestsSnapshot(
-                ActiveChests: 1,
-                Chests: chests.AsMemory(),
+            return new RuntimePlayersSnapshot(players.AsMemory(), DateTimeOffset.UtcNow);
+        }
+
+        RuntimeNpcsSnapshot INpcOperations.CaptureSnapshot()
+        {
+            RuntimeNpcSnapshot[] npcs =
+            [
+                new RuntimeNpcSnapshot(
+                    Slot: 1,
+                    Generation: 2,
+                    Revision: 7,
+                    Type: 1,
+                    NetId: 1,
+                    PositionX: 800f,
+                    PositionY: 1600f,
+                    VelocityX: 1.5f,
+                    VelocityY: -0.25f,
+                    Target: 0,
+                    Ai0: 1f,
+                    Ai1: 2f,
+                    Ai2: 3f,
+                    Ai3: 4f,
+                    DirectionX: 1,
+                    DirectionY: 0,
+                    CollideX: false,
+                    CollideY: true,
+                    Wet: false,
+                    NoGravity: false,
+                    NoTileCollide: false)
+            ];
+            return new RuntimeNpcsSnapshot(
+                npcs.AsMemory(),
+                CommittedSpawns: 1,
+                CommittedUpdates: 6,
+                CommittedDespawns: 0,
                 CapturedAtUtc: DateTimeOffset.UtcNow);
         }
 
-        RuntimeWorldSignsSnapshot IWorldOperations.CaptureSignSnapshot()
+        RuntimeProjectilesSnapshot IProjectileOperations.CaptureSnapshot()
         {
-            RuntimeWorldSignInfo[] signs =
+            RuntimeProjectileGroupSnapshot[] groups =
             [
-                new RuntimeWorldSignInfo(
-                    SignId: 0,
-                    X: 120,
-                    Y: 210,
-                    Text: "Smoke sign")
+                new RuntimeProjectileGroupSnapshot(
+                    Spawner: 0,
+                    Type: 1,
+                    Count: 12,
+                    AveragePositionX: 1600f,
+                    AveragePositionY: 3200f,
+                    AverageVelocityX: 3.5f,
+                    AverageVelocityY: -0.25f,
+                    MaxDamage: 42,
+                    MaxOriginalDamage: 42,
+                    MaxKnockBack: 3f),
+                new RuntimeProjectileGroupSnapshot(
+                    Spawner: 7,
+                    Type: 14,
+                    Count: 3,
+                    AveragePositionX: 2400f,
+                    AveragePositionY: 1600f,
+                    AverageVelocityX: -2f,
+                    AverageVelocityY: 0f,
+                    MaxDamage: 20,
+                    MaxOriginalDamage: 20,
+                    MaxKnockBack: 1f)
             ];
-            return new RuntimeWorldSignsSnapshot(
-                ActiveSigns: 1,
-                Signs: signs.AsMemory(),
+            return new RuntimeProjectilesSnapshot(
+                ActiveProjectiles: 15,
+                Groups: groups.AsMemory(),
+                CommittedSpawns: 20,
+                CommittedUpdates: 64,
+                CommittedDespawns: 5,
                 CapturedAtUtc: DateTimeOffset.UtcNow);
         }
 
-        RuntimeWorldTileEntitiesSnapshot IWorldOperations.CaptureTileEntitySnapshot()
-        {
-            RuntimeWorldTileEntityInfo[] tileEntities =
-            [
-                new RuntimeWorldTileEntityInfo(
-                    Id: 1,
-                    X: 150,
-                    Y: 250,
-                    Type: 0)
-            ];
-            return new RuntimeWorldTileEntitiesSnapshot(
-                ActiveTileEntities: 1,
-                TileEntities: tileEntities.AsMemory(),
-                CapturedAtUtc: DateTimeOffset.UtcNow);
-        }
-
-        RuntimeWorldTownRoomsSnapshot IWorldOperations.CaptureTownRoomSnapshot()
-        {
-            RuntimeWorldTownRoomInfo[] rooms =
-            [
-                new RuntimeWorldTownRoomInfo(
-                    NpcType: 17,
-                    HomeX: 200,
-                    HomeY: 300)
-            ];
-            return new RuntimeWorldTownRoomsSnapshot(
-                ActiveRooms: 1,
-                Rooms: rooms.AsMemory(),
-                CapturedAtUtc: DateTimeOffset.UtcNow);
-        }
-
-        RuntimeWorldItemsSnapshot IWorldOperations.CaptureWorldItemSnapshot()
+        RuntimeWorldItemsSnapshot IWorldItemOperations.CaptureSnapshot()
         {
             RuntimeWorldItemGroupSnapshot[] groups =
             [
                 new RuntimeWorldItemGroupSnapshot(
                     ItemNetId: 71,
                     DropCount: 4,
-                    TotalStack: 400,
+                    TotalStack: 183,
                     ReservedDrops: 1,
                     ShimmeredDrops: 1,
-                    MaxStack: 100,
+                    MaxStack: 99,
                     AveragePositionX: 1920f,
                     AveragePositionY: 2880f),
                 new RuntimeWorldItemGroupSnapshot(
@@ -373,39 +430,85 @@ internal static class TerminalUiSmoke
                 ProjectileBaselineFrames: 4,
                 ProjectileRejectedFrames: 2,
                 ProjectileUnsupportedCommits: 1,
-                PlayerStateResyncFrames: 1,
-                PlayerStateRejectedFrames: 1,
-                PlayerStateUnsupportedCommits: 1,
-                WorldTimeRelayedFrames: 1,
-                WorldTimeBaselineFrames: 1,
-                WorldTimeRejectedFrames: 0,
-                WorldTimeUnsupportedCommits: 0,
-                ChestRelayedFrames: 3,
-                ChestBaselineFrames: 1,
-                ChestRejectedFrames: 1,
-                ChestUnsupportedCommits: 0,
-                RejectionTelemetry: new TerrariaFrameRejectionTelemetrySnapshot(
-                    MalformedProtocol: 1,
-                    RateLimited: 2,
-                    InvalidState: 3,
-                    GameplayRejected: 4,
-                    Backpressure: 5));
+                WorldItemRelayedFrames: 9,
+                WorldItemRejectedFrames: 1,
+                WorldItemUnsupportedCommits: 1,
+                AdmissionCapacityRejectedConnections: 2,
+                AdmissionRateRejectedConnections: 3,
+                StopProtocolFailures: 2,
+                StopRateLimited: 3,
+                StopInvalidHandshake: 4,
+                StopUnsupportedProtocol: 5,
+                StopSlowClient: 6,
+                StopApplicationStopped: 8,
+                StopHandshakeTimeout: 7,
+                StopIdleTimeout: 9,
+                StopJoinTimeout: 10,
+                RejectedMalformedProtocol: 11,
+                RejectedRateLimited: 12,
+                RejectedInvalidState: 13,
+                RejectedGameplay: 14,
+                RejectedBackpressure: 15);
 
-        public CommandCatalogSnapshot CaptureCommandCatalog() =>
+        RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() =>
             new(
-                Commands:
-                [
-                    new CommandDescriptor(
-                        Name: "save",
-                        Description: "Save the world",
-                        Usage: "save",
-                        RequiredPermission: "terraruntime.world.save")
-                ].AsMemory(),
-                CapturedAtUtc: DateTimeOffset.UtcNow);
-
-        public CommandExecutionResult ExecuteCommand(string commandLine) =>
-            new(
-                Status: CommandExecutionStatus.Executed,
-                Output: $"Smoke command: {commandLine}");
+                Ready: true,
+                Name: "NativeAOT-Smoke",
+                WorldId: 42,
+                UniqueId: new Guid("00112233-4455-6677-8899-aabbccddeeff"),
+                FormatVersion: 326,
+                WorldGeneratorVersion: 1,
+                WidthTiles: 4200,
+                HeightTiles: 1200,
+                TileCount: 5_040_000,
+                ChestCount: 12,
+                SignCount: 4,
+                TownNpcCount: 3,
+                PersistentNpcCount: 1,
+                TileEntityCount: 5,
+                PressurePlateCount: 2,
+                TownRoomCount: 3,
+                RuntimeCacheHit: true,
+                InitialCacheResult: "Loaded",
+                CacheParallelReads: 4,
+                FileReadMilliseconds: 1.2,
+                CacheLoadMilliseconds: 3.4,
+                CanonicalWorldLoadMilliseconds: 0,
+                CacheWriteMilliseconds: 0,
+                BootstrapMilliseconds: 2.1,
+                WorldReadyMilliseconds: 4.8,
+                NetworkReadyMilliseconds: 6.2,
+                CapturedAtUtc: DateTimeOffset.UtcNow,
+                RuntimeClockAvailable: true,
+                RuntimeTime: 12_345d,
+                RuntimeDayTime: true,
+                RuntimeMoonPhase: 2,
+                RuntimeSlimeRainTime: 300d,
+                RuntimeDayRate: 1,
+                SectionCacheAvailable: true,
+                SectionCacheDirtyBacklog: 3,
+                SectionCacheEntries: 12,
+                SectionCacheMaximumEntries: 64,
+                SectionCacheBytes: 2L * 1024 * 1024,
+                SectionCachePublished: 9,
+                SectionCacheActiveWorkers: 2,
+                SectionCachePendingWork: 4,
+                SectionCacheHits: 100,
+                SectionCacheMisses: 8,
+                SectionCacheStaleReads: 2,
+                SectionCacheWaits: 3,
+                Persistence: new RuntimeWorldPersistenceSnapshot(
+                    AcceptingRequests: true,
+                    TileShadowReady: true,
+                    RemainingBootstrapSections: 0,
+                    PendingDirtyTileSections: 2,
+                    SaveRequested: saveRequested,
+                    WriteActive: false,
+                    PendingWrite: true,
+                    AcceptedSnapshots: 8,
+                    StartedWrites: 7,
+                    CompletedWrites: 6,
+                    CoalescedSnapshots: 1,
+                    FailedWrites: 0));
     }
 }
