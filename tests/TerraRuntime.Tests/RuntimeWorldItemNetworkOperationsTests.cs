@@ -80,6 +80,39 @@ public sealed class RuntimeWorldItemNetworkOperationsTests
         held!.Dispose();
     }
 
+    [Fact]
+    public void Network_operations_surface_normalized_connection_stop_counters()
+    {
+        var stops = new RuntimeConnectionStopTelemetry();
+        stops.Record(TerrariaConnectionStopReason.ProtocolFailure);
+        stops.Record(TerrariaConnectionStopReason.ProtocolFailure);
+        stops.Record(TerrariaConnectionStopReason.RateLimited);
+        stops.Record(TerrariaConnectionStopReason.InvalidHandshake);
+        stops.Record(TerrariaConnectionStopReason.UnsupportedProtocol);
+        stops.Record(TerrariaConnectionStopReason.SlowClient);
+        stops.Record(TerrariaConnectionStopReason.ApplicationStopped);
+        stops.Record(TerrariaConnectionStopReason.HandshakeTimeout);
+        stops.Record(TerrariaConnectionStopReason.IdleTimeout);
+
+        var operations = new LocalRuntimeNetworkOperations(
+            new TerrariaConnectionAdmissionGate(maxConnections: 8),
+            new RuntimeConnectionRegistry(),
+            new RuntimeConnectionQueueTelemetry(),
+            new RuntimeConnectionRateTelemetry(),
+            stopTelemetry: stops);
+
+        RuntimeNetworkSnapshot snapshot = operations.CaptureSnapshot();
+
+        Assert.Equal(2, snapshot.StopProtocolFailures);
+        Assert.Equal(1, snapshot.StopRateLimited);
+        Assert.Equal(1, snapshot.StopInvalidHandshake);
+        Assert.Equal(1, snapshot.StopUnsupportedProtocol);
+        Assert.Equal(1, snapshot.StopSlowClient);
+        Assert.Equal(1, snapshot.StopApplicationStopped);
+        Assert.Equal(1, snapshot.StopHandshakeTimeout);
+        Assert.Equal(1, snapshot.StopIdleTimeout);
+    }
+
     private static ConnectionHandle Connection(
         GameCommandSourceId source,
         byte slot,
