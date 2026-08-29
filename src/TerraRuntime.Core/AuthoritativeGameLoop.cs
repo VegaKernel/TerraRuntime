@@ -17,7 +17,7 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
     private readonly Action<TState> update;
     private readonly GameLoopOptions options;
     private readonly Channel<QueuedCommand> commands;
-    private readonly ConcurrentDictionary<GameCommandSourceId, SourcePendingCounter> pendingSourceCommands = [];
+    private readonly ConcurrentDictionary<GameCommandSourceId, SourcePendingCounter> pendingSourceCommands = new();
     private readonly Dictionary<GameCommandSourceId, SourceQueue> stagedSources = [];
     private readonly Queue<SourceQueue> readySources = [];
     private readonly List<SourceQueue> throttledSources = [];
