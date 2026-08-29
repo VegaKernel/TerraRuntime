@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Reflection;
 using TerraRuntime.World;
 
@@ -6,13 +7,20 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeWorldCheckpointRecoveryTests
 {
     [Fact]
-    public void Automatic_restore_rejects_explicit_world_version_incompatibility()
+    public void Automatic_restore_rejects_real_newer_world_version_diagnostic()
     {
-        var diagnostic = new WorldFileLoadDiagnostic(
-            WorldFileLoadResult.InvalidEnvelope,
-            WorldFileLoadStage.Envelope,
-            (int)WorldFileEnvelopeParseResult.InvalidVersion);
+        byte[] futureWorld = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
+        BinaryPrimitives.WriteInt32LittleEndian(
+            futureWorld.AsSpan(0, sizeof(int)),
+            WorldFileFormatPolicy.CurrentVersion + 1);
+        WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
 
+        WorldFileLoadDiagnostic diagnostic = WorldFileLoader.TryLoad(futureWorld, limits, out WorldFileData? world);
+
+        Assert.Null(world);
+        Assert.Equal(WorldFileLoadResult.InvalidHeader, diagnostic.Result);
+        Assert.Equal(WorldFileLoadStage.Header, diagnostic.Stage);
+        Assert.Equal((int)WorldFileHeaderParseResult.UnsupportedVersion, diagnostic.StageResultCode);
         Assert.False(RuntimeWorldCheckpointRecovery.CanAutomaticallyRestoreAfter(diagnostic));
     }
 
