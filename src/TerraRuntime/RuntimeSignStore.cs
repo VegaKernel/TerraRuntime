@@ -5,20 +5,16 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 /// <summary>
-/// Game-thread-owned projection of loaded world signs. Existing signs can be read through the pinned
-/// TerrariaServer 1.4.5.8 tile-frame normalization when a world tile store is supplied. Text mutation is admitted only
-/// when the loaded sign table is persistence-canonical (slot id equals file-order index). This slice deliberately does
-/// not allocate or remove sign slots yet; a valid sign tile with no loaded sign therefore fails closed instead of
-/// inventing packet-visible slot identity. Sparse/corrupt sign tables are never silently renumbered by save.
+/// Game-thread-owned protocol-326 sign table. Runtime slot identity follows TerrariaServer 1.4.5.8 while the server is
+/// running: packet 46 resolves/allocates the first free slot and packet 47 may replace any slot in the vanilla range.
+/// Canonical .wld persistence intentionally compacts non-null runtime slots in ascending slot order because vanilla
+/// SaveSigns does not serialize slot ids and LoadSigns restores saved entries contiguously from slot zero.
 /// </summary>
 internal sealed class RuntimeSignStore
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly WorldSign?[] signs = new WorldSign?[VanillaWorldFormat326.MaximumSignSlots];
-    private readonly Dictionary<long, short> signByCoordinates = [];
     private readonly WorldTileStore? tiles;
-    private readonly bool persistenceCanonical;
-    private readonly int sourceCount;
 
     public RuntimeSignStore(ReadOnlySpan<WorldSign> source, WorldTileStore? tiles = null)
     {
@@ -26,63 +22,79 @@ internal sealed class RuntimeSignStore
             throw new ArgumentOutOfRangeException(nameof(source));
 
         this.tiles = tiles;
-        bool canonical = true;
-        for (int index = 0; index < source.Length; index++)
+        foreach (WorldSign sourceSign in source)
         {
-            WorldSign sign = source[index] ?? throw new ArgumentNullException(nameof(source));
+            WorldSign sign = sourceSign ?? throw new ArgumentNullException(nameof(source));
             if (sign.SlotId < 0 || sign.SlotId >= signs.Length)
                 throw new ArgumentOutOfRangeException(nameof(source), $"Sign slot {sign.SlotId} is outside the vanilla range.");
             if (signs[sign.SlotId] is not null)
                 throw new InvalidOperationException($"Duplicate sign slot {sign.SlotId} in loaded world state.");
 
-            long key = GetCoordinateKey(sign.X, sign.Y);
-            if (!signByCoordinates.TryAdd(key, sign.SlotId))
-                throw new InvalidOperationException($"Duplicate runtime sign coordinates {sign.X},{sign.Y}.");
-
-            canonical &= sign.SlotId == index;
             signs[sign.SlotId] = new WorldSign(sign.SlotId, sign.Text ?? string.Empty, sign.X, sign.Y);
         }
-
-        sourceCount = source.Length;
-        persistenceCanonical = canonical;
     }
 
-    public bool CanPersistMutations => persistenceCanonical;
+    public bool CanPersistMutations => true;
 
     public bool TryRead(short tileX, short tileY, out WorldSign sign)
     {
         int x = tileX;
         int y = tileY;
-        if (tiles is not null && !VanillaSignTileResolver.TryResolve(tiles, x, y, out x, out y))
+        if (tiles is not null)
         {
-            sign = null!;
-            return false;
+            WorldDimensions dimensions = tiles.Dimensions;
+            if ((uint)x >= (uint)dimensions.WidthTiles ||
+                (uint)y >= (uint)dimensions.HeightTiles ||
+                !VanillaSignTileResolver.TryResolve(tiles, x, y, out x, out y))
+            {
+                sign = null!;
+                return false;
+            }
         }
 
-        if (signByCoordinates.TryGetValue(GetCoordinateKey(x, y), out short id) &&
-            signs[id] is WorldSign existing)
+        for (short id = 0; id < signs.Length; id++)
         {
-            sign = existing;
-            return true;
+            if (signs[id] is WorldSign existing && existing.X == x && existing.Y == y)
+            {
+                sign = existing;
+                return true;
+            }
+        }
+
+        // Sign.ReadSign(CreateIfMissing: true) allocates the first free runtime slot. Without tile state we can still
+        // service loaded-sign lookups, but we deliberately cannot validate or create a new sign object.
+        if (tiles is not null)
+        {
+            for (short id = 0; id < signs.Length; id++)
+            {
+                if (signs[id] is not null)
+                    continue;
+
+                sign = new WorldSign(id, string.Empty, x, y);
+                signs[id] = sign;
+                return true;
+            }
         }
 
         sign = null!;
         return false;
     }
 
+    /// <summary>
+    /// Applies TerrariaServer 1.4.5.8 packet-47 semantics. A valid slot id replaces the previous sign object with the
+    /// submitted coordinates before TextSign validation. Invalid/inactive sign coordinates therefore clear that slot.
+    /// <paramref name="textChanged"/> mirrors vanilla's observer-broadcast condition: only old text versus submitted
+    /// text is compared, so a coordinate-only replacement is persisted without an observer broadcast.
+    /// </summary>
     public bool TryApply(
         in TerrariaSignState submitted,
-        out WorldSign committed,
-        out bool changed)
+        out WorldSign? committed,
+        out bool textChanged)
     {
-        committed = null!;
-        changed = false;
-        if (!persistenceCanonical ||
-            submitted.SignId < 0 ||
+        committed = null;
+        textChanged = false;
+        if (submitted.SignId < 0 ||
             submitted.SignId >= signs.Length ||
-            signs[submitted.SignId] is not WorldSign existing ||
-            existing.X != submitted.TileX ||
-            existing.Y != submitted.TileY ||
             submitted.Text is null)
         {
             return false;
@@ -97,43 +109,72 @@ internal sealed class RuntimeSignStore
             return false;
         }
 
-        if (string.Equals(existing.Text, submitted.Text, StringComparison.Ordinal))
+        int id = submitted.SignId;
+        string? previousText = signs[id]?.Text;
+
+        if (tiles is null)
         {
-            committed = existing;
+            // Tests and non-host callers without authoritative tile state may update an already-known exact sign, but
+            // creation/movement cannot be validated and therefore fails closed. Production always supplies tiles.
+            if (signs[id] is not WorldSign existing ||
+                existing.X != submitted.TileX ||
+                existing.Y != submitted.TileY)
+            {
+                return false;
+            }
+
+            committed = new WorldSign(existing.SlotId, submitted.Text, existing.X, existing.Y);
+            signs[id] = committed;
+            textChanged = !string.Equals(previousText, submitted.Text, StringComparison.Ordinal);
             return true;
         }
 
-        var updated = new WorldSign(existing.SlotId, submitted.Text, existing.X, existing.Y);
-        signs[existing.SlotId] = updated;
-        committed = updated;
-        changed = true;
+        WorldDimensions dimensions = tiles.Dimensions;
+        int x = submitted.TileX;
+        int y = submitted.TileY;
+        if ((uint)x >= (uint)dimensions.WidthTiles ||
+            (uint)y >= (uint)dimensions.HeightTiles)
+        {
+            return false;
+        }
+
+        WorldTile tile = tiles.Get(x, y);
+        bool validSignTile =
+            (tile.Flags & WorldTileFlags.Active) != 0 &&
+            VanillaSignTileResolver.IsSignTileType(tile.Type);
+
+        if (validSignTile)
+        {
+            committed = new WorldSign(submitted.SignId, submitted.Text, x, y);
+            signs[id] = committed;
+        }
+        else
+        {
+            // Sign.TextSign clears Main.sign[id] when the submitted coordinates do not point at an active sign tile.
+            signs[id] = null;
+        }
+
+        textChanged = !string.Equals(previousText, submitted.Text, StringComparison.Ordinal);
         return true;
     }
 
     /// <summary>
-    /// Captures a detached, canonical persistence image. Sparse source slot identities are intentionally rejected;
-    /// callers should continue preserving the original opaque sign section for such worlds until a lossless sparse
-    /// representation is available.
+    /// Captures the exact semantic image produced by vanilla SaveSigns followed by LoadSigns: all non-null runtime
+    /// slots are emitted in ascending slot order and receive compact slot ids 0..N-1 after the next load.
     /// </summary>
     public bool TryCaptureCanonicalSnapshot(out WorldSign[] snapshot)
     {
-        if (!persistenceCanonical)
+        var compacted = new List<WorldSign>();
+        for (int id = 0; id < signs.Length; id++)
         {
-            snapshot = [];
-            return false;
+            if (signs[id] is not WorldSign sign)
+                continue;
+
+            short persistedId = checked((short)compacted.Count);
+            compacted.Add(new WorldSign(persistedId, sign.Text, sign.X, sign.Y));
         }
 
-        snapshot = new WorldSign[sourceCount];
-        for (int index = 0; index < sourceCount; index++)
-        {
-            if (signs[index] is not WorldSign sign || sign.SlotId != index)
-                throw new InvalidOperationException("Runtime sign table lost canonical slot identity.");
-
-            snapshot[index] = new WorldSign(sign.SlotId, sign.Text, sign.X, sign.Y);
-        }
+        snapshot = compacted.ToArray();
         return true;
     }
-
-    private static long GetCoordinateKey(int x, int y) =>
-        ((long)(uint)x << 32) | (uint)y;
 }
