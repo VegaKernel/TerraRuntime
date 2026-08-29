@@ -10,7 +10,7 @@
 - [Архитектура](architecture.md) — границы подсистем, владение состоянием, потоки данных, threading model, NativeAOT/CoreCLR profiles, persistence и extension boundaries.
 - [Интерфейсы host-интеграции](host-interfaces.md) — публичные контракты `TerraRuntime.HostContracts`, порядок жизни trusted host module и правила безопасного взаимодействия с runtime.
 
-## Руководства по подсистемам
+## Руководства по подсистемам и инженерным правилам
 
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
 - [Загрузка мира и persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state и recovery.
@@ -20,6 +20,7 @@
 - [Observability и logging](observability-logging.md) — bounded runtime telemetry/log buffers, текущее host-log behavior и незавершённый async structured logging target.
 - [World generation](world-generation.md) — provider/pass/workspace/RNG contracts, trusted-host registration и текущий non-vanilla flat baseline.
 - [Security и trust boundaries](security.md) — admission limits, rate/size bounds, failure isolation, persistence safety и незавершённая hardening work.
+- [Testing, verification и evidence](testing-evidence.md) — политика roadmap checkbox, independent evidence, official-source/live-world probes, NativeAOT/CoreCLR gates и правила доказательства performance claims.
 
 ## Нормативные документы проекта
 
