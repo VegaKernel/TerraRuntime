@@ -6,31 +6,36 @@ namespace TerraRuntime.Tests;
 
 public sealed class TypedProtocolDecoderFuzzTests
 {
-    private const int SampleCount = 8192;
-    private const int MaximumPayloadLength = 64;
+    private const int SamplesPerDecoder = 1024;
+    private const int MaximumPayloadLength = 160;
 
     [Fact]
     public void Deterministic_arbitrary_payloads_never_escape_typed_decoder_contracts()
     {
         uint state = 0x51A7E11u;
 
-        for (int sample = 0; sample < SampleCount; sample++)
+        for (DecoderKind kind = 0; kind < DecoderKind.Count; kind++)
         {
-            DecoderKind kind = (DecoderKind)(Next(ref state) % (uint)DecoderKind.Count);
-            int payloadLength = (int)(Next(ref state) % (MaximumPayloadLength + 1));
-            var payload = new byte[payloadLength];
-            for (int index = 0; index < payload.Length; index++)
+            for (int sample = 0; sample < SamplesPerDecoder; sample++)
             {
-                payload[index] = (byte)Next(ref state);
+                // Every decoder sees every payload length in the bounded fuzz window repeatedly.
+                // This guarantees exact-length codecs exercise their parser paths instead of relying
+                // on random selection to happen to land on 5/9/etc. bytes.
+                int payloadLength = sample % (MaximumPayloadLength + 1);
+                var payload = new byte[payloadLength];
+                for (int index = 0; index < payload.Length; index++)
+                {
+                    payload[index] = (byte)Next(ref state);
+                }
+
+                bool segmented = (sample & 1) != 0;
+                TerrariaFrame frame = CreateFrame(kind, payload, segmented);
+                Exception? exception = Record.Exception(() => Decode(kind, frame));
+
+                Assert.True(
+                    exception is null,
+                    $"Decoder {kind} escaped its contract for sample {sample}, payload length {payloadLength}, segmented={segmented}: {exception}");
             }
-
-            bool segmented = (Next(ref state) & 1u) != 0;
-            TerrariaFrame frame = CreateFrame(kind, payload, segmented);
-            Exception? exception = Record.Exception(() => Decode(kind, frame));
-
-            Assert.True(
-                exception is null,
-                $"Decoder {kind} escaped its contract for sample {sample}, payload length {payloadLength}, segmented={segmented}: {exception}");
         }
     }
 
@@ -42,6 +47,11 @@ public sealed class TypedProtocolDecoderFuzzTests
             DecoderKind.WorldRequest => (byte)TerrariaMessageId.RequestWorldData,
             DecoderKind.SectionRequest => (byte)TerrariaMessageId.SpawnTileData,
             DecoderKind.PlayerSpawn => (byte)TerrariaMessageId.PlayerSpawn,
+            DecoderKind.PlayerMovement => (byte)TerrariaMessageId.PlayerControls,
+            DecoderKind.PlayerAppearance => (byte)TerrariaMessageId.SyncPlayer,
+            DecoderKind.PlayerEquipment => (byte)TerrariaMessageId.SyncEquipment,
+            DecoderKind.PlayerHealth => (byte)TerrariaMessageId.PlayerHp,
+            DecoderKind.PlayerMana => (byte)TerrariaMessageId.PlayerMana,
             DecoderKind.ProjectileUpdate => (byte)TerrariaMessageId.ProjectileNew,
             DecoderKind.ProjectileDestroy => (byte)TerrariaMessageId.ProjectileDestroy,
             DecoderKind.WorldItemDrop => (byte)TerrariaMessageId.WorldItemDrop,
@@ -82,6 +92,36 @@ public sealed class TypedProtocolDecoderFuzzTests
             case DecoderKind.PlayerSpawn:
             {
                 TerrariaJoinDecodeResult result = TerrariaJoinRequestDecoder.TryDecodePlayerSpawn(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.PlayerMovement:
+            {
+                TerrariaPlayerMovementDecodeResult result = TerrariaPlayerMovementDecoder.TryDecode(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.PlayerAppearance:
+            {
+                TerrariaPlayerAppearanceDecodeResult result = TerrariaPlayerAppearanceCodec.TryDecode(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.PlayerEquipment:
+            {
+                TerrariaPlayerEquipmentDecodeResult result = TerrariaPlayerEquipmentCodec.TryDecode(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.PlayerHealth:
+            {
+                TerrariaPlayerHealthDecodeResult result = TerrariaPlayerVitalsCodec.TryDecodeHealth(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.PlayerMana:
+            {
+                TerrariaPlayerManaDecodeResult result = TerrariaPlayerVitalsCodec.TryDecodeMana(frame, out _);
                 Assert.True(Enum.IsDefined(result));
                 break;
             }
@@ -139,6 +179,11 @@ public sealed class TypedProtocolDecoderFuzzTests
         WorldRequest,
         SectionRequest,
         PlayerSpawn,
+        PlayerMovement,
+        PlayerAppearance,
+        PlayerEquipment,
+        PlayerHealth,
+        PlayerMana,
         ProjectileUpdate,
         ProjectileDestroy,
         WorldItemDrop,
