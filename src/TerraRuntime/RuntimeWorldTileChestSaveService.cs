@@ -26,13 +26,15 @@ internal readonly record struct RuntimeWorldSaveStatus(
     long FailedWrites);
 
 /// <summary>
-/// Bridges thread-safe save requests into game-thread-owned snapshot capture. Tile shadow maintenance and chest/clock
-/// capture happen only from <see cref="Tick"/> (or after the authoritative owner has stopped); serialization and
-/// atomic file replacement happen on the save coordinator's background worker.
+/// Bridges thread-safe save requests into game-thread-owned snapshot capture. Tile shadow maintenance and mutable
+/// world-state capture happen only from <see cref="Tick"/> (or after the authoritative owner has stopped);
+/// serialization and atomic file replacement happen on the save coordinator's background worker.
 /// </summary>
 internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
 {
     public const int DefaultSynchronizationSectionsPerTick = 4;
+    private const int MaxSignTextBytes = 64 * 1024;
+    private const long MaxTotalSignTextBytes = 64L * 1024 * 1024;
 
     private readonly RuntimeWorldTileChestSaveSnapshotSource snapshotSource;
     private readonly WorldSaveCoordinator<RuntimeWorldTileChestSaveSnapshot> coordinator;
@@ -51,7 +53,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         WorldTileStore tiles,
         RuntimeChestStore chestStore,
         RuntimeWorldClock? worldClock = null,
-        int synchronizationSectionsPerTick = DefaultSynchronizationSectionsPerTick)
+        int synchronizationSectionsPerTick = DefaultSynchronizationSectionsPerTick,
+        RuntimeSignStore? signStore = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
@@ -66,7 +69,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             tiles,
             chestStore,
             synchronizationSectionsPerTick,
-            worldClock);
+            worldClock,
+            signStore);
         coordinator = new WorldSaveCoordinator<RuntimeWorldTileChestSaveSnapshot>(
             destinationPath,
             CaptureSnapshotOnOwner,
@@ -238,6 +242,25 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             headerSection = patchedHeader;
         }
 
+        ReadOnlySpan<byte> signSection = preserved.Signs.Span;
+        byte[]? encodedSigns = null;
+        if (snapshot.Signs is WorldSign[] signs)
+        {
+            using var signStream = new MemoryStream();
+            WorldFileSignEncodeResult signResult = WorldFileSignEncoder.TryEncode(
+                signs,
+                sourceHeader.Dimensions,
+                MaxSignTextBytes,
+                MaxTotalSignTextBytes,
+                signStream,
+                out _);
+            if (signResult != WorldFileSignEncodeResult.Encoded)
+                throw new InvalidDataException($"Authoritative world sign encoding failed: {signResult}.");
+
+            encodedSigns = signStream.ToArray();
+            signSection = encodedSigns;
+        }
+
         WorldFileTileChestRewriteResult result = WorldFileTileChestRewriter.TryRewrite(
             sourceEnvelope,
             sourceHeader,
@@ -245,10 +268,11 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             preserved,
             snapshot.Tiles,
             snapshot.Chests,
+            signSection,
             destination,
             out _);
         if (result != WorldFileTileChestRewriteResult.Rewritten)
-            throw new InvalidDataException($"Authoritative tile/chest world save failed: {result}.");
+            throw new InvalidDataException($"Authoritative tile/chest/sign world save failed: {result}.");
 
         return Task.CompletedTask;
     }
