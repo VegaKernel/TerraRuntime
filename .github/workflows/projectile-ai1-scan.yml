@@ -60,15 +60,15 @@ jobs:
                       if d == 0: return src[m.start():i+1]
               return ''
 
-          def block_after(pos):
-              op = src.find('{', pos)
+          def block_after(text, pos):
+              op = text.find('{', pos)
               if op < 0: return ''
               d = 0
-              for i in range(op, len(src)):
-                  if src[i] == '{': d += 1
-                  elif src[i] == '}':
+              for i in range(op, len(text)):
+                  if text[i] == '{': d += 1
+                  elif text[i] == '}':
                       d -= 1
-                      if d == 0: return src[op:i+1]
+                      if d == 0: return text[op:i+1]
               return ''
 
           names = {}
@@ -84,7 +84,7 @@ jobs:
           for m in pat.finditer(defaults):
               t=int(m.group(1))
               if t in seen: continue
-              b=block_after(m.end())
+              b=block_after(defaults, m.end())
               if not re.search(r'\baiStyle\s*=\s*1\s*;', b): continue
               seen.add(t)
               counts={}
