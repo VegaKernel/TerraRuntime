@@ -38,10 +38,20 @@ internal static class RuntimeWorldCheckpointRecovery
     /// An explicitly unsupported world-file version is a compatibility decision, not evidence of corruption;
     /// silently replacing it with an older backup could destroy an intentional upgrade.
     /// </summary>
-    public static bool CanAutomaticallyRestoreAfter(WorldFileLoadDiagnostic diagnostic) =>
-        !(diagnostic.Result == WorldFileLoadResult.InvalidEnvelope
+    public static bool CanAutomaticallyRestoreAfter(WorldFileLoadDiagnostic diagnostic)
+    {
+        bool invalidEnvelopeVersion =
+            diagnostic.Result == WorldFileLoadResult.InvalidEnvelope
             && diagnostic.Stage == WorldFileLoadStage.Envelope
-            && diagnostic.StageResultCode == (int)WorldFileEnvelopeParseResult.InvalidVersion);
+            && diagnostic.StageResultCode == (int)WorldFileEnvelopeParseResult.InvalidVersion;
+
+        bool unsupportedHeaderVersion =
+            diagnostic.Result == WorldFileLoadResult.InvalidHeader
+            && diagnostic.Stage == WorldFileLoadStage.Header
+            && diagnostic.StageResultCode == (int)WorldFileHeaderParseResult.UnsupportedVersion;
+
+        return !invalidEnvelopeVersion && !unsupportedHeaderVersion;
+    }
 
     public static async Task ValidateAsync(
         string checkpointPath,
