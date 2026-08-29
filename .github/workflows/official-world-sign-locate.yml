@@ -26,8 +26,17 @@ jobs:
           mkdir -p .cache/terraria-1458 artifacts
           curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
             -o .cache/terraria-1458/server.zip
-          echo 'd87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e  .cache/terraria-1458/server.zip' | sha256sum -c -
           unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          expected_sha256='d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e'
+          assembly=''
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected_sha256" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          printf 'pinned_source=%s\n' "$assembly"
 
       - name: Generate official small world
         shell: bash
