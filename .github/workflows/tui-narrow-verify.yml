@@ -27,3 +27,5 @@ jobs:
 
       - name: Terminal UI smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --tui-smoke
+
+# Verification refresh after authoritative sign-slot clear fix.
