@@ -14,7 +14,8 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
     public WorldSaveCoordinator(
         string destinationPath,
         Func<TSnapshot> captureSnapshot,
-        Func<TSnapshot, Stream, CancellationToken, Task> serializeAsync)
+        Func<TSnapshot, Stream, CancellationToken, Task> serializeAsync,
+        AtomicSaveFileWriterOptions? writerOptions = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(captureSnapshot);
@@ -26,6 +27,7 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
             AtomicSaveFileWriter.WriteAsync(
                 fullDestinationPath,
                 (stream, token) => serializeAsync(snapshot, stream, token),
+                writerOptions,
                 cancellationToken));
     }
 
