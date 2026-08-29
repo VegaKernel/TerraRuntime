@@ -18,6 +18,12 @@ internal sealed class RuntimeChatRelay
     private static readonly ConditionalWeakTable<PlayerSlotPool, RuntimeChatRelay> Relays = new();
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
+    private readonly RuntimeChatFanoutBudget fanoutBudget;
+
+    public RuntimeChatRelay(RuntimeChatFanoutBudget? fanoutBudget = null)
+    {
+        this.fanoutBudget = fanoutBudget ?? new RuntimeChatFanoutBudget();
+    }
 
     public static RuntimeChatRelay For(PlayerSlotPool slots)
     {
@@ -54,6 +60,12 @@ internal sealed class RuntimeChatRelay
         if (!endpoints.TryGetValue(source, out Endpoint? origin) || !origin.IsPlaying(author))
             return 0;
 
+        if (!fanoutBudget.TryConsume())
+        {
+            TerrariaFrameRejectionTelemetry.Record(TerrariaFrameRejectionCategory.RateLimited);
+            return 0;
+        }
+
         if (TerrariaChatCodec.TryDecodeServerFrame(encodedFrame, out TerrariaServerChatMessage message))
             RuntimeChatTelemetry.Publish(author.Slot.Value, message.Text);
 
@@ -70,6 +82,8 @@ internal sealed class RuntimeChatRelay
 
         return enqueued;
     }
+
+    internal RuntimeChatFanoutBudgetSnapshot CaptureBudgetSnapshot() => fanoutBudget.CaptureSnapshot();
 
     private sealed class Endpoint(TerrariaConnectionOutboundQueue outbound)
     {
