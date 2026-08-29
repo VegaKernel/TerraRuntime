@@ -33,6 +33,16 @@ internal static class RuntimeWorldCheckpointRecovery
         return Path.GetFullPath(worldPath) + ".bak";
     }
 
+    /// <summary>
+    /// Automatic rollback is reserved for a canonical checkpoint that failed structural/content validation.
+    /// An explicitly unsupported world-file version is a compatibility decision, not evidence of corruption;
+    /// silently replacing it with an older backup could destroy an intentional upgrade.
+    /// </summary>
+    public static bool CanAutomaticallyRestoreAfter(WorldFileLoadDiagnostic diagnostic) =>
+        !(diagnostic.Result == WorldFileLoadResult.InvalidEnvelope
+            && diagnostic.Stage == WorldFileLoadStage.Envelope
+            && diagnostic.StageResultCode == (int)WorldFileEnvelopeParseResult.InvalidVersion);
+
     public static async Task ValidateAsync(
         string checkpointPath,
         WorldFileLoadLimits limits,
