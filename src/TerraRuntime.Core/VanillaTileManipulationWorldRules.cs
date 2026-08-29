@@ -1,14 +1,18 @@
+using TerraRuntime.Contracts.Runtime;
+
 namespace TerraRuntime.Core;
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 packet-17 world-coordinate rules.
 /// MessageBuffer calls WorldGen.InWorld(x, y, 3) before dispatching a tile action.
-/// Core accepts primitive world dimensions here so the dependency direction remains Core -> Contracts rather
-/// than introducing the forbidden Core -> World project edge.
+/// The runtime consumes protocol-neutral tile bounds so Core never depends on the World storage assembly.
 /// </summary>
 public static class VanillaTileManipulationWorldRules
 {
     public const int Packet17WorldMargin = 3;
+
+    public static bool IsInPacket17WorldBounds(WorldTileBounds dimensions, int x, int y) =>
+        IsInPacket17WorldBounds(dimensions.WidthTiles, dimensions.HeightTiles, x, y);
 
     public static bool IsInPacket17WorldBounds(int widthTiles, int heightTiles, int x, int y) =>
         widthTiles > Packet17WorldMargin * 2 &&
