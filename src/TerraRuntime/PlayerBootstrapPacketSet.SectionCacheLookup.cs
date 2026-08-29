@@ -3,6 +3,13 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
+internal enum SectionFrameLookupResult : byte
+{
+    Available = 0,
+    Unavailable = 1,
+    RateLimited = 2
+}
+
 internal readonly record struct SectionRebuildRequestTicket(bool Accepted, long Generation)
 {
     public static SectionRebuildRequestTicket Rejected => new(false, 0);
@@ -43,12 +50,17 @@ public sealed partial class PlayerBootstrapPacketSet
     /// </summary>
     internal bool TryGetOrRequestSectionFrame(
         WorldSectionId section,
+        out ReadOnlyMemory<byte> frame) =>
+        ResolveSectionFrame(section, out frame) == SectionFrameLookupResult.Available;
+
+    internal SectionFrameLookupResult ResolveSectionFrame(
+        WorldSectionId section,
         out ReadOnlyMemory<byte> frame)
     {
         frame = default;
         WorldFileData? world = _world;
         if (world is null)
-            return false;
+            return SectionFrameLookupResult.Unavailable;
 
         int index = TerrariaSectionGeometry.ToLinearIndex(world.Header.Dimensions, section);
         lock (_sectionCacheGate)
@@ -60,7 +72,7 @@ public sealed partial class PlayerBootstrapPacketSet
             {
                 Interlocked.Increment(ref _sectionCacheHits);
                 frame = cached.TileSectionFrame;
-                return true;
+                return SectionFrameLookupResult.Available;
             }
 
             Interlocked.Increment(ref _sectionCacheMisses);
@@ -74,18 +86,21 @@ public sealed partial class PlayerBootstrapPacketSet
             // Startup/tests that intentionally use the packet set without the runtime pipeline retain the
             // correctness-first synchronous fallback. The production host attaches the pipeline before accept.
             if (!TryGetOrEncodeSection(section, out SectionCacheEntry entry))
-                return false;
+                return SectionFrameLookupResult.Unavailable;
 
             frame = entry.TileSectionFrame;
-            return true;
+            return SectionFrameLookupResult.Available;
         }
 
-        SectionRebuildRequestTicket ticket = _sectionRebuildGlobalBudget.Request(
+        SectionRebuildGlobalBudgetRequestResult requestResult = _sectionRebuildGlobalBudget.RequestDetailed(
             index,
             section,
-            requester);
-        if (!ticket.Accepted)
-            return false;
+            requester,
+            out SectionRebuildRequestTicket ticket);
+        if (requestResult == SectionRebuildGlobalBudgetRequestResult.GlobalRateLimited)
+            return SectionFrameLookupResult.RateLimited;
+        if (requestResult != SectionRebuildGlobalBudgetRequestResult.Accepted)
+            return SectionFrameLookupResult.Unavailable;
 
         Interlocked.Increment(ref _sectionCacheWaits);
         long started = Stopwatch.GetTimestamp();
@@ -100,24 +115,24 @@ public sealed partial class PlayerBootstrapPacketSet
                 {
                     Interlocked.Increment(ref _sectionCacheWaitCompletions);
                     frame = current.TileSectionFrame;
-                    return true;
+                    return SectionFrameLookupResult.Available;
                 }
 
                 if (_sectionCacheFailedRebuildGenerations.TryGetValue(index, out long failedGeneration) &&
                     failedGeneration == ticket.Generation)
                 {
                     Interlocked.Increment(ref _sectionCacheWaitFailures);
-                    return false;
+                    return SectionFrameLookupResult.Unavailable;
                 }
 
                 if (Volatile.Read(ref _sectionRebuildRequester) is null)
-                    return false;
+                    return SectionFrameLookupResult.Unavailable;
 
                 TimeSpan remaining = SectionCacheLookupWaitTimeout - Stopwatch.GetElapsedTime(started);
                 if (remaining <= TimeSpan.Zero)
                 {
                     Interlocked.Increment(ref _sectionCacheWaitTimeouts);
-                    return false;
+                    return SectionFrameLookupResult.Unavailable;
                 }
 
                 Monitor.Wait(_sectionCacheGate, remaining);
