@@ -14,10 +14,44 @@ internal readonly record struct StartupWorldCreationRequest(
 /// </summary>
 internal static class StartupWorldCreationRequestParser
 {
+    private static readonly string[] CreationOptions =
+    [
+        "--create-world",
+        "--world-generator",
+        "--world-seed",
+        "--world-width",
+        "--world-height",
+        "--world-output"
+    ];
+
     public static bool HasCreateWorldArgument(IEnumerable<string> args)
     {
         ArgumentNullException.ThrowIfNull(args);
         return args.Contains("--create-world", StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Removes the bootstrap-only creation options after a request has been parsed successfully, leaving unrelated
+    /// server options untouched. Creation options are never forwarded into <see cref="ServerHostOptions"/>.
+    /// </summary>
+    public static string[] RemoveCreationArguments(IReadOnlyList<string> args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        var retained = new List<string>(args.Count);
+
+        for (int index = 0; index < args.Count; index++)
+        {
+            if (!IsCreationOption(args[index]))
+            {
+                retained.Add(args[index]);
+                continue;
+            }
+
+            if (index + 1 < args.Count)
+                index++;
+        }
+
+        return retained.ToArray();
     }
 
     public static bool TryParse(
@@ -101,6 +135,17 @@ internal static class StartupWorldCreationRequestParser
 
         request = new StartupWorldCreationRequest(generation, outputPath);
         return true;
+    }
+
+    private static bool IsCreationOption(string value)
+    {
+        foreach (string option in CreationOptions)
+        {
+            if (string.Equals(value, option, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private static bool TryReadRequiredValue(
