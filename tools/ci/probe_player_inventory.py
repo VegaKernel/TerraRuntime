@@ -8,6 +8,11 @@ def compact(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def require(source: str, value: str, description: str) -> None:
+    if value not in source:
+        raise SystemExit(f"Terraria 1.4.5.8 {description} changed; missing: {value}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Verify Terraria 1.4.5.8 packet-5 inventory mapping used by tile authority work."
@@ -32,7 +37,7 @@ def main() -> int:
         raise SystemExit("Could not isolate Terraria.MessageBuffer packet-5 receive branch.")
     body = packet5.group("body")
 
-    required_packet5 = [
+    for expected in [
         "int num25 = reader.ReadByte();",
         "int num26 = reader.ReadInt16();",
         "int stack2 = reader.ReadInt16();",
@@ -41,15 +46,22 @@ def main() -> int:
         "PlayerItemSlotID.SlotReference slot = new PlayerItemSlotID.SlotReference(player2, num26);",
         "slot.Item = item;",
         "else if (num26 <= 58)",
-    ]
-    for expected in required_packet5:
-        if expected not in body:
-            raise SystemExit(f"Packet-5 inventory contract changed; missing: {expected}")
+    ]:
+        require(body, expected, "packet-5 receive contract")
+
+    for expected in [
+        "slot = SlotId - Inventory0; arr = Player.inventory;",
+        "Inventory0 = AllocateSlots(58, canNetRelay: true);",
+        "InventoryMouseItem = AllocateSlots(1, canNetRelay: true);",
+        "Armor0 = AllocateSlots(20, canNetRelay: true);",
+    ]:
+        require(slot_id, expected, "PlayerItemSlotID inventory layout")
 
     print("player_inventory_length=59")
-    print("packet5_low_slot_boundary=58")
+    print("player_inventory_normal_slots=58")
+    print("player_inventory_mouse_slot=58")
+    print("player_inventory_slot_span=0..58")
     print("packet5_inventory_write=PlayerItemSlotID.SlotReference.Item")
-    print(f"player_item_slot_id_context={slot_id[:9000]}")
     return 0
 
 
