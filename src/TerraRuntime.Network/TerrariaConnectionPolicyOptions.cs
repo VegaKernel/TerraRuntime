@@ -6,7 +6,7 @@ public readonly record struct TerrariaConnectionPolicyOptions
         handshakeTimeout: TimeSpan.FromSeconds(10),
         idleTimeout: TimeSpan.FromSeconds(60),
         rateBudget: ConnectionRateBudgetOptions.AccountingOnly,
-        messageRateLimits: ConnectionMessageRateLimits.None);
+        messageRateLimits: ConnectionMessageRateLimits.HardAbuse);
 
     public TerrariaConnectionPolicyOptions(TimeSpan handshakeTimeout, TimeSpan idleTimeout)
         : this(
