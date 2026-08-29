@@ -139,6 +139,8 @@ jobs:
             > artifacts/source-contract/main.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.TileID "$assembly" \
             > artifacts/source-contract/tile-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" \
+            > artifacts/source-contract/projectile-id.cs
 
           python3 tools/ci/probe_projectile_tile_cut.py \
             --projectile artifacts/source-contract/projectile.cs \
@@ -146,4 +148,5 @@ jobs:
             --player artifacts/source-contract/player.cs \
             --worldgen artifacts/source-contract/worldgen.cs \
             --main artifacts/source-contract/main.cs \
-            --tile-id artifacts/source-contract/tile-id.cs
+            --tile-id artifacts/source-contract/tile-id.cs \
+            --projectile-id artifacts/source-contract/projectile-id.cs
