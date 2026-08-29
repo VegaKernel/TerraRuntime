@@ -4,31 +4,60 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
 {
     private readonly RuntimeWorldSnapshot snapshot;
     private readonly RuntimeWorldClockOperationsTelemetry? clockTelemetry;
+    private readonly Func<global::TerraRuntime.SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider;
 
     public LocalRuntimeWorldOperations(
         RuntimeWorldSnapshot snapshot,
-        RuntimeWorldClockOperationsTelemetry? clockTelemetry = null)
+        RuntimeWorldClockOperationsTelemetry? clockTelemetry = null,
+        Func<global::TerraRuntime.SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider = null)
     {
         this.snapshot = snapshot;
         this.clockTelemetry = clockTelemetry;
+        this.sectionCacheSnapshotProvider = sectionCacheSnapshotProvider;
     }
 
     public RuntimeWorldSnapshot CaptureSnapshot()
     {
         DateTimeOffset capturedAtUtc = DateTimeOffset.UtcNow;
-        if (clockTelemetry is null)
-            return snapshot with { CapturedAtUtc = capturedAtUtc };
+        RuntimeWorldSnapshot current = snapshot with { CapturedAtUtc = capturedAtUtc };
 
-        RuntimeWorldClockTelemetrySnapshot clock = clockTelemetry.CaptureSnapshot();
-        return snapshot with
+        if (clockTelemetry is not null)
         {
-            CapturedAtUtc = capturedAtUtc,
-            RuntimeClockAvailable = clock.Available,
-            RuntimeTime = clock.Time,
-            RuntimeDayTime = clock.DayTime,
-            RuntimeMoonPhase = clock.MoonPhase,
-            RuntimeSlimeRainTime = clock.SlimeRainTime,
-            RuntimeDayRate = clock.DayRate
-        };
+            RuntimeWorldClockTelemetrySnapshot clock = clockTelemetry.CaptureSnapshot();
+            current = current with
+            {
+                RuntimeClockAvailable = clock.Available,
+                RuntimeTime = clock.Time,
+                RuntimeDayTime = clock.DayTime,
+                RuntimeMoonPhase = clock.MoonPhase,
+                RuntimeSlimeRainTime = clock.SlimeRainTime,
+                RuntimeDayRate = clock.DayRate
+            };
+        }
+
+        if (sectionCacheSnapshotProvider is not null)
+        {
+            global::TerraRuntime.SectionCacheRebuildPipelineSnapshot sectionCache = sectionCacheSnapshotProvider();
+            current = current with
+            {
+                SectionCacheAvailable = true,
+                SectionCacheDirtyBacklog = sectionCache.DirtyBacklog,
+                SectionCacheInFlight = sectionCache.InFlight,
+                SectionCacheEntries = sectionCache.CacheEntries,
+                SectionCacheMaximumEntries = sectionCache.CacheMaximumEntries,
+                SectionCacheBytes = sectionCache.CacheBytes,
+                SectionCacheSubmitted = sectionCache.SubmittedRebuilds,
+                SectionCacheRejected = sectionCache.RejectedSubmissions,
+                SectionCachePublished = sectionCache.PublishedFrames,
+                SectionCacheStaleResults = sectionCache.StaleResults,
+                SectionCacheEncodeFailures = sectionCache.EncodeFailures,
+                SectionCachePublishRejections = sectionCache.PublishRejections,
+                SectionCacheActiveWorkers = sectionCache.WorkerPool.ActiveWorkers,
+                SectionCachePendingWork = sectionCache.WorkerPool.PendingWork,
+                SectionCacheTotalEncodeMilliseconds = sectionCache.TotalEncodeDuration.TotalMilliseconds
+            };
+        }
+
+        return current;
     }
 }
