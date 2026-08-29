@@ -47,6 +47,7 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
 
         if (_rateAccountant.Observe(frame.PacketLength) != ConnectionRateDecision.Allowed)
         {
+            TerrariaFrameRejectionTelemetry.Record(TerrariaFrameRejectionCategory.RateLimited);
             _state.TryStop(TerrariaConnectionStopReason.RateLimited);
             return TerrariaFrameSinkResult.Stop;
         }
@@ -54,6 +55,7 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
         if (_messageRateAccountant.Observe(frame.MessageId, frame.PacketLength) != ConnectionRateDecision.Allowed)
         {
             _rateAccountant.RecordSecondaryRateRejection();
+            TerrariaFrameRejectionTelemetry.Record(TerrariaFrameRejectionCategory.RateLimited);
             _state.TryStop(TerrariaConnectionStopReason.RateLimited);
             return TerrariaFrameSinkResult.Stop;
         }
@@ -63,12 +65,14 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
         {
             if (frame.MessageId != (byte)TerrariaMessageId.Hello)
             {
+                TerrariaFrameRejectionTelemetry.Record(TerrariaFrameRejectionCategory.InvalidState);
                 _state.TryStop(TerrariaConnectionStopReason.InvalidHandshake);
                 return TerrariaFrameSinkResult.Stop;
             }
         }
         else if (frame.MessageId == (byte)TerrariaMessageId.Hello)
         {
+            TerrariaFrameRejectionTelemetry.Record(TerrariaFrameRejectionCategory.InvalidState);
             _state.TryStop(TerrariaConnectionStopReason.InvalidHandshake);
             return TerrariaFrameSinkResult.Stop;
         }
@@ -76,6 +80,11 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
         TerrariaFrameSinkResult result = _inner.OnFrame(in frame);
         if (result == TerrariaFrameSinkResult.Stop)
         {
+            if (_inner is ITerrariaFrameRejectionSource rejectionSource)
+            {
+                TerrariaFrameRejectionTelemetry.Record(rejectionSource.RejectionCategory);
+            }
+
             _state.TryStop(TerrariaConnectionStopReason.ApplicationStopped);
             return result;
         }
