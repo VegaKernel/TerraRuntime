@@ -107,7 +107,7 @@ public sealed class TerrariaConnectionPolicyTests
     }
 
     [Fact]
-    public void Default_policy_does_not_expire_an_established_idle_connection()
+    public void Default_policy_expires_an_established_connection_after_the_normal_idle_ceiling()
     {
         var time = new ManualTimeProvider();
         var state = new TerrariaConnectionPolicyState(TerrariaConnectionPolicyOptions.Default, time);
@@ -115,12 +115,37 @@ public sealed class TerrariaConnectionPolicyTests
         TerrariaFrame hello = Decode(CurrentHelloPacket());
         Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in hello));
 
-        time.Advance(TimeSpan.FromHours(24));
+        Assert.Equal(TimeSpan.FromMinutes(10), TerrariaConnectionPolicyOptions.DefaultIdleTimeout);
+        Assert.Equal(TerrariaConnectionPolicyOptions.DefaultIdleTimeout, state.GetRemainingTimeout());
 
-        Assert.Equal(Timeout.InfiniteTimeSpan, state.GetRemainingTimeout());
+        time.Advance(TerrariaConnectionPolicyOptions.DefaultIdleTimeout - TimeSpan.FromTicks(1));
+        Assert.False(state.TryExpire(out _));
+        time.Advance(TimeSpan.FromTicks(1));
+
+        Assert.True(state.TryExpire(out TerrariaConnectionStopReason reason));
+        Assert.Equal(TerrariaConnectionStopReason.IdleTimeout, reason);
+        Assert.Equal(TerrariaConnectionStopReason.IdleTimeout, state.StopReason);
+    }
+
+    [Fact]
+    public void Accepted_inbound_activity_refreshes_the_default_idle_deadline()
+    {
+        var time = new ManualTimeProvider();
+        var state = new TerrariaConnectionPolicyState(TerrariaConnectionPolicyOptions.Default, time);
+        var policy = new TerrariaConnectionPolicySink(new CountingSink(), state);
+        TerrariaFrame hello = Decode(CurrentHelloPacket());
+        TerrariaFrame activity = Decode([3, 0, (byte)TerrariaMessageId.PlayerInfo]);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in hello));
+
+        time.Advance(TerrariaConnectionPolicyOptions.DefaultIdleTimeout - TimeSpan.FromSeconds(1));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in activity));
+        time.Advance(TerrariaConnectionPolicyOptions.DefaultIdleTimeout - TimeSpan.FromSeconds(1));
         Assert.False(state.TryExpire(out TerrariaConnectionStopReason reason));
         Assert.Equal(TerrariaConnectionStopReason.None, reason);
-        Assert.Equal(TerrariaConnectionStopReason.None, state.StopReason);
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(state.TryExpire(out reason));
+        Assert.Equal(TerrariaConnectionStopReason.IdleTimeout, reason);
     }
 
     private static TerrariaFrame Decode(byte[] packet)
