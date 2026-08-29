@@ -43,8 +43,8 @@ public static class WorldSectionPacketEncoder
     }
 
     /// <summary>
-    /// Builds packet 10 from an immutable tile snapshot. This is the asynchronous rebuild path: compression
-    /// never observes live WorldTileStore mutations while the authoritative thread continues ticking.
+    /// Compatibility path for callers that provide an immutable tile snapshot while still resolving object
+    /// metadata from the loaded world on the caller thread.
     /// </summary>
     public static WorldSectionPacketEncodeResult TryEncode(
         WorldFileData world,
@@ -57,6 +57,23 @@ public static class WorldSectionPacketEncoder
 
         WorldSectionPayloadAssemblyResult payloadResult = WorldSectionPayloadAssembler.TryEncode(
             world,
+            snapshot,
+            out byte[] uncompressed);
+        return CompletePacket(payloadResult, uncompressed, out frame);
+    }
+
+    /// <summary>
+    /// Worker-safe packet-10 encoder. The supplied snapshot contains every mutable input required by section
+    /// payload assembly, so this overload performs tile encoding and DEFLATE without reading live world state.
+    /// </summary>
+    public static WorldSectionPacketEncodeResult TryEncode(
+        WorldSectionPacketSnapshot snapshot,
+        out byte[] frame)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        frame = [];
+
+        WorldSectionPayloadAssemblyResult payloadResult = WorldSectionPayloadAssembler.TryEncode(
             snapshot,
             out byte[] uncompressed);
         return CompletePacket(payloadResult, uncompressed, out frame);
