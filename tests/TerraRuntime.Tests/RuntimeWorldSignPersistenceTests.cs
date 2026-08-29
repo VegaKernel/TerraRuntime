@@ -108,7 +108,9 @@ public sealed class RuntimeWorldSignPersistenceTests
             await service.CompleteAsync(TestContext.Current.CancellationToken);
 
             byte[] savedFile = File.ReadAllBytes(destinationPath);
-            Assert.True(WorldFileEnvelopeParser.TryParse(savedFile, out WorldFileEnvelope? envelope, out _));
+            Assert.Equal(
+                WorldFileEnvelopeParseResult.Parsed,
+                WorldFileEnvelopeParser.TryParse(savedFile, out WorldFileEnvelope? envelope, out _));
             WorldFileEnvelope savedEnvelope = Assert.IsType<WorldFileEnvelope>(envelope);
             int signStart = savedEnvelope.SectionOffsets[3];
             int signEnd = savedEnvelope.SectionOffsets[4];
