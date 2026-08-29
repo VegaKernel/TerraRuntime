@@ -17,21 +17,22 @@ public readonly record struct ServerPlayerSlotBinding(
 /// <summary>
 /// Owns runtime-controlled player identities and their exact Terraria slot generations. Server players and network
 /// connections share the same <see cref="PlayerSlotPool"/>, so a server-owned player reserves its wire slot against
-/// connection bootstrap without inventing a fake transport source.
+/// connection bootstrap without inventing a fake transport source. Lifecycle/id-index mutation is serialized on the
+/// control path; slot+generation lookup used by simulation is a lock-free immutable-entry read.
 /// </summary>
 public sealed class RuntimeServerPlayerSlotRegistry
 {
     private readonly object gate = new();
     private readonly PlayerSlotPool slots;
     private readonly Dictionary<ServerPlayerId, ServerPlayerSlotBinding> byId = [];
-    private readonly ServerPlayerSlotBinding?[] bySlot;
+    private readonly SlotEntry?[] bySlot;
     private readonly PlayerSlotPool.PlayerSlotLease?[] slotLeases;
 
     public RuntimeServerPlayerSlotRegistry(PlayerSlotPool slots)
     {
         ArgumentNullException.ThrowIfNull(slots);
         this.slots = slots;
-        bySlot = new ServerPlayerSlotBinding?[slots.Capacity];
+        bySlot = new SlotEntry?[slots.Capacity];
         slotLeases = new PlayerSlotPool.PlayerSlotLease?[slots.Capacity];
     }
 
@@ -78,7 +79,7 @@ public sealed class RuntimeServerPlayerSlotRegistry
             }
 
             int slot = slotLease.Slot.Value;
-            if (bySlot[slot] is not null || slotLeases[slot] is not null)
+            if (Volatile.Read(ref bySlot[slot]) is not null || slotLeases[slot] is not null)
             {
                 slotLease.Dispose();
                 throw new InvalidOperationException("Server player registry slot ownership diverged from the shared pool.");
@@ -86,8 +87,8 @@ public sealed class RuntimeServerPlayerSlotRegistry
 
             var binding = new ServerPlayerSlotBinding(id, slotLease.Handle);
             byId.Add(id, binding);
-            bySlot[slot] = binding;
             slotLeases[slot] = slotLease;
+            Volatile.Write(ref bySlot[slot], new SlotEntry(binding));
             lease = new ServerPlayerSlotLease(this, binding);
             return ServerPlayerSlotAcquireResult.Acquired;
         }
@@ -115,18 +116,15 @@ public sealed class RuntimeServerPlayerSlotRegistry
             return false;
         }
 
-        lock (gate)
+        SlotEntry? entry = Volatile.Read(ref bySlot[player.Slot.Value]);
+        if (entry is null || entry.Binding.Player != player)
         {
-            ServerPlayerSlotBinding? candidate = bySlot[player.Slot.Value];
-            if (candidate is null || candidate.Value.Player != player)
-            {
-                binding = default;
-                return false;
-            }
-
-            binding = candidate.Value;
-            return true;
+            binding = default;
+            return false;
         }
+
+        binding = entry.Binding;
+        return true;
     }
 
     private void Release(in ServerPlayerSlotBinding binding)
@@ -138,18 +136,23 @@ public sealed class RuntimeServerPlayerSlotRegistry
                 return;
 
             int slot = binding.Player.Slot.Value;
-            ServerPlayerSlotBinding? slotted = bySlot[slot];
-            if (slotted is null || slotted.Value != binding)
+            SlotEntry? slotted = Volatile.Read(ref bySlot[slot]);
+            if (slotted is null || slotted.Binding != binding)
                 throw new InvalidOperationException("Server player registry identity and slot indexes diverged.");
 
             slotLease = slotLeases[slot]
                 ?? throw new InvalidOperationException("Server player binding lost its shared slot lease.");
             byId.Remove(binding.Id);
-            bySlot[slot] = null;
+            Volatile.Write(ref bySlot[slot], null);
             slotLeases[slot] = null;
         }
 
         slotLease.Dispose();
+    }
+
+    private sealed class SlotEntry(ServerPlayerSlotBinding binding)
+    {
+        public ServerPlayerSlotBinding Binding { get; } = binding;
     }
 
     /// <summary>
