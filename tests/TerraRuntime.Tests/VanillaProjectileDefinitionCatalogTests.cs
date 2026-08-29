@@ -7,6 +7,7 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
+    [InlineData(4)]
     public void Terraria_1458_arrow_family_definitions_match_source(int type)
     {
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
