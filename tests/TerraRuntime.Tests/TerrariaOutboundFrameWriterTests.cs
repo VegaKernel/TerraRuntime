@@ -50,6 +50,36 @@ public sealed class TerrariaOutboundFrameWriterTests
     }
 
     [Fact]
+    public async Task Does_not_wait_for_future_frames_to_fill_a_batch()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        var queue = new BoundedOutboundQueue(new OutboundQueueOptions(4, 64, 32));
+        await using var stream = new CountingWriteStream();
+        var options = new OutboundWriterOptions(maxBatchFrames: 4, maxBatchBytes: 16, maxBatchFrameBytes: 4);
+
+        Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(new byte[] { 1, 2 })));
+
+        Task<OutboundWriterResult> writer = TerrariaOutboundFrameWriter
+            .RunAsync(stream, queue, options, cancellationToken)
+            .AsTask();
+
+        await stream.FirstWrite.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+        Assert.Equal(1, stream.WriteCalls);
+        Assert.Equal(new byte[] { 1, 2 }, stream.Bytes);
+
+        Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(new byte[] { 3, 4 })));
+        Assert.True(queue.Complete());
+
+        OutboundWriterResult result = await writer;
+
+        Assert.Equal(OutboundWriterStopReason.Completed, result.Reason);
+        Assert.Equal(2, result.FramesWritten);
+        Assert.Equal(4, result.BytesWritten);
+        Assert.Equal(2, stream.WriteCalls);
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, stream.Bytes);
+    }
+
+    [Fact]
     public async Task Does_not_batch_a_large_frame_with_following_traffic()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -113,10 +143,13 @@ public sealed class TerrariaOutboundFrameWriterTests
     private sealed class CountingWriteStream : Stream
     {
         private readonly MemoryStream _inner = new();
+        private readonly TaskCompletionSource<bool> _firstWrite = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int WriteCalls { get; private set; }
 
         public byte[] Bytes => _inner.ToArray();
+
+        public Task FirstWrite => _firstWrite.Task;
 
         public override bool CanRead => false;
         public override bool CanSeek => false;
@@ -133,6 +166,7 @@ public sealed class TerrariaOutboundFrameWriterTests
         {
             WriteCalls++;
             await _inner.WriteAsync(buffer, cancellationToken);
+            _firstWrite.TrySetResult(true);
         }
 
         protected override void Dispose(bool disposing)
