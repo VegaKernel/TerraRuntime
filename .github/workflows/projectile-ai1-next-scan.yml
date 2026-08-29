@@ -27,6 +27,7 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
 
+          # Re-run on the current host-worldgen contract after its test environment caught up.
           python3 -m py_compile .github/scripts/apply_confetti_projectile_slice.py
           python3 .github/scripts/apply_confetti_projectile_slice.py
           python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
