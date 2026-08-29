@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 
 namespace TerraRuntime;
@@ -8,7 +9,9 @@ internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
     public TerraRuntimeHostRuntime(
         TerraRuntimeHostRuntimeInfo info,
         IInterestManagementControl interestManagement,
-        IPlayerStateSnapshotReader playerStates)
+        IPlayerStateSnapshotReader playerStates,
+        RuntimeNpcShopCatalogRegistry npcShops,
+        RuntimeNpcArchetypeRegistry npcArchetypes)
     {
         Info = info ?? throw new ArgumentNullException(nameof(info));
         InterestManagement = interestManagement ?? throw new ArgumentNullException(nameof(interestManagement));
@@ -20,7 +23,10 @@ internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
                 nameof(playerStates));
         }
 
-        NpcActors = new RuntimeNpcActorOperations(runtimePlayerStates.CommandIngress);
+        NpcActors = new RuntimeNpcActorOperations(
+            runtimePlayerStates.CommandIngress,
+            npcArchetypes ?? throw new ArgumentNullException(nameof(npcArchetypes)));
+        NpcShops = new RuntimeNpcShopOperations(npcShops ?? throw new ArgumentNullException(nameof(npcShops)));
         ServerPlayers = new RuntimeServerPlayerOperations(runtimePlayerStates.CommandIngress);
     }
 
@@ -28,5 +34,6 @@ internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
     public IInterestManagementControl InterestManagement { get; }
     public IPlayerStateSnapshotReader PlayerStates { get; }
     public INpcActorOperations NpcActors { get; }
+    public INpcShopOperations NpcShops { get; }
     public IServerPlayerOperations ServerPlayers { get; }
 }

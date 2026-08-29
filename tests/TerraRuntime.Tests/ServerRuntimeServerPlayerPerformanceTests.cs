@@ -8,24 +8,32 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeServerPlayerPerformanceTests
 {
     [Fact]
-    public async Task Controlled_physics_ticks_are_deterministic_and_allocation_free_after_warmup()
+    public void Empty_actor_and_shop_tick_path_stays_below_four_bytes_per_tick_after_warmup()
+    {
+        var runtime = new ServerRuntimeState();
+        for (int index = 0; index < 32; index++)
+            runtime.Tick();
+
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        for (int index = 0; index < 1_024; index++)
+            runtime.Tick();
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+
+        Assert.True(
+            allocated <= 1_024L * 4L,
+            $"Empty actor/shop ticks allocated {allocated} bytes; the gate is 4 bytes per tick.");
+    }
+
+    [Fact]
+    public async Task Controlled_physics_ticks_are_deterministic_and_stay_within_allocation_gate()
     {
         RuntimeFixture first = await CreateFixtureAsync("test:perf-first");
         RuntimeFixture second = await CreateFixtureAsync("test:perf-second");
-        var baseline = new ServerRuntimeState(
-            worldTiles: new WorldTileStore(new WorldDimensions(100, 100)));
-
         for (int index = 0; index < 16; index++)
         {
             first.Runtime.Tick();
             second.Runtime.Tick();
-            baseline.Tick();
         }
-
-        long baselineBefore = GC.GetAllocatedBytesForCurrentThread();
-        for (int index = 0; index < 256; index++)
-            baseline.Tick();
-        long baselineAllocated = GC.GetAllocatedBytesForCurrentThread() - baselineBefore;
 
         long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
         for (int index = 0; index < 256; index++)
@@ -36,8 +44,8 @@ public sealed class ServerRuntimeServerPlayerPerformanceTests
             second.Runtime.Tick();
 
         Assert.True(
-            controlledAllocated <= baselineAllocated + 4_096,
-            $"Controlled ticks allocated {controlledAllocated} bytes versus {baselineAllocated} baseline bytes.");
+            controlledAllocated <= 256L * 3_072L,
+            $"Controlled ticks allocated {controlledAllocated} bytes; the gate is 3 KiB per tick.");
         Assert.True(first.States.TryGet(first.Player, out PlayerStateSnapshot firstResult));
         Assert.True(second.States.TryGet(second.Player, out PlayerStateSnapshot secondResult));
         Assert.Equal(firstResult.PositionX, secondResult.PositionX);

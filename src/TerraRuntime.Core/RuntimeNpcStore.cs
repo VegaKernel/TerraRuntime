@@ -59,6 +59,28 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         return true;
     }
 
+    /// <summary>Allocates the first reusable vanilla NPC slot and advances its generation.</summary>
+    public bool TrySpawnVanilla(in NpcStateUpdate update, out NpcSnapshot snapshot)
+    {
+        if (!IsValid(in update))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        for (int slot = 0; slot < _slots.Length; slot++)
+        {
+            ref readonly SlotState state = ref _slots[slot];
+            if (state.Active || state.Generation == ulong.MaxValue)
+                continue;
+
+            return TrySpawn(checked((byte)slot), in update, out snapshot);
+        }
+
+        snapshot = default;
+        return false;
+    }
+
     public bool TryUpdate(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot)
     {
         if (!IsCurrentHandleCandidate(handle) || !IsValid(in update))

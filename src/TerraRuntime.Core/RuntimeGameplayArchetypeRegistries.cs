@@ -118,11 +118,7 @@ internal sealed class RuntimeGameplayArchetypeRegistry<TDescriptor>
 
     public bool HasPendingChanges
     {
-        get
-        {
-            lock (gate)
-                return dirty;
-        }
+        get => Volatile.Read(ref dirty);
     }
 
     public GameplayArchetypeRegistrationResult TryRegister(
@@ -140,7 +136,7 @@ internal sealed class RuntimeGameplayArchetypeRegistry<TDescriptor>
                 return GameplayArchetypeRegistrationResult.DuplicateId;
 
             staged.Add(id, descriptor);
-            dirty = true;
+            Volatile.Write(ref dirty, true);
             lease = new RegistrationLease(this, id);
             return GameplayArchetypeRegistrationResult.Registered;
         }
@@ -148,6 +144,9 @@ internal sealed class RuntimeGameplayArchetypeRegistry<TDescriptor>
 
     public RuntimeGameplayArchetypeSnapshot<TDescriptor> CommitPending()
     {
+        if (!Volatile.Read(ref dirty))
+            return published;
+
         lock (gate)
         {
             if (!dirty)
@@ -165,7 +164,7 @@ internal sealed class RuntimeGameplayArchetypeRegistry<TDescriptor>
             nextRevision = revision;
             Volatile.Write(ref published, next);
             retiringIds.RemoveWhere(id => !next.Contains(id));
-            dirty = false;
+            Volatile.Write(ref dirty, false);
             return next;
         }
     }
@@ -177,14 +176,14 @@ internal sealed class RuntimeGameplayArchetypeRegistry<TDescriptor>
             if (staged.Remove(id))
             {
                 retiringIds.Add(id);
-                dirty = true;
+                Volatile.Write(ref dirty, true);
                 return;
             }
 
             if (published.Contains(id))
             {
                 retiringIds.Add(id);
-                dirty = true;
+                Volatile.Write(ref dirty, true);
             }
         }
     }

@@ -9,6 +9,44 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeNpcActorControlTests
 {
     [Fact]
+    public async Task Registered_archetype_spawns_in_first_runtime_slot_and_retires_generation_identity()
+    {
+        var identities = new RuntimeNpcArchetypeIdentityStore(RuntimeNpcStore.MaximumAddressableCapacity);
+        var npcs = new RuntimeNpcStore(commitSink: identities);
+        var archetypes = new RuntimeNpcArchetypeRegistry();
+        var state = new ServerRuntimeState(
+            npcs: npcs,
+            npcArchetypes: archetypes,
+            npcArchetypeIdentities: identities);
+        var descriptor = new NpcArchetypeDescriptor(
+            new GameplayArchetypeId("test:merchant"),
+            VanillaNpcIds.Zombie);
+        Assert.Equal(
+            GameplayArchetypeRegistrationResult.Registered,
+            archetypes.TryRegister(descriptor, out IGameplayArchetypeRegistrationLease? registration));
+
+        var spawn = new TaskCompletionSource<NpcActorSpawnResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new NpcActorSpawnRuntimeCommand(
+            new NpcActorSpawnRequest(descriptor.Id, 100f, 120f),
+            spawn));
+        NpcActorSpawnResult spawned = await spawn.Task;
+
+        Assert.True(spawned.IsSpawned);
+        Assert.Equal(0, spawned.Npc.Slot);
+        Assert.True(state.TryCaptureNpcSnapshot(spawned.Npc, out NpcSnapshot snapshot));
+        Assert.Equal(VanillaNpcIds.Zombie.Value, snapshot.Type);
+        Assert.True(identities.TryGet(spawned.Npc, out GameplayArchetypeId identity));
+        Assert.Equal(descriptor.Id, identity);
+
+        var despawn = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new NpcDespawnRuntimeCommand(spawned.Npc, despawn));
+
+        Assert.True(await despawn.Task);
+        Assert.False(identities.TryGet(spawned.Npc, out _));
+        registration!.Dispose();
+    }
+
+    [Fact]
     public async Task Actor_intent_is_published_at_tick_boundary_and_then_flows_through_world_motion()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));

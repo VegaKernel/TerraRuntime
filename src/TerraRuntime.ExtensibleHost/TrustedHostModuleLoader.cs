@@ -1,5 +1,6 @@
 using System.Reflection;
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.HostContracts.WorldGeneration;
@@ -90,21 +91,59 @@ internal sealed class TrustedHostModuleLoader :
         if (runtimeAttached)
             throw new InvalidOperationException("A TerraRuntime world is already attached to the trusted host modules.");
 
-        int attachedCount = 0;
+        int processedCount = 0;
         try
         {
             foreach (LoadedHostModule loadedModule in loaded)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await loadedModule.Module.AttachRuntimeAsync(runtime, cancellationToken).ConfigureAwait(false);
-                attachedCount++;
+                processedCount++;
+                if (loadedModule.Module is ITerraRuntimeHostModuleWorldActivation activation &&
+                    !activation.IsEnabledForWorld(runtime.Info))
+                {
+                    continue;
+                }
+
+                var runtimeScope = new ScopedHostRuntime(runtime);
+                loadedModule.RuntimeScope = runtimeScope;
+                try
+                {
+                    await loadedModule.Module
+                        .AttachRuntimeAsync(runtimeScope, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception attachmentFailure)
+                {
+                    Exception? retirementFailure = null;
+                    try
+                    {
+                        await runtimeScope.RetireAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception exception)
+                    {
+                        retirementFailure = exception;
+                    }
+
+                    loadedModule.RuntimeScope = null;
+                    if (retirementFailure is not null)
+                    {
+                        throw new AggregateException(
+                            "Trusted host runtime attachment and scope retirement both failed.",
+                            attachmentFailure,
+                            retirementFailure);
+                    }
+
+                    throw;
+                }
+
+                loadedModule.RuntimeAttached = true;
             }
 
             runtimeAttached = true;
         }
         catch
         {
-            await DetachPrefixAsync(attachedCount, CancellationToken.None).ConfigureAwait(false);
+            await DetachPrefixAsync(processedCount, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
     }
@@ -116,6 +155,32 @@ internal sealed class TrustedHostModuleLoader :
 
         await DetachPrefixAsync(loaded.Count, cancellationToken).ConfigureAwait(false);
         runtimeAttached = false;
+    }
+
+    public async ValueTask<int> ReloadAllAsync(
+        ITerraRuntimeHostEnvironment environment,
+        ITerraRuntimeHostRuntime runtime,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        ArgumentNullException.ThrowIfNull(environment);
+        ArgumentNullException.ThrowIfNull(runtime);
+        if (!started)
+            throw new InvalidOperationException("Trusted host modules must be started before reload.");
+
+        await DetachRuntimeAsync(cancellationToken).ConfigureAwait(false);
+        await StopLoadedModulesAsync(cancellationToken).ConfigureAwait(false);
+        int reloaded = await StartAllAsync(environment, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await AttachRuntimeAsync(runtime, cancellationToken).ConfigureAwait(false);
+            return reloaded;
+        }
+        catch
+        {
+            await StopLoadedModulesAsync(CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -211,14 +276,35 @@ internal sealed class TrustedHostModuleLoader :
         List<Exception>? failures = null;
         for (int index = count - 1; index >= 0; index--)
         {
+            LoadedHostModule loadedModule = loaded[index];
             try
             {
-                await loaded[index].Module.DetachRuntimeAsync(cancellationToken).ConfigureAwait(false);
+                if (loadedModule.RuntimeAttached)
+                {
+                    await loadedModule.Module
+                        .DetachRuntimeAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                }
             }
             catch (Exception exception)
             {
                 failures ??= [];
                 failures.Add(exception);
+            }
+            try
+            {
+                if (loadedModule.RuntimeScope is not null)
+                    await loadedModule.RuntimeScope.RetireAsync().ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                failures ??= [];
+                failures.Add(exception);
+            }
+            finally
+            {
+                loadedModule.RuntimeScope = null;
+                loadedModule.RuntimeAttached = false;
             }
         }
 
@@ -300,9 +386,25 @@ internal sealed class TrustedHostModuleLoader :
         public ITerraRuntimeWorldGeneratorRegistry WorldGenerators { get; }
     }
 
-    private sealed record LoadedHostModule(
-        string Path,
-        ITerraRuntimeHostModule Module,
-        HostModuleLoadContext LoadContext,
-        IDisposable WorldGeneratorScope);
+    private sealed class LoadedHostModule
+    {
+        public LoadedHostModule(
+            string path,
+            ITerraRuntimeHostModule module,
+            HostModuleLoadContext loadContext,
+            IDisposable worldGeneratorScope)
+        {
+            Path = path;
+            Module = module;
+            LoadContext = loadContext;
+            WorldGeneratorScope = worldGeneratorScope;
+        }
+
+        public string Path { get; }
+        public ITerraRuntimeHostModule Module { get; }
+        public HostModuleLoadContext LoadContext { get; }
+        public IDisposable WorldGeneratorScope { get; }
+        public ScopedHostRuntime? RuntimeScope { get; set; }
+        public bool RuntimeAttached { get; set; }
+    }
 }

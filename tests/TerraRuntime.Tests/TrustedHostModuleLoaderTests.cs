@@ -14,6 +14,59 @@ namespace TerraRuntime.Tests;
 public sealed class TrustedHostModuleLoaderTests
 {
     [Fact]
+    public async Task Runtime_scope_retires_actor_controllers_and_shop_registrations()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        var npcActors = new TestNpcActorOperations(acquire: true);
+        var npcShops = new TestNpcShopOperations();
+        var source = new TestHostRuntime(
+            new TerraRuntimeHostRuntimeInfo("Scope World", "scope.wld", 100, 100, 7777, 8),
+            new TestInterestManagementControl(),
+            new TestPlayerStateSnapshotReader(),
+            npcActors,
+            npcShops,
+            new TestServerPlayerOperations());
+        var scope = new ScopedHostRuntime(source);
+        var npc = new NpcHandle(1, new NpcGeneration(1));
+        var controller = new ActorControllerId("fixture:controller");
+        var archetype = new NpcArchetypeDescriptor(
+            new GameplayArchetypeId("fixture:scope-actor"),
+            VanillaNpcIds.Zombie);
+
+        Assert.Equal(
+            NpcArchetypeRegistrationStatus.Registered,
+            scope.NpcActors.TryRegisterArchetype(archetype, out _));
+        NpcActorSpawnResult spawned = await scope.NpcActors.SpawnAsync(
+            new NpcActorSpawnRequest(archetype.Id, 100f, 100f),
+            cancellationToken);
+        Assert.True(spawned.IsSpawned);
+
+        Assert.Equal(
+            NpcActorAcquireStatus.Acquired,
+            await scope.NpcActors.AcquireAsync(npc, controller, cancellationToken));
+        var catalog = new NpcShopCatalog(
+            new ShopId("fixture:scope-shop"),
+            new GameplayArchetypeId("fixture:scope-merchant"),
+            [new ShopOffer(new ShopOfferId("dirt"), VanillaItemIds.DirtBlock, 1, 25)]);
+        Assert.Equal(
+            NpcShopRegistrationStatus.Registered,
+            scope.NpcShops.TryRegister(catalog, out _));
+
+        await scope.RetireAsync();
+
+        Assert.Equal(1, npcActors.ReleasedControllerCount);
+        Assert.Equal(1, npcActors.DespawnCount);
+        Assert.Equal(1, npcActors.ArchetypeRetiredCount);
+        Assert.Equal(1, npcShops.RetiredCount);
+        Assert.Equal(
+            NpcActorAcquireStatus.QueueRejected,
+            await scope.NpcActors.AcquireAsync(npc, controller, cancellationToken));
+        Assert.Equal(
+            NpcShopRegistrationStatus.RuntimeDetached,
+            scope.NpcShops.TryRegister(catalog, out _));
+    }
+
+    [Fact]
     public async Task StartAttachDetachStop_LoadsDropInModule_ThroughContractBoundary()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -46,6 +99,9 @@ public sealed class TrustedHostModuleLoaderTests
             loader.TerminalDashboards,
             loader.WorldGenerators);
         var interestManagement = new TestInterestManagementControl();
+        var serverPlayers = new TestServerPlayerOperations();
+        var npcShops = new TestNpcShopOperations();
+        var npcActors = new TestNpcActorOperations(acquire: true);
         var runtime = new TestHostRuntime(
             new TerraRuntimeHostRuntimeInfo(
                 "Fixture World",
@@ -56,8 +112,9 @@ public sealed class TrustedHostModuleLoaderTests
                 32),
             interestManagement,
             new TestPlayerStateSnapshotReader(),
-            new TestNpcActorOperations(),
-            new TestServerPlayerOperations());
+            npcActors,
+            npcShops,
+            serverPlayers);
 
         WorldGeneratorId fixtureGeneratorId = new(FixtureHostModule.WorldGeneratorId);
         try
@@ -97,9 +154,53 @@ public sealed class TrustedHostModuleLoaderTests
             Assert.Equal(
                 "Fixture World|7777|False",
                 await File.ReadAllTextAsync(attachedMarker, cancellationToken));
+            Assert.Equal(1, serverPlayers.CreateCount);
+            Assert.Equal("Fixture Bot", serverPlayers.Appearance?.Name);
+            Assert.Equal(new ServerPlayerVitalsState(100, 100, 20, 20), serverPlayers.Vitals);
+            Assert.Equal(
+                ServerPlayerMovementIntentKind.MoveTo,
+                serverPlayers.MovementIntent?.Kind);
+            NpcShopCatalog merchantCatalog = Assert.IsType<NpcShopCatalog>(npcShops.Catalog);
+            Assert.Equal(new ShopId(FixtureHostModule.MerchantShopId), merchantCatalog.Id);
+            Assert.Equal(
+                new GameplayArchetypeId(FixtureHostModule.MerchantArchetypeId),
+                merchantCatalog.NpcArchetypeId);
+            ShopOffer merchantOffer = Assert.Single(merchantCatalog.Offers.ToArray());
+            Assert.Equal(VanillaItemIds.DirtBlock, merchantOffer.ItemType);
+            Assert.Equal(25, merchantOffer.UnitPrice);
+            Assert.Equal(1, npcActors.SpawnCount);
+            Assert.Equal(NpcActorIntentKind.FollowPlayer, npcActors.Intent?.Kind);
+            Assert.Equal(new PlayerSlotId(7), npcActors.Intent?.TargetPlayer.Slot);
 
             await loader.DetachRuntimeAsync(cancellationToken);
+            Assert.Equal(1, serverPlayers.DespawnCount);
+            Assert.Equal(ServerPlayerMovementIntentKind.Stop, serverPlayers.MovementIntent?.Kind);
+            Assert.Equal(1, npcShops.RetiredCount);
+            Assert.Equal(1, npcActors.DespawnCount);
+            Assert.Equal(1, npcActors.ArchetypeRetiredCount);
+            Assert.Equal(NpcActorIntentKind.Stop, npcActors.Intent?.Kind);
             Assert.True(File.Exists(Path.Combine(data, "fixture-host-module.detached")));
+
+            var disabledRuntime = runtime with
+            {
+                Info = runtime.Info with { WorldName = FixtureHostModule.DisabledWorldName }
+            };
+            await loader.AttachRuntimeAsync(disabledRuntime, cancellationToken);
+            await loader.DetachRuntimeAsync(cancellationToken);
+
+            Assert.Equal(1, serverPlayers.CreateCount);
+            Assert.Equal(1, npcActors.SpawnCount);
+            Assert.Equal(1, npcShops.RetiredCount);
+
+            int reloaded = await loader.ReloadAllAsync(environment, runtime, cancellationToken);
+            Assert.Equal(1, reloaded);
+            Assert.Equal(2, serverPlayers.CreateCount);
+            Assert.Equal(2, npcActors.SpawnCount);
+            await loader.DetachRuntimeAsync(cancellationToken);
+            Assert.Equal(2, serverPlayers.DespawnCount);
+            Assert.Equal(2, npcActors.DespawnCount);
+            Assert.Equal(2, npcActors.ArchetypeRetiredCount);
+            Assert.Equal(2, npcShops.RetiredCount);
         }
         finally
         {
@@ -141,7 +242,55 @@ public sealed class TrustedHostModuleLoaderTests
         IInterestManagementControl InterestManagement,
         IPlayerStateSnapshotReader PlayerStates,
         INpcActorOperations NpcActors,
+        INpcShopOperations NpcShops,
         IServerPlayerOperations ServerPlayers) : ITerraRuntimeHostRuntime;
+
+    private sealed class TestNpcShopOperations : INpcShopOperations
+    {
+        public NpcShopCatalog? Catalog { get; private set; }
+        public int RetiredCount { get; private set; }
+
+        public NpcShopRegistrationStatus TryRegister(
+            NpcShopCatalog catalog,
+            out INpcShopRegistration? registration)
+        {
+            Catalog = catalog;
+            registration = new TestNpcShopRegistration(catalog, () => RetiredCount++);
+            return NpcShopRegistrationStatus.Registered;
+        }
+    }
+
+    private sealed class TestNpcShopRegistration : INpcShopRegistration
+    {
+        private readonly Action retired;
+        private NpcShopCatalog? current;
+
+        public TestNpcShopRegistration(NpcShopCatalog catalog, Action retired)
+        {
+            current = catalog;
+            this.retired = retired;
+            ShopId = catalog.Id;
+            NpcArchetypeId = catalog.NpcArchetypeId;
+        }
+
+        public ShopId ShopId { get; }
+        public GameplayArchetypeId NpcArchetypeId { get; }
+
+        public bool TryReplaceCatalog(NpcShopCatalog replacement)
+        {
+            if (current is null || replacement.Id != ShopId || replacement.NpcArchetypeId != NpcArchetypeId)
+                return false;
+
+            current = replacement;
+            return true;
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref current, null) is not null)
+                retired();
+        }
+    }
 
     private sealed class TestInterestManagementControl : IInterestManagementControl
     {
@@ -170,6 +319,16 @@ public sealed class TrustedHostModuleLoaderTests
 
     private sealed class TestServerPlayerOperations : IServerPlayerOperations
     {
+        private static readonly PlayerHandle BotPlayer = new(
+            new PlayerSlotId(7),
+            new PlayerSessionGeneration(1));
+
+        public int CreateCount { get; private set; }
+        public int DespawnCount { get; private set; }
+        public ServerPlayerAppearanceState? Appearance { get; private set; }
+        public ServerPlayerVitalsState? Vitals { get; private set; }
+        public ServerPlayerMovementIntent? MovementIntent { get; private set; }
+
         public ValueTask<ServerPlayerCreateResult> CreateAsync(
             ServerPlayerId id,
             float positionX,
@@ -177,7 +336,8 @@ public sealed class TrustedHostModuleLoaderTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(new ServerPlayerCreateResult(ServerPlayerCreateStatus.NoAvailableSlot, default));
+            CreateCount++;
+            return ValueTask.FromResult(new ServerPlayerCreateResult(ServerPlayerCreateStatus.Created, BotPlayer));
         }
 
         public ValueTask<bool> SetHorizontalIntentAsync(
@@ -204,7 +364,8 @@ public sealed class TrustedHostModuleLoaderTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(false);
+            MovementIntent = intent;
+            return ValueTask.FromResult(true);
         }
 
         public ValueTask<bool> SetAppearanceAsync(
@@ -213,7 +374,8 @@ public sealed class TrustedHostModuleLoaderTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(false);
+            Appearance = appearance;
+            return ValueTask.FromResult(true);
         }
 
         public ValueTask<bool> SetVitalsAsync(
@@ -222,7 +384,8 @@ public sealed class TrustedHostModuleLoaderTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(false);
+            Vitals = vitals;
+            return ValueTask.FromResult(true);
         }
 
         public ValueTask<bool> SetItemAsync(
@@ -239,19 +402,55 @@ public sealed class TrustedHostModuleLoaderTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(false);
+            DespawnCount++;
+            return ValueTask.FromResult(true);
         }
     }
 
-    private sealed class TestNpcActorOperations : INpcActorOperations
+    private sealed class TestNpcActorOperations(bool acquire = false) : INpcActorOperations
     {
+        private static readonly NpcHandle SpawnedNpc = new(2, new NpcGeneration(1));
+
+        public int ReleasedControllerCount { get; private set; }
+        public int SpawnCount { get; private set; }
+        public int DespawnCount { get; private set; }
+        public int ArchetypeRetiredCount { get; private set; }
+        public NpcActorIntent? Intent { get; private set; }
+
+        public NpcArchetypeRegistrationStatus TryRegisterArchetype(
+            NpcArchetypeDescriptor descriptor,
+            out INpcArchetypeRegistration? registration)
+        {
+            registration = new TestNpcArchetypeRegistration(descriptor.Id, () => ArchetypeRetiredCount++);
+            return NpcArchetypeRegistrationStatus.Registered;
+        }
+
+        public ValueTask<NpcActorSpawnResult> SpawnAsync(
+            NpcActorSpawnRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            SpawnCount++;
+            return ValueTask.FromResult(new NpcActorSpawnResult(NpcActorSpawnStatus.Spawned, SpawnedNpc));
+        }
+
+        public ValueTask<bool> DespawnAsync(
+            NpcHandle npc,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            DespawnCount++;
+            return ValueTask.FromResult(true);
+        }
+
         public ValueTask<NpcActorAcquireStatus> AcquireAsync(
             NpcHandle npc,
             ActorControllerId controllerId,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(NpcActorAcquireStatus.UnsupportedNpcType);
+            return ValueTask.FromResult(
+                acquire ? NpcActorAcquireStatus.Acquired : NpcActorAcquireStatus.UnsupportedNpcType);
         }
 
         public ValueTask<bool> SetIntentAsync(
@@ -261,7 +460,8 @@ public sealed class TrustedHostModuleLoaderTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(false);
+            Intent = intent;
+            return ValueTask.FromResult(true);
         }
 
         public ValueTask<bool> ReleaseAsync(
@@ -278,7 +478,23 @@ public sealed class TrustedHostModuleLoaderTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(0);
+            ReleasedControllerCount++;
+            return ValueTask.FromResult(1);
+        }
+    }
+
+    private sealed class TestNpcArchetypeRegistration(
+        GameplayArchetypeId id,
+        Action retired) : INpcArchetypeRegistration
+    {
+        private int disposed;
+
+        public GameplayArchetypeId Id { get; } = id;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref disposed, 1) == 0)
+                retired();
         }
     }
 }

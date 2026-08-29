@@ -13,12 +13,62 @@ public enum NpcActorAcquireStatus : byte
     QueueRejected = 5
 }
 
+public enum NpcArchetypeRegistrationStatus : byte
+{
+    Registered = 0,
+    InvalidDescriptor = 1,
+    DuplicateId = 2,
+    RuntimeDetached = 3
+}
+
+public interface INpcArchetypeRegistration : IDisposable
+{
+    GameplayArchetypeId Id { get; }
+}
+
+public readonly record struct NpcActorSpawnRequest(
+    GameplayArchetypeId ArchetypeId,
+    float PositionX,
+    float PositionY)
+{
+    public bool IsValid =>
+        ArchetypeId.IsAssigned &&
+        float.IsFinite(PositionX) &&
+        float.IsFinite(PositionY);
+}
+
+public enum NpcActorSpawnStatus : byte
+{
+    Spawned = 0,
+    InvalidRequest = 1,
+    ArchetypeNotFound = 2,
+    NoAvailableSlot = 3,
+    QueueRejected = 4
+}
+
+public readonly record struct NpcActorSpawnResult(NpcActorSpawnStatus Status, NpcHandle Npc)
+{
+    public bool IsSpawned => Status == NpcActorSpawnStatus.Spawned && Npc.IsAssigned;
+}
+
 /// <summary>
 /// Trusted-host control surface for runtime-owned NPC actors. Every operation is serialized through the authoritative
 /// game loop. Controllers express intent only; final motion, gravity and world collision remain TerraRuntime-owned.
 /// </summary>
 public interface INpcActorOperations
 {
+    NpcArchetypeRegistrationStatus TryRegisterArchetype(
+        NpcArchetypeDescriptor descriptor,
+        out INpcArchetypeRegistration? registration);
+
+    ValueTask<NpcActorSpawnResult> SpawnAsync(
+        NpcActorSpawnRequest request,
+        CancellationToken cancellationToken = default);
+
+    ValueTask<bool> DespawnAsync(
+        NpcHandle npc,
+        CancellationToken cancellationToken = default);
+
     ValueTask<NpcActorAcquireStatus> AcquireAsync(
         NpcHandle npc,
         ActorControllerId controllerId,

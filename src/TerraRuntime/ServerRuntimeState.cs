@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.HostContracts;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
@@ -22,6 +23,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
     private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
     private readonly RuntimeNpcActorControlRegistry _npcActorControls;
     private readonly RuntimeNpcActorControlCommandService _npcActorCommands;
+    private readonly RuntimeNpcArchetypeRegistry _npcArchetypes;
+    private readonly RuntimeNpcArchetypeIdentityStore _npcArchetypeIdentities;
+    private readonly RuntimeNpcArchetypeSpawner _npcArchetypeSpawner;
+    private readonly RuntimeNpcShopCatalogRegistry _npcShops;
     private readonly RuntimeServerPlayerStateStore? _serverPlayerStates;
     private readonly RuntimeServerPlayerCommandService? _serverPlayerCommands;
     private readonly IRuntimeServerPlayerEventSink? _serverPlayerEvents;
@@ -60,7 +65,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null,
         RuntimeServerPlayerStateStore? serverPlayerStates = null,
         RuntimeServerPlayerSlotRegistry? serverPlayerIdentities = null,
-        IRuntimeServerPlayerEventSink? serverPlayerEvents = null)
+        IRuntimeServerPlayerEventSink? serverPlayerEvents = null,
+        RuntimeNpcShopCatalogRegistry? npcShops = null,
+        RuntimeNpcArchetypeRegistry? npcArchetypes = null,
+        RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities = null)
     {
         _playerEvents = playerEvents;
         _worldTiles = worldTiles;
@@ -79,6 +87,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
             : null;
         _npcActorControls = new RuntimeNpcActorControlRegistry(_npcs);
         _npcActorCommands = new RuntimeNpcActorControlCommandService(_npcs, _npcActorControls);
+        _npcArchetypes = npcArchetypes ?? new RuntimeNpcArchetypeRegistry();
+        _npcArchetypeIdentities = npcArchetypeIdentities ?? new RuntimeNpcArchetypeIdentityStore(_npcs.Capacity);
+        _npcArchetypeSpawner = new RuntimeNpcArchetypeSpawner(_npcs, _npcArchetypes, _npcArchetypeIdentities);
+        _npcShops = npcShops ?? new RuntimeNpcShopCatalogRegistry();
         _projectiles = projectiles ?? new RuntimeProjectileStore();
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
         _projectileStepper = projectileStepper ??
@@ -119,6 +131,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
     }
 
     public long AppliedCommands { get; private set; }
+
+    internal RuntimeNpcShopCatalogRegistry NpcShops => _npcShops;
+
+    internal RuntimeNpcArchetypeRegistry NpcArchetypes => _npcArchetypes;
 
     public long Updates { get; private set; }
 
@@ -286,6 +302,11 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
             return;
         if (_npcActorCommands.TryApply(command))
             return;
+        if (command is NpcActorSpawnRuntimeCommand actorSpawn)
+        {
+            ApplyNpcActorSpawn(actorSpawn);
+            return;
+        }
 
         switch (command)
         {
@@ -363,6 +384,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
 
     public void Tick()
     {
+        _npcArchetypes.CommitPending();
+        _npcShops.CommitPending();
         _npcActorCommands.CommitPending();
         TickServerPlayerPhysics();
 
@@ -531,6 +554,33 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         command.Completion?.TrySetResult(null);
     }
 
+    private void ApplyNpcActorSpawn(NpcActorSpawnRuntimeCommand command)
+    {
+        NpcActorSpawnRequest request = command.Request;
+        if (!request.IsValid)
+        {
+            command.Completion.TrySetResult(new NpcActorSpawnResult(NpcActorSpawnStatus.InvalidRequest, default));
+            return;
+        }
+
+        _npcArchetypes.CommitPending();
+        if (!_npcArchetypes.Snapshot.TryGet(request.ArchetypeId, out _))
+        {
+            command.Completion.TrySetResult(new NpcActorSpawnResult(NpcActorSpawnStatus.ArchetypeNotFound, default));
+            return;
+        }
+
+        var spawn = new NpcArchetypeAllocateRequest(request.ArchetypeId, request.PositionX, request.PositionY);
+        if (!_npcArchetypeSpawner.TrySpawnAllocated(in spawn, out NpcSnapshot snapshot))
+        {
+            command.Completion.TrySetResult(new NpcActorSpawnResult(NpcActorSpawnStatus.NoAvailableSlot, default));
+            return;
+        }
+
+        AppliedNpcSpawns++;
+        command.Completion.TrySetResult(new NpcActorSpawnResult(NpcActorSpawnStatus.Spawned, snapshot.Handle));
+    }
+
     private void ApplyNpcUpdate(NpcUpdateRuntimeCommand command)
     {
         NpcStateUpdate state = command.State;
@@ -548,10 +598,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         if (_npcs.TryDespawn(command.Npc))
         {
             AppliedNpcDespawns++;
+            command.Completion?.TrySetResult(true);
             return;
         }
 
         RejectedNpcDespawns++;
+        command.Completion?.TrySetResult(false);
     }
 
     private void ApplyProjectileSpawn(ProjectileSpawnRuntimeCommand command)

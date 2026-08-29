@@ -57,7 +57,7 @@ internal static class TerminalUiSmoke
                         app.Driver!,
                         string.Create(
                             CultureInfo.CurrentCulture,
-                            $"Process     CPU {12.5:F1}%  heap 32.0 MiB  working 64.0 MiB  allocated 96.0 MiB"));
+                            $"Process     CPU {12.5:F1}%  heap {32d:F1} MiB  working {64d:F1} MiB  allocated {96d:F1} MiB"));
                     AssertRendered(
                         app.Driver!,
                         string.Create(

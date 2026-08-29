@@ -13,4 +13,5 @@ internal sealed record NpcUpdateRuntimeCommand(
     NpcStateUpdate State) : RuntimeCommand;
 
 internal sealed record NpcDespawnRuntimeCommand(
-    NpcHandle Npc) : RuntimeCommand;
+    NpcHandle Npc,
+    TaskCompletionSource<bool>? Completion = null) : RuntimeCommand;

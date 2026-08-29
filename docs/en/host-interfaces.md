@@ -63,6 +63,7 @@ sequenceDiagram
 ### Lifecycle rules
 
 - `StartAsync` must not assume a live world exists.
+- A module that implements `ITerraRuntimeHostModuleWorldActivation` is queried with immutable world identity before each runtime attachment. Returning `false` skips `AttachRuntimeAsync`, creates no runtime scope and therefore publishes no actor/shop state for that world. Activation policy and configuration remain module-owned.
 - Registration handles/resources owned by the module are retired before unload.
 - After `DetachRuntimeAsync`, retained references must not be used as though the world were still attached.
 - `StopAsync` releases host-owned resources.
@@ -111,6 +112,7 @@ public interface ITerraRuntimeHostRuntime
     IInterestManagementControl InterestManagement { get; }
     IPlayerStateSnapshotReader PlayerStates { get; }
     INpcActorOperations NpcActors { get; }
+    INpcShopOperations NpcShops { get; }
     IServerPlayerOperations ServerPlayers { get; }
 }
 ```
@@ -152,6 +154,21 @@ The host controls only whether the mechanism participates. Spatial cell/section 
 
 `INpcActorOperations` allows a trusted host to acquire semantic control of a supported NPC actor.
 
+A module first registers a stable archetype backed by a source-verified vanilla presentation, then asks TerraRuntime to allocate and spawn the actor. Both archetype publication and NPC mutation occur at an authoritative game-loop boundary; the module never selects a raw NPC slot:
+
+```csharp
+var descriptor = new NpcArchetypeDescriptor(merchantArchetypeId, VanillaNpcIds.Zombie);
+NpcArchetypeRegistrationStatus registered = runtime.NpcActors.TryRegisterArchetype(
+    descriptor,
+    out INpcArchetypeRegistration? archetype);
+
+NpcActorSpawnResult spawned = await runtime.NpcActors.SpawnAsync(
+    new NpcActorSpawnRequest(descriptor.Id, positionX, positionY),
+    cancellationToken);
+```
+
+The returned `NpcHandle` is generation-safe. Spawn uses the first reusable runtime NPC slot, commits through the ordinary NPC store/replication chain and binds the server-only archetype identity to that exact generation. `DespawnAsync` uses the same authoritative path.
+
 ```csharp
 NpcActorAcquireStatus status = await runtime.NpcActors.AcquireAsync(
     npc,
@@ -184,6 +201,8 @@ int released = await runtime.NpcActors.ReleaseControllerAsync(
     cancellationToken);
 ```
 
+Explicit release gives the module deterministic fallback timing. As a fail-safe, the trusted-module runtime scope tracks every archetype registration, spawned actor and successfully acquired controller; detach releases controls, despawns owned actors and retires archetypes. Calls through the expired scope then fail closed.
+
 ### `NpcActorAcquireStatus`
 
 - `Acquired` — lease acquired;
@@ -194,6 +213,18 @@ int released = await runtime.NpcActors.ReleaseControllerAsync(
 - `QueueRejected` — the authoritative command boundary did not accept the operation.
 
 `QueueRejected` is not confirmation that an operation probably applied.
+
+### Runtime NPC-shop registration
+
+`INpcShopOperations` registers an immutable, protocol-valid vanilla catalog against a stable runtime NPC archetype. Registration and replacement are staged from the host thread and published together at the next authoritative game-loop tick:
+
+```csharp
+var catalog = new NpcShopCatalog(shopId, merchantArchetypeId, offers);
+NpcShopRegistrationStatus status = runtime.NpcShops.TryRegister(catalog, out INpcShopRegistration? shop);
+bool replaced = shop?.TryReplaceCatalog(updatedCatalog) ?? false;
+```
+
+The returned registration cannot change its shop or archetype identity. A trusted-module runtime scope owns every registration and retires it on detach even if module cleanup fails or drops the lease; retirement becomes visible at the next authoritative tick. `RuntimeDetached` rejects registrations attempted through an expired scope.
 
 ### NPC shop purchase commit observations
 
@@ -280,6 +311,8 @@ await runtime.ServerPlayers.DespawnAsync(serverPlayerId, cancellationToken);
 
 A created server player uses generation-safe runtime identity. Raw slot index is not a permanent identifier.
 
+`TerraRuntime.HostModuleFixture` is the executable bot and custom-merchant example used by the CoreCLR host-boundary tests. On runtime attach it spawns a controlled merchant archetype, attaches a protocol-valid shop, creates a named server player, commits appearance/vitals, submits the bot's `MoveTo`, and tells the merchant to `FollowPlayer` that exact live generation. On detach it stops and despawns both actors; the loader also proves scope-owned registration retirement. The example therefore exercises the public semantic API without direct position/velocity writes. The controlled-physics regression compares identical $256\,\text{tick}$ runs and keeps the warmed allocation budget below $3\,\mathrm{KiB/tick}$.
+
 ## 9. Terminal dashboard registration
 
 ```csharp
@@ -337,6 +370,8 @@ public interface ITerraRuntimeHostLifecycle
 ```
 
 This optional bridge lets an extensible host attach loaded modules to a live runtime. Standalone NativeAOT normally does not provide it.
+
+The CoreCLR loader reload path detaches every live runtime scope first, which releases controls, despawns scope-owned actors and retires archetype/shop registrations. It then stops modules, unloads their collectible assembly contexts, rediscovers the module DLLs and starts and attaches fresh instances. Integration coverage executes attach, per-world skip, reload, reattach and final detach while verifying that no old actor, controller or catalog state survives.
 
 ## 12. Host-module implementation pattern
 

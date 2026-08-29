@@ -139,7 +139,7 @@ Vega owns permissions/config/plugin lifetime; TerraRuntime owns actor simulation
 - [x] vanilla item/price validation;
 - [x] atomic inventory + coin transaction path;
 - [x] purchase commit diagnostics/events;
-- [ ] Vega adapter proof-of-concept with a custom merchant NPC.
+- [x] Vega adapter proof-of-concept with a custom merchant NPC.
 
 ### G6-C - Fake player foundation
 
@@ -157,25 +157,25 @@ Vega owns permissions/config/plugin lifetime; TerraRuntime owns actor simulation
 
 ### G6-E - Gameplay integration
 
-- [ ] NPC escort/follow example;
-- [ ] custom merchant example;
-- [ ] fake-player/bot example;
-- [ ] per-world enable/disable;
-- [ ] plugin hot-reload/retirement tests;
-- [ ] NativeAOT Linux/Windows coverage.
+- [x] NPC escort/follow example;
+- [x] custom merchant example;
+- [x] fake-player/bot example;
+- [x] per-world enable/disable;
+- [x] plugin hot-reload/retirement tests;
+- [x] NativeAOT Linux/Windows coverage.
 
 ## Definition of done
 
 G6 is not complete until:
 
-- [ ] a Vega plugin can spawn/control an NPC and tell it to follow a specific live player while TerraRuntime performs actual movement/collision physics;
+- [x] a Vega plugin can spawn/control an NPC and tell it to follow a specific live player while TerraRuntime performs actual movement/collision physics;
 - [x] the NPC continues to replicate through the ordinary authoritative NPC path;
 - [x] player disconnect/slot reuse cannot redirect the NPC to a different generation by accident;
-- [ ] a Vega plugin can attach a custom shop to a runtime NPC and supply protocol-valid vanilla merchandise;
+- [x] a Vega plugin can attach a custom shop to a runtime NPC and supply protocol-valid vanilla merchandise;
 - [x] a purchase is validated and committed atomically by TerraRuntime, not direct plugin inventory mutation;
 - [x] a fake player can exist without a client connection and is allocated without colliding with real-player slots;
-- [ ] fake-player movement is produced by a runtime-owned player physics path rather than direct packet/position scripting;
+- [x] fake-player movement is produced by a runtime-owned player physics path rather than direct packet/position scripting;
 - [x] real clients cannot seize control of a fake player's slot;
-- [ ] actor/shop/plugin unload leaves no stale callbacks, control leases, catalog state or entity-generation state;
-- [ ] zero actor/shop registrations keep ordinary vanilla/runtime path allocation-light;
+- [x] actor/shop/plugin unload leaves no stale callbacks, control leases, catalog state or entity-generation state;
+- [x] zero actor/shop registrations keep ordinary vanilla/runtime path allocation-light;
 - [ ] NativeAOT and normal CI remain green.

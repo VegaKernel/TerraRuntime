@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
+using TerraRuntime.HostContracts;
 
 namespace TerraRuntime.Tests;
 
@@ -79,6 +80,32 @@ public sealed class RuntimeNpcShopCatalogRegistryTests
         Assert.True(registry.CommitPending());
         Assert.False(registry.Snapshot.TryGetById(catalog.Id, out _));
         Assert.False(registry.Snapshot.TryGetByArchetype(catalog.NpcArchetypeId, out _));
+    }
+
+    [Fact]
+    public void Host_registration_publishes_and_retires_only_on_authoritative_ticks()
+    {
+        var state = new ServerRuntimeState();
+        var operations = new RuntimeNpcShopOperations(state.NpcShops);
+        NpcShopCatalog catalog = CreateCatalog("test:host-merchant", "test:host-archetype", price: 25);
+
+        Assert.Equal(
+            NpcShopRegistrationStatus.Registered,
+            operations.TryRegister(catalog, out INpcShopRegistration? registration));
+        Assert.NotNull(registration);
+        Assert.False(state.NpcShops.Snapshot.TryGetById(catalog.Id, out _));
+
+        state.Tick();
+
+        Assert.True(state.NpcShops.Snapshot.TryGetById(catalog.Id, out NpcShopCatalog published));
+        Assert.Same(catalog, published);
+
+        registration!.Dispose();
+        Assert.True(state.NpcShops.Snapshot.TryGetById(catalog.Id, out _));
+
+        state.Tick();
+
+        Assert.False(state.NpcShops.Snapshot.TryGetById(catalog.Id, out _));
     }
 
     [Fact]

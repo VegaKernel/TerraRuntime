@@ -116,6 +116,7 @@ public sealed class RuntimeNpcShopCatalogRegistry
     private Dictionary<ShopId, NpcShopCatalog>? pendingByShop;
     private Dictionary<GameplayArchetypeId, ShopId>? pendingByArchetype;
     private ulong nextRevision;
+    private int hasPendingChanges;
 
     public RuntimeNpcShopCatalogSnapshot Snapshot => Volatile.Read(ref published);
 
@@ -146,6 +147,7 @@ public sealed class RuntimeNpcShopCatalogRegistry
 
             pendingByShop.Add(catalog.Id, catalog);
             pendingByArchetype.Add(catalog.NpcArchetypeId, catalog.Id);
+            Volatile.Write(ref hasPendingChanges, 1);
             lease = new NpcShopRegistrationLease(this, catalog.Id, catalog.NpcArchetypeId);
             return NpcShopRegistrationResult.Registered;
         }
@@ -154,9 +156,12 @@ public sealed class RuntimeNpcShopCatalogRegistry
     /// <summary>Publishes all staged shop changes atomically. Returns false when there is nothing to publish.</summary>
     public bool CommitPending()
     {
+        if (Volatile.Read(ref hasPendingChanges) == 0)
+            return false;
+
         lock (gate)
         {
-            if (pendingByShop is null || pendingByArchetype is null)
+            if (hasPendingChanges == 0 || pendingByShop is null || pendingByArchetype is null)
                 return false;
             if (nextRevision == ulong.MaxValue)
                 throw new InvalidOperationException("NPC shop catalog revision exhausted.");
@@ -174,6 +179,7 @@ public sealed class RuntimeNpcShopCatalogRegistry
             Volatile.Write(ref published, new RuntimeNpcShopCatalogSnapshot(byArchetype, byShop, nextRevision));
             pendingByShop = null;
             pendingByArchetype = null;
+            Volatile.Write(ref hasPendingChanges, 0);
             return true;
         }
     }
@@ -197,6 +203,7 @@ public sealed class RuntimeNpcShopCatalogRegistry
             }
 
             pendingByShop[shopId] = catalog;
+            Volatile.Write(ref hasPendingChanges, 1);
             return true;
         }
     }
@@ -211,6 +218,7 @@ public sealed class RuntimeNpcShopCatalogRegistry
 
             if (pendingByArchetype!.TryGetValue(archetypeId, out ShopId mapped) && mapped == shopId)
                 pendingByArchetype.Remove(archetypeId);
+            Volatile.Write(ref hasPendingChanges, 1);
         }
     }
 

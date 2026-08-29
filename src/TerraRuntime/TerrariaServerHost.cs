@@ -381,10 +381,15 @@ public static class TerrariaServerHost
         RuntimeNpcOperationsTelemetry? npcOperations = options.TerminalUiEnabled
             ? new RuntimeNpcOperationsTelemetry()
             : null;
-        INpcStateCommitSink npcCommitSink = npcOperations is null
+        INpcStateCommitSink observableNpcCommitSink = npcOperations is null
             ? npcReplication
             : new RuntimeNpcStateCommitFanout(npcReplication, npcOperations);
+        var npcArchetypeIdentities = new RuntimeNpcArchetypeIdentityStore(RuntimeNpcStore.MaximumAddressableCapacity);
+        INpcStateCommitSink npcCommitSink = new RuntimeNpcStateCommitFanout(
+            observableNpcCommitSink,
+            npcArchetypeIdentities);
         var npcStore = new RuntimeNpcStore(commitSink: npcCommitSink);
+        var npcArchetypes = new RuntimeNpcArchetypeRegistry();
         var projectileReplication = new RuntimeProjectileReplicationRegistry();
         RuntimeProjectileOperationsTelemetry? projectileOperations = options.TerminalUiEnabled
             ? new RuntimeProjectileOperationsTelemetry()
@@ -447,7 +452,9 @@ public static class TerrariaServerHost
             tileManipulationReplication: tileManipulationReplication,
             serverPlayerStates: serverPlayerStates,
             serverPlayerIdentities: serverPlayerIdentities,
-            serverPlayerEvents: runtimeConnections);
+            serverPlayerEvents: runtimeConnections,
+            npcArchetypes: npcArchetypes,
+            npcArchetypeIdentities: npcArchetypeIdentities);
         using var sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,
             bootstrapPackets,
@@ -538,7 +545,9 @@ public static class TerrariaServerHost
                         options.Port,
                         options.MaxPlayers),
                     runtimeInterestManagement,
-                    playerStateSnapshots);
+                    playerStateSnapshots,
+                    state.NpcShops,
+                    state.NpcArchetypes);
                 try
                 {
                     await hostLifecycle.AttachRuntimeAsync(hostRuntime, shutdown.Token).ConfigureAwait(false);

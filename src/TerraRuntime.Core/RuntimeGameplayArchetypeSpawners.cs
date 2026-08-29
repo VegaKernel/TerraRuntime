@@ -12,6 +12,14 @@ public readonly record struct NpcArchetypeSpawnRequest(
     float VelocityY = 0f,
     ushort Target = VanillaNpcDefinitionCatalog.DefaultTarget);
 
+public readonly record struct NpcArchetypeAllocateRequest(
+    GameplayArchetypeId ArchetypeId,
+    float PositionX,
+    float PositionY,
+    float VelocityX = 0f,
+    float VelocityY = 0f,
+    ushort Target = VanillaNpcDefinitionCatalog.DefaultTarget);
+
 public readonly record struct ProjectileArchetypeSpawnRequest(
     GameplayArchetypeId ArchetypeId,
     byte Spawner,
@@ -70,6 +78,39 @@ public sealed class RuntimeNpcArchetypeSpawner
             Simulation: NpcSimulationState.Initial);
 
         if (!store.TrySpawn(request.Slot, in update, out snapshot))
+            return false;
+
+        if (identities.TryBind(snapshot.Handle, request.ArchetypeId))
+            return true;
+
+        store.TryDespawn(snapshot.Handle);
+        snapshot = default;
+        return false;
+    }
+
+    public bool TrySpawnAllocated(in NpcArchetypeAllocateRequest request, out NpcSnapshot snapshot)
+    {
+        if (!request.ArchetypeId.IsAssigned ||
+            !archetypes.Snapshot.TryGet(request.ArchetypeId, out NpcArchetypeDescriptor descriptor) ||
+            descriptor.VanillaPresentationType.Value > short.MaxValue)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        int presentation = descriptor.VanillaPresentationType.Value;
+        var update = new NpcStateUpdate(
+            Type: presentation,
+            NetId: (short)presentation,
+            PositionX: request.PositionX,
+            PositionY: request.PositionY,
+            VelocityX: request.VelocityX,
+            VelocityY: request.VelocityY,
+            Target: request.Target,
+            Ai: new NpcAiState(0f, 0f, 0f, 0f),
+            Simulation: NpcSimulationState.Initial);
+
+        if (!store.TrySpawnVanilla(in update, out snapshot))
             return false;
 
         if (identities.TryBind(snapshot.Handle, request.ArchetypeId))

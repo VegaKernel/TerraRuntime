@@ -160,12 +160,18 @@ internal static class Program
             return 22;
         }
 
+        if (!RuntimeActorCommerceSmoke.Run(out string actorFailure))
+        {
+            Console.Error.WriteLine($"Game loop smoke failed during runtime actor/commerce coverage: {actorFailure}.");
+            return 31;
+        }
+
         Console.WriteLine(
             $"Game loop smoke passed: tick={snapshot.Tick}, thread={snapshot.GameThreadId}, " +
             $"wallWorst={snapshot.WorstTickMilliseconds:F3} ms, cpuWorst={snapshot.WorstTickCpuMilliseconds:F3} ms, " +
             $"slowest={snapshot.SlowestLastPhase}:{snapshot.SlowestLastPhaseMilliseconds:F3} ms, " +
             $"missed={snapshot.MissedTickDeadlines}, workerCompleted={workers.Snapshot.CompletedWork}, " +
-            $"forwarded={forwarder.ForwardedCommands}, spawnCommit=ok");
+            $"forwarded={forwarder.ForwardedCommands}, spawnCommit=ok, actorCommerce=ok");
         return 0;
     }
 

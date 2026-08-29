@@ -25,6 +25,10 @@ internal sealed record NpcActorReleaseControllerRuntimeCommand(
     ActorControllerId ControllerId,
     TaskCompletionSource<int> Completion) : RuntimeCommand;
 
+internal sealed record NpcActorSpawnRuntimeCommand(
+    NpcActorSpawnRequest Request,
+    TaskCompletionSource<NpcActorSpawnResult> Completion) : RuntimeCommand;
+
 /// <summary>
 /// Authoritative-thread owner of actor leases. Host calls never touch the registry directly: commands arrive through
 /// ServerRuntimeState, mutate this service on the game-loop thread, and become visible to simulation at CommitPending.
@@ -177,11 +181,55 @@ internal sealed class RuntimeNpcActorControlCommandService
 internal sealed class RuntimeNpcActorOperations : INpcActorOperations
 {
     private readonly IGameCommandIngress<RuntimeCommand> ingress;
+    private readonly RuntimeNpcArchetypeRegistry archetypes;
 
-    public RuntimeNpcActorOperations(IGameCommandIngress<RuntimeCommand> ingress)
+    public RuntimeNpcActorOperations(
+        IGameCommandIngress<RuntimeCommand> ingress,
+        RuntimeNpcArchetypeRegistry archetypes)
     {
         ArgumentNullException.ThrowIfNull(ingress);
+        ArgumentNullException.ThrowIfNull(archetypes);
         this.ingress = ingress;
+        this.archetypes = archetypes;
+    }
+
+    public NpcArchetypeRegistrationStatus TryRegisterArchetype(
+        NpcArchetypeDescriptor descriptor,
+        out INpcArchetypeRegistration? registration)
+    {
+        GameplayArchetypeRegistrationResult result = archetypes.TryRegister(descriptor, out IGameplayArchetypeRegistrationLease? lease);
+        registration = lease is null ? null : new ArchetypeRegistration(lease);
+        return result switch
+        {
+            GameplayArchetypeRegistrationResult.Registered => NpcArchetypeRegistrationStatus.Registered,
+            GameplayArchetypeRegistrationResult.InvalidDescriptor => NpcArchetypeRegistrationStatus.InvalidDescriptor,
+            GameplayArchetypeRegistrationResult.DuplicateId => NpcArchetypeRegistrationStatus.DuplicateId,
+            _ => throw new InvalidOperationException($"Unknown NPC archetype registration result '{result}'.")
+        };
+    }
+
+    public async ValueTask<NpcActorSpawnResult> SpawnAsync(
+        NpcActorSpawnRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completion = NewCompletion<NpcActorSpawnResult>();
+        if (!ingress.TryPost(GameCommandSourceId.System, new NpcActorSpawnRuntimeCommand(request, completion)))
+            return new NpcActorSpawnResult(NpcActorSpawnStatus.QueueRejected, default);
+
+        return await completion.Task.ConfigureAwait(false);
+    }
+
+    public async ValueTask<bool> DespawnAsync(
+        NpcHandle npc,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completion = NewCompletion<bool>();
+        if (!ingress.TryPost(GameCommandSourceId.System, new NpcDespawnRuntimeCommand(npc, completion)))
+            return false;
+
+        return await completion.Task.ConfigureAwait(false);
     }
 
     public async ValueTask<NpcActorAcquireStatus> AcquireAsync(
@@ -238,4 +286,11 @@ internal sealed class RuntimeNpcActorOperations : INpcActorOperations
 
     private static TaskCompletionSource<T> NewCompletion<T>() =>
         new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private sealed class ArchetypeRegistration(IGameplayArchetypeRegistrationLease lease) : INpcArchetypeRegistration
+    {
+        public GameplayArchetypeId Id => lease.Id;
+
+        public void Dispose() => lease.Dispose();
+    }
 }
