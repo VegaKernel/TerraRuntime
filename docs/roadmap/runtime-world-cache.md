@@ -11,9 +11,9 @@ A valid warm startup is driven by `.runtime-world`. The original `.wld` contents
 
 ## Verified implementation checklist
 
-> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or an equivalent executable proof. Partial/foundation-only work remains `[ ]`.
+> Checkbox policy: `[x]` means the item is verified on `main` by implementation plus tests/CI or equivalent executable proof. Partial/foundation-only work remains `[ ]`.
 
-- [x] Self-contained warm startup from `.runtime-world` without reading the source `.wld` contents.
+- [x] Self-contained warm startup from `.runtime-world` without reading source `.wld` contents.
 - [x] Integrity-checked embedded canonical checkpoint, tile shards and liquid runtime queues.
 - [x] Missing/stale/corrupt runtime snapshot falls back safely to canonical `.wld`.
 - [x] Snapshot rebuild writes a temporary file, flushes it and atomically replaces the old snapshot.
@@ -24,11 +24,11 @@ A valid warm startup is driven by `.runtime-world`. The original `.wld` contents
 
 ## Current runtime snapshot format
 
-The runtime snapshot is intentionally disposable. There is no schema-version or migration system: TerraRuntime has no deployed `.runtime-world` state that needs compatibility preservation. If the current reader does not accept the magic/header/layout or any integrity check fails, the file is treated as invalid and rebuilt from the canonical `.wld` checkpoint.
+The runtime snapshot is intentionally disposable. There is no migration contract: if the current reader rejects magic/header/layout or any integrity check, the file is invalid and rebuilt from canonical `.wld`.
 
-The snapshot is self-contained for startup. It embeds the validated canonical `.wld` checkpoint needed for non-tile persistence state, stores the normalized runtime tile array as independently verified shards, and persists the runtime liquid work queues so warm startup does not need a full-world liquid rediscovery scan.
+The snapshot is self-contained for startup. It embeds the validated canonical checkpoint needed for non-tile persistence state, normalized runtime tiles as independently verified shards, and runtime liquid work queues so warm startup avoids full-world liquid rediscovery.
 
-Layout:
+The binary layout remains literal data, not a process diagram:
 
 ```text
 128-byte fixed header
@@ -43,86 +43,101 @@ active liquid entries
 buffered liquid tile indices
 ```
 
-The fixed header stores:
+Dimensional sizes are:
 
-- magic `TRWCACHE`;
-- fixed header size and normalized tile-record size;
-- source `.wld` byte length;
-- source `.wld` `LastWriteTimeUtc` ticks captured when the snapshot was built;
-- embedded canonical checkpoint length and SHA-256;
-- Terraria world format version;
-- world width and height;
-- tile count and tile payload length;
-- shard count and shard-entry size;
-- tile-payload and shard-table offsets.
+$$
+S_{\mathrm{header}}=128\,\mathrm{B},
+\qquad
+S_{\mathrm{tile}}=16\,\mathrm{B},
+\qquad
+S_{\mathrm{shardEntry}}=48\,\mathrm{B},
+\qquad
+S_{\mathrm{liqHeader}}=64\,\mathrm{B}.
+$$
 
-The live source `.wld` SHA-256 is deliberately not recomputed at warm startup. Hashing the whole source would force a full source-file read and defeat the purpose of a self-contained runtime snapshot. SHA-256 is retained for data inside `.runtime-world`: the embedded canonical payload, every tile shard and the liquid runtime payload are verified before the world is published.
+The fixed header stores magic `TRWCACHE`, fixed header/tile-record sizes, source `.wld` byte length and `LastWriteTimeUtc`, embedded checkpoint length/SHA-256, Terraria world format version, dimensions, tile count/payload length, shard count/entry size and tile/shard-table offsets.
 
-Each normalized `WorldTile` has a frozen 16-byte sequential memory layout. The on-disk tile record is identical to that layout, so a validated shard can be read directly into the backing `WorldTile[]` without per-tile decode/copy work. It stores tile type, wall type, frame coordinates, flags, liquid amount, tile/wall paint, shape and liquid kind. The final byte is reserved and must remain zero.
+The live source `.wld` SHA-256 is deliberately not recomputed during warm startup because hashing it would force a complete source read. SHA-256 remains an integrity mechanism for data inside `.runtime-world`: embedded canonical payload, every tile shard and liquid runtime payload are verified before publication.
 
-Each tile shard targets 16 MiB. Loading uses positional `RandomAccess` reads with bounded parallelism. The current default is at most four simultaneous tile-shard reads, suitable as a conservative SSD/NVMe baseline. The embedded canonical payload, tile shards and liquid runtime payload are read concurrently.
+Each normalized `WorldTile` has a frozen
+
+$$
+16\,\mathrm{B}
+$$
+
+sequential memory/disk layout, allowing a validated shard to read directly into the backing `WorldTile[]` without per-tile decode/copy. It stores tile/wall types, frame coordinates, flags, liquid amount, paint, shape and liquid kind; the final byte is reserved and remains zero.
+
+Each tile shard targets
+
+$$
+16\,\mathrm{MiB}.
+$$
+
+Loading uses positional `RandomAccess` reads with bounded parallelism. The conservative current default permits at most `$4$` simultaneous tile-shard reads. Embedded canonical payload, tile shards and liquid runtime payload can be read concurrently.
 
 ## Liquid runtime state
 
-Tile liquid contents and liquid simulation work are different state and both are persisted.
+Tile liquid contents and pending liquid simulation work are distinct and both persist.
 
-`WorldTile.LiquidAmount` plus `WorldTile.LiquidKind` preserve the actual amount/type of water, lava, honey or shimmer at every tile. `WorldLiquidUpdateQueue` preserves work that still has to be processed by the liquid simulator:
+`WorldTile.LiquidAmount` + `WorldTile.LiquidKind` preserve actual material state. `WorldLiquidUpdateQueue` preserves active FIFO work, per-entry `delay`/`kill`, buffered/deferred work and deduplicated membership.
 
-- active liquid cells in FIFO order;
-- per-active-cell `delay` and `kill` state;
-- a separate buffered/deferred liquid queue;
-- deduplicated queue membership.
+Snapshot persistence uses compact linear tile indices. Entry sizes are:
 
-Snapshot persistence uses a compact linear tile index instead of storing `x` and `y` separately. Active entries are 12 bytes (`tileIndex`, `delay`, `kill`); buffered entries are 4-byte tile indices. A 64-byte `LIQSTATE` trailer records both counts, entry sizes, total payload length and a SHA-256 of the combined liquid payload.
+$$
+S_{\mathrm{activeLiquid}}=12\,\mathrm{B},
+\qquad
+S_{\mathrm{bufferedLiquid}}=4\,\mathrm{B}.
+$$
 
-When the active and buffered queues are empty, the snapshot records zero counts and warm startup restores an empty liquid scheduler without scanning every tile looking for water. When liquid work is pending, only the queued cells are restored. An invalid index, duplicate queue entry, bad trailer, length mismatch or liquid-payload hash failure invalidates the whole snapshot and triggers canonical `.wld` fallback.
+The `LIQSTATE` trailer header is
 
-The liquid simulator itself is a separate runtime phase. This persistence state is deliberately attached to `WorldTileStore`, so future authoritative liquid processing consumes the exact state restored with the world rather than rebuilding an unrelated side structure during startup.
+$$
+64\,\mathrm{B}
+$$
+
+and records counts, entry sizes, payload length and SHA-256 for combined liquid payload.
+
+When queues are empty, warm startup restores an empty liquid scheduler without scanning the entire map. When work is pending, only queued cells restore. Invalid index, duplicate entry, bad trailer, length mismatch or hash failure invalidates the whole snapshot and triggers canonical fallback.
 
 ## Warm-start validity and fallback
 
-At startup TerraRuntime captures a cheap source stamp consisting of:
+The cheap source stamp is literal metadata:
 
 ```text
 source .wld length
 source .wld LastWriteTimeUtc
 ```
 
-A snapshot is used when its stored source length still matches and the live `.wld` is not newer. TerraRuntime re-stats the source after loading the snapshot to detect a concurrent external replacement while the snapshot was being read.
+A snapshot is accepted when stored source length still matches, live `.wld` is not newer and all internal integrity/layout checks pass. TerraRuntime re-stats source metadata after loading to detect concurrent external replacement.
 
-The original `.wld` contents are read only when the runtime snapshot is missing, stale or invalid. The fallback path reads a stable `.wld`, fully validates it through the canonical loader and atomically rebuilds `.runtime-world` only after the canonical load succeeds.
+Original `.wld` contents are read only when the runtime snapshot is missing, stale or invalid. Fallback validates a stable canonical world and rebuilds `.runtime-world` only after successful canonical load.
 
-Cache corruption, a bad embedded canonical hash, a bad shard hash, a bad liquid-state hash, invalid liquid queue data, truncation, a newer `.wld`, a changed source length or an incompatible header/layout are all cache misses. No partially reconstructed world is published.
+Cache corruption, embedded/shard/liquid hash failure, invalid queue data, truncation, newer `.wld`, changed source length or incompatible header/layout are cache misses. No partially reconstructed world is published.
 
-Snapshot writes use a temporary file, flush it to disk and atomically replace the previous snapshot. The source `.wld` is never modified as a side effect of snapshot rebuild.
+Snapshot writes use a temporary file, durable flush and atomic replacement. Snapshot rebuild never modifies canonical `.wld` as a side effect.
 
 ## Canonical checkpoint command
 
-The host exposes an offline compatibility-checkpoint command:
+Literal CLI:
 
 ```text
 TerraRuntime.Server --save-wld path/to/world.wld
 ```
 
-It validates the canonical checkpoint embedded in `world.runtime-world`, writes `world.wld.tmp`, flushes it and atomically replaces `world.wld`. It then refreshes the runtime snapshot source stamp so the just-written checkpoint is not immediately treated as newer than the snapshot. The liquid runtime queues are carried through that snapshot refresh rather than silently discarded.
+The command validates the canonical checkpoint embedded in `world.runtime-world`, writes `world.wld.tmp`, flushes and atomically replaces `world.wld`, then refreshes the runtime snapshot source stamp. Liquid runtime queues are preserved through this refresh.
 
-This command is currently a checkpoint restore/export operation. TerraRuntime does not yet have a complete vanilla `WorldFileWriter`, so future live mutations that exist only in runtime-owned state cannot yet be serialized into a fresh vanilla `.wld`. Adding that writer is required before `--save-wld` becomes a complete live-state export rather than an export of the canonical checkpoint represented by the snapshot.
+This remains checkpoint restore/export rather than a complete serializer of all future runtime-only live state. A complete vanilla `WorldFileWriter` is still required for that.
 
 ## Startup profiling and performance gate
 
-The server emits a machine-readable `startup_profile` line with:
+`startup_profile` includes source metadata/stat time, canonical file-read time, runtime-snapshot load time, canonical-loader stages on fallback, snapshot rebuild/write time, join-bootstrap preparation, `WorldReady` / `NetworkReady` wall time and allocation delta.
 
-- source metadata/stat time;
-- original `.wld` file-read time;
-- runtime snapshot load time;
-- canonical loader total and stage timings on fallback;
-- runtime snapshot rebuild/write time;
-- join-bootstrap preparation time;
-- `WorldReady` and `NetworkReady` wall time;
-- startup allocation delta.
+On a genuine warm hit:
 
-On a genuine warm snapshot hit `file_read_ms` must remain `0.000` because the original `.wld` contents were not read.
+$$
+T_{\mathrm{canonicalFileRead}}=0\,\mathrm{ms}.
+$$
 
-The official-world workflow runs cold and warm startup against the same generated Terraria 1.4.5.8 world, reports the two profiles and publishes a timing artifact. Its warm run removes read permission from the original `.wld`, proving that startup succeeds from `.runtime-world` plus source filesystem metadata rather than silently touching the source contents.
+The official-world workflow compares cold/warm startup on the same TerrariaServer 1.4.5.8 world and includes a warm run where source `.wld` contents are unreadable while filesystem metadata remains accessible. This proves the warm path is self-contained in `.runtime-world` plus cheap source metadata.
 
-Performance changes must use same-world before/after measurements. More parallel reads, additional prebuilt bootstrap/index sections or a different shard size are adopted only when measurements show a real improvement.
+Performance changes use same-world before/after measurements. More parallel reads, additional prebuilt indexes/bootstrap data or different shard sizing are accepted only after measurable improvement.
