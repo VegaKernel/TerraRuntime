@@ -4,337 +4,155 @@
 
 ## 1. Security model
 
-TerraRuntime считает каждый client-controlled byte, length, packet rate, identity claim и gameplay request недоверенным input.
+Каждый client-controlled byte, length, rate, identity claim и gameplay request считается untrusted.
 
-Security — не один anti-cheat component. Это набор boundaries, которые не дают одному connection или malformed world/network input получить unbounded CPU, memory, queue growth или direct access к authoritative state.
-
-Базовое правило:
-
-```text
-untrusted input
-   -> bounded parse/accounting
-   -> connection/session legality
-   -> authoritative gameplay validation
-   -> mutation только после acceptance
+```mermaid
+flowchart LR
+    Input["Untrusted input"] --> Parse["Bounded parse + accounting"]
+    Parse --> Session["Connection / session legality"]
+    Session --> Gameplay["Authoritative gameplay validation"]
+    Gameplay --> Mutation["Mutation only after acceptance"]
 ```
 
-## 2. Security отдельно от anti-cheat
+Security — набор boundaries, а не один anti-cheat component. Они не дают одному peer или malformed persisted input получить unbounded CPU, memory, queue growth или direct authoritative access.
 
-Protocol hardening и gameplay authority решают разные задачи.
+## 2. Security и anti-cheat
 
-Protocol/security rules могут reject:
+Protocol hardening reject'ит malformed framing, invalid/unsupported handshake, configured rate abuse, capacity exhaustion, illegal connection-state ordering и malformed variable-length payloads.
 
-- impossible frame lengths;
-- invalid handshake;
-- unsupported protocol version;
-- configured rate abuse;
-- connection-capacity exhaustion;
-- illegal connection-state ordering;
-- malformed variable-length payloads.
-
-Gameplay authority может reject синтаксически valid action, если оно невозможно в текущем world/player state.
-
-Нельзя угадывать gameplay rules только чтобы выглядеть «безопаснее». False-positive anti-cheat, ломающий legal vanilla behavior, является correctness bug.
+Gameplay authority reject'ит syntactically valid action только если server может доказать невозможность в current authoritative state. False-positive anti-cheat, ломающий legal vanilla behavior, является correctness bug.
 
 ## 3. Connection admission
 
-`TerrariaConnectionAdmissionGate` ограничивает expensive connection admission до выделения полного connection/player workload.
+`TerrariaConnectionAdmissionGate` ограничивает active capacity и admission-attempt rate. Default rate ceiling:
 
-Он применяет два независимых control:
+$$
+R_{\mathrm{admission}}=512\ \text{attempts}/\mathrm{s}.
+$$
 
-- maximum concurrent active connections;
-- admission-attempt rate.
+Каждая попытка потребляет rate budget **до** capacity admission, поэтому full server нельзя превратить в unlimited accept/reject churn loop.
 
-Default admission-rate gate разрешает **512 attempts за окно 1 second**.
+Successful admission возвращает idempotently releasable lease; repeated dispose не double-release'ит active capacity.
 
-Каждая попытка потребляет rate budget **до** capacity admission. Это намеренно: когда server уже full, attacker не должен иметь возможность организовать unbounded accept/reject churn, обходящий rate accounting только потому, что capacity rejection происходит сразу.
+## 4. Handshake и join deadlines
 
-Gate считает accepted, rejected, capacity-rejected и rate-rejected connections.
+Current defaults:
 
-## 4. Admission leases
+$$
+T_{\mathrm{handshake}}=10\,\mathrm{s},
+\qquad
+T_{\mathrm{join}}=2\,\mathrm{min}.
+$$
 
-Successful admission возвращает lease. Release lease уменьшает active-connection state ровно один раз.
+Valid `Hello` завершает handshake deadline, но не выдаёт unlimited player-slot lease. До readiness `Playing` active join-abuse deadline. После `Playing` current normal idle timeout infinite, если deployment не configured иначе.
 
-Lease idempotent для caller: повторный `Dispose` не делает double-release, потому что ownership atomically меняется на null.
+`HandshakeTimeout`, `JoinTimeout`, `IdleTimeout` остаются distinct telemetry categories.
 
-Internal negative active-count state считается invariant violation, а не игнорируется.
+## 5. Connection/message rate accounting
 
-## 5. Handshake и join deadlines
+Connections используют fixed-window accounting configured frame/byte work. `TerrariaMessageRateAccountant` применяет stricter budgets только к explicitly configured message IDs, while all traffic still crosses connection-wide accounting.
 
-Default connection policy требует завершить protocol handshake за **10 seconds**.
+Rate ceilings — abuse bounds, не ordinary gameplay cadence. Join/section/chest traffic бывает legitimately bursty, поэтому tightening требует measurement.
 
-Valid `Hello` завершает pre-handshake deadline, но не выдаёт unlimited player-slot lease. Production sink composition сообщает network watchdog узкий readiness signal. После `Hello` connection, который ещё не дошёл до runtime ready/`Playing` state, ограничен default **2 minute join-completion deadline**.
+## 6. Global fan-out budget
 
-Две минуты — намеренно консервативный hard-abuse ceiling, а не Terraria gameplay cadence и не утверждение о каком-либо official vanilla timeout. Этот budget нужен, чтобы peer не мог отправить valid `Hello` и затем бесконечно удерживать admitted player slot, не завершив вход в мир.
+Public `Say` chat превращает один legal input в $O(P)$ outbound work, где $P$ — playing peers. Поэтому существует server-global pre-fan-out ceiling:
 
-После перехода connection в `Playing` join deadline больше не действует. Текущий default normal post-join idle timeout остаётся infinite. Deployment при необходимости может независимо настроить finite idle timeout.
+$$
+R_{\mathrm{chat}}=256\ \text{broadcasts}/\mathrm{s}.
+$$
 
-Watchdog различает handshake, join и обычный idle expiration, поэтому telemetry отдельно показывает `HandshakeTimeout`, `JoinTimeout` и `IdleTimeout`.
+Over-budget broadcast drop'ится и учитывается как rate-limited rejection до recipient iteration. Это loose hard-abuse protection, не normal chat cadence.
 
-## 6. Connection-wide rate accounting
+## 7. Framing и hostile sizes
 
-Каждый connection имеет fixed-window rate accounting для configured frame/byte work.
+Frame lengths/packet-declared lengths hostile до validation. Impossible/truncated frames reject deterministically, size ceilings применяются до large allocation, client counts не выбирают unbounded memory, transient receive buffers не escape в gameplay state, parser failure остаётся bounded scope.
 
-Current default connection policy использует `HardAbuse` budget вместо unlimited/accounting-only mode.
+## 8. Session legality и identity
 
-Rate limits нужны как hard abuse ceiling, а не как кодирование обычных gameplay timings.
+Well-formed packet может быть illegal до handshake, slot assignment или world entry. Session state валидируется до gameplay mutation. Client-claimed identity игнорируется, где connection уже задаёт authoritative ownership.
 
-Legitimate Terraria traffic бывает bursty во время join/sections/chests. Поэтому tightening limits подтверждается реальными workloads.
+Generation/revision-aware handles также защищают от stale commands после numeric-slot reuse.
 
-## 7. Per-message и fan-out rate accounting
+## 9. Bounded queues и authoritative work
 
-`TerrariaMessageRateAccountant` хранит optional rate accountants по message ID.
+Inbound commands, outbound frames, section/compression work и diagnostics retention bounded.
 
-Только explicitly configured message IDs получают message-specific budget. Остальные всё равно проходят connection-wide accounting.
+Authoritative loop сочетает global capacity, per-tick operation limits, per-source fairness и per-source pending ceilings. Shared work, которое bypass'ит loop и multiplicates recipients, требует own server-global budget до multiplication.
 
-Это позволяет expensive packet classes иметь более строгие controls, не делая вид, что каждый packet стоит одинаково.
+Security budgets global, когда work конкурирует за shared tick/resource; умножение full allowance на player count лишь увеличивает DoS surface.
 
-Public vanilla `Say` chat дополнительно имеет **server-global fan-out ceiling 256 broadcasts за окно 1 second**. Budget проверяется до O(players) обхода recipients в relay. Поэтому множество individually legal senders не может умножить per-connection allowance в unbounded aggregate работу с outbound queues. Broadcast, отклонённый этим global ceiling, отбрасывается и учитывается в rate-limit rejection telemetry; каждому player не выдаётся отдельная копия global budget.
+## 10. Single-writer containment
 
-Значение 256/s — намеренно свободный hard-abuse ceiling, а не normal chat cadence. Legitimate chat должен оставаться далеко ниже него, при этом server получает deterministic верхнюю границу fan-out work.
-
-Long-term security всё ещё требует broader subsystem-level budgets, когда один legal packet может породить существенную world/gameplay работу.
-
-## 8. Framing и size bounds
-
-Frame lengths и packet-specific declared lengths считаются hostile до validation.
-
-Правила:
-
-- impossible/truncated frame envelopes reject deterministically;
-- message-specific size ceilings применяются до крупных allocations;
-- client-declared count не выбирает unbounded memory;
-- receive-buffer lifetime не переносится в gameplay state;
-- parser failure закрывает/reject bounded scope вместо process crash.
-
-Safe decoder обязан оставаться safe, даже если каждое length/count field выбрано adversarially.
-
-## 9. Connection-state legality
-
-Packet может быть well-formed, но illegal на текущей стадии connection.
-
-Примеры: actions до handshake, до player identity/slot assignment или до world entry.
-
-Runtime валидирует session state до gameplay mutation. Client-claimed player slot/identity игнорируется там, где connection ownership уже определяет authoritative identity.
-
-## 10. Typed stop reasons
-
-Network failure классифицируется, а не сливается в одну помойку.
-
-Current stop reasons включают:
-
-```text
-HandshakeTimeout
-JoinTimeout
-IdleTimeout
-InvalidHandshake
-UnsupportedProtocol
-ProtocolFailure
-InboundIoFailure
-OutboundFailure
-SlowClient
-RateLimited
+```mermaid
+flowchart LR
+    Network["Network / timers / TUI / workers"] --> Command["Validated bounded command / snapshot boundary"]
+    Command --> Owner["Authoritative owner"]
+    Owner --> State["Mutable gameplay state"]
 ```
 
-Это полезно для security telemetry, потому что stalled join, rate-limited peer, malformed client и broken network adapter — разные incidents.
+Off-thread direct mutation запрещена. Это уменьшает races и число мест, где hostile input может corrupt shared state.
 
-## 11. Bounded queues
+## 11. World/object safety
 
-Inbound authoritative work и outbound connection work обязаны оставаться bounded.
+World coordinates проверяются до array access; future area operations обязаны bound integer overflow, negative dimensions, attacker-controlled rectangles и repeated expensive framing/liquid/placement work.
 
-Клиент не может создавать:
+Chest/object handling валидирует identity/coordinates и contains malformed input. Strict inventory conservation/anti-dupe rejection ждёт proven server-owned item model вместо guessed vanilla transitions.
 
-- unlimited inbound command backlog;
-- unlimited outbound frame backlog;
-- unlimited section/compression work;
-- unbounded logging/telemetry objects.
+## 12. Persistence и cache safety
 
-Если outbound client не успевает drain bounded queue, он может быть отключён как `SlowClient` вместо блокировки simulation.
+Canonical `.wld` остаётся recovery source. `.runtime-world` считается untrusted persisted input и обязан пройти layout/integrity validation либо fallback на `.wld`.
 
-## 12. Authoritative work budgets
+Canonical save publication использует detached snapshots, temporary files, durable file flush, atomic replace/move и Linux parent-directory `fsync` where supported. Unknown/newer layouts не rewrite по guessed offsets.
 
-Syntactically legal request всё равно может быть computationally expensive.
+Malformed network input не должен обходить normal final-save/shutdown path healthy world.
 
-Authoritative loop поэтому использует global/per-source fairness и operation limits. Work, который обходит authoritative loop, но умножается по recipients, например public chat fan-out, должен иметь собственный server-global subsystem ceiling до multiplication step.
+## 13. Host/UI/dependency boundaries
 
-Проект продолжает двигаться к explicit global subsystem budgets для tile work, liquids, sections и других expensive operations.
+Trusted CoreCLR host modules получают narrow `TerraRuntime.HostContracts`, не mutable stores. Ordinary Vega plugins остаются за Vega Plugin SDK. NativeAOT standalone не arbitrary-load'ит managed plugin DLLs.
 
-Security budgets являются **global**, если work делит один tick или общий fan-out resource. Умножить полный expensive-work budget на число игроков означает превратить limit в более крупную DoS surface.
+TUI использует bounded read snapshots и controlled operations.
 
-## 13. Single-writer containment
+Production dependencies сохраняют NativeAOT/trimming contract и проходят Linux/Windows native publish/smoke gates where applicable.
 
-Network callbacks, timers, TUI и background workers не могут напрямую мутировать authoritative gameplay state.
+## 14. Failure isolation
 
-Это security property так же, как architecture property: malformed input path имеет меньше мест, где может создать concurrent state corruption.
-
-Validated commands пересекают одну controlled owner boundary до mutation.
-
-## 14. Entity identity safety
-
-Generation/revision-aware handles защищают runtime entities от stale slot reuse.
-
-Stale command, указывающий старый NPC/projectile/player slot, не должен изменить другую новую entity, позже занявшую тот же numeric slot.
-
-Content type IDs и runtime entity handles являются разными domains.
-
-## 15. World coordinate safety
-
-World/tile operations проверяют coordinates до index runtime arrays.
-
-Future area operations должны также защищаться от:
-
-- integer overflow;
-- negative dimensions;
-- attacker-controlled large rectangles;
-- repeated expensive framing/liquid/placement work.
-
-Bounds checking выполняется до доступа к world memory, а не после failed index operation.
-
-## 16. Chest/object input
-
-Chest/object traffic исторически exploit-prone, потому что смешивает identity, coordinates и inventory state.
-
-Current chest handling содержит malformed-input containment и проверяет relevant identifiers/coordinates до authoritative operations.
-
-Strict conservation/anti-dupe rejection должен строиться на реальном server-owned inventory model. Reject legal client behavior из guessed ownership transitions — плохая security.
-
-## 17. Persistence safety
-
-World corruption и data loss являются security/reliability failures.
-
-Persistence rules:
-
-- canonical `.wld` остаётся recovery source;
-- runtime snapshot corruption fallback'ится на `.wld`;
-- save publish через temporary file + flush + atomic replacement;
-- unknown/newer world layouts не rewrite по guessed offsets;
-- background writers используют detached snapshots, не mutable live stores;
-- truncated sections не стирают unrelated valid state молча.
-
-Attacker-caused malformed network exception не должен ломать normal final-save/shutdown path здорового world.
-
-## 18. Runtime snapshot integrity
-
-`.runtime-world` считается untrusted persisted input при startup, даже если когда-то был создан самим TerraRuntime.
-
-Loader проверяет header/layout и integrity-protected embedded canonical data, tile shards и liquid payload.
-
-Любая inconsistency является cache miss. Partially validated snapshot не публикуется.
-
-Derived cache disposable, поэтому runtime может reject incompatible versions без risky migrations.
-
-## 19. Host/plugin trust boundary
-
-CoreCLR extensible host различает trusted host modules и ordinary plugins.
-
-Trusted host modules получают `TerraRuntime.HostContracts`, а не arbitrary internal implementation objects. Они регистрируют narrow extension providers или вызывают controlled operations.
-
-Обычные Vega plugins остаются за Vega Plugin SDK и автоматически не получают TerraRuntime trusted-module privileges.
-
-NativeAOT standalone profile не загружает arbitrary managed plugin DLLs.
-
-## 20. TUI/operations boundary
-
-UI не становится trusted mutation owner только потому, что local.
-
-Read paths используют bounded snapshots. Administrative writes проходят controlled operations/command surfaces к authoritative owner.
-
-Terminal/UI failure деградирует в plain console вместо corruption runtime state или shutdown server.
-
-## 21. NativeAOT dependency discipline
-
-Dependency admission является частью security/reliability model.
-
-Runtime reflection scanning, dynamic code generation и serializers с неясным trimming behavior не допускаются в production paths без явного контракта.
-
-Новые production dependencies проходят Linux/Windows NativeAOT gates и exercised smoke paths там, где применимо.
-
-Это уменьшает hidden runtime behavior и deployment-only failures в trust-boundary code.
-
-## 22. Failure isolation
-
-Желаемый failure scope минимален:
-
-```text
-bad frame          -> reject/close connection
-rate abuse         -> reject/close connection
-stalled handshake  -> close that connection
-stalled join       -> close that connection
-chat fan-out abuse -> drop over-budget broadcast
-slow reader        -> close that connection
-bad runtime cache  -> fall back to .wld
-TUI failure        -> fall back to plain console
-save write fail    -> keep previous canonical checkpoint
-invalid worldgen   -> discard candidate world
+```mermaid
+flowchart TD
+    Failure["Failure / hostile condition"] --> Kind{"Class"}
+    Kind --> Frame["Bad frame → reject/close connection"]
+    Kind --> Rate["Rate abuse → reject/drop bounded operation"]
+    Kind --> Handshake["Stalled handshake/join → close connection"]
+    Kind --> Chat["Chat fan-out abuse → drop broadcast"]
+    Kind --> Slow["Slow reader → close connection"]
+    Kind --> Cache["Bad runtime cache → fallback to .wld"]
+    Kind --> TUI["TUI failure → plain console"]
+    Kind --> Save["Save failure → preserve previous checkpoint"]
+    Kind --> Worldgen["Invalid worldgen → discard candidate"]
 ```
 
-Process не должен fail-fast на обычном hostile network input.
+Ordinary hostile network input не должен fail-fast process. Invariant throws остаются для impossible internal programming states.
 
-Invariant throws уместны для impossible internal programming states, но production trust-boundary failures должны использовать explicit bounded error paths.
+## 15. Security telemetry
 
-## 23. Telemetry
+Observability различает active/accepted/rejected connections, capacity/rate admission rejects, connection/message/global-fan-out rate limits, typed stop reasons, malformed/protocol failures, slow clients, queue/backlog state, invalid gameplay requests, cache failures и save failures.
 
-Security-relevant observability должна различать как минимум:
+Telemetry сама bounded, чтобы reporting не стал attack surface.
 
-- active/accepted/rejected connections;
-- capacity admission rejects;
-- admission-rate rejects;
-- connection/message rate limits;
-- server-global fan-out rate rejection;
-- connection stop reason mapping, включая handshake/join/idle timeouts;
-- malformed/protocol failures;
-- slow-client disconnects;
-- queue depth/backlog age;
-- invalid gameplay requests;
-- cache validation failure reason;
-- save failure counters.
+## 16. Fuzzing
 
-Telemetry сама bounded, чтобы attacker не превратил error reporting в следующую memory/CPU attack.
+Permanent deterministic malformed/fuzz regression floor существует для framing и typed packet decoders, включая hostile declared lengths и segmented input. Это не complete fuzz coverage.
 
-## 24. Fuzzing
+Broader corpora нужны для section/tile data, `.wld` parsing, command/text parsing и future complex variable-length gameplay formats.
 
-Permanent deterministic malformed/fuzz coverage уже существует для framing layer и typed packet decoders, включая hostile declared lengths и segmented input. Это regression floor, а не заявление, что protocol fuzzing полностью завершён.
+Полезный adversarial test доказывает bounded rejection и последующую способность обработать valid connection/operation.
 
-Broader roadmap всё ещё требует fuzz/malformed corpora для:
+## 17. Evidence и limitations
 
-- section/tile data;
-- `.wld` parsing;
-- command/text parsing;
-- future complex variable-length gameplay formats.
+Evidence включает admission churn/capacity, handshake/join/idle deadlines, connection/message/global-fan-out budgets, malformed packets, real-socket slow readers, command fairness, world/cache corruption, persistence interruption/atomic publication и live official-client probes.
 
-Хороший fuzz scenario доказывает не только rejection malformed input, но и способность server принять valid connection после атаки.
+Remaining work: broader fuzz corpora, complete subsystem budgets/rate classes, richer rejection telemetry, full authoritative movement/inventory/combat validation, `$24$`-player / `$255$`-connection production-like stress и long-running soak/adversarial scenarios.
 
-## 25. Security evidence
+## 18. Checklist security change
 
-В зависимости от change evidence включает:
-
-- admission-gate churn/capacity tests;
-- handshake/join/idle deadline tests;
-- connection policy/rate tests;
-- global fan-out budget tests;
-- malformed frame/packet tests;
-- slow-reader real-socket tests;
-- runtime queue/fairness tests;
-- world parser/cache corruption tests;
-- persistence interruption/atomic-replacement tests;
-- live official-client compatibility probes.
-
-Для bug fix regression test должен падать при удалении fix.
-
-## 26. Текущие ограничения
-
-Active security work:
-
-- broader protocol/world fuzz corpora beyond current framing and typed-decoder regression floor;
-- complete global/per-subsystem expensive-work budgets beyond currently bounded command loop and chat fan-out;
-- complete rate limits всех expensive gameplay classes;
-- richer malformed/rejected packet telemetry;
-- full authoritative movement/inventory/combat validation;
-- production-like 24-player и 255-connection stress coverage;
-- long-running soak/adversarial scenarios.
-
-Security posture надо описывать concrete implemented bounds, а не blanket label «secure».
-
-## 27. Checklist security change
-
-Trust-boundary/security change не завершён, пока по необходимости attacker-controlled sizes bounded до allocation, expensive work rate/budget controlled, failure scope contained, connection/gameplay rejection categories различимы, authoritative state не мутируется off-thread, persistence recovery safe, regression evidence падает на старом behavior, а эта страница обновлена вместе с `docs/en/security.md`.
+Security change не завершён, пока attacker-controlled sizes bounded до allocation, expensive work budgeted, failures contained, rejection categories typed, authoritative state не mutated off-thread, persistence recovery safe, old behavior fails regression test, diagrams используют Mermaid, dimensional values используют LaTeX, и эта page изменена вместе с `docs/en/security.md`.
