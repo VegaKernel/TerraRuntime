@@ -42,5 +42,11 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.TileID "$assembly" > artifacts/source-contract/tile-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" > artifacts/source-contract/item.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" > artifacts/source-contract/item-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.Prefixes.PrefixLegacy "$assembly" > artifacts/source-contract/prefix-legacy.cs
           python3 tools/ci/probe_dirt_kill.py --world-gen artifacts/source-contract/world-gen.cs --tile-id artifacts/source-contract/tile-id.cs
-          python3 tools/ci/probe_dirt_item_drop.py --world-gen artifacts/source-contract/world-gen.cs --item artifacts/source-contract/item.cs
+          python3 tools/ci/probe_dirt_item_drop.py \
+            --world-gen artifacts/source-contract/world-gen.cs \
+            --item artifacts/source-contract/item.cs \
+            --item-id artifacts/source-contract/item-id.cs \
+            --prefix-legacy artifacts/source-contract/prefix-legacy.cs
