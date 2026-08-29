@@ -59,12 +59,13 @@ public sealed class RuntimeNpcActorIntentStateStepper : INpcAiStateStepper
             return false;
         }
 
+        NpcActorMotionOptions motion = intent.Motion;
         switch (intent.Kind)
         {
             case NpcActorIntentKind.Stop:
                 next = BuildControlledUpdate(
                     in npc,
-                    velocityX: MoveTowards(npc.VelocityX, 0f, intent.Motion.HorizontalAcceleration),
+                    velocityX: MoveTowards(npc.VelocityX, 0f, motion.HorizontalAcceleration),
                     directionX: npc.Simulation.DirectionX,
                     directionY: 0,
                     target: npc.Target);
@@ -77,7 +78,7 @@ public sealed class RuntimeNpcActorIntentStateStepper : INpcAiStateStepper
                     intent.TargetX,
                     intent.TargetY,
                     npc.Target,
-                    in intent.Motion,
+                    in motion,
                     out next);
 
             case NpcActorIntentKind.FollowPlayer:
@@ -86,7 +87,7 @@ public sealed class RuntimeNpcActorIntentStateStepper : INpcAiStateStepper
                 {
                     next = BuildControlledUpdate(
                         in npc,
-                        velocityX: MoveTowards(npc.VelocityX, 0f, intent.Motion.HorizontalAcceleration),
+                        velocityX: MoveTowards(npc.VelocityX, 0f, motion.HorizontalAcceleration),
                         directionX: npc.Simulation.DirectionX,
                         directionY: 0,
                         target: npc.Target);
@@ -101,7 +102,7 @@ public sealed class RuntimeNpcActorIntentStateStepper : INpcAiStateStepper
                     targetX,
                     targetY,
                     player.Player.Slot.Value,
-                    in intent.Motion,
+                    in motion,
                     out next);
 
             default:
