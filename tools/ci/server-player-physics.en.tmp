@@ -1,0 +1,269 @@
+# Server-controlled player physics
+
+[Русский](../ru/server-player-physics.md) · [Documentation index](README.md) · [Gameplay](gameplay.md) · [Host interfaces](host-interfaces.md)
+
+## 1. Scope
+
+This guide documents the source-backed movement/physics slice for **connection-free runtime-owned server players** created through `IServerPlayerOperations`.
+
+It does **not** describe the complete movement model for network-connected Terraria clients. Network player movement still has its own ingress/commit/normalization path and future anti-cheat/tolerance work. The server-player physics described here is a separate authoritative actor path that already advances its own position and velocity inside the TerraRuntime game tick.
+
+The behavioral baseline is TerrariaServer `1.4.5.8`. Only the verified ordinary, unmounted slice is claimed.
+
+## 2. Ownership and data flow
+
+A trusted host submits semantic control intent. It never writes final velocity or position directly.
+
+```mermaid
+flowchart LR
+    Host["Trusted host module"] --> API["IServerPlayerOperations"]
+    API --> Queue["Bounded authoritative command queue"]
+    Queue --> Commands["RuntimeServerPlayerCommandService"]
+    Commands --> Intent["Generation-bound control intent"]
+    Intent --> Tick["ServerRuntimeState.Tick"]
+    Tick --> Physics["VanillaServerPlayerDryPhysicsStepper"]
+    Physics --> State["RuntimeServerPlayerStateStore"]
+```
+
+The game-loop thread remains the mutable-state owner. The host can create/despawn an actor and report buttons/intents; TerraRuntime owns acceleration, jump duration, gravity, collision, slope/step handling, liquid displacement and the final motion state.
+
+## 3. Identity and lifetime
+
+A server-controlled player has two different identities:
+
+- `ServerPlayerId` — stable host-facing logical identity;
+- `PlayerHandle` — live generation-safe player-slot identity.
+
+Creation reserves a normal Terraria player slot from the same shared generation-safe pool used by the runtime. A live slot lease is held for the whole actor lifetime.
+
+Horizontal intent, jump intent and internal jump state are keyed by the exact `PlayerHandle`, including its generation. Despawn clears all three and disposes the lease. Reusing the numeric slot therefore cannot transfer stale input to a replacement actor.
+
+## 4. Host API
+
+`IServerPlayerOperations` currently exposes:
+
+```csharp
+ValueTask<ServerPlayerCreateResult> CreateAsync(
+    ServerPlayerId id,
+    float positionX,
+    float positionY,
+    CancellationToken cancellationToken = default);
+
+ValueTask<bool> SetHorizontalIntentAsync(
+    ServerPlayerId id,
+    ServerPlayerHorizontalIntent intent,
+    CancellationToken cancellationToken = default);
+
+ValueTask<bool> SetJumpIntentAsync(
+    ServerPlayerId id,
+    ServerPlayerJumpIntent intent,
+    CancellationToken cancellationToken = default);
+
+ValueTask<bool> DespawnAsync(
+    ServerPlayerId id,
+    CancellationToken cancellationToken = default);
+```
+
+`CreateAsync` reports one of:
+
+- `Created`;
+- `InvalidId`;
+- `InvalidPosition`;
+- `AlreadyExists`;
+- `NoAvailableSlot`;
+- `QueueRejected`.
+
+The operations facade posts mutations through the authoritative queue. Cancellation is checked before queue admission. Once a control mutation has been accepted into the queue, completion is intentionally not cancellable: TerraRuntime avoids a caller observing an ambiguous “maybe applied” result after the command has become authoritative work.
+
+## 5. Semantic control intents
+
+Horizontal input is deliberately tiny:
+
+| `ServerPlayerHorizontalIntent` | Value | Meaning |
+|---|---:|---|
+| `Left` | `-1` | hold ordinary left movement |
+| `Stop` | `0` | no horizontal movement button |
+| `Right` | `1` | hold ordinary right movement |
+
+Jump input models button state rather than a requested velocity:
+
+| `ServerPlayerJumpIntent` | Value | Meaning |
+|---|---:|---|
+| `Released` | `0` | jump button released |
+| `Held` | `1` | jump button held |
+
+`Stop` and `Released` are also the defaults when no explicit intent is stored.
+
+## 6. Tick integration
+
+Server-player physics is enabled when the runtime has both a `RuntimeServerPlayerStateStore` and world tiles. `ServerRuntimeState.Tick()` advances the server-player slice before NPC AI.
+
+For each current server-player snapshot, the runtime:
+
+1. resolves horizontal intent, defaulting to `Stop`;
+2. resolves jump intent, defaulting to `Released`;
+3. resolves internal jump state, defaulting to `VanillaServerPlayerJumpState.Initial`;
+4. runs one `VanillaServerPlayerDryPhysicsStepper` step;
+5. commits the resulting jump state;
+6. writes motion only when position or velocity actually changed.
+
+A no-op grounded collision therefore does not create a meaningless state revision. Tests pin this behavior.
+
+## 7. Verified step order
+
+The ordinary verified step is not a collection of independent equations. Ordering is part of the behavioral contract.
+
+```mermaid
+flowchart TD
+    Snapshot["Player snapshot"] --> H["Horizontal control"]
+    H --> J["Jump control"]
+    J --> L["Read liquid contacts / movement scale"]
+    L --> G["Gravity + fall-speed clamp"]
+    G --> DownSlope["WalkDownSlope"]
+    DownSlope --> StepDown{"velocityY == gravity?"}
+    StepDown -->|yes| SD["StepDown"]
+    StepDown -->|no| StepUpGate{"velocityY >= gravity?"}
+    SD --> StepUpGate
+    StepUpGate -->|yes| SU["StepUp"]
+    StepUpGate -->|no| Collision["TileCollision"]
+    SU --> Collision
+    Collision --> Ceiling["Ceiling hit may end active jump"]
+    Ceiling --> Disp["Resolve liquid displacement"]
+    Disp --> Position["Advance position"]
+    Position --> Slope["Post-move slope collision"]
+    Slope --> Result["Authoritative motion result"]
+```
+
+Changing this order merely because another ordering looks cleaner can change observable motion.
+
+## 8. Source-backed baseline constants
+
+The current ordinary slice pins these TerrariaServer `1.4.5.8` values:
+
+| Quantity | Value | Notes |
+|---|---:|---|
+| base player hitbox | $20 \times 42\,\mathrm{px}$ | width × height |
+| gravity | $0.4\,\mathrm{px/tick^2}$ | added before collision |
+| maximum downward speed | $10\,\mathrm{px/tick}$ | fall-speed clamp |
+| ordinary run-speed threshold | $3\,\mathrm{px/tick}$ | threshold, **not** a universal hard clamp |
+| run acceleration | $0.08\,\mathrm{px/tick^2}$ | ordinary left/right baseline |
+| grounded run slowdown | $0.2\,\mathrm{px/tick^2}$ | ordinary stop/reversal path |
+| airborne run slowdown | $0.1\,\mathrm{px/tick^2}$ | half grounded slowdown |
+| jump vertical speed | $-5.01\,\mathrm{px/tick}$ | negative Y is upward |
+| jump counter | $15\,\mathrm{ticks}$ | ordinary held-jump duration state |
+
+The run-speed value is intentionally documented as a threshold. The verified ordinary path may cross it during one acceleration step; for example, the regression suite pins $2.99 \rightarrow 3.07\,\mathrm{px/tick}$ rather than inventing a generic clamp.
+
+## 9. Horizontal control
+
+The current baseline models ordinary unmounted, no-track-boost horizontal movement.
+
+When moving left or right below the corresponding run-speed threshold, the runtime applies reversal slowdown where required and then applies the source-backed acceleration. When there is no active directional acceleration path, horizontal velocity decays using grounded or airborne slowdown.
+
+The distinction between grounded and airborne slowdown is currently derived from vertical velocity in this verified slice: zero vertical velocity uses the full slowdown, non-zero vertical velocity uses half.
+
+Unknown enum values are rejected rather than interpreted as a direction.
+
+## 10. Jump state and release gating
+
+Jump behavior has runtime-owned state:
+
+- `RemainingTicks` mirrors the ordinary vanilla jump counter;
+- `ReleaseReady` mirrors the release gate required before a fresh jump may start.
+
+A grounded actor in the initial released state starts a jump when `Held` is applied. While the jump is active and still held, the runtime reasserts the source-backed upward speed and decrements the counter.
+
+Releasing jump cancels the remaining counter and rearms the release gate. Landing while jump remains held does **not** immediately start another jump. A ceiling collision can clear an active remaining jump counter.
+
+The host never manipulates this internal jump state directly.
+
+## 11. Tile, step and slope collision
+
+The baseline uses the verified $20 \times 42\,\mathrm{px}$ player hitbox for world collision.
+
+The current path contains:
+
+- walk-down-slope handling before ordinary tile collision;
+- ordinary `StepDown` when the vertical velocity equals baseline gravity;
+- ordinary `StepUp` when vertical velocity is at least baseline gravity;
+- tile collision for floor, ceiling and walls;
+- post-position slope collision.
+
+Regression tests cover floor/wall clamps and ordinary $16\,\mathrm{px}$ step-up/step-down cases. `StepUp` is not applied while the actor is rising faster than baseline gravity.
+
+## 12. Liquid displacement
+
+Liquid contact currently changes **position displacement**, not the persisted collision velocity.
+
+| Contact | Movement scale |
+|---|---:|
+| water | $0.5$ |
+| lava | $0.5$ |
+| honey | $0.25$ |
+| shimmer | $0.375$ |
+| no supported liquid contact | $1$ |
+
+If tile collision changes one velocity axis, that clamped axis advances without the liquid movement scale; an unchanged axis keeps the scale. This prevents a collision clamp from being incorrectly diluted by water/honey/shimmer movement scaling.
+
+This support does **not** imply complete vanilla swimming/floating/jump/gravity behavior in liquids.
+
+## 13. Validation and failure behavior
+
+Creation rejects an unassigned `ServerPlayerId`, non-finite spawn coordinates, duplicates and exhausted player-slot capacity.
+
+Control commands reject an unknown/unassigned actor and invalid intent enum values.
+
+The dry-physics step refuses to advance:
+
+- an unassigned player handle;
+- a dead player;
+- a mounted player;
+- non-finite position or velocity input.
+
+A rejected/out-of-slice step is not replaced by guessed motion.
+
+## 14. Verified slice versus remaining work
+
+### In the current verified server-player slice
+
+- connection-free runtime-owned player lifecycle;
+- generation-safe slot ownership and control state;
+- semantic horizontal and jump intents;
+- ordinary left/right acceleration and slowdown;
+- ordinary release-gated jump control;
+- baseline gravity and fall-speed clamp;
+- base player hitbox collision;
+- walk-down-slope;
+- ordinary step-up and step-down;
+- tile and post-move slope collision;
+- water/lava/honey/shimmer displacement scaling;
+- runtime-tick integration and revision-preserving no-op behavior.
+
+### Explicitly outside the current slice
+
+- treating this subsystem as the anti-cheat/physics authority for ordinary network-connected players;
+- dash families;
+- mounts;
+- grapples;
+- auto-jump and extra-jump families;
+- accessories that change movement/jump behavior;
+- minecart/track boosts;
+- wind and sandstorm movement branches;
+- wrong-ground and portal movement branches;
+- the remaining liquid-specific jump, gravity and floating rules;
+- broad exceptional movement such as teleports/respawn transitions.
+
+The unsupported list is a contract boundary, not a queue of behaviors to approximate.
+
+## 15. Evidence
+
+Current regression evidence includes:
+
+- `ServerRuntimeServerPlayerPhysicsTests` — proves authoritative `Tick()` advances a connection-free actor and does not increment revision for a true no-op;
+- `VanillaServerPlayerDryPhysicsStepperTests` — gravity, fall-speed clamp, floor/wall collision, liquid displacement and baseline constants;
+- `VanillaServerPlayerHorizontalControlTests` — acceleration, reversal, grounded/airborne slowdown and the non-hard-clamp run-speed edge;
+- `VanillaServerPlayerJumpControlTests` — start/hold/release/rearm behavior and invalid intent rejection;
+- `VanillaServerPlayerStepPhysicsTests` — ordinary step-up/step-down and rising-step exclusion;
+- runtime operation/intent tests — command queue, host operations, generation-safe lifecycle and semantic intent behavior.
+
+These tests prove the implemented slice. They do not elevate the out-of-scope branches above to verified vanilla behavior.
