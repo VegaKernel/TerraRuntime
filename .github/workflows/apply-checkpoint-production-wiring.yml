@@ -1,3 +1,4 @@
+# Existing workflow trigger: production checkpoint recovery wiring.
 name: Apply Checkpoint Production Wiring
 
 on:
