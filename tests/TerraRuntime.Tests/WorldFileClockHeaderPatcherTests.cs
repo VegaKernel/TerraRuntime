@@ -58,11 +58,15 @@ public sealed class WorldFileClockHeaderPatcherTests
         Assert.Equal(source.RuntimeMetadata.OreTiers, loaded.RuntimeMetadata.OreTiers);
         Assert.Equal(source.Chests, loaded.Chests);
         Assert.Equal(source.Signs, loaded.Signs);
-        Assert.Equal(source.Npcs, loaded.Npcs);
+        Assert.Equal(source.Npcs.ShimmeredTownNpcIndices, loaded.Npcs.ShimmeredTownNpcIndices);
+        Assert.Equal(source.Npcs.TownNpcs, loaded.Npcs.TownNpcs);
+        Assert.Equal(source.Npcs.PersistentNpcs, loaded.Npcs.PersistentNpcs);
         Assert.Equal(source.TileEntities, loaded.TileEntities);
         Assert.Equal(source.PressurePlates, loaded.PressurePlates);
         Assert.Equal(source.TownRooms, loaded.TownRooms);
-        Assert.Equal(source.Bestiary, loaded.Bestiary);
+        Assert.Equal(source.Bestiary.Kills, loaded.Bestiary.Kills);
+        Assert.Equal(source.Bestiary.Sightings, loaded.Bestiary.Sightings);
+        Assert.Equal(source.Bestiary.Chats, loaded.Bestiary.Chats);
         Assert.Equal(source.CreativePowers, loaded.CreativePowers);
     }
 
