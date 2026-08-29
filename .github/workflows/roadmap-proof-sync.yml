@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Mark executable proof complete
+      - name: Mark remaining executable proof complete
         shell: bash
         run: |
           set -euo pipefail
@@ -28,22 +28,22 @@ jobs:
 
           path = Path("docs/roadmap.md")
           text = path.read_text(encoding="utf-8")
-          replacements = {
-              "- [ ] Handshake deadline plus normal idle timeout.":
-                  "- [x] Handshake deadline plus normal idle timeout.",
-              "- [ ] Distinguish malformed protocol, rate limit, invalid state and gameplay rejection in structured telemetry.":
-                  "- [x] Distinguish malformed protocol, rate limit, invalid state and gameplay rejection in structured telemetry.",
-          }
-          for old, new in replacements.items():
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"expected one roadmap item, got {count}: {old}")
-              text = text.replace(old, new, 1)
+          items = [
+              "Handshake deadline plus normal idle timeout.",
+              "Cancellation must release all connection resources on every exit path.",
+          ]
+          for item in items:
+              pending = f"- [ ] {item}"
+              complete = f"- [x] {item}"
+              if pending in text:
+                  text = text.replace(pending, complete, 1)
+              elif complete not in text:
+                  raise SystemExit(f"roadmap item missing: {item}")
           path.write_text(text, encoding="utf-8")
           PY
           git rm .github/workflows/roadmap-proof-sync.yml
           git add docs/roadmap.md
-          git commit -m "docs: mark verified network hardening roadmap items"
+          git commit -m "docs: mark verified connection lifecycle roadmap items"
           for attempt in 1 2 3 4; do
             if git push origin HEAD:main; then
               exit 0
