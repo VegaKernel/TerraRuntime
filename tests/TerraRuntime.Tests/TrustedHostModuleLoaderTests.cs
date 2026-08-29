@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.ExtensibleHost;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
+using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.HostModuleFixture;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
@@ -42,7 +43,8 @@ public sealed class TrustedHostModuleLoaderTests
             config,
             data,
             logs,
-            loader.TerminalDashboards);
+            loader.TerminalDashboards,
+            loader.WorldGenerators);
         var interestManagement = new TestInterestManagementControl();
         var runtime = new TestHostRuntime(
             new TerraRuntimeHostRuntimeInfo(
@@ -56,6 +58,7 @@ public sealed class TrustedHostModuleLoaderTests
             new TestPlayerStateSnapshotReader(),
             new TestNpcActorOperations());
 
+        WorldGeneratorId fixtureGeneratorId = new(FixtureHostModule.WorldGeneratorId);
         try
         {
             int loaded = await loader.StartAllAsync(environment, cancellationToken);
@@ -73,6 +76,13 @@ public sealed class TrustedHostModuleLoaderTests
             ITerraRuntimeTerminalDashboardProvider provider = dashboardProviders.Span[0];
             Assert.Equal(FixtureHostModule.DashboardId, provider.Id);
             Assert.Equal("Fixture Dashboard", provider.Title);
+
+            ReadOnlyMemory<WorldGeneratorId> generatorIds = loader.CaptureWorldGeneratorIds();
+            Assert.Single(generatorIds.ToArray());
+            Assert.Equal(fixtureGeneratorId, generatorIds.Span[0]);
+            Assert.True(loader.TryResolveWorldGenerator(fixtureGeneratorId, out IWorldGenerationProvider? generator));
+            Assert.NotNull(generator);
+            Assert.Equal(fixtureGeneratorId, generator.Id);
 
             using (IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI))
             using (View dashboard = provider.CreateDashboard())
@@ -96,6 +106,8 @@ public sealed class TrustedHostModuleLoaderTests
         }
 
         Assert.Empty(loader.CaptureDashboards().ToArray());
+        Assert.Empty(loader.CaptureWorldGeneratorIds().ToArray());
+        Assert.False(loader.TryResolveWorldGenerator(fixtureGeneratorId, out _));
         Assert.True(File.Exists(Path.Combine(data, "fixture-host-module.stopped")));
 
         try
@@ -120,7 +132,8 @@ public sealed class TrustedHostModuleLoaderTests
         string ConfigDirectory,
         string DataDirectory,
         string LogsDirectory,
-        ITerraRuntimeTerminalDashboardRegistry TerminalDashboards) : ITerraRuntimeHostEnvironment;
+        ITerraRuntimeTerminalDashboardRegistry TerminalDashboards,
+        ITerraRuntimeWorldGeneratorRegistry WorldGenerators) : ITerraRuntimeHostEnvironment;
 
     private sealed record TestHostRuntime(
         TerraRuntimeHostRuntimeInfo Info,
@@ -165,6 +178,16 @@ public sealed class TrustedHostModuleLoaderTests
         }
 
         public ValueTask<bool> SetIntentAsync(
+            NpcHandle npc,
+            ActorControllerId controllerId,
+            NpcActorIntent intent,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
+        }
+
+        public ValueTask<bool> ReleaseAsync(
             NpcHandle npc,
             ActorControllerId controllerId,
             NpcActorIntent intent,
