@@ -71,6 +71,8 @@ internal static class TerminalUiSmoke
                     AssertRendered(app.Driver!, "Frame reject malformed 11");
                     AssertRendered(app.Driver!, "join 10");
                     SelectDetailsScreen(app, workspace, Key.W, "World", "WORLD");
+                    AssertRendered(app.Driver!, "Pipeline    in-flight 2  submitted 17  rejected 3");
+                    AssertRendered(app.Driver!, "On-demand   request 20  unique 12  dedup 8  pending 3/16");
                     AssertRendered(app.Driver!, "Sections");
                     AssertRendered(app.Driver!, "Lookups");
                     AssertRendered(app.Driver!, "Rebuild");
@@ -105,7 +107,7 @@ internal static class TerminalUiSmoke
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the production System Dashboard, external-dashboard transition, " +
                 "all Details menu hotkeys, Actions/manual-save path, complete bounded network telemetry, " +
-                "section-cache/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
+                "section-cache pipeline/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
@@ -495,16 +497,31 @@ internal static class TerminalUiSmoke
                 RuntimeDayRate: 1,
                 SectionCacheAvailable: true,
                 SectionCacheDirtyBacklog: 3,
+                SectionCacheInFlight: 2,
                 SectionCacheEntries: 12,
                 SectionCacheMaximumEntries: 64,
                 SectionCacheBytes: 2L * 1024 * 1024,
+                SectionCacheSubmitted: 17,
+                SectionCacheRejected: 3,
                 SectionCachePublished: 9,
+                SectionCacheStaleResults: 4,
+                SectionCacheEncodeFailures: 5,
+                SectionCachePublishRejections: 6,
                 SectionCacheActiveWorkers: 2,
                 SectionCachePendingWork: 4,
+                SectionCacheTotalEncodeMilliseconds: 45.5,
                 SectionCacheHits: 100,
                 SectionCacheMisses: 8,
                 SectionCacheStaleReads: 2,
                 SectionCacheWaits: 3,
+                SectionCacheWaitCompletions: 7,
+                SectionCacheWaitTimeouts: 2,
+                SectionCacheOnDemandRequests: 20,
+                SectionCacheOnDemandUniqueRequests: 12,
+                SectionCacheOnDemandDeduplicatedRequests: 8,
+                SectionCacheOnDemandPendingRequests: 3,
+                SectionCacheOnDemandRejectedRequests: 2,
+                SectionCacheOnDemandCapacity: 16,
                 Persistence: new RuntimeWorldPersistenceSnapshot(
                     AcceptingRequests: true,
                     TileShadowReady: true,
