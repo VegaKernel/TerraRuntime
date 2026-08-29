@@ -132,6 +132,62 @@ public sealed class RuntimeWorldTileChestSaveServiceTests
         }
     }
 
+    [Fact]
+    public async Task Save_snapshot_patches_authoritative_runtime_clock_into_preserved_header()
+    {
+        byte[] sourceFile = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
+        WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
+        Assert.True(WorldFileLoader.TryLoad(sourceFile, limits, out WorldFileData? sourceWorld).IsLoaded);
+        WorldFileData source = Assert.IsType<WorldFileData>(sourceWorld);
+        Assert.True(WorldFilePreservedSections.TryCapture(
+            sourceFile,
+            source.Envelope,
+            out WorldFilePreservedSections? preserved));
+        Assert.NotNull(preserved);
+
+        var chestStore = new RuntimeChestStore(source.Chests);
+        var clock = new RuntimeWorldClock(
+            time: 12_345d,
+            dayTime: false,
+            moonPhase: 5,
+            slimeRainTime: -321d,
+            dayRate: 0);
+
+        string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-clock-save-{Guid.NewGuid():N}");
+        string destinationPath = Path.Combine(directory, "world.wld");
+        Directory.CreateDirectory(directory);
+        var service = new RuntimeWorldTileChestSaveService(
+            destinationPath,
+            source.Envelope,
+            source.Header,
+            preserved!,
+            source.Tiles,
+            chestStore,
+            worldClock: clock,
+            synchronizationSectionsPerTick: 1);
+
+        try
+        {
+            service.CaptureFinalSaveAfterOwnerStopped();
+            await service.CompleteAsync(TestContext.Current.CancellationToken);
+
+            byte[] saved = await File.ReadAllBytesAsync(
+                destinationPath,
+                TestContext.Current.CancellationToken);
+            Assert.True(WorldFileLoader.TryLoad(saved, limits, out WorldFileData? savedWorld).IsLoaded);
+            WorldFileData loaded = Assert.IsType<WorldFileData>(savedWorld);
+            Assert.Equal(12_345d, loaded.RuntimeMetadata.Time);
+            Assert.False(loaded.RuntimeMetadata.DayTime);
+            Assert.Equal((byte)5, loaded.RuntimeMetadata.MoonPhase);
+            Assert.Equal(-321d, loaded.RuntimeMetadata.SlimeRainTime);
+        }
+        finally
+        {
+            await service.DisposeAsync();
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static T LoaderFixture<T>(string methodName)
     {
         MethodInfo? method = typeof(WorldFileLoaderTests).GetMethod(
