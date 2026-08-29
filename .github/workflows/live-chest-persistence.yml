@@ -17,8 +17,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: terra-runtime-live-chest-persistence-${{ github.sha }}
-  cancel-in-progress: false
+  group: terra-runtime-live-chest-persistence-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   restart-proof:
@@ -90,12 +90,19 @@ jobs:
         run: |
           set -euo pipefail
           world="$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld"
-          chest_info="$(dotnet run \
+          selector_log="$GITHUB_WORKSPACE/artifacts/persistence-chest-selection.txt"
+
+          set +e
+          dotnet run \
             --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
             -c Release \
-            -- "$world" | tail -1)"
-          echo "$chest_info" | tee artifacts/persistence-chest-selection.txt
+            -- "$world" > "$selector_log" 2>&1
+          selector_status=$?
+          set -e
+          cat "$selector_log"
+          test "$selector_status" -eq 0
 
+          chest_info="$(tail -1 "$selector_log")"
           for field in $chest_info; do
             case "$field" in
               slot=*) echo "CHEST_ID=${field#slot=}" >> "$GITHUB_ENV" ;;
@@ -123,20 +130,31 @@ jobs:
           test -n "$CHEST_ID" -a -n "$CHEST_X" -a -n "$CHEST_Y" -a -n "$CHEST_SLOTS"
           test -n "$ITEM_SLOT" -a -n "$ITEM_STACK" -a -n "$ITEM_PREFIX" -a -n "$ITEM_NET_ID"
 
-          if (( ITEM_STACK < 32767 )); then
+          if (( ITEM_STACK == 0 )); then
+            committed_stack=1
+            committed_prefix=0
+            committed_net_id=2
+          elif (( ITEM_STACK < 32767 )); then
             committed_stack=$((ITEM_STACK + 1))
+            committed_prefix=$ITEM_PREFIX
+            committed_net_id=$ITEM_NET_ID
           else
             committed_stack=$((ITEM_STACK - 1))
+            committed_prefix=$ITEM_PREFIX
+            committed_net_id=$ITEM_NET_ID
           fi
           test "$committed_stack" -gt 0
           test "$committed_stack" -ne "$ITEM_STACK"
           echo "COMMITTED_STACK=$committed_stack" >> "$GITHUB_ENV"
+          echo "COMMITTED_PREFIX=$committed_prefix" >> "$GITHUB_ENV"
+          echo "COMMITTED_NET_ID=$committed_net_id" >> "$GITHUB_ENV"
 
           rm -f "$cache" "$bootstrap_cache"
           dotnet "$server_dll" \
             --world "$world" \
             --port 17787 \
             --max-players 2 \
+            --no-tui \
             > "$host_log" 2>&1 &
           host_pid=$!
 
@@ -172,6 +190,8 @@ jobs:
             --item-net-id "$ITEM_NET_ID" \
             2>&1 | tee "$mutation_log"
           grep -q "committedStack=$committed_stack" "$mutation_log"
+          grep -q "committedPrefix=$committed_prefix" "$mutation_log"
+          grep -q "committedNetId=$committed_net_id" "$mutation_log"
 
           kill -INT "$host_pid"
           for _ in $(seq 1 120); do
@@ -205,7 +225,7 @@ jobs:
             --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
             -c Release \
             -- "$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld" \
-            --assert "$CHEST_ID" "$ITEM_SLOT" "$COMMITTED_STACK" "$ITEM_PREFIX" "$ITEM_NET_ID" \
+            --assert "$CHEST_ID" "$ITEM_SLOT" "$COMMITTED_STACK" "$COMMITTED_PREFIX" "$COMMITTED_NET_ID" \
             2>&1 | tee artifacts/persistence-wld-assert.log
           grep -q "persisted_chest_item_ok" artifacts/persistence-wld-assert.log
 
@@ -222,6 +242,7 @@ jobs:
             --world "$world" \
             --port 17788 \
             --max-players 2 \
+            --no-tui \
             > "$restart_log" 2>&1 &
           restart_pid=$!
 
@@ -252,8 +273,8 @@ jobs:
             --slots "$CHEST_SLOTS" \
             --item-slot "$ITEM_SLOT" \
             --item-stack "$COMMITTED_STACK" \
-            --item-prefix "$ITEM_PREFIX" \
-            --item-net-id "$ITEM_NET_ID" \
+            --item-prefix "$COMMITTED_PREFIX" \
+            --item-net-id "$COMMITTED_NET_ID" \
             2>&1 | tee "$restart_client_log"
 
           kill "$restart_pid" 2>/dev/null || true
