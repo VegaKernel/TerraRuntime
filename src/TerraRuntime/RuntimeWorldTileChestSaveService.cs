@@ -88,13 +88,13 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
                 : RuntimeWorldTileChestSaveTickResult.Synchronizing;
         }
 
-        int capturedDirtySections = snapshotSource.CaptureDirtyTiles(synchronizationSectionsPerTick);
+        snapshotSource.CaptureDirtyTiles(synchronizationSectionsPerTick);
         if (!IsSaveRequested)
             return RuntimeWorldTileChestSaveTickResult.Idle;
 
-        // A full batch may mean more dirty sections remain. Defer capture by one tick rather than publishing a
-        // snapshot that can omit authoritative mutations still waiting in the bounded shadow synchronization queue.
-        if (capturedDirtySections >= synchronizationSectionsPerTick)
+        // Capture readiness is based on the tracker itself rather than the number successfully applied this tick.
+        // A failed section snapshot is requeued and must keep the save pending until a later owner tick captures it.
+        if (snapshotSource.PendingDirtyTileSections != 0)
             return RuntimeWorldTileChestSaveTickResult.SaveWaitingForSynchronization;
 
         if (Interlocked.Exchange(ref saveRequested, 0) == 0)
@@ -116,9 +116,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         while (!snapshotSource.IsTileShadowReady)
             snapshotSource.CaptureTileBootstrap(synchronizationSectionsPerTick);
 
-        while (snapshotSource.CaptureDirtyTiles(synchronizationSectionsPerTick) != 0)
-        {
-        }
+        while (snapshotSource.PendingDirtyTileSections != 0)
+            snapshotSource.CaptureDirtyTiles(synchronizationSectionsPerTick);
 
         Interlocked.Exchange(ref saveRequested, 0);
         coordinator.RequestSave();
