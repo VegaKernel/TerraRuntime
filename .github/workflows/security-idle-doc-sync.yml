@@ -1,0 +1,91 @@
+name: Security Idle Docs Sync
+
+on:
+  push:
+    paths:
+      - .github/workflows/security-idle-doc-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Update idle timeout documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          python3 - <<'PY'
+          from pathlib import Path
+
+          en = Path("docs/en/security.md")
+          text = en.read_text(encoding="utf-8")
+          old = '''Current defaults are:
+
+$$
+T_{\\mathrm{handshake}}=10\\,\\mathrm{s},
+\\qquad
+T_{\\mathrm{join}}=2\\,\\mathrm{min}.
+$$
+
+A valid `Hello` ends the handshake deadline but does not grant an unlimited player-slot lease. Until runtime readiness reaches `Playing`, the join-abuse deadline remains active. After `Playing`, the current normal idle timeout is infinite unless configured otherwise.
+'''
+          new = '''Current defaults are:
+
+$$
+T_{\\mathrm{handshake}}=10\\,\\mathrm{s},
+\\qquad
+T_{\\mathrm{join}}=2\\,\\mathrm{min},
+\\qquad
+T_{\\mathrm{idle}}=10\\,\\mathrm{min}.
+$$
+
+A valid `Hello` ends the handshake deadline but does not grant an unlimited player-slot lease. Until runtime readiness reaches `Playing`, the join-abuse deadline remains active. After `Playing`, accepted inbound traffic refreshes the normal inactivity deadline; ten minutes with no accepted traffic expires the connection. Deployments may still configure another positive timeout or explicitly disable idle expiry with the infinite sentinel.
+'''
+          if text.count(old) != 1:
+              raise SystemExit("English idle timeout paragraph changed unexpectedly")
+          en.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          ru = Path("docs/ru/security.md")
+          text = ru.read_text(encoding="utf-8")
+          old = '''Current defaults:
+
+$$
+T_{\\mathrm{handshake}}=10\\,\\mathrm{s},
+\\qquad
+T_{\\mathrm{join}}=2\\,\\mathrm{min}.
+$$
+
+Valid `Hello` завершает handshake deadline, но не выдаёт unlimited player-slot lease. До readiness `Playing` active join-abuse deadline. После `Playing` current normal idle timeout infinite, если deployment не configured иначе.
+'''
+          new = '''Current defaults:
+
+$$
+T_{\\mathrm{handshake}}=10\\,\\mathrm{s},
+\\qquad
+T_{\\mathrm{join}}=2\\,\\mathrm{min},
+\\qquad
+T_{\\mathrm{idle}}=10\\,\\mathrm{min}.
+$$
+
+Valid `Hello` завершает handshake deadline, но не выдаёт unlimited player-slot lease. До readiness `Playing` active join-abuse deadline. После `Playing` каждый accepted inbound frame обновляет normal inactivity deadline; десять минут без accepted traffic завершают connection. Deployment всё ещё может задать другой positive timeout или явно отключить idle expiry через infinite sentinel.
+'''
+          if text.count(old) != 1:
+              raise SystemExit("Russian idle timeout paragraph changed unexpectedly")
+          ru.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+          git rm .github/workflows/security-idle-doc-sync.yml
+          git add docs/en/security.md docs/ru/security.md
+          git commit -m "docs: document bounded default idle timeout"
+          for attempt in 1 2 3 4; do
+            if git push origin HEAD:main; then exit 0; fi
+            git pull --rebase origin main
+          done
+          exit 1
