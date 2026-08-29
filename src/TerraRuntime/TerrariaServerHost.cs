@@ -133,7 +133,30 @@ public static class TerrariaServerHost
             {
                 Console.Error.WriteLine(
                     $"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.");
-                return 26;
+
+                if (!RuntimeWorldCheckpointRecovery.CanAutomaticallyRestoreAfter(diagnostic))
+                {
+                    Console.Error.WriteLine(
+                        "Automatic checkpoint recovery is suppressed for an explicitly incompatible world-file version.");
+                    return 26;
+                }
+
+                RuntimeWorldCheckpointRestoreDiagnostic recovery =
+                    await RuntimeWorldCheckpointRecovery.TryRestoreBackupAsync(
+                        options.WorldPath,
+                        worldLoadLimits).ConfigureAwait(false);
+                if (!recovery.IsRestored)
+                {
+                    Console.Error.WriteLine(
+                        $"World checkpoint recovery failed: result={recovery.Result}, " +
+                        $"load_result={recovery.LoadResult}, stage={recovery.LoadStage}, code={recovery.StageResultCode}.");
+                    return 26;
+                }
+
+                Console.WriteLine(
+                    $"Canonical world recovered from validated checkpoint backup: " +
+                    $"{RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath)}.");
+                return await RunAsync(options, runtimeInterestManagement, hostLifecycle).ConfigureAwait(false);
             }
 
             worldReadyDuration = Stopwatch.GetElapsedTime(startupStart);
@@ -270,7 +293,8 @@ public static class TerrariaServerHost
             world.Tiles,
             chestStore,
             worldClock: worldClock,
-            signStore: signStore);
+            signStore: signStore,
+            checkpointValidationLimits: worldLoadLimits);
         var worldAutosave = new VanillaWorldAutosaveScheduler();
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
         var playerOperations = new RuntimePlayerOperationsTelemetry();

@@ -72,6 +72,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             writerOptions = new AtomicSaveFileWriterOptions(
                 BackupPath: RuntimeWorldCheckpointRecovery.GetBackupPath(destinationPath),
                 ValidateCandidateAsync: (path, cancellationToken) =>
+                    RuntimeWorldCheckpointRecovery.ValidateAsync(path, limits, cancellationToken),
+                ValidateBackupAsync: (path, cancellationToken) =>
                     RuntimeWorldCheckpointRecovery.ValidateAsync(path, limits, cancellationToken));
         }
 
