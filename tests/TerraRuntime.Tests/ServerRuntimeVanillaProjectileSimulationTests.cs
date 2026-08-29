@@ -16,12 +16,9 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var projectiles = new RuntimeProjectileStore(capacity: 4);
-        var state = new ServerRuntimeState(
-            worldTiles: tiles,
-            projectiles: projectiles);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = CreateProjectile(type, spawner: 3);
-        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
         ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
 
@@ -41,12 +38,9 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var projectiles = new RuntimeProjectileStore(capacity: 4);
-        var state = new ServerRuntimeState(
-            worldTiles: tiles,
-            projectiles: projectiles);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = CreateProjectile(1, spawner: 3);
-        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
         ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
 
@@ -67,15 +61,9 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     public async Task Authoritative_tick_removes_player_owned_wooden_arrow_on_tile_impact_by_default()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        tiles.Set(7, 10, new WorldTile
-        {
-            Type = 1,
-            Flags = WorldTileFlags.Active
-        });
+        tiles.Set(7, 10, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
         var projectiles = new RuntimeProjectileStore(capacity: 4);
-        var state = new ServerRuntimeState(
-            worldTiles: tiles,
-            projectiles: projectiles);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = new(
             VanillaProjectileIds.WoodenArrowFriendly,
             Spawner: 3,
@@ -88,8 +76,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
             Damage: 20,
             KnockBack: 1f,
             OriginalDamage: 20);
-        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
         ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
 
@@ -108,12 +95,9 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var projectiles = new RuntimeProjectileStore(capacity: 4);
-        var state = new ServerRuntimeState(
-            worldTiles: tiles,
-            projectiles: projectiles);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = CreateProjectile(type, VanillaProjectileOwnership.ServerOwner);
-        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
         ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
 
@@ -135,18 +119,11 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     public async Task Server_owned_thrown_projectile_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        tiles.Set(6, 6, new WorldTile
-        {
-            Type = 3,
-            Flags = WorldTileFlags.Active
-        });
+        tiles.Set(6, 6, new WorldTile { Type = 3, Flags = WorldTileFlags.Active });
         var projectiles = new RuntimeProjectileStore(capacity: 4);
-        var state = new ServerRuntimeState(
-            worldTiles: tiles,
-            projectiles: projectiles);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = CreateProjectile(type, VanillaProjectileOwnership.ServerOwner);
-        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
         ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
 
@@ -167,9 +144,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         water.LiquidKind = WorldLiquidKind.Water;
         tiles.Set(6, 6, water);
         var projectiles = new RuntimeProjectileStore(capacity: 4);
-        var state = new ServerRuntimeState(
-            worldTiles: tiles,
-            projectiles: projectiles);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = new(
             VanillaProjectileIds.FireArrow,
             Spawner: 3,
@@ -182,8 +157,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
             Damage: 20,
             KnockBack: 1f,
             OriginalDamage: 20);
-        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
         ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
 
@@ -204,16 +178,14 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
+    [InlineData(4)]
     public async Task Server_owned_arrow_simulates_when_tile_cut_effect_is_empty(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var projectiles = new RuntimeProjectileStore(capacity: 4);
-        var state = new ServerRuntimeState(
-            worldTiles: tiles,
-            projectiles: projectiles);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = CreateProjectile(type, VanillaProjectileOwnership.ServerOwner);
-        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
         ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
 
@@ -231,21 +203,15 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
+    [InlineData(4)]
     public async Task Server_owned_arrow_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        tiles.Set(6, 6, new WorldTile
-        {
-            Type = 3,
-            Flags = WorldTileFlags.Active
-        });
+        tiles.Set(6, 6, new WorldTile { Type = 3, Flags = WorldTileFlags.Active });
         var projectiles = new RuntimeProjectileStore(capacity: 4);
-        var state = new ServerRuntimeState(
-            worldTiles: tiles,
-            projectiles: projectiles);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = CreateProjectile(type, VanillaProjectileOwnership.ServerOwner);
-        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
         ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
 
@@ -262,11 +228,9 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var projectiles = new RuntimeProjectileStore(capacity: 4);
-        var state = new ServerRuntimeState(
-            worldTiles: tiles,
-            projectiles: projectiles);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = new(
-            new ProjectileTypeId(4),
+            new ProjectileTypeId(6),
             Spawner: 3,
             PositionX: 100f,
             PositionY: 100f,
@@ -277,8 +241,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
             Damage: 20,
             KnockBack: 1f,
             OriginalDamage: 20);
-        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
         ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
 
