@@ -125,4 +125,25 @@ public sealed class WorldTileSaveImage
         WorldSectionId section = TerrariaSectionGeometry.FromTile(Dimensions, x, y);
         return sections[TerrariaSectionGeometry.ToLinearIndex(Dimensions, section)].Get(x, y);
     }
+
+    /// <summary>
+    /// Reconstructs one vanilla .wld traversal column into caller-provided storage without touching live world state.
+    /// The destination must be at least the world height; no allocation is performed by this method.
+    /// </summary>
+    public void CopyColumnTo(int x, Span<WorldTile> destination)
+    {
+        if ((uint)x >= (uint)Dimensions.WidthTiles)
+            throw new ArgumentOutOfRangeException(nameof(x));
+        if (destination.Length < Dimensions.HeightTiles)
+            throw new ArgumentException("Destination is shorter than the world height.", nameof(destination));
+
+        int sectionX = x / TerrariaSectionGeometry.WidthTiles;
+        for (int sectionY = 0; sectionY < Dimensions.SectionRows; sectionY++)
+        {
+            WorldSectionTileSnapshot snapshot = sections[(sectionY * Dimensions.SectionColumns) + sectionX];
+            WorldTileBounds bounds = snapshot.Bounds;
+            for (int y = bounds.Y; y < bounds.ExclusiveBottom; y++)
+                destination[y] = snapshot.GetUnchecked(x, y);
+        }
+    }
 }
