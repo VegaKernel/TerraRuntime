@@ -3,6 +3,7 @@ using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -77,7 +78,17 @@ internal static class TerminalUiSmoke
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "EXTERNAL DASHBOARD SMOKE");
 
-                    RenderWorkspaceScreen(app, workspace, workspace.ShowPlayers, "PLAYERS");
+                    // Exercise the real operator path through MenuBar, not only the screen callbacks.
+                    // Details uses E as its top-level hotkey and Players uses P while the menu is open.
+                    app.InjectKey(Key.E.WithAlt);
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "Players");
+
+                    app.InjectKey(Key.P);
+                    AssertWorkspaceRow(workspace, "PLAYERS");
+                    app.LayoutAndDraw();
+                    AssertRendered(app.Driver!, "PLAYERS");
+
                     RenderWorkspaceScreen(app, workspace, workspace.ShowNpcs, "NPCS");
                     RenderWorkspaceScreen(app, workspace, workspace.ShowProjectiles, "PROJECTILES");
                     RenderWorkspaceScreen(app, workspace, workspace.ShowItems, "ITEMS");
@@ -102,7 +113,7 @@ internal static class TerminalUiSmoke
 
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the System Dashboard, external-dashboard transition, " +
-                "Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
+                "Details menu path, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
         catch (Exception exception)
