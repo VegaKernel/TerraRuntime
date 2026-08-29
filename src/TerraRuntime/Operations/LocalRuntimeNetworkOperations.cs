@@ -75,6 +75,8 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             ProjectileUnsupportedCommits: projectileReplication?.UnsupportedCommits ?? 0,
             WorldItemRelayedFrames: worldItemReplication?.RelayedFrames ?? 0,
             WorldItemRejectedFrames: worldItemReplication?.RejectedFrames ?? 0,
-            WorldItemUnsupportedCommits: worldItemReplication?.UnsupportedCommits ?? 0);
+            WorldItemUnsupportedCommits: worldItemReplication?.UnsupportedCommits ?? 0,
+            AdmissionCapacityRejectedConnections: admission.CapacityRejectedConnections,
+            AdmissionRateRejectedConnections: admission.RateRejectedConnections);
     }
 }
