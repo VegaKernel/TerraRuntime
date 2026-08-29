@@ -66,6 +66,8 @@ logs
 
 Console, Server, Memory/GC and Chat use read-only selectable text surfaces. Mouse or keyboard selection and `Ctrl+C` are supported. Snapshot refresh does not replace the displayed text while an active non-empty selection exists, preventing the normal telemetry refresh from destroying a selection while the operator is copying it.
 
+All built-in Details screens (Players, NPCs, Projectiles, Items, Network, World and Logs) use the same read-only selectable projection. Their existing bounded `rows[]` render model remains internal for formatting and smoke assertions, while one scrollable `TextView` presents those rows to the operator. Automatic refresh preserves an active selection; explicit navigation to another Details screen clears the previous selection before rendering the new screen.
+
 ## Responsiveness
 
 Authoritative operations capture remains outside the Terminal.Gui thread. The UI reads the last atomically published cache snapshot, so input processing, selection, menu navigation and window interaction do not wait for world/network snapshot acquisition.

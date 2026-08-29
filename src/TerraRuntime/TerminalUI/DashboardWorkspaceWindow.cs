@@ -6,6 +6,8 @@ using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
+#pragma warning disable CS0618 // Terminal.Gui TextView remains the built-in selectable read-only surface in 2.4.17.
+
 namespace TerraRuntime.TerminalUI;
 
 /// <summary>
@@ -43,6 +45,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private readonly View workspace;
     private readonly View systemRoot;
     private readonly RuntimeOverviewDashboard overviewDashboard;
+    private readonly TextView detailText;
     private readonly Label[] rows = new Label[RowCount];
     private readonly ExternalDashboard[] externalDashboards;
     private readonly double[] tpsHistory = new double[TpsHistoryLength];
@@ -52,6 +55,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private int activeExternalDashboard = -1;
     private string? lastAdminAction;
     private string? externalDashboardFailure;
+    private string appliedDetailText = string.Empty;
+    private string pendingDetailText = string.Empty;
 
     public DashboardWorkspaceWindow(
         IRuntimeDashboardOperations dashboardOperations,
@@ -99,6 +104,20 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Visible = false
         };
 
+        detailText = new TextView
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            ReadOnly = true,
+            WordWrap = false,
+            TabKeyAddsTab = false,
+            EnterKeyAddsLine = false,
+            ViewportSettings = ViewportSettingsFlags.HasScrollBars,
+            SchemeName = "Base"
+        };
+
         Pos y = 0;
         for (int i = 0; i < rows.Length; i++)
         {
@@ -106,11 +125,13 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             {
                 X = 1,
                 Y = y,
-                Width = Dim.Fill(1)
+                Width = Dim.Fill(1),
+                Visible = false
             };
             systemRoot.Add(rows[i]);
             y = Pos.Bottom(rows[i]);
         }
+        systemRoot.Add(detailText);
 
         workspace.Add(overviewDashboard, systemRoot);
         Add(menu, workspace, status);
@@ -171,6 +192,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                 RefreshSystemDashboard();
                 break;
         }
+
+        if (screen != WorkspaceScreen.Dashboard)
+            SyncSelectableDetailText();
     }
 
     internal void ShowSystemDashboard() => SelectSystemScreen(WorkspaceScreen.Dashboard, "TerraRuntime - System Dashboard");
@@ -196,6 +220,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
         return rows[index].Text?.ToString() ?? string.Empty;
     }
+
+    internal bool DetailTextSupportsSelectionForSmoke => detailText.ReadOnly && detailText.CanFocus;
 
     internal void ShowExternalDashboardForSmoke(int index) => ShowExternalDashboard(index);
 
@@ -308,6 +334,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         bool overview = next == WorkspaceScreen.Dashboard;
         overviewDashboard.Visible = overview;
         systemRoot.Visible = !overview;
+        if (!overview)
+            detailText.IsSelecting = false;
         Title = title;
         externalDashboardFailure = null;
         RefreshSnapshot();
@@ -746,6 +774,27 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         rows[17].Text = "F2 returns to System Dashboard";
     }
 
+    private void SyncSelectableDetailText()
+    {
+        string text = string.Join(
+            Environment.NewLine,
+            rows.Select(static row => row.Text?.ToString() ?? string.Empty));
+        if (string.Equals(appliedDetailText, text, StringComparison.Ordinal))
+        {
+            pendingDetailText = string.Empty;
+            return;
+        }
+
+        pendingDetailText = text;
+        if (detailText.IsSelecting && detailText.SelectedLength > 0)
+            return;
+
+        detailText.Text = pendingDetailText;
+        appliedDetailText = pendingDetailText;
+        pendingDetailText = string.Empty;
+        detailText.SetNeedsDraw();
+    }
+
     private void AppendTps(double value)
     {
         tpsHistory[tpsHistoryNext] = double.IsFinite(value) && value >= 0d ? value : 0d;
@@ -863,7 +912,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         MessageBox.Query(
             App!,
             "TerraRuntime",
-            "F2 opens the tiled TerraRuntime System Dashboard. Double-click a tile to maximize/restore it. F3-F12 open independent dashboards registered by trusted host modules. Details exposes runtime-owned read models only.",
+            "F2 opens the tiled TerraRuntime System Dashboard. Double-click a tile to maximize/restore it. F3-F12 open independent dashboards registered by trusted host modules. Details exposes selectable runtime-owned read models only.",
             "OK");
 
     private sealed class ExternalDashboard(ITerraRuntimeTerminalDashboardProvider provider)
@@ -884,3 +933,5 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         Logs
     }
 }
+
+#pragma warning restore CS0618

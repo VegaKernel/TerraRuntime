@@ -66,6 +66,8 @@ logs
 
 Console, Server, Memory/GC и Chat используют read-only selectable text surfaces. Поддерживаются selection мышью/клавиатурой и `Ctrl+C`. Snapshot refresh не заменяет отображаемый текст при активном непустом selection, поэтому обычное обновление telemetry не уничтожает выделение в момент копирования.
 
+Все встроенные Details screens (Players, NPCs, Projectiles, Items, Network, World и Logs) используют ту же read-only selectable проекцию. Существующий bounded `rows[]` render model остаётся внутренним форматом для formatting и smoke assertions, а оператору эти строки показывает один scrollable `TextView`. Automatic refresh сохраняет активное selection; явный переход на другой Details screen сначала сбрасывает selection предыдущего экрана и только потом показывает новые данные.
+
 ## Отзывчивость
 
 Authoritative operations capture остаётся вне Terminal.Gui thread. UI читает последний atomically published cache snapshot, поэтому input processing, selection, menu navigation и interaction с окнами не ждут world/network snapshot acquisition.
