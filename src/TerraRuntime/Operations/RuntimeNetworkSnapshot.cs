@@ -56,4 +56,5 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long RejectedRateLimited = 0,
     long RejectedInvalidState = 0,
     long RejectedGameplay = 0,
-    long RejectedBackpressure = 0);
+    long RejectedBackpressure = 0,
+    long StopFrameRejected = 0);
