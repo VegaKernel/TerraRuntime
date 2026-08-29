@@ -32,6 +32,7 @@ public sealed partial class PlayerBootstrapPacketSet
     internal void DetachSectionRebuildRequester()
     {
         Volatile.Write(ref _sectionRebuildRequester, null);
+        _sectionRebuildGlobalBudget.ClearActiveGenerations();
         NotifySectionCacheWaiters();
     }
 
@@ -79,7 +80,10 @@ public sealed partial class PlayerBootstrapPacketSet
             return true;
         }
 
-        SectionRebuildRequestTicket ticket = requester(section);
+        SectionRebuildRequestTicket ticket = _sectionRebuildGlobalBudget.Request(
+            index,
+            section,
+            requester);
         if (!ticket.Accepted)
             return false;
 
@@ -132,6 +136,8 @@ public sealed partial class PlayerBootstrapPacketSet
             _sectionCacheFailedRebuildGenerations[index] = generation;
             Monitor.PulseAll(_sectionCacheGate);
         }
+
+        _sectionRebuildGlobalBudget.Complete(index, generation);
     }
 
     internal void NotifySectionCacheWaiters()
