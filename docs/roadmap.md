@@ -53,35 +53,18 @@ Rules:
 
 ## Target architecture
 
-```text
-TCP clients
-    |
-    v
-Connection read loops
-    |
-    v
-Frame decoder / protocol validation
-    |
-    v
-Typed inbound commands
-    |
-    v
-Authoritative game loop (single writer)
-    |
-    +--> World / Players / NPCs / Projectiles / Items
-    |       |
-    |       +--> deterministic gameplay systems
-    |
-    +--> outbound state/events
-            |
-            v
-      per-client sync planner
-            |
-            v
-      encoded packet queues
-            |
-            v
-        socket writers
+```mermaid
+flowchart TD
+    TCP["TCP clients"] --> Read["Connection read loops"]
+    Read --> Frame["Frame decoder / protocol validation"]
+    Frame --> Commands["Typed inbound commands"]
+    Commands --> Loop["Authoritative game loop<br/>single writer"]
+    Loop --> State["World / Players / NPCs / Projectiles / Items"]
+    State --> Gameplay["Deterministic gameplay systems"]
+    Loop --> Events["Outbound state / events"]
+    Events --> Sync["Per-client sync planner"]
+    Sync --> Queues["Encoded packet queues"]
+    Queues --> Writers["Socket writers"]
 ```
 
 Connection code never mutates the world directly. Background work produces immutable results that are applied through explicit game-loop commands.
@@ -282,12 +265,12 @@ Timestamps alone never decide validity.
 
 ### Atomic rebuild and fallback
 
-```text
-world.runtime.tmp
-      -> complete write
-      -> flush/checksums
-      -> atomic replace
-      -> world.runtime
+```mermaid
+flowchart LR
+    Temp["world.runtime.tmp"] --> Write["Complete write"]
+    Write --> Flush["Flush + integrity checks"]
+    Flush --> Replace["Atomic replace"]
+    Replace --> Cache["world.runtime-world"]
 ```
 
 - [x] Cache corruption/staleness is never canonical world corruption.
@@ -447,12 +430,12 @@ CoreCLR remains useful for development-only debugging/profiling experiments, but
 
 Borrow Vega's operations boundary instead of wiring a terminal toolkit into the simulation.
 
-```text
-Game runtime
-    |
-immutable operations snapshots + safe commands
-    |-------------------|-------------------|
-Terminal.Gui          plain console       future web/API
+```mermaid
+flowchart TD
+    Runtime["Game runtime"] --> Ops["Immutable operations snapshots + safe commands"]
+    Ops --> TUI["Terminal.Gui"]
+    Ops --> Console["Plain console"]
+    Ops --> Future["Future web / API"]
 ```
 
 - [x] Operations read models are immutable/bounded projections.
@@ -592,19 +575,16 @@ Concrete targets will be replaced by measurements on defined hardware. See [`roa
 
 ## First milestone
 
-```text
-Official Terraria client
-        |
-        v
-TerraRuntime (.NET 11 NativeAOT)
-        |
-        +-- Multiplicity-backed typed handshake
-        +-- player slot assignment
-        +-- world metadata
-        +-- section request/response
-        +-- spawn
-        +-- movement relay
-        +-- clean disconnect
+```mermaid
+flowchart TD
+    Client["Official Terraria client"] --> Runtime["TerraRuntime<br/>.NET 11 NativeAOT"]
+    Runtime --> Handshake["Multiplicity-backed typed handshake"]
+    Runtime --> Slot["Player slot assignment"]
+    Runtime --> World["World metadata"]
+    Runtime --> Sections["Section request / response"]
+    Runtime --> Spawn["Spawn"]
+    Runtime --> Movement["Movement relay"]
+    Runtime --> Disconnect["Clean disconnect"]
 ```
 
 Completion requires a real client to join an existing vanilla world, move, receive nearby world state and disconnect cleanly. The same build must survive malformed frame tests without crashing or allocating unbounded memory.
@@ -621,8 +601,8 @@ Documentation is a permanent parallel workstream, not a final cleanup phase afte
 - [x] Provide bilingual host-interface documentation with lifecycle, status/error semantics and interaction examples.
 - [x] Require code changes that alter behavior, architecture, public contracts, CLI/deployment, persistence, lifecycle or supported scope to update both language versions in the same change.
 - [x] Treat code/documentation mismatch as an incomplete change in repository agent rules and Definition of Done.
-- [ ] Expand dedicated bilingual subsystem guides for protocol/networking, world persistence/cache, gameplay, synchronization, operations/TUI, worldgen and security as those areas mature.
-- [ ] Add documentation-link validation to CI once the bilingual tree stabilizes.
-- [ ] Add a lightweight mirror/parity check for required RU/EN pages without requiring line-by-line translation equivalence.
+- [x] Expand dedicated bilingual subsystem guides for protocol/networking, world persistence/cache, gameplay, synchronization, operations/TUI, worldgen and security.
+- [x] Validate repository-local documentation links in CI.
+- [x] Validate required RU/EN mirrored page sets in CI without requiring line-by-line translation equivalence.
 
 For every new significant subsystem, documentation must describe purpose, owner, inputs/outputs, lifecycle, public integration surface, safety/failure semantics, observable behavior, known limitations and verification evidence. Roadmap target design must remain visibly distinct from behavior that is already implemented.
