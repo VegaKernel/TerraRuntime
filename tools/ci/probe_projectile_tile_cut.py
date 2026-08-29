@@ -14,7 +14,7 @@ from pathlib import Path
 
 def extract_method(source: str, method_name: str) -> str:
     signature = re.compile(
-        rf"(?m)^[ \t]*(?:public|private|protected|internal)[^\n{{;]*\b{re.escape(method_name)}\s*\([^\n)]*\)[^\n{{;]*\{{"
+        rf"(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(method_name)}\s*\([^\n)]*\)[^\n;{{]*$"
     )
     match = signature.search(source)
     if match is None:
@@ -22,7 +22,10 @@ def extract_method(source: str, method_name: str) -> str:
         detail = " | ".join(candidates) if candidates else "<none>"
         raise SystemExit(f"method not found: {method_name}; candidates: {detail}")
 
-    opening = source.find("{", match.start())
+    opening = source.find("{", match.end())
+    if opening < 0 or source[match.end() : opening].strip():
+        raise SystemExit(f"method body not found after declaration: {method_name}")
+
     depth = 0
     in_string = False
     in_char = False
