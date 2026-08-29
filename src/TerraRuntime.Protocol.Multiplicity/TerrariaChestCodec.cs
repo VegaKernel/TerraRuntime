@@ -141,6 +141,16 @@ public static class TerrariaChestCodec
             Chest = chestId
         });
 
+    public static byte[] EncodeChestName(short chestId, short chestX, short chestY, string name) =>
+        Serialize(new ChestName
+        {
+            ChestId = chestId,
+            ChestX = chestX,
+            ChestY = chestY,
+            HasName = true,
+            Name = name ?? string.Empty
+        });
+
     private static bool TryDeserialize(in TerrariaFrame frame, out TerrariaPacket packet)
     {
         int length = checked((int)frame.Payload.Length);
