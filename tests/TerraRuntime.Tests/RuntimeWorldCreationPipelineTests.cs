@@ -29,6 +29,8 @@ public sealed class RuntimeWorldCreationPipelineTests
         Assert.True(result.Succeeded);
         Assert.Equal(RuntimeWorldCreationPipelineStatus.ReadyToPersist, result.Status);
         Assert.NotNull(result.Candidate);
+        Assert.True(result.Finalization.HasValue);
+        Assert.True(result.Finalization.Value.Succeeded);
         Assert.Equal(new WorldGenerationPoint(10, 8), result.Metadata.Spawn);
         Assert.Equal(new WorldGenerationPoint(2, 9), result.Metadata.Dungeon);
         Assert.Equal(new WorldGenerationLayers(6d, 12d), result.Metadata.Layers);
@@ -57,7 +59,7 @@ public sealed class RuntimeWorldCreationPipelineTests
         Assert.Equal(RuntimeWorldCreationPipelineStatus.FinalizationFailed, result.Status);
         Assert.Null(result.Candidate);
         Assert.True(result.Generation.Succeeded);
-        Assert.Equal(RuntimeWorldGenerationFinalizationStatus.MissingDungeon, result.Finalization.Status);
+        Assert.Equal(RuntimeWorldGenerationFinalizationStatus.MissingDungeon, result.Finalization?.Status);
     }
 
     [Fact]
@@ -78,7 +80,7 @@ public sealed class RuntimeWorldCreationPipelineTests
         Assert.Equal(RuntimeWorldCreationPipelineStatus.GenerationFailed, result.Status);
         Assert.Null(result.Candidate);
         Assert.False(result.Generation.Succeeded);
-        Assert.Equal(default, result.Finalization);
+        Assert.Null(result.Finalization);
     }
 
     private sealed class TestSource : ITerraRuntimeWorldGeneratorSource
