@@ -1,4 +1,4 @@
-name: Apply Sound Gun 1099 Runtime Slice
+name: Integrate Sound Gun 1099 Source Proof
 
 on:
   push:
@@ -11,37 +11,28 @@ permissions:
   contents: write
 
 jobs:
-  apply:
+  integrate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Apply source-backed SoundGun slice
+      - name: Patch permanent projectile source contract
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin main
           git reset --hard origin/main
 
-          # The 66x66 projectile uses Terraria's narrow centered WetCollision probe.
-          python3 -m py_compile .github/scripts/apply_sound_gun_1099.py
-          python3 .github/scripts/apply_sound_gun_1099.py
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj --configuration Release
+          python3 -m py_compile .github/scripts/integrate_sound_gun_1099_source_proof.py
+          python3 .github/scripts/integrate_sound_gun_1099_source_proof.py
+          python3 -m py_compile tools/ci/probe_projectile_tile_cut.py
 
           git config user.name OpenAI
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm .github/scripts/apply_sound_gun_1099.py
-          git add src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
-                  src/TerraRuntime.Contracts/Gameplay/VanillaProjectileDefinitionCatalog.cs \
-                  src/TerraRuntime/VanillaProjectileWorldStateStepper.cs \
-                  tests/TerraRuntime.Tests/VanillaProjectileDefinitionCatalogTests.cs \
-                  tests/TerraRuntime.Tests/VanillaProjectileWorldStateStepperTests.cs \
-                  tests/TerraRuntime.Tests/ServerRuntimeVanillaProjectileSimulationTests.cs
-          git commit -m 'feat: simulate sound gun world flight'
+          git rm .github/scripts/integrate_sound_gun_1099_source_proof.py
+          git add tools/ci/probe_projectile_tile_cut.py
+          git commit -m 'ci: pin sound gun projectile source contract'
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
