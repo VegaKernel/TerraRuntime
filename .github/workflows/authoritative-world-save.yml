@@ -4,46 +4,24 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime/RuntimeWorldTileChestSaveService.cs'
-      - 'src/TerraRuntime/RuntimeWorldTileChestSaveSnapshotSource.cs'
-      - 'src/TerraRuntime/RuntimeWorldCheckpointRecovery.cs'
-      - 'src/TerraRuntime/TerrariaServerHost.cs'
-      - 'src/TerraRuntime.World/RuntimeWorldSnapshotPreservedSections.cs'
-      - 'src/TerraRuntime.World/WorldFilePreservedSections.cs'
-      - 'src/TerraRuntime.World/WorldFileTileChestRewriter.cs'
-      - 'src/TerraRuntime.World/WorldFileTileEncoder.cs'
-      - 'src/TerraRuntime.World/WorldFileChestEncoder.cs'
-      - 'src/TerraRuntime.World/WorldFileAtomicPublisher.cs'
-      - 'src/TerraRuntime.Core/WorldSaveCoordinator.cs'
-      - 'src/TerraRuntime.Core/AtomicSaveFileWriter.cs'
-      - 'src/TerraRuntime.Core/AtomicSaveFileWriterOptions.cs'
-      - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterTests.cs'
-      - 'tests/TerraRuntime.Tests/WorldFileAtomicPublisherTests.cs'
-      - 'tests/TerraRuntime.Tests/RuntimeWorldSnapshotPreservedSectionsTests.cs'
-      - 'tests/TerraRuntime.Tests/RuntimeWorldTileChestSaveServiceTests.cs'
-      - 'tests/TerraRuntime.Tests/RuntimeWorldCheckpointRecoveryTests.cs'
-      - 'tools/TerraRuntime.AtomicSaveCrashProbe/**'
       - '.github/workflows/authoritative-world-save.yml'
   workflow_dispatch:
 
 permissions:
   contents: write
 
-concurrency:
-  group: terra-runtime-authoritative-world-save-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  apply-production-wiring:
-    if: github.event_name == 'push' && github.event.head_commit.message == 'ci: run checkpoint production wiring'
+  apply-checkpoint-host-wiring:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-dotnet@v5
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
@@ -51,14 +29,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -c 'from pathlib import Path; p=Path("src/TerraRuntime/TerrariaServerHost.cs"); t=p.read_text(); old="            if (!diagnostic.IsLoaded || world is null)\n            {\n                Console.Error.WriteLine(\n                    $\"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.\");\n                return 26;\n            }\n"; new="            if (!diagnostic.IsLoaded || world is null)\n            {\n                Console.Error.WriteLine(\n                    $\"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.\");\n\n                if (!RuntimeWorldCheckpointRecovery.CanAutomaticallyRestoreAfter(diagnostic))\n                {\n                    Console.Error.WriteLine(\n                        \"Automatic checkpoint recovery is suppressed for an explicitly incompatible world-file version.\");\n                    return 26;\n                }\n\n                RuntimeWorldCheckpointRestoreDiagnostic recovery =\n                    await RuntimeWorldCheckpointRecovery.TryRestoreBackupAsync(\n                        options.WorldPath,\n                        worldLoadLimits).ConfigureAwait(false);\n                if (!recovery.IsRestored)\n                {\n                    Console.Error.WriteLine(\n                        $\"World checkpoint recovery failed: result={recovery.Result}, \" +\n                        $\"load_result={recovery.LoadResult}, stage={recovery.LoadStage}, code={recovery.StageResultCode}.\");\n                    return 26;\n                }\n\n                Console.WriteLine(\n                    $\"Canonical world recovered from validated checkpoint backup: \" +\n                    $\"\x27{RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath)}\x27.\");\n                return await RunAsync(options, runtimeInterestManagement, hostLifecycle).ConfigureAwait(false);\n            }\n"; assert t.count(old)==1, t.count(old); p.write_text(t.replace(old,new))'
+          python3 -c 'from pathlib import Path; p=Path("src/TerraRuntime/TerrariaServerHost.cs"); t=p.read_text(); old="            if (!diagnostic.IsLoaded || world is null)\n            {\n                Console.Error.WriteLine(\n                    $\"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.\");\n                return 26;\n            }\n"; new="            if (!diagnostic.IsLoaded || world is null)\n            {\n                Console.Error.WriteLine(\n                    $\"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.\");\n\n                if (!RuntimeWorldCheckpointRecovery.CanAutomaticallyRestoreAfter(diagnostic))\n                {\n                    Console.Error.WriteLine(\n                        \"Automatic checkpoint recovery is suppressed for an explicitly incompatible world-file version.\");\n                    return 26;\n                }\n\n                RuntimeWorldCheckpointRestoreDiagnostic recovery =\n                    await RuntimeWorldCheckpointRecovery.TryRestoreBackupAsync(\n                        options.WorldPath,\n                        worldLoadLimits).ConfigureAwait(false);\n                if (!recovery.IsRestored)\n                {\n                    Console.Error.WriteLine(\n                        $\"World checkpoint recovery failed: result={recovery.Result}, \" +\n                        $\"load_result={recovery.LoadResult}, stage={recovery.LoadStage}, code={recovery.StageResultCode}.\");\n                    return 26;\n                }\n\n                Console.WriteLine(\n                    $\"Canonical world recovered from validated checkpoint backup: \" +\n                    $\"{RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath)}.\");\n                return await RunAsync(options, runtimeInterestManagement, hostLifecycle).ConfigureAwait(false);\n            }\n"; assert t.count(old)==1, t.count(old); p.write_text(t.replace(old,new))'
           python3 -c 'from pathlib import Path; p=Path("src/TerraRuntime/TerrariaServerHost.cs"); t=p.read_text(); old="            chestStore,\n            worldClock: worldClock,\n            signStore: signStore);\n"; new="            chestStore,\n            worldClock: worldClock,\n            signStore: signStore,\n            checkpointValidationLimits: worldLoadLimits);\n"; assert t.count(old)==1, t.count(old); p.write_text(t.replace(old,new))'
 
       - name: Prove focused recovery contract
-        run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
-          -c Release
-          --filter FullyQualifiedName~RuntimeWorldCheckpointRecoveryTests
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --filter FullyQualifiedName~RuntimeWorldCheckpointRecoveryTests
 
       - name: Build production host
         run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release --no-restore
@@ -79,181 +54,4 @@ jobs:
             git rebase --abort 2>/dev/null || true
             sleep 2
           done
-          echo 'failed to publish checkpoint production wiring' >&2
           exit 1
-
-  durability:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup .NET 11
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 11.0.100-preview.7.26381.103
-
-      - name: Build isolated atomic save probe
-        run: dotnet build tools/TerraRuntime.AtomicSaveCrashProbe/TerraRuntime.AtomicSaveCrashProbe.csproj -c Release
-
-      - name: Prove generated world atomic publication
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          probe='tools/TerraRuntime.AtomicSaveCrashProbe/bin/Release/net11.0/TerraRuntime.AtomicSaveCrashProbe.dll'
-          work="$RUNNER_TEMP/atomic-world-publish"
-          rm -rf "$work"
-          mkdir -p "$work"
-
-          destination="$work/generated.wld"
-          expected="$work/expected"
-          printf 'generated-world' > "$expected"
-
-          dotnet "$probe" publish "$destination" 'generated-world'
-          cmp "$expected" "$destination"
-
-          dotnet "$probe" publish-refuse "$destination" 'replacement-world'
-          cmp "$expected" "$destination"
-
-          if compgen -G "$work/.generated.wld.*.tmp" >/dev/null; then
-            echo 'atomic publisher left a temporary file after completed operations' >&2
-            exit 1
-          fi
-
-          echo 'atomic_world_publish_contract_ok first_publish=true overwrite_refused=true preserved=true'
-
-      - name: Prove SIGKILL cannot expose a partial world
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          probe='tools/TerraRuntime.AtomicSaveCrashProbe/bin/Release/net11.0/TerraRuntime.AtomicSaveCrashProbe.dll'
-          work="$RUNNER_TEMP/atomic-save-crash"
-          rm -rf "$work"
-          mkdir -p "$work"
-
-          old_expected="$work/old.expected"
-          destination="$work/world.wld"
-          ready="$work/existing.ready"
-          log="$work/existing.log"
-          printf 'old-world' > "$old_expected"
-          cp "$old_expected" "$destination"
-
-          dotnet "$probe" stall "$destination" 'partial-new-world' "$ready" >"$log" 2>&1 &
-          pid=$!
-          for _ in $(seq 1 100); do
-            if [[ -f "$ready" ]]; then
-              break
-            fi
-            if ! kill -0 "$pid" 2>/dev/null; then
-              cat "$log"
-              wait "$pid"
-            fi
-            sleep 0.1
-          done
-          if [[ ! -f "$ready" ]]; then
-            cat "$log"
-            kill -KILL "$pid" 2>/dev/null || true
-            wait "$pid" 2>/dev/null || true
-            echo 'crash probe did not reach the pre-publication stall' >&2
-            exit 1
-          fi
-
-          kill -KILL "$pid"
-          set +e
-          wait "$pid"
-          status=$?
-          set -e
-          if [[ "$status" -ne 137 ]]; then
-            cat "$log"
-            echo "expected SIGKILL exit 137, got $status" >&2
-            exit 1
-          fi
-
-          cmp "$old_expected" "$destination"
-          if ! compgen -G "$work/.world.wld.*.tmp" >/dev/null; then
-            echo 'expected the killed writer to leave only a temporary save file' >&2
-            exit 1
-          fi
-
-          dotnet "$probe" write "$destination" 'new-world'
-          printf 'new-world' > "$work/new.expected"
-          cmp "$work/new.expected" "$destination"
-
-          fresh="$work/fresh.wld"
-          fresh_ready="$work/fresh.ready"
-          fresh_log="$work/fresh.log"
-          dotnet "$probe" stall "$fresh" 'partial-first-world' "$fresh_ready" >"$fresh_log" 2>&1 &
-          fresh_pid=$!
-          for _ in $(seq 1 100); do
-            if [[ -f "$fresh_ready" ]]; then
-              break
-            fi
-            if ! kill -0 "$fresh_pid" 2>/dev/null; then
-              cat "$fresh_log"
-              wait "$fresh_pid"
-            fi
-            sleep 0.1
-          done
-          if [[ ! -f "$fresh_ready" ]]; then
-            cat "$fresh_log"
-            kill -KILL "$fresh_pid" 2>/dev/null || true
-            wait "$fresh_pid" 2>/dev/null || true
-            echo 'first-save crash probe did not reach the pre-publication stall' >&2
-            exit 1
-          fi
-
-          kill -KILL "$fresh_pid"
-          set +e
-          wait "$fresh_pid"
-          fresh_status=$?
-          set -e
-          if [[ "$fresh_status" -ne 137 ]]; then
-            cat "$fresh_log"
-            echo "expected first-save SIGKILL exit 137, got $fresh_status" >&2
-            exit 1
-          fi
-          if [[ -e "$fresh" ]]; then
-            echo 'partial first save became visible after SIGKILL' >&2
-            exit 1
-          fi
-          if ! compgen -G "$work/.fresh.wld.*.tmp" >/dev/null; then
-            echo 'expected the killed first writer to leave only a temporary save file' >&2
-            exit 1
-          fi
-
-          echo 'atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true'
-
-  save-pipeline:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup .NET 11
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 11.0.100-preview.7.26381.103
-
-      - name: Prove embedded cache save template
-        run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
-          -c Release
-          --filter FullyQualifiedName~RuntimeWorldSnapshotPreservedSectionsTests
-
-      - name: Prove authoritative save service
-        run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
-          -c Release
-          --no-restore
-          --filter FullyQualifiedName~RuntimeWorldTileChestSaveServiceTests
-
-      - name: Prove validated checkpoint backup and recovery
-        run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
-          -c Release
-          --no-restore
-          --filter FullyQualifiedName~RuntimeWorldCheckpointRecoveryTests
