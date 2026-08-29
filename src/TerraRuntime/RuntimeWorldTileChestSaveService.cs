@@ -11,6 +11,20 @@ internal enum RuntimeWorldTileChestSaveTickResult : byte
     SaveQueued = 3
 }
 
+internal readonly record struct RuntimeWorldSaveStatus(
+    bool AcceptingRequests,
+    bool TileShadowReady,
+    int RemainingBootstrapSections,
+    int PendingDirtyTileSections,
+    bool SaveRequested,
+    bool WriteActive,
+    bool PendingWrite,
+    long AcceptedSnapshots,
+    long StartedWrites,
+    long CompletedWrites,
+    long CoalescedSnapshots,
+    long FailedWrites);
+
 /// <summary>
 /// Bridges thread-safe save requests into game-thread-owned snapshot capture. Tile shadow maintenance and chest/clock
 /// capture happen only from <see cref="Tick"/> (or after the authoritative owner has stopped); serialization and
@@ -25,6 +39,9 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
     private readonly int synchronizationSectionsPerTick;
     private int saveRequested;
     private int acceptingRequests = 1;
+    private int tileShadowReady;
+    private int remainingBootstrapSections;
+    private int pendingDirtyTileSections;
 
     public RuntimeWorldTileChestSaveService(
         string destinationPath,
@@ -60,11 +77,30 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
                 snapshot,
                 stream,
                 cancellationToken));
+        PublishOwnerStatus();
     }
 
-    public bool IsTileShadowReady => snapshotSource.IsTileShadowReady;
+    public bool IsTileShadowReady => Volatile.Read(ref tileShadowReady) != 0;
 
     public bool IsSaveRequested => Volatile.Read(ref saveRequested) != 0;
+
+    public RuntimeWorldSaveStatus CaptureStatus()
+    {
+        CoalescingSaveSchedulerSnapshot scheduler = coordinator.CaptureSnapshot();
+        return new RuntimeWorldSaveStatus(
+            AcceptingRequests: Volatile.Read(ref acceptingRequests) != 0,
+            TileShadowReady: Volatile.Read(ref tileShadowReady) != 0,
+            RemainingBootstrapSections: Volatile.Read(ref remainingBootstrapSections),
+            PendingDirtyTileSections: Volatile.Read(ref pendingDirtyTileSections),
+            SaveRequested: IsSaveRequested,
+            WriteActive: scheduler.WriteActive,
+            PendingWrite: scheduler.HasPendingSnapshot,
+            AcceptedSnapshots: scheduler.RequestedSaves,
+            StartedWrites: scheduler.StartedWrites,
+            CompletedWrites: scheduler.CompletedWrites,
+            CoalescedSnapshots: scheduler.CoalescedRequests,
+            FailedWrites: scheduler.FailedWrites);
+    }
 
     /// <summary>
     /// May be called from any thread. The request is only converted into a detached snapshot by <see cref="Tick"/>
@@ -84,28 +120,35 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
     /// </summary>
     public RuntimeWorldTileChestSaveTickResult Tick()
     {
-        if (!snapshotSource.IsTileShadowReady)
+        try
         {
-            snapshotSource.CaptureTileBootstrap(synchronizationSectionsPerTick);
-            return IsSaveRequested
-                ? RuntimeWorldTileChestSaveTickResult.SaveWaitingForSynchronization
-                : RuntimeWorldTileChestSaveTickResult.Synchronizing;
+            if (!snapshotSource.IsTileShadowReady)
+            {
+                snapshotSource.CaptureTileBootstrap(synchronizationSectionsPerTick);
+                return IsSaveRequested
+                    ? RuntimeWorldTileChestSaveTickResult.SaveWaitingForSynchronization
+                    : RuntimeWorldTileChestSaveTickResult.Synchronizing;
+            }
+
+            snapshotSource.CaptureDirtyTiles(synchronizationSectionsPerTick);
+            if (!IsSaveRequested)
+                return RuntimeWorldTileChestSaveTickResult.Idle;
+
+            // Capture readiness is based on the persistence tracker itself rather than the number successfully applied
+            // this tick. A failed section snapshot is requeued and must keep the save pending until a later owner tick.
+            if (snapshotSource.PendingDirtyTileSections != 0)
+                return RuntimeWorldTileChestSaveTickResult.SaveWaitingForSynchronization;
+
+            if (Interlocked.Exchange(ref saveRequested, 0) == 0)
+                return RuntimeWorldTileChestSaveTickResult.Idle;
+
+            coordinator.RequestSave();
+            return RuntimeWorldTileChestSaveTickResult.SaveQueued;
         }
-
-        snapshotSource.CaptureDirtyTiles(synchronizationSectionsPerTick);
-        if (!IsSaveRequested)
-            return RuntimeWorldTileChestSaveTickResult.Idle;
-
-        // Capture readiness is based on the persistence tracker itself rather than the number successfully applied
-        // this tick. A failed section snapshot is requeued and must keep the save pending until a later owner tick.
-        if (snapshotSource.PendingDirtyTileSections != 0)
-            return RuntimeWorldTileChestSaveTickResult.SaveWaitingForSynchronization;
-
-        if (Interlocked.Exchange(ref saveRequested, 0) == 0)
-            return RuntimeWorldTileChestSaveTickResult.Idle;
-
-        coordinator.RequestSave();
-        return RuntimeWorldTileChestSaveTickResult.SaveQueued;
+        finally
+        {
+            PublishOwnerStatus();
+        }
     }
 
     /// <summary>
@@ -117,14 +160,21 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         if (Interlocked.Exchange(ref acceptingRequests, 0) == 0)
             throw new InvalidOperationException("The world save service is already completing.");
 
-        while (!snapshotSource.IsTileShadowReady)
-            snapshotSource.CaptureTileBootstrap(synchronizationSectionsPerTick);
+        try
+        {
+            while (!snapshotSource.IsTileShadowReady)
+                snapshotSource.CaptureTileBootstrap(synchronizationSectionsPerTick);
 
-        while (snapshotSource.PendingDirtyTileSections != 0)
-            snapshotSource.CaptureDirtyTiles(synchronizationSectionsPerTick);
+            while (snapshotSource.PendingDirtyTileSections != 0)
+                snapshotSource.CaptureDirtyTiles(synchronizationSectionsPerTick);
 
-        Interlocked.Exchange(ref saveRequested, 0);
-        coordinator.RequestSave();
+            Interlocked.Exchange(ref saveRequested, 0);
+            coordinator.RequestSave();
+        }
+        finally
+        {
+            PublishOwnerStatus();
+        }
     }
 
     public Task CompleteAsync(CancellationToken cancellationToken = default)
@@ -134,6 +184,13 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
     }
 
     public ValueTask DisposeAsync() => new(CompleteAsync());
+
+    private void PublishOwnerStatus()
+    {
+        Volatile.Write(ref remainingBootstrapSections, snapshotSource.RemainingBootstrapSections);
+        Volatile.Write(ref pendingDirtyTileSections, snapshotSource.PendingDirtyTileSections);
+        Volatile.Write(ref tileShadowReady, snapshotSource.IsTileShadowReady ? 1 : 0);
+    }
 
     private RuntimeWorldTileChestSaveSnapshot CaptureSnapshotOnOwner()
     {
