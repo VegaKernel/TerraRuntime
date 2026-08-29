@@ -34,7 +34,8 @@ public sealed class VanillaDirtPlacementTests
         tiles.Set(210, 160, in existing);
         WorldSectionId section = TerrariaSectionGeometry.FromTile(tiles.Dimensions, 210, 160);
         long beforeVersion = tiles.GetSectionVersion(section);
-        _ = tiles.DirtySections.Drain(1);
+        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
+        _ = tiles.DirtySections.Drain(drained);
 
         Assert.False(VanillaDirtPlacement.TryPlaceOnEmpty(tiles, 210, 160));
 
