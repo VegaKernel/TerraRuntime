@@ -32,19 +32,30 @@ public sealed class DirtySectionSnapshotBatcher
     /// </summary>
     public ReadOnlySpan<WorldSectionTileSnapshot?> Captured => _capturedSnapshots.AsSpan(0, _count);
 
+    public int Capture() => Capture(Capacity);
+
     /// <summary>
-    /// Drains at most <see cref="Capacity"/> dirty section ids and snapshots each stable section. A section
-    /// that cannot be captured consistently is marked dirty again instead of being silently lost.
+    /// Drains and snapshots at most <paramref name="maximum"/> dirty sections. Callers can therefore match
+    /// snapshot allocation to currently available downstream capacity instead of capturing work that a bounded
+    /// worker queue would immediately reject. A section that cannot be captured consistently is marked dirty
+    /// again instead of being silently lost.
     /// </summary>
-    public int Capture()
+    public int Capture(int maximum)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(maximum);
+        if (maximum > Capacity)
+            throw new ArgumentOutOfRangeException(nameof(maximum));
+
         if (_count != 0)
         {
             Array.Clear(_capturedSnapshots, 0, _count);
             _count = 0;
         }
 
-        int drained = _tiles.DirtySections.Drain(_drainedSections);
+        if (maximum == 0)
+            return 0;
+
+        int drained = _tiles.DirtySections.Drain(_drainedSections.AsSpan(0, maximum));
         int written = 0;
         for (int i = 0; i < drained; i++)
         {
