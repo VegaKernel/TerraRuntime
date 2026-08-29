@@ -3,19 +3,26 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
+internal readonly record struct SectionRebuildRequestTicket(bool Accepted, long Generation)
+{
+    public static SectionRebuildRequestTicket Rejected => new(false, 0);
+}
+
 public sealed partial class PlayerBootstrapPacketSet
 {
     private static readonly TimeSpan SectionCacheLookupWaitTimeout = TimeSpan.FromSeconds(5);
 
-    private Func<WorldSectionId, bool>? _sectionRebuildRequester;
+    private readonly Dictionary<int, long> _sectionCacheFailedRebuildGenerations = new();
+    private Func<WorldSectionId, SectionRebuildRequestTicket>? _sectionRebuildRequester;
     private long _sectionCacheHits;
     private long _sectionCacheMisses;
     private long _sectionCacheStaleReads;
     private long _sectionCacheWaits;
     private long _sectionCacheWaitCompletions;
+    private long _sectionCacheWaitFailures;
     private long _sectionCacheWaitTimeouts;
 
-    internal void AttachSectionRebuildRequester(Func<WorldSectionId, bool> requester)
+    internal void AttachSectionRebuildRequester(Func<WorldSectionId, SectionRebuildRequestTicket> requester)
     {
         ArgumentNullException.ThrowIfNull(requester);
         if (Interlocked.CompareExchange(ref _sectionRebuildRequester, requester, null) is not null)
@@ -31,7 +38,7 @@ public sealed partial class PlayerBootstrapPacketSet
     /// <summary>
     /// Resolves one packet-10 frame without performing section compression on the caller thread when the
     /// production rebuild pipeline is attached. A miss is submitted once through the pipeline and all
-    /// concurrent callers wait on the same cache publication boundary.
+    /// concurrent callers wait on the same generation-specific cache publication boundary.
     /// </summary>
     internal bool TryGetOrRequestSectionFrame(
         WorldSectionId section,
@@ -60,7 +67,7 @@ public sealed partial class PlayerBootstrapPacketSet
                 Interlocked.Increment(ref _sectionCacheStaleReads);
         }
 
-        Func<WorldSectionId, bool>? requester = Volatile.Read(ref _sectionRebuildRequester);
+        Func<WorldSectionId, SectionRebuildRequestTicket>? requester = Volatile.Read(ref _sectionRebuildRequester);
         if (requester is null)
         {
             // Startup/tests that intentionally use the packet set without the runtime pipeline retain the
@@ -72,7 +79,8 @@ public sealed partial class PlayerBootstrapPacketSet
             return true;
         }
 
-        if (!requester(section))
+        SectionRebuildRequestTicket ticket = requester(section);
+        if (!ticket.Accepted)
             return false;
 
         Interlocked.Increment(ref _sectionCacheWaits);
@@ -91,6 +99,13 @@ public sealed partial class PlayerBootstrapPacketSet
                     return true;
                 }
 
+                if (_sectionCacheFailedRebuildGenerations.TryGetValue(index, out long failedGeneration) &&
+                    failedGeneration == ticket.Generation)
+                {
+                    Interlocked.Increment(ref _sectionCacheWaitFailures);
+                    return false;
+                }
+
                 if (Volatile.Read(ref _sectionRebuildRequester) is null)
                     return false;
 
@@ -103,6 +118,19 @@ public sealed partial class PlayerBootstrapPacketSet
 
                 Monitor.Wait(_sectionCacheGate, remaining);
             }
+        }
+    }
+
+    internal void NotifySectionCacheRebuildFailed(WorldSectionId section, long generation)
+    {
+        if (_world is null || generation <= 0)
+            return;
+
+        int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
+        lock (_sectionCacheGate)
+        {
+            _sectionCacheFailedRebuildGenerations[index] = generation;
+            Monitor.PulseAll(_sectionCacheGate);
         }
     }
 
