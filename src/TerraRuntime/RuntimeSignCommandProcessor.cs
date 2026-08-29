@@ -6,6 +6,7 @@ namespace TerraRuntime;
 /// <summary>
 /// Authoritative-thread processor for the protocol-326 sign slice. Packet sinks only decode and enqueue; this
 /// processor owns loaded-sign lookup and text mutation before committed state is projected to transport endpoints.
+/// Exact playing-session generation is revalidated before every client-originated sign command reaches the store.
 /// </summary>
 internal sealed class RuntimeSignCommandProcessor
 {
@@ -49,7 +50,8 @@ internal sealed class RuntimeSignCommandProcessor
     private void ApplyRead(ClientSignReadRuntimeCommand command)
     {
         TerrariaSignReadRequest request = command.Request;
-        if (!store.TryRead(request.TileX, request.TileY, out WorldSign sign) ||
+        if (!replication.IsPlaying(command.Connection) ||
+            !store.TryRead(request.TileX, request.TileY, out WorldSign sign) ||
             !replication.TrySendRead(command.Connection, sign))
         {
             RejectedReads++;
@@ -61,6 +63,12 @@ internal sealed class RuntimeSignCommandProcessor
 
     private void ApplyUpdate(ClientSignUpdateRuntimeCommand command)
     {
+        if (!replication.IsPlaying(command.Connection))
+        {
+            RejectedUpdates++;
+            return;
+        }
+
         TerrariaSignState submitted = command.State;
         if (!store.TryApply(in submitted, out WorldSign? committed, out bool textChanged))
         {
