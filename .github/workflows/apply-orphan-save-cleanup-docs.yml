@@ -1,0 +1,113 @@
+name: Apply Orphan Save Cleanup Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-orphan-save-cleanup-docs.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: terra-runtime-apply-orphan-save-cleanup-docs
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Update roadmap and persistence docs
+        shell: python
+        run: |
+          from pathlib import Path
+
+          roadmap = Path('docs/roadmap.md')
+          text = roadmap.read_text()
+          old = '- [ ] Add safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process.'
+          new = '- [x] Add safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process. Verified by `Authoritative World Save` run `33270005299` with real `SIGKILL`, leased orphan detection, canonical preservation and next-write cleanup.'
+          if text.count(old) != 1:
+              raise SystemExit(f'roadmap orphan cleanup marker count={text.count(old)}')
+          roadmap.write_text(text.replace(old, new, 1))
+
+          en = Path('docs/en/world-persistence.md')
+          text = en.read_text()
+          old = 'A process killed before publication can leave an orphaned random-name `.tmp` file, but it does not replace the canonical world. Orphan cleanup is a housekeeping concern, not a canonical-selection ambiguity.'
+          new = '''A process killed before publication can leave an orphaned random-name `.tmp` file, but it does not replace the canonical world. `AtomicSaveFileWriter` now pairs every managed temporary with a sibling `.tmp.lease` file held open with `FileShare.None` for the complete write/flush/validation/backup/publication transaction. Before a later save starts, it scans only correctly named leased temporaries for the same target and reaps one only when it can acquire that lease exclusively. A live writer therefore keeps its temporary protected across processes. A legacy `.tmp` that has no TerraRuntime lease is deliberately left untouched because ownership cannot be proven safely.'''
+          if text.count(old) != 1:
+              raise SystemExit(f'english orphan paragraph count={text.count(old)}')
+          text = text.replace(old, new, 1)
+          old = '''`Authoritative World Save` run `33266509632` killed the writer process with `SIGKILL` while it was stalled before publication and reported:
+
+```text
+atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true
+```
+
+That proves the pre-publication process-crash contract: an existing canonical destination remains byte-for-byte unchanged, a first save is not exposed partially, and a later normal save can still commit successfully.'''
+          new = '''`Authoritative World Save` run `33270005299` killed writers with `SIGKILL` while they were stalled before publication for both an existing destination and a first save, then reported:
+
+```text
+atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true orphan_cleanup=true live_lease=true
+```
+
+That proves the pre-publication process-crash contract plus cross-process orphan cleanup: an existing canonical destination remains byte-for-byte unchanged, a first save is not exposed partially, the killed process leaves a matching `.tmp`/`.tmp.lease` pair, and the next successful save reaps that abandoned pair before committing without touching a live leased temporary.'''
+          if text.count(old) != 1:
+              raise SystemExit(f'english evidence paragraph count={text.count(old)}')
+          text = text.replace(old, new, 1)
+          old = 'Runtime snapshot layout remains disposable rather than a stable external storage API. Validated previous-generation backup rotation and automatic corruption recovery are implemented, but there is no multi-generation retention/history policy. Orphan `.tmp` cleanup after uncatchable process death has no dedicated startup policy yet. Linux parent-directory `fsync` strengthens power-loss durability; equivalent filesystem semantics remain platform-dependent outside that path. `.wld` remains the canonical recovery boundary.'
+          new = 'Runtime snapshot layout remains disposable rather than a stable external storage API. Validated previous-generation backup rotation and automatic corruption recovery are implemented, but there is no multi-generation retention/history policy. Managed orphan `.tmp` files are reclaimed on the next save only when their TerraRuntime lease can be acquired exclusively; unknown legacy temporaries without a lease are intentionally not deleted automatically. Linux parent-directory `fsync` strengthens power-loss durability; equivalent filesystem semantics remain platform-dependent outside that path. `.wld` remains the canonical recovery boundary.'
+          if text.count(old) != 1:
+              raise SystemExit(f'english limitation count={text.count(old)}')
+          en.write_text(text.replace(old, new, 1))
+
+          ru = Path('docs/ru/world-persistence.md')
+          text = ru.read_text()
+          old = 'Process kill до publication может оставить orphan random-name `.tmp`, но не заменяет canonical world. Orphan cleanup является housekeeping, а не ambiguity canonical selection.'
+          new = '''Process kill до publication может оставить orphan random-name `.tmp`, но не заменяет canonical world. `AtomicSaveFileWriter` теперь создаёт рядом с каждым managed temporary файл `.tmp.lease` и держит его открытым с `FileShare.None` на протяжении всей transaction: write, flush, validation, backup и publication. Перед следующим save runtime сканирует только корректно именованные leased temporary для того же target и удаляет orphan только если lease удалось получить эксклюзивно. Поэтому temporary живого writer защищён даже между процессами. Legacy `.tmp` без TerraRuntime lease намеренно не удаляется автоматически: безопасно доказать ownership такого файла нельзя.'''
+          if text.count(old) != 1:
+              raise SystemExit(f'russian orphan paragraph count={text.count(old)}')
+          text = text.replace(old, new, 1)
+          old = '''`Authoritative World Save` run `33266509632` убил writer process через `SIGKILL` до publication и получил:
+
+```text
+atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true
+```
+
+Это доказывает pre-publication process-crash contract: existing canonical destination остаётся byte-for-byte unchanged, first save не exposed partially, later normal save всё ещё commit'ится успешно.'''
+          new = '''`Authoritative World Save` run `33270005299` убил writer processes через `SIGKILL` во время stall до publication как для existing destination, так и для first save, после чего получил:
+
+```text
+atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true orphan_cleanup=true live_lease=true
+```
+
+Это доказывает не только pre-publication process-crash contract, но и cross-process orphan cleanup: existing canonical destination остаётся byte-for-byte unchanged, first save не exposed partially, killed process оставляет соответствующую пару `.tmp`/`.tmp.lease`, а следующий successful save удаляет abandoned pair перед commit и не трогает temporary с live lease.'''
+          if text.count(old) != 1:
+              raise SystemExit(f'russian evidence paragraph count={text.count(old)}')
+          text = text.replace(old, new, 1)
+          old = 'Runtime snapshot layout остаётся disposable, не stable external storage API. Validated previous-generation backup rotation и automatic corruption recovery уже реализованы, но multi-generation retention/history policy отсутствует. Orphan `.tmp` cleanup после uncatchable death пока не имеет dedicated startup policy. Linux parent-directory `fsync` усиливает power-loss durability; equivalent filesystem semantics вне этого path platform-dependent. `.wld` остаётся canonical recovery boundary.'
+          new = 'Runtime snapshot layout остаётся disposable, не stable external storage API. Validated previous-generation backup rotation и automatic corruption recovery уже реализованы, но multi-generation retention/history policy отсутствует. Managed orphan `.tmp` reclaim\u0027ятся при следующем save только если TerraRuntime lease удаётся получить эксклюзивно; unknown legacy temporaries без lease намеренно не удаляются автоматически. Linux parent-directory `fsync` усиливает power-loss durability; equivalent filesystem semantics вне этого path platform-dependent. `.wld` остаётся canonical recovery boundary.'
+          if text.count(old) != 1:
+              raise SystemExit(f'russian limitation count={text.count(old)}')
+          ru.write_text(text.replace(old, new, 1))
+
+      - name: Commit documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/roadmap.md docs/en/world-persistence.md docs/ru/world-persistence.md
+          git commit -m 'docs: document safe orphan save cleanup'
+          for attempt in 1 2 3 4 5 6; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
