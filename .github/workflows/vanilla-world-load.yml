@@ -14,6 +14,7 @@ on:
       - 'tools/ci/live_join_relay_probe.py'
       - 'tools/ci/live_chest_open_probe.py'
       - 'tools/ci/live_chest_observer_probe.py'
+      - 'tools/ci/official_chest_item_reference_probe.py'
       - '.github/workflows/vanilla-world-load.yml'
   workflow_dispatch:
 
@@ -86,6 +87,98 @@ jobs:
             echo "Official server exited with status $status" >&2
             exit "$status"
           fi
+
+      - name: Probe official 1.4.5.8 chest item routing reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          reference_world="$GITHUB_WORKSPACE/artifacts/official-chest-reference.wld"
+          config="$GITHUB_WORKSPACE/artifacts/official-chest-reference-serverconfig.txt"
+          host_log="$GITHUB_WORKSPACE/artifacts/official-chest-reference-server.log"
+          client_log="$GITHUB_WORKSPACE/artifacts/official-chest-item-reference.log"
+          selection="$GITHUB_WORKSPACE/artifacts/official-chest-reference-selection.txt"
+          fifo="$GITHUB_WORKSPACE/artifacts/official-chest-reference.stdin"
+
+          cp "$GITHUB_WORKSPACE/artifacts/vanilla-smoke.wld" "$reference_world"
+          chest_info="$(dotnet run \
+            --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
+            -c Release \
+            -- "$reference_world" | tail -1)"
+          echo "selected_chest $chest_info" | tee "$selection"
+
+          chest_id="" x="" y="" item_slot="" item_stack="" item_prefix="" item_net_id=""
+          for field in $chest_info; do
+            case "$field" in
+              slot=*) chest_id="${field#slot=}" ;;
+              x=*) x="${field#x=}" ;;
+              y=*) y="${field#y=}" ;;
+              itemSlot=*) item_slot="${field#itemSlot=}" ;;
+              itemStack=*) item_stack="${field#itemStack=}" ;;
+              itemPrefix=*) item_prefix="${field#itemPrefix=}" ;;
+              itemNetId=*) item_net_id="${field#itemNetId=}" ;;
+            esac
+          done
+          test -n "$chest_id" -a -n "$x" -a -n "$y"
+          test -n "$item_slot" -a -n "$item_stack" -a -n "$item_prefix" -a -n "$item_net_id"
+
+          cat > "$config" <<EOF
+          world=$reference_world
+          autocreate=0
+          maxplayers=2
+          port=17783
+          password=
+          motd=TerraRuntime official packet32 routing reference
+          secure=1
+          upnp=0
+          EOF
+
+          rm -f "$fifo"
+          mkfifo "$fifo"
+          exec 9<> "$fifo"
+          (
+            cd "$server_dir"
+            "./$server_name" -config "$config" < "$fifo"
+          ) > "$host_log" 2>&1 &
+          official_pid=$!
+
+          cleanup_reference() {
+            printf 'exit\n' >&9 2>/dev/null || true
+            sleep 1
+            kill "$official_pid" 2>/dev/null || true
+            wait "$official_pid" 2>/dev/null || true
+            exec 9>&- || true
+          }
+          trap cleanup_reference EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$official_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "Official chest-reference server exited before opening the listener." >&2
+              exit 1
+            fi
+            if ss -ltn | grep -q ':17783 '; then
+              break
+            fi
+            sleep 0.5
+          done
+          ss -ltn | grep -q ':17783 '
+
+          python3 tools/ci/official_chest_item_reference_probe.py \
+            --port 17783 \
+            --chest-id "$chest_id" \
+            --x "$x" \
+            --y "$y" \
+            --item-slot "$item_slot" \
+            --item-stack "$item_stack" \
+            --item-prefix "$item_prefix" \
+            --item-net-id "$item_net_id" \
+            2>&1 | tee "$client_log"
+          cat "$host_log"
 
       - name: Verify real vanilla world with TerraRuntime
         run: >-
@@ -376,6 +469,10 @@ jobs:
           path: |
             artifacts/vanilla-server.log
             artifacts/vanilla-serverconfig.txt
+            artifacts/official-chest-reference-server.log
+            artifacts/official-chest-item-reference.log
+            artifacts/official-chest-reference-serverconfig.txt
+            artifacts/official-chest-reference-selection.txt
             artifacts/terraruntime-server.log
             artifacts/terraruntime-client.log
             artifacts/terraruntime-chest-server.log
