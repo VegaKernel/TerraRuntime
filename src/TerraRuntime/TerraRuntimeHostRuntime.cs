@@ -8,13 +8,19 @@ internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
     public TerraRuntimeHostRuntime(
         TerraRuntimeHostRuntimeInfo info,
         IInterestManagementControl interestManagement,
-        IPlayerStateSnapshotReader playerStates,
-        INpcActorOperations npcActors)
+        IPlayerStateSnapshotReader playerStates)
     {
         Info = info ?? throw new ArgumentNullException(nameof(info));
         InterestManagement = interestManagement ?? throw new ArgumentNullException(nameof(interestManagement));
         PlayerStates = playerStates ?? throw new ArgumentNullException(nameof(playerStates));
-        NpcActors = npcActors ?? throw new ArgumentNullException(nameof(npcActors));
+        if (playerStates is not RuntimePlayerStateSnapshotReader runtimePlayerStates)
+        {
+            throw new ArgumentException(
+                "The production host runtime requires the authoritative runtime player snapshot reader.",
+                nameof(playerStates));
+        }
+
+        NpcActors = new RuntimeNpcActorOperations(runtimePlayerStates.CommandIngress);
     }
 
     public TerraRuntimeHostRuntimeInfo Info { get; }
