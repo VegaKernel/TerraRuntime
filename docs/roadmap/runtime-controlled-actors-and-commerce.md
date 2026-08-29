@@ -296,7 +296,7 @@ A plugin unload must retire:
 
 ### G6-D - Runtime player physics
 
-- [ ] server-owned player physics stepper;
+- [x] server-owned player physics stepper;
 - [ ] source-backed movement/collision/gravity/jump/liquid semantics;
 - [ ] fake-player `MoveTo`/`FollowPlayer` controller;
 - [ ] deterministic tick integration and performance gate.
