@@ -272,6 +272,7 @@ def main() -> int:
     green_laser_defaults = around_optional(set_defaults, "type == 20", radius=1800)
     bone_defaults = around_optional(set_defaults, "type == 21", radius=1800)
     bone_arrow_defaults = compact(extract_type_if_block(set_defaults, 474))
+    sound_gun_defaults = compact(extract_type_if_block(set_defaults, 1099))
     seed_defaults = around_optional(set_defaults, "type == 51", radius=1400)
     bone_shard_defaults = around_optional(set_defaults, "type == 1124", radius=1800)
     arrow_ai = extract_method(projectile_source, "AI_001")
@@ -296,6 +297,7 @@ def main() -> int:
     expected_ids = {
         "Seed": 51,
         "BoneArrowFromMerchant": 474,
+        "SoundGun": 1099,
         "BoneShard": 1124,
     }
     for name, raw_type in expected_ids.items():
@@ -344,9 +346,39 @@ def main() -> int:
         if token in bone_arrow_kill:
             raise SystemExit(f"type 474 Kill gained authoritative side effect: {token}")
 
+    required_sound_gun_defaults = (
+        "width = 66;",
+        "height = 66;",
+        "aiStyle = 1;",
+        "friendly = true;",
+        "penetrate = -1;",
+        "timeLeft = 600;",
+        "tileCollide = false;",
+        "magic = true;",
+    )
+    for token in required_sound_gun_defaults:
+        if token not in sound_gun_defaults:
+            raise SystemExit(f"type 1099 default missing: {token}")
+    for forbidden in ("ignoreWater = true;", "extraUpdates ="):
+        if forbidden in sound_gun_defaults:
+            raise SystemExit(f"type 1099 unexpected default: {forbidden}")
+
+    for source_name, source_text in (
+        ("AI_001", arrow_ai),
+        ("AI", projectile_ai),
+        ("Update", projectile_update),
+        ("HandleMovement", handle_movement),
+        ("GetCollisionParams", collision_params),
+        ("Kill", projectile_kill),
+        ("CanCutTiles", can_cut_tiles),
+    ):
+        if count_type_comparisons(source_text, 1099) != 0:
+            raise SystemExit(f"type 1099 unexpectedly special in {source_name}")
+
     print("projectile_bone_defaults=" + bone_defaults)
     print("projectile_bone_arrow_from_merchant_defaults=" + bone_arrow_defaults)
     print("projectile_bone_arrow_from_merchant_kill=" + bone_arrow_kill)
+    print("projectile_sound_gun_defaults=" + sound_gun_defaults)
     print("projectile_seed_defaults=" + seed_defaults)
     print("projectile_bone_shard_defaults=" + bone_shard_defaults)
     print("projectile_seed_ai001_contexts=" + all_type_comparison_contexts(arrow_ai, 51, radius=1800, limit=20))
