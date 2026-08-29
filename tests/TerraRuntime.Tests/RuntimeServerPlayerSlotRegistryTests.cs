@@ -52,6 +52,20 @@ public sealed class RuntimeServerPlayerSlotRegistryTests
     }
 
     [Fact]
+    public void Unassigned_stable_identity_is_rejected_without_consuming_slot()
+    {
+        var slots = new PlayerSlotPool(1);
+        var registry = new RuntimeServerPlayerSlotRegistry(slots);
+
+        Assert.Equal(
+            ServerPlayerSlotAcquireResult.InvalidId,
+            registry.TryAcquire(default, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease));
+        Assert.Null(lease);
+        Assert.Equal(0, registry.Count);
+        Assert.Equal(0, slots.LeasedCount);
+    }
+
+    [Fact]
     public void Recreating_identity_after_release_gets_new_generation_and_stale_handle_does_not_resolve()
     {
         var slots = new PlayerSlotPool(1);
