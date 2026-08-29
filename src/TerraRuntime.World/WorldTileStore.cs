@@ -8,6 +8,7 @@ namespace TerraRuntime.World;
 public sealed class WorldTileStore
 {
     private readonly WorldTile[] _tiles;
+    private readonly long[] _sectionVersions;
 
     public WorldTileStore(WorldDimensions dimensions)
         : this(dimensions, skipZeroInitialization: false)
@@ -28,6 +29,7 @@ public sealed class WorldTileStore
         _tiles = skipZeroInitialization
             ? GC.AllocateUninitializedArray<WorldTile>((int)tileCount)
             : new WorldTile[(int)tileCount];
+        _sectionVersions = new long[dimensions.SectionCount];
         LiquidUpdates = new WorldLiquidUpdateQueue(dimensions);
         DirtySections = new DirtySectionTracker(dimensions);
     }
@@ -62,8 +64,63 @@ public sealed class WorldTileStore
     public void Set(int x, int y, in WorldTile tile)
     {
         int index = GetIndex(x, y);
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(Dimensions, x, y);
+        int sectionIndex = TerrariaSectionGeometry.ToLinearIndex(Dimensions, section);
+
+        // The odd/even version is a tiny seqlock around the 16-byte struct write. The authoritative game
+        // thread remains the only writer, while asynchronous snapshot consumers can detect a concurrent edit.
+        Interlocked.Increment(ref _sectionVersions[sectionIndex]);
         _tiles[index] = tile;
-        DirtySections.MarkTileDirty(x, y);
+        Interlocked.Increment(ref _sectionVersions[sectionIndex]);
+        DirtySections.MarkDirty(section);
+    }
+
+    /// <summary>
+    /// Returns the current section version token. Stable sections have an even token; an odd token means a
+    /// mutation is currently being committed. Consumers should compare tokens for equality, not interpret them.
+    /// </summary>
+    public long GetSectionVersion(WorldSectionId section)
+    {
+        int index = TerrariaSectionGeometry.ToLinearIndex(Dimensions, section);
+        return Volatile.Read(ref _sectionVersions[index]);
+    }
+
+    /// <summary>
+    /// Copies one network section into an immutable row-major snapshot without exposing live mutable tiles.
+    /// The authoritative thread succeeds immediately. Concurrent readers fail instead of publishing a torn image.
+    /// </summary>
+    public bool TryCaptureSectionSnapshot(
+        WorldSectionId section,
+        out WorldSectionTileSnapshot? snapshot)
+    {
+        int sectionIndex = TerrariaSectionGeometry.ToLinearIndex(Dimensions, section);
+        long before = Volatile.Read(ref _sectionVersions[sectionIndex]);
+        if ((before & 1L) != 0)
+        {
+            snapshot = null;
+            return false;
+        }
+
+        WorldTileBounds bounds = TerrariaSectionGeometry.GetBounds(Dimensions, section);
+        var copy = GC.AllocateUninitializedArray<WorldTile>(checked(bounds.Width * bounds.Height));
+        int destination = 0;
+        for (int y = bounds.Y; y < bounds.ExclusiveBottom; y++)
+        {
+            for (int x = bounds.X; x < bounds.ExclusiveRight; x++)
+            {
+                copy[destination++] = _tiles[GetUncheckedIndex(x, y)];
+            }
+        }
+
+        long after = Volatile.Read(ref _sectionVersions[sectionIndex]);
+        if (before != after || (after & 1L) != 0)
+        {
+            snapshot = null;
+            return false;
+        }
+
+        snapshot = new WorldSectionTileSnapshot(section, bounds, after, copy);
+        return true;
     }
 
     internal Span<WorldTile> Tiles => _tiles;
