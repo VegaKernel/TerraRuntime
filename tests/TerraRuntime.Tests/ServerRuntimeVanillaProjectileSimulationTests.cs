@@ -63,6 +63,42 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(1f, updated.Ai.Ai0, 5);
     }
 
+    [Fact]
+    public async Task Authoritative_tick_removes_player_owned_wooden_arrow_on_tile_impact_by_default()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, new WorldTile
+        {
+            Type = 1,
+            Flags = WorldTileFlags.Active
+        });
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(
+            worldTiles: tiles,
+            projectiles: projectiles);
+        ProjectileStateUpdate projectile = new(
+            VanillaProjectileIds.WoodenArrowFriendly,
+            Spawner: 3,
+            PositionX: 100f,
+            PositionY: 160f,
+            VelocityX: 20f,
+            VelocityY: 0f,
+            Ai: default,
+            BannerIdToRespondTo: 0,
+            Damage: 20,
+            KnockBack: 1f,
+            OriginalDamage: 20);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.False(state.TryCaptureProjectileSnapshot(spawned.Handle, out _));
+    }
+
     [Theory]
     [InlineData(3)]
     [InlineData(48)]
