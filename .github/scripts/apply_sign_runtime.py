@@ -201,14 +201,20 @@ replace_once(
 ''')
 
 replace_once(
-'''                tileManipulationReplication.TryUnregister(source);
-                chestReplication.TryUnregister(source);
-                vitalsReplication.TryUnregister(source);
-''',
-'''                signReplication.TryUnregister(source);
+'''                rateTelemetry.TryUnregister(connectionId);
+                queueTelemetry.TryUnregister(connectionId);
                 tileManipulationReplication.TryUnregister(source);
                 chestReplication.TryUnregister(source);
                 vitalsReplication.TryUnregister(source);
+                worldItemReplication.TryUnregister(source);
+''',
+'''                rateTelemetry.TryUnregister(connectionId);
+                queueTelemetry.TryUnregister(connectionId);
+                signReplication.TryUnregister(source);
+                tileManipulationReplication.TryUnregister(source);
+                chestReplication.TryUnregister(source);
+                vitalsReplication.TryUnregister(source);
+                worldItemReplication.TryUnregister(source);
 ''')
 
 path.write_text(text, encoding="utf-8")
