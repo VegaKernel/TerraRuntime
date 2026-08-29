@@ -18,7 +18,9 @@ def extract_method(source: str, method_name: str) -> str:
     )
     match = signature.search(source)
     if match is None:
-        raise SystemExit(f"method not found: {method_name}")
+        candidates = [" ".join(line.split()) for line in source.splitlines() if method_name in line][:20]
+        detail = " | ".join(candidates) if candidates else "<none>"
+        raise SystemExit(f"method not found: {method_name}; candidates: {detail}")
 
     opening = source.find("{", match.start())
     depth = 0
