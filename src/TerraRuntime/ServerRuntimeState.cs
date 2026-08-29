@@ -48,7 +48,8 @@ internal sealed class ServerRuntimeState
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
         _projectiles = projectiles ?? new RuntimeProjectileStore();
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
-        _projectileStepper = projectileStepper;
+        _projectileStepper = projectileStepper ??
+            (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles));
         _projectileReplication = projectileReplication;
         _worldItems = worldItems ?? new RuntimeWorldItemStore();
 
