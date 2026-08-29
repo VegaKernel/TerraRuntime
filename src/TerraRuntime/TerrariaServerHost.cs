@@ -274,7 +274,8 @@ public static class TerrariaServerHost
             worldSaveTemplate,
             world.Tiles,
             chestStore,
-            worldClock: worldClock);
+            worldClock: worldClock,
+            signStore: signStore);
         var worldAutosave = new VanillaWorldAutosaveScheduler();
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
         var playerOperations = new RuntimePlayerOperationsTelemetry();
