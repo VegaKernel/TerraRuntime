@@ -41,15 +41,33 @@ jobs:
               path = matches[0]
           text = path.read_text(errors='strict')
 
+          case_pattern = re.compile(r'^(?P<indent>[ \t]*)case\s+(?P<number>\d+)\s*:', re.M)
+          all_cases = list(case_pattern.finditer(text))
+
           def case_body(number):
-              matches = list(re.finditer(rf'^\s*case\s+{number}\s*:', text, re.M))
-              if len(matches) != 1:
-                  raise SystemExit(f'Expected one top-level case {number} in {path}, found {len(matches)}')
-              match = matches[0]
-              start = match.start()
-              next_case = re.search(r'^\s*case\s+\d+\s*:', text[match.end():], re.M)
-              end = match.end() + next_case.start() if next_case else min(len(text), start + 30000)
-              return text[start:end]
+              matches = [m for m in all_cases if int(m.group('number')) == number]
+              if not matches:
+                  raise SystemExit(f'No case {number} in {path}')
+              min_indent = min(len(m.group('indent').expandtabs(4)) for m in matches)
+              outer = [m for m in matches if len(m.group('indent').expandtabs(4)) == min_indent]
+              diagnostics = [
+                  {
+                      'line': text.count('\n', 0, m.start()) + 1,
+                      'indent': len(m.group('indent').expandtabs(4)),
+                  }
+                  for m in matches
+              ]
+              print(f'CASE_{number}_CANDIDATES=' + json.dumps(diagnostics, sort_keys=True))
+              if len(outer) != 1:
+                  raise SystemExit(f'Expected one least-indented case {number}, found {len(outer)}')
+              match = outer[0]
+              indent = match.group('indent')
+              next_case = re.search(
+                  rf'^{re.escape(indent)}case\s+\d+\s*:',
+                  text[match.end():],
+                  re.M)
+              end = match.end() + next_case.start() if next_case else min(len(text), match.start() + 30000)
+              return text[match.start():end]
 
           c21 = case_body(21)
           c22 = case_body(22)
