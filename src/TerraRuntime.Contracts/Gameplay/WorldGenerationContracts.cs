@@ -74,6 +74,13 @@ public interface IWorldGenerationContext
 {
     WorldGenerationRequest Request { get; }
     IWorldGenerationWorkspace Workspace { get; }
+
+    /// <summary>
+    /// Optional semantic world metadata surface. TerraRuntime's production candidate workspace supplies it so a
+    /// complete custom generator can declare required world anchors without depending on the internal .wld header.
+    /// </summary>
+    IWorldGenerationMetadataWorkspace? Metadata { get; }
+
     IWorldGenerationRandom Random { get; }
     CancellationToken CancellationToken { get; }
     void ReportProgress(double fraction, string? message = null);
@@ -91,6 +98,27 @@ public interface IWorldGenerationWorkspace
     bool TryGetTile(int x, int y, out WorldGenerationTile tile);
     bool TrySetTile(int x, int y, in WorldGenerationTile tile);
 }
+
+/// <summary>
+/// Semantic metadata required to turn generated tiles into a complete world. This intentionally exposes gameplay
+/// concepts rather than raw Terraria .wld fields so the runtime remains responsible for format-specific defaults,
+/// validation and serialization.
+/// </summary>
+public interface IWorldGenerationMetadataWorkspace
+{
+    bool TryGetSpawn(out WorldGenerationPoint spawn);
+    bool TrySetSpawn(int x, int y);
+
+    bool TryGetDungeon(out WorldGenerationPoint dungeon);
+    bool TrySetDungeon(int x, int y);
+
+    bool TryGetLayers(out WorldGenerationLayers layers);
+    bool TrySetLayers(double worldSurface, double rockLayer);
+}
+
+public readonly record struct WorldGenerationPoint(int X, int Y);
+
+public readonly record struct WorldGenerationLayers(double WorldSurface, double RockLayer);
 
 /// <summary>Deterministic RNG surface supplied independently to each isolated custom pass.</summary>
 public interface IWorldGenerationRandom
