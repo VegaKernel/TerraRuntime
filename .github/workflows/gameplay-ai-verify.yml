@@ -1,5 +1,6 @@
 name: Gameplay AI Verify
 
+# Permanent non-cancelling gameplay/AI acceptance slice for authoritative behavior work.
 on:
   push:
     branches: [main]
