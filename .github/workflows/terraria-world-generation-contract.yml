@@ -43,7 +43,8 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Main "$assembly" > artifacts/source-contract/main.cs
           python3 tools/ci/probe_world_generation_init.py \
             --world-gen artifacts/source-contract/world-gen.cs \
-            --main artifacts/source-contract/main.cs
+            --main artifacts/source-contract/main.cs \
+            --pass-catalog-output artifacts/source-contract/world-generation-pass-catalog.txt
           echo "support_type_candidates:"
           .tools/ilspycmd --disable-updatecheck -l c "$assembly" | \
             grep -E 'BannerSystem|DD2Event|ExtraSpawnPointManager|WorldManifest|TreeTop' || true
@@ -116,6 +117,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: terraria-world-generation-contract-${{ github.sha }}
-          path: artifacts/source-contract/world-generation-fixture.json
+          path: |
+            artifacts/source-contract/world-generation-fixture.json
+            artifacts/source-contract/world-generation-pass-catalog.txt
           if-no-files-found: error
           retention-days: 7
