@@ -238,10 +238,12 @@ def main() -> int:
     kill_tile = extract_method(worldgen_source, "KillTile")
     kill_tile_drops = extract_method(worldgen_source, "KillTile_GetItemDrops")
     set_defaults = extract_method(projectile_source, "SetDefaults")
-    wooden_arrow_defaults = compact(extract_top_level_switch_case(set_defaults, "type", 1))
+    wooden_arrow_defaults = around_optional(set_defaults, "case 1:", radius=1400)
+    wooden_arrow_defaults_if = around_optional(set_defaults, "type == 1", radius=1400)
     arrow_ai = compact(extract_method(projectile_source, "AI_001"))
 
     print("projectile_wooden_arrow_defaults=" + wooden_arrow_defaults)
+    print("projectile_wooden_arrow_defaults_if=" + wooden_arrow_defaults_if)
     print("projectile_ai001=" + arrow_ai)
     print("projectile_ai001_mentions=" + matching_lines(projectile_source, "AI_001", limit=80))
     print("projectile_ai_style1_mentions=" + matching_lines(projectile_source, "aiStyle == 1", limit=80))
