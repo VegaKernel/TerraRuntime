@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - 'tools/ci/probe_world_generation_init.py'
       - 'tools/ci/probe_world_generation_fixture.py'
       - '.github/workflows/terraria-world-generation-contract.yml'
   workflow_dispatch:
