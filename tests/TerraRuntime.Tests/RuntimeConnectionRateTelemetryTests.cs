@@ -43,5 +43,37 @@ public sealed class RuntimeConnectionRateTelemetryTests
         snapshot = telemetry.CaptureSnapshot(maximumDetails: 2);
         Assert.Equal(2, snapshot.TrackedConnections);
         Assert.Equal(300, snapshot.WindowBytes);
+        Assert.Equal(4, snapshot.TotalFrames);
+        Assert.Equal(1_200, snapshot.TotalBytes);
+    }
+
+    [Fact]
+    public void Rate_rejection_totals_survive_connection_unregister()
+    {
+        var telemetry = new RuntimeConnectionRateTelemetry();
+        var accountant = new TerrariaConnectionRateAccountant(
+            new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 1, maxBytes: null));
+
+        Assert.True(telemetry.TryRegister(7, accountant));
+        Assert.Equal(ConnectionRateDecision.Allowed, accountant.Observe(10));
+        Assert.Equal(ConnectionRateDecision.FrameLimitExceeded, accountant.Observe(10));
+
+        RuntimeConnectionRateTelemetrySnapshot live = telemetry.CaptureSnapshot(maximumDetails: 1);
+        Assert.Equal(1, live.TrackedConnections);
+        Assert.Equal(2, live.TotalFrames);
+        Assert.Equal(20, live.TotalBytes);
+        Assert.Equal(1, live.RejectedFrames);
+
+        Assert.True(telemetry.TryUnregister(7));
+        RuntimeConnectionRateTelemetrySnapshot completed = telemetry.CaptureSnapshot(maximumDetails: 1);
+
+        Assert.Equal(0, completed.TrackedConnections);
+        Assert.Equal(0, completed.WindowFrames);
+        Assert.Equal(0, completed.WindowBytes);
+        Assert.Equal(2, completed.TotalFrames);
+        Assert.Equal(20, completed.TotalBytes);
+        Assert.Equal(1, completed.RejectedFrames);
+        Assert.True(completed.TopConnections.IsEmpty);
+        Assert.False(telemetry.TryUnregister(7));
     }
 }
