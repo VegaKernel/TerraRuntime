@@ -53,9 +53,11 @@ public sealed class RuntimeWorldTileChestSaveServiceTests
 
             Assert.Equal(RuntimeWorldTileChestSaveTickResult.SaveQueued, service.Tick());
             Assert.False(service.IsSaveRequested);
-            await service.CompleteAsync();
+            await service.CompleteAsync(TestContext.Current.CancellationToken);
 
-            byte[] saved = await File.ReadAllBytesAsync(destinationPath);
+            byte[] saved = await File.ReadAllBytesAsync(
+                destinationPath,
+                TestContext.Current.CancellationToken);
             WorldFileLoadDiagnostic diagnostic = WorldFileLoader.TryLoad(saved, limits, out WorldFileData? savedWorld);
             Assert.True(diagnostic.IsLoaded);
             WorldFileData loaded = Assert.IsType<WorldFileData>(savedWorld);
@@ -110,9 +112,11 @@ public sealed class RuntimeWorldTileChestSaveServiceTests
             source.Tiles.Set(1, 2, in changedTile);
 
             service.CaptureFinalSaveAfterOwnerStopped();
-            await service.CompleteAsync();
+            await service.CompleteAsync(TestContext.Current.CancellationToken);
 
-            byte[] saved = await File.ReadAllBytesAsync(destinationPath);
+            byte[] saved = await File.ReadAllBytesAsync(
+                destinationPath,
+                TestContext.Current.CancellationToken);
             Assert.True(WorldFileLoader.TryLoad(saved, limits, out WorldFileData? savedWorld).IsLoaded);
             WorldFileData loaded = Assert.IsType<WorldFileData>(savedWorld);
             WorldTile persisted = loaded.Tiles.Get(1, 2);
