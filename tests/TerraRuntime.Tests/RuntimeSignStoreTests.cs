@@ -63,7 +63,7 @@ public sealed class RuntimeSignStoreTests
     }
 
     [Fact]
-    public void Packet47_replaces_coordinates_even_when_text_is_identical_without_broadcast_change()
+    public void Packet47_replaces_coordinates_and_old_active_tile_can_be_recreated_on_read()
     {
         var tiles = CreateTiles();
         SetSignTile(tiles, 10, 20);
@@ -76,13 +76,22 @@ public sealed class RuntimeSignStoreTests
         Assert.NotNull(committed);
         Assert.Equal(30, committed!.X);
         Assert.Equal(40, committed.Y);
-        Assert.False(store.TryRead(10, 20, out _));
+
+        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] movedSnapshot));
+        WorldSign movedBeforeRead = Assert.Single(movedSnapshot);
+        Assert.Equal((short)0, movedBeforeRead.SlotId);
+        Assert.Equal(30, movedBeforeRead.X);
+        Assert.Equal(40, movedBeforeRead.Y);
+
+        Assert.True(store.TryRead(10, 20, out WorldSign recreated));
+        Assert.Equal((short)1, recreated.SlotId);
+        Assert.Equal(string.Empty, recreated.Text);
         Assert.True(store.TryRead(30, 40, out WorldSign moved));
         Assert.Equal((short)0, moved.SlotId);
     }
 
     [Fact]
-    public void Packet47_invalid_sign_tile_clears_existing_slot()
+    public void Packet47_invalid_sign_tile_clears_slot_and_old_active_tile_can_be_recreated_on_read()
     {
         var tiles = CreateTiles();
         SetSignTile(tiles, 10, 20);
@@ -93,9 +102,14 @@ public sealed class RuntimeSignStoreTests
         Assert.True(store.TryApply(in update, out WorldSign? committed, out bool textChanged));
         Assert.True(textChanged);
         Assert.Null(committed);
-        Assert.False(store.TryRead(10, 20, out _));
-        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] snapshot));
-        Assert.Empty(snapshot);
+        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] clearedSnapshot));
+        Assert.Empty(clearedSnapshot);
+
+        Assert.True(store.TryRead(10, 20, out WorldSign recreated));
+        Assert.Equal((short)0, recreated.SlotId);
+        Assert.Equal(string.Empty, recreated.Text);
+        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] recreatedSnapshot));
+        Assert.Single(recreatedSnapshot);
     }
 
     [Fact]
