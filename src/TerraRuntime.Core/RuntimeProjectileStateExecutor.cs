@@ -111,10 +111,11 @@ public sealed class RuntimeProjectileStateExecutor
                     break;
                 }
 
-                if (!RuntimeProjectileStore.IsValidState(in next.State) ||
+                ProjectileStateUpdate nextState = next.State;
+                if (!RuntimeProjectileStore.IsValidState(in nextState) ||
                     !TryProjectLifecycle(
                         currentProjectile.Type,
-                        next.State.Type,
+                        nextState.Type,
                         currentLifecycle,
                         next.TimeLeft,
                         out ProjectileLifecycleState nextLifecycle))
@@ -130,7 +131,7 @@ public sealed class RuntimeProjectileStateExecutor
                 }
 
                 finalResult = next;
-                currentProjectile = Project(in currentProjectile, in next.State);
+                currentProjectile = Project(in currentProjectile, in nextState);
                 currentLifecycle = nextLifecycle;
 
                 if (next.TimeLeft <= 0)
