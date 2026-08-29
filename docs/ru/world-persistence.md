@@ -19,15 +19,16 @@ world.runtime-world  disposable TerraRuntime startup snapshot
 
 Cold startup использует canonical `.wld` loader:
 
-```text
-stable source .wld
-   -> file/envelope validation
-   -> header/section validation
-   -> tile и preserved-state parsing
-   -> runtime WorldTileStore и связанное state
-   -> post-load preparation
-   -> optional .runtime-world rebuild
-   -> WorldReady / NetworkReady
+```mermaid
+flowchart TD
+    A["Stable source .wld"] --> B["File и envelope validation"]
+    B --> C["Header и section validation"]
+    C --> D["Tiles и preserved-state parsing"]
+    D --> E["Runtime WorldTileStore и связанное state"]
+    E --> F["Post-load preparation"]
+    F --> G["Optional .runtime-world rebuild"]
+    G --> H["WorldReady"]
+    H --> I["NetworkReady"]
 ```
 
 TerraRuntime привязан к проверенному поведению world format Terraria 1.4.5.8 в пределах текущей реализации. То, что неизвестный/newer world structurally readable, ещё не означает, что его безопасно переписывать.
@@ -56,25 +57,12 @@ Snapshot не является migration format. Несовместимый head
 
 ## 5. Layout snapshot
 
-Текущий runtime snapshot использует:
-
-```text
-128-byte fixed header
-embedded canonical .wld checkpoint
-tile shard 0
-tile shard 1
-...
-tile shard N
-shard integrity table
-LIQSTATE trailer
-active liquid entries
-buffered liquid entries
-```
+Текущий runtime snapshot содержит fixed header размером \(128\ \mathrm{B}\), embedded canonical `.wld` checkpoint, tile shards, shard integrity table, `LIQSTATE` trailer и active/buffered liquid entries.
 
 Важные свойства:
 
-- normalized `WorldTile` disk records имеют фиксированный 16-byte layout;
-- tile shards рассчитаны примерно на 16 MiB;
+- normalized `WorldTile` disk records имеют фиксированный layout \(16\ \mathrm{B}\);
+- tile shards рассчитаны примерно на \(16\ \mathrm{MiB}\);
 - shard reads используют bounded positional `RandomAccess` I/O;
 - conservative default допускает до четырёх одновременных tile-shard reads;
 - embedded canonical data, tile shards и liquid payload проходят integrity checks до публикации.
@@ -83,12 +71,7 @@ buffered liquid entries
 
 ## 6. Warm-start validity
 
-Cheap source stamp сейчас включает:
-
-```text
-source .wld byte length
-source .wld LastWriteTimeUtc
-```
+Cheap source stamp сейчас включает byte length source `.wld` и его `LastWriteTimeUtc`.
 
 Runtime snapshot принимается только если source stamp остаётся совместимым и все внутренние integrity/layout checks успешны.
 
@@ -131,28 +114,23 @@ Runtime snapshot сохраняет:
 
 ## 9. Архитектура live save
 
-Live world persistence принадлежит runtime и пересекает authoritative boundary в два этапа:
+Live world persistence принадлежит runtime. Mutable state захватывается только на authoritative boundary, а serialization и disk I/O вынесены из game loop.
 
-```text
-any thread: RequestSave / TryRequestSave
-          |
-          v
-только flag, без чтения world state
-          |
-          v
-authoritative Tick
-          |
-          +--> bounded tile-shadow synchronization
-          +--> capture chest/clock state
-          +--> detached save snapshot
-          |
-          v
-background save coordinator
-          |
-          +--> serialize/rewrite
-          +--> temporary file
-          +--> flush
-          +--> atomic replace
+```mermaid
+flowchart TD
+    A["Любой thread<br/>RequestSave / TryRequestSave"] --> B["Установка save-request flag<br/>без чтения mutable world"]
+    B --> C["Authoritative game-loop Tick"]
+    C --> D["Bounded tile-shadow synchronization"]
+    C --> E["Capture chests, signs и world clock"]
+    D --> F["Detached immutable save snapshot"]
+    E --> F
+    F --> G["Background WorldSaveCoordinator"]
+    G --> H["Serialization canonical .wld rewrite"]
+    H --> I["Same-directory temporary file"]
+    I --> J["Flush file data в stable storage"]
+    J --> K["Atomic replace / move"]
+    K --> L["Linux: fsync metadata родительского каталога"]
+    L --> M["Durable canonical checkpoint"]
 ```
 
 Caller с другого thread не делает snapshot mutable world самостоятельно. Он просит authoritative owner сформировать snapshot в безопасной commit point.
@@ -161,7 +139,7 @@ Caller с другого thread не делает snapshot mutable world сам�
 
 Копирование всего tile array за один save tick создало бы ненужную large-world pause. Текущий save service поддерживает save shadow и синхронизирует его bounded section increments.
 
-Default synchronization budget: **4 sections на authoritative tick**.
+Default synchronization budget: \(4\ \text{sections/tick}\).
 
 Save state различает:
 
@@ -174,11 +152,12 @@ Failed section snapshot requeue'ится. Save readiness определяетс�
 
 ## 11. Что live save сейчас переписывает
 
-Текущий authoritative save path имеет явную поддержку runtime-owned:
+Текущий authoritative save path имеет явную production-поддержку runtime-owned:
 
 - tile state;
 - chest state;
-- world clock fields, которые сейчас умеет patcher header.
+- sign state;
+- world clock fields, которые умеет header patcher.
 
 Остальные canonical world sections намеренно сохраняются из validated source checkpoint вместо регенерации guessed code.
 
@@ -203,33 +182,30 @@ Runtime предоставляет scheduler/save status, включая:
 
 Такой state подходит и для TUI/operations surface, потому что UI не получает mutable world collections.
 
-## 13. Atomic replacement
+## 13. Atomic и crash-durable publication
 
-Успешный save публикуется только после завершения serialization во временный destination и atomic replacement.
+`AtomicSaveFileWriter` записывает каждую замену в same-directory temporary file. Temporary file полностью сериализуется, проходит async flush, а затем синхронный `Flush(flushToDisk: true)` до изменения canonical destination.
 
-Целевой invariant:
+Для существующего мира publication использует `File.Replace`; для первого save используется `File.Move`. В обоих случаях canonical path меняется только после того, как полный payload уже существует во временном файле.
 
-```text
-old valid checkpoint
-   OR
-new complete checkpoint
-```
+На Linux после успешного replace/move дополнительно открывается родительский каталог и вызывается `fsync`. Это необходимо потому, что flush содержимого файла сам по себе не гарантирует durability изменения directory entry при внезапной потере питания. Поэтому успешный Linux save имеет два durability barrier:
 
-а не:
+1. contents файла flushed до publication;
+2. metadata родительского каталога flushed после publication.
 
-```text
-half-written destination после crash
-```
+`WorldFileAtomicPublisher`, который публикует новый canonical world после world generation, использует тот же контракт: file flush до rename и Linux parent-directory `fsync` после него.
 
-Failure до atomic replacement должен оставлять предыдущий canonical world recoverable.
+Publication invariant: canonical path видит либо предыдущий complete checkpoint, либо новый complete checkpoint, но никогда не partially serialized destination.
 
-## 14. Shutdown save
+Process, убитый до publication, может оставить random-name `.tmp`, однако canonical world при этом не заменяется. Cleanup orphan temp является отдельной housekeeping-задачей и не нужен для определения canonical checkpoint.
 
-После остановки authoritative owner mutable state больше не меняется. Persistence service может synchronously drain remaining tile-shadow work без нарушения single-writer ownership.
+## 14. Shutdown и termination save
 
-После этого final authoritative image queued, а save coordinator завершается до окончания persistence shutdown.
+`Ctrl+C` и POSIX `SIGTERM` входят в один graceful shutdown path. На non-Windows host регистрирует `PosixSignal.SIGTERM`, отменяет runtime shutdown token, дренирует принятые connection/game-loop операции, останавливает authoritative owner, снимает final save image и ждёт завершения save coordinator.
 
-Ordering goal: более старый background save не должен перезаписать более новый final authoritative state.
+Именно этот path ожидается от обычных service managers и container runtimes. `SIGKILL` приложение обработать не может, поэтому для него проверяется не shutdown hook, а atomic-save crash invariant.
+
+Ordering contract: более старый background save не должен перезаписать более новый final authoritative state.
 
 ## 15. `--save-wld`
 
@@ -285,10 +261,21 @@ Persistence behavior проверяется unit/integration tests и dedicated 
 - liquid snapshot tests;
 - preserved-section tests;
 - save coordinator/coalescing tests;
-- authoritative tile/chest save service tests;
+- authoritative tile/chest/sign/clock save-service tests;
 - world patch round-trip checks;
 - official Terraria world generation/load workflows;
-- live chest persistence probes.
+- live chest persistence probes;
+- atomic writer tests и process-level `SIGKILL` crash probe.
+
+Live persistence proof проходит полный маршрут: world, созданный official TerrariaServer 1.4.5.8, live packet-32 chest mutation, graceful termination TerraRuntime, exact `.wld` verification, restart TerraRuntime, reload/save официальным TerrariaServer и финальная exact verification.
+
+`Authoritative World Save` run `33266509632` дополнительно убивает writer process через `SIGKILL` в момент, когда он остановлен до publication. Exact CI result:
+
+```text
+atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true
+```
+
+Это доказывает pre-publication process-crash contract: существующий canonical destination остаётся byte-for-byte неизменным, первый save не становится видимым частично, а следующий нормальный save по-прежнему успешно commit'ится.
 
 World-format changes требуют независимого evidence на real Terraria 1.4.5.8 worlds или official server layout. Self-generated round trip сам по себе не доказывает compatibility.
 
@@ -299,7 +286,9 @@ World-format changes требуют независимого evidence на real 
 - TerraRuntime ещё не реализует каждый field/section полного fresh vanilla `WorldFileWriter`;
 - future gameplay systems, включая progression/events/housing/tile entities, потребуют explicit persistence integration по мере перехода в authoritative state;
 - runtime snapshot layout намеренно disposable и не является stable external storage API;
-- incremental/shadow persistence ещё может меняться после profiling больших миров;
+- automatic backup rotation/rollback policy не является тем же самым, что atomic-save guarantee, и остаётся отдельной задачей;
+- orphaned temporary files после неотлавливаемого process death безопасны для выбора canonical world, но dedicated startup cleanup policy для них пока отсутствует;
+- power-loss durability на Linux явно усилен parent-directory `fsync`; эквивалентные filesystem semantics за пределами этого path зависят от платформы;
 - `.wld` остаётся canonical recovery boundary.
 
 ## 20. Checklist изменения world/persistence
@@ -309,7 +298,9 @@ World/persistence change не завершён, пока по необходим
 - ownership captured state определён явно;
 - game-thread snapshot work bounded;
 - background I/O не читает mutable authoritative collections напрямую;
-- replacement/recovery behavior протестирован;
+- temporary-file и atomic-publication behavior протестированы;
+- termination behavior проверен на правильном слое (`SIGTERM` для graceful shutdown, `SIGKILL` для pre-publication crash safety);
+- durable publication содержит необходимый filesystem metadata barrier на поддерживаемых платформах;
 - для format-sensitive changes есть evidence на real `.wld`;
 - runtime-cache corruption безопасно падает обратно на `.wld`;
 - эта страница и `docs/en/world-persistence.md` обновлены вместе.
