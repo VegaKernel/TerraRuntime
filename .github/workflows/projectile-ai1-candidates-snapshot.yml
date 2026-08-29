@@ -1,0 +1,107 @@
+name: Projectile AI1 Candidates Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/projectile-ai1-candidates-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Extract pinned simple aiStyle1 candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/ai1 .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected_sha256" ]]; then assembly="$candidate"; fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          assembly_dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Projectile "$assembly" > artifacts/ai1/projectile.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ProjectileID "$assembly" > artifacts/ai1/projectile-id.cs
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source=Path('artifacts/ai1/projectile.cs').read_text(encoding='utf-8')
+          ids=Path('artifacts/ai1/projectile-id.cs').read_text(encoding='utf-8')
+          def compact(x): return ' '.join(x.split())
+          def method(src,name):
+              m=re.search(rf'(?m)^[ \t]*(?:public|private|protected|internal)\b[^\n;{{]*\b{re.escape(name)}\s*\([^\n)]*\)[^\n;{{]*$',src)
+              if not m: raise SystemExit(f'method not found: {name}')
+              o=src.find('{',m.end()); d=0; ins=inc=esc=False
+              for i in range(o,len(src)):
+                  c=src[i]
+                  if esc:esc=False;continue
+                  if c=='\\' and (ins or inc):esc=True;continue
+                  if c=='"' and not inc:ins=not ins;continue
+                  if c=="'" and not ins:inc=not inc;continue
+                  if ins or inc:continue
+                  if c=='{':d+=1
+                  elif c=='}':
+                      d-=1
+                      if d==0:return src[m.start():i+1]
+              raise SystemExit(f'unterminated: {name}')
+          def blocks(src):
+              s=compact(src); out=[]
+              for m in re.finditer(r'(?:else if|if) \(([^)]*type[^)]*)\) \{',s):
+                  opening=s.find('{',m.start()); depth=0; end=None
+                  for i in range(opening,len(s)):
+                      if s[i]=='{':depth+=1
+                      elif s[i]=='}':
+                          depth-=1
+                          if depth==0:end=i+1;break
+                  if end: out.append((m.group(1),s[m.start():end]))
+              return out
+          def has_exact(src,t):
+              s=compact(src)
+              return bool(re.search(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|(?<!\d){t}\s*(?:==|!=)\s*type(?!\d)',s))
+          def exact_blocks(src,t):
+              matched=[]
+              for condition,block in blocks(src):
+                  if re.search(rf'(?<!\d)type\s*(?:==|!=)\s*{t}(?!\d)|(?<!\d){t}\s*(?:==|!=)\s*type(?!\d)',condition):
+                      matched.append(block)
+              return ' | '.join(matched) if matched else '<none>'
+          names={int(v):n for n,v in re.findall(r'public const short\s+([A-Za-z0-9_]+)\s*=\s*(\d+)\s*;',ids)}
+          defaults=method(source,'SetDefaults'); ai=method(source,'AI'); update=method(source,'Update')
+          collision=method(source,'GetCollisionParams'); movement=method(source,'HandleMovement'); kill=method(source,'Kill')
+          candidates={}
+          for condition,block in blocks(defaults):
+              if 'aiStyle = 1;' not in block: continue
+              type_ids=[int(v) for v in re.findall(r'type == (\d+)',condition)]
+              for t in type_ids:candidates.setdefault(t,block)
+          lines=[]
+          for t in sorted(candidates):
+              if any(has_exact(src,t) for src in [ai,update,collision,movement]): continue
+              kill_block=exact_blocks(kill,t)
+              tokens=[n for n in ['NewProjectile','KillTile','PlaceTile','NewItem','NewNPC','SendData','netUpdate','Damage()','Explosion','WorldGen.'] if n in kill_block]
+              lines.extend([
+                f'type={t} name={names.get(t,"<unnamed>")}',
+                'defaults_block='+candidates[t],
+                'kill_block='+kill_block,
+                'kill_authoritative_tokens='+(','.join(tokens) if tokens else '<none>'),
+                '---'
+              ])
+          Path('artifacts/ai1/simple-ai1-candidates.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: projectile-simple-ai1-candidates
+          path: artifacts/ai1/simple-ai1-candidates.txt
+          retention-days: 1
