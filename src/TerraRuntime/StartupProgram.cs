@@ -180,7 +180,7 @@ public static class StartupProgram
 
             case RuntimeWorldCreationPersistenceStatus.GenerationFailed when result.Creation is { } creation:
                 Console.Error.WriteLine(
-                    $"Generation execution failed: {creation.CandidateResult.Execution.Status}.");
+                    $"Generation execution failed: {creation.Generation.Execution?.Status}.");
                 break;
 
             case RuntimeWorldCreationPersistenceStatus.FinalizationFailed when result.Creation is { } creation:
