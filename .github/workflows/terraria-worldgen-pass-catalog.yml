@@ -106,6 +106,7 @@ jobs:
             --unified-random artifacts/source-contract/unified-random.cs \
             --gen-base artifacts/source-contract/gen-base.cs \
             --world-generator artifacts/source-contract/world-generator.cs \
+            --world-gen artifacts/source-contract/world-gen.cs \
             --output artifacts/source-contract/worldgen-rng-contract.txt
 
       - name: Verify runtime catalog against pinned fingerprint
