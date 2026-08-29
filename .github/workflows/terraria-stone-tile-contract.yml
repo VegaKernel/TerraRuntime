@@ -1,0 +1,51 @@
+name: Terraria Stone Tile Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/ci/probe_stone_tile.py'
+      - '.github/workflows/terraria-stone-tile-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-stone-tile-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stone-tile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Inspect pinned Terraria 1.4.5.8 Stone semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/source-contract .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+          expected="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected" ]]; then assembly="$candidate"; fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          [[ -n "$assembly" ]]
+          assembly_dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" > artifacts/source-contract/item.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" > artifacts/source-contract/item-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.TileID "$assembly" > artifacts/source-contract/tile-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Main "$assembly" > artifacts/source-contract/main.cs
+          python3 tools/ci/probe_stone_tile.py \
+            --world-gen artifacts/source-contract/world-gen.cs \
+            --item artifacts/source-contract/item.cs \
+            --item-id artifacts/source-contract/item-id.cs \
+            --tile-id artifacts/source-contract/tile-id.cs \
+            --main artifacts/source-contract/main.cs
