@@ -20,7 +20,7 @@ public sealed class TypedProtocolDecoderFuzzTests
             {
                 // Every decoder sees every payload length in the bounded fuzz window repeatedly.
                 // This guarantees exact-length codecs exercise their parser paths instead of relying
-                // on random selection to happen to land on 5/9/etc. bytes.
+                // on random selection to happen to land on 5/8/9/etc. bytes.
                 int payloadLength = sample % (MaximumPayloadLength + 1);
                 var payload = new byte[payloadLength];
                 for (int index = 0; index < payload.Length; index++)
@@ -52,6 +52,7 @@ public sealed class TypedProtocolDecoderFuzzTests
             DecoderKind.PlayerEquipment => (byte)TerrariaMessageId.SyncEquipment,
             DecoderKind.PlayerHealth => (byte)TerrariaMessageId.PlayerHp,
             DecoderKind.PlayerMana => (byte)TerrariaMessageId.PlayerMana,
+            DecoderKind.TileManipulation => (byte)TerrariaMessageId.TileManipulation,
             DecoderKind.ProjectileUpdate => (byte)TerrariaMessageId.ProjectileNew,
             DecoderKind.ProjectileDestroy => (byte)TerrariaMessageId.ProjectileDestroy,
             DecoderKind.WorldItemDrop => (byte)TerrariaMessageId.WorldItemDrop,
@@ -125,6 +126,12 @@ public sealed class TypedProtocolDecoderFuzzTests
                 Assert.True(Enum.IsDefined(result));
                 break;
             }
+            case DecoderKind.TileManipulation:
+            {
+                TerrariaTileManipulationDecodeResult result = TerrariaTileManipulationCodec.TryDecode(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
             case DecoderKind.ProjectileUpdate:
             {
                 TerrariaProjectileDecodeResult result = TerrariaProjectileDecoder.TryDecodeUpdate(frame, out _);
@@ -184,6 +191,7 @@ public sealed class TypedProtocolDecoderFuzzTests
         PlayerEquipment,
         PlayerHealth,
         PlayerMana,
+        TileManipulation,
         ProjectileUpdate,
         ProjectileDestroy,
         WorldItemDrop,
