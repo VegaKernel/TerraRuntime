@@ -1,18 +1,24 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts.WorldGeneration;
+using TerraRuntime.World;
 
 namespace TerraRuntime;
 
 /// <summary>
-/// Runtime-owned generators are registered explicitly rather than discovered. The flat generator is intentionally a
-/// minimal deterministic baseline, not an approximation of Terraria's vanilla WorldGen pipeline.
+/// Runtime-owned generators are registered explicitly rather than discovered. Flat remains the tiny deterministic
+/// test/baseline profile; vanilla is the runtime-owned Terraria 1.4.5.8 generation profile.
 /// </summary>
 internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorSource
 {
     public static BuiltInWorldGeneratorSource Instance { get; } = new();
 
     private readonly FlatWorldGenerationProvider flat = new();
-    private readonly WorldGeneratorId[] ids = [FlatWorldGenerationProvider.GeneratorId];
+    private readonly VanillaWorldGenerationProvider1458 vanilla = new();
+    private readonly WorldGeneratorId[] ids =
+    [
+        VanillaWorldGenerationProvider1458.GeneratorId,
+        FlatWorldGenerationProvider.GeneratorId
+    ];
 
     private BuiltInWorldGeneratorSource()
     {
@@ -22,6 +28,12 @@ internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorS
 
     public bool TryResolveWorldGenerator(WorldGeneratorId id, out IWorldGenerationProvider? provider)
     {
+        if (id == vanilla.Id)
+        {
+            provider = vanilla;
+            return true;
+        }
+
         if (id == flat.Id)
         {
             provider = flat;
