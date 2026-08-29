@@ -161,7 +161,7 @@ internal sealed class RuntimeOverviewDashboard : View
         serverFrame.X = Pos.Right(consoleFrame);
         serverFrame.Y = 0;
         serverFrame.Width = Dim.Fill();
-        serverFrame.Height = 6;
+        serverFrame.Height = 7;
 
         performanceFrame.X = Pos.Right(consoleFrame);
         performanceFrame.Y = Pos.Bottom(serverFrame);
