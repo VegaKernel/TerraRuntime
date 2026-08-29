@@ -7,6 +7,7 @@ on:
       - 'src/TerraRuntime.Contracts/Gameplay/VanillaProjectile*.cs'
       - 'src/TerraRuntime/VanillaProjectile*.cs'
       - 'tools/ci/probe_projectile_tile_cut.py'
+      - 'tools/ci/probe_projectile_ai3.py'
       - '.github/workflows/terraria-source-contract.yml'
   workflow_dispatch:
 
@@ -46,7 +47,7 @@ jobs:
           --tool-path .tools
           --version 11.0.0.9375
 
-      - name: Probe projectile tile-cut source contract
+      - name: Probe projectile source contracts
         shell: bash
         run: |
           set -euo pipefail
@@ -89,3 +90,6 @@ jobs:
             --worldgen artifacts/source-contract/worldgen.cs \
             --main artifacts/source-contract/main.cs \
             --tile-id artifacts/source-contract/tile-id.cs
+
+          python3 tools/ci/probe_projectile_ai3.py \
+            --projectile artifacts/source-contract/projectile.cs
