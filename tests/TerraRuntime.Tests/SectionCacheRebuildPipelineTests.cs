@@ -62,7 +62,7 @@ public sealed class SectionCacheRebuildPipelineTests
             if (call == 1)
             {
                 firstEncodeStarted.Set();
-                releaseFirstEncode.Wait();
+                releaseFirstEncode.Wait(TestContext.Current.CancellationToken);
             }
 
             byte[] frame =
@@ -94,7 +94,7 @@ public sealed class SectionCacheRebuildPipelineTests
         world.Tiles.Set(x, y, tile);
         long firstRevision = world.Tiles.GetSectionVersion(section);
         pipeline.Tick();
-        Assert.True(firstEncodeStarted.Wait(TimeSpan.FromSeconds(5)));
+        Assert.True(firstEncodeStarted.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
 
         tile = world.Tiles.Get(x, y);
         tile.Flags ^= WorldTileFlags.WireGreen;
@@ -128,7 +128,7 @@ public sealed class SectionCacheRebuildPipelineTests
         SectionCacheRebuildResult Encode(WorldSectionTileSnapshot snapshot)
         {
             encodeStarted.Set();
-            releaseEncode.Wait();
+            releaseEncode.Wait(TestContext.Current.CancellationToken);
             return new SectionCacheRebuildResult(
                 snapshot.Section,
                 snapshot.Revision,
@@ -151,7 +151,7 @@ public sealed class SectionCacheRebuildPipelineTests
         tile.Flags ^= WorldTileFlags.WireYellow;
         world.Tiles.Set(x, y, tile);
         pipeline.Tick();
-        Assert.True(encodeStarted.Wait(TimeSpan.FromSeconds(5)));
+        Assert.True(encodeStarted.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
 
         tile = world.Tiles.Get(x, y);
         tile.Flags ^= WorldTileFlags.WireBlue;
@@ -186,7 +186,7 @@ public sealed class SectionCacheRebuildPipelineTests
             if (predicate(snapshot))
                 return snapshot;
 
-            await Task.Delay(10);
+            await Task.Delay(10, TestContext.Current.CancellationToken);
         }
 
         SectionCacheRebuildPipelineSnapshot final = pipeline.Snapshot;
