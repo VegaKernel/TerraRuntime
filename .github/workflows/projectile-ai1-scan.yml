@@ -75,13 +75,10 @@ jobs:
           def exact_contexts(text, raw_type, radius=900):
               compact = ' '.join(text.split())
               p = re.compile(rf'(?<!\d)type\s*(?:==|!=)\s*{raw_type}(?!\d)|\bcase\s+{raw_type}\s*:')
-              out=[]
-              for m in p.finditer(compact):
-                  out.append(compact[max(0,m.start()-radius):min(len(compact),m.end()+radius)])
-              return out
+              return [compact[max(0,m.start()-radius):min(len(compact),m.end()+radius)] for m in p.finditer(compact)]
 
           def extract_wind_initializer(text):
-              m = re.search(r'WindPhysicsImmunity\s*=\s*Factory\.CreateBoolSet\s*\(', text)
+              m = re.search(r'WindPhysicsImmunity\s*=\s*Factory\.CreateCustomSet<bool\?>\s*\(', text)
               if not m:
                   lines = [' '.join(line.split()) for line in text.splitlines() if 'WindPhysicsImmunity' in line]
                   raise SystemExit('wind initializer not found; lines=' + ' | '.join(lines[:5]))
@@ -104,8 +101,8 @@ jobs:
                       if d == 0: return text[m.start():i+1]
               raise SystemExit('unterminated wind initializer')
 
-          id_match = re.search(r'public const (?:short|int)\s+BoneArrowFromMerchant\s*=\s*474\s*;', ids)
-          if not id_match: raise SystemExit('ProjectileID.BoneArrowFromMerchant != 474')
+          if not re.search(r'public const (?:short|int)\s+BoneArrowFromMerchant\s*=\s*474\s*;', ids):
+              raise SystemExit('ProjectileID.BoneArrowFromMerchant != 474')
 
           defaults = extract_method(src, 'SetDefaults')
           dm = re.search(r'(?:(?:else\s+)?if)\s*\(\s*type\s*==\s*474\s*\)', defaults)
@@ -117,28 +114,24 @@ jobs:
           for forbidden in ('tileCollide = false;', 'ignoreWater = true;', 'extraUpdates ='):
               if forbidden in defaults_block: raise SystemExit(f'type 474 unexpected default: {forbidden}')
 
-          report=[]
-          report.append('projectile_id=BoneArrowFromMerchant:474')
-          report.append('defaults=' + ' '.join(defaults_block.split()))
-
+          report=['projectile_id=BoneArrowFromMerchant:474', 'defaults=' + ' '.join(defaults_block.split())]
           for name in ('AI_001','AI','Update','HandleMovement','GetCollisionParams'):
               contexts=exact_contexts(extract_method(src,name), target)
               if contexts: raise SystemExit(f'type 474 unexpectedly special in {name}: {len(contexts)}')
               report.append(f'{name}_type474=<none>')
 
-          kill = extract_method(src, 'Kill')
-          kill_contexts = exact_contexts(kill, target, radius=1300)
+          kill_contexts = exact_contexts(extract_method(src, 'Kill'), target, radius=1300)
           if len(kill_contexts) != 1: raise SystemExit(f'expected one type474 Kill context, got {len(kill_contexts)}')
           report.append('kill_context=' + kill_contexts[0])
 
           can_cut = ' '.join(extract_method(src, 'CanCutTiles').split())
-          if exact_contexts(can_cut, target, radius=200):
-              raise SystemExit('type474 has explicit CanCutTiles branch')
+          if exact_contexts(can_cut, target, radius=200): raise SystemExit('type474 has explicit CanCutTiles branch')
           report.append('can_cut_tiles=' + can_cut)
 
           wind = ' '.join(extract_wind_initializer(ids).split())
-          if re.search(r'(?<!\d)474(?!\d)', wind):
-              raise SystemExit('type474 unexpectedly listed in WindPhysicsImmunity')
+          if not wind.startswith('WindPhysicsImmunity') or 'CreateCustomSet<bool?>(null' not in wind:
+              raise SystemExit('unexpected wind table default semantics')
+          if re.search(r'(?<!\d)474(?!\d)', wind): raise SystemExit('type474 unexpectedly listed in WindPhysicsImmunity')
           report.append('wind_physics_immunity=' + wind)
 
           out='\n'.join(report)+'\n'
