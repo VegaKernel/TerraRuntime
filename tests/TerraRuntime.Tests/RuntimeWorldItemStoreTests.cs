@@ -83,6 +83,84 @@ public sealed class RuntimeWorldItemStoreTests
         Assert.Equal(0, store.ActiveCount);
     }
 
+    [Fact]
+    public void Reserved_drop_is_invisible_until_exact_commit_and_publishes_once()
+    {
+        var sink = new RecordingCommitSink();
+        var store = new RuntimeWorldItemStore(sink);
+        WorldItemDropStateUpdate drop = CreateDrop(itemNetId: 2, stack: 1);
+
+        Assert.True(store.TryReserveDrop(in drop, out WorldItemDropReservation reservation));
+        Assert.True(reservation.IsAssigned);
+        Assert.Equal((short)0, reservation.Slot);
+        Assert.Equal(0, store.ActiveCount);
+        Assert.False(store.TryGetActive(reservation.Slot, out _));
+        Span<WorldItemSnapshot> beforeCommit = stackalloc WorldItemSnapshot[RuntimeWorldItemStore.VanillaCapacity];
+        Assert.Equal(0, store.CopyActive(beforeCommit));
+        Assert.Equal(0, sink.CommitCount);
+
+        Assert.True(store.TryCommitReservedDrop(in reservation, out WorldItemSnapshot committed));
+        Assert.Equal(1, store.ActiveCount);
+        Assert.Equal(reservation.Slot, committed.Handle.Slot);
+        Assert.Equal(reservation.Generation, committed.Handle.Generation);
+        Assert.Equal((ulong)1, committed.Revision.Value);
+        Assert.Equal(1, sink.CommitCount);
+        Assert.Equal(WorldItemStateCommitKind.Drop, sink.LastKind);
+        Assert.Equal(committed.Handle, sink.LastSnapshot.Handle);
+        Assert.False(store.TryCommitReservedDrop(in reservation, out _));
+        Assert.Equal(1, sink.CommitCount);
+    }
+
+    [Fact]
+    public void Reserved_slot_cannot_be_stolen_and_release_consumes_generation_without_publish()
+    {
+        var sink = new RecordingCommitSink();
+        var store = new RuntimeWorldItemStore(sink);
+        WorldItemDropStateUpdate drop = CreateDrop(itemNetId: 2, stack: 1);
+        WorldItemStateUpdate explicitUpdate = CreateUpdate(itemNetId: 2, stack: 1);
+
+        Assert.True(store.TryReserveDrop(in drop, out WorldItemDropReservation reservation));
+        Assert.Equal((short)0, reservation.Slot);
+        Assert.False(store.TryApplyDrop(reservation.Slot, in drop, out _));
+        Assert.False(store.TryUpsert(reservation.Slot, in explicitUpdate, out _));
+
+        Assert.True(store.TryAllocateDrop(in drop, out WorldItemSnapshot other));
+        Assert.Equal((short)1, other.Handle.Slot);
+        Assert.Equal(1, sink.CommitCount);
+
+        Assert.True(store.TryReleaseDropReservation(in reservation));
+        Assert.False(store.TryReleaseDropReservation(in reservation));
+        Assert.Equal(1, sink.CommitCount);
+
+        Assert.True(store.TryAllocateDrop(in drop, out WorldItemSnapshot reused));
+        Assert.Equal((short)0, reused.Handle.Slot);
+        Assert.Equal((ulong)2, reused.Handle.Generation.Value);
+        Assert.Equal(2, sink.CommitCount);
+    }
+
+    [Fact]
+    public void Reserving_all_vanilla_slots_blocks_further_allocation_without_activating_items()
+    {
+        var store = new RuntimeWorldItemStore();
+        WorldItemDropStateUpdate drop = CreateDrop(itemNetId: 2, stack: 1);
+        var reservations = new WorldItemDropReservation[RuntimeWorldItemStore.VanillaCapacity];
+
+        for (int i = 0; i < reservations.Length; i++)
+        {
+            Assert.True(store.TryReserveDrop(in drop, out reservations[i]));
+            Assert.Equal((short)i, reservations[i].Slot);
+        }
+
+        Assert.Equal(0, store.ActiveCount);
+        Assert.False(store.TryReserveDrop(in drop, out _));
+        Assert.False(store.TryAllocateDrop(in drop, out _));
+
+        Assert.True(store.TryReleaseDropReservation(in reservations[137]));
+        Assert.True(store.TryAllocateDrop(in drop, out WorldItemSnapshot committed));
+        Assert.Equal((short)137, committed.Handle.Slot);
+        Assert.Equal((ulong)2, committed.Handle.Generation.Value);
+    }
+
     private static WorldItemStateUpdate CreateUpdate(short itemNetId, short stack) =>
         new(
             PositionX: 120f,
@@ -100,4 +178,32 @@ public sealed class RuntimeWorldItemStoreTests
             TimeToKeepReservation: 0,
             GrabDelayPlayer: byte.MaxValue,
             GrabDelayTime: 0);
+
+    private static WorldItemDropStateUpdate CreateDrop(short itemNetId, short stack) =>
+        new(
+            PositionX: 120f,
+            PositionY: 240f,
+            VelocityX: 1.5f,
+            VelocityY: -2f,
+            Stack: stack,
+            Prefix: 0,
+            Ownership: WorldItemOwnershipMode.None,
+            ItemNetId: itemNetId,
+            Shimmered: false,
+            ShimmerTime: 0f,
+            EnemyGrabDelayTime: 0);
+
+    private sealed class RecordingCommitSink : IWorldItemStateCommitSink
+    {
+        public int CommitCount { get; private set; }
+        public WorldItemStateCommitKind LastKind { get; private set; }
+        public WorldItemSnapshot LastSnapshot { get; private set; }
+
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        {
+            CommitCount++;
+            LastKind = kind;
+            LastSnapshot = snapshot;
+        }
+    }
 }
