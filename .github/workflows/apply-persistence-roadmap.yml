@@ -28,32 +28,36 @@ jobs:
 
           path = Path('docs/roadmap.md')
           text = path.read_text()
-          old = '''### Save pipeline
-
-- [ ] Snapshot required mutable state on the game loop.
-- [ ] Serialize/compress/write outside the game loop.
-- [x] Atomically replace the save only after successful completion.
-- [ ] Never block simulation on disk I/O except for a short bounded snapshot handoff.
-- [x] Permit only one save serialization at a time; coalesce redundant autosave requests rather than building a backlog.
-- [ ] Shutdown waits for background save work and writes the newest state last.
-- [ ] Regression-test vanilla world round trips and interrupted-save recovery.
-- [ ] Research an incremental shadow snapshot updated from dirty sections so large-world autosaves eventually avoid copying the complete tile array in one tick.
-'''
-          new = '''### Save pipeline
-
-- [x] Snapshot required mutable state on the authoritative game-loop owner.
-- [x] Serialize and write detached save snapshots outside the game loop.
-- [x] Atomically replace the canonical save only after successful complete serialization.
-- [x] Keep disk I/O off the simulation thread; tile-shadow synchronization uses a bounded default budget of \\(4\\ \\text{sections/tick}\\).
-- [x] Permit only one save serialization at a time; coalesce redundant autosave requests rather than building a backlog.
-- [x] Graceful shutdown (`Ctrl+C` / POSIX `SIGTERM`) stops the authoritative owner, captures the newest final state and waits for the save coordinator to commit it.
-- [x] Maintain the save tile shadow incrementally from dirty sections instead of copying the complete tile array in one save tick.
-- [x] Flush save contents before publication and, on Linux, `fsync` the parent directory after replace/move so the directory entry has an explicit durability barrier.
-- [x] Regression-test the pre-publication process-crash invariant with a real `SIGKILL`: an existing canonical save stays byte-identical, a first save stays hidden, and the next normal save can still commit (`Authoritative World Save` run `33267501627`).
-- [ ] Complete broad interrupted-save/crash recovery beyond the proven pre-publication atomicity invariant.
-- [ ] Add automatic known-good backup rotation plus validated rollback; atomic publication alone does not recover from a logically bad but complete checkpoint.
-- [ ] Add safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process.
-'''
+          old = "\n".join((
+              "### Save pipeline",
+              "",
+              "- [ ] Snapshot required mutable state on the game loop.",
+              "- [ ] Serialize/compress/write outside the game loop.",
+              "- [x] Atomically replace the save only after successful completion.",
+              "- [ ] Never block simulation on disk I/O except for a short bounded snapshot handoff.",
+              "- [x] Permit only one save serialization at a time; coalesce redundant autosave requests rather than building a backlog.",
+              "- [ ] Shutdown waits for background save work and writes the newest state last.",
+              "- [ ] Regression-test vanilla world round trips and interrupted-save recovery.",
+              "- [ ] Research an incremental shadow snapshot updated from dirty sections so large-world autosaves eventually avoid copying the complete tile array in one tick.",
+              "",
+          ))
+          new = "\n".join((
+              "### Save pipeline",
+              "",
+              "- [x] Snapshot required mutable state on the authoritative game-loop owner.",
+              "- [x] Serialize and write detached save snapshots outside the game loop.",
+              "- [x] Atomically replace the canonical save only after successful complete serialization.",
+              r"- [x] Keep disk I/O off the simulation thread; tile-shadow synchronization uses a bounded default budget of \\(4\\ \\text{sections/tick}\\).",
+              "- [x] Permit only one save serialization at a time; coalesce redundant autosave requests rather than building a backlog.",
+              "- [x] Graceful shutdown (`Ctrl+C` / POSIX `SIGTERM`) stops the authoritative owner, captures the newest final state and waits for the save coordinator to commit it.",
+              "- [x] Maintain the save tile shadow incrementally from dirty sections instead of copying the complete tile array in one save tick.",
+              "- [x] Flush save contents before publication and, on Linux, `fsync` the parent directory after replace/move so the directory entry has an explicit durability barrier.",
+              "- [x] Regression-test the pre-publication process-crash invariant with a real `SIGKILL`: an existing canonical save stays byte-identical, a first save stays hidden, and the next normal save can still commit (`Authoritative World Save` run `33267501627`).",
+              "- [ ] Complete broad interrupted-save/crash recovery beyond the proven pre-publication atomicity invariant.",
+              "- [ ] Add automatic known-good backup rotation plus validated rollback; atomic publication alone does not recover from a logically bad but complete checkpoint.",
+              "- [ ] Add safe orphan `.tmp` cleanup without deleting a temporary file owned by another live writer/process.",
+              "",
+          ))
           if old not in text:
               raise SystemExit('save pipeline roadmap anchor changed; refusing broad rewrite')
           path.write_text(text.replace(old, new, 1))
