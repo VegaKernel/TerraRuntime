@@ -114,6 +114,7 @@ internal static class StartupWorldCreationRequestParser
 
         var generation = new WorldGenerationRequest(generatorId, worldName!, seed, width, height)
         {
+            SeedText = seedValue,
             Options = new WorldGenerationOptions(gameMode, evil)
         };
         try
