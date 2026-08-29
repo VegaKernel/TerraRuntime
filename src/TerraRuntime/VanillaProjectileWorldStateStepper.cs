@@ -7,8 +7,9 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Production orchestration boundary for the source-backed TerrariaServer 1.4.5.8 projectile simulation slice.
-/// AI-family behavior is world-independent; world motion owns wind, liquids, collision, integration and the
-/// conservative CutTiles boundary. Combat/damage and irreversible world effects remain separate future slices.
+/// Runtime behavior-family selection is explicit and separate from source-backed aiStyle metadata. World motion
+/// owns wind, liquids, collision, integration and the conservative CutTiles boundary. Combat/damage and
+/// irreversible world effects remain separate slices.
 /// </summary>
 internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepper
 {
@@ -44,15 +45,19 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
-        if (!VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition))
+        if (!VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
+            !VanillaProjectileBehaviorProfileCatalog.TryGet(current.Type, out VanillaProjectileBehaviorProfile profile) ||
+            definition.AiStyle != profile.ExpectedAiStyle)
         {
             next = default;
             return false;
         }
 
-        // Projectile.Update deactivates non-boomerang projectiles crossing Main's inclusive world edges before AI.
-        // WorldTileStore dimensions map to Main.rightWorld/bottomWorld through the verified 16 px tile scale.
-        if (definition.AiStyle != VanillaProjectileAiStyles.Boomerang && IsOutsideWorld(in current, in definition))
+        // Projectile.Update deactivates ordinary projectiles crossing Main's inclusive world edges before AI.
+        // Exceptional families opt out explicitly in runtime behavior metadata instead of leaking aiStyle checks
+        // into world orchestration. WorldTileStore dimensions map to Main.rightWorld/bottomWorld through the
+        // verified 16 px tile scale.
+        if (!profile.ExemptFromPreAiWorldBounds && IsOutsideWorld(in current, in definition))
         {
             next = new ProjectileSimulationStepResult(
                 new ProjectileStateUpdate(
@@ -80,6 +85,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         if (!VanillaProjectileBehaviorStepper.TryStep(
                 in current,
                 in definition,
+                in profile,
                 in behaviorContext,
                 out VanillaProjectileBehaviorResult behavior))
         {
