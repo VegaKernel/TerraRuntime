@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
 
+# Fresh run includes CAS-staged actor controls and their concurrency stress tests.
 jobs:
   verify:
     runs-on: ubuntu-latest
