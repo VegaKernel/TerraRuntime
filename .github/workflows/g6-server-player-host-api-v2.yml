@@ -1,6 +1,6 @@
 name: Apply G6 server-player host API v2
 
-# Rerun after the footer world-id fixture baseline was repaired on main.
+# Rerun after restoring the lost tile/chest rewriter baseline on main.
 on:
   push:
     branches:
