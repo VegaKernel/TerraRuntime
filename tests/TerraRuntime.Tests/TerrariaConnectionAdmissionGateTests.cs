@@ -59,6 +59,32 @@ public sealed class TerrariaConnectionAdmissionGateTests
     }
 
     [Fact]
+    public void Full_server_rejections_still_consume_the_attempt_rate_budget()
+    {
+        var time = new ManualTimeProvider();
+        var gate = new TerrariaConnectionAdmissionGate(
+            maxConnections: 1,
+            maxAdmissionsPerWindow: 2,
+            admissionWindow: TimeSpan.FromSeconds(1),
+            timeProvider: time);
+
+        Assert.True(gate.TryAcquire(out TerrariaConnectionAdmissionGate.Lease? held));
+        Assert.False(gate.TryAcquire(out TerrariaConnectionAdmissionGate.Lease? capacityRejected));
+        Assert.False(gate.TryAcquire(out TerrariaConnectionAdmissionGate.Lease? rateRejected));
+
+        Assert.NotNull(held);
+        Assert.Null(capacityRejected);
+        Assert.Null(rateRejected);
+        Assert.Equal(1, gate.ActiveConnections);
+        Assert.Equal(1, gate.AcceptedConnections);
+        Assert.Equal(2, gate.RejectedConnections);
+        Assert.Equal(1, gate.CapacityRejectedConnections);
+        Assert.Equal(1, gate.RateRejectedConnections);
+
+        held.Dispose();
+    }
+
+    [Fact]
     public void Admission_rate_budget_resets_after_its_window()
     {
         var time = new ManualTimeProvider();
