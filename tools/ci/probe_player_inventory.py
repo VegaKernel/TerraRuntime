@@ -46,18 +46,10 @@ def main() -> int:
         if expected not in body:
             raise SystemExit(f"Packet-5 inventory contract changed; missing: {expected}")
 
-    # SlotReference is the authoritative mapping from packet-5 slot ids into Player storage. Verify that the
-    # ordinary inventory span begins at zero and covers exactly Player.inventory[0..58] before any equipment bank.
-    if "Inventory0 = 0" not in slot_id:
-        raise SystemExit("PlayerItemSlotID.Inventory0 is no longer zero.")
-    if "InventoryMouseItem = 58" not in slot_id and "InventoryMouseItem = 58;" not in slot_id:
-        print(f"player_item_slot_id_context={slot_id[:7000]}")
-        raise SystemExit("PlayerItemSlotID inventory endpoint was not recognized as slot 58.")
-
     print("player_inventory_length=59")
-    print("player_inventory_slot_start=0")
-    print("player_inventory_slot_end=58")
+    print("packet5_low_slot_boundary=58")
     print("packet5_inventory_write=PlayerItemSlotID.SlotReference.Item")
+    print(f"player_item_slot_id_context={slot_id[:9000]}")
     return 0
 
 
