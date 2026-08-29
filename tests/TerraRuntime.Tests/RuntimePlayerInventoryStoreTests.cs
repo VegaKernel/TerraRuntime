@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
@@ -57,6 +58,75 @@ public sealed class RuntimePlayerInventoryStoreTests
         Assert.True(store.TrySet(connection, in empty));
         Assert.True(store.TryGet(connection, lastInventorySlot, out captured));
         Assert.True(captured.IsEmpty);
+    }
+
+    [Fact]
+    public void Atomic_mutation_validates_the_whole_batch_before_changing_any_slot()
+    {
+        var store = new RuntimePlayerInventoryStore();
+        ConnectionHandle connection = Connection(connectionId: 1004, generation: 1);
+        Assert.True(store.TrySet(connection, Item(connection.Player.Slot, 0, 7, 1)));
+        Assert.True(store.TrySet(connection, Item(connection.Player.Slot, 1, 3, 2)));
+
+        RuntimePlayerInventoryMutation[] invalid =
+        [
+            new(0, new RuntimePlayerInventoryItem(new ItemTypeId(3), 1, default, 0)),
+            new(0, new RuntimePlayerInventoryItem(new ItemTypeId(4), 1, default, 0))
+        ];
+
+        Assert.False(store.TryApplyAtomic(connection, invalid));
+        Assert.True(store.TryGet(connection, 0, out RuntimePlayerInventoryItem first));
+        Assert.True(store.TryGet(connection, 1, out RuntimePlayerInventoryItem second));
+        Assert.Equal(1, first.ItemType.Value);
+        Assert.Equal((short)7, first.Stack);
+        Assert.Equal(2, second.ItemType.Value);
+        Assert.Equal((short)3, second.Stack);
+    }
+
+    [Fact]
+    public void Atomic_mutation_commits_multiple_slots_for_exact_connection_generation()
+    {
+        var store = new RuntimePlayerInventoryStore();
+        ConnectionHandle connection = Connection(connectionId: 1005, generation: 1);
+        Assert.True(store.TrySet(connection, Item(connection.Player.Slot, 0, 7, 1)));
+        Assert.True(store.TrySet(connection, Item(connection.Player.Slot, 1, 3, 2)));
+
+        RuntimePlayerInventoryMutation[] mutations =
+        [
+            new(0, default),
+            new(1, new RuntimePlayerInventoryItem(new ItemTypeId(3), 9, default, 0))
+        ];
+
+        Assert.True(store.TryApplyAtomic(connection, mutations));
+        Assert.True(store.TryGet(connection, 0, out RuntimePlayerInventoryItem first));
+        Assert.True(store.TryGet(connection, 1, out RuntimePlayerInventoryItem second));
+        Assert.True(first.IsEmpty);
+        Assert.Equal(3, second.ItemType.Value);
+        Assert.Equal((short)9, second.Stack);
+
+        Span<RuntimePlayerInventoryItem> copy = stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        Assert.True(store.TryCopyInventory(connection, copy));
+        Assert.True(copy[0].IsEmpty);
+        Assert.Equal(second, copy[1]);
+    }
+
+    [Fact]
+    public void Atomic_mutation_rejects_stale_generation_without_touching_current_owner()
+    {
+        var store = new RuntimePlayerInventoryStore();
+        ConnectionHandle current = Connection(connectionId: 1006, generation: 1);
+        ConnectionHandle stale = Connection(connectionId: 1007, generation: 2);
+        Assert.True(store.TrySet(current, Item(current.Player.Slot, 0, 7, 1)));
+
+        RuntimePlayerInventoryMutation[] mutation =
+        [
+            new(0, new RuntimePlayerInventoryItem(new ItemTypeId(2), 1, default, 0))
+        ];
+
+        Assert.False(store.TryApplyAtomic(stale, mutation));
+        Assert.True(store.TryGet(current, 0, out RuntimePlayerInventoryItem captured));
+        Assert.Equal(1, captured.ItemType.Value);
+        Assert.Equal((short)7, captured.Stack);
     }
 
     private static ConnectionHandle Connection(long connectionId, ulong generation)
