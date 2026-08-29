@@ -26,6 +26,7 @@ REQUIRED_MIRRORS = {
     "synchronization.md",
     "performance-runtime.md",
     "operations-tui.md",
+    "deployment-configuration.md",
     "observability-logging.md",
     "world-generation.md",
     "security.md",

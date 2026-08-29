@@ -16,8 +16,9 @@
 - [Загрузка мира и persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state и recovery.
 - [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.
 - [Synchronization и interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis и текущая passthrough policy.
-- [Performance и tick scheduling](performance-runtime.md) — 60 Hz authoritative loop, bounded mailbox/ingress/apply budgets, per-source fairness, missed-tick policy и правила performance evidence.
+- [Performance и tick scheduling](performance-runtime.md) — $60\,\mathrm{Hz}$ authoritative loop, bounded mailbox/ingress/apply budgets, per-source fairness, missed-tick policy и правила performance evidence.
 - [Operations и Terminal UI](operations-tui.md) — startup без аргументов, CLI defaults, lifecycle TUI, fallback console, telemetry и правила dashboard extensions.
+- [Развёртывание и конфигурация](deployment-configuration.md) — NativeAOT/CoreCLR packaging, runtime directories, CLI configuration, trusted host-module loading и текущие deployment limitations.
 - [Observability и logging](observability-logging.md) — bounded runtime telemetry/log buffers, текущее host-log behavior и незавершённый async structured logging target.
 - [World generation](world-generation.md) — provider/pass/workspace/RNG contracts, trusted-host registration и текущий non-vanilla flat baseline.
 - [Security и trust boundaries](security.md) — admission limits, rate/size bounds, failure isolation, persistence safety и незавершённая hardening work.

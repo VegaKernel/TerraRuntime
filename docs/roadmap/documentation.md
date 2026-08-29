@@ -23,6 +23,7 @@ docs/
 │   ├── synchronization.md
 │   ├── performance-runtime.md
 │   ├── operations-tui.md
+│   ├── deployment-configuration.md
 │   ├── observability-logging.md
 │   ├── world-generation.md
 │   ├── security.md
@@ -38,6 +39,7 @@ docs/
 │   ├── synchronization.md
 │   ├── performance-runtime.md
 │   ├── operations-tui.md
+│   ├── deployment-configuration.md
 │   ├── observability-logging.md
 │   ├── world-generation.md
 │   ├── security.md
@@ -129,7 +131,7 @@ Practical descriptions of supported external integration contracts, lifecycle, s
 
 ### Subsystem and engineering guides
 
-Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, performance/tick scheduling, operations/TUI, observability/logging, world generation, security and the project's testing/evidence discipline.
+Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, performance/tick scheduling, operations/TUI, deployment/configuration, observability/logging, world generation, security and the project's testing/evidence discipline.
 
 ### Roadmaps
 
@@ -190,6 +192,7 @@ The `--changed-base <sha>` form is used by CI when a concrete push/PR base is av
 - [x] Dedicated synchronization guide: sections, bootstrap/join, interest management and resync invariants.
 - [x] Dedicated performance/tick-runtime guide: $60\,\mathrm{Hz}$ schedule, command mailbox/ingress/apply budgets, per-source fairness, missed-deadline policy and measurement discipline.
 - [x] Dedicated operations/TUI guide: startup modes, dashboard model, telemetry and safe administrative operations.
+- [x] Dedicated deployment/configuration guide: NativeAOT/CoreCLR packaging, runtime directories, CLI configuration, trusted host-module deployment and explicit unsupported/reserved surfaces.
 - [x] Dedicated observability/logging guide: bounded current read models and telemetry, TUI consumption, and explicit separation from the incomplete async structured logging target.
 - [x] Dedicated worldgen guide: provider contracts, plan/pass lifecycle, workspace model and vanilla-worldgen status.
 - [x] Dedicated security guide: trust boundaries, budgets, rate limits, malformed input handling and failure isolation.
