@@ -668,6 +668,14 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         }
         if (snapshot.SectionCacheAvailable)
         {
+            rows[9].Text =
+                $"Pipeline    in-flight {snapshot.SectionCacheInFlight:N0}  submitted {snapshot.SectionCacheSubmitted:N0}  rejected {snapshot.SectionCacheRejected:N0}  " +
+                $"stale {snapshot.SectionCacheStaleResults:N0}  encode-fail {snapshot.SectionCacheEncodeFailures:N0}  publish-reject {snapshot.SectionCachePublishRejections:N0}  " +
+                $"encode {snapshot.SectionCacheTotalEncodeMilliseconds:F1} ms";
+            rows[12].Text =
+                $"On-demand   request {snapshot.SectionCacheOnDemandRequests:N0}  unique {snapshot.SectionCacheOnDemandUniqueRequests:N0}  " +
+                $"dedup {snapshot.SectionCacheOnDemandDeduplicatedRequests:N0}  pending {snapshot.SectionCacheOnDemandPendingRequests:N0}/{snapshot.SectionCacheOnDemandCapacity:N0}  " +
+                $"rejected {snapshot.SectionCacheOnDemandRejectedRequests:N0}  waits done/timeout {snapshot.SectionCacheWaitCompletions:N0}/{snapshot.SectionCacheWaitTimeouts:N0}";
             rows[13].Text = $"Sections    {snapshot.SectionCacheEntries:N0}/{snapshot.SectionCacheMaximumEntries:N0}  {FormatMebibytes(snapshot.SectionCacheBytes)}  dirty {snapshot.SectionCacheDirtyBacklog:N0}";
             rows[14].Text = $"Lookups     hit {snapshot.SectionCacheHits:N0}  miss {snapshot.SectionCacheMisses:N0}  stale {snapshot.SectionCacheStaleReads:N0}  waits {snapshot.SectionCacheWaits:N0}";
             rows[15].Text = $"Rebuild     queued {snapshot.SectionCachePendingWork:N0}  active {snapshot.SectionCacheActiveWorkers:N0}  published {snapshot.SectionCachePublished:N0}";
