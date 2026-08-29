@@ -91,17 +91,16 @@ A package is not considered safe merely because NativeAOT can link it. The exerc
 
 Keep the engine dependency graph deliberately boring:
 
-```text
-TerraRuntime
-  +-- .NET 11 BCL
-  +-- Multiplicity (temporary/owned protocol boundary)
-  +-- narrowly justified AOT-verified libraries only
+```mermaid
+flowchart TD
+    Terra["TerraRuntime"] --> BCL[".NET 11 BCL"]
+    Terra --> Multiplicity["Multiplicity\nowned protocol boundary"]
+    Terra --> Narrow["Narrowly justified AOT-verified libraries only"]
 
-Vega / external tooling
-  +-- databases
-  +-- Telegram / Discord / translation integrations
-  +-- dynamic plugins
-  +-- administration/business integrations
+    Vega["Vega / external tooling"] --> DB["Databases"]
+    Vega --> Integrations["Telegram / Discord / translation"]
+    Vega --> Plugins["Dynamic plugins"]
+    Vega --> Admin["Administration / business integrations"]
 ```
 
-The practical result of the TerraZ-Team audit is favorable: there is no large third-party dependency set that forces TerraRuntime back to CoreCLR. The packages that are clearly hostile to the NativeAOT goal are overwhelmingly part of the legacy TShock/TSAPI/plugin layer that TerraRuntime should not reference in the first place.
+The practical result of the TerraZ-Team audit is favorable: there is no large third-party dependency set that forces TerraRuntime back to CoreCLR. Packages clearly hostile to NativeAOT are overwhelmingly part of the legacy TShock/TSAPI/plugin layer that TerraRuntime should not reference.
