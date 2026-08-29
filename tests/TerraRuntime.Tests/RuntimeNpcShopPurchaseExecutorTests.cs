@@ -131,6 +131,7 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
     {
         private readonly ShopId shopId = new("test:shop");
         private readonly ShopOfferId offerId = new("test:dirt");
+        private readonly NpcShopRegistrationLease shopLease;
 
         public Fixture(GameplayArchetypeId? shopArchetypeId = null, short offerStack = 1)
         {
@@ -152,7 +153,8 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
             archetypes.CommitPending();
             var spawner = new RuntimeNpcArchetypeSpawner(Npcs, archetypes, NpcIdentities);
             var spawn = new NpcArchetypeSpawnRequest(VendorArchetypeId, Slot: 0, PositionX: 100f, PositionY: 100f);
-            Assert.True(spawner.TrySpawn(in spawn, out Vendor));
+            Assert.True(spawner.TrySpawn(in spawn, out NpcSnapshot vendor));
+            Vendor = vendor;
 
             Shops = new RuntimeNpcShopCatalogRegistry();
             GameplayArchetypeId catalogArchetype = shopArchetypeId ?? VendorArchetypeId;
@@ -160,7 +162,8 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
                 shopId,
                 catalogArchetype,
                 [new ShopOffer(offerId, VanillaItemIds.DirtBlock, offerStack, UnitPrice: 1)]);
-            Assert.Equal(NpcShopRegistrationResult.Registered, Shops.TryRegister(catalog, out _));
+            Assert.Equal(NpcShopRegistrationResult.Registered, Shops.TryRegister(catalog, out NpcShopRegistrationLease? lease));
+            shopLease = Assert.IsType<NpcShopRegistrationLease>(lease);
             Assert.True(Shops.CommitPending());
 
             Events = new RecordingPlayerEventSink();
@@ -191,7 +194,7 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
 
         public NpcShopPurchaseRequest Request(long price)
         {
-            NpcShopCatalog catalog = Assert.IsType<NpcShopCatalog>(GetCatalog());
+            NpcShopCatalog catalog = GetCatalog();
             ShopOffer existing = Assert.Single(catalog.Offers.ToArray());
             if (existing.UnitPrice != price)
             {
@@ -199,12 +202,8 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
                     shopId,
                     catalog.NpcArchetypeId,
                     [existing with { UnitPrice = price }]);
-                Assert.True(Shops.Snapshot.TryGetById(shopId, out _));
-                // Tests mutate catalog policy only through a fresh registry publication, mirroring provider updates.
-                RuntimeNpcShopCatalogRegistry replacementRegistry = new();
-                Assert.Equal(NpcShopRegistrationResult.Registered, replacementRegistry.TryRegister(replacement, out _));
-                replacementRegistry.CommitPending();
-                return new NpcShopPurchaseRequest(Buyer.Player, Vendor.Handle, shopId, offerId);
+                Assert.True(shopLease.TryReplaceCatalog(replacement));
+                Assert.True(Shops.CommitPending());
             }
 
             return new NpcShopPurchaseRequest(Buyer.Player, Vendor.Handle, shopId, offerId);
@@ -213,7 +212,7 @@ public sealed class RuntimeNpcShopPurchaseExecutorTests
         private NpcShopCatalog GetCatalog()
         {
             Assert.True(Shops.Snapshot.TryGetById(shopId, out NpcShopCatalog? catalog));
-            return catalog;
+            return Assert.IsType<NpcShopCatalog>(catalog);
         }
     }
 
