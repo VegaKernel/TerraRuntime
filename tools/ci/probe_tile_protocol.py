@@ -67,8 +67,7 @@ def verify_kill_fail_semantics(source: str, action_match: re.Match[str]) -> None
 
 
 def verify_server_relay(source: str, action_match: re.Match[str]) -> None:
-    action_name = action_match.group("action")
-    action = re.escape(action_name)
+    action = re.escape(action_match.group("action"))
     context = source[action_match.start():min(len(source), action_match.end() + 6500)]
     relay = re.search(
         rf"NetMessage\.TrySendData\(17, -1, whoAmI, null, {action}, [^;]+\);",
@@ -79,15 +78,19 @@ def verify_server_relay(source: str, action_match: re.Match[str]) -> None:
             "Terraria 1.4.5.8 packet 17 server relay no longer uses ignoreClient=whoAmI."
         )
 
-    relay_tail = context[max(0, relay.start() - 650):relay.end()]
-    failed_hit_relay_guard = re.compile(
-        rf"if \(Main\.netMode == 2\) \{{ "
-        rf"if \([A-Za-z_]\w*\) \{{ NetMessage\.SendTileSquare\([^;]+\); \}} "
-        rf"else if \(\({action} != 1 && {action} != 21\) \|\| "
-        rf"!TileID\.Sets\.Falling\[[^\]]+\] \|\| Main\.tile\[[^\]]+\]\.active\(\)\) \{{ "
-        rf"NetMessage\.TrySendData\(17, -1, whoAmI, null, {action}, [^;]+\); \}} \}}"
+    expected_failed_hit_relay_tail = compact(
+        """
+        if (Main.netMode == 2) {
+            if (flag15) {
+                NetMessage.SendTileSquare(-1, num161, num162, 5);
+            }
+            else if ((b13 != 1 && b13 != 21) || !TileID.Sets.Falling[num163] || Main.tile[num161, num162].active()) {
+                NetMessage.TrySendData(17, -1, whoAmI, null, b13, num161, num162, num163, num164);
+            }
+        }
+        """
     )
-    if failed_hit_relay_guard.search(relay_tail) is None:
+    if expected_failed_hit_relay_tail not in context:
         raise SystemExit(
             "Terraria 1.4.5.8 packet 17 relay tail changed: action 0 is no longer proven to relay "
             "independently of the data==1 fail flag."
