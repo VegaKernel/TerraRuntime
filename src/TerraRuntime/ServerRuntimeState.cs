@@ -29,6 +29,7 @@ internal sealed class ServerRuntimeState
     private readonly RuntimeProjectileReplicationRegistry? _projectileReplication;
     private readonly RuntimeTileManipulationReplicationRegistry? _tileManipulationReplication;
     private readonly RuntimeWorldItemStore _worldItems;
+    private readonly IWorldItemSpawnRandom _worldItemSpawnRandom = new SystemWorldItemSpawnRandom();
     private readonly WorldTileStore? _worldTiles;
     private readonly RuntimeWorldClock? _worldClock;
     private int lastWorkerResult;
@@ -559,6 +560,68 @@ internal sealed class ServerRuntimeState
                 return;
             }
 
+            AppliedClientTileManipulations++;
+            _tileManipulationReplication?.TryPublishCommitted(command.Connection.Source, in tileState);
+            return;
+        }
+
+        if (action == TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.KillTile)
+        {
+            if (tileState.Data != 0)
+            {
+                UnsupportedClientTileManipulations++;
+                return;
+            }
+
+            if (!_playerInventory.TryGet(
+                    command.Connection,
+                    player.SelectedItem,
+                    out RuntimePlayerInventoryItem selectedItem) ||
+                selectedItem.IsEmpty ||
+                selectedItem.ItemType != VanillaItemIds.CopperPickaxe ||
+                !VanillaTileInteractionItemFacts.TryGetPickPower(selectedItem.ItemType, out _, out _))
+            {
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            if (!VanillaDirtPlacement.CanKillIsolated(
+                    _worldTiles,
+                    tileState.TileX,
+                    tileState.TileY))
+            {
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            WorldItemDropStateUpdate drop = VanillaDirtWorldItemDrop.Create(
+                tileState.TileX,
+                tileState.TileY,
+                _worldItemSpawnRandom);
+            if (!_worldItems.TryReserveDrop(in drop, out WorldItemDropReservation reservation))
+            {
+                RejectedClientTileManipulations++;
+                RejectedWorldItemAllocations++;
+                return;
+            }
+
+            if (!VanillaDirtPlacement.TryKillIsolatedWithoutDrop(
+                    _worldTiles,
+                    tileState.TileX,
+                    tileState.TileY))
+            {
+                _ = _worldItems.TryReleaseDropReservation(in reservation);
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            if (!_worldItems.TryCommitReservedDrop(in reservation, out _))
+            {
+                throw new InvalidOperationException(
+                    "Reserved Dirt drop could not commit after authoritative tile mutation.");
+            }
+
+            AppliedWorldItemAllocations++;
             AppliedClientTileManipulations++;
             _tileManipulationReplication?.TryPublishCommitted(command.Connection.Source, in tileState);
             return;
