@@ -23,16 +23,27 @@ def main() -> int:
     if dirt is None or dirt.group(1) != "0":
         raise SystemExit("Expected pinned TileID.Dirt = 0.")
 
-    matches = list(re.finditer(r"tileFrameImportant", main_source))
-    if not matches:
-        raise SystemExit("Could not locate Main.tileFrameImportant in pinned source.")
+    allocation = re.search(r"tileFrameImportant\s*=\s*new bool\[([^\]]+)\]", main_source)
+    if allocation is None:
+        raise SystemExit("Could not locate Main.tileFrameImportant bool-array allocation.")
+
+    bracket_uses = re.findall(r"tileFrameImportant\[([^\]]+)\]", main_source)
+    numeric_indices = [int(value) for value in bracket_uses if value.isdigit()]
+    dynamic_indices = sorted({value for value in bracket_uses if not value.isdigit()})
+    writes = re.findall(r"tileFrameImportant\[(\d+)\]\s*=\s*(true|false)", main_source)
+    dirt_writes = [(index, value) for index, value in writes if index == "0"]
+
+    start = max(0, allocation.start() - 1800)
+    end = min(len(main_source), allocation.end() + 3000)
 
     print("tile_id_dirt=0")
-    print(f"tile_frame_important_occurrences={len(matches)}")
-    for index, match in enumerate(matches[:40]):
-        start = max(0, match.start() - 1400)
-        end = min(len(main_source), match.end() + 2600)
-        print(f"tile_frame_important_context_{index}={main_source[start:end]}")
+    print(f"tile_frame_important_allocation={allocation.group(0)}")
+    print(f"tile_frame_important_allocation_context={main_source[start:end]}")
+    print(f"tile_frame_important_bracket_uses={len(bracket_uses)}")
+    print(f"tile_frame_important_numeric_indices={len(numeric_indices)}")
+    print(f"tile_frame_important_direct_writes={len(writes)}")
+    print(f"tile_frame_important_dirt_writes={dirt_writes}")
+    print(f"tile_frame_important_dynamic_indices={dynamic_indices}")
 
     return 0
 
