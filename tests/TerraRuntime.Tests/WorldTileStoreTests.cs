@@ -66,6 +66,69 @@ public sealed class WorldTileStoreTests
     }
 
     [Fact]
+    public void Section_versions_advance_only_for_the_mutated_section()
+    {
+        var store = new WorldTileStore(new WorldDimensions(400, 300));
+        var first = new WorldSectionId(0, 0);
+        var second = new WorldSectionId(1, 1);
+
+        Assert.Equal(0, store.GetSectionVersion(first));
+        Assert.Equal(0, store.GetSectionVersion(second));
+
+        store.Set(10, 10, default);
+        Assert.Equal(2, store.GetSectionVersion(first));
+        Assert.Equal(0, store.GetSectionVersion(second));
+
+        store.Set(250, 200, default);
+        Assert.Equal(2, store.GetSectionVersion(first));
+        Assert.Equal(2, store.GetSectionVersion(second));
+    }
+
+    [Fact]
+    public void Captured_section_snapshot_remains_immutable_after_later_mutations()
+    {
+        var store = new WorldTileStore(new WorldDimensions(401, 301));
+        var section = new WorldSectionId(1, 1);
+        var original = new WorldTile
+        {
+            Type = 42,
+            Flags = WorldTileFlags.Active,
+            LiquidAmount = 17,
+            LiquidKind = WorldLiquidKind.Water
+        };
+        var replacement = original;
+        replacement.Type = 43;
+
+        store.Set(200, 150, original);
+        Assert.True(store.TryCaptureSectionSnapshot(section, out WorldSectionTileSnapshot? snapshot));
+        Assert.NotNull(snapshot);
+        Assert.Equal(store.GetSectionVersion(section), snapshot.Revision);
+        Assert.Equal(new WorldTileBounds(200, 150, 200, 150), snapshot.Bounds);
+        Assert.Equal(original, snapshot.Get(200, 150));
+
+        store.Set(200, 150, replacement);
+
+        Assert.Equal(original, snapshot.Get(200, 150));
+        Assert.Equal(replacement, store.Get(200, 150));
+        Assert.NotEqual(snapshot.Revision, store.GetSectionVersion(section));
+    }
+
+    [Fact]
+    public void Captures_clipped_edge_sections_with_world_coordinates()
+    {
+        var store = new WorldTileStore(new WorldDimensions(401, 301));
+        var section = new WorldSectionId(2, 2);
+        var tile = new WorldTile { Type = 7, Flags = WorldTileFlags.Active };
+        store.Set(400, 300, tile);
+
+        Assert.True(store.TryCaptureSectionSnapshot(section, out WorldSectionTileSnapshot? snapshot));
+        Assert.NotNull(snapshot);
+        Assert.Equal(new WorldTileBounds(400, 300, 1, 1), snapshot.Bounds);
+        Assert.Equal(1, snapshot.Count);
+        Assert.Equal(tile, snapshot.Get(400, 300));
+    }
+
+    [Fact]
     public void Runtime_tile_stays_within_sixteen_bytes()
     {
         Assert.True(Unsafe.SizeOf<WorldTile>() <= 16, $"WorldTile grew to {Unsafe.SizeOf<WorldTile>()} bytes.");
