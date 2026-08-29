@@ -1,9 +1,10 @@
 using TerraRuntime.World;
 
-if (args.Length != 1 && args.Length != 7)
+bool allowEmpty = args.Length == 2 && string.Equals(args[1], "--allow-empty", StringComparison.Ordinal);
+if (args.Length != 1 && !allowEmpty && args.Length != 7)
 {
     Console.Error.WriteLine(
-        "Usage: TerraRuntime.ChestLocate <world.wld> [--assert <chest-id> <item-slot> <stack> <prefix> <item-net-id>]");
+        "Usage: TerraRuntime.ChestLocate <world.wld> [--allow-empty | --assert <chest-id> <item-slot> <stack> <prefix> <item-net-id>]");
     return 2;
 }
 
@@ -74,7 +75,7 @@ for (int chestIndex = 0; chestIndex < world.Chests.Length; chestIndex++)
         continue;
     }
 
-    if (fallback is null)
+    if (allowEmpty && fallback is null)
     {
         fallback = chest;
         fallbackSlot = 0;
@@ -94,7 +95,7 @@ for (int chestIndex = 0; chestIndex < world.Chests.Length; chestIndex++)
         break;
 }
 
-if (selected is null)
+if (selected is null && allowEmpty)
 {
     selected = fallback;
     selectedSlot = fallbackSlot;
@@ -102,7 +103,10 @@ if (selected is null)
 
 if (selected is null || selectedSlot < 0)
 {
-    Console.Error.WriteLine("Official world contains no addressable chest for the live persistence probe.");
+    Console.Error.WriteLine(
+        allowEmpty
+            ? "Official world contains no addressable chest for the live persistence probe."
+            : "Official world contains no addressable non-empty chest item.");
     return 3;
 }
 
