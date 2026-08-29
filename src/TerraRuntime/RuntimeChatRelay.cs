@@ -87,27 +87,22 @@ internal sealed class RuntimeChatRelay
 
     private sealed class Endpoint(TerrariaConnectionOutboundQueue outbound)
     {
-        private readonly object gate = new();
-        private PlayerHandle? player;
+        private int playingSlot = -1;
+        private ulong playingGeneration;
 
         public TerrariaConnectionOutboundQueue Outbound { get; } = outbound;
 
         public void MarkPlaying(PlayerHandle value)
         {
-            lock (gate)
-                player = value;
+            Volatile.Write(ref playingGeneration, value.Generation.Value);
+            Volatile.Write(ref playingSlot, value.Slot.Value);
         }
 
-        public bool IsPlaying()
-        {
-            lock (gate)
-                return player.HasValue;
-        }
+        public bool IsPlaying() =>
+            Volatile.Read(ref playingSlot) >= 0 && Volatile.Read(ref playingGeneration) != 0;
 
-        public bool IsPlaying(PlayerHandle expected)
-        {
-            lock (gate)
-                return player == expected;
-        }
+        public bool IsPlaying(PlayerHandle expected) =>
+            Volatile.Read(ref playingSlot) == expected.Slot.Value &&
+            Volatile.Read(ref playingGeneration) == expected.Generation.Value;
     }
 }
