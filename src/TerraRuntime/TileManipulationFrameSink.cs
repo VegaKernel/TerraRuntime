@@ -19,7 +19,7 @@ public enum TileManipulationFrameStopReason : byte
 /// mutates tiles there. Playing-session identity is attached and the immutable request is posted to the bounded
 /// authoritative command queue where gameplay authority can be decided safely.
 /// </summary>
-public sealed class TileManipulationFrameSink : ITerrariaFrameSink
+public sealed class TileManipulationFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -45,6 +45,16 @@ public sealed class TileManipulationFrameSink : ITerrariaFrameSink
     }
 
     public TileManipulationFrameStopReason StopReason { get; private set; }
+
+    public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
+    {
+        TileManipulationFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
+        TileManipulationFrameStopReason.MalformedManipulation => TerrariaFrameRejectionCategory.MalformedProtocol,
+        TileManipulationFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
+        _ => inner is ITerrariaFrameRejectionSource source
+            ? source.RejectionCategory
+            : TerrariaFrameRejectionCategory.None
+    };
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
