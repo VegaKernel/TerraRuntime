@@ -49,6 +49,8 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
         }
     }
 
+    public CoalescingSaveSchedulerSnapshot CaptureSnapshot() => scheduler.CaptureSnapshot();
+
     /// <summary>
     /// Stops accepting snapshots and waits until the newest accepted snapshot has been committed.
     /// Cancelling this wait never abandons an already accepted save.
