@@ -161,9 +161,36 @@ public sealed class VanillaProjectileWorldStateStepperTests
     [InlineData(48)]
     [InlineData(54)]
     [InlineData(599)]
-    public void Server_owned_thrown_family_is_unsupported_until_projectile_world_effects_exist(int type)
+    public void Server_owned_thrown_family_simulates_when_cut_tiles_effect_is_provably_empty(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot serverOwned = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f) with
+        {
+            Type = new ProjectileTypeId(type),
+            Spawner = VanillaProjectileOwnership.ServerOwner
+        };
+        ProjectileSimulationStepContext context = CreateContext(serverOwned, timeLeft: 3600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(100f, next.State.PositionY, 5);
+        Assert.Equal(3599, next.TimeLeft);
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(48)]
+    [InlineData(54)]
+    [InlineData(599)]
+    public void Server_owned_thrown_family_remains_unsupported_when_sweep_can_cut_tiles(int type)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 6, CuttableTile(3));
         var stepper = new VanillaProjectileWorldStateStepper(tiles);
         ProjectileSnapshot serverOwned = CreateSnapshot(
             positionX: 100f,
@@ -240,6 +267,13 @@ public sealed class VanillaProjectileWorldStateStepperTests
             SubupdatesPerWorldTick: 1);
 
     private static WorldTile SolidTile(ushort type) =>
+        new()
+        {
+            Type = type,
+            Flags = WorldTileFlags.Active
+        };
+
+    private static WorldTile CuttableTile(ushort type) =>
         new()
         {
             Type = type,

@@ -48,6 +48,38 @@ public sealed class VanillaWorldProjectileTileCutTests
         Assert.Equal(new VanillaProjectileTileCutCandidate(2, 2), candidates[1]);
     }
 
+    [Fact]
+    public void Conservative_sweep_detects_cuttable_tile_between_endpoint_rectangles()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(20, 20));
+        tiles.Set(3, 1, ActiveTile(3));
+
+        Assert.True(VanillaWorldProjectileTileCut.HasCandidateAlongSweep(
+            tiles,
+            startX: 16f,
+            startY: 16f,
+            endX: 80f,
+            endY: 16f,
+            boxWidth: 12,
+            boxHeight: 12));
+    }
+
+    [Fact]
+    public void Conservative_sweep_ignores_non_cuttable_tiles()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(20, 20));
+        tiles.Set(3, 1, ActiveTile(1));
+
+        Assert.False(VanillaWorldProjectileTileCut.HasCandidateAlongSweep(
+            tiles,
+            startX: 16f,
+            startY: 16f,
+            endX: 80f,
+            endY: 16f,
+            boxWidth: 12,
+            boxHeight: 12));
+    }
+
     [Theory]
     [InlineData(78)]
     [InlineData(380)]

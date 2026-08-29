@@ -7,10 +7,12 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile simulation slices that already have enough runtime/world
-/// state to execute without inventing missing gameplay behavior. The supported player-owned aiStyle 2 family
-/// currently includes Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger: deterministic AI, liquid
-/// movement, source-backed tile collision, position update, and lifetime are reproduced here. Entity damage
-/// and visual-only rotation/dust/sound remain separate systems.
+/// state to execute without inventing missing gameplay behavior. The supported aiStyle 2 family currently
+/// includes Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger: deterministic AI, liquid movement,
+/// source-backed tile collision, position update, and lifetime are reproduced here. Server-owned simulation
+/// is allowed when its committed movement sweep cannot reach a source-backed CutTiles candidate; irreversible
+/// KillTile/drop effects remain a separate world-effect slice. Entity damage and visual-only rotation/dust/sound
+/// also remain separate systems.
 /// </summary>
 internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepper
 {
@@ -54,15 +56,6 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         ProjectileSnapshot current = projectile.Projectile;
         if (!VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
             definition.AiStyle != VanillaProjectileAiStyles.Thrown)
-        {
-            next = default;
-            return false;
-        }
-
-        // TerrariaServer 1.4.5.8 CanCutTiles() is true for this aiStyle 2 family. On a dedicated server that
-        // mutation path executes for owner == Main.myPlayer (255). TerraRuntime does not yet have a projectile
-        // world-mutation effect sink, so only definitions that actually carry that side effect need this gate.
-        if (definition.CanCutTiles && VanillaProjectileOwnership.IsServerOwned(current.Spawner))
         {
             next = default;
             return false;
@@ -149,6 +142,25 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
 
         positionX += movementX;
         positionY += movementY;
+
+        // TerrariaServer 1.4.5.8 reaches CutTiles for owner == Main.myPlayer (255). Until KillTile/drop effects
+        // are modeled, server-owned movement is safe only when a conservative sweep proves that no source-backed
+        // CutTilesAt candidate can be reached. The sweep is intentionally a superset of vanilla's rectangle:
+        // an extra rejection is harmless, while missing a candidate would silently lose an irreversible mutation.
+        if (definition.CanCutTiles &&
+            VanillaProjectileOwnership.IsServerOwned(current.Spawner) &&
+            VanillaWorldProjectileTileCut.HasCandidateAlongSweep(
+                tiles,
+                current.PositionX,
+                current.PositionY,
+                positionX,
+                positionY,
+                definition.Width,
+                definition.Height))
+        {
+            next = default;
+            return false;
+        }
 
         var state = new ProjectileStateUpdate(
             current.Type,

@@ -13,7 +13,7 @@ public readonly record struct VanillaProjectileTileCutCandidate(int X, int Y);
 /// </summary>
 public static class VanillaWorldProjectileTileCut
 {
-    private const float TileSizePixels = 16f;
+    private const double TileSizePixels = 16d;
     private const ushort ProtectedWallType = 350;
     private const ushort SpecialCuttableTileType = 254;
     private const short SpecialCuttableMinimumFrameX = 144;
@@ -30,29 +30,54 @@ public static class VanillaWorldProjectileTileCut
         int boxHeight)
     {
         ArgumentNullException.ThrowIfNull(dimensions);
-        if (!float.IsFinite(positionX))
-            throw new ArgumentOutOfRangeException(nameof(positionX));
-        if (!float.IsFinite(positionY))
-            throw new ArgumentOutOfRangeException(nameof(positionY));
-        ArgumentOutOfRangeException.ThrowIfLessThan(boxWidth, 1);
-        ArgumentOutOfRangeException.ThrowIfLessThan(boxHeight, 1);
+        ValidateBox(positionX, positionY, boxWidth, boxHeight);
 
-        int left = (int)(positionX / TileSizePixels);
-        int right = (int)((positionX + boxWidth) / TileSizePixels) + 1;
-        int top = (int)(positionY / TileSizePixels);
-        int bottom = (int)((positionY + boxHeight) / TileSizePixels) + 1;
+        return GetBoundsFromPixelEdges(
+            dimensions,
+            positionX,
+            positionY,
+            (double)positionX + boxWidth,
+            (double)positionY + boxHeight);
+    }
 
-        left = Math.Clamp(left, 0, dimensions.WidthTiles);
-        right = Math.Clamp(right, 0, dimensions.WidthTiles);
-        top = Math.Clamp(top, 0, dimensions.HeightTiles);
-        bottom = Math.Clamp(bottom, 0, dimensions.HeightTiles);
+    /// <summary>
+    /// Conservatively checks the axis-aligned sweep of one projectile rectangle between two committed-state
+    /// positions. Vanilla CutTilesAt itself evaluates one rectangle; the swept superset is used only as a
+    /// safety gate while irreversible KillTile/drop effects are not yet modeled. False positives keep a
+    /// server-owned projectile unsupported for that tick, while false negatives would lose a world mutation.
+    /// </summary>
+    public static bool HasCandidateAlongSweep(
+        WorldTileStore tiles,
+        float startX,
+        float startY,
+        float endX,
+        float endY,
+        int boxWidth,
+        int boxHeight)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        ValidateBox(startX, startY, boxWidth, boxHeight);
+        if (!float.IsFinite(endX))
+            throw new ArgumentOutOfRangeException(nameof(endX));
+        if (!float.IsFinite(endY))
+            throw new ArgumentOutOfRangeException(nameof(endY));
 
-        if (right < left)
-            right = left;
-        if (bottom < top)
-            bottom = top;
+        double left = Math.Min(startX, endX);
+        double top = Math.Min(startY, endY);
+        double right = Math.Max((double)startX + boxWidth, (double)endX + boxWidth);
+        double bottom = Math.Max((double)startY + boxHeight, (double)endY + boxHeight);
+        WorldTileBounds bounds = GetBoundsFromPixelEdges(tiles.Dimensions, left, top, right, bottom);
 
-        return new WorldTileBounds(left, top, right - left, bottom - top);
+        for (int x = bounds.X; x < bounds.ExclusiveRight; x++)
+        {
+            for (int y = bounds.Y; y < bounds.ExclusiveBottom; y++)
+            {
+                if (IsCutCandidate(tiles, x, y))
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -108,6 +133,60 @@ public static class VanillaWorldProjectileTileCut
             return false;
 
         return CanCutTile(tiles, x, y, in tile);
+    }
+
+    private static WorldTileBounds GetBoundsFromPixelEdges(
+        WorldDimensions dimensions,
+        double leftPixels,
+        double topPixels,
+        double rightPixels,
+        double bottomPixels)
+    {
+        int left = ProjectStart(leftPixels, dimensions.WidthTiles);
+        int right = ProjectEnd(rightPixels, dimensions.WidthTiles);
+        int top = ProjectStart(topPixels, dimensions.HeightTiles);
+        int bottom = ProjectEnd(bottomPixels, dimensions.HeightTiles);
+
+        if (right < left)
+            right = left;
+        if (bottom < top)
+            bottom = top;
+
+        return new WorldTileBounds(left, top, right - left, bottom - top);
+    }
+
+    private static int ProjectStart(double pixels, int maximumTiles)
+    {
+        if (pixels <= 0d)
+            return 0;
+
+        double maximumPixels = maximumTiles * TileSizePixels;
+        if (pixels >= maximumPixels)
+            return maximumTiles;
+
+        return (int)(pixels / TileSizePixels);
+    }
+
+    private static int ProjectEnd(double pixels, int maximumTiles)
+    {
+        if (pixels < -TileSizePixels)
+            return 0;
+
+        double maximumPixels = maximumTiles * TileSizePixels;
+        if (pixels >= maximumPixels)
+            return maximumTiles;
+
+        return Math.Clamp((int)(pixels / TileSizePixels) + 1, 0, maximumTiles);
+    }
+
+    private static void ValidateBox(float positionX, float positionY, int boxWidth, int boxHeight)
+    {
+        if (!float.IsFinite(positionX))
+            throw new ArgumentOutOfRangeException(nameof(positionX));
+        if (!float.IsFinite(positionY))
+            throw new ArgumentOutOfRangeException(nameof(positionY));
+        ArgumentOutOfRangeException.ThrowIfLessThan(boxWidth, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(boxHeight, 1);
     }
 
     private static bool CanCutTile(WorldTileStore tiles, int x, int y, in WorldTile tile)
