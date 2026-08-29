@@ -98,6 +98,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             RejectedRateLimited: rejections.RateLimited,
             RejectedInvalidState: rejections.InvalidState,
             RejectedGameplay: rejections.GameplayRejected,
-            RejectedBackpressure: rejections.Backpressure);
+            RejectedBackpressure: rejections.Backpressure,
+            StopFrameRejected: stops.FrameRejected);
     }
 }
