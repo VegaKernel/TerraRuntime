@@ -62,7 +62,10 @@ internal readonly record struct SectionCacheRebuildPipelineSnapshot(
 /// </summary>
 internal sealed class SectionCacheRebuildPipeline : IDisposable
 {
-    private const int DefaultOnDemandCapacity = 32;
+    // PlayerSlotPool is source-bounded to byte.MaxValue simultaneous slots. A successful packet-8 request owns
+    // one slot and a join session accepts only one blocking section response, so this is the maximum useful
+    // default number of distinct pending on-demand section rebuilds.
+    private const int DefaultOnDemandCapacity = byte.MaxValue;
 
     private readonly WorldFileData _world;
     private readonly PlayerBootstrapPacketSet _packets;
@@ -72,6 +75,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
     private readonly Func<WorldSectionPacketSnapshot, SectionCacheRebuildResult> _encode;
     private readonly ConcurrentQueue<WorldSectionId> _onDemandRequests = new();
     private readonly ConcurrentDictionary<int, long> _onDemandSections = new();
+    private readonly object _onDemandAdmissionGate = new();
     private readonly HashSet<int> _inFlightSections = [];
     private readonly int _workCapacity;
     private readonly int _maximumInFlight;
@@ -232,9 +236,9 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
 
     /// <summary>
     /// Thread-safe connection-side handoff for a section that was missing or stale in the packet cache.
-    /// Duplicate callers share the same generation until that generation publishes or fails. Distinct pending
-    /// sections reserve one bounded slot before entering the concurrent queue, preventing admission races from
-    /// growing the join handoff beyond the configured connection-scale capacity.
+    /// Duplicate callers share the same generation until that generation publishes or fails. Admission is a
+    /// deliberately short critical section over the section map and pending count so same-section races cannot
+    /// be spuriously rejected while the bounded global distinct-section limit remains exact.
     /// </summary>
     internal SectionRebuildRequestTicket RequestSection(WorldSectionId section)
     {
@@ -244,35 +248,28 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
         Interlocked.Increment(ref _onDemandRequestCount);
 
-        while (true)
+        lock (_onDemandAdmissionGate)
         {
+            if (Volatile.Read(ref _disposed) != 0)
+                return SectionRebuildRequestTicket.Rejected;
+
             if (_onDemandSections.TryGetValue(index, out long existingGeneration))
             {
                 Interlocked.Increment(ref _onDemandDeduplicatedRequestCount);
                 return new SectionRebuildRequestTicket(true, existingGeneration);
             }
 
-            if (!TryReserveOnDemandSlot())
+            if (_onDemandPendingRequests >= _onDemandCapacity)
             {
-                // A concurrent caller may have installed this exact section between the lookup and reservation
-                // attempt. Treat that case as dedup instead of rejecting a request that can share existing work.
-                if (_onDemandSections.TryGetValue(index, out existingGeneration))
-                {
-                    Interlocked.Increment(ref _onDemandDeduplicatedRequestCount);
-                    return new SectionRebuildRequestTicket(true, existingGeneration);
-                }
-
                 Interlocked.Increment(ref _onDemandRejectedRequestCount);
                 return SectionRebuildRequestTicket.Rejected;
             }
 
             long generation = Interlocked.Increment(ref _nextOnDemandGeneration);
             if (!_onDemandSections.TryAdd(index, generation))
-            {
-                Interlocked.Decrement(ref _onDemandPendingRequests);
-                continue;
-            }
+                throw new InvalidOperationException("Section rebuild admission map changed while its gate was held.");
 
+            _onDemandPendingRequests++;
             _onDemandRequests.Enqueue(section);
             Interlocked.Increment(ref _onDemandUniqueRequestCount);
             return new SectionRebuildRequestTicket(true, generation);
@@ -302,19 +299,6 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
 
         _packets.DetachSectionRebuildRequester();
         _workers.Dispose();
-    }
-
-    private bool TryReserveOnDemandSlot()
-    {
-        while (true)
-        {
-            int pending = Volatile.Read(ref _onDemandPendingRequests);
-            if (pending >= _onDemandCapacity)
-                return false;
-
-            if (Interlocked.CompareExchange(ref _onDemandPendingRequests, pending + 1, pending) == pending)
-                return true;
-        }
     }
 
     private void SubmitOnDemandWork()
@@ -561,15 +545,25 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
     private void CompleteOnDemandRequest(WorldSectionId section)
     {
         int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
-        if (_onDemandSections.TryRemove(index, out _))
-            Interlocked.Decrement(ref _onDemandPendingRequests);
+        lock (_onDemandAdmissionGate)
+        {
+            if (_onDemandSections.TryRemove(index, out _))
+                _onDemandPendingRequests--;
+        }
     }
 
     private void CompleteOnDemandRequest(WorldSectionId section, long generation)
     {
         int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
-        if (_onDemandSections.TryRemove(new KeyValuePair<int, long>(index, generation)))
-            Interlocked.Decrement(ref _onDemandPendingRequests);
+        lock (_onDemandAdmissionGate)
+        {
+            if (_onDemandSections.TryGetValue(index, out long currentGeneration) &&
+                currentGeneration == generation &&
+                _onDemandSections.TryRemove(index, out _))
+            {
+                _onDemandPendingRequests--;
+            }
+        }
     }
 
     private SectionCacheRebuildResult ExecuteSafely(SectionCacheRebuildWork work)
