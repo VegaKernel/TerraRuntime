@@ -51,9 +51,14 @@ def first_signature(source: str, name: str) -> str:
     return match.group(0).strip()
 
 
+def require(text: str, needle: str, label: str) -> None:
+    if needle not in text:
+        raise SystemExit(f"Pinned source contract changed: missing {label}: {needle}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Inspect pinned TerrariaServer 1.4.5.8 WorldGen.KillTile for conservative Dirt authority."
+        description="Verify pinned TerrariaServer 1.4.5.8 WorldGen.KillTile for conservative Dirt authority."
     )
     parser.add_argument("--world-gen", required=True)
     parser.add_argument("--tile-id", required=True)
@@ -72,13 +77,54 @@ def main() -> int:
     survive_signature = first_signature(raw, "CheckTileBreakability2_ShouldTileSurvive")
     survive_method = compact(extract_method(raw, survive_signature))
 
+    if kill_signature != "public static void KillTile(int i, int j, bool fail = false, bool effectOnly = false, bool noItem = false)":
+        raise SystemExit(f"Unexpected KillTile signature: {kill_signature}")
+
+    require(
+        kill_method,
+        "int num = CheckTileBreakability(i, j); if (num == 1) { fail = true; } if (num == 2) { return; }",
+        "KillTile breakability dispatch",
+    )
+    require(
+        kill_method,
+        "if (!noItem && !stopDrops && Main.netMode != 1) { KillTile_DropBait(i, j, tile); KillTile_DropItems(i, j, tile); }",
+        "KillTile no-item drop gate",
+    )
+    require(
+        kill_method,
+        "tile.active(active: false); tile.halfBrick(halfBrick: false); tile.frameX = -1; tile.frameY = -1; tile.ClearBlockPaintAndCoating(); tile.frameNumber(0);",
+        "KillTile ordinary mutation prefix",
+    )
+    require(
+        kill_method,
+        "tile.type = 0; tile.inActive(inActive: false); SquareTileFrame(i, j); CheckExploitDestroyQueue();",
+        "KillTile ordinary mutation tail",
+    )
+
+    require(
+        breakability_method,
+        "if (tile3 != null && tile3.active() && IsLockedDoor(tile3)) { return 2; }",
+        "locked-door below guard",
+    )
+    require(breakability_method, "if (tile2.active()) {", "active-above guard")
+    require(breakability_method, "if (tile.type == 235) {", "special tile 235 branch")
+    if not breakability_method.endswith("return 0; }"):
+        raise SystemExit("CheckTileBreakability no longer ends in ordinary return 0.")
+
+    require(survive_method, "if (TileID.Sets.BasicChest[tile.type]) {", "basic chest survivor branch")
+    require(survive_method, "if (tile.type == 88) {", "dresser survivor branch")
+    require(survive_method, "if (tile.type == 470) {", "display doll survivor branch")
+    require(survive_method, "if (tile.type == 475) {", "hat rack survivor branch")
+    if "tile.type == 0" in survive_method or "Dirt" in survive_method:
+        raise SystemExit("Dirt unexpectedly entered CheckTileBreakability2 survivor branches.")
+    if not survive_method.endswith("return false; }"):
+        raise SystemExit("CheckTileBreakability2_ShouldTileSurvive no longer ends in false.")
+
     print("tile_id_dirt=0")
-    print(f"worldgen_kill_tile_signature={kill_signature}")
-    print(f"worldgen_kill_tile_context={kill_method[:50000]}")
-    print(f"worldgen_check_tile_breakability_signature={breakability_signature}")
-    print(f"worldgen_check_tile_breakability_context={breakability_method[:50000]}")
-    print(f"worldgen_check_tile_survive_signature={survive_signature}")
-    print(f"worldgen_check_tile_survive_context={survive_method[:50000]}")
+    print("dirt_kill_no_item_drop_gate=verified")
+    print("dirt_kill_mutation_tail=verified")
+    print("dirt_kill_breakability_isolated_neighborhood=verified")
+    print("dirt_kill_survivor_guard=false")
     return 0
 
 
