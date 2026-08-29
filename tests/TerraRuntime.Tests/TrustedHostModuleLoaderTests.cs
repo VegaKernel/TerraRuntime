@@ -9,6 +9,7 @@ public sealed class TrustedHostModuleLoaderTests
     [Fact]
     public async Task StartAllAsync_LoadsDropInModule_AndStopsIt()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string root = Path.Combine(Path.GetTempPath(), $"terraruntime-host-{Guid.NewGuid():N}");
         string hostModules = Path.Combine(root, "HostModules");
         string serverPlugins = Path.Combine(root, "ServerPlugins");
@@ -38,12 +39,14 @@ public sealed class TrustedHostModuleLoaderTests
 
         try
         {
-            int loaded = await loader.StartAllAsync(environment);
+            int loaded = await loader.StartAllAsync(environment, cancellationToken);
 
             Assert.Equal(1, loaded);
             string startedMarker = Path.Combine(data, "fixture-host-module.started");
             Assert.True(File.Exists(startedMarker));
-            Assert.Equal(serverPlugins, await File.ReadAllTextAsync(startedMarker));
+            Assert.Equal(
+                serverPlugins,
+                await File.ReadAllTextAsync(startedMarker, cancellationToken));
         }
         finally
         {
