@@ -10,7 +10,7 @@ def compact(text: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Verify TerrariaServer 1.4.5.8 Dirt tile frame-importance contract."
+        description="Inspect TerrariaServer 1.4.5.8 Dirt tile frame-importance writers."
     )
     parser.add_argument("--main", required=True)
     parser.add_argument("--tile-id", required=True)
@@ -28,30 +28,27 @@ def main() -> int:
         raise SystemExit("Expected Main.tileFrameImportant to be a zero-initialized bool[TileID.Count].")
 
     bracket_uses = re.findall(r"tileFrameImportant\[([^\]]+)\]", main_source)
-    numeric_indices = [int(value) for value in bracket_uses if value.isdigit()]
-    dynamic_indices = sorted({value for value in bracket_uses if not value.isdigit()})
     numeric_writes = re.findall(r"tileFrameImportant\[(\d+)\]\s*=\s*(true|false)", main_source)
-    all_write_indices = re.findall(r"tileFrameImportant\[([^\]]+)\]\s*=\s*(?:true|false)", main_source)
-    dynamic_writes = sorted({value for value in all_write_indices if not value.isdigit()})
+    dynamic_write_matches = list(re.finditer(
+        r"tileFrameImportant\[(?!\d+\])([^\]]+)\]\s*=\s*(true|false)",
+        main_source,
+    ))
     dirt_writes = [(index, value) for index, value in numeric_writes if index == "0"]
 
     if dirt_writes:
         raise SystemExit(f"Pinned source writes tileFrameImportant[0]: {dirt_writes}.")
-    if dynamic_writes:
-        raise SystemExit(
-            "Pinned source has dynamic tileFrameImportant writes, so Dirt=false cannot be proven by zero-init: "
-            + repr(dynamic_writes)
-        )
 
     print("tile_id_dirt=0")
     print(f"tile_frame_important_allocation={allocation.group(0)}")
     print(f"tile_frame_important_bracket_uses={len(bracket_uses)}")
-    print(f"tile_frame_important_numeric_indices={len(numeric_indices)}")
-    print(f"tile_frame_important_direct_writes={len(numeric_writes)}")
+    print(f"tile_frame_important_direct_numeric_writes={len(numeric_writes)}")
     print("tile_frame_important_dirt_writes=none")
-    print(f"tile_frame_important_dynamic_reads={dynamic_indices}")
-    print("tile_frame_important_dynamic_writes=none")
-    print("tile_frame_important_dirt=false")
+    print(f"tile_frame_important_dynamic_writes={len(dynamic_write_matches)}")
+    for index, match in enumerate(dynamic_write_matches):
+        start = max(0, match.start() - 2400)
+        end = min(len(main_source), match.end() + 3200)
+        print(f"tile_frame_important_dynamic_write_{index}={match.group(0)}")
+        print(f"tile_frame_important_dynamic_write_context_{index}={main_source[start:end]}")
     return 0
 
 
