@@ -88,6 +88,8 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule
 
         public void BuildPlan(in WorldGenerationRequest request, IWorldGenerationPlanBuilder builder)
         {
+            ArgumentNullException.ThrowIfNull(builder);
+            request.Validate();
             builder.Add(
                 new WorldGenerationPassDescriptor(new WorldGenerationPassId("fixture:terrain")),
                 new FixtureWorldGenerationPass());
@@ -99,6 +101,38 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule
         public void Execute(IWorldGenerationContext context)
         {
             ArgumentNullException.ThrowIfNull(context);
+            context.CancellationToken.ThrowIfCancellationRequested();
+
+            int width = context.Workspace.WidthTiles;
+            int height = context.Workspace.HeightTiles;
+            var marker = new WorldGenerationTile(
+                Type: 0,
+                Wall: 0,
+                FrameX: 0,
+                FrameY: 0,
+                Flags: WorldGenerationTileFlags.Active,
+                LiquidAmount: 0,
+                TileColor: 0,
+                WallColor: 0,
+                Shape: 0,
+                LiquidKind: WorldGenerationLiquidKind.Water);
+            if (!context.Workspace.TrySetTile(0, height - 1, in marker))
+                throw new InvalidOperationException("Fixture generator could not write its deterministic marker tile.");
+
+            IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
+                throw new InvalidOperationException("Fixture generator requires the runtime metadata workspace.");
+            int anchorY = Math.Max(0, height / 3);
+            if (!metadata.TrySetSpawn(width / 2, anchorY))
+                throw new InvalidOperationException("Fixture generator could not set spawn metadata.");
+            if (!metadata.TrySetDungeon(Math.Max(0, width / 4), anchorY))
+                throw new InvalidOperationException("Fixture generator could not set dungeon metadata.");
+
+            double worldSurface = height * 0.40d;
+            double rockLayer = height * 0.65d;
+            if (!metadata.TrySetLayers(worldSurface, rockLayer))
+                throw new InvalidOperationException("Fixture generator could not set layer metadata.");
+
+            context.ReportProgress(1d, "Fixture custom generator complete");
         }
     }
 
