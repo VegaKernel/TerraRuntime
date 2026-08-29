@@ -24,22 +24,23 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-
           path = Path('.github/workflows/vanilla-world-load.yml')
           text = path.read_text()
-          old = '''          cleanup_chest() {
-            kill "$host_pid" 2>/dev/null || true
-            wait "$host_pid" 2>/dev/null || true
-          }
-'''
-          new = '''          cleanup_chest() {
-            # This probe intentionally leaves the just-built disposable runtime caches intact for the
-            # following warm-cache proof. SIGTERM is a production graceful-shutdown signal and now
-            # commits the canonical .wld then invalidates those caches, so test cleanup must be abrupt.
-            kill -KILL "$host_pid" 2>/dev/null || true
-            wait "$host_pid" 2>/dev/null || true
-          }
-'''
+          old = (
+              '          cleanup_chest() {\n'
+              '            kill "$host_pid" 2>/dev/null || true\n'
+              '            wait "$host_pid" 2>/dev/null || true\n'
+              '          }\n'
+          )
+          new = (
+              '          cleanup_chest() {\n'
+              '            # This probe intentionally leaves the just-built disposable runtime caches intact for the\n'
+              '            # following warm-cache proof. SIGTERM is a production graceful-shutdown signal and now\n'
+              '            # commits the canonical .wld then invalidates those caches, so test cleanup must be abrupt.\n'
+              '            kill -KILL "$host_pid" 2>/dev/null || true\n'
+              '            wait "$host_pid" 2>/dev/null || true\n'
+              '          }\n'
+          )
           count = text.count(old)
           if count != 1:
               raise SystemExit(f'expected exactly one chest cleanup block, found {count}')
