@@ -27,8 +27,18 @@ public readonly record struct WorldGenerationPassId : IComparable<WorldGeneratio
 
 public enum WorldGenerationRngMode : byte
 {
+    /// <summary>Independent TerraRuntime stream derived from the world seed and stable pass ID.</summary>
     IsolatedDeterministic = 0,
+
+    /// <summary>
+    /// Terraria-compatible world-generation RNG semantics. In TerrariaServer 1.4.5.8 the global worldgen RNG is
+    /// shared by code executing inside one pass, but <c>WorldGenerator.RunPass</c> replaces it with a newly seeded
+    /// <c>UnifiedRandom(worldSeed)</c> before every enabled pass. This mode therefore does not mean one continuous
+    /// random stream across the complete generation plan.
+    /// </summary>
     VanillaSharedRng = 1,
+
+    /// <summary>Reserved for a future explicit provider-owned RNG contract.</summary>
     CustomProviderRng = 2
 }
 
