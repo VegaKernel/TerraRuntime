@@ -102,7 +102,7 @@ public sealed class ManualWorldCheckpointOperationsTests
 
             app.Keyboard.RaiseKeyDownEvent(Key.S);
             Assert.Equal(1, operations.SaveRequests);
-            Assert.StartsWith("WORLD", workspace.GetRowTextForSmoke(0), StringComparison.Ordinal);
+            Assert.True(workspace.GetRowTextForSmoke(0).StartsWith("WORLD", StringComparison.Ordinal));
 
             app.LayoutAndDraw();
             AssertRendered(app.Driver!, "WORLD");
