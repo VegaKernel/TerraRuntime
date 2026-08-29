@@ -48,18 +48,22 @@ internal readonly record struct SectionCacheRebuildPipelineSnapshot(
     long OnDemandRequests = 0,
     long OnDemandUniqueRequests = 0,
     long OnDemandDeduplicatedRequests = 0,
-    int OnDemandPendingRequests = 0);
+    int OnDemandPendingRequests = 0,
+    long OnDemandRejectedRequests = 0,
+    int OnDemandCapacity = 0);
 
 /// <summary>
 /// Authoritative-thread coordinator for rebuilding packet-10 section cache entries outside the game loop.
 /// The owner thread captures immutable tile state plus section-local object metadata and publishes completions;
 /// dedicated bounded workers receive only <see cref="WorldSectionPacketSnapshot"/> values and never read live
-/// world state or mutate the shared cache. Connection threads may request missing sections through a
+/// world state or mutate the shared cache. Connection threads may request missing sections through a bounded,
 /// generation-aware deduplicated handoff, while the authoritative tick gives those join-critical snapshots
 /// priority over the ordinary dirty-section backlog. At most one worker rebuild may be in flight per section.
 /// </summary>
 internal sealed class SectionCacheRebuildPipeline : IDisposable
 {
+    private const int DefaultOnDemandCapacity = 32;
+
     private readonly WorldFileData _world;
     private readonly PlayerBootstrapPacketSet _packets;
     private readonly WorldSectionEncodingContext _encodingContext;
@@ -71,6 +75,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
     private readonly HashSet<int> _inFlightSections = [];
     private readonly int _workCapacity;
     private readonly int _maximumInFlight;
+    private readonly int _onDemandCapacity;
     private int _dirtyBacklog;
     private int _inFlight;
     private int _onDemandPendingRequests;
@@ -87,6 +92,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
     private long _onDemandRequestCount;
     private long _onDemandUniqueRequestCount;
     private long _onDemandDeduplicatedRequestCount;
+    private long _onDemandRejectedRequestCount;
     private int _started;
     private int _disposed;
 
@@ -96,7 +102,32 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         int workerCount,
         int workCapacity,
         int completionCapacity)
-        : this(world, packets, workerCount, workCapacity, completionCapacity, encode: null)
+        : this(
+            world,
+            packets,
+            workerCount,
+            workCapacity,
+            completionCapacity,
+            DefaultOnDemandCapacity,
+            encode: null)
+    {
+    }
+
+    public SectionCacheRebuildPipeline(
+        WorldFileData world,
+        PlayerBootstrapPacketSet packets,
+        int workerCount,
+        int workCapacity,
+        int completionCapacity,
+        int onDemandCapacity)
+        : this(
+            world,
+            packets,
+            workerCount,
+            workCapacity,
+            completionCapacity,
+            onDemandCapacity,
+            encode: null)
     {
     }
 
@@ -107,18 +138,39 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         int workCapacity,
         int completionCapacity,
         Func<WorldSectionTileSnapshot, SectionCacheRebuildResult>? encode)
+        : this(
+            world,
+            packets,
+            workerCount,
+            workCapacity,
+            completionCapacity,
+            DefaultOnDemandCapacity,
+            encode)
+    {
+    }
+
+    internal SectionCacheRebuildPipeline(
+        WorldFileData world,
+        PlayerBootstrapPacketSet packets,
+        int workerCount,
+        int workCapacity,
+        int completionCapacity,
+        int onDemandCapacity,
+        Func<WorldSectionTileSnapshot, SectionCacheRebuildResult>? encode)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(packets);
         ArgumentOutOfRangeException.ThrowIfLessThan(workerCount, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(workCapacity, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(completionCapacity, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(onDemandCapacity, 1);
 
         _world = world;
         _packets = packets;
         _encodingContext = WorldSectionEncodingContext.Capture(world);
         _workCapacity = workCapacity;
         _maximumInFlight = checked(workerCount + workCapacity);
+        _onDemandCapacity = onDemandCapacity;
         _batcher = new DirtySectionSnapshotBatcher(world.Tiles, _maximumInFlight);
         _encode = encode is null
             ? EncodeSection
@@ -163,7 +215,9 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
                 OnDemandRequests: Interlocked.Read(ref _onDemandRequestCount),
                 OnDemandUniqueRequests: Interlocked.Read(ref _onDemandUniqueRequestCount),
                 OnDemandDeduplicatedRequests: Interlocked.Read(ref _onDemandDeduplicatedRequestCount),
-                OnDemandPendingRequests: Volatile.Read(ref _onDemandPendingRequests));
+                OnDemandPendingRequests: Volatile.Read(ref _onDemandPendingRequests),
+                OnDemandRejectedRequests: Interlocked.Read(ref _onDemandRejectedRequestCount),
+                OnDemandCapacity: _onDemandCapacity);
         }
     }
 
@@ -178,7 +232,9 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
 
     /// <summary>
     /// Thread-safe connection-side handoff for a section that was missing or stale in the packet cache.
-    /// Duplicate callers share the same generation until that generation publishes or fails.
+    /// Duplicate callers share the same generation until that generation publishes or fails. Distinct pending
+    /// sections reserve one bounded slot before entering the concurrent queue, preventing admission races from
+    /// growing the join handoff beyond the configured connection-scale capacity.
     /// </summary>
     internal SectionRebuildRequestTicket RequestSection(WorldSectionId section)
     {
@@ -196,13 +252,29 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
                 return new SectionRebuildRequestTicket(true, existingGeneration);
             }
 
+            if (!TryReserveOnDemandSlot())
+            {
+                // A concurrent caller may have installed this exact section between the lookup and reservation
+                // attempt. Treat that case as dedup instead of rejecting a request that can share existing work.
+                if (_onDemandSections.TryGetValue(index, out existingGeneration))
+                {
+                    Interlocked.Increment(ref _onDemandDeduplicatedRequestCount);
+                    return new SectionRebuildRequestTicket(true, existingGeneration);
+                }
+
+                Interlocked.Increment(ref _onDemandRejectedRequestCount);
+                return SectionRebuildRequestTicket.Rejected;
+            }
+
             long generation = Interlocked.Increment(ref _nextOnDemandGeneration);
             if (!_onDemandSections.TryAdd(index, generation))
+            {
+                Interlocked.Decrement(ref _onDemandPendingRequests);
                 continue;
+            }
 
             _onDemandRequests.Enqueue(section);
             Interlocked.Increment(ref _onDemandUniqueRequestCount);
-            Interlocked.Increment(ref _onDemandPendingRequests);
             return new SectionRebuildRequestTicket(true, generation);
         }
     }
@@ -230,6 +302,19 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
 
         _packets.DetachSectionRebuildRequester();
         _workers.Dispose();
+    }
+
+    private bool TryReserveOnDemandSlot()
+    {
+        while (true)
+        {
+            int pending = Volatile.Read(ref _onDemandPendingRequests);
+            if (pending >= _onDemandCapacity)
+                return false;
+
+            if (Interlocked.CompareExchange(ref _onDemandPendingRequests, pending + 1, pending) == pending)
+                return true;
+        }
     }
 
     private void SubmitOnDemandWork()
@@ -290,8 +375,6 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             if (TrySubmit(packetSnapshot, generation))
                 continue;
 
-            // Capacity can race with a worker between the snapshot observation and TrySubmit. Preserve both the
-            // normal dirty signal and the join-priority request rather than throwing the captured work away.
             _world.Tiles.DirtySections.MarkDirty(section);
             _onDemandRequests.Enqueue(section);
             Interlocked.Increment(ref _rejectedSubmissions);
@@ -387,9 +470,6 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         if (inFlightCapacity <= 0)
             return 0;
 
-        // TrySubmit writes into the bounded channel rather than directly into an idle worker. This conservative
-        // observation may leave one slot unused for a tick if a worker consumes concurrently, but never captures
-        // a large immutable section snapshot that cannot be queued.
         WorkerPoolSnapshot workerSnapshot = _workers.Snapshot;
         int queueCapacity = _workCapacity - workerSnapshot.PendingWork;
         return Math.Max(0, Math.Min(inFlightCapacity, queueCapacity));
@@ -402,8 +482,6 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             Interlocked.Decrement(ref _inFlight);
             if (!completion.IsSuccess)
             {
-                // ExecuteSafely normally converts encoder exceptions into data while preserving section identity.
-                // Reaching this path means the pool itself failed before a result could be formed.
                 Interlocked.Increment(ref _encodeFailures);
                 continue;
             }
