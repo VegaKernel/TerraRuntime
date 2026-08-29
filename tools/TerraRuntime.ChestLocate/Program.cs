@@ -43,18 +43,18 @@ if (args.Length == 7)
         return 5;
     }
 
-    WorldChestItem item = chest.Items[itemSlot];
-    if (item.Stack != stack || item.Prefix != prefix || item.ItemType != itemNetId)
+    WorldChestItem persistedItem = chest.Items[itemSlot];
+    if (persistedItem.Stack != stack || persistedItem.Prefix != prefix || persistedItem.ItemType != itemNetId)
     {
         Console.Error.WriteLine(
             $"Persisted chest assertion failed: chest={chestId} itemSlot={itemSlot} " +
-            $"expected=({stack},{prefix},{itemNetId}) actual=({item.Stack},{item.Prefix},{item.ItemType}).");
+            $"expected=({stack},{prefix},{itemNetId}) actual=({persistedItem.Stack},{persistedItem.Prefix},{persistedItem.ItemType}).");
         return 6;
     }
 
     Console.WriteLine(
         $"persisted_chest_item_ok chest={chestId} itemSlot={itemSlot} " +
-        $"itemStack={item.Stack} itemPrefix={item.Prefix} itemNetId={item.ItemType}");
+        $"itemStack={persistedItem.Stack} itemPrefix={persistedItem.Prefix} itemNetId={persistedItem.ItemType}");
     return 0;
 }
 
@@ -106,11 +106,11 @@ if (selected is null || selectedSlot < 0)
     return 3;
 }
 
-WorldChestItem item = selected.Items[selectedSlot];
+WorldChestItem selectedItem = selected.Items[selectedSlot];
 Console.WriteLine(
     $"slot={selected.SlotId} x={selected.X} y={selected.Y} slots={selected.Items.Length} " +
-    $"itemSlot={selectedSlot} itemStack={item.Stack} itemPrefix={item.Prefix} itemNetId={item.ItemType} " +
-    $"itemEmpty={(item.IsEmpty ? "true" : "false")}");
+    $"itemSlot={selectedSlot} itemStack={selectedItem.Stack} itemPrefix={selectedItem.Prefix} itemNetId={selectedItem.ItemType} " +
+    $"itemEmpty={(selectedItem.IsEmpty ? "true" : "false")}");
 return 0;
 
 static WorldFileLoadLimits CreateLimits() =>
