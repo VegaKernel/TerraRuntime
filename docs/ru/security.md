@@ -81,13 +81,17 @@ Rate limits нужны как hard abuse ceiling, а не как кодиров�
 
 Legitimate Terraria traffic бывает bursty во время join/sections/chests. Поэтому tightening limits подтверждается реальными workloads.
 
-## 7. Per-message rate accounting
+## 7. Per-message и fan-out rate accounting
 
 `TerrariaMessageRateAccountant` хранит optional rate accountants по message ID.
 
 Только explicitly configured message IDs получают message-specific budget. Остальные всё равно проходят connection-wide accounting.
 
 Это позволяет expensive packet classes иметь более строгие controls, не делая вид, что каждый packet стоит одинаково.
+
+Public vanilla `Say` chat дополнительно имеет **server-global fan-out ceiling 256 broadcasts за окно 1 second**. Budget проверяется до O(players) обхода recipients в relay. Поэтому множество individually legal senders не может умножить per-connection allowance в unbounded aggregate работу с outbound queues. Broadcast, отклонённый этим global ceiling, отбрасывается и учитывается в rate-limit rejection telemetry; каждому player не выдаётся отдельная копия global budget.
+
+Значение 256/s — намеренно свободный hard-abuse ceiling, а не normal chat cadence. Legitimate chat должен оставаться далеко ниже него, при этом server получает deterministic верхнюю границу fan-out work.
 
 Long-term security всё ещё требует broader subsystem-level budgets, когда один legal packet может породить существенную world/gameplay работу.
 
@@ -151,9 +155,11 @@ Inbound authoritative work и outbound connection work обязаны остав
 
 Syntactically legal request всё равно может быть computationally expensive.
 
-Authoritative loop поэтому использует global/per-source fairness и operation limits. Проект движется к explicit global subsystem budgets для tile work, liquids, sections и других expensive operations.
+Authoritative loop поэтому использует global/per-source fairness и operation limits. Work, который обходит authoritative loop, но умножается по recipients, например public chat fan-out, должен иметь собственный server-global subsystem ceiling до multiplication step.
 
-Security budgets являются **global**, если work делит один tick. Умножить полный expensive-work budget на число игроков означает превратить limit в более крупную DoS surface.
+Проект продолжает двигаться к explicit global subsystem budgets для tile work, liquids, sections и других expensive operations.
+
+Security budgets являются **global**, если work делит один tick или общий fan-out resource. Умножить полный expensive-work budget на число игроков означает превратить limit в более крупную DoS surface.
 
 ## 13. Single-writer containment
 
@@ -254,6 +260,7 @@ bad frame          -> reject/close connection
 rate abuse         -> reject/close connection
 stalled handshake  -> close that connection
 stalled join       -> close that connection
+chat fan-out abuse -> drop over-budget broadcast
 slow reader        -> close that connection
 bad runtime cache  -> fall back to .wld
 TUI failure        -> fall back to plain console
@@ -273,6 +280,7 @@ Security-relevant observability должна различать как мини�
 - capacity admission rejects;
 - admission-rate rejects;
 - connection/message rate limits;
+- server-global fan-out rate rejection;
 - connection stop reason mapping, включая handshake/join/idle timeouts;
 - malformed/protocol failures;
 - slow-client disconnects;
@@ -303,6 +311,7 @@ Broader roadmap всё ещё требует fuzz/malformed corpora для:
 - admission-gate churn/capacity tests;
 - handshake/join/idle deadline tests;
 - connection policy/rate tests;
+- global fan-out budget tests;
 - malformed frame/packet tests;
 - slow-reader real-socket tests;
 - runtime queue/fairness tests;
@@ -317,7 +326,7 @@ Broader roadmap всё ещё требует fuzz/malformed corpora для:
 Active security work:
 
 - broader protocol/world fuzz corpora beyond current framing and typed-decoder regression floor;
-- complete global/per-subsystem expensive-work budgets;
+- complete global/per-subsystem expensive-work budgets beyond currently bounded command loop and chat fan-out;
 - complete rate limits всех expensive gameplay classes;
 - richer malformed/rejected packet telemetry;
 - full authoritative movement/inventory/combat validation;
