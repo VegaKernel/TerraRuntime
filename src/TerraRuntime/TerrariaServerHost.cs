@@ -407,7 +407,8 @@ public static class TerrariaServerHost
                             WorldReadyMilliseconds: worldReadyDuration.TotalMilliseconds,
                             NetworkReadyMilliseconds: networkReadyDuration.TotalMilliseconds,
                             CapturedAtUtc: DateTimeOffset.UtcNow),
-                        worldClockTelemetry);
+                        worldClockTelemetry,
+                        () => sectionCacheRebuild.Snapshot);
                     terminalUi = TerminalUiHost.Start(
                         dashboardOperations,
                         playerOperations,
