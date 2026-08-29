@@ -50,6 +50,84 @@ public sealed class RuntimeChestCommandProcessorTests
     }
 
     [Fact]
+    public void Rename_excludes_author_and_name_lookup_targets_requester()
+    {
+        var store = new RuntimeChestStore([Chest()]);
+        var replication = new RuntimeChestReplicationRegistry();
+        var processor = new RuntimeChestCommandProcessor(store, replication);
+        ConnectionHandle owner = Connection(1, playerSlot: 0, generation: 1);
+        ConnectionHandle observer = Connection(2, playerSlot: 1, generation: 1);
+        var ownerOutbound = Outbound();
+        var observerOutbound = Outbound();
+
+        Assert.True(replication.TryRegister(owner.Source, ownerOutbound));
+        Assert.True(replication.TryRegister(observer.Source, observerOutbound));
+        MarkPlaying(replication, owner);
+        MarkPlaying(replication, observer);
+        Assert.True(processor.TryApply(
+            new ClientChestOpenRuntimeCommand(owner, new TerrariaChestOpenRequest(10, 20))));
+
+        int ownerFramesBeforeRename = ownerOutbound.QueuedFrames;
+        int observerFramesBeforeRename = observerOutbound.QueuedFrames;
+        var rename = new TerrariaActiveChestState(3, 10, 20, 4, "Loot");
+        Assert.True(processor.TryApply(new ClientActiveChestRuntimeCommand(owner, rename)));
+
+        Assert.Equal(1, processor.AppliedActiveStates);
+        Assert.Equal(ownerFramesBeforeRename, ownerOutbound.QueuedFrames);
+        Assert.Equal(observerFramesBeforeRename + 1, observerOutbound.QueuedFrames);
+        Assert.Equal(1, replication.NameFrames);
+        Assert.True(store.TryGetOpenChest(owner, out WorldChest renamed));
+        Assert.Equal("Loot", renamed.Name);
+
+        int observerFramesBeforeLookup = observerOutbound.QueuedFrames;
+        var lookup = new TerrariaChestNameLookupRequest(-1, 10, 20);
+        Assert.True(processor.TryApply(new ClientChestNameLookupRuntimeCommand(owner, lookup)));
+
+        Assert.Equal(1, processor.AppliedNameLookups);
+        Assert.Equal(0, processor.RejectedNameLookups);
+        Assert.Equal(ownerFramesBeforeRename + 1, ownerOutbound.QueuedFrames);
+        Assert.Equal(observerFramesBeforeLookup, observerOutbound.QueuedFrames);
+        Assert.Equal(2, replication.NameFrames);
+
+        int ownerFramesBeforeClear = ownerOutbound.QueuedFrames;
+        int observerFramesBeforeClear = observerOutbound.QueuedFrames;
+        var clear = new TerrariaActiveChestState(
+            3,
+            10,
+            20,
+            global::Multiplicity.Packets.ChestOpen.InvalidNameLength,
+            string.Empty);
+        Assert.True(processor.TryApply(new ClientActiveChestRuntimeCommand(owner, clear)));
+
+        Assert.Equal(2, processor.AppliedActiveStates);
+        Assert.Equal(ownerFramesBeforeClear, ownerOutbound.QueuedFrames);
+        Assert.Equal(observerFramesBeforeClear + 1, observerOutbound.QueuedFrames);
+        Assert.True(store.TryGetOpenChest(owner, out WorldChest cleared));
+        Assert.Empty(cleared.Name);
+    }
+
+    [Fact]
+    public void Invalid_name_lookup_is_rejected_without_replication()
+    {
+        var store = new RuntimeChestStore([Chest()]);
+        var replication = new RuntimeChestReplicationRegistry();
+        var processor = new RuntimeChestCommandProcessor(store, replication);
+        ConnectionHandle owner = Connection(1, playerSlot: 0, generation: 1);
+        var ownerOutbound = Outbound();
+
+        Assert.True(replication.TryRegister(owner.Source, ownerOutbound));
+        MarkPlaying(replication, owner);
+        int before = ownerOutbound.QueuedFrames;
+
+        var lookup = new TerrariaChestNameLookupRequest(-1, 99, 99);
+        Assert.True(processor.TryApply(new ClientChestNameLookupRuntimeCommand(owner, lookup)));
+
+        Assert.Equal(0, processor.AppliedNameLookups);
+        Assert.Equal(1, processor.RejectedNameLookups);
+        Assert.Equal(before, ownerOutbound.QueuedFrames);
+    }
+
+    [Fact]
     public void Failed_switch_clears_observer_index_after_previous_chest_is_released()
     {
         var store = new RuntimeChestStore(
