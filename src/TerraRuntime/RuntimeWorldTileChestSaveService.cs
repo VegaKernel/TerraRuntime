@@ -54,7 +54,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         RuntimeChestStore chestStore,
         RuntimeWorldClock? worldClock = null,
         int synchronizationSectionsPerTick = DefaultSynchronizationSectionsPerTick,
-        RuntimeSignStore? signStore = null)
+        RuntimeSignStore? signStore = null,
+        WorldFileLoadLimits? checkpointValidationLimits = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
@@ -63,6 +64,16 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentNullException.ThrowIfNull(chestStore);
         ArgumentOutOfRangeException.ThrowIfLessThan(synchronizationSectionsPerTick, 1);
+
+        AtomicSaveFileWriterOptions? writerOptions = null;
+        if (checkpointValidationLimits is WorldFileLoadLimits limits)
+        {
+            limits.Validate();
+            writerOptions = new AtomicSaveFileWriterOptions(
+                BackupPath: RuntimeWorldCheckpointRecovery.GetBackupPath(destinationPath),
+                ValidateCandidateAsync: (path, cancellationToken) =>
+                    RuntimeWorldCheckpointRecovery.ValidateAsync(path, limits, cancellationToken));
+        }
 
         this.synchronizationSectionsPerTick = synchronizationSectionsPerTick;
         snapshotSource = new RuntimeWorldTileChestSaveSnapshotSource(
@@ -80,7 +91,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
                 preserved,
                 snapshot,
                 stream,
-                cancellationToken));
+                cancellationToken),
+            writerOptions);
         PublishOwnerStatus();
     }
 
