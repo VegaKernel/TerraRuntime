@@ -95,6 +95,14 @@ public sealed class RuntimeNpcShopCatalogSnapshot
         catalog = null!;
         return false;
     }
+
+    internal void CopyByShop(Span<NpcShopCatalogEntry> destination)
+    {
+        if (destination.Length < entriesByShop.Length)
+            throw new ArgumentException("Destination is smaller than the published shop count.", nameof(destination));
+
+        entriesByShop.CopyTo(destination);
+    }
 }
 
 /// <summary>
@@ -156,9 +164,7 @@ public sealed class RuntimeNpcShopCatalogRegistry
             NpcShopCatalogEntry[] byShop = new NpcShopCatalogEntry[pendingByShop.Count];
             int index = 0;
             foreach ((ShopId shopId, NpcShopCatalog catalog) in pendingByShop)
-            {
                 byShop[index++] = new NpcShopCatalogEntry(shopId, catalog.NpcArchetypeId, catalog);
-            }
 
             Array.Sort(byShop, static (left, right) => left.ShopId.CompareTo(right.ShopId));
             NpcShopCatalogEntry[] byArchetype = (NpcShopCatalogEntry[])byShop.Clone();
@@ -216,28 +222,16 @@ public sealed class RuntimeNpcShopCatalogRegistry
         RuntimeNpcShopCatalogSnapshot snapshot = Snapshot;
         pendingByShop = new Dictionary<ShopId, NpcShopCatalog>(snapshot.Count);
         pendingByArchetype = new Dictionary<GameplayArchetypeId, ShopId>(snapshot.Count);
+        if (snapshot.Count == 0)
+            return;
 
-        // Published catalogs are immutable. Reconstruct the mutable cold-path maps from the two indexed views.
-        // Count is intentionally small/bounded by host registration policy, so this work never belongs to the tick hot path.
-        // Iteration by ShopId is deterministic only for publication output; dictionary order is never externally observable.
-        foreach (NpcShopCatalogEntry entry in CopyEntries(snapshot))
+        var entries = new NpcShopCatalogEntry[snapshot.Count];
+        snapshot.CopyByShop(entries);
+        foreach (NpcShopCatalogEntry entry in entries)
         {
             pendingByShop.Add(entry.ShopId, entry.Catalog);
             pendingByArchetype.Add(entry.NpcArchetypeId, entry.ShopId);
         }
-    }
-
-    private static NpcShopCatalogEntry[] CopyEntries(RuntimeNpcShopCatalogSnapshot snapshot)
-    {
-        if (snapshot.Count == 0)
-            return [];
-
-        var entries = new NpcShopCatalogEntry[snapshot.Count];
-        int written = 0;
-        // Snapshot intentionally exposes lookup rather than mutable enumeration. Shop IDs are not discoverable from
-        // that API, so the registry retains a private copy via the snapshot's internal publication helper below.
-        snapshot.CopyByShop(entries, ref written);
-        return entries;
     }
 }
 
@@ -270,17 +264,5 @@ public sealed class NpcShopRegistrationLease : IDisposable
     {
         RuntimeNpcShopCatalogRegistry? owner = Interlocked.Exchange(ref registry, null);
         owner?.Retire(shopId, archetypeId);
-    }
-}
-
-internal static class RuntimeNpcShopCatalogSnapshotExtensions
-{
-    public static void CopyByShop(
-        this RuntimeNpcShopCatalogSnapshot snapshot,
-        NpcShopCatalogEntry[] destination,
-        ref int written)
-    {
-        ArgumentNullException.ThrowIfNull(destination);
-        snapshot.CopyByShopCore(destination, ref written);
     }
 }
