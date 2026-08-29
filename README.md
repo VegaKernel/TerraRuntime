@@ -25,14 +25,14 @@ logs/      # reserved for standalone runtime diagnostics/log output
 
 ## NativeAOT standalone deployment
 
-A production NativeAOT publish is intentionally **not** a copied `dotnet build` directory. TerraRuntime project/package assemblies are linked into the native host, so the clean NativeAOT deployment root must not accumulate loose `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll`, `*.deps.json` or `*.runtimeconfig.json` files.
+A production NativeAOT publish is intentionally **not** a copied `dotnet build` directory. TerraRuntime project/package assemblies are linked into the native host, so the NativeAOT deployment root must not accumulate loose `TerraRuntime.*.dll`, `Multiplicity.dll`, `Terminal.Gui.dll`, `*.deps.json` or `*.runtimeconfig.json` files.
 
-Publishing the current standalone NativeAOT host automatically creates a clean ready-to-run deployment tree under `artifacts/deploy/<RID>/`. For example:
+Publish directly into the final artifact directory:
 
 ```text
-dotnet publish src/TerraRuntime/TerraRuntime.csproj -c Release -r win-x64
+dotnet publish src/TerraRuntime/TerraRuntime.csproj -c Release -r win-x64 -o artifacts/native-aot/win-x64
 
-artifacts/deploy/win-x64/
+artifacts/native-aot/win-x64/
 ├── TerraRuntime.Server.exe
 ├── Worlds/
 ├── config/
@@ -40,14 +40,17 @@ artifacts/deploy/win-x64/
 └── logs/
 ```
 
-The intermediate SDK publish output may contain build/debug artifacts and is not the deployment directory. CI launches NativeAOT smoke tests from the generated clean deployment tree and rejects unexpected root entries.
+Release publish symbols such as `*.pdb` and `*.dbg` are excluded from the runnable artifact. CI launches every NativeAOT smoke path directly from `artifacts/native-aot/<RID>/` and rejects unexpected root entries or leaked debug symbols.
 
 ## Vega and managed plugins
 
-The target Vega topology uses a .NET 11 CoreCLR host so ordinary managed DLL plugins can be loaded and hot-replaced:
+The extensible .NET 11 CoreCLR host is published as a self-contained single-file executable. Framework/runtime and TerraRuntime implementation dependencies required to start the host are bundled into that executable, while the human-facing artifact keeps explicit runtime/plugin/data directories:
 
 ```text
-TerraRuntime.Server.exe
+dotnet publish src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj -c Release -r win-x64 -o artifacts/coreclr/win-x64
+
+artifacts/coreclr/win-x64/
+├── TerraRuntime.Extensible.Server.exe
 ├── runtime/
 ├── HostModules/
 │   └── Vega.dll
@@ -58,6 +61,8 @@ TerraRuntime.Server.exe
 ├── data/
 └── logs/
 ```
+
+`runtime/` is reserved for deliberately external sidecar dependencies if the host ever admits one; the current self-contained single-file baseline does not require loose framework DLLs there. Release debug symbols are excluded from the runnable artifact. CI installs a drop-in host-module fixture and launches the server directly from `artifacts/coreclr/<RID>/`.
 
 Vega is a trusted host module and receives a narrow privileged TerraRuntime host contract. Ordinary plugins remain behind `Vega.PluginSdk`; they do not receive TerraRuntime implementation objects or mutable authoritative state directly.
 
