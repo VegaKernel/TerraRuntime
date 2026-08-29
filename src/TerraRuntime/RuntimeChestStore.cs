@@ -126,6 +126,52 @@ internal sealed class RuntimeChestStore
         return true;
     }
 
+    public bool TryApplyActiveState(
+        ConnectionHandle connection,
+        in TerrariaActiveChestState submitted,
+        out WorldChest? renamedChest,
+        out bool closedWorldChest)
+    {
+        renamedChest = null;
+        closedWorldChest = false;
+        if (!connection.IsAssigned)
+            return false;
+
+        // Vanilla uses negative chest indices for closing a world chest or switching to a player-owned bank.
+        // Either transition releases any currently acquired world chest.
+        if (submitted.ChestId < 0)
+        {
+            if (!TryClose(connection, out short closedChestId))
+                return false;
+            closedWorldChest = closedChestId >= 0;
+            return true;
+        }
+
+        if (!TryGetOpenChest(connection, out WorldChest chest) ||
+            submitted.ChestId != chest.SlotId ||
+            submitted.ChestX != chest.X ||
+            submitted.ChestY != chest.Y ||
+            submitted.NameLength > global::Multiplicity.Packets.ChestOpen.MaxChestNameLength ||
+            submitted.NameLength != submitted.ChestName.Length)
+        {
+            return false;
+        }
+
+        string name = submitted.ChestName;
+        if (string.Equals(name, chest.Name, StringComparison.Ordinal))
+            return true;
+
+        var updated = new WorldChest(
+            chest.SlotId,
+            chest.X,
+            chest.Y,
+            name,
+            chest.Items);
+        chests[chest.SlotId] = updated;
+        renamedChest = updated;
+        return true;
+    }
+
     public bool TryClose(ConnectionHandle connection, out short closedChestId)
     {
         closedChestId = NoChest;
