@@ -88,4 +88,13 @@ jobs:
             --player artifacts/source-contract/player.cs \
             --worldgen artifacts/source-contract/worldgen.cs \
             --main artifacts/source-contract/main.cs \
-            --tile-id artifacts/source-contract/tile-id.cs
+            --tile-id artifacts/source-contract/tile-id.cs \
+            | tee artifacts/source-contract/probe.txt
+
+      - name: Upload source probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: projectile-source-probe
+          path: artifacts/source-contract/probe.txt
+          if-no-files-found: error
+          retention-days: 1
