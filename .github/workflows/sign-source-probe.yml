@@ -1,0 +1,98 @@
+name: Vanilla Sign Source Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sign-source-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-sign-source-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/sign-source .tools
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Install pinned ILSpy command line
+        run: >-
+          dotnet tool install ilspycmd
+          --tool-path .tools
+          --version 11.0.0.9375
+
+      - name: Decompile sign protocol owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
+            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then
+              assembly="$candidate"
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          assembly_dir="$(dirname "$assembly")"
+          printf 'source_assembly_sha256=%s path=%s\n' "$expected_sha256" "$assembly"
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.MessageBuffer "$assembly" > artifacts/sign-source/message-buffer.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.NetMessage "$assembly" > artifacts/sign-source/net-message.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Sign "$assembly" > artifacts/sign-source/sign.cs
+
+      - name: Print exact sign protocol neighborhoods
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          files = [
+              Path('artifacts/sign-source/message-buffer.cs'),
+              Path('artifacts/sign-source/net-message.cs'),
+              Path('artifacts/sign-source/sign.cs'),
+          ]
+          pattern = re.compile(r'case\s+46\s*:|case\s+47\s*:|ReadSign|Sign\.Text|Sign\.ReadSign|sign\[|text2|number2\s*==\s*46|number2\s*==\s*47', re.I)
+          emitted_total = 0
+          for path in files:
+              lines = path.read_text(encoding='utf-8').splitlines()
+              hits = [i for i, line in enumerate(lines) if pattern.search(line)]
+              print(f'=== {path} hits={len(hits)} ===')
+              emitted = []
+              for hit in hits:
+                  start = max(0, hit - 18)
+                  end = min(len(lines), hit + 25)
+                  if any(start <= previous < end for previous in emitted):
+                      continue
+                  emitted.append(hit)
+                  emitted_total += 1
+                  print(f'--- lines {start + 1}-{end} hit={hit + 1} ---')
+                  for i in range(start, end):
+                      print(f'{i + 1:06d}: {lines[i]}')
+          if emitted_total == 0:
+              raise SystemExit('No sign protocol neighborhoods found in pinned TerrariaServer 1.4.5.8')
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vanilla-sign-source-${{ github.sha }}
+          path: artifacts/sign-source
+          if-no-files-found: error
+          retention-days: 7
