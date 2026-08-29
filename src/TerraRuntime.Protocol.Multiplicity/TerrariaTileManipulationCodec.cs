@@ -4,12 +4,38 @@ using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Protocol.Multiplicity;
 
+/// <summary>
+/// Source-verified TerrariaServer 1.4.5.8 packet-17 action identities currently consumed by TerraRuntime.
+/// Extend only when the corresponding MessageBuffer behavior is pinned by the source-contract workflow.
+/// </summary>
+public enum TerrariaTileManipulationAction : byte
+{
+    KillTile = 0,
+    PlaceTile = 1,
+    KillWall = 2,
+    PlaceWall = 3,
+    KillTileNoItem = 4
+}
+
 public readonly record struct TerrariaTileManipulationState(
     byte Action,
     short TileX,
     short TileY,
     short Data,
-    byte Style);
+    byte Style)
+{
+    public bool TryGetKnownAction(out TerrariaTileManipulationAction action)
+    {
+        if (Action <= (byte)TerrariaTileManipulationAction.KillTileNoItem)
+        {
+            action = (TerrariaTileManipulationAction)Action;
+            return true;
+        }
+
+        action = default;
+        return false;
+    }
+}
 
 public enum TerrariaTileManipulationDecodeResult : byte
 {
