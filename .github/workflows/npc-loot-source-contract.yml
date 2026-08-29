@@ -79,7 +79,9 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.DropBasedOnExpertMode "$assembly" > artifacts/source-contract/expert-mode.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.Conditions "$assembly" > artifacts/source-contract/conditions.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.CommonCode "$assembly" > artifacts/source-contract/common-code.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ItemDropRules.DropAttemptInfo "$assembly" > artifacts/source-contract/drop-attempt-info.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" > artifacts/source-contract/item.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.NPC "$assembly" > artifacts/source-contract/npc.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.NPCID "$assembly" > artifacts/source-contract/npc-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" > artifacts/source-contract/item-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.Prefixes.PrefixLegacy "$assembly" > artifacts/source-contract/prefix-legacy.cs
@@ -101,4 +103,6 @@ jobs:
             --item artifacts/source-contract/item.cs \
             --item-id artifacts/source-contract/item-id.cs \
             --prefix-legacy artifacts/source-contract/prefix-legacy.cs \
-            --prefix-id artifacts/source-contract/prefix-id.cs
+            --prefix-id artifacts/source-contract/prefix-id.cs \
+            --drop-attempt-info artifacts/source-contract/drop-attempt-info.cs \
+            --npc artifacts/source-contract/npc.cs

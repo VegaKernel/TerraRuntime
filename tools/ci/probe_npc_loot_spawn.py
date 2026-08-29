@@ -39,6 +39,14 @@ def extract_braced_member(source: str, signature: str) -> str:
     raise SystemExit(f"Could not locate closing brace for {signature!r}.")
 
 
+def extract_named_bool_member(source: str, name: str) -> str:
+    pattern = rf"(?:public|private|internal|protected)(?:\s+static)?\s+bool\s+{re.escape(name)}\s*\([^)]*\)"
+    match = re.search(pattern, source)
+    if match is None:
+        raise SystemExit(f"Could not locate bool source member {name!r}.")
+    return extract_braced_member(source, match.group(0))
+
+
 def print_context(source: str, needle: str, label: str, radius: int = 750) -> None:
     index = source.find(needle)
     if index < 0:
@@ -80,6 +88,8 @@ def main() -> int:
     parser.add_argument("--item-id", required=True, type=Path)
     parser.add_argument("--prefix-legacy", required=True, type=Path)
     parser.add_argument("--prefix-id", required=True, type=Path)
+    parser.add_argument("--drop-attempt-info", required=True, type=Path)
+    parser.add_argument("--npc", required=True, type=Path)
     args = parser.parse_args()
 
     common_code = compact(args.common_code.read_text(encoding="utf-8"))
@@ -88,6 +98,8 @@ def main() -> int:
     item_id = compact(args.item_id.read_text(encoding="utf-8"))
     prefix_legacy = compact(args.prefix_legacy.read_text(encoding="utf-8"))
     prefix_id = compact(args.prefix_id.read_text(encoding="utf-8"))
+    drop_attempt_info = compact(args.drop_attempt_info.read_text(encoding="utf-8"))
+    npc = compact(args.npc.read_text(encoding="utf-8"))
 
     drop_from_npc = extract_braced_member(
         common_code,
@@ -144,7 +156,7 @@ def main() -> int:
             f"expected {sorted(expected_reduced_natural)}, got {sorted(reduced_natural)}"
         )
 
-    prefix_stats = extract_braced_member(item, "private bool TryGetPrefixStatMultipliersForItem")
+    prefix_stats = extract_named_bool_member(item, "TryGetPrefixStatMultipliersForItem")
 
     print("npc_loot_spawn_center=x:npc.position.X+npc.width/2,y:npc.position.Y+npc.height/2")
     print("npc_loot_spawn_scattered_default=false")
@@ -164,12 +176,14 @@ def main() -> int:
     print("summon_reduced_natural_ids=" + ",".join(str(value) for value in expected_summon_prefixes if value in reduced_natural))
 
     for prefix_id_value in expected_summon_prefixes:
-        print_context(
-            prefix_stats,
-            f"case {prefix_id_value}:",
-            f"prefix_stats_case_{prefix_id_value}",
-            radius=520,
-        )
+        print_context(prefix_stats, f"case {prefix_id_value}:", f"prefix_stats_case_{prefix_id_value}", radius=520)
+
+    # Exploratory source evidence for combined loot/spawn RNG ordering. These contexts are promoted into hard
+    # assertions only after the pinned server exposes the exact construction and execution path.
+    print_context(drop_attempt_info, "UnifiedRandom", "drop_attempt_info_rng", radius=900)
+    print_all_contexts(npc, "DropAttemptInfo", "npc_drop_attempt_info", radius=1200, limit=8)
+    print_all_contexts(npc, "Main.rand", "npc_loot_main_rand", radius=900, limit=12)
+    print_context(common_drop, "CommonCode.DropItemFromNPC", "common_drop_immediate_spawn", radius=1200)
 
     return 0
 
