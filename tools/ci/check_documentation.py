@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import unquote
@@ -99,7 +101,74 @@ def validate_links(paths: list[Path]) -> list[str]:
     return errors
 
 
+def is_zero_sha(value: str) -> bool:
+    return bool(value) and set(value) == {"0"}
+
+
+def changed_paths_since(base_sha: str) -> set[str]:
+    if not base_sha or is_zero_sha(base_sha):
+        return set()
+
+    result = subprocess.run(
+        ["git", "diff", "--name-only", "--diff-filter=ACMRTUXB", f"{base_sha}...HEAD"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"git diff from {base_sha} failed with exit code {result.returncode}: "
+            f"{result.stderr.strip()}"
+        )
+
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
+def validate_changed_language_pairs(base_sha: str | None) -> list[str]:
+    if not base_sha or is_zero_sha(base_sha):
+        return []
+
+    changed = changed_paths_since(base_sha)
+    errors: list[str] = []
+
+    for path in sorted(changed):
+        if path.startswith("docs/en/") and path.endswith(".md"):
+            relative = path.removeprefix("docs/en/")
+            mirror = f"docs/ru/{relative}"
+            if mirror not in changed:
+                errors.append(
+                    f"English documentation changed without its Russian mirror in the same change set: "
+                    f"{path} -> expected {mirror}"
+                )
+        elif path.startswith("docs/ru/") and path.endswith(".md"):
+            relative = path.removeprefix("docs/ru/")
+            mirror = f"docs/en/{relative}"
+            if mirror not in changed:
+                errors.append(
+                    f"Russian documentation changed without its English mirror in the same change set: "
+                    f"{path} -> expected {mirror}"
+                )
+
+    return errors
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--changed-base",
+        default=None,
+        help=(
+            "Optional git base SHA. When supplied, every changed docs/en/*.md page must have the "
+            "matching docs/ru/*.md page in the same diff and vice versa."
+        ),
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
     errors: list[str] = []
 
     if not EN.is_dir() or not RU.is_dir():
@@ -130,15 +199,25 @@ def main() -> int:
 
     errors.extend(validate_links(markdown))
 
+    try:
+        errors.extend(validate_changed_language_pairs(args.changed_base))
+    except RuntimeError as error:
+        errors.append(str(error))
+
     if errors:
         print("Documentation validation failed:", file=sys.stderr)
         for error in errors:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
+    pair_note = ""
+    if args.changed_base and not is_zero_sha(args.changed_base):
+        pair_note = f", paired-change diff checked from {args.changed_base[:12]}"
+
     print(
         "Documentation validation passed: "
-        f"{len(en_files)} mirrored RU/EN pages, {len(markdown)} Markdown files checked."
+        f"{len(en_files)} mirrored RU/EN pages, {len(markdown)} Markdown files checked"
+        f"{pair_note}."
     )
     return 0
 
