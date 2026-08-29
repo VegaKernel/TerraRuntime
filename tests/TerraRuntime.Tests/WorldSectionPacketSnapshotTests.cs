@@ -1,4 +1,5 @@
 using System.Reflection;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
@@ -30,6 +31,50 @@ public sealed class WorldSectionPacketSnapshotTests
             WorldSectionPacketEncodeResult.Encoded,
             WorldSectionPacketEncoder.TryEncode(packetSnapshot!, out byte[] immutableFrame));
         Assert.Equal(compatibilityFrame, immutableFrame);
+    }
+
+    [Fact]
+    public void Captured_object_metadata_is_detached_from_later_world_array_changes()
+    {
+        WorldFileData source = LoadCompleteWorld();
+        WorldTile signTile = source.Tiles.Get(0, 0);
+        signTile.Type = VanillaTileIds.Signs;
+        signTile.Flags |= WorldTileFlags.Active;
+        signTile.FrameX = 0;
+        signTile.FrameY = 0;
+        source.Tiles.Set(0, 0, signTile);
+
+        WorldFileData world = source with
+        {
+            Signs = [new WorldSign(0, "captured-text", 0, 0)]
+        };
+        WorldSectionId section = new(0, 0);
+        Assert.True(world.Tiles.TryCaptureSectionSnapshot(section, out WorldSectionTileSnapshot? tileSnapshot));
+        Assert.NotNull(tileSnapshot);
+
+        Assert.Equal(
+            WorldSectionPacketSnapshotCaptureResult.Captured,
+            WorldSectionPacketSnapshotCapture.TryCapture(
+                world,
+                tileSnapshot!,
+                WorldSectionEncodingContext.Capture(world),
+                out WorldSectionPacketSnapshot? packetSnapshot));
+        Assert.NotNull(packetSnapshot);
+        Assert.Equal(
+            WorldSectionPayloadAssemblyResult.Encoded,
+            WorldSectionPayloadAssembler.TryEncode(packetSnapshot!, out byte[] capturedBefore));
+
+        world.Signs[0] = new WorldSign(0, "changed-after-capture", 0, 0);
+
+        Assert.Equal(
+            WorldSectionPayloadAssemblyResult.Encoded,
+            WorldSectionPayloadAssembler.TryEncode(packetSnapshot!, out byte[] capturedAfter));
+        Assert.Equal(capturedBefore, capturedAfter);
+
+        Assert.Equal(
+            WorldSectionPayloadAssemblyResult.Encoded,
+            WorldSectionPayloadAssembler.TryEncode(world, tileSnapshot!, out byte[] liveAfter));
+        Assert.NotEqual(capturedAfter, liveAfter);
     }
 
     [Fact]
