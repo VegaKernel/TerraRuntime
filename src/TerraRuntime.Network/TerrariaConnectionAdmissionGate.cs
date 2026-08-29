@@ -65,6 +65,15 @@ public sealed class TerrariaConnectionAdmissionGate
 
     public bool TryAcquire(out Lease? lease)
     {
+        // Count every attempt before capacity admission. Otherwise a full server would permit an
+        // unbounded accept/reject churn loop without ever consuming the rate budget.
+        if (!TryConsumeAdmissionBudget())
+        {
+            RejectRate();
+            lease = null;
+            return false;
+        }
+
         while (true)
         {
             int active = Volatile.Read(ref _activeConnections);
@@ -77,14 +86,6 @@ public sealed class TerrariaConnectionAdmissionGate
 
             if (Interlocked.CompareExchange(ref _activeConnections, active + 1, active) != active)
                 continue;
-
-            if (!TryConsumeAdmissionBudget())
-            {
-                Interlocked.Decrement(ref _activeConnections);
-                RejectRate();
-                lease = null;
-                return false;
-            }
 
             Interlocked.Increment(ref _acceptedConnections);
             lease = new Lease(this);
