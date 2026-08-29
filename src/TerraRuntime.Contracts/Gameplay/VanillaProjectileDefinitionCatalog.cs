@@ -27,11 +27,22 @@ public readonly record struct VanillaProjectileDefinition(
 }
 
 /// <summary>
-/// Version-pinned TerrariaServer 1.4.5.8 projectile definitions for behavior slices that TerraRuntime can
-/// currently simulate end-to-end. Unsupported vanilla IDs deliberately do not receive guessed defaults.
+/// Version-pinned TerrariaServer 1.4.5.8 projectile definitions for behavior slices TerraRuntime can simulate
+/// without guessed defaults. A definition can still have explicit unsupported side-effect boundaries in the
+/// runtime stepper, such as Wooden Arrow tile-impact Kill() effects.
 /// </summary>
 public static class VanillaProjectileDefinitionCatalog
 {
+    private static readonly VanillaProjectileDefinition WoodenArrowDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     private static readonly VanillaProjectileDefinition ShurikenDefinition = new(
         Width: 22,
         Height: 22,
@@ -74,6 +85,12 @@ public static class VanillaProjectileDefinitionCatalog
 
     public static bool TryGet(ProjectileTypeId type, out VanillaProjectileDefinition definition)
     {
+        if (type == VanillaProjectileIds.WoodenArrowFriendly)
+        {
+            definition = WoodenArrowDefinition;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.Shuriken)
         {
             definition = ShurikenDefinition;

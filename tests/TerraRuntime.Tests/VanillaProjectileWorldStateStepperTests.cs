@@ -79,6 +79,119 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
+    public void Wooden_arrow_free_flight_matches_ai001_before_gravity()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.WoodenArrowFriendly
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(VanillaProjectileIds.WoodenArrowFriendly, next.State.Type);
+        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(0f, next.State.VelocityY, 5);
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(100f, next.State.PositionY, 5);
+        Assert.Equal(1199, next.TimeLeft);
+    }
+
+    [Fact]
+    public void Wooden_arrow_starts_gravity_when_ai0_reaches_fifteen()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 2f,
+            ai0: 14f) with
+        {
+            Type = VanillaProjectileIds.WoodenArrowFriendly
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(15f, next.State.Ai.Ai0, 5);
+        Assert.Equal(4f, next.State.VelocityX, 5);
+        Assert.Equal(2.1f, next.State.VelocityY, 5);
+        Assert.Equal(104f, next.State.PositionX, 5);
+        Assert.Equal(102.1f, next.State.PositionY, 5);
+        Assert.Equal(1199, next.TimeLeft);
+    }
+
+    [Fact]
+    public void Wooden_arrow_caps_fall_speed_at_sixteen()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 0f,
+            velocityY: 15.95f,
+            ai0: 15f) with
+        {
+            Type = VanillaProjectileIds.WoodenArrowFriendly
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(15f, next.State.Ai.Ai0, 5);
+        Assert.Equal(16f, next.State.VelocityY, 5);
+        Assert.Equal(116f, next.State.PositionY, 5);
+    }
+
+    [Fact]
+    public void Wooden_arrow_tile_impact_is_left_for_kill_effect_slice()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(8, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.WoodenArrowFriendly
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.False(stepper.TryStepState(in context, out _));
+    }
+
+    [Fact]
+    public void Wooden_arrow_nondefault_ai001_feature_state_is_left_unsupported()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arrow = CreateSnapshot(
+            positionX: 100f,
+            positionY: 100f,
+            velocityX: 4f,
+            velocityY: 0f,
+            ai2: 1f) with
+        {
+            Type = VanillaProjectileIds.WoodenArrowFriendly
+        };
+        ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
+
+        Assert.False(stepper.TryStepState(in context, out _));
+    }
+
+    [Fact]
     public void Shuriken_water_contact_slows_position_without_reducing_velocity()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
@@ -213,7 +326,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
         var stepper = new VanillaProjectileWorldStateStepper(tiles);
         ProjectileSnapshot arrow = CreateSnapshot(positionX: 100f, positionY: 100f, velocityX: 4f, velocityY: 0f) with
         {
-            Type = VanillaProjectileIds.WoodenArrowFriendly
+            Type = VanillaProjectileIds.FireArrow
         };
         ProjectileSimulationStepContext context = CreateContext(arrow, timeLeft: 1200);
 
@@ -243,7 +356,8 @@ public sealed class VanillaProjectileWorldStateStepperTests
         float positionY,
         float velocityX,
         float velocityY,
-        float ai0 = 0f) =>
+        float ai0 = 0f,
+        float ai2 = 0f) =>
         new(
             new ProjectileHandle(0, new ProjectileGeneration(1)),
             new ProjectileRevision(1),
@@ -253,7 +367,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
             positionY,
             velocityX,
             velocityY,
-            new ProjectileAiState(ai0, 0f, 0f),
+            new ProjectileAiState(ai0, 0f, ai2),
             BannerIdToRespondTo: 0,
             Damage: 20,
             KnockBack: 1f,

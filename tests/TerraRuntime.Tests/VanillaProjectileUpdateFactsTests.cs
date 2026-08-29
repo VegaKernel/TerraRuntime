@@ -47,11 +47,12 @@ public sealed class VanillaProjectileUpdateFactsTests
     }
 
     [Theory]
+    [InlineData(1)]
     [InlineData(3)]
     [InlineData(48)]
     [InlineData(54)]
     [InlineData(599)]
-    public void Supported_thrown_family_has_one_subupdate_per_world_tick(int rawType)
+    public void Supported_single_update_projectiles_have_one_subupdate_per_world_tick(int rawType)
     {
         var type = new ProjectileTypeId(rawType);
 

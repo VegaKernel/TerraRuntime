@@ -36,6 +36,33 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(1f, updated.Ai.Ai0, 5);
     }
 
+    [Fact]
+    public async Task Authoritative_tick_runs_source_backed_player_owned_wooden_arrow_free_flight_by_default()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(
+            worldTiles: tiles,
+            projectiles: projectiles);
+        ProjectileStateUpdate projectile = CreateProjectile(1, spawner: 3);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot updated));
+        Assert.Equal(VanillaProjectileIds.WoodenArrowFriendly, updated.Type);
+        Assert.Equal(new ProjectileRevision(2), updated.Revision);
+        Assert.Equal(104f, updated.PositionX, 5);
+        Assert.Equal(100f, updated.PositionY, 5);
+        Assert.Equal(4f, updated.VelocityX, 5);
+        Assert.Equal(0f, updated.VelocityY, 5);
+        Assert.Equal(1f, updated.Ai.Ai0, 5);
+    }
+
     [Theory]
     [InlineData(3)]
     [InlineData(48)]
@@ -104,7 +131,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
             worldTiles: tiles,
             projectiles: projectiles);
         ProjectileStateUpdate projectile = new(
-            VanillaProjectileIds.WoodenArrowFriendly,
+            VanillaProjectileIds.FireArrow,
             Spawner: 3,
             PositionX: 100f,
             PositionY: 100f,

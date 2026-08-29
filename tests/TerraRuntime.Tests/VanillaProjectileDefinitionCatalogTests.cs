@@ -5,6 +5,25 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaProjectileDefinitionCatalogTests
 {
     [Fact]
+    public void Terraria_1458_wooden_arrow_definition_matches_source()
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            VanillaProjectileIds.WoodenArrowFriendly,
+            out VanillaProjectileDefinition definition));
+
+        Assert.Equal(10, definition.Width);
+        Assert.Equal(10, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
+        Assert.Equal(10, definition.CollisionWidth);
+        Assert.Equal(10, definition.CollisionHeight);
+        Assert.Equal(0f, definition.CollisionOffsetX);
+        Assert.Equal(0f, definition.CollisionOffsetY);
+    }
+
+    [Fact]
     public void Terraria_1458_shuriken_definition_matches_source()
     {
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
@@ -53,10 +72,10 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     }
 
     [Fact]
-    public void Catalog_does_not_claim_unimplemented_arrow_behavior()
+    public void Catalog_does_not_claim_unimplemented_fire_arrow_behavior()
     {
         Assert.False(VanillaProjectileDefinitionCatalog.TryGet(
-            VanillaProjectileIds.WoodenArrowFriendly,
+            VanillaProjectileIds.FireArrow,
             out _));
     }
 }

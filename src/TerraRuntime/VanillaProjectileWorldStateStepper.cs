@@ -7,10 +7,10 @@ namespace TerraRuntime;
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile simulation slices that already have enough runtime/world
-/// state to execute without inventing missing gameplay behavior. The supported aiStyle 2 family currently
-/// includes Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger: deterministic AI, liquid movement,
-/// source-backed tile collision, position update, and lifetime are reproduced here. Server-owned simulation
-/// is allowed when its committed movement sweep cannot reach a source-backed CutTiles candidate; irreversible
+/// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden
+/// Arrow free flight (aiStyle 1) plus Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2).
+/// Wooden Arrow tile-impact Kill() effects remain an explicit unsupported boundary. Server-owned simulation is
+/// allowed only when its committed movement sweep cannot reach a source-backed CutTiles candidate; irreversible
 /// KillTile/drop effects remain a separate world-effect slice. Entity damage and visual-only rotation/dust/sound
 /// also remain separate systems.
 /// </summary>
@@ -19,7 +19,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
     private const float WaterMovementScale = 0.5f;
     private const float HoneyMovementScale = 0.25f;
     private const float ShimmerMovementScale = 0.375f;
-    private const float MaximumFallSpeed = 32f;
+    private const float MaximumThrownFallSpeed = 32f;
+    private const float MaximumArrowFallSpeed = 16f;
 
     private readonly WorldTileStore tiles;
     private readonly double worldSurfaceTiles;
@@ -54,8 +55,25 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
-        if (!VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
-            definition.AiStyle != VanillaProjectileAiStyles.Thrown)
+        if (!VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition))
+        {
+            next = default;
+            return false;
+        }
+
+        bool isThrown = definition.AiStyle == VanillaProjectileAiStyles.Thrown;
+        bool isWoodenArrow =
+            current.Type == VanillaProjectileIds.WoodenArrowFriendly &&
+            definition.AiStyle == VanillaProjectileAiStyles.Arrow;
+        if (!isThrown && !isWoodenArrow)
+        {
+            next = default;
+            return false;
+        }
+
+        // TerrariaServer AI_001 uses ai[2] as a feature selector for several special arrow families. The
+        // ordinary Wooden Arrow path has ai[2] == 0; non-default feature state remains a separate slice.
+        if (isWoodenArrow && current.Ai.Ai2 != 0f)
         {
             next = default;
             return false;
@@ -63,23 +81,41 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
 
         float velocityX = current.VelocityX;
         float velocityY = current.VelocityY;
+        float ai0 = current.Ai.Ai0;
 
-        // TerrariaServer 1.4.5.8 AI(), aiStyle == 2. The supported family shares this deterministic path.
-        if (windPhysics)
-            velocityX += windSpeedCurrent * windPhysicsStrength;
-
-        float ai0 = current.Ai.Ai0 + 1f;
-        if (ai0 >= 20f)
+        if (isThrown)
         {
-            velocityY += 0.4f;
-            velocityX *= 0.97f;
+            // TerrariaServer 1.4.5.8 AI(), aiStyle == 2. The supported family shares this deterministic path.
+            if (windPhysics)
+                velocityX += windSpeedCurrent * windPhysicsStrength;
+
+            ai0 += 1f;
+            if (ai0 >= 20f)
+            {
+                velocityY += 0.4f;
+                velocityX *= 0.97f;
+            }
+
+            if (velocityY > MaximumThrownFallSpeed)
+                velocityY = MaximumThrownFallSpeed;
+        }
+        else
+        {
+            // TerrariaServer 1.4.5.8 Projectile.AI_001(), ordinary type-1 Wooden Arrow path. Type-specific
+            // homing, dust, sound, feature and kill branches do not apply when ai[2] is the default zero value.
+            ai0 += 1f;
+            if (ai0 >= 15f)
+            {
+                ai0 = 15f;
+                velocityY += 0.1f;
+            }
+
+            if (velocityY > MaximumArrowFallSpeed)
+                velocityY = MaximumArrowFallSpeed;
         }
 
-        if (velocityY > MaximumFallSpeed)
-            velocityY = MaximumFallSpeed;
-
-        // Projectile.Update performs a second wind-physics pass after AI when the projectile is above the
-        // surface, in open air, and its horizontal motion meets the vanilla opposition/low-speed predicate.
+        // Projectile.Update performs a wind-physics pass after AI when the projectile is above the surface,
+        // in open air, and its horizontal motion meets the vanilla opposition/low-speed predicate.
         ApplyPostAiWind(in definition, current.PositionX, current.PositionY, ref velocityX);
 
         WorldLiquidKind liquidKind = default;
@@ -114,6 +150,15 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             collideY = collidedVelocityY != velocityY;
         }
 
+        bool tileImpact = collideX || collideY;
+        if (isWoodenArrow && tileImpact)
+        {
+            // Vanilla routes this through projectile collision handling and Kill(). Type-1 recovery/drop and
+            // other kill side effects are not source-pinned in TerraRuntime yet, so do not commit a partial hit.
+            next = default;
+            return false;
+        }
+
         float movementX = collidedVelocityX;
         float movementY = collidedVelocityY;
         if (wet)
@@ -129,10 +174,9 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             movementY = collideY ? collidedVelocityY : collidedVelocityY * scale;
         }
 
-        bool tileImpact = collideX || collideY;
         float positionX = current.PositionX;
         float positionY = current.PositionY;
-        if (tileImpact)
+        if (isThrown && tileImpact)
         {
             // Generic HandleMovement collision handling for aiStyle 2 advances by the clamped velocity before
             // Kill(), then the method still reaches UpdatePosition. Kill side effects for this family are visual.
@@ -143,8 +187,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         positionX += movementX;
         positionY += movementY;
 
-        // TerrariaServer 1.4.5.8 reaches CutTiles for owner == Main.myPlayer (255). Until KillTile/drop effects
-        // are modeled, server-owned movement is safe only when a conservative sweep proves that no source-backed
+        // TerrariaServer reaches CutTiles for owner == Main.myPlayer (255). Until KillTile/drop effects are
+        // modeled, server-owned movement is safe only when a conservative sweep proves that no source-backed
         // CutTilesAt candidate can be reached. The sweep is intentionally a superset of vanilla's rectangle:
         // an extra rejection is harmless, while missing a candidate would silently lose an irreversible mutation.
         if (definition.CanCutTiles &&
@@ -175,7 +219,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             current.KnockBack,
             current.OriginalDamage);
 
-        int timeLeft = tileImpact ? 0 : projectile.Lifecycle.TimeLeft - 1;
+        int timeLeft = isThrown && tileImpact ? 0 : projectile.Lifecycle.TimeLeft - 1;
         next = new ProjectileSimulationStepResult(state, timeLeft);
         return true;
     }
