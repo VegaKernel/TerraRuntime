@@ -360,21 +360,17 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
                 source,
                 static _ => new SourcePendingCounter());
 
-            lock (candidate.SyncRoot)
+            SourcePendingReservationResult result = candidate.TryReserve(options.MaxPendingCommandsPerSource);
+            if (result == SourcePendingReservationResult.Reserved)
             {
-                if (!pendingSourceCommands.TryGetValue(source, out SourcePendingCounter? current) ||
-                    !ReferenceEquals(current, candidate))
-                {
-                    continue;
-                }
-
-                if (candidate.Count >= options.MaxPendingCommandsPerSource)
-                    return false;
-
-                candidate.Count++;
                 sourcePending = candidate;
                 return true;
             }
+
+            if (result == SourcePendingReservationResult.BudgetExceeded)
+                return false;
+
+            RemoveRetiredSourceCounter(source, candidate);
         }
     }
 
@@ -388,19 +384,14 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         if (sourcePending is null)
             throw new InvalidOperationException("External command is missing its pending-source reservation.");
 
-        lock (sourcePending.SyncRoot)
-        {
-            if (sourcePending.Count <= 0)
-                throw new InvalidOperationException("External command pending-source reservation underflowed.");
+        if (sourcePending.ReleaseAndTryRetire())
+            RemoveRetiredSourceCounter(source, sourcePending);
+    }
 
-            sourcePending.Count--;
-            if (sourcePending.Count == 0 &&
-                pendingSourceCommands.TryGetValue(source, out SourcePendingCounter? current) &&
-                ReferenceEquals(current, sourcePending))
-            {
-                pendingSourceCommands.TryRemove(source, out _);
-            }
-        }
+    private void RemoveRetiredSourceCounter(GameCommandSourceId source, SourcePendingCounter candidate)
+    {
+        ICollection<KeyValuePair<GameCommandSourceId, SourcePendingCounter>> entries = pendingSourceCommands;
+        entries.Remove(new KeyValuePair<GameCommandSourceId, SourcePendingCounter>(source, candidate));
     }
 
     private bool TryReservePendingSlot()
@@ -519,11 +510,43 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
 
     private readonly record struct CommandDrainResult(int Processed, bool BudgetExhausted);
 
+    private enum SourcePendingReservationResult : byte
+    {
+        Reserved = 0,
+        BudgetExceeded = 1,
+        Retired = 2
+    }
+
     private sealed class SourcePendingCounter
     {
-        public object SyncRoot { get; } = new();
+        private const int RetiredState = -1;
+        private int state;
 
-        public int Count { get; set; }
+        public SourcePendingReservationResult TryReserve(int maximum)
+        {
+            while (true)
+            {
+                int current = Volatile.Read(ref state);
+                if (current == RetiredState)
+                    return SourcePendingReservationResult.Retired;
+                if (current >= maximum)
+                    return SourcePendingReservationResult.BudgetExceeded;
+
+                if (Interlocked.CompareExchange(ref state, current + 1, current) == current)
+                    return SourcePendingReservationResult.Reserved;
+            }
+        }
+
+        public bool ReleaseAndTryRetire()
+        {
+            int remaining = Interlocked.Decrement(ref state);
+            if (remaining < 0)
+                throw new InvalidOperationException("External command pending-source reservation underflowed.");
+            if (remaining != 0)
+                return false;
+
+            return Interlocked.CompareExchange(ref state, RetiredState, 0) == 0;
+        }
     }
 
     private sealed class SourceQueue(GameCommandSourceId source, Queue<QueuedCommand> commands)
