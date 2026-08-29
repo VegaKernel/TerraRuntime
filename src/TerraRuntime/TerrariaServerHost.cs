@@ -260,7 +260,7 @@ public static class TerrariaServerHost
         var chestStore = new RuntimeChestStore(world.Chests);
         var chestCommands = new RuntimeChestCommandProcessor(chestStore, chestReplication);
         var signReplication = new RuntimeSignReplicationRegistry();
-        var signStore = new RuntimeSignStore(world.Signs);
+        var signStore = new RuntimeSignStore(world.Signs, world.Tiles);
         var signCommands = new RuntimeSignCommandProcessor(signStore, signReplication);
         var worldSaveService = new RuntimeWorldTileChestSaveService(
             options.WorldPath,

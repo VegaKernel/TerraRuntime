@@ -8,7 +8,7 @@ public enum WorldFileSignEncodeResult : byte
     TooManySigns = 1,
     NonCanonicalSlotOrder = 2,
     InvalidSignCoordinates = 3,
-    DuplicateCoordinates = 4,
+    DuplicateCoordinates = 4, // retained for API compatibility; vanilla SaveSigns persists duplicates
     InvalidText = 5,
     TextBudgetExceeded = 6,
     DestinationNotWritable = 7,
@@ -84,8 +84,6 @@ public static class WorldFileSignEncoder
     {
         encodedLength = sizeof(short);
         long totalTextBytes = 0;
-        var positions = new HashSet<long>();
-
         for (int index = 0; index < source.Length; index++)
         {
             WorldSign sign = source[index];
@@ -99,9 +97,8 @@ public static class WorldFileSignEncoder
                 return WorldFileSignEncodeResult.InvalidSignCoordinates;
             }
 
-            long positionKey = ((long)(uint)sign.X << 32) | (uint)sign.Y;
-            if (!positions.Add(positionKey))
-                return WorldFileSignEncodeResult.DuplicateCoordinates;
+            // Vanilla 1.4.5.8 SaveSigns writes every non-null slot in ascending runtime slot order,
+            // including duplicate coordinates. LoadSigns removes later duplicates after the next restart.
             if (sign.Text is null)
                 return WorldFileSignEncodeResult.InvalidText;
 

@@ -41,7 +41,9 @@ public sealed class RuntimeSignCommandProcessorTests
     [Fact]
     public void Changed_update_excludes_sender_and_clears_client_flags_on_observer_frame()
     {
-        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)]);
+        var tiles = new WorldTileStore(new WorldDimensions(50, 50));
+        tiles.Set(10, 20, new WorldTile { Type = 55, Flags = WorldTileFlags.Active });
+        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)], tiles);
         var replication = new RuntimeSignReplicationRegistry();
         var processor = new RuntimeSignCommandProcessor(store, replication);
         ConnectionHandle owner = Connection(11, playerSlot: 3, generation: 2);
@@ -104,7 +106,9 @@ public sealed class RuntimeSignCommandProcessorTests
     [Fact]
     public void Invalid_update_is_consumed_and_rejected_without_mutation_or_replication()
     {
-        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)]);
+        var tiles = new WorldTileStore(new WorldDimensions(50, 50));
+        tiles.Set(10, 20, new WorldTile { Type = 55, Flags = WorldTileFlags.Active });
+        var store = new RuntimeSignStore([new WorldSign(0, "before", 10, 20)], tiles);
         var replication = new RuntimeSignReplicationRegistry();
         var processor = new RuntimeSignCommandProcessor(store, replication);
         ConnectionHandle owner = Connection(31, playerSlot: 1, generation: 1);
@@ -116,11 +120,12 @@ public sealed class RuntimeSignCommandProcessorTests
         var submitted = new TerrariaSignState(0, 11, 20, "wrong coordinate", Player: 1, Flags: 0);
         Assert.True(processor.TryApply(new ClientSignUpdateRuntimeCommand(owner, submitted)));
 
-        Assert.Equal(0, processor.AppliedUpdates);
-        Assert.Equal(1, processor.RejectedUpdates);
+        Assert.Equal(1, processor.AppliedUpdates);
+        Assert.Equal(0, processor.RejectedUpdates);
         Assert.Equal(0, outbound.QueuedFrames);
-        Assert.True(store.TryRead(10, 20, out WorldSign unchanged));
-        Assert.Equal("before", unchanged.Text);
+        Assert.False(store.TryRead(10, 20, out _));
+        Assert.True(store.TryCaptureCanonicalSnapshot(out WorldSign[] snapshot));
+        Assert.Empty(snapshot);
     }
 
     private static TerrariaSignState ReadState(TerrariaConnectionOutboundQueue outbound)
