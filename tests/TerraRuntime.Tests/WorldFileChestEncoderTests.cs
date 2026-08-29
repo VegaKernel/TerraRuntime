@@ -130,6 +130,24 @@ public sealed class WorldFileChestEncoderTests
     }
 
     [Fact]
+    public void Rejects_duplicate_chest_coordinates_before_writing()
+    {
+        var dimensions = new WorldDimensions(10, 10);
+        WorldChest[] source =
+        [
+            new WorldChest(0, 1, 2, "first", []),
+            new WorldChest(1, 1, 2, "duplicate", [])
+        ];
+        using var stream = new MemoryStream();
+
+        Assert.Equal(
+            WorldFileChestEncodeResult.DuplicateChestCoordinates,
+            WorldFileChestEncoder.TryEncode(source, dimensions, stream, out long bytesWritten));
+        Assert.Equal(0, bytesWritten);
+        Assert.Equal(0, stream.Length);
+    }
+
+    [Fact]
     public void Rejects_noncanonical_item_state_before_writing()
     {
         var dimensions = new WorldDimensions(10, 10);
