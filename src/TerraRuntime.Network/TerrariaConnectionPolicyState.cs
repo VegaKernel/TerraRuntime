@@ -7,6 +7,7 @@ public sealed class TerrariaConnectionPolicyState
     private readonly TimeProvider _timeProvider;
     private readonly long _connectedTimestamp;
     private readonly TaskCompletionSource<bool> _handshakeSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private long _handshakeCompletedTimestamp;
     private long _lastInboundTimestamp;
     private bool _handshakeComplete;
     private TerrariaConnectionStopReason _stopReason;
@@ -54,9 +55,7 @@ public sealed class TerrariaConnectionPolicyState
         lock (_gate)
         {
             if (_stopReason == TerrariaConnectionStopReason.None)
-            {
                 _lastInboundTimestamp = _timeProvider.GetTimestamp();
-            }
         }
     }
 
@@ -65,12 +64,12 @@ public sealed class TerrariaConnectionPolicyState
         lock (_gate)
         {
             if (_stopReason != TerrariaConnectionStopReason.None || _handshakeComplete)
-            {
                 return false;
-            }
 
+            long now = _timeProvider.GetTimestamp();
             _handshakeComplete = true;
-            _lastInboundTimestamp = _timeProvider.GetTimestamp();
+            _handshakeCompletedTimestamp = now;
+            _lastInboundTimestamp = now;
         }
 
         _handshakeSignal.TrySetResult(true);
@@ -80,45 +79,57 @@ public sealed class TerrariaConnectionPolicyState
     public bool TryStop(TerrariaConnectionStopReason reason)
     {
         if (reason == TerrariaConnectionStopReason.None)
-        {
             throw new ArgumentOutOfRangeException(nameof(reason));
-        }
 
         lock (_gate)
         {
             if (_stopReason != TerrariaConnectionStopReason.None)
-            {
                 return false;
-            }
 
             _stopReason = reason;
             return true;
         }
     }
 
-    public TimeSpan GetRemainingTimeout()
+    public TimeSpan GetRemainingTimeout() => GetRemainingTimeout(connectionReady: true);
+
+    public TimeSpan GetRemainingTimeout(bool connectionReady)
     {
         lock (_gate)
         {
             if (_stopReason != TerrariaConnectionStopReason.None)
-            {
                 return Timeout.InfiniteTimeSpan;
+
+            if (!_handshakeComplete)
+            {
+                return GetRemaining(
+                    _connectedTimestamp,
+                    _options.HandshakeTimeout);
             }
 
-            if (_handshakeComplete && _options.IdleTimeout == Timeout.InfiniteTimeSpan)
+            if (!connectionReady)
             {
-                return Timeout.InfiniteTimeSpan;
+                if (_options.JoinTimeout == Timeout.InfiniteTimeSpan)
+                    return Timeout.InfiniteTimeSpan;
+
+                return GetRemaining(
+                    _handshakeCompletedTimestamp,
+                    _options.JoinTimeout);
             }
 
-            long origin = _handshakeComplete ? _lastInboundTimestamp : _connectedTimestamp;
-            TimeSpan timeout = _handshakeComplete ? _options.IdleTimeout : _options.HandshakeTimeout;
-            TimeSpan elapsed = _timeProvider.GetElapsedTime(origin, _timeProvider.GetTimestamp());
-            TimeSpan remaining = timeout - elapsed;
-            return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+            if (_options.IdleTimeout == Timeout.InfiniteTimeSpan)
+                return Timeout.InfiniteTimeSpan;
+
+            return GetRemaining(
+                _lastInboundTimestamp,
+                _options.IdleTimeout);
         }
     }
 
-    public bool TryExpire(out TerrariaConnectionStopReason reason)
+    public bool TryExpire(out TerrariaConnectionStopReason reason) =>
+        TryExpire(connectionReady: true, out reason);
+
+    public bool TryExpire(bool connectionReady, out TerrariaConnectionStopReason reason)
     {
         lock (_gate)
         {
@@ -128,25 +139,57 @@ public sealed class TerrariaConnectionPolicyState
                 return false;
             }
 
-            if (_handshakeComplete && _options.IdleTimeout == Timeout.InfiniteTimeSpan)
+            long origin;
+            TimeSpan timeout;
+            TerrariaConnectionStopReason expirationReason;
+
+            if (!_handshakeComplete)
             {
-                reason = TerrariaConnectionStopReason.None;
-                return false;
+                origin = _connectedTimestamp;
+                timeout = _options.HandshakeTimeout;
+                expirationReason = TerrariaConnectionStopReason.HandshakeTimeout;
+            }
+            else if (!connectionReady)
+            {
+                if (_options.JoinTimeout == Timeout.InfiniteTimeSpan)
+                {
+                    reason = TerrariaConnectionStopReason.None;
+                    return false;
+                }
+
+                origin = _handshakeCompletedTimestamp;
+                timeout = _options.JoinTimeout;
+                expirationReason = TerrariaConnectionStopReason.JoinTimeout;
+            }
+            else
+            {
+                if (_options.IdleTimeout == Timeout.InfiniteTimeSpan)
+                {
+                    reason = TerrariaConnectionStopReason.None;
+                    return false;
+                }
+
+                origin = _lastInboundTimestamp;
+                timeout = _options.IdleTimeout;
+                expirationReason = TerrariaConnectionStopReason.IdleTimeout;
             }
 
-            long origin = _handshakeComplete ? _lastInboundTimestamp : _connectedTimestamp;
-            TimeSpan timeout = _handshakeComplete ? _options.IdleTimeout : _options.HandshakeTimeout;
             if (_timeProvider.GetElapsedTime(origin, _timeProvider.GetTimestamp()) < timeout)
             {
                 reason = TerrariaConnectionStopReason.None;
                 return false;
             }
 
-            reason = _handshakeComplete
-                ? TerrariaConnectionStopReason.IdleTimeout
-                : TerrariaConnectionStopReason.HandshakeTimeout;
+            reason = expirationReason;
             _stopReason = reason;
             return true;
         }
+    }
+
+    private TimeSpan GetRemaining(long origin, TimeSpan timeout)
+    {
+        TimeSpan elapsed = _timeProvider.GetElapsedTime(origin, _timeProvider.GetTimestamp());
+        TimeSpan remaining = timeout - elapsed;
+        return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
     }
 }
