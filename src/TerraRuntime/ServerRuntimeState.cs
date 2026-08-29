@@ -576,10 +576,10 @@ internal sealed class ServerRuntimeState
             if (!_playerInventory.TryGet(
                     command.Connection,
                     player.SelectedItem,
-                    out RuntimePlayerInventoryItem selectedItem) ||
-                selectedItem.IsEmpty ||
-                selectedItem.ItemType != VanillaItemIds.CopperPickaxe ||
-                !VanillaTileInteractionItemFacts.TryGetPickPower(selectedItem.ItemType, out _, out _))
+                    out RuntimePlayerInventoryItem toolItem) ||
+                toolItem.IsEmpty ||
+                toolItem.ItemType != VanillaItemIds.CopperPickaxe ||
+                !VanillaTileInteractionItemFacts.TryGetPickPower(toolItem.ItemType, out _, out _))
             {
                 RejectedClientTileManipulations++;
                 return;
