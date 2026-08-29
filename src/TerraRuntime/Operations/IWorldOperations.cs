@@ -9,5 +9,5 @@ internal interface IWorldOperations
     /// The detached snapshot is still captured later by the authoritative game-thread owner.
     /// Returns false when persistence is completing or no save ingress is available.
     /// </summary>
-    bool TryRequestSave();
+    bool TryRequestSave() => false;
 }
