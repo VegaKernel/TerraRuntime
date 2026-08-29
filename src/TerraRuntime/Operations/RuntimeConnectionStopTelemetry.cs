@@ -30,7 +30,8 @@ internal sealed class RuntimeConnectionStopTelemetry
         ApplicationStopped: GetCount(TerrariaConnectionStopReason.ApplicationStopped),
         HandshakeTimeout: GetCount(TerrariaConnectionStopReason.HandshakeTimeout),
         IdleTimeout: GetCount(TerrariaConnectionStopReason.IdleTimeout),
-        JoinTimeout: GetCount(TerrariaConnectionStopReason.JoinTimeout));
+        JoinTimeout: GetCount(TerrariaConnectionStopReason.JoinTimeout),
+        FrameRejected: GetCount(TerrariaConnectionStopReason.FrameRejected));
 }
 
 internal readonly record struct RuntimeConnectionStopTelemetrySnapshot(
@@ -42,4 +43,5 @@ internal readonly record struct RuntimeConnectionStopTelemetrySnapshot(
     long ApplicationStopped,
     long HandshakeTimeout,
     long IdleTimeout,
-    long JoinTimeout);
+    long JoinTimeout,
+    long FrameRejected);
