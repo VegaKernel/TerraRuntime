@@ -95,4 +95,5 @@ jobs:
 
           python3 tools/ci/probe_npc_loot_spawn.py \
             --common-code artifacts/source-contract/common-code.cs \
+            --common-drop artifacts/source-contract/common-drop.cs \
             --item artifacts/source-contract/item.cs

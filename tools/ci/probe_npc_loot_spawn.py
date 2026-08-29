@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""Expose the pinned TerrariaServer 1.4.5.8 NPC-loot -> world-item spawn call shape.
+"""Expose and pin the TerrariaServer 1.4.5.8 NPC-loot -> Item.NewItem spawn semantics.
 
-This probe is intentionally narrow and exploratory: it prints the exact CommonCode.DropItem and Item.NewItem
-contexts needed to design TerraRuntime's server-owned loot spawn transaction, while failing if that source chain
-can no longer be located. Decompiled source remains CI-local and is never committed.
+The committed script contains assertions and tiny extracted facts only. Decompiled source stays CI-local.
 """
 
 from __future__ import annotations
 
 import argparse
-import re
 from pathlib import Path
 
 
@@ -17,42 +14,90 @@ def compact(text: str) -> str:
     return " ".join(text.split())
 
 
-def context(source: str, needle: str, radius: int = 650) -> str:
-    flat = compact(source)
-    index = flat.find(needle)
+def require(source: str, needle: str, description: str) -> None:
+    if needle not in source:
+        raise SystemExit(f"Pinned Terraria 1.4.5.8 contract changed: {description}.")
+
+
+def extract_braced_member(source: str, signature: str) -> str:
+    start = source.find(signature)
+    if start < 0:
+        raise SystemExit(f"Could not locate source member {signature!r}.")
+    brace = source.find("{", start)
+    if brace < 0:
+        raise SystemExit(f"Could not locate opening brace for {signature!r}.")
+    depth = 0
+    for index in range(brace, len(source)):
+        char = source[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[start : index + 1]
+    raise SystemExit(f"Could not locate closing brace for {signature!r}.")
+
+
+def print_context(source: str, needle: str, label: str, radius: int = 500) -> None:
+    index = source.find(needle)
     if index < 0:
-        raise SystemExit(f"Pinned Terraria 1.4.5.8 source no longer contains {needle!r}.")
+        print(f"{label}=<none>")
+        return
     start = max(0, index - radius)
-    end = min(len(flat), index + len(needle) + radius)
-    return flat[start:end]
+    end = min(len(source), index + len(needle) + radius)
+    print(f"{label}=" + source[start:end])
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--common-code", required=True, type=Path)
+    parser.add_argument("--common-drop", required=True, type=Path)
     parser.add_argument("--item", required=True, type=Path)
     args = parser.parse_args()
 
-    common_code = args.common_code.read_text(encoding="utf-8")
-    item = args.item.read_text(encoding="utf-8")
+    common_code = compact(args.common_code.read_text(encoding="utf-8"))
+    common_drop = compact(args.common_drop.read_text(encoding="utf-8"))
+    item = compact(args.item.read_text(encoding="utf-8"))
 
-    common_flat = compact(common_code)
-    if "Item.NewItem" not in common_flat:
-        raise SystemExit("Could not locate Item.NewItem in ItemDropRules.CommonCode.")
+    drop_from_npc = extract_braced_member(
+        common_code,
+        "public static void DropItemFromNPC(NPC npc, int itemId, int stack, bool scattered = false)",
+    )
+    require(drop_from_npc, "int x = (int)npc.position.X + npc.width / 2;", "NPC loot X center changed")
+    require(drop_from_npc, "int y = (int)npc.position.Y + npc.height / 2;", "NPC loot Y center changed")
+    require(drop_from_npc, "x = (int)npc.position.X + Main.rand.Next(npc.width + 1);", "scattered X changed")
+    require(drop_from_npc, "y = (int)npc.position.Y + Main.rand.Next(npc.height + 1);", "scattered Y changed")
+    require(
+        drop_from_npc,
+        "Item.NewItem(npc.GetItemSource_Loot(), x, y, 0, 0, itemId, stack, noBroadcast: false, -1)",
+        "NPC loot Item.NewItem call changed",
+    )
+    require(common_drop, "CommonCode.DropItemFromNPC", "CommonDrop no longer dispatches through DropItemFromNPC")
 
-    # The loot entity source may be constructed by the caller rather than CommonCode itself. Do not assume its
-    # ownership location before the exact-version call site is visible. The Item.NewItem call itself is mandatory.
-    print("loot_common_code_new_item_context=" + context(common_code, "Item.NewItem"))
+    vector_new_item = extract_braced_member(
+        item,
+        "public static int NewItem(IEntitySource source, Vector2 center, int type, int stack = 1, int prefix = 0",
+    )
+    require(vector_new_item, "PickAnItemSlotToSpawnItemOn()", "Item.NewItem slot selection changed")
+    require(vector_new_item, "Item item = new Item(); item.SetDefaults(type); item.stack = stack; item.Prefix(prefix);", "Item.NewItem defaults/stack/prefix ordering changed")
 
-    item_flat = compact(item)
-    new_item_matches = list(re.finditer(r"\bNewItem\s*\(", item_flat))
-    if not new_item_matches:
-        raise SystemExit("Could not locate Item.NewItem implementation in pinned Item source.")
+    print("npc_loot_spawn_center=x:npc.position.X+npc.width/2,y:npc.position.Y+npc.height/2")
+    print("npc_loot_spawn_scattered_default=false")
+    print("npc_loot_new_item_rect=width:0,height:0")
+    print("npc_loot_new_item_prefix=-1")
+    print("npc_loot_new_item_broadcast=false")
+    print("npc_loot_source=npc.GetItemSource_Loot()")
+    print("item_new_item_slot_selection=before_materialized_world_item_state")
 
-    for ordinal, match in enumerate(new_item_matches[:8], start=1):
-        start = max(0, match.start() - 450)
-        end = min(len(item_flat), match.start() + 1800)
-        print(f"item_new_item_context_{ordinal}=" + item_flat[start:end])
+    for needle, label in (
+        ("WorldItem world", "item_new_item_world_item_context"),
+        ("item.position", "item_new_item_position_context"),
+        ("item.velocity", "item_new_item_velocity_context"),
+        ("item.owner", "item_new_item_owner_context"),
+        ("velocity.HasValue", "item_new_item_explicit_velocity_context"),
+        ("ownership", "item_new_item_ownership_context"),
+    ):
+        print_context(vector_new_item, needle, label)
 
     return 0
 
