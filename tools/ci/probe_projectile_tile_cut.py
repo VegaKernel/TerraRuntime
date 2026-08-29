@@ -181,17 +181,25 @@ def main() -> int:
 
     set_defaults = extract_method(projectile_source, "SetDefaults")
     wooden_arrow_defaults = around_optional(set_defaults, "type == 1", radius=1400)
+    fire_arrow_defaults = around_optional(set_defaults, "type == 2", radius=1400)
     arrow_ai = extract_method(projectile_source, "AI_001")
     should_use_wind = compact(extract_method(projectile_source, "ShouldUseWindPhysics"))
+    transform_type = compact(extract_method(projectile_source, "TransformType"))
     handle_movement = extract_method(projectile_source, "HandleMovement")
     projectile_kill = extract_method(projectile_source, "Kill")
 
     print("projectile_wooden_arrow_defaults=" + wooden_arrow_defaults)
+    print("projectile_fire_arrow_defaults=" + fire_arrow_defaults)
     print("projectile_ai001_ai0_increment=" + around_optional(arrow_ai, "ai[0]++;", radius=1200))
     print("projectile_ai001_gravity=" + around_optional(arrow_ai, "ai[0] >= 15f", radius=1500))
     print("projectile_ai001_fall_cap=" + around_last(arrow_ai, "velocity.Y > 16f", radius=900))
     print("projectile_should_use_wind_physics=" + should_use_wind)
     print("projectile_wind_speed_context=" + around_optional(projectile_source, "ShouldUseWindPhysics() &&", radius=2200))
+    print("projectile_transform_type=" + transform_type)
+    print("projectile_fire_arrow_wet_transform=" + around_optional(
+        projectile_source,
+        "if (type == 2) { TransformType(1);",
+        radius=2600))
 
     print(f"projectile_handle_movement_length={len(compact(handle_movement))}")
     print("projectile_handle_movement_ai1_contexts=" + all_contexts(handle_movement, "aiStyle == 1", radius=2600, limit=20))
@@ -204,6 +212,7 @@ def main() -> int:
         projectile_kill,
         "if (type == 1 || type == 81 || type == 98 || type == 980 || type == 1073)",
         radius=4200))
+    print("projectile_kill_type2_contexts=" + all_contexts(projectile_kill, "type == 2", radius=3000, limit=20))
     print("projectile_kill_request_new_item=" + around_optional(
         projectile_kill,
         "Item.RequestNewItem(GetItemSource_DropAsItem()",
