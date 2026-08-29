@@ -32,6 +32,15 @@ internal sealed class RuntimeSignReplicationRegistry : IRuntimePlayerEventSink
     public bool TryUnregister(GameCommandSourceId source) =>
         !source.IsSystem && endpoints.TryRemove(source, out _);
 
+    /// <summary>
+    /// Reports whether the transport endpoint still represents this exact player-session generation. Authoritative
+    /// command processors use this as a final stale-session gate before mutating sign state.
+    /// </summary>
+    public bool IsPlaying(ConnectionHandle connection) =>
+        connection.IsAssigned &&
+        endpoints.TryGetValue(connection.Source, out Endpoint? endpoint) &&
+        endpoint.IsPlaying(connection.Player);
+
     public bool TrySendRead(ConnectionHandle connection, WorldSign sign)
     {
         ArgumentNullException.ThrowIfNull(sign);
