@@ -60,9 +60,19 @@ public readonly record struct VanillaTileCollisionResult(
     bool HitFloor);
 
 /// <summary>
+/// Liquid contacts observed by one projectile-sized WetCollision/LavaCollision probe. Terraria keeps generic
+/// wet plus lava, honey, and shimmer flags separately, so overlapping liquid tiles must not collapse to one kind.
+/// </summary>
+public readonly record struct VanillaLiquidContactState(
+    bool Wet,
+    bool Lava,
+    bool Honey,
+    bool Shimmer);
+
+/// <summary>
 /// Clean-room port of the collision pieces required by ordinary NPC movement. The broad-phase bounds,
 /// full/half/slope tile checks and platform fall-through rules follow TerrariaServer 1.4.5.8
-/// Collision.TileCollision. Liquid contact follows Collision.WetCollision.
+/// Collision.TileCollision. Liquid contact follows Collision.WetCollision and LavaCollision semantics.
 /// </summary>
 public static class VanillaWorldCollision
 {
@@ -221,6 +231,70 @@ public static class VanillaWorldCollision
         return new VanillaTileCollisionResult(resultX, resultY, hitCeiling, hitFloor);
     }
 
+    public static VanillaLiquidContactState GetLiquidContacts(
+        WorldTileStore tiles,
+        float positionX,
+        float positionY,
+        int width,
+        int height)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+
+        float probeWidth = Math.Min(10, width);
+        float probeHeight = height / 2;
+        float probeX = positionX + width / 2f - probeWidth / 2f;
+        float probeY = positionY + height / 2f - probeHeight / 2f;
+
+        GetScanBounds(
+            tiles,
+            positionX,
+            positionY,
+            width,
+            height,
+            out int minX,
+            out int maxX,
+            out int minY,
+            out int maxY);
+
+        bool wet = false;
+        bool lava = false;
+        bool honey = false;
+        bool shimmer = false;
+
+        for (int x = minX; x < maxX; x++)
+        {
+            for (int y = minY; y < maxY; y++)
+            {
+                WorldTile tile = tiles.Get(x, y);
+                if (tile.LiquidAmount > 0)
+                {
+                    float liquidX = x * TileSize;
+                    float liquidY = y * TileSize;
+                    float empty = (256 - tile.LiquidAmount) / 32f;
+                    liquidY += empty * 2f;
+                    int liquidHeight = 16 - (int)(empty * 2f);
+                    if (Intersects(probeX, probeY, probeWidth, probeHeight, liquidX, liquidY, 16f, liquidHeight))
+                        AccumulateLiquid(tile.LiquidKind, ref wet, ref lava, ref honey, ref shimmer);
+                }
+                else if (tile.IsActive && GetSlope(in tile) != 0 && y > 0)
+                {
+                    WorldTile above = tiles.Get(x, y - 1);
+                    if (above.LiquidAmount <= 0)
+                        continue;
+
+                    float tileX = x * TileSize;
+                    float tileY = y * TileSize;
+                    if (Intersects(probeX, probeY, probeWidth, probeHeight, tileX, tileY, 16f, 16f))
+                        AccumulateLiquid(above.LiquidKind, ref wet, ref lava, ref honey, ref shimmer);
+                }
+            }
+        }
+
+        return new VanillaLiquidContactState(wet, lava, honey, shimmer);
+    }
+
     public static bool TryGetWetContact(
         WorldTileStore tiles,
         float positionX,
@@ -286,6 +360,28 @@ public static class VanillaWorldCollision
 
         liquidKind = default;
         return false;
+    }
+
+    private static void AccumulateLiquid(
+        WorldLiquidKind kind,
+        ref bool wet,
+        ref bool lava,
+        ref bool honey,
+        ref bool shimmer)
+    {
+        wet = true;
+        switch (kind)
+        {
+            case WorldLiquidKind.Lava:
+                lava = true;
+                break;
+            case WorldLiquidKind.Honey:
+                honey = true;
+                break;
+            case WorldLiquidKind.Shimmer:
+                shimmer = true;
+                break;
+        }
     }
 
     private static bool IsCollisionActive(in WorldTile tile) =>
