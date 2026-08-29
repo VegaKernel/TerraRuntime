@@ -6,6 +6,8 @@ namespace TerraRuntime.Network;
 
 public static class TerrariaSocketConnection
 {
+    private static readonly TimeSpan ReadinessPollInterval = TimeSpan.FromMilliseconds(250);
+
     public static ValueTask<TerrariaSocketRunResult> RunAsync(
         Socket socket,
         ITerrariaFrameSink sink,
@@ -66,6 +68,7 @@ public static class TerrariaSocketConnection
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var policyState = new TerrariaConnectionPolicyState(policyOptions);
         var policySink = new TerrariaConnectionPolicySink(sink, policyState, rateAccountant);
+        ITerrariaConnectionReadinessSource? readinessSource = sink as ITerrariaConnectionReadinessSource;
 
         Task<TerrariaPipePumpResult> inboundTask = TerrariaPipeFramePump
             .RunAsync(reader, policySink, decoderOptions, linkedCancellation.Token)
@@ -75,6 +78,7 @@ public static class TerrariaSocketConnection
             .AsTask();
         Task<TerrariaConnectionStopReason> watchdogTask = RunWatchdogAsync(
             policyState,
+            readinessSource,
             linkedCancellation.Token);
         Task slowClientTask = outboundQueue.SlowClientSignal;
 
@@ -100,13 +104,9 @@ public static class TerrariaSocketConnection
             {
                 inboundResult = await inboundTask.ConfigureAwait(false);
                 if (inboundResult is TerrariaPipePumpResult.Completed or TerrariaPipePumpResult.SinkStopped)
-                {
                     outboundQueue.Complete();
-                }
                 else
-                {
                     linkedCancellation.Cancel();
-                }
             }
             else
             {
@@ -120,14 +120,10 @@ public static class TerrariaSocketConnection
             await watchdogTask.ConfigureAwait(false);
 
             if (stopReason == TerrariaConnectionStopReason.None)
-            {
                 stopReason = policyState.StopReason;
-            }
 
             if (stopReason == TerrariaConnectionStopReason.None)
-            {
                 stopReason = MapStopReason(inboundResult, outboundResult, cancellationToken.IsCancellationRequested);
-            }
 
             return new TerrariaSocketRunResult(
                 inboundResult,
@@ -155,6 +151,7 @@ public static class TerrariaSocketConnection
 
     private static async Task<TerrariaConnectionStopReason> RunWatchdogAsync(
         TerrariaConnectionPolicyState state,
+        ITerrariaConnectionReadinessSource? readinessSource,
         CancellationToken cancellationToken)
     {
         try
@@ -162,7 +159,8 @@ public static class TerrariaSocketConnection
             while (true)
             {
                 bool handshakeComplete = state.HandshakeComplete;
-                TimeSpan remaining = state.GetRemainingTimeout();
+                bool connectionReady = readinessSource?.ConnectionReady ?? true;
+                TimeSpan remaining = state.GetRemainingTimeout(connectionReady);
                 if (remaining == Timeout.InfiniteTimeSpan)
                 {
                     await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
@@ -171,22 +169,21 @@ public static class TerrariaSocketConnection
 
                 if (remaining <= TimeSpan.Zero)
                 {
-                    if (state.TryExpire(out TerrariaConnectionStopReason reason))
-                    {
+                    if (state.TryExpire(connectionReady, out TerrariaConnectionStopReason reason))
                         return reason;
-                    }
 
                     continue;
                 }
 
-                Task delayTask = Task.Delay(remaining, cancellationToken);
+                TimeSpan delay = handshakeComplete && !connectionReady && remaining > ReadinessPollInterval
+                    ? ReadinessPollInterval
+                    : remaining;
+                Task delayTask = Task.Delay(delay, cancellationToken);
                 if (!handshakeComplete)
                 {
                     Task first = await Task.WhenAny(delayTask, state.HandshakeSignal).ConfigureAwait(false);
                     if (ReferenceEquals(first, state.HandshakeSignal))
-                    {
                         continue;
-                    }
                 }
 
                 await delayTask.ConfigureAwait(false);
@@ -204,19 +201,13 @@ public static class TerrariaSocketConnection
         bool externallyCancelled)
     {
         if (externallyCancelled)
-        {
             return TerrariaConnectionStopReason.Cancelled;
-        }
 
         if (inbound == TerrariaPipePumpResult.Completed)
-        {
             return TerrariaConnectionStopReason.PeerClosed;
-        }
 
         if (inbound == TerrariaPipePumpResult.IoFailure)
-        {
             return TerrariaConnectionStopReason.InboundIoFailure;
-        }
 
         if (inbound is TerrariaPipePumpResult.InvalidFrameLength or
             TerrariaPipePumpResult.FrameTooLarge or
@@ -227,9 +218,7 @@ public static class TerrariaSocketConnection
         }
 
         if (outbound.Reason is OutboundWriterStopReason.IoFailure or OutboundWriterStopReason.QueueFailure)
-        {
             return TerrariaConnectionStopReason.OutboundFailure;
-        }
 
         return TerrariaConnectionStopReason.Cancelled;
     }
