@@ -1,0 +1,418 @@
+name: World Item Slot Generation Hardening
+
+on:
+  push:
+    paths:
+      - .github/workflows/world-item-slot-generation-hardening.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Patch generation-safe explicit world-item commands
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, got {count}")
+              p.write_text(text.replace(old, new))
+
+          Path("src/TerraRuntime/RuntimeWorldItemCommands.cs").write_text('''using TerraRuntime.Contracts.Runtime;
+          using TerraRuntime.Core;
+
+          namespace TerraRuntime;
+
+          /// <summary>
+          /// Authoritative-loop commands for runtime-owned dropped items. Packet 21/22 wire state is mapped into
+          /// packet-neutral Core updates before crossing this boundary. Every client-originated command retains both the exact
+          /// connection/player generation and, for explicit item-slot operations, the exact active world-item generation that
+          /// existed when ingress admitted the frame.
+          /// </summary>
+          internal sealed record WorldItemAllocateRuntimeCommand(
+              ConnectionHandle Connection,
+              WorldItemDropStateUpdate State,
+              TaskCompletionSource<WorldItemSnapshot?>? Completion = null) : RuntimeCommand;
+
+          internal sealed record WorldItemDropRuntimeCommand(
+              ConnectionHandle Connection,
+              WorldItemHandle Target,
+              WorldItemDropStateUpdate State) : RuntimeCommand;
+
+          internal sealed record WorldItemRemoveRuntimeCommand(
+              ConnectionHandle Connection,
+              WorldItemHandle Target) : RuntimeCommand;
+
+          internal sealed record WorldItemOwnerRuntimeCommand(
+              ConnectionHandle Connection,
+              WorldItemHandle Target,
+              WorldItemOwnerStateUpdate State) : RuntimeCommand;
+          '''.replace('          ', ''))
+
+          Path("src/TerraRuntime/RuntimeWorldItemIngress.cs").write_text('''using TerraRuntime.Contracts.Runtime;
+          using TerraRuntime.Core;
+
+          namespace TerraRuntime;
+
+          /// <summary>
+          /// Connection-authenticated world-item ingress. Validation happens before bounded queue admission so malformed
+          /// packet state never becomes an authoritative command. The exact connection/player generation is retained in the
+          /// command. Explicit packet-21/22 slot operations additionally snapshot the exact active world-item generation so
+          /// delayed work cannot jump to a later logical item after Terraria reuses the same numeric slot.
+          /// </summary>
+          internal sealed class RuntimeWorldItemIngress : IWorldItemIngress
+          {
+              private readonly IGameCommandIngress<RuntimeCommand> _ingress;
+              private readonly RuntimeWorldItemStore _worldItems;
+
+              public RuntimeWorldItemIngress(
+                  IGameCommandIngress<RuntimeCommand> ingress,
+                  RuntimeWorldItemStore worldItems)
+              {
+                  ArgumentNullException.ThrowIfNull(ingress);
+                  ArgumentNullException.ThrowIfNull(worldItems);
+                  _ingress = ingress;
+                  _worldItems = worldItems;
+              }
+
+              public bool TryPostAllocate(ConnectionHandle connection, in WorldItemDropStateUpdate state)
+              {
+                  if (!connection.IsAssigned || !IsValidDrop(in state))
+                      return false;
+
+                  return _ingress.TryPost(connection.Source, new WorldItemAllocateRuntimeCommand(connection, state));
+              }
+
+              public bool TryPostDrop(ConnectionHandle connection, short slot, in WorldItemDropStateUpdate state)
+              {
+                  if (!connection.IsAssigned || !IsValidSlot(slot) || !IsValidDrop(in state))
+                      return false;
+
+                  WorldItemHandle target = CaptureActiveTarget(slot);
+                  return _ingress.TryPost(connection.Source, new WorldItemDropRuntimeCommand(connection, target, state));
+              }
+
+              public bool TryPostRemove(ConnectionHandle connection, short slot)
+              {
+                  if (!connection.IsAssigned || !IsValidSlot(slot))
+                      return false;
+
+                  WorldItemHandle target = CaptureActiveTarget(slot);
+                  return _ingress.TryPost(connection.Source, new WorldItemRemoveRuntimeCommand(connection, target));
+              }
+
+              public bool TryPostOwner(ConnectionHandle connection, short slot, in WorldItemOwnerStateUpdate state)
+              {
+                  if (!connection.IsAssigned || !IsValidSlot(slot) || !IsValidOwner(in state))
+                      return false;
+
+                  WorldItemHandle target = CaptureActiveTarget(slot);
+                  return _ingress.TryPost(connection.Source, new WorldItemOwnerRuntimeCommand(connection, target, state));
+              }
+
+              private WorldItemHandle CaptureActiveTarget(short slot) =>
+                  _worldItems.TryGetActive(slot, out WorldItemSnapshot snapshot)
+                      ? snapshot.Handle
+                      : default;
+
+              private static bool IsValidSlot(short slot) =>
+                  (ushort)slot < RuntimeWorldItemStore.VanillaCapacity;
+
+              private static bool IsValidDrop(in WorldItemDropStateUpdate state) =>
+                  float.IsFinite(state.PositionX) &&
+                  float.IsFinite(state.PositionY) &&
+                  float.IsFinite(state.VelocityX) &&
+                  float.IsFinite(state.VelocityY) &&
+                  state.Stack > 0 &&
+                  state.TryGetItemType(out _) &&
+                  (byte)state.Ownership <= (byte)WorldItemOwnershipMode.GrabDelayForAllPlayers &&
+                  float.IsFinite(state.ShimmerTime) &&
+                  state.ShimmerTime >= 0f;
+
+              private static bool IsValidOwner(in WorldItemOwnerStateUpdate state) =>
+                  state.TimeToKeepReservation >= 0 &&
+                  state.GrabDelayTime >= 0 &&
+                  float.IsFinite(state.PositionX) &&
+                  float.IsFinite(state.PositionY);
+          }
+          '''.replace('          ', ''))
+
+          replace_once(
+              "src/TerraRuntime/ServerRuntimeState.cs",
+              '''    private bool IsCurrentPlayerConnection(ConnectionHandle connection) =>
+                  connection.IsAssigned &&
+                  _players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) &&
+                  player.Connection == connection;
+
+              private void ApplyWorldItemAllocate(WorldItemAllocateRuntimeCommand command)
+          ''',
+              '''    private bool IsCurrentPlayerConnection(ConnectionHandle connection) =>
+                  connection.IsAssigned &&
+                  _players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) &&
+                  player.Connection == connection;
+
+              private bool IsCurrentWorldItemTarget(WorldItemHandle target) =>
+                  target.IsAssigned &&
+                  _worldItems.TryGetActive(target.Slot, out WorldItemSnapshot snapshot) &&
+                  snapshot.Handle == target;
+
+              private void ApplyWorldItemAllocate(WorldItemAllocateRuntimeCommand command)
+          ''')
+
+          replace_once(
+              "src/TerraRuntime/ServerRuntimeState.cs",
+              '''    private void ApplyWorldItemDrop(WorldItemDropRuntimeCommand command)
+              {
+                  if (!IsCurrentPlayerConnection(command.Connection))
+                  {
+                      RejectedWorldItemDrops++;
+                      return;
+                  }
+
+                  WorldItemDropStateUpdate state = command.State;
+                  if (_worldItems.TryApplyDrop(command.Slot, in state, out _))
+                  {
+                      AppliedWorldItemDrops++;
+                      return;
+                  }
+
+                  RejectedWorldItemDrops++;
+              }
+
+              private void ApplyWorldItemRemove(WorldItemRemoveRuntimeCommand command)
+              {
+                  if (!IsCurrentPlayerConnection(command.Connection))
+                  {
+                      RejectedWorldItemRemovals++;
+                      return;
+                  }
+
+                  if (_worldItems.TryRemove(command.Slot, out _))
+                  {
+                      AppliedWorldItemRemovals++;
+                      return;
+                  }
+
+                  RejectedWorldItemRemovals++;
+              }
+
+              private void ApplyWorldItemOwner(WorldItemOwnerRuntimeCommand command)
+              {
+                  if (!IsCurrentPlayerConnection(command.Connection))
+                  {
+                      RejectedWorldItemOwners++;
+                      return;
+                  }
+
+                  WorldItemOwnerStateUpdate state = command.State;
+                  if (_worldItems.TryApplyOwner(command.Slot, in state, out _))
+                  {
+                      AppliedWorldItemOwners++;
+                      return;
+                  }
+
+                  RejectedWorldItemOwners++;
+              }
+          ''',
+              '''    private void ApplyWorldItemDrop(WorldItemDropRuntimeCommand command)
+              {
+                  if (!IsCurrentPlayerConnection(command.Connection) ||
+                      !IsCurrentWorldItemTarget(command.Target))
+                  {
+                      RejectedWorldItemDrops++;
+                      return;
+                  }
+
+                  WorldItemDropStateUpdate state = command.State;
+                  if (_worldItems.TryApplyDrop(command.Target.Slot, in state, out _))
+                  {
+                      AppliedWorldItemDrops++;
+                      return;
+                  }
+
+                  RejectedWorldItemDrops++;
+              }
+
+              private void ApplyWorldItemRemove(WorldItemRemoveRuntimeCommand command)
+              {
+                  if (!IsCurrentPlayerConnection(command.Connection) ||
+                      !IsCurrentWorldItemTarget(command.Target))
+                  {
+                      RejectedWorldItemRemovals++;
+                      return;
+                  }
+
+                  if (_worldItems.TryRemove(command.Target.Slot, out _))
+                  {
+                      AppliedWorldItemRemovals++;
+                      return;
+                  }
+
+                  RejectedWorldItemRemovals++;
+              }
+
+              private void ApplyWorldItemOwner(WorldItemOwnerRuntimeCommand command)
+              {
+                  if (!IsCurrentPlayerConnection(command.Connection) ||
+                      !IsCurrentWorldItemTarget(command.Target))
+                  {
+                      RejectedWorldItemOwners++;
+                      return;
+                  }
+
+                  WorldItemOwnerStateUpdate state = command.State;
+                  if (_worldItems.TryApplyOwner(command.Target.Slot, in state, out _))
+                  {
+                      AppliedWorldItemOwners++;
+                      return;
+                  }
+
+                  RejectedWorldItemOwners++;
+              }
+          ''')
+
+          replace_once(
+              "src/TerraRuntime/TerrariaServerHost.cs",
+              "        var worldItemIngress = new RuntimeWorldItemIngress(commandIngress);\n",
+              "        var worldItemIngress = new RuntimeWorldItemIngress(commandIngress, worldItems);\n")
+
+          replace_once(
+              "tests/TerraRuntime.Tests/ProductionHandshakeStopReasonTests.cs",
+              "            new RuntimeWorldItemIngress(commands));\n",
+              "            new RuntimeWorldItemIngress(commands, new RuntimeWorldItemStore()));\n")
+
+          p = Path("tests/TerraRuntime.Tests/ServerRuntimeWorldItemCommandTests.cs")
+          text = p.read_text()
+          replacements = [
+              ("new WorldItemOwnerRuntimeCommand(connection, allocated.Handle.Slot, owner)", "new WorldItemOwnerRuntimeCommand(connection, allocated.Handle, owner)"),
+              ("new WorldItemDropRuntimeCommand(connection, allocated.Handle.Slot, moved)", "new WorldItemDropRuntimeCommand(connection, allocated.Handle, moved)"),
+              ("new WorldItemRemoveRuntimeCommand(connection, allocated.Handle.Slot)", "new WorldItemRemoveRuntimeCommand(connection, allocated.Handle)"),
+              ("new WorldItemDropRuntimeCommand(connection, 7, invalid)", "new WorldItemDropRuntimeCommand(connection, default, invalid)"),
+              ("            7,\n            new WorldItemOwnerStateUpdate(1, 10, 1, 20, 0f, 0f))", "            default,\n            new WorldItemOwnerStateUpdate(1, 10, 1, 20, 0f, 0f))"),
+              ("new WorldItemRemoveRuntimeCommand(connection, 7)", "new WorldItemRemoveRuntimeCommand(connection, default)"),
+              ("new WorldItemDropRuntimeCommand(stale, allocated.Handle.Slot, CreateDrop(positionX: 999f, stack: 9))", "new WorldItemDropRuntimeCommand(stale, allocated.Handle, CreateDrop(positionX: 999f, stack: 9))"),
+              ("            allocated.Handle.Slot,\n            new WorldItemOwnerStateUpdate(current.Player.Slot.Value, 300, current.Player.Slot.Value, 30, 999f, 999f))", "            allocated.Handle,\n            new WorldItemOwnerStateUpdate(current.Player.Slot.Value, 300, current.Player.Slot.Value, 30, 999f, 999f))"),
+              ("new WorldItemRemoveRuntimeCommand(stale, allocated.Handle.Slot)", "new WorldItemRemoveRuntimeCommand(stale, allocated.Handle)"),
+              ("            allocated.Handle.Slot,\n            CreateDrop(positionX: 130f, stack: 3))", "            allocated.Handle,\n            CreateDrop(positionX: 130f, stack: 3))"),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"ServerRuntimeWorldItemCommandTests.cs: expected one match for {old!r}, got {count}")
+              text = text.replace(old, new)
+
+          marker = "    private static ConnectionHandle Spawn(\n"
+          if text.count(marker) != 1:
+              raise SystemExit("ServerRuntimeWorldItemCommandTests.cs: spawn marker mismatch")
+          regression = '''    [Fact]
+              public async Task Queued_explicit_world_item_command_cannot_cross_slot_generation_reuse()
+              {
+                  var store = new RuntimeWorldItemStore();
+                  var runtime = new ServerRuntimeState(worldItems: store);
+                  var slots = new PlayerSlotPool(1);
+                  using PlayerJoinSession session = CreateAwaitingSpawnSession(slots);
+                  ConnectionHandle connection = Spawn(runtime, GameCommandSourceId.FromConnection(604), session);
+                  var firstCompletion = new TaskCompletionSource<WorldItemSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                  runtime.Apply(new WorldItemAllocateRuntimeCommand(
+                      connection,
+                      CreateDrop(positionX: 100f, stack: 2),
+                      firstCompletion));
+                  WorldItemSnapshot first = Assert.IsType<WorldItemSnapshot>(await firstCompletion.Task);
+
+                  var captured = new CapturingCommandIngress();
+                  var ingress = new RuntimeWorldItemIngress(captured, store);
+                  Assert.True(ingress.TryPostRemove(connection, first.Handle.Slot));
+                  WorldItemRemoveRuntimeCommand delayed = Assert.IsType<WorldItemRemoveRuntimeCommand>(captured.Command);
+                  Assert.Equal(first.Handle, delayed.Target);
+
+                  runtime.Apply(new WorldItemRemoveRuntimeCommand(connection, first.Handle));
+                  var secondCompletion = new TaskCompletionSource<WorldItemSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                  runtime.Apply(new WorldItemAllocateRuntimeCommand(
+                      connection,
+                      CreateDrop(positionX: 200f, stack: 4),
+                      secondCompletion));
+                  WorldItemSnapshot second = Assert.IsType<WorldItemSnapshot>(await secondCompletion.Task);
+                  Assert.Equal(first.Handle.Slot, second.Handle.Slot);
+                  Assert.NotEqual(first.Handle.Generation, second.Handle.Generation);
+
+                  runtime.Apply(delayed);
+
+                  Assert.Equal(1, runtime.RejectedWorldItemRemovals);
+                  Assert.True(runtime.TryCaptureWorldItemSnapshot(second.Handle.Slot, out WorldItemSnapshot current));
+                  Assert.Equal(second.Handle, current.Handle);
+                  Assert.Equal(200f, current.PositionX);
+                  Assert.Equal((short)4, current.Stack);
+              }
+
+              private sealed class CapturingCommandIngress : IGameCommandIngress<RuntimeCommand>
+              {
+                  public RuntimeCommand? Command { get; private set; }
+
+                  public bool TryPost(GameCommandSourceId source, RuntimeCommand command)
+                  {
+                      Command = command;
+                      return true;
+                  }
+              }
+
+          '''.replace('              ', '    ')
+          p.write_text(text.replace(marker, regression + marker))
+
+      - name: Restore
+        run: dotnet restore TerraRuntime.slnx
+
+      - name: Build
+        run: dotnet build TerraRuntime.slnx -c Release --no-restore
+
+      - name: World item generation tests
+        run: >-
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          -c Release
+          --no-build
+          --filter "FullyQualifiedName~ServerRuntimeWorldItemCommandTests|FullyQualifiedName~WorldItemFrameSinkTests|FullyQualifiedName~ProductionHandshakeStopReasonTests"
+
+      - name: Commit hardened source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/TerraRuntime/RuntimeWorldItemCommands.cs \
+                  src/TerraRuntime/RuntimeWorldItemIngress.cs \
+                  src/TerraRuntime/ServerRuntimeState.cs \
+                  src/TerraRuntime/TerrariaServerHost.cs \
+                  tests/TerraRuntime.Tests/ProductionHandshakeStopReasonTests.cs \
+                  tests/TerraRuntime.Tests/ServerRuntimeWorldItemCommandTests.cs
+          git commit -m "security: bind queued world item commands to item generation"
+
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              echo "Rebase conflict; refusing to overwrite concurrent main changes."
+              exit 1
+            fi
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "main kept moving; refusing force push"
+          exit 1
