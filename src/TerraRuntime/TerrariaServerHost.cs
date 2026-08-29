@@ -276,7 +276,8 @@ public static class TerrariaServerHost
             worldItems: worldItems,
             projectileReplication: projectileReplication,
             tileManipulationReplication: tileManipulationReplication,
-            serverPlayerStates: serverPlayerStates);
+            serverPlayerStates: serverPlayerStates,
+            serverPlayerIdentities: serverPlayerIdentities);
         using var sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,
             bootstrapPackets,

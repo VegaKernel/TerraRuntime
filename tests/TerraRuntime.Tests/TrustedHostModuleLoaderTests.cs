@@ -56,7 +56,8 @@ public sealed class TrustedHostModuleLoaderTests
                 32),
             interestManagement,
             new TestPlayerStateSnapshotReader(),
-            new TestNpcActorOperations());
+            new TestNpcActorOperations(),
+            new TestServerPlayerOperations());
 
         WorldGeneratorId fixtureGeneratorId = new(FixtureHostModule.WorldGeneratorId);
         try
@@ -139,7 +140,8 @@ public sealed class TrustedHostModuleLoaderTests
         TerraRuntimeHostRuntimeInfo Info,
         IInterestManagementControl InterestManagement,
         IPlayerStateSnapshotReader PlayerStates,
-        INpcActorOperations NpcActors) : ITerraRuntimeHostRuntime;
+        INpcActorOperations NpcActors,
+        IServerPlayerOperations ServerPlayers) : ITerraRuntimeHostRuntime;
 
     private sealed class TestInterestManagementControl : IInterestManagementControl
     {
@@ -163,6 +165,27 @@ public sealed class TrustedHostModuleLoaderTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return ValueTask.FromResult<PlayerStateSnapshot?>(null);
+        }
+    }
+
+    private sealed class TestServerPlayerOperations : IServerPlayerOperations
+    {
+        public ValueTask<ServerPlayerCreateResult> CreateAsync(
+            ServerPlayerId id,
+            float positionX,
+            float positionY,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(new ServerPlayerCreateResult(ServerPlayerCreateStatus.NoAvailableSlot, default));
+        }
+
+        public ValueTask<bool> DespawnAsync(
+            ServerPlayerId id,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(false);
         }
     }
 
