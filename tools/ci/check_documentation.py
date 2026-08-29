@@ -35,7 +35,8 @@ REQUIRED_MIRRORS = {
 # Deliberately simple: repository docs use ordinary inline Markdown links.
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 TEXT_FENCE_RE = re.compile(r"^```text\s*$\n(.*?)^```\s*$", re.MULTILINE | re.DOTALL)
-ASCII_BOX_CORNERS = frozenset("┌┐└┘┏┓┗┛╔╗╚╝")
+ASCII_BOX_TOP = frozenset("┌┐┏┓╔╗")
+ASCII_BOX_BOTTOM = frozenset("└┘┗┛╚╝")
 CONNECTOR_ONLY_RE = re.compile(r"^\s*(?:\||\^|[vV]|\|[-=|+ ]+\||\+[-=|+ ]+)\s*$")
 ASCII_BRANCH_RE = re.compile(r"^\s*\+--")
 LITERAL_TEXT_MARKER = "<!-- docs-style: literal-text -->"
@@ -112,7 +113,9 @@ def looks_like_ascii_process_diagram(block: str) -> bool:
         return False
 
     joined = "\n".join(lines)
-    if any(corner in joined for corner in ASCII_BOX_CORNERS):
+    has_top_corner = any(corner in joined for corner in ASCII_BOX_TOP)
+    has_bottom_corner = any(corner in joined for corner in ASCII_BOX_BOTTOM)
+    if has_top_corner and has_bottom_corner:
         return True
 
     arrow_lines = sum("->" in line or "<-" in line for line in lines)
