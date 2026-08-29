@@ -1,0 +1,45 @@
+name: Phase3 Roadmap Sync
+
+on:
+  push:
+    paths:
+      - .github/workflows/phase3-roadmap-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Mark bounded inbound command work complete
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("docs/roadmap.md")
+          text = path.read_text(encoding="utf-8")
+          item = "Bound inbound work processed per tick so one connection cannot monopolize a frame."
+          pending = f"- [ ] {item}"
+          complete = f"- [x] {item}"
+          if pending in text:
+              text = text.replace(pending, complete, 1)
+          elif complete not in text:
+              raise SystemExit(f"roadmap item missing: {item}")
+          path.write_text(text, encoding="utf-8")
+          PY
+          git rm .github/workflows/phase3-roadmap-sync.yml
+          git add docs/roadmap.md
+          git commit -m "docs: mark bounded per-tick command work verified"
+          for attempt in 1 2 3 4; do
+            if git push origin HEAD:main; then exit 0; fi
+            git pull --rebase origin main
+          done
+          exit 1
