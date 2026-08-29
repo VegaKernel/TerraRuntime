@@ -12,16 +12,16 @@ This document distinguishes implemented foundations from broad vanilla coverage.
 
 ## 2. Core gameplay flow
 
-```text
-client/network input
-   -> bounded protocol decode
-   -> semantic ingress/command
-   -> authoritative game loop
-   -> validation and state transition
-   -> runtime store/event
-   -> replication projection
-   -> recipient selection
-   -> protocol encode
+```mermaid
+flowchart LR
+    Client["Client / network input"] --> Decode["Bounded protocol decode"]
+    Decode --> Ingress["Semantic ingress / command"]
+    Ingress --> Loop["Authoritative game loop"]
+    Loop --> Validate["Validation + state transition"]
+    Validate --> Store["Runtime store / event"]
+    Store --> Replication["Replication projection"]
+    Replication --> Recipients["Recipient selection"]
+    Recipients --> Encode["Protocol encode"]
 ```
 
 Gameplay owns legality and authoritative outcomes. Networking owns wire transport. Replication owns conversion back toward clients.
@@ -30,7 +30,7 @@ Gameplay owns legality and authoritative outcomes. Networking owns wire transpor
 
 Mutable gameplay state is owned by the game-loop thread.
 
-This includes the runtime's player state, world mutations, chests, world items, NPCs, projectiles and other simulation state as each subsystem becomes authoritative.
+This includes player state, world mutations, chests, signs, world items, NPCs, projectiles and other simulation state as each subsystem becomes authoritative.
 
 External threads and trusted host modules use snapshots or command/operations surfaces. They do not receive mutable stores.
 
@@ -38,15 +38,11 @@ External threads and trusted host modules use snapshots or command/operations su
 
 TerraRuntime separates vanilla content identity from a live runtime entity identity.
 
-Examples:
-
-```text
-NpcTypeId(1)            vanilla NPC type
-NpcHandle(slot, gen)    one live runtime NPC
-
-ProjectileTypeId(1)     vanilla projectile type
-projectile handle/slot  one live runtime projectile
-```
+| Vanilla content identity | Live runtime identity |
+|---|---|
+| `NpcTypeId(1)` | `NpcHandle(slot, generation)` |
+| `ProjectileTypeId(1)` | projectile slot/handle |
+| `ItemTypeId` | inventory/world-item identity |
 
 Generation/revision-aware handles prevent a stale reference from mutating a different entity after a slot is reused.
 
@@ -56,13 +52,7 @@ Raw protocol IDs are allowed at the wire boundary. Gameplay should cross into va
 
 Runtime gameplay facts are pinned to TerrariaServer 1.4.5.8.
 
-Examples of current typed/named facts include:
-
-- NPC IDs and AI-style IDs;
-- projectile IDs and AI-style IDs;
-- verified widths/heights/defaults consumed by simulation;
-- tile/item facts used by implemented mutation/drop paths;
-- protocol-independent runtime handles and snapshots.
+Current typed/named facts include NPC IDs and AI-style IDs, projectile IDs and AI-style IDs, verified widths/heights/defaults consumed by simulation, tile/item/sign facts used by implemented mutation paths, and protocol-independent runtime handles/snapshots.
 
 A catalog contains only facts actually needed by current behavior. TerraRuntime does not copy the entire decompiled `SetDefaults` surface merely to appear complete.
 
@@ -78,7 +68,7 @@ The following table is deliberately conservative.
 | World items | substantial foundation | runtime-owned store, allocation/reservation/update/replication paths and tests exist |
 | Tiles | partial | verified mutation slices, dirt/stone behavior and replication exist; full placement/framing/wiring/growth breadth does not |
 | Chests | substantial slice | runtime chest state, live open/content path, replication and persistence are exercised; complete chest/item authority is still growing |
-| Signs | partial | runtime replication/state paths exist; broad edit/validation parity remains narrower than vanilla |
+| Signs | substantial slice | authoritative read/update/store/replication, source-backed tile normalization and `.wld` persistence exist; complete placement/destruction/object lifecycle parity does not |
 | Projectiles | partial | lifecycle/store/ownership/AI-style physics/collision/replication exist for verified type families; full projectile catalog/combat/side effects do not |
 | NPC lifecycle | partial | runtime store, generation-safe identity, definitions, targeting/check-active/spawn/motion primitives exist |
 | NPC AI breadth | early partial | selected verified NPCs and AI families exist, not the full vanilla roster |
@@ -96,13 +86,7 @@ When this table conflicts with executable evidence or a newer roadmap item, upda
 
 Player networking is converted into runtime-owned commit requests/events before mutation.
 
-Implemented architecture includes dedicated ingress/commit shapes for behavior such as:
-
-- spawn;
-- movement;
-- vitals/state slices;
-- appearance/equipment slices;
-- event fanout/replication.
+Implemented architecture includes dedicated ingress/commit shapes for spawn, movement, vitals/state slices, appearance/equipment slices and event fanout/replication.
 
 Movement has a vanilla-oriented normalization layer and server-known state, but the long-term roadmap still includes richer history/tolerance handling for exceptional movement such as teleports, mounts and respawn transitions.
 
@@ -120,13 +104,7 @@ This boundary is intended for server-controlled actors and integration scenarios
 
 Inventory/equipment processing is being decomposed away from loose packet fields and raw slot numbers.
 
-Target concepts include:
-
-- named inventory layout regions;
-- validated item type/stack/prefix state;
-- explicit equipment/loadout semantics;
-- semantic item use rather than packet-handler side effects;
-- server-known ownership for world items and transitions.
+Target concepts include named inventory layout regions, validated item type/stack/prefix state, explicit equipment/loadout semantics, semantic item use instead of packet-handler side effects, and server-known ownership for world items/transitions.
 
 Current packet/commit infrastructure should not be mistaken for complete authoritative recipe/use/ammo/accessory logic.
 
@@ -134,15 +112,9 @@ Current packet/commit infrastructure should not be mistaken for complete authori
 
 `RuntimeWorldItemStore` is an authoritative runtime entity store rather than a transparent client relay.
 
-The implemented foundation includes tested behavior for areas such as:
+The implemented foundation includes tested slot allocation/reservation, updates/partial updates, runtime ingress/commands, replication-registry integration and selected tile-drop integration.
 
-- slot allocation/reservation;
-- updates and partial updates;
-- runtime ingress/commands;
-- replication registry integration;
-- selected tile-drop integration.
-
-World item identity is separate from item content type. Future pickup/stack/ownership validation builds on this server-owned identity instead of trusting arbitrary client slot metadata.
+World-item identity is separate from item content type. Future pickup/stack/ownership validation builds on this server-owned identity instead of trusting arbitrary client slot metadata.
 
 ## 11. Tiles and world mutation
 
@@ -150,14 +122,7 @@ World edits pass through semantic/runtime mutation paths rather than directly re
 
 The runtime already has verified slices for tile kill/update/replication and world collision/query behavior. Selected dirt/stone cases are pinned by official-source/reference workflows.
 
-Still incomplete at broad vanilla scale:
-
-- all placement rules;
-- frame-important and multi-tile object behavior;
-- every slope/platform interaction;
-- wiring/actuation;
-- growth/spread families;
-- complete tool/item requirements and drops.
+Still incomplete at broad vanilla scale are all placement rules, frame-important and multi-tile object behavior, every slope/platform interaction, wiring/actuation, growth/spread families, and complete tool/item requirements/drops.
 
 A tile mutation is not complete merely because the resulting tile ID looks correct. Neighbor framing, object validity, drops, liquid interaction, persistence and network replication may all be observable parts of the same vanilla action.
 
@@ -167,33 +132,64 @@ Chest work is one of the more mature object slices.
 
 Current architecture includes runtime chest state, interaction/replication paths and authoritative persistence support. Live workflows exercise open/content behavior against official-world data.
 
-Important invariants include:
+Important invariants include chest identity/coordinate validation before mutation, malformed chest traffic containment, authoritative-owner save capture and separation of replication from storage.
 
-- chest identity/coordinates are validated before mutation;
-- malformed chest traffic is contained rather than crashing the process;
-- chest state is captured from the authoritative owner for save;
-- replication is separated from storage.
+Full server-authoritative inventory conservation/anti-dupe logic must be introduced only when the underlying item-ownership model is strong enough to avoid false rejects of legal vanilla traffic.
 
-Full server-authoritative inventory conservation/anti-dupe logic must be introduced only when the underlying item ownership model is strong enough to avoid false rejects of legal vanilla traffic.
+## 13. Signs
 
-## 13. NPC lifecycle
+Signs now form an authoritative object slice rather than a packet relay.
+
+The current production path contains:
+
+- protocol `326` typed handling for `RequestSign` (`packet 46`) and `SignNew` (`packet 47`);
+- `RuntimeSignNetworkIngress` for bounded socket-thread to game-thread handoff;
+- `RuntimeSignStore` and `RuntimeSignCommandProcessor` for authoritative lookup/mutation;
+- `RuntimeSignReplicationRegistry` for transport projection;
+- `SignInteractionFrameSink` in the production connection chain;
+- `.wld` sign-section persistence from authoritative runtime state.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant N as Sign frame sink / codec
+    participant G as Authoritative game loop
+    participant S as RuntimeSignStore
+    participant R as Sign replication
+
+    C->>N: packet 46 or packet 47
+    N->>G: owned sign read/update command
+    G->>S: validate lookup / apply committed text
+    alt read request
+        S-->>R: authoritative sign
+        R-->>C: packet 47 sign state
+    else changed update
+        S-->>R: committed sign change
+        R-->>C: broadcast to other playing clients
+    end
+```
+
+### Source-backed tile normalization
+
+A sign read is normalized from the clicked tile to the sign origin using the verified TerrariaServer 1.4.5.8 frame rule. Horizontal origin selection uses `FrameX / 18` modulo two, while vertical origin uses `FrameY / 18`. The normalized origin must resolve to one of the verified sign tile types `55`, `85`, `425` or `573`.
+
+Out-of-world coordinates or a normalized tile that is not one of those sign types are rejected rather than guessed.
+
+### Update replication
+
+For a committed text change, the current source-backed path broadcasts the resulting sign state to other playing clients while excluding the sender, matching the pinned vanilla update path. A read response is sent only to the requesting connection.
+
+This is a substantial interaction/persistence slice, not complete sign-object lifecycle parity. Placement, destruction, framing and every surrounding tile-object rule remain part of broader tile/object work.
+
+## 14. NPC lifecycle
 
 NPCs use a runtime-owned store and generation-safe handles.
 
-Current foundations include:
-
-- allocation/lifecycle state;
-- version-pinned definition lookup;
-- target selection primitives;
-- gravity/world motion;
-- spawn cadence primitives;
-- check-active/despawn behavior slices;
-- replication projection;
-- trusted-host actor control through semantic intent.
+Current foundations include allocation/lifecycle state, version-pinned definition lookup, target selection primitives, gravity/world motion, spawn cadence primitives, check-active/despawn behavior slices, replication projection and trusted-host actor control through semantic intent.
 
 The current verified definition catalog includes **Blue Slime**, **Demon Eye** and **Zombie**. This is an explicit coverage slice, not an implication that other NPC defaults are guessed from similar entities.
 
-## 14. NPC AI
+## 15. NPC AI
 
 AI is decomposed by behavior/family instead of becoming one unbounded `switch(type)` in a packet handler.
 
@@ -209,100 +205,61 @@ Rules for expanding AI:
 
 Boss orchestration should not be forced through abstractions designed for three simple early-game NPCs.
 
-## 15. Trusted-host NPC actors
+## 16. Trusted-host NPC actors
 
 `INpcActorOperations` lets a trusted host acquire a lease over an existing runtime NPC and submit semantic `NpcActorIntent`.
 
-The runtime still owns:
-
-- final movement;
-- gravity;
-- collision;
-- lifetime and entity identity;
-- authoritative application order.
+The runtime still owns final movement, gravity, collision, lifetime/entity identity and authoritative application order.
 
 Controller IDs and explicit release support safe module/plugin teardown. A host cannot retain direct mutable NPC objects across reload boundaries.
 
-## 16. Projectiles
+## 17. Projectiles
 
 Projectile support has moved beyond a relay-only design.
 
-Current architecture includes:
+Current architecture includes runtime projectile store, ownership/provenance facts, lifecycle handling, definition catalog, behavior state executor/stepper, world physics/collision, tile-cut integration for supported cases, and packet projection/replication.
 
-- runtime projectile store;
-- ownership/provenance facts;
-- lifecycle handling;
-- definition catalog;
-- behavior state executor/stepper;
-- world physics/collision;
-- tile-cut integration for supported cases;
-- packet projection and replication.
-
-The current verified AI-style identities include:
-
-```text
-Arrow     aiStyle 1
-Thrown    aiStyle 2
-Boomerang aiStyle 3
-```
+| Verified family | Vanilla AI style |
+|---|---:|
+| Arrow | `1` |
+| Thrown | `2` |
+| Boomerang | `3` |
 
 The definition catalog contains a growing verified set across these families, including multiple arrows, bullets/lasers, bones, shuriken/throwing-knife-style projectiles and boomerang support.
 
 This still does **not** mean complete Terraria projectile parity. Unsupported irreversible side effects, child spawning, immunity, penetration, specialized AI, damage and kill effects must remain explicit boundaries rather than silently guessed behavior.
 
-## 17. Combat
+## 18. Combat
 
 Combat is a separate semantic subsystem, not just fields attached to projectile/NPC packets.
 
-The target model includes explicit concepts for:
-
-- damage source/provenance;
-- attacker and target;
-- base/final damage;
-- defense interaction;
-- knockback;
-- critical hits;
-- immunity/cooldowns;
-- death reason/result;
-- PvP/environment/NPC/projectile categories.
+The target model includes damage source/provenance, attacker/target, base/final damage, defense interaction, knockback, critical hits, immunity/cooldowns, death reason/result and PvP/environment/NPC/projectile categories.
 
 Only verified portions should be made authoritative. Until complete conservation/damage rules exist, the server should not invent strict rejection rules that break legal vanilla behavior.
 
-## 18. Drops and loot
+## 19. Drops and loot
 
 Selected tile/world-item drop paths are implemented and tested, but complete vanilla loot is much larger.
 
-NPC loot parity eventually requires rule/data structures that preserve:
-
-- conditions;
-- probabilities;
-- stack ranges;
-- progression/event dependencies;
-- RNG ordering.
+NPC loot parity eventually requires rule/data structures that preserve conditions, probabilities, stack ranges, progression/event dependencies and RNG ordering.
 
 A declarative loot table is useful only if it reproduces the verified sequence; changing RNG call order while preserving nominal percentages can still change observable vanilla outcomes.
 
-## 19. Buffs, prefixes and item metadata
+## 20. Buffs, prefixes and item metadata
 
 The architecture is moving toward typed IDs and version-pinned metadata rather than scattered raw integers.
 
 These systems remain broad future work. New authoritative validation must not accept arbitrary unvalidated bytes as meaningful domain state, but it also must not reject values whose vanilla legality has not been verified.
 
-## 20. Wiring, liquids and growth
+## 21. Wiring, liquids and growth
 
 Liquids already have explicit tile state plus a runtime work queue that can be persisted through warm snapshots.
 
 That foundation is not full vanilla liquid simulation. Wiring/actuation and growth/spread also remain incomplete.
 
-These subsystems are order-sensitive and can touch large world areas, so their implementation must combine:
+These subsystems are order-sensitive and can touch large world areas, so their implementation must combine exact behavioral verification, global bounded per-tick work, deterministic owner-thread commits, dirty/replication tracking and save compatibility.
 
-- exact behavioral verification;
-- global bounded per-tick work;
-- deterministic owner-thread commits;
-- dirty/replication tracking;
-- save compatibility.
-
-## 21. Progression, events, town NPCs and bosses
+## 22. Progression, events, town NPCs and bosses
 
 These are currently major parity gaps.
 
@@ -310,7 +267,7 @@ Do not infer support from world header fields being readable or from generic NPC
 
 As these systems become authoritative, each needs explicit persistence, synchronization and official behavior evidence.
 
-## 22. World generation
+## 23. World generation
 
 TerraRuntime has a world-generation **framework** with provider registration, planning, ordered passes, isolated workspace execution and final validation.
 
@@ -318,71 +275,55 @@ The built-in generator is currently a deterministic flat dirt/stone baseline. It
 
 Vanilla worldgen therefore remains incomplete even though the architecture for custom/pluggable world generation is substantially developed.
 
-## 23. Replication
+## 24. Replication
 
 Gameplay mutation and network replication are separate responsibilities.
 
+```mermaid
+flowchart LR
+    Mutation["Authoritative mutation"] --> Event["Runtime state / event"]
+    Event --> Projection["Replication projection"]
+    Projection --> Policy["Recipient / visibility policy"]
+    Policy --> Encode["Protocol encode"]
+    Encode --> Queue["Bounded outbound queues"]
+```
+
 Runtime replication registries exist for multiple entity/object classes, including player-related events, NPCs, projectiles, world items, chests, signs and tile manipulation.
 
-This separation matters because:
+This separation matters because one mutation may have multiple recipients, recipients may change under interest management, identical encoded state can be shared where safe, and persistence must not depend on what was last sent to a client.
 
-- one mutation may have multiple recipients;
-- recipients may change under interest management;
-- the same authoritative state can be encoded once/shared where bytes are identical;
-- persistence should not depend on what was last sent to a client.
-
-## 24. Validation philosophy
+## 25. Validation philosophy
 
 The server becomes more authoritative only where it can prove the rule.
 
-Preferred order:
-
-```text
-verify vanilla rule
-   -> represent semantic state
-   -> implement authoritative transition
-   -> add regression evidence
-   -> reject impossible client action
+```mermaid
+flowchart LR
+    Verify["Verify vanilla rule"] --> Model["Represent semantic state"]
+    Model --> Transition["Implement authoritative transition"]
+    Transition --> Evidence["Add regression evidence"]
+    Evidence --> Reject["Reject impossible client action"]
 ```
 
-The wrong order is:
+The anti-pattern is to assume what a legitimate client "should" do, reject everything else, and only later discover that vanilla allows the rejected behavior. False-positive anti-cheat is a gameplay bug.
 
-```text
-assume what a legitimate client "should" do
-   -> reject everything else
-   -> discover vanilla actually allows it
-```
-
-False-positive anti-cheat is a gameplay bug.
-
-## 25. Evidence hierarchy
+## 26. Evidence hierarchy
 
 Gameplay changes use the project-wide source hierarchy:
 
 1. locally decompiled TerrariaServer 1.4.5.8 for current vanilla behavior and constants;
-2. Multiplicity for protocol 326 wire representation;
+2. Multiplicity for protocol `326` wire representation;
 3. terrustia as an independent implementation cross-check;
 4. TShock/OTAPI for history/exploit lessons only.
 
 Real official-client/server traffic, generated worlds and differential probes are required when a local unit test cannot independently prove behavior.
 
-## 26. Test strategy
+## 27. Test strategy
 
-Depending on the subsystem, evidence should include:
-
-- deterministic state-transition unit tests;
-- definition/catalog tests;
-- runtime store lifecycle/slot-reuse tests;
-- collision/world-query tests;
-- replication tests;
-- malformed/illegal input tests;
-- official-source contract workflows;
-- live official-world/client probes;
-- persistence/restart tests for state that survives saves.
+Depending on the subsystem, evidence should include deterministic state-transition unit tests, definition/catalog tests, runtime store lifecycle/slot-reuse tests, collision/world-query tests, replication tests, malformed/illegal input tests, official-source contract workflows, live official-world/client probes, and persistence/restart tests for state that survives saves.
 
 A green build is not parity evidence by itself.
 
-## 27. Adding a new NPC/projectile behavior
+## 28. Adding a new NPC/projectile behavior
 
 Before adding a new behavior slice:
 
@@ -396,7 +337,7 @@ Before adding a new behavior slice:
 8. document unsupported side effects explicitly;
 9. update both RU and EN parity documentation in the same change.
 
-## 28. Current highest-risk gaps
+## 29. Current highest-risk gaps
 
 The largest remaining gameplay breadth is not basic store architecture. It is vanilla rule coverage:
 
@@ -412,3 +353,7 @@ The largest remaining gameplay breadth is not basic store architecture. It is va
 - vanilla world generation.
 
 These should be treated as explicit work, not hidden behind a global "gameplay implemented" label.
+
+## 30. Documentation rule
+
+Gameplay diagrams use Mermaid for flows/sequences/state relationships. Numeric measurements or dimensional limits use LaTeX with units; packet IDs, AI-style IDs, content IDs and protocol versions remain code literals because they are identifiers, not measurements.

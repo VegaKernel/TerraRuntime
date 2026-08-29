@@ -4,330 +4,193 @@
 
 ## 1. Performance model
 
-TerraRuntime считает performance correctness constraint вокруг bounded work, а не разрешением менять observable vanilla behavior ради красивого benchmark.
+TerraRuntime считает performance correctness constraint вокруг bounded work.
 
-Baseline simulation model: один authoritative owner работает по fixed-rate tick schedule, а networking и bounded background work идут независимо.
-
-Приоритет:
-
-```text
-correctness и vanilla-visible behavior
-        -> bounded work / failure isolation
-        -> measurement
-        -> optimization
+```mermaid
+flowchart LR
+    Correctness["Correctness + vanilla-visible behavior"] --> Bounds["Bounded work + failure isolation"]
+    Bounds --> Measure["Measurement"]
+    Measure --> Optimize["Optimization"]
 ```
 
-Optimization без measurement — hypothesis, а не завершённое performance change.
+Optimization без measurement является hypothesis, а не completed performance change.
 
-## 2. Default tick rate
+## 2. Tick rate
 
-`GameLoopOptions.DefaultTicksPerSecond` = **60**.
+Terraria runtime baseline: `$60\,\mathrm{Hz}$`.
 
-При 60 Hz nominal interval примерно **16.67 ms**.
+$$
+T_{\mathrm{tick}}=\frac{1}{60}\,\mathrm{s}\approx16.67\,\mathrm{ms}.
+$$
 
-Generic loop технически допускает configured positive tick rate до 1000 Hz, но Terraria runtime baseline остаётся 60 Hz. Повышение generic loop option само по себе не делает vanilla Terraria gameplay семантически корректным на большей simulation frequency.
+Generic loop допускает configured rate до `$1000\,\mathrm{Hz}$`, но higher generic frequency не означает vanilla-correct gameplay на этой частоте.
 
-Перед поддержкой alternate tick-rate mode нужно проверить game constants, timers, network cadence и vanilla reference behavior.
+## 3. Authoritative thread и phases
 
-## 3. Dedicated authoritative thread
+`AuthoritativeGameLoop<TState,TCommand>` владеет mutable simulation state на dedicated thread `TerraRuntime Game Loop`.
 
-`AuthoritativeGameLoop<TState,TCommand>` работает на dedicated non-background thread:
-
-```text
-TerraRuntime Game Loop
+```mermaid
+flowchart LR
+    Ingress["Ingress<br/>bounded staging"] --> Commands["Commands<br/>bounded + fair apply"]
+    Commands --> Update["Update<br/>authoritative simulation"]
+    Update --> Metrics["Wall / CPU / phase metrics"]
+    Metrics --> Deadline["Advance deadline"]
 ```
 
-Thread владеет mutable simulation state. Producers отправляют commands и не получают reference на state.
+## 4. Default command budgets
 
-Эта ownership model убирает locks как обычный механизм gameplay mutation и делает per-tick work измеримой controlled sequence.
+| Budget | Default |
+|---|---:|
+| `CommandCapacity` | `$8\,192$` commands |
+| `MaxCommandIngressPerTick` | `$2\,048\,\text{commands/tick}$` |
+| `MaxCommandsPerTick` | `$1\,024\,\text{commands/tick}$` |
+| `MaxCommandsPerSourcePerTick` | `$128\,\text{commands/source/tick}$` |
+| `MaxPendingCommandsPerSource` | `$1\,024\,\text{commands/source}$` |
 
-## 4. Tick phases generic loop
+Это hard bounded defaults, не final measurement-derived values любого workload.
 
-Текущий generic authoritative loop измеряет три top-level phases:
-
-```text
-Ingress  -> bounded staging commands из channel
-Commands -> bounded/fair command apply
-Update   -> authoritative state update
+```mermaid
+flowchart TD
+    Producers["Concurrent producers"] --> Mailbox["Bounded mailbox"]
+    Mailbox -->|≤ 2,048 / tick| Stage["Per-source staged queues"]
+    Stage -->|≤ 1,024 / tick| Apply["Authoritative command apply"]
+    Stage --> Deferred["Deferred work remains bounded + observable"]
+    Apply --> Update["Simulation update"]
 ```
 
-Runtime snapshot публикует last/worst timings и slowest phase.
+Per-source pending/per-tick quotas не дают одному connection занять shared capacity или monopolize command application.
 
-Higher-level Terraria update code может дальше дробить work по subsystem phases. Architecture roadmap ожидает отдельную observability для liquids, items, NPC AI, projectiles, combat, spawning, housing, progression и synchronization по мере роста implementation.
+## 5. Optional CPU budget
 
-## 5. Global command capacity
+`MaxCommandCpuMillisecondsPerTick` может задавать optional authoritative-thread CPU-time ceiling command application. Operation-count limits остаются active при unavailable thread CPU clock.
 
-Default global command mailbox capacity:
+Default CPU-time value не guessed; production values должны быть measurement-derived.
 
-```text
-CommandCapacity = 8192
+## 6. CPU и wall time
+
+```mermaid
+flowchart TD
+    Slow["Slow observed tick"] --> CPU{"CPU time also high?"}
+    CPU -->|yes| Work["Investigate authoritative-thread work"]
+    CPU -->|no| External["Investigate scheduling / blocking / OS contention"]
 ```
 
-Channel bounded. External producers не могут создать unbounded retained command list, просто отправляя быстрее game loop.
+Wall и CPU time отвечают на разные вопросы и остаются separate metrics.
 
-`TryPost` может reject при исчерпании global или per-source pending capacity.
+## 7. Missed-tick policy
 
-Bounded mailbox — invariant; exact production sizing продолжает подтверждаться realistic load.
+TerraRuntime не выполняет burst catch-up ticks.
 
-## 6. Bounded ingress
-
-Default command staging limit:
-
-```text
-MaxCommandIngressPerTick = 2048
+```mermaid
+flowchart LR
+    Tick["Tick completes"] --> Late{"Past next deadline?"}
+    Late -->|no| Wait["Wait until deadline"]
+    Late -->|yes| Count["Count missed deadlines"]
+    Count --> Reset["Reset schedule anchor to now"]
+    Reset --> Wait
 ```
 
-Game loop не drains весь producer channel во внутренние source queues каждый tick. Поэтому ingress phase bounded даже при полном global mailbox.
+Так один slow tick не порождает burst immediate ticks и backlog spiral.
 
-Staging и command apply имеют разные budgets, потому что перестройка большого backlog тоже стоит времени.
+## 8. Backlog observability
 
-## 7. Global apply budget
+Loop отслеживает pending/deferred count, rejected commands, budget exhaustion, missed deadlines и oldest pending-command age. Stable queue depth при increasing oldest age всё равно означает starvation.
 
-Default authoritative command execution limit:
+## 9. Asynchronous networking и workers
 
-```text
-MaxCommandsPerTick = 1024
+```mermaid
+flowchart LR
+    Read["Async socket read / decode"] --> Command["Bounded command"]
+    Command --> Loop["Authoritative loop"]
+    Loop --> Frame["Immutable outbound frame"]
+    Frame --> Queue["Bounded connection queue"]
+    Queue --> Write["Async socket writer"]
 ```
 
-После exhaustion operation budget оставшиеся commands откладываются на следующие ticks.
+Slow TCP peer не блокирует simulation. CPU-heavy/blocking workers consume immutable snapshots/isolated buffers и возвращают explicit completion data; unbounded `Task.Run` fan-out не является architecture.
 
-Runtime показывает deferred work и command-budget exhaustion вместо скрытого unbounded loop.
+## 10. Saving
 
-## 8. Per-source fairness
+Disk serialization/write detached от authoritative hot path. Tile-save shadow synchronization по default идёт `$4\,\text{sections/tick}$`, а не copy всего tile array одной pause.
 
-Default per-source apply quota:
+## 11. Join/bootstrap performance
 
-```text
-MaxCommandsPerSourcePerTick = 128
+Current final pre-`packet 49` contract:
+
+$$
+F_{\mathrm{pre49,max}}=65,
+\qquad
+F_{\mathrm{probe}}=96.
+$$
+
+Для default $P=8$ structural connection sizing:
+
+$$
+F_{\mathrm{queue}}(8)=4\,077\ \text{frames},
+$$
+
+следовательно:
+
+$$
+65 < 96 < 4\,077.
+$$
+
+Runtime entity/global baselines находятся вне final packet-10-to-packet-49 contract. Join section generation/compression всё равно требует global subsystem budgets, не per-player multiplication.
+
+## 12. Synchronization scaling
+
+Broad player movement fanout стремится к:
+
+$$
+W(P)=\Theta(P^2),
+$$
+
+где $P$ — active players. Interest-management infrastructure существует, но production suppression остаётся passthrough до proof visibility transitions/resync.
+
+## 13. Dirty/revision-driven work
+
+```mermaid
+flowchart LR
+    Mutation["Mutation"] --> Dirty["Dirty / revision marker"]
+    Dirty --> Work["Bounded subsystem work"]
+    Work --> Derived["Update derived state / cache"]
+    Derived --> Clear["Clear only after successful publication"]
 ```
 
-Non-system source после достижения quota throttled до следующего прохода rotation.
+Dirty world sections, replication registries и prepared startup state должны заменять full scans там, где correctness допускает. Fast stale cache всё равно bug.
 
-Это не даёт одному busy connection/source съесть весь global command budget, пока остальные ждут.
+## 14. Allocation и GC discipline
 
-System-owned work освобождён от per-source quota, но не должен превращаться в unbounded bypass path.
+Spans, owned/pooled buffers, immutable frame sharing и compact values применяются where measured. `unsafe`, custom allocators и broad pooling требуют evidence material benefit и проверки memory costs.
 
-## 9. Per-source pending limit
+NativeAOT core не зависит от JIT-specific assumptions. CoreCLR может использовать runtime features без weakening NativeAOT production gate.
 
-Default retained pending commands одного external source:
+## 15. Performance telemetry
 
-```text
-MaxPendingCommandsPerSource = 1024
-```
+Useful telemetry: tick wall/CPU, phase timing, command processed/deferred/rejected counts, budget exhaustion, oldest pending age, queue depth/high-water marks, slow-client events, entity counts, save state, startup/cache timing и safe allocation/GC metrics.
 
-Этот limit отделён от global `CommandCapacity`.
+Telemetry сама остаётся bounded/low-allocation.
 
-Он не даёт одному connection/source занять весь global mailbox ещё до per-tick fairness.
+## 16. Benchmark matrix
 
-## 10. Optional command CPU budget
+Useful scale checkpoints:
 
-`MaxCommandCpuMillisecondsPerTick` может задавать optional CPU-time ceiling для command-application phase.
+$$
+P\in\{1,8,24,64,128,255\}.
+$$
 
-Hard operation-count budget остаётся active даже если platform не предоставляет thread CPU clock.
+`$24$` players — первый meaningful realistic optimization baseline; `$255$` connections — stress/scalability target. Idle, normal-play, join-burst, slow-reader и save workloads находят разные bottlenecks.
 
-При доступном CPU timing и достижении configured budget command processing останавливается на этом tick, remaining work deferred.
+## 17. Before/after rule
 
-Generic option не имеет default CPU budget value. Production value выбирается по measurement, а не на глаз.
+Для target metric $M$ приводятся $M_{\mathrm{before}}$ и $M_{\mathrm{after}}$ на одном hardware/environment, world и workload. Percentage без underlying measurements является weak evidence.
 
-## 11. CPU time и wall time
+Complexity, которая не улучшает intended metric materially или ухудшает memory/latency/correctness, должна revert'иться.
 
-Game loop записывает оба значения:
+## 18. Текущие ограничения
 
-```text
-wall duration
-thread CPU duration when available
-```
+Active work: final measurement-derived queue limits, complete subsystem budgets, real production interest-management suppression/resync, complete packet allocation/throughput baselines, broad `$24$`-player / `$255$`-connection soak coverage, large-world startup/save/GC profiling и final section-cache/dirty synchronization tuning.
 
-Они отвечают на разные вопросы.
+## 19. Checklist performance/scheduler change
 
-- High wall + high CPU обычно означает реальную работу authoritative thread.
-- High wall + low CPU может указывать на scheduler/OS contention или blocking вне pure computation.
-
-Нельзя диагностировать slow tick только по wall time, если CPU data доступны.
-
-## 12. Missed tick policy
-
-TerraRuntime **не** выполняет burst catch-up ticks после missed deadline.
-
-Если текущий tick закончился позже следующего deadline, loop считает missed deadlines и переносит schedule anchor к current time.
-
-```text
-late tick
-   -> count missed deadlines
-   -> skip burst catch-up
-   -> continue from now
-```
-
-Это защищает от spiral, где один expensive tick вызывает несколько immediate catch-up ticks, которые увеличивают backlog и latency.
-
-## 13. Pending age
-
-Loop отслеживает age oldest pending command.
-
-Queue depth сам по себе может скрывать starvation. Stable queue count при растущем oldest age означает, что work ждёт всё дольше, даже если количество queued commands не растёт.
-
-Поэтому scheduler diagnosis смотрит как минимум на:
-
-```text
-pending/deferred count
-oldest pending age
-```
-
-## 14. Command rejection
-
-`TryPost` резервирует per-source и global pending capacity до write в bounded channel.
-
-Если reservation/channel write не проходит, command rejected и rejection telemetry увеличивается.
-
-Producer получает explicit failure result и не должен считать, что любой submitted work гарантированно попадёт в authoritative state.
-
-## 15. Source scheduling
-
-Staged commands группируются по `GameCommandSourceId` и вращаются через ready source queues.
-
-Это даёт deterministic bounded fairness без одного OS thread на каждого player/source.
-
-Scheduling structure — implementation detail. Semantic guarantees: bounded global work, per-source fairness и required ordering.
-
-## 16. Networking остаётся asynchronous
-
-Socket read/write work не выполняется game-loop thread.
-
-Networking может receive/encode asynchronously, но authoritative mutation проходит bounded command boundary.
-
-Game loop также не ждёт slow client's TCP receive window. Outbound work заканчивается bounded per-connection queue и отдельным writer.
-
-## 17. Background workers
-
-CPU-heavy или blocking work может выполняться вне game loop при ясном ownership.
-
-Workers получают immutable snapshots/isolated buffers и возвращают explicit completion data через controlled commit path.
-
-Нельзя заменять дизайн ownership/capacity unbounded `Task.Run` fan-out.
-
-## 18. Disk I/O и saving
-
-Persistence организован так, чтобы disk serialization/write не выполнялся в authoritative hot path.
-
-Game loop делает bounded snapshot/shadow synchronization, затем передаёт detached data background save coordinator.
-
-Current tile save shadow синхронизирует bounded section count на tick вместо копирования complete tile array одной паузой.
-
-## 19. Join/bootstrap performance
-
-Join — burst workload и не должен budget'иться как ordinary steady-state movement.
-
-Initial world sections/entity state могут породить много frames и дорогой serialization/compression work.
-
-Join work использует **global subsystem budgets**. Полный section-generation budget на каждого joining player умножил бы worst-case tick cost на число concurrent joins.
-
-Bootstrap frame count также hard-bounded ниже production outbound queue capacity live integration checks.
-
-## 20. Synchronization scaling
-
-Unconditional player-to-player movement broadcast при росте игроков стремится к O(players²).
-
-TerraRuntime уже имеет spatial/visibility tracking foundation для runtime-owned interest management, но actual default movement suppression остаётся passthrough до proof enter/leave/full-resync semantics.
-
-Performance rule: fail-open correctness first. Нельзя снижать bandwidth ценой stale/permanently missing remote state.
-
-## 21. Dirty/revision-driven work
-
-Target runtime избегает full-world/full-entity scans, если work можно вести от mutations/revisions.
-
-Примеры:
-
-- dirty world sections;
-- replication registries entities/objects;
-- persistence dirty-section tracking;
-- cached/prepared startup state.
-
-Caches и dirty flags требуют explicit invalidation rules. Быстрый stale cache является correctness regression.
-
-## 22. Allocation discipline
-
-Hot paths избегают avoidable heap churn, но allocation removal измеряется, а не превращается в ритуал.
-
-Preferred tools: spans, pooled/owned buffers при justification, immutable frame sharing, compact value types.
-
-Нельзя вводить `unsafe`, custom allocators или broad pooling без evidence material improvement workload и без проверки RSS/paging/complexity.
-
-## 23. GC discipline
-
-GC configuration меняется только по production-like measurements.
-
-NativeAOT standalone runtime не может зависеть от JIT-specific assumptions вроде tiered compilation/dynamic PGO.
-
-CoreCLR extensible host может использовать CoreCLR features, но runtime-core design продолжает проходить NativeAOT production gate.
-
-`GC.TryStartNoGCRegion` не является baseline architecture assumption.
-
-## 24. Performance telemetry
-
-Current/target runtime telemetry включает:
-
-- tick wall/CPU duration;
-- worst/last phase duration;
-- command processed/deferred/rejected counts;
-- command budget exhaustion count;
-- oldest pending command age;
-- missed tick deadlines;
-- inbound/outbound queue depths;
-- slow-client events;
-- entity counts;
-- save snapshot/write state;
-- startup/cache timings;
-- allocation/GC metrics where safely available.
-
-Telemetry aggregate/bounded и не должна сама создавать hot-path allocation problem.
-
-## 25. Benchmark matrix
-
-Performance roadmap использует полезные connection/load checkpoints:
-
-```text
-1
-8
-24
-64
-128
-255
-```
-
-`24` players — первый meaningful realistic optimization baseline; `255` connections — stress/scalability target.
-
-Idle, normal-play, join-burst, slow-reader и save workloads находят разные bottlenecks и не сводятся в один benchmark score.
-
-## 26. Before/after rule
-
-Meaningful optimization фиксирует before/after на одном hardware/environment, world и workload.
-
-Нужно сохранять достаточно context для reproduction: relevant runtime config и player/connection count.
-
-Если optimization не улучшает intended metric materially либо ухудшает memory/latency/correctness, complexity надо revert, а не хранить ради теоретической красоты.
-
-## 27. Текущие ограничения
-
-Performance work продолжается. Важные incomplete areas:
-
-- final measurement-derived queue limits для всех workloads;
-- complete per-subsystem global budgets;
-- actual production interest-management suppression/resync;
-- complete packet allocation/throughput baselines;
-- broad 24-player/255-connection soak/stress coverage;
-- complete startup/save/GC profiling больших worlds;
-- optimized section cache/dirty synchronization на final scale.
-
-## 28. Checklist performance/scheduler change
-
-Performance/scheduler change не завершён, пока по необходимости:
-
-- mutable state остаётся у одного authoritative owner;
-- producer/per-source work bounded;
-- fairness нельзя обойти одним external source;
-- missed-tick behavior deliberate и tested;
-- CPU/wall measurements не смешиваются;
-- before/after measurement поддерживает performance claim;
-- NativeAOT constraints остаются valid;
-- changed observable behavior имеет explicit compatibility decision;
-- эта страница и `docs/en/performance-runtime.md` обновлены вместе.
+Performance/scheduler change не завершён, пока ownership explicit, work/fairness bounded, missed-tick behavior tested, CPU/wall timing separate, performance claims имеют before/after evidence, NativeAOT valid, diagrams используют Mermaid, dimensional values/formulas используют LaTeX, и эта page изменена вместе с `docs/en/performance-runtime.md`.

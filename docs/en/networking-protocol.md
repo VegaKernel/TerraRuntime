@@ -4,278 +4,268 @@
 
 ## 1. Scope
 
-This guide describes the networking and Terraria protocol path that exists in TerraRuntime today. It documents implemented boundaries and current safety rules, not the full target described by the roadmap.
+This guide describes the networking and Terraria protocol path that exists in TerraRuntime today. The protocol baseline is Terraria `1.4.5.8`, protocol `326`, with Multiplicity 2.7.x behind the TerraRuntime protocol boundary.
 
-The protocol baseline is Terraria **1.4.5.8**, protocol **326**. Multiplicity 2.7.x is the typed packet implementation baseline behind the TerraRuntime protocol boundary. The official 1.4.5.8 dedicated server and independent real-client captures remain the final behavioral/wire references when an implementation and a round-trip test disagree.
+Official TerrariaServer 1.4.5.8 behavior and independent real-client traffic remain the final reference when implementation and self-round-trip evidence disagree.
 
 ## 2. Layer map
 
-```text
-TCP socket
-   |
-   v
-TerraRuntime.Network
-   |  incremental framing, connection policy, bounded queues
-   v
-TerraRuntime.Protocol
-   |  runtime-facing protocol abstractions
-   v
-TerraRuntime.Protocol.Multiplicity
-   |  Multiplicity adapters / typed wire models
-   v
-owned semantic input
-   |
-   v
-authoritative game-loop command boundary
-   |
-   v
-gameplay/state validation and mutation
+```mermaid
+flowchart TD
+    TCP["TCP socket"] --> Network["TerraRuntime.Network<br/>framing, policy, bounded queues"]
+    Network --> Protocol["TerraRuntime.Protocol<br/>runtime-facing abstractions"]
+    Protocol --> Multiplicity["TerraRuntime.Protocol.Multiplicity<br/>typed wire adapters"]
+    Multiplicity --> Semantic["Owned semantic input"]
+    Semantic --> Queue["Bounded authoritative command boundary"]
+    Queue --> Gameplay["Gameplay / state validation + mutation"]
+
+    Gameplay --> Projection["Runtime packet projection"]
+    Projection --> Encode["Protocol encode"]
+    Encode --> Outbound["Bounded per-connection queue"]
+    Outbound --> Writer["One async connection writer"]
+    Writer --> TCP
 ```
 
-The reverse path is:
-
-```text
-authoritative state/event
-   -> runtime packet projection
-   -> protocol encode
-   -> bounded per-connection outbound queue
-   -> one connection writer
-   -> TCP
-```
-
-A packet decoder does not own gameplay policy. A socket callback does not own gameplay state.
+Packet decoding does not own gameplay policy. Socket callbacks do not own gameplay state.
 
 ## 3. Framing
 
-Terraria frames use the runtime's verified envelope:
+Terraria frames use the literal envelope:
 
 ```text
 [u16 total frame length][u8 message id][payload...]
 ```
 
-The network layer incrementally handles:
-
-- a frame split across multiple socket reads;
-- multiple frames coalesced into one read;
-- invalid/impossible lengths;
-- oversized messages subject to explicit ceilings;
-- truncated input at connection termination.
-
-Client-declared sizes are untrusted. They must never directly select an unbounded allocation size.
-
-The framing layer answers only whether a byte sequence can be safely separated into protocol frames. Message-specific decoding and gameplay legality are separate stages.
+The network layer handles split frames, multiple frames in one read, invalid lengths, oversized messages under explicit ceilings, and truncated input. Client-declared sizes are untrusted and must not select unbounded allocations.
 
 ## 4. Receive-buffer ownership
 
-Socket input is temporary borrowed data. Gameplay must never retain a reference into a receive buffer after the read pipeline advances.
-
-The ownership transition is:
-
-```text
-borrowed socket bytes
-   -> validated frame
-   -> decoded/owned values
-   -> typed command or owned frame data
-   -> authoritative queue
+```mermaid
+flowchart LR
+    Borrowed["Borrowed socket bytes"] --> Frame["Validated frame"]
+    Frame --> Owned["Decoded owned values"]
+    Owned --> Command["Typed command / owned frame data"]
+    Command --> Queue["Authoritative queue"]
 ```
 
-This rule is especially important for `Span<T>`, `ReadOnlySpan<T>`, `ReadOnlySequence<T>` and pooled buffers: low allocation cost must not become a lifetime bug.
+Transient `Span<T>`, `ReadOnlySequence<T>` and pooled-buffer data must not escape into authoritative state after the receive pipeline advances.
 
 ## 5. Connection policy
 
-`TerrariaConnectionPolicyState` tracks timeout and terminal-stop state independently from gameplay state.
+The current default connection policy uses:
 
-The current default policy uses:
-
-- **10 seconds** for protocol handshake completion;
-- **2 minutes** as a conservative hard-abuse ceiling for completing join after `Hello` until the runtime reports ready/`Playing`;
+- handshake deadline `$10\,\mathrm{s}$`;
+- post-`Hello` join deadline `$2\,\mathrm{min}$` until readiness reaches `Playing`;
 - no normal post-join idle timeout (`Timeout.InfiniteTimeSpan`);
-- the `HardAbuse` connection rate budget;
-- the `HardAbuse` per-message rate-limit set.
+- `HardAbuse` connection-wide and configured per-message rate limits.
 
-The two-minute join deadline is not a vanilla gameplay timing rule. It prevents a peer from completing the cheap protocol `Hello` step and then retaining an admitted player slot indefinitely without entering the world.
+The `$2\,\mathrm{min}$` join deadline is an abuse ceiling, not a vanilla gameplay timing rule. It prevents a peer from completing cheap protocol `Hello` and retaining an admitted player slot indefinitely.
 
-A successful handshake records the handshake-completion timestamp and wakes the watchdog immediately. Production sink composition exposes only a narrow `ITerrariaConnectionReadinessSource` signal to the network layer; it does not leak gameplay objects into network policy. While the connection is not ready the watchdog applies the join deadline. Once readiness becomes true it stops applying the join deadline and follows the configured ordinary idle policy instead.
+```mermaid
+stateDiagram-v2
+    [*] --> Handshaking
+    Handshaking --> Joining: valid Hello
+    Handshaking --> Stopped: HandshakeTimeout / invalid / unsupported
+    Joining --> Playing: runtime readiness reached
+    Joining --> Stopped: JoinTimeout / protocol failure / cancellation
+    Playing --> Stopped: peer close / I-O failure / SlowClient / RateLimited / shutdown
+    Stopped --> [*]
+```
 
-Timeout state is monotonic: once a terminal stop reason is recorded, later activity cannot replace it with a different reason.
+A successful handshake records completion and wakes the watchdog. Production exposes a narrow `ITerrariaConnectionReadinessSource` to network policy rather than leaking gameplay objects into the network layer. Terminal stop state is monotonic.
 
-## 6. Stop reasons and rejection categories
+## 6. Stop and rejection categories
 
-`TerrariaConnectionStopReason` currently distinguishes:
+`TerrariaConnectionStopReason` distinguishes `PeerClosed`, `ApplicationStopped`, `Cancelled`, `HandshakeTimeout`, `JoinTimeout`, `IdleTimeout`, `InvalidHandshake`, `UnsupportedProtocol`, `ProtocolFailure`, `InboundIoFailure`, `OutboundFailure`, `SlowClient` and `RateLimited`.
 
-| Reason | Meaning |
-|---|---|
-| `PeerClosed` | remote endpoint closed normally |
-| `ApplicationStopped` | runtime shutdown requested |
-| `Cancelled` | connection execution was cancelled |
-| `HandshakeTimeout` | required protocol handshake was not completed before the deadline |
-| `JoinTimeout` | `Hello` completed but the connection did not reach ready/`Playing` before the join deadline |
-| `IdleTimeout` | configured post-join inactivity deadline expired |
-| `InvalidHandshake` | handshake bytes/state were structurally invalid |
-| `UnsupportedProtocol` | client protocol/version is not accepted |
-| `ProtocolFailure` | protocol processing failed after framing |
-| `InboundIoFailure` | socket/read-side I/O failed |
-| `OutboundFailure` | encode/write-side processing failed |
-| `SlowClient` | bounded outbound policy closed a client that could not drain data |
-| `RateLimited` | configured connection/message budget rejected traffic |
+Frame-rejection telemetry separately normalizes malformed protocol, rate-limited, invalid-state, gameplay-rejected and backpressure failures. These categories must not be flattened into one generic network error.
 
-These categories are intentionally different. Operators and tests should not flatten them into one generic "network error" because malformed input, abusive rate, a stalled join, unsupported client version and an I/O failure require different diagnosis.
+## 7. Handshake and state legality
 
-Frame rejection telemetry separately normalizes malformed protocol, rate-limited, invalid-state, gameplay-rejected and backpressure failures so a sink-chain rejection does not need to be inferred from arbitrary text logs.
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant N as Network / protocol
+    participant P as Connection policy / session state
+    participant G as Authoritative game loop
 
-## 7. Handshake and connection-state legality
+    C->>N: framed input
+    N->>N: bounded decode
+    N->>P: semantic connection input
+    P->>P: verify handshake / slot / phase
+    alt legal
+        P->>G: owned typed command
+        G->>G: gameplay validation + mutation
+    else illegal / timed out
+        P-->>C: reject or stop by typed reason
+    end
+```
 
-The runtime validates connection state separately from byte decoding. A packet that is syntactically valid can still be illegal before handshake, before slot assignment or before spawn.
-
-Current design rules:
-
-1. the connection establishes the server-owned identity/slot;
-2. client-claimed player identity is not trusted where the connection already determines ownership;
-3. protocol/state transitions are checked before gameplay mutation;
-4. invalid pre-handshake or pre-spawn operations are rejected rather than reaching runtime stores.
-
-The live `Vanilla World Load` workflow is the primary end-to-end guard for the official-client-compatible join/bootstrap path. Unit tests cannot prove the full join sequence because both sides of an in-process test can accidentally share the same wrong assumption.
+Connection-owned identity wins over client-claimed identity wherever ownership is already known. Illegal pre-handshake/pre-spawn operations do not reach runtime stores.
 
 ## 8. Multiplicity boundary
 
-Multiplicity is a protocol dependency, not a gameplay dependency.
+Multiplicity is a protocol dependency, not a gameplay dependency. `TerraRuntime.Protocol.Multiplicity` translates wire models into TerraRuntime-owned protocol/domain representations and back.
 
-`TerraRuntime.Protocol.Multiplicity` is responsible for translating between Multiplicity wire models and TerraRuntime-owned protocol/domain representations. Gameplay systems should not accept Multiplicity packet classes merely because they are convenient.
-
-This keeps three things separable:
-
-- a fix that belongs in the shared Multiplicity packet model;
-- a TerraRuntime-specific connection/state rule;
-- a gameplay rule that should not know how the packet was encoded.
-
-Critical layouts require independent evidence such as golden bytes, official traffic or differential probes. A successful Multiplicity encode/decode round trip only proves that the encoder and decoder agree with each other.
+Critical layouts require independent evidence such as golden bytes, official traffic or differential probes. A successful encode/decode round trip proves only that our two sides agree.
 
 ## 9. Inbound and fan-out rate accounting
 
-Rate accounting occurs before expensive gameplay work. The policy has both connection-wide and message-class controls.
+Rate accounting occurs before expensive gameplay work. Some legal input performs shared fan-out outside the authoritative command loop, so it needs a server-global budget before multiplication.
 
-The objective is not to punish legitimate bursty Terraria traffic. The objective is to establish a hard upper boundary beyond which one client cannot convert packet rate into unbounded CPU, memory or queue growth.
+Public vanilla `Say` chat currently has a server-global ceiling of
 
-Some legal input does not enter the authoritative command loop before doing shared work. Public `Say` chat is the current important example: one accepted chat frame can fan out to every playing connection. `RuntimeChatRelay` therefore applies a **server-global 256 broadcasts per 1 second** hard-abuse ceiling before iterating recipients. Over-budget broadcasts are dropped and counted as rate-limited rejection rather than multiplying per-connection allowances across the whole server.
+$$
+R_{\mathrm{chat}}=256\ \text{broadcasts}/\mathrm{s}.
+$$
 
-The roadmap still contains broader work-budget tasks, including complete subsystem-level budgets for expensive operations. Therefore current connection/message/fan-out limiting must not be described as complete DoS protection for every gameplay subsystem.
+The budget is checked before the $O(P)$ recipient iteration, where $P$ is playing connections. Over-budget broadcasts are dropped and counted as rate-limited rejection rather than granting every sender an independent global allowance.
+
+This is deliberately loose hard-abuse protection, not a normal chat cadence.
 
 ## 10. Authoritative command queue
 
-Decoded network input crosses into simulation through a bounded command path. The game loop applies a global operation ceiling, a per-source processing quota and a per-source pending/reservation ceiling so one connection cannot monopolize a tick or occupy the entire shared mailbox simply by submitting faster than the loop drains.
+The command loop has bounded global capacity, per-tick operation limits, per-source processing quotas and per-source pending/reservation ceilings. One connection cannot monopolize a tick or reserve the full shared mailbox merely by submitting faster than the loop drains.
 
-Important invariants:
+See [Performance and tick scheduling](performance-runtime.md) for quantitative loop budgets.
 
-- packet order is preserved where Terraria semantics require it;
-- inbound work is bounded by runtime budgets;
-- one source cannot reserve the complete shared command capacity;
-- the authoritative thread decides whether the action is legal;
-- deferred work is observable rather than silently executed without limit;
-- networking does not hold the game loop waiting for socket I/O.
+## 11. Outbound queues and structural sizing
 
-## 11. Outbound queues and slow clients
+```mermaid
+flowchart LR
+    Runtime["Authoritative state / event"] --> Encode["Immutable encoded frame"]
+    Encode --> Queue["Bounded connection queue"]
+    Queue --> Writer["Async writer"]
+    Writer --> Peer["TCP peer"]
+    Queue -->|capacity / bytes exceeded| Slow["SlowClient"]
+```
 
-Every connection has a bounded outbound path. The game loop produces state/events and queues encoded work; it does not synchronously wait for the peer's TCP receive window.
+Production frame capacity is derived by `ConnectionOutboundQueueSizing`, not a magic fixed `$4\,096$` ceiling.
 
-A slow reader therefore becomes a local connection problem instead of a server-wide stall. When the configured bounded policy is exceeded, the connection can terminate with `SlowClient`.
+Let $P$ be configured player capacity. Current verified components are:
 
-Queue sizing is still an active measurement task. A queue being bounded is an invariant; the ideal bound is workload-dependent and must be justified by real join/section/chest traffic rather than folklore.
+$$
+F_{\mathrm{join}}=69,
+\qquad
+F_{\mathrm{entities}}=1\,257,
+\qquad
+F_{\mathrm{peer}}=393.
+$$
+
+Thus
+
+$$
+F_{\mathrm{queue}}(P)
+=F_{\mathrm{join}}+F_{\mathrm{entities}}+(P-1)F_{\mathrm{peer}}
+=933+393P.
+$$
+
+For default $P=8$:
+
+$$
+F_{\mathrm{queue}}(8)=4\,077\ \text{frames}.
+$$
+
+The byte envelope scales from the deployed default `$16\,\mathrm{MiB}$` baseline:
+
+$$
+B_{\mathrm{queue}}(P)
+=\max\!\left(
+B_{\mathrm{max\ frame}},
+\left\lceil16\,\mathrm{MiB}\cdot\frac{F_{\mathrm{queue}}(P)}{4\,077}\right\rceil
+\right).
+$$
+
+This is a structural correctness bound. Measurement-derived final queue sizing remains active work. Queue high-water telemetry is retained across disconnects so real workloads can justify future tightening.
 
 ## 12. Join and bootstrap traffic
 
-Join is a special high-burst phase. A newly connected player may need world metadata, player state, sections and object data before normal movement synchronization begins.
+The pre-`packet 49` live contract was tightened substantially. Runtime entity/global baselines are now deliberately outside the final packet-10-to-packet-49 handoff.
 
-The current implementation has live probes for join/movement and selected chest/bootstrap behavior against worlds generated by the official TerrariaServer 1.4.5.8. These workflows protect ordering and compatibility assumptions that are difficult to validate from unit tests alone.
+Current `PlayerBootstrapFrameBudget` proves:
 
-The network policy separately bounds incomplete joins: after a valid `Hello`, production readiness must reach `Playing` within the conservative default two-minute abuse ceiling or the connection stops with `JoinTimeout`. Reaching `Playing` disables this join deadline; normal idle policy is independent.
+$$
+F_{\mathrm{sections,max}}=63,
+\qquad
+F_{\mathrm{pre49,max}}=65,
+\qquad
+F_{\mathrm{probe}}=96.
+$$
 
-The section-heavy bootstrap path is state-gated. The first valid section request can enqueue the bootstrap section sequence; after the session has advanced to `AwaitingSpawn`/`Playing`, repeated section requests do not regenerate and re-enqueue the full section transfer.
+For default $P=8$:
 
-Long-term join work remains staged in the roadmap: section generation/compression and initial-state transfer must stay under a **global** per-tick budget rather than granting a complete expensive-work budget to every joining player.
+$$
+65 < 96 < 4\,077.
+$$
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as TerraRuntime
+    participant W as Section/bootstrap planner
+    participant Q as Outbound queue
+
+    C->>S: first valid section/bootstrap request
+    S->>W: plan bounded initial section window
+    W-->>S: at most 63 section frames
+    S->>Q: enqueue pre-enter control + sections
+    Q-->>C: ordered bootstrap frames
+    S-->>C: packet 49 enter-world handoff
+    Note over S,C: repeated later section requests do not regenerate the full transfer
+```
+
+The section-heavy path is state-gated. Once the session advances to `AwaitingSpawn`/`Playing`, repeated section requests do not regenerate and enqueue the complete initial transfer.
+
+The separate `$2\,\mathrm{min}$` join deadline bounds peers that finish `Hello` but never become ready.
 
 ## 13. Interest management
 
-Interest management belongs to the synchronization layer, not the packet parser. The network layer can route only after authoritative visibility policy has decided which clients should observe an update.
+Interest management belongs to synchronization, not packet parsing. External hosts receive only `IInterestManagementControl`; spatial layout, hysteresis, enter/leave behavior and forced resync remain runtime-owned.
 
-External hosts receive only the narrow `IInterestManagementControl` on/off control. Spatial layout, enter/leave rules, hysteresis and forced resync are internal TerraRuntime policy.
-
-Until visibility transitions are fully proven, suppression must fail open: disabling or an uncertain state should restore vanilla-like broad recipient selection rather than accidentally hide state forever.
+Until visibility transitions are fully proven, suppression fails open to broad vanilla-like routing.
 
 ## 14. Threading rules
 
-Network read/write tasks are independent of the authoritative simulation owner.
+Allowed off-thread work includes socket I/O, framing, bounded protocol decode/encode, immutable frame construction, connection-local accounting and bounded transport-only fan-out with an explicit server-global ceiling.
 
-Allowed off-thread work includes:
-
-- socket reads and writes;
-- framing;
-- bounded protocol decode/encode;
-- immutable packet/frame construction;
-- connection-local accounting;
-- bounded transport-only fan-out that has an explicit server-global work ceiling.
-
-Not allowed off-thread:
-
-- mutating player/world/NPC/projectile/item stores directly;
-- treating a TUI or timer callback as a gameplay owner;
-- keeping transient receive-buffer references in authoritative state.
+Direct mutation of player/world/NPC/projectile/item stores remains authoritative-thread work. Transient receive-buffer references must never be retained in gameplay state.
 
 ## 15. Failure isolation
 
-Malformed or abusive client traffic should close or reject that connection without crashing the server process or skipping world-save shutdown behavior. Shared non-authoritative work such as chat fan-out may instead drop only the over-budget operation so one attacker does not force unrelated peers to disconnect.
-
-Network failure handling should preserve the distinction between:
-
-```text
-malformed bytes
-rate/work limit
-stalled handshake/join
-illegal connection state
-legal protocol but rejected gameplay action
-I/O failure
-slow client
-runtime shutdown
+```mermaid
+flowchart TD
+    Failure["Inbound / connection failure"] --> Class{"Classify"}
+    Class --> Malformed["Malformed protocol"]
+    Class --> Rate["Rate / work limit"]
+    Class --> Timeout["Handshake / join timeout"]
+    Class --> State["Illegal state"]
+    Class --> Gameplay["Gameplay rejection"]
+    Class --> IO["I/O failure"]
+    Class --> Slow["Slow client"]
+    Class --> Shutdown["Runtime shutdown"]
 ```
 
-This distinction is part of the observability contract and should remain stable as structured telemetry expands.
+Malformed/abusive traffic should remain connection-local. Shared non-authoritative work such as chat fan-out may drop only the over-budget operation instead of disconnecting unrelated peers.
 
 ## 16. Tests and executable evidence
 
-Relevant evidence lives across:
+Evidence includes framing/socket tests, handshake/join/idle watchdog tests, connection and fan-out rate tests, Multiplicity decoder/mapper tests, deterministic malformed framing/typed-decoder fuzz tests, real-process slow-client tests, `Vanilla World Load` live join/movement probes and official-server reference workflows.
 
-- framing and socket connection tests;
-- handshake/join/idle watchdog tests;
-- connection policy and rate-accounting tests;
-- global chat fan-out budget tests;
-- Multiplicity decoder/mapper tests;
-- permanent deterministic malformed framing and typed-decoder fuzz tests;
-- real-process/slow-client tests;
-- `Vanilla World Load` live join/movement probes;
-- official-server reference workflows for packet/world behavior.
-
-When changing a non-trivial network rule, add a test that fails when the fix is removed. Green tests that also pass on the broken implementation are not evidence.
+A regression test must fail when the guarded fix is removed.
 
 ## 17. Current limitations
 
-The following areas are intentionally not presented as finished:
-
-- broader protocol/world fuzz corpora beyond the current framing and typed-decoder regression floor;
-- complete global/per-subsystem expensive-work budgets beyond the command loop and chat fan-out already bounded;
-- measurement-derived final queue sizing;
-- complete packet-count/byte telemetry by message ID;
-- full section-aware suppression/resync semantics;
-- broad real-client replay corpus;
-- full vanilla gameplay coverage behind every valid packet type.
-
-See the main roadmap and performance/tick-stability roadmap before treating an unchecked target as implemented behavior.
+Still incomplete are broader protocol/world fuzz corpora beyond the current deterministic floor, complete global/per-subsystem expensive-work budgets, measurement-derived final queue sizing, complete per-message byte/count telemetry, full section-aware suppression/resync semantics, broad real-client replay and full gameplay coverage behind every valid packet type.
 
 ## 18. Change checklist
 
-A networking/protocol change is not complete until, where relevant:
+A networking/protocol change is incomplete unless, where relevant:
 
-- framing/decoder tests cover malformed and valid input;
-- connection-state legality is tested;
-- rate/queue/fan-out behavior is bounded;
-- NativeAOT paths remain compatible;
-- independent official-client/server evidence exists for wire-sensitive changes;
-- this page and `docs/ru/networking-protocol.md` are updated in the same change.
+- malformed and valid framing/decoder behavior is tested;
+- connection-state legality and deadlines are tested;
+- rate/queue/fan-out work is bounded;
+- NativeAOT paths remain valid;
+- wire-sensitive claims have independent evidence;
+- diagrams use Mermaid rather than pseudographics;
+- dimensional quantities/formulas use LaTeX with units;
+- this page and `docs/ru/networking-protocol.md` change together.

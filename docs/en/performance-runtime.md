@@ -4,334 +4,193 @@
 
 ## 1. Performance model
 
-TerraRuntime treats performance as a correctness constraint around bounded work, not as permission to change observable vanilla behavior for a prettier benchmark.
+TerraRuntime treats performance as a correctness constraint around bounded work.
 
-The baseline simulation model is one authoritative owner running a fixed-rate tick schedule while networking and bounded background work proceed independently.
-
-The priority order is:
-
-```text
-correctness and vanilla-visible behavior
-        -> bounded work / failure isolation
-        -> measurement
-        -> optimization
+```mermaid
+flowchart LR
+    Correctness["Correctness + vanilla-visible behavior"] --> Bounds["Bounded work + failure isolation"]
+    Bounds --> Measure["Measurement"]
+    Measure --> Optimize["Optimization"]
 ```
 
-An optimization without measurement is a hypothesis, not a completed performance change.
+Optimization without measurement is a hypothesis, not a completed performance change.
 
-## 2. Default tick rate
+## 2. Tick rate
 
-`GameLoopOptions.DefaultTicksPerSecond` is **60**.
+The Terraria runtime baseline is `$60\,\mathrm{Hz}$`:
 
-At 60 Hz the nominal interval is about **16.67 ms**.
+$$
+T_{\mathrm{tick}}=\frac{1}{60}\,\mathrm{s}\approx16.67\,\mathrm{ms}.
+$$
 
-The runtime allows a configured positive tick rate up to 1000 Hz at the generic loop level, but the Terraria runtime baseline is 60 Hz. Raising the generic loop option does not automatically make vanilla Terraria gameplay semantically correct at a higher simulation frequency.
+The generic loop accepts configured rates up to `$1000\,\mathrm{Hz}$`, but a higher generic frequency does not imply vanilla-correct gameplay at that rate.
 
-Game logic constants, timers, networking cadence and vanilla reference behavior must be audited before any alternative tick-rate mode is presented as supported gameplay.
+## 3. Authoritative thread and phases
 
-## 3. Dedicated authoritative thread
+`AuthoritativeGameLoop<TState,TCommand>` owns mutable simulation state on the dedicated `TerraRuntime Game Loop` thread.
 
-`AuthoritativeGameLoop<TState,TCommand>` runs on a dedicated non-background thread named:
-
-```text
-TerraRuntime Game Loop
+```mermaid
+flowchart LR
+    Ingress["Ingress<br/>bounded staging"] --> Commands["Commands<br/>bounded + fair apply"]
+    Commands --> Update["Update<br/>authoritative simulation"]
+    Update --> Metrics["Wall / CPU / phase metrics"]
+    Metrics --> Deadline["Advance deadline"]
 ```
 
-The thread owns mutable simulation state. Producers submit commands; they do not receive the state reference.
+## 4. Default command budgets
 
-This ownership model avoids using locks as the normal mechanism for gameplay mutation and makes per-tick work measurable as one controlled sequence.
+| Budget | Default |
+|---|---:|
+| `CommandCapacity` | `$8\,192$` commands |
+| `MaxCommandIngressPerTick` | `$2\,048\,\text{commands/tick}$` |
+| `MaxCommandsPerTick` | `$1\,024\,\text{commands/tick}$` |
+| `MaxCommandsPerSourcePerTick` | `$128\,\text{commands/source/tick}$` |
+| `MaxPendingCommandsPerSource` | `$1\,024\,\text{commands/source}$` |
 
-## 4. Tick phases in the generic loop
+These are hard bounded defaults, not final measurement-derived values for every workload.
 
-The current generic authoritative loop measures three top-level phases:
-
-```text
-Ingress  -> stage bounded commands from the channel
-Commands -> apply bounded/fair commands
-Update   -> run the authoritative state update
+```mermaid
+flowchart TD
+    Producers["Concurrent producers"] --> Mailbox["Bounded mailbox"]
+    Mailbox -->|≤ 2,048 / tick| Stage["Per-source staged queues"]
+    Stage -->|≤ 1,024 / tick| Apply["Authoritative command apply"]
+    Stage --> Deferred["Deferred work remains bounded + observable"]
+    Apply --> Update["Simulation update"]
 ```
 
-The runtime snapshot exposes last/worst timings and the slowest phase for diagnosis.
+Per-source pending and per-tick quotas prevent one connection from occupying the entire shared capacity or monopolizing command application.
 
-Higher-level Terraria update code can further decompose work into subsystem phases. The architecture roadmap expects areas such as liquids, items, NPC AI, projectiles, combat, spawning, housing, progression and synchronization to remain separately observable as implementation grows.
+## 5. Optional CPU budget
 
-## 5. Global command capacity
+`MaxCommandCpuMillisecondsPerTick` can impose an optional authoritative-thread CPU-time ceiling for command application. Operation-count limits remain active when thread CPU timing is unavailable.
 
-Default global command mailbox capacity:
+No default CPU-time value is guessed; production values must be measurement-derived.
 
-```text
-CommandCapacity = 8192
+## 6. CPU versus wall time
+
+```mermaid
+flowchart TD
+    Slow["Slow observed tick"] --> CPU{"CPU time also high?"}
+    CPU -->|yes| Work["Investigate authoritative-thread work"]
+    CPU -->|no| External["Investigate scheduling / blocking / OS contention"]
 ```
 
-The channel is bounded. External producers cannot force an unbounded retained command list merely by submitting faster than the game loop can execute.
+Wall and CPU time answer different questions and must remain distinct.
 
-`TryPost` can reject when global or per-source pending capacity is exhausted.
+## 7. Missed-tick policy
 
-A bounded mailbox is an invariant; the exact production sizing should continue to be validated against realistic load.
+TerraRuntime does not run burst catch-up ticks.
 
-## 6. Bounded ingress
-
-Default command staging limit:
-
-```text
-MaxCommandIngressPerTick = 2048
+```mermaid
+flowchart LR
+    Tick["Tick completes"] --> Late{"Past next deadline?"}
+    Late -->|no| Wait["Wait until deadline"]
+    Late -->|yes| Count["Count missed deadlines"]
+    Count --> Reset["Reset schedule anchor to now"]
+    Reset --> Wait
 ```
 
-The game loop does not drain the entire producer channel into internal source queues every tick. This keeps the ingress phase bounded even when the global mailbox is full.
+This prevents one slow tick from causing a burst of immediate catch-up ticks and a backlog spiral.
 
-Staging and applying commands are separate budgets because merely reorganizing a large backlog also costs time.
+## 8. Backlog observability
 
-## 7. Global apply budget
+The loop tracks pending/deferred count, rejected commands, command-budget exhaustion, missed deadlines and oldest pending-command age. Stable queue depth with increasing oldest age is still starvation and must not be mistaken for healthy scheduling.
 
-Default authoritative command execution limit:
+## 9. Asynchronous networking and workers
 
-```text
-MaxCommandsPerTick = 1024
+```mermaid
+flowchart LR
+    Read["Async socket read / decode"] --> Command["Bounded command"]
+    Command --> Loop["Authoritative loop"]
+    Loop --> Frame["Immutable outbound frame"]
+    Frame --> Queue["Bounded connection queue"]
+    Queue --> Write["Async socket writer"]
 ```
 
-Once the operation budget is exhausted, remaining commands are deferred to later ticks.
+Slow TCP peers do not block simulation. CPU-heavy/blocking workers consume immutable snapshots or isolated buffers and return explicit completion data; unbounded `Task.Run` fan-out is not an architecture.
 
-The runtime reports deferred work and command-budget exhaustion rather than hiding the backlog behind an unbounded loop.
+## 10. Saving
 
-## 8. Per-source fairness
+Disk serialization/write is detached from the authoritative hot path. Tile-save shadow synchronization advances at `$4\,\text{sections/tick}$` by default instead of copying the entire tile array in one pause.
 
-Default per-source apply quota:
+## 11. Join/bootstrap performance
 
-```text
-MaxCommandsPerSourcePerTick = 128
+The current final pre-`packet 49` bootstrap contract is compact:
+
+$$
+F_{\mathrm{pre49,max}}=65,
+\qquad
+F_{\mathrm{probe}}=96.
+$$
+
+For default $P=8$, structural connection sizing gives
+
+$$
+F_{\mathrm{queue}}(8)=4\,077\ \text{frames},
+$$
+
+so
+
+$$
+65 < 96 < 4\,077.
+$$
+
+Runtime entity/global baselines are outside the final packet-10-to-packet-49 contract. Join section generation/compression still requires global subsystem budgets rather than per-player multiplication.
+
+## 12. Synchronization scaling
+
+Broad player movement fanout trends toward
+
+$$
+W(P)=\Theta(P^2),
+$$
+
+where $P$ is active players. Interest-management infrastructure exists, but production suppression remains passthrough until visibility transitions/resync are proven.
+
+## 13. Dirty/revision-driven work
+
+```mermaid
+flowchart LR
+    Mutation["Mutation"] --> Dirty["Dirty / revision marker"]
+    Dirty --> Work["Bounded subsystem work"]
+    Work --> Derived["Update derived state / cache"]
+    Derived --> Clear["Clear only after successful publication"]
 ```
 
-Non-system sources are throttled after reaching their quota for the tick and re-enter the ready rotation later.
+Dirty world sections, replication registries and prepared startup state should replace full scans where correctness permits. A fast stale cache is still a bug.
 
-This prevents one busy connection/source from consuming the entire global command budget while other sources wait indefinitely.
+## 14. Allocation and GC discipline
 
-System-owned work is exempt from the per-source quota but remains subject to the broader authoritative design and should not become an unbounded bypass path.
+Spans, owned/pooled buffers, immutable frame sharing and compact values are preferred where measured. `unsafe`, custom allocators and broad pooling require evidence of material benefit and memory-cost checks.
 
-## 9. Per-source pending limit
+NativeAOT core cannot depend on JIT-specific performance assumptions. CoreCLR may use its runtime features without weakening the NativeAOT production gate.
 
-Default retained pending commands for one external source:
+## 15. Performance telemetry
 
-```text
-MaxPendingCommandsPerSource = 1024
-```
+Useful telemetry includes tick wall/CPU time, phase timing, command processed/deferred/rejected counts, budget exhaustion, oldest pending age, queue depth/high-water marks, slow-client events, entity counts, save state, startup/cache timing and safe allocation/GC metrics.
 
-This limit is separate from the global `CommandCapacity`.
+Telemetry itself must remain bounded and low-allocation.
 
-It prevents one connection/source from occupying the entire global mailbox even before per-tick fairness is applied.
+## 16. Benchmark matrix
 
-## 10. Optional command CPU budget
+Useful scale checkpoints are
 
-`MaxCommandCpuMillisecondsPerTick` can impose an optional CPU-time ceiling for the command-application phase.
+$$
+P\in\{1,8,24,64,128,255\}.
+$$
 
-The hard operation-count budget remains active even when the platform cannot provide a thread CPU clock.
+`$24$` players is the first meaningful realistic optimization baseline; `$255$` connections is a stress/scalability target. Idle, normal-play, join-burst, slow-reader and save workloads expose different bottlenecks.
 
-When CPU timing is available and the configured budget is reached, command processing stops for that tick and remaining work is deferred.
+## 17. Before/after rule
 
-The generic option has no default CPU budget value. A production value should be chosen from measurement rather than guessed.
+For target metric $M$, report both $M_{\mathrm{before}}$ and $M_{\mathrm{after}}$ on the same hardware/environment, world and workload. A percentage detached from underlying measurements is weak evidence.
 
-## 11. CPU time versus wall time
+Complexity that fails to materially improve its intended metric or harms memory/latency/correctness should be reverted.
 
-The game loop records both:
+## 18. Current limitations
 
-```text
-wall duration
-thread CPU duration when available
-```
+Active work includes final measurement-derived queue limits, complete subsystem budgets, real production interest-management suppression/resync, complete packet allocation/throughput baselines, broad `$24$`-player / `$255$`-connection soak coverage, large-world startup/save/GC profiling and final section-cache/dirty synchronization tuning.
 
-They answer different questions.
+## 19. Change checklist
 
-- High wall + high CPU suggests real work on the authoritative thread.
-- High wall + low CPU can indicate scheduler/OS contention or blocking outside pure computation.
-
-Do not diagnose a slow tick from wall time alone when CPU data is available.
-
-## 12. Missed tick policy
-
-TerraRuntime does **not** run burst catch-up ticks after missing a deadline.
-
-When the current tick finishes after its next deadline, the loop counts the missed deadlines and resets the next schedule anchor to the current time.
-
-Conceptually:
-
-```text
-late tick
-   -> count missed deadlines
-   -> skip burst catch-up
-   -> continue from now
-```
-
-This avoids a spiral where one expensive tick causes multiple immediate catch-up ticks that create even more backlog and latency.
-
-## 13. Pending age
-
-The loop tracks the age of the oldest pending command.
-
-Queue depth alone can hide starvation. A stable queue count with an increasing oldest age means work is waiting longer even if the number of queued commands is not exploding.
-
-Useful scheduler diagnosis therefore considers both:
-
-```text
-pending/deferred count
-oldest pending age
-```
-
-## 14. Command rejection
-
-`TryPost` reserves per-source and global pending capacity before writing into the bounded channel.
-
-If reservation or channel write fails, the command is rejected and rejection telemetry increases.
-
-The producer must receive an explicit failure result instead of assuming all submitted work eventually enters authoritative state.
-
-## 15. Source scheduling
-
-Staged commands are grouped by `GameCommandSourceId` and rotated through ready source queues.
-
-This provides deterministic bounded fairness without creating one operating-system thread per player/source.
-
-The scheduling structure is an implementation detail; the semantic guarantees are bounded global work, per-source fairness and preserved ordering where required.
-
-## 16. Networking stays asynchronous
-
-Socket read/write work is not performed by the game-loop thread.
-
-Networking can receive and encode asynchronously, but authoritative mutation still crosses the bounded command boundary.
-
-Similarly, the game loop does not wait synchronously for a slow client's TCP receive window. Outbound work ends in a bounded per-connection queue and a separate writer.
-
-## 17. Background workers
-
-CPU-heavy or blocking work may run outside the game loop when ownership is clear.
-
-Workers must consume immutable snapshots or isolated buffers and return explicit completion data through a controlled commit path.
-
-Do not use unbounded `Task.Run` fan-out as a substitute for designing work ownership and capacity.
-
-## 18. Disk I/O and saving
-
-Persistence is structured so disk serialization/write happens outside the authoritative hot path.
-
-The game loop performs bounded snapshot/shadow synchronization, then hands detached data to the background save coordinator.
-
-The current tile save shadow synchronizes a bounded number of sections per tick rather than copying the complete tile array in one pause.
-
-## 19. Join/bootstrap performance
-
-Joining is a burst workload and must not be budgeted as if it were normal steady-state movement.
-
-Initial world sections/entity state can generate many frames and expensive serialization/compression work.
-
-Join work must use **global subsystem budgets**. Giving every joining player a complete section-generation budget would multiply the worst-case tick cost by the number of concurrent joins.
-
-Bootstrap frame count is also hard-bounded below the production outbound queue capacity by live integration checks.
-
-## 20. Synchronization scaling
-
-Unconditional player-to-player movement broadcast trends toward O(players²) work.
-
-TerraRuntime already has spatial/visibility tracking infrastructure for runtime-owned interest management, but actual default movement suppression remains passthrough until enter/leave/full-resync semantics are verified.
-
-The performance rule is fail-open correctness first: do not reduce bandwidth by creating stale or permanently missing remote state.
-
-## 21. Dirty/revision-driven work
-
-The target runtime avoids full-world/full-entity scans when work can be driven by mutations/revisions.
-
-Examples include:
-
-- dirty world sections;
-- replication registries for entities/objects;
-- persistence dirty-section tracking;
-- cached/prepared startup state.
-
-Caches and dirty flags need explicit invalidation rules. A fast stale cache is a correctness regression.
-
-## 22. Allocation discipline
-
-Hot paths should avoid avoidable heap churn, but allocation removal is measured rather than ritualized.
-
-Preferred tools include spans, pooled/owned buffers where justified, immutable frame sharing and compact value types.
-
-Do not introduce `unsafe`, custom allocators or broad pooling without evidence that they materially improve the measured workload and do not inflate RSS/paging or complexity.
-
-## 23. GC discipline
-
-GC configuration is tuned only from compatible production-like measurements.
-
-The NativeAOT standalone runtime cannot depend on JIT-specific performance assumptions such as tiered compilation or dynamic PGO.
-
-The CoreCLR extensible host may use CoreCLR features, but runtime-core design still passes the NativeAOT production gate.
-
-`GC.TryStartNoGCRegion` is not a baseline architecture assumption.
-
-## 24. Performance telemetry
-
-Current/target useful runtime telemetry includes:
-
-- tick wall/CPU duration;
-- worst/last phase duration;
-- command processed/deferred/rejected counts;
-- command budget exhaustion count;
-- oldest pending command age;
-- missed tick deadlines;
-- inbound/outbound queue depths;
-- slow-client events;
-- entity counts;
-- save snapshot/write state;
-- startup/cache timings;
-- allocation/GC metrics where safely available.
-
-Telemetry should be aggregated/bounded and must not itself become a hot-path allocation problem.
-
-## 25. Benchmark matrix
-
-The performance roadmap treats connection/load sizes such as:
-
-```text
-1
-8
-24
-64
-128
-255
-```
-
-as useful checkpoints.
-
-`24` players is the first meaningful realistic optimization baseline; `255` connections is a stress/scalability target.
-
-Idle, normal-play, join-burst, slow-reader and save workloads expose different bottlenecks and should not be collapsed into one benchmark score.
-
-## 26. Before/after rule
-
-A meaningful optimization records before/after results on the same hardware/environment, world and workload.
-
-Record enough context to reproduce the result, including relevant runtime configuration and player/connection count.
-
-If an optimization does not materially improve the intended metric or makes memory/latency/correctness worse, revert it rather than keeping complexity for theoretical value.
-
-## 27. Current limitations
-
-Performance work is intentionally ongoing. Important incomplete areas include:
-
-- final measurement-derived queue limits for every workload;
-- complete per-subsystem global budgets;
-- actual production interest-management suppression/resync;
-- complete packet allocation/throughput baselines;
-- broad 24-player/255-connection soak and stress coverage;
-- complete startup/save/GC profiling across large worlds;
-- optimized section cache/dirty synchronization at final scale.
-
-## 28. Change checklist
-
-A performance/scheduler change is incomplete unless, where relevant:
-
-- mutable state still has one authoritative owner;
-- producer and per-source work remains bounded;
-- fairness cannot be bypassed by one external source;
-- missed-tick behavior is deliberate and tested;
-- CPU and wall measurements are not conflated;
-- before/after measurement supports the performance claim;
-- NativeAOT constraints remain valid;
-- any changed observable behavior has an explicit compatibility decision;
-- this page and `docs/ru/performance-runtime.md` are updated together.
+A performance/scheduler change is incomplete unless ownership remains explicit, work/fairness remain bounded, missed-tick behavior is tested, CPU and wall timing remain distinct, performance claims have before/after evidence, NativeAOT remains valid, diagrams use Mermaid, dimensional values/formulas use LaTeX, and this page changes together with `docs/ru/performance-runtime.md`.

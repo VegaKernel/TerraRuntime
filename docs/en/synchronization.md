@@ -4,234 +4,188 @@
 
 ## 1. Scope
 
-Synchronization is the boundary between authoritative runtime state and the per-client state that must be transmitted over Terraria protocol 326.
+Synchronization projects authoritative runtime state into per-client protocol `326` state. It includes join/bootstrap, sections, player/event fanout, NPC/projectile/world-item/object replication, recipient selection and future interest-management suppression/resync semantics.
 
-It includes initial join/bootstrap state, section delivery, player movement/event fanout, NPC/projectile/world-item/object replication, recipient selection, and future interest-management suppression/resync semantics.
-
-Synchronization does not own gameplay mutation. It observes authoritative state/events and projects them to clients.
+Synchronization observes authoritative state/events; it does not own gameplay mutation.
 
 ## 2. High-level flow
 
-```text
-authoritative game state/event
-        |
-        v
-replication registry / projection
-        |
-        v
-recipient decision
-        |
-        +--> global/vanilla-like routing
-        +--> future interest-managed routing
-        |
-        v
-packet encode / reusable frame
-        |
-        v
-bounded connection queue
-        |
-        v
-socket writer
+```mermaid
+flowchart TD
+    State["Authoritative state / event"] --> Projection["Replication registry / projection"]
+    Projection --> Recipient{"Recipient decision"}
+    Recipient --> Broad["Broad / vanilla-like routing"]
+    Recipient --> Interest["Interest-managed routing<br/>when proven"]
+    Broad --> Encode["Encode reusable immutable frame"]
+    Interest --> Encode
+    Encode --> Queue["Bounded connection queue"]
+    Queue --> Writer["Socket writer"]
 ```
 
-A recipient decision must never mutate the underlying entity merely to make synchronization convenient.
+Recipient selection never mutates the underlying entity merely to simplify replication.
 
 ## 3. Initial bootstrap
 
-A player cannot enter normal gameplay immediately after TCP handshake. The runtime must establish enough world and entity state for the official client to transition safely.
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as TerraRuntime
+    participant W as Section/bootstrap planner
+    participant Q as Outbound queue
 
-The bootstrap path includes verified classes of traffic such as world metadata, required initial tile sections, global post-section state, currently relevant runtime entity bootstrap frames, and the final enter-world handoff.
+    C->>S: first valid section/bootstrap request
+    S->>W: plan bounded initial section window
+    W-->>S: at most 63 section frames
+    S->>Q: enqueue pre-enter control + sections
+    Q-->>C: ordered bootstrap frames
+    S-->>C: packet 49 enter-world handoff
+    Note over S,C: later repeated section requests do not regenerate the full transfer
+```
 
-The exact protocol ordering is protected by live official-world probes rather than documented here as a frozen packet-number recipe. When packet ordering changes based on verified 1.4.5.8 behavior, the executable live probe is the source of truth.
+The exact packet order is protected by live official-world probes rather than frozen as a prose packet recipe.
 
 ## 4. Bootstrap frame budget
 
-Initial bootstrap is explicitly bounded so a valid world cannot fill the production outbound queue simply because one player joins.
+Current `PlayerBootstrapFrameBudget` proves:
 
-`PlayerBootstrapFrameBudget` derives the structural maximum from fixed pre-enter frames, maximum initial tile-section count, maximum global post-section frames, and maximum world-item bootstrap frames.
+$$
+F_{\mathrm{sections,max}}=63,
+\qquad
+F_{\mathrm{pre49,max}}=65,
+\qquad
+F_{\mathrm{probe}}=96.
+$$
 
-The live integration probe currently uses a hard budget of **1536 frames**, deliberately below the production outbound queue depth of **4096 frames**.
+For the default $P=8$ player capacity, `ConnectionOutboundQueueSizing` yields
 
-This is a safety invariant, not a claim that ordinary joins should approach either number.
+$$
+F_{\mathrm{queue}}(8)=4\,077\ \text{frames}.
+$$
+
+Therefore:
+
+$$
+65 < 96 < 4\,077.
+$$
+
+The historical larger pre-enter budget no longer describes production: runtime entity/global baselines are deliberately outside the final packet-10-to-packet-49 contract.
 
 ## 5. Sections
 
-World state is partitioned into Terraria sections for initial and ongoing world synchronization.
+Section work must satisfy correctness, invalidation and bounded-cost constraints. A client must receive required world regions, stale encoded sections must be invalidated after mutation, and generation/compression of uncached sections must not monopolize a tick.
 
-Section work must eventually satisfy three independent constraints:
-
-1. correctness: the client receives the world region required for its current state;
-2. invalidation: a mutated section cannot remain indefinitely represented by stale encoded data;
-3. budget: generating/compressing uncached sections cannot monopolize one simulation tick.
-
-The long-term join pipeline therefore uses global subsystem budgets rather than granting a complete section-generation budget to each joining player.
+Join work therefore uses global subsystem budgets rather than multiplying a full expensive-work allowance by the number of joining players.
 
 ## 6. Replication registries
 
-TerraRuntime keeps replication separate from authoritative storage.
+TerraRuntime separates authoritative storage from transport projection. Dedicated replication state/registries exist for player events/movement, NPCs, projectiles, world items, chests, signs and tile manipulation.
 
-Current runtime code has dedicated replication state/registries for multiple domains including player events/movement, NPCs, projectiles, world items, chests, signs and tile manipulation.
+When identical bytes are genuinely recipient-independent, one immutable encoded frame should be shared among recipient queues. Recipient-specific identity, slot remapping or visibility data requires separate projection.
 
-This allows runtime stores to remain concerned with authoritative identity/state while synchronization tracks what needs to be projected or fanned out.
+## 7. Interest-management ownership
 
-## 7. Shared frame principle
+Interest management belongs to TerraRuntime. External hosts receive only `IInterestManagementControl` with enable/disable control. Spatial layout, radii, hysteresis, transitions, forced resync and entity-specific policy remain internal.
 
-When multiple recipients need identical bytes, the preferred architecture is to encode one immutable frame and share that frame among recipient queues rather than re-encode identical state for every player.
+## 8. Current spatial foundation
 
-This optimization is valid only when bytes are truly recipient-independent. Packets containing recipient-specific identity, slot remapping, visibility state or other personalized fields require separate projection.
+`RuntimeInterestRouter` owns a section-based player spatial index and visibility tracker when world dimensions are available.
 
-## 8. Interest management ownership
+Current default radii are
 
-Interest management belongs to TerraRuntime itself.
+$$
+r_{\mathrm{enter}}=3\ \text{sections},
+\qquad
+r_{\mathrm{leave}}=4\ \text{sections}.
+$$
 
-External hosts such as Vega receive only `IInterestManagementControl` with `IsEnabled` and `SetEnabled(bool)`.
+Because $r_{\mathrm{leave}}>r_{\mathrm{enter}}$, the policy has hysteresis and avoids boundary flicker.
 
-Hosts may enable or disable the feature. They do not control spatial layout, enter/leave radius, hysteresis, entity-specific recipient policy, forced resync deadlines, full-state-on-entry behavior or stale visibility recovery.
+Invalid/non-finite positions must not leave stale membership. Untrustworthy location data fails open.
 
-Those rules remain runtime implementation details so two hosts cannot accidentally create incompatible networking semantics for the same TerraRuntime version.
+## 9. Current suppression status
 
-## 9. Current spatial foundation
+**State tracking exists, but the enabled default policy remains `PassthroughInterestPolicy`.** Enabling interest management therefore maintains ownership/spatial state but does not yet suppress player movement updates.
 
-`RuntimeInterestRouter` already owns a section-based player spatial index and visibility tracker when world dimensions are available.
+This is deliberate until enter/leave/full-state-on-entry, teleport/respawn, slot reuse, out-of-range behavior and bounded forced resynchronization are verified.
 
-The current default player radii are:
+## 10. Visibility state model
 
-```text
-enter radius = 3 sections
-leave radius = 4 sections
+```mermaid
+stateDiagram-v2
+    [*] --> Hidden
+    Hidden --> Visible: verified enter transition
+    Visible --> Visible: normal deltas
+    Visible --> Hidden: verified leave / out-of-range transition
+    Hidden --> Hidden: ordinary deltas suppressed
+    Visible --> Visible: bounded forced full resync
 ```
 
-The larger leave radius provides hysteresis so a player near a boundary does not oscillate visible/invisible every time it crosses one section edge.
+`Hidden -> Visible` must send complete state required to begin observation. `Visible -> Hidden` must use verified Terraria semantics rather than an invented generic despawn.
 
-The router updates membership on tracked player movement and removes membership on disconnect/removal.
+## 11. Teleports, respawn and slot reuse
 
-Invalid, non-finite or otherwise unusable positions must not leave stale spatial membership behind. Visibility infrastructure should fail open when it lacks trustworthy location data.
+Spatial visibility must immediately handle discontinuous moves, respawn, disconnect/slot reuse, invalid-to-valid position changes and server-controlled player creation/despawn.
 
-## 10. Current suppression status
+Generation-safe identities prevent stale visibility state from applying to a new entity that reused a numeric slot.
 
-This distinction is critical:
+## 12. Movement scaling
 
-**interest-management state tracking exists, but the default enabled policy is currently `PassthroughInterestPolicy`.**
+Broad player-to-player movement fanout trends toward
 
-That policy returns `true` for player observation. Therefore enabling interest management today establishes ownership/control and maintains spatial/visibility state, but does **not yet suppress player movement updates**.
+$$
+W(P)=\Theta(P^2),
+$$
 
-This is deliberate. Packet suppression remains disabled until the runtime has fully verified enter transitions, leave transitions, full state on entry, out-of-range semantics, teleport/respawn handling, slot reuse and bounded forced resynchronization.
+where $P$ is simultaneously active players. This makes movement an important interest-management target, but raw distance suppression is not acceptable without transition/resync proof.
 
-The project prefers temporarily sending too much state over permanently hiding required state from a client.
+## 13. Other dynamic entities
 
-## 11. Fail-open behavior
+NPCs, projectiles and world items can use the same broad architecture only after their own first-observation, leave/despawn, re-entry, slot-reuse and global-update semantics are verified. Player visibility policy must not be copied blindly to other entity families.
 
-Interest management is a performance optimization. It must not become a correctness dependency.
+## 14. Dirty-state replication
 
-When disabled, `ShouldRelayPlayerMovement(...)` returns true. When state is insufficient or the feature is not fully proven, routing should remain vanilla-like/broad.
-
-A synchronization optimization that can leave a remote player, NPC or projectile frozen forever is not acceptable even if average bandwidth looks excellent.
-
-## 12. Enter/leave semantics
-
-The target visibility model is stateful.
-
-```text
-not visible -> visible
-    send complete state required to begin observing
-
-visible -> still visible
-    send deltas/normal replication
-
-visible -> not visible
-    apply verified out-of-range/despawn semantics
-
-not visible -> still not visible
-    suppress ordinary deltas
+```mermaid
+flowchart LR
+    Mutation["Authoritative mutation"] --> Dirty["Dirty / revision / event"]
+    Dirty --> Pass["One synchronization pass"]
+    Pass --> Filter["Recipient filtering"]
+    Filter --> Encode["Encode / fanout"]
 ```
 
-Hysteresis and forced resync prevent boundary flicker and long-lived stale state.
+The target avoids scanning every entity for every client every tick when revision/event-driven work is possible.
 
-## 13. Teleports, respawn and slot reuse
+## 15. Bootstrap versus steady state
 
-Spatial visibility must react immediately to discontinuous identity/location changes: teleport across many sections, respawn at a new position, disconnect and slot reuse, invalid position becoming valid again, and server-controlled player creation/despawn.
-
-A generation-safe entity identity prevents stale visibility state from being accidentally applied to a new entity that reused an old numeric slot.
-
-## 14. Player movement relay
-
-Movement is one of the first high-frequency candidates for interest-managed routing because unconditional fanout becomes approximately O(players²) at scale.
-
-Current `RuntimeInterestRouter.ShouldRelayPlayerMovement` behaves as follows:
-
-```text
-interest disabled -> relay
-interest enabled + current passthrough policy -> relay
+```mermaid
+flowchart LR
+    Bootstrap["Bootstrap<br/>bursty + ordering-sensitive"] --> BNeed["Global budgets + queue headroom"]
+    Steady["Steady state<br/>incremental + latency-sensitive"] --> SNeed["Dirty tracking + recipient selection"]
 ```
 
-Future suppression should be introduced only together with transition/full-resync tests, not by replacing the predicate with a raw distance comparison.
+Queue and budget decisions must be validated against both phases.
 
-## 15. NPC/projectile/item visibility
+## 16. Slow clients
 
-The same broad architecture can apply to other dynamic entities, but each class needs its own semantics.
+Synchronization ends at a bounded connection queue. A peer unable to drain outbound data becomes a local `SlowClient` problem rather than a reason to block authoritative simulation.
 
-Questions that must be answered per entity family include first-observation state, verified out-of-range/despawn behavior, death/despawn representation, re-entry without slot reuse, forced resync interval, and which updates remain global for gameplay correctness.
+Interest management may reduce future queue pressure, but queue bounds remain mandatory.
 
-Do not apply player movement policy blindly to NPCs or projectiles.
+## 17. Observability
 
-## 16. Dirty-state replication
+Useful synchronization telemetry includes connection queue depth/high-water marks, slow-client disconnects, bootstrap frame count, deferred section work, spatial membership changes, invalid-position removals, visibility transitions, suppressed/relayed counts, forced resync and oldest pending synchronization work.
 
-The target runtime avoids scanning every entity for every client every tick.
+Telemetry remains bounded and avoids per-movement formatted-string churn.
 
-Preferred direction:
+## 18. Evidence
 
-```text
-authoritative mutation
-   -> dirty/revision/event state
-   -> one synchronization pass
-   -> recipient filtering
-   -> encode/fanout
-```
+Evidence includes spatial-index/hysteresis tests, interest-control tests, bootstrap budget tests, entity bootstrap tests, replication-registry tests, real-process slow-client tests and live `Vanilla World Load` join/movement probes.
 
-The runtime already has revision/replication registries that provide the foundation for this approach.
+Once real suppression is enabled, live tests must prove both absence of hidden updates and complete correct state restoration on re-entry.
 
-## 17. Bootstrap versus steady state
+## 19. Current limitations
 
-Bootstrap and normal gameplay have very different traffic shapes.
+Still incomplete are production movement suppression, complete enter/leave outbound wiring, full-state-on-entry across entity types, forced-resync policy, generalized NPC/projectile/item routing, measurement-derived final radii/queue sizing and complete section-cache/per-client delivery accounting.
 
-Bootstrap is bursty, section-heavy, ordering-sensitive and needs global work budgets plus queue headroom. Steady state is mostly incremental, latency-sensitive and should rely more heavily on dirty/revision tracking and recipient selection.
+## 20. Change checklist
 
-One queue/budget assumption should not be chosen solely from one of these phases.
-
-## 18. Slow clients
-
-Synchronization ends at a bounded connection queue. A client that cannot drain its outbound data cannot be allowed to create unlimited retained frames.
-
-The runtime's slow-client policy therefore closes an overloaded connection rather than blocking authoritative simulation.
-
-Interest management can reduce bandwidth and queue pressure in the future, but queue bounds remain required even when filtering is enabled.
-
-## 19. Observability
-
-Useful synchronization telemetry includes or is expected to include per-connection outbound depth, slow-client disconnects, bootstrap frame count, deferred section work, spatial-index membership changes, invalid-position removals, visibility transitions, suppressed versus relayed counts, forced resync counts and oldest pending synchronization work.
-
-Telemetry must be bounded and should not allocate formatted strings on every high-frequency movement update.
-
-## 20. Evidence
-
-Relevant evidence includes spatial-index tests, visibility/hysteresis tests, interest-control tests, bootstrap frame-budget tests, entity bootstrap frame tests, replication registry tests, slow-client/process tests and live `Vanilla World Load` join/movement probes.
-
-Once actual suppression is enabled, live tests must prove both that updates are absent while hidden and that complete correct state returns when visibility is restored.
-
-## 21. Current limitations
-
-Not finished yet:
-
-- actual player movement suppression under the default policy;
-- complete enter/leave outbound wiring;
-- full-state-on-entry for all entity types;
-- forced resync policy;
-- generalized NPC/projectile/item interest routing;
-- measurement-derived final radii and queue sizing;
-- complete section-cache invalidation/per-client delivery accounting.
-
-The existing spatial tracker is therefore a foundation, not a bandwidth-reduction claim.
-
-## 22. Change checklist
-
-A synchronization change is incomplete unless, where relevant, authoritative state remains separate from replication state, join work is bounded globally, queue growth is bounded, enter/leave/full-resync behavior is tested before suppression is enabled, invalid/unknown position fails open, slot reuse cannot inherit stale visibility, live official-client behavior is checked for protocol-sensitive transitions, and this page plus `docs/ru/synchronization.md` change together.
+A synchronization change is incomplete unless authoritative and replication state remain separate, join work/queues are bounded globally, transition/resync behavior is tested before suppression, invalid state fails open, slot reuse cannot inherit stale visibility, protocol-sensitive transitions have live evidence, diagrams use Mermaid, dimensional quantities use LaTeX, and this page changes together with `docs/ru/synchronization.md`.

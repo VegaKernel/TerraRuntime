@@ -4,33 +4,33 @@
 
 ## 1. Назначение
 
-TerraRuntime реализует gameplay Terraria как authoritative runtime systems, а не как набор побочных эффектов внутри packet handlers.
+TerraRuntime реализует gameplay Terraria как authoritative runtime systems, а не как побочные эффекты внутри packet handlers.
 
-Цель: **наблюдаемая parity TerrariaServer 1.4.5.8**, а не повторение структуры исходников. Внутренняя реализация может отличаться полностью, если player-visible results, ordering и compatibility остаются корректными.
+Цель: **наблюдаемая parity TerrariaServer 1.4.5.8**, а не повторение source structure. Внутренняя implementation может отличаться полностью, если player-visible results, ordering и compatibility остаются корректными.
 
-Этот документ специально различает готовый фундамент и ширину vanilla coverage. Наличие runtime store или AI dispatcher не означает, что реализованы все Terraria entities, способные использовать эту подсистему.
+Этот документ различает implemented foundations и broad vanilla coverage. Наличие runtime store или AI dispatcher не означает implementation всех Terraria entities этой subsystem.
 
 ## 2. Базовый gameplay flow
 
-```text
-client/network input
-   -> bounded protocol decode
-   -> semantic ingress/command
-   -> authoritative game loop
-   -> validation и state transition
-   -> runtime store/event
-   -> replication projection
-   -> recipient selection
-   -> protocol encode
+```mermaid
+flowchart LR
+    Client["Client / network input"] --> Decode["Bounded protocol decode"]
+    Decode --> Ingress["Semantic ingress / command"]
+    Ingress --> Loop["Authoritative game loop"]
+    Loop --> Validate["Validation + state transition"]
+    Validate --> Store["Runtime store / event"]
+    Store --> Replication["Replication projection"]
+    Replication --> Recipients["Recipient selection"]
+    Recipients --> Encode["Protocol encode"]
 ```
 
-Gameplay владеет legality и authoritative outcomes. Networking владеет wire transport. Replication отвечает за преобразование authoritative state обратно к клиентам.
+Gameplay владеет legality и authoritative outcomes. Networking владеет wire transport. Replication отвечает за projection state обратно к clients.
 
 ## 3. Authoritative ownership
 
 Mutable gameplay state принадлежит game-loop thread.
 
-Сюда входят runtime player state, world mutations, chests, world items, NPCs, projectiles и другое simulation state по мере перехода подсистем в authoritative model.
+Сюда входят player state, world mutations, chests, signs, world items, NPCs, projectiles и другое simulation state по мере перехода subsystem в authoritative model.
 
 External threads и trusted host modules используют snapshots или command/operations surfaces. Mutable stores им не выдаются.
 
@@ -38,17 +38,13 @@ External threads и trusted host modules используют snapshots или c
 
 TerraRuntime разделяет vanilla content identity и identity конкретной live runtime entity.
 
-Примеры:
+| Vanilla content identity | Live runtime identity |
+|---|---|
+| `NpcTypeId(1)` | `NpcHandle(slot, generation)` |
+| `ProjectileTypeId(1)` | projectile slot/handle |
+| `ItemTypeId` | inventory/world-item identity |
 
-```text
-NpcTypeId(1)            vanilla NPC type
-NpcHandle(slot, gen)    конкретный live runtime NPC
-
-ProjectileTypeId(1)     vanilla projectile type
-projectile handle/slot  конкретный live runtime projectile
-```
-
-Generation/revision-aware handles не дают stale reference изменить другую entity после reuse slot.
+Generation/revision-aware handles не дают stale reference мутировать другую entity после reuse slot.
 
 Raw protocol IDs допустимы на wire boundary. Gameplay должен как можно раньше переходить к validated named domain IDs.
 
@@ -56,15 +52,9 @@ Raw protocol IDs допустимы на wire boundary. Gameplay должен к
 
 Gameplay facts runtime привязаны к TerrariaServer 1.4.5.8.
 
-Примеры текущих typed/named facts:
+Current typed/named facts включают NPC IDs и AI-style IDs, projectile IDs и AI-style IDs, verified widths/heights/defaults simulation, tile/item/sign facts implemented mutation paths и protocol-independent runtime handles/snapshots.
 
-- NPC IDs и AI-style IDs;
-- projectile IDs и AI-style IDs;
-- verified widths/heights/defaults, реально используемые simulation;
-- tile/item facts для реализованных mutation/drop paths;
-- protocol-independent runtime handles и snapshots.
-
-Catalog содержит только факты, которые нужны текущему behavior. TerraRuntime не копирует весь decompiled `SetDefaults` только ради красивого ощущения полноты.
+Catalog содержит только facts, реально нужные current behavior. TerraRuntime не копирует весь decompiled `SetDefaults` ради искусственного ощущения полноты.
 
 ## 6. Текущий статус parity
 
@@ -73,337 +63,288 @@ Catalog содержит только факты, которые нужны те
 | Область | Состояние | Что это значит |
 |---|---|---|
 | Handshake / join / player slot | substantial | есть live official-world join probes; поддерживаются не все gameplay packets |
-| Player spawn/state/movement | partial-to-substantial | есть authoritative ingress/state, normalization и replication foundation; полного anti-cheat movement model нет |
-| Inventory/equipment | partial | есть typed commit/request paths и packet handling, но полная server-authoritative item-use/equipment semantics не завершена |
-| World items | substantial foundation | есть runtime-owned store, allocation/reservation/update/replication paths и tests |
-| Tiles | partial | есть verified mutation slices, dirt/stone behavior и replication; полной placement/framing/wiring/growth breadth нет |
-| Chests | substantial slice | runtime chest state, live open/content path, replication и persistence реально проверяются; полная chest/item authority ещё растёт |
-| Signs | partial | runtime replication/state paths есть; edit/validation parity уже vanilla пока уже |
-| Projectiles | partial | lifecycle/store/ownership/AI-style physics/collision/replication есть для verified type families; полного catalog/combat/side effects нет |
-| NPC lifecycle | partial | runtime store, generation-safe identity, definitions, targeting/check-active/spawn/motion primitives есть |
-| NPC AI breadth | early partial | есть selected verified NPCs и AI families, но не весь vanilla roster |
-| Combat/damage | early/partial | supporting structures существуют, полный vanilla PvE/PvP pipeline не завершён |
+| Player spawn/state/movement | partial-to-substantial | есть authoritative ingress/state, normalization и replication foundations; complete anti-cheat movement model отсутствует |
+| Inventory/equipment | partial | есть typed commit/request paths и packet handling, но full server-authoritative item-use/equipment semantics не завершена |
+| World items | substantial foundation | runtime-owned store, allocation/reservation/update/replication paths и tests существуют |
+| Tiles | partial | verified mutation slices, dirt/stone behavior и replication есть; full placement/framing/wiring/growth breadth нет |
+| Chests | substantial slice | runtime chest state, live open/content path, replication и persistence проверяются; complete chest/item authority ещё растёт |
+| Signs | substantial slice | authoritative read/update/store/replication, source-backed tile normalization и `.wld` persistence есть; complete placement/destruction/object lifecycle parity отсутствует |
+| Projectiles | partial | lifecycle/store/ownership/AI-style physics/collision/replication есть для verified type families; full projectile catalog/combat/side effects нет |
+| NPC lifecycle | partial | runtime store, generation-safe identity, definitions, targeting/check-active/spawn/motion primitives существуют |
+| NPC AI breadth | early partial | есть selected verified NPCs/AI families, но не весь vanilla roster |
+| Combat/damage | early/partial | supporting structures существуют, полный vanilla PvE/PvP damage pipeline не завершён |
 | Bosses | largely incomplete | broad boss parity предполагать нельзя |
-| Loot/drops | early/partial | selected world/tile drop paths есть; полного NPC loot и RNG behavior нет |
-| Housing/town NPCs | incomplete | target architecture есть, broad behavior ещё нет |
+| Loot/drops | early/partial | selected world/tile drop paths есть; complete NPC loot tables/RNG behavior нет |
+| Housing/town NPCs | incomplete | target architecture есть, broad behavior отсутствует |
 | Events/invasions/progression | incomplete | production parity пока нет |
-| Wiring/liquids/growth | foundation/partial | world/liquid primitives есть; полной vanilla simulation нет |
-| Vanilla world generation | incomplete | extensible worldgen framework есть; built-in flat generator не является vanilla WorldGen |
+| Wiring/liquids/growth | foundation/partial | world/liquid primitives существуют; full vanilla simulation отсутствует |
+| Vanilla world generation | incomplete | extensible worldgen framework есть; built-in flat generator не vanilla WorldGen |
 
-Если эта таблица расходится с executable evidence или более новым roadmap item, обновляется документ, а не сохраняется протухший процент ради красоты.
+Если таблица расходится с executable evidence или newer roadmap item, обновляется документ, а не сохраняется stale status.
 
 ## 7. Players
 
 Player networking переводится в runtime-owned commit requests/events до mutation.
 
-Архитектура уже содержит dedicated ingress/commit shapes для таких областей, как:
+Implemented architecture содержит dedicated ingress/commit shapes для spawn, movement, vitals/state slices, appearance/equipment slices и event fanout/replication.
 
-- spawn;
-- movement;
-- vitals/state slices;
-- appearance/equipment slices;
-- event fanout/replication.
+Movement имеет vanilla-oriented normalization и server-known state, но long-term roadmap всё ещё включает richer history/tolerance handling teleports, mounts и respawn transitions.
 
-Movement имеет vanilla-oriented normalization и server-known state, но roadmap всё ещё включает более богатую history/tolerance модель exceptional movement: teleports, mounts, respawn transitions.
-
-Runtime не должен reject'ить legal vanilla movement только потому, что будущая authoritative model придумана строже. Anti-cheat policy не имеет права становиться guessed gameplay.
+Runtime не должен reject legal vanilla movement только потому, что future authoritative model амбициознее. Anti-cheat policy не должна становиться guessed gameplay.
 
 ## 8. Server-controlled players
 
 Trusted hosts могут создавать connection-free runtime-owned players через `IServerPlayerOperations`.
 
-Такие actors резервируют обычные Terraria player slots из generation-safe pool и принимают semantic intent, например horizontal movement. Host не может каждый tick напрямую выставлять final velocity/position, обходя runtime physics/ownership.
+Такие actors резервируют normal Terraria player slots из generation-safe pool и принимают semantic intent, например horizontal movement. Host не может напрямую выставлять final velocity/position каждый tick, обходя runtime physics/ownership.
 
-Эта boundary предназначена для server-controlled actors и integration scenarios, а не для выдачи mutable player internals плагинам.
+Эта boundary предназначена для server-controlled actors/integration, а не для выдачи mutable player internals plugins.
 
 ## 9. Inventory и equipment
 
-Inventory/equipment processing постепенно выносится из loose packet fields и raw slot numbers.
+Inventory/equipment processing постепенно выносится из loose packet fields/raw slot numbers.
 
-Target concepts:
+Target concepts: named inventory layout regions, validated item type/stack/prefix state, explicit equipment/loadout semantics, semantic item use вместо packet-handler side effects и server-known ownership world items/transitions.
 
-- named inventory layout regions;
-- validated item type/stack/prefix state;
-- explicit equipment/loadout semantics;
-- semantic item use вместо packet-handler side effects;
-- server-known ownership для world items и transitions.
-
-Текущую packet/commit infrastructure нельзя считать полной authoritative recipe/use/ammo/accessory logic.
+Current packet/commit infrastructure нельзя считать complete authoritative recipe/use/ammo/accessory logic.
 
 ## 10. World items
 
 `RuntimeWorldItemStore` является authoritative runtime entity store, а не transparent client relay.
 
-Реализованный foundation покрывает протестированные области вроде:
+Implemented foundation покрывает slot allocation/reservation, updates/partial updates, runtime ingress/commands, replication-registry integration и selected tile-drop integration.
 
-- slot allocation/reservation;
-- updates и partial updates;
-- runtime ingress/commands;
-- replication registry integration;
-- selected tile-drop integration.
-
-World item identity отделена от item content type. Будущая pickup/stack/ownership validation строится на server-owned identity, а не на доверии к arbitrary client slot metadata.
+World-item identity отделена от item content type. Future pickup/stack/ownership validation строится на server-owned identity, а не на доверии arbitrary client slot metadata.
 
 ## 11. Tiles и world mutation
 
-World edits идут через semantic/runtime mutation paths, а не напрямую меняют tile из decoder.
+World edits проходят semantic/runtime mutation paths, а не напрямую переписывают tile из decoder.
 
-Runtime уже имеет verified slices для tile kill/update/replication и world collision/query behavior. Selected dirt/stone cases закреплены official-source/reference workflows.
+Runtime имеет verified slices tile kill/update/replication и world collision/query behavior. Selected dirt/stone cases закреплены official-source/reference workflows.
 
-В broad vanilla scale пока не завершены:
+В broad vanilla scale пока incomplete все placement rules, frame-important/multi-tile object behavior, slope/platform interactions, wiring/actuation, growth/spread families и complete tool/item requirements/drops.
 
-- все placement rules;
-- frame-important и multi-tile object behavior;
-- все slope/platform interactions;
-- wiring/actuation;
-- growth/spread families;
-- полный набор tool/item requirements и drops.
-
-Tile mutation не завершена только потому, что итоговый tile ID выглядит правильным. Neighbor framing, object validity, drops, liquid interaction, persistence и network replication могут быть наблюдаемыми частями одного vanilla action.
+Tile mutation не завершена только потому, что resulting tile ID выглядит правильно. Neighbor framing, object validity, drops, liquid interaction, persistence и network replication могут быть observable parts одного vanilla action.
 
 ## 12. Chests
 
 Chest path является одним из более зрелых object slices.
 
-Текущая архитектура включает runtime chest state, interaction/replication paths и authoritative persistence support. Live workflows проверяют open/content behavior на official-world data.
+Current architecture включает runtime chest state, interaction/replication paths и authoritative persistence. Live workflows проверяют open/content behavior на official-world data.
 
-Важные invariants:
+Важные invariants: chest identity/coordinate validation до mutation, containment malformed chest traffic, authoritative-owner save capture и separation replication/storage.
 
-- chest identity/coordinates проверяются до mutation;
-- malformed chest traffic изолируется, а не валит process;
-- chest state захватывается authoritative owner для save;
-- replication отделён от storage.
+Full server-authoritative inventory conservation/anti-dupe logic вводится только когда item-ownership model достаточно сильна, чтобы не создавать false rejects legal vanilla traffic.
 
-Полную server-authoritative inventory conservation/anti-dupe logic надо вводить только когда item ownership model достаточно сильна, чтобы не плодить false rejects легального vanilla traffic.
+## 13. Signs
 
-## 13. NPC lifecycle
+Signs теперь являются authoritative object slice, а не packet relay.
+
+Current production path содержит:
+
+- protocol `326` typed handling `RequestSign` (`packet 46`) и `SignNew` (`packet 47`);
+- `RuntimeSignNetworkIngress` для bounded socket-thread → game-thread handoff;
+- `RuntimeSignStore` и `RuntimeSignCommandProcessor` для authoritative lookup/mutation;
+- `RuntimeSignReplicationRegistry` для transport projection;
+- `SignInteractionFrameSink` в production connection chain;
+- `.wld` sign-section persistence из authoritative runtime state.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant N as Sign frame sink / codec
+    participant G as Authoritative game loop
+    participant S as RuntimeSignStore
+    participant R as Sign replication
+
+    C->>N: packet 46 or packet 47
+    N->>G: owned sign read/update command
+    G->>S: validate lookup / apply committed text
+    alt read request
+        S-->>R: authoritative sign
+        R-->>C: packet 47 sign state
+    else changed update
+        S-->>R: committed sign change
+        R-->>C: broadcast to other playing clients
+    end
+```
+
+### Source-backed tile normalization
+
+Sign read нормализует clicked tile к sign origin по verified TerrariaServer 1.4.5.8 frame rule. Horizontal origin использует `FrameX / 18` modulo two, vertical origin использует `FrameY / 18`. Normalized origin должен иметь один из verified sign tile types `55`, `85`, `425` или `573`.
+
+Out-of-world coordinates или normalized tile другого type reject'ятся, а не угадываются.
+
+### Update replication
+
+При committed text change current source-backed path broadcast'ит resulting sign state другим playing clients, исключая sender, как в pinned vanilla update path. Read response отправляется только requesting connection.
+
+Это substantial interaction/persistence slice, но не complete sign-object lifecycle parity. Placement, destruction, framing и surrounding tile-object rules остаются broader tile/object work.
+
+## 14. NPC lifecycle
 
 NPC используют runtime-owned store и generation-safe handles.
 
-Текущий foundation включает:
+Current foundations: allocation/lifecycle state, version-pinned definition lookup, target selection primitives, gravity/world motion, spawn cadence primitives, check-active/despawn slices, replication projection и trusted-host actor control через semantic intent.
 
-- allocation/lifecycle state;
-- version-pinned definition lookup;
-- target selection primitives;
-- gravity/world motion;
-- spawn cadence primitives;
-- check-active/despawn behavior slices;
-- replication projection;
-- trusted-host actor control через semantic intent.
+Current verified definition catalog содержит **Blue Slime**, **Demon Eye** и **Zombie**. Это explicit coverage slice, а не предположение defaults остальных NPC по похожим entities.
 
-Текущий verified definition catalog содержит **Blue Slime**, **Demon Eye** и **Zombie**. Это явный coverage slice, а не намёк, будто defaults остальных NPC можно угадать по соседям.
+## 15. NPC AI
 
-## 14. NPC AI
+AI декомпозируется по behavior/family вместо unbounded `switch(type)` в packet handler.
 
-AI декомпозируется по behavior/family вместо гигантского `switch(type)` внутри packet handler.
+Current selected implementation включает AI-specific/family primitives verified NPC slice, включая slime/fighter/flying-style behavior Blue Slime, Zombie и Demon Eye.
 
-Selected implementation уже включает AI-specific/family primitives для verified NPC slice, в том числе slime/fighter/flying-style работу, используемую Blue Slime, Zombie и Demon Eye paths.
+Rules расширения AI:
 
-Правила расширения AI:
+1. verify constants/state ordering TerrariaServer 1.4.5.8;
+2. isolate reusable behavior только при реальном shared rule;
+3. preserve observable RNG ordering;
+4. add deterministic state-transition tests;
+5. use official-server/client evidence, когда local tests могут разделять wrong assumption.
 
-1. constants и state ordering проверяются по TerrariaServer 1.4.5.8;
-2. reusable behavior выделяется только если entities действительно разделяют это правило;
-3. RNG ordering сохраняется там, где он наблюдаем;
-4. state transitions получают deterministic tests;
-5. official server/client evidence используется, когда local tests могут разделять одну и ту же ошибочную гипотезу.
+Boss orchestration не нужно запихивать в abstractions, придуманные для трёх простых early-game NPCs.
 
-Boss orchestration не надо насильно запихивать в abstractions, придуманные для трёх простых early-game NPC.
+## 16. Trusted-host NPC actors
 
-## 15. Trusted-host NPC actors
+`INpcActorOperations` позволяет trusted host получить lease existing runtime NPC и отправлять semantic `NpcActorIntent`.
 
-`INpcActorOperations` позволяет trusted host получить lease на существующий runtime NPC и передавать semantic `NpcActorIntent`.
+Runtime владеет final movement, gravity, collision, lifetime/entity identity и authoritative application order.
 
-Runtime всё равно владеет:
+Controller IDs и explicit release позволяют safe module/plugin teardown. Host не может хранить direct mutable NPC objects across reload boundaries.
 
-- final movement;
-- gravity;
-- collision;
-- lifetime и entity identity;
-- authoritative application order.
-
-Controller IDs и explicit release позволяют безопасно завершать module/plugin lifecycle. Host не может таскать direct mutable NPC objects через reload boundaries.
-
-## 16. Projectiles
+## 17. Projectiles
 
 Projectile support уже вышел из relay-only design.
 
-Текущая архитектура включает:
+Current architecture включает runtime projectile store, ownership/provenance facts, lifecycle handling, definition catalog, behavior state executor/stepper, world physics/collision, tile-cut integration supported cases и packet projection/replication.
 
-- runtime projectile store;
-- ownership/provenance facts;
-- lifecycle handling;
-- definition catalog;
-- behavior state executor/stepper;
-- world physics/collision;
-- tile-cut integration для supported cases;
-- packet projection и replication.
+| Verified family | Vanilla AI style |
+|---|---:|
+| Arrow | `1` |
+| Thrown | `2` |
+| Boomerang | `3` |
 
-Текущие verified AI-style identities:
+Definition catalog содержит growing verified set этих families: arrows, bullets/lasers, bones, shuriken/throwing-knife-style projectiles и boomerang support.
 
-```text
-Arrow     aiStyle 1
-Thrown    aiStyle 2
-Boomerang aiStyle 3
-```
+Это **не** complete Terraria projectile parity. Unsupported irreversible side effects, child spawning, immunity, penetration, specialized AI, damage и kill effects остаются explicit boundaries, а не guessed behavior.
 
-Definition catalog содержит растущий verified набор этих families, включая разные arrows, bullets/lasers, bones, shuriken/throwing-knife-style projectiles и boomerang support.
+## 18. Combat
 
-Но это **не** полная projectile parity Terraria. Unsupported irreversible side effects, child spawning, immunity, penetration, specialized AI, damage и kill effects должны оставаться explicit boundaries, а не guessed behavior.
+Combat является отдельной semantic subsystem, а не просто fields projectile/NPC packets.
 
-## 17. Combat
+Target model включает damage source/provenance, attacker/target, base/final damage, defense interaction, knockback, critical hits, immunity/cooldowns, death reason/result и PvP/environment/NPC/projectile categories.
 
-Combat является отдельной semantic subsystem, а не просто полями projectile/NPC packet.
+Authoritative становятся только verified portions. Пока complete conservation/damage rules отсутствуют, server не должен invent strict rejection rules, ломающие legal vanilla behavior.
 
-Target model включает явные concepts:
+## 19. Drops и loot
 
-- damage source/provenance;
-- attacker и target;
-- base/final damage;
-- defense interaction;
-- knockback;
-- critical hits;
-- immunity/cooldowns;
-- death reason/result;
-- PvP/environment/NPC/projectile categories.
+Selected tile/world-item drop paths реализованы/tested, но complete vanilla loot намного шире.
 
-Authoritative должны становиться только verified portions. Пока complete conservation/damage rules отсутствуют, server не должен придумывать строгие rejection rules, ломающие legal vanilla behavior.
+NPC loot parity потребует rules/data structures, сохраняющих conditions, probabilities, stack ranges, progression/event dependencies и RNG ordering.
 
-## 18. Drops и loot
+Declarative loot table полезна только если воспроизводит verified sequence. Изменение RNG call order при тех же nominal percentages может изменить observable vanilla outcome.
 
-Selected tile/world-item drop paths реализованы и протестированы, но полный vanilla loot намного шире.
+## 20. Buffs, prefixes и item metadata
 
-NPC loot parity потребует rule/data structures, сохраняющих:
+Architecture движется к typed IDs/version-pinned metadata вместо scattered raw integers.
 
-- conditions;
-- probabilities;
-- stack ranges;
-- progression/event dependencies;
-- RNG ordering.
+Эти systems остаются broad future work. New authoritative validation не должна принимать arbitrary unvalidated bytes как meaningful domain state, но и не должна reject values, чья vanilla legality не verified.
 
-Declarative loot table полезна только если она воспроизводит verified sequence. Изменение RNG call order при тех же процентах всё равно может изменить наблюдаемое vanilla behavior.
+## 21. Wiring, liquids и growth
 
-## 19. Buffs, prefixes и item metadata
+Liquids уже имеют explicit tile state и runtime work queue, persistable через warm snapshots.
 
-Архитектура движется к typed IDs и version-pinned metadata вместо scattered raw integers.
+Этот foundation не full vanilla liquid simulation. Wiring/actuation и growth/spread также incomplete.
 
-Эти системы остаются большой future work. Новая authoritative validation не должна принимать arbitrary unvalidated bytes как domain state, но также не должна reject'ить values, чья vanilla legality ещё не проверена.
+Эти subsystems order-sensitive и могут затрагивать large world areas, поэтому implementation сочетает exact behavioral verification, global bounded per-tick work, deterministic owner-thread commits, dirty/replication tracking и save compatibility.
 
-## 20. Wiring, liquids и growth
+## 22. Progression, events, town NPCs и bosses
 
-Liquids уже имеют explicit tile state и runtime work queue, который может сохраняться в warm snapshots.
+Это major parity gaps.
 
-Этот foundation не является полной vanilla liquid simulation. Wiring/actuation и growth/spread также остаются incomplete.
+Нельзя выводить support из readable world header fields или generic NPC infrastructure. World может load progression metadata, пока runtime не воспроизводит transitions/gameplay consequences.
 
-Эти подсистемы order-sensitive и способны затронуть большие части world, поэтому их реализация должна сочетать:
+При переходе этих systems в authoritative state каждой нужны explicit persistence, synchronization и official behavior evidence.
 
-- exact behavioral verification;
-- global bounded per-tick work;
-- deterministic owner-thread commits;
-- dirty/replication tracking;
-- save compatibility.
-
-## 21. Progression, events, town NPCs и bosses
-
-Это сейчас крупнейшие parity gaps.
-
-Нельзя выводить их поддержку из того, что world header fields читаются или generic NPC infrastructure существует. World может загрузить progression metadata, пока runtime ещё не воспроизводит все transitions и gameplay consequences этой metadata.
-
-По мере перехода этих систем в authoritative state каждой потребуется explicit persistence, synchronization и official behavior evidence.
-
-## 22. World generation
+## 23. World generation
 
 TerraRuntime имеет world-generation **framework** с provider registration, planning, ordered passes, isolated workspace execution и final validation.
 
-Built-in generator сейчас является deterministic flat dirt/stone baseline. Он прямо не является approximation vanilla Terraria WorldGen.
+Built-in generator сейчас deterministic flat dirt/stone baseline и explicitly не approximation vanilla Terraria WorldGen.
 
-Поэтому vanilla worldgen остаётся incomplete, хотя архитектура custom/pluggable world generation уже развита существенно.
+Vanilla worldgen остаётся incomplete, хотя architecture custom/pluggable worldgen развита существенно.
 
-## 23. Replication
+## 24. Replication
 
 Gameplay mutation и network replication являются разными responsibilities.
 
-Runtime replication registries существуют для нескольких entity/object classes, включая player-related events, NPCs, projectiles, world items, chests, signs и tile manipulation.
+```mermaid
+flowchart LR
+    Mutation["Authoritative mutation"] --> Event["Runtime state / event"]
+    Event --> Projection["Replication projection"]
+    Projection --> Policy["Recipient / visibility policy"]
+    Policy --> Encode["Protocol encode"]
+    Encode --> Queue["Bounded outbound queues"]
+```
 
-Разделение важно, потому что:
+Runtime replication registries существуют для player-related events, NPCs, projectiles, world items, chests, signs и tile manipulation.
 
-- одна mutation может иметь много recipients;
-- recipients могут меняться из-за interest management;
-- один authoritative state можно encode'ить один раз и share'ить, если bytes идентичны;
-- persistence не должен зависеть от того, что последний раз отправили клиенту.
+Separation важно, потому что одна mutation может иметь много recipients, recipients меняются interest management, identical encoded state может safe-share'иться, а persistence не должна зависеть от того, что последний раз отправили client.
 
-## 24. Философия validation
+## 25. Validation philosophy
 
 Server становится более authoritative только там, где правило доказано.
 
-Правильный порядок:
-
-```text
-verify vanilla rule
-   -> represent semantic state
-   -> implement authoritative transition
-   -> add regression evidence
-   -> reject impossible client action
+```mermaid
+flowchart LR
+    Verify["Verify vanilla rule"] --> Model["Represent semantic state"]
+    Model --> Transition["Implement authoritative transition"]
+    Transition --> Evidence["Add regression evidence"]
+    Evidence --> Reject["Reject impossible client action"]
 ```
 
-Плохой порядок:
+Anti-pattern: придумать, что legitimate client «должен» делать, reject всё остальное, а потом узнать, что vanilla это допускает. False-positive anti-cheat является gameplay bug.
 
-```text
-предположить, что legitimate client "должен" делать
-   -> reject всё остальное
-   -> потом обнаружить, что vanilla это разрешает
-```
-
-False-positive anti-cheat является gameplay bug.
-
-## 25. Evidence hierarchy
+## 26. Evidence hierarchy
 
 Gameplay changes используют project-wide source hierarchy:
 
 1. locally decompiled TerrariaServer 1.4.5.8 для current vanilla behavior/constants;
-2. Multiplicity для protocol 326 wire representation;
+2. Multiplicity для protocol `326` wire representation;
 3. terrustia как independent implementation cross-check;
 4. TShock/OTAPI только для history/exploit lessons.
 
-Real official-client/server traffic, generated worlds и differential probes обязательны там, где local unit test не способен независимо доказать behavior.
+Real official-client/server traffic, generated worlds и differential probes требуются, когда local unit test не может independently prove behavior.
 
-## 26. Test strategy
+## 27. Test strategy
 
-В зависимости от subsystem evidence должен включать:
+По subsystem evidence включает deterministic state-transition tests, definition/catalog tests, runtime store lifecycle/slot-reuse tests, collision/world-query tests, replication tests, malformed/illegal input tests, official-source workflows, live official-world/client probes и persistence/restart tests сохраняемого state.
 
-- deterministic state-transition unit tests;
-- definition/catalog tests;
-- runtime store lifecycle/slot-reuse tests;
-- collision/world-query tests;
-- replication tests;
-- malformed/illegal input tests;
-- official-source contract workflows;
-- live official-world/client probes;
-- persistence/restart tests для state, переживающего save.
+Green build сам по себе не parity evidence.
 
-Green build сам по себе не является parity evidence.
-
-## 27. Добавление нового NPC/projectile behavior
+## 28. Добавление нового NPC/projectile behavior
 
 Перед новым behavior slice:
 
-1. определить точный Terraria 1.4.5.8 type и AI/default facts;
-2. решить, относится ли он к существующей verified behavior family или требует отдельной strategy;
-3. добавить только metadata, используемую текущим behavior;
-4. реализовать state transitions без protocol-library dependencies;
-5. независимо проверить world collision/physics assumptions;
-6. добавить lifecycle/replication handling;
-7. добавить deterministic regression tests;
-8. явно описать unsupported side effects;
-9. обновить RU и EN parity documentation в том же change.
+1. identify exact Terraria 1.4.5.8 type и AI/default facts;
+2. определить existing verified family или separate strategy;
+3. добавить только metadata current behavior;
+4. implement state transitions без protocol-library dependencies;
+5. independently verify world collision/physics assumptions;
+6. add lifecycle/replication handling;
+7. add deterministic regression tests;
+8. explicitly document unsupported side effects;
+9. update RU/EN parity docs в том же change.
 
-## 28. Самые большие текущие gameplay gaps
+## 29. Current highest-risk gaps
 
-Главный остаток теперь не basic store architecture, а ширина vanilla rules:
+Largest remaining gameplay breadth — vanilla rule coverage, а не basic store architecture:
 
-- множество NPC AI families;
+- many NPC AI families;
 - bosses;
-- полный combat/damage semantics;
-- полная item use/inventory authority;
+- full combat/damage semantics;
+- complete item use/inventory authority;
 - loot;
 - housing/town NPC behavior;
 - invasions/events;
@@ -411,4 +352,8 @@ Green build сам по себе не является parity evidence.
 - world progression;
 - vanilla world generation.
 
-Это должно оставаться явной работой, а не прятаться под глобальной надписью «gameplay implemented».
+Это explicit work, а не повод скрывать всё за label `gameplay implemented`.
+
+## 30. Правило оформления
+
+Gameplay diagrams используют Mermaid для flows/sequences/state relationships. Numeric measurements/dimensional limits оформляются LaTeX с units; packet IDs, AI-style IDs, content IDs и protocol versions остаются code literals, потому что это identifiers, а не measurements.
