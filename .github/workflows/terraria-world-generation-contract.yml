@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'tools/ci/probe_world_generation_init.py'
+      - 'tools/ci/probe_world_generation_fixture.py'
       - '.github/workflows/terraria-world-generation-contract.yml'
   workflow_dispatch:
 
@@ -46,3 +47,75 @@ jobs:
           echo "support_type_candidates:"
           .tools/ilspycmd --disable-updatecheck -l c "$assembly" | \
             grep -E 'BannerSystem|DD2Event|ExtraSpawnPointManager|WorldManifest|TreeTop' || true
+      - name: Generate official Terraria 1.4.5.8 world fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          linux_server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          [[ -n "$linux_server" ]]
+          chmod +x "$linux_server"
+          linux_server="$(realpath "$linux_server")"
+          server_dir="$(dirname "$linux_server")"
+          world_file="$GITHUB_WORKSPACE/artifacts/source-contract/official-world-1458.wld"
+          server_log="$GITHUB_WORKSPACE/artifacts/source-contract/terraria-server.log"
+          config="$GITHUB_WORKSPACE/artifacts/source-contract/serverconfig.txt"
+          cat > "$config" <<EOF
+          world=$world_file
+          autocreate=1
+          seed=TerraRuntime-WorldGen-Contract-1458
+          worldname=TerraRuntimeWorldGenContract1458
+          difficulty=0
+          maxplayers=1
+          port=17777
+          secure=0
+          upnp=0
+          npcstream=0
+          priority=0
+          EOF
+
+          pushd "$server_dir" >/dev/null
+          "$linux_server" -config "$config" > "$server_log" 2>&1 &
+          server_pid=$!
+          popd >/dev/null
+
+          generated=false
+          for _ in $(seq 1 300); do
+            if [[ -s "$world_file" ]]; then
+              generated=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "$generated" != true ]]; then
+            cat "$server_log"
+            kill -KILL "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+            echo "Official TerrariaServer did not produce the world fixture." >&2
+            exit 1
+          fi
+
+          sleep 2
+          kill -TERM "$server_pid" 2>/dev/null || true
+          for _ in $(seq 1 10); do
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          kill -KILL "$server_pid" 2>/dev/null || true
+          wait "$server_pid" 2>/dev/null || true
+
+          python3 tools/ci/probe_world_generation_fixture.py \
+            --world "$world_file" \
+            --output artifacts/source-contract/world-generation-fixture.json
+      - name: Upload world-generation source contract
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraria-world-generation-contract-${{ github.sha }}
+          path: artifacts/source-contract/world-generation-fixture.json
+          if-no-files-found: error
+          retention-days: 7
