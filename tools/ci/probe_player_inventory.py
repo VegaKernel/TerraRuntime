@@ -25,20 +25,16 @@ def main() -> int:
     if inventory_length is None:
         raise SystemExit("Could not source-verify Terraria.Player inventory array length.")
 
-    contexts = []
-    for match in re.finditer(r"\.inventory\[", message_buffer):
-        start = max(0, match.start() - 2200)
-        end = min(len(message_buffer), match.start() + 3000)
-        region = message_buffer[start:end]
-        if region.count("ReadInt16()") >= 2 and "ReadByte()" in region:
-            contexts.append(region)
-            break
+    packet5 = re.search(r"case 5:\s*\{(?P<body>.*?)\}\s*case 6:", message_buffer, re.DOTALL)
+    if packet5 is None:
+        raise SystemExit("Could not isolate Terraria.MessageBuffer packet-5 receive branch.")
 
-    if not contexts:
-        raise SystemExit("Could not locate packet-5 inventory mapping in Terraria.MessageBuffer.")
+    body = packet5.group("body")
+    if body.count("ReadInt16()") < 3 or body.count("ReadByte()") < 3:
+        raise SystemExit("Packet-5 receive branch no longer has the expected bounded item payload reads.")
 
     print(f"player_inventory_length={inventory_length.group(1)}")
-    print(f"packet5_inventory_context={contexts[0]}")
+    print(f"packet5_context={body[:5000]}")
     return 0
 
 
