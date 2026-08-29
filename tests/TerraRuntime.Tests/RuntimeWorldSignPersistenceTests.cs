@@ -31,9 +31,10 @@ public sealed class RuntimeWorldSignPersistenceTests
             Text: "after restart",
             Player: 7,
             Flags: 0);
-        Assert.True(signStore.TryApply(in submitted, out WorldSign committed, out bool changed));
+        Assert.True(signStore.TryApply(in submitted, out WorldSign? committed, out bool changed));
         Assert.True(changed);
-        Assert.Equal("after restart", committed.Text);
+        Assert.NotNull(committed);
+        Assert.Equal("after restart", committed!.Text);
 
         string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-sign-save-{Guid.NewGuid():N}");
         string destinationPath = Path.Combine(directory, "world.wld");
