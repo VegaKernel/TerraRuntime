@@ -34,7 +34,54 @@ public static class WorldSectionPayloadAssembler
             width,
             height,
             out byte[] tileOnly);
-        if (tileResult != WorldSectionPayloadEncodeResult.Encoded || tileOnly.Length < EmptyObjectTailLength)
+        if (tileResult != WorldSectionPayloadEncodeResult.Encoded)
+            return WorldSectionPayloadAssemblyResult.InvalidTilePayload;
+
+        return TryAssemble(world, xStart, yStart, width, height, tileOnly, out payload);
+    }
+
+    /// <summary>
+    /// Assembles packet-10 payload data from an immutable tile snapshot plus the world's immutable
+    /// section-local persistence metadata. No live tile storage is read by this overload.
+    /// </summary>
+    public static WorldSectionPayloadAssemblyResult TryEncode(
+        WorldFileData world,
+        WorldSectionTileSnapshot snapshot,
+        out byte[] payload)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(snapshot);
+        payload = [];
+
+        WorldSectionPayloadEncodeResult tileResult = WorldSectionPayloadEncoder.TryEncodeTileOnly(
+            world,
+            snapshot,
+            out byte[] tileOnly);
+        if (tileResult != WorldSectionPayloadEncodeResult.Encoded)
+            return WorldSectionPayloadAssemblyResult.InvalidTilePayload;
+
+        WorldTileBounds bounds = snapshot.Bounds;
+        return TryAssemble(
+            world,
+            bounds.X,
+            bounds.Y,
+            bounds.Width,
+            bounds.Height,
+            tileOnly,
+            out payload);
+    }
+
+    private static WorldSectionPayloadAssemblyResult TryAssemble(
+        WorldFileData world,
+        int xStart,
+        int yStart,
+        int width,
+        int height,
+        byte[] tileOnly,
+        out byte[] payload)
+    {
+        payload = [];
+        if (tileOnly.Length < EmptyObjectTailLength)
             return WorldSectionPayloadAssemblyResult.InvalidTilePayload;
 
         WorldSectionObjectMetadataEncodeResult metadataResult = WorldSectionObjectMetadataEncoder.TryEncode(
