@@ -604,3 +604,21 @@ TerraRuntime (.NET 11 NativeAOT)
 ```
 
 Completion requires a real client to join an existing vanilla world, move, receive nearby world state and disconnect cleanly. The same build must survive malformed frame tests without crashing or allocating unbounded memory.
+
+## Continuous bilingual documentation
+
+Detailed documentation work is tracked in [`roadmap/documentation.md`](roadmap/documentation.md).
+
+Documentation is a permanent parallel workstream, not a final cleanup phase after code completion.
+
+- [x] Maintain first-class documentation trees under `docs/ru/` and `docs/en/`.
+- [x] Provide bilingual project guides describing build, startup, runtime operation, worlds, persistence, gameplay boundaries and operational behavior.
+- [x] Provide bilingual architecture documentation describing ownership, threading, data flow, NativeAOT/CoreCLR profiles, network/protocol boundaries, persistence and extension boundaries.
+- [x] Provide bilingual host-interface documentation with lifecycle, status/error semantics and interaction examples.
+- [x] Require code changes that alter behavior, architecture, public contracts, CLI/deployment, persistence, lifecycle or supported scope to update both language versions in the same change.
+- [x] Treat code/documentation mismatch as an incomplete change in repository agent rules and Definition of Done.
+- [ ] Expand dedicated bilingual subsystem guides for protocol/networking, world persistence/cache, gameplay, synchronization, operations/TUI, worldgen and security as those areas mature.
+- [ ] Add documentation-link validation to CI once the bilingual tree stabilizes.
+- [ ] Add a lightweight mirror/parity check for required RU/EN pages without requiring line-by-line translation equivalence.
+
+For every new significant subsystem, documentation must describe purpose, owner, inputs/outputs, lifecycle, public integration surface, safety/failure semantics, observable behavior, known limitations and verification evidence. Roadmap target design must remain visibly distinct from behavior that is already implemented.

@@ -1,0 +1,43 @@
+# TerraRuntime documentation
+
+[Русский](../ru/README.md) · [Repository README](../../README.md) · [Roadmap](../roadmap.md)
+
+This directory contains the English TerraRuntime documentation. The Russian version is maintained in parallel under `docs/ru/` and must describe the same actual code state.
+
+## Start here
+
+- [Project guide](project-guide.md) — TerraRuntime purpose, repository map, build, startup, lifecycle, networking/gameplay flow, worlds, persistence, and operations.
+- [Architecture](architecture.md) — subsystem boundaries, state ownership, data flow, threading model, NativeAOT/CoreCLR profiles, persistence, and extension boundaries.
+- [Host integration interfaces](host-interfaces.md) — public `TerraRuntime.HostContracts`, trusted host module lifecycle, and safe runtime interaction rules.
+- [Main roadmap](../roadmap.md) — current implementation state and mandatory next work.
+- [NativeAOT baseline](../native-aot-baseline.md) — NativeAOT compatibility and shipping gates.
+- [Reference policy](../reference-policy.md) — source hierarchy used to reconstruct vanilla behavior.
+
+## Documentation freshness rule
+
+Documentation is part of implementation, not a separate final phase.
+
+When a code change affects observable behavior, architecture, a public interface, CLI, configuration format, deployment layout, persistence, lifecycle, threading/ownership rules, or an extension surface, the corresponding documentation in both `docs/ru/` and `docs/en/` must be updated in the same change.
+
+A change is not complete when code and documentation describe different TerraRuntime versions.
+
+For a new subsystem, choose its canonical documentation location first. Do not create one Markdown file per class: documentation is organized by user and architecture concepts rather than mirroring the source tree mechanically.
+
+## What must be documented
+
+Every significant subsystem should describe:
+
+1. purpose and responsibility boundary;
+2. source of truth and owner of mutable state;
+3. inputs, outputs, and primary data types;
+4. execution order and lifecycle;
+5. public or host-facing interfaces with usage examples;
+6. limits, safety guarantees, and failure behavior;
+7. persistence/networking implications when applicable;
+8. observability and diagnostics;
+9. known vanilla divergences and unimplemented behavior;
+10. links to relevant tests, roadmap items, or decision documents when a design choice needs separate justification.
+
+## Language policy
+
+Russian and English documentation are equal first-class views. Type names, package names, packet IDs, CLI keys, and other machine identifiers are not translated. Meaning, constraints, and examples must remain equivalent in both versions.

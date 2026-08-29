@@ -105,7 +105,28 @@ When a behavior/layout is derived from the official decompile, reference the rel
 
 Do not invent protocol IDs, file-format gates or gameplay constants. Verify them against the source hierarchy.
 
-## 10. Definition of done
+## 10. Documentation is part of the implementation
+
+TerraRuntime maintains first-class bilingual documentation under `docs/ru/` and `docs/en/`. Documentation work happens in parallel with code work, not as a cleanup phase after implementation is considered finished.
+
+When a change affects any of the following, update both language versions in the same change:
+
+- observable server or vanilla-compatible behavior;
+- architecture, ownership or threading rules;
+- public contracts and host-facing interfaces;
+- CLI/startup behavior or deployment layout;
+- configuration, persistence, `.wld` or `.runtime-world` behavior;
+- lifecycle or extension surfaces;
+- security/failure semantics that operators or integrators must understand;
+- known limitations or supported/unsupported subsystem behavior.
+
+Use `docs/ru/README.md` and `docs/en/README.md` as the documentation entry points. Keep the Russian and English versions semantically equivalent even when wording differs.
+
+Do not mechanically mirror every source file into a Markdown file. Document stable concepts, boundaries, contracts, workflows and examples. XML comments remain useful for local API semantics; the bilingual docs explain how the system works and how external code should interact with it.
+
+When a public interface changes, update its usage documentation immediately. When implementation changes what is actually supported, update roadmap/status documentation immediately. A code change that leaves the docs describing a different runtime is incomplete.
+
+## 11. Definition of done
 
 A non-trivial change is not done until the relevant checks are green:
 
@@ -115,7 +136,8 @@ A non-trivial change is not done until the relevant checks are green:
 - Linux NativeAOT publish + exercised smoke path;
 - Windows NativeAOT publish + exercised smoke path;
 - independent verification when the change is protocol/gameplay/world-format shaped;
-- before/after measurement when the claim is performance-related.
+- before/after measurement when the claim is performance-related;
+- matching Russian and English documentation updates when behavior, architecture, contracts, operations or supported scope changed.
 
 If CI or a smoke path is red, fix it before stacking unrelated roadmap work on top.
 

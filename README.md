@@ -9,6 +9,16 @@ TerraRuntime deliberately keeps two shipping profiles:
 
 The runtime core stays NativeAOT-compatible and continues to pass Linux x64 and Windows x64 native publication/smoke gates even though the Vega-enabled plugin host uses CoreCLR.
 
+## Documentation
+
+TerraRuntime keeps first-class bilingual documentation in parallel with code changes:
+
+- [Русская документация](docs/ru/README.md)
+- [English documentation](docs/en/README.md)
+- [Roadmap](docs/roadmap.md)
+
+The project guides cover runtime operation, architecture and trusted-host interfaces. When behavior, architecture, public contracts, deployment, persistence or supported scope changes, both RU and EN documentation are updated in the same change rather than deferred to a later documentation pass.
+
 ## Runtime directory layout
 
 A normal standalone runtime startup uses the executable directory as the TerraRuntime root and ensures a small runtime-owned directory layout exists:
@@ -80,6 +90,8 @@ NativeAOT is not removed by this model. It remains a standalone deployment profi
 
 See:
 
+- [`docs/ru/README.md`](docs/ru/README.md) and [`docs/en/README.md`](docs/en/README.md) for the bilingual documentation entry points;
+- [`docs/roadmap/documentation.md`](docs/roadmap/documentation.md) for the permanent documentation policy and coverage plan;
 - [`docs/roadmap/runtime-host-plugin-architecture.md`](docs/roadmap/runtime-host-plugin-architecture.md) for the CoreCLR host, trusted Vega DLL, Plugin SDK boundary and dual-host acceptance criteria;
 - [`docs/native-aot-baseline.md`](docs/native-aot-baseline.md) for the NativeAOT/CoreCLR hosting split and native build gates;
 - [`docs/aot-dependency-audit.md`](docs/aot-dependency-audit.md) for the dependency audit;
