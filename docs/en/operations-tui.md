@@ -68,6 +68,10 @@ stateDiagram-v2
 
 The UI runs on its own background thread `TerraRuntime Terminal UI`, not on the authoritative game-loop thread. `TerminalUiHost` owns linked cancellation and waits only a bounded interval during disposal.
 
+On Windows, TerraRuntime deliberately selects Terminal.Gui's cross-platform `dotnet` driver instead of forcing the native `windows` driver. This is a compatibility policy for Windows 10/conhost-class rendering failures where Terminal.Gui 2.4.x can leave the content area blank/black while menu chrome remains visible. Linux and other platforms keep Terminal.Gui's normal platform selection.
+
+The production TUI also installs an explicit high-contrast TerraRuntime scheme after Terminal.Gui initialization. Base, Menu, Dialog, Accent and Error roles use opaque near-black backgrounds with green foreground/accent colors instead of inheriting `Color.None` terminal defaults. Besides the intended terminal/hacker visual identity, this guarantees that dashboard text cannot become foreground-equal-to-background merely because terminal default-color discovery behaved badly.
+
 ## 5. Refresh model
 
 The dashboard refreshes from the Terminal.Gui application iteration callback at approximately
@@ -111,7 +115,7 @@ sequenceDiagram
     end
 ```
 
-The ANSI TUI smoke exercises the actual menu path (`Alt+A`, then `S`) and verifies rendered pending-save state; unit tests cover accepted and rejected requests.
+The ANSI TUI smoke exercises the actual menu path (`Alt+A`, then `S`) and verifies rendered pending-save state; unit tests cover accepted and rejected requests. Compatibility tests separately pin the Windows production-driver choice and explicit contrasting Base/Menu scheme attributes.
 
 ## 8. Network telemetry
 

@@ -84,6 +84,9 @@ internal sealed class TerminalUiHost : IDisposable
         return host;
     }
 
+    internal static string? ResolveProductionDriverName(bool isWindows) =>
+        isWindows ? DriverRegistry.Names.DOTNET : null;
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0)
@@ -114,14 +117,16 @@ internal sealed class TerminalUiHost : IDisposable
         try
         {
             using IApplication app = Application.Create();
-            if (OperatingSystem.IsWindows())
-                app.ForceDriver = DriverRegistry.Names.WINDOWS;
+            string? forcedDriver = ResolveProductionDriverName(OperatingSystem.IsWindows());
+            if (forcedDriver is not null)
+                app.ForceDriver = forcedDriver;
 
             // Mark the terminal as owned before driver initialization. If initialization fails,
             // the finally block still performs a real TUI -> plain-console transition.
             NotifyActivity(active: true);
             activityAnnounced = true;
             app.Init();
+            TerminalUiTheme.Apply();
 
             ITerraRuntimeTerminalDashboardSource? terminalDashboards =
                 StartupProgram.CurrentTerminalDashboards;
