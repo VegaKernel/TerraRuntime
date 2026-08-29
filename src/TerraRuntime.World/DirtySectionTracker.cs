@@ -38,6 +38,23 @@ public sealed class DirtySectionTracker
     public bool MarkTileDirty(int tileX, int tileY) =>
         MarkDirty(TerrariaSectionGeometry.FromTile(dimensions, tileX, tileY));
 
+    /// <summary>
+    /// Clears one known section without scanning the bitset. This remains a single-writer operation and is used
+    /// when authoritative code captures a specifically requested section ahead of the ordinary dirty backlog.
+    /// </summary>
+    public bool ClearDirty(WorldSectionId section)
+    {
+        int index = TerrariaSectionGeometry.ToLinearIndex(dimensions, section);
+        int wordIndex = index >> 6;
+        ulong mask = 1UL << (index & 63);
+        if ((words[wordIndex] & mask) == 0)
+            return false;
+
+        words[wordIndex] &= ~mask;
+        dirtyCount--;
+        return true;
+    }
+
     public bool IsDirty(WorldSectionId section)
     {
         int index = TerrariaSectionGeometry.ToLinearIndex(dimensions, section);
