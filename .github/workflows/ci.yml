@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: terra-runtime-ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: terra-runtime-ci-proof-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   build-test:
