@@ -76,9 +76,13 @@ A successful handshake records completion and wakes the watchdog. Production exp
 
 ## 6. Stop and rejection categories
 
-`TerrariaConnectionStopReason` distinguishes `PeerClosed`, `ApplicationStopped`, `Cancelled`, `HandshakeTimeout`, `JoinTimeout`, `IdleTimeout`, `InvalidHandshake`, `UnsupportedProtocol`, `ProtocolFailure`, `InboundIoFailure`, `OutboundFailure`, `SlowClient` and `RateLimited`.
+`TerrariaConnectionStopReason` distinguishes `PeerClosed`, `ApplicationStopped`, `Cancelled`, `HandshakeTimeout`, `JoinTimeout`, `IdleTimeout`, `InvalidHandshake`, `UnsupportedProtocol`, `ProtocolFailure`, `InboundIoFailure`, `OutboundFailure`, `SlowClient`, `RateLimited` and `FrameRejected`.
 
-Frame-rejection telemetry separately normalizes malformed protocol, rate-limited, invalid-state, gameplay-rejected and backpressure failures. These categories must not be flattened into one generic network error.
+`FrameRejected` is the connection-lifetime outcome when a downstream protocol/gameplay sink deliberately stops on a classified frame rejection. `ApplicationStopped` is retained for an unclassified/intentional inner-sink stop and is no longer used as the generic label for malformed, invalid-state, gameplay or backpressure rejection.
+
+Frame-rejection telemetry remains a separate diagnostic dimension and normalizes malformed protocol, rate-limited, invalid-state, gameplay-rejected and backpressure failures. The lifetime reason answers why the connection ended; the rejection category answers what class of frame was rejected. These dimensions must not be flattened into one generic network error.
+
+The production sink chain propagates rejection category through sign, chest, projectile/tile, world-item and vitals/bootstrap layers. Bootstrap failures such as malformed join/player packets, illegal join state, player-slot mismatch and ingress/outbound backpressure therefore remain visible even though `PlayerVitalsFrameSink` is the first rejection-source wrapper around the bootstrap layer.
 
 ## 7. Handshake and state legality
 
@@ -240,16 +244,17 @@ flowchart TD
     Class --> Timeout["Handshake / join timeout"]
     Class --> State["Illegal state"]
     Class --> Gameplay["Gameplay rejection"]
+    Class --> Backpressure["Backpressure"]
     Class --> IO["I/O failure"]
     Class --> Slow["Slow client"]
-    Class --> Shutdown["Runtime shutdown"]
+    Class --> Shutdown["Runtime / unclassified sink stop"]
 ```
 
-Malformed/abusive traffic should remain connection-local. Shared non-authoritative work such as chat fan-out may drop only the over-budget operation instead of disconnecting unrelated peers.
+Malformed/abusive traffic should remain connection-local. Classified downstream frame rejection ends as `FrameRejected` while preserving its granular rejection category. Shared non-authoritative work such as chat fan-out may drop only the over-budget operation instead of disconnecting unrelated peers.
 
 ## 16. Tests and executable evidence
 
-Evidence includes framing/socket tests, handshake/join/idle watchdog tests, connection and fan-out rate tests, Multiplicity decoder/mapper tests, deterministic malformed framing/typed-decoder fuzz tests, real-process slow-client tests, `Vanilla World Load` live join/movement probes and official-server reference workflows.
+Evidence includes framing/socket tests, handshake/join/idle watchdog tests, connection and fan-out rate tests, rejection-stop normalization and production bootstrap-propagation tests, Multiplicity decoder/mapper tests, deterministic malformed framing/typed-decoder fuzz tests, real-process slow-client tests, `Vanilla World Load` live join/movement probes and official-server reference workflows.
 
 A regression test must fail when the guarded fix is removed.
 
@@ -264,6 +269,7 @@ A networking/protocol change is incomplete unless, where relevant:
 - malformed and valid framing/decoder behavior is tested;
 - connection-state legality and deadlines are tested;
 - rate/queue/fan-out work is bounded;
+- rejection lifetime reason and granular rejection category remain distinguishable;
 - NativeAOT paths remain valid;
 - wire-sensitive claims have independent evidence;
 - diagrams use Mermaid rather than pseudographics;
