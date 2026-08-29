@@ -89,27 +89,37 @@ def main() -> int:
     )
 
     new_item_signatures = signatures(item, "NewItem")
-    print("new_item_signatures_begin")
-    for signature in new_item_signatures:
-        print(signature)
-    print("new_item_signatures_end")
-
-    expected_prefix = (
+    expected_rectangle = (
         "public static int NewItem(IEntitySource source, int X, int Y, int Width, int Height, "
         "int type, int stack = 1, bool noBroadcast = false, int prefix = 0, "
         "NewItemOwnership ownership = NewItemOwnership.None, Vector2? velocity = null, "
         "NewItemModifier modifier = null)"
     )
-    candidate = next((signature for signature in new_item_signatures if signature == expected_prefix), None)
-    if candidate is None:
+    rectangle = next((signature for signature in new_item_signatures if signature == expected_rectangle), None)
+    if rectangle is None:
         raise SystemExit("Pinned rectangle-based Item.NewItem signature changed.")
+    rectangle_body = compact(extract_method(item, rectangle))
+    require(
+        rectangle_body,
+        "return NewItem(source, new Vector2((float)(X + Width / 2), (float)(Y + Height / 2)), type, stack, prefix, ownership, velocity, modifier, noBroadcast);",
+        "rectangle-to-center delegation",
+    )
 
-    body = compact(extract_method(item, candidate))
-    print(f"new_item_candidate={candidate}")
-    print(f"new_item_body_prefix={body[:18000]}")
+    expected_vector = (
+        "public static int NewItem(IEntitySource source, Vector2 center, int type, int stack = 1, "
+        "int prefix = 0, NewItemOwnership ownership = NewItemOwnership.None, Vector2? velocity = null, "
+        "NewItemModifier modifier = null, bool noBroadcast = false)"
+    )
+    vector = next((signature for signature in new_item_signatures if signature == expected_vector), None)
+    if vector is None:
+        raise SystemExit("Pinned vector-based Item.NewItem signature changed.")
+    vector_body = compact(extract_method(item, vector))
+
+    print(f"vector_new_item_signature={vector}")
+    print(f"vector_new_item_body={vector_body[:30000]}")
     print("dirt_drop_item=2")
     print("dirt_drop_stack=1")
-    print("dirt_drop_rectangle=x*16,y*16,16,16")
+    print("dirt_drop_center=x*16+8,y*16+8")
     return 0
 
 
