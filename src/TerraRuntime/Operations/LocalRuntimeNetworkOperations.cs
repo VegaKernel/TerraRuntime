@@ -50,6 +50,8 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             TrackedOutboundQueues: queues.TrackedQueues,
             QueuedOutboundFrames: queues.QueuedFrames,
             QueuedOutboundBytes: queues.QueuedBytes,
+            PeakQueuedOutboundFrames: queues.PeakQueuedFrames,
+            PeakQueuedOutboundBytes: queues.PeakQueuedBytes,
             RejectedOutboundFrames: queues.RejectedFrames,
             SlowClients: queues.SlowClients,
             TopOutboundQueues: queues.TopQueues,
