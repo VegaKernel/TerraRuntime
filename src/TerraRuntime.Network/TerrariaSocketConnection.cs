@@ -163,6 +163,12 @@ public static class TerrariaSocketConnection
                 TimeSpan remaining = state.GetRemainingTimeout(connectionReady);
                 if (remaining == Timeout.InfiniteTimeSpan)
                 {
+                    if (handshakeComplete && !connectionReady && readinessSource is not null)
+                    {
+                        await Task.Delay(ReadinessPollInterval, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+
                     await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
                     return TerrariaConnectionStopReason.None;
                 }
