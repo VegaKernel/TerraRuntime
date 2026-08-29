@@ -21,7 +21,8 @@ public enum SignInteractionFrameStopReason : byte
 public sealed class SignInteractionFrameSink :
     ITerrariaFrameSink,
     ITerrariaFrameRejectionSource,
-    ITerrariaConnectionReadinessSource
+    ITerrariaConnectionReadinessSource,
+    ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -49,6 +50,11 @@ public sealed class SignInteractionFrameSink :
     public SignInteractionFrameStopReason StopReason { get; private set; }
 
     public bool ConnectionReady => bootstrap.JoinState == PlayerJoinState.Playing;
+
+    public TerrariaConnectionStopReason ConnectionStopReason =>
+        StopReason == SignInteractionFrameStopReason.None && inner is ITerrariaConnectionStopReasonSource source
+            ? source.ConnectionStopReason
+            : TerrariaConnectionStopReason.None;
 
     public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
     {
