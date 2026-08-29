@@ -10,6 +10,7 @@ on:
       - 'tools/ci/live_join_relay_probe.py'
       - 'tools/ci/live_chest_open_probe.py'
       - 'tools/ci/live_chest_persistence_probe.py'
+      - 'tools/ci/live_chest_read_probe.py'
       - '.github/workflows/live-chest-persistence.yml'
   workflow_dispatch:
 
@@ -150,7 +151,10 @@ jobs:
           echo "COMMITTED_NET_ID=$committed_net_id" >> "$GITHUB_ENV"
 
           rm -f "$cache" "$bootstrap_cache"
-          dotnet "$server_dll" \
+          # Non-interactive bash starts asynchronous commands with SIGINT ignored. Reset it before exec so
+          # the PID below is the actual dotnet host and Console.CancelKeyPress receives the proof signal.
+          python3 -c 'import os, signal, sys; signal.signal(signal.SIGINT, signal.SIG_DFL); os.execvp(sys.argv[1], sys.argv[1:])' \
+            dotnet "$server_dll" \
             --world "$world" \
             --port 17787 \
             --max-players 2 \
@@ -229,7 +233,7 @@ jobs:
             2>&1 | tee artifacts/persistence-wld-assert.log
           grep -q "persisted_chest_item_ok" artifacts/persistence-wld-assert.log
 
-      - name: Restart and expose persisted item through live protocol
+      - name: Restart and read persisted item through live protocol
         shell: bash
         run: |
           set -euo pipefail
@@ -238,7 +242,8 @@ jobs:
           restart_client_log="$GITHUB_WORKSPACE/artifacts/persistence-restart-client.log"
           server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
 
-          dotnet "$server_dll" \
+          python3 -c 'import os, signal, sys; signal.signal(signal.SIGINT, signal.SIG_DFL); os.execvp(sys.argv[1], sys.argv[1:])' \
+            dotnet "$server_dll" \
             --world "$world" \
             --port 17788 \
             --max-players 2 \
@@ -264,8 +269,9 @@ jobs:
             sleep 0.5
           done
           grep -q "startup_profile source=canonical-wld" "$restart_log"
+          grep -q "TerraRuntime listening on 0.0.0.0:17788" "$restart_log"
 
-          python3 tools/ci/live_chest_open_probe.py \
+          python3 tools/ci/live_chest_read_probe.py \
             --port 17788 \
             --chest-id "$CHEST_ID" \
             --x "$CHEST_X" \
@@ -276,11 +282,94 @@ jobs:
             --item-prefix "$COMMITTED_PREFIX" \
             --item-net-id "$COMMITTED_NET_ID" \
             2>&1 | tee "$restart_client_log"
+          grep -q "live_chest_read_ok" "$restart_client_log"
 
-          kill "$restart_pid" 2>/dev/null || true
-          wait "$restart_pid" 2>/dev/null || true
+          kill -INT "$restart_pid"
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$restart_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          if kill -0 "$restart_pid" 2>/dev/null; then
+            cat "$restart_log" >&2
+            echo "Restarted TerraRuntime did not exit after SIGINT." >&2
+            exit 1
+          fi
+          set +e
+          wait "$restart_pid"
+          restart_status=$?
+          set -e
           trap - EXIT
+          test "$restart_status" -eq 0
           cat "$restart_log"
+
+      - name: Reload and save persisted world with official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld"
+          config="$GITHUB_WORKSPACE/artifacts/official-persistence-reload-serverconfig.txt"
+          official_log="$GITHUB_WORKSPACE/artifacts/official-persistence-reload.log"
+
+          cat > "$config" <<EOF
+          world=$world
+          maxplayers=1
+          port=17789
+          password=
+          motd=TerraRuntime persisted world official reload verification
+          secure=1
+          upnp=0
+          EOF
+
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$official_log" 2>&1
+          status=$?
+          set -e
+
+          cat "$official_log"
+          test "$status" -eq 0
+          grep -q "Terraria Server v1.4.5.8" "$official_log"
+          grep -q "Saving before exit" "$official_log"
+          test -s "$world"
+
+      - name: Assert exact item after official reload and save
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
+            -c Release \
+            -- "$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld" \
+            --assert "$CHEST_ID" "$ITEM_SLOT" "$COMMITTED_STACK" "$COMMITTED_PREFIX" "$COMMITTED_NET_ID" \
+            2>&1 | tee artifacts/persistence-official-assert.log
+          grep -q "persisted_chest_item_ok" artifacts/persistence-official-assert.log
+
+      - name: Upload persistence proof evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-chest-persistence-proof-${{ github.sha }}
+          path: |
+            artifacts/vanilla-persistence-server.log
+            artifacts/persistence-chest-selection.txt
+            artifacts/persistence-host.log
+            artifacts/persistence-client.log
+            artifacts/persistence-wld-assert.log
+            artifacts/persistence-restart.log
+            artifacts/persistence-restart-client.log
+            artifacts/official-persistence-reload.log
+            artifacts/persistence-official-assert.log
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload failure evidence
         if: failure()
@@ -296,5 +385,8 @@ jobs:
             artifacts/persistence-wld-assert.log
             artifacts/persistence-restart.log
             artifacts/persistence-restart-client.log
+            artifacts/official-persistence-reload-serverconfig.txt
+            artifacts/official-persistence-reload.log
+            artifacts/persistence-official-assert.log
           if-no-files-found: ignore
           retention-days: 3
