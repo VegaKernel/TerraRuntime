@@ -82,6 +82,11 @@ def all_contexts(source: str, needle: str, radius: int = 240, limit: int = 12) -
     return " || ".join(contexts) if contexts else "<none>"
 
 
+def matching_lines(source: str, needle: str, limit: int = 40) -> str:
+    lines = [compact(line) for line in source.splitlines() if needle in line]
+    return " | ".join(lines[:limit]) if lines else "<none>"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--projectile", required=True, type=Path)
@@ -89,18 +94,20 @@ def main() -> int:
 
     source = args.projectile.read_text(encoding="utf-8")
     set_defaults = extract_method(source, "SetDefaults")
-    ai003 = extract_method(source, "AI_003")
+    ai = extract_method(source, "AI")
     handle_movement = extract_method(source, "HandleMovement")
     kill = extract_method(source, "Kill")
 
     print("projectile_type6_defaults=" + around_optional(set_defaults, "type == 6", radius=850))
-    print("projectile_ai003_length=" + str(len(compact(ai003))))
-    print("projectile_ai003_type6=" + all_contexts(ai003, "type == 6", radius=320, limit=8))
-    print("projectile_ai003_ai0=" + all_contexts(ai003, "ai[0]", radius=300, limit=12))
-    print("projectile_ai003_owner=" + all_contexts(ai003, "owner", radius=300, limit=12))
-    print("projectile_ai003_tile_collide=" + all_contexts(ai003, "tileCollide", radius=300, limit=8))
-    print("projectile_ai003_velocity=" + all_contexts(ai003, "velocity", radius=260, limit=16))
-    print("projectile_ai003_kill=" + all_contexts(ai003, "Kill", radius=300, limit=8))
+    print("projectile_ai_length=" + str(len(compact(ai))))
+    print("projectile_ai003_symbols=" + matching_lines(source, "AI_003", limit=20))
+    print("projectile_ai_style3_symbols=" + matching_lines(source, "aiStyle == 3", limit=30))
+    print("projectile_ai_case3=" + all_contexts(ai, "case 3:", radius=1000, limit=4))
+    print("projectile_ai_style3=" + all_contexts(ai, "aiStyle == 3", radius=1000, limit=8))
+    print("projectile_ai_owner=" + all_contexts(ai, "owner", radius=360, limit=16))
+    print("projectile_ai_ai0=" + all_contexts(ai, "ai[0]", radius=360, limit=16))
+    print("projectile_ai_tile_collide=" + all_contexts(ai, "tileCollide", radius=360, limit=12))
+    print("projectile_ai_velocity=" + all_contexts(ai, "velocity", radius=300, limit=20))
     print("projectile_handle_movement_ai3=" + around_optional(handle_movement, "aiStyle == 3", radius=850))
     print("projectile_kill_type6=" + around_optional(kill, "type == 6", radius=850))
     return 0
