@@ -45,6 +45,19 @@ def find_action_semantics(source: str) -> re.Match[str]:
     return match
 
 
+def verify_server_relay(source: str, action_match: re.Match[str]) -> None:
+    action = re.escape(action_match.group("action"))
+    context = source[action_match.start():min(len(source), action_match.end() + 6500)]
+    relay = re.search(
+        rf"NetMessage\.TrySendData\(17, -1, whoAmI, null, {action}, [^;]+\);",
+        context,
+    )
+    if relay is None:
+        raise SystemExit(
+            "Terraria 1.4.5.8 packet 17 server relay no longer uses ignoreClient=whoAmI."
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Verify Terraria 1.4.5.8 packet-17 tile-manipulation source contracts."
@@ -57,9 +70,7 @@ def main() -> int:
     message_buffer = compact(Path(args.message_buffer).read_text(encoding="utf-8"))
     verify_wire_contract(net_message)
     action_match = find_action_semantics(message_buffer)
-
-    context_start = max(0, action_match.start() - 2400)
-    context_end = min(len(message_buffer), action_match.end() + 3600)
+    verify_server_relay(message_buffer, action_match)
 
     print("tile_manipulation_message_id=17")
     print("tile_manipulation_payload_bytes=8")
@@ -69,7 +80,7 @@ def main() -> int:
     print("tile_manipulation_action_2=KillWall")
     print("tile_manipulation_action_3=PlaceWall")
     print("tile_manipulation_action_4=KillTileNoItem")
-    print(f"tile_manipulation_receive_context={message_buffer[context_start:context_end]}")
+    print("tile_manipulation_server_relay=exclude_sender")
     return 0
 
 
