@@ -93,6 +93,8 @@ public sealed class RuntimeWorldItemNetworkOperationsTests
         stops.Record(TerrariaConnectionStopReason.ApplicationStopped);
         stops.Record(TerrariaConnectionStopReason.HandshakeTimeout);
         stops.Record(TerrariaConnectionStopReason.IdleTimeout);
+        stops.Record(TerrariaConnectionStopReason.JoinTimeout);
+        stops.Record(TerrariaConnectionStopReason.FrameRejected);
 
         var operations = new LocalRuntimeNetworkOperations(
             new TerrariaConnectionAdmissionGate(maxConnections: 8),
@@ -111,6 +113,8 @@ public sealed class RuntimeWorldItemNetworkOperationsTests
         Assert.Equal(1, snapshot.StopApplicationStopped);
         Assert.Equal(1, snapshot.StopHandshakeTimeout);
         Assert.Equal(1, snapshot.StopIdleTimeout);
+        Assert.Equal(1, snapshot.StopJoinTimeout);
+        Assert.Equal(1, snapshot.StopFrameRejected);
     }
 
     private static ConnectionHandle Connection(
