@@ -1,0 +1,170 @@
+name: Measure Outbound Queue Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/measure-outbound-queue-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Generate official Terraria 1.4.5.8 small world
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          world="$GITHUB_WORKSPACE/artifacts/queue-measure.wld"
+          config="$GITHUB_WORKSPACE/artifacts/queue-measure-serverconfig.txt"
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=1
+          worldname=TerraRuntimeQueueMeasure
+          difficulty=0
+          maxplayers=8
+          port=17791
+          password=
+          secure=1
+          upnp=0
+          EOF
+          set +e
+          (cd "$(dirname "$server")" && printf 'exit\n' | timeout 180 "./$(basename "$server")" -config "$config") > artifacts/queue-measure-vanilla.log 2>&1
+          status=$?
+          set -e
+          cat artifacts/queue-measure-vanilla.log
+          test -s "$world"
+          if [[ $status -ne 0 && $status -ne 124 ]]; then exit "$status"; fi
+
+      - name: Measure exact production packet-8 burst
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .queue-measure
+          cat > .queue-measure/QueueMeasure.csproj <<'EOF'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <OutputType>Exe</OutputType>
+              <TargetFramework>net11.0</TargetFramework>
+              <ImplicitUsings>enable</ImplicitUsings>
+              <Nullable>enable</Nullable>
+              <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+            </PropertyGroup>
+            <ItemGroup>
+              <ProjectReference Include="../src/TerraRuntime/TerraRuntime.csproj" />
+            </ItemGroup>
+          </Project>
+          EOF
+          cat > .queue-measure/Program.cs <<'EOF'
+          using TerraRuntime;
+          using TerraRuntime.World;
+
+          string path = Path.GetFullPath(args[0]);
+          byte[] file = File.ReadAllBytes(path);
+          WorldFileLoadDiagnostic diagnostic = WorldFileLoader.TryLoad(file, CreateLimits(), out WorldFileData? loaded);
+          if (!diagnostic.IsLoaded || loaded is null)
+              throw new InvalidOperationException($"load failed: {diagnostic.Result}/{diagnostic.Stage}/{diagnostic.StageResultCode}");
+
+          WorldFileData world = loaded;
+          PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+          if (!packets.TryCreateSectionResponse(-1, -1, 0, out PlayerBootstrapSectionResponse response))
+              throw new InvalidOperationException("production packet-8 response could not be created");
+
+          long bytes = packets.WorldInfoFrame.Length + response.StatusFrame.Length + packets.EnterWorldFrame.Length;
+          int frames = 3;
+          int maxFrame = Math.Max(packets.WorldInfoFrame.Length, Math.Max(response.StatusFrame.Length, packets.EnterWorldFrame.Length));
+          long sectionBytes = 0;
+          long postSectionBytes = 0;
+          for (int i = 0; i < response.BaseSectionFrames.Length; i++)
+          {
+              int length = response.BaseSectionFrames[i].Length;
+              bytes += length;
+              sectionBytes += length;
+              frames++;
+              maxFrame = Math.Max(maxFrame, length);
+              foreach (ReadOnlyMemory<byte> post in packets.BaseSectionPostFrames[i])
+              {
+                  bytes += post.Length;
+                  postSectionBytes += post.Length;
+                  frames++;
+                  maxFrame = Math.Max(maxFrame, post.Length);
+              }
+          }
+          foreach (ReadOnlyMemory<byte> section in response.AdditionalSectionFrames)
+          {
+              bytes += section.Length;
+              sectionBytes += section.Length;
+              frames++;
+              maxFrame = Math.Max(maxFrame, section.Length);
+          }
+
+          Console.WriteLine(
+              $"QUEUE_MEASURE world={world.Header.Dimensions.WidthTiles}x{world.Header.Dimensions.HeightTiles} " +
+              $"base_sections={response.BaseSectionFrames.Length} additional_sections={response.AdditionalSectionFrames.Length} " +
+              $"frames={frames} bytes={bytes} section_bytes={sectionBytes} post_section_bytes={postSectionBytes} " +
+              $"world_info_bytes={packets.WorldInfoFrame.Length} status_bytes={response.StatusFrame.Length} " +
+              $"enter_bytes={packets.EnterWorldFrame.Length} max_frame_bytes={maxFrame}");
+
+          static WorldFileLoadLimits CreateLimits() =>
+              new(
+                  MaxTileCount: 6_000_000,
+                  MaxItemsPerChest: 100,
+                  MaxTotalChestItems: 1_000_000,
+                  MaxTextBytesPerSign: 64 * 1024,
+                  MaxTotalSignTextBytes: 64L * 1024 * 1024,
+                  Npcs: new WorldFileNpcDecodeOptions(
+                      MaxShimmeredTownNpcIndices: 1_024,
+                      MaxShimmerIndexExclusive: 1_024,
+                      MaxTownNpcs: 1_024,
+                      MaxPersistentNpcs: 4_096,
+                      MaxNameBytesPerTownNpc: 4 * 1024,
+                      MaxTotalNameBytes: 4L * 1024 * 1024),
+                  MaxTileEntities: 100_000,
+                  MaxPressurePlates: 1_000_000,
+                  MaxTownRooms: VanillaWorldFormat326.NpcTypeCount,
+                  Bestiary: new WorldFileBestiaryLimits(
+                      MaxKillEntries: 100_000,
+                      MaxSightEntries: 100_000,
+                      MaxChatEntries: 100_000,
+                      MaxPersistentIdBytes: 4 * 1024,
+                      MaxTotalPersistentIdBytes: 64L * 1024 * 1024),
+                  RuntimeMetadata: new WorldFileRuntimeMetadataLimits(
+                      MaxStringBytes: 64 * 1024,
+                      MaxTotalStringBytes: 64L * 1024 * 1024,
+                      MaxAnglerNames: 4_096,
+                      MaxBannerEntries: 8_192,
+                      MaxPartyNpcEntries: 4_096,
+                      MaxManifestBytes: 4 * 1024 * 1024));
+          EOF
+          dotnet run --project .queue-measure/QueueMeasure.csproj -c Release -- artifacts/queue-measure.wld | tee artifacts/queue-measure.txt
+          grep '^QUEUE_MEASURE ' artifacts/queue-measure.txt
+
+      - name: Remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/measure-outbound-queue-once.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .github/workflows/measure-outbound-queue-once.yml
+          git commit -m 'ci: remove outbound queue measurement probe'
+          git pull --rebase origin main
+          git push origin HEAD:main
