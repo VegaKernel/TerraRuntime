@@ -47,6 +47,80 @@ def recv_until_packet(sock, expected_id, timeout, max_frames=2048):
     )
 
 
+def encode_7bit_int(value):
+    if value < 0:
+        raise ValueError("7-bit encoded integer must be non-negative")
+    encoded = bytearray()
+    while value >= 0x80:
+        encoded.append((value & 0x7F) | 0x80)
+        value >>= 7
+    encoded.append(value)
+    return bytes(encoded)
+
+
+def encode_dotnet_string(value):
+    encoded = value.encode("utf-8")
+    return encode_7bit_int(len(encoded)) + encoded
+
+
+def decode_7bit_int(buffer, offset):
+    value = 0
+    shift = 0
+    for _ in range(5):
+        if offset >= len(buffer):
+            raise RuntimeError("truncated 7-bit encoded integer")
+        current = buffer[offset]
+        offset += 1
+        value |= (current & 0x7F) << shift
+        if (current & 0x80) == 0:
+            return value, offset
+        shift += 7
+    raise RuntimeError("invalid 7-bit encoded integer")
+
+
+def decode_dotnet_string(buffer, offset):
+    length, offset = decode_7bit_int(buffer, offset)
+    end = offset + length
+    if end > len(buffer):
+        raise RuntimeError("truncated .NET string")
+    return buffer[offset:end].decode("utf-8"), end
+
+
+def create_client_chat_frame(text, command_name="Say"):
+    # Packet 82 LoadNetModule, NetTextModule id 1. Client direction is exactly
+    # BinaryWriter string command + BinaryWriter string message after the module id.
+    payload = (
+        struct.pack("<H", 1)
+        + encode_dotnet_string(command_name)
+        + encode_dotnet_string(text)
+    )
+    return struct.pack("<HB", 3 + len(payload), 82) + payload
+
+
+def decode_server_chat_payload(payload):
+    if len(payload) < 2 + 1 + 1 + 1 + 3:
+        raise RuntimeError(f"server chat payload too short: {len(payload)}")
+
+    module_id = struct.unpack_from("<H", payload, 0)[0]
+    if module_id != 1:
+        raise RuntimeError(f"packet 82 carried module {module_id}, expected NetTextModule=1")
+
+    author_id = payload[2]
+    network_text_mode = payload[3]
+    if network_text_mode != 0:
+        raise RuntimeError(
+            f"expected literal NetworkText mode 0, got {network_text_mode}"
+        )
+
+    text, offset = decode_dotnet_string(payload, 4)
+    if offset + 3 != len(payload):
+        raise RuntimeError(
+            f"server chat payload has unexpected trailing bytes: offset={offset}, length={len(payload)}"
+        )
+    color = tuple(payload[offset : offset + 3])
+    return author_id, text, color
+
+
 HELLO = bytes([
     15, 0,
     1,
@@ -230,6 +304,27 @@ def run(host, port):
                 "movement sender unexpectedly received its own authoritative packet-13 relay echo"
             )
 
+        chat_text = "terra-runtime-live-chat"
+        client1.sendall(create_client_chat_frame(chat_text))
+        chat_payload, skipped_to_chat = recv_until_packet(client2, 82, 5)
+        try:
+            chat_author, relayed_chat, chat_color = decode_server_chat_payload(chat_payload)
+        except RuntimeError as error:
+            raise SystemExit(f"invalid server packet82 chat relay: {error}") from error
+
+        if chat_author != 0:
+            raise SystemExit(
+                f"chat relay used wrong authoritative author slot: expected=0, got={chat_author}"
+            )
+        if relayed_chat != chat_text:
+            raise SystemExit(
+                f"chat relay changed text: expected={chat_text!r}, got={relayed_chat!r}"
+            )
+        if chat_color != (255, 255, 255):
+            raise SystemExit(
+                f"chat relay used unexpected color: {chat_color!r}"
+            )
+
         client1.close()
         client1 = None
 
@@ -259,7 +354,9 @@ def run(host, port):
             "Live TerraRuntime two-client relay passed: "
             f"client1Sections={sections1}, client2Sections={sections2}, "
             f"framesBefore49=({frames1},{frames2}), packet129Confirmed=true, "
-            f"relaySlot={payload[0]}, lifecycleFramesBeforeRelay={len(skipped_to_movement)}."
+            f"relaySlot={payload[0]}, chatPacket82Confirmed=true, chatAuthor={chat_author}, "
+            f"lifecycleFramesBeforeRelay={len(skipped_to_movement)}, "
+            f"framesBeforeChat={len(skipped_to_chat)}."
         )
     finally:
         for client in (client1, client2, replacement):
