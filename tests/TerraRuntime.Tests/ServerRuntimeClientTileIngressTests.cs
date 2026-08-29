@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
@@ -8,16 +9,17 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeClientTileIngressTests
 {
     [Fact]
-    public void Known_in_bounds_request_is_validated_but_cannot_mutate_world_without_gameplay_authority()
+    public void Source_backed_dirt_request_is_consistent_but_cannot_mutate_until_framing_is_modeled()
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 901);
+        fixture.SetSelectedInventoryItem(connection, VanillaItemIds.DirtBlock, stack: 20);
         WorldTile before = fixture.Tiles.Get(10, 10);
         var request = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.PlaceTile,
             TileX: 10,
             TileY: 10,
-            Data: 1,
+            Data: checked((short)VanillaTileIds.Dirt.Value),
             Style: 0);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
@@ -31,18 +33,63 @@ public sealed class ServerRuntimeClientTileIngressTests
     }
 
     [Fact]
-    public void Stale_connection_and_out_of_bounds_coordinates_are_rejected_authoritatively()
+    public void Empty_selected_inventory_slot_rejects_dirt_placement()
     {
         using var fixture = new Fixture();
-        ConnectionHandle current = fixture.SpawnPlayer(connectionId: 902);
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 902);
+        WorldTile before = fixture.Tiles.Get(10, 10);
+        var request = new TerrariaTileManipulationState(
+            (byte)TerrariaTileManipulationAction.PlaceTile,
+            TileX: 10,
+            TileY: 10,
+            Data: checked((short)VanillaTileIds.Dirt.Value),
+            Style: 0);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
+
+        Assert.Equal(1, fixture.State.ValidatedClientTileManipulations);
+        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
+    }
+
+    [Fact]
+    public void Selected_dirt_item_rejects_a_different_tile_claim()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 903);
+        fixture.SetSelectedInventoryItem(connection, VanillaItemIds.DirtBlock, stack: 20);
+        WorldTile before = fixture.Tiles.Get(10, 10);
+        var request = new TerrariaTileManipulationState(
+            (byte)TerrariaTileManipulationAction.PlaceTile,
+            TileX: 10,
+            TileY: 10,
+            Data: 1,
+            Style: 0);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
+
+        Assert.Equal(1, fixture.State.ValidatedClientTileManipulations);
+        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
+    }
+
+    [Fact]
+    public void Stale_connection_and_packet17_world_margin_are_rejected_authoritatively()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle current = fixture.SpawnPlayer(connectionId: 904);
         var stale = new ConnectionHandle(
-            GameCommandSourceId.FromConnection(903),
+            GameCommandSourceId.FromConnection(905),
             current.Player);
         var request = new TerrariaTileManipulationState(0, 10, 10, 0, 0);
-        var outside = request with { TileX = -1 };
+        var outsideVanillaMargin = request with { TileX = 2 };
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(stale, request));
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(current, outside));
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(current, outsideVanillaMargin));
 
         Assert.Equal(2, fixture.State.ClientTileManipulationRequests);
         Assert.Equal(0, fixture.State.ValidatedClientTileManipulations);
@@ -52,10 +99,31 @@ public sealed class ServerRuntimeClientTileIngressTests
     }
 
     [Fact]
-    public void Unmodeled_action_is_preserved_but_not_treated_as_authorized_gameplay()
+    public void Known_kill_tile_action_is_validated_but_remains_unsupported()
     {
         using var fixture = new Fixture();
-        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 904);
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 906);
+        var request = new TerrariaTileManipulationState(
+            (byte)TerrariaTileManipulationAction.KillTile,
+            TileX: 10,
+            TileY: 10,
+            Data: 0,
+            Style: 0);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
+
+        Assert.Equal(1, fixture.State.ClientTileManipulationRequests);
+        Assert.Equal(1, fixture.State.ValidatedClientTileManipulations);
+        Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
+    }
+
+    [Fact]
+    public void Unknown_action_is_preserved_but_not_treated_as_authorized_gameplay()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 907);
         var request = new TerrariaTileManipulationState(Action: 5, TileX: 10, TileY: 10, Data: 0, Style: 0);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
@@ -95,6 +163,19 @@ public sealed class ServerRuntimeClientTileIngressTests
             State.Apply(new PlayerSpawnRuntimeCommand(connection, session, request));
             Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
             return connection;
+        }
+
+        public void SetSelectedInventoryItem(ConnectionHandle connection, ItemTypeId itemType, short stack)
+        {
+            var request = new PlayerEquipmentCommitRequest(
+                connection.Player.Slot,
+                SlotId: 0,
+                Stack: stack,
+                Prefix: 0,
+                ItemNetId: checked((short)itemType.Value),
+                ItemFlags: 0);
+            State.Apply(new PlayerEquipmentRuntimeCommand(connection, request));
+            Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
         }
 
         public void Dispose() => session?.Dispose();
