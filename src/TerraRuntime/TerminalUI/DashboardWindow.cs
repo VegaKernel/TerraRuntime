@@ -9,7 +9,7 @@ namespace TerraRuntime.TerminalUI;
 
 internal sealed class DashboardWindow : Runnable
 {
-    private const int RowCount = 16;
+    private const int RowCount = 18;
     private const int MaximumLogSources = 32;
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
@@ -376,7 +376,7 @@ internal sealed class DashboardWindow : Runnable
         if (queues.Length == 0)
             rows[13].Text = "Queue detail : <no queued/rejected/slow clients>";
 
-        rows[15].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+        rows[rows.Length - 1].Text = $"Snapshot    : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
     private void RefreshWorld()
@@ -417,19 +417,25 @@ internal sealed class DashboardWindow : Runnable
                 $"Section cache: {snapshot.SectionCacheEntries:N0}/{snapshot.SectionCacheMaximumEntries:N0} entries   " +
                 $"{FormatMebibytes(snapshot.SectionCacheBytes)}   dirty {snapshot.SectionCacheDirtyBacklog:N0}   in-flight {snapshot.SectionCacheInFlight:N0}";
             rows[13].Text =
+                $"Lookups     : hit {snapshot.SectionCacheHits:N0}   miss {snapshot.SectionCacheMisses:N0}   " +
+                $"stale {snapshot.SectionCacheStaleReads:N0}   waits {snapshot.SectionCacheWaits:N0}";
+            rows[14].Text =
+                $"Waits       : completed {snapshot.SectionCacheWaitCompletions:N0}   timeout {snapshot.SectionCacheWaitTimeouts:N0}   " +
+                $"on-demand pending {snapshot.SectionCacheOnDemandPendingRequests:N0}";
+            rows[15].Text =
                 $"Rebuilds    : submitted {snapshot.SectionCacheSubmitted:N0}   published {snapshot.SectionCachePublished:N0}   " +
                 $"stale {snapshot.SectionCacheStaleResults:N0}   rejected {snapshot.SectionCacheRejected:N0}";
-            rows[14].Text =
+            rows[16].Text =
                 $"Workers     : active {snapshot.SectionCacheActiveWorkers:N0}   queued {snapshot.SectionCachePendingWork:N0}   " +
-                $"encode failures {snapshot.SectionCacheEncodeFailures:N0}   publish failures {snapshot.SectionCachePublishRejections:N0}   " +
-                $"encode {FormatMilliseconds(snapshot.SectionCacheTotalEncodeMilliseconds)} total";
+                $"encode fail {snapshot.SectionCacheEncodeFailures:N0}   publish fail {snapshot.SectionCachePublishRejections:N0}   " +
+                $"demand {snapshot.SectionCacheOnDemandRequests:N0}/{snapshot.SectionCacheOnDemandUniqueRequests:N0}/{snapshot.SectionCacheOnDemandDeduplicatedRequests:N0}";
         }
         else
         {
             rows[12].Text = "Section cache: <runtime rebuild telemetry unavailable>";
         }
 
-        rows[15].Text = $"Snapshot   : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
+        rows[17].Text = $"Snapshot   : {snapshot.CapturedAtUtc:yyyy-MM-dd HH:mm:ss.fff} UTC";
     }
 
     private void RefreshLogs()
