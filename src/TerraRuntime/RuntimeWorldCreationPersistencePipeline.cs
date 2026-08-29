@@ -31,8 +31,8 @@ internal readonly record struct RuntimeWorldCreationPersistenceResult(
 /// <summary>
 /// Adapter-layer transaction from a selectable generator to a validated canonical .wld. Generation remains isolated
 /// and deterministic; file identity/timestamps are explicit inputs and are applied only after pass execution and
-/// semantic finalization have succeeded. Gameplay-visible world options come exclusively from the generation request
-/// so provider execution and the persisted vanilla header cannot disagree about difficulty or world evil.
+/// semantic finalization have succeeded. Gameplay-visible world options and original seed text come exclusively from
+/// the generation request so provider execution and the persisted vanilla header cannot silently disagree.
 /// </summary>
 internal sealed class RuntimeWorldCreationPersistencePipeline
 {
@@ -115,9 +115,10 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
         WorldFileHeader header;
         try
         {
+            string seedText = request.SeedText ?? request.Seed.ToString(CultureInfo.InvariantCulture);
             header = VanillaFreshWorldHeader326.Create(
                 request.WorldName,
-                request.Seed.ToString(CultureInfo.InvariantCulture),
+                seedText,
                 request.WidthTiles,
                 request.HeightTiles,
                 uniqueId,
