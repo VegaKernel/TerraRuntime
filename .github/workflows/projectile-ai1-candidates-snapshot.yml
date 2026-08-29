@@ -60,3 +60,5 @@ jobs:
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
+
+          # Retry marker: dirt-drop float assertions are precision-safe on this base.
