@@ -41,7 +41,6 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private readonly IPlayerAppearanceIngress? _appearanceIngress;
     private readonly IPlayerEquipmentIngress? _equipmentIngress;
     private readonly IPlayerMovementIngress? _movementIngress;
-    private readonly RuntimeEntityBootstrapFrameSource? _entityBootstrap;
     private PlayerJoinSession? _session;
     private PlayerHandle? _assignedPlayerHandle;
     private bool _spawnSubmitted;
@@ -63,7 +62,6 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _appearanceIngress = null;
         _equipmentIngress = null;
         _movementIngress = null;
-        _entityBootstrap = null;
         _inner = inner;
     }
 
@@ -130,7 +128,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _appearanceIngress = appearanceIngress;
         _equipmentIngress = equipmentIngress;
         _movementIngress = movementIngress;
-        _entityBootstrap = worldItems is null ? null : new RuntimeEntityBootstrapFrameSource(worldItems);
+        _ = worldItems;
         _inner = inner;
     }
 
