@@ -125,7 +125,8 @@ public sealed class RuntimeLogPipelineTests
         Assert.Equal(2, healthy.Records.Count);
         Assert.True(pipeline.CaptureMetrics().SinkFailures >= 1);
         RuntimeLogSinkHealth health = Assert.Single(
-            pipeline.CaptureSinkHealth().Where(static state => state.Name == "throwing"));
+            pipeline.CaptureSinkHealth(),
+            static state => state.Name == "throwing");
         Assert.True(health.Quarantined);
     }
 

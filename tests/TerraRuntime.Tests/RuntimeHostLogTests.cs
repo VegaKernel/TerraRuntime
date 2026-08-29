@@ -65,8 +65,9 @@ public sealed class RuntimeHostLogTests
                 ShutdownTimeout = TimeSpan.FromSeconds(10)
             });
 
-        Task producer = Task.Run(() =>
-            log.Write(RuntimeLogLevel.Information, "Server", "non-blocking"));
+        Task producer = Task.Run(
+            () => log.Write(RuntimeLogLevel.Information, "Server", "non-blocking"),
+            TestContext.Current.CancellationToken);
 
         await producer.WaitAsync(TestContext.Current.CancellationToken);
         await blockedOutput.Entered.Task.WaitAsync(TestContext.Current.CancellationToken);
