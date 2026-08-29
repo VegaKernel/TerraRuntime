@@ -15,7 +15,8 @@ permissions:
   contents: read
 
 # The tile-cut probe also pins the full nullable WindPhysicsImmunity override table and exact
-# source contracts for supported simple aiStyle-1 types, including BoneArrowFromMerchant 474 and SoundGun 1099.
+# source contracts for supported simple aiStyle-1 types, including ConfettiGun 178, ConfettiMelee 289,
+# BoneArrowFromMerchant 474, and SoundGun 1099.
 concurrency:
   # Source-contract runs are evidence for an exact commit. Do not let a later projectile push cancel the
   # decompile/probe that proves an earlier source-backed slice while main is moving quickly.
