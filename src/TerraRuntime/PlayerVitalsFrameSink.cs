@@ -122,7 +122,7 @@ public sealed class PlayerVitalsFrameSink :
             _bootstrap.AssignedPlayerHandle is null &&
             frame.MessageId == (byte)TerrariaMessageId.Hello;
         if (initialHello &&
-            TerrariaConnectRequestDecoder.TryDecode(in frame, out TerrariaConnectRequest request) == ConnectRequestDecodeResult.Decoded &&
+            TerrariaConnectRequestDecoder.TryDecode(frame, out TerrariaConnectRequest request) == ConnectRequestDecodeResult.Decoded &&
             !request.IsCurrentProtocol)
         {
             _connectionStopReason = TerrariaConnectionStopReason.UnsupportedProtocol;
