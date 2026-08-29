@@ -190,16 +190,6 @@ public sealed class TrustedHostModuleLoaderTests
         public ValueTask<bool> ReleaseAsync(
             NpcHandle npc,
             ActorControllerId controllerId,
-            NpcActorIntent intent,
-            CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(false);
-        }
-
-        public ValueTask<bool> ReleaseAsync(
-            NpcHandle npc,
-            ActorControllerId controllerId,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
