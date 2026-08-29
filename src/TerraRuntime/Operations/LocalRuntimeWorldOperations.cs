@@ -54,7 +54,17 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
                 SectionCachePublishRejections = sectionCache.PublishRejections,
                 SectionCacheActiveWorkers = sectionCache.WorkerPool.ActiveWorkers,
                 SectionCachePendingWork = sectionCache.WorkerPool.PendingWork,
-                SectionCacheTotalEncodeMilliseconds = sectionCache.TotalEncodeDuration.TotalMilliseconds
+                SectionCacheTotalEncodeMilliseconds = sectionCache.TotalEncodeDuration.TotalMilliseconds,
+                SectionCacheHits = sectionCache.CacheHits,
+                SectionCacheMisses = sectionCache.CacheMisses,
+                SectionCacheStaleReads = sectionCache.CacheStaleReads,
+                SectionCacheWaits = sectionCache.CacheWaits,
+                SectionCacheWaitCompletions = sectionCache.CacheWaitCompletions,
+                SectionCacheWaitTimeouts = sectionCache.CacheWaitTimeouts,
+                SectionCacheOnDemandRequests = sectionCache.OnDemandRequests,
+                SectionCacheOnDemandUniqueRequests = sectionCache.OnDemandUniqueRequests,
+                SectionCacheOnDemandDeduplicatedRequests = sectionCache.OnDemandDeduplicatedRequests,
+                SectionCacheOnDemandPendingRequests = sectionCache.OnDemandPendingRequests
             };
         }
 
