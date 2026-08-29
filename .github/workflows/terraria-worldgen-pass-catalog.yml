@@ -8,6 +8,7 @@ on:
       - 'tools/ci/probe_worldgen_terrain_pass.py'
       - 'tools/ci/probe_worldgen_rng.py'
       - 'tools/ci/probe_worldgen_seed.py'
+      - 'tools/ci/probe_worldgen_config.py'
       - 'tools/ci/verify_runtime_worldgen_catalog.py'
       - 'src/TerraRuntime.Core/VanillaUnifiedRandom1458.cs'
       - 'src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs'
@@ -96,6 +97,39 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_generator" "$assembly" > artifacts/source-contract/world-generator.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_file_data" "$assembly" > artifacts/source-contract/world-file-data.cs
 
+          resource_probe=.tools/resource-probe
+          mkdir -p "$resource_probe"
+          cat > "$resource_probe/resource-probe.csproj" <<'EOF'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <OutputType>Exe</OutputType>
+              <TargetFramework>net11.0</TargetFramework>
+              <ImplicitUsings>enable</ImplicitUsings>
+              <Nullable>enable</Nullable>
+            </PropertyGroup>
+          </Project>
+          EOF
+          cat > "$resource_probe/Program.cs" <<'EOF'
+          using System.Reflection;
+          if (args.Length != 3)
+              return 2;
+          Assembly assembly = Assembly.LoadFrom(Path.GetFullPath(args[0]));
+          using Stream? source = assembly.GetManifestResourceStream(args[1]);
+          if (source is null)
+          {
+              Console.Error.WriteLine($"Embedded resource not found: {args[1]}");
+              Console.Error.WriteLine(string.Join(Environment.NewLine, assembly.GetManifestResourceNames()));
+              return 3;
+          }
+          using FileStream destination = File.Create(args[2]);
+          source.CopyTo(destination);
+          return 0;
+          EOF
+          dotnet run --project "$resource_probe/resource-probe.csproj" -c Release -- \
+            "$assembly" \
+            Terraria.GameContent.WorldBuilding.Configuration.json \
+            "$GITHUB_WORKSPACE/artifacts/source-contract/worldgen-configuration.json"
+
           python3 tools/ci/probe_world_generation_init.py \
             --world-gen artifacts/source-contract/world-gen.cs \
             --main artifacts/source-contract/main.cs \
@@ -120,6 +154,10 @@ jobs:
             --world-file-data artifacts/source-contract/world-file-data.cs \
             --output artifacts/source-contract/worldgen-seed-contract.txt
 
+          python3 tools/ci/probe_worldgen_config.py \
+            --configuration artifacts/source-contract/worldgen-configuration.json \
+            --output artifacts/source-contract/worldgen-config-contract.txt
+
       - name: Verify runtime catalog against pinned fingerprint
         run: >-
           python3 tools/ci/verify_runtime_worldgen_catalog.py
@@ -138,5 +176,6 @@ jobs:
             artifacts/source-contract/terrain-pass-contract.txt
             artifacts/source-contract/worldgen-rng-contract.txt
             artifacts/source-contract/worldgen-seed-contract.txt
+            artifacts/source-contract/worldgen-config-contract.txt
           if-no-files-found: error
           retention-days: 7
