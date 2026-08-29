@@ -7,12 +7,22 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
     private readonly ITerrariaFrameSink _inner;
     private readonly TerrariaConnectionPolicyState _state;
     private readonly TerrariaConnectionRateAccountant _rateAccountant;
+    private readonly TerrariaMessageRateAccountant _messageRateAccountant;
 
     public TerrariaConnectionPolicySink(
         ITerrariaFrameSink inner,
         TerrariaConnectionPolicyState state)
-        : this(inner, state, new TerrariaConnectionRateAccountant(ConnectionRateBudgetOptions.AccountingOnly))
     {
+        ArgumentNullException.ThrowIfNull(inner);
+        ArgumentNullException.ThrowIfNull(state);
+        _inner = inner;
+        _state = state;
+        _rateAccountant = new TerrariaConnectionRateAccountant(
+            state.Options.RateBudget,
+            state.TimeProvider);
+        _messageRateAccountant = new TerrariaMessageRateAccountant(
+            state.Options.MessageRateLimits,
+            state.TimeProvider);
     }
 
     public TerrariaConnectionPolicySink(
@@ -26,13 +36,17 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
         _inner = inner;
         _state = state;
         _rateAccountant = rateAccountant;
+        _messageRateAccountant = new TerrariaMessageRateAccountant(
+            state.Options.MessageRateLimits,
+            state.TimeProvider);
     }
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
         _state.ObserveInbound();
 
-        if (_rateAccountant.Observe(frame.PacketLength) != ConnectionRateDecision.Allowed)
+        if (_rateAccountant.Observe(frame.PacketLength) != ConnectionRateDecision.Allowed ||
+            _messageRateAccountant.Observe(frame.MessageId, frame.PacketLength) != ConnectionRateDecision.Allowed)
         {
             _state.TryStop(TerrariaConnectionStopReason.RateLimited);
             return TerrariaFrameSinkResult.Stop;
