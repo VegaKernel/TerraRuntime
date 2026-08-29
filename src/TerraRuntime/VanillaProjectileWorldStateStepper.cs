@@ -8,10 +8,10 @@ namespace TerraRuntime;
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile simulation slices that already have enough runtime/world
 /// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden
-/// Arrow (aiStyle 1) plus Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2), including their
-/// generic tile-impact Kill() path. Server-owned simulation is allowed only when its committed movement sweep
-/// cannot reach a source-backed CutTiles candidate; irreversible KillTile/drop effects remain a separate
-/// world-effect slice. Entity damage and visual-only rotation/dust/sound also remain separate systems.
+/// Arrow and Fire Arrow (aiStyle 1) plus Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2),
+/// including their generic tile-impact Kill() path. Server-owned simulation is allowed only when its committed
+/// movement sweep cannot reach a source-backed CutTiles candidate; irreversible KillTile/drop effects remain a
+/// separate world-effect slice. Entity damage and visual-only rotation/dust/sound also remain separate systems.
 /// </summary>
 internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepper
 {
@@ -61,18 +61,19 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         }
 
         bool isThrown = definition.AiStyle == VanillaProjectileAiStyles.Thrown;
-        bool isWoodenArrow =
-            current.Type == VanillaProjectileIds.WoodenArrowFriendly &&
-            definition.AiStyle == VanillaProjectileAiStyles.Arrow;
-        if (!isThrown && !isWoodenArrow)
+        bool isOrdinaryArrow =
+            definition.AiStyle == VanillaProjectileAiStyles.Arrow &&
+            (current.Type == VanillaProjectileIds.WoodenArrowFriendly ||
+             current.Type == VanillaProjectileIds.FireArrow);
+        if (!isThrown && !isOrdinaryArrow)
         {
             next = default;
             return false;
         }
 
         // TerrariaServer AI_001 uses ai[2] as a feature selector for several special arrow families. The
-        // ordinary Wooden Arrow path has ai[2] == 0; non-default feature state remains a separate slice.
-        if (isWoodenArrow && current.Ai.Ai2 != 0f)
+        // ordinary Wooden/Fire Arrow path has ai[2] == 0; non-default feature state remains a separate slice.
+        if (isOrdinaryArrow && current.Ai.Ai2 != 0f)
         {
             next = default;
             return false;
@@ -100,8 +101,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         }
         else
         {
-            // TerrariaServer 1.4.5.8 Projectile.AI_001(), ordinary type-1 Wooden Arrow path. Type-specific
-            // homing, dust, sound, feature and kill branches do not apply when ai[2] is the default zero value.
+            // TerrariaServer 1.4.5.8 Projectile.AI_001(), ordinary Wooden/Fire Arrow path. Type-specific
+            // homing, feature and kill branches do not apply when ai[2] is the default zero value.
             ai0 += 1f;
             if (ai0 >= 15f)
             {
@@ -117,14 +118,34 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         // in open air, and its horizontal motion meets the vanilla opposition/low-speed predicate.
         ApplyPostAiWind(in definition, current.PositionX, current.PositionY, ref velocityX);
 
-        WorldLiquidKind liquidKind = default;
-        bool wet = !definition.IgnoreWater && VanillaWorldCollision.TryGetWetContact(
-            tiles,
-            current.PositionX,
-            current.PositionY,
-            definition.Width,
-            definition.Height,
-            out liquidKind);
+        // Terraria evaluates Fire Arrow's type-2 extinguish branch against the PREVIOUS update's wet flag,
+        // after raising current lavaWet but before replacing wet with this update's WetCollision result. This
+        // ordering means the first water-contact update slows immediately but transforms only on the following
+        // update. The liquid-kind flags are persistent Projectile fields and therefore remain runtime lifecycle.
+        ProjectileLiquidState liquid = projectile.Lifecycle.Liquid;
+        ProjectileTypeId outputType = current.Type;
+        if (!definition.IgnoreWater)
+        {
+            VanillaLiquidContactState contacts = VanillaWorldCollision.GetLiquidContacts(
+                tiles,
+                current.PositionX,
+                current.PositionY,
+                definition.Width,
+                definition.Height);
+
+            bool lavaWet = liquid.LavaWet || contacts.Lava;
+            bool honeyWet = liquid.HoneyWet || contacts.Honey;
+            bool shimmerWet = liquid.ShimmerWet || contacts.Shimmer;
+
+            if (current.Type == VanillaProjectileIds.FireArrow && liquid.Wet && !lavaWet)
+                outputType = VanillaProjectileIds.WoodenArrowFriendly;
+
+            liquid = new ProjectileLiquidState(
+                Wet: contacts.Wet,
+                LavaWet: lavaWet,
+                HoneyWet: honeyWet,
+                ShimmerWet: shimmerWet);
+        }
 
         float collidedVelocityX = velocityX;
         float collidedVelocityY = velocityY;
@@ -152,14 +173,13 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         bool tileImpact = collideX || collideY;
         float movementX = collidedVelocityX;
         float movementY = collidedVelocityY;
-        if (wet)
+        if (liquid.Wet)
         {
-            float scale = liquidKind switch
-            {
-                WorldLiquidKind.Honey => HoneyMovementScale,
-                WorldLiquidKind.Shimmer => ShimmerMovementScale,
-                _ => WaterMovementScale
-            };
+            float scale = liquid.ShimmerWet
+                ? ShimmerMovementScale
+                : liquid.HoneyWet
+                    ? HoneyMovementScale
+                    : WaterMovementScale;
 
             movementX = collideX ? collidedVelocityX : collidedVelocityX * scale;
             movementY = collideY ? collidedVelocityY : collidedVelocityY * scale;
@@ -169,9 +189,9 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         float positionY = current.PositionY;
         if (tileImpact)
         {
-            // The ordinary aiStyle-1 Wooden Arrow and supported aiStyle-2 family both reach HandleMovement's
-            // generic collision fallback: advance by the collision-clamped velocity, Kill(), then continue into
-            // the common UpdatePosition tail. Their Kill() branches add only visual/sound effects in this slice.
+            // The ordinary aiStyle-1 arrows and supported aiStyle-2 family reach HandleMovement's generic
+            // collision fallback: advance by the collision-clamped velocity, Kill(), then continue into the
+            // common UpdatePosition tail. Their modeled Kill branches add no authoritative world mutation here.
             positionX += collidedVelocityX;
             positionY += collidedVelocityY;
         }
@@ -199,7 +219,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         }
 
         var state = new ProjectileStateUpdate(
-            current.Type,
+            outputType,
             current.Spawner,
             positionX,
             positionY,
@@ -212,7 +232,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             current.OriginalDamage);
 
         int timeLeft = tileImpact ? 0 : projectile.Lifecycle.TimeLeft - 1;
-        next = new ProjectileSimulationStepResult(state, timeLeft);
+        next = new ProjectileSimulationStepResult(state, timeLeft, liquid);
         return true;
     }
 
