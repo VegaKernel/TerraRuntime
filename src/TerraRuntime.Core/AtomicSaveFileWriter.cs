@@ -50,16 +50,16 @@ public static partial class AtomicSaveFileWriter
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            if (options?.ValidateCheckpointAsync is { } validateCheckpointAsync)
-                await validateCheckpointAsync(temporaryPath, cancellationToken).ConfigureAwait(false);
+            if (options?.ValidateCandidateAsync is { } validateCandidateAsync)
+                await validateCandidateAsync(temporaryPath, cancellationToken).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
             if (fullBackupPath is not null && File.Exists(fullDestinationPath))
             {
-                await PublishValidatedBackupAsync(
+                await PublishBackupAsync(
                     fullDestinationPath,
                     fullBackupPath,
-                    options?.ValidateCheckpointAsync,
+                    options?.ValidateBackupAsync,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -74,10 +74,10 @@ public static partial class AtomicSaveFileWriter
         }
     }
 
-    private static async Task PublishValidatedBackupAsync(
+    private static async Task PublishBackupAsync(
         string sourcePath,
         string backupPath,
-        Func<string, CancellationToken, Task>? validateCheckpointAsync,
+        Func<string, CancellationToken, Task>? validateBackupAsync,
         CancellationToken cancellationToken)
     {
         string backupDirectory = Path.GetDirectoryName(backupPath)
@@ -105,8 +105,8 @@ public static partial class AtomicSaveFileWriter
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            if (validateCheckpointAsync is not null)
-                await validateCheckpointAsync(backupTemporaryPath, cancellationToken).ConfigureAwait(false);
+            if (validateBackupAsync is not null)
+                await validateBackupAsync(backupTemporaryPath, cancellationToken).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
             PublishTemporaryFile(backupTemporaryPath, backupPath);
