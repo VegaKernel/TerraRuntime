@@ -1,0 +1,279 @@
+name: Live Chest Persistence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/**'
+      - 'src/TerraRuntime.World/**'
+      - 'tools/TerraRuntime.ChestLocate/**'
+      - 'tools/ci/live_join_relay_probe.py'
+      - 'tools/ci/live_chest_open_probe.py'
+      - 'tools/ci/live_chest_persistence_probe.py'
+      - '.github/workflows/live-chest-persistence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-live-chest-persistence-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  restart-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Generate official small world
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld"
+          config="$GITHUB_WORKSPACE/artifacts/vanilla-persistence-serverconfig.txt"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=1
+          worldname=TerraRuntimePersistenceSmoke
+          difficulty=0
+          maxplayers=1
+          port=17786
+          password=
+          motd=TerraRuntime persistence verification
+          secure=1
+          upnp=0
+          EOF
+
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$GITHUB_WORKSPACE/artifacts/vanilla-persistence-server.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$GITHUB_WORKSPACE/artifacts/vanilla-persistence-server.log"
+          test -s "$world"
+          if [[ $status -ne 0 && $status -ne 124 ]]; then
+            echo "Official server exited with status $status" >&2
+            exit "$status"
+          fi
+
+      - name: Build TerraRuntime host
+        run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+
+      - name: Select persisted chest item
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld"
+          chest_info="$(dotnet run \
+            --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
+            -c Release \
+            -- "$world" | tail -1)"
+          echo "$chest_info" | tee artifacts/persistence-chest-selection.txt
+
+          for field in $chest_info; do
+            case "$field" in
+              slot=*) echo "CHEST_ID=${field#slot=}" >> "$GITHUB_ENV" ;;
+              x=*) echo "CHEST_X=${field#x=}" >> "$GITHUB_ENV" ;;
+              y=*) echo "CHEST_Y=${field#y=}" >> "$GITHUB_ENV" ;;
+              slots=*) echo "CHEST_SLOTS=${field#slots=}" >> "$GITHUB_ENV" ;;
+              itemSlot=*) echo "ITEM_SLOT=${field#itemSlot=}" >> "$GITHUB_ENV" ;;
+              itemStack=*) echo "ITEM_STACK=${field#itemStack=}" >> "$GITHUB_ENV" ;;
+              itemPrefix=*) echo "ITEM_PREFIX=${field#itemPrefix=}" >> "$GITHUB_ENV" ;;
+              itemNetId=*) echo "ITEM_NET_ID=${field#itemNetId=}" >> "$GITHUB_ENV" ;;
+            esac
+          done
+
+      - name: Mutate chest and gracefully save canonical world
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld"
+          host_log="$GITHUB_WORKSPACE/artifacts/persistence-host.log"
+          mutation_log="$GITHUB_WORKSPACE/artifacts/persistence-client.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+          cache="$GITHUB_WORKSPACE/artifacts/vanilla-persistence.runtime-world"
+          bootstrap_cache="$GITHUB_WORKSPACE/artifacts/vanilla-persistence.runtime-bootstrap"
+
+          test -n "$CHEST_ID" -a -n "$CHEST_X" -a -n "$CHEST_Y" -a -n "$CHEST_SLOTS"
+          test -n "$ITEM_SLOT" -a -n "$ITEM_STACK" -a -n "$ITEM_PREFIX" -a -n "$ITEM_NET_ID"
+
+          if (( ITEM_STACK < 32767 )); then
+            committed_stack=$((ITEM_STACK + 1))
+          else
+            committed_stack=$((ITEM_STACK - 1))
+          fi
+          test "$committed_stack" -gt 0
+          test "$committed_stack" -ne "$ITEM_STACK"
+          echo "COMMITTED_STACK=$committed_stack" >> "$GITHUB_ENV"
+
+          rm -f "$cache" "$bootstrap_cache"
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17787 \
+            --max-players 2 \
+            > "$host_log" 2>&1 &
+          host_pid=$!
+
+          cleanup() {
+            kill "$host_pid" 2>/dev/null || true
+            wait "$host_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "TerraRuntime exited before persistence listener opened." >&2
+              exit 1
+            fi
+            if grep -q "TerraRuntime listening on 0.0.0.0:17787" "$host_log"; then
+              break
+            fi
+            sleep 0.5
+          done
+          grep -q "startup_profile source=canonical-wld" "$host_log"
+          grep -q "TerraRuntime listening on 0.0.0.0:17787" "$host_log"
+
+          python3 tools/ci/live_chest_persistence_probe.py \
+            --port 17787 \
+            --chest-id "$CHEST_ID" \
+            --x "$CHEST_X" \
+            --y "$CHEST_Y" \
+            --slots "$CHEST_SLOTS" \
+            --item-slot "$ITEM_SLOT" \
+            --item-stack "$ITEM_STACK" \
+            --item-prefix "$ITEM_PREFIX" \
+            --item-net-id "$ITEM_NET_ID" \
+            2>&1 | tee "$mutation_log"
+          grep -q "committedStack=$committed_stack" "$mutation_log"
+
+          kill -INT "$host_pid"
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+          if kill -0 "$host_pid" 2>/dev/null; then
+            cat "$host_log" >&2
+            echo "TerraRuntime did not exit after SIGINT." >&2
+            exit 1
+          fi
+
+          set +e
+          wait "$host_pid"
+          host_status=$?
+          set -e
+          trap - EXIT
+          test "$host_status" -eq 0
+          grep -q "Canonical tile/chest/clock world checkpoint committed:" "$host_log"
+          test ! -e "$cache"
+          test ! -e "$bootstrap_cache"
+          cat "$host_log"
+
+      - name: Assert exact persisted item on disk
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
+            -c Release \
+            -- "$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld" \
+            --assert "$CHEST_ID" "$ITEM_SLOT" "$COMMITTED_STACK" "$ITEM_PREFIX" "$ITEM_NET_ID" \
+            2>&1 | tee artifacts/persistence-wld-assert.log
+          grep -q "persisted_chest_item_ok" artifacts/persistence-wld-assert.log
+
+      - name: Restart and expose persisted item through live protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld"
+          restart_log="$GITHUB_WORKSPACE/artifacts/persistence-restart.log"
+          restart_client_log="$GITHUB_WORKSPACE/artifacts/persistence-restart-client.log"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          dotnet "$server_dll" \
+            --world "$world" \
+            --port 17788 \
+            --max-players 2 \
+            > "$restart_log" 2>&1 &
+          restart_pid=$!
+
+          cleanup() {
+            kill "$restart_pid" 2>/dev/null || true
+            wait "$restart_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$restart_pid" 2>/dev/null; then
+              cat "$restart_log" >&2
+              echo "Restarted TerraRuntime exited before listener opened." >&2
+              exit 1
+            fi
+            if grep -q "TerraRuntime listening on 0.0.0.0:17788" "$restart_log"; then
+              break
+            fi
+            sleep 0.5
+          done
+          grep -q "startup_profile source=canonical-wld" "$restart_log"
+
+          python3 tools/ci/live_chest_open_probe.py \
+            --port 17788 \
+            --chest-id "$CHEST_ID" \
+            --x "$CHEST_X" \
+            --y "$CHEST_Y" \
+            --slots "$CHEST_SLOTS" \
+            --item-slot "$ITEM_SLOT" \
+            --item-stack "$COMMITTED_STACK" \
+            --item-prefix "$ITEM_PREFIX" \
+            --item-net-id "$ITEM_NET_ID" \
+            2>&1 | tee "$restart_client_log"
+
+          kill "$restart_pid" 2>/dev/null || true
+          wait "$restart_pid" 2>/dev/null || true
+          trap - EXIT
+          cat "$restart_log"
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-chest-persistence-failure-${{ github.sha }}
+          path: |
+            artifacts/vanilla-persistence-server.log
+            artifacts/vanilla-persistence-serverconfig.txt
+            artifacts/persistence-chest-selection.txt
+            artifacts/persistence-host.log
+            artifacts/persistence-client.log
+            artifacts/persistence-wld-assert.log
+            artifacts/persistence-restart.log
+            artifacts/persistence-restart-client.log
+          if-no-files-found: ignore
+          retention-days: 3
