@@ -625,7 +625,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         {
             RuntimeConnectionQueueDetail queue = queues[i];
             rows[14 + i].Text =
-                $"OUT #{queue.ConnectionId,-5} {queue.QueuedFrames,5:N0} frames  {FormatKibibytes(queue.QueuedBytes),10}  " +
+                $"OUT #{queue.ConnectionId,-5} {queue.QueuedFrames:N0}/{queue.MaxFrames:N0} frames  " +
+                $"{FormatKibibytes(queue.QueuedBytes)}/{FormatKibibytes(queue.MaxQueuedBytes)}  " +
                 $"peak {queue.PeakQueuedFrames:N0}/{FormatKibibytes(queue.PeakQueuedBytes)}  rejected {queue.RejectedFrames:N0}  {(queue.SlowClient ? "SLOW" : "ok")}";
         }
         if (queues.Length == 0)
