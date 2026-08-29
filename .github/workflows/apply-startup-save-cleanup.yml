@@ -90,14 +90,14 @@ jobs:
           dotnet vstest tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
           --TestCaseFilter:FullyQualifiedName~TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests
 
-      - name: Commit wiring and remove one-time workflow
+      - name: Commit production host wiring
         shell: bash
         run: |
           set -euo pipefail
-          rm .github/workflows/apply-startup-save-cleanup.yml
+          git restore -- .github/workflows/authoritative-world-save.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add src/TerraRuntime/TerrariaServerHost.cs
           git commit -m 'feat: clean abandoned saves on startup'
           git pull --rebase origin main
           git push origin HEAD:main
