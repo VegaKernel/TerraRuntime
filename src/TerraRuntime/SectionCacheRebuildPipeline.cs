@@ -7,13 +7,18 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
+internal readonly record struct SectionCacheRebuildWork(
+    WorldSectionTileSnapshot Snapshot,
+    long OnDemandGeneration = 0);
+
 internal readonly record struct SectionCacheRebuildResult(
     WorldSectionId Section,
     long Revision,
     WorldSectionPacketEncodeResult EncodeResult,
     ReadOnlyMemory<byte> Frame,
     TimeSpan Duration,
-    Exception? Error)
+    Exception? Error,
+    long OnDemandGeneration = 0)
 {
     public bool IsEncoded => Error is null && EncodeResult == WorldSectionPacketEncodeResult.Encoded;
 }
@@ -49,23 +54,26 @@ internal readonly record struct SectionCacheRebuildPipelineSnapshot(
 /// Authoritative-thread coordinator for rebuilding packet-10 section cache entries outside the game loop.
 /// The owner thread captures immutable snapshots and publishes completions; dedicated bounded workers only
 /// encode/compress those snapshots and never read mutable tile storage or mutate the shared cache.
-/// Connection threads may request missing sections through a deduplicated concurrent handoff, while the
+/// Connection threads may request missing sections through a generation-aware deduplicated handoff, while the
 /// authoritative tick gives those join-critical snapshots priority over the ordinary dirty-section backlog.
+/// At most one worker rebuild may be in flight for any network section, regardless of why it was scheduled.
 /// </summary>
 internal sealed class SectionCacheRebuildPipeline : IDisposable
 {
     private readonly WorldFileData _world;
     private readonly PlayerBootstrapPacketSet _packets;
     private readonly DirtySectionSnapshotBatcher _batcher;
-    private readonly BoundedWorkerPool<WorldSectionTileSnapshot, SectionCacheRebuildResult> _workers;
+    private readonly BoundedWorkerPool<SectionCacheRebuildWork, SectionCacheRebuildResult> _workers;
     private readonly Func<WorldSectionTileSnapshot, SectionCacheRebuildResult> _encode;
     private readonly ConcurrentQueue<WorldSectionId> _onDemandRequests = new();
-    private readonly ConcurrentDictionary<int, byte> _onDemandSections = new();
+    private readonly ConcurrentDictionary<int, long> _onDemandSections = new();
+    private readonly HashSet<int> _inFlightSections = [];
     private readonly int _workCapacity;
     private readonly int _maximumInFlight;
     private int _dirtyBacklog;
     private int _inFlight;
     private int _onDemandPendingRequests;
+    private long _nextOnDemandGeneration;
     private long _capturedSnapshots;
     private long _submittedRebuilds;
     private long _rejectedSubmissions;
@@ -111,7 +119,7 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         _maximumInFlight = checked(workerCount + workCapacity);
         _batcher = new DirtySectionSnapshotBatcher(world.Tiles, _maximumInFlight);
         _encode = encode ?? EncodeSection;
-        _workers = new BoundedWorkerPool<WorldSectionTileSnapshot, SectionCacheRebuildResult>(
+        _workers = new BoundedWorkerPool<SectionCacheRebuildWork, SectionCacheRebuildResult>(
             workerCount,
             workCapacity,
             completionCapacity,
@@ -166,25 +174,33 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
 
     /// <summary>
     /// Thread-safe connection-side handoff for a section that was missing or stale in the packet cache.
-    /// Duplicate requests remain one authoritative rebuild until that section is published or fails.
+    /// Duplicate callers share the same generation until that generation publishes or fails.
     /// </summary>
-    internal bool RequestSection(WorldSectionId section)
+    internal SectionRebuildRequestTicket RequestSection(WorldSectionId section)
     {
         if (Volatile.Read(ref _disposed) != 0)
-            return false;
+            return SectionRebuildRequestTicket.Rejected;
 
         int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
         Interlocked.Increment(ref _onDemandRequestCount);
-        if (!_onDemandSections.TryAdd(index, 0))
-        {
-            Interlocked.Increment(ref _onDemandDeduplicatedRequestCount);
-            return true;
-        }
 
-        _onDemandRequests.Enqueue(section);
-        Interlocked.Increment(ref _onDemandUniqueRequestCount);
-        Interlocked.Increment(ref _onDemandPendingRequests);
-        return true;
+        while (true)
+        {
+            if (_onDemandSections.TryGetValue(index, out long existingGeneration))
+            {
+                Interlocked.Increment(ref _onDemandDeduplicatedRequestCount);
+                return new SectionRebuildRequestTicket(true, existingGeneration);
+            }
+
+            long generation = Interlocked.Increment(ref _nextOnDemandGeneration);
+            if (!_onDemandSections.TryAdd(index, generation))
+                continue;
+
+            _onDemandRequests.Enqueue(section);
+            Interlocked.Increment(ref _onDemandUniqueRequestCount);
+            Interlocked.Increment(ref _onDemandPendingRequests);
+            return new SectionRebuildRequestTicket(true, generation);
+        }
     }
 
     /// <summary>
@@ -218,8 +234,8 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         if (initialPending <= 0)
             return;
 
-        // Consider each request that was pending at tick entry at most once. A transient snapshot failure can
-        // therefore requeue the section without being immediately dequeued again in the same authoritative tick.
+        // Consider each request that was pending at tick entry at most once. A transient snapshot failure or an
+        // already-running background rebuild can therefore requeue it without spinning in the same tick.
         int attempts = Math.Min(initialPending, _maximumInFlight);
         for (int i = 0; i < attempts; i++)
         {
@@ -229,11 +245,21 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
                 return;
             }
 
+            int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
+            if (!_onDemandSections.TryGetValue(index, out long generation))
+                continue;
+
             long revision = _world.Tiles.GetSectionVersion(section);
             if ((revision & 1L) == 0 && _packets.TryGetCachedSectionFrame(section, revision, out _))
             {
                 CompleteOnDemandRequest(section);
                 _packets.NotifySectionCacheWaiters();
+                continue;
+            }
+
+            if (_inFlightSections.Contains(index))
+            {
+                _onDemandRequests.Enqueue(section);
                 continue;
             }
 
@@ -245,12 +271,8 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
 
             Interlocked.Increment(ref _capturedSnapshots);
             _world.Tiles.DirtySections.ClearDirty(section);
-            if (_workers.TrySubmit(snapshot))
-            {
-                Interlocked.Increment(ref _inFlight);
-                Interlocked.Increment(ref _submittedRebuilds);
+            if (TrySubmit(snapshot, generation))
                 continue;
-            }
 
             // Capacity can race with a worker between the snapshot observation and TrySubmit. Preserve both the
             // normal dirty signal and the join-priority request rather than throwing the snapshot work away.
@@ -278,19 +300,39 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
         {
             WorldSectionTileSnapshot snapshot = snapshots[i]
                 ?? throw new InvalidOperationException("Dirty section batch contained an empty snapshot slot.");
+            int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, snapshot.Section);
 
-            if (_workers.TrySubmit(snapshot))
+            if (_inFlightSections.Contains(index))
             {
-                Interlocked.Increment(ref _inFlight);
-                Interlocked.Increment(ref _submittedRebuilds);
+                _world.Tiles.DirtySections.MarkDirty(snapshot.Section);
                 continue;
             }
+
+            if (TrySubmit(snapshot, onDemandGeneration: 0))
+                continue;
 
             // A worker/channel race may still consume capacity between observation and submission. Preserve
             // committed work instead of losing the section if the bounded queue rejects this snapshot.
             _world.Tiles.DirtySections.MarkDirty(snapshot.Section);
             Interlocked.Increment(ref _rejectedSubmissions);
         }
+    }
+
+    private bool TrySubmit(WorldSectionTileSnapshot snapshot, long onDemandGeneration)
+    {
+        int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, snapshot.Section);
+        if (!_inFlightSections.Add(index))
+            return false;
+
+        if (_workers.TrySubmit(new SectionCacheRebuildWork(snapshot, onDemandGeneration)))
+        {
+            Interlocked.Increment(ref _inFlight);
+            Interlocked.Increment(ref _submittedRebuilds);
+            return true;
+        }
+
+        _inFlightSections.Remove(index);
+        return false;
     }
 
     private int GetAvailableSubmissionCapacity()
@@ -314,19 +356,22 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             Interlocked.Decrement(ref _inFlight);
             if (!completion.IsSuccess)
             {
-                // ExecuteSafely preserves the section identity for normal encoder failures. Reaching the
-                // worker-pool failure path means the runtime itself failed before a result could be formed.
+                // ExecuteSafely normally converts encoder exceptions into data while preserving section identity.
+                // Reaching this path means the pool itself failed before a result could be formed.
                 Interlocked.Increment(ref _encodeFailures);
                 continue;
             }
 
             SectionCacheRebuildResult result = completion.Result;
+            int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, result.Section);
+            _inFlightSections.Remove(index);
             Interlocked.Add(ref _totalEncodeDurationTicks, result.Duration.Ticks);
+
             if (!result.IsEncoded)
             {
+                _world.Tiles.DirtySections.MarkDirty(result.Section);
                 Interlocked.Increment(ref _encodeFailures);
-                CompleteOnDemandRequest(result.Section);
-                _packets.NotifySectionCacheWaiters();
+                FailOnDemandGeneration(result.Section, result.OnDemandGeneration);
                 continue;
             }
 
@@ -356,11 +401,30 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             }
             else
             {
-                CompleteOnDemandRequest(result.Section);
-                _packets.NotifySectionCacheWaiters();
+                _world.Tiles.DirtySections.MarkDirty(result.Section);
                 Interlocked.Increment(ref _publishRejections);
+                if (result.OnDemandGeneration > 0)
+                    FailOnDemandGeneration(result.Section, result.OnDemandGeneration);
+                else
+                    RequeueOnDemandRequest(result.Section);
             }
         }
+    }
+
+    private void FailOnDemandGeneration(WorldSectionId section, long generation)
+    {
+        if (generation <= 0)
+        {
+            RequeueOnDemandRequest(section);
+            return;
+        }
+
+        int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
+        if (!_onDemandSections.TryGetValue(index, out long currentGeneration) || currentGeneration != generation)
+            return;
+
+        _packets.NotifySectionCacheRebuildFailed(section, generation);
+        CompleteOnDemandRequest(section, generation);
     }
 
     private void RequeueOnDemandRequest(WorldSectionId section)
@@ -377,25 +441,37 @@ internal sealed class SectionCacheRebuildPipeline : IDisposable
             Interlocked.Decrement(ref _onDemandPendingRequests);
     }
 
-    private SectionCacheRebuildResult ExecuteSafely(WorldSectionTileSnapshot snapshot)
+    private void CompleteOnDemandRequest(WorldSectionId section, long generation)
+    {
+        int index = TerrariaSectionGeometry.ToLinearIndex(_world.Header.Dimensions, section);
+        if (_onDemandSections.TryRemove(new KeyValuePair<int, long>(index, generation)))
+            Interlocked.Decrement(ref _onDemandPendingRequests);
+    }
+
+    private SectionCacheRebuildResult ExecuteSafely(SectionCacheRebuildWork work)
     {
         long started = Stopwatch.GetTimestamp();
         try
         {
-            SectionCacheRebuildResult result = _encode(snapshot);
-            return result with { Duration = Stopwatch.GetElapsedTime(started) };
+            SectionCacheRebuildResult result = _encode(work.Snapshot);
+            return result with
+            {
+                Duration = Stopwatch.GetElapsedTime(started),
+                OnDemandGeneration = work.OnDemandGeneration
+            };
         }
         catch (Exception exception)
         {
-            // The shared worker pool already isolates exceptions. Returning the section identity as data lets
-            // telemetry attribute the failed rebuild without allowing a worker exception to touch live state.
+            // Returning identity and generation as data lets the authoritative completion path wake exactly the
+            // waiters whose rebuild failed without allowing worker exceptions to touch live state.
             return new SectionCacheRebuildResult(
-                snapshot.Section,
-                snapshot.Revision,
+                work.Snapshot.Section,
+                work.Snapshot.Revision,
                 default,
                 ReadOnlyMemory<byte>.Empty,
                 Stopwatch.GetElapsedTime(started),
-                exception);
+                exception,
+                work.OnDemandGeneration);
         }
     }
 
