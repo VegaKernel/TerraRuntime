@@ -82,7 +82,7 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" > artifacts/source-contract/item.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.NPCID "$assembly" > artifacts/source-contract/npc-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" > artifacts/source-contract/item-id.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.PrefixLegacy "$assembly" > artifacts/source-contract/prefix-legacy.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.Prefixes.PrefixLegacy "$assembly" > artifacts/source-contract/prefix-legacy.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.PrefixID "$assembly" > artifacts/source-contract/prefix-id.cs
 
           python3 tools/ci/probe_npc_loot.py \
