@@ -61,7 +61,15 @@ public sealed class DirtySectionTracker
         return (words[index >> 6] & (1UL << (index & 63))) != 0;
     }
 
-    public int Drain(Span<WorldSectionId> destination)
+    public int Drain(Span<WorldSectionId> destination) =>
+        Drain(destination, excludedLinearIndices: null);
+
+    /// <summary>
+    /// Drains dirty sections while leaving explicitly excluded linear section indices dirty. This lets bounded
+    /// consumers avoid repeatedly allocating snapshots for sections that already have work in flight, without
+    /// dropping the newer dirty revision that must be processed after the current work completes.
+    /// </summary>
+    public int Drain(Span<WorldSectionId> destination, IReadOnlySet<int>? excludedLinearIndices)
     {
         if (destination.IsEmpty || dirtyCount == 0)
         {
@@ -78,13 +86,19 @@ public sealed class DirtySectionTracker
                 ulong mask = 1UL << bitIndex;
                 int linearIndex = (wordIndex << 6) + bitIndex;
 
+                // Always clear the local scan bit so an excluded dirty section cannot spin this loop. The
+                // authoritative bitset remains untouched for excluded sections and will be reconsidered later.
                 bits &= ~mask;
-                words[wordIndex] &= ~mask;
                 if (linearIndex >= dimensions.SectionCount)
                 {
+                    words[wordIndex] &= ~mask;
                     continue;
                 }
 
+                if (excludedLinearIndices?.Contains(linearIndex) == true)
+                    continue;
+
+                words[wordIndex] &= ~mask;
                 destination[written++] = TerrariaSectionGeometry.FromLinearIndex(dimensions, linearIndex);
                 dirtyCount--;
             }
