@@ -6,6 +6,7 @@ on:
     paths:
       - 'tools/ci/probe_world_generation_init.py'
       - 'tools/ci/probe_worldgen_terrain_pass.py'
+      - 'tools/ci/probe_worldgen_rng.py'
       - 'src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaWorldGenerationPassCatalog1458Tests.cs'
       - '.github/workflows/terraria-worldgen-pass-catalog.yml'
@@ -69,15 +70,24 @@ jobs:
           terrain_pass="$(find_type TerrainPass)"
           jungle_pass="$(find_type JunglePass)"
           dither_snake_pass="$(find_type DitherSnakePass)"
+          unified_random="$(find_type UnifiedRandom)"
+          gen_base="$(find_type GenBase)"
+          world_generator="$(find_type WorldGenerator)"
           echo "GenPassNameID type: $gen_pass_name_id"
           echo "TerrainPass type: $terrain_pass"
           echo "JunglePass type: $jungle_pass"
           echo "DitherSnakePass type: $dither_snake_pass"
+          echo "UnifiedRandom type: $unified_random"
+          echo "GenBase type: $gen_base"
+          echo "WorldGenerator type: $world_generator"
 
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_pass_name_id" "$assembly" > artifacts/source-contract/gen-pass-name-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$terrain_pass" "$assembly" > artifacts/source-contract/terrain-pass.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$jungle_pass" "$assembly" > artifacts/source-contract/jungle-pass.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$dither_snake_pass" "$assembly" > artifacts/source-contract/dither-snake-pass.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$unified_random" "$assembly" > artifacts/source-contract/unified-random.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_base" "$assembly" > artifacts/source-contract/gen-base.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_generator" "$assembly" > artifacts/source-contract/world-generator.cs
 
           python3 tools/ci/probe_world_generation_init.py \
             --world-gen artifacts/source-contract/world-gen.cs \
@@ -92,6 +102,12 @@ jobs:
             --terrain-pass artifacts/source-contract/terrain-pass.cs \
             --output artifacts/source-contract/terrain-pass-contract.txt
 
+          python3 tools/ci/probe_worldgen_rng.py \
+            --unified-random artifacts/source-contract/unified-random.cs \
+            --gen-base artifacts/source-contract/gen-base.cs \
+            --world-generator artifacts/source-contract/world-generator.cs \
+            --output artifacts/source-contract/worldgen-rng-contract.txt
+
       - name: Verify runtime catalog against pinned fingerprint
         run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
@@ -105,5 +121,6 @@ jobs:
           path: |
             artifacts/source-contract/world-generation-pass-catalog.txt
             artifacts/source-contract/terrain-pass-contract.txt
+            artifacts/source-contract/worldgen-rng-contract.txt
           if-no-files-found: error
           retention-days: 7
