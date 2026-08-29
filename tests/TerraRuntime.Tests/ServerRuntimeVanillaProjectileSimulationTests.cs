@@ -215,6 +215,30 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.False(lifecycle.Liquid.Wet);
     }
 
+    [Fact]
+    public async Task Server_owned_bullet_runs_two_subupdates_when_tile_cut_effect_is_empty()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
+        ProjectileStateUpdate projectile = CreateProjectile(14, VanillaProjectileOwnership.ServerOwner);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new ProjectileSpawnRuntimeCommand(0, projectile, completion));
+        ProjectileSnapshot spawned = Assert.IsType<ProjectileSnapshot>(await completion.Task);
+
+        state.Tick();
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), state.LastProjectileTick);
+        Assert.True(state.TryCaptureProjectileSnapshot(spawned.Handle, out ProjectileSnapshot updated));
+        Assert.Equal(VanillaProjectileIds.Bullet, updated.Type);
+        Assert.Equal(new ProjectileRevision(2), updated.Revision);
+        Assert.Equal(108f, updated.PositionX, 5);
+        Assert.Equal(100f, updated.PositionY, 5);
+        Assert.Equal(2f, updated.Ai.Ai0, 5);
+        Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
+        Assert.Equal(598, lifecycle.TimeLeft);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -245,6 +269,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     [InlineData(2)]
     [InlineData(4)]
     [InlineData(5)]
+    [InlineData(14)]
     public async Task Server_owned_arrow_remains_authoritative_when_tile_cut_effect_is_not_yet_modeled(int type)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));

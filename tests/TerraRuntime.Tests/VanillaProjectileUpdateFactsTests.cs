@@ -31,6 +31,7 @@ public sealed class VanillaProjectileUpdateFactsTests
     [Theory]
     [InlineData(1, 0)]
     [InlineData(5, 1)]
+    [InlineData(14, 1)]
     [InlineData(20, 2)]
     [InlineData(101, 3)]
     [InlineData(88, 4)]

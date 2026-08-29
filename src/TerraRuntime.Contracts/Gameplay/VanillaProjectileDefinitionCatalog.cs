@@ -73,6 +73,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    private static readonly VanillaProjectileDefinition BulletDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
     private static readonly VanillaProjectileDefinition ShurikenDefinition = new(
         Width: 22,
         Height: 22,
@@ -136,6 +146,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.JestersArrow)
         {
             definition = JestersArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.Bullet)
+        {
+            definition = BulletDefinition;
             return true;
         }
 

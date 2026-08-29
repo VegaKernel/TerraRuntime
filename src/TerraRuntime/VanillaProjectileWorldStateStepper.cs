@@ -8,7 +8,7 @@ namespace TerraRuntime;
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile simulation slices that already have enough runtime/world
 /// state to execute without inventing missing gameplay behavior. The supported set currently includes Wooden,
-/// Fire, Unholy, and Jester's Arrows (aiStyle 1) plus Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2),
+/// Fire, Unholy, and Jester's Arrows plus Bullet (aiStyle 1), and Shuriken, Throwing Knife, Poisoned Knife, and Bone Dagger (aiStyle 2),
 /// including their generic tile-impact Kill() path. Server-owned simulation is allowed only when its committed
 /// movement sweep cannot reach a source-backed CutTiles candidate; irreversible KillTile/drop effects remain a
 /// separate world-effect slice. Entity damage and visual-only rotation/dust/sound also remain separate systems.
@@ -61,21 +61,22 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         }
 
         bool isThrown = definition.AiStyle == VanillaProjectileAiStyles.Thrown;
-        bool isOrdinaryArrow =
+        bool isBasicAiStyleOne =
             definition.AiStyle == VanillaProjectileAiStyles.Arrow &&
             (current.Type == VanillaProjectileIds.WoodenArrowFriendly ||
              current.Type == VanillaProjectileIds.FireArrow ||
              current.Type == VanillaProjectileIds.UnholyArrow ||
-             current.Type == VanillaProjectileIds.JestersArrow);
-        if (!isThrown && !isOrdinaryArrow)
+             current.Type == VanillaProjectileIds.JestersArrow ||
+             current.Type == VanillaProjectileIds.Bullet);
+        if (!isThrown && !isBasicAiStyleOne)
         {
             next = default;
             return false;
         }
 
-        // TerrariaServer AI_001 uses ai[2] as a feature selector for several special arrow families. The
-        // ordinary Wooden/Fire/Unholy/Jester's Arrow path has ai[2] == 0; non-default feature state remains separate.
-        if (isOrdinaryArrow && current.Ai.Ai2 != 0f)
+        // TerrariaServer AI_001 uses ai[2] as a feature selector for several special aiStyle-1 families. The
+        // source-backed Wooden/Fire/Unholy/Jester/Bullet path has ai[2] == 0; non-default feature state remains separate.
+        if (isBasicAiStyleOne && current.Ai.Ai2 != 0f)
         {
             next = default;
             return false;
@@ -103,8 +104,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         }
         else
         {
-            // TerrariaServer 1.4.5.8 Projectile.AI_001(), ordinary Wooden/Fire/Unholy/Jester's Arrow path. Type-specific
-            // AI feature branches do not apply when ai[2] is the default zero value. Kill visuals remain separate.
+            // TerrariaServer 1.4.5.8 Projectile.AI_001(), source-backed basic aiStyle-1 path. Bullet has no
+            // type-specific AI/Update branch and AI_001 does not branch on arrow/ranged flags. Nonzero ai[2] stays separate.
             ai0 += 1f;
             if (ai0 >= 15f)
             {
