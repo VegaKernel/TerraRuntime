@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'tools/ci/probe_world_file_save.py'
+      - 'tools/ci/probe_world_metadata_support.py'
       - '.github/workflows/terraria-world-save-contract.yml'
   workflow_dispatch:
 
@@ -40,3 +41,14 @@ jobs:
           assembly_dir="$(dirname "$assembly")"
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.IO.WorldFile "$assembly" > artifacts/source-contract/world-file.cs
           python3 tools/ci/probe_world_file_save.py --world-file artifacts/source-contract/world-file.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldBuilding.WorldManifest "$assembly" > artifacts/source-contract/world-manifest.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.BannerSystem "$assembly" > artifacts/source-contract/banner-system.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.Events.DD2Event "$assembly" > artifacts/source-contract/dd2-event.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.ExtraSpawnPointManager "$assembly" > artifacts/source-contract/extra-spawns.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.GameContent.TreeTopsInfo "$assembly" > artifacts/source-contract/tree-tops.cs
+          python3 tools/ci/probe_world_metadata_support.py \
+            --manifest artifacts/source-contract/world-manifest.cs \
+            --banner-system artifacts/source-contract/banner-system.cs \
+            --dd2-event artifacts/source-contract/dd2-event.cs \
+            --extra-spawns artifacts/source-contract/extra-spawns.cs \
+            --tree-tops artifacts/source-contract/tree-tops.cs
