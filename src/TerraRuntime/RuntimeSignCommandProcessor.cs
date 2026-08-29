@@ -69,7 +69,11 @@ internal sealed class RuntimeSignCommandProcessor
         }
 
         if (changed)
-            replication.PublishChanged(command.Connection, committed, submitted.Flags);
+        {
+            // TerrariaServer 1.4.5.8 rewrites packet 47's player field to whoAmI and sends it with the default
+            // number3 argument, so the replicated flags byte is always zero rather than the client-submitted value.
+            replication.PublishChanged(command.Connection, committed, flags: 0);
+        }
 
         AppliedUpdates++;
     }
