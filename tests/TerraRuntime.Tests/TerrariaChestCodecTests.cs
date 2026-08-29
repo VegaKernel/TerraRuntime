@@ -86,6 +86,37 @@ public sealed class TerrariaChestCodecTests
     }
 
     [Fact]
+    public void Chest_name_lookup_decodes_six_byte_request_without_response_name()
+    {
+        TerrariaFrame lookup = Frame(new ChestName
+        {
+            ChestId = -1,
+            ChestX = 123,
+            ChestY = 456,
+            HasName = false
+        });
+
+        Assert.Equal(
+            TerrariaChestDecodeResult.Decoded,
+            TerrariaChestCodec.TryDecodeNameLookup(in lookup, out TerrariaChestNameLookupRequest request));
+        Assert.Equal((short)-1, request.ChestId);
+        Assert.Equal((short)123, request.ChestX);
+        Assert.Equal((short)456, request.ChestY);
+
+        TerrariaFrame response = Frame(new ChestName
+        {
+            ChestId = 7,
+            ChestX = 123,
+            ChestY = 456,
+            HasName = true,
+            Name = "Loot"
+        });
+        Assert.Equal(
+            TerrariaChestDecodeResult.InvalidPayloadLength,
+            TerrariaChestCodec.TryDecodeNameLookup(in response, out _));
+    }
+
+    [Fact]
     public void Server_chest_index_and_name_use_multiplicity_wire_types()
     {
         SyncPlayerChestIndex chestIndex = Assert.IsType<SyncPlayerChestIndex>(
