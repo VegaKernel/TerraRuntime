@@ -788,7 +788,8 @@ public static class TerrariaServerHost
                 queueTelemetry.TryUnregister(connectionId);
                 worldItemReplication.TryUnregister(source);
                 projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source, out _);
+                npcReplication.TryUnregister(source);
+                runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
             }
