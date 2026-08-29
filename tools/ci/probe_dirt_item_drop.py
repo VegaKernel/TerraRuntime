@@ -53,6 +53,14 @@ def require(text: str, needle: str, label: str) -> None:
         raise SystemExit(f"Pinned source contract changed: missing {label}: {needle}")
 
 
+def print_context(text: str, marker: str, radius: int = 2500) -> None:
+    index = text.find(marker)
+    if index < 0:
+        print(f"diagnostic_marker_missing={marker}")
+        return
+    print(f"diagnostic_context[{marker}]={text[max(0, index-radius):min(len(text), index+len(marker)+radius)]}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Inspect pinned TerrariaServer 1.4.5.8 Dirt item-drop creation semantics."
@@ -116,11 +124,7 @@ def main() -> int:
         raise SystemExit("Pinned vector-based Item.NewItem signature changed.")
     vector_body = compact(extract_method(item, vector))
     require(vector_body, "item.Prefix(prefix);", "spawn prefix application")
-    require(
-        vector_body,
-        "worldItem.Center = center;",
-        "spawn center assignment",
-    )
+    require(vector_body, "worldItem.Center = center;", "spawn center assignment")
     require(
         vector_body,
         "worldItem.velocity.X = (float)Main.rand.Next(-30, 31) * 0.1f; worldItem.velocity.Y = (float)Main.rand.Next(-40, -15) * 0.1f;",
@@ -132,18 +136,19 @@ def main() -> int:
         "server packet-21 broadcast before spawn ownership",
     )
 
-    prefix_signatures = signatures(item, "Prefix", require_static=False)
-    can_prefix_signatures = signatures(item, "CanHavePrefixes", require_static=False)
-    print("prefix_signatures_begin")
-    for signature in prefix_signatures:
-        print(signature)
-        print(compact(extract_method(item, signature))[:12000])
-    print("prefix_signatures_end")
-    print("can_prefix_signatures_begin")
-    for signature in can_prefix_signatures:
-        print(signature)
-        print(compact(extract_method(item, signature))[:12000])
-    print("can_prefix_signatures_end")
+    for name in ("GetRollablePrefixes", "SetDefaults", "SetDefaults1"):
+        matches = signatures(item, name, require_static=False)
+        print(f"{name}_diagnostics_begin")
+        for signature in matches:
+            body = compact(extract_method(item, signature))
+            print(signature)
+            if name == "SetDefaults1":
+                print_context(body, "case 2:")
+            elif name == "SetDefaults":
+                print(body[:9000])
+            else:
+                print(body[:20000])
+        print(f"{name}_diagnostics_end")
 
     print("dirt_drop_item=2")
     print("dirt_drop_stack=1")
