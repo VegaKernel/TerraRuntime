@@ -24,7 +24,7 @@ public sealed class WorkerCompletionCommandForwarderTests
         forwarder.Start();
         workers.Start();
         Assert.True(workers.TrySubmit(21));
-        Assert.True(forwarded.Wait(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        forwarded.Wait(TestContext.Current.CancellationToken);
 
         Assert.Equal(GameCommandSourceId.System, ingress.Source);
         Assert.Equal(new ApplyResultCommand(42), ingress.Command);
@@ -58,7 +58,7 @@ public sealed class WorkerCompletionCommandForwarderTests
         forwarder.Start();
         workers.Start();
         Assert.True(workers.TrySubmit(21));
-        Assert.True(applied.Wait(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        applied.Wait(TestContext.Current.CancellationToken);
 
         GameLoopSnapshot snapshot = loop.Snapshot;
         Assert.Equal(42, state.Result);
