@@ -4,6 +4,8 @@ artifacts/
 .tools/
 **/bin/
 **/obj/
+__pycache__/
+*.pyc
 *.zip
 *.exe
 *.dll
