@@ -38,6 +38,9 @@ internal static class Program
             return 31;
         }
 
+        if (args.Contains("--host-module-smoke", StringComparer.Ordinal))
+            return 0;
+
         return global::TerraRuntime.StartupProgram.Run(args, loader);
     }
 

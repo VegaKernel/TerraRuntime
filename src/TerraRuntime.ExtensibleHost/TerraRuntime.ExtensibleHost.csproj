@@ -17,6 +17,16 @@
     <TieredCompilation>true</TieredCompilation>
     <TieredPGO>true</TieredPGO>
     <PublishReadyToRun>true</PublishReadyToRun>
+
+    <!-- Keep the CoreCLR deployment clean without sacrificing external managed plugin loading. -->
+    <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract Condition="'$(RuntimeIdentifier)' != ''">true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+
+    <CleanExtensibleDeploymentRoot Condition="'$(CleanExtensibleDeploymentRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../artifacts/deploy-coreclr/$(RuntimeIdentifier)'))</CleanExtensibleDeploymentRoot>
+    <CleanExtensibleExecutableName Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">$(AssemblyName).exe</CleanExtensibleExecutableName>
+    <CleanExtensibleExecutableName Condition="'$(CleanExtensibleExecutableName)' == ''">$(AssemblyName)</CleanExtensibleExecutableName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,4 +37,23 @@
     <ProjectReference Include="../TerraRuntime/TerraRuntime.csproj" />
     <ProjectReference Include="../TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
   </ItemGroup>
+
+  <Target Name="CreateCleanExtensibleDeployment"
+          AfterTargets="Publish"
+          Condition="'$(RuntimeIdentifier)' != '' and '$(PublishSingleFile)' == 'true'">
+    <PropertyGroup>
+      <CleanExtensibleSourceExecutable>$([System.IO.Path]::Combine('$(PublishDir)', '$(CleanExtensibleExecutableName)'))</CleanExtensibleSourceExecutable>
+    </PropertyGroup>
+
+    <Error Condition="!Exists('$(CleanExtensibleSourceExecutable)')"
+           Text="CoreCLR single-file publish completed without expected executable '$(CleanExtensibleSourceExecutable)'." />
+
+    <RemoveDir Directories="$(CleanExtensibleDeploymentRoot)" />
+    <MakeDir Directories="$(CleanExtensibleDeploymentRoot);$(CleanExtensibleDeploymentRoot)/HostModules;$(CleanExtensibleDeploymentRoot)/ServerPlugins;$(CleanExtensibleDeploymentRoot)/Worlds;$(CleanExtensibleDeploymentRoot)/config;$(CleanExtensibleDeploymentRoot)/data;$(CleanExtensibleDeploymentRoot)/logs" />
+    <Copy SourceFiles="$(CleanExtensibleSourceExecutable)"
+          DestinationFolder="$(CleanExtensibleDeploymentRoot)" />
+
+    <Message Importance="high"
+             Text="Clean extensible TerraRuntime deployment: $(CleanExtensibleDeploymentRoot)" />
+  </Target>
 </Project>
