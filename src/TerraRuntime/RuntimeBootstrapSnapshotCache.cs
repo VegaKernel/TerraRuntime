@@ -15,8 +15,7 @@ internal static class RuntimeBootstrapSnapshotCache
     private const int HashSize = 32;
     private const int IoBufferSize = 64 * 1024;
     private const int MaxPayloadBytes = 32 * 1024 * 1024;
-    private const int MaxPostFramesPerSection = 512;
-    private const int MaxGlobalPostFrames = 2_048;
+    private const int MaxGlobalPostFrames = PlayerBootstrapFrameBudget.MaximumGlobalPostSectionFrames;
 
     private static ReadOnlySpan<byte> Magic => "TRBOOTPK"u8;
 
@@ -228,12 +227,13 @@ internal static class RuntimeBootstrapSnapshotCache
 
             ReadOnlyMemory<byte>[] postFrames = snapshot.BaseSectionPostFrames[i]
                 ?? throw new InvalidDataException("Bootstrap post-section frames cannot be null.");
-            if (postFrames.Length > MaxPostFramesPerSection)
-                throw new InvalidDataException("Too many post-section frames.");
+            if (postFrames.Length != 0)
+            {
+                throw new InvalidDataException(
+                    "Section-local post frames are not valid during initial bootstrap.");
+            }
 
-            writer.Write(postFrames.Length);
-            foreach (ReadOnlyMemory<byte> frame in postFrames)
-                WriteFrame(writer, frame);
+            writer.Write(0);
         }
 
         if (snapshot.GlobalPostSectionFrames.Length > MaxGlobalPostFrames)
@@ -277,19 +277,12 @@ internal static class RuntimeBootstrapSnapshotCache
 
                 sections[i] = new WorldSectionId(reader.ReadInt32(), reader.ReadInt32());
                 if (!TryReadFrame(reader, stream, out baseFrames[i]) ||
-                    !TryReadCount(reader, stream, MaxPostFramesPerSection, out int postCount))
+                    !TryReadCount(reader, stream, maximum: 0, out _))
                 {
                     return false;
                 }
 
-                var sectionPostFrames = new ReadOnlyMemory<byte>[postCount];
-                for (int frameIndex = 0; frameIndex < postCount; frameIndex++)
-                {
-                    if (!TryReadFrame(reader, stream, out sectionPostFrames[frameIndex]))
-                        return false;
-                }
-
-                postFrames[i] = sectionPostFrames;
+                postFrames[i] = [];
             }
 
             if (!TryReadCount(reader, stream, MaxGlobalPostFrames, out int globalCount))

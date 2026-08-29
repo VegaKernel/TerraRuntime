@@ -1,10 +1,15 @@
 using System.Reflection;
+using System.Security.Cryptography;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
 public sealed class RuntimeBootstrapSnapshotCacheTests
 {
+    private const int SnapshotHeaderSize = 128;
+    private const int SnapshotHashOffset = 88;
+    private const int SnapshotHashSize = 32;
+
     [Fact]
     public void Bootstrap_snapshot_round_trips_encoded_join_frames()
     {
@@ -58,6 +63,80 @@ public sealed class RuntimeBootstrapSnapshotCacheTests
     }
 
     [Fact]
+    public void Bootstrap_snapshot_decoder_rejects_section_post_frames()
+    {
+        byte[] source = CreateCompleteWorld();
+        WorldFileLoadLimits limits = CreateLimits();
+        Assert.True(WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded).IsLoaded);
+        WorldFileData world = Assert.IsType<WorldFileData>(loaded);
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+
+        string path = TempPath();
+        var stamp = new RuntimeWorldSourceStamp(source.LongLength, DateTime.UtcNow.Ticks);
+        try
+        {
+            Assert.True(RuntimeBootstrapSnapshotCache.TryWriteAtomic(path, stamp, world, packets).IsWritten);
+            byte[] bytes = File.ReadAllBytes(path);
+            (int firstPostCountOffset, _) = LocateSnapshotFrameCounts(bytes);
+            Assert.True(firstPostCountOffset >= SnapshotHeaderSize);
+            Assert.True(BitConverter.TryWriteBytes(bytes.AsSpan(firstPostCountOffset, sizeof(int)), 1));
+            RewritePayloadHash(bytes);
+            File.WriteAllBytes(path, bytes);
+
+            RuntimeBootstrapSnapshotLoadDiagnostic diagnostic = RuntimeBootstrapSnapshotCache.TryLoad(
+                path,
+                stamp,
+                world,
+                out PlayerBootstrapPacketSet? restored);
+
+            Assert.Equal(RuntimeBootstrapSnapshotLoadResult.InvalidPayload, diagnostic.Result);
+            Assert.Null(restored);
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(path + ".tmp");
+        }
+    }
+
+    [Fact]
+    public void Bootstrap_snapshot_decoder_rejects_global_frame_count_above_runtime_budget()
+    {
+        byte[] source = CreateCompleteWorld();
+        WorldFileLoadLimits limits = CreateLimits();
+        Assert.True(WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded).IsLoaded);
+        WorldFileData world = Assert.IsType<WorldFileData>(loaded);
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+
+        string path = TempPath();
+        var stamp = new RuntimeWorldSourceStamp(source.LongLength, DateTime.UtcNow.Ticks);
+        try
+        {
+            Assert.True(RuntimeBootstrapSnapshotCache.TryWriteAtomic(path, stamp, world, packets).IsWritten);
+            byte[] bytes = File.ReadAllBytes(path);
+            (_, int globalCountOffset) = LocateSnapshotFrameCounts(bytes);
+            int invalidCount = checked(PlayerBootstrapFrameBudget.MaximumGlobalPostSectionFrames + 1);
+            Assert.True(BitConverter.TryWriteBytes(bytes.AsSpan(globalCountOffset, sizeof(int)), invalidCount));
+            RewritePayloadHash(bytes);
+            File.WriteAllBytes(path, bytes);
+
+            RuntimeBootstrapSnapshotLoadDiagnostic diagnostic = RuntimeBootstrapSnapshotCache.TryLoad(
+                path,
+                stamp,
+                world,
+                out PlayerBootstrapPacketSet? restored);
+
+            Assert.Equal(RuntimeBootstrapSnapshotLoadResult.InvalidPayload, diagnostic.Result);
+            Assert.Null(restored);
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(path + ".tmp");
+        }
+    }
+
+    [Fact]
     public void Bootstrap_snapshot_rejects_corrupted_payload()
     {
         byte[] source = CreateCompleteWorld();
@@ -72,7 +151,7 @@ public sealed class RuntimeBootstrapSnapshotCacheTests
         {
             Assert.True(RuntimeBootstrapSnapshotCache.TryWriteAtomic(path, stamp, world, packets).IsWritten);
             byte[] bytes = File.ReadAllBytes(path);
-            bytes[128] ^= 0x01;
+            bytes[SnapshotHeaderSize] ^= 0x01;
             File.WriteAllBytes(path, bytes);
 
             RuntimeBootstrapSnapshotLoadDiagnostic diagnostic = RuntimeBootstrapSnapshotCache.TryLoad(
@@ -156,6 +235,49 @@ public sealed class RuntimeBootstrapSnapshotCacheTests
             File.Delete(path + ".tmp");
         }
     }
+
+    private static (int FirstPostCountOffset, int GlobalCountOffset) LocateSnapshotFrameCounts(byte[] bytes)
+    {
+        using var stream = new MemoryStream(bytes, writable: false);
+        using var reader = new BinaryReader(stream);
+        stream.Position = SnapshotHeaderSize;
+
+        SkipSnapshotFrame(reader);
+        SkipSnapshotFrame(reader);
+        int sectionCount = reader.ReadInt32();
+        Assert.True(sectionCount > 0);
+
+        int firstPostCountOffset = -1;
+        for (int i = 0; i < sectionCount; i++)
+        {
+            _ = reader.ReadInt32();
+            _ = reader.ReadInt32();
+            SkipSnapshotFrame(reader);
+
+            int postCountOffset = checked((int)stream.Position);
+            int postCount = reader.ReadInt32();
+            if (i == 0)
+                firstPostCountOffset = postCountOffset;
+
+            Assert.True(postCount >= 0);
+            for (int frameIndex = 0; frameIndex < postCount; frameIndex++)
+                SkipSnapshotFrame(reader);
+        }
+
+        return (firstPostCountOffset, checked((int)stream.Position));
+    }
+
+    private static void SkipSnapshotFrame(BinaryReader reader)
+    {
+        int length = reader.ReadInt32();
+        Assert.InRange(length, 3, ushort.MaxValue);
+        reader.BaseStream.Seek(length, SeekOrigin.Current);
+    }
+
+    private static void RewritePayloadHash(byte[] bytes) =>
+        SHA256.HashData(
+            bytes.AsSpan(SnapshotHeaderSize),
+            bytes.AsSpan(SnapshotHashOffset, SnapshotHashSize));
 
     private static void AssertSnapshotsEqual(
         PlayerBootstrapPacketSnapshot expected,
