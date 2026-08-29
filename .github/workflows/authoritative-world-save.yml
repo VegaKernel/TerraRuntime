@@ -11,9 +11,11 @@ on:
       - 'src/TerraRuntime.World/WorldFileTileChestRewriter.cs'
       - 'src/TerraRuntime.World/WorldFileTileEncoder.cs'
       - 'src/TerraRuntime.World/WorldFileChestEncoder.cs'
+      - 'src/TerraRuntime.World/WorldFileAtomicPublisher.cs'
       - 'src/TerraRuntime.Core/WorldSaveCoordinator.cs'
       - 'src/TerraRuntime.Core/AtomicSaveFileWriter.cs'
       - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterTests.cs'
+      - 'tests/TerraRuntime.Tests/WorldFileAtomicPublisherTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldSnapshotPreservedSectionsTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldTileChestSaveServiceTests.cs'
       - 'tools/TerraRuntime.AtomicSaveCrashProbe/**'
@@ -52,12 +54,19 @@ jobs:
           --no-restore
           --filter FullyQualifiedName~RuntimeWorldTileChestSaveServiceTests
 
-      - name: Prove atomic save publication
+      - name: Prove atomic save replacement
         run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           -c Release
           --no-restore
           --filter FullyQualifiedName~AtomicSaveFileWriterTests
+
+      - name: Prove atomic first publication
+        run: >-
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          -c Release
+          --no-restore
+          --filter FullyQualifiedName~WorldFileAtomicPublisherTests
 
       - name: Build atomic save crash probe
         run: dotnet build tools/TerraRuntime.AtomicSaveCrashProbe/TerraRuntime.AtomicSaveCrashProbe.csproj -c Release
