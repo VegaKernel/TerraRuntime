@@ -49,6 +49,7 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long StopApplicationStopped = 0,
     long StopHandshakeTimeout = 0,
     long StopIdleTimeout = 0,
+    long StopJoinTimeout = 0,
     long RejectedMalformedProtocol = 0,
     long RejectedRateLimited = 0,
     long RejectedInvalidState = 0,
