@@ -18,8 +18,9 @@ public enum ProjectileLifecycleFrameStopReason : byte
 
 /// <summary>
 /// Connection-owned packet 27/29 ingress. Multiplicity performs protocol decoding; the socket thread only
-/// applies cheap client-authority guards and queues immutable decoded state. Exact ProjectileKey lookup,
-/// physical allocation, ownership validation and mutation are authoritative-thread responsibilities.
+/// applies cheap client-authority guards and queues immutable decoded state. The production gameplay ingress also
+/// composes packet 17 through <see cref="TileManipulationFrameSink"/>, preserving the existing host sink chain.
+/// Exact entity lookup, ownership validation and every world mutation are authoritative-thread responsibilities.
 /// </summary>
 public sealed class ProjectileLifecycleFrameSink : ITerrariaFrameSink
 {
@@ -27,6 +28,7 @@ public sealed class ProjectileLifecycleFrameSink : ITerrariaFrameSink
     private readonly PlayerBootstrapFrameSink bootstrap;
     private readonly ITerrariaFrameSink inner;
     private readonly IProjectileNetworkIngress ingress;
+    private readonly TileManipulationFrameSink? tileManipulation;
     private long droppedAuthorityUpdates;
 
     internal ProjectileLifecycleFrameSink(
@@ -45,22 +47,31 @@ public sealed class ProjectileLifecycleFrameSink : ITerrariaFrameSink
         this.bootstrap = bootstrap;
         this.inner = inner;
         this.ingress = ingress;
+        tileManipulation = ingress is ITileNetworkIngress tileIngress
+            ? new TileManipulationFrameSink(source, bootstrap, inner, tileIngress)
+            : null;
     }
 
     public ProjectileLifecycleFrameStopReason StopReason { get; private set; }
+
+    public TileManipulationFrameStopReason TileStopReason =>
+        tileManipulation?.StopReason ?? TileManipulationFrameStopReason.None;
 
     public long DroppedAuthorityUpdates => Interlocked.Read(ref droppedAuthorityUpdates);
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
-        if (StopReason != ProjectileLifecycleFrameStopReason.None)
+        if (StopReason != ProjectileLifecycleFrameStopReason.None ||
+            TileStopReason != TileManipulationFrameStopReason.None)
+        {
             return TerrariaFrameSinkResult.Stop;
+        }
 
         return (TerrariaMessageId)frame.MessageId switch
         {
             TerrariaMessageId.ProjectileNew => HandleUpdate(in frame),
             TerrariaMessageId.ProjectileDestroy => HandleDestroy(in frame),
-            _ => inner.OnFrame(in frame)
+            _ => tileManipulation?.OnFrame(in frame) ?? inner.OnFrame(in frame)
         };
     }
 
