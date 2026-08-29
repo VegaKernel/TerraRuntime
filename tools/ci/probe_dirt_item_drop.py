@@ -53,17 +53,19 @@ def require(text: str, needle: str, label: str) -> None:
         raise SystemExit(f"Pinned source contract changed: missing {label}: {needle}")
 
 
-def print_context(text: str, marker: str, radius: int = 3500) -> None:
-    index = text.find(marker)
-    if index < 0:
-        print(f"diagnostic_marker_missing={marker}")
-        return
-    print(f"diagnostic_context[{marker}]={text[max(0, index-radius):min(len(text), index+len(marker)+radius)]}")
+def parse_bool_set(source: str, name: str) -> set[int]:
+    match = re.search(
+        rf"\b{name}\s*=\s*Factory\.CreateBoolSet\((?P<body>[^;]*)\);",
+        source,
+    )
+    if match is None:
+        raise SystemExit(f"Could not locate pinned bool set {name}.")
+    return {int(value) for value in re.findall(r"-?\d+", match.group("body"))}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Inspect pinned TerrariaServer 1.4.5.8 Dirt item-drop creation semantics."
+        description="Verify pinned TerrariaServer 1.4.5.8 Dirt item-drop creation semantics."
     )
     parser.add_argument("--world-gen", required=True)
     parser.add_argument("--item", required=True)
@@ -147,31 +149,40 @@ def main() -> int:
     require(
         defaults1_body,
         "case 2: useStyle = 1; useTurn = true; useAnimation = 15; useTime = 10; autoReuse = true; consumable = true; createTile = 0; width = 12; height = 12; break;",
-        "Dirt Block 12x12 defaults",
+        "Dirt Block 12x12 non-accessory defaults",
     )
 
     get_rollable = next(iter(signatures(item, "GetRollablePrefixes", require_static=False)), None)
     if get_rollable is None:
         raise SystemExit("Could not locate Item.GetRollablePrefixes.")
     get_rollable_body = compact(extract_method(item, get_rollable))
-    require(get_rollable_body, "if (PrefixLegacy.ItemSets.SwordsHammersAxesPicks[type])", "melee prefix set gate")
+    prefix_sets = (
+        "SwordsHammersAxesPicks",
+        "SpearsMacesChainsawsDrillsPunchCannon",
+        "GunsBows",
+        "Magic",
+        "Summon",
+        "BoomerangsChakrams",
+        "ItemsThatCanHaveLegendary2",
+    )
+    for name in prefix_sets:
+        require(get_rollable_body, f"PrefixLegacy.ItemSets.{name}[type]", f"{name} prefix gate")
+        if 2 in parse_bool_set(prefix_legacy, name):
+            raise SystemExit(f"Pinned Dirt Block item 2 unexpectedly entered prefix set {name}.")
     require(get_rollable_body, "if (IsAPrefixableAccessory())", "accessory prefix gate")
     require(get_rollable_body, "return null;", "non-prefixable return")
 
-    print_context(prefix_legacy, "SwordsHammersAxesPicks")
-    print_context(prefix_legacy, "SpearsMacesChainsawsDrillsPunchCannon")
-    print_context(prefix_legacy, "GunsBows")
-    print_context(prefix_legacy, "Magic")
-    print_context(prefix_legacy, "Summon")
-    print_context(prefix_legacy, "BoomerangsChakrams")
-    print_context(prefix_legacy, "ItemsThatCanHaveLegendary2")
-    print_context(item_id, "ItemNoGravity")
+    item_no_gravity = parse_bool_set(item_id, "ItemNoGravity")
+    if 2 in item_no_gravity:
+        raise SystemExit("Pinned Dirt Block item 2 unexpectedly entered ItemNoGravity.")
 
     print("dirt_drop_item=2")
     print("dirt_drop_stack=1")
+    print("dirt_drop_prefix=0")
     print("dirt_drop_item_size=12x12")
     print("dirt_drop_center=x*16+8,y*16+8")
     print("dirt_drop_position=x*16+2,y*16+2")
+    print("dirt_drop_gravity=ordinary")
     print("dirt_drop_velocity_x=Main.rand.Next(-30,31)*0.1")
     print("dirt_drop_velocity_y=Main.rand.Next(-40,-15)*0.1")
     return 0
