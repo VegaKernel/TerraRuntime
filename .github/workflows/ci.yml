@@ -21,6 +21,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Test documentation checker
+        run: python3 tools/ci/test_check_documentation.py
+
       - name: Validate bilingual documentation
         run: python3 tools/ci/check_documentation.py
 
@@ -168,7 +171,7 @@ jobs:
           -c Release
           -p:PublishAot=false
 
-      - name: Install drop-in Vega fixture
+      - name: Install drop-in host module fixture
         shell: pwsh
         run: Copy-Item tests/TerraRuntime.HostModuleFixture/bin/Release/net11.0/TerraRuntime.HostModuleFixture.dll artifacts/coreclr/win-x64/HostModules/Vega.dll
 
