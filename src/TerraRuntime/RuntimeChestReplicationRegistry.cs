@@ -17,6 +17,7 @@ internal sealed class RuntimeChestReplicationRegistry : IRuntimePlayerEventSink
 
     public long OpenFrames { get; private set; }
     public long ItemFrames { get; private set; }
+    public long NameFrames { get; private set; }
     public long ChestIndexFrames { get; private set; }
     public long RejectedFrames { get; private set; }
 
@@ -83,6 +84,28 @@ internal sealed class RuntimeChestReplicationRegistry : IRuntimePlayerEventSink
 
             if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
                 ItemFrames++;
+            else
+                RejectedFrames++;
+        }
+    }
+
+    public void PublishRenamed(WorldChest chest)
+    {
+        ArgumentNullException.ThrowIfNull(chest);
+        byte[] encoded = TerrariaChestCodec.EncodeChestName(
+            chest.SlotId,
+            checked((short)chest.X),
+            checked((short)chest.Y),
+            chest.Name);
+        var frame = new OutboundFrame(encoded);
+
+        foreach ((GameCommandSourceId _, Endpoint endpoint) in endpoints)
+        {
+            if (!endpoint.IsPlaying())
+                continue;
+
+            if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+                NameFrames++;
             else
                 RejectedFrames++;
         }
