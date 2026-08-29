@@ -6,8 +6,8 @@ namespace TerraRuntime;
 /// <summary>
 /// One authoritative dry-world physics step for the verified ordinary TerrariaServer 1.4.5.8 player path.
 /// This slice owns source-backed baseline horizontal input, the base hitbox, gravity/fall-speed clamp,
-/// walk-down-slope, tile collision, position advance and post-move slope collision. Mounts, liquids,
-/// StepUp/StepDown and jump-control state remain outside this slice.
+/// walk-down-slope, ordinary StepDown/StepUp, tile collision, position advance and post-move slope collision.
+/// Mounts, liquids and jump-control state remain outside this slice.
 /// </summary>
 internal sealed class VanillaServerPlayerDryPhysicsStepper
 {
@@ -63,24 +63,51 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             return false;
         }
 
+        float positionX = player.PositionX;
+        float positionY = player.PositionY;
         float velocityY = Math.Min(player.VelocityY + Gravity, MaximumFallSpeed);
 
         velocityY = VanillaWorldWalkDownSlope.ResolveVelocityY(
             tiles,
-            player.PositionX,
-            player.PositionY,
+            positionX,
+            positionY,
             velocityX,
             velocityY,
             PlayerWidth,
             PlayerHeight,
             Gravity);
 
+        // TerrariaServer 1.4.5.8 Player.Update performs these after SlopeDownMovement and before
+        // the ordinary tile-collision/position update for an unmounted, normal-gravity player.
+        if (velocityY == Gravity)
+        {
+            positionY = VanillaWorldPlayerStepCollision.StepDown(
+                tiles,
+                positionX,
+                positionY,
+                velocityX,
+                velocityY,
+                PlayerWidth,
+                PlayerHeight).PositionY;
+        }
+
+        if (velocityY >= Gravity)
+        {
+            positionY = VanillaWorldPlayerStepCollision.StepUp(
+                tiles,
+                positionX,
+                positionY,
+                velocityX,
+                PlayerWidth,
+                PlayerHeight).PositionY;
+        }
+
         float preCollisionVelocityX = velocityX;
         float preCollisionVelocityY = velocityY;
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
             tiles,
-            player.PositionX,
-            player.PositionY,
+            positionX,
+            positionY,
             velocityX,
             velocityY,
             PlayerWidth,
@@ -88,8 +115,8 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             fallThrough: false,
             fall2: false);
 
-        float positionX = player.PositionX + collision.VelocityX;
-        float positionY = player.PositionY + collision.VelocityY;
+        positionX += collision.VelocityX;
+        positionY += collision.VelocityY;
         VanillaSlopeCollisionResult slope = VanillaWorldSlopeCollision.Resolve(
             tiles,
             positionX,
