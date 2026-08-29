@@ -10,6 +10,7 @@ on:
       - 'tools/ci/probe_tile_protocol.py'
       - 'tools/ci/probe_player_inventory.py'
       - 'tools/ci/probe_tile_authority.py'
+      - 'tools/ci/probe_dirt_placement.py'
       - '.github/workflows/terraria-tile-protocol-contract.yml'
   workflow_dispatch:
 
@@ -80,8 +81,12 @@ jobs:
             > artifacts/source-contract/player.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" \
             > artifacts/source-contract/item.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" \
+            > artifacts/source-contract/world-gen.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" \
             > artifacts/source-contract/item-id.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.TileID "$assembly" \
+            > artifacts/source-contract/tile-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.PlayerItemSlotID "$assembly" \
             > artifacts/source-contract/player-item-slot-id.cs
 
@@ -98,3 +103,7 @@ jobs:
             --message-buffer artifacts/source-contract/message-buffer.cs \
             --item artifacts/source-contract/item.cs \
             --item-id artifacts/source-contract/item-id.cs
+
+          python3 tools/ci/probe_dirt_placement.py \
+            --world-gen artifacts/source-contract/world-gen.cs \
+            --tile-id artifacts/source-contract/tile-id.cs
