@@ -6,6 +6,21 @@ namespace TerraRuntime.Tests;
 public sealed class SectionCacheOnDemandCapacityTests
 {
     [Fact]
+    public void Default_capacity_matches_the_player_slot_ceiling()
+    {
+        WorldFileData world = LoadCompleteWorld();
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+        using var pipeline = new SectionCacheRebuildPipeline(
+            world,
+            packets,
+            workerCount: 1,
+            workCapacity: 1,
+            completionCapacity: 1);
+
+        Assert.Equal(byte.MaxValue, pipeline.Snapshot.OnDemandCapacity);
+    }
+
+    [Fact]
     public async Task Distinct_requests_respect_capacity_while_same_section_still_deduplicates()
     {
         WorldFileData world = CreateMultiSectionWorld();
@@ -45,6 +60,49 @@ public sealed class SectionCacheOnDemandCapacityTests
         Assert.Equal(1, snapshot.OnDemandUniqueRequests);
         Assert.Equal(1, snapshot.OnDemandDeduplicatedRequests);
         Assert.Equal(1, snapshot.OnDemandRejectedRequests);
+    }
+
+    [Fact]
+    public async Task Concurrent_same_section_requests_share_one_admission_slot()
+    {
+        WorldFileData world = LoadCompleteWorld();
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+        using var pipeline = new SectionCacheRebuildPipeline(
+            world,
+            packets,
+            workerCount: 1,
+            workCapacity: 1,
+            completionCapacity: 1,
+            onDemandCapacity: 1);
+        WorldSectionId section = new(0, 0);
+        using var start = new ManualResetEventSlim(false);
+
+        Task<SectionRebuildRequestTicket> first = Task.Run(
+            () =>
+            {
+                start.Wait(TestContext.Current.CancellationToken);
+                return pipeline.RequestSection(section);
+            },
+            TestContext.Current.CancellationToken);
+        Task<SectionRebuildRequestTicket> second = Task.Run(
+            () =>
+            {
+                start.Wait(TestContext.Current.CancellationToken);
+                return pipeline.RequestSection(section);
+            },
+            TestContext.Current.CancellationToken);
+
+        start.Set();
+        SectionRebuildRequestTicket[] tickets = await Task.WhenAll(first, second);
+
+        Assert.All(tickets, static ticket => Assert.True(ticket.Accepted));
+        Assert.Equal(tickets[0].Generation, tickets[1].Generation);
+        SectionCacheRebuildPipelineSnapshot snapshot = pipeline.Snapshot;
+        Assert.Equal(1, snapshot.OnDemandPendingRequests);
+        Assert.Equal(2, snapshot.OnDemandRequests);
+        Assert.Equal(1, snapshot.OnDemandUniqueRequests);
+        Assert.Equal(1, snapshot.OnDemandDeduplicatedRequests);
+        Assert.Equal(0, snapshot.OnDemandRejectedRequests);
     }
 
     private static WorldFileData CreateMultiSectionWorld()
