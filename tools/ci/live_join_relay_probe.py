@@ -156,6 +156,15 @@ def join_client(host, port, expected_slot):
         0,
     )
     client.sendall(spawn)
+
+    finished_payload, skipped_to_finished = recv_until_packet(client, 129, 5)
+    if finished_payload:
+        client.close()
+        raise SystemExit(
+            f"expected empty packet129 after packet12, got payloadBytes={len(finished_payload)}, "
+            f"skipped={skipped_to_finished[:64]}"
+        )
+
     return client, section_count, frame_count
 
 
@@ -249,8 +258,8 @@ def run(host, port):
         print(
             "Live TerraRuntime two-client relay passed: "
             f"client1Sections={sections1}, client2Sections={sections2}, "
-            f"framesBefore49=({frames1},{frames2}), relaySlot={payload[0]}, "
-            f"lifecycleFramesBeforeRelay={len(skipped_to_movement)}."
+            f"framesBefore49=({frames1},{frames2}), packet129Confirmed=true, "
+            f"relaySlot={payload[0]}, lifecycleFramesBeforeRelay={len(skipped_to_movement)}."
         )
     finally:
         for client in (client1, client2, replacement):
