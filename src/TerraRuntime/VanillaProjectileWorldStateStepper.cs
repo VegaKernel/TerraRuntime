@@ -80,13 +80,14 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         // surface, in open air, and its horizontal motion meets the vanilla opposition/low-speed predicate.
         ApplyPostAiWind(in definition, current.PositionX, current.PositionY, ref velocityX);
 
+        WorldLiquidKind liquidKind = default;
         bool wet = !definition.IgnoreWater && VanillaWorldCollision.TryGetWetContact(
             tiles,
             current.PositionX,
             current.PositionY,
             definition.Width,
             definition.Height,
-            out WorldLiquidKind liquidKind);
+            out liquidKind);
 
         float collidedVelocityX = velocityX;
         float collidedVelocityY = velocityY;
