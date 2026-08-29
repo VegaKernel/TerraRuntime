@@ -1,5 +1,16 @@
 namespace TerraRuntime.Core;
 
+public readonly record struct CoalescingSaveSchedulerSnapshot(
+    bool AcceptingRequests,
+    bool WorkerRunning,
+    bool WriteActive,
+    bool HasPendingSnapshot,
+    long RequestedSaves,
+    long StartedWrites,
+    long CompletedWrites,
+    long CoalescedRequests,
+    long FailedWrites);
+
 /// <summary>
 /// Runs save serialization outside the caller while keeping at most one write active.
 /// Requests that arrive during an active write are coalesced so only the newest pending snapshot is written next.
@@ -13,6 +24,12 @@ public sealed class CoalescingSaveScheduler<TSnapshot> : IAsyncDisposable
     private bool hasPendingSnapshot;
     private bool acceptingRequests = true;
     private bool workerRunning;
+    private bool writeActive;
+    private long requestedSaves;
+    private long startedWrites;
+    private long completedWrites;
+    private long coalescedRequests;
+    private long failedWrites;
     private Task workerTask = Task.CompletedTask;
 
     public CoalescingSaveScheduler(Func<TSnapshot, CancellationToken, Task> writeAsync)
@@ -34,6 +51,10 @@ public sealed class CoalescingSaveScheduler<TSnapshot> : IAsyncDisposable
                 throw new InvalidOperationException("The save scheduler is completing and no longer accepts requests.");
             }
 
+            requestedSaves++;
+            if (hasPendingSnapshot)
+                coalescedRequests++;
+
             pendingSnapshot = snapshot;
             hasPendingSnapshot = true;
             if (workerRunning)
@@ -43,6 +64,23 @@ public sealed class CoalescingSaveScheduler<TSnapshot> : IAsyncDisposable
 
             workerRunning = true;
             workerTask = Task.Run(ProcessLoopAsync);
+        }
+    }
+
+    public CoalescingSaveSchedulerSnapshot CaptureSnapshot()
+    {
+        lock (gate)
+        {
+            return new CoalescingSaveSchedulerSnapshot(
+                acceptingRequests,
+                workerRunning,
+                writeActive,
+                hasPendingSnapshot,
+                requestedSaves,
+                startedWrites,
+                completedWrites,
+                coalescedRequests,
+                failedWrites);
         }
     }
 
@@ -80,16 +118,25 @@ public sealed class CoalescingSaveScheduler<TSnapshot> : IAsyncDisposable
                 snapshot = pendingSnapshot!;
                 pendingSnapshot = default;
                 hasPendingSnapshot = false;
+                writeActive = true;
+                startedWrites++;
             }
 
             try
             {
                 await writeAsync(snapshot, CancellationToken.None).ConfigureAwait(false);
+                lock (gate)
+                {
+                    writeActive = false;
+                    completedWrites++;
+                }
             }
             catch
             {
                 lock (gate)
                 {
+                    writeActive = false;
+                    failedWrites++;
                     pendingSnapshot = default;
                     hasPendingSnapshot = false;
                     acceptingRequests = false;
