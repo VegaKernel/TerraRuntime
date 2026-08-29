@@ -30,9 +30,60 @@ public sealed class StartupWorldCreationRequestParserTests
         Assert.Equal(ulong.MaxValue, request.Generation.Seed);
         Assert.Equal(4200, request.Generation.WidthTiles);
         Assert.Equal(1200, request.Generation.HeightTiles);
+        Assert.Equal(WorldGenerationGameMode.Classic, request.Generation.Options.GameMode);
+        Assert.Equal(WorldGenerationEvil.Corruption, request.Generation.Options.Evil);
         Assert.Equal(
             Path.GetFullPath(Path.Combine(worldsDirectory, "GeneratedWorld.wld")),
             request.OutputPath);
+    }
+
+    [Fact]
+    public void Parses_explicit_game_mode_and_world_evil_case_insensitively()
+    {
+        string[] args =
+        [
+            "--create-world", "GeneratedWorld",
+            "--world-generator", "fixture:worldgen",
+            "--world-seed", "42",
+            "--world-width", "6400",
+            "--world-height", "1800",
+            "--world-game-mode", "ExPeRt",
+            "--world-evil", "CrImSoN"
+        ];
+
+        Assert.True(
+            StartupWorldCreationRequestParser.TryParse(
+                args,
+                Path.GetTempPath(),
+                out StartupWorldCreationRequest request,
+                out string? error),
+            error);
+        Assert.Equal(WorldGenerationGameMode.Expert, request.Generation.Options.GameMode);
+        Assert.Equal(WorldGenerationEvil.Crimson, request.Generation.Options.Evil);
+    }
+
+    [Theory]
+    [InlineData("--world-game-mode", "ultra", "--world-game-mode must be classic, expert, master, or journey.")]
+    [InlineData("--world-evil", "purple", "--world-evil must be corruption or crimson.")]
+    public void Invalid_world_option_is_rejected(string option, string value, string expectedError)
+    {
+        string[] args =
+        [
+            "--create-world", "GeneratedWorld",
+            "--world-generator", "fixture:worldgen",
+            "--world-seed", "42",
+            "--world-width", "4200",
+            "--world-height", "1200",
+            option, value
+        ];
+
+        Assert.False(
+            StartupWorldCreationRequestParser.TryParse(
+                args,
+                Path.GetTempPath(),
+                out _,
+                out string? error));
+        Assert.Equal(expectedError, error);
     }
 
     [Fact]

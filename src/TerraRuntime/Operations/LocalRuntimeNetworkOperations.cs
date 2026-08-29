@@ -91,6 +91,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             StopApplicationStopped: stops.ApplicationStopped,
             StopHandshakeTimeout: stops.HandshakeTimeout,
             StopIdleTimeout: stops.IdleTimeout,
+            StopJoinTimeout: stops.JoinTimeout,
             RejectedMalformedProtocol: rejections.MalformedProtocol,
             RejectedRateLimited: rejections.RateLimited,
             RejectedInvalidState: rejections.InvalidState,

@@ -59,6 +59,7 @@ internal static class TerminalUiSmoke
                     SelectDetailsScreen(app, workspace, Key.E, "Network", "NETWORK");
                     AssertRendered(app.Driver!, "capacity 2");
                     AssertRendered(app.Driver!, "Stops       protocol 2");
+                    AssertRendered(app.Driver!, "Frame reject malformed 11");
                     AssertRendered(app.Driver!, "Timeouts    handshake 7");
                     SelectDetailsScreen(app, workspace, Key.W, "World", "WORLD");
                     AssertRendered(app.Driver!, "Sections");
@@ -94,7 +95,7 @@ internal static class TerminalUiSmoke
 
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the System Dashboard, external-dashboard transition, " +
-                "all Details menu hotkeys, Actions/manual-save path, categorized admission/connection-stop telemetry, " +
+                "all Details menu hotkeys, Actions/manual-save path, categorized admission/connection-stop/frame-rejection telemetry, " +
                 "section-cache/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
         }
@@ -428,7 +429,12 @@ internal static class TerminalUiSmoke
                 StopSlowClient: 6,
                 StopApplicationStopped: 8,
                 StopHandshakeTimeout: 7,
-                StopIdleTimeout: 9);
+                StopIdleTimeout: 9,
+                RejectedMalformedProtocol: 11,
+                RejectedRateLimited: 12,
+                RejectedInvalidState: 13,
+                RejectedGameplay: 14,
+                RejectedBackpressure: 15);
 
         RuntimeWorldSnapshot IWorldOperations.CaptureSnapshot() =>
             new(

@@ -1,0 +1,88 @@
+name: Official World Sign Locate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/official-world-sign-locate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          echo 'd87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e  .cache/terraria-1458/server.zip' | sha256sum -c -
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Generate official small world
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/vanilla-sign-probe.wld"
+          config="$GITHUB_WORKSPACE/artifacts/vanilla-sign-probe-serverconfig.txt"
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=1
+          worldname=TerraRuntimeSignProbe
+          difficulty=0
+          maxplayers=1
+          port=17810
+          password=
+          secure=1
+          upnp=0
+          EOF
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$GITHUB_WORKSPACE/artifacts/vanilla-sign-probe-server.log" 2>&1
+          status=$?
+          set -e
+          cat "$GITHUB_WORKSPACE/artifacts/vanilla-sign-probe-server.log"
+          test -s "$world"
+          if [[ $status -ne 0 && $status -ne 124 ]]; then
+            exit "$status"
+          fi
+
+      - name: Locate first persisted sign
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.SignLocate/TerraRuntime.SignLocate.csproj \
+            -c Release \
+            -- "$GITHUB_WORKSPACE/artifacts/vanilla-sign-probe.wld" \
+            2>&1 | tee artifacts/sign-selection.txt
+          grep -q '^slot=' artifacts/sign-selection.txt
+
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-world-sign-probe-${{ github.sha }}
+          path: |
+            artifacts/vanilla-sign-probe-server.log
+            artifacts/vanilla-sign-probe-serverconfig.txt
+            artifacts/sign-selection.txt
+          if-no-files-found: ignore
+          retention-days: 7

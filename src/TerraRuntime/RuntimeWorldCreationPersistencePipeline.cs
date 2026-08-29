@@ -31,7 +31,8 @@ internal readonly record struct RuntimeWorldCreationPersistenceResult(
 /// <summary>
 /// Adapter-layer transaction from a selectable generator to a validated canonical .wld. Generation remains isolated
 /// and deterministic; file identity/timestamps are explicit inputs and are applied only after pass execution and
-/// semantic finalization have succeeded.
+/// semantic finalization have succeeded. Gameplay-visible world options come exclusively from the generation request
+/// so provider execution and the persisted vanilla header cannot disagree about difficulty or world evil.
 /// </summary>
 internal sealed class RuntimeWorldCreationPersistencePipeline
 {
@@ -53,14 +54,23 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
         string outputPath,
         Guid uniqueId,
         int worldId,
-        byte gameMode,
-        bool crimson,
         long creationTimeBinary,
         long lastPlayedBinary,
         CancellationToken cancellationToken = default,
         IWorldGenerationProgressSink? progressSink = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+
+        try
+        {
+            request.Validate();
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or ArgumentOutOfRangeException or OverflowException)
+        {
+            return new RuntimeWorldCreationPersistenceResult(
+                RuntimeWorldCreationPersistenceStatus.GenerationFailed);
+        }
 
         long tileCount;
         try
@@ -125,8 +135,8 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
             header,
             created.Metadata,
             created.Candidate.TileStore,
-            gameMode,
-            crimson,
+            gameMode: (byte)request.Options.GameMode,
+            crimson: request.Options.Evil == WorldGenerationEvil.Crimson,
             creationTimeBinary,
             lastPlayedBinary,
             out byte[] canonicalWorld);

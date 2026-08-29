@@ -1,0 +1,67 @@
+name: Vanilla Sign Tile Source Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sign-tile-source-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/sign-tile-source .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          echo 'd87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e  .cache/terraria-1458/server.zip' | sha256sum -c -
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Install pinned ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+
+      - name: Extract sign tile source truth
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256='d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e'
+          assembly=''
+          while IFS= read -r -d '' candidate; do
+            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
+            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then
+              assembly="$candidate"
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          assembly_dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Sign "$assembly" \
+            > artifacts/sign-tile-source/sign.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Main "$assembly" \
+            > .cache/terraria-main.cs
+          grep -n -E -B4 -A6 'tileSign(\[|\s*=)' .cache/terraria-main.cs \
+            > artifacts/sign-tile-source/tile-sign-assignments.txt || true
+          grep -n -E -B3 -A5 'tileSign' artifacts/sign-tile-source/sign.cs \
+            > artifacts/sign-tile-source/read-sign-normalization.txt || true
+          cat artifacts/sign-tile-source/read-sign-normalization.txt
+          cat artifacts/sign-tile-source/tile-sign-assignments.txt
+          test -s artifacts/sign-tile-source/read-sign-normalization.txt
+          test -s artifacts/sign-tile-source/tile-sign-assignments.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vanilla-sign-tile-source-${{ github.sha }}
+          path: artifacts/sign-tile-source
+          if-no-files-found: error
+          retention-days: 7

@@ -13,8 +13,10 @@ on:
       - 'src/TerraRuntime.World/WorldFileChestEncoder.cs'
       - 'src/TerraRuntime.Core/WorldSaveCoordinator.cs'
       - 'src/TerraRuntime.Core/AtomicSaveFileWriter.cs'
+      - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldSnapshotPreservedSectionsTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldTileChestSaveServiceTests.cs'
+      - 'tools/TerraRuntime.AtomicSaveCrashProbe/**'
       - '.github/workflows/authoritative-world-save.yml'
   workflow_dispatch:
 
@@ -49,3 +51,115 @@ jobs:
           -c Release
           --no-restore
           --filter FullyQualifiedName~RuntimeWorldTileChestSaveServiceTests
+
+      - name: Prove atomic save publication
+        run: >-
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          -c Release
+          --no-restore
+          --filter FullyQualifiedName~AtomicSaveFileWriterTests
+
+      - name: Build atomic save crash probe
+        run: dotnet build tools/TerraRuntime.AtomicSaveCrashProbe/TerraRuntime.AtomicSaveCrashProbe.csproj -c Release
+
+      - name: Prove SIGKILL cannot expose a partial world
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          probe='tools/TerraRuntime.AtomicSaveCrashProbe/bin/Release/net11.0/TerraRuntime.AtomicSaveCrashProbe.dll'
+          work="$RUNNER_TEMP/atomic-save-crash"
+          rm -rf "$work"
+          mkdir -p "$work"
+
+          old_expected="$work/old.expected"
+          destination="$work/world.wld"
+          ready="$work/existing.ready"
+          log="$work/existing.log"
+          printf 'old-world' > "$old_expected"
+          cp "$old_expected" "$destination"
+
+          dotnet "$probe" stall "$destination" 'partial-new-world' "$ready" >"$log" 2>&1 &
+          pid=$!
+          for _ in $(seq 1 100); do
+            if [[ -f "$ready" ]]; then
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              cat "$log"
+              wait "$pid"
+            fi
+            sleep 0.1
+          done
+          if [[ ! -f "$ready" ]]; then
+            cat "$log"
+            kill -KILL "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+            echo 'crash probe did not reach the pre-publication stall' >&2
+            exit 1
+          fi
+
+          kill -KILL "$pid"
+          set +e
+          wait "$pid"
+          status=$?
+          set -e
+          if [[ "$status" -ne 137 ]]; then
+            cat "$log"
+            echo "expected SIGKILL exit 137, got $status" >&2
+            exit 1
+          fi
+
+          cmp "$old_expected" "$destination"
+          if ! compgen -G "$work/.world.wld.*.tmp" >/dev/null; then
+            echo 'expected the killed writer to leave only a temporary save file' >&2
+            exit 1
+          fi
+
+          dotnet "$probe" write "$destination" 'new-world'
+          printf 'new-world' > "$work/new.expected"
+          cmp "$work/new.expected" "$destination"
+
+          fresh="$work/fresh.wld"
+          fresh_ready="$work/fresh.ready"
+          fresh_log="$work/fresh.log"
+          dotnet "$probe" stall "$fresh" 'partial-first-world' "$fresh_ready" >"$fresh_log" 2>&1 &
+          fresh_pid=$!
+          for _ in $(seq 1 100); do
+            if [[ -f "$fresh_ready" ]]; then
+              break
+            fi
+            if ! kill -0 "$fresh_pid" 2>/dev/null; then
+              cat "$fresh_log"
+              wait "$fresh_pid"
+            fi
+            sleep 0.1
+          done
+          if [[ ! -f "$fresh_ready" ]]; then
+            cat "$fresh_log"
+            kill -KILL "$fresh_pid" 2>/dev/null || true
+            wait "$fresh_pid" 2>/dev/null || true
+            echo 'first-save crash probe did not reach the pre-publication stall' >&2
+            exit 1
+          fi
+
+          kill -KILL "$fresh_pid"
+          set +e
+          wait "$fresh_pid"
+          fresh_status=$?
+          set -e
+          if [[ "$fresh_status" -ne 137 ]]; then
+            cat "$fresh_log"
+            echo "expected first-save SIGKILL exit 137, got $fresh_status" >&2
+            exit 1
+          fi
+          if [[ -e "$fresh" ]]; then
+            echo 'partial first save became visible after SIGKILL' >&2
+            exit 1
+          fi
+          if ! compgen -G "$work/.fresh.wld.*.tmp" >/dev/null; then
+            echo 'expected the killed first writer to leave only a temporary save file' >&2
+            exit 1
+          fi
+
+          echo 'atomic_save_sigkill_ok existing_preserved=true first_save_hidden=true subsequent_save=true'

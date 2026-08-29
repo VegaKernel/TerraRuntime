@@ -21,10 +21,12 @@ docs/
 │   ├── world-persistence.md
 │   ├── gameplay.md
 │   ├── synchronization.md
+│   ├── performance-runtime.md
 │   ├── operations-tui.md
 │   ├── observability-logging.md
 │   ├── world-generation.md
-│   └── security.md
+│   ├── security.md
+│   └── testing-evidence.md
 ├── en/
 │   ├── README.md
 │   ├── project-guide.md
@@ -34,10 +36,12 @@ docs/
 │   ├── world-persistence.md
 │   ├── gameplay.md
 │   ├── synchronization.md
+│   ├── performance-runtime.md
 │   ├── operations-tui.md
 │   ├── observability-logging.md
 │   ├── world-generation.md
-│   └── security.md
+│   ├── security.md
+│   └── testing-evidence.md
 ├── roadmap.md
 └── roadmap/
 ```
@@ -55,10 +59,12 @@ A code change must update both RU and EN documentation in the same change when i
 - CLI, startup, deployment or directory layout;
 - configuration;
 - networking or synchronization semantics visible to integrators/operators;
+- performance/tick scheduling or work-budget semantics;
 - persistence, `.wld`, `.runtime-world`, save/recovery behavior;
 - security, rate-limit or failure behavior;
 - TUI/operations integration;
 - logging/observability contracts;
+- test/evidence policy that changes what qualifies as verified support;
 - world generation extension contracts;
 - known supported/unsupported vanilla behavior.
 
@@ -97,9 +103,9 @@ System-level source of truth for dependency direction, ownership, threading, dat
 
 Practical descriptions of supported external integration contracts, lifecycle, status/error semantics and examples.
 
-### Subsystem guides
+### Subsystem and engineering guides
 
-Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, operations/TUI, observability/logging, world generation and security.
+Complex domains receive standalone guides once their behavior and boundaries are substantial enough to maintain as a coherent concept. The current baseline covers protocol/networking, world persistence, gameplay/parity, synchronization/interest management, performance/tick scheduling, operations/TUI, observability/logging, world generation, security and the project's testing/evidence discipline.
 
 ### Roadmaps
 
@@ -115,22 +121,35 @@ Describe target state, acceptance criteria and incomplete work. They must not ma
 
 ## CI documentation gate
 
-`tools/ci/check_documentation.py` runs in the main `build-test` CI job before restore/build/test.
+`tools/ci/check_documentation.py` runs in the main `build-test` CI job before restore/build/test for repository-wide structural/link validation.
 
-The check deliberately validates structural invariants rather than attempting machine translation:
+The checker validates structural invariants rather than attempting machine translation:
 
 - `docs/en/` and `docs/ru/` must contain the same set of Markdown pages;
 - the required baseline pages listed by the checker must exist in both languages;
 - repository-local Markdown links in `docs/**/*.md`, root `README.md` and `AGENTS.md` must resolve to an existing path;
 - relative links may not escape the repository root.
 
+The dedicated `.github/workflows/documentation.yml` workflow checks out full Git history and invokes the same checker with `--changed-base`. That adds a change-set invariant:
+
+```text
+docs/en/<page>.md changed
+    -> docs/ru/<page>.md must also be changed in the same push/PR diff
+
+and vice versa
+```
+
+For direct work on `main`, paired language edits should therefore be committed atomically where possible. A sequence of single-file pushes is intentionally considered incomplete until a push contains the complete bilingual pair in its checked change set.
+
 The gate does **not** claim to prove semantic translation equivalence. Review remains responsible for meaning and factual parity between the two language versions.
 
-Run it locally from the repository root:
+Run the structural/link check locally from the repository root:
 
 ```text
 python3 tools/ci/check_documentation.py
 ```
+
+The `--changed-base <sha>` form is used by CI when a concrete push/PR base is available.
 
 ## Initial implementation
 
@@ -147,13 +166,16 @@ python3 tools/ci/check_documentation.py
 - [x] Dedicated world/persistence guide: `.wld` support, save pipeline, atomic recovery, runtime cache and warm-start behavior.
 - [x] Dedicated gameplay guide: players, inventory/items, NPCs, projectiles, combat and authoritative validation, with explicit parity status.
 - [x] Dedicated synchronization guide: sections, bootstrap/join, interest management and resync invariants.
+- [x] Dedicated performance/tick-runtime guide: 60 Hz schedule, command mailbox/ingress/apply budgets, per-source fairness, missed-deadline policy and measurement discipline.
 - [x] Dedicated operations/TUI guide: startup modes, dashboard model, telemetry and safe administrative operations.
 - [x] Dedicated observability/logging guide: bounded current read models and telemetry, TUI consumption, and explicit separation from the incomplete async structured logging target.
 - [x] Dedicated worldgen guide: provider contracts, plan/pass lifecycle, workspace model and vanilla-worldgen status.
 - [x] Dedicated security guide: trust boundaries, budgets, rate limits, malformed input handling and failure isolation.
+- [x] Dedicated testing/evidence guide: source hierarchy, roadmap checkbox policy, independent compatibility evidence, official/live probes, runtime publish gates and performance proof rules.
 - [x] Add diagrams/examples when they clarify an actual interaction path; subsystem guides now contain maintained text diagrams and API/flow examples where useful.
 - [x] Add documentation-link validation in CI.
 - [x] Add lightweight RU/EN structural parity validation without machine translation or line-by-line equality.
+- [x] Enforce paired RU/EN page changes in the same push/PR diff through the dedicated Documentation workflow.
 
 ## Continuing work
 
@@ -177,4 +199,5 @@ Documentation work is complete when:
 - ownership/threading/failure rules are explicit where relevant;
 - links are relative and repository-safe;
 - `python3 tools/ci/check_documentation.py` passes;
+- the dedicated Documentation workflow passes for a change that touches bilingual pages;
 - the associated roadmap/status is updated when support changed.

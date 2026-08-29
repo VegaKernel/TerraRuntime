@@ -120,7 +120,7 @@ The runtime operations surface currently includes read models/telemetry for area
 
 The exact window layout can evolve. The invariant is that the dashboard consumes bounded snapshots rather than implementation stores.
 
-## 9. Save telemetry
+## 9. Save telemetry and manual checkpoint
 
 World save status is exposed to operations/TUI through a detached status capture.
 
@@ -134,15 +134,27 @@ The status includes information such as:
 - active/pending background write state;
 - accepted/started/completed/coalesced/failed write counters.
 
-The TUI therefore does not need to inspect `WorldTileStore` or the save coordinator directly.
+The TUI also exposes **Actions → Save world checkpoint**. The action calls `IWorldOperations.TryRequestSave()` and therefore crosses the persistence ingress instead of receiving the save service or mutable tile shadow. A successful request switches to the World view, where the persistence snapshot shows the pending request; a rejected request is reported explicitly as an administrative action result.
+
+The ANSI TUI smoke exercises the actual MenuBar path (`Alt+A`, then `S`) and verifies rendered pending-save state. Unit regression coverage also exercises both accepted and rejected request paths.
 
 ## 10. Network telemetry
 
-Operations may expose bounded network state such as active connections, queue depth and other runtime counters.
+`INetworkOperations` exposes bounded network state without transferring connection ownership to the UI. The Network view currently includes:
+
+- active and registered connections;
+- accepted/rejected admission totals with separate capacity and rate rejection counts;
+- aggregate inbound rate and bounded per-connection inbound details;
+- bounded outbound queue/backpressure details and slow-client state;
+- player/NPC/projectile/world-item replication counters;
+- categorized terminal connection stops such as protocol failure, rate limiting, invalid handshake, unsupported protocol, slow client, handshake timeout, idle timeout and application stop;
+- normalized frame-rejection categories: malformed protocol, rate limited, invalid state, gameplay rejected and backpressure.
+
+Connection-stop and frame-rejection categories come from network/subsystem-owned telemetry. The TUI only projects the immutable snapshot; it does not parse log strings or add duplicate counters on the packet hot path.
 
 The UI must never become the owner of connection lifetime. Disconnects or other mutations go through an explicit safe operation/command path.
 
-High-frequency telemetry should be aggregated before display. Formatting one UI string per packet on the packet hot path is explicitly the wrong design.
+High-frequency telemetry is aggregated before display. Formatting one UI string per packet on the packet hot path is explicitly the wrong design.
 
 ## 11. Logs
 
@@ -204,13 +216,12 @@ A dashboard provider may update its view from `Refresh`, but runtime/gameplay wo
 
 Any operation that changes runtime state must cross the same ownership boundary used by non-UI control paths.
 
-Examples include future or existing safe operations for:
+Existing safe local administrative operations include:
 
-- player actions;
-- runtime world-item operations;
-- interest-management toggling;
-- save requests;
-- server-controlled actor commands.
+- interest-management enable/disable through the authoritative command ingress;
+- manual world checkpoint request through `IWorldOperations.TryRequestSave()` and the persistence ingress.
+
+Other player, world-item or server-controlled actor actions should follow the same rule when explicit runtime operations exist.
 
 The TUI must not gain a special direct-mutation shortcut merely because it runs in the same process.
 
@@ -251,7 +262,7 @@ Operations/TUI is usable but not the final administration platform.
 Still evolving:
 
 - complete structured logging/event IDs;
-- broader packet/rejection/security telemetry;
+- deeper packet/security telemetry where subsystem-owned counters provide trustworthy evidence;
 - final configurable dashboard layout and long-term UX;
 - future remote/web API adapters behind the same operations model;
 - richer safe administrative actions;

@@ -10,16 +10,18 @@
 - [Архитектура](architecture.md) — границы подсистем, владение состоянием, потоки данных, threading model, NativeAOT/CoreCLR profiles, persistence и extension boundaries.
 - [Интерфейсы host-интеграции](host-interfaces.md) — публичные контракты `TerraRuntime.HostContracts`, порядок жизни trusted host module и правила безопасного взаимодействия с runtime.
 
-## Руководства по подсистемам
+## Руководства по подсистемам и инженерным правилам
 
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
 - [Загрузка мира и persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state и recovery.
 - [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.
 - [Synchronization и interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis и текущая passthrough policy.
+- [Performance и tick scheduling](performance-runtime.md) — 60 Hz authoritative loop, bounded mailbox/ingress/apply budgets, per-source fairness, missed-tick policy и правила performance evidence.
 - [Operations и Terminal UI](operations-tui.md) — startup без аргументов, CLI defaults, lifecycle TUI, fallback console, telemetry и правила dashboard extensions.
 - [Observability и logging](observability-logging.md) — bounded runtime telemetry/log buffers, текущее host-log behavior и незавершённый async structured logging target.
 - [World generation](world-generation.md) — provider/pass/workspace/RNG contracts, trusted-host registration и текущий non-vanilla flat baseline.
 - [Security и trust boundaries](security.md) — admission limits, rate/size bounds, failure isolation, persistence safety и незавершённая hardening work.
+- [Testing, verification и evidence](testing-evidence.md) — политика roadmap checkbox, independent evidence, official-source/live-world probes, NativeAOT/CoreCLR gates и правила доказательства performance claims.
 
 ## Нормативные документы проекта
 

@@ -111,6 +111,7 @@ internal static class InteractiveWorldCreationPrompt
 
     private static bool TryReadSeed(out ulong seed)
     {
+        Span<byte> randomBytes = stackalloc byte[sizeof(ulong)];
         while (true)
         {
             Console.Write("Seed uint64 (Enter for a generated seed, Q to cancel): ");
@@ -130,9 +131,8 @@ internal static class InteractiveWorldCreationPrompt
 
             if (input.Length == 0)
             {
-                Span<byte> bytes = stackalloc byte[sizeof(ulong)];
-                RandomNumberGenerator.Fill(bytes);
-                seed = BinaryPrimitives.ReadUInt64LittleEndian(bytes);
+                RandomNumberGenerator.Fill(randomBytes);
+                seed = BinaryPrimitives.ReadUInt64LittleEndian(randomBytes);
                 Console.WriteLine($"Generated seed: {seed}");
                 return true;
             }

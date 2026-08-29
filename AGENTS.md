@@ -118,6 +118,9 @@ When a change affects any of the following, update both language versions in the
 - configuration, persistence, `.wld` or `.runtime-world` behavior;
 - lifecycle or extension surfaces;
 - security/failure semantics that operators or integrators must understand;
+- performance/tick scheduling or work-budget behavior;
+- logging/observability contracts;
+- test/evidence policy that changes what qualifies as verified support;
 - known limitations or supported/unsupported subsystem behavior.
 
 Use `docs/ru/README.md` and `docs/en/README.md` as the documentation entry points. Keep the Russian and English versions semantically equivalent even when wording differs.
@@ -126,7 +129,9 @@ Do not mechanically mirror every source file into a Markdown file. Document stab
 
 When a public interface changes, update its usage documentation immediately. When implementation changes what is actually supported, update roadmap/status documentation immediately. A code change that leaves the docs describing a different runtime is incomplete.
 
-Run `python3 tools/ci/check_documentation.py` after documentation changes. The checker enforces the mirrored RU/EN page set and repository-local link validity; it does not replace human review for semantic translation parity.
+Run `python3 tools/ci/check_documentation.py` after documentation changes. The checker validates the mirrored RU/EN page set and repository-local links. CI additionally runs it with `--changed-base` so any changed `docs/en/<page>.md` must have the matching `docs/ru/<page>.md` in the same push/PR change set and vice versa. The checker does not replace human review for semantic translation parity.
+
+When writing directly to `main`, keep paired RU/EN page edits in one atomic commit/change set where possible. Sequential single-file pushes are intentionally treated as incomplete bilingual changes by the documentation gate.
 
 ## 11. Definition of done
 
@@ -140,7 +145,8 @@ A non-trivial change is not done until the relevant checks are green:
 - independent verification when the change is protocol/gameplay/world-format shaped;
 - before/after measurement when the claim is performance-related;
 - matching Russian and English documentation updates when behavior, architecture, contracts, operations or supported scope changed;
-- `python3 tools/ci/check_documentation.py` when documentation or documentation-linked behavior changed.
+- `python3 tools/ci/check_documentation.py` when documentation or documentation-linked behavior changed;
+- the dedicated Documentation workflow when a push/PR touches bilingual documentation.
 
 If CI or a smoke path is red, fix it before stacking unrelated roadmap work on top.
 

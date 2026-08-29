@@ -17,7 +17,12 @@ public sealed class RuntimeWorldCreationPersistencePipelineTests
             "Flat",
             Seed: 12345UL,
             WidthTiles: 128,
-            HeightTiles: 96);
+            HeightTiles: 96)
+        {
+            Options = new WorldGenerationOptions(
+                WorldGenerationGameMode.Master,
+                WorldGenerationEvil.Crimson)
+        };
         long timestamp = new DateTime(2026, 8, 29, 12, 0, 0, DateTimeKind.Utc).ToBinary();
 
         try
@@ -27,8 +32,6 @@ public sealed class RuntimeWorldCreationPersistencePipelineTests
                 worldPath,
                 Guid.Parse("0a4e31c0-dc25-47d5-b3e1-508574ba7ae9"),
                 worldId: 987654321,
-                gameMode: 0,
-                crimson: false,
                 creationTimeBinary: timestamp,
                 lastPlayedBinary: timestamp,
                 cancellationToken: TestContext.Current.CancellationToken);
@@ -50,6 +53,8 @@ public sealed class RuntimeWorldCreationPersistencePipelineTests
             Assert.Equal("Flat", world.Header.Name);
             Assert.Equal("12345", world.Header.SeedText);
             Assert.Equal((short)64, world.RuntimeMetadata.SpawnX);
+            Assert.Equal((byte)WorldGenerationGameMode.Master, world.RuntimeMetadata.GameMode);
+            Assert.True(world.RuntimeMetadata.Crimson);
         }
         finally
         {
@@ -81,8 +86,6 @@ public sealed class RuntimeWorldCreationPersistencePipelineTests
                 worldPath,
                 Guid.Parse("db6b7407-3127-4938-8ec0-a35e679667ae"),
                 worldId: 1,
-                gameMode: 0,
-                crimson: false,
                 creationTimeBinary: 0,
                 lastPlayedBinary: 0,
                 cancellationToken: TestContext.Current.CancellationToken);
@@ -114,8 +117,6 @@ public sealed class RuntimeWorldCreationPersistencePipelineTests
             Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "oversized.wld"),
             Guid.Parse("d9b150ac-c39d-4bbb-b574-d376d055fd96"),
             worldId: 1,
-            gameMode: 0,
-            crimson: false,
             creationTimeBinary: 0,
             lastPlayedBinary: 0,
             cancellationToken: TestContext.Current.CancellationToken);

@@ -70,7 +70,7 @@ public sealed class VanillaWorldAutosavePersistenceTests
                 Type = 1,
                 Flags = WorldTileFlags.Active | WorldTileFlags.WireBlue
             };
-            source.Tiles.Set(2, 2, in secondTile);
+            source.Tiles.Set(0, 2, in secondTile);
 
             timestamp += VanillaWorldAutosaveScheduler.DedicatedServerIntervalMilliseconds + 1;
             Assert.True(autosave.Tick());
@@ -126,7 +126,7 @@ public sealed class VanillaWorldAutosavePersistenceTests
         Assert.Equal((ushort)1, first.Type);
         Assert.True((first.Flags & WorldTileFlags.WireRed) != 0);
 
-        WorldTile second = loaded.Tiles.Get(2, 2);
+        WorldTile second = loaded.Tiles.Get(0, 2);
         Assert.Equal(expectSecondTile, second.IsActive);
         Assert.Equal(expectSecondTile, (second.Flags & WorldTileFlags.WireBlue) != 0);
     }
