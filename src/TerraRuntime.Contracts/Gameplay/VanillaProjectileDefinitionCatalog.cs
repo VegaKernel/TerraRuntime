@@ -17,6 +17,7 @@ public readonly record struct VanillaProjectileDefinition(
     ProjectileAiStyleId AiStyle,
     bool TileCollide,
     bool IgnoreWater,
+    bool CanCutTiles,
     int CollisionWidth,
     int CollisionHeight)
 {
@@ -37,6 +38,7 @@ public static class VanillaProjectileDefinitionCatalog
         AiStyle: VanillaProjectileAiStyles.Thrown,
         TileCollide: true,
         IgnoreWater: false,
+        CanCutTiles: true,
         CollisionWidth: 6,
         CollisionHeight: 6);
 
@@ -46,6 +48,7 @@ public static class VanillaProjectileDefinitionCatalog
         AiStyle: VanillaProjectileAiStyles.Thrown,
         TileCollide: true,
         IgnoreWater: false,
+        CanCutTiles: true,
         CollisionWidth: 12,
         CollisionHeight: 12);
 
@@ -55,6 +58,7 @@ public static class VanillaProjectileDefinitionCatalog
         AiStyle: VanillaProjectileAiStyles.Thrown,
         TileCollide: true,
         IgnoreWater: false,
+        CanCutTiles: true,
         CollisionWidth: 12,
         CollisionHeight: 12);
 
@@ -64,6 +68,7 @@ public static class VanillaProjectileDefinitionCatalog
         AiStyle: VanillaProjectileAiStyles.Thrown,
         TileCollide: true,
         IgnoreWater: false,
+        CanCutTiles: true,
         CollisionWidth: 10,
         CollisionHeight: 10);
 

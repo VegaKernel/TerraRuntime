@@ -52,13 +52,17 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
-
-        // TerrariaServer 1.4.5.8 aiStyle 2 can cut tiles. On a dedicated server that mutation path executes
-        // for owner == Main.myPlayer (255). TerraRuntime does not yet have a projectile world-mutation effect
-        // sink, so server-owned projectiles must remain unsupported rather than silently dropping gameplay.
-        if (!VanillaProjectileOwnership.IsPlayerOwned(current.Spawner) ||
-            !VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
+        if (!VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
             definition.AiStyle != VanillaProjectileAiStyles.Thrown)
+        {
+            next = default;
+            return false;
+        }
+
+        // TerrariaServer 1.4.5.8 CanCutTiles() is true for this aiStyle 2 family. On a dedicated server that
+        // mutation path executes for owner == Main.myPlayer (255). TerraRuntime does not yet have a projectile
+        // world-mutation effect sink, so only definitions that actually carry that side effect need this gate.
+        if (definition.CanCutTiles && VanillaProjectileOwnership.IsServerOwned(current.Spawner))
         {
             next = default;
             return false;

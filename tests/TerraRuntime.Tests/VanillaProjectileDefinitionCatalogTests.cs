@@ -16,6 +16,7 @@ public sealed class VanillaProjectileDefinitionCatalogTests
         Assert.Equal(VanillaProjectileAiStyles.Thrown, definition.AiStyle);
         Assert.True(definition.TileCollide);
         Assert.False(definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
         Assert.Equal(6, definition.CollisionWidth);
         Assert.Equal(6, definition.CollisionHeight);
         Assert.Equal(8f, definition.CollisionOffsetX);
@@ -44,6 +45,7 @@ public sealed class VanillaProjectileDefinitionCatalogTests
         Assert.Equal(VanillaProjectileAiStyles.Thrown, definition.AiStyle);
         Assert.True(definition.TileCollide);
         Assert.False(definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
         Assert.Equal(collisionWidth, definition.CollisionWidth);
         Assert.Equal(collisionHeight, definition.CollisionHeight);
         Assert.Equal(collisionOffsetX, definition.CollisionOffsetX);
