@@ -27,8 +27,13 @@ public enum TerrariaMessageId : byte
     WorldItemOwner = 22,
     ProjectileNew = 27,
     ProjectileDestroy = 29,
+    RequestChestOpen = 31,
+    SyncChestItem = 32,
+    SyncPlayerChest = 33,
     PlayerMana = 42,
     PlayerSpawnSelf = 49,
+    SyncPlayerChestIndex = 80,
     LoadNetModule = 82,
-    FinishedConnectingToServer = 129
+    FinishedConnectingToServer = 129,
+    SyncChestSize = 155
 }
