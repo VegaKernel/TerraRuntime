@@ -20,8 +20,9 @@ public readonly record struct ServerPlayerCreateResult(
 }
 
 /// <summary>
-/// Trusted-host lifecycle surface for connection-free runtime-owned players. Creation reserves a normal Terraria
-/// player slot from the same generation-safe pool used by network connections; callers never receive mutable state.
+/// Trusted-host lifecycle and semantic control surface for connection-free runtime-owned players. Creation reserves a
+/// normal Terraria player slot from the same generation-safe pool used by network connections; callers never receive
+/// mutable state or direct final position/velocity writes.
 /// </summary>
 public interface IServerPlayerOperations
 {
@@ -29,6 +30,11 @@ public interface IServerPlayerOperations
         ServerPlayerId id,
         float positionX,
         float positionY,
+        CancellationToken cancellationToken = default);
+
+    ValueTask<bool> SetHorizontalIntentAsync(
+        ServerPlayerId id,
+        ServerPlayerHorizontalIntent intent,
         CancellationToken cancellationToken = default);
 
     ValueTask<bool> DespawnAsync(

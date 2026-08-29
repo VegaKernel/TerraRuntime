@@ -10,19 +10,26 @@ internal sealed record ServerPlayerCreateRuntimeCommand(
     float PositionY,
     TaskCompletionSource<ServerPlayerCreateResult> Completion) : RuntimeCommand;
 
+internal sealed record ServerPlayerHorizontalIntentRuntimeCommand(
+    ServerPlayerId Id,
+    ServerPlayerHorizontalIntent Intent,
+    TaskCompletionSource<bool> Completion) : RuntimeCommand;
+
 internal sealed record ServerPlayerDespawnRuntimeCommand(
     ServerPlayerId Id,
     TaskCompletionSource<bool> Completion) : RuntimeCommand;
 
 /// <summary>
-/// Authoritative-thread owner of server-player slot leases and connection-free state. A live server player keeps its
-/// shared slot lease for its entire lifetime. Despawn removes authoritative state before releasing the reusable slot.
+/// Authoritative-thread owner of server-player slot leases, semantic control intent and connection-free state. A live
+/// server player keeps its shared slot lease for its entire lifetime. Control state is keyed by the exact reusable
+/// <see cref="PlayerHandle"/> generation, so despawn/reuse cannot transfer stale input to a replacement player.
 /// </summary>
 internal sealed class RuntimeServerPlayerCommandService
 {
     private readonly RuntimeServerPlayerSlotRegistry identities;
     private readonly RuntimeServerPlayerStateStore states;
     private readonly Dictionary<ServerPlayerId, RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease> leases = [];
+    private readonly Dictionary<PlayerHandle, ServerPlayerHorizontalIntent> horizontalIntents = [];
 
     public RuntimeServerPlayerCommandService(
         RuntimeServerPlayerSlotRegistry identities,
@@ -38,6 +45,10 @@ internal sealed class RuntimeServerPlayerCommandService
         {
             case ServerPlayerCreateRuntimeCommand create:
                 create.Completion.TrySetResult(Create(create.Id, create.PositionX, create.PositionY));
+                return true;
+
+            case ServerPlayerHorizontalIntentRuntimeCommand horizontal:
+                horizontal.Completion.TrySetResult(SetHorizontalIntent(horizontal.Id, horizontal.Intent));
                 return true;
 
             case ServerPlayerDespawnRuntimeCommand despawn:
@@ -84,6 +95,29 @@ internal sealed class RuntimeServerPlayerCommandService
         return new ServerPlayerCreateResult(ServerPlayerCreateStatus.Created, snapshot.Player);
     }
 
+    public bool SetHorizontalIntent(ServerPlayerId id, ServerPlayerHorizontalIntent intent)
+    {
+        if (!id.IsAssigned ||
+            !IsValidHorizontalIntent(intent) ||
+            !leases.TryGetValue(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) ||
+            !states.TryGet(lease.Player, out _))
+        {
+            return false;
+        }
+
+        if (intent == ServerPlayerHorizontalIntent.Stop)
+            horizontalIntents.Remove(lease.Player);
+        else
+            horizontalIntents[lease.Player] = intent;
+
+        return true;
+    }
+
+    public ServerPlayerHorizontalIntent GetHorizontalIntent(PlayerHandle player) =>
+        player.IsAssigned && horizontalIntents.TryGetValue(player, out ServerPlayerHorizontalIntent intent)
+            ? intent
+            : ServerPlayerHorizontalIntent.Stop;
+
     public bool Despawn(ServerPlayerId id)
     {
         if (!id.IsAssigned || !leases.TryGetValue(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease))
@@ -95,13 +129,23 @@ internal sealed class RuntimeServerPlayerCommandService
                 "A live server-player lease lost its authoritative state before despawn.");
         }
 
+        horizontalIntents.Remove(lease.Player);
         leases.Remove(id);
         lease.Dispose();
         return true;
     }
+
+    private static bool IsValidHorizontalIntent(ServerPlayerHorizontalIntent intent) =>
+        intent is ServerPlayerHorizontalIntent.Left or
+            ServerPlayerHorizontalIntent.Stop or
+            ServerPlayerHorizontalIntent.Right;
 }
 
-/// <summary>Trusted-host facade that serializes server-player lifecycle through the authoritative command queue.</summary>
+/// <summary>
+/// Trusted-host facade that serializes server-player lifecycle and semantic control through the authoritative command
+/// queue. Once accepted by the queue, completion is intentionally not cancellable to avoid an ambiguous maybe-applied
+/// control mutation.
+/// </summary>
 internal sealed class RuntimeServerPlayerOperations : IServerPlayerOperations
 {
     private readonly IGameCommandIngress<RuntimeCommand> ingress;
@@ -125,6 +169,24 @@ internal sealed class RuntimeServerPlayerOperations : IServerPlayerOperations
                 new ServerPlayerCreateRuntimeCommand(id, positionX, positionY, completion)))
         {
             return new ServerPlayerCreateResult(ServerPlayerCreateStatus.QueueRejected, default);
+        }
+
+        return await completion.Task.ConfigureAwait(false);
+    }
+
+    public async ValueTask<bool> SetHorizontalIntentAsync(
+        ServerPlayerId id,
+        ServerPlayerHorizontalIntent intent,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!ingress.TryPost(
+                GameCommandSourceId.System,
+                new ServerPlayerHorizontalIntentRuntimeCommand(id, intent, completion)))
+        {
+            throw new InvalidOperationException(
+                "The authoritative command queue rejected the server-player horizontal intent command.");
         }
 
         return await completion.Task.ConfigureAwait(false);
