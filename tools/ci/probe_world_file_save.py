@@ -69,11 +69,15 @@ def main() -> int:
 
     preferred = {
         "SaveWorld_Version2",
+        "SaveFileFormatHeader",
+        "SaveHeaderPointers",
         "SaveWorldHeader",
+        "SaveWorldFlags",
         "SaveWorldTiles",
         "SaveChests",
         "SaveSigns",
         "SaveNPCs",
+        "SaveFooter",
         "SaveTileEntities",
         "SaveWeightedPressurePlates",
         "SaveTownManager",
@@ -92,8 +96,10 @@ def main() -> int:
         emitted += 1
 
     print(f"preferred_methods_emitted={emitted}")
-    if not any(method_name(signature) in {"SaveWorld_Version2", "SaveWorldHeader"} for signature in found):
-        raise SystemExit("Pinned Terraria.IO.WorldFile did not expose the expected version-2/header save entry point.")
+    required = {"SaveWorld_Version2", "SaveFileFormatHeader", "SaveHeaderPointers", "SaveWorldHeader", "SaveWorldFlags", "SaveFooter"}
+    missing = sorted(required - {method_name(signature) for signature in found})
+    if missing:
+        raise SystemExit(f"Pinned Terraria.IO.WorldFile is missing required save methods: {missing}")
 
     return 0
 
