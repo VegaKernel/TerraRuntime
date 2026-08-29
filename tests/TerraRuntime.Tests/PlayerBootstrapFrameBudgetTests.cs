@@ -7,18 +7,20 @@ namespace TerraRuntime.Tests;
 public sealed class PlayerBootstrapFrameBudgetTests
 {
     [Fact]
-    public void Current_bootstrap_maximum_stays_below_live_probe_and_connection_queue_capacity()
+    public void Current_pre_enter_world_maximum_stays_below_live_probe_and_connection_queue_capacity()
     {
         Assert.Equal(200, WorldGlobalTownNpcBootstrapPacketEncoder.MaximumTownNpcs);
         Assert.Equal(63, PlayerBootstrapFrameBudget.MaximumTileSectionFrames);
         Assert.Equal(400, PlayerBootstrapFrameBudget.MaximumGlobalPostSectionFrames);
         Assert.Equal(800, PlayerBootstrapFrameBudget.MaximumDynamicEntityFrames);
-        Assert.Equal(1_265, PlayerBootstrapFrameBudget.MaximumFramesBeforeEnterWorld);
-        Assert.Equal(1_536, PlayerBootstrapFrameBudget.LiveProbeFrameBudget);
+        Assert.Equal(65, PlayerBootstrapFrameBudget.MaximumFramesBeforeEnterWorld);
+        Assert.Equal(96, PlayerBootstrapFrameBudget.LiveProbeFrameBudget);
         Assert.True(
             PlayerBootstrapFrameBudget.MaximumFramesBeforeEnterWorld <=
             PlayerBootstrapFrameBudget.LiveProbeFrameBudget);
-        Assert.True(PlayerBootstrapFrameBudget.LiveProbeFrameBudget < 4_096);
+        Assert.True(
+            PlayerBootstrapFrameBudget.LiveProbeFrameBudget <
+            ConnectionOutboundQueueSizing.DefaultStructuralFrameBudget);
     }
 
     [Fact]
