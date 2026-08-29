@@ -23,7 +23,13 @@ internal readonly record struct RuntimeWorldSaveStatus(
     long StartedWrites,
     long CompletedWrites,
     long CoalescedSnapshots,
-    long FailedWrites);
+    long FailedWrites,
+    TimeSpan LastSnapshotCaptureDuration = default,
+    TimeSpan LastSerializationDuration = default,
+    TimeSpan LastWriteDuration = default,
+    TimeSpan TotalSnapshotCaptureDuration = default,
+    TimeSpan TotalSerializationDuration = default,
+    TimeSpan TotalWriteDuration = default);
 
 /// <summary>
 /// Bridges thread-safe save requests into game-thread-owned snapshot capture. Tile shadow maintenance and mutable
@@ -105,6 +111,7 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
     public RuntimeWorldSaveStatus CaptureStatus()
     {
         CoalescingSaveSchedulerSnapshot scheduler = coordinator.CaptureSnapshot();
+        WorldSaveCoordinatorTimingSnapshot timing = coordinator.CaptureTimingSnapshot();
         return new RuntimeWorldSaveStatus(
             AcceptingRequests: Volatile.Read(ref acceptingRequests) != 0,
             TileShadowReady: Volatile.Read(ref tileShadowReady) != 0,
@@ -117,7 +124,13 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             StartedWrites: scheduler.StartedWrites,
             CompletedWrites: scheduler.CompletedWrites,
             CoalescedSnapshots: scheduler.CoalescedRequests,
-            FailedWrites: scheduler.FailedWrites);
+            FailedWrites: scheduler.FailedWrites,
+            LastSnapshotCaptureDuration: timing.LastSnapshotCaptureDuration,
+            LastSerializationDuration: timing.LastSerializationDuration,
+            LastWriteDuration: timing.LastWriteDuration,
+            TotalSnapshotCaptureDuration: timing.TotalSnapshotCaptureDuration,
+            TotalSerializationDuration: timing.TotalSerializationDuration,
+            TotalWriteDuration: timing.TotalWriteDuration);
     }
 
     /// <summary>

@@ -12,7 +12,13 @@ internal readonly record struct RuntimeWorldPersistenceSnapshot(
     long StartedWrites,
     long CompletedWrites,
     long CoalescedSnapshots,
-    long FailedWrites);
+    long FailedWrites,
+    double LastSnapshotCaptureMilliseconds = 0d,
+    double LastSerializationMilliseconds = 0d,
+    double LastWriteMilliseconds = 0d,
+    double TotalSnapshotCaptureMilliseconds = 0d,
+    double TotalSerializationMilliseconds = 0d,
+    double TotalWriteMilliseconds = 0d);
 
 internal readonly record struct RuntimeWorldSnapshot(
     bool Ready,

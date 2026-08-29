@@ -1,4 +1,14 @@
+using System.Diagnostics;
+
 namespace TerraRuntime.Core;
+
+public readonly record struct WorldSaveCoordinatorTimingSnapshot(
+    TimeSpan LastSnapshotCaptureDuration,
+    TimeSpan LastSerializationDuration,
+    TimeSpan LastWriteDuration,
+    TimeSpan TotalSnapshotCaptureDuration,
+    TimeSpan TotalSerializationDuration,
+    TimeSpan TotalWriteDuration);
 
 /// <summary>
 /// Captures a bounded authoritative snapshot on the caller, then serializes and commits it off-loop.
@@ -9,6 +19,12 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
     private readonly object gate = new();
     private readonly Func<TSnapshot> captureSnapshot;
     private readonly CoalescingSaveScheduler<TSnapshot> scheduler;
+    private long lastSnapshotCaptureTicks;
+    private long lastSerializationTicks;
+    private long lastWriteTicks;
+    private long totalSnapshotCaptureTicks;
+    private long totalSerializationTicks;
+    private long totalWriteTicks;
     private bool acceptingRequests = true;
 
     public WorldSaveCoordinator(
@@ -23,12 +39,36 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
 
         string fullDestinationPath = Path.GetFullPath(destinationPath);
         this.captureSnapshot = captureSnapshot;
-        scheduler = new CoalescingSaveScheduler<TSnapshot>((snapshot, cancellationToken) =>
-            AtomicSaveFileWriter.WriteAsync(
-                fullDestinationPath,
-                (stream, token) => serializeAsync(snapshot, stream, token),
-                writerOptions,
-                cancellationToken));
+        scheduler = new CoalescingSaveScheduler<TSnapshot>(async (snapshot, cancellationToken) =>
+        {
+            long writeStartedAt = Stopwatch.GetTimestamp();
+            try
+            {
+                await AtomicSaveFileWriter.WriteAsync(
+                    fullDestinationPath,
+                    async (stream, token) =>
+                    {
+                        long serializationStartedAt = Stopwatch.GetTimestamp();
+                        try
+                        {
+                            await serializeAsync(snapshot, stream, token).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            RecordDuration(
+                                ref lastSerializationTicks,
+                                ref totalSerializationTicks,
+                                serializationStartedAt);
+                        }
+                    },
+                    writerOptions,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                RecordDuration(ref lastWriteTicks, ref totalWriteTicks, writeStartedAt);
+            }
+        });
     }
 
     /// <summary>
@@ -46,12 +86,34 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
                     "The world save coordinator is completing and no longer accepts requests.");
             }
 
-            TSnapshot snapshot = captureSnapshot();
+            TSnapshot snapshot;
+            long captureStartedAt = Stopwatch.GetTimestamp();
+            try
+            {
+                snapshot = captureSnapshot();
+            }
+            finally
+            {
+                RecordDuration(
+                    ref lastSnapshotCaptureTicks,
+                    ref totalSnapshotCaptureTicks,
+                    captureStartedAt);
+            }
+
             scheduler.RequestSave(snapshot);
         }
     }
 
     public CoalescingSaveSchedulerSnapshot CaptureSnapshot() => scheduler.CaptureSnapshot();
+
+    public WorldSaveCoordinatorTimingSnapshot CaptureTimingSnapshot() =>
+        new(
+            TimeSpan.FromTicks(Volatile.Read(ref lastSnapshotCaptureTicks)),
+            TimeSpan.FromTicks(Volatile.Read(ref lastSerializationTicks)),
+            TimeSpan.FromTicks(Volatile.Read(ref lastWriteTicks)),
+            TimeSpan.FromTicks(Volatile.Read(ref totalSnapshotCaptureTicks)),
+            TimeSpan.FromTicks(Volatile.Read(ref totalSerializationTicks)),
+            TimeSpan.FromTicks(Volatile.Read(ref totalWriteTicks)));
 
     /// <summary>
     /// Stops accepting snapshots and waits until the newest accepted snapshot has been committed.
@@ -67,4 +129,11 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
     }
 
     public ValueTask DisposeAsync() => new(CompleteAsync());
+
+    private static void RecordDuration(ref long lastTicks, ref long totalTicks, long startedAt)
+    {
+        long elapsedTicks = Stopwatch.GetElapsedTime(startedAt).Ticks;
+        Volatile.Write(ref lastTicks, elapsedTicks);
+        Interlocked.Add(ref totalTicks, elapsedTicks);
+    }
 }

@@ -94,7 +94,13 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
                     persistence.StartedWrites,
                     persistence.CompletedWrites,
                     persistence.CoalescedSnapshots,
-                    persistence.FailedWrites)
+                    persistence.FailedWrites,
+                    persistence.LastSnapshotCaptureDuration.TotalMilliseconds,
+                    persistence.LastSerializationDuration.TotalMilliseconds,
+                    persistence.LastWriteDuration.TotalMilliseconds,
+                    persistence.TotalSnapshotCaptureDuration.TotalMilliseconds,
+                    persistence.TotalSerializationDuration.TotalMilliseconds,
+                    persistence.TotalWriteDuration.TotalMilliseconds)
             };
         }
 
