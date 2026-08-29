@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'tools/ci/probe_world_generation_init.py'
+      - 'tools/ci/probe_worldgen_terrain_pass.py'
       - 'src/TerraRuntime.World/VanillaWorldGenerationPassCatalog1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaWorldGenerationPassCatalog1458Tests.cs'
       - '.github/workflows/terraria-worldgen-pass-catalog.yml'
@@ -87,6 +88,10 @@ jobs:
             --dither-snake-pass artifacts/source-contract/dither-snake-pass.cs \
             --pass-catalog-output artifacts/source-contract/world-generation-pass-catalog.txt
 
+          python3 tools/ci/probe_worldgen_terrain_pass.py \
+            --terrain-pass artifacts/source-contract/terrain-pass.cs \
+            --output artifacts/source-contract/terrain-pass-contract.txt
+
       - name: Verify runtime catalog against pinned fingerprint
         run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
@@ -97,6 +102,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: terraria-worldgen-pass-catalog-${{ github.sha }}
-          path: artifacts/source-contract/world-generation-pass-catalog.txt
+          path: |
+            artifacts/source-contract/world-generation-pass-catalog.txt
+            artifacts/source-contract/terrain-pass-contract.txt
           if-no-files-found: error
           retention-days: 7
