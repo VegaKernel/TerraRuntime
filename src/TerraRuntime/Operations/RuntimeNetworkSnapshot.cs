@@ -38,4 +38,6 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long ProjectileUnsupportedCommits = 0,
     long WorldItemRelayedFrames = 0,
     long WorldItemRejectedFrames = 0,
-    long WorldItemUnsupportedCommits = 0);
+    long WorldItemUnsupportedCommits = 0,
+    long AdmissionCapacityRejectedConnections = 0,
+    long AdmissionRateRejectedConnections = 0);
