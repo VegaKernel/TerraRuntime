@@ -1,8 +1,9 @@
 using TerraRuntime.World;
 
-if (args.Length != 1)
+if (args.Length != 1 && args.Length != 7)
 {
-    Console.Error.WriteLine("Usage: TerraRuntime.ChestLocate <world.wld>");
+    Console.Error.WriteLine(
+        "Usage: TerraRuntime.ChestLocate <world.wld> [--assert <chest-id> <item-slot> <stack> <prefix> <item-net-id>]");
     return 2;
 }
 
@@ -14,6 +15,47 @@ if (!diagnostic.IsLoaded || world is null)
     Console.Error.WriteLine(
         $"World load failed: result={diagnostic.Result}, stage={diagnostic.Stage}, code={diagnostic.StageResultCode}.");
     return 1;
+}
+
+if (args.Length == 7)
+{
+    if (!string.Equals(args[1], "--assert", StringComparison.Ordinal) ||
+        !short.TryParse(args[2], out short chestId) ||
+        !byte.TryParse(args[3], out byte itemSlot) ||
+        !short.TryParse(args[4], out short stack) ||
+        !byte.TryParse(args[5], out byte prefix) ||
+        !short.TryParse(args[6], out short itemNetId))
+    {
+        Console.Error.WriteLine("Invalid --assert arguments.");
+        return 2;
+    }
+
+    WorldChest? chest = world.Chests.FirstOrDefault(candidate => candidate.SlotId == chestId);
+    if (chest is null)
+    {
+        Console.Error.WriteLine($"Persisted chest assertion failed: chest {chestId} was not found.");
+        return 4;
+    }
+    if (itemSlot >= chest.Items.Length)
+    {
+        Console.Error.WriteLine(
+            $"Persisted chest assertion failed: chest {chestId} has {chest.Items.Length} slots, requested {itemSlot}.");
+        return 5;
+    }
+
+    WorldChestItem item = chest.Items[itemSlot];
+    if (item.Stack != stack || item.Prefix != prefix || item.ItemType != itemNetId)
+    {
+        Console.Error.WriteLine(
+            $"Persisted chest assertion failed: chest={chestId} itemSlot={itemSlot} " +
+            $"expected=({stack},{prefix},{itemNetId}) actual=({item.Stack},{item.Prefix},{item.ItemType}).");
+        return 6;
+    }
+
+    Console.WriteLine(
+        $"persisted_chest_item_ok chest={chestId} itemSlot={itemSlot} " +
+        $"itemStack={item.Stack} itemPrefix={item.Prefix} itemNetId={item.ItemType}");
+    return 0;
 }
 
 WorldChest? selected = null;
