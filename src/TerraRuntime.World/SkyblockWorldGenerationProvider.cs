@@ -4,8 +4,8 @@ namespace TerraRuntime.World;
 
 /// <summary>
 /// Runtime-owned deterministic Skyblock profile. The world starts as void, then receives spatially separated floating
-/// biome islands, guaranteed progression-liquid reservoirs, a deliberately lowered dungeon island, persistent loot
-/// chests and semantic spawn/layer metadata.
+/// biome islands, guaranteed progression-liquid reservoirs, source-backed progression structures, a deliberately
+/// lowered dungeon island, persistent loot chests and semantic spawn/layer metadata.
 /// </summary>
 public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
 {
@@ -14,6 +14,7 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
     private static readonly WorldGenerationPassId LayoutId = new("terraruntime:skyblock/layout");
     private static readonly WorldGenerationPassId IslandsId = new("terraruntime:skyblock/islands");
     private static readonly WorldGenerationPassId ResourcesId = new("terraruntime:skyblock/resources");
+    private static readonly WorldGenerationPassId StructuresId = new("terraruntime:skyblock/structures");
     private static readonly WorldGenerationPassId DungeonId = new("terraruntime:skyblock/dungeon");
     private static readonly WorldGenerationPassId ChestsId = new("terraruntime:skyblock/chests");
     private static readonly WorldGenerationPassId MetadataId = new("terraruntime:skyblock/metadata");
@@ -35,7 +36,8 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
         Add(builder, LayoutId, new LayoutPass(state));
         Add(builder, IslandsId, new IslandsPass(state), LayoutId);
         Add(builder, ResourcesId, new ResourcePass(state), IslandsId);
-        Add(builder, DungeonId, new DungeonPass(state), ResourcesId);
+        Add(builder, StructuresId, new StructurePass(state), ResourcesId);
+        Add(builder, DungeonId, new DungeonPass(state), StructuresId);
         Add(builder, ChestsId, new ChestPass(state), DungeonId);
         Add(builder, MetadataId, new MetadataPass(state), ChestsId);
     }
@@ -154,6 +156,7 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
                 state, dungeonReserve,
                 new IslandSpec(width / 2, Math.Clamp((int)Math.Round(height * 0.84d), deepMinY + 8, height - 20), resourceRadius, resourceDepth, false, false, IslandKind.Cavern),
                 "Lava");
+
             if (compactLayout)
             {
                 int compactRadius = Math.Max(8, resourceRadius - 1);
@@ -209,6 +212,7 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
                 throw new InvalidOperationException(
                     $"Skyblock layout placed only {accepted} of {randomIslandCount} requested random islands.");
             }
+
             state.LayoutReady = true;
             context.ReportProgress(1d, $"Planned {state.Islands.Count} floating biome and resource islands");
         }
@@ -241,6 +245,24 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
             PlaceLiquidBasin(context.Workspace, state.HoneyIsland, WorldGenerationLiquidKind.Honey, halfWidth: 3, depth: 2);
             PlaceLiquidBasin(context.Workspace, state.LavaIsland, WorldGenerationLiquidKind.Lava, halfWidth: 3, depth: 2);
             context.ReportProgress(1d, "Building guaranteed Water, Lava, Honey and Shimmer reservoirs");
+        }
+    }
+
+    private sealed class StructurePass(GenerationState state) : IWorldGenerationPass
+    {
+        public void Execute(IWorldGenerationContext context)
+        {
+            RequireLayout(state);
+            IslandSpec evilIsland = state.Islands.FirstOrDefault(static island => island.Kind == IslandKind.Evil);
+            if (evilIsland.Kind != IslandKind.Evil)
+                throw new InvalidOperationException("Skyblock progression requires a reserved Evil island for an altar.");
+
+            PlaceEvilAltar(context.Workspace, evilIsland, context.Request.Options.Evil);
+            PlaceHellforge(context.Workspace, state.LavaIsland);
+            PlaceHiveAnchor(context.Workspace, state.HoneyIsland);
+            PlaceLihzahrdTempleAnchor(context.Workspace, state.HoneyIsland);
+            PlaceMicroResourceAnchors(context.Workspace, state.WaterIsland, state.AetherIsland);
+            context.ReportProgress(1d, "Building source-backed progression structures and resource anchors");
         }
     }
 
@@ -467,6 +489,217 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
                     liquidAmount: byte.MaxValue,
                     liquidKind: kind);
             }
+        }
+    }
+
+    private static void PlaceEvilAltar(
+        IWorldGenerationWorkspace workspace,
+        IslandSpec island,
+        WorldGenerationEvil evil)
+    {
+        int left = island.CenterX - 1;
+        int top = island.SurfaceY - 2;
+        short styleOffsetX = evil == WorldGenerationEvil.Crimson ? (short)54 : (short)0;
+        PlaceFramedObject(
+            workspace,
+            left,
+            top,
+            width: 3,
+            height: 2,
+            checked((ushort)VanillaTileIds.DemonAltar.Value),
+            styleOffsetX);
+    }
+
+    private static void PlaceHellforge(IWorldGenerationWorkspace workspace, IslandSpec island)
+    {
+        int left = island.CenterX + Math.Min(5, Math.Max(4, island.RadiusX - 5));
+        int top = island.SurfaceY - 2;
+        PlaceFramedObject(
+            workspace,
+            left,
+            top,
+            width: 3,
+            height: 2,
+            checked((ushort)VanillaTileIds.Hellforge.Value),
+            styleOffsetX: 0);
+    }
+
+    private static void PlaceHiveAnchor(IWorldGenerationWorkspace workspace, IslandSpec island)
+    {
+        int left = island.CenterX - 5;
+        int right = island.CenterX + 5;
+        int top = island.SurfaceY - 3;
+        int bottom = island.SurfaceY + 3;
+        ushort hive = checked((ushort)VanillaTileIds.Hive.Value);
+        ushort hiveWall = checked((ushort)VanillaWallIds.HiveUnsafe.Value);
+
+        for (int x = left; x <= right; x++)
+        {
+            for (int y = top; y <= bottom; y++)
+            {
+                bool shell = x == left || x == right || y == top || y == bottom;
+                if (shell)
+                {
+                    SetTile(workspace, x, y, hive, hiveWall, WorldGenerationTileFlags.Active);
+                    continue;
+                }
+
+                SetWallPreservingTile(workspace, x, y, hiveWall);
+            }
+        }
+    }
+
+    private static void PlaceLihzahrdTempleAnchor(IWorldGenerationWorkspace workspace, IslandSpec jungleIsland)
+    {
+        int centerX = jungleIsland.CenterX;
+        int left = centerX - 7;
+        int right = centerX + 7;
+        int top = jungleIsland.SurfaceY + jungleIsland.Depth + 3;
+        int bottom = top + 8;
+        ushort brick = checked((ushort)VanillaTileIds.LihzahrdBrick.Value);
+        ushort wall = checked((ushort)VanillaWallIds.LihzahrdBrickUnsafe.Value);
+
+        for (int x = left; x <= right; x++)
+        {
+            for (int y = top; y <= bottom; y++)
+            {
+                bool shell = x == left || x == right || y == top || y == bottom;
+                SetTile(
+                    workspace,
+                    x,
+                    y,
+                    type: shell ? brick : (ushort)0,
+                    wall,
+                    flags: shell ? WorldGenerationTileFlags.Active : WorldGenerationTileFlags.None);
+            }
+        }
+
+        PlaceFramedObject(
+            workspace,
+            centerX - 1,
+            bottom - 2,
+            width: 3,
+            height: 2,
+            checked((ushort)VanillaTileIds.LihzahrdAltar.Value),
+            styleOffsetX: 0,
+            wall);
+    }
+
+    private static void PlaceMicroResourceAnchors(
+        IWorldGenerationWorkspace workspace,
+        IslandSpec waterIsland,
+        IslandSpec aetherIsland)
+    {
+        PlaceMushroomPatch(workspace, waterIsland);
+        PlaceSolidPatch(workspace, aetherIsland.CenterX - 7, aetherIsland.SurfaceY + 2,
+            checked((ushort)VanillaTileIds.Marble.Value));
+        PlaceSolidPatch(workspace, aetherIsland.CenterX + 7, aetherIsland.SurfaceY + 2,
+            checked((ushort)VanillaTileIds.Granite.Value));
+        PlaceSpiderPocket(workspace, waterIsland);
+    }
+
+    private static void PlaceMushroomPatch(IWorldGenerationWorkspace workspace, IslandSpec island)
+    {
+        int left = island.CenterX - 9;
+        int right = island.CenterX - 5;
+        ushort mushroom = checked((ushort)VanillaTileIds.MushroomGrass.Value);
+        ushort mud = checked((ushort)VanillaTileIds.Mud.Value);
+        for (int x = left; x <= right; x++)
+        {
+            SetTile(workspace, x, island.SurfaceY, mushroom, wall: 0, WorldGenerationTileFlags.Active);
+            SetTile(workspace, x, island.SurfaceY + 1, mud, wall: 0, WorldGenerationTileFlags.Active);
+            SetTile(workspace, x, island.SurfaceY + 2, mud, wall: 0, WorldGenerationTileFlags.Active);
+        }
+    }
+
+    private static void PlaceSolidPatch(IWorldGenerationWorkspace workspace, int centerX, int centerY, ushort type)
+    {
+        for (int x = centerX - 2; x <= centerX + 2; x++)
+        {
+            for (int y = centerY; y <= centerY + 2; y++)
+                SetTile(workspace, x, y, type, wall: 0, WorldGenerationTileFlags.Active);
+        }
+    }
+
+    private static void PlaceSpiderPocket(IWorldGenerationWorkspace workspace, IslandSpec island)
+    {
+        int left = island.CenterX + 6;
+        int right = island.CenterX + 9;
+        int top = island.SurfaceY - 4;
+        int bottom = island.SurfaceY - 1;
+        ushort cobweb = checked((ushort)VanillaTileIds.Cobweb.Value);
+        ushort spiderWall = checked((ushort)VanillaWallIds.SpiderUnsafe.Value);
+
+        for (int x = left; x <= right; x++)
+        {
+            for (int y = top; y <= bottom; y++)
+            {
+                bool web = ((x + y) & 1) == 0;
+                SetTile(
+                    workspace,
+                    x,
+                    y,
+                    type: web ? cobweb : (ushort)0,
+                    wall: spiderWall,
+                    flags: web ? WorldGenerationTileFlags.Active : WorldGenerationTileFlags.None);
+            }
+        }
+    }
+
+    private static void PlaceFramedObject(
+        IWorldGenerationWorkspace workspace,
+        int left,
+        int top,
+        int width,
+        int height,
+        ushort tileType,
+        short styleOffsetX,
+        ushort wall = 0)
+    {
+        for (int dx = 0; dx < width; dx++)
+        {
+            for (int dy = 0; dy < height; dy++)
+            {
+                SetTile(
+                    workspace,
+                    left + dx,
+                    top + dy,
+                    tileType,
+                    wall,
+                    WorldGenerationTileFlags.Active,
+                    frameX: checked((short)(styleOffsetX + dx * 18)),
+                    frameY: checked((short)(dy * 18)));
+            }
+        }
+    }
+
+    private static void SetWallPreservingTile(
+        IWorldGenerationWorkspace workspace,
+        int x,
+        int y,
+        ushort wall)
+    {
+        if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile))
+        {
+            throw new InvalidOperationException(
+                $"Skyblock generator could not read tile ({x}, {y}) while constructing a structure.");
+        }
+
+        var updated = new WorldGenerationTile(
+            Type: tile.Type,
+            Wall: wall,
+            FrameX: tile.FrameX,
+            FrameY: tile.FrameY,
+            Flags: tile.Flags,
+            LiquidAmount: tile.LiquidAmount,
+            TileColor: tile.TileColor,
+            WallColor: tile.WallColor,
+            Shape: tile.Shape,
+            LiquidKind: tile.LiquidKind);
+        if (!workspace.TrySetTile(x, y, in updated))
+        {
+            throw new InvalidOperationException(
+                $"Skyblock generator could not update wall at ({x}, {y}) while constructing a structure.");
         }
     }
 

@@ -38,7 +38,7 @@ def base_style(width: int, height: int, origin_x: int, origin_y: int, name: str)
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Verify TerrariaServer 1.4.5.8 multi-tile definitions used by section metadata."
+        description="Verify TerrariaServer 1.4.5.8 multi-tile definitions used by section metadata and Skyblock worldgen."
     )
     parser.add_argument("--tile-object-data", required=True)
     args = parser.parse_args()
@@ -79,8 +79,23 @@ def main() -> int:
             maximum_span=1800,
         )
 
+    # These objects do not carry section side-table metadata, but Skyblock materializes their frame grid directly.
+    # Keep their geometry source-backed against TileObjectData instead of relying on a wiki or remembered dimensions.
+    for label, tile_id in (
+        ("demon/crimson altar", 26),
+        ("hellforge", 77),
+        ("lihzahrd altar", 237),
+    ):
+        require_sequence(
+            source,
+            label,
+            ("newTile.CopyFrom(Style3x2);", f"addTile({tile_id});"),
+            maximum_span=2600,
+        )
+
     print("multi_tile_base_styles=7")
     print("multi_tile_supported_definitions=15")
+    print("skyblock_style3x2_definitions=26,77,237")
     print("multi_tile_source_contract=ok")
     return 0
 

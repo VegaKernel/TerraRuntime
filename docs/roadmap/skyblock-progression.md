@@ -15,12 +15,15 @@ Checkbox policy: `[x]` means implemented on `main` with focused executable verif
 
 ## S1 - Source-backed structure and resource anchors
 
-- [ ] source-verify the exact 1.4.5.8 tile/item identities needed by Skyblock progression before adding them to catalogs;
-- [ ] provide a Demon/Crimson Altar progression path without guessed raw IDs;
-- [ ] provide a Hellforge progression path;
-- [ ] provide a Hive/Queen Bee path and enough honey/biome semantics for it to function;
-- [ ] provide a Lihzahrd Temple/Altar progression path;
-- [ ] provide Mushroom, Marble, Granite, Spider and fishing-oriented resource anchors where vanilla progression depends on them;
+- [x] source-contract coverage for the Skyblock tile/wall identities currently used by structure/resource generation;
+- [x] Demon/Crimson Altar generation anchor with source-shaped `3×2` frame layout and world-evil style offset;
+- [x] Hellforge generation anchor with source-shaped `3×2` frame layout;
+- [x] Hive shell plus `HiveUnsafe` wall around the guaranteed Honey reservoir;
+- [x] compact Lihzahrd chamber using `LihzahrdBrick`, `LihzahrdBrickUnsafe` and a `3×2` Lihzahrd Altar anchor;
+- [x] deterministic Mushroom, Marble, Granite and Spider/Cobweb resource anchors;
+- [x] fishing-oriented Water reservoir remains guaranteed independently from random island placement;
+- [ ] source-back the Larva/Queen Bee interaction path rather than treating Hive geometry alone as boss progression;
+- [ ] source-back Lihzahrd Altar activation, Power Cell consumption and Golem summon behavior in authoritative gameplay;
 - [ ] define richer deterministic loot tiers without turning the starter chest into a dump of otherwise unobtainable progression items.
 
 ## S2 - Runtime Skyblock gameplay profile

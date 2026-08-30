@@ -128,17 +128,26 @@ public static class VanillaTileIds
     public static readonly TileTypeId Containers = new(21);
     public static readonly TileTypeId CorruptGrass = new(23);
     public static readonly TileTypeId Ebonstone = new(25);
+    public static readonly TileTypeId DemonAltar = new(26);
     public static readonly TileTypeId Sunflower = new(27);
+    public static readonly TileTypeId Cobweb = new(51);
     public static readonly TileTypeId Sand = new(53);
     public static readonly TileTypeId Signs = new(55);
     public static readonly TileTypeId Mud = new(59);
     public static readonly TileTypeId JungleGrass = new(60);
+    public static readonly TileTypeId MushroomGrass = new(70);
+    public static readonly TileTypeId Hellforge = new(77);
     public static readonly TileTypeId Tombstones = new(85);
     public static readonly TileTypeId Dressers = new(88);
     public static readonly TileTypeId SnowBlock = new(147);
     public static readonly TileTypeId IceBlock = new(161);
     public static readonly TileTypeId CrimsonGrass = new(199);
     public static readonly TileTypeId Crimstone = new(203);
+    public static readonly TileTypeId Hive = new(225);
+    public static readonly TileTypeId LihzahrdBrick = new(226);
+    public static readonly TileTypeId LihzahrdAltar = new(237);
+    public static readonly TileTypeId Marble = new(367);
+    public static readonly TileTypeId Granite = new(368);
     public static readonly TileTypeId TargetDummy = new(378);
     public static readonly TileTypeId TallGateClosed = new(388);
     public static readonly TileTypeId TallGateOpen = new(389);
@@ -211,6 +220,9 @@ public static class VanillaWallIds
     public static readonly WallTypeId Dirt = new(16);
     public static readonly WallTypeId BlueDungeon = new(17);
     public static readonly WallTypeId Glass = new(21);
+    public static readonly WallTypeId SpiderUnsafe = new(62);
+    public static readonly WallTypeId HiveUnsafe = new(86);
+    public static readonly WallTypeId LihzahrdBrickUnsafe = new(87);
 
     public static bool TryCreate(int rawType, out WallTypeId type)
     {

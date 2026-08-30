@@ -1,6 +1,6 @@
 # Multi-tile object catalog
 
-TerraRuntime now owns the source-backed frame-anchor rules used to discover chests, signs and supported tile entities in section metadata. The goal is narrow but important: vanilla frame arithmetic belongs to a tile-object definition boundary, not to whichever packet/persistence encoder happens to need it.
+TerraRuntime owns the source-backed frame-anchor rules used to discover chests, signs and supported tile entities in section metadata. Vanilla frame arithmetic belongs to a tile-object definition boundary rather than to whichever packet or persistence encoder happens to need it.
 
 ## Ownership
 
@@ -14,18 +14,32 @@ flowchart LR
     Chest --> Section["Section object metadata"]
     Sign --> Section
     Entity --> Section
+    Source["TileObjectData.Initialize"] --> Probe["source contract"]
+    Probe --> Worldgen["Skyblock frame geometry"]
 ```
 
-`VanillaMultiTileObjectDefinition` records a typed `TileTypeId`, base-style width and height, placement origin, metadata family, horizontal frame period, vertical frame period and whether the metadata anchor requires `FrameY == 0`. `VanillaTileObjectAnchorDefinition` is the compatibility view consumed by the section encoder. Its `Matches` method also requires an active tile. Callers therefore consume semantic geometry and anchor predicates instead of repeating `% 18`, `% 36`, `% 54` or `% 72` arithmetic.
+`VanillaMultiTileObjectDefinition` records a typed `TileTypeId`, base-style width and height, placement origin, metadata family, frame periods and whether the metadata anchor requires `FrameY == 0`. The current runtime catalog remains intentionally limited to object families emitted by `WorldSectionObjectMetadataEncoder`.
 
-The current catalog covers only the object families already emitted by `WorldSectionObjectMetadataEncoder`: vanilla chest/container anchors, sign-text anchors, training dummy, item frame, Dead Cells display jar, food platter, weapons rack, display doll, hat rack and teleportation pylon.
+## Source-backed worldgen geometry
+
+The same pinned `TileObjectData.Initialize` source contract also verifies a small set of frame-important world-generation objects which do not carry section side-table metadata and therefore do not belong in `VanillaMultiTileObjectCatalog` itself.
+
+Skyblock currently consumes the verified `Style3x2` association for:
+
+| Object | Tile ID | Geometry | Frame grid used by worldgen |
+|---|---:|---:|---|
+| Demon / Crimson Altar | 26 | `$3\times2$` | `$18$` px cells; Crimson uses its style offset |
+| Hellforge | 77 | `$3\times2$` | `$18$` px cells |
+| Lihzahrd Altar | 237 | `$3\times2$` | `$18$` px cells |
+
+This distinction is deliberate: geometry can be source-backed without pretending that an object owns chest/sign/tile-entity metadata.
 
 ## Compatibility rule
 
-These definitions are pinned to TerrariaServer 1.4.5.8 `TileObjectData.Initialize` and the behavior already present in the section-object path. A dedicated source-contract workflow verifies the seven inherited base styles and their association with the 15 supported object types. The refactor does not change section ordering or payload bytes; it moves existing verified recognition facts behind one typed owner.
+The definitions are pinned to TerrariaServer 1.4.5.8 `TileObjectData.Initialize`. The source-contract workflow verifies seven inherited base styles, their association with the 15 supported section-metadata object types, and the three additional `Style3x2` progression objects used by Skyblock.
 
-A tile is an anchor only when its content identity, active state and frame alignment all match. The catalog intentionally preserves Terraria's frame modulo semantics, including the exact distinction between ordinary containers (`36 x 36` frame periods) and dressers (`54 x 36`). The teleportation-pylon anchor uses `54 x 72`; tile entities whose existing rule requires the top frame use explicit `FrameY == 0` semantics.
+A metadata tile is an anchor only when content identity, active state and frame alignment all match. The catalog preserves Terraria's frame-modulo semantics, including ordinary containers (`36 x 36`), dressers (`54 x 36`) and teleportation pylons (`54 x 72`).
 
 ## Scope boundary
 
-The catalog covers the complete geometry needed by the currently supported section-metadata families, not every vanilla furniture type. Alternate placement origins, support rules, style/substyle mapping, liquid placement constraints and mutation hooks remain outside this definition slice. Placement, break and framing operations are tracked separately in D5; this catalog does not claim complete `TileObjectData` parity.
+The metadata catalog still does not claim complete `TileObjectData` parity. Alternate origins, support rules, style/substyle mapping, liquid placement constraints and mutation hooks remain separate gameplay/placement work. Likewise, proving that a Lihzahrd Altar occupies `$3\times2$` cells does not by itself implement Power Cell consumption or Golem summoning.

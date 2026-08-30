@@ -6,7 +6,7 @@ namespace TerraRuntime.Tests;
 public sealed class SkyblockWorldGenerationPersistenceTests
 {
     [Fact]
-    public void Skyblock_persists_and_reloads_island_chests_loot_and_progression_liquids()
+    public void Skyblock_persists_and_reloads_progression_liquids_structures_and_chests()
     {
         string directory = Path.Combine(Path.GetTempPath(), "TerraRuntime.Tests", Guid.NewGuid().ToString("N"));
         string worldPath = Path.Combine(directory, "skyblock.wld");
@@ -58,6 +58,16 @@ public sealed class SkyblockWorldGenerationPersistenceTests
             Assert.Equal(VanillaTileIds.Containers.Value, world.Tiles.Get(starter.X, starter.Y).Type);
 
             var liquidKinds = new HashSet<WorldLiquidKind>();
+            var activeTypes = new HashSet<ushort>();
+            var wallTypes = new HashSet<ushort>();
+            var demonAltarFrameX = new HashSet<short>();
+            var demonAltarFrameY = new HashSet<short>();
+            var lihzahrdAltarFrameX = new HashSet<short>();
+            var lihzahrdAltarFrameY = new HashSet<short>();
+            int demonAltarTiles = 0;
+            int hellforgeTiles = 0;
+            int lihzahrdAltarTiles = 0;
+
             for (int x = 0; x < world.Header.Dimensions.WidthTiles; x++)
             {
                 for (int y = 0; y < world.Header.Dimensions.HeightTiles; y++)
@@ -65,6 +75,28 @@ public sealed class SkyblockWorldGenerationPersistenceTests
                     WorldTile tile = world.Tiles.Get(x, y);
                     if (tile.LiquidAmount > 0)
                         liquidKinds.Add(tile.LiquidKind);
+                    if (tile.Wall != 0)
+                        wallTypes.Add(tile.Wall);
+                    if (!tile.IsActive)
+                        continue;
+
+                    activeTypes.Add(tile.Type);
+                    if (tile.Type == VanillaTileIds.DemonAltar.Value)
+                    {
+                        demonAltarTiles++;
+                        demonAltarFrameX.Add(tile.FrameX);
+                        demonAltarFrameY.Add(tile.FrameY);
+                    }
+                    else if (tile.Type == VanillaTileIds.Hellforge.Value)
+                    {
+                        hellforgeTiles++;
+                    }
+                    else if (tile.Type == VanillaTileIds.LihzahrdAltar.Value)
+                    {
+                        lihzahrdAltarTiles++;
+                        lihzahrdAltarFrameX.Add(tile.FrameX);
+                        lihzahrdAltarFrameY.Add(tile.FrameY);
+                    }
                 }
             }
 
@@ -72,6 +104,27 @@ public sealed class SkyblockWorldGenerationPersistenceTests
             Assert.Contains(WorldLiquidKind.Lava, liquidKinds);
             Assert.Contains(WorldLiquidKind.Honey, liquidKinds);
             Assert.Contains(WorldLiquidKind.Shimmer, liquidKinds);
+
+            Assert.Contains(checked((ushort)VanillaTileIds.DemonAltar.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.Hellforge.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.Hive.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.LihzahrdBrick.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.LihzahrdAltar.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.MushroomGrass.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.Marble.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.Granite.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.Cobweb.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaWallIds.SpiderUnsafe.Value), wallTypes);
+            Assert.Contains(checked((ushort)VanillaWallIds.HiveUnsafe.Value), wallTypes);
+            Assert.Contains(checked((ushort)VanillaWallIds.LihzahrdBrickUnsafe.Value), wallTypes);
+
+            Assert.Equal(6, demonAltarTiles);
+            Assert.Equal(6, hellforgeTiles);
+            Assert.Equal(6, lihzahrdAltarTiles);
+            Assert.Equal(new short[] { 0, 18, 36 }, demonAltarFrameX.Order().ToArray());
+            Assert.Equal(new short[] { 0, 18 }, demonAltarFrameY.Order().ToArray());
+            Assert.Equal(new short[] { 0, 18, 36 }, lihzahrdAltarFrameX.Order().ToArray());
+            Assert.Equal(new short[] { 0, 18 }, lihzahrdAltarFrameY.Order().ToArray());
         }
         finally
         {

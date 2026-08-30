@@ -1,6 +1,6 @@
 # Каталог multi-tile объектов
 
-TerraRuntime теперь владеет source-backed правилами frame-anchor, которые используются при поиске сундуков, знаков и поддерживаемых tile entities в метаданных секции. Цель узкая, но важная: ванильная арифметика кадров должна принадлежать границе определения tile-объекта, а не случайному packet/persistence-кодировщику, которому она понадобилась.
+TerraRuntime владеет source-backed правилами frame-anchor для поиска сундуков, знаков и поддерживаемых tile entities в section metadata. Ванильная арифметика кадров должна принадлежать границе определения tile-object, а не случайному packet/persistence-кодировщику.
 
 ## Владение
 
@@ -11,21 +11,35 @@ flowchart LR
     Anchor --> Chest["Поиск сундуков"]
     Anchor --> Sign["Поиск знаков"]
     Anchor --> Entity["Поиск tile entities"]
-    Chest --> Section["Метаданные объектов секции"]
+    Chest --> Section["Section object metadata"]
     Sign --> Section
     Entity --> Section
+    Source["TileObjectData.Initialize"] --> Probe["source contract"]
+    Probe --> Worldgen["Skyblock frame geometry"]
 ```
 
-`VanillaMultiTileObjectDefinition` хранит типизированный `TileTypeId`, width и height base-style, placement origin, metadata family, горизонтальный и вертикальный периоды frame и признак требования `FrameY == 0` для metadata anchor. `VanillaTileObjectAnchorDefinition` является compatibility view, который использует section encoder. Метод `Matches` также требует активный тайл. Поэтому вызывающий код использует семантическую geometry и anchor predicates вместо размножения арифметики `% 18`, `% 36`, `% 54` или `% 72`.
+`VanillaMultiTileObjectDefinition` хранит типизированный `TileTypeId`, base-style width/height, placement origin, metadata family, frame periods и признак требования `FrameY == 0`. Runtime catalog намеренно остаётся ограничен семействами, которые реально выдаёт `WorldSectionObjectMetadataEncoder`.
 
-Текущий каталог покрывает только семейства объектов, которые уже выдаёт `WorldSectionObjectMetadataEncoder`: ванильные chest/container-якоря, знаки с текстом, training dummy, item frame, Dead Cells display jar, food platter, weapons rack, display doll, hat rack и teleportation pylon.
+## Source-backed geometry для worldgen
+
+Тот же закреплённый source contract `TileObjectData.Initialize` проверяет небольшой набор frame-important worldgen-объектов, которые не несут section side-table metadata и поэтому не должны притворяться элементами `VanillaMultiTileObjectCatalog`.
+
+Skyblock использует проверенную связь со `Style3x2` для:
+
+| Объект | Tile ID | Геометрия | Frame grid |
+|---|---:|---:|---|
+| Demon / Crimson Altar | 26 | `$3\times2$` | клетки по `$18$` px; Crimson использует свой style offset |
+| Hellforge | 77 | `$3\times2$` | клетки по `$18$` px |
+| Lihzahrd Altar | 237 | `$3\times2$` | клетки по `$18$` px |
+
+Разделение намеренное: geometry может быть source-backed, не означая, что объект имеет chest/sign/tile-entity metadata.
 
 ## Правило совместимости
 
-Эти определения закреплены за `TileObjectData.Initialize` TerrariaServer 1.4.5.8 и поведением, которое уже было реализовано в section-object path. Отдельный source-contract workflow проверяет семь inherited base styles и их связь с 15 поддерживаемыми object types. Рефакторинг не меняет порядок объектов секции и байты payload; он переносит существующие проверенные факты распознавания под одного типизированного владельца.
+Определения закреплены за `TileObjectData.Initialize` TerrariaServer 1.4.5.8. Workflow проверяет семь inherited base styles, связь с 15 поддерживаемыми section-metadata objects и три дополнительных `Style3x2` progression-объекта Skyblock.
 
-Тайл считается якорем только при совпадении content identity, active-состояния и выравнивания frame. Каталог намеренно сохраняет vanilla modulo-семантику кадров, включая различие обычных контейнеров (периоды `36 x 36`) и dresser (`54 x 36`). Для teleportation pylon используется `54 x 72`; tile entities, у которых существующее правило требует верхний кадр, явно используют семантику `FrameY == 0`.
+Metadata tile считается anchor только при совпадении content identity, active-state и frame alignment. Каталог сохраняет vanilla frame-modulo semantics, включая обычные containers (`36 x 36`), dresser (`54 x 36`) и teleportation pylon (`54 x 72`).
 
 ## Граница области
 
-Каталог покрывает полную geometry, необходимую текущим поддерживаемым семействам section metadata, но не каждый vanilla furniture type. Alternate placement origins, support rules, style/substyle mapping, liquid placement constraints и mutation hooks остаются вне этого definition slice. Placement, break и framing operations отслеживаются отдельно в D5; каталог не заявляет полную `TileObjectData` parity.
+Metadata catalog всё ещё не заявляет полную `TileObjectData` parity. Alternate origins, support rules, style/substyle mapping, liquid constraints и mutation hooks остаются отдельной gameplay/placement работой. Аналогично доказательство геометрии Lihzahrd Altar `$3\times2$` само по себе не реализует расход Power Cell или summon Golem.

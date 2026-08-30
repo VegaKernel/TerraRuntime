@@ -4,78 +4,97 @@
 
 ## 1. Scope
 
-`terraruntime:skyblock` is a runtime-owned deterministic generator for Terraria-compatible Skyblock worlds. Most of the map remains empty, progression space is distributed across floating islands, spawn is guaranteed on a starter island, underground/cavern layers are moved downward, and a dedicated lower dungeon island is generated independently from the ordinary island field.
-
-The profile is intentionally custom. It is not an alias for a vanilla secret seed and it does not claim source-exact output from Terraria's vanilla Skyblock generator.
+`terraruntime:skyblock` is a runtime-owned deterministic generator for Terraria-compatible Skyblock worlds. Most of the map remains empty, while progression-relevant terrain, liquids and structures are placed in explicitly reserved regions. The profile is custom and does not claim source-exact output from Terraria's vanilla Skyblock generator.
 
 ## 2. Pass graph
 
 ```mermaid
 flowchart LR
-    Layout["layout\nreserve island roles + safety envelopes"] --> Islands["islands\nbuild starter + biome/resource islands"]
-    Islands --> Resources["resources\ncarve Water/Lava/Honey/Shimmer reservoirs"]
-    Resources --> Dungeon["dungeon\nbuild lowered dungeon island"]
-    Dungeon --> Chests["chests\nplace objects + persistent loot"]
+    Layout["layout\nreserve roles + safety envelopes"] --> Islands["islands\nbuild starter + biome/resource islands"]
+    Islands --> Resources["resources\nWater/Lava/Honey/Shimmer basins"]
+    Resources --> Structures["structures\nAltars + Hellforge + Hive + Temple + micro resources"]
+    Structures --> Dungeon["dungeon\nlowered dungeon island"]
+    Dungeon --> Chests["chests\npersistent loot"]
     Chests --> Metadata["metadata\nspawn + dungeon + layers"]
     Metadata --> Compose["canonical .wld composition"]
-    Compose --> Validate["WorldFileLoader round-trip validation"]
+    Compose --> Validate["WorldFileLoader round-trip"]
 ```
 
-Every pass uses `IsolatedDeterministic` RNG. Its stream is derived from the world seed and stable pass ID, so future unrelated passes cannot silently shift an existing pass's random stream.
+Every pass uses `IsolatedDeterministic` RNG. The stream is derived from the world seed and stable pass ID, so adding an unrelated later pass cannot silently perturb an existing pass's random stream.
 
 ## 3. Island layout
 
-The starter island is centered horizontally at about `$0.28H$`, where `$H$` is world height. It has a Dirt surface and Stone core.
-
-For ordinary worlds the random island field targets
+The starter island is centered horizontally at approximately `$0.28H$`, where `$H$` is world height. Ordinary worlds target
 
 $$
-N = \operatorname{clamp}\left(\left\lfloor\frac{W}{70}\right\rfloor, 12, 120\right),
+N=\operatorname{clamp}\left(\left\lfloor\frac{W}{70}\right\rfloor,12,120\right)
 $$
 
-where `$W$` is world width. Candidate islands are rejected when their safety envelopes intersect an already reserved island or the lower dungeon envelope. Generation fails closed if the requested field cannot be placed.
+additional random islands. Candidates are rejected when their safety envelopes overlap an existing reservation or the lower dungeon envelope.
 
-The generator also supports its documented minimum workspace of `$256\times160$`. Narrow or shallow worlds (`$W<512$` or `$H<220$`) use a compact deterministic layout instead of attempting to pack the normal random field into physically insufficient space. Compact layout still guarantees Forest/starter terrain, Desert, Snow, Jungle, Evil, Cavern and Aether roles.
+The documented minimum workspace is `$256\times160$`. Narrow or shallow worlds (`$W<512$` or `$H<220$`) use a compact deterministic layout instead of attempting to pack the normal random field into insufficient space. Compact mode still guarantees Desert, Snow, Jungle, Evil, Cavern and Aether roles in addition to the starter island.
 
-Most ordinary random islands occupy approximately `$0.14H\ldots0.56H$`; every sixth random island is instead a Cavern island drawn from the deeper `$0.66H\ldots0.86H$` band.
+## 4. Biome and liquid roles
 
-## 4. Biome and resource roles
-
-| Role | Surface | Body | Additional guarantee |
+| Role | Surface | Body | Guaranteed progression content |
 |---|---|---|---|
 | Starter / Forest | Dirt | Stone | spawn support |
-| Desert | Sand | Sand | guaranteed in compact layout |
+| Desert | Sand | Sand | desert material |
 | Snow | Snow Block | Ice Block | Water reservoir |
-| Jungle | Jungle Grass | Mud | Honey reservoir |
-| Evil, Corruption | Corrupt Grass | Ebonstone | follows world evil |
-| Evil, Crimson | Crimson Grass | Crimstone | follows world evil |
-| Cavern | Stone | Stone | Lava reservoir |
-| Aether | Stone | Stone | Shimmer reservoir |
+| Jungle | Jungle Grass | Mud | Honey reservoir + Hive/Temple anchors |
+| Evil | Corruption or Crimson palette | matching evil stone | Demon/Crimson Altar |
+| Cavern | Stone | Stone | Lava reservoir + Hellforge |
+| Aether | Stone | Stone | Shimmer + Marble/Granite anchors |
 
-The Evil role follows `WorldGenerationOptions.Evil`; a Crimson Skyblock does not manufacture Corruption terrain and vice versa.
+The world evil follows `WorldGenerationOptions.Evil`; a Crimson Skyblock does not manufacture Corruption terrain and vice versa.
 
-Named tile identities used by these palettes remain source-backed through TerraRuntime's pinned TerrariaServer 1.4.5.8 source-contract workflow. The progression-liquid work deliberately required no new guessed tile IDs.
+## 5. Guaranteed liquids
 
-## 5. Guaranteed progression liquids
+The `resources` pass carves bounded basins into four reserved islands:
 
-The `resources` pass turns four reserved islands into deterministic liquid sources:
+- Snow: Water;
+- Cavern: Lava;
+- Jungle: Honey;
+- Aether: Shimmer.
 
-- Snow island: Water;
-- Cavern island: Lava;
-- Jungle island: Honey;
-- Aether island: Shimmer.
+Basin cells are inactive tiles with full liquid amount and an explicit `WorldGenerationLiquidKind`. The surrounding island body retains the liquid, so the generator stays inside the existing normalized tile ABI and canonical `.wld` liquid encoding path.
 
-Each source is a bounded basin carved into the center of its island. Basin cells are inactive tiles with full liquid amount and an explicit `WorldGenerationLiquidKind`; the surrounding island body supplies the retaining floor and walls. The pass therefore stays inside the existing normalized tile ABI and `.wld` liquid encoding path.
+## 6. Progression structures
 
-The dedicated Aether island is placed opposite the selected dungeon side. Water, Honey and Lava islands are reserved before the random field, so random placement can never consume their safety envelopes.
+The `structures` pass deliberately follows the liquid pass so geometry and liquid ownership remain separate.
 
-## 6. Spawn
+### Evil Altar
 
-Spawn points to an air tile immediately above the starter island center. Tests require the tile directly below spawn to be solid. The starter chest is offset from the spawn column so a player cannot materialize inside a multi-tile chest object.
+The first Evil island receives exactly one source-backed `DemonAltar` tile object. It is a `$3\times2$` frame-important object. Corruption uses frame-X columns `$0,18,36$`; Crimson uses the source-shaped style offset and therefore `$54,72,90$`. Both use frame-Y rows `$0,18$`.
 
-## 7. Lowered underground and cavern layers
+### Hellforge
 
-Skyblock deliberately postpones ordinary vertical depth classification:
+The reserved Lava island receives one `$3\times2$` `Hellforge` placed beside, rather than inside, the lava basin. This preserves both the furnace anchor and the liquid source.
+
+### Hive
+
+The Honey/Jungle island receives a `Hive` shell with `HiveUnsafe` background wall around the Honey basin. This is a world-generation anchor. Larva/Queen Bee interaction remains a separate authoritative-gameplay task and is not falsely claimed as complete merely because Hive geometry exists.
+
+### Lihzahrd chamber
+
+A compact chamber is attached below the Jungle resource island using `LihzahrdBrick` and `LihzahrdBrickUnsafe`. The room contains one `$3\times2$` `LihzahrdAltar` tile object. World generation therefore has a deterministic Golem altar anchor; Power Cell consumption and Golem activation remain runtime gameplay work.
+
+## 7. Micro-resource anchors
+
+The same structure pass creates small deterministic anchors without adding more random layout pressure:
+
+- Mushroom Grass over Mud on the Snow/Water resource island flank;
+- Marble and Granite patches in the Aether island body away from the Shimmer basin;
+- a SpiderUnsafe wall pocket with Cobweb tiles above the Water-island flank;
+- the Water reservoir doubles as the guaranteed fishing-water anchor.
+
+These are progression resources, not claims of source-exact vanilla micro-biome geometry.
+
+## 8. Spawn, layers and dungeon
+
+Spawn points to air immediately above the starter-island center and the tile directly below it is solid. The starter chest is offset from the spawn column.
+
+Skyblock moves ordinary depth classification downward:
 
 $$
 \text{worldSurface}\approx0.62H
@@ -85,58 +104,30 @@ $$
 \text{rockLayer}\approx0.80H
 $$
 
-This leaves most floating islands in sky/surface space and moves underground/cavern behavior toward the lower part of the map.
-
-## 8. Dungeon island
-
-The dungeon anchor is placed on a large Stone island near one side of the world at approximately `$0.72H$`. The island contains an enclosed room backed by the source-pinned unsafe Blue Dungeon wall identity, and runtime metadata points to this lower structure.
-
-This remains a Skyblock progression structure, not source-exact vanilla `DungeonPass` output.
+The dungeon anchor is placed on a large lower Stone island near one side of the world at approximately `$0.72H$`. Its enclosed room uses the source-pinned unsafe Blue Dungeon wall identity. It is a Skyblock progression structure, not source-exact vanilla `DungeonPass` output.
 
 ## 9. Generated chests
 
-Skyblock uses the optional `IWorldGenerationChestWorkspace` capability. The generator requests detached chest state and never writes raw `.wld` bytes.
+Skyblock uses `IWorldGenerationChestWorkspace`; generator code requests detached chest state and never writes raw `.wld` bytes. Chest coordinates, duplicate anchors, stacks, prefixes and vanilla item ranges are validated before candidate publication.
 
-```mermaid
-flowchart TD
-    Pass["Skyblock chest pass"] --> Capability["IWorldGenerationChestWorkspace"]
-    Capability --> Candidate["detached WorldChest state"]
-    Candidate --> Finalize["generation finalization snapshot"]
-    Finalize --> Encoder["WorldFileChestEncoder"]
-    Encoder --> Load["full .wld reload validation"]
-```
+The starter chest currently contains a Copper Pickaxe, `$100$` Dirt Blocks and `$50$` Gel. Ordinary caches use deterministic Dirt/Gel quantities and the existing rare Slime Staff tier. Richer loot remains blocked on source-backed item identities and progression design.
 
-Chest coordinates, duplicate anchors, item stacks, prefixes and vanilla item ranges are validated before candidate publication. The starter chest currently contains a Copper Pickaxe, `$100$` Dirt Blocks and `$50$` Gel. Ordinary caches use deterministic Dirt/Gel quantities with the existing rare Slime Staff tier, and the lower dungeon cache carries an additional reserve.
+## 10. Source contracts
 
-Richer loot must continue to add named item identities only after source verification.
+Skyblock does not promote raw community-table numbers into runtime identities. `probe_tile_wall_definitions.py` verifies the exact TerrariaServer 1.4.5.8 constants used by the generator against the SHA-256-pinned official server assembly. The progression set currently includes Altar, Hellforge, Hive, Lihzahrd, Mushroom, Marble, Granite, Cobweb and the relevant unsafe walls.
 
-## 10. Determinism and failure semantics
+## 11. Acceptance boundary
 
-Resource islands are reserved during layout, before random islands are accepted. The dungeon envelope is reserved at the same stage. This makes the layout dependency explicit:
+Focused tests verify:
 
-```mermaid
-flowchart TD
-    Spawn["starter"] --> Reserve["reserve dungeon + four resource islands"]
-    Reserve --> Mode{"compact workspace?"}
-    Mode -->|yes| Compact["fixed Desert/Evil anchors"]
-    Mode -->|no| Random["seeded random biome field"]
-    Compact --> Build["build islands"]
-    Random --> Build
-    Build --> Liquids["carve four liquid basins"]
-```
+- deterministic normal and compact layouts;
+- Corruption/Crimson palette and Altar frame selection;
+- Water/Lava/Honey/Shimmer presence;
+- Altar, Hellforge, Hive and Lihzahrd generation anchors;
+- Mushroom/Marble/Granite/Spider resource anchors;
+- deterministic structure footprints;
+- full `.wld` round-trip of liquids, structures, walls, frames and generated chests.
 
-If a reserved role cannot be placed without violating an envelope, generation fails instead of silently dropping that progression resource. Fixed-seed tests compare the resulting liquid footprint in addition to metadata and chest state.
+The dedicated Skyblock acceptance additionally creates a canonical Small `$4200\times1200$` world through the normal CLI, reloads it with TerraRuntime's verifier and starts the pinned official TerrariaServer 1.4.5.8 against the result.
 
-## 11. tModLoader comparison and remaining progression work
-
-Public Skyblock mods in the tModLoader ecosystem commonly solve more than terrain layout: they add renewable-resource paths, special structures, loot fallbacks, altered drops/events and sometimes separate mining or dungeon spaces. TerraRuntime intentionally keeps world generation and authoritative gameplay rules separate.
-
-The current generator now covers deterministic island geometry plus the four vanilla liquid classes, but full Skyblock progression still needs source-backed structure/resource fallbacks and a runtime gameplay profile. Those tasks are tracked in [the dedicated Skyblock progression roadmap](../roadmap/skyblock-progression.md).
-
-No tModLoader implementation code is copied into TerraRuntime.
-
-## 12. Acceptance boundary
-
-The dedicated Skyblock acceptance creates a canonical Small `$4200\times1200$` world through the normal TerraRuntime CLI, reloads it with TerraRuntime's verifier, then starts the pinned official TerrariaServer 1.4.5.8 against the generated `.wld`.
-
-Focused tests additionally verify biome palettes, deterministic layout, compact minimum-world generation, spawn support, lowered dungeon/layers, dungeon reservation, persistent chest round-trip and persistence of Water/Lava/Honey/Shimmer through the normal world encoder/loader path.
+Full Skyblock progression still requires runtime gameplay rules and a machine-checkable progression verifier; those tasks are tracked separately in the progression roadmap.
