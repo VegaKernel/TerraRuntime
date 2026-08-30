@@ -1,0 +1,112 @@
+name: NPC Boss Reference Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/npc-boss-reference-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npc-boss-reference:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Decompile official TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+
+      - name: Collect Eye of Cthulhu reference facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npc_file="$(find decompiled/1458 -type f -name 'NPC.cs' -print -quit)"
+          npc_id="$(find decompiled/1458 -type f -name 'NPCID.cs' -print -quit)"
+          test -n "$npc_file"
+          test -n "$npc_id"
+
+          python3 - "$npc_file" "$npc_id" <<'PY'
+          import json
+          import pathlib
+          import re
+          import sys
+
+          npc_text = pathlib.Path(sys.argv[1]).read_text(errors="ignore")
+          id_text = pathlib.Path(sys.argv[2]).read_text(errors="ignore")
+
+          def method_body(name):
+              match = re.search(rf"\b{name}\s*\([^;{{}}]*\)\s*\{{", npc_text)
+              if not match:
+                  raise SystemExit(f"{name} was not found")
+              opening = match.end() - 1
+              depth = 0
+              for index in range(opening, len(npc_text)):
+                  if npc_text[index] == "{":
+                      depth += 1
+                  elif npc_text[index] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          return npc_text[opening:index + 1]
+              raise SystemExit(f"{name} body was truncated")
+
+          set_defaults = method_body("SetDefaults")
+          cases = list(re.finditer(r"\bcase\s+(-?\d+)\s*:", set_defaults))
+          eye_segment = None
+          pending = []
+          for index, match in enumerate(cases):
+              pending.append(int(match.group(1)))
+              start = match.end()
+              end = cases[index + 1].start() if index + 1 < len(cases) else len(set_defaults)
+              segment = set_defaults[start:end]
+              if re.sub(r"[\s{}]", "", segment):
+                  if 4 in pending:
+                      eye_segment = segment
+                      break
+                  pending = []
+          if eye_segment is None:
+              raise SystemExit("NPC SetDefaults case 4 was not found")
+
+          names = {}
+          for match in re.finditer(r"\b(?:public|internal)\s+const\s+(?:short|int)\s+(\w+)\s*=\s*(-?\d+)\s*;", id_text):
+              names.setdefault(int(match.group(2)), match.group(1))
+
+          fields = (
+              "aiStyle", "width", "height", "damage", "defense", "lifeMax",
+              "knockBackResist", "scale", "noGravity", "noTileCollide", "boss",
+              "value", "npcSlots"
+          )
+          facts = {"id": 4, "name": names.get(4)}
+          for field in fields:
+              assignment = re.search(rf"\b{re.escape(field)}\s*=\s*([^;]+);", eye_segment)
+              if assignment:
+                  facts[field] = assignment.group(1).strip()
+
+          ai = method_body("AI_004_EyeOfCthulhu")
+          summary = {
+              "characters": len(ai),
+              "aiReads": len(re.findall(r"\bai\[[0-3]\]", ai)),
+              "localAiReads": len(re.findall(r"\blocalAI\[[0-3]\]", ai)),
+              "npcSpawnCalls": ai.count("NewNPC"),
+              "targetClosestCalls": ai.count("TargetClosest"),
+              "dayTimeReads": len(re.findall(r"\bdayTime\b", ai)),
+              "timeLeftWrites": len(re.findall(r"\btimeLeft\s*=", ai)),
+          }
+
+          print("NPC_EYE_OF_CTHULHU_DEFAULTS=" + json.dumps(facts, sort_keys=True))
+          print("NPC_EYE_OF_CTHULHU_AI_SUMMARY=" + json.dumps(summary, sort_keys=True))
+
+          if facts.get("name") not in ("EyeofCthulhu", "EyeOfCthulhu"):
+              raise SystemExit(f"Unexpected NPCID name for 4: {facts.get('name')!r}")
+          if facts.get("aiStyle") != "4":
+              raise SystemExit(f"Unexpected Eye of Cthulhu aiStyle: {facts.get('aiStyle')!r}")
+          PY
