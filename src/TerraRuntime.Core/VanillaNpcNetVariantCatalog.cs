@@ -54,12 +54,32 @@ public static class VanillaNpcNetVariantCatalog
     public static readonly NpcNetId RedSlime = new(-8);
     public static readonly NpcNetId YellowSlime = new(-9);
     public static readonly NpcNetId JungleSlime = new(-10);
+    public static readonly NpcNetId LittleEater = new(-11);
+    public static readonly NpcNetId BigEater = new(-12);
+    public static readonly NpcNetId LittleStinger = new(-16);
+    public static readonly NpcNetId BigStinger = new(-17);
+    public static readonly NpcNetId TinyMossHornet = new(-18);
+    public static readonly NpcNetId LittleMossHornet = new(-19);
+    public static readonly NpcNetId BigMossHornet = new(-20);
+    public static readonly NpcNetId GiantMossHornet = new(-21);
+    public static readonly NpcNetId LittleCrimera = new(-22);
+    public static readonly NpcNetId BigCrimera = new(-23);
     public static readonly NpcNetId CataractEye2 = new(-38);
     public static readonly NpcNetId SleepyEye2 = new(-39);
     public static readonly NpcNetId DilatedEye2 = new(-40);
     public static readonly NpcNetId GreenEye2 = new(-41);
     public static readonly NpcNetId PurpleEye2 = new(-42);
     public static readonly NpcNetId DemonEye2 = new(-43);
+    public static readonly NpcNetId LittleHornetFatty = new(-56);
+    public static readonly NpcNetId BigHornetFatty = new(-57);
+    public static readonly NpcNetId LittleHornetHoney = new(-58);
+    public static readonly NpcNetId BigHornetHoney = new(-59);
+    public static readonly NpcNetId LittleHornetLeafy = new(-60);
+    public static readonly NpcNetId BigHornetLeafy = new(-61);
+    public static readonly NpcNetId LittleHornetSpikey = new(-62);
+    public static readonly NpcNetId BigHornetSpikey = new(-63);
+    public static readonly NpcNetId LittleHornetStingy = new(-64);
+    public static readonly NpcNetId BigHornetStingy = new(-65);
 
     private static readonly VanillaNpcNetVariantDefinition[] Entries =
     [
@@ -73,12 +93,32 @@ public static class VanillaNpcNetVariantCatalog
         Variant(RedSlime, "Red Slime", 1.025f, 12, 4, 35, 1f),
         Variant(YellowSlime, "Yellow Slime", 1.2f, 15, 7, 45, 1f),
         Variant(JungleSlime, "Jungle Slime", 1.1f, 18, 6, 60, 1f),
+        ScaledVariant(LittleEater, VanillaNpcIds.EaterOfSouls, "Little Eater", 0.85f, 22, 8, 40, 0.5f),
+        ScaledVariant(BigEater, VanillaNpcIds.EaterOfSouls, "Big Eater", 1.15f, 22, 8, 40, 0.5f),
+        ScaledVariant(LittleStinger, VanillaNpcIds.Hornet, "Little Hornet", 0.85f, 26, 12, 48, 0.5f),
+        ScaledVariant(BigStinger, VanillaNpcIds.Hornet, "Big Hornet", 1.2f, 26, 12, 48, 0.5f),
+        ScaledVariant(TinyMossHornet, VanillaNpcIds.MossHornet, "Tiny Moss Hornet", 0.8f, 70, 22, 220, 0.5f),
+        ScaledVariant(LittleMossHornet, VanillaNpcIds.MossHornet, "Little Moss Hornet", 0.9f, 70, 22, 220, 0.5f),
+        ScaledVariant(BigMossHornet, VanillaNpcIds.MossHornet, "Big Moss Hornet", 1.1f, 70, 22, 220, 0.5f),
+        ScaledVariant(GiantMossHornet, VanillaNpcIds.MossHornet, "Giant Moss Hornet", 1.2f, 70, 22, 220, 0.5f),
+        ScaledVariant(LittleCrimera, VanillaNpcIds.Crimera, "Little Crimera", 0.85f, 22, 8, 40, 0.5f),
+        ScaledVariant(BigCrimera, VanillaNpcIds.Crimera, "Big Crimera", 1.15f, 22, 8, 40, 0.5f),
         Variant(CataractEye2, VanillaNpcIds.CataractEye, "Large Cataract Eye", 1.15f, 20, 4, 74, 0.595f),
         Variant(SleepyEye2, VanillaNpcIds.SleepyEye, "Large Sleepy Eye", 1.1f, 17, 2, 66, 0.765f),
         Variant(DilatedEye2, VanillaNpcIds.DilatedEye, "Small Dilated Eye", 0.9f, 16, 1, 45, 0.88f),
         Variant(GreenEye2, VanillaNpcIds.GreenEye, "Small Green Eye", 0.85f, 17, 0, 51, 0.92f),
         Variant(PurpleEye2, VanillaNpcIds.PurpleEye, "Large Purple Eye", 1.1f, 15, 4, 66, 0.72f),
-        Variant(DemonEye2, VanillaNpcIds.DemonEye, "Large Demon Eye", 1.15f, 20, 2, 69, 0.68f)
+        Variant(DemonEye2, VanillaNpcIds.DemonEye, "Large Demon Eye", 1.15f, 20, 2, 69, 0.68f),
+        ScaledVariant(LittleHornetFatty, VanillaNpcIds.FattyHornet, "Little Fatty Hornet", 0.85f, 22, 16, 50, 0.3f),
+        ScaledVariant(BigHornetFatty, VanillaNpcIds.FattyHornet, "Big Fatty Hornet", 1.25f, 22, 16, 50, 0.3f),
+        ScaledVariant(LittleHornetHoney, VanillaNpcIds.HoneyHornet, "Little Honey Hornet", 0.8f, 28, 12, 42, 0.6f),
+        ScaledVariant(BigHornetHoney, VanillaNpcIds.HoneyHornet, "Big Honey Hornet", 1.15f, 28, 12, 42, 0.6f),
+        ScaledVariant(LittleHornetLeafy, VanillaNpcIds.LeafyHornet, "Little Leafy Hornet", 0.92f, 30, 14, 38, 0.45f),
+        ScaledVariant(BigHornetLeafy, VanillaNpcIds.LeafyHornet, "Big Leafy Hornet", 1.1f, 30, 14, 38, 0.45f),
+        ScaledVariant(LittleHornetSpikey, VanillaNpcIds.SpikeyHornet, "Little Spikey Hornet", 0.78f, 32, 6, 42, 0.55f),
+        ScaledVariant(BigHornetSpikey, VanillaNpcIds.SpikeyHornet, "Big Spikey Hornet", 1.16f, 32, 6, 42, 0.55f),
+        ScaledVariant(LittleHornetStingy, VanillaNpcIds.StingyHornet, "Little Stingy Hornet", 0.87f, 34, 4, 38, 0.6f),
+        ScaledVariant(BigHornetStingy, VanillaNpcIds.StingyHornet, "Big Stingy Hornet", 1.21f, 34, 4, 38, 0.6f)
     ];
 
     public static int Count => Entries.Length;
@@ -128,4 +168,23 @@ public static class VanillaNpcNetVariantCatalog
         int lifeMax,
         float knockBackResist) =>
         new(netId, type, name, scale, damage, defense, lifeMax, knockBackResist);
+
+    private static VanillaNpcNetVariantDefinition ScaledVariant(
+        NpcNetId netId,
+        NpcTypeId type,
+        string name,
+        float scale,
+        int baseDamage,
+        int baseDefense,
+        int baseLifeMax,
+        float baseKnockBackResist) =>
+        Variant(
+            netId,
+            type,
+            name,
+            scale,
+            (int)(baseDamage * scale),
+            (int)(baseDefense * scale),
+            (int)(baseLifeMax * scale),
+            baseKnockBackResist * (2f - scale));
 }

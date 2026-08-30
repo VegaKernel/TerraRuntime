@@ -11,14 +11,19 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Zombie = new(3);
     public static readonly NpcTypeId EyeOfCthulhu = new(4);
     public static readonly NpcTypeId ServantOfCthulhu = new(5);
+    public static readonly NpcTypeId EaterOfSouls = new(6);
     public static readonly NpcTypeId MotherSlime = new(16);
     public static readonly NpcTypeId Skeleton = new(21);
+    public static readonly NpcTypeId MeteorHead = new(23);
+    public static readonly NpcTypeId Hornet = new(42);
     public static readonly NpcTypeId KingSlime = new(50);
     public static readonly NpcTypeId LavaSlime = new(59);
     public static readonly NpcTypeId DungeonSlime = new(71);
     public static readonly NpcTypeId CorruptSlime = new(81);
+    public static readonly NpcTypeId Corruptor = new(94);
     public static readonly NpcTypeId TheHungryII = new(116);
     public static readonly NpcTypeId WanderingEye = new(133);
+    public static readonly NpcTypeId Probe = new(139);
     public static readonly NpcTypeId IlluminantSlime = new(138);
     public static readonly NpcTypeId ToxicSludge = new(141);
     public static readonly NpcTypeId IceSlime = new(147);
@@ -47,7 +52,19 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ShimmerSlime = new(676);
     public static readonly NpcTypeId PigronCorruption = new(170);
     public static readonly NpcTypeId PigronHallow = new(171);
+    public static readonly NpcTypeId Crimera = new(173);
+    public static readonly NpcTypeId MossHornet = new(176);
     public static readonly NpcTypeId PigronCrimson = new(180);
+    public static readonly NpcTypeId Moth = new(205);
+    public static readonly NpcTypeId Bee = new(210);
+    public static readonly NpcTypeId SmallBee = new(211);
+    public static readonly NpcTypeId FattyHornet = new(231);
+    public static readonly NpcTypeId HoneyHornet = new(232);
+    public static readonly NpcTypeId LeafyHornet = new(233);
+    public static readonly NpcTypeId SpikeyHornet = new(234);
+    public static readonly NpcTypeId StingyHornet = new(235);
+    public static readonly NpcTypeId Parrot = new(252);
+    public static readonly NpcTypeId BloodSquid = new(619);
 }
 
 /// <summary>

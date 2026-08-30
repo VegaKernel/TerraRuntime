@@ -340,11 +340,30 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         INpcAiStateStepper inner,
         out NpcStateUpdate next)
     {
-        if (definition.Type != VanillaNpcIds.ServantOfCthulhu ||
-            definition.AiStyle != VanillaNpcAiStyles.Flyer)
+        if (definition.AiStyle != VanillaNpcAiStyles.Flyer ||
+            !VanillaFlyerNpcCatalog.TryGetMotionProfile(
+                definition.Type,
+                out VanillaFlyerMotionProfile profile) ||
+            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;
+        }
+
+        if (VanillaFlyerNpcCatalog.UsesScaleSpeedHandicap(definition.Type))
+        {
+            float speedFactor = 2f - npc.Simulation.Scale;
+            if (!float.IsFinite(speedFactor) || speedFactor <= 0f)
+            {
+                next = default;
+                return false;
+            }
+
+            profile = profile with
+            {
+                MaximumSpeed = profile.MaximumSpeed * speedFactor,
+                Acceleration = profile.Acceleration * speedFactor
+            };
         }
 
         if (!context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) ||
@@ -353,7 +372,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             NpcSimulationState idleSimulation = npc.Simulation with
             {
                 NoGravity = true,
-                NoTileCollide = true
+                NoTileCollide = definition.NoTileCollideAtSpawn
             };
             next = new NpcStateUpdate(
                 definition.Type.Value,
@@ -369,13 +388,21 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         }
 
         var input = new VanillaServantOfCthulhuMotionInput(
-            NpcCenterX: npc.PositionX + definition.Width * 0.5f,
-            NpcCenterY: npc.PositionY + definition.Height * 0.5f,
+            NpcCenterX: npc.PositionX + hitbox.Width * 0.5f,
+            NpcCenterY: npc.PositionY + hitbox.Height * 0.5f,
             VelocityX: npc.VelocityX,
             VelocityY: npc.VelocityY,
             TargetCenterX: candidate.CenterX,
-            TargetCenterY: candidate.CenterY);
-        if (!VanillaServantOfCthulhuMotion.TryStep(in input, out VanillaServantOfCthulhuMotionResult result))
+            TargetCenterY: candidate.CenterY,
+            OldVelocityX: npc.Simulation.OldVelocityX,
+            OldVelocityY: npc.Simulation.OldVelocityY,
+            CollideX: npc.Simulation.CollideX,
+            CollideY: npc.Simulation.CollideY,
+            Wet: npc.Simulation.Wet);
+        if (!VanillaServantOfCthulhuMotion.TryStep(
+                in input,
+                in profile,
+                out VanillaServantOfCthulhuMotionResult result))
         {
             next = default;
             return false;
@@ -395,7 +422,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
                 DirectionX = closest.DirectionX,
                 DirectionY = closest.DirectionY,
                 NoGravity = true,
-                NoTileCollide = true
+                NoTileCollide = definition.NoTileCollideAtSpawn
             });
         return true;
     }

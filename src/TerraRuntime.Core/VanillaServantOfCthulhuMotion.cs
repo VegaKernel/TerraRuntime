@@ -6,7 +6,12 @@ public readonly record struct VanillaServantOfCthulhuMotionInput(
     float VelocityX,
     float VelocityY,
     float TargetCenterX,
-    float TargetCenterY);
+    float TargetCenterY,
+    float OldVelocityX = 0f,
+    float OldVelocityY = 0f,
+    bool CollideX = false,
+    bool CollideY = false,
+    bool Wet = false);
 
 public readonly record struct VanillaServantOfCthulhuMotionResult(
     float VelocityX,
@@ -19,12 +24,19 @@ public readonly record struct VanillaServantOfCthulhuMotionResult(
 /// </summary>
 public static class VanillaServantOfCthulhuMotion
 {
-    private const float Speed = 5f;
-    private const float Acceleration = 0.03f;
     private const float CoordinateQuantum = 8f;
 
     public static bool TryStep(
         in VanillaServantOfCthulhuMotionInput input,
+        out VanillaServantOfCthulhuMotionResult result) =>
+        TryStep(
+            in input,
+            new VanillaFlyerMotionProfile(5f, 0.03f, true, 0f, 0f, 0f),
+            out result);
+
+    public static bool TryStep(
+        in VanillaServantOfCthulhuMotionInput input,
+        in VanillaFlyerMotionProfile profile,
         out VanillaServantOfCthulhuMotionResult result)
     {
         if (!float.IsFinite(input.NpcCenterX) ||
@@ -32,7 +44,10 @@ public static class VanillaServantOfCthulhuMotion
             !float.IsFinite(input.VelocityX) ||
             !float.IsFinite(input.VelocityY) ||
             !float.IsFinite(input.TargetCenterX) ||
-            !float.IsFinite(input.TargetCenterY))
+            !float.IsFinite(input.TargetCenterY) ||
+            !float.IsFinite(input.OldVelocityX) ||
+            !float.IsFinite(input.OldVelocityY) ||
+            !profile.IsValid)
         {
             result = default;
             return false;
@@ -55,34 +70,56 @@ public static class VanillaServantOfCthulhuMotion
         }
         else
         {
-            float scale = Speed / distance;
+            float scale = profile.MaximumSpeed / distance;
             desiredX = deltaX * scale;
             desiredY = deltaY * scale;
         }
 
         float velocityX = input.VelocityX;
         float velocityY = input.VelocityY;
-        ApproachAxis(ref velocityX, desiredX);
-        ApproachAxis(ref velocityY, desiredY);
+        ApproachAxis(ref velocityX, desiredX, profile.Acceleration, profile.TurnsHard);
+        ApproachAxis(ref velocityY, desiredY, profile.Acceleration, profile.TurnsHard);
+
+        if (profile.HasBounce)
+        {
+            if (input.CollideX)
+                velocityX = input.OldVelocityX * -profile.BounceFactor;
+            if (input.CollideY)
+                velocityY = input.OldVelocityY * -profile.BounceFactor;
+        }
+
+        if (input.Wet && profile.RisesInWater)
+        {
+            if (velocityY > 0f)
+                velocityY *= 0.95f;
+            velocityY -= profile.WaterRiseAcceleration;
+            if (velocityY < -profile.WaterRiseSpeedCap)
+                velocityY = -profile.WaterRiseSpeedCap;
+        }
+
         result = new VanillaServantOfCthulhuMotionResult(velocityX, velocityY);
         return true;
     }
 
     private static float Quantize(float value) => (int)(value / CoordinateQuantum) * CoordinateQuantum;
 
-    private static void ApproachAxis(ref float velocity, float desired)
+    private static void ApproachAxis(
+        ref float velocity,
+        float desired,
+        float acceleration,
+        bool turnsHard)
     {
         if (velocity < desired)
         {
-            velocity += Acceleration;
-            if (velocity < 0f && desired > 0f)
-                velocity += Acceleration;
+            velocity += acceleration;
+            if (turnsHard && velocity < 0f && desired > 0f)
+                velocity += acceleration;
         }
         else if (velocity > desired)
         {
-            velocity -= Acceleration;
-            if (velocity > 0f && desired < 0f)
-                velocity -= Acceleration;
+            velocity -= acceleration;
+            if (turnsHard && velocity > 0f && desired < 0f)
+                velocity -= acceleration;
         }
     }
 }

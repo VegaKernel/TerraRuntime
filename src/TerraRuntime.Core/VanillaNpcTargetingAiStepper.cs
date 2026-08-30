@@ -81,7 +81,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
             VanillaNpcBehaviorFamily.FlyingEye => _flyingEye,
             VanillaNpcBehaviorFamily.GroundFighter when _context.GroundFighterEnabled => _groundFighter,
             VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
-            VanillaNpcBehaviorFamily.Flyer when definition.Type == VanillaNpcIds.ServantOfCthulhu => _flyer,
+            VanillaNpcBehaviorFamily.Flyer => _flyer,
             VanillaNpcBehaviorFamily.KingSlime => _kingSlime,
             _ => null
         };

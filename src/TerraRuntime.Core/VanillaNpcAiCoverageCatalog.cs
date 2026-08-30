@@ -18,7 +18,8 @@ public enum VanillaNpcAiCapability : ushort
     GroundFighterDoorPressureSlice = 1 << 9,
     SlimeTimerProfileSlice = 1 << 10,
     NegativeNetVariantDefaults = 1 << 11,
-    FlyingEyeSteeringProfileSlice = 1 << 12
+    FlyingEyeSteeringProfileSlice = 1 << 12,
+    FlyerPursuitProfileSlice = 1 << 13
 }
 
 /// <summary>
@@ -75,7 +76,8 @@ public static class VanillaNpcAiCoverageCatalog
         var entries = new VanillaNpcAiCoverage[
             7 +
             VanillaSlimeNpcCatalog.DefinitionCount +
-            VanillaFlyingEyeNpcCatalog.DefinitionCount];
+            VanillaFlyingEyeNpcCatalog.DefinitionCount +
+            VanillaFlyerNpcCatalog.DefinitionCount];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -95,7 +97,9 @@ public static class VanillaNpcAiCoverageCatalog
         entries[3] = Partial(
             VanillaNpcIds.EyeOfCthulhu,
             OrdinaryCore | VanillaNpcAiCapability.ChildSpawnSlice);
-        entries[4] = Partial(VanillaNpcIds.ServantOfCthulhu, OrdinaryCore);
+        entries[4] = Partial(
+            VanillaNpcIds.ServantOfCthulhu,
+            OrdinaryCore | VanillaNpcAiCapability.FlyerPursuitProfileSlice);
         entries[5] = Partial(
             VanillaNpcIds.Skeleton,
             OrdinaryCore |
@@ -123,6 +127,16 @@ public static class VanillaNpcAiCoverageCatalog
         {
             VanillaNpcAiCapability capabilities =
                 OrdinaryCore | VanillaNpcAiCapability.FlyingEyeSteeringProfileSlice;
+            if (HasNegativeNetVariant(definition.Type))
+                capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
+
+            entries[index++] = Partial(definition.Type, capabilities);
+        }
+
+        foreach (VanillaNpcDefinition definition in VanillaFlyerNpcCatalog.AllDefinitions)
+        {
+            VanillaNpcAiCapability capabilities =
+                OrdinaryCore | VanillaNpcAiCapability.FlyerPursuitProfileSlice;
             if (HasNegativeNetVariant(definition.Type))
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
 

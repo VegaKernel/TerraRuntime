@@ -246,6 +246,9 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
+        if (VanillaFlyerNpcCatalog.TryGetDefinition(type, out definition))
+            return true;
+
         if (type == VanillaNpcIds.Skeleton)
         {
             definition = new VanillaNpcDefinition(
