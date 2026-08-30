@@ -1,6 +1,18 @@
 name: Tile Wall Definition Source Contract
 
 on:
+  pull_request:
+    paths:
+      - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
+      - 'src/TerraRuntime.World/VanillaTileWallDefinitionCatalogs.cs'
+      - 'src/TerraRuntime.World/VanillaWorldCollision.cs'
+      - 'src/TerraRuntime.World/VanillaWorldFrameImportance326.cs'
+      - 'tests/TerraRuntime.Tests/VanillaTileWallDefinitionCatalogTests.cs'
+      - 'tools/ci/probe_tile_wall_definitions.py'
+      - 'docs/en/tile-wall-definitions.md'
+      - 'docs/ru/tile-wall-definitions.md'
+      - 'docs/roadmap/gameplay-decomposition-and-catalogs.md'
+      - '.github/workflows/tile-wall-definition-source-contract.yml'
   push:
     branches: [main]
     paths:
@@ -57,7 +69,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          expected_sha256="4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034"
           assembly=""
 
           while IFS= read -r -d '' candidate; do

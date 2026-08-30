@@ -8,7 +8,10 @@ namespace TerraRuntime.World;
 /// Generated object/NPC metadata is accumulated beside the tile store so fresh .wld composition can publish tiles
 /// and their side tables atomically instead of manufacturing orphan frame-important objects or transient NPCs.
 /// </summary>
-public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace, IWorldGenerationMetadataWorkspace
+public sealed class RuntimeWorldGenerationWorkspace :
+    IWorldGenerationWorkspace,
+    IWorldGenerationMetadataWorkspace,
+    IWorldGenerationChestWorkspace
 {
     private const WorldGenerationTileFlags KnownFlags =
         WorldGenerationTileFlags.Active |
@@ -95,6 +98,50 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
             name,
             detachedItems));
         return true;
+    }
+
+    /// <summary>
+    /// Adapts the public generator chest capability to the runtime-owned generated-object side table. The tile anchor
+    /// must already exist, so all generators share the same persistence validation and dense slot assignment.
+    /// </summary>
+    public bool TryAddChest(
+        int x,
+        int y,
+        string name,
+        ReadOnlySpan<WorldGenerationChestItem> items)
+    {
+        if (name is null ||
+            name.Length > WorldGenerationChestRules.MaximumNameLength ||
+            name.Any(char.IsControl) ||
+            items.Length > WorldGenerationChestRules.VanillaItemSlotCount)
+        {
+            return false;
+        }
+
+        var persistedItems = new WorldChestItem[WorldGenerationChestRules.VanillaItemSlotCount];
+        for (int index = 0; index < items.Length; index++)
+        {
+            WorldGenerationChestItem item = items[index];
+            if (item.Stack < 0 || item.Stack > short.MaxValue || item.Prefix.Value > byte.MaxValue)
+                return false;
+
+            if (item.Stack == 0)
+            {
+                if (!item.ItemType.IsNone || item.Prefix.Value != 0)
+                    return false;
+                continue;
+            }
+
+            if (!VanillaItemIds.TryCreate(item.ItemType.Value, out ItemTypeId validated) || validated.IsNone)
+                return false;
+
+            persistedItems[index] = new WorldChestItem(
+                item.Stack,
+                item.ItemType.Value,
+                checked((byte)item.Prefix.Value));
+        }
+
+        return TryAddGeneratedChest(x, y, name, persistedItems);
     }
 
     /// <summary>Returns a detached dense chest snapshot suitable for persistence.</summary>

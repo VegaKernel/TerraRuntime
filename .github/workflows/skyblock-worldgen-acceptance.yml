@@ -1,0 +1,216 @@
+name: Skyblock Worldgen Acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
+      - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationContracts.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
+      - 'src/TerraRuntime.World/SkyblockWorldGenerationProvider.cs'
+      - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
+      - 'tests/TerraRuntime.Tests/BuiltInWorldGeneratorSourceTests.cs'
+      - 'tests/TerraRuntime.Tests/StartupWorldGeneratorSourceTests.cs'
+      - 'tests/TerraRuntime.Tests/SkyblockWorldGenerationProviderTests.cs'
+      - 'tests/TerraRuntime.Tests/SkyblockWorldGenerationPersistenceTests.cs'
+      - '.github/workflows/skyblock-worldgen-acceptance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
+      - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationContracts.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
+      - 'src/TerraRuntime.World/SkyblockWorldGenerationProvider.cs'
+      - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
+      - 'tests/TerraRuntime.Tests/BuiltInWorldGeneratorSourceTests.cs'
+      - 'tests/TerraRuntime.Tests/StartupWorldGeneratorSourceTests.cs'
+      - 'tests/TerraRuntime.Tests/SkyblockWorldGenerationProviderTests.cs'
+      - 'tests/TerraRuntime.Tests/SkyblockWorldGenerationPersistenceTests.cs'
+      - '.github/workflows/skyblock-worldgen-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-skyblock-worldgen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  skyblock-small:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Build
+        run: |
+          dotnet restore TerraRuntime.slnx
+          dotnet build TerraRuntime.slnx -c Release --no-restore
+
+      - name: Prove focused Skyblock invariants and chest round-trip
+        run: >-
+          dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+          -class TerraRuntime.Tests.SkyblockWorldGenerationProviderTests
+          -class TerraRuntime.Tests.SkyblockWorldGenerationPersistenceTests
+
+      - name: Generate canonical Small Skyblock through TerraRuntime CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          world="$GITHUB_WORKSPACE/artifacts/skyblock-small.wld"
+          host_log="$GITHUB_WORKSPACE/artifacts/skyblock-host.log"
+
+          dotnet src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll \
+            --create-world SkyblockAcceptance \
+            --world-generator terraruntime:skyblock \
+            --world-seed 8675309 \
+            --world-width 4200 \
+            --world-height 1200 \
+            --world-game-mode classic \
+            --world-evil corruption \
+            --world-output "$world" \
+            --port 17792 \
+            --max-players 1 \
+            --no-tui \
+            > "$host_log" 2>&1 &
+          host_pid=$!
+
+          cleanup() {
+            kill "$host_pid" 2>/dev/null || true
+            wait "$host_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          listener=false
+          for _ in $(seq 1 240); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "TerraRuntime exited before Skyblock startup completed." >&2
+              exit 1
+            fi
+            if [[ -s "$world" ]] && ss -ltn | grep -q ':17792 '; then
+              listener=true
+              break
+            fi
+            sleep 0.5
+          done
+
+          cat "$host_log"
+          test "$listener" = true
+          test -s "$world"
+          grep -q "'terraruntime:skyblock'" "$host_log"
+          grep -q "World created:" "$host_log"
+          echo "Skyblock Small world created and opened by TerraRuntime."
+
+      - name: Verify generated Skyblock with TerraRuntime loader
+        run: >-
+          dotnet run
+          --project tools/TerraRuntime.WorldVerify/TerraRuntime.WorldVerify.csproj
+          -c Release
+          -- artifacts/skyblock-small.wld
+
+      - name: Download and pin TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+          expected="4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          echo "Pinned TerrariaServer.exe SHA-256 verified."
+
+      - name: Load generated Skyblock in official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server="$(realpath "$server")"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/skyblock-small.wld"
+          config="$GITHUB_WORKSPACE/artifacts/skyblock-official-serverconfig.txt"
+          official_log="$GITHUB_WORKSPACE/artifacts/skyblock-official-server.log"
+          fifo="$GITHUB_WORKSPACE/artifacts/skyblock-official-server.stdin"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=0
+          maxplayers=1
+          port=17793
+          password=
+          motd=TerraRuntime Skyblock worldgen acceptance
+          secure=0
+          upnp=0
+          npcstream=0
+          priority=0
+          EOF
+
+          rm -f "$fifo"
+          mkfifo "$fifo"
+          exec 9<> "$fifo"
+          (
+            cd "$server_dir"
+            "./$server_name" -config "$config" < "$fifo"
+          ) > "$official_log" 2>&1 &
+          official_pid=$!
+
+          cleanup() {
+            printf 'exit\n' >&9 2>/dev/null || true
+            sleep 1
+            kill "$official_pid" 2>/dev/null || true
+            wait "$official_pid" 2>/dev/null || true
+            exec 9>&- || true
+          }
+          trap cleanup EXIT
+
+          listener=false
+          for _ in $(seq 1 180); do
+            if ! kill -0 "$official_pid" 2>/dev/null; then
+              cat "$official_log" >&2
+              echo "Official TerrariaServer exited while loading the Skyblock world." >&2
+              exit 1
+            fi
+            if ss -ltn | grep -q ':17793 '; then
+              listener=true
+              break
+            fi
+            sleep 0.5
+          done
+
+          cat "$official_log"
+          test "$listener" = true
+          echo "Official TerrariaServer accepted the TerraRuntime Skyblock world."
+
+      - name: Upload Skyblock evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skyblock-worldgen-${{ github.sha }}
+          path: |
+            artifacts/skyblock-small.wld
+            artifacts/skyblock-host.log
+            artifacts/skyblock-official-server.log
+            artifacts/skyblock-official-serverconfig.txt
+          if-no-files-found: warn
+          retention-days: 7

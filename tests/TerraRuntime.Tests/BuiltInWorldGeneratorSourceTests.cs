@@ -44,13 +44,16 @@ public sealed class BuiltInWorldGeneratorSourceTests
     }
 
     [Fact]
-    public void Vanilla_generator_is_explicitly_registered_and_generates_non_flat_candidate()
+    public void Vanilla_and_skyblock_generators_are_explicitly_registered()
     {
         BuiltInWorldGeneratorSource source = BuiltInWorldGeneratorSource.Instance;
-        Assert.Equal(2, source.CaptureWorldGeneratorIds().Length);
+        Assert.Equal(3, source.CaptureWorldGeneratorIds().Length);
         Assert.Contains(VanillaWorldGenerationProvider1458.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
+        Assert.Contains(SkyblockWorldGenerationProvider.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
         Assert.True(source.TryResolveWorldGenerator(VanillaWorldGenerationProvider1458.GeneratorId, out var provider));
         Assert.NotNull(provider);
+        Assert.True(source.TryResolveWorldGenerator(SkyblockWorldGenerationProvider.GeneratorId, out var skyblock));
+        Assert.NotNull(skyblock);
 
         var request = new WorldGenerationRequest(
             VanillaWorldGenerationProvider1458.GeneratorId,
