@@ -10,7 +10,7 @@ namespace TerraRuntime;
 /// A requested despawn is represented by TimeLeft=0 so ServerRuntimeState can remove the exact generation
 /// after the state executor successfully commits this tick.
 /// </summary>
-internal sealed class VanillaNpcCheckActiveAiStepper : INpcAiStateStepper
+internal sealed class VanillaNpcCheckActiveAiStepper : INpcAiStateStepper, INpcAiStateStepperWrapper
 {
     private readonly INpcAiStateStepper inner;
     private readonly VanillaNpcTargetCandidate[] candidates =
@@ -21,6 +21,8 @@ internal sealed class VanillaNpcCheckActiveAiStepper : INpcAiStateStepper
     {
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
     }
+
+    public INpcAiStateStepper InnerStepper => inner;
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> players)
     {

@@ -13,7 +13,7 @@ namespace TerraRuntime;
 /// this stage chooses special movement behavior. Every collision query resolves the hitbox from the live
 /// post-AI scale so dynamic-size NPCs do not keep their spawn geometry after an AI scale transition.
 /// </summary>
-internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
+internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcAiStateStepperWrapper
 {
     private const float WaterMovementSpeed = 0.5f;
     private const float LavaMovementSpeed = 0.5f;
@@ -45,12 +45,17 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         this.worldSurfaceTiles = worldSurfaceTiles;
 
-        if (inner is VanillaNpcTargetingAiStepper targeting)
+        VanillaNpcTargetingAiStepper? targeting =
+            NpcAiStateStepperComposition.FindCapability<VanillaNpcTargetingAiStepper>(inner);
+        if (targeting is not null)
         {
             targeting.EnableBlueSlimeMotion(worldSurfaceTiles);
             targeting.EnableZombieMotion(worldSurfaceTiles);
+            targeting.SetKingSlimeEnvironment(new VanillaKingSlimeWorldEnvironment(tiles));
         }
     }
+
+    public INpcAiStateStepper InnerStepper => inner;
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {

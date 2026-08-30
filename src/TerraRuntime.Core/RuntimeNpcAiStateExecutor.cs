@@ -28,7 +28,8 @@ public readonly record struct NpcAiStateTickSummary(
 /// changes cannot let stale AI work mutate a replacement NPC in the same slot. Optional NPC spawn intents
 /// are planned speculatively into executor-owned bounded scratch storage and are applied in order only after
 /// that source-state commit succeeds; newly spawned NPCs therefore cannot enter the same pre-pass or escape
-/// from a rejected/stale transition.
+/// from a rejected/stale transition. Decorator chains expose their inner stepper through
+/// INpcAiStateStepperWrapper so optional planners remain discoverable under production composition layers.
 /// </summary>
 public sealed class RuntimeNpcAiStateExecutor
 {
@@ -57,7 +58,8 @@ public sealed class RuntimeNpcAiStateExecutor
         int proposed = 0;
         int applied = 0;
         int rejected = 0;
-        INpcAiSpawnIntentPlanner? spawnPlanner = stepper as INpcAiSpawnIntentPlanner;
+        INpcAiSpawnIntentPlanner? spawnPlanner =
+            NpcAiStateStepperComposition.FindCapability<INpcAiSpawnIntentPlanner>(stepper);
 
         for (int index = 0; index < examined; index++)
         {

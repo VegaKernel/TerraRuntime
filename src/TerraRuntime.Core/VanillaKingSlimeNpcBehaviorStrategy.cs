@@ -10,10 +10,16 @@ namespace TerraRuntime.Core;
 /// </summary>
 internal sealed class VanillaKingSlimeNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
-    private readonly IVanillaKingSlimeEnvironment? _environment;
+    private IVanillaKingSlimeEnvironment? _environment;
 
     public VanillaKingSlimeNpcBehaviorStrategy(IVanillaKingSlimeEnvironment? environment) =>
         _environment = environment;
+
+    public void SetEnvironment(IVanillaKingSlimeEnvironment environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+        _environment = environment;
+    }
 
     public bool TryStep(
         in NpcSnapshot npc,
@@ -22,10 +28,11 @@ internal sealed class VanillaKingSlimeNpcBehaviorStrategy : IVanillaNpcBehaviorS
         INpcAiStateStepper inner,
         out NpcStateUpdate next)
     {
+        IVanillaKingSlimeEnvironment? environment = _environment;
         if (definition.Type != VanillaNpcIds.KingSlime ||
             definition.AiStyle != VanillaNpcAiStyles.KingSlime ||
             !definition.IsBoss ||
-            _environment is null ||
+            environment is null ||
             !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
@@ -43,7 +50,7 @@ internal sealed class VanillaKingSlimeNpcBehaviorStrategy : IVanillaNpcBehaviorS
         float centerX = npc.PositionX + hitbox.Width * 0.5f;
         float centerY = npc.PositionY + hitbox.Height * 0.5f;
         bool canHitTarget = current.Active && !current.Ghost &&
-                            _environment.CanHitLine(centerX, centerY, current.CenterX, current.CenterY);
+                            environment.CanHitLine(centerX, centerY, current.CenterX, current.CenterY);
         NpcSimulationState simulation = npc.Simulation;
         var input = new VanillaKingSlimeMotionInput(
             PositionX: npc.PositionX,
@@ -69,13 +76,13 @@ internal sealed class VanillaKingSlimeNpcBehaviorStrategy : IVanillaNpcBehaviorS
             HasTeleportDestination: false,
             TeleportBottomX: 0f,
             TeleportBottomY: 0f,
-            WorldPixelWidth: _environment.WorldPixelWidth,
-            WorldPixelHeight: _environment.WorldPixelHeight);
+            WorldPixelWidth: environment.WorldPixelWidth,
+            WorldPixelHeight: environment.WorldPixelHeight);
 
         if (VanillaKingSlimeMotion.RequiresTeleportDestination(in input, out bool antiCheese))
         {
             VanillaNpcTargetCandidate teleportTarget = current.Active && !current.Ghost ? current : closest;
-            if (!_environment.TryResolveTeleport(
+            if (!environment.TryResolveTeleport(
                     in npc,
                     in definition,
                     in teleportTarget,

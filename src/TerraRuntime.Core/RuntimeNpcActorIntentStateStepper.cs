@@ -7,7 +7,7 @@ namespace TerraRuntime.Core;
 /// Converts high-level NPC actor intent into bounded AI velocity/target state. It never advances position itself;
 /// the returned state is intended to flow into TerraRuntime's source-backed world-motion/collision stepper.
 /// </summary>
-public sealed class RuntimeNpcActorIntentStateStepper : INpcAiStateStepper
+public sealed class RuntimeNpcActorIntentStateStepper : INpcAiStateStepper, INpcAiStateStepperWrapper
 {
     private const float VanillaBasePlayerWidth = 20f;
     private const float VanillaBasePlayerHeight = 42f;
@@ -29,6 +29,8 @@ public sealed class RuntimeNpcActorIntentStateStepper : INpcAiStateStepper
         _controls = controls;
         _players = players;
     }
+
+    public INpcAiStateStepper InnerStepper => _fallback;
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {

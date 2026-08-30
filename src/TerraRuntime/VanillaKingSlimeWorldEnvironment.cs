@@ -12,6 +12,7 @@ namespace TerraRuntime;
 internal sealed class VanillaKingSlimeWorldEnvironment : IVanillaKingSlimeEnvironment
 {
     private const int TileSize = 16;
+    private const float BasePlayerHeight = 42f;
     private const int CacheCapacity = 512;
 
     private readonly WorldTileStore _tiles;
@@ -142,7 +143,7 @@ internal sealed class VanillaKingSlimeWorldEnvironment : IVanillaKingSlimeEnviro
     private static bool IsPlatform(ushort type) => type is 19 or 427 or 435 or 436 or 437 or 438 or 439;
 
     private static VanillaKingSlimeTeleportDestination PlayerBottom(in VanillaNpcTargetCandidate target) =>
-        new(target.CenterX, target.CenterY + VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f);
+        new(target.CenterX, target.CenterY + BasePlayerHeight * 0.5f);
 
     private readonly record struct TeleportTile(int X, int Y);
 }
