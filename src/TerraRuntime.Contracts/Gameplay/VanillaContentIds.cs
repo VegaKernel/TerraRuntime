@@ -11,8 +11,31 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Zombie = new(3);
     public static readonly NpcTypeId EyeOfCthulhu = new(4);
     public static readonly NpcTypeId ServantOfCthulhu = new(5);
+    public static readonly NpcTypeId MotherSlime = new(16);
     public static readonly NpcTypeId Skeleton = new(21);
     public static readonly NpcTypeId KingSlime = new(50);
+    public static readonly NpcTypeId LavaSlime = new(59);
+    public static readonly NpcTypeId DungeonSlime = new(71);
+    public static readonly NpcTypeId CorruptSlime = new(81);
+    public static readonly NpcTypeId IlluminantSlime = new(138);
+    public static readonly NpcTypeId ToxicSludge = new(141);
+    public static readonly NpcTypeId IceSlime = new(147);
+    public static readonly NpcTypeId Crimslime = new(183);
+    public static readonly NpcTypeId SpikedIceSlime = new(184);
+    public static readonly NpcTypeId SpikedJungleSlime = new(204);
+    public static readonly NpcTypeId UmbrellaSlime = new(225);
+    public static readonly NpcTypeId RainbowSlime = new(244);
+    public static readonly NpcTypeId SlimeMasked = new(302);
+    public static readonly NpcTypeId SlimeRibbonWhite = new(333);
+    public static readonly NpcTypeId SlimeRibbonYellow = new(334);
+    public static readonly NpcTypeId SlimeRibbonGreen = new(335);
+    public static readonly NpcTypeId SlimeRibbonRed = new(336);
+    public static readonly NpcTypeId SpikedSlime = new(535);
+    public static readonly NpcTypeId SandSlime = new(537);
+    public static readonly NpcTypeId QueenSlimeMinionBlue = new(658);
+    public static readonly NpcTypeId QueenSlimeMinionPink = new(659);
+    public static readonly NpcTypeId GoldenSlime = new(667);
+    public static readonly NpcTypeId ShimmerSlime = new(676);
 }
 
 /// <summary>

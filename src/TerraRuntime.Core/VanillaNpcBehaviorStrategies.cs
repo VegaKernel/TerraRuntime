@@ -71,6 +71,12 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                        damaged ||
                        context.SlimeRainActive ||
                        npc.PositionY > context.WorldSurfacePixels;
+        if (!VanillaSlimeNpcCatalog.TryGetMotionProfile(definition.Type, out VanillaSlimeMotionProfile profile) ||
+            !profile.IsValid)
+        {
+            next = default;
+            return false;
+        }
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: npc.PositionX,
             VelocityX: npc.VelocityX,
@@ -85,7 +91,9 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             CollideY: simulation.CollideY,
             Engaged: engaged,
             SolidCollision: simulation.SolidCollision,
-            ClosestTarget: closest);
+            ClosestTarget: closest,
+            TimerBonus: profile.TimerBonus,
+            JumpTimerBand: profile.JumpTimerBand);
 
         if (!VanillaBlueSlimeMotion.TryStep(in input, out VanillaBlueSlimeMotionResult result))
         {

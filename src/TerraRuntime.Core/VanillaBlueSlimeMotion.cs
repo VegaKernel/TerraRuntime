@@ -29,7 +29,9 @@ public readonly record struct VanillaBlueSlimeMotionInput(
     bool CollideY,
     bool Engaged,
     bool SolidCollision,
-    VanillaBlueSlimeTargetRefresh ClosestTarget);
+    VanillaBlueSlimeTargetRefresh ClosestTarget,
+    float TimerBonus = 0f,
+    float JumpTimerBand = -1000f);
 
 public readonly record struct VanillaBlueSlimeMotionResult(
     float PositionX,
@@ -49,8 +51,6 @@ public readonly record struct VanillaBlueSlimeMotionResult(
 /// </summary>
 public static class VanillaBlueSlimeMotion
 {
-    private const float DefaultJumpTimerBand = -1000f;
-
     public static bool TryStep(
         in VanillaBlueSlimeMotionInput input,
         out VanillaBlueSlimeMotionResult result)
@@ -63,7 +63,11 @@ public static class VanillaBlueSlimeMotion
             input.DirectionY is < -1 or > 1 ||
             input.Target > byte.MaxValue ||
             !input.Ai.IsFinite ||
-            !input.ClosestTarget.IsValid)
+            !input.ClosestTarget.IsValid ||
+            !float.IsFinite(input.TimerBonus) ||
+            input.TimerBonus < 0f ||
+            !float.IsFinite(input.JumpTimerBand) ||
+            input.JumpTimerBand >= 0f)
         {
             result = default;
             return false;
@@ -152,6 +156,7 @@ public static class VanillaBlueSlimeMotion
                     velocityX = 0f;
             }
 
+            ai0 += input.TimerBonus;
             if (input.Engaged)
                 ai0++;
             ai0++;
@@ -159,9 +164,9 @@ public static class VanillaBlueSlimeMotion
             int jumpKind = 0;
             if (ai0 >= 0f)
                 jumpKind = 1;
-            if (ai0 >= DefaultJumpTimerBand && ai0 <= DefaultJumpTimerBand * 0.5f)
+            if (ai0 >= input.JumpTimerBand && ai0 <= input.JumpTimerBand * 0.5f)
                 jumpKind = 2;
-            if (ai0 >= DefaultJumpTimerBand * 2f && ai0 <= DefaultJumpTimerBand * 1.5f)
+            if (ai0 >= input.JumpTimerBand * 2f && ai0 <= input.JumpTimerBand * 1.5f)
                 jumpKind = 3;
 
             if (jumpKind > 0)
@@ -182,8 +187,8 @@ public static class VanillaBlueSlimeMotion
                     velocityX += 2f * directionX;
                     ai0 = -120f;
                     ai0 += jumpKind == 1
-                        ? DefaultJumpTimerBand
-                        : DefaultJumpTimerBand * 2f;
+                        ? input.JumpTimerBand
+                        : input.JumpTimerBand * 2f;
                 }
             }
         }

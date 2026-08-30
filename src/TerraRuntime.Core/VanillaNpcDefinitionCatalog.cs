@@ -156,6 +156,9 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
+        if (VanillaSlimeNpcCatalog.TryGetDefinition(type, out definition))
+            return true;
+
         if (type == VanillaNpcIds.DemonEye)
         {
             definition = new VanillaNpcDefinition(
@@ -284,5 +287,43 @@ public static class VanillaNpcDefinitionCatalog
 
         definition = default;
         return false;
+    }
+
+    /// <summary>
+    /// Resolves the effective defaults for a positive gameplay type paired with its signed wire
+    /// identity. Unknown or mismatched negative identities fail closed.
+    /// </summary>
+    public static bool TryGet(
+        NpcTypeId type,
+        NpcNetId netId,
+        out VanillaNpcDefinition definition)
+    {
+        if (!TryGet(type, out VanillaNpcDefinition baseDefinition))
+        {
+            definition = default;
+            return false;
+        }
+
+        if (netId.Value >= 0)
+        {
+            if (netId.Value != type.Value)
+            {
+                definition = default;
+                return false;
+            }
+
+            definition = baseDefinition;
+            return true;
+        }
+
+        if (!VanillaNpcNetVariantCatalog.TryGet(netId, out VanillaNpcNetVariantDefinition variant) ||
+            variant.Type != type)
+        {
+            definition = default;
+            return false;
+        }
+
+        definition = variant.ApplyTo(in baseDefinition);
+        return true;
     }
 }

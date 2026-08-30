@@ -65,7 +65,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
             return false;
         }
 
-        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition))
+        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition))
             return _inner.TryStepState(in npc, out next);
 
         if (definition.Role == NpcArchetypeRole.Boss &&

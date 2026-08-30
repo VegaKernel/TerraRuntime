@@ -15,7 +15,9 @@ public enum VanillaNpcAiCapability : ushort
     TeleportEnvironmentSlice = 1 << 6,
     PacketSync = 1 << 7,
     GroundFighterTraversalSlice = 1 << 8,
-    GroundFighterDoorPressureSlice = 1 << 9
+    GroundFighterDoorPressureSlice = 1 << 9,
+    SlimeTimerProfileSlice = 1 << 10,
+    NegativeNetVariantDefaults = 1 << 11
 }
 
 /// <summary>
@@ -41,32 +43,7 @@ public static class VanillaNpcAiCoverageCatalog
         VanillaNpcAiCapability.WorldPhysicsSlice |
         VanillaNpcAiCapability.PacketSync;
 
-    private static readonly VanillaNpcAiCoverage[] Entries =
-    [
-        Partial(VanillaNpcIds.BlueSlime, OrdinaryCore),
-        Partial(VanillaNpcIds.DemonEye, OrdinaryCore),
-        Partial(
-            VanillaNpcIds.Zombie,
-            OrdinaryCore |
-            VanillaNpcAiCapability.CheckActiveSlice |
-            VanillaNpcAiCapability.GroundFighterTraversalSlice |
-            VanillaNpcAiCapability.GroundFighterDoorPressureSlice),
-        Partial(
-            VanillaNpcIds.EyeOfCthulhu,
-            OrdinaryCore | VanillaNpcAiCapability.ChildSpawnSlice),
-        Partial(VanillaNpcIds.ServantOfCthulhu, OrdinaryCore),
-        Partial(
-            VanillaNpcIds.Skeleton,
-            OrdinaryCore |
-            VanillaNpcAiCapability.CheckActiveSlice |
-            VanillaNpcAiCapability.GroundFighterTraversalSlice |
-            VanillaNpcAiCapability.GroundFighterDoorPressureSlice),
-        Partial(
-            VanillaNpcIds.KingSlime,
-            OrdinaryCore |
-            VanillaNpcAiCapability.ChildSpawnSlice |
-            VanillaNpcAiCapability.TeleportEnvironmentSlice)
-    ];
+    private static readonly VanillaNpcAiCoverage[] Entries = CreateEntries();
 
     public static int Count => Entries.Length;
 
@@ -91,4 +68,49 @@ public static class VanillaNpcAiCoverageCatalog
         NpcTypeId type,
         VanillaNpcAiCapability capabilities) =>
         new(type, capabilities, FullVanillaAiParity: false);
+
+    private static VanillaNpcAiCoverage[] CreateEntries()
+    {
+        var entries = new VanillaNpcAiCoverage[7 + VanillaSlimeNpcCatalog.DefinitionCount];
+        entries[0] = Partial(
+            VanillaNpcIds.BlueSlime,
+            OrdinaryCore |
+            VanillaNpcAiCapability.SlimeTimerProfileSlice |
+            VanillaNpcAiCapability.NegativeNetVariantDefaults);
+        entries[1] = Partial(VanillaNpcIds.DemonEye, OrdinaryCore);
+        entries[2] = Partial(
+            VanillaNpcIds.Zombie,
+            OrdinaryCore |
+            VanillaNpcAiCapability.CheckActiveSlice |
+            VanillaNpcAiCapability.GroundFighterTraversalSlice |
+            VanillaNpcAiCapability.GroundFighterDoorPressureSlice);
+        entries[3] = Partial(
+            VanillaNpcIds.EyeOfCthulhu,
+            OrdinaryCore | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[4] = Partial(VanillaNpcIds.ServantOfCthulhu, OrdinaryCore);
+        entries[5] = Partial(
+            VanillaNpcIds.Skeleton,
+            OrdinaryCore |
+            VanillaNpcAiCapability.CheckActiveSlice |
+            VanillaNpcAiCapability.GroundFighterTraversalSlice |
+            VanillaNpcAiCapability.GroundFighterDoorPressureSlice);
+        entries[6] = Partial(
+            VanillaNpcIds.KingSlime,
+            OrdinaryCore |
+            VanillaNpcAiCapability.ChildSpawnSlice |
+            VanillaNpcAiCapability.TeleportEnvironmentSlice);
+
+        int index = 7;
+        foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
+        {
+            VanillaNpcAiCapability capabilities =
+                OrdinaryCore | VanillaNpcAiCapability.SlimeTimerProfileSlice;
+            if (definition.Type == VanillaNpcIds.CorruptSlime)
+                capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
+
+            entries[index++] = Partial(definition.Type, capabilities);
+        }
+
+        return entries;
+    }
 }

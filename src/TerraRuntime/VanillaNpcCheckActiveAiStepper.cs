@@ -39,7 +39,7 @@ internal sealed class VanillaNpcCheckActiveAiStepper : INpcAiStateStepper, INpcA
             return false;
 
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
-            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
+            !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition) ||
             definition.AiStyle != VanillaNpcAiStyles.Fighter ||
             definition.BehaviorFamily != VanillaNpcBehaviorFamily.GroundFighter ||
             next.Simulation.TimeLeft < 0)

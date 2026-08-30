@@ -13,7 +13,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
     public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update)
     {
         NpcSimulationState simulation = update.Simulation;
-        if (TryGetDefinition(update.Type, out VanillaNpcDefinition definition))
+        if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition))
         {
             if (simulation.LifeMax == 0)
             {
@@ -51,12 +51,13 @@ internal static class RuntimeNpcStateOwnershipPolicy
     {
         NpcSimulationState simulation = update.Simulation;
         bool sameType = update.Type == previous.Type;
+        bool sameDefinition = sameType && update.NetId == previous.NetId;
         VanillaNpcDefinition definition = default;
-        bool hasDefinition = TryGetDefinition(update.Type, out definition);
+        bool hasDefinition = TryGetDefinition(update.Type, update.NetId, out definition);
 
         if (simulation.LifeMax == 0)
         {
-            if (sameType && previous.Simulation.LifeMax > 0)
+            if (sameDefinition && previous.Simulation.LifeMax > 0)
             {
                 simulation = simulation with
                 {
@@ -74,14 +75,14 @@ internal static class RuntimeNpcStateOwnershipPolicy
             }
         }
 
-        if (!sameType && hasDefinition)
+        if (!sameDefinition && hasDefinition)
             simulation = simulation with { Scale = definition.Scale };
 
         if (simulation.TimeLeft < 0)
         {
             simulation = simulation with
             {
-                TimeLeft = sameType && previous.Simulation.TimeLeft >= 0
+                TimeLeft = sameDefinition && previous.Simulation.TimeLeft >= 0
                     ? previous.Simulation.TimeLeft
                     : VanillaNpcDefinitionCatalog.DefaultTimeLeft
             };
@@ -91,7 +92,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
         {
             simulation = simulation with
             {
-                SpriteDirection = sameType && previous.Simulation.SpriteDirection != 0
+                SpriteDirection = sameDefinition && previous.Simulation.SpriteDirection != 0
                     ? previous.Simulation.SpriteDirection
                     : VanillaNpcDefinitionCatalog.DefaultSpriteDirection
             };
@@ -100,7 +101,10 @@ internal static class RuntimeNpcStateOwnershipPolicy
         return update with { Simulation = simulation };
     }
 
-    private static bool TryGetDefinition(int rawType, out VanillaNpcDefinition definition)
+    private static bool TryGetDefinition(
+        int rawType,
+        short rawNetId,
+        out VanillaNpcDefinition definition)
     {
         if (!NpcTypeId.TryCreate(rawType, out NpcTypeId type))
         {
@@ -108,6 +112,6 @@ internal static class RuntimeNpcStateOwnershipPolicy
             return false;
         }
 
-        return VanillaNpcDefinitionCatalog.TryGet(type, out definition);
+        return VanillaNpcDefinitionCatalog.TryGet(type, new NpcNetId(rawNetId), out definition);
     }
 }

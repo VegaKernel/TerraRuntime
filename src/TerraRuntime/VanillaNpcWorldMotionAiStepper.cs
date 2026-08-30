@@ -105,7 +105,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         }
 
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
-            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
+            !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition) ||
             definition.PhysicsFamily == VanillaNpcPhysicsFamily.None)
         {
             next = aiState;
