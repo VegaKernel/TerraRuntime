@@ -47,6 +47,8 @@ N_{inventory}=58+1=59,
 
 где slots `0..57` являются ordinary inventory, а slot `58` — mouse-item entry. Item-use boundary принимает ровно этот уже проверенный диапазон и отвергает `SelectedItem >= 59`.
 
+`VanillaPlayerItemSlotCatalog` также именует source-backed семантику низкого inventory, используемую вне packet handling: main inventory `0..49`, coin slots `50..53`, ammo slots `54..57` и mouse item `58`. Эти диапазоны проверяются по `Player.AmmoSlotOrder_*`; gameplay вроде NPC-shop transactions использует именованные ranges, а не переопределяет их endpoints.
+
 Это правило выбора и identity, а не утверждение, что все слоты обладают одинаковой gameplay-семантикой.
 
 ## Generation safety

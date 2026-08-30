@@ -97,6 +97,25 @@ RULES = (
         ),
         "gameplay bit decisions must use named flag/mask values; raw masks belong at wire/file boundaries",
     ),
+    Rule(
+        "raw-player-inventory-slot-literal",
+        re.compile(
+            r"\b(?:"
+            r"\w*(?:Inventory(?:Slot|Count|Start|End)|CoinSlot|AmmoSlot|MouseItem)\w*\s*=\s*"
+            r"|(?:inventorySlot|selectedItem|slot)\s*(?:==|!=|<=|>=|<|>)\s*"
+            r")(?:49|50|53|54|57|58|59|98|99|699|700|989|990)\b",
+            re.IGNORECASE,
+        ),
+        "player inventory slot ranges must come from VanillaPlayerItemSlotCatalog",
+    ),
+    Rule(
+        "raw-item-net-id-literal",
+        re.compile(
+            r"(?:\bItemNetId\s*:\s*|\b\w+\.ItemNetId\s*(?:==|!=|<=|>=|<|>)\s*)[1-9][\d_]*\b",
+            re.IGNORECASE,
+        ),
+        "non-empty item net IDs must cross from a named item catalog or validated boundary value",
+    ),
 )
 
 SUPPRESSION = "gameplay-domain-literal-audit: allow"
@@ -227,6 +246,8 @@ def scan_file(path: Path) -> list[Finding]:
     original_lines = text.splitlines()
     findings: list[Finding] = []
     for rule in RULES:
+        if path.name == "VanillaPlayerItemSlotCatalog.cs" and rule.name == "raw-player-inventory-slot-literal":
+            continue
         for match in rule.pattern.finditer(code):
             line = code.count("\n", 0, match.start()) + 1
             source = original_lines[line - 1].strip() if line <= len(original_lines) else ""
@@ -257,6 +278,9 @@ def run_self_test() -> None:
         "var hidden = request.HideVisibleAccessory & 0x03ff;": "raw-domain-mask",
         "var visible = request.SomeStateFlags & 7;": "raw-domain-mask",
         "var optional = request.MiscFlags1 & 0x40;": "raw-domain-mask",
+        "private const int AmmoSlotStart = 54;": "raw-player-inventory-slot-literal",
+        "if (inventorySlot >= 59) return;": "raw-player-inventory-slot-literal",
+        "var state = new Drop(ItemNetId: 71);": "raw-item-net-id-literal",
     }
     for source, expected in fixtures.items():
         hits = [rule.name for rule in RULES if rule.pattern.search(strip_comments_and_literals(source))]
@@ -269,6 +293,8 @@ def run_self_test() -> None:
         "var projectile = VanillaProjectileIds.Shuriken;\n"
         "var hidden = request.HideMisc & VanillaPlayerAppearanceNormalizer.HideMiscMask;\n"
         "var velocity = request.MovementFlags & VanillaPlayerMovementNormalizer.MovementVelocityPresentFlag;\n"
+        "if (inventorySlot >= VanillaPlayerItemSlotCatalog.InventoryEndExclusive) return;\n"
+        "var item = new Drop(ItemNetId: checked((short)VanillaItemIds.DirtBlock.Value));\n"
         "// if (npc.Type == 3) this example must be ignored\n"
         "var text = \"projectile.Type == 2\";\n"
     )

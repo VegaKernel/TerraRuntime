@@ -12,6 +12,8 @@ TerraRuntime считает числовую Terraria identity данными г
 - target-typed варианты вроде `NpcTypeId type = new(3)`;
 - прямые решения вроде `npc.Type == 3` или `projectile.AiStyle != 2`;
 - прямые числовые битовые операции над семантическими `Flags`, `ControlFlags`, `StateFlags`, `WireFlags` или `Bits`.
+- raw constants/comparisons поддиапазонов player inventory, например `AmmoSlotStart = 54` или `inventorySlot >= 59`; ими владеет `VanillaPlayerItemSlotCatalog`.
+- создание/сравнение непустого числового `ItemNetId` в gameplay-owned коде; значение должно приходить из named `VanillaItemIds`/item facts или validated boundary.
 
 Комментарии, строковые и символьные литералы перед проверкой вырезаются, поэтому примеры в документации не превращаются в ложные нарушения.
 

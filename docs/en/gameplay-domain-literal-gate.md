@@ -12,6 +12,8 @@ The audit rejects these forms outside those boundaries:
 - target-typed variants such as `NpcTypeId type = new(3)`;
 - direct decisions such as `npc.Type == 3` or `projectile.AiStyle != 2`;
 - direct numeric bit operations on semantic `Flags`, `ControlFlags`, `StateFlags`, `WireFlags` or `Bits` values.
+- raw player-inventory subrange constants/comparisons such as `AmmoSlotStart = 54` or `inventorySlot >= 59`; these belong to `VanillaPlayerItemSlotCatalog`.
+- non-empty numeric `ItemNetId` construction/comparisons in gameplay-owned code; named `VanillaItemIds`/item facts or a validated boundary value must supply them.
 
 Comments, string literals and character literals are stripped before matching, so documentation/examples do not become fake violations.
 

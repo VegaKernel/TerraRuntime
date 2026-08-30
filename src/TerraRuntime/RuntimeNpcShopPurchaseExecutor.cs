@@ -11,15 +11,6 @@ namespace TerraRuntime;
 /// </summary>
 internal sealed class RuntimeNpcShopPurchaseExecutor
 {
-    // Terraria Player.inventory low layout: 0..49 ordinary carried inventory, 50..53 coin slots,
-    // 54..57 ammo slots, 58 mouse item. Shop grants are restricted to the ordinary 0..49 span.
-    private const int MainInventoryCount = 50;
-    private const int OrdinaryInventoryCount = VanillaPlayerItemSlotCatalog.OrdinaryInventoryCount;
-    private const int CoinSlotStart = 50;
-    private const int CoinSlotEndExclusive = 54;
-    private const int AmmoSlotStart = 54;
-    private const int AmmoSlotEndExclusive = 58;
-
     private readonly RuntimeNpcStore npcs;
     private readonly RuntimeNpcArchetypeIdentityStore archetypes;
     private readonly RuntimeNpcShopCatalogRegistry shops;
@@ -83,7 +74,9 @@ internal sealed class RuntimeNpcShopPurchaseExecutor
         original.CopyTo(working);
 
         long totalCoinValue = 0;
-        for (int slot = 0; slot < OrdinaryInventoryCount; slot++)
+        for (int slot = VanillaPlayerItemSlotCatalog.InventoryStart;
+             slot < VanillaPlayerItemSlotCatalog.OrdinaryInventoryEndExclusive;
+             slot++)
         {
             RuntimePlayerInventoryItem item = original[slot];
             if (item.IsEmpty || !VanillaCoinFacts.TryGetValue(item.ItemType, out long coinValue))
@@ -103,7 +96,9 @@ internal sealed class RuntimeNpcShopPurchaseExecutor
 
         if (price > 0)
         {
-            for (int slot = 0; slot < OrdinaryInventoryCount; slot++)
+            for (int slot = VanillaPlayerItemSlotCatalog.InventoryStart;
+                 slot < VanillaPlayerItemSlotCatalog.OrdinaryInventoryEndExclusive;
+                 slot++)
             {
                 RuntimePlayerInventoryItem item = working[slot];
                 if (!item.IsEmpty && VanillaCoinFacts.TryGetValue(item.ItemType, out _))
@@ -178,7 +173,9 @@ internal sealed class RuntimeNpcShopPurchaseExecutor
 
     private static int FindEmptyMainInventorySlot(Span<RuntimePlayerInventoryItem> inventory)
     {
-        for (int slot = 0; slot < MainInventoryCount; slot++)
+        for (int slot = VanillaPlayerItemSlotCatalog.MainInventoryStart;
+             slot < VanillaPlayerItemSlotCatalog.MainInventoryEndExclusive;
+             slot++)
         {
             if (inventory[slot].IsEmpty)
                 return slot;
@@ -234,20 +231,26 @@ internal sealed class RuntimeNpcShopPurchaseExecutor
 
     private static int FindEmptyCoinDestination(Span<RuntimePlayerInventoryItem> inventory)
     {
-        for (int slot = CoinSlotStart; slot < CoinSlotEndExclusive; slot++)
+        for (int slot = VanillaPlayerItemSlotCatalog.CoinSlotStart;
+             slot < VanillaPlayerItemSlotCatalog.CoinSlotEndExclusive;
+             slot++)
         {
             if (inventory[slot].IsEmpty)
                 return slot;
         }
 
-        for (int slot = 0; slot < MainInventoryCount; slot++)
+        for (int slot = VanillaPlayerItemSlotCatalog.MainInventoryStart;
+             slot < VanillaPlayerItemSlotCatalog.MainInventoryEndExclusive;
+             slot++)
         {
             if (inventory[slot].IsEmpty)
                 return slot;
         }
 
         // Coins are valid Coin Gun ammunition, so the ammo span is a safe final destination for change.
-        for (int slot = AmmoSlotStart; slot < AmmoSlotEndExclusive; slot++)
+        for (int slot = VanillaPlayerItemSlotCatalog.AmmoSlotStart;
+             slot < VanillaPlayerItemSlotCatalog.AmmoSlotEndExclusive;
+             slot++)
         {
             if (inventory[slot].IsEmpty)
                 return slot;

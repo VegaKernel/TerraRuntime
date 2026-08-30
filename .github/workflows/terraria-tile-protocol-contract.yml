@@ -10,6 +10,9 @@ on:
       - 'tools/ci/probe_tile_protocol.py'
       - 'tools/ci/probe_player_inventory.py'
       - 'tools/ci/probe_tile_authority.py'
+      - 'src/TerraRuntime.Core/VanillaPlayerItemSlotCatalog.cs'
+      - 'src/TerraRuntime/RuntimeNpcShopPurchaseExecutor.cs'
+      - 'tests/TerraRuntime.Tests/VanillaPlayerItemSlotCatalogTests.cs'
       - 'src/TerraRuntime.Core/VanillaItemDefinitionCatalog.cs'
       - 'src/TerraRuntime.Core/VanillaPlayerItemUseSemanticResolver.cs'
       - 'tests/TerraRuntime.Tests/VanillaItemDefinitionCatalogTests.cs'
@@ -18,6 +21,8 @@ on:
       - 'docs/ru/item-definitions.md'
       - 'docs/en/item-use-capabilities.md'
       - 'docs/ru/item-use-capabilities.md'
+      - 'docs/en/item-use-boundary.md'
+      - 'docs/ru/item-use-boundary.md'
       - 'tools/ci/probe_dirt_placement.py'
       - '.github/workflows/terraria-tile-protocol-contract.yml'
   workflow_dispatch:

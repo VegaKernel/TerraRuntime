@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
 using Terminal.Gui.App;
@@ -397,7 +398,7 @@ internal static class TerminalUiSmoke
             RuntimeWorldItemGroupSnapshot[] groups =
             [
                 new RuntimeWorldItemGroupSnapshot(
-                    ItemNetId: 71,
+                    ItemNetId: checked((short)VanillaCoinFacts.SilverCoin.Value),
                     DropCount: 4,
                     TotalStack: 183,
                     ReservedDrops: 1,
@@ -406,7 +407,7 @@ internal static class TerminalUiSmoke
                     AveragePositionX: 1920f,
                     AveragePositionY: 2880f),
                 new RuntimeWorldItemGroupSnapshot(
-                    ItemNetId: 1,
+                    ItemNetId: checked((short)VanillaItemIds.DirtBlock.Value),
                     DropCount: 2,
                     TotalStack: 2,
                     ReservedDrops: 0,

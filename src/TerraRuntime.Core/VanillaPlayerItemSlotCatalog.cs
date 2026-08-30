@@ -9,7 +9,17 @@ namespace TerraRuntime.Core;
 public static class VanillaPlayerItemSlotCatalog
 {
     public const short InventoryStart = 0;
+    public const short MainInventoryStart = InventoryStart;
+    public const short MainInventoryCount = 50;
+    public const short MainInventoryEndExclusive = MainInventoryStart + MainInventoryCount;
+    public const short CoinSlotStart = MainInventoryEndExclusive;
+    public const short CoinSlotCount = 4;
+    public const short CoinSlotEndExclusive = CoinSlotStart + CoinSlotCount;
+    public const short AmmoSlotStart = CoinSlotEndExclusive;
+    public const short AmmoSlotCount = 4;
+    public const short AmmoSlotEndExclusive = AmmoSlotStart + AmmoSlotCount;
     public const short OrdinaryInventoryCount = 58;
+    public const short OrdinaryInventoryEndExclusive = InventoryStart + OrdinaryInventoryCount;
     public const short InventoryMouseItem = InventoryStart + OrdinaryInventoryCount;
     public const short InventoryCount = OrdinaryInventoryCount + 1;
     public const short InventoryEndExclusive = InventoryStart + InventoryCount;
@@ -25,6 +35,17 @@ public static class VanillaPlayerItemSlotCatalog
 
     public static bool IsOrdinaryInventorySlot(short slot) =>
         (ushort)(slot - InventoryStart) < OrdinaryInventoryCount;
+
+    public static bool IsMainInventorySlot(short slot) =>
+        (ushort)(slot - MainInventoryStart) < MainInventoryCount;
+
+    public static bool IsCoinSlot(short slot) =>
+        (ushort)(slot - CoinSlotStart) < CoinSlotCount;
+
+    public static bool IsAmmoSlot(short slot) =>
+        (ushort)(slot - AmmoSlotStart) < AmmoSlotCount;
+
+    public static bool IsMouseItemSlot(short slot) => slot == InventoryMouseItem;
 
     public static bool CanRelay(short slot) =>
         (ushort)slot < InventoryAndEquipmentEndExclusive ||

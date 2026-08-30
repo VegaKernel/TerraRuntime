@@ -37,4 +37,27 @@ public sealed class VanillaPlayerItemSlotCatalogTests
         Assert.Equal(VanillaPlayerItemSlotCatalog.RelayableCount, count);
         Assert.Equal(389, count);
     }
+
+    [Theory]
+    [InlineData(-1, false, false, false, false)]
+    [InlineData(0, true, false, false, false)]
+    [InlineData(49, true, false, false, false)]
+    [InlineData(50, false, true, false, false)]
+    [InlineData(53, false, true, false, false)]
+    [InlineData(54, false, false, true, false)]
+    [InlineData(57, false, false, true, false)]
+    [InlineData(58, false, false, false, true)]
+    [InlineData(59, false, false, false, false)]
+    public void Low_inventory_subranges_are_named_and_non_overlapping(
+        short slot,
+        bool main,
+        bool coin,
+        bool ammo,
+        bool mouse)
+    {
+        Assert.Equal(main, VanillaPlayerItemSlotCatalog.IsMainInventorySlot(slot));
+        Assert.Equal(coin, VanillaPlayerItemSlotCatalog.IsCoinSlot(slot));
+        Assert.Equal(ammo, VanillaPlayerItemSlotCatalog.IsAmmoSlot(slot));
+        Assert.Equal(mouse, VanillaPlayerItemSlotCatalog.IsMouseItemSlot(slot));
+    }
 }

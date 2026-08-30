@@ -47,6 +47,8 @@ N_{inventory}=58+1=59,
 
 where slots `0..57` are ordinary inventory and slot `58` is the mouse-item entry. The item-use boundary accepts exactly this already verified inventory span and rejects `SelectedItem >= 59`.
 
+`VanillaPlayerItemSlotCatalog` further names the source-backed low-inventory semantics used outside packet handling: main inventory `0..49`, coin slots `50..53`, ammo slots `54..57`, and mouse item `58`. These ranges are verified from `Player.AmmoSlotOrder_*`; gameplay such as NPC-shop transactions consumes the named ranges rather than redefining their endpoints.
+
 This is a selection/identity rule only. It does not claim every slot has identical gameplay semantics.
 
 ## Generation safety

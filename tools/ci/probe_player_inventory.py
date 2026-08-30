@@ -57,9 +57,19 @@ def main() -> int:
     ]:
         require(slot_id, expected, "PlayerItemSlotID inventory layout")
 
+    for expected in [
+        "AmmoSlotOrder_Default = Enumerable.Range(50, 4).Concat(Enumerable.Range(54, 4)).Concat(Enumerable.Range(0, 54))",
+        "AmmoSlotOrder_AmmoOnly = Enumerable.Range(54, 4).ToArray();",
+        "AmmoSlotOrder_CoinsOnly = Enumerable.Range(50, 4).ToArray();",
+    ]:
+        require(player, expected, "Player low-inventory semantic subranges")
+
     print("player_inventory_length=59")
     print("player_inventory_normal_slots=58")
     print("player_inventory_mouse_slot=58")
+    print("player_inventory_main_slots=0..49")
+    print("player_inventory_coin_slots=50..53")
+    print("player_inventory_ammo_slots=54..57")
     print("player_inventory_slot_span=0..58")
     print("packet5_inventory_write=PlayerItemSlotID.SlotReference.Item")
     return 0

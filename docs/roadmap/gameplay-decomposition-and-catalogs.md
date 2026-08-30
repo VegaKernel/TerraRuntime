@@ -218,7 +218,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 - [x] typed inventory layout;
 - [x] prefix/stack normalization;
 - [x] item-use semantic boundary;
-- [ ] remove raw item/slot IDs from gameplay paths.
+- [x] remove raw item/slot IDs from gameplay paths ([EN](../en/gameplay-domain-literal-gate.md), [RU](../ru/gameplay-domain-literal-gate.md)).
 
 ### D3 - Projectiles
 
