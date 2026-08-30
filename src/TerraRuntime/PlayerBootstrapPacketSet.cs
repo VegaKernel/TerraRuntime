@@ -1,5 +1,3 @@
-using global::Multiplicity.Packets;
-using global::Multiplicity.Packets.Models;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
@@ -19,8 +17,6 @@ public readonly record struct PlayerBootstrapSectionResponse(
 /// </summary>
 public sealed partial class PlayerBootstrapPacketSet
 {
-    private const string ReceivingTileDataLocalizationKey = "LegacyInterface.44";
-
     private readonly WorldFileData? _world;
     private readonly WorldSectionId[] _baseSections;
     private readonly Dictionary<int, SectionCacheEntry> _sectionCache;
@@ -73,7 +69,7 @@ public sealed partial class PlayerBootstrapPacketSet
     {
         ArgumentNullException.ThrowIfNull(world);
 
-        byte[] worldInfoFrame = SerializePacket(PlayerJoinPacketFactory.CreateWorldInfo(world, transient));
+        byte[] worldInfoFrame = PlayerJoinFrameEncoder.EncodeWorldInfo(world, transient);
 
         Span<WorldSectionId> plannedSections = stackalloc WorldSectionId[InitialSectionBootstrapPlanner.MaximumBaseSectionCount];
         int sectionCount = InitialSectionBootstrapPlanner.PlanBaseSpawnSections(
@@ -126,7 +122,7 @@ public sealed partial class PlayerBootstrapPacketSet
             throw new InvalidOperationException("Failed to cache the global persisted town-NPC bootstrap baseline.");
         }
 
-        byte[] statusFrame = EncodeStatusFrame(sectionCount);
+        byte[] statusFrame = PlayerJoinFrameEncoder.EncodeStatus(sectionCount);
         byte[] enterWorldFrame = EncodeEmptyFrame((byte)TerrariaMessageId.PlayerSpawnSelf);
         return new PlayerBootstrapPacketSet(
             world,
@@ -248,7 +244,7 @@ public sealed partial class PlayerBootstrapPacketSet
             world: null,
             baseSections: [],
             worldInfoFrame,
-            EncodeStatusFrame(baseSectionFrames.Length),
+            PlayerJoinFrameEncoder.EncodeStatus(baseSectionFrames.Length),
             (ReadOnlyMemory<byte>[])baseSectionFrames.Clone(),
             postFrames,
             globalPostSectionFrames is null ? [] : (ReadOnlyMemory<byte>[])globalPostSectionFrames.Clone(),
@@ -355,7 +351,7 @@ public sealed partial class PlayerBootstrapPacketSet
 
         ReadOnlyMemory<byte> statusFrame = additionalCount == 0
             ? StatusFrame
-            : EncodeStatusFrame(checked(baseSectionFrames.Length + additionalCount));
+            : PlayerJoinFrameEncoder.EncodeStatus(checked(baseSectionFrames.Length + additionalCount));
         response = new PlayerBootstrapSectionResponse(
             statusFrame,
             baseSectionFrames,
@@ -492,32 +488,6 @@ public sealed partial class PlayerBootstrapPacketSet
 
         entry = new SectionCacheEntry(encoded, [], snapshot.Revision);
         return true;
-    }
-
-    private static byte[] EncodeStatusFrame(int sectionCount)
-    {
-        var packet = new Status
-        {
-            StatusMax = sectionCount,
-            StatusText = new NetworkText
-            {
-                TextMode = (byte)NetworkText.Mode.LocalizationKey,
-                Text = ReceivingTileDataLocalizationKey
-            },
-            SpecialFlags = StatusSpecialFlags.None
-        };
-
-        return SerializePacket(packet);
-    }
-
-    private static byte[] SerializePacket(TerrariaPacket packet)
-    {
-        using var stream = new MemoryStream();
-        packet.ToStream(stream);
-        byte[] frame = stream.ToArray();
-        if (frame.Length < TerrariaFrameDecoderOptions.MinimumFrameLength || frame.Length > ushort.MaxValue)
-            throw new InvalidOperationException($"Multiplicity produced invalid bootstrap frame length {frame.Length}.");
-        return frame;
     }
 
     private static byte[] EncodeEmptyFrame(byte messageId)
