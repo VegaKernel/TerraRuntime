@@ -8,10 +8,10 @@ using TerraRuntime.Protocol.Multiplicity;
 namespace TerraRuntime;
 
 /// <summary>
-/// Relays accepted packet-17 tile effects and committed packet-79 object placements to playing peers. Most
-/// packet-17 effects follow an authoritative world commit; vanilla failed-hit action 0 is intentionally relay-only.
-/// The originating connection is excluded, matching the server's ordinary client-originated world-effect fanout.
-/// Join baselines are intentionally omitted because packet 10 already carries authoritative tile state.
+/// Relays accepted packet-17 tile effects, committed packet-79 object placements and server-authored packet-19
+/// door state transitions to playing peers. Client-originated effects exclude their source; authoritative NPC door
+/// transitions fan out to every playing endpoint. Join baselines are intentionally omitted because packet 10 carries
+/// authoritative tile state.
 /// </summary>
 internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlayerEventSink
 {
@@ -65,6 +65,18 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         return TryPublishFrame(excludedSource, encoded);
     }
 
+    public bool TryPublishDoorToggle(in TerrariaDoorToggleState state)
+    {
+        if (TerrariaDoorToggleCodec.TryEncode(in state, out byte[] encoded) !=
+            TerrariaDoorToggleEncodeResult.Encoded)
+        {
+            Interlocked.Increment(ref encodeFailures);
+            return false;
+        }
+
+        return TryPublishFrameToAll(encoded);
+    }
+
     public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)
     {
         if (connection.Player.Slot == request.ClaimedSlot &&
@@ -94,13 +106,32 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
             if (source == excludedSource || !endpoint.IsPlaying)
                 continue;
 
-            if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
-                Interlocked.Increment(ref relayedFrames);
-            else
-                Interlocked.Increment(ref rejectedFrames);
+            Publish(endpoint, frame);
         }
 
         return true;
+    }
+
+    private bool TryPublishFrameToAll(byte[] encoded)
+    {
+        var frame = new OutboundFrame(encoded);
+        foreach (Endpoint endpoint in endpoints.Values)
+        {
+            if (!endpoint.IsPlaying)
+                continue;
+
+            Publish(endpoint, frame);
+        }
+
+        return true;
+    }
+
+    private void Publish(Endpoint endpoint, in OutboundFrame frame)
+    {
+        if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+            Interlocked.Increment(ref relayedFrames);
+        else
+            Interlocked.Increment(ref rejectedFrames);
     }
 
     private sealed class Endpoint(TerrariaConnectionOutboundQueue outbound)

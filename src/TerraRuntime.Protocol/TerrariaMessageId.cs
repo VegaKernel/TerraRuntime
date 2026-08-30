@@ -22,6 +22,7 @@ public enum TerrariaMessageId : byte
     PlayerActive = 14,
     PlayerHp = 16,
     TileManipulation = 17,
+    DoorToggle = 19,
     TileSquare = 20,
     WorldItemDrop = 21,
     WorldItemOwner = 22,
