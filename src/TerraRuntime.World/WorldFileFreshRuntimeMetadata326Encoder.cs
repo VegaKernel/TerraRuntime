@@ -19,8 +19,9 @@ public readonly record struct WorldFileFreshRuntimeMetadata326(
     long LastPlayedBinary);
 
 /// <summary>
-/// Emits the SaveWorldFlags tail for a newly generated Terraria 1.4.5.8 world. Fresh vanilla seed switches are
-/// persisted from the finalized generation snapshot; loaded-world persistence still preserves existing opaque state.
+/// Emits the SaveWorldFlags tail for a newly generated Terraria 1.4.5.8 world. Fresh vanilla seed switches and the
+/// source-backed ordinary-world Reset bootstrap are persisted from the finalized generation snapshot; loaded-world
+/// persistence still preserves existing opaque state.
 /// </summary>
 public static class WorldFileFreshRuntimeMetadata326Encoder
 {
@@ -55,6 +56,7 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
             return WorldFileFreshRuntimeMetadata326EncodeResult.InvalidMetadata;
 
         VanillaWorldSeedProfile1458 seeds = source.Generation.VanillaSeedProfile;
+        VanillaWorldGenerationBootstrapState1458? bootstrap = source.Generation.VanillaBootstrapState;
         VanillaSpecialWorldSeed1458 special = seeds.Special;
         VanillaSecretWorldSeed1458 secret = seeds.Secret;
         bool rainingForever = seeds.Has(VanillaSecretWorldSeed1458.BringATowel);
@@ -79,13 +81,7 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write((special & VanillaSpecialWorldSeed1458.Skyblock) != 0);
                 writer.Write(source.CreationTimeBinary);
                 writer.Write(source.LastPlayedBinary);
-                writer.Write((byte)0);
-
-                WriteInts(writer, 3, header.Dimensions.WidthTiles);
-                WriteInts(writer, 4, 0);
-                WriteInts(writer, 3, header.Dimensions.WidthTiles);
-                WriteInts(writer, 4, 0);
-                WriteInts(writer, 3, 0);
+                WriteResetVisualState(writer, bootstrap, header.Dimensions.WidthTiles);
 
                 writer.Write(source.Generation.Spawn.X);
                 writer.Write(source.Generation.Spawn.Y);
@@ -113,7 +109,7 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write(0);
                 writer.Write(0);
                 writer.Write(0d);
-                writer.Write(-1d);
+                writer.Write(bootstrap is null ? -1d : bootstrap.SlimeRainTime);
                 writer.Write((byte)0);
                 writer.Write(rainingForever);
                 writer.Write(rainingForever ? int.MaxValue : 0);
@@ -122,10 +118,10 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write(-1);
                 writer.Write(-1);
 
-                WriteBytes(writer, 8, 0);
-                writer.Write(0);
-                writer.Write((short)0);
-                writer.Write(0f);
+                WritePrimaryBackgroundState(writer, bootstrap);
+                writer.Write(bootstrap?.CloudBackgroundActive ?? 0);
+                writer.Write((short)(bootstrap?.NumClouds ?? 0));
+                writer.Write(bootstrap?.WindSpeedCurrent ?? 0f);
                 writer.Write(0);
                 writer.Write(false);
                 writer.Write(0);
@@ -152,7 +148,7 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write(0f);
                 writer.Write(false);
                 WriteBools(writer, 3, false);
-                WriteBytes(writer, 5, 0);
+                WriteSecondaryBackgroundState(writer, bootstrap);
                 writer.Write(false);
                 writer.Write(0);
                 WriteBools(writer, 3, false);
@@ -161,10 +157,10 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 WriteInts(writer, 13, 0);
                 writer.Write(false);
                 writer.Write(false);
-                writer.Write(CopperOre);
-                writer.Write(IronOre);
-                writer.Write(SilverOre);
-                writer.Write(GoldOre);
+                writer.Write(bootstrap?.CopperOre ?? CopperOre);
+                writer.Write(bootstrap?.IronOre ?? IronOre);
+                writer.Write(bootstrap?.SilverOre ?? SilverOre);
+                writer.Write(bootstrap?.GoldOre ?? GoldOre);
 
                 WriteBools(writer, 7, false);
                 WriteBools(writer, 4, false);
@@ -201,6 +197,68 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
             bytesWritten = 0;
             return WorldFileFreshRuntimeMetadata326EncodeResult.WriteFailed;
         }
+    }
+
+    private static void WriteResetVisualState(
+        BinaryWriter writer,
+        VanillaWorldGenerationBootstrapState1458? bootstrap,
+        int width)
+    {
+        writer.Write((byte)(bootstrap?.MoonType ?? 0));
+        if (bootstrap is null)
+        {
+            WriteInts(writer, 3, width);
+            WriteInts(writer, 4, 0);
+            WriteInts(writer, 3, width);
+            WriteInts(writer, 4, 0);
+            WriteInts(writer, 3, 0);
+            return;
+        }
+
+        WriteInts(writer, bootstrap.TreeX);
+        WriteInts(writer, bootstrap.TreeStyle);
+        WriteInts(writer, bootstrap.CaveBackX);
+        WriteInts(writer, bootstrap.CaveBackStyle);
+        writer.Write(bootstrap.IceBackStyle);
+        writer.Write(bootstrap.JungleBackStyle);
+        writer.Write(bootstrap.HellBackStyle);
+    }
+
+    private static void WritePrimaryBackgroundState(
+        BinaryWriter writer,
+        VanillaWorldGenerationBootstrapState1458? bootstrap)
+    {
+        if (bootstrap is null)
+        {
+            WriteBytes(writer, 8, 0);
+            return;
+        }
+
+        writer.Write(checked((byte)bootstrap.ForestBackgroundStyles[0]));
+        writer.Write(checked((byte)bootstrap.CorruptBackground));
+        writer.Write(checked((byte)bootstrap.JungleBackground));
+        writer.Write(checked((byte)bootstrap.SnowBackground));
+        writer.Write(checked((byte)bootstrap.HallowBackground));
+        writer.Write(checked((byte)bootstrap.CrimsonBackground));
+        writer.Write(checked((byte)bootstrap.DesertBackground));
+        writer.Write(checked((byte)bootstrap.OceanBackground));
+    }
+
+    private static void WriteSecondaryBackgroundState(
+        BinaryWriter writer,
+        VanillaWorldGenerationBootstrapState1458? bootstrap)
+    {
+        if (bootstrap is null)
+        {
+            WriteBytes(writer, 5, 0);
+            return;
+        }
+
+        writer.Write(checked((byte)bootstrap.MushroomBackground));
+        writer.Write(checked((byte)bootstrap.UnderworldBackground));
+        writer.Write(checked((byte)bootstrap.ForestBackgroundStyles[1]));
+        writer.Write(checked((byte)bootstrap.ForestBackgroundStyles[2]));
+        writer.Write(checked((byte)bootstrap.ForestBackgroundStyles[3]));
     }
 
     private static void WriteExtraSpawnPoints(
@@ -262,6 +320,12 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
     private static void WriteInts(BinaryWriter writer, int count, int value)
     {
         for (int i = 0; i < count; i++)
+            writer.Write(value);
+    }
+
+    private static void WriteInts(BinaryWriter writer, ReadOnlySpan<int> values)
+    {
+        foreach (int value in values)
             writer.Write(value);
     }
 

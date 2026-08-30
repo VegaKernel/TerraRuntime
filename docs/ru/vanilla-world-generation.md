@@ -46,7 +46,7 @@ Generation пока применяет runtime-owned compatibility behavior дл
 
 Generation выполняется внутри `RuntimeWorldGenerationWorkspace`, который ещё не опубликован и использует initial-population tile-write path. Сгенерированные tiles не создают искусственные network/persistence dirty queues до того, как мир станет authoritative.
 
-Финальный metadata snapshot содержит spawn, dungeon, world layers и resolved vanilla seed profile. `WorldFileFreshRuntimeMetadata326Encoder` переносит поддерживаемое special/secret state в canonical metadata-поля Terraria 1.4.5.8 `.wld` v326 при сохранении нового мира.
+Финальный metadata snapshot содержит spawn, dungeon, world layers, resolved vanilla seed profile и, для source-backed обычного мира, сохранённое состояние Reset bootstrap. `WorldFileFreshRuntimeMetadata326Encoder` записывает поддерживаемые special/secret flags, а также полученные Reset значения moon type, tree/cave transition positions и styles, biome background styles, cloud state/count, wind, slime-rain countdown и pre-hardmode ore tiers. `flat` и custom generators без Terraria Reset bootstrap продолжают получать консервативные defaults нового мира.
 
 ## Проверка
 

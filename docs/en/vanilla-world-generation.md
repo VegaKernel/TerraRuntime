@@ -46,7 +46,7 @@ Generation currently applies runtime-owned compatibility behavior for terrain-af
 
 Generation occurs inside `RuntimeWorldGenerationWorkspace`, which is unpublished and therefore uses the initial-population tile-write path. Generated tiles do not manufacture network or persistence dirty queues before the world becomes authoritative.
 
-The final metadata snapshot contains spawn, dungeon, world layers and the resolved vanilla seed profile. `WorldFileFreshRuntimeMetadata326Encoder` maps supported special/secret state into the canonical Terraria 1.4.5.8 `.wld` v326 metadata fields when a fresh world is persisted.
+The final metadata snapshot contains spawn, dungeon, world layers, the resolved vanilla seed profile and, for source-backed ordinary worlds, the retained Reset bootstrap state. `WorldFileFreshRuntimeMetadata326Encoder` persists supported special/secret flags plus Reset-derived moon type, tree/cave transition positions and styles, biome background styles, cloud state/count, wind, slime-rain countdown and pre-hardmode ore tiers. Flat and custom generators that do not provide a Terraria Reset bootstrap retain the conservative fresh-world defaults.
 
 ## Verification
 

@@ -25,6 +25,7 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
     private WorldGenerationPoint? dungeon;
     private WorldGenerationLayers? layers;
     private VanillaWorldSeedProfile1458 vanillaSeedProfile;
+    private VanillaWorldGenerationBootstrapState1458? vanillaBootstrapState;
 
     public RuntimeWorldGenerationWorkspace(int widthTiles, int heightTiles)
     {
@@ -38,8 +39,11 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
     public int HeightTiles => Dimensions.HeightTiles;
 
     internal VanillaWorldSeedProfile1458 VanillaSeedProfile => vanillaSeedProfile;
+    internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
 
     internal void SetVanillaSeedProfile(VanillaWorldSeedProfile1458 value) => vanillaSeedProfile = value;
+    internal void SetVanillaBootstrapState(VanillaWorldGenerationBootstrapState1458 value) =>
+        vanillaBootstrapState = value ?? throw new ArgumentNullException(nameof(value));
 
     public bool TryGetTile(int x, int y, out WorldGenerationTile tile)
     {

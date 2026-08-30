@@ -18,7 +18,14 @@ public readonly record struct RuntimeWorldGenerationMetadataSnapshot(
     WorldGenerationPoint Spawn,
     WorldGenerationPoint Dungeon,
     WorldGenerationLayers Layers,
-    VanillaWorldSeedProfile1458 VanillaSeedProfile = default);
+    VanillaWorldSeedProfile1458 VanillaSeedProfile = default)
+{
+    /// <summary>
+    /// Runtime-internal Terraria 1.4.5.8 fresh-world state captured by the source-backed Reset bootstrap. Generic
+    /// custom generators leave this null and retain the conservative canonical fresh-world defaults.
+    /// </summary>
+    internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState { get; init; }
+}
 
 public readonly record struct RuntimeWorldGenerationFinalizationResult(
     RuntimeWorldGenerationFinalizationStatus Status,
@@ -55,8 +62,16 @@ public static class RuntimeWorldGenerationFinalizer
                 RuntimeWorldGenerationFinalizationStatus.MissingLayers);
         }
 
+        var metadata = new RuntimeWorldGenerationMetadataSnapshot(
+            spawn,
+            dungeon,
+            layers,
+            candidate.VanillaSeedProfile)
+        {
+            VanillaBootstrapState = candidate.VanillaBootstrapState
+        };
         return new RuntimeWorldGenerationFinalizationResult(
             RuntimeWorldGenerationFinalizationStatus.Finalized,
-            new RuntimeWorldGenerationMetadataSnapshot(spawn, dungeon, layers, candidate.VanillaSeedProfile));
+            metadata);
     }
 }

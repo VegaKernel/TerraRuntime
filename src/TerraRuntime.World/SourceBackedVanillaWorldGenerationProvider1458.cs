@@ -421,6 +421,13 @@ internal sealed class VanillaMetadataParityPass1458 : IWorldGenerationPass
     public void Execute(IWorldGenerationContext context)
     {
         fallback.Execute(context);
+
+        if (state.Bootstrap is VanillaWorldGenerationBootstrapState1458 bootstrap &&
+            context.Workspace is RuntimeWorldGenerationWorkspace runtimeWorkspace)
+        {
+            runtimeWorkspace.SetVanillaBootstrapState(bootstrap);
+        }
+
         if (state.TerrainLayers is not WorldGenerationLayers layers)
             return;
 

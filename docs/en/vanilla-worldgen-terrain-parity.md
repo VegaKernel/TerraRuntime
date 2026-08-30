@@ -49,7 +49,11 @@ Non-canonical dimensions and special/secret seeds still use the previous compati
 
 ## Metadata ownership
 
-The Terrain replacement publishes its source-shaped world-surface and rock-layer values to the candidate metadata workspace. The compatibility metadata pass still computes spawn, dungeon anchor and seed-profile persistence, after which the source-backed layer values are restored. Reset state is retained internally so later Jungle, desert, ocean, structure and background ports can consume the same initial choices rather than rerolling them.
+The Terrain replacement publishes its source-shaped world-surface and rock-layer values to the candidate metadata workspace. The compatibility metadata pass still computes spawn, dungeon anchor and seed-profile persistence, after which the source-backed layer values are restored.
+
+For source-backed ordinary worlds, the Reset bootstrap is also transferred into `RuntimeWorldGenerationMetadataSnapshot`. Fresh `.wld` persistence now emits Reset-derived moon type, tree/cave transition positions and styles, primary and secondary background styles, cloud timer/count, wind, slime-rain countdown and pre-hardmode ore choices. Flat and custom generators leave this bootstrap absent and retain the conservative fresh-world defaults.
+
+This persistence bridge matters to later pass work: Jungle, desert, ocean, structures and decoration can consume one Reset result during generation while the saved world retains the same initial choices after restart instead of silently reverting to compatibility defaults.
 
 ## Acceptance
 

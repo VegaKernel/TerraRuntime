@@ -49,7 +49,11 @@ TerrariaServer 1.4.5.8 последовательно расходует оди�
 
 ## Метаданные
 
-Source-backed Terrain сохраняет рассчитанные `worldSurface` и `rockLayer` в metadata workspace. Compatibility Metadata по-прежнему рассчитывает spawn, dungeon anchor и сохраняет профиль сида, после чего source-backed значения слоёв восстанавливаются. Reset state хранится внутри генератора, чтобы будущие Jungle, desert, ocean, structure и background проходы использовали те же исходные выборы, а не генерировали их заново.
+Source-backed Terrain сохраняет рассчитанные `worldSurface` и `rockLayer` в metadata workspace. Compatibility Metadata по-прежнему рассчитывает spawn, dungeon anchor и сохраняет профиль сида, после чего source-backed значения слоёв восстанавливаются.
+
+Для source-backed обычного мира Reset bootstrap теперь также переносится в `RuntimeWorldGenerationMetadataSnapshot`. Fresh `.wld` persistence записывает полученные Reset значения moon type, tree/cave transition positions и styles, primary/secondary background styles, cloud timer/count, wind, slime-rain countdown и pre-hardmode ore choices. `flat` и custom generators не имеют такого bootstrap и продолжают использовать консервативные defaults нового мира.
+
+Этот persistence bridge нужен следующим проходам: Jungle, desert, ocean, structures и decoration смогут использовать один и тот же результат Reset во время генерации, а сохранённый мир после restart не откатит эти исходные выборы обратно к compatibility defaults.
 
 ## Проверка результата
 
