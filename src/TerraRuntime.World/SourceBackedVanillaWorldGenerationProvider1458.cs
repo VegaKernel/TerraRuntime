@@ -8,6 +8,7 @@ namespace TerraRuntime.World;
 /// </summary>
 public sealed class SourceBackedVanillaWorldGenerationProvider1458 : IWorldGenerationProvider
 {
+    internal static readonly WorldGenerationPassId ResetPassId = new("terraria:1.4.5.8/Reset");
     internal static readonly WorldGenerationPassId TerrainPassId = new("terraria:1.4.5.8/Terrain");
     internal static readonly WorldGenerationPassId MetadataPassId = new("terraria:1.4.5.8/Metadata");
 
@@ -19,6 +20,9 @@ public sealed class SourceBackedVanillaWorldGenerationProvider1458 : IWorldGener
     {
         ArgumentNullException.ThrowIfNull(builder);
         var state = new VanillaWorldGenerationParityState1458();
+        builder.Add(
+            new WorldGenerationPassDescriptor(ResetPassId, WorldGenerationRngMode.VanillaSharedRng),
+            new VanillaWorldGenerationBootstrapPass1458(state));
         compatibility.BuildPlan(in request, new OverlayPlanBuilder(builder, state));
     }
 
@@ -42,7 +46,7 @@ public sealed class SourceBackedVanillaWorldGenerationProvider1458 : IWorldGener
 
             if (descriptor.Id == TerrainPassId)
             {
-                inner.Add(descriptor, new VanillaTerrainPass1458(pass, state));
+                inner.Add(RequireAfter(descriptor, ResetPassId), new VanillaTerrainPass1458(pass, state));
                 return;
             }
 
@@ -54,24 +58,40 @@ public sealed class SourceBackedVanillaWorldGenerationProvider1458 : IWorldGener
 
             inner.Add(descriptor, pass);
         }
+
+        private static WorldGenerationPassDescriptor RequireAfter(
+            WorldGenerationPassDescriptor descriptor,
+            WorldGenerationPassId dependency)
+        {
+            WorldGenerationPassId[] required = descriptor.RequiredAfter.ToArray();
+            if (!required.Contains(dependency))
+                required = [.. required, dependency];
+
+            return new WorldGenerationPassDescriptor(
+                descriptor.Id,
+                descriptor.RngMode,
+                required,
+                descriptor.OptionalAfter.ToArray(),
+                descriptor.OptionalBefore.ToArray());
+        }
     }
 }
 
 internal sealed class VanillaWorldGenerationParityState1458
 {
+    public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; set; }
     public WorldGenerationLayers? TerrainLayers { get; set; }
 }
 
 /// <summary>
 /// Clean-room port of the ordinary-world TerrainPass shape from TerrariaServer 1.4.5.8. The exact pass algorithm is
-/// used only for Terraria's three canonical dimensions and ordinary seeds. Special seeds and non-canonical test worlds
-/// deliberately fall back to the previous compatibility pass until their prerequisite WorldGen.Reset state is ported.
+/// used only for Terraria's three canonical dimensions and ordinary seeds. Its pre-Terrain WorldGen.Reset RNG state
+/// and beach bounds are supplied by <see cref="VanillaWorldGenerationBootstrapPass1458"/>.
 /// </summary>
 internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
 {
     internal const int FlatBeachPadding = 5;
     internal const int SurfaceHistoryLength = 500;
-    internal const int CompatibilityBeachEnd = 350;
 
     private readonly IWorldGenerationPass fallback;
     private readonly VanillaWorldGenerationParityState1458 state;
@@ -93,6 +113,8 @@ internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
             return;
         }
 
+        VanillaWorldGenerationBootstrapState1458 bootstrap = state.Bootstrap ??
+            throw new InvalidOperationException("Source-backed Terrain executed without the required WorldGen.Reset bootstrap state.");
         IWorldGenerationVanillaRandom random = context.VanillaRandom ??
             throw new InvalidOperationException("The source-backed Terraria terrain pass requires shared UnifiedRandom semantics.");
         IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
@@ -100,8 +122,8 @@ internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
 
         int width = context.Workspace.WidthTiles;
         int height = context.Workspace.HeightTiles;
-        int leftBeachEnd = CompatibilityBeachEnd;
-        int rightBeachStart = width - CompatibilityBeachEnd;
+        int leftBeachEnd = bootstrap.LeftBeachEnd;
+        int rightBeachStart = bootstrap.RightBeachStart;
 
         TerrainFeatureType feature = TerrainFeatureType.Plateau;
         int featureRemaining = leftBeachEnd + FlatBeachPadding;

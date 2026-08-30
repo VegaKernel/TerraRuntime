@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationContracts.cs'
+      - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationPassContracts.cs'
       - 'src/TerraRuntime.Core/RuntimeWorldGenerationExecutor.cs'
+      - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrap1458.cs'
       - 'src/TerraRuntime.World/SourceBackedVanillaWorldGenerationProvider1458.cs'
       - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
       - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'

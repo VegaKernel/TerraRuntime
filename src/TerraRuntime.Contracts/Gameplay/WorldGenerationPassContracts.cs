@@ -31,10 +31,9 @@ public enum WorldGenerationRngMode : byte
     IsolatedDeterministic = 0,
 
     /// <summary>
-    /// Terraria-compatible world-generation RNG semantics. In TerrariaServer 1.4.5.8 the global worldgen RNG is
-    /// shared by code executing inside one pass, but <c>WorldGenerator.RunPass</c> replaces it with a newly seeded
-    /// <c>UnifiedRandom(worldSeed)</c> before every enabled pass. This mode therefore does not mean one continuous
-    /// random stream across the complete generation plan.
+    /// Terraria-compatible world-generation RNG semantics. TerrariaServer 1.4.5.8 seeds one world-generation
+    /// <c>UnifiedRandom</c> for the generation plan and source passes consume that stream in execution order. This mode
+    /// therefore preserves one continuous vanilla stream across all enabled passes in a plan.
     /// </summary>
     VanillaSharedRng = 1,
 

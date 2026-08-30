@@ -4,19 +4,38 @@
 
 ## Current migration model
 
-The built-in vanilla generator is intentionally migrated pass by pass. `SourceBackedVanillaWorldGenerationProvider1458` delegates to the previous compatibility provider, then replaces individual pass implementations while retaining the same pass IDs and dependency graph.
+The built-in vanilla generator is intentionally migrated pass by pass. `SourceBackedVanillaWorldGenerationProvider1458` keeps the previous compatibility passes, inserts source-backed prerequisites where required, and replaces individual pass implementations under the same generator identity.
 
 This prevents a half-ported pass set from being presented as a second generator and keeps existing special-seed compatibility behavior available while source-backed implementations are introduced.
 
 ## Shared random stream
 
-TerrariaServer 1.4.5.8 creates one `UnifiedRandom` for world generation and advances it across generation passes. `WorldGenerationRngMode.VanillaSharedRng` now follows that lifetime: the runtime constructs one `VanillaUnifiedRandom1458` adapter for the execution plan and reuses it for every vanilla-shared pass.
+TerrariaServer 1.4.5.8 advances one world-generation `UnifiedRandom` stream through bootstrap and generation work. `WorldGenerationRngMode.VanillaSharedRng` follows that lifetime: the runtime constructs one `VanillaUnifiedRandom1458` adapter for the execution plan and reuses it for every vanilla-shared pass.
 
-This is a prerequisite for later source-backed Jungle, caves, ores, structures and decoration. Re-seeding before every pass produced deterministic output, but it could never reproduce Terraria's pass-to-pass random consumption.
+This is a prerequisite for source parity. Re-seeding between passes can be deterministic, but it cannot preserve Terraria's cross-pass RNG state.
+
+## Source-backed Reset bootstrap
+
+For ordinary seeds on Terraria's three canonical world sizes, the plan now starts with `terraria:1.4.5.8/Reset`. The bootstrap consumes the pre-Terrain RNG sequence and retains the generated state required by later passes, including:
+
+- dungeon side and location;
+- jungle and snow origins;
+- randomized left and right beach boundaries;
+- ore-tier choices;
+- tree styles and transition positions;
+- cave and surface background styles;
+- moon style and selected fresh-world state;
+- world-size-dependent generation counts.
+
+The key beach configuration is source-pinned to `BeachBordersWidth = 275`, `BeachSandRandomCenter = 320`, `BeachSandRandomWidthRange = 20`, `BeachSandDungeonExtraWidth = 40`, and `BeachSandJungleExtraWidth = 20`.
+
+A fixed seed checkpoint locks RNG consumption: for seed `1458` in a small $4200 \times 1200$ ordinary world, Reset produces left/right beach bounds `322 / 3830`, dungeon side `-1`, dungeon location `484`, and the next shared RNG value is `289143048`.
+
+`tools/ci/probe_worldgen_reset.py` decompiles the pinned official TerrariaServer 1.4.5.8 `WorldGen.Reset` and rejects changes to the verified Reset constants, randomized beach construction, or tree/cave ordering. The dedicated `Terraria Worldgen Reset Contract` workflow runs that source contract together with the focused implementation tests.
 
 ## Terrain parity slice
 
-The first source-backed replacement is `terraria:1.4.5.8/Terrain` for ordinary seeds on Terraria's canonical world dimensions:
+`terraria:1.4.5.8/Terrain` is source-backed for ordinary seeds on Terraria's canonical world dimensions:
 
 | Size | Tiles |
 | --- | ---: |
@@ -24,15 +43,13 @@ The first source-backed replacement is `terraria:1.4.5.8/Terrain` for ordinary s
 | Medium | $6400 \times 1800$ |
 | Large | $8400 \times 2400$ |
 
-The implementation ports the pinned TerrainPass surface-feature state machine, dirt/stone column fill, surface history retargeting, six-tile rock-layer quantization and `FlatBeachPadding = 5` semantics. Terrain tiles use frame coordinates $(-1,-1)$ as the vanilla pass does.
+The implementation ports the pinned TerrainPass surface-feature state machine, dirt/stone column fill, surface-history retargeting, six-tile rock-layer quantization and `FlatBeachPadding = 5` semantics. Terrain now consumes the randomized beach boundaries produced by the preceding Reset bootstrap instead of a fixed compatibility value.
 
-Non-canonical dimensions and special/secret seeds currently use the previous compatibility Terrain pass. This is deliberate. Vanilla Terrain depends on prerequisite state produced by `WorldGen.Reset`, especially randomized beach boundaries and random-stream consumption before the first registered generation pass. That bootstrap is not yet source-exact, so this stage does **not** claim reference-world or byte-for-byte parity.
-
-For canonical ordinary worlds the temporary bootstrap uses a conservative beach boundary of 350 tiles on each side. Replacing that bootstrap with source-backed `WorldGen.Reset` state is the next Terrain parity step.
+Non-canonical dimensions and special/secret seeds still use the previous compatibility Terrain path. Their Reset branches are not yet claimed source-exact, and the source-backed Reset pass intentionally consumes no additional RNG for those compatibility cases.
 
 ## Metadata ownership
 
-The Terrain replacement publishes its source-shaped world-surface and rock-layer values to the candidate metadata workspace. The compatibility metadata pass still computes spawn, dungeon anchor and seed-profile persistence, after which the source-backed layer values are restored. This lets later passes migrate independently without losing the Terrain result.
+The Terrain replacement publishes its source-shaped world-surface and rock-layer values to the candidate metadata workspace. The compatibility metadata pass still computes spawn, dungeon anchor and seed-profile persistence, after which the source-backed layer values are restored. Reset state is retained internally so later Jungle, desert, ocean, structure and background ports can consume the same initial choices rather than rerolling them.
 
 ## Acceptance
 
@@ -47,4 +64,4 @@ The existing flat-world acceptance remains unchanged.
 
 ## Remaining parity work
 
-The current provider still contains compatibility implementations for biomes, caves, ores, dungeon generation and secret-seed modifiers. The pinned 1.4.5.8 pass catalog contains 109 registered passes, so completing vanilla parity means replacing those compatibility groups with the source-backed pass sequence rather than merely adding more heuristics to the seven-pass compatibility layer.
+Reset and Terrain now have source-backed ordinary-world slices, but the current provider still contains compatibility implementations for biomes, caves, ores, dungeon generation and secret-seed modifiers. The pinned 1.4.5.8 catalog contains 109 registered passes. Completing parity means replacing those compatibility groups with the source-backed pass sequence and then adding reference-world comparison, not adding more approximate heuristics to the compatibility layer.

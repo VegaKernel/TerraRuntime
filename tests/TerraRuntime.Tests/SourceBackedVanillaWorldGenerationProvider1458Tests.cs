@@ -18,7 +18,7 @@ public sealed class SourceBackedVanillaWorldGenerationProvider1458Tests
     }
 
     [Fact]
-    public void Source_backed_provider_overlays_terrain_and_metadata_without_changing_generator_identity()
+    public void Source_backed_provider_inserts_reset_before_terrain_without_changing_generator_identity()
     {
         var provider = new SourceBackedVanillaWorldGenerationProvider1458();
         var request = new WorldGenerationRequest(
@@ -32,22 +32,81 @@ public sealed class SourceBackedVanillaWorldGenerationProvider1458Tests
         provider.BuildPlan(in request, builder);
 
         Assert.Equal(VanillaWorldGenerationProvider1458.GeneratorId, provider.Id);
-        Assert.Equal(7, builder.Entries.Count);
+        Assert.Equal(8, builder.Entries.Count);
+        CaptureEntry reset = Assert.Single(builder.Entries, static entry =>
+            entry.Descriptor.Id == SourceBackedVanillaWorldGenerationProvider1458.ResetPassId);
         CaptureEntry terrain = Assert.Single(builder.Entries, static entry =>
             entry.Descriptor.Id == SourceBackedVanillaWorldGenerationProvider1458.TerrainPassId);
         CaptureEntry metadata = Assert.Single(builder.Entries, static entry =>
             entry.Descriptor.Id == SourceBackedVanillaWorldGenerationProvider1458.MetadataPassId);
+        Assert.IsType<VanillaWorldGenerationBootstrapPass1458>(reset.Pass);
         Assert.IsType<VanillaTerrainPass1458>(terrain.Pass);
         Assert.IsType<VanillaMetadataParityPass1458>(metadata.Pass);
+        Assert.Contains(
+            SourceBackedVanillaWorldGenerationProvider1458.ResetPassId,
+            terrain.Descriptor.RequiredAfter.ToArray());
+        Assert.Equal(WorldGenerationRngMode.VanillaSharedRng, reset.Descriptor.RngMode);
     }
 
     [Fact]
-    public void Canonical_default_terrain_executes_source_shaped_pass_and_publishes_layers()
+    public void Ordinary_small_world_reset_matches_pinned_rng_checkpoint_and_world_origins()
+    {
+        var sourceRandom = new VanillaUnifiedRandom1458(1458);
+        var adapter = new VanillaRandomAdapter(sourceRandom);
+
+        VanillaWorldGenerationBootstrapState1458 bootstrap =
+            VanillaWorldGenerationBootstrapPass1458.Run(adapter, 4200, effectiveCrimson: false);
+
+        Assert.Equal(-1, bootstrap.DungeonSide);
+        Assert.Equal(3402, bootstrap.JungleOriginX);
+        Assert.Equal(1531, bootstrap.SnowOriginLeft);
+        Assert.Equal(1801, bootstrap.SnowOriginRight);
+        Assert.Equal(322, bootstrap.LeftBeachEnd);
+        Assert.Equal(3830, bootstrap.RightBeachStart);
+        Assert.Equal(484, bootstrap.DungeonLocation);
+        Assert.Equal(2049485220, bootstrap.WorldId);
+        Assert.Equal(new[] { 7, 167, 9, 8 },
+            new[] { bootstrap.CopperOre, bootstrap.IronOre, bootstrap.SilverOre, bootstrap.GoldOre });
+        Assert.Equal(new[] { 1356, 4200, 4200 }, bootstrap.TreeX);
+        Assert.Equal(new[] { 5, 3, 0, 0 }, bootstrap.TreeStyle);
+        Assert.Equal(6, bootstrap.MoonType);
+        Assert.False(bootstrap.EffectiveCrimson);
+
+        // This is the first value Terrain must observe after the ordinary WorldGen.Reset bootstrap for seed 1458.
+        Assert.Equal(289143048, sourceRandom.Next());
+    }
+
+    [Fact]
+    public void Noncanonical_reset_is_a_true_noop_and_does_not_advance_vanilla_rng()
+    {
+        var state = new VanillaWorldGenerationParityState1458();
+        var pass = new VanillaWorldGenerationBootstrapPass1458(state);
+        var request = new WorldGenerationRequest(
+            VanillaWorldGenerationProvider1458.GeneratorId,
+            "Synthetic",
+            Seed: 1,
+            WidthTiles: 192,
+            HeightTiles: 128);
+        var sourceRandom = new VanillaUnifiedRandom1458(1);
+        var context = new GenerationContext(
+            request,
+            new CountingWorkspace(192, 128),
+            new VanillaRandomAdapter(sourceRandom));
+
+        pass.Execute(context);
+
+        Assert.Null(state.Bootstrap);
+        Assert.Equal(534011718, sourceRandom.Next());
+    }
+
+    [Fact]
+    public void Canonical_default_terrain_consumes_reset_state_and_publishes_layers()
     {
         bool fallbackExecuted = false;
         var fallback = new ActionPass(_ => fallbackExecuted = true);
         var state = new VanillaWorldGenerationParityState1458();
-        var pass = new VanillaTerrainPass1458(fallback, state);
+        var bootstrapPass = new VanillaWorldGenerationBootstrapPass1458(state);
+        var terrainPass = new VanillaTerrainPass1458(fallback, state);
         var request = new WorldGenerationRequest(
             VanillaWorldGenerationProvider1458.GeneratorId,
             "Canonical",
@@ -63,9 +122,13 @@ public sealed class SourceBackedVanillaWorldGenerationProvider1458Tests
             workspace,
             new VanillaRandomAdapter(new VanillaUnifiedRandom1458(1458)));
 
-        pass.Execute(context);
+        bootstrapPass.Execute(context);
+        terrainPass.Execute(context);
 
         Assert.False(fallbackExecuted);
+        Assert.NotNull(state.Bootstrap);
+        Assert.Equal(322, state.Bootstrap!.LeftBeachEnd);
+        Assert.Equal(3830, state.Bootstrap.RightBeachStart);
         Assert.True(workspace.TryGetLayers(out WorldGenerationLayers layers));
         Assert.True(layers.WorldSurface > 0d);
         Assert.True(layers.RockLayer > layers.WorldSurface);
