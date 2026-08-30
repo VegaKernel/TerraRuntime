@@ -10,7 +10,8 @@ namespace TerraRuntime;
 /// parameters before AI, applies AI, then gravity, epsilon velocity clamp, the pre-collision walk-down-slope
 /// pass, wet/tile collision, position movement and the post-move slope pass. Collision/liquid state becomes
 /// input for the next AI tick. Concrete content IDs are resolved to explicit physics-family metadata before
-/// this stage chooses special movement behavior.
+/// this stage chooses special movement behavior. Every collision query resolves the hitbox from the live
+/// post-AI scale so dynamic-size NPCs do not keep their spawn geometry after an AI scale transition.
 /// </summary>
 internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 {
@@ -69,6 +70,14 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         }
 
         NpcSimulationState simulation = aiState.Simulation;
+        if (!definition.TryResolveHitbox(simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            next = default;
+            return false;
+        }
+
+        int hitboxWidth = hitbox.Width;
+        int hitboxHeight = hitbox.Height;
         float velocityX = aiState.VelocityX;
         float velocityY = aiState.VelocityY;
 
@@ -80,8 +89,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
                 aiState.PositionY,
                 velocityX,
                 velocityY,
-                definition.Width,
-                definition.Height);
+                hitboxWidth,
+                hitboxHeight);
             if (stepUp.Stepped)
                 aiState = aiState with { PositionY = stepUp.PositionY };
 
@@ -91,8 +100,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
                 aiState.PositionY,
                 velocityX,
                 velocityY,
-                definition.Width,
-                definition.Height,
+                hitboxWidth,
+                hitboxHeight,
                 simulation.DirectionX,
                 aiState.Ai);
             velocityX = doorContact.VelocityX;
@@ -108,8 +117,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
                 aiState.PositionY,
                 velocityX,
                 velocityY,
-                definition.Width,
-                definition.Height,
+                hitboxWidth,
+                hitboxHeight,
                 simulation.DirectionX,
                 simulation.DirectionY);
             velocityX = obstacle.VelocityX;
@@ -167,16 +176,16 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             aiState.PositionY,
             velocityX,
             velocityY,
-            definition.Width,
-            definition.Height,
+            hitboxWidth,
+            hitboxHeight,
             gravity.Parameters.Gravity);
 
         bool wet = VanillaWorldCollision.TryGetWetContact(
             tiles,
             aiState.PositionX,
             aiState.PositionY,
-            definition.Width,
-            definition.Height,
+            hitboxWidth,
+            hitboxHeight,
             out WorldLiquidKind liquidKind);
         NpcLiquidContactKind liquidContact = wet ? MapLiquid(liquidKind) : NpcLiquidContactKind.None;
 
@@ -197,8 +206,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             aiState.PositionY,
             velocityX,
             velocityY,
-            definition.Width,
-            definition.Height,
+            hitboxWidth,
+            hitboxHeight,
             fallThrough: fallThroughPlatforms,
             fall2: fallThroughPlatforms);
 
@@ -233,8 +242,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             nextPositionY,
             collidedVelocityX,
             collidedVelocityY,
-            definition.Width,
-            definition.Height,
+            hitboxWidth,
+            hitboxHeight,
             fallThroughPlatforms);
         nextPositionX = slope.PositionX;
         nextPositionY = slope.PositionY;
@@ -245,8 +254,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
             tiles,
             nextPositionX,
             nextPositionY,
-            definition.Width,
-            definition.Height);
+            hitboxWidth,
+            hitboxHeight);
 
         next = aiState with
         {

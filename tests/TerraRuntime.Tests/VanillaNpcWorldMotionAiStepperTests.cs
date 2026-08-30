@@ -36,6 +36,32 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
     }
 
     [Fact]
+    public void Live_post_ai_scale_controls_world_contact_geometry()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        WorldTile liquid = default;
+        liquid.LiquidAmount = byte.MaxValue;
+        liquid.LiquidKind = WorldLiquidKind.Water;
+        tiles.Set(8, 6, liquid);
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate state = CreateDemonEye() with
+        {
+            PositionX = 80f,
+            PositionY = 80f
+        };
+        Assert.True(store.TrySpawn(0, in state, out NpcSnapshot spawned));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+        var stepper = new VanillaNpcWorldMotionAiStepper(new FixedScaleStepper(scale: 2f), tiles);
+
+        executor.Tick(stepper);
+
+        Assert.True(store.TryGet(spawned.Handle, out NpcSnapshot updated));
+        Assert.Equal(2f, updated.Simulation.Scale);
+        Assert.True(updated.Simulation.Wet);
+        Assert.Equal(NpcLiquidContactKind.Water, updated.Simulation.LiquidContact);
+    }
+
+    [Fact]
     public void Wall_collision_clamps_motion_and_becomes_next_tick_context()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
@@ -235,6 +261,28 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
                 npc.Target,
                 npc.Ai,
                 npc.Simulation with { NoGravity = true });
+            return true;
+        }
+    }
+
+    private sealed class FixedScaleStepper(float scale) : INpcAiStateStepper
+    {
+        public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
+        {
+            next = new NpcStateUpdate(
+                npc.Type,
+                npc.NetId,
+                npc.PositionX,
+                npc.PositionY,
+                0f,
+                0f,
+                npc.Target,
+                npc.Ai,
+                npc.Simulation with
+                {
+                    Scale = scale,
+                    NoGravity = true
+                });
             return true;
         }
     }
