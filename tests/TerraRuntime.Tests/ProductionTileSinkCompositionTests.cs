@@ -46,11 +46,64 @@ public sealed class ProductionTileSinkCompositionTests
         Assert.Equal(ChestInteractionFrameStopReason.None, chestSink.StopReason);
     }
 
+    [Fact]
+    public void Production_chest_outer_sink_routes_packet79_through_projectile_object_composition()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(906);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var commands = new RecordingCommandIngress();
+        var gameplayIngress = new RuntimeProjectileNetworkIngress(commands);
+        var projectileSink = new ProjectileLifecycleFrameSink(
+            source,
+            bootstrap,
+            new PassthroughSink(),
+            gameplayIngress);
+        var chestSink = new ChestInteractionFrameSink(
+            source,
+            bootstrap,
+            projectileSink,
+            new AcceptingChestIngress());
+        var state = new TerrariaPlaceObjectState(
+            TileX: 40,
+            TileY: 50,
+            TileType: 21,
+            Style: 0,
+            Alternate: 0,
+            Random: -1,
+            Direction: false);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, chestSink.OnFrame(Packet79(in state)));
+
+        ClientPlaceObjectRuntimeCommand command =
+            Assert.IsType<ClientPlaceObjectRuntimeCommand>(commands.Command);
+        Assert.Equal(source, commands.Source);
+        Assert.Equal(source, command.Connection.Source);
+        Assert.Equal(bootstrap.AssignedPlayerHandle, command.Connection.Player);
+        Assert.Equal(state, command.State);
+        Assert.Equal(ObjectPlacementFrameStopReason.None, projectileSink.ObjectPlacementStopReason);
+        Assert.Equal(TileManipulationFrameStopReason.None, projectileSink.TileStopReason);
+        Assert.Equal(ProjectileLifecycleFrameStopReason.None, projectileSink.StopReason);
+        Assert.Equal(ChestInteractionFrameStopReason.None, chestSink.StopReason);
+    }
+
     private static TerrariaFrame Packet17(in TerrariaTileManipulationState state)
     {
         Assert.Equal(
             TerrariaTileManipulationEncodeResult.Encoded,
             TerrariaTileManipulationCodec.TryEncode(in state, out byte[] encoded));
+        return Decode(encoded);
+    }
+
+    private static TerrariaFrame Packet79(in TerrariaPlaceObjectState state)
+    {
+        Assert.Equal(
+            TerrariaPlaceObjectEncodeResult.Encoded,
+            TerrariaPlaceObjectCodec.TryEncode(in state, out byte[] encoded));
+        return Decode(encoded);
+    }
+
+    private static TerrariaFrame Decode(byte[] encoded)
+    {
         var buffer = new ReadOnlySequence<byte>(encoded);
         Assert.Equal(TerrariaFrameReadResult.Frame, TerrariaFrameDecoder.TryRead(ref buffer, out TerrariaFrame frame));
         return frame;

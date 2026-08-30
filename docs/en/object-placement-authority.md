@@ -1,6 +1,6 @@
 # Authoritative object placement
 
-The packet-79 gameplay boundary is intentionally sparse. The first production-ready transaction primitive admits only the ordinary vanilla Chest item and the base `Containers` object. This prevents the client from turning a valid held item into an arbitrary tile/style claim.
+The packet-79 gameplay boundary is intentionally sparse. The first production transaction admits only the ordinary vanilla Chest item and the base `Containers` object. This prevents the client from turning a valid held item into an arbitrary tile/style claim.
 
 ## First admitted mapping
 
@@ -8,7 +8,26 @@ The packet-79 gameplay boundary is intentionally sparse. The first production-re
 | --- | ---: | --- | ---: | ---: | ---: |
 | Chest | 48 | Containers | 21 | 0 | 0 |
 
-Other container styles, `Containers2`, dressers, random styles and alternate placement variants remain unsupported until their source contracts are pinned independently.
+Other container styles, `Containers2`, dressers and alternate placement variants remain unsupported until their source contracts are pinned independently. Packet random/direction fields remain wire state for this slice; they cannot override the verified held-item → tile/style/alternate identity.
+
+## Production ownership
+
+```mermaid
+flowchart LR
+    Socket["Socket / packet 79"] --> Sink["ObjectPlacementFrameSink"]
+    Sink --> Ingress["RuntimeProjectileNetworkIngress\nIObjectPlacementNetworkIngress"]
+    Ingress --> Queue["Bounded authoritative queue"]
+    Queue --> State["ServerRuntimeState"]
+    State --> Processor["RuntimeObjectPlacementCommandProcessor"]
+    Processor --> Catalog["Held-item → object catalog"]
+    Processor --> World["Multi-tile + chest metadata"]
+    Processor --> Inventory["Authoritative inventory consumption"]
+    Processor --> Relay["Peer packet-79 replication"]
+```
+
+Production keeps one gameplay ingress object for projectile, packet-17 tile and packet-79 object traffic. `ProjectileLifecycleFrameSink` composes the tile and object sinks underneath the existing chest/sign chain, so the host does not need a second command queue or a parallel connection lifecycle.
+
+The exact loaded `WorldTileStore` is associated with its runtime chest metadata lifecycle through a weak-key runtime composition registry. Persistence creates that binding before `ServerRuntimeState` is constructed. The registry does not define a process-global current world and does not keep an otherwise dead world alive.
 
 ## Transaction
 
@@ -35,6 +54,6 @@ If that equipment commit does not materialize exactly the expected remaining sta
 
 Only a committed placement is encoded back as packet 79. The originating connection is excluded; playing peers receive the accepted request after the authoritative world and inventory transaction succeeds. Failed support checks, item mismatches and rollback paths produce no peer placement frame.
 
-## Scope
+## Remaining scope
 
-This slice provides the transaction processor and replication primitive but does not yet connect `ObjectPlacementFrameSink` into the production host sink chain. Keeping composition as a final explicit step prevents the network from accepting a gameplay packet before all authority layers exist.
+Production composition is now connected for the verified base Chest slice. Broader D5 parity still requires independently pinned item/style mappings, alternate placement origins, furniture/sign support rules, liquid rules, tile-entity metadata adapters, object-specific drops and secondary effects. Those remain fail-closed rather than being inferred from visual similarity.

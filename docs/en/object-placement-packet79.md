@@ -1,6 +1,6 @@
 # Packet 79 object-placement boundary
 
-TerraRuntime now has a typed, protocol-only boundary for Terraria `PlaceObject` message 79. This page deliberately describes the wire and ingress contract only. Production host composition and gameplay authorization are separate steps and are not implied by the existence of the codec.
+TerraRuntime has a typed protocol-326 boundary for Terraria `PlaceObject` message 79 and now connects that boundary to the verified base-Chest authoritative transaction. The codec remains protocol-only; gameplay authorization stays above it.
 
 ## Wire layout
 
@@ -12,20 +12,25 @@ $$
 
 The fields are, in order: signed 16-bit tile X, tile Y, tile type and style; unsigned 8-bit alternate; signed 8-bit random selector; and a one-byte boolean direction flag. With Terraria's two-byte frame length and one-byte message id, a complete packet-79 frame is therefore 14 bytes.
 
-`TerrariaPlaceObjectCodec` accepts only an exact 11-byte payload and rejects direction bytes other than `0` or `1`. It does not decide whether a tile type, style, alternate, position, or inventory item is legal. Those are gameplay decisions.
+`TerrariaPlaceObjectCodec` accepts only an exact 11-byte payload and rejects direction bytes other than `0` or `1`. It does not decide whether a tile type, style, alternate, position, or inventory item is legal. Those are authoritative gameplay decisions.
 
-## Ownership boundary
+## Production ownership boundary
 
 ```mermaid
 flowchart LR
-    Socket["Socket / framed message"] --> Codec["TerrariaPlaceObjectCodec"]
+    Socket["Socket / framed message"] --> Projectile["ProjectileLifecycleFrameSink"]
+    Projectile --> Object["ObjectPlacementFrameSink"]
+    Object --> Codec["TerrariaPlaceObjectCodec"]
     Codec --> Session["Playing-session identity"]
-    Session --> Ingress["RuntimeObjectPlacementNetworkIngress"]
+    Session --> Ingress["RuntimeProjectileNetworkIngress"]
     Ingress --> Queue["Bounded authoritative command queue"]
-    Queue --> Gameplay["Future object-placement transaction"]
+    Queue --> State["ServerRuntimeState"]
+    State --> Gameplay["RuntimeObjectPlacementCommandProcessor"]
 ```
 
-`ObjectPlacementFrameSink` refuses packet 79 before the player reaches `Playing`, stops on malformed payloads, and treats a full game ingress as backpressure. The socket thread never mutates `WorldTileStore`, chest metadata, or inventory.
+`ObjectPlacementFrameSink` refuses packet 79 before the player reaches `Playing`, stops on malformed payloads, and treats a full game ingress as backpressure. `RuntimeProjectileNetworkIngress` implements the object-placement ingress contract alongside its existing projectile and packet-17 responsibilities, so all three paths share the same bounded command ownership. The socket thread never mutates `WorldTileStore`, chest metadata, or inventory.
+
+The first gameplay mapping is Chest item `48` to `Containers` tile `21`, style `0`, alternate `0`. The packet random/direction fields are preserved but cannot override that item/object identity. The authoritative thread resolves the player's selected inventory slot, validates the mapping, commits the 2×2 object plus chest metadata, consumes one item, then replicates packet 79 to peers. Any failed inventory commit rolls the fresh empty object back.
 
 ## Abuse budget
 
@@ -33,8 +38,8 @@ The built-in hard-abuse profile applies a one-second packet-79 ceiling of 240 fr
 
 ## Evidence boundary
 
-The field layout is cross-checked against an independent Terraria protocol implementation and the public `NetMessage.SendObjectPlacement` / `WorldGen.PlaceObject` API shape. TerraRuntime still keeps gameplay decisions fail-closed until the corresponding Terraria 1.4.5.8 object and item semantics are pinned separately.
+The field layout is cross-checked against an independent Terraria protocol implementation and the public `NetMessage.SendObjectPlacement` / `WorldGen.PlaceObject` API shape. Broader object/item semantics remain fail-closed until independently pinned for TerrariaServer 1.4.5.8.
 
 ## Current limitation
 
-This slice is intentionally **not wired into the production connection sink chain yet**. That avoids accepting packet 79 before an authoritative item-to-object transaction exists. The next slice binds the decoded request to selected-item inventory authority, multi-tile mutation, chest metadata, item consumption, and peer replication.
+Production packet-79 composition is enabled only for the verified base Chest slice. Other object families, styles, alternates, exact furniture support rules and tile-entity/sign metadata remain separate parity work.

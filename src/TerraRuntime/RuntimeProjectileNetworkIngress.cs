@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol;
+using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime;
 
@@ -12,11 +13,14 @@ internal interface IProjectileNetworkIngress
 }
 
 /// <summary>
-/// Connection-authenticated projectile packet ingress. The production instance also carries packet-17 state via
-/// <see cref="RuntimeTileNetworkIngress"/>, so one bounded command ingress is shared by client gameplay packets.
-/// Exact entity lookup and every world mutation remain authoritative-thread responsibilities.
+/// Connection-authenticated projectile packet ingress. The production instance also carries packet-17 tile state and
+/// packet-79 object placement through the same bounded authoritative command ingress. Exact entity lookup, inventory
+/// authority and every world mutation remain authoritative-thread responsibilities.
 /// </summary>
-internal sealed class RuntimeProjectileNetworkIngress : RuntimeTileNetworkIngress, IProjectileNetworkIngress
+internal sealed class RuntimeProjectileNetworkIngress :
+    RuntimeTileNetworkIngress,
+    IProjectileNetworkIngress,
+    IObjectPlacementNetworkIngress
 {
     public RuntimeProjectileNetworkIngress(IGameCommandIngress<RuntimeCommand> ingress)
         : base(ingress)
@@ -41,5 +45,15 @@ internal sealed class RuntimeProjectileNetworkIngress : RuntimeTileNetworkIngres
         return Ingress.TryPost(
             connection.Source,
             new ClientProjectileDestroyRuntimeCommand(connection, state));
+    }
+
+    public bool TryPost(ConnectionHandle connection, in TerrariaPlaceObjectState state)
+    {
+        if (!connection.IsAssigned)
+            return false;
+
+        return Ingress.TryPost(
+            connection.Source,
+            new ClientPlaceObjectRuntimeCommand(connection, state));
     }
 }

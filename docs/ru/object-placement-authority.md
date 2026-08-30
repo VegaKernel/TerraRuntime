@@ -1,6 +1,6 @@
 # Authoritative-размещение объектов
 
-Gameplay-граница packet 79 намеренно остаётся sparse. Первый production-ready transaction primitive разрешает только обычный vanilla-предмет Chest и базовый объект `Containers`. Клиент не может превратить корректно удерживаемый предмет в произвольный tile/style claim.
+Gameplay-граница packet 79 намеренно остаётся sparse. Первая production-транзакция разрешает только обычный vanilla-предмет Chest и базовый объект `Containers`. Клиент не может превратить корректно удерживаемый предмет в произвольный tile/style claim.
 
 ## Первая разрешённая связь
 
@@ -8,7 +8,26 @@ Gameplay-граница packet 79 намеренно остаётся sparse. П
 | --- | ---: | --- | ---: | ---: | ---: |
 | Chest | 48 | Containers | 21 | 0 | 0 |
 
-Другие стили контейнеров, `Containers2`, dressers, random styles и alternate placement variants остаются unsupported, пока их source contracts не будут закреплены независимо.
+Другие стили контейнеров, `Containers2`, dressers и alternate placement variants остаются unsupported, пока их source contracts не будут закреплены независимо. Поля packet random/direction в этом срезе остаются wire state; они не могут переопределить проверенную связь held-item → tile/style/alternate.
+
+## Production ownership
+
+```mermaid
+flowchart LR
+    Socket["Socket / packet 79"] --> Sink["ObjectPlacementFrameSink"]
+    Sink --> Ingress["RuntimeProjectileNetworkIngress\nIObjectPlacementNetworkIngress"]
+    Ingress --> Queue["Bounded authoritative queue"]
+    Queue --> State["ServerRuntimeState"]
+    State --> Processor["RuntimeObjectPlacementCommandProcessor"]
+    Processor --> Catalog["Held-item → object catalog"]
+    Processor --> World["Multi-tile + chest metadata"]
+    Processor --> Inventory["Authoritative inventory consumption"]
+    Processor --> Relay["Peer packet-79 replication"]
+```
+
+Production использует один gameplay ingress для projectile, packet-17 tile и packet-79 object traffic. `ProjectileLifecycleFrameSink` композирует tile- и object-sink под существующей chest/sign chain, поэтому серверу не нужен второй command queue или параллельный connection lifecycle.
+
+Конкретный загруженный `WorldTileStore` связывается со своим runtime chest metadata lifecycle через weak-key runtime composition registry. Persistence создаёт эту связь до конструирования `ServerRuntimeState`. Registry не вводит process-global «current world» и не удерживает уже неиспользуемый мир в памяти.
 
 ## Транзакция
 
@@ -35,6 +54,6 @@ Multi-tile service владеет геометрией 2×2, placement origin, s
 
 Обратно в packet 79 кодируется только committed placement. Исходное соединение исключается; playing-peers получают принятый request после успешной authoritative world+inventory transaction. Ошибки support, item mismatch и rollback paths не создают peer placement frame.
 
-## Область этого среза
+## Оставшаяся область
 
-Этот срез даёт transaction processor и replication primitive, но пока не подключает `ObjectPlacementFrameSink` в production host sink chain. Финальное composition остаётся отдельным явным шагом, чтобы сеть не начинала принимать gameplay packet раньше появления всех authority layers.
+Production composition теперь подключён для проверенного базового Chest. Для более широкой D5 parity всё ещё нужны независимо закреплённые item/style mappings, alternate placement origins, support rules мебели/табличек, liquid rules, adapters metadata tile-entity, object-specific drops и вторичные эффекты. До их проверки эти пути остаются fail-closed, а не выводятся из внешнего сходства объектов.

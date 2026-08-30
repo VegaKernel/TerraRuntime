@@ -71,6 +71,11 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(chestStore);
         ArgumentOutOfRangeException.ThrowIfLessThan(synchronizationSectionsPerTick, 1);
 
+        // This service is the first production composition point that owns both halves of a mutable world object:
+        // canonical tiles and runtime chest metadata. Bind them before ServerRuntimeState is constructed so packet-79
+        // gameplay can resolve the exact lifecycle for this WorldTileStore without process-global current-world state.
+        RuntimeWorldObjectMetadataRegistry.Bind(tiles, chestStore);
+
         AtomicSaveFileWriterOptions? writerOptions = null;
         if (checkpointValidationLimits is WorldFileLoadLimits limits)
         {

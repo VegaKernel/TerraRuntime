@@ -45,6 +45,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly IProjectileStateStepper? _projectileStepper;
     private readonly RuntimeProjectileReplicationRegistry? _projectileReplication;
     private readonly RuntimeTileManipulationReplicationRegistry? _tileManipulationReplication;
+    private readonly RuntimeObjectPlacementCommandProcessor? _objectPlacementProcessor;
     private readonly RuntimeWorldItemStore _worldItems;
     private readonly IWorldItemSpawnRandom _worldItemSpawnRandom = new SystemWorldItemSpawnRandom();
     private readonly WorldTileStore? _worldTiles;
@@ -99,6 +100,16 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles));
         _projectileReplication = projectileReplication;
         _tileManipulationReplication = tileManipulationReplication;
+        if (worldTiles is not null &&
+            RuntimeWorldObjectMetadataRegistry.TryGet(
+                worldTiles,
+                out IVanillaMultiTileObjectMetadataLifecycle objectMetadata))
+        {
+            _objectPlacementProcessor = new RuntimeObjectPlacementCommandProcessor(
+                worldTiles,
+                objectMetadata,
+                tileManipulationReplication);
+        }
         _worldItems = worldItems ?? new RuntimeWorldItemStore();
 
         if (npcAiStepper is null)
@@ -317,6 +328,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         if (_serverPlayerCommands?.TryApply(command) == true)
             return;
         if (_npcActorCommands.TryApply(command))
+            return;
+        if (_objectPlacementProcessor?.TryApply(this, command) == true)
             return;
         if (command is NpcActorSpawnRuntimeCommand actorSpawn)
         {

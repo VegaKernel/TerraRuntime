@@ -21,25 +21,36 @@ internal enum RuntimeObjectPlacementResult : byte
 /// <summary>
 /// Single-writer authoritative transaction for client PlaceObject requests. The processor resolves the selected
 /// inventory slot from committed player state, maps the held item through the sparse vanilla item/object catalog,
-/// commits multi-tile geometry plus chest metadata, consumes exactly one held item through the ordinary player
-/// equipment path, and only then replicates packet 79 to peers. A failed inventory commit rolls the just-created
-/// empty object back before the command returns.
+/// commits multi-tile geometry plus runtime-owned metadata, consumes exactly one held item through the ordinary
+/// player equipment path, and only then replicates packet 79 to peers. A failed inventory commit rolls the
+/// just-created empty object back before the command returns.
 /// </summary>
 internal sealed class RuntimeObjectPlacementCommandProcessor
 {
     private readonly VanillaMultiTileObjectMutationService mutations;
-    private readonly RuntimeChestObjectMetadataLifecycle metadata;
+    private readonly IVanillaMultiTileObjectMetadataLifecycle metadata;
     private readonly RuntimeTileManipulationReplicationRegistry? replication;
 
     public RuntimeObjectPlacementCommandProcessor(
         WorldTileStore tiles,
         RuntimeChestStore chests,
         RuntimeTileManipulationReplicationRegistry? replication = null)
+        : this(
+            tiles,
+            new RuntimeChestObjectMetadataLifecycle(chests ?? throw new ArgumentNullException(nameof(chests))),
+            replication)
+    {
+    }
+
+    public RuntimeObjectPlacementCommandProcessor(
+        WorldTileStore tiles,
+        IVanillaMultiTileObjectMetadataLifecycle metadata,
+        RuntimeTileManipulationReplicationRegistry? replication = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
-        ArgumentNullException.ThrowIfNull(chests);
+        ArgumentNullException.ThrowIfNull(metadata);
         mutations = new VanillaMultiTileObjectMutationService(tiles);
-        metadata = new RuntimeChestObjectMetadataLifecycle(chests);
+        this.metadata = metadata;
         this.replication = replication;
     }
 
