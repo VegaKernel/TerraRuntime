@@ -231,7 +231,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 ### D4 - NPCs
 
 - [x] NPC definitions;
-- [ ] AI family/behavior decomposition;
+- [x] AI family/behavior decomposition;
 - [ ] spawn/physics/combat/loot separation;
 - [ ] boss/town behavior boundaries;
 - [ ] remove raw NPC IDs/AI-style numbers;

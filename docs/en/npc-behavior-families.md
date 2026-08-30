@@ -9,7 +9,7 @@ TerraRuntime keeps two different NPC concepts separate:
 - `NpcAiStyleId` is a source-backed Terraria 1.4.5.8 fact stored in the vanilla definition;
 - `VanillaNpcBehaviorFamily` is a runtime-owned opt-in to an implementation strategy that has actually been verified for that definition.
 
-They are deliberately not interchangeable. Terraria contains many NPCs that share an `aiStyle` while still having type-specific branches, parameters or lifecycle rules. Automatically routing every future NPC with `aiStyle = 3` through the current Zombie implementation would therefore turn a useful source fact into an unsafe assumption.
+They are deliberately not interchangeable. Terraria contains many NPCs that share an `aiStyle` while still having type-specific branches, parameters or lifecycle rules. Automatically routing every future NPC with `aiStyle = 3` through the current Zombie implementation would turn a useful source fact into an unsafe assumption.
 
 ## Current verified mapping
 
@@ -21,42 +21,58 @@ They are deliberately not interchangeable. Terraria contains many NPCs that shar
 
 Only entries already present in the version-pinned `VanillaNpcDefinitionCatalog` receive a family. Adding another vanilla definition requires an explicit behavior-family decision; sharing an aiStyle alone is not sufficient evidence.
 
-## Dispatch path
+## Ownership after decomposition
+
+The public compatibility facade no longer contains the family implementations.
 
 ```mermaid
 flowchart LR
-    Snapshot["NpcSnapshot"] --> Type["typed NpcTypeId"]
-    Type --> Definition["VanillaNpcDefinition"]
-    Definition --> Family["BehaviorFamily"]
-    Family --> Slime["SlimeGround strategy"]
-    Family --> Eye["FlyingEye strategy"]
-    Family --> Fighter["GroundFighter strategy"]
-    Family --> Fallback["bounded inner stepper"]
+    Snapshot["NpcSnapshot"] --> Facade["VanillaNpcTargetingAiStepper<br/>type + definition + family dispatch"]
+    Facade --> Context["VanillaNpcBehaviorContext<br/>bounded candidates + world conditions"]
+    Facade --> Slime["VanillaSlimeGroundNpcBehaviorStrategy"]
+    Facade --> Eye["VanillaFlyingEyeNpcBehaviorStrategy"]
+    Facade --> Fighter["VanillaGroundFighterNpcBehaviorStrategy"]
+    Slime --> Context
+    Eye --> Context
+    Fighter --> Context
+    Facade --> Fallback["bounded inner stepper"]
 ```
 
-`VanillaNpcTargetingAiStepper` now resolves the definition once and dispatches by `BehaviorFamily`. The orchestration path no longer asks whether the NPC is specifically Blue Slime, Demon Eye or Zombie before selecting the strategy. The specialized strategy still checks the expected source `AiStyle` as an invariant.
+Ownership is intentionally narrow:
 
-Definition metadata is also reused for dimensions during targeting/overlap calculations, removing repeated catalog lookups inside the same step.
+- `VanillaNpcTargetingAiStepper` resolves `NpcTypeId`, looks up one `VanillaNpcDefinition`, selects the explicit family and preserves the existing fallback contract;
+- `VanillaNpcBehaviorContext` owns the fixed-size target-candidate scratch buffer, target geometry helpers, world-surface conversion and current day/slime-rain facts;
+- `VanillaSlimeGroundNpcBehaviorStrategy` owns Slime-family engagement/targeting input and the verified `VanillaBlueSlimeMotion` transition;
+- `VanillaFlyingEyeNpcBehaviorStrategy` owns FlyingEye target refresh before the independently implemented eye AI receives the state;
+- `VanillaGroundFighterNpcBehaviorStrategy` owns Fighter-family target prepass, overlap semantics, day/surface pursuit policy and the verified `VanillaZombieMotion` transition.
 
-## Why this is safer than dispatching by aiStyle
+The facade keeps `EnableBlueSlimeMotion`, `EnableZombieMotion`, `SetWorldConditions` and `SetCandidates` so runtime composition and existing callers do not need a simultaneous API migration. Those methods now configure the context rather than accumulating behavior inside the dispatcher.
 
-Suppose a later verified NPC definition also reports the `Fighter` aiStyle. That new entry is not automatically assigned `GroundFighter`. Until its type-specific vanilla branches are checked, its runtime family can remain `None` or another explicit strategy can be introduced. This fails closed instead of silently producing plausible-looking but wrong AI.
+## Dispatch invariants
 
-The separation is:
+Each concrete strategy still checks the expected source-backed `AiStyle`. `BehaviorFamily` chooses the implementation, while `AiStyle` proves that the selected definition still satisfies the source invariant used to verify that implementation.
+
+A family that is not enabled falls through to the bounded inner stepper exactly as before. A valid NPC type that is not present in the definition catalog also falls through rather than inheriting behavior from a numerically similar type or aiStyle.
+
+The separation remains:
 
 ```text
 Terraria fact             TerraRuntime implementation decision
 AiStyle = Fighter   !=    BehaviorFamily = GroundFighter
 ```
 
-The current Zombie definition explicitly has both because that path has already been implemented and exercised.
+## Why the roadmap AI-decomposition item is complete
 
-## Scope and remaining work
+The D4 `AI family/behavior decomposition` item tracks ownership and dispatch architecture, not exhaustive support for every Terraria NPC. For the authoritative vanilla NPC slice currently admitted by `VanillaNpcDefinitionCatalog`, family selection, shared context and family behavior are now separate units with executable coverage. Adding future NPC definitions extends this architecture instead of reopening a monolithic dispatcher.
 
-This change decomposes strategy selection for the currently supported NPC catalog. It does not claim that all vanilla style-1/style-2/style-3 NPCs share these exact implementations, and it does not close the broader roadmap items for full NPC AI-family coverage, bosses, town NPCs, loot or removal of every remaining type-specific branch inside verified behavior implementations.
+This does **not** close the other D4 items:
 
-Future NPC expansion should add source defaults first, inspect type-specific official-server behavior, then opt into an existing family only when that reuse is actually valid.
+- spawn / physics / combat / loot separation;
+- boss / town behavior boundaries;
+- removal of all remaining raw NPC IDs and AI-style numbers.
+
+Those remain independent work and therefore remain unchecked in the roadmap.
 
 ## Verification
 
-Catalog tests pin the explicit behavior-family assignment for Blue Slime, Demon Eye and Zombie while retaining the independent aiStyle assertions. Existing NPC targeting/motion tests continue to exercise the three runtime paths through `VanillaNpcTargetingAiStepper`, and the gameplay CI builds and runs all `Npc`/`Projectile` tests as one non-cancelling acceptance slice.
+`VanillaNpcBehaviorFamilyDispatchTests` pins the fail-closed dispatch contract: disabled families fall back, unknown catalog types do not inherit a behavior, and FlyingEye target refresh occurs in the family strategy before delegation. Existing Blue Slime, Demon Eye and Zombie targeting/motion tests continue to exercise the same public `VanillaNpcTargetingAiStepper` facade, so the decomposition preserves externally observable state transitions while changing ownership underneath it.

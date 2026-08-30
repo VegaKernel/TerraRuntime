@@ -4,26 +4,19 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Coordinates verified player-target selection cadence with state-only NPC AI. Dispatch is selected by the
-/// runtime-owned behavior family carried by each verified NPC definition rather than by raw content IDs in the
-/// orchestration path. AiStyle remains source metadata; behavior-family opt-in prevents unverified NPC types that
-/// share an aiStyle from silently inheriting an implementation.
+/// Compatibility facade for verified vanilla NPC targeting/AI dispatch. The facade resolves one version-pinned
+/// definition and delegates the state step to an explicit runtime-owned behavior family strategy. Family-specific
+/// targeting geometry, world conditions and motion rules are kept outside this dispatcher.
 /// </summary>
 public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
 {
-    public const int MaximumPlayerCandidates = byte.MaxValue;
-
-    private const float VanillaBasePlayerWidth = 20f;
-    private const float VanillaBasePlayerHeight = 42f;
+    public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
 
     private readonly INpcAiStateStepper _inner;
-    private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
-    private int _candidateCount;
-    private bool _blueSlimeMotionEnabled;
-    private bool _zombieMotionEnabled;
-    private double _worldSurfacePixels = double.PositiveInfinity;
-    private bool _dayTime = true;
-    private bool _slimeRainActive;
+    private readonly VanillaNpcBehaviorContext _context = new();
+    private readonly IVanillaNpcBehaviorStrategy _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _flyingEye = new VanillaFlyingEyeNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
 
     public VanillaNpcTargetingAiStepper(INpcAiStateStepper inner)
     {
@@ -31,34 +24,17 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         _inner = inner;
     }
 
-    public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity)
-    {
-        ValidateWorldSurface(worldSurfaceTiles);
-        _blueSlimeMotionEnabled = true;
-        _worldSurfacePixels = worldSurfaceTiles * 16d;
-    }
+    public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity) =>
+        _context.EnableSlimeGround(worldSurfaceTiles);
 
-    public void EnableZombieMotion(double worldSurfaceTiles)
-    {
-        ValidateWorldSurface(worldSurfaceTiles);
-        _zombieMotionEnabled = true;
-        _worldSurfacePixels = worldSurfaceTiles * 16d;
-    }
+    public void EnableZombieMotion(double worldSurfaceTiles) =>
+        _context.EnableGroundFighter(worldSurfaceTiles);
 
-    public void SetWorldConditions(bool dayTime, bool slimeRainActive)
-    {
-        _dayTime = dayTime;
-        _slimeRainActive = slimeRainActive;
-    }
+    public void SetWorldConditions(bool dayTime, bool slimeRainActive) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive);
 
-    public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates)
-    {
-        if (candidates.Length > _candidates.Length)
-            throw new ArgumentException("Too many vanilla player target candidates.", nameof(candidates));
-
-        candidates.CopyTo(_candidates);
-        _candidateCount = candidates.Length;
-    }
+    public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
+        _context.SetCandidates(candidates);
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
@@ -71,274 +47,16 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
         if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition))
             return _inner.TryStepState(in npc, out next);
 
-        switch (definition.BehaviorFamily)
+        IVanillaNpcBehaviorStrategy? strategy = definition.BehaviorFamily switch
         {
-            case VanillaNpcBehaviorFamily.SlimeGround when _blueSlimeMotionEnabled:
-                return TryStepSlimeGround(in npc, in definition, out next);
-
-            case VanillaNpcBehaviorFamily.GroundFighter when _zombieMotionEnabled:
-                return TryStepGroundFighter(in npc, in definition, out next);
-
-            case VanillaNpcBehaviorFamily.FlyingEye:
-                return TryStepFlyingEye(in npc, in definition, out next);
-
-            default:
-                return _inner.TryStepState(in npc, out next);
-        }
-    }
-
-    private bool TryStepFlyingEye(
-        in NpcSnapshot npc,
-        in VanillaNpcDefinition definition,
-        out NpcStateUpdate next)
-    {
-        if (definition.AiStyle != VanillaNpcAiStyles.DemonEye)
-        {
-            next = default;
-            return false;
-        }
-
-        NpcSnapshot targeted = npc;
-        if (TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest))
-        {
-            targeted = npc with
-            {
-                Target = closest.Target,
-                Simulation = npc.Simulation with
-                {
-                    DirectionX = closest.DirectionX,
-                    DirectionY = closest.DirectionY
-                }
-            };
-        }
-
-        return _inner.TryStepState(in targeted, out next);
-    }
-
-    private bool TryStepSlimeGround(
-        in NpcSnapshot npc,
-        in VanillaNpcDefinition definition,
-        out NpcStateUpdate next)
-    {
-        if (definition.AiStyle != VanillaNpcAiStyles.Slime)
-        {
-            next = default;
-            return false;
-        }
-
-        VanillaBlueSlimeTargetRefresh closest =
-            TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
-                ? selected
-                : default;
-        NpcSimulationState simulation = npc.Simulation;
-        bool damaged = simulation.LifeMax > 0 && simulation.Life != simulation.LifeMax;
-        bool engaged = !_dayTime || damaged || _slimeRainActive || npc.PositionY > _worldSurfacePixels;
-        var input = new VanillaBlueSlimeMotionInput(
-            PositionX: npc.PositionX,
-            VelocityX: npc.VelocityX,
-            VelocityY: npc.VelocityY,
-            OldVelocityY: simulation.OldVelocityY,
-            DirectionX: simulation.DirectionX,
-            DirectionY: simulation.DirectionY,
-            Target: npc.Target,
-            Ai: npc.Ai,
-            Wet: simulation.Wet,
-            CollideX: simulation.CollideX,
-            CollideY: simulation.CollideY,
-            Engaged: engaged,
-            SolidCollision: simulation.SolidCollision,
-            ClosestTarget: closest);
-
-        if (!VanillaBlueSlimeMotion.TryStep(in input, out VanillaBlueSlimeMotionResult result))
-        {
-            next = default;
-            return false;
-        }
-
-        next = new NpcStateUpdate(
-            definition.Type.Value,
-            npc.NetId,
-            result.PositionX,
-            npc.PositionY,
-            result.VelocityX,
-            result.VelocityY,
-            result.Target,
-            result.Ai,
-            simulation with
-            {
-                DirectionX = result.DirectionX,
-                DirectionY = result.DirectionY,
-                NoGravity = false
-            });
-        return true;
-    }
-
-    private bool TryStepGroundFighter(
-        in NpcSnapshot npc,
-        in VanillaNpcDefinition definition,
-        out NpcStateUpdate next)
-    {
-        if (definition.AiStyle != VanillaNpcAiStyles.Fighter)
-        {
-            next = default;
-            return false;
-        }
-
-        bool daytimeSurface = _dayTime && npc.PositionY < _worldSurfacePixels;
-        ReadOnlySpan<VanillaNpcTargetCandidate> candidates = _candidates.AsSpan(0, _candidateCount);
-        int startingDirectionY = npc.Simulation.DirectionY;
-        if (npc.Target < byte.MaxValue &&
-            TryFindCandidate(checked((byte)npc.Target), candidates, out VanillaNpcTargetCandidate currentTarget) &&
-            currentTarget.Active &&
-            !currentTarget.Dead &&
-            !currentTarget.Ghost &&
-            currentTarget.CenterY + VanillaBasePlayerHeight * 0.5f == npc.PositionY + definition.Height)
-        {
-            startingDirectionY = -1;
-        }
-
-        VanillaBlueSlimeTargetRefresh closest =
-            TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
-                ? selected
-                : default;
-        int fighterDirectionY = closest.DirectionY;
-        if (closest.HasTarget &&
-            fighterDirectionY > 0 &&
-            TryFindCandidate(checked((byte)closest.Target), candidates, out VanillaNpcTargetCandidate selectedCandidate) &&
-            selectedCandidate.CenterY <= npc.PositionY + definition.Height)
-        {
-            fighterDirectionY = -1;
-        }
-
-        var fighterTarget = new VanillaZombieTargetRefresh(
-            closest.HasTarget,
-            closest.Target,
-            closest.DirectionX,
-            fighterDirectionY);
-
-        NpcSimulationState simulation = npc.Simulation;
-        var input = new VanillaZombieMotionInput(
-            PositionX: npc.PositionX,
-            OldPositionX: simulation.OldPositionX,
-            VelocityX: npc.VelocityX,
-            VelocityY: npc.VelocityY,
-            DirectionX: simulation.DirectionX,
-            DirectionY: startingDirectionY,
-            Target: npc.Target,
-            Ai: npc.Ai,
-            Scale: simulation.Scale,
-            TargetOverlaps: TargetOverlapsNpc(in npc, in definition),
-            ClosestTarget: fighterTarget)
-        {
-            PursuitAllowed = !daytimeSurface,
-            EncourageDespawn = daytimeSurface,
-            JustHit = simulation.JustHit,
-            TimeLeft = simulation.TimeLeft,
-            SpriteDirection = simulation.SpriteDirection
+            VanillaNpcBehaviorFamily.SlimeGround when _context.SlimeGroundEnabled => _slimeGround,
+            VanillaNpcBehaviorFamily.FlyingEye => _flyingEye,
+            VanillaNpcBehaviorFamily.GroundFighter when _context.GroundFighterEnabled => _groundFighter,
+            _ => null
         };
 
-        if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))
-        {
-            next = default;
-            return false;
-        }
-
-        next = new NpcStateUpdate(
-            definition.Type.Value,
-            npc.NetId,
-            npc.PositionX,
-            npc.PositionY,
-            result.VelocityX,
-            result.VelocityY,
-            result.Target,
-            result.Ai,
-            simulation with
-            {
-                DirectionX = result.DirectionX,
-                DirectionY = result.DirectionY,
-                SpriteDirection = result.SpriteDirection,
-                NoGravity = false,
-                JustHit = false,
-                TimeLeft = result.TimeLeft
-            });
-        return true;
-    }
-
-    private bool TrySelectClosestTarget(
-        in NpcSnapshot npc,
-        in VanillaNpcDefinition definition,
-        out VanillaBlueSlimeTargetRefresh target)
-    {
-        target = default;
-        if (_candidateCount == 0)
-            return false;
-
-        float npcCenterX = npc.PositionX + definition.Width * 0.5f;
-        float npcCenterY = npc.PositionY + definition.Height * 0.5f;
-        ReadOnlySpan<VanillaNpcTargetCandidate> candidates = _candidates.AsSpan(0, _candidateCount);
-        if (!VanillaNpcTargeting.TrySelectClosestPlayerTarget(
-                npcCenterX,
-                npcCenterY,
-                npc.Simulation.DirectionX,
-                candidates,
-                out VanillaNpcTargetSelection selection) ||
-            !TryFindCandidate(selection.PlayerSlot, candidates, out VanillaNpcTargetCandidate candidate))
-        {
-            return false;
-        }
-
-        target = new VanillaBlueSlimeTargetRefresh(
-            HasTarget: true,
-            Target: selection.PlayerSlot,
-            DirectionX: candidate.CenterX < npcCenterX ? -1 : 1,
-            DirectionY: candidate.CenterY < npcCenterY ? -1 : 1);
-        return true;
-    }
-
-    private bool TargetOverlapsNpc(
-        in NpcSnapshot npc,
-        in VanillaNpcDefinition definition)
-    {
-        if (npc.Target >= byte.MaxValue ||
-            !TryFindCandidate((byte)npc.Target, _candidates.AsSpan(0, _candidateCount), out VanillaNpcTargetCandidate candidate) ||
-            !candidate.Active || candidate.Dead || candidate.Ghost)
-        {
-            return false;
-        }
-
-        float playerLeft = candidate.CenterX - VanillaBasePlayerWidth * 0.5f;
-        float playerTop = candidate.CenterY - VanillaBasePlayerHeight * 0.5f;
-        return npc.PositionX < playerLeft + VanillaBasePlayerWidth &&
-               npc.PositionX + definition.Width > playerLeft &&
-               npc.PositionY < playerTop + VanillaBasePlayerHeight &&
-               npc.PositionY + definition.Height > playerTop;
-    }
-
-    private static bool TryFindCandidate(
-        byte slot,
-        ReadOnlySpan<VanillaNpcTargetCandidate> candidates,
-        out VanillaNpcTargetCandidate candidate)
-    {
-        foreach (VanillaNpcTargetCandidate current in candidates)
-        {
-            if (current.Slot != slot)
-                continue;
-
-            candidate = current;
-            return true;
-        }
-
-        candidate = default;
-        return false;
-    }
-
-    private static void ValidateWorldSurface(double worldSurfaceTiles)
-    {
-        if (double.IsNaN(worldSurfaceTiles) ||
-            worldSurfaceTiles <= 0d ||
-            (double.IsInfinity(worldSurfaceTiles) && !double.IsPositiveInfinity(worldSurfaceTiles)))
-        {
-            throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
-        }
+        return strategy is null
+            ? _inner.TryStepState(in npc, out next)
+            : strategy.TryStep(in npc, in definition, _context, _inner, out next);
     }
 }
