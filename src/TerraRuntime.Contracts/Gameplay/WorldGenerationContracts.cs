@@ -160,6 +160,39 @@ public interface IWorldGenerationWorkspace
 }
 
 /// <summary>
+/// One detached item slot requested for a generated chest. Item identities are typed at the generation boundary;
+/// the runtime remains responsible for validating vanilla range, stack state and persistence encoding.
+/// </summary>
+public readonly record struct WorldGenerationChestItem(
+    int Stack,
+    ItemTypeId ItemType,
+    PrefixId Prefix = default)
+{
+    public bool IsEmpty => Stack == 0;
+}
+
+/// <summary>Canonical generated-chest limits shared by built-in and host-supplied generators.</summary>
+public static class WorldGenerationChestRules
+{
+    public const int VanillaItemSlotCount = 40;
+    public const int MaximumNameLength = 256;
+}
+
+/// <summary>
+/// Optional object-generation capability implemented by TerraRuntime's production candidate workspace. Keeping this
+/// separate from <see cref="IWorldGenerationWorkspace"/> preserves existing tile-only custom workspaces while allowing
+/// generators that need persistent loot containers to request them explicitly.
+/// </summary>
+public interface IWorldGenerationChestWorkspace
+{
+    bool TryAddChest(
+        int x,
+        int y,
+        string name,
+        ReadOnlySpan<WorldGenerationChestItem> items);
+}
+
+/// <summary>
 /// Semantic metadata required to turn generated tiles into a complete world. This intentionally exposes gameplay
 /// concepts rather than raw Terraria .wld fields so the runtime remains responsible for format-specific defaults,
 /// validation and serialization.
