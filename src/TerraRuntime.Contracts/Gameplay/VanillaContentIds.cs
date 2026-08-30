@@ -11,6 +11,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Zombie = new(3);
     public static readonly NpcTypeId EyeOfCthulhu = new(4);
     public static readonly NpcTypeId ServantOfCthulhu = new(5);
+    public static readonly NpcTypeId KingSlime = new(50);
 }
 
 /// <summary>
@@ -24,6 +25,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Fighter = new(3);
     public static readonly NpcAiStyleId EyeOfCthulhu = new(4);
     public static readonly NpcAiStyleId Flyer = new(5);
+    public static readonly NpcAiStyleId KingSlime = new(15);
 }
 
 /// <summary>
