@@ -79,3 +79,19 @@ flowchart TD
 - отсутствие автоматического вывода поведения для unprofiled projectile.
 
 Существующие projectile behavior/world tests продолжают проверять фактическую скорость, таймеры, collision и lifecycle через те же production steppers.
+
+## Передача в combat
+
+Projectile simulation и combat mutation теперь имеют явную границу вместо общих packet fields или монолитного update method:
+
+```mermaid
+flowchart LR
+    Behavior["Behavior family"] --> Motion["World physics / tile collision"]
+    Motion --> Target["Future entity-hit selection"]
+    Target --> Intent["ProjectileNpcHitIntent"]
+    Intent --> Damage["NpcDamageRequest / damage executor"]
+```
+
+`RuntimeProjectileCombatIntentFactory` принимает выбранный generation-safe `NpcHandle` и преобразует live player-owned projectile в не выполняющий mutation `ProjectileNpcHitIntent`. Его byte owner разрешается через `IRuntimePlayerSlotSnapshotLookup` в текущий `PlayerHandle`; reused или mismatched slot не может получить provenance от нового игрока.
+
+Server-owned projectiles завершаются fail-closed, потому что текущее projectile state не хранит исходный `NpcHandle`. Boundary намеренно ещё не подключена к simulation: entity hitbox selection, trusted derivation projectile damage, immunity, penetration, crit/variation, применение knockback и kill effects требуют отдельной source-backed работы. Tile collision остаётся во владении world motion и не может напрямую применять combat damage.

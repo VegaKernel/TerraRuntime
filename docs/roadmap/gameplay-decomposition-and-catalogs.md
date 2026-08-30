@@ -224,7 +224,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 
 - [x] projectile definitions;
 - [x] typed lifecycle/provenance;
-- [ ] behavior/physics/collision/combat decomposition;
+- [x] behavior/physics/collision/combat decomposition ([EN](../en/projectile-behavior-profiles.md), [RU](../ru/projectile-behavior-profiles.md));
 - [x] remove raw projectile IDs and AI-style numbers from gameplay paths ([EN](../en/gameplay-domain-literal-gate.md), [RU](../ru/gameplay-domain-literal-gate.md));
 - [x] align with custom projectile extension pipeline.
 

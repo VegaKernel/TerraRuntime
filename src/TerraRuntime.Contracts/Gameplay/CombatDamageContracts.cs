@@ -86,6 +86,37 @@ public readonly record struct NpcDamageRequest(
 }
 
 /// <summary>
+/// Protocol-neutral projectile hit intent after a collision subsystem has selected an NPC target. Projectile
+/// provenance, target selection and damage application remain distinct stages; this value performs no mutation.
+/// </summary>
+public readonly record struct ProjectileNpcHitIntent(
+    NpcHandle Target,
+    DamageSource Source,
+    int BaseDamage,
+    float KnockBack)
+{
+    public bool IsValid =>
+        Target.IsAssigned &&
+        Source is { Kind: DamageSourceKind.PlayerProjectile or DamageSourceKind.NpcProjectile } &&
+        Source.IsValid &&
+        BaseDamage > 0 &&
+        float.IsFinite(KnockBack) &&
+        KnockBack >= 0f;
+
+    public bool TryCreateDamageRequest(out NpcDamageRequest request)
+    {
+        if (!IsValid)
+        {
+            request = default;
+            return false;
+        }
+
+        request = new NpcDamageRequest(Target, Source, BaseDamage);
+        return true;
+    }
+}
+
+/// <summary>
 /// Immutable result of one committed NPC damage transition. ResolvedDamage is not capped to remaining
 /// life; LifeLost reports the actual authoritative HP delta.
 /// </summary>

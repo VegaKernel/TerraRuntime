@@ -4,15 +4,6 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Synchronous authoritative-thread lookup used by actor simulation. This is deliberately separate from the
-/// asynchronous public snapshot reader so actor AI never posts a command back to its own game loop and deadlocks.
-/// </summary>
-public interface IRuntimePlayerSnapshotLookup
-{
-    bool TryGetPlayer(PlayerHandle player, out PlayerStateSnapshot snapshot);
-}
-
-/// <summary>
 /// Converts high-level NPC actor intent into bounded AI velocity/target state. It never advances position itself;
 /// the returned state is intended to flow into TerraRuntime's source-backed world-motion/collision stepper.
 /// </summary>

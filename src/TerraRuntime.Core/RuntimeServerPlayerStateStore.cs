@@ -229,6 +229,24 @@ public sealed class RuntimeServerPlayerStateStore
         return true;
     }
 
+    public bool TryGet(PlayerSlotId slot, out PlayerStateSnapshot snapshot)
+    {
+        if (slot.Value >= states.Length)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        ServerPlayerRuntimeState? state = states[slot.Value];
+        if (state is null)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        return TryGet(state.Player, out snapshot);
+    }
+
     public bool TrySetItem(
         PlayerHandle player,
         in ServerPlayerItemState item,

@@ -221,6 +221,8 @@ Projectile support has moved beyond a relay-only design.
 
 Current architecture includes runtime projectile store, ownership/provenance facts, lifecycle handling, definition catalog, behavior state executor/stepper, world physics/collision, tile-cut integration for supported cases, and packet projection/replication.
 
+Projectile-to-NPC combat now has a separate mutation-free intent boundary. Player-owned provenance resolves the byte owner to the current generation-safe `PlayerHandle`; server-owned/NPC provenance and actual entity-hit selection remain fail-closed until modeled explicitly.
+
 Generic supported tile impacts now retain `TileCollision` as their semantic termination reason through the generation-safe authoritative commit. Post-behavior decorators and termination observers can therefore distinguish an impact from ordinary lifetime expiry without inspecting wire state.
 
 The source-backed world step also applies vanilla's pre-AI inclusive world-edge deactivation for supported non-boomerang families and reports `WorldBounds` separately. This prevents out-of-world state from being simulated for another tick while preserving the vanilla boomerang exemption for its future behavior slice.

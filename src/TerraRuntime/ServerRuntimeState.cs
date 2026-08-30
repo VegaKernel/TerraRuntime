@@ -7,7 +7,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
-internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
+internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntimePlayerSlotSnapshotLookup
 {
     private const int MaxPlayerSlots = 256;
     private const float VanillaBasePlayerWidth = 20f;
@@ -268,6 +268,20 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup
         PlayerHandle player,
         out PlayerStateSnapshot snapshot) =>
         TryCaptureRuntimePlayerSnapshot(player, out snapshot);
+
+    bool IRuntimePlayerSlotSnapshotLookup.TryGetPlayer(
+        PlayerSlotId slot,
+        out PlayerStateSnapshot snapshot)
+    {
+        if (_players.TryGetValue(slot.Value, out RuntimePlayerState? player))
+            return TryCaptureRuntimePlayerSnapshot(player.Connection.Player, out snapshot);
+
+        if (_serverPlayerStates is not null)
+            return _serverPlayerStates.TryGet(slot, out snapshot);
+
+        snapshot = default;
+        return false;
+    }
 
     internal bool TryCapturePlayerInventoryItem(
         PlayerHandle player,

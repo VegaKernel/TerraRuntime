@@ -31,6 +31,8 @@ public sealed class RuntimeServerPlayerStateStoreTests
         Assert.Equal(2f, moved.VelocityY);
         Assert.True(states.TryGet(id, out PlayerStateSnapshot byId));
         Assert.Equal(moved, byId);
+        Assert.True(states.TryGet(lease.Player.Slot, out PlayerStateSnapshot bySlot));
+        Assert.Equal(moved, bySlot);
 
         lease.Dispose();
     }
@@ -68,6 +70,7 @@ public sealed class RuntimeServerPlayerStateStoreTests
 
         Assert.False(states.TryGet(id, out _));
         Assert.False(states.TryGet(stale, out _));
+        Assert.False(states.TryGet(stale.Slot, out _));
         Assert.False(states.TrySetMotion(stale, 30f, 40f, 1f, 1f, out _));
 
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var replacement));

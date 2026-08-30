@@ -79,3 +79,19 @@ Do not infer a behavior profile solely from `AiStyle`. This is intentional dupli
 - no behavior inference for an unprofiled projectile.
 
 Existing projectile behavior/world tests continue to exercise the actual velocity, timer, collision and lifecycle paths through the same production steppers.
+
+## Combat handoff
+
+Projectile simulation and combat mutation now have an explicit handoff instead of sharing packet fields or a monolithic update method:
+
+```mermaid
+flowchart LR
+    Behavior["Behavior family"] --> Motion["World physics / tile collision"]
+    Motion --> Target["Future entity-hit selection"]
+    Target --> Intent["ProjectileNpcHitIntent"]
+    Intent --> Damage["NpcDamageRequest / damage executor"]
+```
+
+`RuntimeProjectileCombatIntentFactory` accepts a selected generation-safe `NpcHandle` and converts a live player-owned projectile into a mutation-free `ProjectileNpcHitIntent`. Its byte owner is resolved through `IRuntimePlayerSlotSnapshotLookup` to the current `PlayerHandle`; a reused or mismatched slot cannot acquire provenance from the replacement player.
+
+Server-owned projectiles fail closed because the current projectile state does not retain an originating `NpcHandle`. The boundary is intentionally not wired to simulation yet: entity hitbox selection, trusted projectile damage derivation, immunity, penetration, crit/variation, knockback application and kill effects still require independent source-backed work. Tile collision remains owned by world motion and cannot directly apply combat damage.
