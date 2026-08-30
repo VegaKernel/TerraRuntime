@@ -68,6 +68,15 @@ def main() -> int:
 
     require_constant(tile_id, "Dirt", 0)
     require_constant(tile_id, "Stone", 1)
+    require_constant(tile_id, "CorruptGrass", 23)
+    require_constant(tile_id, "Ebonstone", 25)
+    require_constant(tile_id, "Sand", 53)
+    require_constant(tile_id, "Mud", 59)
+    require_constant(tile_id, "JungleGrass", 60)
+    require_constant(tile_id, "SnowBlock", 147)
+    require_constant(tile_id, "IceBlock", 161)
+    require_constant(tile_id, "CrimsonGrass", 199)
+    require_constant(tile_id, "Crimstone", 203)
     require_constant(tile_id, "Count", 754)
     require_constant(wall_id, "None", 0)
     require_constant(wall_id, "Stone", 1)
@@ -99,6 +108,7 @@ def main() -> int:
         raise SystemExit("Pinned Main.wallLight definition image changed.")
 
     print("tile_definition_count=754")
+    print("skyblock_biome_tile_ids=23,25,53,59,60,147,161,199,203")
     print("wall_definition_count=367")
     print(f"wall_housing_count={len(housing)}")
     print(f"wall_dungeon_count={len(dungeon)}")
