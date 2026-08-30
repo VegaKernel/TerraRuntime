@@ -73,3 +73,17 @@ Generation работает с неопубликованным `RuntimeWorldGen
 Первая веха реализована финальным overlay. Вторая остаётся задачей доказательства, пока reference-world differential tests её не подтвердят. Ряд уже существующих source-shaped алгоритмов сохраняет правильные pass boundaries и deterministic ownership, но ещё требует method-for-method parity.
 
 `terraria-vanilla-generated-world-acceptance.yml` остаётся executable production gate: сборка runtime, focused world-generation contracts, генерация реального canonical vanilla world, загрузка полученного `.wld` через TerraRuntime и запуск закреплённого официального TerrariaServer 1.4.5.8 с этим миром.
+
+## Production integration evidence
+
+`VanillaWorldGenerationFullIntegrationTests` является внутрипроцессным executable proof, дополняющим нативный acceptance gate:
+
+- генерирует полный `4200x1200` ordinary canonical мир через `BuiltInWorldGeneratorSource`/`SourceBackedVanillaWorldGenerationFinal1458` (114-plan до `Final Cleanup`);
+- проверяет длину плана и то, что каждый tile/wall id, shape и flag находятся в границах `VanillaTileIds`/`VanillaWallIds`/known-flag — тот же инвариант, что и в `Final Cleanup`;
+- убеждается, что сгенерированные сундуки образуют плотные `2x2` объекты `Containers` с уникальными якорями, что side-table переживает fresh `.wld` v326 композицию и что spawn/dungeon/layers/bootstrap находятся в канонических диапазонах;
+- утверждает, что стартовый town NPC `Guide` (`netId 22`, имя `Andrew`) выпускается ровно один раз в `spawn * 16` и делает round-trip через `WorldFileFreshComposer326`;
+- собирает кандидата в валидированный байтовый образ `.wld` (>1 MiB для small миров), перезагружает его через `WorldFileLoader` с лимитами `TerrariaServerHost.CreateServerWorldLoadLimits()` и подтверждает сохранение количества chests/NPC;
+- доказывает детерминированный replay: одинаковый `WorldGenerationRequest` (seed `8675309`, smoke размер `640x240`), захешированный SHA-256, даёт побайтово идентичные образы `.wld`, а другой seed даёт другой хеш;
+- отрабатывает закалку по бюджету и отмене: запрос `8000x5000` отвергается как `GenerationBudgetExceeded`, заранее отменённый `CancellationToken` даёт `Cancelled`, а non-canonical `192x128`/`640x240` fallback остаются валидными и компонуемыми.
+
+Тест сохраняет различие между покрытием pass pipeline и reference-world parity: он гарантирует валидность production path, атомарность сохранения и детерминизм владения, не заявляя побайтово идентичного vanilla reference вывода, который остаётся отслеживаемой вехой parity.

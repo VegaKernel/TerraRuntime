@@ -73,3 +73,17 @@ There are two separate milestones and they must not be conflated:
 The first milestone is implemented by the final overlay. The second remains an evidence task until reference-world differential tests prove it. Several existing source-shaped algorithms intentionally preserve pass boundaries and deterministic ownership while still awaiting method-for-method parity.
 
 `terraria-vanilla-generated-world-acceptance.yml` remains the executable production gate: build the runtime, run focused world-generation contracts, generate a real canonical vanilla world, load the resulting `.wld` through TerraRuntime and boot the pinned official TerrariaServer 1.4.5.8 against it.
+
+## Production integration evidence
+
+`VanillaWorldGenerationFullIntegrationTests` is the in-process executable proof that complements the native acceptance gate:
+
+- generates a full `4200x1200` ordinary canonical world via `BuiltInWorldGeneratorSource`/`SourceBackedVanillaWorldGenerationFinal1458` (114-plan through `Final Cleanup`);
+- verifies plan length and that every tile/wall id, shape and flag is within `VanillaTileIds`/`VanillaWallIds`/known-flag bounds – the same invariant enforced by `Final Cleanup`;
+- checks that generated chests form dense `2x2` `Containers` objects with unique anchors, that the side-table survives fresh `.wld` v326 composition and that spawn/dungeon/layers/bootstrap are within canonical ranges;
+- asserts that the starting `Guide` town NPC (`netId 22`, name `Andrew`) is emitted exactly once at `spawn * 16` and round-trips through `WorldFileFreshComposer326`;
+- composes the candidate to a validated `.wld` byte image ( >1 MiB for small worlds ), reloads it through `WorldFileLoader` with `TerrariaServerHost.CreateServerWorldLoadLimits()` and confirms chest/NPC counts are preserved;
+- proves deterministic replay: the same `WorldGenerationRequest` (seed `8675309`, `640x240` smoke size) hashed with SHA-256 yields byte-identical `.wld` images and that a different seed yields a different hash;
+- exercises budget and cancellation hardening: a `8000x5000` request is rejected as `GenerationBudgetExceeded`, a pre-cancelled `CancellationToken` yields `Cancelled`, and non-canonical `192x128`/`640x240` fallbacks remain valid and composable.
+
+The test retains the distinction between pass-coverage and reference-world parity: it guarantees production-path validity, atomic persistence and deterministic ownership without claiming byte-identical vanilla reference output, which remains tracked as the remaining parity milestone.

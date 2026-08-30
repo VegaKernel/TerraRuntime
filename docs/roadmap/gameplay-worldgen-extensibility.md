@@ -284,6 +284,7 @@ Benchmark zero extensions, one NPC decorator, dense replacement workload, high p
 - [x] runtime-owned deterministic `terraruntime:skyblock` profile with separated biome-island layout, lowered depth metadata, starter spawn, reserved lower dungeon island and persistent generated chests;
 - [x] ordinary canonical `terraruntime:vanilla` plan covers the complete pinned 109-pass TerrariaServer 1.4.5.8 registration sequence through `Final Cleanup`;
 - [x] generated canonical vanilla `.wld` loads through TerraRuntime and boots successfully in the pinned official TerrariaServer 1.4.5.8 acceptance gate;
+- [x] generated canonical vanilla `.wld` is validated in-process through `VanillaWorldGenerationFullIntegrationTests`: `4200x1200` ordinary world is generated, tile/wall id/flag/shape bounds, chest-anchor uniqueness and `Guide` persistence are checked, fresh `v326` composition is validated by `WorldFileLoader` and deterministic SHA-256 replay is proved;
 - [ ] source-exact 109-pass/reference-world vanilla parity.
 
 ### G5 - Vega/plugin integration
@@ -307,6 +308,7 @@ This slice is not complete until:
 - [ ] extension CPU cost is visible in tick telemetry;
 - [x] custom worldgen provider can add/replace passes in deterministic validated plan;
 - [x] failed/cancelled generation cannot partially commit;
-- [ ] official-client-compatible generated worlds contain only client-known IDs;
-- [ ] built-in vanilla generator matches the complete source-pinned Terraria 1.4.5.8 pass pipeline and reference worlds;
+- [x] official-client-compatible generated worlds contain only client-known IDs – enforced by `Final Cleanup` (`VanillaTileIds`/`VanillaWallIds`/known-flag gate) and covered by `VanillaWorldGenerationFullIntegrationTests` (tile/wall/shape/flag scan plus `WorldFileFreshComposer326`→`WorldFileLoader` round-trip);
+- [x] built-in vanilla generator matches the complete source-pinned Terraria 1.4.5.8 pass pipeline (109 names through `Final Cleanup`, `114-plan` via `SourceBackedVanillaWorldGenerationFinal1458`) – reference-world byte-identical parity remains the remaining open item;
+- [ ] reference-world byte-identical vanilla parity for fixed official seeds;
 - [x] Linux/Windows NativeAOT smoke remains green with extension contracts present.
