@@ -48,6 +48,81 @@ internal sealed class RuntimeChestStore
         }
     }
 
+    /// <summary>
+    /// Side-effect-free preflight used by the multi-tile object transaction. Runtime chest slots are stable and
+    /// sparse, so creation chooses the lowest free vanilla slot. The single authoritative writer guarantees the
+    /// following commit observes the same store state unless another gameplay operation deliberately ran first.
+    /// </summary>
+    public bool CanCreateAt(int tileX, int tileY) =>
+        !chestByCoordinates.ContainsKey(GetCoordinateKey(tileX, tileY)) &&
+        FindFirstFreeChestSlot() >= 0;
+
+    /// <summary>
+    /// Creates an empty runtime chest at the normalized metadata anchor. This is not packet handling: callers must
+    /// have already validated object geometry, placement policy and authorization. Item-slot count remains explicit
+    /// because Terraria 1.4.5 permits variable-size chest storage even though ordinary vanilla containers use 40.
+    /// </summary>
+    public bool TryCreate(
+        int tileX,
+        int tileY,
+        int itemSlotCount,
+        out WorldChest chest)
+    {
+        chest = null!;
+        if (itemSlotCount <= 0 || itemSlotCount > VanillaChestStorageFacts1458.MaximumProtocolItemSlots)
+            return false;
+
+        long coordinateKey = GetCoordinateKey(tileX, tileY);
+        if (chestByCoordinates.ContainsKey(coordinateKey))
+            return false;
+
+        short chestId = FindFirstFreeChestSlot();
+        if (chestId < 0)
+            return false;
+
+        var created = new WorldChest(
+            chestId,
+            tileX,
+            tileY,
+            string.Empty,
+            new WorldChestItem[itemSlotCount]);
+        chests[chestId] = created;
+        if (!chestByCoordinates.TryAdd(coordinateKey, chestId))
+        {
+            chests[chestId] = null;
+            return false;
+        }
+
+        chest = created;
+        return true;
+    }
+
+    /// <summary>
+    /// Side-effect-free destroy preflight. Vanilla world objects must not disappear while the runtime chest is open
+    /// or contains items; name text alone is not inventory and therefore does not block an otherwise empty chest.
+    /// </summary>
+    public bool CanRemoveAt(int tileX, int tileY) =>
+        TryGetRemovableChest(tileX, tileY, out _, out _);
+
+    /// <summary>
+    /// Removes an empty, closed chest from both slot and coordinate indexes. Ownership/session arrays are required to
+    /// be clear before deletion so a stale player session can never retain an alias to a subsequently reused slot.
+    /// </summary>
+    public bool TryRemoveAt(int tileX, int tileY, out WorldChest removed)
+    {
+        removed = null!;
+        if (!TryGetRemovableChest(tileX, tileY, out short chestId, out WorldChest chest))
+            return false;
+
+        if (!chestByCoordinates.Remove(GetCoordinateKey(tileX, tileY)))
+            return false;
+
+        chests[chestId] = null;
+        owners[chestId] = default;
+        removed = chest;
+        return true;
+    }
+
     public bool TryOpen(
         ConnectionHandle connection,
         short tileX,
@@ -301,6 +376,56 @@ internal sealed class RuntimeChestStore
     }
 
     public void Clear(ConnectionHandle connection) => TryClose(connection, out _);
+
+    private short FindFirstFreeChestSlot()
+    {
+        for (short chestId = 0; chestId < chests.Length; chestId++)
+        {
+            if (chests[chestId] is null)
+                return chestId;
+        }
+
+        return NoChest;
+    }
+
+    private bool TryGetRemovableChest(
+        int tileX,
+        int tileY,
+        out short chestId,
+        out WorldChest chest)
+    {
+        if (!chestByCoordinates.TryGetValue(GetCoordinateKey(tileX, tileY), out chestId) ||
+            chests[chestId] is not WorldChest existing ||
+            owners[chestId].IsAssigned ||
+            IsChestActiveForAnySession(chestId))
+        {
+            chest = null!;
+            return false;
+        }
+
+        foreach (WorldChestItem item in existing.Items)
+        {
+            if (!item.IsEmpty)
+            {
+                chest = null!;
+                return false;
+            }
+        }
+
+        chest = existing;
+        return true;
+    }
+
+    private bool IsChestActiveForAnySession(short chestId)
+    {
+        for (int playerSlot = 0; playerSlot < activeChests.Length; playerSlot++)
+        {
+            if (activeChests[playerSlot] == chestId && activeConnections[playerSlot].IsAssigned)
+                return true;
+        }
+
+        return false;
+    }
 
     private static long GetCoordinateKey(int x, int y) =>
         ((long)(uint)x << 32) | (uint)y;

@@ -18,7 +18,8 @@ public enum VanillaMultiTileObjectMutationStatus : byte
     MissingSupport = 5,
     InvalidObjectState = 6,
     MetadataRejected = 7,
-    NotObject = 8
+    NotObject = 8,
+    MetadataCommitFailed = 9
 }
 
 /// <summary>
@@ -40,16 +41,17 @@ public readonly record struct VanillaMultiTileObjectMutationDescriptor(
 
 /// <summary>
 /// Metadata side of an authoritative multi-tile transaction. CanCreate/CanRemove are side-effect-free preflights.
-/// CommitCreate/CommitRemove run on the same single-writer thread after every tile/support check has succeeded and
-/// must not throw. This lets capacity, non-empty chest, ownership and tile-entity policy veto the mutation before
-/// any WorldTile is changed without coupling TerraRuntime.World to runtime-specific stores.
+/// TryCommitCreate/TryCommitRemove run on the same single-writer thread after every tile/support check has succeeded,
+/// must not throw and return false if the metadata invariant no longer holds. This lets capacity, non-empty chest,
+/// ownership and tile-entity policy veto the mutation before any WorldTile is changed without coupling
+/// TerraRuntime.World to runtime-specific stores.
 /// </summary>
 public interface IVanillaMultiTileObjectMetadataLifecycle
 {
     bool CanCreate(in VanillaMultiTileObjectMutationDescriptor descriptor);
     bool CanRemove(in VanillaMultiTileObjectMutationDescriptor descriptor);
-    void CommitCreate(in VanillaMultiTileObjectMutationDescriptor descriptor);
-    void CommitRemove(in VanillaMultiTileObjectMutationDescriptor descriptor);
+    bool TryCommitCreate(in VanillaMultiTileObjectMutationDescriptor descriptor);
+    bool TryCommitRemove(in VanillaMultiTileObjectMutationDescriptor descriptor);
 }
 
 public readonly record struct VanillaMultiTileObjectMutationResult(
@@ -130,9 +132,11 @@ public sealed class VanillaMultiTileObjectMutationService
         if (!metadata.CanCreate(in descriptor))
             return Rejected(VanillaMultiTileObjectMutationStatus.MetadataRejected, in descriptor);
 
-        // Metadata commits first after the complete preflight. The contract is non-throwing; following tile writes
-        // are deterministic, in-bounds single-writer operations and therefore cannot fail through gameplay policy.
-        metadata.CommitCreate(in descriptor);
+        // Metadata commits first after the complete preflight. Tile writes below are deterministic in-bounds
+        // single-writer operations; if metadata nevertheless changed since preflight, fail closed before touching tiles.
+        if (!metadata.TryCommitCreate(in descriptor))
+            return Rejected(VanillaMultiTileObjectMutationStatus.MetadataCommitFailed, in descriptor);
+
         int changed = CommitPlacement(in descriptor);
         MarkFrameNeighborhoodDirty(descriptor.Bounds);
         return new VanillaMultiTileObjectMutationResult(
@@ -156,8 +160,9 @@ public sealed class VanillaMultiTileObjectMutationService
             return Rejected(resolved);
         if (!metadata.CanRemove(in descriptor))
             return Rejected(VanillaMultiTileObjectMutationStatus.MetadataRejected, in descriptor);
+        if (!metadata.TryCommitRemove(in descriptor))
+            return Rejected(VanillaMultiTileObjectMutationStatus.MetadataCommitFailed, in descriptor);
 
-        metadata.CommitRemove(in descriptor);
         int changed = CommitBreak(in descriptor);
         MarkFrameNeighborhoodDirty(descriptor.Bounds);
         return new VanillaMultiTileObjectMutationResult(

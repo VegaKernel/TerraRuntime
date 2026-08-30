@@ -9,7 +9,7 @@ flowchart LR
     Command["Semantic PlaceObject / BreakObject"] --> Catalog["VanillaMultiTileObjectCatalog"]
     Catalog --> Preflight["Границы + footprint + опора"]
     Preflight --> MetadataCheck["Preflight metadata lifecycle"]
-    MetadataCheck --> MetadataCommit["Commit metadata"]
+    MetadataCheck --> MetadataCommit["Fail-closed commit metadata"]
     MetadataCommit --> Tiles["Атомарный commit тайлов footprint"]
     Tiles --> Dirty["Network + persistence dirty sections"]
 
@@ -28,9 +28,22 @@ $$
 
 ## Lifecycle метаданных
 
-`IVanillaMultiTileObjectMetadataLifecycle` является protocol-neutral мостом между `TerraRuntime.World` и runtime-owned состоянием сундуков, табличек и tile entity. Для создания и удаления предусмотрены side-effect-free preflight-вызовы и отдельные non-throwing commit-вызовы. Поэтому владелец метаданных может отклонить исчерпание capacity, непустой сундук, активного владельца или другой семантический конфликт до изменения первого `WorldTile`.
+`IVanillaMultiTileObjectMetadataLifecycle` является protocol-neutral мостом между `TerraRuntime.World` и runtime-owned состоянием сундуков, табличек и tile entity. Для создания и удаления предусмотрены side-effect-free preflight-вызовы и отдельные non-throwing `TryCommit*`-вызовы. Поэтому владелец метаданных может отклонить исчерпание capacity, занятый сундук, активного владельца или другой семантический конфликт до изменения первого `WorldTile`. Если состояние всё же изменилось между preflight и commit, commit возвращает `false`, а world transaction завершится с `MetadataCommitFailed`, не меняя footprint.
 
-World-слой намеренно не зависит от `RuntimeChestStore`, `RuntimeSignStore` или будущего runtime-хранилища tile entity. Конкретный adapter выбирается уровнем runtime composition и сетевого протокола.
+World-слой намеренно не зависит от `RuntimeChestStore`, `RuntimeSignStore` или будущего runtime-хранилища tile entity. Конкретный adapter выбирается runtime composition.
+
+### Runtime adapter сундуков
+
+`RuntimeChestObjectMetadataLifecycle` является первым production adapter и связывает container footprint с `RuntimeChestStore` в том же авторитетном writer-потоке:
+
+- создание получает минимальный свободный vanilla chest slot и создаёт обычный пустой контейнер на 40 слотов;
+- повторные координаты или исчерпанная ёмкость chest store отклоняют placement до изменения тайлов;
+- удаление запрещено, пока сундук открыт любой живой игровой сессией;
+- удаление запрещено, пока хотя бы один item slot непустой;
+- имя не является содержимым: даже непустое имя не мешает удалить закрытый пустой сундук;
+- успешное удаление очищает coordinate- и slot-index, после чего освободившийся slot можно использовать снова.
+
+Runtime storage остаётся совместимым с variable-size сундуками protocol 326 до 256 item slots, тогда как обычные созданные vanilla-контейнеры используют source-backed значение 40.
 
 ## Поддержка placement
 
@@ -59,10 +72,11 @@ Break принимает любую клетку согласованного о
 Это world transaction layer, а не заявление о полной parity `TileObjectData`. Отдельной работой остаются:
 
 - отдельный Terraria object-placement network ingress вместо перегрузки packet 17;
+- точная item-to-object authorization для клиентских placement-запросов;
 - точные support/anchor policies для табличек и другой мебели;
 - alternate placement origins и style/substyle mapping;
 - правила размещения в жидкости;
-- конкретные adapters для chest/sign/tile-entity metadata и их replication semantics;
+- конкретные adapters для sign/tile-entity metadata и их replication semantics;
 - object-specific drops и вторичные эффекты.
 
 Поэтому широкий пункт D5 placement/break/framing остаётся открытым до подключения этих production-boundaries и подтверждения CI.

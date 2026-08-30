@@ -212,6 +212,48 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
     }
 
     [Fact]
+    public void Metadata_create_commit_failure_leaves_world_unchanged()
+    {
+        var tiles = CreateSupportedContainerWorld();
+        var metadata = new RecordingMetadataLifecycle { AllowCreateCommit = false };
+        var service = new VanillaMultiTileObjectMutationService(tiles);
+        DrainDirty(tiles);
+
+        VanillaMultiTileObjectMutationResult result = service.TryPlaceAtOrigin(
+            VanillaTileIds.Containers,
+            210,
+            161,
+            metadata);
+
+        Assert.Equal(VanillaMultiTileObjectMutationStatus.MetadataCommitFailed, result.Status);
+        Assert.Equal(1, metadata.CreateCount);
+        Assert.False(tiles.Get(210, 160).IsActive);
+        Assert.False(tiles.Get(211, 161).IsActive);
+        Assert.Equal(0, tiles.DirtySections.DirtyCount);
+        Assert.Equal(0, tiles.PersistenceDirtySections.DirtyCount);
+    }
+
+    [Fact]
+    public void Metadata_remove_commit_failure_leaves_object_unchanged()
+    {
+        var tiles = CreateSupportedContainerWorld();
+        var metadata = new RecordingMetadataLifecycle();
+        var service = new VanillaMultiTileObjectMutationService(tiles);
+        Assert.True(service.TryPlaceAtOrigin(VanillaTileIds.Containers, 210, 161, metadata).Applied);
+        DrainDirty(tiles);
+        metadata.AllowRemoveCommit = false;
+
+        VanillaMultiTileObjectMutationResult result = service.TryBreakAt(211, 161, metadata);
+
+        Assert.Equal(VanillaMultiTileObjectMutationStatus.MetadataCommitFailed, result.Status);
+        Assert.Equal(1, metadata.RemoveCount);
+        Assert.True(tiles.Get(210, 160).IsActive);
+        Assert.True(tiles.Get(211, 161).IsActive);
+        Assert.Equal(0, tiles.DirtySections.DirtyCount);
+        Assert.Equal(0, tiles.PersistenceDirtySections.DirtyCount);
+    }
+
+    [Fact]
     public void Placement_crossing_section_boundary_dirties_both_sections()
     {
         var tiles = new WorldTileStore(new WorldDimensions(400, 300));
@@ -306,6 +348,8 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
     {
         public bool AllowCreate { get; set; } = true;
         public bool AllowRemove { get; set; } = true;
+        public bool AllowCreateCommit { get; set; } = true;
+        public bool AllowRemoveCommit { get; set; } = true;
         public int CreateCount { get; private set; }
         public int RemoveCount { get; private set; }
         public VanillaMultiTileObjectMutationDescriptor LastCreate { get; private set; }
@@ -315,16 +359,18 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
 
         public bool CanRemove(in VanillaMultiTileObjectMutationDescriptor descriptor) => AllowRemove;
 
-        public void CommitCreate(in VanillaMultiTileObjectMutationDescriptor descriptor)
+        public bool TryCommitCreate(in VanillaMultiTileObjectMutationDescriptor descriptor)
         {
             LastCreate = descriptor;
             CreateCount++;
+            return AllowCreateCommit;
         }
 
-        public void CommitRemove(in VanillaMultiTileObjectMutationDescriptor descriptor)
+        public bool TryCommitRemove(in VanillaMultiTileObjectMutationDescriptor descriptor)
         {
             LastRemove = descriptor;
             RemoveCount++;
+            return AllowRemoveCommit;
         }
     }
 }
