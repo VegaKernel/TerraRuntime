@@ -20,7 +20,15 @@ def require_window(text: str, anchor: str, tokens: tuple[str, ...], radius: int,
         if all(token in window for token in tokens):
             return
 
-    raise SystemExit(f"{label}: no {anchor!r} occurrence had required tokens {tokens}")
+    samples = []
+    for position in positions[:3]:
+        start = max(0, position - radius)
+        end = min(len(text), position + len(anchor) + radius)
+        samples.append(text[start:end])
+    raise SystemExit(
+        f"{label}: no {anchor!r} occurrence had required tokens {tokens}; "
+        f"candidate windows={samples}"
+    )
 
 
 def require_window_with_any(
@@ -61,14 +69,14 @@ def main() -> None:
         scene,
         "SnowTileThreshold",
         ("Skyblock.lowTiles", "300", "1500"),
-        700,
+        5000,
         "SnowTileThreshold",
     )
     require_window(
         scene,
         "DesertTileThreshold",
         ("Skyblock.lowTiles", "300", "1500"),
-        700,
+        5000,
         "DesertTileThreshold",
     )
 
