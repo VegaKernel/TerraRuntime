@@ -1,6 +1,5 @@
 name: NPC King Slime AI Reference Probe
 
-# Revision bump intentionally retriggers the source probe after workflow creation.
 on:
   push:
     branches: [main]
@@ -76,6 +75,9 @@ jobs:
           def uniq(values):
               return sorted(set(values))
 
+          def assignments(name):
+              return uniq(re.findall(rf"\b{re.escape(name)}\s*(=|\+=|-=|\*=|/=)\s*([^;]+)", ai))
+
           facts = {
               "selectedPattern": selected,
               "characters": len(ai),
@@ -84,19 +86,23 @@ jobs:
               "targetClosestCalls": ai.count("TargetClosest"),
               "newNpcCalls": ai.count("NewNPC"),
               "netUpdateWrites": len(re.findall(r"\bnetUpdate\s*=\s*true", ai)),
-              "solidCollisionCalls": ai.count("SolidCollision"),
-              "solidTilesCalls": ai.count("SolidTiles"),
               "canHitCalls": ai.count("CanHit"),
               "randomCalls": len(re.findall(r"\b(?:Main\.)?rand\.", ai)),
               "aiComparisons": uniq(re.findall(r"ai\[([0-3])\]\s*(==|!=|<=|>=|<|>)\s*(-?\d+(?:\.\d+)?f?)", ai)),
               "aiAssignments": uniq(re.findall(r"ai\[([0-3])\]\s*(=|\+=|-=|\*=|/=)\s*(-?\d+(?:\.\d+)?f?)", ai)),
-              "velocityXAssignments": uniq(re.findall(r"velocity\.X\s*(=|\+=|-=|\*=|/=)\s*(-?\d+(?:\.\d+)?f?)", ai)),
-              "velocityYAssignments": uniq(re.findall(r"velocity\.Y\s*(=|\+=|-=|\*=|/=)\s*(-?\d+(?:\.\d+)?f?)", ai)),
-              "scaleAssignments": uniq(re.findall(r"\bscale\s*(=|\+=|-=|\*=|/=)\s*([^;]+)", ai)),
-              "widthAssignments": uniq(re.findall(r"\bwidth\s*=\s*([^;]+)", ai)),
-              "heightAssignments": uniq(re.findall(r"\bheight\s*=\s*([^;]+)", ai)),
-              "lifeRatioDivisors": uniq(re.findall(r"life\s*/\s*\(float\)lifeMax\s*([<>]=?)\s*([0-9.]+)f?", ai)),
-              "npcTypeLiteralsNearNewNpc": uniq(re.findall(r"NewNPC\([^;]{0,260}?,\s*(-?\d+)\s*(?:,|\))", ai)),
+              "localAiComparisons": uniq(re.findall(r"localAI\[([0-3])\]\s*(==|!=|<=|>=|<|>)\s*(-?\d+(?:\.\d+)?f?)", ai)),
+              "localAiAssignments": uniq(re.findall(r"localAI\[([0-3])\]\s*(=|\+=|-=|\*=|/=)\s*([^;]+)", ai)),
+              "velocityXAssignments": assignments("velocity.X"),
+              "velocityYAssignments": assignments("velocity.Y"),
+              "scaleAssignments": assignments("scale"),
+              "widthAssignments": assignments("width"),
+              "heightAssignments": assignments("height"),
+              "num9Assignments": assignments("num9"),
+              "kingSlimeHelperCalls": uniq(re.findall(r"\b(AI_015_KingSlime(?:_[A-Za-z0-9_]+)?)\s*\(", ai)),
+              "npcIdNames": uniq(re.findall(r"NPCID\.([A-Za-z0-9_]+)", ai)),
+              "mainModeFlags": uniq(re.findall(r"Main\.(expertMode|masterMode|getGoodWorld|zenithWorld|remixWorld|tenthAnniversaryWorld)", ai)),
+              "distanceConstants": uniq(re.findall(r"(?:Distance|Length)\s*\([^)]*\)\s*([<>]=?)\s*([0-9.]+)f?", ai)),
+              "integerRandomRanges": uniq(re.findall(r"Next\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)", ai)),
           }
 
           print("NPC_KING_SLIME_AI15_FACTS=" + json.dumps(facts, sort_keys=True))
