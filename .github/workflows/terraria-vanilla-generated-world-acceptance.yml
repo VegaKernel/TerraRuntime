@@ -13,6 +13,7 @@ on:
       - 'src/TerraRuntime.World/VanillaMidWorldGenerationPipeline1458.cs'
       - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
       - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
+      - 'tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj'
       - 'tests/TerraRuntime.Tests/RuntimeWorldGenerationExecutorTests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationProvider1458Tests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationPipeline1458Tests.cs'
@@ -47,9 +48,14 @@ jobs:
 
       - name: Run vanilla worldgen unit contracts
         run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          dotnet run
+          --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           -c Release
-          --filter "FullyQualifiedName~RuntimeWorldGenerationExecutorTests|FullyQualifiedName~SourceBackedVanillaWorldGenerationProvider1458Tests|FullyQualifiedName~SourceBackedVanillaWorldGenerationPipeline1458Tests|FullyQualifiedName~SourceBackedVanillaWorldGenerationMidPipeline1458Tests"
+          --
+          -class TerraRuntime.Tests.RuntimeWorldGenerationExecutorTests
+          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationProvider1458Tests
+          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationPipeline1458Tests
+          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationMidPipeline1458Tests
 
       - name: Generate TerraRuntime vanilla world
         shell: bash
