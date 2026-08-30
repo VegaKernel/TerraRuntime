@@ -1,5 +1,6 @@
 name: NPC King Slime AI Reference Probe
 
+# Revision bump intentionally retriggers the source probe after workflow creation.
 on:
   push:
     branches: [main]
