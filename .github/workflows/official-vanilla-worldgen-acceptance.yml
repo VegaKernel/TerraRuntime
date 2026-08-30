@@ -2,7 +2,9 @@ name: Official Vanilla Worldgen Acceptance
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - agent/exact-vanilla-worldgen-1458-20260830
     paths:
       - 'src/TerraRuntime/OfficialVanillaWorldGenerator1458.cs'
       - 'src/TerraRuntime/StartupProgram.cs'
