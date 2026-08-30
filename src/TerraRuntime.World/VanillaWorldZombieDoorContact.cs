@@ -3,23 +3,69 @@ using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.World;
 
+public readonly record struct VanillaGroundFighterDoorEnvironment(
+    bool BloodMoonActive,
+    bool HasTarget,
+    float TargetCenterX,
+    float TargetCenterY)
+{
+    public bool IsValid =>
+        !HasTarget ||
+        (float.IsFinite(TargetCenterX) && float.IsFinite(TargetCenterY));
+}
+
+public readonly record struct VanillaGroundFighterDoorOpeningIntent(
+    int TileX,
+    int TileY,
+    int DirectionX,
+    TileTypeId ClosedType)
+{
+    public bool IsValid =>
+        DirectionX is -1 or 1 &&
+        VanillaTileIds.IsClosedDoor(ClosedType);
+}
+
+public interface IVanillaGroundFighterDoorRandom
+{
+    bool NextGraveyardProgress();
+}
+
+public sealed class SystemVanillaGroundFighterDoorRandom : IVanillaGroundFighterDoorRandom
+{
+    public bool NextGraveyardProgress() => Random.Shared.Next(60) == 0;
+}
+
+public interface IVanillaGroundFighterDoorOpeningSink
+{
+    bool TryOpen(in VanillaGroundFighterDoorOpeningIntent intent);
+}
+
 public readonly record struct VanillaZombieDoorContactResult(
     float VelocityX,
     NpcAiState Ai,
     bool GroundSupported,
     bool TouchingDoor,
-    bool StruckDoor);
+    bool StruckDoor)
+{
+    public bool OpeningProgressAllowed { get; init; }
+
+    public bool TargetInGraveyard { get; init; }
+
+    public VanillaGroundFighterDoorOpeningIntent? OpeningIntent { get; init; }
+}
 
 /// <summary>
-/// Source-backed ordinary type-3, non-Blood-Moon door-contact slice from TerrariaServer 1.4.5.8
-/// NPC.AI_003_Fighters. Plain Zombies can build the 60-tick contact timer and recoil against closed
-/// doors/tall gates, but the ordinary non-Blood-Moon branch resets ai[1] before each strike and therefore
-/// never reaches the opening threshold. Actual world mutation belongs to future Blood Moon/graveyard state.
+/// Source-backed ordinary type-3 door-pressure slice from TerrariaServer 1.4.5.8 NPC.AI_003_Fighters.
+/// Closed doors and tall gates are hit every 60 contact ticks. Ordinary fighters reset accumulated opening
+/// progress outside a Blood Moon; a functional Graveyard can admit one progress step on the source-shaped
+/// one-in-sixty roll. Crossing ten progress points produces a typed opening intent. World frame mutation is
+/// deliberately owned by a separate sink because WorldGen.OpenDoor/ShiftTallGate geometry is not an AI concern.
 /// </summary>
 public static class VanillaWorldZombieDoorContact
 {
     private const float TileSize = 16f;
     private const float StrikeInterval = 60f;
+    private const float OpeningThreshold = 10f;
     private const float DoorStrikeProgress = 5f;
     private const float TallGateStrikeProgress = 2f;
 
@@ -32,7 +78,32 @@ public static class VanillaWorldZombieDoorContact
         int width,
         int height,
         int directionX,
-        NpcAiState ai)
+        NpcAiState ai) =>
+        Resolve(
+            tiles,
+            positionX,
+            positionY,
+            velocityX,
+            velocityY,
+            width,
+            height,
+            directionX,
+            ai,
+            default,
+            doorRandom: null);
+
+    public static VanillaZombieDoorContactResult Resolve(
+        WorldTileStore tiles,
+        float positionX,
+        float positionY,
+        float velocityX,
+        float velocityY,
+        int width,
+        int height,
+        int directionX,
+        NpcAiState ai,
+        VanillaGroundFighterDoorEnvironment environment,
+        IVanillaGroundFighterDoorRandom? doorRandom)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
@@ -42,7 +113,8 @@ public static class VanillaWorldZombieDoorContact
             !float.IsFinite(velocityX) ||
             !float.IsFinite(velocityY) ||
             directionX is < -1 or > 1 ||
-            !ai.IsFinite)
+            !ai.IsFinite ||
+            !environment.IsValid)
         {
             throw new ArgumentOutOfRangeException(nameof(positionX));
         }
@@ -62,7 +134,8 @@ public static class VanillaWorldZombieDoorContact
         if (!InProbeBounds(tiles, tileX, tileY))
             return ResetDoorProgress(velocityX, ai, groundSupported: true);
 
-        WorldTile door = tiles.Get(tileX, tileY - 1);
+        int doorY = tileY - 1;
+        WorldTile door = tiles.Get(tileX, doorY);
         bool touchingDoor = IsActiveDoor(in door);
         if (!touchingDoor)
             return ResetDoorProgress(velocityX, ai, groundSupported: true);
@@ -70,17 +143,47 @@ public static class VanillaWorldZombieDoorContact
         ai2++;
         ai3 = 0f;
         bool struckDoor = false;
+        bool openingProgressAllowed = false;
+        bool targetInGraveyard = false;
+        VanillaGroundFighterDoorOpeningIntent? openingIntent = null;
         if (ai2 >= StrikeInterval)
         {
-            // Plain type 3 outside Blood Moon/graveyard/unbreakable-wall exceptions takes flag28=true:
-            // ai[1] is reset before applying the per-object strike progress, so it cannot reach 10.
-            ai1 = 0f;
+            openingProgressAllowed = environment.BloodMoonActive;
+            if (!openingProgressAllowed && environment.HasTarget)
+            {
+                targetInGraveyard = VanillaWorldGraveyardScene.IsFunctionalAt(
+                    tiles,
+                    environment.TargetCenterX,
+                    environment.TargetCenterY);
+                if (targetInGraveyard)
+                {
+                    IVanillaGroundFighterDoorRandom random =
+                        doorRandom ?? SharedDoorRandom.Instance;
+                    openingProgressAllowed = random.NextGraveyardProgress();
+                }
+            }
+
+            // Outside an admitted opening condition, ordinary AI_003 resets ai[1] immediately before applying
+            // this contact's progress. That is why normal daytime/nighttime contact can recoil forever without
+            // ever reaching the opening threshold.
+            if (!openingProgressAllowed)
+                ai1 = 0f;
+
             velocityX = 0.5f * -directionX;
             ai1 += door.TileType == VanillaTileIds.TallGateClosed
                 ? TallGateStrikeProgress
                 : DoorStrikeProgress;
             ai2 = 0f;
             struckDoor = true;
+
+            if (openingProgressAllowed && ai1 >= OpeningThreshold)
+            {
+                openingIntent = new VanillaGroundFighterDoorOpeningIntent(
+                    tileX,
+                    doorY,
+                    directionX,
+                    door.TileType);
+            }
         }
 
         return new VanillaZombieDoorContactResult(
@@ -88,7 +191,12 @@ public static class VanillaWorldZombieDoorContact
             new NpcAiState(ai.Ai0, ai1, ai2, ai3),
             GroundSupported: true,
             TouchingDoor: true,
-            StruckDoor: struckDoor);
+            StruckDoor: struckDoor)
+        {
+            OpeningProgressAllowed = openingProgressAllowed,
+            TargetInGraveyard = targetInGraveyard,
+            OpeningIntent = openingIntent
+        };
     }
 
     private static VanillaZombieDoorContactResult ResetDoorProgress(
@@ -154,7 +262,7 @@ public static class VanillaWorldZombieDoorContact
         WorldTile tile = tiles.Get(x, y);
         return tile.IsActive &&
                (tile.Flags & WorldTileFlags.Inactive) == 0 &&
-               !TerraRuntime.Contracts.Gameplay.VanillaTileIds.IsPlatform(tile.TileType) &&
+               !VanillaTileIds.IsPlatform(tile.TileType) &&
                (VanillaTileCollisionCatalog.IsSolid(tile.TileType) ||
                 VanillaTileCollisionCatalog.IsSolidTop(tile.TileType));
     }
@@ -166,4 +274,11 @@ public static class VanillaWorldZombieDoorContact
     private static bool InProbeBounds(WorldTileStore tiles, int x, int y) =>
         x >= 0 && x < tiles.Dimensions.WidthTiles &&
         y >= 3 && y + 1 < tiles.Dimensions.HeightTiles;
+
+    private sealed class SharedDoorRandom : IVanillaGroundFighterDoorRandom
+    {
+        public static SharedDoorRandom Instance { get; } = new();
+
+        public bool NextGraveyardProgress() => Random.Shared.Next(60) == 0;
+    }
 }

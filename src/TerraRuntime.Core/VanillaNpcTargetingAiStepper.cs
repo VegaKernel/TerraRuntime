@@ -54,6 +54,9 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
         _context.SetCandidates(candidates);
 
+    public bool TryGetCandidate(byte slot, out VanillaNpcTargetCandidate candidate) =>
+        _context.TryFindCandidate(slot, out candidate);
+
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType))

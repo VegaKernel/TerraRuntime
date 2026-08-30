@@ -123,10 +123,12 @@ public static class VanillaTileIds
     public static readonly TileTypeId Stone = new(1);
     public static readonly TileTypeId Grass = new(2);
     public static readonly TileTypeId ClosedDoor = new(10);
+    public static readonly TileTypeId OpenDoor = new(11);
     public static readonly TileTypeId Platforms = new(19);
     public static readonly TileTypeId Containers = new(21);
     public static readonly TileTypeId CorruptGrass = new(23);
     public static readonly TileTypeId Ebonstone = new(25);
+    public static readonly TileTypeId Sunflower = new(27);
     public static readonly TileTypeId Sand = new(53);
     public static readonly TileTypeId Signs = new(55);
     public static readonly TileTypeId Mud = new(59);
@@ -139,6 +141,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId Crimstone = new(203);
     public static readonly TileTypeId TargetDummy = new(378);
     public static readonly TileTypeId TallGateClosed = new(388);
+    public static readonly TileTypeId TallGateOpen = new(389);
     public static readonly TileTypeId ItemFrame = new(395);
     public static readonly TileTypeId AnnouncementBox = new(425);
     public static readonly TileTypeId TeamBlockRedPlatform = new(427);

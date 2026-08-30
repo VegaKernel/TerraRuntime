@@ -2,13 +2,19 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
+internal interface IVanillaNpcWorldEventState
+{
+    bool BloodMoonActive { get; }
+}
+
 /// <summary>
 /// Authoritative ordinary-world time slice backed by TerrariaServer 1.4.5.8 Main.UpdateTime.
 /// NPCs consume the current state before this clock advances each game tick, matching vanilla's
 /// DoUpdateInWorld ordering where UpdateWorld_NPCs runs before UpdateWorld_Time.
-/// Event start/stop side effects, sleeping-player acceleration and fast-forward controls are separate concerns.
+/// The persisted Blood Moon flag is carried alongside the clock so NPC event-sensitive AI observes the same
+/// pre-time-update event state; dynamic event-start selection remains a separate world-event concern.
 /// </summary>
-internal sealed class RuntimeWorldClock
+internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 {
     public const double DayLength = 54_000d;
     public const double NightLength = 32_400d;
@@ -22,7 +28,8 @@ internal sealed class RuntimeWorldClock
         VanillaMoonPhase moonPhase,
         double slimeRainTime,
         int dayRate,
-        IRuntimeWorldClockObserver? observer = null)
+        IRuntimeWorldClockObserver? observer = null,
+        bool bloodMoonActive = false)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -36,6 +43,7 @@ internal sealed class RuntimeWorldClock
         DayTime = dayTime;
         MoonPhase = moonPhase;
         SlimeRainTime = slimeRainTime;
+        BloodMoonActive = bloodMoonActive && !dayTime;
         _dayRate = dayRate;
         _observer = observer;
         PublishCommittedState();
@@ -50,6 +58,8 @@ internal sealed class RuntimeWorldClock
     public double SlimeRainTime { get; private set; }
 
     public bool SlimeRainActive => SlimeRainTime > 0d;
+
+    public bool BloodMoonActive { get; private set; }
 
     public int DayRate => _dayRate;
 
@@ -72,7 +82,8 @@ internal sealed class RuntimeWorldClock
             moonPhase,
             metadata.SlimeRainTime,
             dayRate,
-            observer);
+            observer,
+            metadata.BloodMoon);
     }
 
     public void SetDayRate(int dayRate)
@@ -80,6 +91,11 @@ internal sealed class RuntimeWorldClock
         ArgumentOutOfRangeException.ThrowIfNegative(dayRate);
         _dayRate = dayRate;
         PublishCommittedState();
+    }
+
+    public void SetBloodMoonActive(bool active)
+    {
+        BloodMoonActive = active && !DayTime;
     }
 
     public void Tick()
@@ -109,6 +125,7 @@ internal sealed class RuntimeWorldClock
             {
                 Time = 0d;
                 DayTime = true;
+                BloodMoonActive = false;
                 MoonPhase = VanillaMoonPhases.Next(MoonPhase);
             }
         }

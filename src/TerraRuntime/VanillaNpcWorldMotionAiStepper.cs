@@ -24,12 +24,19 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
     private readonly INpcAiStateStepper inner;
     private readonly WorldTileStore tiles;
     private readonly double worldSurfaceTiles;
+    private readonly VanillaNpcTargetingAiStepper? targeting;
+    private readonly IVanillaNpcWorldEventState? worldEvents;
+    private readonly IVanillaGroundFighterDoorRandom? doorRandom;
+    private readonly IVanillaGroundFighterDoorOpeningSink? doorOpeningSink;
 
     public VanillaNpcWorldMotionAiStepper(INpcAiStateStepper inner, WorldTileStore tiles)
         : this(
             inner,
             tiles,
-            tiles?.WorldSurfaceTiles ?? Math.Max(1d, tiles?.Dimensions.HeightTiles / 3d ?? 1d))
+            tiles?.WorldSurfaceTiles ?? Math.Max(1d, tiles?.Dimensions.HeightTiles / 3d ?? 1d),
+            worldEvents: null,
+            doorRandom: null,
+            doorOpeningSink: null)
     {
     }
 
@@ -37,6 +44,23 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
         INpcAiStateStepper inner,
         WorldTileStore tiles,
         double worldSurfaceTiles)
+        : this(
+            inner,
+            tiles,
+            worldSurfaceTiles,
+            worldEvents: null,
+            doorRandom: null,
+            doorOpeningSink: null)
+    {
+    }
+
+    internal VanillaNpcWorldMotionAiStepper(
+        INpcAiStateStepper inner,
+        WorldTileStore tiles,
+        double worldSurfaceTiles,
+        IVanillaNpcWorldEventState? worldEvents,
+        IVanillaGroundFighterDoorRandom? doorRandom = null,
+        IVanillaGroundFighterDoorOpeningSink? doorOpeningSink = null)
     {
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
@@ -44,9 +68,11 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
             throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
 
         this.worldSurfaceTiles = worldSurfaceTiles;
+        this.worldEvents = worldEvents;
+        this.doorRandom = doorRandom;
+        this.doorOpeningSink = doorOpeningSink;
 
-        VanillaNpcTargetingAiStepper? targeting =
-            NpcAiStateStepperComposition.FindCapability<VanillaNpcTargetingAiStepper>(inner);
+        targeting = NpcAiStateStepperComposition.FindCapability<VanillaNpcTargetingAiStepper>(inner);
         if (targeting is not null)
         {
             targeting.EnableBlueSlimeMotion(worldSurfaceTiles);
@@ -119,6 +145,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
             if (stepUp.Stepped)
                 aiState = aiState with { PositionY = stepUp.PositionY };
 
+            VanillaGroundFighterDoorEnvironment doorEnvironment = ResolveDoorEnvironment(in aiState);
             VanillaZombieDoorContactResult doorContact = VanillaWorldZombieDoorContact.Resolve(
                 tiles,
                 aiState.PositionX,
@@ -128,7 +155,22 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
                 hitboxWidth,
                 hitboxHeight,
                 simulation.DirectionX,
-                aiState.Ai);
+                aiState.Ai,
+                doorEnvironment,
+                doorRandom);
+            if (doorContact.OpeningIntent is { } openingIntent &&
+                doorOpeningSink?.TryOpen(in openingIntent) == true)
+            {
+                doorContact = doorContact with
+                {
+                    Ai = new NpcAiState(
+                        doorContact.Ai.Ai0,
+                        0f,
+                        doorContact.Ai.Ai2,
+                        doorContact.Ai.Ai3)
+                };
+            }
+
             velocityX = doorContact.VelocityX;
             aiState = aiState with
             {
@@ -303,6 +345,28 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
             }
         };
         return true;
+    }
+
+    private VanillaGroundFighterDoorEnvironment ResolveDoorEnvironment(in NpcStateUpdate aiState)
+    {
+        bool bloodMoonActive = worldEvents?.BloodMoonActive == true;
+        if (aiState.Target < byte.MaxValue &&
+            targeting is not null &&
+            targeting.TryGetCandidate(checked((byte)aiState.Target), out VanillaNpcTargetCandidate target) &&
+            target.Active && !target.Dead && !target.Ghost)
+        {
+            return new VanillaGroundFighterDoorEnvironment(
+                bloodMoonActive,
+                HasTarget: true,
+                target.CenterX,
+                target.CenterY);
+        }
+
+        return new VanillaGroundFighterDoorEnvironment(
+            bloodMoonActive,
+            HasTarget: false,
+            TargetCenterX: 0f,
+            TargetCenterY: 0f);
     }
 
     private static NpcLiquidContactKind MapLiquid(WorldLiquidKind kind) => kind switch

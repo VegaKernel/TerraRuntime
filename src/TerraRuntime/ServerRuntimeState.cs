@@ -132,7 +132,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 var worldMotion = new VanillaNpcWorldMotionAiStepper(
                     actorIntent,
                     worldTiles,
-                    worldSurfaceTiles);
+                    worldSurfaceTiles,
+                    _worldClock);
                 _vanillaNpcCheckActiveAiStepper = new VanillaNpcCheckActiveAiStepper(worldMotion);
                 _npcAiStepper = _vanillaNpcCheckActiveAiStepper;
             }

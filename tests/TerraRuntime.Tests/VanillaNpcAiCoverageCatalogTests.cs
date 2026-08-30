@@ -34,7 +34,14 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaNpcIds.Skeleton,
             out VanillaNpcAiCoverage skeleton));
         Assert.True(skeleton.Has(VanillaNpcAiCapability.CheckActiveSlice));
+        Assert.True(skeleton.Has(VanillaNpcAiCapability.GroundFighterTraversalSlice));
+        Assert.True(skeleton.Has(VanillaNpcAiCapability.GroundFighterDoorPressureSlice));
         Assert.False(skeleton.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.Zombie,
+            out VanillaNpcAiCoverage zombie));
+        Assert.True(zombie.Has(VanillaNpcAiCapability.GroundFighterDoorPressureSlice));
     }
 
     [Fact]

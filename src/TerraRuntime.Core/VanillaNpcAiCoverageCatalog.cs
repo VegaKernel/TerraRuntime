@@ -14,7 +14,8 @@ public enum VanillaNpcAiCapability : ushort
     ChildSpawnSlice = 1 << 5,
     TeleportEnvironmentSlice = 1 << 6,
     PacketSync = 1 << 7,
-    GroundFighterTraversalSlice = 1 << 8
+    GroundFighterTraversalSlice = 1 << 8,
+    GroundFighterDoorPressureSlice = 1 << 9
 }
 
 /// <summary>
@@ -48,7 +49,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcIds.Zombie,
             OrdinaryCore |
             VanillaNpcAiCapability.CheckActiveSlice |
-            VanillaNpcAiCapability.GroundFighterTraversalSlice),
+            VanillaNpcAiCapability.GroundFighterTraversalSlice |
+            VanillaNpcAiCapability.GroundFighterDoorPressureSlice),
         Partial(
             VanillaNpcIds.EyeOfCthulhu,
             OrdinaryCore | VanillaNpcAiCapability.ChildSpawnSlice),
@@ -57,7 +59,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcIds.Skeleton,
             OrdinaryCore |
             VanillaNpcAiCapability.CheckActiveSlice |
-            VanillaNpcAiCapability.GroundFighterTraversalSlice),
+            VanillaNpcAiCapability.GroundFighterTraversalSlice |
+            VanillaNpcAiCapability.GroundFighterDoorPressureSlice),
         Partial(
             VanillaNpcIds.KingSlime,
             OrdinaryCore |
