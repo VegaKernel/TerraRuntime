@@ -7,6 +7,8 @@ on:
       - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationContracts.cs'
       - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationPassContracts.cs'
       - 'src/TerraRuntime.Core/RuntimeWorldGenerationExecutor.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
+      - 'src/TerraRuntime.World/WorldFileFreshComposer326.cs'
       - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrap1458.cs'
       - 'src/TerraRuntime.World/SourceBackedVanillaWorldGenerationProvider1458.cs'
       - 'src/TerraRuntime.World/VanillaEarlyWorldGenerationPipeline1458.cs'
@@ -14,6 +16,8 @@ on:
       - 'src/TerraRuntime.World/VanillaDungeonWorldGenerationPipeline1458.cs'
       - 'src/TerraRuntime.World/VanillaJungleStructureWorldGenerationPipeline1458.cs'
       - 'src/TerraRuntime.World/VanillaPostSettleWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaChestPlacementWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime/RuntimeWorldCreationPersistencePipeline.cs'
       - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
       - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
       - 'tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj'
@@ -24,6 +28,7 @@ on:
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationDungeonPipeline1458Tests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationJungleStructures1458Tests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationPostSettle1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationChestPlacement1458Tests.cs'
       - 'tests/TerraRuntime.Tests/NpcAiProductionCompositionTests.cs'
       - '.github/workflows/terraria-vanilla-generated-world-acceptance.yml'
   workflow_dispatch:
@@ -65,6 +70,7 @@ jobs:
           -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationDungeonPipeline1458Tests
           -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationJungleStructures1458Tests
           -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationPostSettle1458Tests
+          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationChestPlacement1458Tests
 
       - name: Generate TerraRuntime vanilla world
         shell: bash

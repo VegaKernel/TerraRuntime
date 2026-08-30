@@ -30,9 +30,9 @@ public readonly record struct WorldFileFreshCompose326Diagnostic(
 }
 
 /// <summary>
-/// Composes a complete current-format Terraria world from a finalized generated tile candidate. Fresh generation
-/// currently owns tiles plus the semantic header anchors; object/NPC/bestiary state therefore starts empty and is
-/// emitted through the same canonical section encoders used by normal persistence.
+/// Composes a complete current-format Terraria world from a finalized generated candidate. Fresh generation owns the
+/// tile store, semantic header anchors and any generated chest side-table records. Other object/NPC/bestiary sections
+/// still start empty and are emitted through the same canonical encoders used by normal persistence.
 ///
 /// The completed byte image is fed back through <see cref="WorldFileLoader"/> before it can escape this method.
 /// Callers never receive a partially encoded or structurally invalid .wld candidate.
@@ -45,6 +45,27 @@ public static class WorldFileFreshComposer326
         WorldFileHeader header,
         RuntimeWorldGenerationMetadataSnapshot generation,
         WorldTileStore tiles,
+        byte gameMode,
+        bool crimson,
+        long creationTimeBinary,
+        long lastPlayedBinary,
+        out byte[] file) =>
+        TryCompose(
+            header,
+            generation,
+            tiles,
+            ReadOnlySpan<WorldChest>.Empty,
+            gameMode,
+            crimson,
+            creationTimeBinary,
+            lastPlayedBinary,
+            out file);
+
+    public static WorldFileFreshCompose326Diagnostic TryCompose(
+        WorldFileHeader header,
+        RuntimeWorldGenerationMetadataSnapshot generation,
+        WorldTileStore tiles,
+        ReadOnlySpan<WorldChest> chests,
         byte gameMode,
         bool crimson,
         long creationTimeBinary,
@@ -100,7 +121,7 @@ public static class WorldFileFreshComposer326
         if (!TryCapturePointer(stream, pointers, 2))
             return Fail(WorldFileFreshCompose326Result.FileTooLarge);
         WorldFileChestEncodeResult chestResult = WorldFileChestEncoder.TryEncode(
-            ReadOnlySpan<WorldChest>.Empty,
+            chests,
             header.Dimensions,
             stream,
             out _);
@@ -206,9 +227,9 @@ public static class WorldFileFreshComposer326
         }
 
         file = stream.ToArray();
-        WorldFileLoadLimits validationLimits = CreateValidationLimits(tiles.Count);
+        WorldFileLoadLimits validationLimits = CreateValidationLimits(tiles.Count, chests);
         WorldFileLoadDiagnostic validation = WorldFileLoader.TryLoad(file, validationLimits, out WorldFileData? loaded);
-        if (!validation.IsLoaded || loaded is null)
+        if (!validation.IsLoaded || loaded is null || loaded.Chests.Length != chests.Length)
         {
             file = Array.Empty<byte>();
             return new WorldFileFreshCompose326Diagnostic(
@@ -221,11 +242,23 @@ public static class WorldFileFreshComposer326
             Validation: validation);
     }
 
-    private static WorldFileLoadLimits CreateValidationLimits(int tileCount) =>
-        new(
+    private static WorldFileLoadLimits CreateValidationLimits(
+        int tileCount,
+        ReadOnlySpan<WorldChest> chests)
+    {
+        int maxItemsPerChest = 0;
+        long totalChestItems = 0;
+        foreach (WorldChest chest in chests)
+        {
+            int itemCount = chest?.Items?.Length ?? 0;
+            maxItemsPerChest = Math.Max(maxItemsPerChest, itemCount);
+            totalChestItems = checked(totalChestItems + itemCount);
+        }
+
+        return new WorldFileLoadLimits(
             MaxTileCount: tileCount,
-            MaxItemsPerChest: 0,
-            MaxTotalChestItems: 0,
+            MaxItemsPerChest: maxItemsPerChest,
+            MaxTotalChestItems: totalChestItems,
             MaxTextBytesPerSign: 0,
             MaxTotalSignTextBytes: 0,
             Npcs: new WorldFileNpcDecodeOptions(0, 0, 0, 0, 0, 0),
@@ -240,6 +273,7 @@ public static class WorldFileFreshComposer326
                 MaxBannerEntries: 0,
                 MaxPartyNpcEntries: 0,
                 MaxManifestBytes: 0));
+    }
 
     private static bool TryCapturePointer(MemoryStream stream, int[] pointers, int index)
     {

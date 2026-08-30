@@ -5,6 +5,8 @@ namespace TerraRuntime.World;
 /// <summary>
 /// Isolated mutable tile workspace for a candidate generated world. Writes bypass live-world dirty tracking because
 /// the store is not authoritative or network-visible until the caller explicitly accepts the completed candidate.
+/// Generated object metadata is accumulated beside the tile store so fresh .wld composition can publish tiles and
+/// their side tables atomically instead of manufacturing orphan frame-important objects.
 /// </summary>
 public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace, IWorldGenerationMetadataWorkspace
 {
@@ -21,6 +23,8 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
         WorldGenerationTileFlags.FullbrightBlock |
         WorldGenerationTileFlags.FullbrightWall;
 
+    private const int VanillaChestItemSlots = 40;
+    private readonly List<WorldChest> generatedChests = [];
     private WorldGenerationPoint? spawn;
     private WorldGenerationPoint? dungeon;
     private WorldGenerationLayers? layers;
@@ -37,6 +41,7 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
     public WorldTileStore TileStore { get; }
     public int WidthTiles => Dimensions.WidthTiles;
     public int HeightTiles => Dimensions.HeightTiles;
+    public int GeneratedChestCount => generatedChests.Count;
 
     internal VanillaWorldSeedProfile1458 VanillaSeedProfile => vanillaSeedProfile;
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
@@ -44,6 +49,63 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
     internal void SetVanillaSeedProfile(VanillaWorldSeedProfile1458 value) => vanillaSeedProfile = value;
     internal void SetVanillaBootstrapState(VanillaWorldGenerationBootstrapState1458 value) =>
         vanillaBootstrapState = value ?? throw new ArgumentNullException(nameof(value));
+
+    /// <summary>
+    /// Registers one generated chest after its 2x2 tile object has been written. Slot identity is assigned densely in
+    /// generation order because Terraria persists no chest slot id; file order becomes runtime/network slot identity.
+    /// </summary>
+    internal bool TryAddGeneratedChest(int x, int y, string name, ReadOnlySpan<WorldChestItem> items)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        if (generatedChests.Count >= VanillaWorldFormat326.MaximumChestSlots ||
+            items.Length > VanillaChestItemSlots ||
+            (uint)x >= (uint)(WidthTiles - 1) ||
+            (uint)y >= (uint)(HeightTiles - 1))
+        {
+            return false;
+        }
+
+        WorldTile anchor = TileStore.Get(x, y);
+        if (!VanillaTileObjectAnchorCatalog.MatchesChestAnchor(in anchor))
+            return false;
+
+        foreach (WorldChest chest in generatedChests)
+        {
+            if (chest.X == x && chest.Y == y)
+                return false;
+        }
+
+        WorldChestItem[] detachedItems = items.ToArray();
+        foreach (WorldChestItem item in detachedItems)
+        {
+            if (item.Stack < 0 || item.Stack > short.MaxValue ||
+                (!item.IsEmpty && !item.HasValidItemType) ||
+                (item.IsEmpty && (item.ItemType != 0 || item.Prefix != 0)))
+            {
+                return false;
+            }
+        }
+
+        generatedChests.Add(new WorldChest(
+            checked((short)generatedChests.Count),
+            x,
+            y,
+            name,
+            detachedItems));
+        return true;
+    }
+
+    /// <summary>Returns a detached dense chest snapshot suitable for persistence.</summary>
+    public WorldChest[] CaptureGeneratedChests()
+    {
+        var snapshot = new WorldChest[generatedChests.Count];
+        for (int i = 0; i < generatedChests.Count; i++)
+        {
+            WorldChest source = generatedChests[i];
+            snapshot[i] = source with { Items = source.Items.ToArray() };
+        }
+        return snapshot;
+    }
 
     public bool TryGetTile(int x, int y, out WorldGenerationTile tile)
     {
