@@ -24,6 +24,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
                 };
             }
 
+            simulation = simulation with { Scale = definition.Scale };
+
             if (definition.NoGravityAtSpawn || definition.NoTileCollideAtSpawn)
             {
                 simulation = simulation with
@@ -49,6 +51,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
     {
         NpcSimulationState simulation = update.Simulation;
         bool sameType = update.Type == previous.Type;
+        VanillaNpcDefinition definition = default;
+        bool hasDefinition = TryGetDefinition(update.Type, out definition);
 
         if (simulation.LifeMax == 0)
         {
@@ -60,7 +64,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
                     LifeMax = previous.Simulation.LifeMax
                 };
             }
-            else if (TryGetDefinition(update.Type, out VanillaNpcDefinition definition))
+            else if (hasDefinition)
             {
                 simulation = simulation with
                 {
@@ -69,6 +73,9 @@ internal static class RuntimeNpcStateOwnershipPolicy
                 };
             }
         }
+
+        if (!sameType && hasDefinition)
+            simulation = simulation with { Scale = definition.Scale };
 
         if (simulation.TimeLeft < 0)
         {

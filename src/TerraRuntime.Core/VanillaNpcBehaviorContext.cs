@@ -61,11 +61,14 @@ internal sealed class VanillaNpcBehaviorContext
         out VanillaBlueSlimeTargetRefresh target)
     {
         target = default;
-        if (_candidateCount == 0)
+        if (_candidateCount == 0 ||
+            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
             return false;
+        }
 
-        float npcCenterX = npc.PositionX + definition.Width * 0.5f;
-        float npcCenterY = npc.PositionY + definition.Height * 0.5f;
+        float npcCenterX = npc.PositionX + hitbox.Width * 0.5f;
+        float npcCenterY = npc.PositionY + hitbox.Height * 0.5f;
         ReadOnlySpan<VanillaNpcTargetCandidate> candidates = _candidates.AsSpan(0, _candidateCount);
         if (!VanillaNpcTargeting.TrySelectClosestPlayerTarget(
                 npcCenterX,
@@ -90,7 +93,8 @@ internal sealed class VanillaNpcBehaviorContext
     {
         if (npc.Target >= byte.MaxValue ||
             !TryFindCandidate((byte)npc.Target, out VanillaNpcTargetCandidate candidate) ||
-            !candidate.Active || candidate.Dead || candidate.Ghost)
+            !candidate.Active || candidate.Dead || candidate.Ghost ||
+            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
         {
             return false;
         }
@@ -98,9 +102,9 @@ internal sealed class VanillaNpcBehaviorContext
         float playerLeft = candidate.CenterX - BasePlayerWidth * 0.5f;
         float playerTop = candidate.CenterY - BasePlayerHeight * 0.5f;
         return npc.PositionX < playerLeft + BasePlayerWidth &&
-               npc.PositionX + definition.Width > playerLeft &&
+               npc.PositionX + hitbox.Width > playerLeft &&
                npc.PositionY < playerTop + BasePlayerHeight &&
-               npc.PositionY + definition.Height > playerTop;
+               npc.PositionY + hitbox.Height > playerTop;
     }
 
     public bool TryFindCandidate(byte slot, out VanillaNpcTargetCandidate candidate)

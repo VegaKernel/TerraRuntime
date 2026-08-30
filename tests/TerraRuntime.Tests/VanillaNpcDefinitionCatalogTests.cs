@@ -6,33 +6,37 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaNpcDefinitionCatalogTests
 {
     [Theory]
-    [InlineData(1, 1, 24, 18, 7, 2, 25, 1f, false, false)]
-    [InlineData(2, 2, 30, 32, 18, 2, 60, 0.8f, false, false)]
-    [InlineData(3, 3, 18, 40, 14, 6, 45, 0.5f, false, false)]
-    [InlineData(4, 4, 100, 110, 15, 12, 2800, 0f, true, true)]
-    [InlineData(5, 5, 20, 20, 12, 0, 8, 1f, true, true)]
+    [InlineData(1, 1, 24, 18, 7, 2, 25, 1f, 1f, false, false)]
+    [InlineData(2, 2, 30, 32, 18, 2, 60, 0.8f, 1f, false, false)]
+    [InlineData(3, 3, 18, 40, 14, 6, 45, 0.5f, 1f, false, false)]
+    [InlineData(4, 4, 100, 110, 15, 12, 2800, 0f, 1f, true, true)]
+    [InlineData(5, 5, 20, 20, 12, 0, 8, 1f, 1f, true, true)]
+    [InlineData(50, 15, 98, 92, 40, 10, 2000, 0f, 1.25f, false, false)]
     public void Verified_initial_definitions_match_official_1458_defaults(
         int type,
         int aiStyle,
-        int width,
-        int height,
+        int baseWidth,
+        int baseHeight,
         int damage,
         int defense,
         int lifeMax,
         float knockBackResist,
+        float scale,
         bool noGravityAtSpawn,
         bool noTileCollideAtSpawn)
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition));
         Assert.Equal(type, definition.Type.Value);
         Assert.Equal(aiStyle, definition.AiStyle.Value);
-        Assert.Equal(width, definition.Width);
-        Assert.Equal(height, definition.Height);
+        Assert.Equal(baseWidth, definition.BaseWidth);
+        Assert.Equal(baseHeight, definition.BaseHeight);
         Assert.Equal(damage, definition.Damage);
         Assert.Equal(defense, definition.Defense);
         Assert.Equal(lifeMax, definition.LifeMax);
         Assert.Equal(knockBackResist, definition.KnockBackResist);
-        Assert.Equal(1f, definition.Scale);
+        Assert.Equal(scale, definition.Scale);
+        Assert.Equal((int)Math.Floor(baseWidth * (double)scale), definition.Width);
+        Assert.Equal((int)Math.Floor(baseHeight * (double)scale), definition.Height);
         Assert.Equal(noGravityAtSpawn, definition.NoGravityAtSpawn);
         Assert.Equal(noTileCollideAtSpawn, definition.NoTileCollideAtSpawn);
     }
@@ -43,6 +47,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
     [InlineData(3, VanillaNpcBehaviorFamily.GroundFighter, VanillaNpcPhysicsFamily.GroundFighter)]
     [InlineData(4, VanillaNpcBehaviorFamily.EyeOfCthulhu, VanillaNpcPhysicsFamily.NoClipFlight)]
     [InlineData(5, VanillaNpcBehaviorFamily.Flyer, VanillaNpcPhysicsFamily.NoClipFlight)]
+    [InlineData(50, VanillaNpcBehaviorFamily.None, VanillaNpcPhysicsFamily.None)]
     public void Verified_definitions_explicitly_opt_into_runtime_behavior_and_physics_families(
         int type,
         VanillaNpcBehaviorFamily expectedBehavior,
@@ -54,6 +59,17 @@ public sealed class VanillaNpcDefinitionCatalogTests
     }
 
     [Fact]
+    public void King_slime_initial_hitbox_applies_source_scale_with_vanilla_flooring()
+    {
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition));
+        Assert.True(definition.TryResolveHitbox(definition.Scale, out VanillaNpcHitboxSize hitbox));
+        Assert.Equal(122, hitbox.Width);
+        Assert.Equal(115, hitbox.Height);
+        Assert.Equal(122, definition.Width);
+        Assert.Equal(115, definition.Height);
+    }
+
+    [Fact]
     public void Runtime_families_are_distinct_from_source_ai_style()
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BlueSlime, out VanillaNpcDefinition slime));
@@ -61,6 +77,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Zombie, out VanillaNpcDefinition fighter));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition boss));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.ServantOfCthulhu, out VanillaNpcDefinition servant));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition kingSlime));
 
         Assert.Equal(VanillaNpcAiStyles.Slime, slime.AiStyle);
         Assert.Equal(VanillaNpcBehaviorFamily.SlimeGround, slime.BehaviorFamily);
@@ -77,16 +94,22 @@ public sealed class VanillaNpcDefinitionCatalogTests
         Assert.Equal(VanillaNpcAiStyles.Flyer, servant.AiStyle);
         Assert.Equal(VanillaNpcBehaviorFamily.Flyer, servant.BehaviorFamily);
         Assert.Equal(VanillaNpcPhysicsFamily.NoClipFlight, servant.PhysicsFamily);
+        Assert.Equal(VanillaNpcAiStyles.KingSlime, kingSlime.AiStyle);
+        Assert.Equal(VanillaNpcBehaviorFamily.None, kingSlime.BehaviorFamily);
+        Assert.Equal(VanillaNpcPhysicsFamily.None, kingSlime.PhysicsFamily);
     }
 
     [Fact]
     public void Vanilla_role_metadata_distinguishes_boss_from_ordinary_npcs()
     {
-        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition boss));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition eyeBoss));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition kingSlime));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.ServantOfCthulhu, out VanillaNpcDefinition servant));
 
-        Assert.Equal(NpcArchetypeRole.Boss, boss.Role);
-        Assert.True(boss.IsBoss);
+        Assert.Equal(NpcArchetypeRole.Boss, eyeBoss.Role);
+        Assert.True(eyeBoss.IsBoss);
+        Assert.Equal(NpcArchetypeRole.Boss, kingSlime.Role);
+        Assert.True(kingSlime.IsBoss);
         Assert.Equal(NpcArchetypeRole.Ordinary, servant.Role);
         Assert.False(servant.IsBoss);
     }
@@ -94,11 +117,9 @@ public sealed class VanillaNpcDefinitionCatalogTests
     [Fact]
     public void Named_npc_ids_address_the_same_verified_catalog()
     {
-        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition definition));
-        Assert.Equal(VanillaNpcIds.EyeOfCthulhu, definition.Type);
-        Assert.Equal(VanillaNpcAiStyles.EyeOfCthulhu, definition.AiStyle);
-        Assert.Equal(VanillaNpcBehaviorFamily.EyeOfCthulhu, definition.BehaviorFamily);
-        Assert.Equal(VanillaNpcPhysicsFamily.NoClipFlight, definition.PhysicsFamily);
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition));
+        Assert.Equal(VanillaNpcIds.KingSlime, definition.Type);
+        Assert.Equal(VanillaNpcAiStyles.KingSlime, definition.AiStyle);
         Assert.Equal(NpcArchetypeRole.Boss, definition.Role);
     }
 

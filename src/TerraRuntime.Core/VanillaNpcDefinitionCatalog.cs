@@ -32,11 +32,17 @@ public enum VanillaNpcPhysicsFamily : byte
     NoClipFlight = 4
 }
 
+/// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>
+public readonly record struct VanillaNpcHitboxSize(int Width, int Height)
+{
+    public bool IsValid => Width > 0 && Height > 0;
+}
+
 /// <summary>
 /// Source-backed vanilla NPC defaults required by authoritative lifecycle and AI bring-up.
-/// Values are clean-room facts extracted from TerrariaServer 1.4.5.8 SetDefaults; behavior stays
-/// independently implemented in TerraRuntime. <see cref="BehaviorFamily"/> and <see cref="PhysicsFamily"/>
-/// are runtime-owned metadata assigned only after the corresponding implementations are verified.
+/// BaseWidth/BaseHeight are the raw SetDefaults dimensions before vanilla applies NPC.scale. Width/Height expose
+/// the initial post-scale hitbox for compatibility. Runtime geometry that observes mutable NPC scale must call
+/// TryResolveHitbox with the live simulation scale instead of freezing the initial dimensions.
 /// </summary>
 public readonly record struct VanillaNpcDefinition(
     NpcTypeId Type,
@@ -44,8 +50,8 @@ public readonly record struct VanillaNpcDefinition(
     VanillaNpcBehaviorFamily BehaviorFamily,
     VanillaNpcPhysicsFamily PhysicsFamily,
     NpcArchetypeRole Role,
-    int Width,
-    int Height,
+    int BaseWidth,
+    int BaseHeight,
     int Damage,
     int Defense,
     int LifeMax,
@@ -55,6 +61,36 @@ public readonly record struct VanillaNpcDefinition(
     bool NoTileCollideAtSpawn)
 {
     public bool IsBoss => Role == NpcArchetypeRole.Boss;
+
+    public int Width => TryResolveHitbox(Scale, out VanillaNpcHitboxSize hitbox) ? hitbox.Width : BaseWidth;
+
+    public int Height => TryResolveHitbox(Scale, out VanillaNpcHitboxSize hitbox) ? hitbox.Height : BaseHeight;
+
+    public bool TryResolveHitbox(float scale, out VanillaNpcHitboxSize hitbox)
+    {
+        if (BaseWidth <= 0 ||
+            BaseHeight <= 0 ||
+            !float.IsFinite(scale) ||
+            scale <= 0f)
+        {
+            hitbox = default;
+            return false;
+        }
+
+        double scaledWidth = Math.Floor(BaseWidth * (double)scale);
+        double scaledHeight = Math.Floor(BaseHeight * (double)scale);
+        if (scaledWidth < 1d ||
+            scaledWidth > int.MaxValue ||
+            scaledHeight < 1d ||
+            scaledHeight > int.MaxValue)
+        {
+            hitbox = default;
+            return false;
+        }
+
+        hitbox = new VanillaNpcHitboxSize((int)scaledWidth, (int)scaledHeight);
+        return true;
+    }
 }
 
 /// <summary>
@@ -93,8 +129,8 @@ public static class VanillaNpcDefinitionCatalog
                 BehaviorFamily: VanillaNpcBehaviorFamily.SlimeGround,
                 PhysicsFamily: VanillaNpcPhysicsFamily.SlimeGround,
                 Role: NpcArchetypeRole.Ordinary,
-                Width: 24,
-                Height: 18,
+                BaseWidth: 24,
+                BaseHeight: 18,
                 Damage: 7,
                 Defense: 2,
                 LifeMax: 25,
@@ -113,8 +149,8 @@ public static class VanillaNpcDefinitionCatalog
                 BehaviorFamily: VanillaNpcBehaviorFamily.FlyingEye,
                 PhysicsFamily: VanillaNpcPhysicsFamily.FlyingEye,
                 Role: NpcArchetypeRole.Ordinary,
-                Width: 30,
-                Height: 32,
+                BaseWidth: 30,
+                BaseHeight: 32,
                 Damage: 18,
                 Defense: 2,
                 LifeMax: 60,
@@ -133,8 +169,8 @@ public static class VanillaNpcDefinitionCatalog
                 BehaviorFamily: VanillaNpcBehaviorFamily.GroundFighter,
                 PhysicsFamily: VanillaNpcPhysicsFamily.GroundFighter,
                 Role: NpcArchetypeRole.Ordinary,
-                Width: 18,
-                Height: 40,
+                BaseWidth: 18,
+                BaseHeight: 40,
                 Damage: 14,
                 Defense: 6,
                 LifeMax: 45,
@@ -153,8 +189,8 @@ public static class VanillaNpcDefinitionCatalog
                 BehaviorFamily: VanillaNpcBehaviorFamily.EyeOfCthulhu,
                 PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
                 Role: NpcArchetypeRole.Boss,
-                Width: 100,
-                Height: 110,
+                BaseWidth: 100,
+                BaseHeight: 110,
                 Damage: 15,
                 Defense: 12,
                 LifeMax: 2800,
@@ -173,8 +209,8 @@ public static class VanillaNpcDefinitionCatalog
                 BehaviorFamily: VanillaNpcBehaviorFamily.Flyer,
                 PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
                 Role: NpcArchetypeRole.Ordinary,
-                Width: 20,
-                Height: 20,
+                BaseWidth: 20,
+                BaseHeight: 20,
                 Damage: 12,
                 Defense: 0,
                 LifeMax: 8,
@@ -182,6 +218,26 @@ public static class VanillaNpcDefinitionCatalog
                 Scale: 1f,
                 NoGravityAtSpawn: true,
                 NoTileCollideAtSpawn: true);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.KingSlime)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.KingSlime,
+                AiStyle: VanillaNpcAiStyles.KingSlime,
+                BehaviorFamily: VanillaNpcBehaviorFamily.None,
+                PhysicsFamily: VanillaNpcPhysicsFamily.None,
+                Role: NpcArchetypeRole.Boss,
+                BaseWidth: 98,
+                BaseHeight: 92,
+                Damage: 40,
+                Defense: 10,
+                LifeMax: 2000,
+                KnockBackResist: 0f,
+                Scale: 1.25f,
+                NoGravityAtSpawn: false,
+                NoTileCollideAtSpawn: false);
             return true;
         }
 

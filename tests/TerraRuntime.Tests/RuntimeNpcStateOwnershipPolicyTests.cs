@@ -14,8 +14,23 @@ public sealed class RuntimeNpcStateOwnershipPolicyTests
 
         Assert.Equal(25, materialized.Simulation.Life);
         Assert.Equal(25, materialized.Simulation.LifeMax);
+        Assert.Equal(1f, materialized.Simulation.Scale);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, materialized.Simulation.TimeLeft);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultSpriteDirection, materialized.Simulation.SpriteDirection);
+    }
+
+    [Fact]
+    public void King_slime_spawn_materializes_source_backed_scale_and_life()
+    {
+        NpcStateUpdate input = Create(type: 50, simulation: NpcSimulationState.Initial);
+
+        NpcStateUpdate materialized = RuntimeNpcStateOwnershipPolicy.MaterializeSpawnDefaults(in input);
+
+        Assert.Equal(2000, materialized.Simulation.Life);
+        Assert.Equal(2000, materialized.Simulation.LifeMax);
+        Assert.Equal(1.25f, materialized.Simulation.Scale);
+        Assert.False(materialized.Simulation.NoGravity);
+        Assert.False(materialized.Simulation.NoTileCollide);
     }
 
     [Fact]
@@ -57,15 +72,16 @@ public sealed class RuntimeNpcStateOwnershipPolicyTests
                 SpriteDirection = 1
             });
         NpcStateUpdate changedType = Create(
-            type: 2,
+            type: 50,
             simulation: NpcSimulationState.Initial with { SpriteDirection = 0 });
 
         NpcStateUpdate materialized = RuntimeNpcStateOwnershipPolicy.PreserveUnownedUpdateState(
             in changedType,
             in previous);
 
-        Assert.Equal(60, materialized.Simulation.Life);
-        Assert.Equal(60, materialized.Simulation.LifeMax);
+        Assert.Equal(2000, materialized.Simulation.Life);
+        Assert.Equal(2000, materialized.Simulation.LifeMax);
+        Assert.Equal(1.25f, materialized.Simulation.Scale);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, materialized.Simulation.TimeLeft);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultSpriteDirection, materialized.Simulation.SpriteDirection);
     }

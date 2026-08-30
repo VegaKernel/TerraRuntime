@@ -55,6 +55,15 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
         if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition))
             return _inner.TryStepState(in npc, out next);
 
+        // A source-admitted vanilla boss whose AI family has not yet been implemented must fail closed.
+        // Falling through to an unrelated inner stepper would silently fabricate aiStyle 15 behavior for King Slime.
+        if (definition.Role == NpcArchetypeRole.Boss &&
+            definition.BehaviorFamily == VanillaNpcBehaviorFamily.None)
+        {
+            next = default;
+            return false;
+        }
+
         IVanillaNpcBehaviorStrategy? strategy = definition.BehaviorFamily switch
         {
             VanillaNpcBehaviorFamily.SlimeGround when _context.SlimeGroundEnabled => _slimeGround,
@@ -91,13 +100,14 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
             !target.Active ||
             target.Dead ||
             target.Ghost ||
-            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition eye))
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition eye) ||
+            !eye.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
         {
             return 0;
         }
 
-        float centerX = source.PositionX + eye.Width * 0.5f;
-        float centerY = source.PositionY + eye.Height * 0.5f;
+        float centerX = source.PositionX + hitbox.Width * 0.5f;
+        float centerY = source.PositionY + hitbox.Height * 0.5f;
         float deltaX = target.CenterX - centerX;
         float deltaY = target.CenterY - centerY;
         float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);

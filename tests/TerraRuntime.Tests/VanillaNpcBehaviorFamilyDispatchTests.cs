@@ -34,6 +34,26 @@ public sealed class VanillaNpcBehaviorFamilyDispatchTests
     }
 
     [Fact]
+    public void Source_admitted_boss_without_verified_behavior_fails_closed()
+    {
+        var inner = new RecordingStepper();
+        var stepper = new VanillaNpcTargetingAiStepper(inner);
+        NpcSnapshot npc = CreateNpc(VanillaNpcIds.KingSlime.Value) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                Scale = 1.25f,
+                Life = 2000,
+                LifeMax = 2000,
+                TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft
+            }
+        };
+
+        Assert.False(stepper.TryStepState(in npc, out _));
+        Assert.Equal(0, inner.Calls);
+    }
+
+    [Fact]
     public void Flying_eye_family_owns_target_refresh_before_delegating_behavior_core()
     {
         var inner = new RecordingStepper();
