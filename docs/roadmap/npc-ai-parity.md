@@ -10,10 +10,10 @@ The executable truth is `VanillaNpcAiCoverageCatalog`. `FullVanillaAiParity` rem
 |---|---:|---:|---:|---|---:|
 | Blue Slime | yes | partial | partial | slime engagement/jump cadence | no |
 | Demon Eye | yes | partial | partial | flying-eye collision response | no |
-| Zombie | yes | partial | partial | ordinary AI_003/check-active/door contact | no |
+| Zombie | yes | partial | partial | profiled AI_003 traversal/check-active/door contact | no |
 | Eye of Cthulhu | yes | partial | partial | phases/dashes and Servant spawn intents | no |
 | Servant of Cthulhu | yes | partial | partial | source-backed flyer pursuit | no |
-| Skeleton | yes | partial | partial | AI_003 `1.5f` speed band/check-active | no |
+| Skeleton | yes | partial | partial | profiled AI_003 `1.5f` speed band/traversal/check-active | no |
 | King Slime | yes | partial | partial | teleport environment and minion intents | no |
 
 ## N0 — Evidence and fail-closed admission
@@ -28,10 +28,13 @@ The executable truth is `VanillaNpcAiCoverageCatalog`. `FullVanillaAiParity` rem
 
 - [x] Zombie ordinary fighter slice;
 - [x] Skeleton definition, distinct speed band, world physics, check-active and packet sync;
+- [x] route admitted fighter speed, acceleration, stuck/despawn windows and terrain-jump values through explicit version-pinned profiles consumed by AI and world traversal;
 - [ ] partition and import remaining AI_003 movement parameter families;
 - [ ] source-backed door/tall-gate mutation conditions for Blood Moon, Graveyard and special targets;
 - [ ] type-specific attacks, transformations, projectiles and spawn effects;
 - [ ] differential scenarios for each admitted AI_003 subtype.
+
+The profiled traversal slice deliberately preserves the previously verified ordinary Zombie/Skeleton values. The change removes generic constants from the behavior/world boundary; it does not claim additional subtype parity or Blood Moon/Graveyard door mutation behavior.
 
 ## N2 — Common ordinary families
 

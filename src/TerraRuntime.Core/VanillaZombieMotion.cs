@@ -30,6 +30,10 @@ public readonly record struct VanillaZombieMotionInput(
     VanillaZombieTargetRefresh ClosestTarget)
 {
     public float BaseMaximumHorizontalSpeed { get; init; } = 1f;
+    public float HorizontalAcceleration { get; init; } = 0.07f;
+    public float StuckThreshold { get; init; } = 60f;
+    public float MaximumStuckCounter { get; init; } = 600f;
+    public int EncouragedDespawnTime { get; init; } = 10;
     public bool PursuitAllowed { get; init; } = true;
     public bool EncourageDespawn { get; init; }
     public bool JustHit { get; init; }
@@ -53,16 +57,11 @@ public readonly record struct VanillaZombieMotionResult(
 /// <summary>
 /// Deterministic ordinary type-3 state slice from TerrariaServer 1.4.5.8 NPC.AI_003_Fighters.
 /// Covers stuck accounting including justHit reset, pursuit/TargetClosest cadence, discouraged idle turning
-/// including spriteDirection, EncourageDespawn(10) lifetime clamping and default horizontal motion.
-/// Type-624 Gnome CanHit pathing and other subtype branches are intentionally outside this baseline.
+/// including spriteDirection, lifetime clamping and profile-driven horizontal motion. Type-624 Gnome CanHit
+/// pathing and other subtype branches are intentionally outside this baseline.
 /// </summary>
 public static class VanillaZombieMotion
 {
-    private const float StuckThreshold = 60f;
-    private const float MaximumStuckCounter = StuckThreshold * 10f;
-    private const float HorizontalAcceleration = 0.07f;
-    private const int EncouragedDespawnTime = 10;
-
     public static bool TryStep(
         in VanillaZombieMotionInput input,
         out VanillaZombieMotionResult result)
@@ -75,6 +74,13 @@ public static class VanillaZombieMotion
             input.Scale <= 0f ||
             !float.IsFinite(input.BaseMaximumHorizontalSpeed) ||
             input.BaseMaximumHorizontalSpeed <= 0f ||
+            !float.IsFinite(input.HorizontalAcceleration) ||
+            input.HorizontalAcceleration <= 0f ||
+            !float.IsFinite(input.StuckThreshold) ||
+            input.StuckThreshold <= 0f ||
+            !float.IsFinite(input.MaximumStuckCounter) ||
+            input.MaximumStuckCounter < input.StuckThreshold ||
+            input.EncouragedDespawnTime <= 0 ||
             input.DirectionX is < -1 or > 1 ||
             input.DirectionY is < -1 or > 1 ||
             input.SpriteDirection is < -1 or > 1 ||
@@ -106,19 +112,19 @@ public static class VanillaZombieMotion
             ((velocityX > 0f && directionX < 0) ||
              (velocityX < 0f && directionX > 0));
 
-        if (input.PositionX == input.OldPositionX || ai3 >= StuckThreshold || reversingWhileGrounded)
+        if (input.PositionX == input.OldPositionX || ai3 >= input.StuckThreshold || reversingWhileGrounded)
             ai3++;
         else if (MathF.Abs(velocityX) > 0.9f && ai3 > 0f)
             ai3--;
 
-        if (ai3 > MaximumStuckCounter)
+        if (ai3 > input.MaximumStuckCounter)
             ai3 = 0f;
         if (input.JustHit)
             ai3 = 0f;
         if (input.TargetOverlaps)
             ai3 = 0f;
 
-        bool pursue = ai3 < StuckThreshold && input.PursuitAllowed;
+        bool pursue = ai3 < input.StuckThreshold && input.PursuitAllowed;
         if (pursue)
         {
             RefreshTarget();
@@ -127,8 +133,8 @@ public static class VanillaZombieMotion
         }
         else
         {
-            if (input.EncourageDespawn && timeLeft > EncouragedDespawnTime)
-                timeLeft = EncouragedDespawnTime;
+            if (input.EncourageDespawn && timeLeft > input.EncouragedDespawnTime)
+                timeLeft = input.EncouragedDespawnTime;
 
             if (velocityX == 0f)
             {
@@ -160,13 +166,13 @@ public static class VanillaZombieMotion
         }
         else if (velocityX < maximumSpeed && directionX == 1)
         {
-            velocityX += HorizontalAcceleration;
+            velocityX += input.HorizontalAcceleration;
             if (velocityX > maximumSpeed)
                 velocityX = maximumSpeed;
         }
         else if (velocityX > -maximumSpeed && directionX == -1)
         {
-            velocityX -= HorizontalAcceleration;
+            velocityX -= input.HorizontalAcceleration;
             if (velocityX < -maximumSpeed)
                 velocityX = -maximumSpeed;
         }
@@ -198,29 +204,74 @@ public static class VanillaZombieMotion
     }
 }
 
-public readonly record struct VanillaGroundFighterBehaviorParameters(float BaseMaximumHorizontalSpeed)
+/// <summary>
+/// Version-pinned ordinary AI_003 movement/traversal profile. Values are deliberately explicit so an admitted
+/// fighter cannot silently inherit generic pursuit constants from either the AI or world-collision layer.
+/// </summary>
+public readonly record struct VanillaGroundFighterBehaviorParameters(
+    float BaseMaximumHorizontalSpeed,
+    float HorizontalAcceleration,
+    float StuckThreshold,
+    float MaximumStuckCounter,
+    int EncouragedDespawnTime,
+    float StuckHopVelocity,
+    float LowStepJumpVelocity,
+    float OneTileJumpVelocity,
+    float TwoTileJumpVelocity,
+    float ThreeTileJumpVelocity,
+    float PursuitGapJumpVelocity,
+    float PursuitGapSpeedMultiplier)
 {
-    public bool IsValid => float.IsFinite(BaseMaximumHorizontalSpeed) && BaseMaximumHorizontalSpeed > 0f;
+    public bool IsValid =>
+        float.IsFinite(BaseMaximumHorizontalSpeed) && BaseMaximumHorizontalSpeed > 0f &&
+        float.IsFinite(HorizontalAcceleration) && HorizontalAcceleration > 0f &&
+        float.IsFinite(StuckThreshold) && StuckThreshold > 0f &&
+        float.IsFinite(MaximumStuckCounter) && MaximumStuckCounter >= StuckThreshold &&
+        EncouragedDespawnTime > 0 &&
+        IsJumpVelocity(StuckHopVelocity) &&
+        IsJumpVelocity(LowStepJumpVelocity) &&
+        IsJumpVelocity(OneTileJumpVelocity) &&
+        IsJumpVelocity(TwoTileJumpVelocity) &&
+        IsJumpVelocity(ThreeTileJumpVelocity) &&
+        IsJumpVelocity(PursuitGapJumpVelocity) &&
+        float.IsFinite(PursuitGapSpeedMultiplier) && PursuitGapSpeedMultiplier > 0f;
+
+    private static bool IsJumpVelocity(float velocity) => float.IsFinite(velocity) && velocity < 0f;
 }
 
-/// <summary>Source-backed AI_003 horizontal family parameters for explicitly admitted NPC definitions.</summary>
+/// <summary>Source-backed AI_003 movement/traversal profiles for explicitly admitted NPC definitions.</summary>
 public static class VanillaGroundFighterBehaviorCatalog
 {
     public static bool TryGet(NpcTypeId type, out VanillaGroundFighterBehaviorParameters parameters)
     {
         if (type == VanillaNpcIds.Zombie)
         {
-            parameters = new VanillaGroundFighterBehaviorParameters(1f);
+            parameters = CreateOrdinaryProfile(1f);
             return true;
         }
 
         if (type == VanillaNpcIds.Skeleton)
         {
-            parameters = new VanillaGroundFighterBehaviorParameters(1.5f);
+            parameters = CreateOrdinaryProfile(1.5f);
             return true;
         }
 
         parameters = default;
         return false;
     }
+
+    private static VanillaGroundFighterBehaviorParameters CreateOrdinaryProfile(float maximumHorizontalSpeed) =>
+        new(
+            BaseMaximumHorizontalSpeed: maximumHorizontalSpeed,
+            HorizontalAcceleration: 0.07f,
+            StuckThreshold: 60f,
+            MaximumStuckCounter: 600f,
+            EncouragedDespawnTime: 10,
+            StuckHopVelocity: -5f,
+            LowStepJumpVelocity: -5f,
+            OneTileJumpVelocity: -6f,
+            TwoTileJumpVelocity: -7f,
+            ThreeTileJumpVelocity: -8f,
+            PursuitGapJumpVelocity: -8f,
+            PursuitGapSpeedMultiplier: 1.5f);
 }

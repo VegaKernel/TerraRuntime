@@ -127,7 +127,8 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             return false;
         }
 
-        if (!VanillaGroundFighterBehaviorCatalog.TryGet(definition.Type, out VanillaGroundFighterBehaviorParameters parameters))
+        if (!VanillaGroundFighterBehaviorCatalog.TryGet(definition.Type, out VanillaGroundFighterBehaviorParameters parameters) ||
+            !parameters.IsValid)
         {
             next = default;
             return false;
@@ -180,6 +181,10 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             ClosestTarget: fighterTarget)
         {
             BaseMaximumHorizontalSpeed = parameters.BaseMaximumHorizontalSpeed,
+            HorizontalAcceleration = parameters.HorizontalAcceleration,
+            StuckThreshold = parameters.StuckThreshold,
+            MaximumStuckCounter = parameters.MaximumStuckCounter,
+            EncouragedDespawnTime = parameters.EncouragedDespawnTime,
             PursuitAllowed = !daytimeSurface,
             EncourageDespawn = daytimeSurface,
             JustHit = simulation.JustHit,

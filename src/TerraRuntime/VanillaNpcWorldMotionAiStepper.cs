@@ -88,6 +88,26 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
 
         if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.GroundFighter)
         {
+            bool hasFighterProfile = VanillaGroundFighterBehaviorCatalog.TryGet(
+                definition.Type,
+                out VanillaGroundFighterBehaviorParameters fighterProfile);
+            if (hasFighterProfile && !fighterProfile.IsValid)
+            {
+                next = default;
+                return false;
+            }
+
+            VanillaZombieObstacleMotionParameters obstacleParameters = hasFighterProfile
+                ? new VanillaZombieObstacleMotionParameters(
+                    fighterProfile.LowStepJumpVelocity,
+                    fighterProfile.OneTileJumpVelocity,
+                    fighterProfile.TwoTileJumpVelocity,
+                    fighterProfile.ThreeTileJumpVelocity,
+                    fighterProfile.PursuitGapJumpVelocity,
+                    fighterProfile.PursuitGapSpeedMultiplier)
+                : VanillaZombieObstacleMotionParameters.Vanilla;
+            float stuckHopVelocity = hasFighterProfile ? fighterProfile.StuckHopVelocity : -5f;
+
             VanillaZombieStepUpResult stepUp = VanillaWorldZombieStepUp.Resolve(
                 tiles,
                 aiState.PositionX,
@@ -125,7 +145,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
                 hitboxWidth,
                 hitboxHeight,
                 simulation.DirectionX,
-                simulation.DirectionY);
+                simulation.DirectionY,
+                obstacleParameters);
             velocityX = obstacle.VelocityX;
             velocityY = obstacle.VelocityY;
 
@@ -134,7 +155,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
                 fighterStuckHopEligible &&
                 aiState.Ai.Ai3 == 1f)
             {
-                velocityY = -5f;
+                velocityY = stuckHopVelocity;
             }
         }
 

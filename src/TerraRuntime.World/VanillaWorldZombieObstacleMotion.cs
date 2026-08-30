@@ -8,6 +8,32 @@ public readonly record struct VanillaZombieObstacleMotionResult(
     bool Jumped);
 
 /// <summary>
+/// Configurable ordinary AI_003 traversal values consumed by the world-collision layer. The Vanilla profile
+/// preserves the TerrariaServer 1.4.5.8 values previously embedded directly in the obstacle branches.
+/// </summary>
+public readonly record struct VanillaZombieObstacleMotionParameters(
+    float LowStepJumpVelocity,
+    float OneTileJumpVelocity,
+    float TwoTileJumpVelocity,
+    float ThreeTileJumpVelocity,
+    float PursuitGapJumpVelocity,
+    float PursuitGapSpeedMultiplier)
+{
+    public static VanillaZombieObstacleMotionParameters Vanilla { get; } =
+        new(-5f, -6f, -7f, -8f, -8f, 1.5f);
+
+    public bool IsValid =>
+        IsJumpVelocity(LowStepJumpVelocity) &&
+        IsJumpVelocity(OneTileJumpVelocity) &&
+        IsJumpVelocity(TwoTileJumpVelocity) &&
+        IsJumpVelocity(ThreeTileJumpVelocity) &&
+        IsJumpVelocity(PursuitGapJumpVelocity) &&
+        float.IsFinite(PursuitGapSpeedMultiplier) && PursuitGapSpeedMultiplier > 0f;
+
+    private static bool IsJumpVelocity(float velocity) => float.IsFinite(velocity) && velocity < 0f;
+}
+
+/// <summary>
 /// Source-backed, side-effect-free ordinary type-3 obstacle slice from TerrariaServer 1.4.5.8
 /// NPC.AI_003_Fighters. Door/tall-gate interaction remains separate because it mutates world state.
 /// </summary>
@@ -25,7 +51,30 @@ public static class VanillaWorldZombieObstacleMotion
         int width,
         int height,
         int directionX,
-        int directionY = 0)
+        int directionY = 0) =>
+        Resolve(
+            tiles,
+            positionX,
+            positionY,
+            velocityX,
+            velocityY,
+            width,
+            height,
+            directionX,
+            directionY,
+            VanillaZombieObstacleMotionParameters.Vanilla);
+
+    public static VanillaZombieObstacleMotionResult Resolve(
+        WorldTileStore tiles,
+        float positionX,
+        float positionY,
+        float velocityX,
+        float velocityY,
+        int width,
+        int height,
+        int directionX,
+        int directionY,
+        VanillaZombieObstacleMotionParameters parameters)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
@@ -39,6 +88,9 @@ public static class VanillaWorldZombieObstacleMotion
         {
             throw new ArgumentOutOfRangeException(nameof(positionX));
         }
+
+        if (!parameters.IsValid)
+            throw new ArgumentOutOfRangeException(nameof(parameters));
 
         if (velocityY != 0f || directionX == 0 || !HasGroundSupport(tiles, positionX, positionY, width, height))
             return new VanillaZombieObstacleMotionResult(velocityX, velocityY, false);
@@ -61,26 +113,31 @@ public static class VanillaWorldZombieObstacleMotion
 
         if (height >= 32 && SolidTileNoPlatforms(tiles, tileX, tileY - 2))
         {
-            float jumpVelocity = SolidTileNoPlatforms(tiles, tileX, tileY - 3) ? -8f : -7f;
+            float jumpVelocity = SolidTileNoPlatforms(tiles, tileX, tileY - 3)
+                ? parameters.ThreeTileJumpVelocity
+                : parameters.TwoTileJumpVelocity;
             return new VanillaZombieObstacleMotionResult(velocityX, jumpVelocity, true);
         }
 
         if (SolidTileNoPlatforms(tiles, tileX, tileY - 1))
-            return new VanillaZombieObstacleMotionResult(velocityX, -6f, true);
+            return new VanillaZombieObstacleMotionResult(velocityX, parameters.OneTileJumpVelocity, true);
 
         WorldTile lowerTile = tiles.Get(tileX, tileY);
         if (positionY + height - tileY * TileSize > 20f &&
             !IsTopSlope(in lowerTile) &&
             SolidTileNoPlatforms(tiles, tileX, tileY))
         {
-            return new VanillaZombieObstacleMotionResult(velocityX, -5f, true);
+            return new VanillaZombieObstacleMotionResult(velocityX, parameters.LowStepJumpVelocity, true);
         }
 
         if (directionY < 0 &&
             !SolidTileAllowBottomSlope(tiles, tileX, tileY + 1) &&
             !SolidTileAllowBottomSlope(tiles, tileX + directionX, tileY + 1))
         {
-            return new VanillaZombieObstacleMotionResult(velocityX * 1.5f, -8f, true);
+            return new VanillaZombieObstacleMotionResult(
+                velocityX * parameters.PursuitGapSpeedMultiplier,
+                parameters.PursuitGapJumpVelocity,
+                true);
         }
 
         return new VanillaZombieObstacleMotionResult(velocityX, velocityY, false);
