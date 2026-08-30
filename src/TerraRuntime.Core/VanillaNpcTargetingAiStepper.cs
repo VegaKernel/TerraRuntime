@@ -25,11 +25,18 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _eyeOfCthulhu = new VanillaEyeOfCthulhuNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _kingSlime;
+    private readonly IVanillaNpcRandom _random;
 
-    public VanillaNpcTargetingAiStepper(INpcAiStateStepper inner)
+    public VanillaNpcTargetingAiStepper(
+        INpcAiStateStepper inner,
+        IVanillaKingSlimeEnvironment? kingSlimeEnvironment = null,
+        IVanillaNpcRandom? random = null)
     {
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
+        _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
+        _random = random ?? new SystemVanillaNpcRandom();
     }
 
     public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity) =>
@@ -38,8 +45,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
     public void EnableZombieMotion(double worldSurfaceTiles) =>
         _context.EnableGroundFighter(worldSurfaceTiles);
 
-    public void SetWorldConditions(bool dayTime, bool slimeRainActive) =>
-        _context.SetWorldConditions(dayTime, slimeRainActive);
+    public void SetWorldConditions(bool dayTime, bool slimeRainActive, bool goodWorld = false) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld);
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
         _context.SetCandidates(candidates);
@@ -55,8 +62,6 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
         if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition))
             return _inner.TryStepState(in npc, out next);
 
-        // A source-admitted vanilla boss whose AI family has not yet been implemented must fail closed.
-        // Falling through to an unrelated inner stepper would silently fabricate aiStyle 15 behavior for King Slime.
         if (definition.Role == NpcArchetypeRole.Boss &&
             definition.BehaviorFamily == VanillaNpcBehaviorFamily.None)
         {
@@ -71,6 +76,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
             VanillaNpcBehaviorFamily.GroundFighter when _context.GroundFighterEnabled => _groundFighter,
             VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
             VanillaNpcBehaviorFamily.Flyer when definition.Type == VanillaNpcIds.ServantOfCthulhu => _flyer,
+            VanillaNpcBehaviorFamily.KingSlime => _kingSlime,
             _ => null
         };
 
@@ -84,10 +90,30 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
         in NpcStateUpdate proposed,
         Span<NpcAiSpawnIntent> destination)
     {
-        if (destination.IsEmpty ||
-            source.Type != VanillaNpcIds.EyeOfCthulhu.Value ||
-            proposed.Type != VanillaNpcIds.EyeOfCthulhu.Value ||
-            source.Ai.Ai0 != 0f ||
+        if (destination.IsEmpty)
+            return 0;
+
+        if (source.Type == VanillaNpcIds.EyeOfCthulhu.Value &&
+            proposed.Type == VanillaNpcIds.EyeOfCthulhu.Value)
+        {
+            return PlanEyeOfCthulhuServant(in source, in proposed, destination);
+        }
+
+        if (source.Type == VanillaNpcIds.KingSlime.Value &&
+            proposed.Type == VanillaNpcIds.KingSlime.Value)
+        {
+            return PlanKingSlimeMinions(in source, in proposed, destination);
+        }
+
+        return 0;
+    }
+
+    private int PlanEyeOfCthulhuServant(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiSpawnIntent> destination)
+    {
+        if (source.Ai.Ai0 != 0f ||
             source.Ai.Ai1 != 0f ||
             proposed.Ai.Ai0 != 0f ||
             proposed.Ai.Ai1 != 0f ||
@@ -128,5 +154,50 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
             VelocityY: velocityY,
             Target: VanillaNpcDefinitionCatalog.DefaultTarget);
         return 1;
+    }
+
+    private int PlanKingSlimeMinions(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiSpawnIntent> destination)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition))
+            return 0;
+
+        int lifeMax = source.Simulation.LifeMax > 0 ? source.Simulation.LifeMax : definition.LifeMax;
+        int life = source.Simulation.LifeMax > 0 ? source.Simulation.Life : definition.LifeMax;
+        int threshold = (int)(lifeMax * VanillaKingSlimeMotion.MinionBurstLifeFraction);
+        if (source.Ai.Ai3 <= 0f ||
+            proposed.Ai.Ai3 != life ||
+            !((float)(life + threshold) < source.Ai.Ai3) ||
+            !definition.TryResolveHitbox(proposed.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            hitbox.Width <= 32 || hitbox.Height <= 32)
+        {
+            return 0;
+        }
+
+        int requested = _random.NextInt32(1, 4);
+        int count = Math.Min(requested, destination.Length);
+        for (int index = 0; index < count; index++)
+        {
+            int bottomX = (int)(proposed.PositionX + _random.NextInt32(0, hitbox.Width - 32));
+            int bottomY = (int)(proposed.PositionY + _random.NextInt32(0, hitbox.Height - 32));
+            float velocityX = _random.NextInt32(-15, 16) * 0.1f;
+            float velocityY = _random.NextInt32(-30, 1) * 0.1f;
+            float ai0 = -1000f * _random.NextInt32(0, 3);
+
+            destination[index] = new NpcAiSpawnIntent(
+                Type: VanillaNpcIds.BlueSlime,
+                BottomX: bottomX,
+                BottomY: bottomY,
+                VelocityX: velocityX,
+                VelocityY: velocityY,
+                Target: VanillaNpcDefinitionCatalog.DefaultTarget)
+            {
+                InitialAi = new NpcAiState(ai0, -1f, 0f, 0f)
+            };
+        }
+
+        return count;
     }
 }

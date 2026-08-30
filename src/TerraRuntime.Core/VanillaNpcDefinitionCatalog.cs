@@ -15,7 +15,8 @@ public enum VanillaNpcBehaviorFamily : byte
     FlyingEye = 2,
     GroundFighter = 3,
     EyeOfCthulhu = 4,
-    Flyer = 5
+    Flyer = 5,
+    KingSlime = 6
 }
 
 /// <summary>
@@ -226,8 +227,8 @@ public static class VanillaNpcDefinitionCatalog
             definition = new VanillaNpcDefinition(
                 Type: VanillaNpcIds.KingSlime,
                 AiStyle: VanillaNpcAiStyles.KingSlime,
-                BehaviorFamily: VanillaNpcBehaviorFamily.None,
-                PhysicsFamily: VanillaNpcPhysicsFamily.None,
+                BehaviorFamily: VanillaNpcBehaviorFamily.KingSlime,
+                PhysicsFamily: VanillaNpcPhysicsFamily.SlimeGround,
                 Role: NpcArchetypeRole.Boss,
                 BaseWidth: 98,
                 BaseHeight: 92,

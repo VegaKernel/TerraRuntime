@@ -26,6 +26,8 @@ internal sealed class VanillaNpcBehaviorContext
 
     public bool SlimeRainActive { get; private set; }
 
+    public bool GoodWorld { get; private set; }
+
     public void EnableSlimeGround(double worldSurfaceTiles)
     {
         ValidateWorldSurface(worldSurfaceTiles);
@@ -40,10 +42,11 @@ internal sealed class VanillaNpcBehaviorContext
         WorldSurfacePixels = worldSurfaceTiles * 16d;
     }
 
-    public void SetWorldConditions(bool dayTime, bool slimeRainActive)
+    public void SetWorldConditions(bool dayTime, bool slimeRainActive, bool goodWorld = false)
     {
         DayTime = dayTime;
         SlimeRainActive = slimeRainActive;
+        GoodWorld = goodWorld;
     }
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates)

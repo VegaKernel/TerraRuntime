@@ -5,8 +5,8 @@ namespace TerraRuntime.Core;
 
 /// <summary>
 /// One NPC spawn requested by a speculative AI transition. Coordinates use vanilla NewNPC semantics:
-/// integer X/Y identify the spawned NPC bottom-center, while velocity is applied after SetDefaults.
-/// The intent must never mutate the NPC store until the source NPC state commit succeeds.
+/// integer X/Y identify the spawned NPC bottom-center, while velocity and optional initial ai[] are applied after
+/// SetDefaults. The intent must never mutate the NPC store until the source NPC state commit succeeds.
 /// </summary>
 public readonly record struct NpcAiSpawnIntent(
     NpcTypeId Type,
@@ -14,7 +14,10 @@ public readonly record struct NpcAiSpawnIntent(
     int BottomY,
     float VelocityX,
     float VelocityY,
-    ushort Target);
+    ushort Target)
+{
+    public NpcAiState InitialAi { get; init; }
+}
 
 /// <summary>
 /// Optional extension implemented by state steppers that can derive zero or more NPC spawns from the exact
@@ -51,7 +54,8 @@ internal static class RuntimeNpcSpawnIntentApplier
 
         if (!VanillaNpcDefinitionCatalog.TryGet(intent.Type, out VanillaNpcDefinition definition) ||
             !float.IsFinite(intent.VelocityX) ||
-            !float.IsFinite(intent.VelocityY))
+            !float.IsFinite(intent.VelocityY) ||
+            !intent.InitialAi.IsFinite)
         {
             spawned = default;
             return false;
@@ -65,7 +69,7 @@ internal static class RuntimeNpcSpawnIntentApplier
             VelocityX: intent.VelocityX,
             VelocityY: intent.VelocityY,
             Target: intent.Target,
-            Ai: default,
+            Ai: intent.InitialAi,
             Simulation: NpcSimulationState.Initial with
             {
                 TimeLeft = VanillaNpcSpawnFacts.NewNpcTimeLeft
