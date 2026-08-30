@@ -16,7 +16,7 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
         Assert.Equal(4_096, options.RateBudget.MaxFrames);
         Assert.Equal(2L * 1024 * 1024, options.RateBudget.MaxBytes);
 
-        Assert.Equal(18, limits.Count);
+        Assert.Equal(19, limits.Count);
         AssertBudget(limits, TerrariaMessageId.RequestWorldData, 16, 4 * 1024);
         AssertBudget(limits, TerrariaMessageId.SpawnTileData, 120, 16 * 1024);
         AssertBudget(limits, TerrariaMessageId.PlayerControls, 600, 96 * 1024);
@@ -27,6 +27,7 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
         AssertBudget(limits, TerrariaMessageId.ProjectileNew, 1_200, 256 * 1024);
         AssertBudget(limits, TerrariaMessageId.RequestChestOpen, 120, 16 * 1024);
         AssertBudget(limits, TerrariaMessageId.LiquidSet, 600, 64 * 1024);
+        AssertBudget(limits, TerrariaMessageId.PlaceObject, 240, 32 * 1024);
         AssertBudget(limits, TerrariaMessageId.LoadNetModule, 120, 256 * 1024);
 
         Assert.False(limits.TryGet((byte)TerrariaMessageId.Hello, out _));
