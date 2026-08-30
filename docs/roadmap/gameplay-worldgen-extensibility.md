@@ -277,7 +277,11 @@ Benchmark zero extensions, one NPC decorator, dense replacement workload, high p
 - [x] deterministic planner;
 - [x] isolated workspace;
 - [x] progress/cancellation;
-- [x] isolated deterministic RNG mode.
+- [x] isolated deterministic RNG mode;
+- [x] runtime-owned `terraruntime:vanilla` compatibility generator;
+- [x] verified Terraria 1.4.5.8 per-pass vanilla RNG seed semantics;
+- [x] special/secret seed profile resolution and fresh `.wld` persistence;
+- [ ] source-exact 109-pass/reference-world vanilla parity.
 
 ### G5 - Vega/plugin integration
 
@@ -301,4 +305,5 @@ This slice is not complete until:
 - [x] custom worldgen provider can add/replace passes in deterministic validated plan;
 - [x] failed/cancelled generation cannot partially commit;
 - [ ] official-client-compatible generated worlds contain only client-known IDs;
+- [ ] built-in vanilla generator matches the complete source-pinned Terraria 1.4.5.8 pass pipeline and reference worlds;
 - [x] Linux/Windows NativeAOT smoke remains green with extension contracts present.

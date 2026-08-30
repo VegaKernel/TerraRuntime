@@ -93,8 +93,14 @@ internal sealed class RuntimeLogPipeline : IAsyncDisposable
         }
 
         RuntimeLogRecord record = CreateRecord(level, eventId, category, subsystem, message, context, exception);
+
+        // Reserve queue accounting before publication. A fast reader may consume a TryWrite result immediately;
+        // publishing first would let the reader decrement queued before the producer increments it, producing
+        // transient negative depth and losing the real high-water mark.
+        int depth = Interlocked.Increment(ref queued);
         if (!channel.Writer.TryWrite(new RuntimeLogEnvelope(record, delivery)))
         {
+            Interlocked.Decrement(ref queued);
             if (normal)
                 Interlocked.Decrement(ref normalQueued);
 
@@ -103,7 +109,6 @@ internal sealed class RuntimeLogPipeline : IAsyncDisposable
         }
 
         Interlocked.Increment(ref accepted);
-        int depth = Interlocked.Increment(ref queued);
         UpdateHighWaterMark(depth);
         return true;
     }

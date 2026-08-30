@@ -17,7 +17,8 @@ public enum RuntimeWorldGenerationFinalizationStatus : byte
 public readonly record struct RuntimeWorldGenerationMetadataSnapshot(
     WorldGenerationPoint Spawn,
     WorldGenerationPoint Dungeon,
-    WorldGenerationLayers Layers);
+    WorldGenerationLayers Layers,
+    VanillaWorldSeedProfile1458 VanillaSeedProfile = default);
 
 public readonly record struct RuntimeWorldGenerationFinalizationResult(
     RuntimeWorldGenerationFinalizationStatus Status,
@@ -56,6 +57,6 @@ public static class RuntimeWorldGenerationFinalizer
 
         return new RuntimeWorldGenerationFinalizationResult(
             RuntimeWorldGenerationFinalizationStatus.Finalized,
-            new RuntimeWorldGenerationMetadataSnapshot(spawn, dungeon, layers));
+            new RuntimeWorldGenerationMetadataSnapshot(spawn, dungeon, layers, candidate.VanillaSeedProfile));
     }
 }

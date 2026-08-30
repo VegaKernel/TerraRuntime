@@ -63,17 +63,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
                         Assert.True(context.Workspace.TrySetTile(
                             x,
                             2,
-                            new WorldGenerationTile(
-                                Type: 0,
-                                Wall: 0,
-                                FrameX: 0,
-                                FrameY: 0,
-                                Flags: WorldGenerationTileFlags.Active,
-                                LiquidAmount: 0,
-                                TileColor: 0,
-                                WallColor: 0,
-                                Shape: 0,
-                                LiquidKind: WorldGenerationLiquidKind.Water)));
+                            new WorldGenerationTile(0, 0, 0, 0, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water)));
                     }));
                 builder.Add(
                     new WorldGenerationPassDescriptor(terrainId),
@@ -84,17 +74,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
                         Assert.True(context.Workspace.TrySetTile(
                             x,
                             1,
-                            new WorldGenerationTile(
-                                Type: 0,
-                                Wall: 0,
-                                FrameX: 0,
-                                FrameY: 0,
-                                Flags: WorldGenerationTileFlags.Active,
-                                LiquidAmount: 0,
-                                TileColor: 0,
-                                WallColor: 0,
-                                Shape: 0,
-                                LiquidKind: WorldGenerationLiquidKind.Water)));
+                            new WorldGenerationTile(0, 0, 0, 0, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water)));
                     }));
             });
         var request = new WorldGenerationRequest(provider.Id, "Deterministic", 0x1234UL, 64, 32);
@@ -102,16 +82,8 @@ public sealed class RuntimeWorldGenerationExecutorTests
         var second = new RuntimeWorldGenerationWorkspace(request.WidthTiles, request.HeightTiles);
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
-        WorldGenerationExecutionResult firstResult = RuntimeWorldGenerationExecutor.Execute(
-            provider,
-            in request,
-            first,
-            cancellationToken: cancellationToken);
-        WorldGenerationExecutionResult secondResult = RuntimeWorldGenerationExecutor.Execute(
-            provider,
-            in request,
-            second,
-            cancellationToken: cancellationToken);
+        WorldGenerationExecutionResult firstResult = RuntimeWorldGenerationExecutor.Execute(provider, in request, first, cancellationToken: cancellationToken);
+        WorldGenerationExecutionResult secondResult = RuntimeWorldGenerationExecutor.Execute(provider, in request, second, cancellationToken: cancellationToken);
 
         Assert.Equal(WorldGenerationExecutionStatus.Completed, firstResult.Status);
         Assert.Equal(WorldGenerationExecutionStatus.Completed, secondResult.Status);
@@ -145,14 +117,58 @@ public sealed class RuntimeWorldGenerationExecutorTests
     }
 
     [Fact]
-    public void Executor_rejects_unverified_shared_vanilla_rng_instead_of_approximating_it()
+    public void Executor_reseeds_verified_vanilla_rng_for_each_pass()
+    {
+        var values = new List<int>();
+        WorldGenerationPassId firstId = new("test:vanilla-rng-a");
+        WorldGenerationPassId secondId = new("test:vanilla-rng-b");
+        var provider = new TestProvider(
+            "test:custom",
+            (request, builder) =>
+            {
+                builder.Add(
+                    new WorldGenerationPassDescriptor(firstId, WorldGenerationRngMode.VanillaSharedRng),
+                    new ActionPass(context =>
+                    {
+                        Assert.NotNull(context.VanillaRandom);
+                        values.Add(context.VanillaRandom!.Next());
+                    }));
+                builder.Add(
+                    new WorldGenerationPassDescriptor(secondId, WorldGenerationRngMode.VanillaSharedRng, requiredAfter: [firstId]),
+                    new ActionPass(context =>
+                    {
+                        Assert.NotNull(context.VanillaRandom);
+                        values.Add(context.VanillaRandom!.Next());
+                    }));
+            });
+        var request = new WorldGenerationRequest(provider.Id, "Rng", 1, 16, 16)
+        {
+            SeedText = "123456"
+        };
+        var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
+
+        WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
+            provider,
+            in request,
+            workspace,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(WorldGenerationExecutionStatus.Completed, result.Status);
+        Assert.Equal(2, values.Count);
+        Assert.Equal(values[0], values[1]);
+        var expected = new VanillaUnifiedRandom1458(123456);
+        Assert.Equal(expected.Next(), values[0]);
+    }
+
+    [Fact]
+    public void Executor_still_rejects_custom_provider_rng_without_contract()
     {
         bool executed = false;
-        WorldGenerationPassId id = new("test:vanilla-rng");
+        WorldGenerationPassId id = new("test:custom-rng");
         var provider = new TestProvider(
             "test:custom",
             (request, builder) => builder.Add(
-                new WorldGenerationPassDescriptor(id, WorldGenerationRngMode.VanillaSharedRng),
+                new WorldGenerationPassDescriptor(id, WorldGenerationRngMode.CustomProviderRng),
                 new ActionPass(_ => executed = true)));
         var request = new WorldGenerationRequest(provider.Id, "Rng", 1, 16, 16);
         var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
@@ -261,9 +277,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
     {
         private readonly Action<WorldGenerationRequest, IWorldGenerationPlanBuilder>? build;
 
-        public TestProvider(
-            string id,
-            Action<WorldGenerationRequest, IWorldGenerationPlanBuilder>? build = null)
+        public TestProvider(string id, Action<WorldGenerationRequest, IWorldGenerationPlanBuilder>? build = null)
         {
             Id = new WorldGeneratorId(id);
             this.build = build;
