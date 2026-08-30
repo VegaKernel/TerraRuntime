@@ -17,6 +17,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
     private readonly IVanillaNpcBehaviorStrategy _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _flyingEye = new VanillaFlyingEyeNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _eyeOfCthulhu = new VanillaEyeOfCthulhuNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy();
 
     public VanillaNpcTargetingAiStepper(INpcAiStateStepper inner)
     {
@@ -52,6 +54,8 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper
             VanillaNpcBehaviorFamily.SlimeGround when _context.SlimeGroundEnabled => _slimeGround,
             VanillaNpcBehaviorFamily.FlyingEye => _flyingEye,
             VanillaNpcBehaviorFamily.GroundFighter when _context.GroundFighterEnabled => _groundFighter,
+            VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
+            VanillaNpcBehaviorFamily.Flyer when definition.Type == VanillaNpcIds.ServantOfCthulhu => _flyer,
             _ => null
         };
 

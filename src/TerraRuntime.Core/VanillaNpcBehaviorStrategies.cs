@@ -207,3 +207,174 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
         return true;
     }
 }
+
+internal sealed class VanillaEyeOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    public bool TryStep(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner,
+        out NpcStateUpdate next)
+    {
+        if (definition.AiStyle != VanillaNpcAiStyles.EyeOfCthulhu || !definition.IsBoss)
+        {
+            next = default;
+            return false;
+        }
+
+        NpcSnapshot targeted = npc;
+        bool targetAvailable = TryGetUsableTarget(targeted.Target, context, out VanillaNpcTargetCandidate candidate);
+        if (!targetAvailable || candidate.Dead)
+        {
+            if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) &&
+                context.TryFindCandidate(checked((byte)closest.Target), out candidate))
+            {
+                targeted = npc with
+                {
+                    Target = closest.Target,
+                    Simulation = npc.Simulation with
+                    {
+                        DirectionX = closest.DirectionX,
+                        DirectionY = closest.DirectionY
+                    }
+                };
+                targetAvailable = candidate.Active && !candidate.Ghost;
+            }
+            else
+            {
+                targetAvailable = false;
+                candidate = default;
+            }
+        }
+
+        NpcSimulationState simulation = targeted.Simulation;
+        int lifeMax = simulation.LifeMax > 0 ? simulation.LifeMax : definition.LifeMax;
+        int life = simulation.LifeMax > 0 ? simulation.Life : definition.LifeMax;
+        var input = new VanillaEyeOfCthulhuMotionInput(
+            NpcCenterX: targeted.PositionX + definition.Width * 0.5f,
+            NpcCenterY: targeted.PositionY + definition.Height * 0.5f,
+            VelocityX: targeted.VelocityX,
+            VelocityY: targeted.VelocityY,
+            Target: targeted.Target,
+            Ai: targeted.Ai,
+            Life: life,
+            LifeMax: lifeMax,
+            TimeLeft: simulation.TimeLeft,
+            DayTime: context.DayTime,
+            TargetAvailable: targetAvailable,
+            TargetDead: !targetAvailable || candidate.Dead,
+            TargetCenterX: candidate.CenterX,
+            TargetCenterY: candidate.CenterY);
+
+        if (!VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result))
+        {
+            next = default;
+            return false;
+        }
+
+        next = new NpcStateUpdate(
+            definition.Type.Value,
+            targeted.NetId,
+            targeted.PositionX,
+            targeted.PositionY,
+            result.VelocityX,
+            result.VelocityY,
+            result.Target,
+            result.Ai,
+            simulation with
+            {
+                NoGravity = true,
+                NoTileCollide = true,
+                TimeLeft = result.TimeLeft
+            });
+        return true;
+    }
+
+    private static bool TryGetUsableTarget(
+        ushort target,
+        VanillaNpcBehaviorContext context,
+        out VanillaNpcTargetCandidate candidate)
+    {
+        if (target < byte.MaxValue &&
+            context.TryFindCandidate(checked((byte)target), out candidate) &&
+            candidate.Active &&
+            !candidate.Ghost)
+        {
+            return true;
+        }
+
+        candidate = default;
+        return false;
+    }
+}
+
+internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    public bool TryStep(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner,
+        out NpcStateUpdate next)
+    {
+        if (definition.Type != VanillaNpcIds.ServantOfCthulhu ||
+            definition.AiStyle != VanillaNpcAiStyles.Flyer)
+        {
+            next = default;
+            return false;
+        }
+
+        if (!context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) ||
+            !context.TryFindCandidate(checked((byte)closest.Target), out VanillaNpcTargetCandidate candidate))
+        {
+            NpcSimulationState idleSimulation = npc.Simulation with
+            {
+                NoGravity = true,
+                NoTileCollide = true
+            };
+            next = new NpcStateUpdate(
+                definition.Type.Value,
+                npc.NetId,
+                npc.PositionX,
+                npc.PositionY,
+                npc.VelocityX,
+                npc.VelocityY,
+                npc.Target,
+                npc.Ai,
+                idleSimulation);
+            return true;
+        }
+
+        var input = new VanillaServantOfCthulhuMotionInput(
+            NpcCenterX: npc.PositionX + definition.Width * 0.5f,
+            NpcCenterY: npc.PositionY + definition.Height * 0.5f,
+            VelocityX: npc.VelocityX,
+            VelocityY: npc.VelocityY,
+            TargetCenterX: candidate.CenterX,
+            TargetCenterY: candidate.CenterY);
+        if (!VanillaServantOfCthulhuMotion.TryStep(in input, out VanillaServantOfCthulhuMotionResult result))
+        {
+            next = default;
+            return false;
+        }
+
+        next = new NpcStateUpdate(
+            definition.Type.Value,
+            npc.NetId,
+            npc.PositionX,
+            npc.PositionY,
+            result.VelocityX,
+            result.VelocityY,
+            closest.Target,
+            npc.Ai,
+            npc.Simulation with
+            {
+                DirectionX = closest.DirectionX,
+                DirectionY = closest.DirectionY,
+                NoGravity = true,
+                NoTileCollide = true
+            });
+        return true;
+    }
+}
