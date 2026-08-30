@@ -53,9 +53,13 @@ jobs:
           assembly_dir="$(dirname "$assembly")"
           .tools/ilspycmd --disable-updatecheck -l c "$assembly" > artifacts/source-contract/classes.txt
           jungle_type="$(grep -E '(^|[.])JunglePass$' artifacts/source-contract/classes.txt | head -n 1 | sed 's/^[^ ]* //')"
+          terrain_type="$(grep -E '(^|[.])TerrainPass$' artifacts/source-contract/classes.txt | head -n 1 | sed 's/^[^ ]* //')"
           test -n "$jungle_type"
+          test -n "$terrain_type"
           echo "Pinned JunglePass type: $jungle_type"
+          echo "Pinned TerrainPass type: $terrain_type"
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$jungle_type" "$assembly" > artifacts/source-contract/jungle-pass.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$terrain_type" "$assembly" > artifacts/source-contract/terrain-pass.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
 
           python3 tools/ci/probe_worldgen_jungle_pass.py \
@@ -65,7 +69,7 @@ jobs:
             --world-gen artifacts/source-contract/world-gen.cs \
             --output artifacts/source-contract/jungle-helper-contract.txt
           python3 tools/ci/probe_worldgen_jungle_layers.py \
-            --world-gen artifacts/source-contract/world-gen.cs \
+            --world-gen artifacts/source-contract/terrain-pass.cs \
             --output artifacts/source-contract/jungle-layer-contract.txt
 
       - name: Upload JunglePass evidence
