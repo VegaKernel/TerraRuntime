@@ -214,7 +214,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 
 ### D2 - Items and inventory
 
-- [ ] item definitions/defaults;
+- [x] item definitions/defaults ([EN](../en/item-definitions.md), [RU](../ru/item-definitions.md));
 - [x] typed inventory layout;
 - [x] prefix/stack normalization;
 - [x] item-use semantic boundary;

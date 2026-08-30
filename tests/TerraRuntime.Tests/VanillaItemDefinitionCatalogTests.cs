@@ -13,6 +13,8 @@ public sealed class VanillaItemDefinitionCatalogTests
             out VanillaItemDefinition definition));
 
         Assert.Equal(VanillaItemIds.DirtBlock, definition.Type);
+        Assert.Equal(new VanillaItemRuntimeDefaults(12, 12, 9_999), definition.RuntimeDefaults);
+        Assert.True(definition.UseTiming.HasValue);
         Assert.True(definition.Placement.HasValue);
         Assert.False(definition.PickTool.HasValue);
         Assert.False(definition.WorldDrop.HasValue);
@@ -20,6 +22,13 @@ public sealed class VanillaItemDefinitionCatalogTests
         VanillaItemPlacementDefinition placement = definition.Placement.Value;
         Assert.Equal(VanillaTileIds.Dirt, placement.TileType);
         Assert.True(placement.Consumable);
+
+        VanillaItemUseTimingDefinition timing = definition.UseTiming.Value;
+        Assert.Equal(VanillaItemUseStyle.Swing, timing.Style);
+        Assert.Equal(15, timing.AnimationTicks);
+        Assert.Equal(10, timing.UseTimeTicks);
+        Assert.True(timing.AutoReuse);
+        Assert.True(timing.UseTurn);
     }
 
     [Fact]
@@ -30,6 +39,8 @@ public sealed class VanillaItemDefinitionCatalogTests
             out VanillaItemDefinition definition));
 
         Assert.Equal(VanillaItemIds.CopperPickaxe, definition.Type);
+        Assert.Equal(new VanillaItemRuntimeDefaults(24, 28, 9_999), definition.RuntimeDefaults);
+        Assert.True(definition.UseTiming.HasValue);
         Assert.False(definition.Placement.HasValue);
         Assert.True(definition.PickTool.HasValue);
         Assert.False(definition.WorldDrop.HasValue);
@@ -37,6 +48,13 @@ public sealed class VanillaItemDefinitionCatalogTests
         VanillaItemPickToolDefinition pickTool = definition.PickTool.Value;
         Assert.Equal((short)35, pickTool.PickPower);
         Assert.Equal(-1, pickTool.TileBoost);
+
+        VanillaItemUseTimingDefinition timing = definition.UseTiming.Value;
+        Assert.Equal(VanillaItemUseStyle.Swing, timing.Style);
+        Assert.Equal(23, timing.AnimationTicks);
+        Assert.Equal(15, timing.UseTimeTicks);
+        Assert.True(timing.AutoReuse);
+        Assert.True(timing.UseTurn);
     }
 
     [Theory]
@@ -58,6 +76,32 @@ public sealed class VanillaItemDefinitionCatalogTests
         Assert.Equal(height, definition.Height);
         Assert.False(definition.NoGravity);
         Assert.Equal(prefixFamily, definition.PrefixFamily);
+        Assert.True(VanillaItemDefinitionCatalog.TryGetRuntimeDefaults(type, out VanillaItemRuntimeDefaults runtime));
+        Assert.Equal(width, runtime.Width);
+        Assert.Equal(height, runtime.Height);
+        Assert.Equal((short)9_999, runtime.MaximumStack);
+    }
+
+    [Fact]
+    public void Known_stack_maxima_fail_closed_without_guessing_unimported_item_defaults()
+    {
+        Assert.True(VanillaItemDefinitionCatalog.IsValidKnownStack(VanillaItemIds.DirtBlock, 9_999));
+        Assert.False(VanillaItemDefinitionCatalog.IsValidKnownStack(VanillaItemIds.DirtBlock, 10_000));
+        Assert.True(VanillaItemDefinitionCatalog.IsValidKnownStack(new ItemTypeId(1), short.MaxValue));
+        Assert.False(VanillaItemDefinitionCatalog.IsValidKnownStack(new ItemTypeId(1), 0));
+    }
+
+    [Fact]
+    public void Slime_staff_exposes_verified_use_timing_without_claiming_an_item_use_capability()
+    {
+        Assert.True(VanillaItemDefinitionCatalog.TryGetUseTiming(
+            VanillaItemIds.SlimeStaff,
+            out VanillaItemUseTimingDefinition timing));
+        Assert.Equal(VanillaItemUseStyle.Swing, timing.Style);
+        Assert.Equal(28, timing.AnimationTicks);
+        Assert.Equal(28, timing.UseTimeTicks);
+        Assert.True(timing.AutoReuse);
+        Assert.False(timing.UseTurn);
     }
 
     [Fact]
@@ -71,6 +115,9 @@ public sealed class VanillaItemDefinitionCatalogTests
             out _));
         Assert.False(VanillaItemDefinitionCatalog.TryGetWorldDrop(
             VanillaItemIds.DirtBlock,
+            out _));
+        Assert.False(VanillaItemDefinitionCatalog.TryGetUseTiming(
+            VanillaItemIds.Gel,
             out _));
         Assert.False(VanillaItemDefinitionCatalog.TryGet(
             new ItemTypeId(1),

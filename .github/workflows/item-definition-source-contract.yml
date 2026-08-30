@@ -1,0 +1,89 @@
+name: Item Definition Source Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
+      - 'src/TerraRuntime.Core/PlayerItemUseRequest.cs'
+      - 'src/TerraRuntime.Core/VanillaItemDefinitionCatalog.cs'
+      - 'src/TerraRuntime.Core/VanillaPlayerItemNormalizer.cs'
+      - 'src/TerraRuntime.Core/VanillaPlayerItemUseSemanticResolver.cs'
+      - 'src/TerraRuntime/RuntimePlayerInventoryStore.cs'
+      - 'tests/TerraRuntime.Tests/RuntimePlayerInventoryStoreTests.cs'
+      - 'tests/TerraRuntime.Tests/VanillaItemDefinitionCatalogTests.cs'
+      - 'tests/TerraRuntime.Tests/VanillaPlayerItemNormalizerTests.cs'
+      - 'tests/TerraRuntime.Tests/VanillaPlayerItemUseSemanticResolverTests.cs'
+      - 'tools/ci/probe_item_definitions.py'
+      - 'docs/en/item-definitions.md'
+      - 'docs/ru/item-definitions.md'
+      - 'docs/roadmap/gameplay-decomposition-and-catalogs.md'
+      - '.github/workflows/item-definition-source-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-item-definition-source-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  item-definitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/source-contract .tools
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Install pinned ILSpy command line
+        run: >-
+          dotnet tool install ilspycmd
+          --tool-path .tools
+          --version 11.0.0.9375
+
+      - name: Probe item definition source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+
+          while IFS= read -r -d '' candidate; do
+            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
+            printf 'source_candidate_sha256=%s path=%s\n' "$candidate_sha256" "$candidate"
+            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then
+              assembly="$candidate"
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+
+          if [[ -z "$assembly" ]]; then
+            echo "Pinned TerrariaServer 1.4.5.8 source assembly was not found." >&2
+            exit 1
+          fi
+
+          assembly_dir="$(dirname "$assembly")"
+          printf 'source_assembly_sha256=%s path=%s\n' "$expected_sha256" "$assembly"
+
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Item "$assembly" > artifacts/source-contract/item.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.ID.ItemID "$assembly" > artifacts/source-contract/item-id.cs
+
+          python3 tools/ci/probe_item_definitions.py \
+            --item artifacts/source-contract/item.cs \
+            --item-id artifacts/source-contract/item-id.cs

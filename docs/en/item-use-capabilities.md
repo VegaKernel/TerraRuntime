@@ -43,6 +43,8 @@ For the current source-backed slice, Dirt Block resolves to:
 
 The returned `PlayerItemPlacementUse` contains those facts and the original player/item snapshot. Downstream placement gameplay therefore does not need to compare raw item ids.
 
+It also contains the verified `VanillaItemUseTimingDefinition`: swing style, $15\,\text{ticks}$ animation, $10\,\text{ticks}$ use time, auto-reuse and turn-during-use.
+
 ## Pick tools
 
 `TryResolvePickTool` follows the same model. The current Copper Pickaxe slice resolves to:
@@ -51,6 +53,8 @@ The returned `PlayerItemPlacementUse` contains those facts and the original play
 - `TileBoost = -1`.
 
 Again, these values come from the source-backed definition catalog, not from packet data.
+
+The Copper Pickaxe intent carries its inherited/overridden final defaults: swing style, $23\,\text{ticks}$ animation, $15\,\text{ticks}$ use time, auto-reuse and turn-during-use.
 
 ## Fail-closed behavior
 

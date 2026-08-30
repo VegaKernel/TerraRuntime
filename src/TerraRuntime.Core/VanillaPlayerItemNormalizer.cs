@@ -27,7 +27,7 @@ public static class VanillaPlayerItemNormalizer
     {
         if (!TryNormalizeNetId(request.ItemNetId, out ItemTypeId itemType) ||
             itemType.IsNone ||
-            request.Stack <= 0)
+            !VanillaItemDefinitionCatalog.IsValidKnownStack(itemType, request.Stack))
         {
             return request with
             {

@@ -7,6 +7,19 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaPlayerItemUseSemanticResolverTests
 {
     [Fact]
+    public void Source_backed_overstack_cannot_cross_the_item_use_boundary()
+    {
+        PlayerItemUseRequest itemUse = Request(
+            VanillaItemIds.DirtBlock,
+            stack: 10_000,
+            inventorySlot: 0,
+            generation: 1);
+
+        Assert.False(itemUse.IsValid);
+        Assert.False(VanillaPlayerItemUseSemanticResolver.TryResolvePlacement(in itemUse, out _));
+    }
+
+    [Fact]
     public void Dirt_block_resolves_to_generation_safe_placement_use()
     {
         PlayerItemUseRequest itemUse = Request(
@@ -24,6 +37,11 @@ public sealed class VanillaPlayerItemUseSemanticResolverTests
         Assert.Equal(itemUse.Player, placement.ItemUse.Player);
         Assert.Equal(VanillaTileIds.Dirt, placement.TileType);
         Assert.True(placement.Consumable);
+        Assert.Equal(VanillaItemUseStyle.Swing, placement.Timing.Style);
+        Assert.Equal(15, placement.Timing.AnimationTicks);
+        Assert.Equal(10, placement.Timing.UseTimeTicks);
+        Assert.True(placement.Timing.AutoReuse);
+        Assert.True(placement.Timing.UseTurn);
         Assert.False(VanillaPlayerItemUseSemanticResolver.TryResolvePickTool(in itemUse, out _));
     }
 
@@ -44,6 +62,11 @@ public sealed class VanillaPlayerItemUseSemanticResolverTests
         Assert.Equal(itemUse, pickTool.ItemUse);
         Assert.Equal((short)35, pickTool.PickPower);
         Assert.Equal(-1, pickTool.TileBoost);
+        Assert.Equal(VanillaItemUseStyle.Swing, pickTool.Timing.Style);
+        Assert.Equal(23, pickTool.Timing.AnimationTicks);
+        Assert.Equal(15, pickTool.Timing.UseTimeTicks);
+        Assert.True(pickTool.Timing.AutoReuse);
+        Assert.True(pickTool.Timing.UseTurn);
         Assert.False(VanillaPlayerItemUseSemanticResolver.TryResolvePlacement(in itemUse, out _));
     }
 

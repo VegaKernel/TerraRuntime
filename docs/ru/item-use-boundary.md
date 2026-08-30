@@ -8,7 +8,7 @@
 
 > Какой именно канонический предмет сейчас выбран у этого точного connection generation?
 
-Граница пока намеренно не выполняет поведение оружия, инструмента или placeable item. Такие поля item definition, как `useTime`, `useStyle`, damage, pick power, tile creation и projectile spawning, остаются отдельной version-pinned catalog-работой.
+Граница пока намеренно не выполняет поведение оружия, инструмента или placeable item. Version-pinned каталог уже предоставляет use style/timing и placement/tool facts для начального среза Dirt Block и Copper Pickaxe; damage, projectile spawning и broad item-family defaults остаются отдельной работой.
 
 ## Поток
 
@@ -77,7 +77,7 @@ Resolver также отвергает unassigned connection, пустой вы�
 
 ## Что остаётся
 
-Этот срез создаёт semantic boundary D2, но намеренно не выдумывает отсутствующую vanilla item metadata. Следующим этапам всё ещё нужны source-backed item definitions/defaults, а затем behavior executors для melee/ranged weapons, tools, placeables, consumables и special-use items. Такие executors должны принимать `PlayerItemUseRequest`, а не возвращаться к packet offsets или raw item IDs.
+Этот срез создаёт semantic boundary D2, но намеренно не выдумывает отсутствующую vanilla item metadata. Semantic intents Dirt Block и Copper Pickaxe уже содержат source-backed use timing; следующим этапам всё ещё нужны broader definitions/defaults и behavior executors для melee/ranged weapons, tools, placeables, consumables и special-use items. Такие executors должны принимать `PlayerItemUseRequest`, а не возвращаться к packet offsets или raw item IDs.
 
 ## Проверка
 

@@ -34,20 +34,31 @@ public sealed class RuntimeNpcBehaviorPerformanceTests
         Run(direct, in npc, WarmupIterations);
         Run(decorated, in npc, WarmupIterations);
 
-        long directBefore = GC.GetAllocatedBytesForCurrentThread();
-        float directChecksum = Run(direct, in npc, MeasuredIterations);
-        long directAllocated = GC.GetAllocatedBytesForCurrentThread() - directBefore;
-
-        long decoratedBefore = GC.GetAllocatedBytesForCurrentThread();
-        float decoratedChecksum = Run(decorated, in npc, MeasuredIterations);
-        long decoratedAllocated = GC.GetAllocatedBytesForCurrentThread() - decoratedBefore;
+        long directAllocated = MeasureMinimumAllocation(direct, in npc, out float directChecksum);
+        long decoratedAllocated = MeasureMinimumAllocation(decorated, in npc, out float decoratedChecksum);
 
         Assert.Equal(MeasuredIterations, directChecksum);
         Assert.Equal(MeasuredIterations * 3f, decoratedChecksum);
         Assert.True(directAllocated <= 256, $"Zero-extension NPC dispatch allocated {directAllocated} bytes.");
-        Assert.True(
-            decoratedAllocated <= 4_096,
-            $"One-decorator NPC dispatch allocated {decoratedAllocated} bytes; the gate is below 1/16 byte per dispatch.");
+        Assert.True(decoratedAllocated <= 256, $"One-decorator steady-state NPC dispatch allocated {decoratedAllocated} bytes.");
+    }
+
+    private static long MeasureMinimumAllocation(
+        RuntimeNpcBehaviorStateStepper stepper,
+        in NpcSnapshot npc,
+        out float checksum)
+    {
+        long minimum = long.MaxValue;
+        checksum = 0f;
+        for (int sample = 0; sample < 4; sample++)
+        {
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            checksum = Run(stepper, in npc, MeasuredIterations);
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            minimum = Math.Min(minimum, allocated);
+        }
+
+        return minimum;
     }
 
     private static float Run(RuntimeNpcBehaviorStateStepper stepper, in NpcSnapshot npc, int iterations)

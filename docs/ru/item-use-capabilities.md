@@ -43,6 +43,8 @@ flowchart LR
 
 Возвращаемый `PlayerItemPlacementUse` содержит эти факты и исходный snapshot игрока/предмета. Downstream placement gameplay больше не обязан сравнивать raw item ids.
 
+Он также содержит verified `VanillaItemUseTimingDefinition`: swing style, animation $15\,\text{тиков}$, use time $10\,\text{тиков}$, auto-reuse и turn-during-use.
+
 ## Pick tools
 
 `TryResolvePickTool` работает по той же схеме. Текущий Copper Pickaxe преобразуется в:
@@ -51,6 +53,8 @@ flowchart LR
 - `TileBoost = -1`.
 
 Эти значения приходят из source-backed definition catalog, а не из packet data.
+
+Intent Copper Pickaxe несёт его итоговые inherited/overridden defaults: swing style, animation $23\,\text{тика}$, use time $15\,\text{тиков}$, auto-reuse и turn-during-use.
 
 ## Fail-closed поведение
 

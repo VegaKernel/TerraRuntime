@@ -1,10 +1,42 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
 namespace TerraRuntime.Tests;
 
 public sealed class VanillaPlayerItemNormalizerTests
 {
+    [Fact]
+    public void Source_backed_item_stack_above_verified_maximum_normalizes_to_empty()
+    {
+        var request = new PlayerEquipmentCommitRequest(
+            new PlayerSlotId(0),
+            SlotId: 0,
+            Stack: 10_000,
+            Prefix: 0,
+            ItemNetId: checked((short)VanillaItemIds.DirtBlock.Value),
+            ItemFlags: 0);
+
+        PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
+
+        Assert.Equal((short)0, normalized.Stack);
+        Assert.Equal((short)0, normalized.ItemNetId);
+    }
+
+    [Fact]
+    public void Positive_stack_for_unimported_canonical_item_remains_compatible()
+    {
+        PlayerEquipmentCommitRequest request = Request(
+            stack: short.MaxValue,
+            itemNetId: 1,
+            flags: 0);
+
+        PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
+
+        Assert.Equal(short.MaxValue, normalized.Stack);
+        Assert.Equal((short)1, normalized.ItemNetId);
+    }
+
     [Theory]
     [InlineData(0, 0)]
     [InlineData(6195, 6195)]

@@ -84,6 +84,24 @@ public sealed class RuntimePlayerInventoryStoreTests
     }
 
     [Fact]
+    public void Atomic_mutation_rejects_source_backed_overstack_before_changing_state()
+    {
+        var store = new RuntimePlayerInventoryStore();
+        ConnectionHandle connection = Connection(connectionId: 1008, generation: 1);
+        Assert.True(store.TrySet(connection, Item(connection.Player.Slot, 0, 7, 1)));
+
+        RuntimePlayerInventoryMutation[] mutations =
+        [
+            new(0, new RuntimePlayerInventoryItem(VanillaItemIds.DirtBlock, 10_000, default, 0))
+        ];
+
+        Assert.False(store.TryApplyAtomic(connection, mutations));
+        Assert.True(store.TryGet(connection, 0, out RuntimePlayerInventoryItem captured));
+        Assert.Equal(new ItemTypeId(1), captured.ItemType);
+        Assert.Equal((short)7, captured.Stack);
+    }
+
+    [Fact]
     public void Atomic_mutation_commits_multiple_slots_for_exact_connection_generation()
     {
         var store = new RuntimePlayerInventoryStore();

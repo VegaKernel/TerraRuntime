@@ -106,6 +106,8 @@ Inventory/equipment processing is being decomposed away from loose packet fields
 
 Target concepts include named inventory layout regions, validated item type/stack/prefix state, explicit equipment/loadout semantics, semantic item use instead of packet-handler side effects, and server-known ownership for world items/transitions.
 
+The sparse item-definition catalog now enforces source-backed stack maxima for imported item types at normalization, stored-mutation and item-use boundaries. Canonical item types whose defaults have not been imported remain compatibility-permissive for positive protocol-valid stacks instead of inheriting guessed metadata.
+
 Current packet/commit infrastructure should not be mistaken for complete authoritative recipe/use/ammo/accessory logic.
 
 ## 10. World items

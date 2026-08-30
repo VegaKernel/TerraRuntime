@@ -20,18 +20,25 @@ flowchart LR
 
 | Item | Проверенные capability-факты |
 |---|---|
-| `DirtBlock` (`2`) | placement: `createTile = 0`, `consumable = true` |
-| `CopperPickaxe` (`3509`) | pick tool: `pick = 35`, `tileBoost = -1` |
-| `Gel` (`23`) | world drop: размер `10×12`, обычная gravity, без natural-prefix family |
-| `SlimeStaff` (`1309`) | world drop: размер `26×28`, обычная gravity, summon natural-prefix family |
+| `DirtBlock` (`2`) | core defaults: `12×12`, maximum stack `9999`; placement: `createTile = 0`, `consumable = true`; swing use: animation $15\,\text{тиков}$, use time $10\,\text{тиков}$, auto-reuse, turn |
+| `CopperPickaxe` (`3509`) | core defaults: `24×28`, maximum stack `9999`; pick tool: `pick = 35`, `tileBoost = -1`; swing use: animation $23\,\text{тика}$, use time $15\,\text{тиков}$, auto-reuse, turn |
+| `Gel` (`23`) | core/world-drop размер `10×12`, maximum stack `9999`, обычная gravity, без natural-prefix family |
+| `SlimeStaff` (`1309`) | core/world-drop размер `26×28`, maximum stack `9999`, обычная gravity, summon natural-prefix family; swing use: animation/use time $28\,\text{тиков}$, auto-reuse, без turn |
 
-Optional records теперь такие:
+Каждое импортированное определение содержит валидный `VanillaItemRuntimeDefaults`. Optional capability records теперь такие:
 
 - `VanillaItemPlacementDefinition`;
 - `VanillaItemPickToolDefinition`;
+- `VanillaItemUseTimingDefinition` с named `VanillaItemUseStyle`;
 - `VanillaItemWorldDropDefinition`.
 
-Gameplay запрашивает их через `TryGetPlacement`, `TryGetPickTool` и `TryGetWorldDrop`. Отсутствующая capability завершается fail-closed.
+Gameplay запрашивает их через `TryGetPlacement`, `TryGetPickTool`, `TryGetUseTiming` и `TryGetWorldDrop`. Отсутствующая capability завершается fail-closed. Placement/tool semantic intents теперь несут verified timing snapshot, поэтому будущему executor не нужно восстанавливать `useStyle`, animation или reuse behavior по item ID.
+
+## Core defaults и проверка stack
+
+В TerrariaServer 1.4.5.8 `Item.ResetStats` инициализирует `maxStack` значением `Item.CommonMaxStack`, равным `9999`; ни одно из четырёх импортированных определений не переопределяет его. `TryGetRuntimeDefaults` выдаёт проверенные размеры и maximum.
+
+Inventory normalization, mutations сохранённого inventory и semantic item-use requests отвергают stack выше известного импортированного maximum. Каталог намеренно разрежен, поэтому положительные protocol-valid stacks для canonical, но ещё не импортированных item types остаются допустимыми до появления source-backed defaults: выдуманный maximum для отсутствующей metadata отвергал бы легальные items.
 
 ## World-drop defaults
 
@@ -55,8 +62,9 @@ $$
 
 ## Проверка источником
 
-Два постоянных official-source gate защищают этот разреженный каталог:
+Три постоянных official-source gate защищают этот разреженный каталог:
 
+- `probe_item_definitions.py` проверяет импортированные core defaults, maximum stack и факты use timing/control;
 - `probe_tile_authority.py` проверяет placement/tool факты Dirt Block и Copper Pickaxe;
 - `probe_npc_loot_spawn.py` проверяет размеры Gel/Slime Staff, gravity branch, summon family, ветки вероятностей natural prefix и item-specific prefix validity по pinned Windows TerrariaServer 1.4.5.8.
 
@@ -64,4 +72,4 @@ Runtime-тесты затем проверяют typed representation и fail-cl
 
 ## Охват
 
-Use timing, damage, ammo, healing, equipment behavior и остальные item-поля добавляются только тогда, когда authoritative gameplay действительно начинает их использовать и для них закреплено official-source evidence. Гигантская спекулятивная таблица просто превратила бы неизвестные значения в уверенно неправильные defaults, а подобной инженерной роскоши и без нас хватает.
+Damage, ammo, healing, equipment behavior и остальные item-поля добавляются только тогда, когда authoritative gameplay действительно начинает их использовать и для них закреплено official-source evidence. Гигантская спекулятивная таблица просто превратила бы неизвестные значения в уверенно неправильные defaults, а подобной инженерной роскоши и без нас хватает.

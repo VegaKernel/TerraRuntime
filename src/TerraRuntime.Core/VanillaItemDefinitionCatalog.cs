@@ -18,6 +18,38 @@ public readonly record struct VanillaItemPickToolDefinition(
     short PickPower,
     int TileBoost);
 
+/// <summary>Source-backed common runtime defaults materialized by Item.SetDefaults.</summary>
+public readonly record struct VanillaItemRuntimeDefaults(
+    int Width,
+    int Height,
+    short MaximumStack)
+{
+    public bool IsValid => Width > 0 && Height > 0 && MaximumStack > 0;
+}
+
+/// <summary>Named TerrariaServer 1.4.5.8 item-use animation family.</summary>
+public enum VanillaItemUseStyle : byte
+{
+    Swing = 1
+}
+
+/// <summary>
+/// Source-backed timing/control defaults for one item use. Tick counts are authoritative gameplay values rather
+/// than packet fields; downstream behavior can schedule use without recovering Item.SetDefaults data from an id.
+/// </summary>
+public readonly record struct VanillaItemUseTimingDefinition(
+    VanillaItemUseStyle Style,
+    int AnimationTicks,
+    int UseTimeTicks,
+    bool AutoReuse,
+    bool UseTurn)
+{
+    public bool IsValid =>
+        Enum.IsDefined(Style) &&
+        AnimationTicks > 0 &&
+        UseTimeTicks > 0;
+}
+
 /// <summary>
 /// Source-backed item defaults required to materialize a world-item spawn. PrefixFamily represents verified
 /// Prefix(-1) capability; None means the source-backed item cannot receive a natural prefix in this path.
@@ -41,6 +73,8 @@ public readonly record struct VanillaItemWorldDropDefinition(
 /// </summary>
 public readonly record struct VanillaItemDefinition(
     ItemTypeId Type,
+    VanillaItemRuntimeDefaults RuntimeDefaults,
+    VanillaItemUseTimingDefinition? UseTiming,
     VanillaItemPlacementDefinition? Placement,
     VanillaItemPickToolDefinition? PickTool,
     VanillaItemWorldDropDefinition? WorldDrop);
@@ -51,11 +85,35 @@ public readonly record struct VanillaItemDefinition(
 /// </summary>
 public static class VanillaItemDefinitionCatalog
 {
+    public const short CommonMaximumStack = 9_999;
     public const short CopperPickaxePickPower = 35;
     public const int CopperPickaxeTileBoost = -1;
 
+    private static readonly VanillaItemUseTimingDefinition DirtBlockUseTiming = new(
+        Style: VanillaItemUseStyle.Swing,
+        AnimationTicks: 15,
+        UseTimeTicks: 10,
+        AutoReuse: true,
+        UseTurn: true);
+
+    private static readonly VanillaItemUseTimingDefinition CopperPickaxeUseTiming = new(
+        Style: VanillaItemUseStyle.Swing,
+        AnimationTicks: 23,
+        UseTimeTicks: 15,
+        AutoReuse: true,
+        UseTurn: true);
+
+    private static readonly VanillaItemUseTimingDefinition SlimeStaffUseTiming = new(
+        Style: VanillaItemUseStyle.Swing,
+        AnimationTicks: 28,
+        UseTimeTicks: 28,
+        AutoReuse: true,
+        UseTurn: false);
+
     private static readonly VanillaItemDefinition DirtBlockDefinition = new(
         Type: VanillaItemIds.DirtBlock,
+        RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 12, Height: 12, MaximumStack: CommonMaximumStack),
+        UseTiming: DirtBlockUseTiming,
         Placement: new VanillaItemPlacementDefinition(
             TileType: VanillaTileIds.Dirt,
             Consumable: true),
@@ -64,6 +122,8 @@ public static class VanillaItemDefinitionCatalog
 
     private static readonly VanillaItemDefinition CopperPickaxeDefinition = new(
         Type: VanillaItemIds.CopperPickaxe,
+        RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 24, Height: 28, MaximumStack: CommonMaximumStack),
+        UseTiming: CopperPickaxeUseTiming,
         Placement: null,
         PickTool: new VanillaItemPickToolDefinition(
             PickPower: CopperPickaxePickPower,
@@ -72,6 +132,8 @@ public static class VanillaItemDefinitionCatalog
 
     private static readonly VanillaItemDefinition GelDefinition = new(
         Type: VanillaItemIds.Gel,
+        RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 10, Height: 12, MaximumStack: CommonMaximumStack),
+        UseTiming: null,
         Placement: null,
         PickTool: null,
         WorldDrop: new VanillaItemWorldDropDefinition(
@@ -82,6 +144,8 @@ public static class VanillaItemDefinitionCatalog
 
     private static readonly VanillaItemDefinition SlimeStaffDefinition = new(
         Type: VanillaItemIds.SlimeStaff,
+        RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 26, Height: 28, MaximumStack: CommonMaximumStack),
+        UseTiming: SlimeStaffUseTiming,
         Placement: null,
         PickTool: null,
         WorldDrop: new VanillaItemWorldDropDefinition(
@@ -131,6 +195,45 @@ public static class VanillaItemDefinitionCatalog
         }
 
         placement = default;
+        return false;
+    }
+
+    public static bool TryGetRuntimeDefaults(
+        ItemTypeId type,
+        out VanillaItemRuntimeDefaults runtimeDefaults)
+    {
+        if (TryGet(type, out VanillaItemDefinition definition) && definition.RuntimeDefaults.IsValid)
+        {
+            runtimeDefaults = definition.RuntimeDefaults;
+            return true;
+        }
+
+        runtimeDefaults = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Validates known source-backed maxima while preserving canonical inventory compatibility for item types whose
+    /// complete defaults have not been imported into the deliberately sparse catalog yet.
+    /// </summary>
+    public static bool IsValidKnownStack(ItemTypeId type, short stack) =>
+        stack > 0 &&
+        (!TryGetRuntimeDefaults(type, out VanillaItemRuntimeDefaults defaults) ||
+         stack <= defaults.MaximumStack);
+
+    public static bool TryGetUseTiming(
+        ItemTypeId type,
+        out VanillaItemUseTimingDefinition useTiming)
+    {
+        if (TryGet(type, out VanillaItemDefinition definition) &&
+            definition.UseTiming is { } verified &&
+            verified.IsValid)
+        {
+            useTiming = verified;
+            return true;
+        }
+
+        useTiming = default;
         return false;
     }
 

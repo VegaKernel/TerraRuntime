@@ -57,6 +57,11 @@ def require(fragment: str, needle: str, description: str) -> None:
         raise SystemExit(f"Pinned Terraria 1.4.5.8 contract changed: {description}.")
 
 
+def require_pattern(fragment: str, pattern: str, description: str) -> None:
+    if re.search(pattern, fragment) is None:
+        raise SystemExit(f"Pinned Terraria 1.4.5.8 contract changed: {description}.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Verify pinned Terraria 1.4.5.8 tile-authority facts used by TerraRuntime."
@@ -82,6 +87,11 @@ def main() -> int:
         raise SystemExit(f"Expected ItemID.CopperPickaxe=3509, got {copper_pickaxe}.")
 
     dirt_case = isolate_switch_case(defaults1, dirt, dirt + 1)
+    require(dirt_case, "useStyle = 1;", "Dirt Block use style is no longer swing")
+    require(dirt_case, "useTurn = true;", "Dirt Block no longer turns during use")
+    require(dirt_case, "useAnimation = 15;", "Dirt Block use animation is no longer 15 ticks")
+    require(dirt_case, "useTime = 10;", "Dirt Block use time is no longer 10 ticks")
+    require(dirt_case, "autoReuse = true;", "Dirt Block no longer auto-reuses")
     require(dirt_case, "consumable = true;", "Dirt Block is no longer consumable")
     require(dirt_case, "createTile = 0;", "Dirt Block no longer creates tile 0")
 
@@ -93,13 +103,24 @@ def main() -> int:
     if copper_match is None:
         raise SystemExit("Could not isolate Copper Pickaxe defaults.")
     copper_case = copper_match.group("body")
+    copper_base = isolate_switch_case(defaults1, 1, 2)
+    require(copper_case, "SetDefaults1(1);", "Copper Pickaxe no longer inherits item 1 tool defaults")
+    require(copper_base, "useStyle = 1;", "Copper Pickaxe inherited use style changed")
+    require(copper_base, "useTurn = true;", "Copper Pickaxe inherited use-turn behavior changed")
+    require(copper_base, "autoReuse = true;", "Copper Pickaxe inherited auto-reuse behavior changed")
+    require(copper_case, "useAnimation = 23;", "Copper Pickaxe use animation is no longer 23 ticks")
+    require(copper_case, "useTime = 15;", "Copper Pickaxe use time is no longer 15 ticks")
     require(copper_case, "pick = 35;", "Copper Pickaxe pick power is no longer 35")
     require(copper_case, "tileBoost = -1;", "Copper Pickaxe tileBoost is no longer -1")
 
     require(movement, "selectedItemState.Select(reader.ReadByte());", "packet 13 selected-item decode changed")
-    require(tile, "WorldGen.InWorld(num161, num162, 3)", "packet 17 world-margin guard changed")
-    require(tile, "WorldGen.PlaceTile(num161, num162, num163", "packet 17 PlaceTile dispatch changed")
-    require(tile, "WorldGen.KillTile(num161, num162, flag14)", "packet 17 KillTile dispatch changed")
+    require_pattern(
+        tile,
+        r"WorldGen\.InWorld\([^,]+,\s*[^,]+,\s*3\)",
+        "packet 17 world-margin guard changed",
+    )
+    require(tile, "WorldGen.PlaceTile(", "packet 17 PlaceTile dispatch changed")
+    require(tile, "WorldGen.KillTile(", "packet 17 KillTile dispatch changed")
 
     for forbidden in ("selectedItem", "inventory[", "tileRangeX", "tileRangeY", "blockRange"):
         if forbidden in tile:
@@ -110,9 +131,11 @@ def main() -> int:
     print("item_id_dirt_block=2")
     print("item_dirt_block_create_tile=0")
     print("item_dirt_block_consumable=true")
+    print("item_dirt_block_use=swing,animation15,use10,autoReuse,useTurn")
     print("item_id_copper_pickaxe=3509")
     print("item_copper_pickaxe_pick=35")
     print("item_copper_pickaxe_tile_boost=-1")
+    print("item_copper_pickaxe_use=swing,animation23,use15,autoReuse,useTurn")
     print("packet13_selected_item=selectedItemState.Select(byte)")
     print("packet17_world_margin=3")
     print("packet17_inventory_validation=none")

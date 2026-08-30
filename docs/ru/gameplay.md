@@ -106,6 +106,8 @@ Inventory/equipment processing постепенно выносится из loos
 
 Target concepts: named inventory layout regions, validated item type/stack/prefix state, explicit equipment/loadout semantics, semantic item use вместо packet-handler side effects и server-known ownership world items/transitions.
 
+Разреженный item-definition catalog теперь применяет source-backed maximum stack для импортированных item types на границах normalization, stored mutations и item use. Canonical item types, чьи defaults ещё не импортированы, сохраняют compatibility для положительных protocol-valid stacks вместо наследования выдуманной metadata.
+
 Current packet/commit infrastructure нельзя считать complete authoritative recipe/use/ammo/accessory logic.
 
 ## 10. World items

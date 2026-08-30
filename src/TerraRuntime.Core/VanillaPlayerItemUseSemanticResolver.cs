@@ -9,13 +9,16 @@ namespace TerraRuntime.Core;
 public readonly record struct PlayerItemPlacementUse(
     PlayerItemUseRequest ItemUse,
     TileTypeId TileType,
-    bool Consumable)
+    bool Consumable,
+    VanillaItemUseTimingDefinition Timing)
 {
     public bool IsValid =>
         ItemUse.IsValid &&
         VanillaItemDefinitionCatalog.TryGetPlacement(ItemUse.ItemType, out VanillaItemPlacementDefinition placement) &&
+        VanillaItemDefinitionCatalog.TryGetUseTiming(ItemUse.ItemType, out VanillaItemUseTimingDefinition timing) &&
         placement.TileType == TileType &&
-        placement.Consumable == Consumable;
+        placement.Consumable == Consumable &&
+        timing == Timing;
 }
 
 /// <summary>
@@ -25,13 +28,16 @@ public readonly record struct PlayerItemPlacementUse(
 public readonly record struct PlayerItemPickToolUse(
     PlayerItemUseRequest ItemUse,
     short PickPower,
-    int TileBoost)
+    int TileBoost,
+    VanillaItemUseTimingDefinition Timing)
 {
     public bool IsValid =>
         ItemUse.IsValid &&
         VanillaItemDefinitionCatalog.TryGetPickTool(ItemUse.ItemType, out VanillaItemPickToolDefinition pickTool) &&
+        VanillaItemDefinitionCatalog.TryGetUseTiming(ItemUse.ItemType, out VanillaItemUseTimingDefinition timing) &&
         pickTool.PickPower == PickPower &&
-        pickTool.TileBoost == TileBoost;
+        pickTool.TileBoost == TileBoost &&
+        timing == Timing;
 }
 
 /// <summary>
@@ -47,7 +53,10 @@ public static class VanillaPlayerItemUseSemanticResolver
         if (!itemUse.IsValid ||
             !VanillaItemDefinitionCatalog.TryGetPlacement(
                 itemUse.ItemType,
-                out VanillaItemPlacementDefinition placement))
+                out VanillaItemPlacementDefinition placement) ||
+            !VanillaItemDefinitionCatalog.TryGetUseTiming(
+                itemUse.ItemType,
+                out VanillaItemUseTimingDefinition timing))
         {
             placementUse = default;
             return false;
@@ -56,7 +65,8 @@ public static class VanillaPlayerItemUseSemanticResolver
         placementUse = new PlayerItemPlacementUse(
             itemUse,
             placement.TileType,
-            placement.Consumable);
+            placement.Consumable,
+            timing);
         return true;
     }
 
@@ -67,7 +77,10 @@ public static class VanillaPlayerItemUseSemanticResolver
         if (!itemUse.IsValid ||
             !VanillaItemDefinitionCatalog.TryGetPickTool(
                 itemUse.ItemType,
-                out VanillaItemPickToolDefinition pickTool))
+                out VanillaItemPickToolDefinition pickTool) ||
+            !VanillaItemDefinitionCatalog.TryGetUseTiming(
+                itemUse.ItemType,
+                out VanillaItemUseTimingDefinition timing))
         {
             pickToolUse = default;
             return false;
@@ -76,7 +89,8 @@ public static class VanillaPlayerItemUseSemanticResolver
         pickToolUse = new PlayerItemPickToolUse(
             itemUse,
             pickTool.PickPower,
-            pickTool.TileBoost);
+            pickTool.TileBoost,
+            timing);
         return true;
     }
 }

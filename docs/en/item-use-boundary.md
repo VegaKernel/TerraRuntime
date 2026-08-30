@@ -8,7 +8,7 @@ TerraRuntime now has a protocol-neutral boundary between packet-13 selected-item
 
 > Which exact canonical inventory item does this exact connection generation currently have selected?
 
-It deliberately does not execute weapon/tool/placeable behavior yet. Item definitions such as `useTime`, `useStyle`, damage, pick power, tile creation and projectile spawning remain separate version-pinned catalog work.
+It deliberately does not execute weapon/tool/placeable behavior yet. The version-pinned catalog now supplies use style/timing plus placement/tool facts for the initial Dirt Block and Copper Pickaxe slice; damage, projectile spawning and broad item-family defaults remain separate work.
 
 ## Flow
 
@@ -77,7 +77,7 @@ These are runtime/gameplay boundary results, not protocol decoder errors.
 
 ## What remains
 
-This slice creates the D2 semantic boundary but intentionally does not invent missing vanilla item metadata. Follow-up work still needs source-backed item definitions/defaults and then behavior executors for categories such as melee/ranged weapons, tools, placeables, consumables and special-use items. Those executors should consume `PlayerItemUseRequest` rather than returning to packet offsets or raw item IDs.
+This slice creates the D2 semantic boundary but intentionally does not invent missing vanilla item metadata. Dirt Block and Copper Pickaxe semantic intents already include source-backed use timing; follow-up work still needs broader definitions/defaults and behavior executors for categories such as melee/ranged weapons, tools, placeables, consumables and special-use items. Those executors should consume `PlayerItemUseRequest` rather than returning to packet offsets or raw item IDs.
 
 ## Verification
 

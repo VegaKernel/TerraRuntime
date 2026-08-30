@@ -20,18 +20,25 @@ flowchart LR
 
 | Item | Verified capability facts |
 |---|---|
-| `DirtBlock` (`2`) | placement: `createTile = 0`, `consumable = true` |
-| `CopperPickaxe` (`3509`) | pick tool: `pick = 35`, `tileBoost = -1` |
-| `Gel` (`23`) | world drop: size `10×12`, ordinary gravity, no natural prefix family |
-| `SlimeStaff` (`1309`) | world drop: size `26×28`, ordinary gravity, summon natural-prefix family |
+| `DirtBlock` (`2`) | core defaults: `12×12`, maximum stack `9999`; placement: `createTile = 0`, `consumable = true`; swing use: animation $15\,\text{ticks}$, use time $10\,\text{ticks}$, auto-reuse, turn |
+| `CopperPickaxe` (`3509`) | core defaults: `24×28`, maximum stack `9999`; pick tool: `pick = 35`, `tileBoost = -1`; swing use: animation $23\,\text{ticks}$, use time $15\,\text{ticks}$, auto-reuse, turn |
+| `Gel` (`23`) | core/world-drop size `10×12`, maximum stack `9999`, ordinary gravity, no natural prefix family |
+| `SlimeStaff` (`1309`) | core/world-drop size `26×28`, maximum stack `9999`, ordinary gravity, summon natural-prefix family; swing use: animation/use time $28\,\text{ticks}$, auto-reuse, no turn |
 
-The optional records are now:
+Every imported definition contains valid `VanillaItemRuntimeDefaults`. Optional capability records are:
 
 - `VanillaItemPlacementDefinition`;
 - `VanillaItemPickToolDefinition`;
+- `VanillaItemUseTimingDefinition` with named `VanillaItemUseStyle`;
 - `VanillaItemWorldDropDefinition`.
 
-Code consumes them through `TryGetPlacement`, `TryGetPickTool` and `TryGetWorldDrop`. An absent record fails closed.
+Code consumes them through `TryGetPlacement`, `TryGetPickTool`, `TryGetUseTiming` and `TryGetWorldDrop`. An absent record fails closed. Placement/tool semantic intents now carry the verified timing snapshot, so later executors do not need to recover `useStyle`, animation or reuse behavior from the item ID.
+
+## Core defaults and stack validation
+
+TerrariaServer 1.4.5.8 `Item.ResetStats` initializes `maxStack` from `Item.CommonMaxStack`, which is `9999`; none of the four imported definitions overrides it. `TryGetRuntimeDefaults` exposes the verified dimensions and maximum.
+
+Inventory normalization, stored inventory mutations and semantic item-use requests reject a stack above a known imported maximum. The catalog is deliberately sparse, so positive protocol-valid stacks for canonical but unimported item types remain accepted until their defaults are source-backed; treating missing metadata as a guessed maximum would reject legal items.
 
 ## World-drop defaults
 
@@ -55,8 +62,9 @@ This metadata is consumed by `VanillaNaturalItemPrefixRoller`; it remains separa
 
 ## Verification
 
-Two permanent official-source gates currently protect this sparse catalog:
+Three permanent official-source gates currently protect this sparse catalog:
 
+- `probe_item_definitions.py` verifies the imported core defaults, stack maximum and use timing/control facts;
 - `probe_tile_authority.py` verifies Dirt Block and Copper Pickaxe placement/tool facts;
 - `probe_npc_loot_spawn.py` verifies Gel/Slime Staff dimensions, gravity branch, summon family, natural-prefix probability branches and item-specific prefix validity against the pinned TerrariaServer 1.4.5.8 Windows assembly.
 
@@ -64,4 +72,4 @@ Runtime tests then verify the typed representation and fail-closed capability qu
 
 ## Scope
 
-Use timing, damage, ammo, healing, equipment behavior and other item fields are added only when authoritative gameplay consumes them and official-source evidence is pinned. A giant speculative item table would merely convert unknowns into confidently wrong defaults, which is an impressively inefficient way to create bugs.
+Damage, ammo, healing, equipment behavior and other item fields are added only when authoritative gameplay consumes them and official-source evidence is pinned. A giant speculative item table would merely convert unknowns into confidently wrong defaults, which is an impressively inefficient way to create bugs.
