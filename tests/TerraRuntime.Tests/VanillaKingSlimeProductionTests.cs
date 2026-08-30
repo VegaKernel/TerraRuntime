@@ -22,7 +22,7 @@ public sealed class VanillaKingSlimeProductionTests
 
         Assert.Equal((ushort)7, next.Target);
         Assert.Equal(-98f, next.Ai.Ai0);
-        Assert.Equal(1f, next.Ai.Ai1);
+        Assert.Equal(0f, next.Ai.Ai1);
         Assert.Equal(1.25f, next.Simulation.Scale, 5);
         Assert.Equal(1f, next.Simulation.LocalAi.Ai3);
         Assert.False(next.Simulation.NoGravity);

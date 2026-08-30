@@ -47,7 +47,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
     [InlineData(3, VanillaNpcBehaviorFamily.GroundFighter, VanillaNpcPhysicsFamily.GroundFighter)]
     [InlineData(4, VanillaNpcBehaviorFamily.EyeOfCthulhu, VanillaNpcPhysicsFamily.NoClipFlight)]
     [InlineData(5, VanillaNpcBehaviorFamily.Flyer, VanillaNpcPhysicsFamily.NoClipFlight)]
-    [InlineData(50, VanillaNpcBehaviorFamily.None, VanillaNpcPhysicsFamily.None)]
+    [InlineData(50, VanillaNpcBehaviorFamily.KingSlime, VanillaNpcPhysicsFamily.SlimeGround)]
     public void Verified_definitions_explicitly_opt_into_runtime_behavior_and_physics_families(
         int type,
         VanillaNpcBehaviorFamily expectedBehavior,
@@ -95,8 +95,8 @@ public sealed class VanillaNpcDefinitionCatalogTests
         Assert.Equal(VanillaNpcBehaviorFamily.Flyer, servant.BehaviorFamily);
         Assert.Equal(VanillaNpcPhysicsFamily.NoClipFlight, servant.PhysicsFamily);
         Assert.Equal(VanillaNpcAiStyles.KingSlime, kingSlime.AiStyle);
-        Assert.Equal(VanillaNpcBehaviorFamily.None, kingSlime.BehaviorFamily);
-        Assert.Equal(VanillaNpcPhysicsFamily.None, kingSlime.PhysicsFamily);
+        Assert.Equal(VanillaNpcBehaviorFamily.KingSlime, kingSlime.BehaviorFamily);
+        Assert.Equal(VanillaNpcPhysicsFamily.SlimeGround, kingSlime.PhysicsFamily);
     }
 
     [Fact]

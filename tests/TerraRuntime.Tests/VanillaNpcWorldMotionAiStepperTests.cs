@@ -42,7 +42,7 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
         WorldTile liquid = default;
         liquid.LiquidAmount = byte.MaxValue;
         liquid.LiquidKind = WorldLiquidKind.Water;
-        tiles.Set(8, 6, liquid);
+        tiles.Set(7, 7, liquid);
         var store = new RuntimeNpcStore(capacity: 4);
         NpcStateUpdate state = CreateDemonEye() with
         {
