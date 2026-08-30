@@ -23,6 +23,20 @@ public sealed class VanillaTileWallDefinitionCatalogTests
     }
 
     [Fact]
+    public void Tile_catalog_exposes_source_pinned_skyblock_biome_identities()
+    {
+        Assert.Equal(23, VanillaTileIds.CorruptGrass.Value);
+        Assert.Equal(25, VanillaTileIds.Ebonstone.Value);
+        Assert.Equal(53, VanillaTileIds.Sand.Value);
+        Assert.Equal(59, VanillaTileIds.Mud.Value);
+        Assert.Equal(60, VanillaTileIds.JungleGrass.Value);
+        Assert.Equal(147, VanillaTileIds.SnowBlock.Value);
+        Assert.Equal(161, VanillaTileIds.IceBlock.Value);
+        Assert.Equal(199, VanillaTileIds.CrimsonGrass.Value);
+        Assert.Equal(203, VanillaTileIds.Crimstone.Value);
+    }
+
+    [Fact]
     public void Tile_definition_composes_identity_collision_frame_and_metadata_facts()
     {
         Assert.True(VanillaTileDefinitionCatalog.TryGet(VanillaTileIds.Dirt, out VanillaTileDefinition dirt));
