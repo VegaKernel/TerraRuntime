@@ -32,10 +32,6 @@ internal static class StartupWorldCreationRequestParser
         return args.Contains("--create-world", StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Removes the bootstrap-only creation options after a request has been parsed successfully, leaving unrelated
-    /// server options untouched. Creation options are never forwarded into <see cref="ServerHostOptions"/>.
-    /// </summary>
     public static string[] RemoveCreationArguments(IReadOnlyList<string> args)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -88,10 +84,18 @@ internal static class StartupWorldCreationRequestParser
             return false;
         }
 
-        if (!ulong.TryParse(seedValue, NumberStyles.None, CultureInfo.InvariantCulture, out ulong seed))
+        ulong seed;
+        if (!ulong.TryParse(seedValue, NumberStyles.None, CultureInfo.InvariantCulture, out seed))
         {
-            error = "--world-seed must be an unsigned 64-bit integer.";
-            return false;
+            if (!OfficialVanillaWorldGenerator1458.IsVanilla(generatorId))
+            {
+                error = "--world-seed must be an unsigned 64-bit integer unless --world-generator is terraruntime:vanilla.";
+                return false;
+            }
+
+            // The exact vanilla backend passes SeedText unchanged to TerrariaServer. Seed remains a deterministic
+            // compatibility field for the request contract and is intentionally not used by that backend.
+            seed = 0;
         }
 
         if (!int.TryParse(widthValue, NumberStyles.None, CultureInfo.InvariantCulture, out int width) || width < 1)

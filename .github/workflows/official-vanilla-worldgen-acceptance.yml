@@ -1,0 +1,112 @@
+name: Official Vanilla Worldgen Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/OfficialVanillaWorldGenerator1458.cs'
+      - 'src/TerraRuntime/StartupProgram.cs'
+      - 'src/TerraRuntime/StartupWorldCreationRequest.cs'
+      - 'src/TerraRuntime/InteractiveWorldCreationPrompt.cs'
+      - 'tests/TerraRuntime.Tests/OfficialVanillaWorldGenerator1458Tests.cs'
+      - '.github/workflows/official-vanilla-worldgen-acceptance.yml'
+  pull_request:
+    paths:
+      - 'src/TerraRuntime/OfficialVanillaWorldGenerator1458.cs'
+      - 'src/TerraRuntime/StartupProgram.cs'
+      - 'src/TerraRuntime/StartupWorldCreationRequest.cs'
+      - 'src/TerraRuntime/InteractiveWorldCreationPrompt.cs'
+      - 'tests/TerraRuntime.Tests/OfficialVanillaWorldGenerator1458Tests.cs'
+      - '.github/workflows/official-vanilla-worldgen-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: official-vanilla-worldgen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exact-vanilla-small:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Restore and build
+        run: |
+          dotnet restore TerraRuntime.sln
+          dotnet build TerraRuntime.sln -c Release --no-restore
+      - name: Download pinned official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/terraria-1458"
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o "$RUNNER_TEMP/terraria-1458/server.zip"
+          unzip -q -o "$RUNNER_TEMP/terraria-1458/server.zip" -d "$RUNNER_TEMP/terraria-1458/server"
+          managed="$(find "$RUNNER_TEMP/terraria-1458/server" -type f -name TerrariaServer.exe -print -quit)"
+          linux_server="$(find "$RUNNER_TEMP/terraria-1458/server" -type f -name TerrariaServer.bin.x86_64 -print -quit)"
+          [[ -n "$managed" && -n "$linux_server" ]]
+          [[ "$(sha256sum "$managed" | awk '{print $1}')" == "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e" ]]
+          chmod +x "$linux_server"
+          echo "TERRARIA_SERVER_1458=$linux_server" >> "$GITHUB_ENV"
+      - name: Generate a real vanilla world through TerraRuntime
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$RUNNER_TEMP/exact-vanilla-1458.wld"
+          log="$RUNNER_TEMP/exact-vanilla-1458.log"
+          TERRARUNTIME_TERRARIA_SERVER_1458="$TERRARIA_SERVER_1458" \
+            dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- \
+              --create-world ExactVanilla1458 \
+              --world-generator terraruntime:vanilla \
+              --world-seed 8675309 \
+              --world-width 4200 \
+              --world-height 1200 \
+              --world-game-mode classic \
+              --world-evil crimson \
+              --world-output "$world" \
+              --port 17779 \
+              --no-tui > "$log" 2>&1 &
+          pid=$!
+
+          created=false
+          for _ in $(seq 1 900); do
+            if grep -q "Exact vanilla Terraria 1.4.5.8 world created" "$log" 2>/dev/null && [[ -s "$world" ]]; then
+              created=true
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          kill -TERM "$pid" 2>/dev/null || true
+          sleep 1
+          kill -KILL "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+
+          if [[ "$created" != true ]]; then
+            cat "$log"
+            echo "TerraRuntime did not finish exact vanilla generation." >&2
+            exit 1
+          fi
+
+          grep -F "seed='8675309'" "$log"
+          test "$(stat -c%s "$world")" -gt 1048576
+          python3 tools/ci/probe_world_generation_fixture.py \
+            --world "$world" \
+            --output "$RUNNER_TEMP/exact-vanilla-1458.json"
+      - name: Upload exact vanilla evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-vanilla-worldgen-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/exact-vanilla-1458.log
+            ${{ runner.temp }}/exact-vanilla-1458.json
+          if-no-files-found: error
+          retention-days: 7

@@ -28,7 +28,7 @@ internal static class InteractiveWorldCreationPrompt
             return false;
         if (!TryReadRequired("World name", out string? worldName))
             return false;
-        if (!TryReadSeed(out ulong seed))
+        if (!TryReadSeed(out string? seedText))
             return false;
         if (!TryReadDimensions(out int width, out int height))
             return false;
@@ -41,7 +41,7 @@ internal static class InteractiveWorldCreationPrompt
         [
             "--create-world", worldName!,
             "--world-generator", generatorId.Value,
-            "--world-seed", seed.ToString(CultureInfo.InvariantCulture),
+            "--world-seed", seedText!,
             "--world-width", width.ToString(CultureInfo.InvariantCulture),
             "--world-height", height.ToString(CultureInfo.InvariantCulture),
             "--world-game-mode", gameMode.ToString(),
@@ -61,7 +61,7 @@ internal static class InteractiveWorldCreationPrompt
 
         Console.WriteLine(
             $"Generation request: name='{request.Generation.WorldName}', generator='{request.Generation.GeneratorId.Value}', " +
-            $"seed={request.Generation.Seed}, size={request.Generation.WidthTiles}x{request.Generation.HeightTiles}, " +
+            $"seed='{request.Generation.SeedText}', size={request.Generation.WidthTiles}x{request.Generation.HeightTiles}, " +
             $"mode={request.Generation.Options.GameMode}, evil={request.Generation.Options.Evil}.");
         return true;
     }
@@ -116,38 +116,42 @@ internal static class InteractiveWorldCreationPrompt
         }
     }
 
-    private static bool TryReadSeed(out ulong seed)
+    private static bool TryReadSeed(out string? seedText)
     {
         Span<byte> randomBytes = stackalloc byte[sizeof(ulong)];
         while (true)
         {
-            Console.Write("Seed uint64 (Enter for a generated seed, Q to cancel): ");
+            Console.Write("Seed text (Enter for a generated seed, Q to cancel): ");
             string? input = Console.ReadLine();
             if (input is null)
             {
-                seed = default;
+                seedText = null;
                 return false;
             }
 
             input = input.Trim();
             if (IsCancel(input))
             {
-                seed = default;
+                seedText = null;
                 return false;
             }
 
             if (input.Length == 0)
             {
                 RandomNumberGenerator.Fill(randomBytes);
-                seed = BinaryPrimitives.ReadUInt64LittleEndian(randomBytes);
-                Console.WriteLine($"Generated seed: {seed}");
+                ulong seed = BinaryPrimitives.ReadUInt64LittleEndian(randomBytes);
+                seedText = seed.ToString(CultureInfo.InvariantCulture);
+                Console.WriteLine($"Generated seed: {seedText}");
                 return true;
             }
 
-            if (ulong.TryParse(input, NumberStyles.None, CultureInfo.InvariantCulture, out seed))
+            if (!input.Any(char.IsControl))
+            {
+                seedText = input;
                 return true;
+            }
 
-            Console.Error.WriteLine("Seed must be an unsigned 64-bit integer.");
+            Console.Error.WriteLine("Seed text cannot contain control characters.");
         }
     }
 
@@ -158,7 +162,7 @@ internal static class InteractiveWorldCreationPrompt
         Console.WriteLine("  1. Small   4200x1200");
         Console.WriteLine("  2. Medium  6400x1800");
         Console.WriteLine("  3. Large   8400x2400");
-        Console.WriteLine("  4. Custom");
+        Console.WriteLine("  4. Custom (custom generators only; exact vanilla accepts 1-3)");
 
         while (true)
         {

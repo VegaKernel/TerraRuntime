@@ -76,7 +76,7 @@ public static class StartupProgram
                 return 25;
             }
 
-            if (!TryCreateStartupWorld(creationRequest, startupWorldGenerators, out string? createdPath))
+            if (!TryCreateStartupWorld(creationRequest, directories, startupWorldGenerators, out string? createdPath))
                 return 25;
 
             serverArgs =
@@ -106,7 +106,7 @@ public static class StartupProgram
                     return 0;
                 }
 
-                if (!TryCreateStartupWorld(creationRequest, startupWorldGenerators, out worldPath))
+                if (!TryCreateStartupWorld(creationRequest, directories, startupWorldGenerators, out worldPath))
                     return 25;
             }
             else
@@ -145,9 +145,29 @@ public static class StartupProgram
 
     private static bool TryCreateStartupWorld(
         StartupWorldCreationRequest request,
+        RuntimeDirectoryLayout directories,
         ITerraRuntimeWorldGeneratorSource generators,
         out string? worldPath)
     {
+        if (OfficialVanillaWorldGenerator1458.IsVanilla(request.Generation.GeneratorId))
+        {
+            Console.WriteLine(
+                $"Generating exact vanilla Terraria 1.4.5.8 world '{request.Generation.WorldName}' " +
+                $"({request.Generation.WidthTiles}x{request.Generation.HeightTiles}, " +
+                $"seed='{request.Generation.SeedText ?? request.Generation.Seed.ToString()}', " +
+                $"mode={request.Generation.Options.GameMode}, evil={request.Generation.Options.Evil})...");
+
+            if (!OfficialVanillaWorldGenerator1458.TryCreate(in request, directories, out worldPath, out string? vanillaError))
+            {
+                Console.Error.WriteLine(vanillaError ?? "Exact vanilla world generation failed.");
+                worldPath = null;
+                return false;
+            }
+
+            Console.WriteLine($"Exact vanilla Terraria 1.4.5.8 world created: '{worldPath}'.");
+            return true;
+        }
+
         long maxTileCount = TerrariaServerHost.CreateServerWorldLoadLimits().MaxTileCount;
         var persistence = new RuntimeWorldCreationPersistencePipeline(generators, maxTileCount);
         long nowBinary = DateTime.UtcNow.ToBinary();
@@ -284,9 +304,9 @@ public static class StartupProgram
         Console.WriteLine("World generators:");
         Console.WriteLine("  TerraRuntime.Server --list-world-generators");
         Console.WriteLine("    Lists built-in and trusted-host registered generators.");
-        Console.WriteLine("  TerraRuntime.Server --create-world <name> --world-generator <id> --world-seed <uint64> --world-width <tiles> --world-height <tiles> [--world-game-mode <classic|expert|master|journey>] [--world-evil <corruption|crimson>] [--world-output <path.wld>] [server options]");
-        Console.WriteLine("    Creates a validated Terraria 1.4.5.8 .wld without overwriting an existing world, then starts it.");
-        Console.WriteLine("    Game mode defaults to Classic; world evil defaults to Corruption.");
+        Console.WriteLine("  TerraRuntime.Server --create-world <name> --world-generator <id> --world-seed <text> --world-width <tiles> --world-height <tiles> [--world-game-mode <classic|expert|master|journey>] [--world-evil <corruption|crimson>] [--world-output <path.wld>] [server options]");
+        Console.WriteLine("    terraruntime:vanilla uses the pinned official TerrariaServer 1.4.5.8 generator and accepts only canonical Terraria sizes.");
+        Console.WriteLine("    Other generator IDs use the runtime provider/pass pipeline. Existing worlds are never overwritten.");
         Console.WriteLine();
         Console.WriteLine("Terminal UI is enabled by default. Use --no-tui to disable it.");
         Console.WriteLine("Smoke modes: --loop-smoke, --protocol-smoke, --network-smoke, --world-smoke, --tui-smoke.");

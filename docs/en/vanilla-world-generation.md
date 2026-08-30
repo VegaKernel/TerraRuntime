@@ -2,63 +2,55 @@
 
 [Русский](../ru/vanilla-world-generation.md) · [World generation](world-generation.md) · [Roadmap](../roadmap/gameplay-worldgen-extensibility.md)
 
-TerraRuntime exposes two runtime-owned world generators through the ordinary world-generation provider contract:
-
-- `terraruntime:flat` remains the minimal deterministic baseline used for contract and persistence testing;
-- `terraruntime:vanilla` is the built-in Terraria 1.4.5.8 compatibility generator.
-
-The vanilla generator is clean-room runtime code. It does not embed or copy TerrariaServer implementation source. The implementation is deliberately split into replaceable generation passes so compatibility passes can be replaced by source-verified behavior as parity work advances.
+`terraruntime:vanilla` now means **actual Terraria 1.4.5.8 world generation** at the executable startup surface. It no longer uses TerraRuntime's provisional seven-pass compatibility generator when a user creates a vanilla world.
 
 ## Execution model
 
 ```mermaid
 flowchart LR
-    Request["WorldGenerationRequest"] --> Resolve["Resolve seed profile"]
-    Resolve --> Terrain["Terrain"]
-    Terrain --> Biomes["Biomes + oceans"]
-    Biomes --> Caves["Caves"]
-    Caves --> Ores["Ore tiers"]
-    Ores --> Dungeon["Dungeon anchors"]
-    Dungeon --> Secrets["Special / secret seed modifiers"]
-    Secrets --> Metadata["Spawn + dungeon + layers"]
-    Metadata --> Finalize["Candidate finalization"]
-    Finalize --> Wld["Fresh .wld v326 persistence"]
+    Request["World creation request"] --> Select{"terraruntime:vanilla?"}
+    Select -->|yes| Resolve["Resolve pinned TerrariaServer 1.4.5.8"]
+    Resolve --> Official["Official Terraria WorldGen / complete pass pipeline"]
+    Official --> Wld["Official .wld v326"]
+    Wld --> Validate["TerraRuntime WorldFileLoader validation"]
+    Validate --> Start["Start world in TerraRuntime"]
+    Select -->|no| Provider["TerraRuntime provider/pass pipeline"]
 ```
 
-Every built-in vanilla pass uses `WorldGenerationRngMode.VanillaSharedRng`. TerraRuntime resolves the Terraria world seed from `SeedText` using the pinned 1.4.5.8 rules: a valid `Int32` is used directly, otherwise CRC32 of the UTF-8 seed text is used. A fresh `VanillaUnifiedRandom1458(worldSeed)` is created before each enabled vanilla pass, matching the verified Terraria 1.4.5.8 pass-level RNG lifecycle.
+For `terraruntime:vanilla`, TerraRuntime invokes the official dedicated server package for Terraria 1.4.5.8 and lets Terraria itself run the complete world-generation pipeline. The produced `.wld` is not accepted merely because the process created a file: TerraRuntime loads and validates the complete world first, including the header, tile section, chests, signs, NPC persistence, tile entities, pressure plates, town rooms, bestiary, creative powers and footer.
 
-The ordinary isolated deterministic RNG remains available to custom runtime passes. `CustomProviderRng` stays fail-closed until a provider-owned RNG contract is explicitly defined.
+This is deliberately different from pretending that a small compatibility generator is vanilla. The clean-room pass implementation remains useful development scaffolding, but it is not the user-facing vanilla creation backend.
 
-## Special and secret seeds
+## Pinned official backend
 
-`VanillaWorldSeedResolver1458` converts seed text into one immutable `VanillaWorldSeedProfile1458`. Generation and persistence consume the same profile, so seed behavior cannot silently disappear between candidate generation and the first restart.
+On first exact-vanilla creation, TerraRuntime resolves TerrariaServer 1.4.5.8 in this order:
 
-The resolver recognizes all nine Terraria 1.4.5.8 special-world families:
+1. `TERRARUNTIME_TERRARIA_SERVER_1458` when the operator explicitly supplies a server executable;
+2. the runtime cache under `data/official-terraria/1.4.5.8/server`;
+3. otherwise the official dedicated-server archive is downloaded from `terraria.org`, extracted into that cache and the contained `TerrariaServer.exe` is checked against the pinned SHA-256 before use.
 
-- Drunk World;
-- For the Worthy;
-- Celebration Mk10;
-- The Constant;
-- Not the Bees;
-- Don't Dig Up / Remix;
-- No Traps;
-- Get Fixed Boi / Zenith;
-- Skyblock.
+Windows x64 uses `TerrariaServer.exe`; Linux x64 uses `TerrariaServer.bin.x86_64` from the same verified package. TerraRuntime does not redistribute or embed TerrariaServer in its own binaries.
 
-Special seed matching is case-insensitive and ignores non-alphanumeric characters. Zenith expands to the classic combined special-seed profile. Prefixed and pipe-combined input is also handled by the resolver.
+## World size, mode, evil and seed
 
-The resolver also recognizes the 37 Terraria 1.4.5 secret-seed phrases as independent flags. Multiple secret phrases may be combined with `|`, including Terraria-style prefixed input such as `1.1.1.0.planetoids|bring a towel`.
+Exact vanilla creation accepts the three canonical Terraria sizes only:
 
-Generation currently applies runtime-owned compatibility behavior for terrain-affecting secret profiles such as Planetoids, Beam Me Up, Waterpark, Not the Bees, Toadstool, Mole People, Such Great Heights, Winter Is Coming, Sandy Britches and Save the Rainforest. Runtime-state secret flags are persisted through the fresh `.wld` v326 metadata writer, including permanent seasonal modes, vampire/infected modes, team-based spawns, dual dungeons and lightning variants.
+- Small: `4200x1200`;
+- Medium: `6400x1800`;
+- Large: `8400x2400`.
 
-## Publication and persistence
+For ordinary seed text, TerraRuntime prefixes the seed with the selected size, difficulty and evil in Terraria's own seed format before handing it to the official generator. A complete prefixed Terraria seed supplied by the user is preserved verbatim.
 
-Generation occurs inside `RuntimeWorldGenerationWorkspace`, which is unpublished and therefore uses the initial-population tile-write path. Generated tiles do not manufacture network or persistence dirty queues before the world becomes authoritative.
+Seed input is text for `terraruntime:vanilla`, so ordinary numeric seeds, special seeds and secret-seed text are handed to Terraria rather than approximated by TerraRuntime. Custom providers retain the existing unsigned 64-bit seed contract.
 
-The final metadata snapshot contains spawn, dungeon, world layers and the resolved vanilla seed profile. `WorldFileFreshRuntimeMetadata326Encoder` maps supported special/secret state into the canonical Terraria 1.4.5.8 `.wld` v326 metadata fields when a fresh world is persisted.
+## Failure behavior
 
-## Parity boundary
+Exact vanilla generation is fail-closed. TerraRuntime refuses to overwrite an existing `.wld`, rejects non-canonical sizes, fails if the pinned official backend cannot be resolved, and refuses to start a generated world until `WorldFileLoader` accepts the complete file.
 
-`terraruntime:vanilla` is now a usable, non-flat, deterministic runtime-owned vanilla-style generator with verified seed/RNG semantics and persisted special/secret seed state. It is **not** yet byte-identical to TerrariaServer `WorldGen.AddPasses()` output.
+The dedicated-server generation process is temporary. Once the generated world is complete and validated, the official process is terminated and the normal TerraRuntime host starts the resulting world.
 
-Exact implementation and reference-world parity for the complete source-pinned 109-pass Terraria 1.4.5.8 catalog remain roadmap work. The pass-oriented architecture is intentionally designed so those compatibility implementations can be replaced incrementally without changing the host/provider contract or world publication pipeline.
+## Clean-room parity boundary
+
+The repository still contains source-pinned pass catalogs, vanilla RNG semantics and clean-room world-generation work. The long-term goal remains a complete source-exact TerraRuntime-owned implementation of the Terraria 1.4.5.8 pipeline.
+
+Until that 109-pass/reference-world parity is actually complete, the name `terraruntime:vanilla` is reserved for the exact official backend. This prevents a partially compatible generator from being presented to operators as a vanilla world.

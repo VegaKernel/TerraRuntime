@@ -2,63 +2,55 @@
 
 [English](../en/vanilla-world-generation.md) · [Генерация мира](world-generation.md) · [Roadmap](../roadmap/gameplay-worldgen-extensibility.md)
 
-TerraRuntime публикует два runtime-owned генератора мира через обычный контракт world-generation provider:
-
-- `terraruntime:flat` остаётся минимальным deterministic baseline для проверки контрактов и persistence;
-- `terraruntime:vanilla` является встроенным compatibility generator для Terraria 1.4.5.8.
-
-Vanilla generator реализован clean-room кодом TerraRuntime. Он не встраивает и не копирует implementation source TerrariaServer. Реализация намеренно разделена на заменяемые generation passes, чтобы compatibility-реализации можно было постепенно заменять source-verified поведением по мере продвижения parity.
+`terraruntime:vanilla` теперь означает **настоящую генерацию мира Terraria 1.4.5.8** на пользовательском startup-интерфейсе. При создании vanilla-мира больше не используется предварительный семипроходный compatibility generator TerraRuntime.
 
 ## Модель выполнения
 
 ```mermaid
 flowchart LR
-    Request["WorldGenerationRequest"] --> Resolve["Resolve seed profile"]
-    Resolve --> Terrain["Terrain"]
-    Terrain --> Biomes["Biomes + oceans"]
-    Biomes --> Caves["Caves"]
-    Caves --> Ores["Ore tiers"]
-    Ores --> Dungeon["Dungeon anchors"]
-    Dungeon --> Secrets["Special / secret seed modifiers"]
-    Secrets --> Metadata["Spawn + dungeon + layers"]
-    Metadata --> Finalize["Candidate finalization"]
-    Finalize --> Wld["Fresh .wld v326 persistence"]
+    Request["Запрос создания мира"] --> Select{"terraruntime:vanilla?"}
+    Select -->|да| Resolve["Получить pinned TerrariaServer 1.4.5.8"]
+    Resolve --> Official["Официальный Terraria WorldGen / полный pipeline"]
+    Official --> Wld["Официальный .wld v326"]
+    Wld --> Validate["Проверка TerraRuntime WorldFileLoader"]
+    Validate --> Start["Запуск мира в TerraRuntime"]
+    Select -->|нет| Provider["TerraRuntime provider/pass pipeline"]
 ```
 
-Каждый встроенный vanilla pass использует `WorldGenerationRngMode.VanillaSharedRng`. TerraRuntime получает Terraria world seed из `SeedText` по закреплённым правилам 1.4.5.8: корректный `Int32` используется напрямую, иначе вычисляется CRC32 от UTF-8 seed text. Перед каждым включённым vanilla pass создаётся новый `VanillaUnifiedRandom1458(worldSeed)`, что соответствует проверенному pass-level RNG lifecycle Terraria 1.4.5.8.
+Для `terraruntime:vanilla` TerraRuntime запускает официальный dedicated-server пакет Terraria 1.4.5.8 и позволяет самой Terraria выполнить полный world-generation pipeline. Полученный `.wld` не принимается только потому, что файл появился: TerraRuntime сначала полностью загружает и валидирует мир, включая header, tiles, chests, signs, NPC persistence, tile entities, pressure plates, town rooms, bestiary, creative powers и footer.
 
-Обычный isolated deterministic RNG остаётся доступен custom runtime passes. `CustomProviderRng` продолжает работать fail-closed, пока не будет явно определён provider-owned RNG contract.
+Это принципиально отличается от ситуации, когда небольшой compatibility generator называется vanilla. Clean-room pass implementation остаётся полезной заготовкой для разработки, но больше не является пользовательским backend создания vanilla-мира.
 
-## Special и secret seeds
+## Закреплённый официальный backend
 
-`VanillaWorldSeedResolver1458` преобразует seed text в один immutable `VanillaWorldSeedProfile1458`. Один и тот же профиль используется generation и persistence, поэтому поведение seed не может незаметно исчезнуть между генерацией candidate и первым restart.
+При первом exact-vanilla создании TerraRuntime ищет TerrariaServer 1.4.5.8 в таком порядке:
 
-Resolver распознаёт все девять special-world семейств Terraria 1.4.5.8:
+1. `TERRARUNTIME_TERRARIA_SERVER_1458`, если оператор явно указал executable;
+2. runtime cache `data/official-terraria/1.4.5.8/server`;
+3. иначе официальный dedicated-server архив скачивается с `terraria.org`, распаковывается в этот cache, а находящийся внутри `TerrariaServer.exe` проверяется по закреплённому SHA-256 перед использованием.
 
-- Drunk World;
-- For the Worthy;
-- Celebration Mk10;
-- The Constant;
-- Not the Bees;
-- Don't Dig Up / Remix;
-- No Traps;
-- Get Fixed Boi / Zenith;
-- Skyblock.
+На Windows x64 используется `TerrariaServer.exe`, на Linux x64 — `TerrariaServer.bin.x86_64` из того же проверенного пакета. TerraRuntime не встраивает и не распространяет TerrariaServer внутри собственных бинарников.
 
-Special seed matching не зависит от регистра и игнорирует неалфавитно-цифровые символы. Zenith разворачивается в классический комбинированный special-seed profile. Resolver также понимает prefixed и pipe-combined input.
+## Размер мира, режим, evil и seed
 
-Также распознаются 37 secret-seed фраз Terraria 1.4.5 как независимые flags. Несколько secret-фраз можно объединять через `|`, в том числе в Terraria-style prefixed input вроде `1.1.1.0.planetoids|bring a towel`.
+Exact vanilla поддерживает только три штатных размера Terraria:
 
-Generation уже применяет runtime-owned compatibility behavior для terrain-affecting профилей, включая Planetoids, Beam Me Up, Waterpark, Not the Bees, Toadstool, Mole People, Such Great Heights, Winter Is Coming, Sandy Britches и Save the Rainforest. Runtime-state secret flags сохраняются через fresh `.wld` v326 metadata writer, включая постоянные seasonal modes, vampire/infected modes, team-based spawns, dual dungeons и lightning variants.
+- Small: `4200x1200`;
+- Medium: `6400x1800`;
+- Large: `8400x2400`.
 
-## Publication и persistence
+Для обычного seed text TerraRuntime добавляет выбранные размер, difficulty и evil в собственном формате seed Terraria и передаёт результат официальному генератору. Если пользователь уже передал полный prefixed Terraria seed, он сохраняется без изменений.
 
-Generation выполняется внутри `RuntimeWorldGenerationWorkspace`, который ещё не опубликован и поэтому использует initial-population tile-write path. Сгенерированные tiles не создают искусственные network/persistence dirty queues до того, как мир станет authoritative.
+Для `terraruntime:vanilla` seed является текстовым, поэтому числовые seeds, special seeds и secret-seed text передаются самой Terraria, а не имитируются кодом TerraRuntime. Custom providers сохраняют прежний контракт unsigned 64-bit seed.
 
-Финальный metadata snapshot содержит spawn, dungeon, world layers и resolved vanilla seed profile. `WorldFileFreshRuntimeMetadata326Encoder` переносит поддерживаемое special/secret state в canonical metadata-поля Terraria 1.4.5.8 `.wld` v326 при сохранении нового мира.
+## Поведение при ошибках
 
-## Граница parity
+Exact vanilla работает fail-closed. TerraRuntime не перезаписывает существующий `.wld`, отклоняет нестандартный размер, завершает создание ошибкой, если pinned official backend недоступен, и не запускает мир, пока полный файл не будет принят `WorldFileLoader`.
 
-`terraruntime:vanilla` теперь является пригодным к использованию, не-flat, deterministic runtime-owned vanilla-style generator с проверенной seed/RNG семантикой и сохраняемым special/secret seed state. Он **пока не является byte-identical реализацией** вывода TerrariaServer `WorldGen.AddPasses()`.
+Процесс official dedicated server используется только на время генерации. После полной записи и успешной валидации мира официальный процесс завершается, а полученный мир запускается обычным TerraRuntime host.
 
-Точная реализация и reference-world parity полного source-pinned каталога из 109 passes Terraria 1.4.5.8 остаются задачами roadmap. Pass-oriented архитектура специально оставляет возможность постепенно заменять compatibility implementations без изменения host/provider contract и world publication pipeline.
+## Граница clean-room parity
+
+В репозитории остаются source-pinned pass catalog, vanilla RNG semantics и clean-room работа над собственной генерацией. Долгосрочная цель не меняется: полностью source-exact реализация pipeline Terraria 1.4.5.8 внутри TerraRuntime.
+
+Пока 109-pass/reference-world parity реально не закончена, имя `terraruntime:vanilla` зарезервировано за точным official backend. Частично совместимый генератор больше не выдаётся оператору за ванильный мир.
