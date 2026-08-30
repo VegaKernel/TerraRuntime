@@ -17,6 +17,7 @@ on:
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationProvider1458Tests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationPipeline1458Tests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationMidPipeline1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/NpcAiProductionCompositionTests.cs'
       - '.github/workflows/terraria-vanilla-generated-world-acceptance.yml'
   workflow_dispatch:
 
