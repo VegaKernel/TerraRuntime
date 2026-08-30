@@ -68,8 +68,6 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458 : IWorldGener
         Add(builder, MountCavesId, WorldGenerationRngMode.VanillaSharedRng, TunnelsId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.MountCaves, state));
 
-        // These passes use generation-local randomness in the official pipeline. They are represented independently
-        // so they cannot accidentally advance the shared UnifiedRandom stream used by the surrounding source passes.
         Add(builder, DirtWallBackgroundsId, WorldGenerationRngMode.IsolatedDeterministic, MountCavesId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.DirtWallBackgrounds, state));
         Add(builder, RocksInDirtId, WorldGenerationRngMode.IsolatedDeterministic, DirtWallBackgroundsId,
@@ -308,8 +306,6 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         if (bootstrapPublisher is null)
             throw new InvalidOperationException("Terrain layer bridge was created without the baseline metadata parity pass.");
 
-        // Execute the baseline metadata parity pass against a metadata sink and a private compatibility RNG. Its only
-        // real-workspace side effect is publishing the already-computed Reset state/seed profile. Shared RNG is untouched.
         bootstrapPublisher.Execute(new ChildContext(
             context,
             metadata: new MetadataSink(),
@@ -657,8 +653,6 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
 
     private static void ApplyDirtWallBackgrounds(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        // The ordinary pass uses its own stream. Preserve its width-shaped random walk and lay conservative dirt walls
-        // only behind active dirt/stone, never in air, so later Jungle wall rules see a source-shaped background field.
         int drift = 0;
         for (int x = 1; x < grid.Width - 1; x++)
         {
@@ -718,7 +712,7 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, "Generating Terraria clay");
     }
 
-    private static void PlaceMaterialRuns(RuntimeGrid grid, IRandom random, ushort type, int count, int minY, int maxY, int strengthMin, int strengthMax, int stepsMin, int stepsMax)
+    private void PlaceMaterialRuns(RuntimeGrid grid, IRandom random, ushort type, int count, int minY, int maxY, int strengthMin, int strengthMax, int stepsMin, int stepsMax)
     {
         maxY = Math.Clamp(maxY, minY + 1, grid.Height);
         for (int i = 0; i < count; i++)
@@ -835,7 +829,7 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         return x;
     }
 
-    private static void Caverer(RuntimeGrid grid, IRandom random, int x, int y)
+    private void Caverer(RuntimeGrid grid, IRandom random, int x, int y)
     {
         if (random.Next(2) == 0)
         {
@@ -1006,11 +1000,11 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, "Generating source-backed Terraria Jungle");
     }
 
-    private static void ApplyRandomMovement(IRandom random, double scale, ref int x, ref int y, int xr, int yr, int height)
+    private void ApplyRandomMovement(IRandom random, double scale, ref int x, ref int y, int xr, int yr, int height)
     {
         x += random.Next((int)(-xr * scale), 1 + (int)(xr * scale));
         y += random.Next((int)(-yr * scale), 1 + (int)(yr * scale));
-        y = Math.Clamp(y, 1, height - 1);
+        y = Math.Clamp(y, (int)state.MainRockLayer, height);
     }
 
     private void PlaceFirstMud(RuntimeGrid grid, IRandom random, double scale, int x, int y, int speedX)
@@ -1020,7 +1014,7 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         state.MudWall = false;
     }
 
-    private static void PlaceGems(RuntimeGrid grid, IRandom random, double scale, int x, int y, int baseGem)
+    private void PlaceGems(RuntimeGrid grid, IRandom random, double scale, int x, int y, int baseGem)
     {
         for (int i = 0; i < 6d * scale; i++)
             RunTileRunner(grid, random,
@@ -1203,7 +1197,8 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         double current = strength, remaining = steps, x = i, y = j;
         double vx = random.Next(-10, 11) * 0.1d, vy = random.Next(-10, 11) * 0.1d;
         if (speedX != 0d || speedY != 0d) { vx = speedX; vy = speedY; }
-        int liquidKind = random.Next(4);
+        _ = random.Next(4);
+        const WorldLiquidKind ordinaryLiquidKind = WorldLiquidKind.Water;
         while (current > 0d && remaining > 0d)
         {
             if (y < 0d && type == Mud) remaining = 0d;
@@ -1237,7 +1232,7 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
                     if (type == -2 && tile.IsActive && (ty < state.WaterLine || ty > state.LavaLine))
                     {
                         tile.LiquidAmount = byte.MaxValue;
-                        tile.LiquidKind = ty > state.LavaLine ? WorldLiquidKind.Lava : (WorldLiquidKind)Math.Min(liquidKind, 3);
+                        tile.LiquidKind = ty > state.LavaLine ? WorldLiquidKind.Lava : ordinaryLiquidKind;
                     }
                     SetActive(ref tile, false);
                     continue;
@@ -1423,7 +1418,6 @@ internal sealed class VanillaResidualCompatibilityBiomesPass1458 : IWorldGenerat
         public bool TryGetTile(int x, int y, out WorldGenerationTile tile) => inner.TryGetTile(x, y, out tile);
         public bool TrySetTile(int x, int y, in WorldGenerationTile tile)
         {
-            // Compatibility Biomes paints its own broad 59/60 jungle band. Preserve the source-backed Jungle instead.
             if (tile.Type is 59 or 60) return true;
             return inner.TrySetTile(x, y, in tile);
         }
