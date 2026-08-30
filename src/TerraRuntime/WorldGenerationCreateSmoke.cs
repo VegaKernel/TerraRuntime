@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.World;
 
 namespace TerraRuntime;
 
@@ -37,7 +38,7 @@ internal static class WorldGenerationCreateSmoke
 
         if (index + 1 >= args.Count || string.IsNullOrWhiteSpace(args[index + 1]))
         {
-            Console.Error.WriteLine($"Usage: TerraRuntime.Server {Option} <path.wld>");
+            Console.Error.WriteLine($"Usage: TerraRuntime.Server {Option} <path.wld> [generator-id]");
             exitCode = 31;
             return true;
         }
@@ -62,13 +63,31 @@ internal static class WorldGenerationCreateSmoke
             return true;
         }
 
+        WorldGeneratorId generatorId = FlatWorldGenerationProvider.GeneratorId;
+        if (index + 2 < args.Count && !string.IsNullOrWhiteSpace(args[index + 2]))
+        {
+            try
+            {
+                generatorId = new WorldGeneratorId(args[index + 2].Trim());
+            }
+            catch (ArgumentException exception)
+            {
+                Console.Error.WriteLine($"Invalid worldgen smoke generator id: {exception.Message}");
+                exitCode = 31;
+                return true;
+            }
+        }
+
         var request = new WorldGenerationRequest(
-            new WorldGeneratorId("terraruntime:flat"),
-            "TerraRuntimeGeneratedSmoke",
+            generatorId,
+            generatorId == VanillaWorldGenerationProvider1458.GeneratorId
+                ? "TerraRuntimeVanillaSmoke"
+                : "TerraRuntimeGeneratedSmoke",
             Seed: 1458UL,
             WidthTiles: 4200,
             HeightTiles: 1200)
         {
+            SeedText = generatorId == VanillaWorldGenerationProvider1458.GeneratorId ? "1458" : null,
             Options = WorldGenerationOptions.Default
         };
         var generators = new StartupWorldGeneratorSource(host: null);

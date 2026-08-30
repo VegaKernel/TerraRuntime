@@ -189,9 +189,10 @@ public interface IWorldGenerationRandom
 }
 
 /// <summary>
-/// Exact operation surface used by TerrariaServer 1.4.5.8 world-generation passes. The runtime supplies a fresh
-/// world-seeded instance for each vanilla pass once <see cref="WorldGenerationRngMode.VanillaSharedRng"/> execution
-/// is enabled. These methods intentionally mirror UnifiedRandom instead of extending it with invented operations.
+/// Exact operation surface used by TerrariaServer 1.4.5.8 world-generation passes. The runtime supplies one
+/// world-seeded instance for the generation plan and advances that instance across every
+/// <see cref="WorldGenerationRngMode.VanillaSharedRng"/> pass, matching Terraria's shared WorldGenerator random
+/// stream. These methods intentionally mirror UnifiedRandom instead of extending it with invented operations.
 /// </summary>
 public interface IWorldGenerationVanillaRandom
 {

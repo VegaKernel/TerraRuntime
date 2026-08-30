@@ -117,7 +117,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
     }
 
     [Fact]
-    public void Executor_reseeds_verified_vanilla_rng_for_each_pass()
+    public void Executor_shares_verified_vanilla_rng_across_passes()
     {
         var values = new List<int>();
         WorldGenerationPassId firstId = new("test:vanilla-rng-a");
@@ -155,9 +155,10 @@ public sealed class RuntimeWorldGenerationExecutorTests
 
         Assert.Equal(WorldGenerationExecutionStatus.Completed, result.Status);
         Assert.Equal(2, values.Count);
-        Assert.Equal(values[0], values[1]);
         var expected = new VanillaUnifiedRandom1458(123456);
         Assert.Equal(expected.Next(), values[0]);
+        Assert.Equal(expected.Next(), values[1]);
+        Assert.NotEqual(values[0], values[1]);
     }
 
     [Fact]

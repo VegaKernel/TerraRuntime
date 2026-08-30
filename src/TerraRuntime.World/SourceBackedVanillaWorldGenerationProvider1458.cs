@@ -1,0 +1,409 @@
+using TerraRuntime.Contracts.Gameplay;
+
+namespace TerraRuntime.World;
+
+/// <summary>
+/// Migration layer for the built-in Terraria 1.4.5.8 generator. It preserves the existing compatibility passes while
+/// allowing source-backed vanilla passes to replace them one at a time under the same terraruntime:vanilla identity.
+/// </summary>
+public sealed class SourceBackedVanillaWorldGenerationProvider1458 : IWorldGenerationProvider
+{
+    internal static readonly WorldGenerationPassId TerrainPassId = new("terraria:1.4.5.8/Terrain");
+    internal static readonly WorldGenerationPassId MetadataPassId = new("terraria:1.4.5.8/Metadata");
+
+    private readonly VanillaWorldGenerationProvider1458 compatibility = new();
+
+    public WorldGeneratorId Id => VanillaWorldGenerationProvider1458.GeneratorId;
+
+    public void BuildPlan(in WorldGenerationRequest request, IWorldGenerationPlanBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        var state = new VanillaWorldGenerationParityState1458();
+        compatibility.BuildPlan(in request, new OverlayPlanBuilder(builder, state));
+    }
+
+    private sealed class OverlayPlanBuilder : IWorldGenerationPlanBuilder
+    {
+        private readonly IWorldGenerationPlanBuilder inner;
+        private readonly VanillaWorldGenerationParityState1458 state;
+
+        public OverlayPlanBuilder(
+            IWorldGenerationPlanBuilder inner,
+            VanillaWorldGenerationParityState1458 state)
+        {
+            this.inner = inner;
+            this.state = state;
+        }
+
+        public void Add(WorldGenerationPassDescriptor descriptor, IWorldGenerationPass pass)
+        {
+            ArgumentNullException.ThrowIfNull(descriptor);
+            ArgumentNullException.ThrowIfNull(pass);
+
+            if (descriptor.Id == TerrainPassId)
+            {
+                inner.Add(descriptor, new VanillaTerrainPass1458(pass, state));
+                return;
+            }
+
+            if (descriptor.Id == MetadataPassId)
+            {
+                inner.Add(descriptor, new VanillaMetadataParityPass1458(pass, state));
+                return;
+            }
+
+            inner.Add(descriptor, pass);
+        }
+    }
+}
+
+internal sealed class VanillaWorldGenerationParityState1458
+{
+    public WorldGenerationLayers? TerrainLayers { get; set; }
+}
+
+/// <summary>
+/// Clean-room port of the ordinary-world TerrainPass shape from TerrariaServer 1.4.5.8. The exact pass algorithm is
+/// used only for Terraria's three canonical dimensions and ordinary seeds. Special seeds and non-canonical test worlds
+/// deliberately fall back to the previous compatibility pass until their prerequisite WorldGen.Reset state is ported.
+/// </summary>
+internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
+{
+    internal const int FlatBeachPadding = 5;
+    internal const int SurfaceHistoryLength = 500;
+    internal const int CompatibilityBeachEnd = 350;
+
+    private readonly IWorldGenerationPass fallback;
+    private readonly VanillaWorldGenerationParityState1458 state;
+
+    public VanillaTerrainPass1458(IWorldGenerationPass fallback, VanillaWorldGenerationParityState1458 state)
+    {
+        this.fallback = fallback;
+        this.state = state;
+    }
+
+    public void Execute(IWorldGenerationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        VanillaWorldSeedProfile1458 seedProfile = VanillaWorldSeedResolver1458.Resolve(in context.Request);
+        if (!seedProfile.IsDefault || !IsCanonicalWorldSize(context.Workspace.WidthTiles, context.Workspace.HeightTiles))
+        {
+            fallback.Execute(context);
+            return;
+        }
+
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("The source-backed Terraria terrain pass requires shared UnifiedRandom semantics.");
+        IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
+            throw new InvalidOperationException("The source-backed Terraria terrain pass requires world metadata storage.");
+
+        int width = context.Workspace.WidthTiles;
+        int height = context.Workspace.HeightTiles;
+        int leftBeachEnd = CompatibilityBeachEnd;
+        int rightBeachStart = width - CompatibilityBeachEnd;
+
+        TerrainFeatureType feature = TerrainFeatureType.Plateau;
+        int featureRemaining = leftBeachEnd + FlatBeachPadding;
+        double surface = height * 0.3d;
+        surface *= random.Next(90, 110) * 0.005d;
+        double rock = surface + height * 0.2d;
+        rock *= random.Next(90, 110) * 0.01d;
+
+        double surfaceLow = surface;
+        double surfaceHigh = surface;
+        double rockLow = rock;
+        double rockHigh = rock;
+        double beachSurfaceLimit = height * 0.23d;
+        var history = new SurfaceHistory(SurfaceHistoryLength);
+        int progressStride = Math.Max(1, width / 1000);
+
+        for (int x = 0; x < width; x++)
+        {
+            if ((x & 31) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+
+            surfaceLow = Math.Min(surface, surfaceLow);
+            surfaceHigh = Math.Max(surface, surfaceHigh);
+            rockLow = Math.Min(rock, rockLow);
+            rockHigh = Math.Max(rock, rockHigh);
+
+            if (featureRemaining <= 0)
+            {
+                feature = (TerrainFeatureType)random.Next(0, 5);
+                featureRemaining = random.Next(5, 40);
+                if (feature == TerrainFeatureType.Plateau)
+                    featureRemaining *= (int)(random.Next(5, 30) * 0.2d);
+            }
+
+            featureRemaining--;
+            if (x > width * 0.45d && x < width * 0.55d &&
+                (feature == TerrainFeatureType.Mountain || feature == TerrainFeatureType.Valley))
+            {
+                feature = (TerrainFeatureType)random.Next(3);
+            }
+
+            if (x > width * 0.48d && x < width * 0.52d)
+                feature = TerrainFeatureType.Plateau;
+
+            surface += GenerateWorldSurfaceOffset(random, feature);
+
+            double minimumSurfacePercent = 0.17d;
+            const double maximumSurfacePercent = 0.26d;
+            if (width == 4200)
+                minimumSurfacePercent += 0.02d;
+
+            if (x < leftBeachEnd + FlatBeachPadding || x > rightBeachStart - FlatBeachPadding)
+            {
+                surface = Math.Clamp(surface, height * minimumSurfacePercent, beachSurfaceLimit);
+            }
+            else if (surface < height * minimumSurfacePercent)
+            {
+                surface = height * minimumSurfacePercent;
+                featureRemaining = 0;
+            }
+            else if (surface > height * maximumSurfacePercent)
+            {
+                surface = height * maximumSurfacePercent;
+                featureRemaining = 0;
+            }
+
+            while (random.Next(0, 3) == 0)
+                rock += random.Next(-2, 3);
+
+            if (rock < surface + height * 0.06d)
+                rock++;
+            if (rock > surface + height * 0.35d)
+                rock--;
+
+            history.Record(surface);
+            FillColumn(context.Workspace, x, surface, rock);
+
+            if (x == rightBeachStart - FlatBeachPadding)
+            {
+                if (surface > beachSurfaceLimit)
+                    RetargetSurfaceHistory(context.Workspace, history, x, beachSurfaceLimit);
+                feature = TerrainFeatureType.Plateau;
+                featureRemaining = width - x;
+            }
+
+            if (x % progressStride == 0 || x == width - 1)
+                context.ReportProgress((x + 1d) / width, "Generating source-backed Terraria terrain");
+        }
+
+        double worldSurface = (int)(surfaceHigh + 25d);
+        double rockLayer = rockHigh;
+        double sixTileBand = (int)((rockLayer - worldSurface) / 6d) * 6d;
+        rockLayer = (int)(worldSurface + sixTileBand);
+
+        const int minimumLayerGap = 20;
+        if (rockLow < surfaceHigh + minimumLayerGap)
+        {
+            double center = (rockLow + surfaceHigh) / 2d;
+            double gap = Math.Abs(rockLow - surfaceHigh);
+            if (gap < minimumLayerGap)
+                gap = minimumLayerGap;
+            rockLow = center + gap / 2d;
+            surfaceHigh = center - gap / 2d;
+        }
+
+        if (!metadata.TrySetLayers(worldSurface, rockLayer))
+        {
+            throw new InvalidOperationException(
+                $"Terraria terrain produced invalid world layers: surface={worldSurface}, rock={rockLayer}.");
+        }
+
+        state.TerrainLayers = new WorldGenerationLayers(worldSurface, rockLayer);
+    }
+
+    internal static bool IsCanonicalWorldSize(int width, int height) =>
+        (width == 4200 && height == 1200) ||
+        (width == 6400 && height == 1800) ||
+        (width == 8400 && height == 2400);
+
+    private static double GenerateWorldSurfaceOffset(
+        IWorldGenerationVanillaRandom random,
+        TerrainFeatureType feature)
+    {
+        double offset = 0d;
+        switch (feature)
+        {
+            case TerrainFeatureType.Plateau:
+                while (random.Next(0, 7) == 0)
+                    offset += random.Next(-1, 2);
+                break;
+            case TerrainFeatureType.Hill:
+                while (random.Next(0, 4) == 0)
+                    offset--;
+                while (random.Next(0, 10) == 0)
+                    offset++;
+                break;
+            case TerrainFeatureType.Dale:
+                while (random.Next(0, 4) == 0)
+                    offset++;
+                while (random.Next(0, 10) == 0)
+                    offset--;
+                break;
+            case TerrainFeatureType.Mountain:
+                while (random.Next(0, 2) == 0)
+                    offset--;
+                while (random.Next(0, 6) == 0)
+                    offset++;
+                break;
+            case TerrainFeatureType.Valley:
+                while (random.Next(0, 2) == 0)
+                    offset++;
+                while (random.Next(0, 5) == 0)
+                    offset--;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(feature));
+        }
+
+        return offset;
+    }
+
+    private static void FillColumn(IWorldGenerationWorkspace workspace, int x, double surface, double rock)
+    {
+        int surfaceTile = (int)surface;
+        for (int y = 0; y < surfaceTile; y++)
+            SetAir(workspace, x, y);
+
+        for (int y = surfaceTile; y < workspace.HeightTiles; y++)
+            SetSolid(workspace, x, y, y < rock ? VanillaTileIds.Dirt : VanillaTileIds.Stone);
+    }
+
+    private static void RetargetSurfaceHistory(
+        IWorldGenerationWorkspace workspace,
+        SurfaceHistory history,
+        int targetX,
+        double targetHeight)
+    {
+        for (int i = 0; i < history.Length / 2; i++)
+        {
+            if (history[history.Length - 1] <= targetHeight)
+                break;
+
+            for (int j = 0; j < history.Length - i * 2; j++)
+            {
+                double height = history[history.Length - j - 1] - 1d;
+                history[history.Length - j - 1] = height;
+                if (height <= targetHeight)
+                    break;
+            }
+        }
+
+        for (int i = 0; i < history.Length; i++)
+            RetargetColumn(workspace, targetX - i, history[history.Length - i - 1]);
+    }
+
+    private static void RetargetColumn(IWorldGenerationWorkspace workspace, int x, double surface)
+    {
+        int surfaceTile = (int)surface;
+        for (int y = 0; y < surfaceTile; y++)
+            SetAir(workspace, x, y);
+
+        for (int y = surfaceTile; y < workspace.HeightTiles; y++)
+        {
+            if (!workspace.TryGetTile(x, y, out WorldGenerationTile existing))
+                throw new InvalidOperationException($"Could not read terrain tile ({x}, {y}).");
+
+            bool activeStone =
+                (existing.Flags & WorldGenerationTileFlags.Active) != 0 &&
+                existing.Type == VanillaTileIds.Stone.Value;
+            if (!activeStone)
+                SetSolid(workspace, x, y, VanillaTileIds.Dirt);
+        }
+    }
+
+    private static void SetAir(IWorldGenerationWorkspace workspace, int x, int y)
+    {
+        var tile = new WorldGenerationTile(
+            Type: (ushort)VanillaTileIds.Dirt.Value,
+            Wall: 0,
+            FrameX: -1,
+            FrameY: -1,
+            Flags: WorldGenerationTileFlags.None,
+            LiquidAmount: 0,
+            TileColor: 0,
+            WallColor: 0,
+            Shape: 0,
+            LiquidKind: WorldGenerationLiquidKind.Water);
+        if (!workspace.TrySetTile(x, y, in tile))
+            throw new InvalidOperationException($"Could not clear terrain tile ({x}, {y}).");
+    }
+
+    private static void SetSolid(IWorldGenerationWorkspace workspace, int x, int y, TileTypeId type)
+    {
+        var tile = new WorldGenerationTile(
+            Type: checked((ushort)type.Value),
+            Wall: 0,
+            FrameX: -1,
+            FrameY: -1,
+            Flags: WorldGenerationTileFlags.Active,
+            LiquidAmount: 0,
+            TileColor: 0,
+            WallColor: 0,
+            Shape: 0,
+            LiquidKind: WorldGenerationLiquidKind.Water);
+        if (!workspace.TrySetTile(x, y, in tile))
+            throw new InvalidOperationException($"Could not write terrain tile ({x}, {y}).");
+    }
+
+    private enum TerrainFeatureType : byte
+    {
+        Plateau = 0,
+        Hill = 1,
+        Dale = 2,
+        Mountain = 3,
+        Valley = 4
+    }
+
+    private sealed class SurfaceHistory
+    {
+        private readonly double[] heights;
+        private int index;
+
+        public SurfaceHistory(int size)
+        {
+            heights = new double[size];
+        }
+
+        public int Length => heights.Length;
+
+        public double this[int offset]
+        {
+            get => heights[(offset + index) % heights.Length];
+            set => heights[(offset + index) % heights.Length] = value;
+        }
+
+        public void Record(double height)
+        {
+            heights[index] = height;
+            index = (index + 1) % heights.Length;
+        }
+    }
+}
+
+internal sealed class VanillaMetadataParityPass1458 : IWorldGenerationPass
+{
+    private readonly IWorldGenerationPass fallback;
+    private readonly VanillaWorldGenerationParityState1458 state;
+
+    public VanillaMetadataParityPass1458(IWorldGenerationPass fallback, VanillaWorldGenerationParityState1458 state)
+    {
+        this.fallback = fallback;
+        this.state = state;
+    }
+
+    public void Execute(IWorldGenerationContext context)
+    {
+        fallback.Execute(context);
+        if (state.TerrainLayers is not WorldGenerationLayers layers)
+            return;
+
+        IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
+            throw new InvalidOperationException("Vanilla metadata pass requires world metadata storage.");
+        if (!metadata.TrySetLayers(layers.WorldSurface, layers.RockLayer))
+            throw new InvalidOperationException("Could not preserve source-backed Terraria terrain layers.");
+    }
+}
