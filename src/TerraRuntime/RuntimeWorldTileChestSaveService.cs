@@ -274,6 +274,22 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             headerSection = patchedHeader;
         }
 
+        if (snapshot.ProgressionMutations is RuntimeWorldProgressionMutationSnapshot progression && progression.HasAny)
+        {
+            WorldFileProgressionHeaderPatchResult progressionResult = WorldFileProgressionHeaderPatcher.TryPatch(
+                headerSection,
+                sourceHeader,
+                in progression,
+                out byte[] progressionHeader);
+            if (progressionResult != WorldFileProgressionHeaderPatchResult.Patched)
+            {
+                throw new InvalidDataException(
+                    $"Authoritative world progression header patch failed: {progressionResult}.");
+            }
+
+            headerSection = progressionHeader;
+        }
+
         ReadOnlySpan<byte> signSection = preserved.Signs.Span;
         byte[]? encodedSigns = null;
         if (snapshot.Signs is WorldSign[] signs)

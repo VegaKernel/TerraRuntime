@@ -29,7 +29,8 @@ public readonly record struct NpcAiStateTickSummary(
 /// are planned speculatively into executor-owned bounded scratch storage and are applied in order only after
 /// that source-state commit succeeds; newly spawned NPCs therefore cannot enter the same pre-pass or escape
 /// from a rejected/stale transition. Decorator chains expose their inner stepper through
-/// INpcAiStateStepperWrapper so optional planners remain discoverable under production composition layers.
+/// INpcAiStateStepperWrapper so optional planners and post-commit observers remain discoverable under production
+/// composition layers.
 /// </summary>
 public sealed class RuntimeNpcAiStateExecutor
 {
@@ -60,6 +61,8 @@ public sealed class RuntimeNpcAiStateExecutor
         int rejected = 0;
         INpcAiSpawnIntentPlanner? spawnPlanner =
             NpcAiStateStepperComposition.FindCapability<INpcAiSpawnIntentPlanner>(stepper);
+        INpcAiStatePostCommitObserver? postCommitObserver =
+            NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitObserver>(stepper);
 
         for (int index = 0; index < examined; index++)
         {
@@ -81,6 +84,7 @@ public sealed class RuntimeNpcAiStateExecutor
             if (_npcs.TryUpdate(npc.Handle, in next, out NpcSnapshot committed))
             {
                 applied++;
+                postCommitObserver?.NpcAiStateCommitted(in npc, in committed);
                 commitSink?.NpcAiStateCommitted(in committed);
 
                 for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)

@@ -12,8 +12,15 @@ namespace TerraRuntime;
 /// input for the next AI tick. Concrete content IDs are resolved to explicit physics-family metadata before
 /// this stage chooses special movement behavior. Every collision query resolves the hitbox from the live
 /// post-AI scale so dynamic-size NPCs do not keep their spawn geometry after an AI scale transition.
+///
+/// This layer also owns the currently source-backed King Slime terminal transition. A dead King Slime proposes
+/// TimeLeft=0 without running another live AI/movement step. Its progression mutation is published only through
+/// the post-commit observer after the exact generation-safe state update succeeds.
 /// </summary>
-internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcAiStateStepperWrapper
+internal sealed class VanillaNpcWorldMotionAiStepper :
+    INpcAiStateStepper,
+    INpcAiStateStepperWrapper,
+    INpcAiStatePostCommitObserver
 {
     private const float WaterMovementSpeed = 0.5f;
     private const float LavaMovementSpeed = 0.5f;
@@ -28,6 +35,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
     private readonly IVanillaNpcWorldEventState? worldEvents;
     private readonly IVanillaGroundFighterDoorRandom? doorRandom;
     private readonly IVanillaGroundFighterDoorOpeningSink? doorOpeningSink;
+    private readonly RuntimeWorldProgressionMutations progressionMutations;
 
     public VanillaNpcWorldMotionAiStepper(INpcAiStateStepper inner, WorldTileStore tiles)
         : this(
@@ -71,6 +79,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
         this.worldEvents = worldEvents;
         this.doorRandom = doorRandom;
         this.doorOpeningSink = doorOpeningSink;
+        progressionMutations = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
 
         targeting = NpcAiStateStepperComposition.FindCapability<VanillaNpcTargetingAiStepper>(inner);
         if (targeting is not null)
@@ -85,6 +94,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
+        if (TryCreateKingSlimeTerminalTransition(in npc, out next))
+            return true;
+
         bool fighterStuckHopEligible = npc.VelocityX == 0f && !npc.Simulation.JustHit;
         if (!inner.TryStepState(in npc, out NpcStateUpdate aiState))
         {
@@ -344,6 +356,46 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper, INpcA
                 SolidCollision = solidCollision
             }
         };
+        return true;
+    }
+
+    public void NpcAiStateCommitted(in NpcSnapshot before, in NpcSnapshot committed)
+    {
+        if (before.Handle != committed.Handle ||
+            before.Type != VanillaNpcIds.KingSlime.Value ||
+            before.Simulation.LifeMax <= 0 ||
+            before.Simulation.Life != 0 ||
+            committed.Simulation.Life != 0 ||
+            committed.Simulation.TimeLeft != 0)
+        {
+            return;
+        }
+
+        progressionMutations.MarkCompleted(VanillaWorldProgressionId.KingSlime);
+    }
+
+    private static bool TryCreateKingSlimeTerminalTransition(
+        in NpcSnapshot npc,
+        out NpcStateUpdate next)
+    {
+        if (npc.Type != VanillaNpcIds.KingSlime.Value ||
+            npc.Simulation.LifeMax <= 0 ||
+            npc.Simulation.Life != 0)
+        {
+            next = default;
+            return false;
+        }
+
+        next = new NpcStateUpdate(
+            npc.Type,
+            npc.NetId,
+            npc.PositionX,
+            npc.PositionY,
+            npc.VelocityX,
+            npc.VelocityY,
+            npc.Target,
+            npc.Ai,
+            npc.Simulation with { TimeLeft = 0 });
         return true;
     }
 
