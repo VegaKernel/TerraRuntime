@@ -14,7 +14,7 @@ internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorS
     public static BuiltInWorldGeneratorSource Instance { get; } = new();
 
     private readonly FlatWorldGenerationProvider flat = new();
-    private readonly SourceBackedVanillaWorldGenerationStartingNpc1458 vanilla = new();
+    private readonly SourceBackedVanillaWorldGenerationVegetation1458 vanilla = new();
     private readonly WorldGeneratorId[] ids =
         [FlatWorldGenerationProvider.GeneratorId, VanillaWorldGenerationProvider1458.GeneratorId];
 

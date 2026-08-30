@@ -20,6 +20,7 @@ on:
       - 'src/TerraRuntime.World/VanillaLateStructureWorldGenerationPipeline1458.cs'
       - 'src/TerraRuntime.World/VanillaSurfaceFinishWorldGenerationPipeline1458.cs'
       - 'src/TerraRuntime.World/VanillaStartingNpcWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaVegetationWorldGenerationPipeline1458.cs'
       - 'src/TerraRuntime/RuntimeWorldCreationPersistencePipeline.cs'
       - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
       - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
@@ -35,6 +36,7 @@ on:
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationLateStructures1458Tests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationSurfaceFinish1458Tests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationStartingNpc1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationVegetation1458Tests.cs'
       - 'tests/TerraRuntime.Tests/NpcAiProductionCompositionTests.cs'
       - '.github/workflows/terraria-vanilla-generated-world-acceptance.yml'
   workflow_dispatch:
@@ -80,6 +82,7 @@ jobs:
           -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationLateStructures1458Tests
           -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationSurfaceFinish1458Tests
           -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationStartingNpc1458Tests
+          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationVegetation1458Tests
 
       - name: Generate TerraRuntime vanilla world
         shell: bash
