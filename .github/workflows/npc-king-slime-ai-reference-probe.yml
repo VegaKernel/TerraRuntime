@@ -49,79 +49,55 @@ jobs:
                   return None
               depth = 0
               for i in range(opening, len(text)):
-                  if text[i] == "{":
-                      depth += 1
+                  if text[i] == "{": depth += 1
                   elif text[i] == "}":
                       depth -= 1
-                      if depth == 0:
-                          return text[opening:i + 1]
+                      if depth == 0: return text[opening:i + 1]
               return None
 
-          patterns = [
-              r"\bvoid\s+AI_015(?:_KingSlime)?\s*\(",
-              r"\bAI_015(?:_KingSlime)?\s*\(",
-              r"\bif\s*\(aiStyle\s*==\s*15\s*\)",
-          ]
-          ai = None
-          selected = None
-          for pattern in patterns:
-              ai = body_after(pattern)
-              if ai:
-                  selected = pattern
-                  break
-          if not ai:
-              raise SystemExit("King Slime AI15 body was not found")
+          ai = body_after(r"\bvoid\s+AI_015(?:_KingSlime)?\s*\(")
+          helper = body_after(r"\bvoid\s+AI_015_KingSlime_FindTeleportSpot\s*\(")
+          if not ai or not helper:
+              raise SystemExit("King Slime AI15 method/helper was not found")
 
-          def uniq(values):
-              return sorted(set(values))
+          def uniq(values): return sorted(set(values))
+          def assignments(body, name):
+              return uniq(re.findall(rf"\b{re.escape(name)}\s*(=|\+=|-=|\*=|/=)\s*([^;]+)", body))
 
-          def assignments(name):
-              return uniq(re.findall(rf"\b{re.escape(name)}\s*(=|\+=|-=|\*=|/=)\s*([^;]+)", ai))
-
+          scalars = {f"num{i}": assignments(ai, f"num{i}") for i in range(3, 14)}
           facts = {
-              "selectedPattern": selected,
               "characters": len(ai),
+              "helperCharacters": len(helper),
+              "scalars": scalars,
               "aiReads": {str(i): len(re.findall(rf"\bai\[{i}\]", ai)) for i in range(4)},
               "localAiReads": {str(i): len(re.findall(rf"\blocalAI\[{i}\]", ai)) for i in range(4)},
               "targetClosestCalls": ai.count("TargetClosest"),
-              "newNpcCalls": ai.count("NewNPC"),
-              "netUpdateWrites": len(re.findall(r"\bnetUpdate\s*=\s*true", ai)),
-              "canHitCalls": ai.count("CanHit"),
-              "randomCalls": len(re.findall(r"\b(?:Main\.)?rand\.", ai)),
-              "aiComparisons": uniq(re.findall(r"ai\[([0-3])\]\s*(==|!=|<=|>=|<|>)\s*(-?\d+(?:\.\d+)?f?)", ai)),
-              "aiAssignments": uniq(re.findall(r"ai\[([0-3])\]\s*(=|\+=|-=|\*=|/=)\s*(-?\d+(?:\.\d+)?f?)", ai)),
-              "localAiComparisons": uniq(re.findall(r"localAI\[([0-3])\]\s*(==|!=|<=|>=|<|>)\s*(-?\d+(?:\.\d+)?f?)", ai)),
-              "localAiAssignments": uniq(re.findall(r"localAI\[([0-3])\]\s*(=|\+=|-=|\*=|/=)\s*([^;]+)", ai)),
-              "velocityXAssignments": assignments("velocity.X"),
-              "velocityYAssignments": assignments("velocity.Y"),
-              "scaleAssignments": assignments("scale"),
-              "widthAssignments": assignments("width"),
-              "heightAssignments": assignments("height"),
-              "numAssignments": assignments("num"),
-              "num2Assignments": assignments("num2"),
-              "num9Assignments": assignments("num9"),
-              "kingSlimeHelperCalls": uniq(re.findall(r"\b(AI_015_KingSlime(?:_[A-Za-z0-9_]+)?)\s*\(", ai)),
-              "npcIdNames": uniq(re.findall(r"NPCID\.([A-Za-z0-9_]+)", ai)),
-              "mainModeFlags": uniq(re.findall(r"Main\.(expertMode|masterMode|getGoodWorld|zenithWorld|remixWorld|tenthAnniversaryWorld)", ai)),
-              "distanceConstants": uniq(re.findall(r"(?:Distance|Length)\s*\([^)]*\)\s*([<>]=?)\s*([0-9.]+)f?", ai)),
-              "integerRandomRanges": uniq(re.findall(r"Next\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)", ai)),
               "newNpcExpressions": uniq(re.findall(r"NewNPC\s*\(([^;]+)\);", ai)),
-              "helperExpressions": uniq(re.findall(r"AI_015_KingSlime_FindTeleportSpot\s*\(([^;]+)\);", ai)),
+              "integerRandomRanges": uniq(re.findall(r"Next\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)", ai)),
+              "helperRandomRanges": uniq(re.findall(r"Next\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)", helper)),
+              "helperCollisionCalls": uniq(re.findall(r"Collision\.([A-Za-z0-9_]+)\s*\(", helper)),
+              "helperWorldGenCalls": uniq(re.findall(r"WorldGen\.([A-Za-z0-9_]+)\s*\(", helper)),
+              "helperMainRefs": uniq(re.findall(r"Main\.([A-Za-z0-9_]+)", helper)),
+              "helperConstants": uniq(re.findall(r"(?<![A-Za-z0-9_])(-?\d+(?:\.\d+)?f?)(?![A-Za-z0-9_])", helper)),
           }
 
           interesting = []
           for raw_line in ai.splitlines():
               line = raw_line.strip()
-              if not line:
-                  continue
               if any(token in line for token in (
-                  "float num", "ai[", "localAI[", "velocity.X", "velocity.Y", "scale =",
-                  "NewNPC", "AI_015_KingSlime_FindTeleportSpot", "Main.expertMode", "Main.getGoodWorld",
-                  "Vector2.Distance", "CanHit")):
-                  interesting.append(line)
+                  "float num", "int num", "num10", "num11", "num12", "num13", "Main.expertMode",
+                  "Main.getGoodWorld", "NewNPC", "life +", "ai[3]", "velocity.Y = -", "velocity.X +=")):
+                  if line: interesting.append(line)
 
-          print("NPC_KING_SLIME_AI15_FACTS=" + json.dumps(facts, sort_keys=True))
-          print("NPC_KING_SLIME_AI15_STATEMENTS=" + json.dumps(interesting, ensure_ascii=True))
-          if facts["characters"] < 100 or sum(facts["aiReads"].values()) == 0:
-              raise SystemExit(f"Unexpectedly small King Slime AI15 body: {facts!r}")
+          helper_lines = []
+          for raw_line in helper.splitlines():
+              line = raw_line.strip()
+              if line and any(token in line for token in (
+                  "for (", "Main.rand", "Main.tile", "Main.player", "Collision", "WorldGen", "teleport",
+                  "local", "num", "flag", "return", "continue", "break")):
+                  helper_lines.append(line)
+
+          print("NPC_KING_SLIME_AI15_EXACT_FACTS=" + json.dumps(facts, sort_keys=True))
+          print("NPC_KING_SLIME_AI15_EXACT_STATEMENTS=" + json.dumps(interesting, ensure_ascii=True))
+          print("NPC_KING_SLIME_TELEPORT_HELPER_STATEMENTS=" + json.dumps(helper_lines, ensure_ascii=True))
           PY
