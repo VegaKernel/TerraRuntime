@@ -253,7 +253,7 @@ Benchmark zero extensions, one NPC decorator, dense replacement workload, high p
 - [x] exclusive replacement;
 - [x] spawn/tick/despawn hooks;
 - [ ] Vega adapter proof-of-concept;
-- [x] focused allocation gate for zero-extension and one-decorator dispatch.
+- [x] focused allocation-light gate for zero-extension and one-decorator dispatch.
 
 ### G2 - Projectile behavior
 
