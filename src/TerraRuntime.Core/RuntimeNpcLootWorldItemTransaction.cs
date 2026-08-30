@@ -45,9 +45,10 @@ public readonly record struct NpcLootWorldItemTransactionResult(
 }
 
 /// <summary>
-/// Coordinates source-backed NPC-specific loot with the server-owned world-item store. Capacity and materializer
-/// support are proven before loot RNG is consumed. Successful rules are materialized immediately, before the next
-/// rule is rolled, because TerrariaServer 1.4.5.8 proves DropAttemptInfo.rng and Item.NewItem both consume Main.rand.
+/// Coordinates source-backed NPC-specific loot with the server-owned world-item store. Table support, output
+/// capacity and materializer support are proven before loot RNG is consumed. Successful rules are materialized
+/// immediately, before the next rule is rolled, because TerrariaServer 1.4.5.8 proves DropAttemptInfo.rng and
+/// Item.NewItem both consume Main.rand.
 /// </summary>
 public sealed class RuntimeNpcLootWorldItemTransaction
 {
@@ -78,25 +79,28 @@ public sealed class RuntimeNpcLootWorldItemTransaction
             npc.Simulation.LifeMax <= 0 ||
             npc.Simulation.Life != 0 ||
             !NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
-            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition npcDefinition))
+            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition npcDefinition) ||
+            !VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(npcType, out VanillaNpcLootTable lootTable))
         {
             return false;
         }
 
-        ReadOnlySpan<VanillaNpcLootRule> rules = VanillaNpcLootRuleCatalog.GetNpcSpecificRules(npcType);
-        if (rules.IsEmpty || spawnedItems.Length < rules.Length)
+        ReadOnlySpan<VanillaNpcLootRule> rules = lootTable.Rules;
+        int maximumDropCount = lootTable.MaximumDropCount;
+        if (spawnedItems.Length < maximumDropCount)
             return false;
 
         for (int index = 0; index < rules.Length; index++)
         {
             VanillaNpcLootRule rule = rules[index];
-            if (!rule.IsValid || !materializer.CanMaterialize(rule.ItemType))
+            if (!materializer.CanMaterialize(rule.ItemType))
                 return false;
         }
 
-        Span<WorldItemDropReservation> capacityReservations = stackalloc WorldItemDropReservation[rules.Length];
+        Span<WorldItemDropReservation> capacityReservations =
+            stackalloc WorldItemDropReservation[maximumDropCount];
         int capacityReservationCount = 0;
-        for (; capacityReservationCount < rules.Length; capacityReservationCount++)
+        for (; capacityReservationCount < maximumDropCount; capacityReservationCount++)
         {
             if (_worldItemStore.TryReserveDropSlot(out capacityReservations[capacityReservationCount]))
                 continue;
@@ -109,7 +113,8 @@ public sealed class RuntimeNpcLootWorldItemTransaction
             CenterX: (int)npc.PositionX + npcDefinition.Width / 2,
             CenterY: (int)npc.PositionY + npcDefinition.Height / 2);
 
-        Span<WorldItemDropReservation> stagedReservations = stackalloc WorldItemDropReservation[rules.Length];
+        Span<WorldItemDropReservation> stagedReservations =
+            stackalloc WorldItemDropReservation[maximumDropCount];
         int stagedCount = 0;
 
         for (int ruleIndex = 0; ruleIndex < rules.Length; ruleIndex++)

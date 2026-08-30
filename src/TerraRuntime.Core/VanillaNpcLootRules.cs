@@ -12,6 +12,7 @@ public enum VanillaNpcLootRuleKind : byte
 /// <summary>
 /// Immutable source-backed NPC-specific loot rule. The fields model only rule shapes independently verified from
 /// TerrariaServer 1.4.5.8; unsupported rule families are not flattened into a generic probability table.
+/// Every currently admitted rule emits at most one item stack when it succeeds.
 /// </summary>
 public readonly record struct VanillaNpcLootRule(
     VanillaNpcLootRuleKind Kind,
@@ -30,6 +31,8 @@ public readonly record struct VanillaNpcLootRule(
         MinimumStack > 0 &&
         MaximumStack >= MinimumStack &&
         ExtraGelMultiplier > 0;
+
+    public int MaximumDropCount => IsValid ? 1 : 0;
 
     public static VanillaNpcLootRule ExtraGel(
         ItemTypeId itemType,
@@ -60,7 +63,61 @@ public readonly record struct VanillaNpcLootRule(
             ExtraGelMultiplier: 1);
 }
 
-/// <summary>Source-backed NPC-specific vanilla loot rules implemented by TerraRuntime.</summary>
+/// <summary>
+/// Immutable runtime view of one source-backed NPC-specific loot table. The backing rule array is private and
+/// exposed only as <see cref="ReadOnlySpan{T}"/>, so catalog registration order cannot be mutated by gameplay callers.
+/// A table is a support boundary: catalog lookup failure means unsupported, while a future verified table may
+/// legitimately contain zero NPC-specific rules without being confused with an unknown NPC.
+/// </summary>
+public readonly struct VanillaNpcLootTable
+{
+    private readonly VanillaNpcLootRule[]? _rules;
+
+    internal VanillaNpcLootTable(NpcTypeId npcType, VanillaNpcLootRule[] rules)
+    {
+        ArgumentNullException.ThrowIfNull(rules);
+        NpcType = npcType;
+        _rules = rules;
+    }
+
+    public NpcTypeId NpcType { get; }
+
+    public ReadOnlySpan<VanillaNpcLootRule> Rules =>
+        _rules is null ? ReadOnlySpan<VanillaNpcLootRule>.Empty : _rules;
+
+    public int RuleCount => _rules?.Length ?? 0;
+
+    public int MaximumDropCount
+    {
+        get
+        {
+            int count = 0;
+            ReadOnlySpan<VanillaNpcLootRule> rules = Rules;
+            for (int index = 0; index < rules.Length; index++)
+                count = checked(count + rules[index].MaximumDropCount);
+            return count;
+        }
+    }
+
+    public bool IsValid
+    {
+        get
+        {
+            if (!NpcType.IsAssigned || _rules is null)
+                return false;
+
+            for (int index = 0; index < _rules.Length; index++)
+            {
+                if (!_rules[index].IsValid)
+                    return false;
+            }
+
+            return true;
+        }
+    }
+}
+
+/// <summary>Source-backed NPC-specific vanilla loot tables implemented by TerraRuntime.</summary>
 public static class VanillaNpcLootRuleCatalog
 {
     private static readonly VanillaNpcLootRule[] BlueSlimeRules =
@@ -77,17 +134,34 @@ public static class VanillaNpcLootRuleCatalog
             expertChanceDenominator: 7_000)
     ];
 
+    private static readonly VanillaNpcLootTable BlueSlimeTable = new(
+        VanillaNpcIds.BlueSlime,
+        BlueSlimeRules);
+
     /// <summary>
-    /// Returns the exact NPC-specific rule sequence currently imported for <paramref name="npcType"/>. Global,
-    /// world-condition and other unimported rule layers are intentionally outside this initial catalog.
+    /// Resolves an explicitly imported NPC-specific loot table. Lookup failure is the unsupported signal; callers
+    /// should not use an empty span as a proxy for support because a verified NPC may legitimately have no rules.
     /// </summary>
-    public static ReadOnlySpan<VanillaNpcLootRule> GetNpcSpecificRules(NpcTypeId npcType)
+    public static bool TryGetNpcSpecificTable(NpcTypeId npcType, out VanillaNpcLootTable table)
     {
         if (npcType == VanillaNpcIds.BlueSlime)
-            return BlueSlimeRules;
+        {
+            table = BlueSlimeTable;
+            return table.IsValid;
+        }
 
-        return ReadOnlySpan<VanillaNpcLootRule>.Empty;
+        table = default;
+        return false;
     }
+
+    /// <summary>
+    /// Compatibility view returning only the ordered rules. New authoritative code should prefer
+    /// <see cref="TryGetNpcSpecificTable"/> so support and an empty verified table remain distinguishable.
+    /// </summary>
+    public static ReadOnlySpan<VanillaNpcLootRule> GetNpcSpecificRules(NpcTypeId npcType) =>
+        TryGetNpcSpecificTable(npcType, out VanillaNpcLootTable table)
+            ? table.Rules
+            : ReadOnlySpan<VanillaNpcLootRule>.Empty;
 }
 
 /// <summary>
@@ -117,7 +191,7 @@ public readonly record struct NpcLootDrop(ItemTypeId ItemType, short Stack)
 }
 
 /// <summary>
-/// Allocation-free evaluator for the source-backed NPC-specific rule slice. Rule order, luck roll order and the
+/// Allocation-free evaluator for source-backed NPC-specific loot tables. Rule order, luck roll order and the
 /// inclusive CommonDrop stack range follow the pinned TerrariaServer 1.4.5.8 source contract.
 /// </summary>
 public static class VanillaNpcLootEvaluator
@@ -159,21 +233,21 @@ public static class VanillaNpcLootEvaluator
         return true;
     }
 
-    public static bool TryEvaluateNpcSpecificRules(
-        NpcTypeId npcType,
+    public static bool TryEvaluateNpcSpecificTable(
+        in VanillaNpcLootTable table,
         in VanillaNpcLootContext context,
         INpcLootRollSource rolls,
         Span<NpcLootDrop> destination,
         out int dropCount)
     {
         ArgumentNullException.ThrowIfNull(rolls);
-        ReadOnlySpan<VanillaNpcLootRule> rules = VanillaNpcLootRuleCatalog.GetNpcSpecificRules(npcType);
-        if (rules.IsEmpty || destination.Length < rules.Length)
+        if (!table.IsValid || destination.Length < table.MaximumDropCount)
         {
             dropCount = 0;
             return false;
         }
 
+        ReadOnlySpan<VanillaNpcLootRule> rules = table.Rules;
         dropCount = 0;
         for (int index = 0; index < rules.Length; index++)
         {
@@ -193,5 +267,22 @@ public static class VanillaNpcLootEvaluator
         }
 
         return true;
+    }
+
+    public static bool TryEvaluateNpcSpecificRules(
+        NpcTypeId npcType,
+        in VanillaNpcLootContext context,
+        INpcLootRollSource rolls,
+        Span<NpcLootDrop> destination,
+        out int dropCount)
+    {
+        ArgumentNullException.ThrowIfNull(rolls);
+        if (!VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(npcType, out VanillaNpcLootTable table))
+        {
+            dropCount = 0;
+            return false;
+        }
+
+        return TryEvaluateNpcSpecificTable(in table, in context, rolls, destination, out dropCount);
     }
 }

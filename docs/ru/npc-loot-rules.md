@@ -1,6 +1,6 @@
 # Source-backed правила NPC loot
 
-Первый NPC-loot срез TerraRuntime реализует NPC-specific правила стандартной slime-группы для Blue Slime по закреплённому TerrariaServer 1.4.5.8. Это **не** заявление о том, что уже реализованы все global, world-condition, event, bestiary и chained vanilla drop layers.
+Первый NPC-loot срез TerraRuntime реализует NPC-specific правила standard-slime группы для Blue Slime по закреплённому TerrariaServer 1.4.5.8. Это **не** заявление о том, что уже реализованы все global, world-condition, event, bestiary и chained vanilla drop layers.
 
 ## Source contract
 
@@ -25,11 +25,12 @@ Named identities также фиксируются из официальных I
 flowchart LR
     Official["TerrariaServer 1.4.5.8"] --> Probe["NPC Loot Source Contract"]
     Probe --> IDs["typed NPC/item IDs"]
-    Probe --> Rules["ordered rule catalog"]
+    Probe --> Tables["typed ordered loot table"]
     Probe --> Semantics["Common / ExtraGel / Expert semantics"]
     IDs --> Runtime["VanillaNpcLootEvaluator"]
-    Rules --> Runtime
+    Tables --> Runtime
     Semantics --> Runtime
+    Runtime --> Tx["RuntimeNpcLootWorldItemTransaction"]
 ```
 
 ## Почему это не плоская таблица вероятностей
@@ -69,22 +70,36 @@ S_{normal} \in \{1,2\}, \qquad
 S_{extra} \in \{2,3,4\}.
 $$
 
-## Runtime API
+## Typed table boundary
 
-`VanillaNpcLootRuleCatalog` хранит проверенные NPC-specific rules в source registration order.
+`VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable` является authoritative support boundary. Он возвращает `VanillaNpcLootTable`, содержащую:
+
+- typed `NpcTypeId` владельца таблицы;
+- immutable представление rules в исходном registration order;
+- `RuleCount`;
+- `MaximumDropCount`, вычисляемый из семантики допущенных rules вместо предположения, что число rules всегда равно необходимой world-item capacity.
+
+Разница принципиальная. Ошибка lookup означает **unsupported**. В будущем source-verified NPC может законно иметь импортированную таблицу с нулём NPC-specific rules, и такой случай нельзя путать с неизвестным NPC только потому, что оба дают пустой rule span.
+
+`GetNpcSpecificRules` оставлен только как compatibility view. Новый authoritative код использует typed table boundary.
+
+## Runtime evaluation и transaction ownership
 
 `VanillaNpcLootEvaluator` не создаёт heap allocations на evaluation path:
 
 - caller передаёт `Span<NpcLootDrop>`;
 - `INpcLootRollSource.RollLuck` владеет player-luck semantics;
 - `INpcLootRollSource.NextInt32` владеет RNG stream;
-- `VanillaNpcLootContext` передаёт `IsExpertMode` и семантический результат условия `DropExtraGel`.
+- `VanillaNpcLootContext` передаёт `IsExpertMode` и семантический результат `DropExtraGel`;
+- `TryEvaluateNpcSpecificTable` принимает уже проверенную typed table.
 
-Evaluator не занимается world-item spawning. Это отдельная следующая граница, чтобы loot roll тестировался независимо от slot allocation, replication и размещения item в мире.
+`RuntimeNpcLootWorldItemTransaction` разрешает ту же typed table **до** потребления loot RNG. Он заранее проверяет materializer support и резервирует `MaximumDropCount` world-item capacity, после чего evaluates/materializes успешные rules строго в registration order. Так сохраняется проверенный общий порядок `Main.rand` между loot rules и поведением `Item.NewItem`.
+
+Сам evaluator по-прежнему не владеет world-item state. Transaction владеет slot reservation/commit, а `VanillaNpcLootWorldItemMaterializer` — source-backed spawn defaults и prefix/velocity RNG.
 
 ## Fail-closed scope
 
-NPC без импортированного NPC-specific rule set считается unsupported вместо получения выдуманного generic loot. Сейчас catalog намеренно содержит только Blue Slime.
+NPC без импортированной NPC-specific table считается unsupported вместо получения выдуманного generic loot. Сейчас catalog намеренно содержит только Blue Slime.
 
 Этот срез также не объявляет полный vanilla loot parity для Blue Slime. Global и conditional rules вне проверенного standard-slime registration layer должны быть отдельно импортированы из official source до участия в authoritative drops.
 
@@ -92,11 +107,18 @@ NPC без импортированного NPC-specific rule set считает
 
 `VanillaNpcLootRuleTests` проверяет:
 
-- точный rule order и constants;
+- точного владельца table, rule order, constants и maximum-drop capacity;
+- явное поведение unsupported table;
 - normal и `DropExtraGel` stack ranges;
 - выбор normal/expert denominator для Slime Staff;
 - вызов `RollLuck` до stack RNG;
 - порядок output при успехе обоих rules;
 - fail-closed поведение для unsupported NPC и слишком маленького output buffer.
 
+`RuntimeNpcLootWorldItemTransactionTests` дополнительно проверяет generation safety, capacity exhaustion, unsupported materialization, shared RNG ordering и точное staging/commit поведение world items.
+
 Постоянный gameplay acceptance workflow выполняет `NpcLoot` tests, а отдельный source-contract workflow независимо перепроверяет official TerrariaServer evidence при изменениях loot-кода или тестов.
+
+## Граница roadmap
+
+D6 `loot rules` завершён как архитектурная/runtime-граница для текущего импортированного vanilla slice: rules являются typed immutable data, tables явно кодируют support и capacity, evaluation отделён от world-item mutation, а source/RNG order закреплён исполняемыми проверками. Расширение списка NPC и rule families остаётся parity-работой, а не поводом держать декомпозиционную задачу вечно открытой. Иначе чекбокс превращается в религию, а не инженерный критерий.

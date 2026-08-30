@@ -250,7 +250,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 
 - [ ] buff/prefix catalogs;
 - [x] damage-source model;
-- [ ] loot rules;
+- [x] loot rules ([EN](../en/npc-loot-rules.md), [RU](../ru/npc-loot-rules.md));
 - [ ] event/progression IDs/state;
 - [ ] biome/zone semantics;
 - [ ] remove remaining cross-subsystem magic values.

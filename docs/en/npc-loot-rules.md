@@ -25,11 +25,12 @@ Named identities are also pinned from the official ID tables:
 flowchart LR
     Official["TerrariaServer 1.4.5.8"] --> Probe["NPC Loot Source Contract"]
     Probe --> IDs["typed NPC/item IDs"]
-    Probe --> Rules["ordered rule catalog"]
+    Probe --> Tables["typed ordered loot table"]
     Probe --> Semantics["Common / ExtraGel / Expert semantics"]
     IDs --> Runtime["VanillaNpcLootEvaluator"]
-    Rules --> Runtime
+    Tables --> Runtime
     Semantics --> Runtime
+    Runtime --> Tx["RuntimeNpcLootWorldItemTransaction"]
 ```
 
 ## Why the rule is not a flat probability table
@@ -69,22 +70,36 @@ S_{normal} \in \{1,2\}, \qquad
 S_{extra} \in \{2,3,4\}.
 $$
 
-## Runtime API
+## Typed table boundary
 
-`VanillaNpcLootRuleCatalog` stores the verified NPC-specific rules in source registration order.
+`VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable` is the authoritative support boundary. It returns a `VanillaNpcLootTable` containing:
+
+- the typed `NpcTypeId` that owns the table;
+- the immutable source-registration-order rule view;
+- `RuleCount`;
+- `MaximumDropCount`, derived from admitted rule semantics rather than assuming that the number of rules always equals world-item capacity.
+
+This distinction matters. Lookup failure means **unsupported**. A future source-verified NPC may legitimately have an imported table containing zero NPC-specific rules, and that must not be confused with an unknown NPC merely because both cases expose an empty rule span.
+
+`GetNpcSpecificRules` remains only as a compatibility view. New authoritative code uses the typed table boundary.
+
+## Runtime evaluation and transaction ownership
 
 `VanillaNpcLootEvaluator` is allocation-free on the evaluation path:
 
 - the caller supplies a `Span<NpcLootDrop>`;
 - `INpcLootRollSource.RollLuck` owns player-luck semantics;
 - `INpcLootRollSource.NextInt32` owns the RNG stream;
-- `VanillaNpcLootContext` supplies `IsExpertMode` and the semantic `DropExtraGel` condition result.
+- `VanillaNpcLootContext` supplies `IsExpertMode` and the semantic `DropExtraGel` condition result;
+- `TryEvaluateNpcSpecificTable` consumes a validated typed table directly.
 
-The evaluator does not own world-item spawning. That remains a later separation boundary so a loot roll can be tested independently from slot allocation, replication and item placement in the world.
+`RuntimeNpcLootWorldItemTransaction` resolves the same typed table before any loot RNG is consumed. It preflights materializer support and reserves `MaximumDropCount` world-item capacity, then evaluates and materializes successful rules in exact registration order. This preserves the verified shared `Main.rand` ordering between loot rules and `Item.NewItem` behavior.
+
+Loot rule evaluation itself still does not own world-item state. The transaction owns slot reservation/commit, while `VanillaNpcLootWorldItemMaterializer` owns source-backed item spawn defaults and prefix/velocity RNG.
 
 ## Fail-closed scope
 
-An NPC without an imported NPC-specific rule set returns unsupported rather than receiving guessed generic drops. The current catalog intentionally contains only Blue Slime.
+An NPC without an imported NPC-specific table is unsupported rather than receiving guessed generic drops. The current catalog intentionally contains only Blue Slime.
 
 This slice also does not claim full Blue Slime vanilla loot parity. Global and conditional rules outside the verified standard-slime registration layer must be imported separately from official source before they can participate in authoritative drops.
 
@@ -92,11 +107,18 @@ This slice also does not claim full Blue Slime vanilla loot parity. Global and c
 
 `VanillaNpcLootRuleTests` covers:
 
-- exact rule order and constants;
+- exact table owner, rule order, constants and maximum-drop capacity;
+- explicit unsupported-table behavior;
 - normal vs `DropExtraGel` stack ranges;
 - normal vs expert-mode Slime Staff denominator selection;
 - `RollLuck` before stack RNG;
 - output order when both rules succeed;
 - fail-closed behavior for unsupported NPCs and undersized output buffers.
 
+`RuntimeNpcLootWorldItemTransactionTests` additionally covers generation safety, capacity exhaustion, unsupported materialization, shared RNG ordering and exact world-item staging/commit behavior.
+
 The permanent gameplay acceptance workflow executes `NpcLoot` tests, while the dedicated source-contract workflow independently re-verifies the official TerrariaServer evidence whenever loot code or tests change.
+
+## Roadmap boundary
+
+D6 `loot rules` is complete as an architectural/runtime boundary for the currently imported vanilla slice: rules are typed immutable data, tables explicitly encode support and capacity, evaluation is separated from world-item mutation, and source/RNG order is executable proof. Expanding the number of imported NPCs and rule families remains parity work rather than a reason to keep the decomposition task open forever. Humans do enjoy checkboxes that can never become true; this one now has an actual completion contract instead.

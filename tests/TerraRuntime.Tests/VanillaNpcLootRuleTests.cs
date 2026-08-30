@@ -6,13 +6,17 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaNpcLootRuleTests
 {
     [Fact]
-    public void Blue_slime_rules_match_pinned_source_order_and_values()
+    public void Blue_slime_table_matches_pinned_source_order_values_and_capacity()
     {
-        ReadOnlySpan<VanillaNpcLootRule> rules =
-            VanillaNpcLootRuleCatalog.GetNpcSpecificRules(VanillaNpcIds.BlueSlime);
+        Assert.True(VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(
+            VanillaNpcIds.BlueSlime,
+            out VanillaNpcLootTable table));
+        Assert.True(table.IsValid);
+        Assert.Equal(VanillaNpcIds.BlueSlime, table.NpcType);
+        Assert.Equal(2, table.RuleCount);
+        Assert.Equal(2, table.MaximumDropCount);
 
-        Assert.Equal(2, rules.Length);
-
+        ReadOnlySpan<VanillaNpcLootRule> rules = table.Rules;
         VanillaNpcLootRule gel = rules[0];
         Assert.Equal(VanillaNpcLootRuleKind.ExtraGel, gel.Kind);
         Assert.Equal(VanillaItemIds.Gel, gel.ItemType);
@@ -21,6 +25,7 @@ public sealed class VanillaNpcLootRuleTests
         Assert.Equal((short)1, gel.MinimumStack);
         Assert.Equal((short)2, gel.MaximumStack);
         Assert.Equal((short)2, gel.ExtraGelMultiplier);
+        Assert.Equal(1, gel.MaximumDropCount);
 
         VanillaNpcLootRule staff = rules[1];
         Assert.Equal(VanillaNpcLootRuleKind.NormalVsExpertCommon, staff.Kind);
@@ -29,19 +34,34 @@ public sealed class VanillaNpcLootRuleTests
         Assert.Equal(7_000, staff.ExpertChanceDenominator);
         Assert.Equal((short)1, staff.MinimumStack);
         Assert.Equal((short)1, staff.MaximumStack);
+        Assert.Equal(1, staff.MaximumDropCount);
     }
 
     [Fact]
-    public void Normal_blue_slime_evaluation_preserves_luck_then_stack_rng_order()
+    public void Unsupported_npc_has_no_table_instead_of_being_aliased_to_empty_verified_rules()
     {
+        Assert.False(VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(
+            VanillaNpcIds.DemonEye,
+            out VanillaNpcLootTable table));
+        Assert.False(table.IsValid);
+        Assert.Equal(0, table.RuleCount);
+        Assert.True(VanillaNpcLootRuleCatalog.GetNpcSpecificRules(VanillaNpcIds.DemonEye).IsEmpty);
+    }
+
+    [Fact]
+    public void Normal_blue_slime_table_evaluation_preserves_luck_then_stack_rng_order()
+    {
+        Assert.True(VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(
+            VanillaNpcIds.BlueSlime,
+            out VanillaNpcLootTable table));
         var rolls = new ScriptedRollSource(
             luckResults: new[] { 0, 1 },
             randomResults: new[] { 2 });
         Span<NpcLootDrop> drops = stackalloc NpcLootDrop[2];
         var context = new VanillaNpcLootContext(IsExpertMode: false, DropExtraGel: false);
 
-        Assert.True(VanillaNpcLootEvaluator.TryEvaluateNpcSpecificRules(
-            VanillaNpcIds.BlueSlime,
+        Assert.True(VanillaNpcLootEvaluator.TryEvaluateNpcSpecificTable(
+            in table,
             in context,
             rolls,
             drops,
