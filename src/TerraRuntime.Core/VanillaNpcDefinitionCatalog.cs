@@ -13,7 +13,9 @@ public enum VanillaNpcBehaviorFamily : byte
     None = 0,
     SlimeGround = 1,
     FlyingEye = 2,
-    GroundFighter = 3
+    GroundFighter = 3,
+    EyeOfCthulhu = 4,
+    Flyer = 5
 }
 
 /// <summary>
@@ -26,7 +28,8 @@ public enum VanillaNpcPhysicsFamily : byte
     None = 0,
     SlimeGround = 1,
     FlyingEye = 2,
-    GroundFighter = 3
+    GroundFighter = 3,
+    NoClipFlight = 4
 }
 
 /// <summary>
@@ -40,13 +43,19 @@ public readonly record struct VanillaNpcDefinition(
     NpcAiStyleId AiStyle,
     VanillaNpcBehaviorFamily BehaviorFamily,
     VanillaNpcPhysicsFamily PhysicsFamily,
+    NpcArchetypeRole Role,
     int Width,
     int Height,
     int Damage,
     int Defense,
     int LifeMax,
     float KnockBackResist,
-    float Scale);
+    float Scale,
+    bool NoGravityAtSpawn,
+    bool NoTileCollideAtSpawn)
+{
+    public bool IsBoss => Role == NpcArchetypeRole.Boss;
+}
 
 /// <summary>
 /// Initial verified slice of the Terraria 1.4.5.8 NPC defaults catalog.
@@ -83,13 +92,16 @@ public static class VanillaNpcDefinitionCatalog
                 AiStyle: VanillaNpcAiStyles.Slime,
                 BehaviorFamily: VanillaNpcBehaviorFamily.SlimeGround,
                 PhysicsFamily: VanillaNpcPhysicsFamily.SlimeGround,
+                Role: NpcArchetypeRole.Ordinary,
                 Width: 24,
                 Height: 18,
                 Damage: 7,
                 Defense: 2,
                 LifeMax: 25,
                 KnockBackResist: 1f,
-                Scale: 1f);
+                Scale: 1f,
+                NoGravityAtSpawn: false,
+                NoTileCollideAtSpawn: false);
             return true;
         }
 
@@ -100,13 +112,16 @@ public static class VanillaNpcDefinitionCatalog
                 AiStyle: VanillaNpcAiStyles.DemonEye,
                 BehaviorFamily: VanillaNpcBehaviorFamily.FlyingEye,
                 PhysicsFamily: VanillaNpcPhysicsFamily.FlyingEye,
+                Role: NpcArchetypeRole.Ordinary,
                 Width: 30,
                 Height: 32,
                 Damage: 18,
                 Defense: 2,
                 LifeMax: 60,
                 KnockBackResist: 0.8f,
-                Scale: 1f);
+                Scale: 1f,
+                NoGravityAtSpawn: false,
+                NoTileCollideAtSpawn: false);
             return true;
         }
 
@@ -117,13 +132,56 @@ public static class VanillaNpcDefinitionCatalog
                 AiStyle: VanillaNpcAiStyles.Fighter,
                 BehaviorFamily: VanillaNpcBehaviorFamily.GroundFighter,
                 PhysicsFamily: VanillaNpcPhysicsFamily.GroundFighter,
+                Role: NpcArchetypeRole.Ordinary,
                 Width: 18,
                 Height: 40,
                 Damage: 14,
                 Defense: 6,
                 LifeMax: 45,
                 KnockBackResist: 0.5f,
-                Scale: 1f);
+                Scale: 1f,
+                NoGravityAtSpawn: false,
+                NoTileCollideAtSpawn: false);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.EyeOfCthulhu)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.EyeOfCthulhu,
+                AiStyle: VanillaNpcAiStyles.EyeOfCthulhu,
+                BehaviorFamily: VanillaNpcBehaviorFamily.EyeOfCthulhu,
+                PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Boss,
+                Width: 100,
+                Height: 110,
+                Damage: 15,
+                Defense: 12,
+                LifeMax: 2800,
+                KnockBackResist: 0f,
+                Scale: 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.ServantOfCthulhu)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.ServantOfCthulhu,
+                AiStyle: VanillaNpcAiStyles.Flyer,
+                BehaviorFamily: VanillaNpcBehaviorFamily.Flyer,
+                PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary,
+                Width: 20,
+                Height: 20,
+                Damage: 12,
+                Defense: 0,
+                LifeMax: 8,
+                KnockBackResist: 1f,
+                Scale: 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true);
             return true;
         }
 
