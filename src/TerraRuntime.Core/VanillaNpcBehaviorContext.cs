@@ -14,7 +14,9 @@ internal sealed class VanillaNpcBehaviorContext
     public const float BasePlayerHeight = 42f;
 
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
+    private readonly NpcSnapshot[] _npcPeers = new NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
     private int _candidateCount;
+    private int _npcPeerCount;
 
     public bool SlimeGroundEnabled { get; private set; }
 
@@ -56,6 +58,31 @@ internal sealed class VanillaNpcBehaviorContext
 
         candidates.CopyTo(_candidates);
         _candidateCount = candidates.Length;
+    }
+
+    public void SetNpcPeers(ReadOnlySpan<NpcSnapshot> peers)
+    {
+        if (peers.Length > _npcPeers.Length)
+            throw new ArgumentException("Too many vanilla NPC peers.", nameof(peers));
+
+        peers.CopyTo(_npcPeers);
+        _npcPeerCount = peers.Length;
+    }
+
+    public bool TryFindNpcPeer(byte slot, out NpcSnapshot peer)
+    {
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (candidate.Handle.Slot == slot && candidate.IsActive)
+            {
+                peer = candidate;
+                return true;
+            }
+        }
+
+        peer = default;
+        return false;
     }
 
     public bool TrySelectClosestTarget(

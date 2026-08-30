@@ -10,7 +10,10 @@ namespace TerraRuntime.Core;
 /// effects are exposed separately as speculative intents and are committed only by RuntimeNpcAiStateExecutor
 /// after the source state transition succeeds.
 /// </summary>
-public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpawnIntentPlanner
+public sealed class VanillaNpcTargetingAiStepper :
+    INpcAiStateStepper,
+    INpcAiSpawnIntentPlanner,
+    INpcAiPeerSnapshotConsumer
 {
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
 
@@ -25,6 +28,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _eyeOfCthulhu = new VanillaEyeOfCthulhuNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _worm = new VanillaWormNpcBehaviorStrategy();
     private readonly VanillaKingSlimeNpcBehaviorStrategy _kingSlime;
     private readonly IVanillaNpcRandom _random;
 
@@ -54,6 +58,9 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
         _context.SetCandidates(candidates);
 
+    public void SetNpcPeers(ReadOnlySpan<NpcSnapshot> peers) =>
+        _context.SetNpcPeers(peers);
+
     public bool TryGetCandidate(byte slot, out VanillaNpcTargetCandidate candidate) =>
         _context.TryFindCandidate(slot, out candidate);
 
@@ -82,6 +89,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
             VanillaNpcBehaviorFamily.GroundFighter when _context.GroundFighterEnabled => _groundFighter,
             VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
             VanillaNpcBehaviorFamily.Flyer => _flyer,
+            VanillaNpcBehaviorFamily.Worm => _worm,
             VanillaNpcBehaviorFamily.KingSlime => _kingSlime,
             _ => null
         };

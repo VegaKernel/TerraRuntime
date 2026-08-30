@@ -68,7 +68,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [ ] AI_005 jitter, close homing, daylight flight, surface hugging and stinger projectiles;
 - [x] typed AI_006 head/body/tail family relationships for Devourer, Giant Worm, Eater of Worlds and Bone Serpent;
 - [x] source-backed worm head burrow/air steering and exact segment-gap follow primitives;
-- [ ] runtime leader lookup, initial chain spawning, split/death repair and synchronized parent-child lifecycle;
+- [x] frozen-prepass runtime leader lookup and authoritative body/tail follow for admitted ordinary worm segments;
+- [ ] initial chain spawning, head world-environment steering, split/death repair and complete synchronized lifecycle;
 - [ ] remaining AI_006 worm family definitions and profiles;
 - [ ] bats, fish, casters, mimics, critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.

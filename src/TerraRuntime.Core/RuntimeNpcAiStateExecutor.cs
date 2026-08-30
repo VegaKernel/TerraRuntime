@@ -12,6 +12,12 @@ public interface INpcAiStateStepper
     bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next);
 }
 
+/// <summary>Receives the immutable active-NPC pre-pass used by one authoritative AI tick.</summary>
+public interface INpcAiPeerSnapshotConsumer
+{
+    void SetNpcPeers(ReadOnlySpan<NpcSnapshot> peers);
+}
+
 /// <summary>
 /// Bounded accounting for one state-transition pass over the live NPC table.
 /// </summary>
@@ -63,6 +69,9 @@ public sealed class RuntimeNpcAiStateExecutor
             NpcAiStateStepperComposition.FindCapability<INpcAiSpawnIntentPlanner>(stepper);
         INpcAiStatePostCommitObserver? postCommitObserver =
             NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitObserver>(stepper);
+        INpcAiPeerSnapshotConsumer? peerConsumer =
+            NpcAiStateStepperComposition.FindCapability<INpcAiPeerSnapshotConsumer>(stepper);
+        peerConsumer?.SetNpcPeers(_snapshotBuffer.AsSpan(0, examined));
 
         for (int index = 0; index < examined; index++)
         {

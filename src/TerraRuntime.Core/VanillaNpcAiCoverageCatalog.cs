@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.Core;
 
 [Flags]
-public enum VanillaNpcAiCapability : ushort
+public enum VanillaNpcAiCapability : uint
 {
     None = 0,
     DefinitionDefaults = 1 << 0,
@@ -21,7 +21,8 @@ public enum VanillaNpcAiCapability : ushort
     FlyingEyeSteeringProfileSlice = 1 << 12,
     FlyerPursuitProfileSlice = 1 << 13,
     WormRelationshipCatalog = 1 << 14,
-    WormMotionPrimitive = 1 << 15
+    WormMotionPrimitive = 1u << 15,
+    WormSegmentFollowSlice = 1u << 16
 }
 
 /// <summary>
@@ -148,12 +149,22 @@ public static class VanillaNpcAiCoverageCatalog
 
         foreach (VanillaWormNpcEntry worm in VanillaWormNpcCatalog.All)
         {
-            entries[index++] = Partial(
-                worm.Definition.Type,
+            VanillaNpcAiCapability capabilities =
                 VanillaNpcAiCapability.DefinitionDefaults |
                 VanillaNpcAiCapability.PacketSync |
                 VanillaNpcAiCapability.WormRelationshipCatalog |
-                VanillaNpcAiCapability.WormMotionPrimitive);
+                VanillaNpcAiCapability.WormMotionPrimitive;
+            if (worm.Role != VanillaWormSegmentRole.Head)
+            {
+                capabilities |=
+                    VanillaNpcAiCapability.StateTransitionSlice |
+                    VanillaNpcAiCapability.WorldPhysicsSlice |
+                    VanillaNpcAiCapability.WormSegmentFollowSlice;
+            }
+
+            entries[index++] = Partial(
+                worm.Definition.Type,
+                capabilities);
         }
 
         return entries;

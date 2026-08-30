@@ -427,3 +427,110 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         return true;
     }
 }
+
+internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    public bool TryStep(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner,
+        out NpcStateUpdate next)
+    {
+        if (definition.AiStyle != VanillaNpcAiStyles.Worm ||
+            !VanillaWormNpcCatalog.TryGet(definition.Type, out VanillaWormNpcEntry worm))
+        {
+            next = default;
+            return false;
+        }
+
+        if (worm.Role == VanillaWormSegmentRole.Head)
+            return inner.TryStepState(in npc, out next);
+
+        float rawLeaderSlot = npc.Ai.Ai1;
+        bool validLeaderSlot =
+            float.IsFinite(rawLeaderSlot) &&
+            rawLeaderSlot >= 0f &&
+            rawLeaderSlot <= byte.MaxValue &&
+            rawLeaderSlot == MathF.Truncate(rawLeaderSlot);
+        if (!validLeaderSlot ||
+            !context.TryFindNpcPeer(checked((byte)rawLeaderSlot), out NpcSnapshot leader) ||
+            !NpcTypeId.TryCreate(leader.Type, out NpcTypeId leaderType) ||
+            !VanillaNpcDefinitionCatalog.TryGet(
+                leaderType,
+                leader.NetIdentity,
+                out VanillaNpcDefinition leaderDefinition) ||
+            leaderDefinition.AiStyle != VanillaNpcAiStyles.Worm)
+        {
+            if (IsEaterOfWorlds(definition.Type))
+                return inner.TryStepState(in npc, out next);
+
+            next = Terminal(in npc);
+            return true;
+        }
+
+        if (!definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !leaderDefinition.TryResolveHitbox(
+                leader.Simulation.Scale,
+                out VanillaNpcHitboxSize leaderHitbox))
+        {
+            next = default;
+            return false;
+        }
+
+        var input = new VanillaWormSegmentFollowInput(
+            npc.PositionX,
+            npc.PositionY,
+            hitbox.Width,
+            hitbox.Height,
+            leader.PositionX + leaderHitbox.Width * 0.5f,
+            leader.PositionY + leaderHitbox.Height * 0.5f,
+            worm.Motion.SegmentGap);
+        if (!VanillaWormMotion.TryFollowSegment(in input, out VanillaWormSegmentFollowResult result))
+        {
+            next = default;
+            return false;
+        }
+
+        next = new NpcStateUpdate(
+            definition.Type.Value,
+            npc.NetId,
+            result.PositionX,
+            result.PositionY,
+            result.VelocityX,
+            result.VelocityY,
+            npc.Target,
+            npc.Ai,
+            npc.Simulation with
+            {
+                DirectionX = result.DirectionX,
+                SpriteDirection = result.DirectionX,
+                NoGravity = true,
+                NoTileCollide = true
+            });
+        return true;
+    }
+
+    private static bool IsEaterOfWorlds(NpcTypeId type) =>
+        type == VanillaNpcIds.EaterOfWorldsHead ||
+        type == VanillaNpcIds.EaterOfWorldsBody ||
+        type == VanillaNpcIds.EaterOfWorldsTail;
+
+    private static NpcStateUpdate Terminal(in NpcSnapshot npc) =>
+        new(
+            npc.Type,
+            npc.NetId,
+            npc.PositionX,
+            npc.PositionY,
+            0f,
+            0f,
+            npc.Target,
+            npc.Ai,
+            npc.Simulation with
+            {
+                Life = 0,
+                TimeLeft = 0,
+                NoGravity = true,
+                NoTileCollide = true
+            });
+}
