@@ -193,11 +193,16 @@ public readonly record struct VanillaTileObjectAnchorDefinition(
 /// </summary>
 public static class VanillaTileObjectAnchorCatalog
 {
+    private const int FrameCoordinateUnit = 18;
+
     public static bool MatchesChestAnchor(in WorldTile tile) =>
         Matches(tile, VanillaTileObjectMetadataKind.Chest);
 
     public static bool MatchesSignAnchor(in WorldTile tile) =>
         Matches(tile, VanillaTileObjectMetadataKind.Sign);
+
+    public static bool TryResolveSignOriginOffset(in WorldTile tile, out int offsetX, out int offsetY) =>
+        TryResolveOriginOffset(tile, VanillaTileObjectMetadataKind.Sign, out offsetX, out offsetY);
 
     public static bool MatchesTileEntityAnchor(WorldTileEntityKind kind, in WorldTile tile) =>
         TryGetTileEntityAnchorDefinition(kind, out VanillaTileObjectAnchorDefinition definition) &&
@@ -222,5 +227,28 @@ public static class VanillaTileObjectAnchorCatalog
         return VanillaMultiTileObjectCatalog.TryGet(tile.TileType, out VanillaMultiTileObjectDefinition definition) &&
                definition.MetadataKind == metadataKind &&
                definition.MetadataAnchor.Matches(tile);
+    }
+
+    private static bool TryResolveOriginOffset(
+        in WorldTile tile,
+        VanillaTileObjectMetadataKind metadataKind,
+        out int offsetX,
+        out int offsetY)
+    {
+        if (tile.FrameX < 0 ||
+            tile.FrameY < 0 ||
+            !VanillaMultiTileObjectCatalog.TryGet(tile.TileType, out VanillaMultiTileObjectDefinition definition) ||
+            definition.MetadataKind != metadataKind)
+        {
+            offsetX = 0;
+            offsetY = 0;
+            return false;
+        }
+
+        offsetX = (tile.FrameX / FrameCoordinateUnit) % definition.Width;
+        // Sign.ReadSign removes the complete vertical frame row; unlike the horizontal coordinate it does not
+        // apply a modulo. Keeping this source-backed asymmetry here prevents packet handlers from reimplementing it.
+        offsetY = tile.FrameY / FrameCoordinateUnit;
+        return true;
     }
 }

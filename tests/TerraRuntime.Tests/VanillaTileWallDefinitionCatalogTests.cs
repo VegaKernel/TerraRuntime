@@ -37,6 +37,12 @@ public sealed class VanillaTileWallDefinitionCatalogTests
         Assert.True(grass.IsSolid);
         Assert.False(grass.IsFrameImportant);
 
+        Assert.Equal(10, VanillaTileIds.ClosedDoor.Value);
+        Assert.Equal(388, VanillaTileIds.TallGateClosed.Value);
+        Assert.True(VanillaTileIds.IsClosedDoor(VanillaTileIds.ClosedDoor));
+        Assert.True(VanillaTileIds.IsClosedDoor(VanillaTileIds.TallGateClosed));
+        Assert.False(VanillaTileIds.IsClosedDoor(VanillaTileIds.Stone));
+
         Assert.True(VanillaTileDefinitionCatalog.TryGet(
             VanillaTileIds.Containers,
             out VanillaTileDefinition container));

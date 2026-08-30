@@ -27,9 +27,15 @@ internal static class VanillaSignTileResolver
         }
 
         WorldTile clicked = tiles.Get(tileX, tileY);
-        int frameColumn = clicked.FrameX / 18;
-        int frameRow = clicked.FrameY / 18;
-        frameColumn %= 2;
+        if (!VanillaTileObjectAnchorCatalog.TryResolveSignOriginOffset(
+                clicked,
+                out int frameColumn,
+                out int frameRow))
+        {
+            signX = 0;
+            signY = 0;
+            return false;
+        }
 
         signX = tileX - frameColumn;
         signY = tileY - frameRow;
@@ -41,9 +47,11 @@ internal static class VanillaSignTileResolver
             return false;
         }
 
-        return IsSignTileType(tiles.Get(signX, signY).Type);
+        WorldTile origin = tiles.Get(signX, signY);
+        return IsSignTileType(origin.Type);
     }
 
     public static bool IsSignTileType(ushort tileType) =>
-        tileType is 55 or 85 or 425 or 573;
+        TerraRuntime.Contracts.Gameplay.VanillaTileIds.TryCreate(tileType, out var type) &&
+        TerraRuntime.Contracts.Gameplay.VanillaTileIds.CarriesSignText(type);
 }

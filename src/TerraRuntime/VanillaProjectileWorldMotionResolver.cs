@@ -179,7 +179,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
         int tileY = (int)(centerY / 16f);
         if ((uint)tileX >= (uint)tiles.Dimensions.WidthTiles ||
             (uint)tileY >= (uint)tiles.Dimensions.HeightTiles ||
-            tiles.Get(tileX, tileY).Wall != 0)
+            tiles.Get(tileX, tileY).WallType != VanillaWallIds.None)
         {
             return;
         }

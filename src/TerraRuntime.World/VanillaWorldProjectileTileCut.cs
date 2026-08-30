@@ -14,9 +14,6 @@ public readonly record struct VanillaProjectileTileCutCandidate(int X, int Y);
 public static class VanillaWorldProjectileTileCut
 {
     private const double TileSizePixels = 16d;
-    private const ushort ProtectedWallType = 350;
-    private const ushort SpecialCuttableTileType = 254;
-    private const short SpecialCuttableMinimumFrameX = 144;
 
     /// <summary>
     /// Mirrors Projectile.CutTilesAt integer conversion and clamping. The returned bounds are half-open and
@@ -193,15 +190,18 @@ public static class VanillaWorldProjectileTileCut
     {
         // WorldGen.CanCutTile reads y + 1. The normalized runtime store has no out-of-range sentinel tile,
         // therefore the final world row cannot satisfy the source predicate safely.
-        if (y + 1 >= tiles.Dimensions.HeightTiles || tile.Wall == ProtectedWallType)
+        if (y + 1 >= tiles.Dimensions.HeightTiles ||
+            VanillaProjectileTileCutFacts.IsBlockedByWall(tile.WallType))
+        {
             return false;
+        }
 
         WorldTile below = tiles.Get(x, y + 1);
-        if (below.Type is 78 or 380 or 579)
+        if (VanillaProjectileTileCutFacts.IsBlockedBySupport(below.TileType))
             return false;
 
-        if (tile.Type == SpecialCuttableTileType)
-            return tile.FrameX >= SpecialCuttableMinimumFrameX;
+        if (VanillaProjectileTileCutFacts.RequiresMinimumFrame(tile.TileType))
+            return tile.FrameX >= VanillaProjectileTileCutFacts.FrameGatedMinimumFrameX;
 
         return true;
     }

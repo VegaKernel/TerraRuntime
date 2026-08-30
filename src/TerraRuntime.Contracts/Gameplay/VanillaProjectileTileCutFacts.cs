@@ -8,6 +8,9 @@ namespace TerraRuntime.Contracts.Gameplay;
 /// </summary>
 public static class VanillaProjectileTileCutFacts
 {
+    private const ushort FrameGatedCuttableTileType = 254;
+    private const ushort ProjectileCutProtectedWallType = 350;
+
     private static readonly ushort[] CuttableTileTypes =
     [
         3, 24, 28, 32, 51, 52, 61, 62, 69, 71, 73, 74, 82, 83, 84, 110, 113, 115, 184, 201,
@@ -15,7 +18,10 @@ public static class VanillaProjectileTileCutFacts
         654, 655, 711
     ];
 
+    private static readonly ushort[] BlockingSupportTileTypes = [78, 380, 579];
+
     public const int CuttableTileTypeCount = 41;
+    public const short FrameGatedMinimumFrameX = 144;
 
     public static bool IsCuttable(TileTypeId type)
     {
@@ -24,4 +30,18 @@ public static class VanillaProjectileTileCutFacts
 
         return Array.BinarySearch(CuttableTileTypes, checked((ushort)type.Value)) >= 0;
     }
+
+    public static bool IsBlockedBySupport(TileTypeId type)
+    {
+        if ((uint)type.Value > ushort.MaxValue)
+            return false;
+
+        return Array.BinarySearch(BlockingSupportTileTypes, checked((ushort)type.Value)) >= 0;
+    }
+
+    public static bool IsBlockedByWall(WallTypeId type) =>
+        type.Value == ProjectileCutProtectedWallType;
+
+    public static bool RequiresMinimumFrame(TileTypeId type) =>
+        type.Value == FrameGatedCuttableTileType;
 }

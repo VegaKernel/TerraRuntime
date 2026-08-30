@@ -4,13 +4,14 @@
 
 TerraRuntime treats numeric Terraria identity as boundary/version data, not as an ordinary gameplay implementation detail. `tools/ci/audit_gameplay_domain_literals.py` is the high-signal CI guard for that rule.
 
-The gate scans gameplay-owned C# in `src/TerraRuntime.Core` and `src/TerraRuntime`. Protocol/file adapters whose names explicitly identify packet, protocol, projection, frame encoder/decoder, codec or wire ownership are excluded because raw representation is legitimate there.
+The gate scans gameplay-owned C# in `src/TerraRuntime.Core`, `src/TerraRuntime` and `src/TerraRuntime.World`. Protocol, persistence, snapshot and world-generation adapters whose names explicitly identify boundary ownership are excluded because raw representation is legitimate there.
 
 The audit rejects these forms outside those boundaries:
 
 - constructing `ItemTypeId`, `NpcTypeId`, `ProjectileTypeId`, `TileTypeId`, `WallTypeId`, `BuffTypeId`, `PrefixId`, `TileEntityTypeId`, `NpcAiStyleId` or `ProjectileAiStyleId` from a numeric literal;
 - target-typed variants such as `NpcTypeId type = new(3)`;
-- direct decisions such as `npc.Type == 3` or `projectile.AiStyle != 2`;
+- direct decisions such as `npc.Type == 3`, `tile.Type is 10 or 388` or `tile.Wall != 350`;
+- direct frame arithmetic such as `tile.FrameX / 18`; object geometry or a named frame fact owns the literal;
 - direct numeric bit operations on semantic `Flags`, `ControlFlags`, `StateFlags`, `WireFlags` or `Bits` values.
 - raw player-inventory subrange constants/comparisons such as `AmmoSlotStart = 54` or `inventorySlot >= 59`; these belong to `VanillaPlayerItemSlotCatalog`.
 - non-empty numeric `ItemNetId` construction/comparisons in gameplay-owned code; named `VanillaItemIds`/item facts or a validated boundary value must supply them.

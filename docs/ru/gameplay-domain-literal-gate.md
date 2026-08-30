@@ -4,13 +4,14 @@
 
 TerraRuntime считает числовую Terraria identity данными границы/версии, а не обычной деталью gameplay. `tools/ci/audit_gameplay_domain_literals.py` является высокосигнальным CI-гейтом этого правила.
 
-Гейт сканирует gameplay-owned C# в `src/TerraRuntime.Core` и `src/TerraRuntime`. Адаптеры packet/file, чьи имена явно обозначают packet, protocol, projection, frame encoder/decoder, codec или wire ownership, исключены: на этих границах raw representation допустим.
+Гейт сканирует gameplay-owned C# в `src/TerraRuntime.Core`, `src/TerraRuntime` и `src/TerraRuntime.World`. Protocol, persistence, snapshot и world-generation adapters, чьи имена явно обозначают boundary ownership, исключены: на этих границах raw representation допустим.
 
 Вне таких границ аудит запрещает:
 
 - создание `ItemTypeId`, `NpcTypeId`, `ProjectileTypeId`, `TileTypeId`, `WallTypeId`, `BuffTypeId`, `PrefixId`, `TileEntityTypeId`, `NpcAiStyleId` или `ProjectileAiStyleId` из числового литерала;
 - target-typed варианты вроде `NpcTypeId type = new(3)`;
-- прямые решения вроде `npc.Type == 3` или `projectile.AiStyle != 2`;
+- прямые решения вроде `npc.Type == 3`, `tile.Type is 10 or 388` или `tile.Wall != 350`;
+- прямую frame arithmetic вроде `tile.FrameX / 18`; literal принадлежит object geometry или named frame fact;
 - прямые числовые битовые операции над семантическими `Flags`, `ControlFlags`, `StateFlags`, `WireFlags` или `Bits`.
 - raw constants/comparisons поддиапазонов player inventory, например `AmmoSlotStart = 54` или `inventorySlot >= 59`; ими владеет `VanillaPlayerItemSlotCatalog`.
 - создание/сравнение непустого числового `ItemNetId` в gameplay-owned коде; значение должно приходить из named `VanillaItemIds`/item facts или validated boundary.

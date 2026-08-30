@@ -41,4 +41,19 @@ public sealed class VanillaProjectileTileCutFactsTests
     {
         Assert.False(VanillaProjectileTileCutFacts.IsCuttable(new TileTypeId(rawType)));
     }
+
+    [Fact]
+    public void Source_backed_support_wall_and_frame_exceptions_are_catalogued()
+    {
+        Assert.True(VanillaProjectileTileCutFacts.IsBlockedBySupport(new TileTypeId(78)));
+        Assert.True(VanillaProjectileTileCutFacts.IsBlockedBySupport(new TileTypeId(380)));
+        Assert.True(VanillaProjectileTileCutFacts.IsBlockedBySupport(new TileTypeId(579)));
+        Assert.False(VanillaProjectileTileCutFacts.IsBlockedBySupport(VanillaTileIds.Stone));
+
+        Assert.True(VanillaProjectileTileCutFacts.IsBlockedByWall(new WallTypeId(350)));
+        Assert.False(VanillaProjectileTileCutFacts.IsBlockedByWall(VanillaWallIds.None));
+        Assert.True(VanillaProjectileTileCutFacts.RequiresMinimumFrame(new TileTypeId(254)));
+        Assert.False(VanillaProjectileTileCutFacts.RequiresMinimumFrame(VanillaTileIds.Dirt));
+        Assert.Equal((short)144, VanillaProjectileTileCutFacts.FrameGatedMinimumFrameX);
+    }
 }

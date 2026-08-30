@@ -22,6 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GAMEPLAY_ROOTS = (
     REPO_ROOT / "src" / "TerraRuntime.Core",
     REPO_ROOT / "src" / "TerraRuntime",
+    REPO_ROOT / "src" / "TerraRuntime.World",
 )
 
 BOUNDARY_NAME_MARKERS = (
@@ -30,8 +31,16 @@ BOUNDARY_NAME_MARKERS = (
     "Projection",
     "FrameEncoder",
     "FrameDecoder",
+    "Encoder",
+    "Decoder",
     "Codec",
     "Wire",
+    "WorldFile",
+    "Snapshot",
+    "Prepared",
+    "Generation",
+    "Format",
+    "Envelope",
 )
 
 DOMAIN_ID_TYPES = (
@@ -72,8 +81,8 @@ RULES = (
     Rule(
         "raw-entity-type-decision",
         re.compile(
-            rf"\b(?:npc|projectile|item|tile|wall|buff)\s*\.\s*(?:Type|AiStyle)"
-            rf"(?:\s*\.\s*Value)?\s*(?:==|!=|<=|>=|<|>)\s*-?{NUMBER}\b",
+            rf"\b(?:npc|projectile|item|tile|wall|buff)\s*\.\s*(?:Type|Wall|AiStyle)"
+            rf"(?:\s*\.\s*Value)?\s*(?:==|!=|<=|>=|<|>|is)\s*-?{NUMBER}\b",
             re.IGNORECASE,
         ),
         "gameplay decisions must compare typed/named identities or metadata, not raw type/AI-style numbers",
@@ -96,6 +105,11 @@ RULES = (
             re.IGNORECASE,
         ),
         "gameplay bit decisions must use named flag/mask values; raw masks belong at wire/file boundaries",
+    ),
+    Rule(
+        "raw-frame-arithmetic",
+        re.compile(rf"\b\w+\s*\.\s*Frame[XY]\s*(?:/|%)\s*-?{NUMBER}\b"),
+        "frame arithmetic must come from a tile-object definition or named frame fact",
     ),
     Rule(
         "raw-player-inventory-slot-literal",
@@ -271,6 +285,9 @@ def source_files() -> list[Path]:
 def run_self_test() -> None:
     fixtures = {
         "if (npc.Type == 3) return;": "raw-entity-type-decision",
+        "if (tile.Type is 10 or 388) return;": "raw-entity-type-decision",
+        "if (tile.Wall != 350) return;": "raw-entity-type-decision",
+        "var column = tile.FrameX / 18;": "raw-frame-arithmetic",
         "if (3 == projectile.AiStyle) return;": "raw-entity-type-decision-reversed",
         "NpcTypeId type = new(3);": "target-typed-domain-id-literal",
         "var style = new NpcAiStyleId(2);": "explicit-domain-id-literal",

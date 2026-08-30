@@ -56,7 +56,7 @@ public static class VanillaWorldZombieObstacleMotion
             return new VanillaZombieObstacleMotionResult(velocityX, velocityY, false);
 
         WorldTile headTile = tiles.Get(tileX, tileY - 1);
-        if (headTile.IsActive && headTile.Type is 10 or 388)
+        if (headTile.IsActive && VanillaTileIds.IsClosedDoor(headTile.TileType))
             return new VanillaZombieObstacleMotionResult(velocityX, velocityY, false);
 
         if (height >= 32 && SolidTileNoPlatforms(tiles, tileX, tileY - 2))

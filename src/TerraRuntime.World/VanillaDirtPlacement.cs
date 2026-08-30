@@ -101,7 +101,7 @@ public static class VanillaDirtPlacement
         tile.Reserved == 0;
 
     private static bool IsCompletelyEmpty(in WorldTile tile) =>
-        tile.Type == 0 &&
+        tile.TileType == VanillaTileIds.Dirt &&
         tile.WallType == VanillaWallIds.None &&
         IsEmptyFramePair(tile.FrameX, tile.FrameY) &&
         tile.Flags == WorldTileFlags.None &&

@@ -71,6 +71,22 @@ public sealed class VanillaTileObjectAnchorCatalogTests
     }
 
     [Fact]
+    public void Sign_origin_offsets_use_catalogued_object_geometry()
+    {
+        WorldTile styledSignCell = ActiveTile(VanillaTileIds.AnnouncementBox, frameX: 54, frameY: 54);
+
+        Assert.True(VanillaTileObjectAnchorCatalog.TryResolveSignOriginOffset(
+            styledSignCell,
+            out int offsetX,
+            out int offsetY));
+        Assert.Equal(1, offsetX);
+        Assert.Equal(3, offsetY);
+
+        WorldTile ordinary = ActiveTile(VanillaTileIds.Stone, frameX: 0, frameY: 0);
+        Assert.False(VanillaTileObjectAnchorCatalog.TryResolveSignOriginOffset(ordinary, out _, out _));
+    }
+
+    [Fact]
     public void Tile_entity_anchor_definitions_pin_verified_frame_periods()
     {
         AssertDefinition(WorldTileEntityKind.TrainingDummy, VanillaTileIds.TargetDummy, 36, 0, requireFrameYZero: true);

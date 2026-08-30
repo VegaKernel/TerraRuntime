@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.World;
@@ -75,7 +76,9 @@ public static class VanillaWorldZombieDoorContact
             // ai[1] is reset before applying the per-object strike progress, so it cannot reach 10.
             ai1 = 0f;
             velocityX = 0.5f * -directionX;
-            ai1 += door.Type == 388 ? TallGateStrikeProgress : DoorStrikeProgress;
+            ai1 += door.TileType == VanillaTileIds.TallGateClosed
+                ? TallGateStrikeProgress
+                : DoorStrikeProgress;
             ai2 = 0f;
             struckDoor = true;
         }
@@ -102,7 +105,7 @@ public static class VanillaWorldZombieDoorContact
     private static bool IsActiveDoor(in WorldTile tile) =>
         tile.IsActive &&
         (tile.Flags & WorldTileFlags.Inactive) == 0 &&
-        tile.Type is 10 or 388;
+        VanillaTileIds.IsClosedDoor(tile.TileType);
 
     private static bool HasGroundSupport(
         WorldTileStore tiles,

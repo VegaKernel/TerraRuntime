@@ -120,12 +120,14 @@ public static class VanillaTileIds
     public static readonly TileTypeId Dirt = new(0);
     public static readonly TileTypeId Stone = new(1);
     public static readonly TileTypeId Grass = new(2);
+    public static readonly TileTypeId ClosedDoor = new(10);
     public static readonly TileTypeId Platforms = new(19);
     public static readonly TileTypeId Containers = new(21);
     public static readonly TileTypeId Signs = new(55);
     public static readonly TileTypeId Tombstones = new(85);
     public static readonly TileTypeId Dressers = new(88);
     public static readonly TileTypeId TargetDummy = new(378);
+    public static readonly TileTypeId TallGateClosed = new(388);
     public static readonly TileTypeId ItemFrame = new(395);
     public static readonly TileTypeId AnnouncementBox = new(425);
     public static readonly TileTypeId TeamBlockRedPlatform = new(427);
@@ -168,6 +170,10 @@ public static class VanillaTileIds
         type == Containers ||
         type == Containers2 ||
         type == Dressers;
+
+    public static bool IsClosedDoor(TileTypeId type) =>
+        type == ClosedDoor ||
+        type == TallGateClosed;
 
     public static bool CarriesSignText(TileTypeId type) =>
         type == Signs ||
