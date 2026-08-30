@@ -41,7 +41,10 @@ internal static class RuntimeActorCommerceSmoke
             npcArchetypes: archetypes,
             npcArchetypeIdentities: identities);
         var archetypeId = new GameplayArchetypeId("smoke:merchant");
-        var descriptor = new NpcArchetypeDescriptor(archetypeId, VanillaNpcIds.Zombie);
+        var descriptor = new NpcArchetypeDescriptor(
+            archetypeId,
+            VanillaNpcIds.Zombie,
+            Role: NpcArchetypeRole.Town);
 
         if (archetypes.TryRegister(descriptor, out IGameplayArchetypeRegistrationLease? archetype) !=
                 GameplayArchetypeRegistrationResult.Registered ||

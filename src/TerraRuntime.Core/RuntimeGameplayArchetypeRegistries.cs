@@ -67,6 +67,7 @@ public sealed class RuntimeNpcArchetypeRegistry
     private static bool IsValid(NpcArchetypeDescriptor descriptor) =>
         descriptor.Id.IsAssigned &&
         descriptor.VanillaPresentationType.IsAssigned &&
+        Enum.IsDefined(descriptor.Role) &&
         VanillaNpcDefinitionCatalog.TryGet(descriptor.VanillaPresentationType, out _);
 }
 

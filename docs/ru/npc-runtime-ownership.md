@@ -10,6 +10,7 @@ flowchart LR
     Policy --> Store["RuntimeNpcStore\nslot + generation + revision + commit"]
     Store --> AI["Behavior-family AI"]
     AI --> Physics["Physics-family world motion"]
+    Store --> Role["RuntimeNpcRoleBoundary\nordinary / town / boss policy"]
     Store --> Combat["RuntimeNpcDamageExecutor"]
     Combat --> Store
     Store --> Death["RuntimeNpcDeathLootFinalizer"]
@@ -51,6 +52,14 @@ Combat остаётся в `RuntimeNpcDamageExecutor` и `VanillaNpcDamageResolv
 
 Death/loot остаётся в `RuntimeNpcDeathLootFinalizer`, `VanillaNpcLootRules`, vanilla world-item materializer и generation-safe loot transaction. Поэтому store не знает drop tables, prefix RNG и world-item capacity semantics.
 
+## Граница ролей town и boss
+
+`NpcArchetypeRole` явно классифицирует runtime-defined archetype как `Ordinary`, `Town` или `Boss`. Role является metadata runtime identity и никогда не выводится из vanilla presentation type или AI style. `RuntimeNpcRoleBoundary` разрешает её через точный live `NpcHandle`, generation-safe archetype binding и одну опубликованную revision descriptor catalog.
+
+Полученный `RuntimeNpcRoleClassification` открывает взаимоисключающие policy gates: town interaction, boss lifecycle или ordinary lifecycle. Housing/shop policy не попадает в обычный combat AI, а boss progression/despawn policy не превращается в type-number branch внутри store. Missing, stale и unpublished bindings завершаются fail-closed.
+
+Это boundary декомпозиции, а не vanilla town/boss parity. Текущие vanilla definitions ещё не заявляют town/boss roles; housing, boss progression, boss bars, special despawn и широкая boss AI остаются отдельной source-backed работой. Actor-commerce smoke явно помечает custom merchant archetype как `Town`.
+
 ## Граница завершения D4
 
 Пункт roadmap `spawn/physics/combat/loot separation` считается закрытым для текущего authoritative NPC slice, потому что:
@@ -61,4 +70,4 @@ Death/loot остаётся в `RuntimeNpcDeathLootFinalizer`, `VanillaNpcLootRu
 - тесты фиксируют выбор catalog family и ownership локального состояния;
 - будущие definitions обязаны явно выбрать behavior и physics family.
 
-Это не означает поддержку всех NPC Terraria. Boss/town boundaries и удаление всех оставшихся raw NPC IDs/AI-style values являются отдельными пунктами D4 и остаются открытыми.
+Это не означает поддержку всех NPC Terraria. Широкое vanilla town/housing и boss behavior остаётся открытым, хотя их ownership boundary теперь явная.

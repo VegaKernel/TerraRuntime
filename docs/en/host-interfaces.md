@@ -157,7 +157,10 @@ The host controls only whether the mechanism participates. Spatial cell/section 
 A module first registers a stable archetype backed by a source-verified vanilla presentation, then asks TerraRuntime to allocate and spawn the actor. Both archetype publication and NPC mutation occur at an authoritative game-loop boundary; the module never selects a raw NPC slot:
 
 ```csharp
-var descriptor = new NpcArchetypeDescriptor(merchantArchetypeId, VanillaNpcIds.Zombie);
+var descriptor = new NpcArchetypeDescriptor(
+    merchantArchetypeId,
+    VanillaNpcIds.Zombie,
+    Role: NpcArchetypeRole.Town);
 NpcArchetypeRegistrationStatus registered = runtime.NpcActors.TryRegisterArchetype(
     descriptor,
     out INpcArchetypeRegistration? archetype);
@@ -168,6 +171,8 @@ NpcActorSpawnResult spawned = await runtime.NpcActors.SpawnAsync(
 ```
 
 The returned `NpcHandle` is generation-safe. Spawn uses the first reusable runtime NPC slot, commits through the ordinary NPC store/replication chain and binds the server-only archetype identity to that exact generation. `DespawnAsync` uses the same authoritative path.
+
+`Role` defaults to `Ordinary`. Custom town and boss actors must declare `Town` or `Boss` explicitly; TerraRuntime does not infer lifecycle policy from the presentation NPC type or AI style. Role classification is bound to the exact actor generation and the published archetype-registry revision. This is an ownership boundary for custom runtime actors, not a claim of vanilla town/boss parity.
 
 ```csharp
 NpcActorAcquireStatus status = await runtime.NpcActors.AcquireAsync(

@@ -10,6 +10,7 @@ flowchart LR
     Policy --> Store["RuntimeNpcStore\nslot + generation + revision + commit"]
     Store --> AI["Behavior-family AI"]
     AI --> Physics["Physics-family world motion"]
+    Store --> Role["RuntimeNpcRoleBoundary\nordinary / town / boss policy"]
     Store --> Combat["RuntimeNpcDamageExecutor"]
     Combat --> Store
     Store --> Death["RuntimeNpcDeathLootFinalizer"]
@@ -51,6 +52,14 @@ Combat remains owned by `RuntimeNpcDamageExecutor` plus `VanillaNpcDamageResolve
 
 Death/loot remains owned by `RuntimeNpcDeathLootFinalizer`, `VanillaNpcLootRules`, the vanilla world-item materializer and the generation-safe loot transaction. The store therefore does not know drop tables, prefix RNG or world-item capacity semantics.
 
+## Town and boss role boundary
+
+`NpcArchetypeRole` explicitly classifies a runtime-defined archetype as `Ordinary`, `Town` or `Boss`. The role is runtime identity metadata and is never inferred from its vanilla presentation type or AI style. `RuntimeNpcRoleBoundary` resolves it through the exact live `NpcHandle`, generation-safe archetype binding and one published descriptor revision.
+
+The resulting `RuntimeNpcRoleClassification` exposes mutually exclusive policy gates: town interaction, boss lifecycle, or ordinary lifecycle. This prevents housing/shop policy from entering ordinary combat AI and prevents boss progression/despawn policy from becoming a type-number branch in the store. Missing, stale and unpublished bindings fail closed.
+
+This is a decomposition boundary, not vanilla town/boss parity. Current vanilla definitions do not yet claim town/boss roles; housing, boss progression, boss bars, special despawn and broad boss AI remain separate source-backed work. The actor-commerce smoke marks its custom merchant archetype as `Town` explicitly.
+
 ## D4 completion boundary
 
 The roadmap item `spawn/physics/combat/loot separation` is considered complete for the currently admitted authoritative NPC slice because:
@@ -61,4 +70,4 @@ The roadmap item `spawn/physics/combat/loot separation` is considered complete f
 - tests pin catalog family selection and local-state ownership behavior;
 - future definitions must explicitly opt into behavior and physics families.
 
-This does not claim complete Terraria NPC support. Boss/town boundaries and removal of all remaining raw NPC IDs/AI-style values are separate D4 items and remain open.
+This does not claim complete Terraria NPC support. Vanilla town/housing and boss behavior breadth remain open even though their ownership boundary is now explicit.

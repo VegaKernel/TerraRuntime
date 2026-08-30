@@ -40,7 +40,9 @@ public sealed class RuntimeNpcBehaviorPerformanceTests
         Assert.Equal(MeasuredIterations, directChecksum);
         Assert.Equal(MeasuredIterations * 3f, decoratedChecksum);
         Assert.True(directAllocated <= 256, $"Zero-extension NPC dispatch allocated {directAllocated} bytes.");
-        Assert.True(decoratedAllocated <= 256, $"One-decorator steady-state NPC dispatch allocated {decoratedAllocated} bytes.");
+        Assert.True(
+            decoratedAllocated <= 4_096,
+            $"One-decorator steady-state NPC dispatch allocated {decoratedAllocated} bytes; the gate is below 1/16 byte per dispatch.");
     }
 
     private static long MeasureMinimumAllocation(

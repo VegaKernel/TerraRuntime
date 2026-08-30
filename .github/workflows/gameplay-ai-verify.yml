@@ -19,6 +19,10 @@ on:
       - 'docs/ru/gameplay-domain-literal-gate.md'
       - 'docs/en/projectile-behavior-profiles.md'
       - 'docs/ru/projectile-behavior-profiles.md'
+      - 'docs/en/npc-runtime-ownership.md'
+      - 'docs/ru/npc-runtime-ownership.md'
+      - 'docs/en/host-interfaces.md'
+      - 'docs/ru/host-interfaces.md'
       - 'docs/roadmap/gameplay-decomposition-and-catalogs.md'
       - '.github/workflows/gameplay-ai-verify.yml'
   workflow_dispatch:
