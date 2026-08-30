@@ -93,10 +93,11 @@ RULES = (
     Rule(
         "raw-domain-mask",
         re.compile(
-            rf"\b(?:controlflags|stateflags|wireflags|flags|bits)\b\s*(?:&|\||\^)\s*-?{NUMBER}\b",
+            rf"\b(?:\w*(?:flags|bits|mask)|hidevisibleaccessory|hidemisc)\b"
+            rf"\s*(?:&|\||\^)\s*-?{NUMBER}\b",
             re.IGNORECASE,
         ),
-        "gameplay bit decisions must use named flag values; raw masks belong at wire/file boundaries",
+        "gameplay bit decisions must use named flag/mask values; raw masks belong at wire/file boundaries",
     ),
 )
 
@@ -143,7 +144,6 @@ def strip_comments_and_literals(text: str) -> str:
             i = end
             continue
 
-        # Raw C# strings: optional $ prefixes followed by at least three quotes.
         raw_start = i
         while raw_start < length and text[raw_start] == "$":
             raw_start += 1
@@ -158,7 +158,6 @@ def strip_comments_and_literals(text: str) -> str:
             i = end
             continue
 
-        # Verbatim/interpolated verbatim strings (@"", $@"", @$"").
         verbatim_prefix = None
         for prefix in ("$@\"", "@$\"", "@\""):
             if text.startswith(prefix, i):
@@ -178,8 +177,6 @@ def strip_comments_and_literals(text: str) -> str:
             i = j
             continue
 
-        # Ordinary/interpolated ordinary strings. Interpolation contents are intentionally ignored by
-        # this lexical audit because they are presentation text, not a reliable place for gameplay rules.
         string_prefix = None
         for prefix in ("$\"", "\""):
             if text.startswith(prefix, i):
@@ -266,6 +263,8 @@ def run_self_test() -> None:
         "NpcTypeId type = new(3);": "target-typed-domain-id-literal",
         "var style = new NpcAiStyleId(2);": "explicit-domain-id-literal",
         "if ((flags & 0x04) != 0) return;": "raw-domain-mask",
+        "var hidden = request.HideVisibleAccessory & 0x03ff;": "raw-domain-mask",
+        "var visible = request.SomeStateFlags & 7;": "raw-domain-mask",
     }
     for source, expected in fixtures.items():
         hits = [rule.name for rule in RULES if rule.pattern.search(strip_comments_and_literals(source))]
@@ -276,6 +275,7 @@ def run_self_test() -> None:
         "if (npc.TypeIdentity == VanillaNpcIds.Zombie) return;\n"
         "if (definition.AiStyle != VanillaNpcAiStyles.Fighter) return;\n"
         "var projectile = VanillaProjectileIds.Shuriken;\n"
+        "var hidden = request.HideMisc & VanillaPlayerAppearanceNormalizer.HideMiscMask;\n"
         "// if (npc.Type == 3) this example must be ignored\n"
         "var text = \"projectile.Type == 2\";\n"
     )
