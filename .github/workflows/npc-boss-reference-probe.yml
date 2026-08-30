@@ -26,7 +26,7 @@ jobs:
       - name: Decompile official TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
 
-      - name: Collect Eye of Cthulhu reference facts
+      - name: Collect Eye of Cthulhu and Servant reference facts
         shell: bash
         run: |
           set -euo pipefail
@@ -44,11 +44,13 @@ jobs:
           npc_text = pathlib.Path(sys.argv[1]).read_text(errors="ignore")
           id_text = pathlib.Path(sys.argv[2]).read_text(errors="ignore")
 
-          def method_body(name):
-              match = re.search(rf"\b{name}\s*\([^;{{}}]*\)\s*\{{", npc_text)
+          def braced_body_after(pattern):
+              match = re.search(pattern, npc_text)
               if not match:
-                  raise SystemExit(f"{name} was not found")
-              opening = match.end() - 1
+                  raise SystemExit(f"pattern was not found: {pattern}")
+              opening = npc_text.find("{", match.end())
+              if opening < 0:
+                  raise SystemExit(f"opening brace was not found: {pattern}")
               depth = 0
               for index in range(opening, len(npc_text)):
                   if npc_text[index] == "{":
@@ -57,27 +59,12 @@ jobs:
                       depth -= 1
                       if depth == 0:
                           return npc_text[opening:index + 1]
-              raise SystemExit(f"{name} body was truncated")
-
-          set_defaults = method_body("SetDefaults")
-          cases = list(re.finditer(r"\bcase\s+(-?\d+)\s*:", set_defaults))
-          eye_segment = None
-          pending = []
-          for index, match in enumerate(cases):
-              pending.append(int(match.group(1)))
-              start = match.end()
-              end = cases[index + 1].start() if index + 1 < len(cases) else len(set_defaults)
-              segment = set_defaults[start:end]
-              if re.sub(r"[\s{}]", "", segment):
-                  if 4 in pending:
-                      eye_segment = segment
-                      break
-                  pending = []
-          if eye_segment is None:
-              raise SystemExit("NPC SetDefaults case 4 was not found")
+              raise SystemExit(f"body was truncated: {pattern}")
 
           names = {}
-          for match in re.finditer(r"\b(?:public|internal)\s+const\s+(?:short|int)\s+(\w+)\s*=\s*(-?\d+)\s*;", id_text):
+          for match in re.finditer(
+              r"\b(?:public|internal)\s+const\s+(?:short|int)\s+(\w+)\s*=\s*(-?\d+)\s*;",
+              id_text):
               names.setdefault(int(match.group(2)), match.group(1))
 
           fields = (
@@ -85,28 +72,51 @@ jobs:
               "knockBackResist", "scale", "noGravity", "noTileCollide", "boss",
               "value", "npcSlots"
           )
-          facts = {"id": 4, "name": names.get(4)}
-          for field in fields:
-              assignment = re.search(rf"\b{re.escape(field)}\s*=\s*([^;]+);", eye_segment)
-              if assignment:
-                  facts[field] = assignment.group(1).strip()
 
-          ai = method_body("AI_004_EyeOfCthulhu")
-          summary = {
+          def defaults_for(type_id):
+              segment = braced_body_after(rf"\b(?:else\s+)?if\s*\(type\s*==\s*{type_id}\s*\)")
+              facts = {"id": type_id, "name": names.get(type_id)}
+              for field in fields:
+                  assignment = re.search(rf"\b{re.escape(field)}\s*=\s*([^;]+);", segment)
+                  if assignment:
+                      facts[field] = assignment.group(1).strip()
+              return facts
+
+          eye = defaults_for(4)
+          servant = defaults_for(5)
+          ai = braced_body_after(r"\bif\s*\(aiStyle\s*==\s*4\s*\)")
+          ai_summary = {
               "characters": len(ai),
               "aiReads": len(re.findall(r"\bai\[[0-3]\]", ai)),
               "localAiReads": len(re.findall(r"\blocalAI\[[0-3]\]", ai)),
               "npcSpawnCalls": ai.count("NewNPC"),
+              "servantTypeSpawnMarkers": len(re.findall(r"\bNewNPC\s*\([^;]*,\s*5\s*(?:,|\))", ai)),
               "targetClosestCalls": ai.count("TargetClosest"),
-              "dayTimeReads": len(re.findall(r"\bdayTime\b", ai)),
-              "timeLeftWrites": len(re.findall(r"\btimeLeft\s*=", ai)),
+              "dayChecks": ai.count("Main.IsItDay()"),
+              "encourageDespawnCalls": ai.count("EncourageDespawn"),
           }
 
-          print("NPC_EYE_OF_CTHULHU_DEFAULTS=" + json.dumps(facts, sort_keys=True))
-          print("NPC_EYE_OF_CTHULHU_AI_SUMMARY=" + json.dumps(summary, sort_keys=True))
+          print("NPC_EYE_OF_CTHULHU_DEFAULTS=" + json.dumps(eye, sort_keys=True))
+          print("NPC_SERVANT_OF_CTHULHU_DEFAULTS=" + json.dumps(servant, sort_keys=True))
+          print("NPC_EYE_OF_CTHULHU_AI_SUMMARY=" + json.dumps(ai_summary, sort_keys=True))
 
-          if facts.get("name") not in ("EyeofCthulhu", "EyeOfCthulhu"):
-              raise SystemExit(f"Unexpected NPCID name for 4: {facts.get('name')!r}")
-          if facts.get("aiStyle") != "4":
-              raise SystemExit(f"Unexpected Eye of Cthulhu aiStyle: {facts.get('aiStyle')!r}")
+          expected_eye = {
+              "name": "EyeofCthulhu", "aiStyle": "4", "width": "100", "height": "110",
+              "damage": "15", "defense": "12", "lifeMax": "2800", "knockBackResist": "0f",
+              "noGravity": "true", "noTileCollide": "true", "boss": "true",
+              "value": "30000f", "npcSlots": "5f"
+          }
+          expected_servant = {
+              "name": "ServantofCthulhu", "aiStyle": "5", "width": "20", "height": "20",
+              "damage": "12", "defense": "0", "lifeMax": "8",
+              "noGravity": "true", "noTileCollide": "true"
+          }
+          for key, expected in expected_eye.items():
+              if eye.get(key) != expected:
+                  raise SystemExit(f"Unexpected Eye of Cthulhu {key}: {eye.get(key)!r}")
+          for key, expected in expected_servant.items():
+              if servant.get(key) != expected:
+                  raise SystemExit(f"Unexpected Servant of Cthulhu {key}: {servant.get(key)!r}")
+          if ai_summary["npcSpawnCalls"] < 1 or ai_summary["targetClosestCalls"] < 1:
+              raise SystemExit(f"Unexpected Eye of Cthulhu AI summary: {ai_summary!r}")
           PY
