@@ -45,7 +45,9 @@ public static class VanillaNpcDamageResolver
 /// <summary>
 /// Applies one generation-safe NPC damage transition to the authoritative runtime store.
 /// Lethal damage commits Life=0 but deliberately does not despawn the NPC or run loot/death
-/// side effects; those observable ordering rules belong to the later death pipeline.
+/// side effects; those observable ordering rules belong to the later death pipeline. Runtime-owned
+/// invulnerability is checked from the same NPC revision as life/AI state so transient boss phases
+/// cannot race a separate damage flag.
 /// </summary>
 public sealed class RuntimeNpcDamageExecutor
 {
@@ -58,6 +60,7 @@ public sealed class RuntimeNpcDamageExecutor
     {
         if (!request.IsValid ||
             !_store.TryGet(request.Target, out NpcSnapshot current) ||
+            current.Simulation.DontTakeDamage ||
             current.Simulation.LifeMax <= 0 ||
             current.Simulation.Life <= 0 ||
             !VanillaNpcDefinitionCatalog.TryGet(current.Type, out VanillaNpcDefinition definition) ||

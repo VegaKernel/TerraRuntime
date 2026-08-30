@@ -57,6 +57,8 @@ public enum NpcLiquidContactKind : byte
 /// liquid, combat, presentation-facing direction and lifetime state are runtime facts rather than packet details.
 /// Zero LifeMax means unspecified combat state; TimeLeft == -1 means unspecified lifetime state. Runtime-owned
 /// state policy resolves those sentinels on spawn and preserves existing values across updates that do not own them.
+/// Server-only vanilla localAI and transient vulnerability/presentation flags live here so one NPC revision commits
+/// the complete authoritative AI transition atomically instead of advancing side dictionaries independently.
 /// </summary>
 public readonly record struct NpcSimulationState(
     int DirectionX,
@@ -93,6 +95,18 @@ public readonly record struct NpcSimulationState(
 
     public bool SolidCollision { get; init; }
 
+    /// <summary>
+    /// Server-only vanilla NPC.localAI[0..3]. These slots are deliberately separate from wire-visible ai[0..3]
+    /// but share the same authoritative revision so rejected or stale NPC updates cannot advance local timers.
+    /// </summary>
+    public NpcAiState LocalAi { get; init; }
+
+    /// <summary>Vanilla NPC.hide-style presentation state owned by authoritative boss transitions.</summary>
+    public bool Hidden { get; init; }
+
+    /// <summary>Authoritative damage gate for vanilla transitions such as King Slime teleport disappearance.</summary>
+    public bool DontTakeDamage { get; init; }
+
     public static NpcSimulationState Initial => new(
         DirectionX: 0,
         DirectionY: 0,
@@ -113,7 +127,10 @@ public readonly record struct NpcSimulationState(
         JustHit = false,
         TimeLeft = -1,
         SpriteDirection = -1,
-        SolidCollision = false
+        SolidCollision = false,
+        LocalAi = default,
+        Hidden = false,
+        DontTakeDamage = false
     };
 
     public bool IsValid =>
@@ -126,6 +143,7 @@ public readonly record struct NpcSimulationState(
         float.IsFinite(OldPositionY) &&
         float.IsFinite(Scale) &&
         Scale > 0f &&
+        LocalAi.IsFinite &&
         ((LifeMax == 0 && Life == 0) ||
          (LifeMax > 0 && Life >= 0 && Life <= LifeMax)) &&
         TimeLeft >= -1 &&

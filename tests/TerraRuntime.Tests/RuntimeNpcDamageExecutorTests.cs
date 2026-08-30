@@ -48,6 +48,36 @@ public sealed class RuntimeNpcDamageExecutorTests
     }
 
     [Fact]
+    public void Runtime_invulnerability_rejects_damage_without_advancing_revision()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot target = SpawnBlueSlime(store);
+        var invulnerableUpdate = new NpcStateUpdate(
+            target.Type,
+            target.NetId,
+            target.PositionX,
+            target.PositionY,
+            target.VelocityX,
+            target.VelocityY,
+            target.Target,
+            target.Ai,
+            target.Simulation with { DontTakeDamage = true });
+        Assert.True(store.TryUpdate(target.Handle, in invulnerableUpdate, out NpcSnapshot invulnerable));
+        var executor = new RuntimeNpcDamageExecutor(store);
+        var request = new NpcDamageRequest(
+            invulnerable.Handle,
+            DamageSource.Server,
+            BaseDamage: 100);
+
+        Assert.False(executor.TryApply(in request, out _));
+
+        Assert.True(store.TryGet(invulnerable.Handle, out NpcSnapshot unchanged));
+        Assert.Equal(invulnerable.Revision, unchanged.Revision);
+        Assert.Equal(25, unchanged.Simulation.Life);
+        Assert.True(unchanged.Simulation.DontTakeDamage);
+    }
+
+    [Fact]
     public void Armor_penetration_and_critical_modifier_are_applied_in_order()
     {
         var store = new RuntimeNpcStore(capacity: 4);
