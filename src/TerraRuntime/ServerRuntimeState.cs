@@ -937,48 +937,33 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             }
 
             WorldTile beforeKill = _worldTiles.Get(tileState.TileX, tileState.TileY);
-            bool isDirtKill = beforeKill.TileType == VanillaTileIds.Dirt;
+            TileTypeId beforeType = beforeKill.TileType;
+            bool isDirtKill = beforeType == VanillaTileIds.Dirt;
             if (isDirtKill && !VanillaDirtPlacement.CanKillIsolated(_worldTiles, tileState.TileX, tileState.TileY))
             {
                 RejectedClientTileManipulations++;
                 return;
             }
 
-            if (isDirtKill)
+            bool hasDrop = VanillaTileWorldItemDrop.TryCreate(beforeType, tileState.TileX, tileState.TileY, _worldItemSpawnRandom, out WorldItemDropStateUpdate dropState);
+            if (!hasDrop && isDirtKill)
             {
-                if (!_worldItems.TryReserveDropSlot(out WorldItemDropReservation reservation))
+                hasDrop = true;
+                dropState = VanillaDirtWorldItemDrop.Create(tileState.TileX, tileState.TileY, _worldItemSpawnRandom);
+            }
+
+            WorldItemDropReservation reservation = default;
+            bool reserved = false;
+            if (hasDrop)
+            {
+                if (!_worldItems.TryReserveDropSlot(out reservation))
                 {
                     RejectedClientTileManipulations++;
                     RejectedWorldItemAllocations++;
                     return;
                 }
 
-                WorldItemDropStateUpdate drop = VanillaDirtWorldItemDrop.Create(
-                    tileState.TileX,
-                    tileState.TileY,
-                    _worldItemSpawnRandom);
-
-                if (!ApplyTileMutation(
-                        tileMutations,
-                        WorldTileMutationKind.KillTile,
-                        tileState.TileX,
-                        tileState.TileY))
-                {
-                    _ = _worldItems.TryReleaseDropReservation(in reservation);
-                    RejectedClientTileManipulations++;
-                    return;
-                }
-
-                if (!_worldItems.TryCommitReservedDrop(in reservation, in drop, out _))
-                {
-                    throw new InvalidOperationException(
-                        "Reserved Dirt drop could not commit after authoritative tile mutation.");
-                }
-
-                AppliedWorldItemAllocations++;
-                AppliedClientTileManipulations++;
-                _tileManipulationReplication?.TryPublishCommitted(command.Connection.Source, in tileState);
-                return;
+                reserved = true;
             }
 
             if (!ApplyTileMutation(
@@ -987,8 +972,21 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                     tileState.TileX,
                     tileState.TileY))
             {
+                if (reserved)
+                    _ = _worldItems.TryReleaseDropReservation(in reservation);
                 RejectedClientTileManipulations++;
                 return;
+            }
+
+            if (reserved)
+            {
+                if (!_worldItems.TryCommitReservedDrop(in reservation, in dropState, out _))
+                {
+                    throw new InvalidOperationException(
+                        "Reserved tile drop could not commit after authoritative tile mutation.");
+                }
+
+                AppliedWorldItemAllocations++;
             }
 
             AppliedClientTileManipulations++;
