@@ -32,19 +32,21 @@ public sealed class VanillaNpcDefinitionCatalogTests
     }
 
     [Theory]
-    [InlineData(1, VanillaNpcBehaviorFamily.SlimeGround)]
-    [InlineData(2, VanillaNpcBehaviorFamily.FlyingEye)]
-    [InlineData(3, VanillaNpcBehaviorFamily.GroundFighter)]
-    public void Verified_definitions_explicitly_opt_into_runtime_behavior_families(
+    [InlineData(1, VanillaNpcBehaviorFamily.SlimeGround, VanillaNpcPhysicsFamily.SlimeGround)]
+    [InlineData(2, VanillaNpcBehaviorFamily.FlyingEye, VanillaNpcPhysicsFamily.FlyingEye)]
+    [InlineData(3, VanillaNpcBehaviorFamily.GroundFighter, VanillaNpcPhysicsFamily.GroundFighter)]
+    public void Verified_definitions_explicitly_opt_into_runtime_behavior_and_physics_families(
         int type,
-        VanillaNpcBehaviorFamily expectedFamily)
+        VanillaNpcBehaviorFamily expectedBehavior,
+        VanillaNpcPhysicsFamily expectedPhysics)
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition));
-        Assert.Equal(expectedFamily, definition.BehaviorFamily);
+        Assert.Equal(expectedBehavior, definition.BehaviorFamily);
+        Assert.Equal(expectedPhysics, definition.PhysicsFamily);
     }
 
     [Fact]
-    public void Runtime_behavior_family_is_distinct_from_source_ai_style()
+    public void Runtime_families_are_distinct_from_source_ai_style()
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BlueSlime, out VanillaNpcDefinition slime));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.DemonEye, out VanillaNpcDefinition eye));
@@ -52,10 +54,13 @@ public sealed class VanillaNpcDefinitionCatalogTests
 
         Assert.Equal(VanillaNpcAiStyles.Slime, slime.AiStyle);
         Assert.Equal(VanillaNpcBehaviorFamily.SlimeGround, slime.BehaviorFamily);
+        Assert.Equal(VanillaNpcPhysicsFamily.SlimeGround, slime.PhysicsFamily);
         Assert.Equal(VanillaNpcAiStyles.DemonEye, eye.AiStyle);
         Assert.Equal(VanillaNpcBehaviorFamily.FlyingEye, eye.BehaviorFamily);
+        Assert.Equal(VanillaNpcPhysicsFamily.FlyingEye, eye.PhysicsFamily);
         Assert.Equal(VanillaNpcAiStyles.Fighter, fighter.AiStyle);
         Assert.Equal(VanillaNpcBehaviorFamily.GroundFighter, fighter.BehaviorFamily);
+        Assert.Equal(VanillaNpcPhysicsFamily.GroundFighter, fighter.PhysicsFamily);
     }
 
     [Fact]
@@ -65,6 +70,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
         Assert.Equal(VanillaNpcIds.DemonEye, definition.Type);
         Assert.Equal(VanillaNpcAiStyles.DemonEye, definition.AiStyle);
         Assert.Equal(VanillaNpcBehaviorFamily.FlyingEye, definition.BehaviorFamily);
+        Assert.Equal(VanillaNpcPhysicsFamily.FlyingEye, definition.PhysicsFamily);
     }
 
     [Fact]
@@ -72,6 +78,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
     {
         Assert.Equal((ushort)255, VanillaNpcDefinitionCatalog.DefaultTarget);
         Assert.Equal(750, VanillaNpcDefinitionCatalog.DefaultTimeLeft);
+        Assert.Equal(-1, VanillaNpcDefinitionCatalog.DefaultSpriteDirection);
     }
 
     [Fact]

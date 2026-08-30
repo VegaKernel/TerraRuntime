@@ -6,10 +6,11 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 /// <summary>
-/// Post-AI authoritative movement for the verified ordinary Blue Slime, Demon Eye and Zombie paths. Vanilla
-/// computes gravity parameters before AI, applies AI, then gravity, epsilon velocity clamp, the pre-collision
-/// walk-down-slope pass, wet/tile collision, position movement and the post-move slope pass. Collision/liquid
-/// state becomes input for the next AI tick.
+/// Post-AI authoritative movement for the verified ordinary NPC physics families. Vanilla computes gravity
+/// parameters before AI, applies AI, then gravity, epsilon velocity clamp, the pre-collision walk-down-slope
+/// pass, wet/tile collision, position movement and the post-move slope pass. Collision/liquid state becomes
+/// input for the next AI tick. Concrete content IDs are resolved to explicit physics-family metadata before
+/// this stage chooses special movement behavior.
 /// </summary>
 internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 {
@@ -52,7 +53,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
-        bool zombieStuckHopEligible = npc.VelocityX == 0f && !npc.Simulation.JustHit;
+        bool fighterStuckHopEligible = npc.VelocityX == 0f && !npc.Simulation.JustHit;
         if (!inner.TryStepState(in npc, out NpcStateUpdate aiState))
         {
             next = default;
@@ -61,7 +62,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
-            !IsSupportedMotionPath(npcType, definition.AiStyle))
+            definition.PhysicsFamily == VanillaNpcPhysicsFamily.None)
         {
             next = aiState;
             return true;
@@ -71,7 +72,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         float velocityX = aiState.VelocityX;
         float velocityY = aiState.VelocityY;
 
-        if (npcType == VanillaNpcIds.Zombie)
+        if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.GroundFighter)
         {
             VanillaZombieStepUpResult stepUp = VanillaWorldZombieStepUp.Resolve(
                 tiles,
@@ -116,7 +117,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
             if (doorContact.GroundSupported &&
                 velocityY == 0f &&
-                zombieStuckHopEligible &&
+                fighterStuckHopEligible &&
                 aiState.Ai.Ai3 == 1f)
             {
                 velocityY = -5f;
@@ -124,7 +125,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         }
 
         if (!VanillaNpcGravity.TryApply(
-                npcType,
+                in definition,
                 aiState.PositionY,
                 velocityY,
                 simulation.Wet,
@@ -184,9 +185,12 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
 
         float oldVelocityX = velocityX;
         float oldVelocityY = velocityY;
-        bool fallThroughPlatforms =
-            npcType == VanillaNpcIds.DemonEye ||
-            (npcType == VanillaNpcIds.Zombie && simulation.DirectionY == 1);
+        bool fallThroughPlatforms = definition.PhysicsFamily switch
+        {
+            VanillaNpcPhysicsFamily.FlyingEye => true,
+            VanillaNpcPhysicsFamily.GroundFighter => simulation.DirectionY == 1,
+            _ => false
+        };
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
             tiles,
             aiState.PositionX,
@@ -265,11 +269,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper : INpcAiStateStepper
         };
         return true;
     }
-
-    private static bool IsSupportedMotionPath(NpcTypeId type, NpcAiStyleId aiStyle) =>
-        (type == VanillaNpcIds.BlueSlime && aiStyle == VanillaNpcAiStyles.Slime) ||
-        (type == VanillaNpcIds.DemonEye && aiStyle == VanillaNpcAiStyles.DemonEye) ||
-        (type == VanillaNpcIds.Zombie && aiStyle == VanillaNpcAiStyles.Fighter);
 
     private static NpcLiquidContactKind MapLiquid(WorldLiquidKind kind) => kind switch
     {
