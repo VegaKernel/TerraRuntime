@@ -97,15 +97,31 @@ jobs:
               "scaleAssignments": assignments("scale"),
               "widthAssignments": assignments("width"),
               "heightAssignments": assignments("height"),
+              "numAssignments": assignments("num"),
+              "num2Assignments": assignments("num2"),
               "num9Assignments": assignments("num9"),
               "kingSlimeHelperCalls": uniq(re.findall(r"\b(AI_015_KingSlime(?:_[A-Za-z0-9_]+)?)\s*\(", ai)),
               "npcIdNames": uniq(re.findall(r"NPCID\.([A-Za-z0-9_]+)", ai)),
               "mainModeFlags": uniq(re.findall(r"Main\.(expertMode|masterMode|getGoodWorld|zenithWorld|remixWorld|tenthAnniversaryWorld)", ai)),
               "distanceConstants": uniq(re.findall(r"(?:Distance|Length)\s*\([^)]*\)\s*([<>]=?)\s*([0-9.]+)f?", ai)),
               "integerRandomRanges": uniq(re.findall(r"Next\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)", ai)),
+              "newNpcExpressions": uniq(re.findall(r"NewNPC\s*\(([^;]+)\);", ai)),
+              "helperExpressions": uniq(re.findall(r"AI_015_KingSlime_FindTeleportSpot\s*\(([^;]+)\);", ai)),
           }
 
+          interesting = []
+          for raw_line in ai.splitlines():
+              line = raw_line.strip()
+              if not line:
+                  continue
+              if any(token in line for token in (
+                  "float num", "ai[", "localAI[", "velocity.X", "velocity.Y", "scale =",
+                  "NewNPC", "AI_015_KingSlime_FindTeleportSpot", "Main.expertMode", "Main.getGoodWorld",
+                  "Vector2.Distance", "CanHit")):
+                  interesting.append(line)
+
           print("NPC_KING_SLIME_AI15_FACTS=" + json.dumps(facts, sort_keys=True))
+          print("NPC_KING_SLIME_AI15_STATEMENTS=" + json.dumps(interesting, ensure_ascii=True))
           if facts["characters"] < 100 or sum(facts["aiReads"].values()) == 0:
               raise SystemExit(f"Unexpectedly small King Slime AI15 body: {facts!r}")
           PY
