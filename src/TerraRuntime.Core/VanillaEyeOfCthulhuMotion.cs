@@ -5,6 +5,7 @@ namespace TerraRuntime.Core;
 public readonly record struct VanillaEyeOfCthulhuMotionInput(
     float NpcCenterX,
     float NpcCenterY,
+    float NpcBottomY,
     float VelocityX,
     float VelocityY,
     ushort Target,
@@ -16,7 +17,8 @@ public readonly record struct VanillaEyeOfCthulhuMotionInput(
     bool TargetAvailable,
     bool TargetDead,
     float TargetCenterX,
-    float TargetCenterY);
+    float TargetCenterY,
+    float TargetTopY);
 
 public readonly record struct VanillaEyeOfCthulhuMotionResult(
     float VelocityX,
@@ -27,8 +29,8 @@ public readonly record struct VanillaEyeOfCthulhuMotionResult(
 
 /// <summary>
 /// Allocation-free classic-mode state machine for TerrariaServer 1.4.5.8 Eye of Cthulhu aiStyle 4.
-/// Cosmetic rotation/dust/sounds are deliberately absent. Servant spawning is also deliberately not emitted
-/// from this state-only primitive: NPC spawn side effects must be committed by the runtime side-effect layer.
+/// Cosmetic rotation/dust/sounds are deliberately absent. Phase-one servant cadence is represented in ai[3]
+/// exactly like vanilla; the actual spawn remains an explicit post-commit side effect planned by the runtime.
 /// Expert/Master/getGoodWorld branches are not silently approximated by this classic-mode implementation.
 /// </summary>
 public static class VanillaEyeOfCthulhuMotion
@@ -37,6 +39,8 @@ public static class VanillaEyeOfCthulhuMotion
     private const float PhaseOneHoverAcceleration = 0.04f;
     private const float PhaseOneHoverOffsetY = 200f;
     private const float PhaseOneHoverTicks = 600f;
+    private const float PhaseOneServantRange = 500f;
+    private const float PhaseOneServantTicks = 110f;
     private const float PhaseOneDashSpeed = 6f;
     private const float PhaseOneDashSlowdownStart = 40f;
     private const float PhaseOneDashTicks = 150f;
@@ -92,11 +96,16 @@ public static class VanillaEyeOfCthulhuMotion
         {
             if (ai1 == 0f)
             {
+                float hoverTargetY = input.TargetCenterY - PhaseOneHoverOffsetY;
+                float hoverDeltaX = input.TargetCenterX - input.NpcCenterX;
+                float hoverDeltaY = hoverTargetY - input.NpcCenterY;
+                float hoverDistance = MathF.Sqrt(hoverDeltaX * hoverDeltaX + hoverDeltaY * hoverDeltaY);
+
                 SteerToward(
                     input.NpcCenterX,
                     input.NpcCenterY,
                     input.TargetCenterX,
-                    input.TargetCenterY - PhaseOneHoverOffsetY,
+                    hoverTargetY,
                     PhaseOneHoverSpeed,
                     PhaseOneHoverAcceleration,
                     ref velocityX,
@@ -109,6 +118,12 @@ public static class VanillaEyeOfCthulhuMotion
                     ai2 = 0f;
                     ai3 = 0f;
                     target = VanillaNpcDefinitionCatalog.DefaultTarget;
+                }
+                else if (input.NpcBottomY < input.TargetTopY && hoverDistance < PhaseOneServantRange)
+                {
+                    ai3++;
+                    if (ai3 >= PhaseOneServantTicks)
+                        ai3 = 0f;
                 }
             }
             else if (ai1 == 1f)
@@ -267,6 +282,7 @@ public static class VanillaEyeOfCthulhuMotion
     private static bool IsValid(in VanillaEyeOfCthulhuMotionInput input) =>
         float.IsFinite(input.NpcCenterX) &&
         float.IsFinite(input.NpcCenterY) &&
+        float.IsFinite(input.NpcBottomY) &&
         float.IsFinite(input.VelocityX) &&
         float.IsFinite(input.VelocityY) &&
         input.Ai.IsFinite &&
@@ -275,7 +291,9 @@ public static class VanillaEyeOfCthulhuMotion
         input.Life <= input.LifeMax &&
         input.TimeLeft >= -1 &&
         (!input.TargetAvailable ||
-         (float.IsFinite(input.TargetCenterX) && float.IsFinite(input.TargetCenterY)));
+         (float.IsFinite(input.TargetCenterX) &&
+          float.IsFinite(input.TargetCenterY) &&
+          float.IsFinite(input.TargetTopY)));
 
     private static VanillaEyeOfCthulhuMotionResult Build(
         float velocityX,

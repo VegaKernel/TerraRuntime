@@ -42,6 +42,45 @@ public sealed class VanillaEyeOfCthulhuMotionTests
     }
 
     [Fact]
+    public void Phase_one_servant_cadence_resets_at_verified_tick_threshold()
+    {
+        VanillaEyeOfCthulhuMotionInput input = CreateInput() with
+        {
+            NpcCenterX = 150f,
+            NpcCenterY = 155f,
+            NpcBottomY = 210f,
+            TargetCenterX = 250f,
+            TargetCenterY = 300f,
+            TargetTopY = 279f,
+            Ai = new NpcAiState(0f, 0f, 42f, 109f)
+        };
+
+        Assert.True(VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result));
+
+        Assert.Equal(43f, result.Ai.Ai2, 5);
+        Assert.Equal(0f, result.Ai.Ai3, 5);
+    }
+
+    [Fact]
+    public void Phase_one_servant_cadence_does_not_advance_when_eye_is_not_above_player()
+    {
+        VanillaEyeOfCthulhuMotionInput input = CreateInput() with
+        {
+            NpcCenterX = 150f,
+            NpcCenterY = 155f,
+            NpcBottomY = 310f,
+            TargetCenterX = 250f,
+            TargetCenterY = 300f,
+            TargetTopY = 279f,
+            Ai = new NpcAiState(0f, 0f, 42f, 109f)
+        };
+
+        Assert.True(VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result));
+
+        Assert.Equal(109f, result.Ai.Ai3, 5);
+    }
+
+    [Fact]
     public void First_phase_direct_dash_uses_six_pixel_speed()
     {
         VanillaEyeOfCthulhuMotionInput input = CreateInput() with
@@ -126,6 +165,7 @@ public sealed class VanillaEyeOfCthulhuMotionTests
         new(
             NpcCenterX: 100f,
             NpcCenterY: 100f,
+            NpcBottomY: 400f,
             VelocityX: 0f,
             VelocityY: 0f,
             Target: 7,
@@ -137,5 +177,6 @@ public sealed class VanillaEyeOfCthulhuMotionTests
             TargetAvailable: true,
             TargetDead: false,
             TargetCenterX: 200f,
-            TargetCenterY: 100f);
+            TargetCenterY: 100f,
+            TargetTopY: 0f);
 }

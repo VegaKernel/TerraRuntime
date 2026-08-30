@@ -254,6 +254,7 @@ internal sealed class VanillaEyeOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehavi
         var input = new VanillaEyeOfCthulhuMotionInput(
             NpcCenterX: targeted.PositionX + definition.Width * 0.5f,
             NpcCenterY: targeted.PositionY + definition.Height * 0.5f,
+            NpcBottomY: targeted.PositionY + definition.Height,
             VelocityX: targeted.VelocityX,
             VelocityY: targeted.VelocityY,
             Target: targeted.Target,
@@ -265,7 +266,8 @@ internal sealed class VanillaEyeOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehavi
             TargetAvailable: targetAvailable,
             TargetDead: !targetAvailable || candidate.Dead,
             TargetCenterX: candidate.CenterX,
-            TargetCenterY: candidate.CenterY);
+            TargetCenterY: candidate.CenterY,
+            TargetTopY: candidate.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f);
 
         if (!VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result))
         {

@@ -25,7 +25,9 @@ public readonly record struct NpcAiStateTickSummary(
 /// Runs allocation-stable NPC AI state transitions against a pre-pass snapshot of the live NPC table.
 /// The executor and store are authoritative-thread components. A proposed transition is committed only
 /// if the exact generation captured at the start of the pass is still current, so reentrant lifecycle
-/// changes cannot let stale AI work mutate a replacement NPC in the same slot.
+/// changes cannot let stale AI work mutate a replacement NPC in the same slot. Optional NPC spawn intents
+/// are planned speculatively but are applied only after that source-state commit succeeds; newly spawned
+/// NPCs therefore cannot enter the same pre-pass or escape from a rejected/stale transition.
 /// </summary>
 public sealed class RuntimeNpcAiStateExecutor
 {
@@ -52,6 +54,7 @@ public sealed class RuntimeNpcAiStateExecutor
         int proposed = 0;
         int applied = 0;
         int rejected = 0;
+        INpcAiSpawnIntentPlanner? spawnPlanner = stepper as INpcAiSpawnIntentPlanner;
 
         for (int index = 0; index < examined; index++)
         {
@@ -60,10 +63,16 @@ public sealed class RuntimeNpcAiStateExecutor
                 continue;
 
             proposed++;
+            bool hasSpawnIntent = spawnPlanner is not null &&
+                                  spawnPlanner.TryPlanNpcSpawn(in npc, in next, out NpcAiSpawnIntent spawnIntent);
+
             if (_npcs.TryUpdate(npc.Handle, in next, out NpcSnapshot committed))
             {
                 applied++;
                 commitSink?.NpcAiStateCommitted(in committed);
+
+                if (hasSpawnIntent)
+                    RuntimeNpcSpawnIntentApplier.TryApply(_npcs, in spawnIntent, out _);
             }
             else
             {
