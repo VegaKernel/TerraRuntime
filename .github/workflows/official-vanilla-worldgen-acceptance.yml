@@ -2,9 +2,7 @@ name: Official Vanilla Worldgen Acceptance
 
 on:
   push:
-    branches:
-      - main
-      - agent/exact-vanilla-worldgen-1458-20260830
+    branches: [main]
     paths:
       - 'src/TerraRuntime/OfficialVanillaWorldGenerator1458.cs'
       - 'src/TerraRuntime/StartupProgram.cs'
@@ -42,39 +40,26 @@ jobs:
         run: |
           dotnet restore TerraRuntime.slnx
           dotnet build TerraRuntime.slnx -c Release --no-restore
-      - name: Download and verify official TerrariaServer 1.4.5.8
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/terraria-1458"
-          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o "$RUNNER_TEMP/terraria-1458/server.zip"
-          unzip -q -o "$RUNNER_TEMP/terraria-1458/server.zip" -d "$RUNNER_TEMP/terraria-1458/server"
-          managed="$(find "$RUNNER_TEMP/terraria-1458/server" -type f -name TerrariaServer.exe -print -quit)"
-          linux_server="$(find "$RUNNER_TEMP/terraria-1458/server" -type f -name TerrariaServer.bin.x86_64 -print -quit)"
-          [[ -n "$managed" && -n "$linux_server" ]]
-          managed_sha256="$(sha256sum "$managed" | awk '{print $1}')"
-          echo "managed_sha256=$managed_sha256"
-          [[ "$managed_sha256" == "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034" ]]
-          chmod +x "$linux_server"
-          echo "TERRARIA_SERVER_1458=$linux_server" >> "$GITHUB_ENV"
-      - name: Generate a real vanilla world through TerraRuntime
+      - name: Generate a real vanilla world through TerraRuntime first-use backend
         shell: bash
         run: |
           set -euo pipefail
           world="$RUNNER_TEMP/exact-vanilla-1458.wld"
           log="$RUNNER_TEMP/exact-vanilla-1458.log"
-          TERRARUNTIME_TERRARIA_SERVER_1458="$TERRARIA_SERVER_1458" \
-            dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- \
-              --create-world ExactVanilla1458 \
-              --world-generator terraruntime:vanilla \
-              --world-seed 8675309 \
-              --world-width 4200 \
-              --world-height 1200 \
-              --world-game-mode classic \
-              --world-evil crimson \
-              --world-output "$world" \
-              --port 17779 \
-              --no-tui > "$log" 2>&1 &
+          package_root="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/data/official-terraria/1.4.5.8"
+          rm -rf "$package_root"
+
+          dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- \
+            --create-world ExactVanilla1458 \
+            --world-generator terraruntime:vanilla \
+            --world-seed 8675309 \
+            --world-width 4200 \
+            --world-height 1200 \
+            --world-game-mode classic \
+            --world-evil crimson \
+            --world-output "$world" \
+            --port 17779 \
+            --no-tui > "$log" 2>&1 &
           pid=$!
 
           created=false
@@ -100,8 +85,18 @@ jobs:
             exit 1
           fi
 
+          cat "$log"
+          grep -F "Downloading pinned official TerrariaServer 1.4.5.8 for exact vanilla world generation..." "$log"
           grep -F "seed='8675309'" "$log"
           test "$(stat -c%s "$world")" -gt 1048576
+
+          managed="$(find "$package_root/server" -type f -name TerrariaServer.exe -print -quit)"
+          linux_server="$(find "$package_root/server" -type f -name TerrariaServer.bin.x86_64 -print -quit)"
+          [[ -n "$managed" && -n "$linux_server" ]]
+          managed_sha256="$(sha256sum "$managed" | awk '{print $1}')"
+          echo "managed_sha256=$managed_sha256"
+          [[ "$managed_sha256" == "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034" ]]
+
           python3 tools/ci/probe_world_generation_fixture.py \
             --world "$world" \
             --output "$RUNNER_TEMP/exact-vanilla-1458.json"
