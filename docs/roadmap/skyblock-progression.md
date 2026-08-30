@@ -26,15 +26,17 @@ Checkbox policy: `[x]` means implemented on `main` with focused executable verif
 - [ ] source-back Lihzahrd Altar activation, Power Cell consumption and Golem summon behavior in authoritative gameplay;
 - [ ] define richer deterministic loot tiers without turning the starter chest into a dump of otherwise unobtainable progression items.
 
-## S2 - Runtime Skyblock gameplay profile
+## S2 - Runtime Skyblock semantics
 
-World generation alone cannot reproduce the behavior of a purpose-built Skyblock mode. Add a runtime-owned profile rather than hiding these rules inside the generator.
+World generation alone cannot reproduce the behavior of Terraria Skyblock. Runtime rules are derived from persisted vanilla world state and current world contents; they must never depend on `WorldGeneratorId` or on which implementation originally generated the file.
 
-- [ ] stable persisted/selected Skyblock gameplay-profile identity;
-- [ ] source-backed reduced biome thresholds where empty-world density requires them;
+- [x] persist and consume Terraria 1.4.5.8 `SkyblockWorld` world semantics; built-in Skyblock creation sets the vanilla flag while loaded vanilla Skyblock worlds are recognized from the `.wld` itself;
+- [x] source-backed `lowTiles` classifier gated by `SkyblockWorld` and the strict `<10%` active-tile density rule;
+- [x] source-backed Snow and Desert thresholds (`300` under `lowTiles`, otherwise `1500`);
+- [x] explicit source-backed Hardmode conversion policy (`GERunner` conversion is skipped under `lowTiles`);
+- [ ] wire the threshold policy into the future tile-count/SceneMetrics biome producer;
 - [ ] source-backed renewable-resource/drop fallbacks for progression-critical enemies;
 - [ ] source-backed boss/event allowances required when ordinary world structures are absent;
-- [ ] explicit Hardmode conversion policy for a mostly empty world;
 - [ ] fishing and spawn-rule validation against the lowered layer/biome model;
 - [ ] protocol-safe replication with no client-unknown content IDs.
 

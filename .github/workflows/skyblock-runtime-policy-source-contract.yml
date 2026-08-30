@@ -1,0 +1,95 @@
+name: Skyblock Runtime Policy Source Contract
+
+on:
+  pull_request:
+    paths:
+      - 'src/TerraRuntime/RuntimeWorldCreationPipeline.cs'
+      - 'src/TerraRuntime.World/VanillaSkyblockRuntimePolicy1458.cs'
+      - 'tests/TerraRuntime.Tests/VanillaSkyblockRuntimePolicy1458Tests.cs'
+      - 'tools/ci/probe_skyblock_runtime_policy.py'
+      - 'docs/en/skyblock-runtime-rules.md'
+      - 'docs/ru/skyblock-runtime-rules.md'
+      - 'docs/roadmap/skyblock-progression.md'
+      - '.github/workflows/skyblock-runtime-policy-source-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/RuntimeWorldCreationPipeline.cs'
+      - 'src/TerraRuntime.World/VanillaSkyblockRuntimePolicy1458.cs'
+      - 'tests/TerraRuntime.Tests/VanillaSkyblockRuntimePolicy1458Tests.cs'
+      - 'tools/ci/probe_skyblock_runtime_policy.py'
+      - 'docs/en/skyblock-runtime-rules.md'
+      - 'docs/ru/skyblock-runtime-rules.md'
+      - 'docs/roadmap/skyblock-progression.md'
+      - '.github/workflows/skyblock-runtime-policy-source-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-skyblock-runtime-policy-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/source-contract .tools
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Install pinned ILSpy command line
+        run: >-
+          dotnet tool install ilspycmd
+          --tool-path .tools
+          --version 11.0.0.9375
+
+      - name: Probe Skyblock runtime rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256="4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034"
+          assembly=""
+
+          while IFS= read -r -d '' candidate; do
+            candidate_sha256="$(sha256sum "$candidate" | awk '{print $1}')"
+            if [[ "$candidate_sha256" == "$expected_sha256" ]]; then assembly="$candidate"; fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+
+          if [[ -z "$assembly" ]]; then
+            echo "Pinned TerrariaServer 1.4.5.8 source assembly was not found." >&2
+            exit 1
+          fi
+
+          assembly_dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.SceneMetrics "$assembly" > artifacts/source-contract/scene-metrics.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
+
+          python3 tools/ci/probe_skyblock_runtime_policy.py \
+            --scene-metrics artifacts/source-contract/scene-metrics.cs \
+            --world-gen artifacts/source-contract/world-gen.cs
+
+      - name: Build and run focused tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj \
+            --configuration Release \
+            --filter FullyQualifiedName~VanillaSkyblockRuntimePolicy1458Tests

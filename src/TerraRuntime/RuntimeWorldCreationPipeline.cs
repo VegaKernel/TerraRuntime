@@ -73,11 +73,29 @@ public sealed class RuntimeWorldCreationPipeline
                 finalized);
         }
 
+        finalized = ApplyBuiltInWorldSemantics(in request, finalized);
         return new RuntimeWorldCreationPipelineResult(
             RuntimeWorldCreationPipelineStatus.ReadyToPersist,
             generated.Candidate,
             finalized.Metadata,
             generated,
             finalized);
+    }
+
+    private static RuntimeWorldGenerationFinalizationResult ApplyBuiltInWorldSemantics(
+        in WorldGenerationRequest request,
+        RuntimeWorldGenerationFinalizationResult finalized)
+    {
+        if (request.GeneratorId != SkyblockWorldGenerationProvider.GeneratorId)
+            return finalized;
+
+        VanillaWorldSeedProfile1458 profile = finalized.Metadata.VanillaSeedProfile;
+        RuntimeWorldGenerationMetadataSnapshot metadata = finalized.Metadata with
+        {
+            VanillaSeedProfile = new VanillaWorldSeedProfile1458(
+                profile.Special | VanillaSpecialWorldSeed1458.Skyblock,
+                profile.Secret)
+        };
+        return finalized with { Metadata = metadata };
     }
 }
