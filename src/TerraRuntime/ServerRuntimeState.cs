@@ -55,6 +55,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private const int MaxTileEditsPerTickPerPlayer = 8;
     private readonly int[] _tileEditCounts = new int[MaxPlayerSlots];
     private long _tileEditBudgetTick;
+    private bool _tileEditBudgetUsed;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
 
@@ -422,7 +423,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     {
         if (Updates != _tileEditBudgetTick)
         {
-            Array.Clear(_tileEditCounts, 0, _tileEditCounts.Length);
+            if (_tileEditBudgetUsed)
+            {
+                Array.Clear(_tileEditCounts, 0, _tileEditCounts.Length);
+                _tileEditBudgetUsed = false;
+            }
+
             _tileEditBudgetTick = Updates;
         }
 
@@ -820,6 +826,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         }
 
         _tileEditCounts[slot]++;
+        _tileEditBudgetUsed = true;
         ValidatedClientTileManipulations++;
         var tileState = command.State;
 
