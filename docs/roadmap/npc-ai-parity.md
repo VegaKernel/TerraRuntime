@@ -18,6 +18,7 @@ The executable truth is `VanillaNpcAiCoverageCatalog`. `FullVanillaAiParity` rem
 | 23 additional hostile AI_001 types | yes | partial | partial | typed timer bonus/jump-window profiles | no |
 | 12 additional hostile AI_002 types | yes | partial | partial | typed normal/special/enraged steering profiles | no |
 | 17 additional hostile AI_005 types | yes | partial | partial | typed pursuit/bounce/water profiles | no |
+| 12 initial AI_006 worm identities | yes | no | no | typed family roles and motion primitives | no |
 
 The admitted AI_001 set now covers Mother, Lava, Dungeon, Corrupt, Illuminant, Toxic Sludge, Ice,
 Crimslime, both biome Spiked Slimes, Umbrella, Rainbow, masked/ribbon variants, Spiked, Sand,
@@ -65,7 +66,10 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] typed definitions and classic pursuit/bounce/water profiles for hostile AI_005 identities;
 - [x] admitted AI_005 size net variants for Eaters, Crimeras and Hornet families;
 - [ ] AI_005 jitter, close homing, daylight flight, surface hugging and stinger projectiles;
-- [ ] worm/segment ownership and synchronized parent-child lifecycle;
+- [x] typed AI_006 head/body/tail family relationships for Devourer, Giant Worm, Eater of Worlds and Bone Serpent;
+- [x] source-backed worm head burrow/air steering and exact segment-gap follow primitives;
+- [ ] runtime leader lookup, initial chain spawning, split/death repair and synchronized parent-child lifecycle;
+- [ ] remaining AI_006 worm family definitions and profiles;
 - [ ] bats, fish, casters, mimics, critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.
 

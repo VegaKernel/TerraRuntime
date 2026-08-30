@@ -12,10 +12,22 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId EyeOfCthulhu = new(4);
     public static readonly NpcTypeId ServantOfCthulhu = new(5);
     public static readonly NpcTypeId EaterOfSouls = new(6);
+    public static readonly NpcTypeId DevourerHead = new(7);
+    public static readonly NpcTypeId DevourerBody = new(8);
+    public static readonly NpcTypeId DevourerTail = new(9);
+    public static readonly NpcTypeId GiantWormHead = new(10);
+    public static readonly NpcTypeId GiantWormBody = new(11);
+    public static readonly NpcTypeId GiantWormTail = new(12);
+    public static readonly NpcTypeId EaterOfWorldsHead = new(13);
+    public static readonly NpcTypeId EaterOfWorldsBody = new(14);
+    public static readonly NpcTypeId EaterOfWorldsTail = new(15);
     public static readonly NpcTypeId MotherSlime = new(16);
     public static readonly NpcTypeId Skeleton = new(21);
     public static readonly NpcTypeId MeteorHead = new(23);
     public static readonly NpcTypeId Hornet = new(42);
+    public static readonly NpcTypeId BoneSerpentHead = new(39);
+    public static readonly NpcTypeId BoneSerpentBody = new(40);
+    public static readonly NpcTypeId BoneSerpentTail = new(41);
     public static readonly NpcTypeId KingSlime = new(50);
     public static readonly NpcTypeId LavaSlime = new(59);
     public static readonly NpcTypeId DungeonSlime = new(71);
@@ -78,6 +90,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Fighter = new(3);
     public static readonly NpcAiStyleId EyeOfCthulhu = new(4);
     public static readonly NpcAiStyleId Flyer = new(5);
+    public static readonly NpcAiStyleId Worm = new(6);
     public static readonly NpcAiStyleId KingSlime = new(15);
 }
 

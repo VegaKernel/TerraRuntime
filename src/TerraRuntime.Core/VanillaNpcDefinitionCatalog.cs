@@ -16,7 +16,8 @@ public enum VanillaNpcBehaviorFamily : byte
     GroundFighter = 3,
     EyeOfCthulhu = 4,
     Flyer = 5,
-    KingSlime = 6
+    KingSlime = 6,
+    Worm = 7
 }
 
 /// <summary>
@@ -247,6 +248,9 @@ public static class VanillaNpcDefinitionCatalog
         }
 
         if (VanillaFlyerNpcCatalog.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaWormNpcCatalog.TryGetDefinition(type, out definition))
             return true;
 
         if (type == VanillaNpcIds.Skeleton)

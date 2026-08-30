@@ -19,7 +19,9 @@ public enum VanillaNpcAiCapability : ushort
     SlimeTimerProfileSlice = 1 << 10,
     NegativeNetVariantDefaults = 1 << 11,
     FlyingEyeSteeringProfileSlice = 1 << 12,
-    FlyerPursuitProfileSlice = 1 << 13
+    FlyerPursuitProfileSlice = 1 << 13,
+    WormRelationshipCatalog = 1 << 14,
+    WormMotionPrimitive = 1 << 15
 }
 
 /// <summary>
@@ -77,7 +79,8 @@ public static class VanillaNpcAiCoverageCatalog
             7 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
-            VanillaFlyerNpcCatalog.DefinitionCount];
+            VanillaFlyerNpcCatalog.DefinitionCount +
+            VanillaWormNpcCatalog.Count];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -141,6 +144,16 @@ public static class VanillaNpcAiCoverageCatalog
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
 
             entries[index++] = Partial(definition.Type, capabilities);
+        }
+
+        foreach (VanillaWormNpcEntry worm in VanillaWormNpcCatalog.All)
+        {
+            entries[index++] = Partial(
+                worm.Definition.Type,
+                VanillaNpcAiCapability.DefinitionDefaults |
+                VanillaNpcAiCapability.PacketSync |
+                VanillaNpcAiCapability.WormRelationshipCatalog |
+                VanillaNpcAiCapability.WormMotionPrimitive);
         }
 
         return entries;
