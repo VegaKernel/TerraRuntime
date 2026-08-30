@@ -1,0 +1,104 @@
+name: NPC King Slime AI Reference Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/npc-king-slime-ai-reference-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  king-slime-ai-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Decompile official TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+
+      - name: Collect King Slime AI15 structural facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npc_file="$(find decompiled/1458 -type f -name 'NPC.cs' -print -quit)"
+          test -n "$npc_file"
+
+          python3 - "$npc_file" <<'PY'
+          import json
+          import pathlib
+          import re
+          import sys
+
+          text = pathlib.Path(sys.argv[1]).read_text(errors="ignore")
+
+          def body_after(pattern):
+              match = re.search(pattern, text)
+              if not match:
+                  return None
+              opening = text.find("{", match.end())
+              if opening < 0:
+                  return None
+              depth = 0
+              for i in range(opening, len(text)):
+                  if text[i] == "{":
+                      depth += 1
+                  elif text[i] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          return text[opening:i + 1]
+              return None
+
+          patterns = [
+              r"\bvoid\s+AI_015(?:_KingSlime)?\s*\(",
+              r"\bAI_015(?:_KingSlime)?\s*\(",
+              r"\bif\s*\(aiStyle\s*==\s*15\s*\)",
+          ]
+          ai = None
+          selected = None
+          for pattern in patterns:
+              ai = body_after(pattern)
+              if ai:
+                  selected = pattern
+                  break
+          if not ai:
+              raise SystemExit("King Slime AI15 body was not found")
+
+          def uniq(values):
+              return sorted(set(values))
+
+          facts = {
+              "selectedPattern": selected,
+              "characters": len(ai),
+              "aiReads": {str(i): len(re.findall(rf"\bai\[{i}\]", ai)) for i in range(4)},
+              "localAiReads": {str(i): len(re.findall(rf"\blocalAI\[{i}\]", ai)) for i in range(4)},
+              "targetClosestCalls": ai.count("TargetClosest"),
+              "newNpcCalls": ai.count("NewNPC"),
+              "netUpdateWrites": len(re.findall(r"\bnetUpdate\s*=\s*true", ai)),
+              "solidCollisionCalls": ai.count("SolidCollision"),
+              "solidTilesCalls": ai.count("SolidTiles"),
+              "canHitCalls": ai.count("CanHit"),
+              "randomCalls": len(re.findall(r"\b(?:Main\.)?rand\.", ai)),
+              "aiComparisons": uniq(re.findall(r"ai\[([0-3])\]\s*(==|!=|<=|>=|<|>)\s*(-?\d+(?:\.\d+)?f?)", ai)),
+              "aiAssignments": uniq(re.findall(r"ai\[([0-3])\]\s*(=|\+=|-=|\*=|/=)\s*(-?\d+(?:\.\d+)?f?)", ai)),
+              "velocityXAssignments": uniq(re.findall(r"velocity\.X\s*(=|\+=|-=|\*=|/=)\s*(-?\d+(?:\.\d+)?f?)", ai)),
+              "velocityYAssignments": uniq(re.findall(r"velocity\.Y\s*(=|\+=|-=|\*=|/=)\s*(-?\d+(?:\.\d+)?f?)", ai)),
+              "scaleAssignments": uniq(re.findall(r"\bscale\s*(=|\+=|-=|\*=|/=)\s*([^;]+)", ai)),
+              "widthAssignments": uniq(re.findall(r"\bwidth\s*=\s*([^;]+)", ai)),
+              "heightAssignments": uniq(re.findall(r"\bheight\s*=\s*([^;]+)", ai)),
+              "lifeRatioDivisors": uniq(re.findall(r"life\s*/\s*\(float\)lifeMax\s*([<>]=?)\s*([0-9.]+)f?", ai)),
+              "npcTypeLiteralsNearNewNpc": uniq(re.findall(r"NewNPC\([^;]{0,260}?,\s*(-?\d+)\s*(?:,|\))", ai)),
+          }
+
+          print("NPC_KING_SLIME_AI15_FACTS=" + json.dumps(facts, sort_keys=True))
+          if facts["characters"] < 100 or sum(facts["aiReads"].values()) == 0:
+              raise SystemExit(f"Unexpectedly small King Slime AI15 body: {facts!r}")
+          PY
