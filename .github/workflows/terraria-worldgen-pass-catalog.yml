@@ -183,7 +183,8 @@ jobs:
             --terrain-pass artifacts/source-contract/terrain-pass.cs \
             --jungle-pass artifacts/source-contract/jungle-pass.cs \
             --dither-snake-pass artifacts/source-contract/dither-snake-pass.cs \
-            --pass-catalog-output artifacts/source-contract/world-generation-pass-catalog.txt
+            --pass-catalog-output artifacts/source-contract/world-generation-pass-catalog.txt \
+            --jungle-contract-output artifacts/source-contract/jungle-pass-contract.txt
 
           python3 tools/ci/probe_worldgen_terrain_pass.py \
             --terrain-pass artifacts/source-contract/terrain-pass.cs \
@@ -227,6 +228,7 @@ jobs:
           path: |
             artifacts/source-contract/world-generation-pass-catalog.txt
             artifacts/source-contract/terrain-pass-contract.txt
+            artifacts/source-contract/jungle-pass-contract.txt
             artifacts/source-contract/worldgen-rng-contract.txt
             artifacts/source-contract/worldgen-seed-contract.txt
             artifacts/source-contract/worldgen-config-contract.txt
