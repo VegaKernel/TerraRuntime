@@ -40,6 +40,7 @@ public sealed class ConnectionMessageRateLimits
         Rule(TerrariaMessageId.PlayerMana, maxFrames: 240, maxBytes: 32 * 1024),
         Rule(TerrariaMessageId.LiquidSet, maxFrames: 600, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.ChestName, maxFrames: 120, maxBytes: 64 * 1024),
+        Rule(TerrariaMessageId.PlaceObject, maxFrames: 240, maxBytes: 32 * 1024),
         Rule(TerrariaMessageId.LoadNetModule, maxFrames: 120, maxBytes: 256 * 1024));
 
     public ConnectionMessageRateLimits(params ConnectionMessageRateRule[] rules)
