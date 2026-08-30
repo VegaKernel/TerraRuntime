@@ -81,7 +81,8 @@ public sealed partial class PlayerBootstrapPacketSet
 
         ReadOnlyMemory<byte> statusFrame = additionalCount == 0
             ? StatusFrame
-            : EncodeStatusFrame(checked(baseSectionFrames.Length + additionalCount));
+            : TerraRuntime.Protocol.Multiplicity.PlayerJoinFrameEncoder.EncodeStatus(
+                checked(baseSectionFrames.Length + additionalCount));
         response = new PlayerBootstrapSectionResponse(
             statusFrame,
             baseSectionFrames,

@@ -1,4 +1,3 @@
-using global::Multiplicity.Packets;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
@@ -208,7 +207,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             return Stop(PlayerBootstrapStopReason.ServerFull);
 
         var session = new PlayerJoinSession(lease);
-        byte[] continueFrame = SerializePacket(PlayerJoinPacketFactory.CreateContinueConnecting(session.Slot));
+        byte[] continueFrame = PlayerJoinFrameEncoder.EncodeContinueConnecting(session.Slot);
         if (!TryQueue(continueFrame))
         {
             session.Dispose();
@@ -502,11 +501,4 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     private static PlayerRgbColor ToCore(TerrariaRgbColor color) =>
         new(color.R, color.G, color.B);
-
-    private static byte[] SerializePacket(TerrariaPacket packet)
-    {
-        using var stream = new MemoryStream();
-        packet.ToStream(stream);
-        return stream.ToArray();
-    }
 }
