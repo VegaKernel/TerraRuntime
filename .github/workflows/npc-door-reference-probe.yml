@@ -128,3 +128,5 @@ jobs:
           name: terraria-1458-npc-door-reference
           path: artifacts/reference-1458-npc-door
           retention-days: 1
+
+# Keeping this workflow self-triggered makes the official 1.4.5.8 evidence reproducible after probe changes.
