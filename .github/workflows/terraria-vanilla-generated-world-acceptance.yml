@@ -10,11 +10,13 @@ on:
       - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrap1458.cs'
       - 'src/TerraRuntime.World/SourceBackedVanillaWorldGenerationProvider1458.cs'
       - 'src/TerraRuntime.World/VanillaEarlyWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaMidWorldGenerationPipeline1458.cs'
       - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
       - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldGenerationExecutorTests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationProvider1458Tests.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationPipeline1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationMidPipeline1458Tests.cs'
       - '.github/workflows/terraria-vanilla-generated-world-acceptance.yml'
   workflow_dispatch:
 
@@ -46,7 +48,7 @@ jobs:
         run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           -c Release
-          --filter "FullyQualifiedName~RuntimeWorldGenerationExecutorTests|FullyQualifiedName~SourceBackedVanillaWorldGenerationProvider1458Tests|FullyQualifiedName~SourceBackedVanillaWorldGenerationPipeline1458Tests"
+          --filter "FullyQualifiedName~RuntimeWorldGenerationExecutorTests|FullyQualifiedName~SourceBackedVanillaWorldGenerationProvider1458Tests|FullyQualifiedName~SourceBackedVanillaWorldGenerationPipeline1458Tests|FullyQualifiedName~SourceBackedVanillaWorldGenerationMidPipeline1458Tests"
 
       - name: Generate TerraRuntime vanilla world
         shell: bash

@@ -2,63 +2,73 @@
 
 [English](../en/vanilla-world-generation.md) · [Генерация мира](world-generation.md) · [Roadmap](../roadmap/gameplay-worldgen-extensibility.md)
 
-TerraRuntime публикует два runtime-owned генератора мира через обычный контракт world-generation provider:
+TerraRuntime публикует два runtime-owned генератора через обычный world-generation contract:
 
-- `terraruntime:flat` остаётся минимальным deterministic baseline для проверки контрактов и persistence;
-- `terraruntime:vanilla` является встроенным compatibility generator Terraria 1.4.5.8, который постепенно переводится на source-backed реализацию.
+- `terraruntime:flat` остаётся небольшим детерминированным baseline для проверки контрактов и persistence;
+- `terraruntime:vanilla` является clean-room генератором совместимости с TerrariaServer 1.4.5.8 и постепенно переводится на source-backed поведение по отдельным проходам.
 
-Vanilla generator реализован clean-room кодом TerraRuntime и не встраивает implementation source TerrariaServer. Compatibility-проходы заменяются постепенно под тем же идентификатором генератора.
+Идентификатор генератора при миграции не меняется. Host выбирает `terraruntime:vanilla`, а точным составом проходов владеет runtime.
 
-## Модель выполнения
+## Текущий pipeline обычного мира
+
+Для канонических размеров Terraria (`4200x1200`, `6400x1800`, `8400x2400`) и обычного seed production-provider теперь владеет source-backed/source-shaped цепочкой от Reset до Slush. Текущий план содержит 40 записей, потому что после границы source-backed реализации временно остаются compatibility barriers.
 
 ```mermaid
 flowchart LR
-    Request["WorldGenerationRequest"] --> Resolve["Resolve seed profile"]
-    Resolve --> Reset["Reset bootstrap"]
-    Reset --> Terrain["Terrain"]
-    Terrain --> Biomes["Biomes + oceans"]
-    Biomes --> Caves["Caves"]
-    Caves --> Ores["Ore tiers"]
-    Ores --> Dungeon["Dungeon anchors"]
-    Dungeon --> Secrets["Special / secret seed modifiers"]
-    Secrets --> Metadata["Spawn + dungeon + layers"]
-    Metadata --> Finalize["Candidate finalization"]
-    Finalize --> Wld["Fresh .wld v326 persistence"]
+    Reset["Reset"] --> Terrain["Terrain"]
+    Terrain --> Early["Dunes → caves → ice → grass → Jungle"]
+    Early --> Mid["Mud Caves To Grass → Full Desert → micro-biomes"]
+    Mid --> Resources["Dirt To Mud → Silt → Shinies → Webs"]
+    Resources --> Deep["Underworld → Corruption/Crimson → Lakes → Slush"]
+    Deep --> Ocean["compatibility ocean residual"]
+    Ocean --> Compat["оставшийся cave/dungeon/secret compatibility frontier"]
+    Compat --> Metadata["Metadata + fresh .wld v326"]
 ```
 
-Каждый встроенный vanilla pass использует `WorldGenerationRngMode.VanillaSharedRng`. TerraRuntime получает Terraria world seed из `SeedText` по закреплённым правилам 1.4.5.8: корректный `Int32` используется напрямую, иначе вычисляется CRC32 от UTF-8 seed text. Затем один `VanillaUnifiedRandom1458(worldSeed)` используется всем vanilla-планом, поэтому состояние RNG последовательно переходит из bootstrap в следующие проходы.
+Второй source-backed блок содержит 14 проходов в закреплённом порядке регистрации TerrariaServer 1.4.5.8:
 
-Для обычных миров канонического размера `terraria:1.4.5.8/Reset` теперь расходует source-backed последовательность RNG до Terrain и сохраняет границы пляжей, dungeon/jungle/snow origins, ore tiers, tree/cave/background styles и другое начальное состояние. `Terrain` использует эти значения напрямую. Special seeds и нестандартные размеры остаются на compatibility-ветвях, пока их Reset-семантика не перенесена по source.
+`Mud Caves To Grass`, `Full Desert`, `Mushroom Patches`, `Marble`, `Granite`, `Floating Islands`, `Dirt To Mud`, `Silt`, `Shinies`, `Webs`, `Underworld`, `Corruption`, `Lakes`, `Slush`.
 
-Обычный isolated deterministic RNG остаётся доступен custom runtime passes. `CustomProviderRng` продолжает работать fail-closed до появления явного provider-owned RNG contract.
+Все 14 используют `WorldGenerationRngMode.VanillaSharedRng`; один и тот же экземпляр `VanillaUnifiedRandom1458` последовательно продвигается по source-backed цепочке. Поэтому перестановка этих проходов или отдельный reseed является ошибкой совместимости, а не безобидной деталью реализации.
+
+## Переход владения
+
+### Генерация руд
+
+`Shinies` теперь владеет размещением pre-hardmode ores для обычных canonical worlds. Проход использует варианты руд, выбранные Reset bootstrap (`CopperOre`, `IronOre`, `SilverOre`, `GoldOre`), source-shaped плотности по глубинным диапазонам, а также Demonite/Crimtane. Старый aggregate-узел `terraria:1.4.5.8/Ores` временно остаётся в dependency graph как no-op barrier, чтобы не переписывать преждевременно зависимости более поздних compatibility-проходов.
+
+### Биомы
+
+Старый aggregate `Biomes` больше не владеет внутренней частью мира после нового блока. Он отфильтрован до временного ocean-edge residual по Reset-derived границам левого и правого пляжа. Записи во внутренние биомы и Underworld отбрасываются, поэтому compatibility-код не может снова закрасить source-backed Jungle, Desert, evil biome и Underworld.
+
+### Прямые записи candidate world
+
+Крупные generation passes работают напрямую с неопубликованным contiguous `WorldTileStore` через внутренний generation workspace. Это не создаёт искусственный backlog dirty sections и не заставляет миллионы раз копировать tile через общий интерфейс, пока candidate ещё никем не наблюдается.
+
+## Что генерирует новый блок
+
+Новый сегмент содержит детерминированные source-shaped реализации: распространение jungle grass по mud caves, full desert shell с underground chambers, mushroom patches, marble/granite micro-biomes, floating islands и sky lakes, глубокое преобразование dirt→mud в jungle, silt, выбранные Reset pre-hardmode ores, cave webs, ash/lava/hellstone Underworld, Corruption или Crimson с преобразованием поверхности и chasms, underground lakes и slush в snow region.
+
+Даже когда отдельный алгоритм ещё не является method-for-method parity-портом, сохраняются официальный pass boundary и владение shared RNG. Это существенно лучше, чем прятать несколько независимых приближений внутри одного `Biomes`, потому что следующий source probe сможет заменить конкретный pass без изменения публичного generator contract.
+
+## Reset и Terrain
+
+`terraria:1.4.5.8/Reset` владеет pre-Terrain RNG/bootstrap state обычного мира: beach bounds, dungeon side/location, jungle и snow origins, pre-hardmode ore variants, tree/cave/background styles и другими начальными значениями. `Terrain` использует это состояние и публикует world-surface/rock-layer metadata. Более поздние source-backed passes читают эти значения, а не строят независимые приблизительные копии.
 
 ## Special и secret seeds
 
-`VanillaWorldSeedResolver1458` преобразует seed text в один immutable `VanillaWorldSeedProfile1458`. Один и тот же профиль используется generation и persistence, поэтому поведение seed не может незаметно исчезнуть между генерацией candidate и первым restart.
-
-Resolver распознаёт все девять special-world семейств Terraria 1.4.5.8: Drunk World, For the Worthy, Celebration Mk10, The Constant, Not the Bees, Don't Dig Up / Remix, No Traps, Get Fixed Boi / Zenith и Skyblock. Zenith разворачивается в комбинированный special-seed profile. Matching не зависит от регистра и игнорирует неалфавитно-цифровые символы.
-
-Также распознаются 37 secret-seed фраз Terraria 1.4.5 как независимые flags. Несколько secret-фраз можно объединять через `|`, включая Terraria-style prefixed input вроде `1.1.1.0.planetoids|bring a towel`.
-
-Generation пока применяет runtime-owned compatibility behavior для terrain-affecting профилей вроде Planetoids, Beam Me Up, Waterpark, Not the Bees, Toadstool, Mole People, Such Great Heights, Winter Is Coming, Sandy Britches и Save the Rainforest. Runtime-state secret flags сохраняются через fresh `.wld` v326 metadata writer.
-
-## Publication и persistence
-
-Generation выполняется внутри `RuntimeWorldGenerationWorkspace`, который ещё не опубликован и использует initial-population tile-write path. Сгенерированные tiles не создают искусственные network/persistence dirty queues до того, как мир станет authoritative.
-
-Финальный metadata snapshot содержит spawn, dungeon, world layers, resolved vanilla seed profile и, для source-backed обычного мира, сохранённое состояние Reset bootstrap. `WorldFileFreshRuntimeMetadata326Encoder` записывает поддерживаемые special/secret flags, а также полученные Reset значения moon type, tree/cave transition positions и styles, biome background styles, cloud state/count, wind, slime-rain countdown и pre-hardmode ore tiers. `flat` и custom generators без Terraria Reset bootstrap продолжают получать консервативные defaults нового мира.
+`VanillaWorldSeedResolver1458` распознаёт special-world семейства Terraria 1.4.5.8 и сохранённые secret-seed phrases. Source-backed путь Reset/Terrain/early/mid пока включается только для ordinary seed profile. Special/secret worlds и synthetic noncanonical dimensions намеренно остаются на compatibility-плане, пока соответствующие ветви не перенесены по source. Подменять их ordinary-world RNG-последовательностью нельзя.
 
 ## Проверка
 
-Source-backed worldgen проверяется двумя независимыми слоями:
-
-- source-contract workflows декомпилируют закреплённый TerrariaServer 1.4.5.8 и сверяют предположения Reset/Terrain с официальным бинарём;
-- `terraria-vanilla-generated-world-acceptance.yml` создаёт настоящий малый canonical `.wld`, проверяет его TerraRuntime verifier и затем запускает с этим файлом официальный TerrariaServer 1.4.5.8.
+`terraria-vanilla-generated-world-acceptance.yml` является production gate этого направления. Он собирает TerraRuntime, запускает focused world-generation contracts, создаёт настоящий canonical small world через `terraruntime:vanilla`, валидирует `.wld` загрузчиком TerraRuntime, затем запускает закреплённый официальный TerrariaServer 1.4.5.8 с этим миром и требует открытия server listener.
 
 Отдельный acceptance для `terraruntime:flat` остаётся без изменений.
 
 ## Граница parity
 
-`terraruntime:vanilla` уже пригоден к использованию и детерминирован, а для обычных canonical worlds Reset и Terrain имеют source-backed slices. Но это **ещё не reference-world и не byte-identical parity** с Terraria.
+`terraruntime:vanilla` пока не является reference-world или byte-identical клоном генерации Terraria. Текущая source-backed граница заканчивается на `Slush`.
 
-Точный паритет полного source-pinned каталога из 109 passes Terraria 1.4.5.8 остаётся задачей roadmap. Biomes, caves, ores, structures, decoration, special-seed Reset branches и другие стадии всё ещё содержат compatibility implementations, которые нужно последовательно заменять.
+Внутри нового блока ещё отличаются точные внутренности Underground Desert, структуры floating islands, Underworld houses, точная топология Corruption/Crimson orb/heart/altar и точное потребление RNG внутри нескольких source-shaped алгоритмов. После `Slush` ещё предстоит перенос dungeon, поздних cave/ocean passes, structures, liquids, chests, vegetation, decoration, cleanup и special-seed branches по закреплённому каталогу из 109 проходов Terraria 1.4.5.8.
+
+Следующая естественная граница миграции начинается с dungeon-era сегмента после `Slush`, а не с дальнейшего раздувания compatibility aggregates.
