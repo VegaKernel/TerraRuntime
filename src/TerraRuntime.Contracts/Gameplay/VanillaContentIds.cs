@@ -112,6 +112,7 @@ public static class VanillaTileIds
     public const int Count = 754;
 
     public static readonly TileTypeId Dirt = new(0);
+    public static readonly TileTypeId Stone = new(1);
     public static readonly TileTypeId Platforms = new(19);
     public static readonly TileTypeId Containers = new(21);
     public static readonly TileTypeId Signs = new(55);
@@ -166,4 +167,33 @@ public static class VanillaTileIds
         type == Tombstones ||
         type == AnnouncementBox ||
         type == TatteredWoodSign;
+}
+
+/// <summary>
+/// Source-verified TerrariaServer 1.4.5.8 wall identities currently consumed by world/gameplay code.
+/// Zero is the vanilla no-wall identity and remains a catalogued value at storage/protocol boundaries.
+/// </summary>
+public static class VanillaWallIds
+{
+    public const int Count = 367;
+
+    public static readonly WallTypeId None = new(0);
+    public static readonly WallTypeId Stone = new(1);
+    public static readonly WallTypeId DirtUnsafe = new(2);
+    public static readonly WallTypeId BlueDungeonUnsafe = new(7);
+    public static readonly WallTypeId Dirt = new(16);
+    public static readonly WallTypeId BlueDungeon = new(17);
+    public static readonly WallTypeId Glass = new(21);
+
+    public static bool TryCreate(int rawType, out WallTypeId type)
+    {
+        if ((uint)rawType >= (uint)Count)
+        {
+            type = default;
+            return false;
+        }
+
+        type = new WallTypeId(rawType);
+        return true;
+    }
 }

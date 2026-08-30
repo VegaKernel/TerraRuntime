@@ -239,7 +239,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 
 ### D5 - Tiles, walls and objects
 
-- [ ] tile/wall definitions;
+- [x] tile/wall definitions ([EN](../en/tile-wall-definitions.md), [RU](../ru/tile-wall-definitions.md));
 - [x] named tile state flags ([EN](../en/tile-state-flags.md), [RU](../ru/tile-state-flags.md));
 - [ ] multi-tile object definitions;
 - [ ] placement/break/framing operations;
