@@ -43,13 +43,15 @@ the signed identity instead of silently using the positive type defaults.
 - [x] import TerrariaServer 1.4.5.8 `WorldGen.OpenDoor` object mutation: locked-Dungeon-door rejection, `1x3 -> 2x3` frame/style transform, row block paint/coating transfer and source `tileCut`/stalactite/drip clearance rules;
 - [x] import packet-19 door/tall-gate wire contract and server-authored playing-peer replication boundary;
 - [x] import the `ShiftTallGate` `388 -> 389` object mutation behind an explicit `Collision.EmptyTile(ignoreTiles:true)` actor-occupancy boundary, failing closed when that boundary is unavailable;
+- [x] import the pinned AI_003 door-pressure policy: exact restricted-reset type set, `Main.getGoodWorld` Blood Moon suppression, `insideUnbreakableWalls +6`, type `27 +1`, types `31/294/295/296 +6`, type `460` force-open and type `26` destroy-door disposition;
+- [x] carry persisted `GetGoodWorld` into the admitted Zombie/Skeleton event projection so Blood Moon no longer incorrectly grants accumulation there;
 - [ ] wire live player/NPC occupancy into the tall-gate boundary and enable the authoritative production opening sink in default server composition;
-- [ ] import `Main.getGoodWorld`, inside-unbreakable-wall and special AI_003 target/type door-progress overrides;
+- [ ] project live `insideUnbreakableWalls` target state, route concrete future AI_003 types into the pressure policy and implement type `26` authoritative door destruction before admitting those special branches;
 - [ ] partition and import remaining AI_003 movement parameter families;
 - [ ] type-specific attacks, transformations, projectiles and spawn effects;
 - [ ] differential scenarios for each admitted AI_003 subtype.
 
-The current door layer is no longer guessing frame geometry. Normal-door mutation reproduces the pinned 1.4.5.8 `OpenDoor` transform, including locked-door rejection and the source clearance set; successful authoritative mutations can be represented exactly as packet 19. Tall-gate type shifting is implemented too, but vanilla checks every gate cell against live player/NPC rectangles before opening. TerraRuntime keeps that actor query as an explicit boundary and fails closed without it. Default production composition therefore remains intentionally unwired until live actor occupancy and the remaining AI_003 seed/special-target overrides are present.
+The current door layer is no longer guessing frame geometry. Normal-door mutation reproduces the pinned 1.4.5.8 `OpenDoor` transform, including locked-door rejection and the source clearance set; successful authoritative mutations can be represented exactly as packet 19. The exact AI_003 pressure/reset table is also executable, and the currently admitted restricted Zombie/Skeleton slice now receives the persisted `GetGoodWorld` suppression. Tall-gate type shifting is implemented too, but vanilla checks every gate cell against live player/NPC rectangles before opening. TerraRuntime keeps that actor query as an explicit boundary and fails closed without it. Special future fighter types remain fail-closed at production composition until concrete type routing, live inside-wall target state and the type-26 destroy side effect are authoritative.
 
 ## N2 — Common ordinary families
 

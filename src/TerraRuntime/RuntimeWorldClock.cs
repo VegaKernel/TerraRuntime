@@ -2,6 +2,12 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
+/// <summary>
+/// Narrow projection consumed by the currently admitted AI_003 event-sensitive door-pressure slice.
+/// For-the-Worthy deliberately suppresses Blood Moon accumulation for restricted fighters in the official
+/// TerrariaServer 1.4.5.8 AI_003 branch; the world clock's public BloodMoonActive property still reports the
+/// actual world event.
+/// </summary>
 internal interface IVanillaNpcWorldEventState
 {
     bool BloodMoonActive { get; }
@@ -11,8 +17,9 @@ internal interface IVanillaNpcWorldEventState
 /// Authoritative ordinary-world time slice backed by TerrariaServer 1.4.5.8 Main.UpdateTime.
 /// NPCs consume the current state before this clock advances each game tick, matching vanilla's
 /// DoUpdateInWorld ordering where UpdateWorld_NPCs runs before UpdateWorld_Time.
-/// The persisted Blood Moon flag is carried alongside the clock so NPC event-sensitive AI observes the same
-/// pre-time-update event state; dynamic event-start selection remains a separate world-event concern.
+/// The persisted Blood Moon flag and GetGoodWorld seed fact are carried alongside the clock so the currently
+/// admitted AI_003 door-pressure projection can reproduce the source event/seed gate. Dynamic event-start
+/// selection remains a separate world-event concern.
 /// </summary>
 internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 {
@@ -29,7 +36,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         double slimeRainTime,
         int dayRate,
         IRuntimeWorldClockObserver? observer = null,
-        bool bloodMoonActive = false)
+        bool bloodMoonActive = false,
+        bool getGoodWorld = false)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -44,6 +52,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         MoonPhase = moonPhase;
         SlimeRainTime = slimeRainTime;
         BloodMoonActive = bloodMoonActive && !dayTime;
+        GetGoodWorld = getGoodWorld;
         _dayRate = dayRate;
         _observer = observer;
         PublishCommittedState();
@@ -60,6 +69,10 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public bool SlimeRainActive => SlimeRainTime > 0d;
 
     public bool BloodMoonActive { get; private set; }
+
+    public bool GetGoodWorld { get; }
+
+    bool IVanillaNpcWorldEventState.BloodMoonActive => BloodMoonActive && !GetGoodWorld;
 
     public int DayRate => _dayRate;
 
@@ -83,7 +96,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             metadata.SlimeRainTime,
             dayRate,
             observer,
-            metadata.BloodMoon);
+            metadata.BloodMoon,
+            metadata.GetGoodWorld);
     }
 
     public void SetDayRate(int dayRate)

@@ -7,7 +7,9 @@ public readonly record struct VanillaGroundFighterDoorEnvironment(
     bool BloodMoonActive,
     bool HasTarget,
     float TargetCenterX,
-    float TargetCenterY)
+    float TargetCenterY,
+    bool GetGoodWorld = false,
+    bool TargetInsideUnbreakableWalls = false)
 {
     public bool IsValid =>
         !HasTarget ||
@@ -30,11 +32,6 @@ public interface IVanillaGroundFighterDoorRandom
     bool NextGraveyardProgress();
 }
 
-public sealed class SystemVanillaGroundFighterDoorRandom : IVanillaGroundFighterDoorRandom
-{
-    public bool NextGraveyardProgress() => Random.Shared.Next(60) == 0;
-}
-
 public interface IVanillaGroundFighterDoorOpeningSink
 {
     bool TryOpen(in VanillaGroundFighterDoorOpeningIntent intent);
@@ -55,11 +52,11 @@ public readonly record struct VanillaZombieDoorContactResult(
 }
 
 /// <summary>
-/// Source-backed ordinary type-3 door-pressure slice from TerrariaServer 1.4.5.8 NPC.AI_003_Fighters.
-/// Closed doors and tall gates are hit every 60 contact ticks. Ordinary fighters reset accumulated opening
-/// progress outside a Blood Moon; a functional Graveyard can admit one progress step on the source-shaped
-/// one-in-sixty roll. Crossing ten progress points produces a typed opening intent. World frame mutation is
-/// deliberately owned by a separate sink because WorldGen.OpenDoor/ShiftTallGate geometry is not an AI concern.
+/// Source-backed AI_003 door-pressure primitive from TerrariaServer 1.4.5.8 NPC.AI_003_Fighters.
+/// Closed doors and tall gates are hit every 60 contact ticks. The version-pinned pressure policy owns the
+/// restricted-reset list, GetGoodWorld gate, inside-unbreakable-wall bonus and type-specific bonus/force-open rules.
+/// Type 26's destructive door branch deliberately emits no ordinary opening intent until its destruction side
+/// effect has its own authoritative contract. Crossing ten points clamps ai[1] to vanilla's threshold.
 /// </summary>
 public static class VanillaWorldZombieDoorContact
 {
@@ -89,6 +86,7 @@ public static class VanillaWorldZombieDoorContact
             height,
             directionX,
             ai,
+            VanillaNpcIds.Zombie,
             default,
             doorRandom: null);
 
@@ -102,6 +100,33 @@ public static class VanillaWorldZombieDoorContact
         int height,
         int directionX,
         NpcAiState ai,
+        VanillaGroundFighterDoorEnvironment environment,
+        IVanillaGroundFighterDoorRandom? doorRandom) =>
+        Resolve(
+            tiles,
+            positionX,
+            positionY,
+            velocityX,
+            velocityY,
+            width,
+            height,
+            directionX,
+            ai,
+            VanillaNpcIds.Zombie,
+            environment,
+            doorRandom);
+
+    public static VanillaZombieDoorContactResult Resolve(
+        WorldTileStore tiles,
+        float positionX,
+        float positionY,
+        float velocityX,
+        float velocityY,
+        int width,
+        int height,
+        int directionX,
+        NpcAiState ai,
+        NpcTypeId npcType,
         VanillaGroundFighterDoorEnvironment environment,
         IVanillaGroundFighterDoorRandom? doorRandom)
     {
@@ -148,8 +173,8 @@ public static class VanillaWorldZombieDoorContact
         VanillaGroundFighterDoorOpeningIntent? openingIntent = null;
         if (ai2 >= StrikeInterval)
         {
-            openingProgressAllowed = environment.BloodMoonActive;
-            if (!openingProgressAllowed && environment.HasTarget)
+            bool graveyardRollSucceeded = false;
+            if (environment.HasTarget)
             {
                 targetInGraveyard = VanillaWorldGraveyardScene.IsFunctionalAt(
                     tiles,
@@ -157,26 +182,35 @@ public static class VanillaWorldZombieDoorContact
                     environment.TargetCenterY);
                 if (targetInGraveyard)
                 {
-                    IVanillaGroundFighterDoorRandom random =
-                        doorRandom ?? SharedDoorRandom.Instance;
-                    openingProgressAllowed = random.NextGraveyardProgress();
+                    IVanillaGroundFighterDoorRandom random = doorRandom ?? SharedDoorRandom.Instance;
+                    graveyardRollSucceeded = random.NextGraveyardProgress();
                 }
             }
 
-            // Outside an admitted opening condition, ordinary AI_003 resets ai[1] immediately before applying
-            // this contact's progress. That is why normal daytime/nighttime contact can recoil forever without
-            // ever reaching the opening threshold.
-            if (!openingProgressAllowed)
+            VanillaGroundFighterDoorPressureDecision pressure =
+                VanillaGroundFighterDoorPressurePolicy.Resolve(
+                    npcType,
+                    environment.BloodMoonActive,
+                    environment.GetGoodWorld,
+                    graveyardRollSucceeded,
+                    environment.TargetInsideUnbreakableWalls);
+            openingProgressAllowed = !pressure.ResetProgress;
+            if (pressure.ResetProgress)
                 ai1 = 0f;
 
             velocityX = 0.5f * -directionX;
             ai1 += door.TileType == VanillaTileIds.TallGateClosed
                 ? TallGateStrikeProgress
                 : DoorStrikeProgress;
+            ai1 += pressure.BonusProgress;
             ai2 = 0f;
             struckDoor = true;
 
-            if (openingProgressAllowed && ai1 >= OpeningThreshold)
+            bool shouldOpen = ai1 >= OpeningThreshold || pressure.ForceOpen;
+            if (ai1 >= OpeningThreshold)
+                ai1 = OpeningThreshold;
+
+            if (shouldOpen && !pressure.DestroyDoorInsteadOfOpen)
             {
                 openingIntent = new VanillaGroundFighterDoorOpeningIntent(
                     tileX,
