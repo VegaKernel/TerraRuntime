@@ -70,12 +70,13 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
             : strategy.TryStep(in npc, in definition, _context, _inner, out next);
     }
 
-    public bool TryPlanNpcSpawn(
+    public int PlanNpcSpawns(
         in NpcSnapshot source,
         in NpcStateUpdate proposed,
-        out NpcAiSpawnIntent intent)
+        Span<NpcAiSpawnIntent> destination)
     {
-        if (source.Type != VanillaNpcIds.EyeOfCthulhu.Value ||
+        if (destination.IsEmpty ||
+            source.Type != VanillaNpcIds.EyeOfCthulhu.Value ||
             proposed.Type != VanillaNpcIds.EyeOfCthulhu.Value ||
             source.Ai.Ai0 != 0f ||
             source.Ai.Ai1 != 0f ||
@@ -92,8 +93,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
             target.Ghost ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition eye))
         {
-            intent = default;
-            return false;
+            return 0;
         }
 
         float centerX = source.PositionX + eye.Width * 0.5f;
@@ -102,10 +102,7 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
         float deltaY = target.CenterY - centerY;
         float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
         if (!float.IsFinite(distance) || distance <= float.Epsilon)
-        {
-            intent = default;
-            return false;
-        }
+            return 0;
 
         float scale = EyeOfCthulhuServantSpeed / distance;
         float velocityX = deltaX * scale;
@@ -113,13 +110,13 @@ public sealed class VanillaNpcTargetingAiStepper : INpcAiStateStepper, INpcAiSpa
         int bottomX = (int)(centerX + velocityX * EyeOfCthulhuServantSpawnLeadTicks);
         int bottomY = (int)(centerY + velocityY * EyeOfCthulhuServantSpawnLeadTicks);
 
-        intent = new NpcAiSpawnIntent(
+        destination[0] = new NpcAiSpawnIntent(
             Type: VanillaNpcIds.ServantOfCthulhu,
             BottomX: bottomX,
             BottomY: bottomY,
             VelocityX: velocityX,
             VelocityY: velocityY,
             Target: VanillaNpcDefinitionCatalog.DefaultTarget);
-        return true;
+        return 1;
     }
 }

@@ -17,16 +17,20 @@ public readonly record struct NpcAiSpawnIntent(
     ushort Target);
 
 /// <summary>
-/// Optional extension implemented by state steppers that can derive an NPC spawn from the exact state
-/// transition they just proposed. The executor asks for the intent before commit but applies it only after
-/// the source generation-safe TryUpdate succeeds, preventing stale/retried AI from duplicating spawned NPCs.
+/// Optional extension implemented by state steppers that can derive zero or more NPC spawns from the exact
+/// state transition they just proposed. The destination is executor-owned scratch storage valid only for the
+/// synchronous call. The returned count must be in the inclusive range 0..destination.Length.
+///
+/// Intents are speculative until the source generation-safe state update commits. After commit they are applied
+/// in source order with vanilla-style best-effort slot allocation: a full NPC table may accept an earlier child
+/// and reject a later one, but a stale/rejected source transition can never leak any child spawn.
 /// </summary>
 public interface INpcAiSpawnIntentPlanner
 {
-    bool TryPlanNpcSpawn(
+    int PlanNpcSpawns(
         in NpcSnapshot source,
         in NpcStateUpdate proposed,
-        out NpcAiSpawnIntent intent);
+        Span<NpcAiSpawnIntent> destination);
 }
 
 /// <summary>Source-backed TerrariaServer 1.4.5.8 NewNPC lifecycle facts used by committed AI spawns.</summary>

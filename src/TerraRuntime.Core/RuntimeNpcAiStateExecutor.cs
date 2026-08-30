@@ -26,19 +26,22 @@ public readonly record struct NpcAiStateTickSummary(
 /// The executor and store are authoritative-thread components. A proposed transition is committed only
 /// if the exact generation captured at the start of the pass is still current, so reentrant lifecycle
 /// changes cannot let stale AI work mutate a replacement NPC in the same slot. Optional NPC spawn intents
-/// are planned speculatively but are applied only after that source-state commit succeeds; newly spawned
-/// NPCs therefore cannot enter the same pre-pass or escape from a rejected/stale transition.
+/// are planned speculatively into executor-owned bounded scratch storage and are applied in order only after
+/// that source-state commit succeeds; newly spawned NPCs therefore cannot enter the same pre-pass or escape
+/// from a rejected/stale transition.
 /// </summary>
 public sealed class RuntimeNpcAiStateExecutor
 {
     private readonly RuntimeNpcStore _npcs;
     private readonly NpcSnapshot[] _snapshotBuffer;
+    private readonly NpcAiSpawnIntent[] _spawnIntentBuffer;
 
     public RuntimeNpcAiStateExecutor(RuntimeNpcStore npcs)
     {
         ArgumentNullException.ThrowIfNull(npcs);
         _npcs = npcs;
         _snapshotBuffer = new NpcSnapshot[npcs.Capacity];
+        _spawnIntentBuffer = new NpcAiSpawnIntent[npcs.Capacity];
     }
 
     public NpcAiStateTickSummary Tick(INpcAiStateStepper stepper) =>
@@ -63,17 +66,26 @@ public sealed class RuntimeNpcAiStateExecutor
                 continue;
 
             proposed++;
-            NpcAiSpawnIntent spawnIntent = default;
-            bool hasSpawnIntent = spawnPlanner is not null &&
-                                  spawnPlanner.TryPlanNpcSpawn(in npc, in next, out spawnIntent);
+            int spawnCount = spawnPlanner?.PlanNpcSpawns(
+                in npc,
+                in next,
+                _spawnIntentBuffer) ?? 0;
+            if ((uint)spawnCount > (uint)_spawnIntentBuffer.Length)
+            {
+                rejected++;
+                continue;
+            }
 
             if (_npcs.TryUpdate(npc.Handle, in next, out NpcSnapshot committed))
             {
                 applied++;
                 commitSink?.NpcAiStateCommitted(in committed);
 
-                if (hasSpawnIntent)
-                    RuntimeNpcSpawnIntentApplier.TryApply(_npcs, in spawnIntent, out _);
+                for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
+                {
+                    NpcAiSpawnIntent intent = _spawnIntentBuffer[spawnIndex];
+                    RuntimeNpcSpawnIntentApplier.TryApply(_npcs, in intent, out _);
+                }
             }
             else
             {

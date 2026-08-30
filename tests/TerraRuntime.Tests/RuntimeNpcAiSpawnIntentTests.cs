@@ -46,7 +46,46 @@ public sealed class RuntimeNpcAiSpawnIntentTests
     }
 
     [Fact]
-    public void Rejected_stale_source_transition_cannot_leak_spawn_intent()
+    public void Committed_transition_applies_multiple_spawn_intents_in_source_order()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate sourceState = CreateOrdinary(VanillaNpcIds.BlueSlime.Value, 10f);
+        Assert.True(store.TrySpawn(0, in sourceState, out NpcSnapshot source));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+
+        NpcAiStateTickSummary summary = executor.Tick(new OrderedBatchPlanner(spawnCount: 2));
+
+        Assert.Equal(new NpcAiStateTickSummary(1, 1, 1, 0), summary);
+        Assert.True(store.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(new NpcRevision(2), committed.Revision);
+        Assert.True(store.TryGetActive(1, out NpcSnapshot first));
+        Assert.True(store.TryGetActive(2, out NpcSnapshot second));
+        Assert.Equal(90f, first.PositionX);
+        Assert.Equal(80f, first.PositionY);
+        Assert.Equal(190f, second.PositionX);
+        Assert.Equal(180f, second.PositionY);
+    }
+
+    [Fact]
+    public void Batch_spawn_is_best_effort_in_order_when_table_fills_mid_batch()
+    {
+        var store = new RuntimeNpcStore(capacity: 3);
+        NpcStateUpdate sourceState = CreateOrdinary(VanillaNpcIds.BlueSlime.Value, 10f);
+        Assert.True(store.TrySpawn(0, in sourceState, out _));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+
+        NpcAiStateTickSummary summary = executor.Tick(new OrderedBatchPlanner(spawnCount: 3));
+
+        Assert.Equal(new NpcAiStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(3, store.ActiveCount);
+        Assert.True(store.TryGetActive(1, out NpcSnapshot first));
+        Assert.True(store.TryGetActive(2, out NpcSnapshot second));
+        Assert.Equal(90f, first.PositionX);
+        Assert.Equal(190f, second.PositionX);
+    }
+
+    [Fact]
+    public void Rejected_stale_source_transition_cannot_leak_spawn_batch()
     {
         var store = new RuntimeNpcStore(capacity: 3);
         NpcStateUpdate original = CreateOrdinary(type: 1, positionX: 10f);
@@ -61,6 +100,22 @@ public sealed class RuntimeNpcAiSpawnIntentTests
         Assert.Equal(99, replacement.Type);
         Assert.False(store.TryGetActive(1, out _));
         Assert.False(store.TryGetActive(2, out _));
+    }
+
+    [Fact]
+    public void Invalid_planner_count_rejects_source_transition_before_commit()
+    {
+        var store = new RuntimeNpcStore(capacity: 2);
+        NpcStateUpdate original = CreateOrdinary(VanillaNpcIds.BlueSlime.Value, 10f);
+        Assert.True(store.TrySpawn(0, in original, out NpcSnapshot source));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+
+        NpcAiStateTickSummary summary = executor.Tick(new InvalidCountPlanner());
+
+        Assert.Equal(new NpcAiStateTickSummary(1, 1, 0, 1), summary);
+        Assert.True(store.TryGet(source.Handle, out NpcSnapshot current));
+        Assert.Equal(new NpcRevision(1), current.Revision);
+        Assert.Equal(1, store.ActiveCount);
     }
 
     [Fact]
@@ -128,6 +183,44 @@ public sealed class RuntimeNpcAiSpawnIntentTests
             Ai: default,
             Simulation: NpcSimulationState.Initial);
 
+    private sealed class OrderedBatchPlanner(int spawnCount) : INpcAiStateStepper, INpcAiSpawnIntentPlanner
+    {
+        public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
+        {
+            next = new NpcStateUpdate(
+                npc.Type,
+                npc.NetId,
+                npc.PositionX + 1f,
+                npc.PositionY,
+                npc.VelocityX,
+                npc.VelocityY,
+                npc.Target,
+                npc.Ai,
+                npc.Simulation);
+            return true;
+        }
+
+        public int PlanNpcSpawns(
+            in NpcSnapshot source,
+            in NpcStateUpdate proposed,
+            Span<NpcAiSpawnIntent> destination)
+        {
+            Assert.InRange(spawnCount, 0, destination.Length);
+            for (int index = 0; index < spawnCount; index++)
+            {
+                destination[index] = new NpcAiSpawnIntent(
+                    VanillaNpcIds.ServantOfCthulhu,
+                    BottomX: 100 + index * 100,
+                    BottomY: 100 + index * 100,
+                    VelocityX: 1f,
+                    VelocityY: 0f,
+                    Target: VanillaNpcDefinitionCatalog.DefaultTarget);
+            }
+
+            return spawnCount;
+        }
+    }
+
     private sealed class ReplacingSpawnPlanner(RuntimeNpcStore store) : INpcAiStateStepper, INpcAiSpawnIntentPlanner
     {
         public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
@@ -149,19 +242,44 @@ public sealed class RuntimeNpcAiSpawnIntentTests
             return true;
         }
 
-        public bool TryPlanNpcSpawn(
+        public int PlanNpcSpawns(
             in NpcSnapshot source,
             in NpcStateUpdate proposed,
-            out NpcAiSpawnIntent intent)
+            Span<NpcAiSpawnIntent> destination)
         {
-            intent = new NpcAiSpawnIntent(
+            Assert.True(destination.Length >= 2);
+            destination[0] = new NpcAiSpawnIntent(
                 VanillaNpcIds.ServantOfCthulhu,
                 BottomX: 100,
                 BottomY: 100,
                 VelocityX: 1f,
                 VelocityY: 0f,
                 Target: VanillaNpcDefinitionCatalog.DefaultTarget);
+            destination[1] = destination[0] with { BottomX = 200 };
+            return 2;
+        }
+    }
+
+    private sealed class InvalidCountPlanner : INpcAiStateStepper, INpcAiSpawnIntentPlanner
+    {
+        public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
+        {
+            next = new NpcStateUpdate(
+                npc.Type,
+                npc.NetId,
+                npc.PositionX + 1f,
+                npc.PositionY,
+                npc.VelocityX,
+                npc.VelocityY,
+                npc.Target,
+                npc.Ai,
+                npc.Simulation);
             return true;
         }
+
+        public int PlanNpcSpawns(
+            in NpcSnapshot source,
+            in NpcStateUpdate proposed,
+            Span<NpcAiSpawnIntent> destination) => destination.Length + 1;
     }
 }
