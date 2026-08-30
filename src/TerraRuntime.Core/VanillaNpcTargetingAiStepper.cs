@@ -55,8 +55,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetWormEnvironment(IVanillaWormEnvironment environment) =>
         _worm.SetEnvironment(environment);
 
-    public void SetWorldConditions(bool dayTime, bool slimeRainActive, bool goodWorld = false) =>
-        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld);
+    public void SetWorldConditions(
+        bool dayTime,
+        bool slimeRainActive,
+        bool goodWorld = false,
+        bool expertMode = false) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode);
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
         _context.SetCandidates(candidates);
@@ -154,7 +158,11 @@ public sealed class VanillaNpcTargetingAiStepper :
         float rootSlot;
         if (worm.Role == VanillaWormSegmentRole.Head)
         {
-            if (VanillaWormNpcCatalog.TryGetFixedFollowerCount(sourceType, out int fixedCount))
+            if (sourceType == VanillaNpcIds.EaterOfWorldsHead)
+            {
+                remaining = VanillaWormNpcCatalog.GetEaterOfWorldsBodyCount(_context.ExpertMode) - 1;
+            }
+            else if (VanillaWormNpcCatalog.TryGetFixedFollowerCount(sourceType, out int fixedCount))
             {
                 remaining = fixedCount - 1;
             }
@@ -170,7 +178,9 @@ public sealed class VanillaNpcTargetingAiStepper :
                 return 0;
             }
 
-            rootSlot = source.Handle.Slot;
+            rootSlot = sourceType == VanillaNpcIds.EaterOfWorldsHead
+                ? 0f
+                : source.Handle.Slot;
         }
         else
         {

@@ -329,8 +329,12 @@ public static class VanillaWormNpcCatalog
     }
 
     public static bool HasChainProfile(NpcTypeId headType) =>
+        headType == VanillaNpcIds.EaterOfWorldsHead ||
         TryGetInitialSegmentCountRange(headType, out _, out _) ||
         TryGetFixedFollowerSequence(headType, out _);
+
+    public static int GetEaterOfWorldsBodyCount(bool expertMode) =>
+        expertMode ? 70 : 65;
 
     public static bool TryGetFixedFollowerType(
         NpcTypeId headType,

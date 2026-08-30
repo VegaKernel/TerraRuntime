@@ -449,6 +449,12 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             return false;
         }
 
+        if (IsEaterOfWorlds(definition.Type) &&
+            TryStepEaterOfWorldsLinks(in npc, in worm, context, out next))
+        {
+            return true;
+        }
+
         if (worm.Role == VanillaWormSegmentRole.Head)
             return TryStepHead(in npc, in definition, in worm, context, inner, out next);
 
@@ -520,6 +526,105 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         type == VanillaNpcIds.EaterOfWorldsHead ||
         type == VanillaNpcIds.EaterOfWorldsBody ||
         type == VanillaNpcIds.EaterOfWorldsTail;
+
+    private static bool TryStepEaterOfWorldsLinks(
+        in NpcSnapshot npc,
+        in VanillaWormNpcEntry worm,
+        VanillaNpcBehaviorContext context,
+        out NpcStateUpdate next)
+    {
+        bool predecessorActive = TryResolveWormLink(npc.Ai.Ai1, context);
+        bool successorActive = TryResolveWormLink(npc.Ai.Ai0, context);
+
+        // TerraRuntime materializes vanilla's immediate chain allocation incrementally. A zero successor
+        // with a non-negative construction countdown therefore receives its follower after this commit.
+        bool awaitingFollower = npc.Ai.Ai0 == 0f && npc.Ai.Ai2 >= 0f;
+        if (worm.Role == VanillaWormSegmentRole.Head)
+        {
+            if (!successorActive && !awaitingFollower)
+            {
+                next = Terminal(in npc);
+                return true;
+            }
+
+            next = default;
+            return false;
+        }
+
+        if (worm.Role == VanillaWormSegmentRole.Tail)
+        {
+            if (!predecessorActive)
+            {
+                next = Terminal(in npc);
+                return true;
+            }
+
+            next = default;
+            return false;
+        }
+
+        if (!predecessorActive && !successorActive && !awaitingFollower)
+        {
+            next = Terminal(in npc);
+            return true;
+        }
+
+        if (!predecessorActive)
+        {
+            next = TransformEaterOfWorldsSegment(
+                in npc,
+                VanillaNpcIds.EaterOfWorldsHead,
+                new NpcAiState(npc.Ai.Ai0, 0f, 0f, 0f));
+            return true;
+        }
+
+        if (!successorActive && !awaitingFollower)
+        {
+            next = TransformEaterOfWorldsSegment(
+                in npc,
+                VanillaNpcIds.EaterOfWorldsTail,
+                new NpcAiState(0f, npc.Ai.Ai1, 0f, 0f));
+            return true;
+        }
+
+        next = default;
+        return false;
+    }
+
+    private static bool TryResolveWormLink(float rawSlot, VanillaNpcBehaviorContext context)
+    {
+        if (!float.IsFinite(rawSlot) ||
+            rawSlot < 0f ||
+            rawSlot > byte.MaxValue ||
+            rawSlot != MathF.Truncate(rawSlot) ||
+            !context.TryFindNpcPeer(checked((byte)rawSlot), out NpcSnapshot peer) ||
+            !NpcTypeId.TryCreate(peer.Type, out NpcTypeId peerType) ||
+            !VanillaNpcDefinitionCatalog.TryGet(peerType, out VanillaNpcDefinition peerDefinition))
+        {
+            return false;
+        }
+
+        return peerDefinition.AiStyle == VanillaNpcAiStyles.Worm;
+    }
+
+    private static NpcStateUpdate TransformEaterOfWorldsSegment(
+        in NpcSnapshot npc,
+        NpcTypeId type,
+        NpcAiState ai) =>
+        new(
+            type.Value,
+            checked((short)type.Value),
+            npc.PositionX,
+            npc.PositionY,
+            npc.VelocityX,
+            npc.VelocityY,
+            npc.Target,
+            ai,
+            npc.Simulation with
+            {
+                NoGravity = true,
+                NoTileCollide = true
+            });
 
     private bool TryStepHead(
         in NpcSnapshot npc,

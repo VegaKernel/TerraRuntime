@@ -74,7 +74,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] Digger, Seeker and Leech definitions, motion profiles and linked chain spawning;
 - [x] Dune Splicer, Tomb Crawler and Blood Eel definitions, gaps, always-dig policy and linked chains;
 - [x] Wyvern, Crawltipede and Cultist Dragon patterned chains plus Truffle/Stardust singleton worm profiles;
-- [ ] Eater of Worlds chain length, split/death repair and complete synchronized lifecycle;
+- [x] Eater of Worlds classic/expert chain length and missing-link head/tail split repair;
+- [ ] Eater of Worlds death/loot/progression and complete synchronized lifecycle;
 - [x] remaining AI_006 worm family definitions and profiles;
 - [ ] bats, fish, casters, mimics, critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.

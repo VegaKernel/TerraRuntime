@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
@@ -454,7 +455,10 @@ public static class TerrariaServerHost
             serverPlayerIdentities: serverPlayerIdentities,
             serverPlayerEvents: runtimeConnections,
             npcArchetypes: npcArchetypes,
-            npcArchetypeIdentities: npcArchetypeIdentities);
+            npcArchetypeIdentities: npcArchetypeIdentities,
+            expertMode: world.RuntimeMetadata.GameMode is
+                (byte)WorldGenerationGameMode.Expert or
+                (byte)WorldGenerationGameMode.Master);
         using var sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,
             bootstrapPackets,

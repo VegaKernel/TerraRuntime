@@ -24,7 +24,8 @@ public enum VanillaNpcAiCapability : uint
     WormMotionPrimitive = 1u << 15,
     WormSegmentFollowSlice = 1u << 16,
     WormHeadWorldSteeringSlice = 1u << 17,
-    WormChainSpawnSlice = 1u << 18
+    WormChainSpawnSlice = 1u << 18,
+    WormSplitRepairSlice = 1u << 19
 }
 
 /// <summary>
@@ -181,6 +182,9 @@ public static class VanillaNpcAiCoverageCatalog
             {
                 capabilities |= VanillaNpcAiCapability.WormChainSpawnSlice;
             }
+
+            if (worm.HeadType == VanillaNpcIds.EaterOfWorldsHead)
+                capabilities |= VanillaNpcAiCapability.WormSplitRepairSlice;
 
             entries[index++] = Partial(
                 worm.Definition.Type,

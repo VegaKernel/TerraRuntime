@@ -30,6 +30,8 @@ internal sealed class VanillaNpcBehaviorContext
 
     public bool GoodWorld { get; private set; }
 
+    public bool ExpertMode { get; private set; }
+
     public void EnableSlimeGround(double worldSurfaceTiles)
     {
         ValidateWorldSurface(worldSurfaceTiles);
@@ -44,11 +46,16 @@ internal sealed class VanillaNpcBehaviorContext
         WorldSurfacePixels = worldSurfaceTiles * 16d;
     }
 
-    public void SetWorldConditions(bool dayTime, bool slimeRainActive, bool goodWorld = false)
+    public void SetWorldConditions(
+        bool dayTime,
+        bool slimeRainActive,
+        bool goodWorld = false,
+        bool expertMode = false)
     {
         DayTime = dayTime;
         SlimeRainActive = slimeRainActive;
         GoodWorld = goodWorld;
+        ExpertMode = expertMode;
     }
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates)

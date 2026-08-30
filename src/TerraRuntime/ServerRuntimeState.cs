@@ -51,6 +51,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly WorldTileStore? _worldTiles;
     private readonly VanillaWorldTileMutationService? _tileMutations;
     private readonly RuntimeWorldClock? _worldClock;
+    private readonly bool _expertMode;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
 
@@ -70,12 +71,14 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         IRuntimeServerPlayerEventSink? serverPlayerEvents = null,
         RuntimeNpcShopCatalogRegistry? npcShops = null,
         RuntimeNpcArchetypeRegistry? npcArchetypes = null,
-        RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities = null)
+        RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities = null,
+        bool expertMode = false)
     {
         _playerEvents = playerEvents;
         _worldTiles = worldTiles;
         _tileMutations = worldTiles is null ? null : new VanillaWorldTileMutationService(worldTiles);
         _worldClock = worldClock;
+        _expertMode = expertMode;
         _npcs = npcs ?? new RuntimeNpcStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
         _serverPlayerStates = serverPlayerStates;
@@ -429,7 +432,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             {
                 _vanillaNpcTargetingAiStepper.SetWorldConditions(
                     _worldClock.DayTime,
-                    _worldClock.SlimeRainActive);
+                    _worldClock.SlimeRainActive,
+                    _worldClock.GetGoodWorld,
+                    _expertMode);
             }
         }
 
