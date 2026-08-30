@@ -9,6 +9,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId BlueSlime = new(1);
     public static readonly NpcTypeId DemonEye = new(2);
     public static readonly NpcTypeId Zombie = new(3);
+    public static readonly NpcTypeId EyeOfCthulhu = new(4);
+    public static readonly NpcTypeId ServantOfCthulhu = new(5);
 }
 
 /// <summary>
@@ -20,6 +22,8 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Slime = new(1);
     public static readonly NpcAiStyleId DemonEye = new(2);
     public static readonly NpcAiStyleId Fighter = new(3);
+    public static readonly NpcAiStyleId EyeOfCthulhu = new(4);
+    public static readonly NpcAiStyleId Flyer = new(5);
 }
 
 /// <summary>
