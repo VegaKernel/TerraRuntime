@@ -58,7 +58,7 @@ public sealed class SkyblockWorldGenerationProviderTests
         Assert.Contains(checked((ushort)VanillaTileIds.CorruptGrass.Value), activeTypes);
         Assert.Contains(checked((ushort)VanillaTileIds.Ebonstone.Value), activeTypes);
 
-        WorldChest[] chests = result.Metadata.GeneratedChests ?? [];
+        WorldChest[] chests = candidate.CaptureGeneratedChests();
         Assert.True(chests.Length >= 3);
         Assert.Contains(chests, static chest => chest.Name == "Skyblock Starter");
         Assert.Contains(chests, static chest => chest.Name == "Dungeon Cache");
@@ -99,8 +99,10 @@ public sealed class SkyblockWorldGenerationProviderTests
         Assert.Equal(first.Metadata.Dungeon, second.Metadata.Dungeon);
         Assert.Equal(first.Metadata.Layers, second.Metadata.Layers);
 
-        WorldChest[] firstChests = first.Metadata.GeneratedChests ?? [];
-        WorldChest[] secondChests = second.Metadata.GeneratedChests ?? [];
+        RuntimeWorldGenerationWorkspace firstCandidate = Assert.IsType<RuntimeWorldGenerationWorkspace>(first.Candidate);
+        RuntimeWorldGenerationWorkspace secondCandidate = Assert.IsType<RuntimeWorldGenerationWorkspace>(second.Candidate);
+        WorldChest[] firstChests = firstCandidate.CaptureGeneratedChests();
+        WorldChest[] secondChests = secondCandidate.CaptureGeneratedChests();
         Assert.Equal(firstChests.Length, secondChests.Length);
         for (int index = 0; index < firstChests.Length; index++)
         {
@@ -119,8 +121,9 @@ public sealed class SkyblockWorldGenerationProviderTests
             RuntimeWorldCreationPipelineResult result = Generate(seed);
             Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
 
+            RuntimeWorldGenerationWorkspace candidate = Assert.IsType<RuntimeWorldGenerationWorkspace>(result.Candidate);
             WorldGenerationPoint dungeon = result.Metadata.Dungeon;
-            WorldChest[] chests = result.Metadata.GeneratedChests ?? [];
+            WorldChest[] chests = candidate.CaptureGeneratedChests();
             foreach (WorldChest chest in chests)
             {
                 if (chest.Name == "Dungeon Cache")
