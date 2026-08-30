@@ -134,6 +134,7 @@ public static class VanillaKingSlimeMotion
         float scale = input.Scale;
         bool minionBurstRequested = false;
         bool initializedThisTick = false;
+        VanillaNpcTargetCandidate closestCandidate = input.ClosestCandidate;
 
         if (ai3 == 0f && input.Life > 0)
             ai3 = input.LifeMax;
@@ -349,7 +350,7 @@ public static class VanillaKingSlimeMotion
 
         void RefreshTarget()
         {
-            if (!TryGetUsableCandidate(input.ClosestCandidate, out VanillaNpcTargetCandidate closest))
+            if (!TryGetUsableCandidate(closestCandidate, out VanillaNpcTargetCandidate closest))
                 return;
 
             currentTarget = closest;
