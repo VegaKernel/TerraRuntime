@@ -55,8 +55,8 @@ public enum NpcLiquidContactKind : byte
 /// <summary>
 /// Authoritative local simulation inputs/state required by vanilla NPC AI and movement. Collision, overlap,
 /// liquid, combat, presentation-facing direction and lifetime state are runtime facts rather than packet details.
-/// Zero LifeMax means unspecified combat state; TimeLeft == -1 means unspecified lifetime state. The store
-/// resolves those sentinels on spawn and preserves existing values across updates that do not own them.
+/// Zero LifeMax means unspecified combat state; TimeLeft == -1 means unspecified lifetime state. Runtime-owned
+/// state policy resolves those sentinels on spawn and preserves existing values across updates that do not own them.
 /// </summary>
 public readonly record struct NpcSimulationState(
     int DirectionX,

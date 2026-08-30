@@ -232,7 +232,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 
 - [x] NPC definitions;
 - [x] AI family/behavior decomposition;
-- [ ] spawn/physics/combat/loot separation;
+- [x] spawn/physics/combat/loot separation ([EN](../en/npc-runtime-ownership.md), [RU](../ru/npc-runtime-ownership.md));
 - [ ] boss/town behavior boundaries;
 - [ ] remove raw NPC IDs/AI-style numbers;
 - [x] align with custom NPC extension pipeline.

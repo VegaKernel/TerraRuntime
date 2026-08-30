@@ -14,6 +14,11 @@ public readonly record struct NpcStateUpdate(
     NpcAiState Ai,
     NpcSimulationState Simulation);
 
+/// <summary>
+/// Generation-safe authoritative NPC slot store. This type owns storage identity, revision ordering,
+/// active-slot accounting and commit publication. Vanilla spawn/combat/lifetime defaults are resolved by
+/// <see cref="RuntimeNpcStateOwnershipPolicy"/> so the slot store stays independent from content catalogs.
+/// </summary>
 public sealed class RuntimeNpcStore : INpcSnapshotReader
 {
     public const int MaximumAddressableCapacity = byte.MaxValue + 1;
@@ -49,7 +54,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             return false;
         }
 
-        NpcStateUpdate normalized = MaterializeInitialLocalState(in update);
+        NpcStateUpdate normalized = RuntimeNpcStateOwnershipPolicy.MaterializeSpawnDefaults(in update);
         state.Active = true;
         state.Revision = 1;
         state.Update = normalized;
@@ -96,7 +101,7 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
             return false;
         }
 
-        NpcStateUpdate normalized = PreserveOrMaterializeLocalState(in update, in state.Update);
+        NpcStateUpdate normalized = RuntimeNpcStateOwnershipPolicy.PreserveUnownedUpdateState(in update, in state.Update);
         if (!TryAdvance(ref state.Revision))
         {
             snapshot = default;
@@ -211,76 +216,6 @@ public sealed class RuntimeNpcStore : INpcSnapshotReader
         float.IsFinite(update.VelocityY) &&
         update.Ai.IsFinite &&
         update.Simulation.IsValid;
-
-    private static NpcStateUpdate MaterializeInitialLocalState(in NpcStateUpdate update)
-    {
-        NpcSimulationState simulation = update.Simulation;
-        if (simulation.LifeMax == 0 &&
-            VanillaNpcDefinitionCatalog.TryGet(update.Type, out VanillaNpcDefinition definition))
-        {
-            simulation = simulation with
-            {
-                Life = definition.LifeMax,
-                LifeMax = definition.LifeMax
-            };
-        }
-
-        if (simulation.TimeLeft < 0)
-            simulation = simulation with { TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft };
-
-        if (simulation.SpriteDirection == 0)
-            simulation = simulation with { SpriteDirection = -1 };
-
-        return update with { Simulation = simulation };
-    }
-
-    private static NpcStateUpdate PreserveOrMaterializeLocalState(
-        in NpcStateUpdate update,
-        in NpcStateUpdate previous)
-    {
-        NpcSimulationState simulation = update.Simulation;
-        if (simulation.LifeMax == 0)
-        {
-            if (update.Type == previous.Type && previous.Simulation.LifeMax > 0)
-            {
-                simulation = simulation with
-                {
-                    Life = previous.Simulation.Life,
-                    LifeMax = previous.Simulation.LifeMax
-                };
-            }
-            else if (VanillaNpcDefinitionCatalog.TryGet(update.Type, out VanillaNpcDefinition definition))
-            {
-                simulation = simulation with
-                {
-                    Life = definition.LifeMax,
-                    LifeMax = definition.LifeMax
-                };
-            }
-        }
-
-        if (simulation.TimeLeft < 0)
-        {
-            simulation = simulation with
-            {
-                TimeLeft = update.Type == previous.Type && previous.Simulation.TimeLeft >= 0
-                    ? previous.Simulation.TimeLeft
-                    : VanillaNpcDefinitionCatalog.DefaultTimeLeft
-            };
-        }
-
-        if (simulation.SpriteDirection == 0)
-        {
-            simulation = simulation with
-            {
-                SpriteDirection = update.Type == previous.Type && previous.Simulation.SpriteDirection != 0
-                    ? previous.Simulation.SpriteDirection
-                    : -1
-            };
-        }
-
-        return update with { Simulation = simulation };
-    }
 
     private void DespawnSlot(byte slot, ref SlotState state)
     {

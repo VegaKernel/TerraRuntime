@@ -11,15 +11,15 @@ public readonly record struct VanillaNpcGravityResult(
 
 /// <summary>
 /// Source-backed baseline from TerrariaServer 1.4.5.8 NPC.UpdateNPC_UpdateGravity for the first
-/// supported NPC types (Blue Slime, Demon Eye, Zombie). These types do not enter any of the
-/// vanilla type-specific gravity exceptions, so only altitude scaling and persisted liquid contact apply.
+/// supported NPC definitions. Their explicit <see cref="VanillaNpcPhysicsFamily"/> opt-in proves that
+/// they use this ordinary baseline rather than silently inheriting it from an aiStyle or numeric type.
 /// </summary>
 public static class VanillaNpcGravity
 {
     private const float BaseGravity = 0.3f;
     private const float BaseMaxFallSpeed = 10f;
 
-    /// <summary>Raw-id compatibility boundary; gameplay code should prefer the typed overload.</summary>
+    /// <summary>Raw-id compatibility boundary; gameplay code should prefer the resolved-definition overload.</summary>
     public static bool TryApply(
         int npcType,
         float positionY,
@@ -47,6 +47,7 @@ public static class VanillaNpcGravity
             out result);
     }
 
+    /// <summary>Typed compatibility boundary; resolves version-pinned physics metadata once.</summary>
     public static bool TryApply(
         NpcTypeId npcType,
         float positionY,
@@ -57,7 +58,34 @@ public static class VanillaNpcGravity
         double worldSurfaceTiles,
         out VanillaNpcGravityResult result)
     {
-        if (!IsSupportedType(npcType) ||
+        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition))
+        {
+            result = default;
+            return false;
+        }
+
+        return TryApply(
+            in definition,
+            positionY,
+            velocityY,
+            wet,
+            liquidContact,
+            worldWidthTiles,
+            worldSurfaceTiles,
+            out result);
+    }
+
+    public static bool TryApply(
+        in VanillaNpcDefinition definition,
+        float positionY,
+        float velocityY,
+        bool wet,
+        NpcLiquidContactKind liquidContact,
+        int worldWidthTiles,
+        double worldSurfaceTiles,
+        out VanillaNpcGravityResult result)
+    {
+        if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.None ||
             !float.IsFinite(positionY) ||
             !float.IsFinite(velocityY) ||
             worldWidthTiles <= 0 ||
@@ -103,9 +131,4 @@ public static class VanillaNpcGravity
             new VanillaNpcGravityParameters(gravity, maxFallSpeed));
         return true;
     }
-
-    private static bool IsSupportedType(NpcTypeId type) =>
-        type == VanillaNpcIds.BlueSlime ||
-        type == VanillaNpcIds.DemonEye ||
-        type == VanillaNpcIds.Zombie;
 }
