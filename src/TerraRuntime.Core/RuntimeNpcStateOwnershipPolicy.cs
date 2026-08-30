@@ -13,13 +13,25 @@ internal static class RuntimeNpcStateOwnershipPolicy
     public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update)
     {
         NpcSimulationState simulation = update.Simulation;
-        if (simulation.LifeMax == 0 && TryGetDefinition(update.Type, out VanillaNpcDefinition definition))
+        if (TryGetDefinition(update.Type, out VanillaNpcDefinition definition))
         {
-            simulation = simulation with
+            if (simulation.LifeMax == 0)
             {
-                Life = definition.LifeMax,
-                LifeMax = definition.LifeMax
-            };
+                simulation = simulation with
+                {
+                    Life = definition.LifeMax,
+                    LifeMax = definition.LifeMax
+                };
+            }
+
+            if (definition.NoGravityAtSpawn || definition.NoTileCollideAtSpawn)
+            {
+                simulation = simulation with
+                {
+                    NoGravity = simulation.NoGravity || definition.NoGravityAtSpawn,
+                    NoTileCollide = simulation.NoTileCollide || definition.NoTileCollideAtSpawn
+                };
+            }
         }
 
         if (simulation.TimeLeft < 0)
