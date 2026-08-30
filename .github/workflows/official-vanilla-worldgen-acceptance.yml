@@ -38,8 +38,8 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
       - name: Restore and build
         run: |
-          dotnet restore TerraRuntime.sln
-          dotnet build TerraRuntime.sln -c Release --no-restore
+          dotnet restore TerraRuntime.slnx
+          dotnet build TerraRuntime.slnx -c Release --no-restore
       - name: Download pinned official TerrariaServer 1.4.5.8
         shell: bash
         run: |
