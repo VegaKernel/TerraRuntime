@@ -48,6 +48,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly RuntimeWorldItemStore _worldItems;
     private readonly IWorldItemSpawnRandom _worldItemSpawnRandom = new SystemWorldItemSpawnRandom();
     private readonly WorldTileStore? _worldTiles;
+    private readonly VanillaWorldTileMutationService? _tileMutations;
     private readonly RuntimeWorldClock? _worldClock;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
@@ -72,6 +73,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     {
         _playerEvents = playerEvents;
         _worldTiles = worldTiles;
+        _tileMutations = worldTiles is null ? null : new VanillaWorldTileMutationService(worldTiles);
         _worldClock = worldClock;
         _npcs = npcs ?? new RuntimeNpcStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
@@ -760,7 +762,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private void ApplyClientTileManipulation(ClientTileManipulationRuntimeCommand command)
     {
         ClientTileManipulationRequests++;
+        VanillaWorldTileMutationService? tileMutations = _tileMutations;
         if (_worldTiles is null ||
+            tileMutations is null ||
             !command.Connection.IsAssigned ||
             !_players.TryGetValue(command.Connection.Player.Slot.Value, out RuntimePlayerState? player) ||
             player.Connection != command.Connection ||
@@ -784,8 +788,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         var tileState = command.State;
         if (action == TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.KillTileNoItem)
         {
-            if (!VanillaDirtPlacement.TryKillIsolatedWithoutDrop(
-                    _worldTiles,
+            if (!VanillaDirtPlacement.CanKillIsolated(_worldTiles, tileState.TileX, tileState.TileY) ||
+                !ApplyTileMutation(
+                    tileMutations,
+                    WorldTileMutationKind.KillTile,
                     tileState.TileX,
                     tileState.TileY))
             {
@@ -846,8 +852,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 tileState.TileY,
                 _worldItemSpawnRandom);
 
-            if (!VanillaDirtPlacement.TryKillIsolatedWithoutDrop(
-                    _worldTiles,
+            if (!ApplyTileMutation(
+                    tileMutations,
+                    WorldTileMutationKind.KillTile,
                     tileState.TileX,
                     tileState.TileY))
             {
@@ -896,10 +903,13 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 return;
 
             case ClientTileManipulationConsistencyResult.Consistent:
-                if (!VanillaDirtPlacement.TryPlaceOnEmpty(
-                        _worldTiles,
+                if (!VanillaDirtPlacement.CanPlaceOnEmpty(_worldTiles, tileState.TileX, tileState.TileY) ||
+                    !ApplyTileMutation(
+                        tileMutations,
+                        WorldTileMutationKind.PlaceTile,
                         tileState.TileX,
-                        tileState.TileY))
+                        tileState.TileY,
+                        VanillaTileIds.Dirt))
                 {
                     RejectedClientTileManipulations++;
                     return;
@@ -912,6 +922,17 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             default:
                 throw new InvalidOperationException("Unknown client tile-manipulation consistency result.");
         }
+    }
+
+    private static bool ApplyTileMutation(
+        VanillaWorldTileMutationService tileMutations,
+        WorldTileMutationKind kind,
+        int x,
+        int y,
+        TileTypeId tileType = default)
+    {
+        var request = new WorldTileMutationRequest(kind, x, y, TileType: tileType);
+        return tileMutations.Apply(in request).Applied;
     }
 
     private static bool TryConvertClientProjectileUpdate(

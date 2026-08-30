@@ -28,8 +28,8 @@ Frame-important и известный multi-tile content намеренно от
 
 ## Существующий packet-17 путь Dirt
 
-`VanillaDirtPlacement` остаётся строгим source-backed compatibility facade для уже допущенного Dirt-среза packet 17. Его isolation/preflight доказательство не ослабляется, но фактический commit placement/removal теперь делегируется в `VanillaWorldTileMutationService`. Так drop reservation и packet authority остаются отдельными, а рядом с семантическим сервисом не растёт второй ad-hoc механизм изменения storage.
+`VanillaDirtPlacement` остаётся строгим source-backed preflight/compatibility facade для уже допущенного Dirt-среза packet 17. Его isolation proof не ослабляется. `ServerRuntimeState` владеет одним долгоживущим `VanillaWorldTileMutationService`, и все принятые commits placement/removal Dirt проходят через этот typed operation boundary. Inventory/tool policy, резервирование drop, storage mutation и replication поэтому остаются отдельными стадиями, а packet handlers не записывают tile fields напрямую.
 
-## Граница roadmap
+## Статус roadmap
 
-Это крупный фундамент D5, а не заявление о полной Terraria parity для placement/break/framing. Multi-tile объекты, attachment/support rules, создание/удаление object metadata, tool-power rules и полные source-backed framing families остаются отдельной работой до закрытия широкого D5 checkbox placement/break/framing.
+Это завершает **operation boundary** D5 для placement/break/framing в поддерживаемом ordinary single-tile slice: typed requests, один authoritative commit owner, ограниченный simple framing и отдельная replication используются production path. Это не заявление о полной Terraria parity. Multi-tile placement, attachment/support rules, создание/удаление object metadata и полные visual framing families остаются явными capability gaps и должны добавляться через ту же boundary, а не packet-specific записи.

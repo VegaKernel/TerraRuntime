@@ -242,7 +242,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 - [x] tile/wall definitions ([EN](../en/tile-wall-definitions.md), [RU](../ru/tile-wall-definitions.md));
 - [x] named tile state flags ([EN](../en/tile-state-flags.md), [RU](../ru/tile-state-flags.md));
 - [x] multi-tile object definitions ([EN](../en/tile-object-anchors.md), [RU](../ru/tile-object-anchors.md));
-- [ ] placement/break/framing operations;
+- [x] placement/break/framing operations ([EN](../en/world-mutation-operations.md), [RU](../ru/world-mutation-operations.md));
 - [ ] wiring/liquids/growth decomposition;
 - [ ] remove raw tile/wall IDs and frame constants from unrelated handlers.
 

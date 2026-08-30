@@ -11,12 +11,7 @@ public static class VanillaDirtPlacement
 {
     public static bool TryPlaceOnEmpty(WorldTileStore tiles, int x, int y)
     {
-        ArgumentNullException.ThrowIfNull(tiles);
-        if (!Contains(tiles, x, y))
-            return false;
-
-        WorldTile current = tiles.Get(x, y);
-        if (!IsCompletelyEmpty(in current))
+        if (!CanPlaceOnEmpty(tiles, x, y))
             return false;
 
         var service = new VanillaWorldTileMutationService(tiles);
@@ -26,6 +21,20 @@ public static class VanillaDirtPlacement
             y,
             TileType: VanillaTileIds.Dirt);
         return service.Apply(in request).Applied;
+    }
+
+    /// <summary>
+    /// Preflights the strict canonical-empty state accepted by Dirt placement. Production packet handling uses this
+    /// check before committing through its long-lived <see cref="VanillaWorldTileMutationService"/> instance.
+    /// </summary>
+    public static bool CanPlaceOnEmpty(WorldTileStore tiles, int x, int y)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        if (!Contains(tiles, x, y))
+            return false;
+
+        WorldTile current = tiles.Get(x, y);
+        return IsCompletelyEmpty(in current);
     }
 
     /// <summary>
@@ -80,7 +89,7 @@ public static class VanillaDirtPlacement
 
     private static bool IsCanonicalDirt(in WorldTile tile) =>
         tile.Type == VanillaTileIds.Dirt.Value &&
-        tile.Wall == 0 &&
+        tile.WallType == VanillaWallIds.None &&
         tile.FrameX == 0 &&
         tile.FrameY == 0 &&
         tile.Flags == WorldTileFlags.Active &&
@@ -93,7 +102,7 @@ public static class VanillaDirtPlacement
 
     private static bool IsCompletelyEmpty(in WorldTile tile) =>
         tile.Type == 0 &&
-        tile.Wall == 0 &&
+        tile.WallType == VanillaWallIds.None &&
         IsEmptyFramePair(tile.FrameX, tile.FrameY) &&
         tile.Flags == WorldTileFlags.None &&
         tile.LiquidAmount == 0 &&

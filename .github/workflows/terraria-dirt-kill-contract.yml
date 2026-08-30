@@ -4,8 +4,17 @@ on:
   push:
     branches: [main]
     paths:
+      - 'src/TerraRuntime.World/VanillaDirtPlacement.cs'
+      - 'src/TerraRuntime.World/VanillaWorldTileMutationService.cs'
+      - 'src/TerraRuntime/ServerRuntimeState.cs'
+      - 'tests/TerraRuntime.Tests/VanillaDirtPlacementTests.cs'
+      - 'tests/TerraRuntime.Tests/VanillaWorldTileMutationServiceTests.cs'
+      - 'tests/TerraRuntime.Tests/ServerRuntimeDirtKillDropTests.cs'
       - 'tools/ci/probe_dirt_kill.py'
       - 'tools/ci/probe_dirt_item_drop.py'
+      - 'docs/en/world-mutation-operations.md'
+      - 'docs/ru/world-mutation-operations.md'
+      - 'docs/roadmap/gameplay-decomposition-and-catalogs.md'
       - '.github/workflows/terraria-dirt-kill-contract.yml'
   workflow_dispatch:
 

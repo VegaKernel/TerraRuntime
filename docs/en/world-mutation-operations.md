@@ -28,8 +28,8 @@ Frame-important and known multi-tile content are deliberately rejected by the ge
 
 ## Existing packet-17 Dirt path
 
-`VanillaDirtPlacement` remains the strict source-backed packet-17 compatibility facade for the currently admitted Dirt slice. Its isolation/preflight proof is unchanged, but the actual placement/removal commit now delegates to `VanillaWorldTileMutationService`. This keeps drop reservation and packet authority separate while preventing a second ad-hoc storage mutation implementation from growing beside the semantic service.
+`VanillaDirtPlacement` remains the strict source-backed packet-17 preflight/compatibility facade for the currently admitted Dirt slice. Its isolation proof is unchanged. `ServerRuntimeState` owns one long-lived `VanillaWorldTileMutationService` and all accepted Dirt placement/removal commits cross that typed operation boundary. This keeps inventory/tool policy, drop reservation, storage mutation and replication as separate stages and prevents packet handlers from writing tile fields directly.
 
-## Roadmap boundary
+## Roadmap status
 
-This is a substantial D5 foundation, not a claim that all Terraria placement/break/framing parity is complete. Multi-tile objects, attachment/support rules, object metadata creation/destruction, tool-power rules and the complete source-backed framing families remain separate work before the broad D5 placement/break/framing checkbox can be closed.
+This completes the D5 placement/break/framing **operation boundary** for the supported ordinary single-tile slice: typed requests, one authoritative commit owner, bounded simple framing and separate replication are in production use. It is not a claim of full Terraria parity. Multi-tile placement, attachment/support rules, object metadata creation/destruction and complete visual framing families remain explicit capability gaps and must be added through the same boundary rather than packet-specific writes.
