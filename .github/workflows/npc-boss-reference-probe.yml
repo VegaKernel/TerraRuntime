@@ -26,7 +26,7 @@ jobs:
       - name: Decompile official TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
 
-      - name: Collect Eye of Cthulhu and Servant reference facts
+      - name: Collect boss NPC reference facts
         shell: bash
         run: |
           set -euo pipefail
@@ -37,6 +37,7 @@ jobs:
 
           python3 - "$npc_file" "$npc_id" <<'PY'
           import json
+          import math
           import pathlib
           import re
           import sys
@@ -62,10 +63,14 @@ jobs:
               raise SystemExit(f"body was truncated: {pattern}")
 
           names = {}
+          ids_by_name = {}
           for match in re.finditer(
               r"\b(?:public|internal)\s+const\s+(?:short|int)\s+(\w+)\s*=\s*(-?\d+)\s*;",
               id_text):
-              names.setdefault(int(match.group(2)), match.group(1))
+              name = match.group(1)
+              value = int(match.group(2))
+              names.setdefault(value, name)
+              ids_by_name.setdefault(name, value)
 
           fields = (
               "aiStyle", "width", "height", "damage", "defense", "lifeMax",
@@ -84,6 +89,11 @@ jobs:
 
           eye = defaults_for(4)
           servant = defaults_for(5)
+          king_id = ids_by_name.get("KingSlime")
+          if king_id is None:
+              raise SystemExit("KingSlime NPCID was not found")
+          king = defaults_for(king_id)
+
           ai = braced_body_after(r"\bif\s*\(aiStyle\s*==\s*4\s*\)")
           ai_summary = {
               "characters": len(ai),
@@ -96,9 +106,17 @@ jobs:
               "encourageDespawnCalls": ai.count("EncourageDespawn"),
           }
 
+          king_scale = float(king.get("scale", "1").rstrip("f"))
+          king_effective = {
+              "width": math.floor(int(king["width"]) * king_scale),
+              "height": math.floor(int(king["height"]) * king_scale),
+          }
+
           print("NPC_EYE_OF_CTHULHU_DEFAULTS=" + json.dumps(eye, sort_keys=True))
           print("NPC_SERVANT_OF_CTHULHU_DEFAULTS=" + json.dumps(servant, sort_keys=True))
           print("NPC_EYE_OF_CTHULHU_AI_SUMMARY=" + json.dumps(ai_summary, sort_keys=True))
+          print("NPC_KING_SLIME_DEFAULTS=" + json.dumps(king, sort_keys=True))
+          print("NPC_KING_SLIME_EFFECTIVE_HITBOX=" + json.dumps(king_effective, sort_keys=True))
 
           expected_eye = {
               "name": "EyeofCthulhu", "aiStyle": "4", "width": "100", "height": "110",
@@ -111,12 +129,22 @@ jobs:
               "damage": "12", "defense": "0", "lifeMax": "8",
               "noGravity": "true", "noTileCollide": "true"
           }
+          expected_king = {
+              "name": "KingSlime", "aiStyle": "15", "width": "98", "height": "92",
+              "damage": "40", "defense": "10", "lifeMax": "2000", "knockBackResist": "0f",
+              "scale": "1.25f", "boss": "true", "value": "10000f", "npcSlots": "5f"
+          }
           for key, expected in expected_eye.items():
               if eye.get(key) != expected:
                   raise SystemExit(f"Unexpected Eye of Cthulhu {key}: {eye.get(key)!r}")
           for key, expected in expected_servant.items():
               if servant.get(key) != expected:
                   raise SystemExit(f"Unexpected Servant of Cthulhu {key}: {servant.get(key)!r}")
+          for key, expected in expected_king.items():
+              if king.get(key) != expected:
+                  raise SystemExit(f"Unexpected King Slime {key}: {king.get(key)!r}")
+          if king_id != 50 or king_effective != {"width": 122, "height": 115}:
+              raise SystemExit(f"Unexpected King Slime identity/effective hitbox: id={king_id}, hitbox={king_effective!r}")
           if ai_summary["npcSpawnCalls"] < 1 or ai_summary["targetClosestCalls"] < 1:
               raise SystemExit(f"Unexpected Eye of Cthulhu AI summary: {ai_summary!r}")
           PY
