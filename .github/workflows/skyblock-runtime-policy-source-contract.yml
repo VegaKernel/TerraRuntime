@@ -82,6 +82,13 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.SceneMetrics "$assembly" > artifacts/source-contract/scene-metrics.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
 
+          echo '::group::SceneMetrics Skyblock threshold source'
+          grep -n -C 8 -E 'SnowTileThreshold|DesertTileThreshold|lowTiles|300|1500' artifacts/source-contract/scene-metrics.cs || true
+          echo '::endgroup::'
+          echo '::group::WorldGen Skyblock lowTiles source'
+          grep -n -C 8 -E 'lowTiles|skyblockWorld|GERunner|0\.1|10' artifacts/source-contract/world-gen.cs || true
+          echo '::endgroup::'
+
           python3 tools/ci/probe_skyblock_runtime_policy.py \
             --scene-metrics artifacts/source-contract/scene-metrics.cs \
             --world-gen artifacts/source-contract/world-gen.cs
