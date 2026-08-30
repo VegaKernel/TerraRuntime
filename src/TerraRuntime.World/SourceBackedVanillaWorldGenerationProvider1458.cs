@@ -85,7 +85,8 @@ internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
     public void Execute(IWorldGenerationContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        VanillaWorldSeedProfile1458 seedProfile = VanillaWorldSeedResolver1458.Resolve(in context.Request);
+        WorldGenerationRequest request = context.Request;
+        VanillaWorldSeedProfile1458 seedProfile = VanillaWorldSeedResolver1458.Resolve(in request);
         if (!seedProfile.IsDefault || !IsCanonicalWorldSize(context.Workspace.WidthTiles, context.Workspace.HeightTiles))
         {
             fallback.Execute(context);
