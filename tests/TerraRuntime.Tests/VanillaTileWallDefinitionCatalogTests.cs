@@ -32,6 +32,11 @@ public sealed class VanillaTileWallDefinitionCatalogTests
         Assert.False(dirt.CarriesContainerMetadata);
         Assert.False(dirt.CarriesSignMetadata);
 
+        Assert.Equal(2, VanillaTileIds.Grass.Value);
+        Assert.True(VanillaTileDefinitionCatalog.TryGet(VanillaTileIds.Grass, out VanillaTileDefinition grass));
+        Assert.True(grass.IsSolid);
+        Assert.False(grass.IsFrameImportant);
+
         Assert.True(VanillaTileDefinitionCatalog.TryGet(
             VanillaTileIds.Containers,
             out VanillaTileDefinition container));

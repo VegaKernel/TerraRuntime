@@ -119,6 +119,7 @@ public static class VanillaTileIds
 
     public static readonly TileTypeId Dirt = new(0);
     public static readonly TileTypeId Stone = new(1);
+    public static readonly TileTypeId Grass = new(2);
     public static readonly TileTypeId Platforms = new(19);
     public static readonly TileTypeId Containers = new(21);
     public static readonly TileTypeId Signs = new(55);

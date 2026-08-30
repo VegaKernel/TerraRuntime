@@ -261,9 +261,9 @@ Architecture движется к typed IDs/version-pinned metadata вместо 
 
 ## 21. Wiring, liquids и growth
 
-Liquids уже имеют explicit tile state и runtime work queue, persistable через warm snapshots.
+Wiring, liquid material и growth commits теперь имеют отдельные typed mutation boundaries. Liquids также имеют explicit runtime work queue, persistable через warm snapshots.
 
-Этот foundation не full vanilla liquid simulation. Wiring/actuation и growth/spread также incomplete.
+Эта декомпозиция не является full vanilla simulation. Circuit traversal/devices, liquid flow/reactions и families growth/spread rules остаются incomplete.
 
 Эти subsystems order-sensitive и могут затрагивать large world areas, поэтому implementation сочетает exact behavioral verification, global bounded per-tick work, deterministic owner-thread commits, dirty/replication tracking и save compatibility.
 

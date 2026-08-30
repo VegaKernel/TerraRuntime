@@ -243,7 +243,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 - [x] named tile state flags ([EN](../en/tile-state-flags.md), [RU](../ru/tile-state-flags.md));
 - [x] multi-tile object definitions ([EN](../en/tile-object-anchors.md), [RU](../ru/tile-object-anchors.md));
 - [x] placement/break/framing operations ([EN](../en/world-mutation-operations.md), [RU](../ru/world-mutation-operations.md));
-- [ ] wiring/liquids/growth decomposition;
+- [x] wiring/liquids/growth decomposition ([EN](../en/world-simulation-mutations.md), [RU](../ru/world-simulation-mutations.md));
 - [ ] remove raw tile/wall IDs and frame constants from unrelated handlers.
 
 ### D6 - Buffs, combat, loot and progression

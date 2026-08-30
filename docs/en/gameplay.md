@@ -261,9 +261,9 @@ These systems remain broad future work. New authoritative validation must not ac
 
 ## 21. Wiring, liquids and growth
 
-Liquids already have explicit tile state plus a runtime work queue that can be persisted through warm snapshots.
+Wiring, liquid material and growth commits now have separate typed mutation boundaries. Liquids also have an explicit runtime work queue that can be persisted through warm snapshots.
 
-That foundation is not full vanilla liquid simulation. Wiring/actuation and growth/spread also remain incomplete.
+That decomposition is not full vanilla simulation. Circuit traversal/devices, liquid flow/reactions and growth/spread rule families remain incomplete.
 
 These subsystems are order-sensitive and can touch large world areas, so their implementation must combine exact behavioral verification, global bounded per-tick work, deterministic owner-thread commits, dirty/replication tracking and save compatibility.
 
