@@ -22,14 +22,15 @@ public sealed class VanillaNpcBehaviorFamilyDispatchTests
     [Fact]
     public void Unknown_catalog_type_does_not_inherit_a_behavior_from_numeric_similarity()
     {
+        const int unknownType = 999;
         var inner = new RecordingStepper();
         var stepper = new VanillaNpcTargetingAiStepper(inner);
-        NpcSnapshot npc = CreateNpc(type: 4);
+        NpcSnapshot npc = CreateNpc(unknownType);
 
         Assert.True(stepper.TryStepState(in npc, out _));
 
         Assert.Equal(1, inner.Calls);
-        Assert.Equal(4, inner.Last.Type);
+        Assert.Equal(unknownType, inner.Last.Type);
     }
 
     [Fact]
