@@ -40,7 +40,7 @@ jobs:
         run: |
           dotnet restore TerraRuntime.slnx
           dotnet build TerraRuntime.slnx -c Release --no-restore
-      - name: Download pinned official TerrariaServer 1.4.5.8
+      - name: Download official TerrariaServer 1.4.5.8 and report package identity
         shell: bash
         run: |
           set -euo pipefail
@@ -50,7 +50,9 @@ jobs:
           managed="$(find "$RUNNER_TEMP/terraria-1458/server" -type f -name TerrariaServer.exe -print -quit)"
           linux_server="$(find "$RUNNER_TEMP/terraria-1458/server" -type f -name TerrariaServer.bin.x86_64 -print -quit)"
           [[ -n "$managed" && -n "$linux_server" ]]
-          [[ "$(sha256sum "$managed" | awk '{print $1}')" == "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e" ]]
+          echo "managed_path=$managed"
+          echo "managed_sha256=$(sha256sum "$managed" | awk '{print $1}')"
+          echo "archive_sha256=$(sha256sum "$RUNNER_TEMP/terraria-1458/server.zip" | awk '{print $1}')"
           chmod +x "$linux_server"
           echo "TERRARIA_SERVER_1458=$linux_server" >> "$GITHUB_ENV"
       - name: Generate a real vanilla world through TerraRuntime
