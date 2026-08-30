@@ -134,7 +134,7 @@ public sealed class VanillaMultiTileObjectMutationService
         // are deterministic, in-bounds single-writer operations and therefore cannot fail through gameplay policy.
         metadata.CommitCreate(in descriptor);
         int changed = CommitPlacement(in descriptor);
-        MarkFrameNeighborhoodDirty(in descriptor.Bounds);
+        MarkFrameNeighborhoodDirty(descriptor.Bounds);
         return new VanillaMultiTileObjectMutationResult(
             VanillaMultiTileObjectMutationStatus.Applied,
             descriptor,
@@ -159,7 +159,7 @@ public sealed class VanillaMultiTileObjectMutationService
 
         metadata.CommitRemove(in descriptor);
         int changed = CommitBreak(in descriptor);
-        MarkFrameNeighborhoodDirty(in descriptor.Bounds);
+        MarkFrameNeighborhoodDirty(descriptor.Bounds);
         return new VanillaMultiTileObjectMutationResult(
             VanillaMultiTileObjectMutationStatus.Applied,
             descriptor,
