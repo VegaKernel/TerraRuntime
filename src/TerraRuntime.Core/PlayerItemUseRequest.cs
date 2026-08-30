@@ -25,7 +25,8 @@ public readonly record struct PlayerItemUseRequest(
         !ItemType.IsNone &&
         VanillaItemIds.TryCreate(ItemType.Value, out ItemTypeId canonical) &&
         canonical == ItemType &&
-        Prefix.Value <= byte.MaxValue;
+        VanillaPrefixIds.TryCreate(Prefix.Value, out PrefixId canonicalPrefix) &&
+        canonicalPrefix == Prefix;
 }
 
 /// <summary>

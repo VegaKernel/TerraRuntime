@@ -375,7 +375,10 @@ public sealed class RuntimeServerPlayerStateStore
 
         if (item.IsEmpty)
         {
-            if (!item.ItemType.IsNone || item.Stack != 0 || item.Prefix.Value != 0 || item.ItemFlags != 0)
+            if (!item.ItemType.IsNone ||
+                item.Stack != 0 ||
+                item.Prefix != VanillaPrefixIds.None ||
+                item.ItemFlags != 0)
             {
                 normalized = default;
                 return false;
@@ -386,7 +389,8 @@ public sealed class RuntimeServerPlayerStateStore
         }
 
         if (item.Stack <= 0 ||
-            item.Prefix.Value > byte.MaxValue ||
+            !VanillaPrefixIds.TryCreate(item.Prefix.Value, out PrefixId canonicalPrefix) ||
+            canonicalPrefix != item.Prefix ||
             !VanillaItemIds.TryCreate(item.ItemType.Value, out ItemTypeId canonical) ||
             canonical != item.ItemType)
         {

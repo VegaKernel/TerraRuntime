@@ -86,8 +86,9 @@ public static class VanillaBuffIds
 public static class VanillaPrefixIds
 {
     public const int Count = 98;
+    public const byte NoneValue = 0;
 
-    public static readonly PrefixId None = new(0);
+    public static readonly PrefixId None = new(NoneValue);
     public static readonly PrefixId Tiny = new(7);
     public static readonly PrefixId Terrible = new(8);
     public static readonly PrefixId Small = new(9);

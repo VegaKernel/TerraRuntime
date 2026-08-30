@@ -1,10 +1,12 @@
+using TerraRuntime.World;
+
 namespace TerraRuntime.Operations;
 
 internal readonly record struct RuntimeWorldClockTelemetrySnapshot(
     bool Available,
     double Time,
     bool DayTime,
-    byte MoonPhase,
+    VanillaMoonPhase MoonPhase,
     double SlimeRainTime,
     int DayRate);
 
@@ -17,14 +19,14 @@ internal sealed class RuntimeWorldClockOperationsTelemetry : IRuntimeWorldClockO
     private long sequence;
     private double time;
     private bool dayTime;
-    private byte moonPhase;
+    private VanillaMoonPhase moonPhase;
     private double slimeRainTime;
     private int dayRate;
 
     public void WorldClockCommitted(
         double time,
         bool dayTime,
-        byte moonPhase,
+        VanillaMoonPhase moonPhase,
         double slimeRainTime,
         int dayRate)
     {
@@ -47,7 +49,7 @@ internal sealed class RuntimeWorldClockOperationsTelemetry : IRuntimeWorldClockO
 
             double capturedTime = time;
             bool capturedDayTime = dayTime;
-            byte capturedMoonPhase = moonPhase;
+            VanillaMoonPhase capturedMoonPhase = moonPhase;
             double capturedSlimeRainTime = slimeRainTime;
             int capturedDayRate = dayRate;
             Thread.MemoryBarrier();

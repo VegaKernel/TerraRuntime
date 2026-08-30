@@ -19,14 +19,14 @@ internal sealed class RuntimeWorldClock
     public RuntimeWorldClock(
         double time,
         bool dayTime,
-        byte moonPhase,
+        VanillaMoonPhase moonPhase,
         double slimeRainTime,
         int dayRate,
         IRuntimeWorldClockObserver? observer = null)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
-        if (moonPhase >= 8)
+        if (!Enum.IsDefined(moonPhase))
             throw new ArgumentOutOfRangeException(nameof(moonPhase));
         if (!double.IsFinite(slimeRainTime))
             throw new ArgumentOutOfRangeException(nameof(slimeRainTime));
@@ -45,7 +45,7 @@ internal sealed class RuntimeWorldClock
 
     public bool DayTime { get; private set; }
 
-    public byte MoonPhase { get; private set; }
+    public VanillaMoonPhase MoonPhase { get; private set; }
 
     public double SlimeRainTime { get; private set; }
 
@@ -61,12 +61,15 @@ internal sealed class RuntimeWorldClock
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(creativePowers);
 
+        if (!VanillaMoonPhases.TryCreate(metadata.MoonPhase, out VanillaMoonPhase moonPhase))
+            throw new InvalidDataException($"Unknown persisted moon phase {metadata.MoonPhase}.");
+
         int targetTimeRate = (int)Math.Round(1f + creativePowers.TimeRateSlider * 23f);
         int dayRate = creativePowers.FreezeTime ? 0 : targetTimeRate;
         return new RuntimeWorldClock(
             metadata.Time,
             metadata.DayTime,
-            metadata.MoonPhase,
+            moonPhase,
             metadata.SlimeRainTime,
             dayRate,
             observer);
@@ -106,9 +109,7 @@ internal sealed class RuntimeWorldClock
             {
                 Time = 0d;
                 DayTime = true;
-                MoonPhase++;
-                if (MoonPhase >= 8)
-                    MoonPhase = 0;
+                MoonPhase = VanillaMoonPhases.Next(MoonPhase);
             }
         }
         else if (Time > DayLength)

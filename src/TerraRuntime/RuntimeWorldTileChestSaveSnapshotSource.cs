@@ -5,7 +5,7 @@ namespace TerraRuntime;
 internal readonly record struct RuntimeWorldClockSaveState(
     double Time,
     bool DayTime,
-    byte MoonPhase,
+    VanillaMoonPhase MoonPhase,
     double SlimeRainTime);
 
 /// <summary>

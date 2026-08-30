@@ -31,16 +31,23 @@ internal readonly record struct RuntimePlayerInventoryItem(
 
     public bool IsCanonical =>
         IsEmpty
-            ? ItemType.IsNone && Stack <= 0 && Prefix.Value == 0 && ItemFlags == 0
+            ? ItemType.IsNone && Stack <= 0 && Prefix == VanillaPrefixIds.None && ItemFlags == 0
             : VanillaItemDefinitionCatalog.IsValidKnownStack(ItemType, Stack) &&
               !ItemType.IsNone &&
               VanillaItemIds.TryCreate(ItemType.Value, out ItemTypeId canonical) &&
               canonical == ItemType &&
-              Prefix.Value <= byte.MaxValue;
+              VanillaPrefixIds.TryCreate(Prefix.Value, out PrefixId canonicalPrefix) &&
+              canonicalPrefix == Prefix;
 
     public PlayerEquipmentCommitRequest ToCommitRequest(PlayerSlotId player, short slot) =>
         IsEmpty
-            ? new PlayerEquipmentCommitRequest(player, slot, Stack: 0, Prefix: 0, ItemNetId: 0, ItemFlags: 0)
+            ? new PlayerEquipmentCommitRequest(
+                player,
+                slot,
+                Stack: 0,
+                Prefix: VanillaPrefixIds.NoneValue,
+                ItemNetId: 0,
+                ItemFlags: 0)
             : new PlayerEquipmentCommitRequest(
                 player,
                 slot,

@@ -1,3 +1,5 @@
+using TerraRuntime.World;
+
 namespace TerraRuntime;
 
 /// <summary>
@@ -9,7 +11,7 @@ internal interface IRuntimeWorldClockObserver
     void WorldClockCommitted(
         double time,
         bool dayTime,
-        byte moonPhase,
+        VanillaMoonPhase moonPhase,
         double slimeRainTime,
         int dayRate);
 }

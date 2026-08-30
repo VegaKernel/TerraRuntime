@@ -130,6 +130,22 @@ RULES = (
         ),
         "non-empty item net IDs must cross from a named item catalog or validated boundary value",
     ),
+    Rule(
+        "raw-prefix-none-literal",
+        re.compile(
+            r"(?:\b\w+\s*\.\s*Prefix(?:\s*\.\s*Value)?\s*(?:==|!=)\s*0\b|\bPrefix\s*:\s*0\b)",
+            re.IGNORECASE,
+        ),
+        "prefix absence must use VanillaPrefixIds.None/NoneValue rather than a raw zero",
+    ),
+    Rule(
+        "raw-moon-phase-decision",
+        re.compile(
+            rf"\bmoonPhase\s*(?:==|!=|<=|>=|<|>)\s*{NUMBER}\b",
+            re.IGNORECASE,
+        ),
+        "moon phase decisions must use VanillaMoonPhase/VanillaMoonPhases rather than a raw range literal",
+    ),
 )
 
 SUPPRESSION = "gameplay-domain-literal-audit: allow"
@@ -298,6 +314,9 @@ def run_self_test() -> None:
         "private const int AmmoSlotStart = 54;": "raw-player-inventory-slot-literal",
         "if (inventorySlot >= 59) return;": "raw-player-inventory-slot-literal",
         "var state = new Drop(ItemNetId: 71);": "raw-item-net-id-literal",
+        "if (item.Prefix.Value != 0) return;": "raw-prefix-none-literal",
+        "var state = new Drop(Prefix: 0);": "raw-prefix-none-literal",
+        "if (moonPhase >= 8) return;": "raw-moon-phase-decision",
     }
     for source, expected in fixtures.items():
         hits = [rule.name for rule in RULES if rule.pattern.search(strip_comments_and_literals(source))]
@@ -312,6 +331,8 @@ def run_self_test() -> None:
         "var velocity = request.MovementFlags & VanillaPlayerMovementNormalizer.MovementVelocityPresentFlag;\n"
         "if (inventorySlot >= VanillaPlayerItemSlotCatalog.InventoryEndExclusive) return;\n"
         "var item = new Drop(ItemNetId: checked((short)VanillaItemIds.DirtBlock.Value));\n"
+        "if (item.Prefix != VanillaPrefixIds.None) return;\n"
+        "var phase = VanillaMoonPhases.Next(VanillaMoonPhase.Full);\n"
         "// if (npc.Type == 3) this example must be ignored\n"
         "var text = \"projectile.Type == 2\";\n"
     )

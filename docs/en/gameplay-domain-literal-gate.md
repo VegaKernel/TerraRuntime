@@ -15,6 +15,8 @@ The audit rejects these forms outside those boundaries:
 - direct numeric bit operations on semantic `Flags`, `ControlFlags`, `StateFlags`, `WireFlags` or `Bits` values.
 - raw player-inventory subrange constants/comparisons such as `AmmoSlotStart = 54` or `inventorySlot >= 59`; these belong to `VanillaPlayerItemSlotCatalog`.
 - non-empty numeric `ItemNetId` construction/comparisons in gameplay-owned code; named `VanillaItemIds`/item facts or a validated boundary value must supply them.
+- raw zero checks/construction for prefix absence; gameplay uses `VanillaPrefixIds.None` and primitive boundaries use `NoneValue`.
+- raw moon-phase range decisions; runtime time logic uses `VanillaMoonPhase` and `VanillaMoonPhases`.
 
 Comments, string literals and character literals are stripped before matching, so documentation/examples do not become fake violations.
 

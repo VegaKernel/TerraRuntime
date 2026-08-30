@@ -55,7 +55,7 @@ public sealed class ServerRuntimeBlueSlimeAiTests
         var clock = new RuntimeWorldClock(
             time: RuntimeWorldClock.NightLength,
             dayTime: false,
-            moonPhase: 2,
+            moonPhase: VanillaMoonPhase.HalfAtLeft,
             slimeRainTime: 0d,
             dayRate: 1);
         var state = new ServerRuntimeState(worldTiles: tiles, worldClock: clock);
@@ -84,7 +84,7 @@ public sealed class ServerRuntimeBlueSlimeAiTests
         Assert.Equal(2f, updated.VelocityX, 5);
         Assert.True(clock.DayTime);
         Assert.Equal(0d, clock.Time);
-        Assert.Equal((byte)3, clock.MoonPhase);
+        Assert.Equal(VanillaMoonPhase.QuarterAtLeft, clock.MoonPhase);
     }
 
     [Fact]

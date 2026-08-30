@@ -253,7 +253,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 - [x] loot rules ([EN](../en/npc-loot-rules.md), [RU](../ru/npc-loot-rules.md));
 - [x] event/progression IDs/state ([EN](../en/world-progression-events.md), [RU](../ru/world-progression-events.md));
 - [x] biome/zone semantics ([EN](../en/world-zone-semantics.md), [RU](../ru/world-zone-semantics.md));
-- [ ] remove remaining cross-subsystem magic values.
+- [x] remove remaining cross-subsystem magic values ([EN](../en/gameplay-domain-literal-gate.md), [RU](../ru/gameplay-domain-literal-gate.md)).
 
 ### D7 - Enforcement
 

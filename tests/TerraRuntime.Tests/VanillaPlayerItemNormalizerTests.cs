@@ -100,6 +100,20 @@ public sealed class VanillaPlayerItemNormalizerTests
     }
 
     [Fact]
+    public void Unknown_prefix_normalizes_to_named_none()
+    {
+        PlayerEquipmentCommitRequest request = Request(stack: 1, itemNetId: 1, flags: 0) with
+        {
+            Prefix = checked((byte)VanillaPrefixIds.Count)
+        };
+
+        PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
+
+        Assert.Equal(VanillaPrefixIds.NoneValue, normalized.Prefix);
+        Assert.Equal(VanillaPrefixIds.None, normalized.PrefixId);
+    }
+
+    [Fact]
     public void Nonempty_none_identity_is_not_canonical()
     {
         PlayerEquipmentCommitRequest request = Request(stack: 1, itemNetId: 0, flags: 0);

@@ -260,7 +260,7 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
                 sourceHeader,
                 clock.Time,
                 clock.DayTime,
-                clock.MoonPhase,
+                (byte)clock.MoonPhase,
                 clock.SlimeRainTime,
                 out patchedHeader);
             if (patchResult != WorldFileClockHeaderPatchResult.Patched)

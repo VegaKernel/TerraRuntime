@@ -10,7 +10,7 @@ public sealed class RuntimeWorldClockTests
         var clock = new RuntimeWorldClock(
             time: RuntimeWorldClock.DayLength,
             dayTime: true,
-            moonPhase: 3,
+            moonPhase: VanillaMoonPhase.QuarterAtLeft,
             slimeRainTime: 0d,
             dayRate: 1);
 
@@ -18,7 +18,7 @@ public sealed class RuntimeWorldClockTests
 
         Assert.False(clock.DayTime);
         Assert.Equal(0d, clock.Time);
-        Assert.Equal((byte)3, clock.MoonPhase);
+        Assert.Equal(VanillaMoonPhase.QuarterAtLeft, clock.MoonPhase);
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public sealed class RuntimeWorldClockTests
         var clock = new RuntimeWorldClock(
             time: RuntimeWorldClock.NightLength,
             dayTime: false,
-            moonPhase: 7,
+            moonPhase: VanillaMoonPhase.ThreeQuartersAtRight,
             slimeRainTime: 0d,
             dayRate: 1);
 
@@ -35,7 +35,7 @@ public sealed class RuntimeWorldClockTests
 
         Assert.True(clock.DayTime);
         Assert.Equal(0d, clock.Time);
-        Assert.Equal((byte)0, clock.MoonPhase);
+        Assert.Equal(VanillaMoonPhase.Full, clock.MoonPhase);
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class RuntimeWorldClockTests
         var clock = new RuntimeWorldClock(
             time: 1234d,
             dayTime: true,
-            moonPhase: 2,
+            moonPhase: VanillaMoonPhase.HalfAtLeft,
             slimeRainTime: 50d,
             dayRate: 0);
 
@@ -61,7 +61,7 @@ public sealed class RuntimeWorldClockTests
         var clock = new RuntimeWorldClock(
             time: 100d,
             dayTime: true,
-            moonPhase: 2,
+            moonPhase: VanillaMoonPhase.HalfAtLeft,
             slimeRainTime: 3d,
             dayRate: 4);
 
@@ -78,7 +78,7 @@ public sealed class RuntimeWorldClockTests
         var clock = new RuntimeWorldClock(
             time: 100d,
             dayTime: true,
-            moonPhase: 2,
+            moonPhase: VanillaMoonPhase.HalfAtLeft,
             slimeRainTime: -3d,
             dayRate: 4);
 
@@ -110,7 +110,7 @@ public sealed class RuntimeWorldClockTests
         Assert.Equal(12, clock.DayRate);
         Assert.Equal(123d, clock.Time);
         Assert.False(clock.DayTime);
-        Assert.Equal((byte)5, clock.MoonPhase);
+        Assert.Equal(VanillaMoonPhase.QuarterAtRight, clock.MoonPhase);
         Assert.Equal(42d, clock.SlimeRainTime);
     }
 

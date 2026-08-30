@@ -1,3 +1,5 @@
+using TerraRuntime.World;
+
 namespace TerraRuntime.Operations;
 
 internal readonly record struct RuntimeWorldPersistenceSnapshot(
@@ -51,7 +53,7 @@ internal readonly record struct RuntimeWorldSnapshot(
     bool RuntimeClockAvailable = false,
     double RuntimeTime = 0d,
     bool RuntimeDayTime = false,
-    byte RuntimeMoonPhase = 0,
+    VanillaMoonPhase RuntimeMoonPhase = VanillaMoonPhase.Full,
     double RuntimeSlimeRainTime = 0d,
     int RuntimeDayRate = 0,
     bool SectionCacheAvailable = false,

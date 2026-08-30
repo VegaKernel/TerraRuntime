@@ -3,6 +3,7 @@ using System.Text;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
+using TerraRuntime.World;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
@@ -529,7 +530,7 @@ internal static class TerminalUiSmoke
                 RuntimeClockAvailable: true,
                 RuntimeTime: 12_345d,
                 RuntimeDayTime: true,
-                RuntimeMoonPhase: 2,
+                RuntimeMoonPhase: VanillaMoonPhase.HalfAtLeft,
                 RuntimeSlimeRainTime: 300d,
                 RuntimeDayRate: 1,
                 SectionCacheAvailable: true,

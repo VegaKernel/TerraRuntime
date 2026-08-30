@@ -16,6 +16,10 @@ TerraRuntime проецирует validated `.wld` runtime metadata в gameplay-
 
 `VanillaWorldEventState` отдельно предоставляет activity Blood Moon, Eclipse, Slime Rain, Party, Lantern Night, Sandstorm, Halloween и Christmas. Persistence variants manual/genuine и today/forever нормализуются в один semantic active state.
 
+## Идентичность времени мира
+
+`VanillaMoonPhase` именует точный восьмизначный цикл фаз луны Terraria 1.4.5.8. `VanillaMoonPhases` валидирует persistence primitives и владеет переходом через конец цикла, поэтому authoritative runtime clock не сравнивает и не сбрасывает необъяснённые raw phase numbers. Типизированное значение снова преобразуется в byte только на границе patch world-файла.
+
 ## Capability boundary
 
 Эти types завершают identity/state decomposition, а не full event simulation. Условия start/stop, waves, spawn pools, rewards, world transitions, announcements и replication остаются отдельными source-backed implementations. Чтение completed milestone само по себе не предоставляет эти gameplay consequences.

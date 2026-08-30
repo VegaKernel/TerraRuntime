@@ -84,7 +84,7 @@ internal sealed class RuntimeNpcShopPurchaseExecutor
 
             // Packet 5 carries a signed-short stack, but that transport capacity is not a money mint. Reject coin
             // stacks outside vanilla bounds and prefixed coin states before they enter purchasing power.
-            if (!VanillaCoinFacts.IsValidStack(item.ItemType, item.Stack) || item.Prefix.Value != 0)
+            if (!VanillaCoinFacts.IsValidStack(item.ItemType, item.Stack) || item.Prefix != VanillaPrefixIds.None)
                 return NpcShopPurchaseResult.InvalidCurrencyState;
 
             totalCoinValue = checked(totalCoinValue + checked(coinValue * item.Stack));

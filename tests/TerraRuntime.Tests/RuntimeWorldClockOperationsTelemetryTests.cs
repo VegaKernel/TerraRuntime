@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Operations;
+using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
@@ -14,7 +15,7 @@ public sealed class RuntimeWorldClockOperationsTelemetryTests
         var clock = new RuntimeWorldClock(
             time: 120d,
             dayTime: true,
-            moonPhase: 3,
+            moonPhase: VanillaMoonPhase.QuarterAtLeft,
             slimeRainTime: 30d,
             dayRate: 2,
             observer: telemetry);
@@ -24,7 +25,7 @@ public sealed class RuntimeWorldClockOperationsTelemetryTests
         Assert.True(initial.RuntimeClockAvailable);
         Assert.Equal(120d, initial.RuntimeTime);
         Assert.True(initial.RuntimeDayTime);
-        Assert.Equal((byte)3, initial.RuntimeMoonPhase);
+        Assert.Equal(VanillaMoonPhase.QuarterAtLeft, initial.RuntimeMoonPhase);
         Assert.Equal(30d, initial.RuntimeSlimeRainTime);
         Assert.Equal(2, initial.RuntimeDayRate);
 
@@ -33,7 +34,7 @@ public sealed class RuntimeWorldClockOperationsTelemetryTests
         RuntimeWorldSnapshot ticked = operations.CaptureSnapshot();
         Assert.Equal(122d, ticked.RuntimeTime);
         Assert.True(ticked.RuntimeDayTime);
-        Assert.Equal((byte)3, ticked.RuntimeMoonPhase);
+        Assert.Equal(VanillaMoonPhase.QuarterAtLeft, ticked.RuntimeMoonPhase);
         Assert.Equal(28d, ticked.RuntimeSlimeRainTime);
         Assert.Equal(2, ticked.RuntimeDayRate);
 

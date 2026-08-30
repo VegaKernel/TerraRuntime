@@ -184,7 +184,7 @@ public sealed class RuntimeWorldTileChestSaveServiceTests
         var clock = new RuntimeWorldClock(
             time: 12_345d,
             dayTime: false,
-            moonPhase: 5,
+            moonPhase: VanillaMoonPhase.QuarterAtRight,
             slimeRainTime: -321d,
             dayRate: 0);
 

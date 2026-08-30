@@ -32,7 +32,7 @@ public static class VanillaPlayerItemNormalizer
             return request with
             {
                 Stack = 0,
-                Prefix = 0,
+                Prefix = VanillaPrefixIds.NoneValue,
                 ItemNetId = 0,
                 ItemFlags = 0
             };
@@ -40,6 +40,9 @@ public static class VanillaPlayerItemNormalizer
 
         return request with
         {
+            Prefix = VanillaPrefixIds.TryCreate(request.Prefix, out _)
+                ? request.Prefix
+                : VanillaPrefixIds.NoneValue,
             ItemNetId = checked((short)itemType.Value),
             ItemFlags = (byte)(request.ItemFlags & FavoriteItemFlag)
         };

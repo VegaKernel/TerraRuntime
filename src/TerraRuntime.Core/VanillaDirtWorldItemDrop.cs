@@ -33,7 +33,7 @@ public static class VanillaDirtWorldItemDrop
             VelocityX: velocityX,
             VelocityY: velocityY,
             Stack: 1,
-            Prefix: 0,
+            Prefix: VanillaPrefixIds.NoneValue,
             Ownership: WorldItemOwnershipMode.None,
             ItemNetId: checked((short)VanillaItemIds.DirtBlock.Value),
             Shimmered: false,

@@ -15,6 +15,8 @@ TerraRuntime считает числовую Terraria identity данными г
 - прямые числовые битовые операции над семантическими `Flags`, `ControlFlags`, `StateFlags`, `WireFlags` или `Bits`.
 - raw constants/comparisons поддиапазонов player inventory, например `AmmoSlotStart = 54` или `inventorySlot >= 59`; ими владеет `VanillaPlayerItemSlotCatalog`.
 - создание/сравнение непустого числового `ItemNetId` в gameplay-owned коде; значение должно приходить из named `VanillaItemIds`/item facts или validated boundary.
+- raw zero checks/construction для отсутствующего prefix; gameplay использует `VanillaPrefixIds.None`, primitive boundaries — `NoneValue`.
+- raw moon-phase range decisions; runtime time logic использует `VanillaMoonPhase` и `VanillaMoonPhases`.
 
 Комментарии, строковые и символьные литералы перед проверкой вырезаются, поэтому примеры в документации не превращаются в ложные нарушения.
 
