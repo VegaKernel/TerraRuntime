@@ -18,7 +18,7 @@ concurrency:
 jobs:
   micro-biomes-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
@@ -49,9 +49,63 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -l c "$assembly" > artifacts/source-contract/classes.txt
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
 
+          resource_probe=.tools/resource-probe
+          mkdir -p "$resource_probe"
+          cat > "$resource_probe/resource-probe.csproj" <<'EOF'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <OutputType>Exe</OutputType>
+              <TargetFramework>net11.0</TargetFramework>
+              <ImplicitUsings>enable</ImplicitUsings>
+              <Nullable>enable</Nullable>
+            </PropertyGroup>
+          </Project>
+          EOF
+          cat > "$resource_probe/Program.cs" <<'EOF'
+          using System.Buffers.Binary;
+          using System.Reflection.Metadata;
+          using System.Reflection.PortableExecutable;
+
+          if (args.Length != 3)
+              return 2;
+          using FileStream assemblyStream = File.OpenRead(Path.GetFullPath(args[0]));
+          using var peReader = new PEReader(assemblyStream);
+          if (!peReader.HasMetadata || peReader.PEHeaders.CorHeader is null)
+              return 3;
+          MetadataReader metadata = peReader.GetMetadataReader();
+          ManifestResource resource = default;
+          bool found = false;
+          foreach (ManifestResourceHandle handle in metadata.ManifestResources)
+          {
+              ManifestResource candidate = metadata.GetManifestResource(handle);
+              if (!string.Equals(metadata.GetString(candidate.Name), args[1], StringComparison.Ordinal))
+                  continue;
+              if (!candidate.Implementation.IsNil)
+                  return 4;
+              resource = candidate;
+              found = true;
+              break;
+          }
+          if (!found)
+              return 5;
+          int resourcesRva = peReader.PEHeaders.CorHeader.ResourcesDirectory.RelativeVirtualAddress;
+          int resourceRva = checked(resourcesRva + checked((int)resource.Offset));
+          PEMemoryBlock block = peReader.GetSectionData(resourceRva);
+          int length = BinaryPrimitives.ReadInt32LittleEndian(block.GetContent(0, sizeof(int)).ToArray());
+          if (length < 0)
+              return 6;
+          File.WriteAllBytes(args[2], block.GetContent(sizeof(int), length).ToArray());
+          return 0;
+          EOF
+          dotnet run --project "$resource_probe/resource-probe.csproj" -c Release -- \
+            "$assembly" \
+            Terraria.GameContent.WorldBuilding.Configuration.json \
+            "$GITHUB_WORKSPACE/artifacts/source-contract/worldgen-configuration.json"
+
           python3 tools/ci/probe_worldgen_micro_biomes.py \
             --world-gen artifacts/source-contract/world-gen.cs \
             --classes artifacts/source-contract/classes.txt \
+            --configuration artifacts/source-contract/worldgen-configuration.json \
             --output artifacts/source-contract/micro-biomes-contract.txt
 
       - name: Upload Micro Biomes evidence

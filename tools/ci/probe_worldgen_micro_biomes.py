@@ -9,13 +9,23 @@ METHOD_PATTERN = re.compile(
     re.MULTILINE,
 )
 
+CONFIG_KEYS = [
+    "DeadManChests",
+    "ThinIcePatchCount",
+    "SwordShrineAttempts",
+    "SwordShrinePlacementChance",
+    "CampsiteCount",
+    "ExplosiveTrapCount",
+    "LivingTreeCount",
+    "LongTrackCount",
+    "LongTrackLength",
+    "StandardTrackCount",
+    "StandardTrackLength",
+]
+
 
 def compact(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
-
-
-def method_name(signature: str) -> str:
-    return signature.split("(", 1)[0].rsplit(" ", 1)[-1]
 
 
 def extract_method(source: str, signature: str) -> str:
@@ -59,12 +69,8 @@ def extract_invocations(method: str, callee: str) -> list[str]:
     pattern = re.compile(rf"\b{re.escape(callee)}\s*\(")
     for match in pattern.finditer(method):
         open_paren = method.find("(", match.start())
-        depth = 0
-        brace_depth = 0
-        bracket_depth = 0
-        in_string = False
-        in_char = False
-        escaped = False
+        depth = brace_depth = bracket_depth = 0
+        in_string = in_char = escaped = False
         for index in range(open_paren, len(method)):
             ch = method[index]
             if escaped:
@@ -81,21 +87,16 @@ def extract_invocations(method: str, callee: str) -> list[str]:
                 continue
             if in_string or in_char:
                 continue
-            if ch == "(":
-                depth += 1
+            if ch == "(": depth += 1
             elif ch == ")":
                 depth -= 1
                 if depth == 0 and brace_depth == 0 and bracket_depth == 0:
                     result.append(method[open_paren + 1:index])
                     break
-            elif ch == "{":
-                brace_depth += 1
-            elif ch == "}":
-                brace_depth -= 1
-            elif ch == "[":
-                bracket_depth += 1
-            elif ch == "]":
-                bracket_depth -= 1
+            elif ch == "{": brace_depth += 1
+            elif ch == "}": brace_depth -= 1
+            elif ch == "[": bracket_depth += 1
+            elif ch == "]": bracket_depth -= 1
         else:
             raise SystemExit(f"Unterminated {callee}(...) invocation")
     return result
@@ -105,9 +106,7 @@ def split_top_level(arguments: str) -> list[str]:
     result = []
     start = 0
     paren = bracket = brace = 0
-    in_string = False
-    in_char = False
-    escaped = False
+    in_string = in_char = escaped = False
     for index, ch in enumerate(arguments):
         if escaped:
             escaped = False
@@ -136,10 +135,51 @@ def split_top_level(arguments: str) -> list[str]:
     return result
 
 
+def extract_config_expression(text: str, key: str) -> str:
+    match = re.search(rf'(?m)^[ \t]*["\']?{re.escape(key)}["\']?[ \t]*:[ \t]*', text)
+    if match is None:
+        raise SystemExit(f"Pinned configuration is missing {key}")
+    start = match.end()
+    while start < len(text) and text[start].isspace():
+        start += 1
+    if start >= len(text):
+        raise SystemExit(f"Pinned configuration value for {key} is empty")
+    if text[start] not in "{[":
+        end = start
+        while end < len(text) and text[end] not in ",\r\n":
+            end += 1
+        return compact(text[start:end])
+    opening = text[start]
+    closing = "}" if opening == "{" else "]"
+    depth = 0
+    in_string = escaped = False
+    for index in range(start, len(text)):
+        ch = text[index]
+        if escaped:
+            escaped = False
+            continue
+        if ch == "\\" and in_string:
+            escaped = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == opening:
+            depth += 1
+        elif ch == closing:
+            depth -= 1
+            if depth == 0:
+                return compact(text[start:index + 1])
+    raise SystemExit(f"Pinned configuration block for {key} did not terminate")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Inspect pinned TerrariaServer 1.4.5.8 Micro Biomes pass implementation.")
     parser.add_argument("--world-gen", required=True)
     parser.add_argument("--classes", required=True)
+    parser.add_argument("--configuration", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -173,6 +213,10 @@ def main() -> int:
         if text and ("biome" in lowered or "trackgenerator" in lowered) and ("gamecontent" in lowered or "generation" in lowered):
             biome_classes.append(text)
 
+    config_raw = Path(args.configuration).read_bytes()
+    config_text = config_raw.decode("utf-8-sig")
+    config_values = {key: extract_config_expression(config_text, key) for key in CONFIG_KEYS}
+
     lines = [
         "source=TerrariaServer 1.4.5.8",
         "decompiler=ilspycmd 11.0.0.9375",
@@ -183,13 +227,17 @@ def main() -> int:
         f"micro_biomes_candidate_types={'|'.join(candidate_types)}",
         f"micro_biomes_member_calls={'|'.join(member_calls)}",
         f"micro_biomes_numeric_literals={'|'.join(numeric_literals)}",
+        f"WorldGenConfiguration_sha256={hashlib.sha256(config_raw).hexdigest()}",
+    ]
+    lines.extend(f"micro_biomes_config_{key}={value}" for key, value in config_values.items())
+    lines.extend([
         "BEGIN_MICRO_BIOMES_REGISTRATION",
         compact_invocation,
         "END_MICRO_BIOMES_REGISTRATION",
         "BEGIN_BIOME_CLASS_CATALOG",
         *biome_classes,
         "END_BIOME_CLASS_CATALOG",
-    ]
+    ])
     for line in lines:
         print(line)
 
