@@ -258,7 +258,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 ### D7 - Enforcement
 
 - [ ] CI audit for prohibited raw IDs/masks;
-- [ ] architecture tests;
+- [x] architecture tests ([EN](../en/architecture-gates.md), [RU](../ru/architecture-gates.md));
 - [ ] optional Roslyn analyzer if textual enforcement is insufficient;
 - [ ] document intentional remaining raw values and ownership.
 
