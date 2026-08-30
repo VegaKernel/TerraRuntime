@@ -20,7 +20,7 @@ internal static class OfficialVanillaWorldGenerator1458
     internal const string Version = "1.4.5.8";
     internal const string GeneratorIdValue = "terraruntime:vanilla";
     internal const string DownloadUrl = "https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip";
-    internal const string ExpectedManagedServerSha256 = "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e";
+    internal const string ExpectedManagedServerSha256 = "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034";
     internal const string ServerPathEnvironmentVariable = "TERRARUNTIME_TERRARIA_SERVER_1458";
 
     private static readonly HttpClient Http = new();
