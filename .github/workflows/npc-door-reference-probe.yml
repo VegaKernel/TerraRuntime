@@ -1,0 +1,130 @@
+name: NPC Door Reference Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/npc-door-reference-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npc-door-reference:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Decompile official TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+
+      - name: Extract AI_003 door contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="artifacts/reference-1458-npc-door"
+          mkdir -p "$out"
+
+          find_ref() {
+            local filename="$1"
+            local class_pattern="$2"
+            local src
+            src="$(find decompiled/1458 -type f -name "$filename" -print -quit)"
+            if [[ -z "$src" ]]; then
+              src="$(grep -RIl --include='*.cs' "$class_pattern" decompiled/1458 | head -n 1 || true)"
+            fi
+            test -n "$src"
+            echo "$src"
+          }
+
+          npc_file="$(find_ref 'NPC.cs' 'class NPC')"
+          world_gen="$(find_ref 'WorldGen.cs' 'class WorldGen')"
+          net_message="$(find_ref 'NetMessage.cs' 'class NetMessage')"
+          message_buffer="$(find_ref 'MessageBuffer.cs' 'class MessageBuffer')"
+
+          python3 - "$npc_file" "$world_gen" "$net_message" "$message_buffer" "$out" <<'PY'
+          import json
+          import pathlib
+          import re
+          import sys
+
+          npc_path = pathlib.Path(sys.argv[1])
+          world_gen_path = pathlib.Path(sys.argv[2])
+          net_message_path = pathlib.Path(sys.argv[3])
+          message_buffer_path = pathlib.Path(sys.argv[4])
+          out = pathlib.Path(sys.argv[5])
+
+          def extract_braced_method(path, name):
+              text = path.read_text(errors="ignore")
+              pattern = re.compile(
+                  rf"(?:public|private|internal|protected)\s+(?:static\s+)?"
+                  rf"[A-Za-z0-9_<>,.?\[\]\s]+\s+{re.escape(name)}\s*\([^;{{}}]*\)\s*\{{"
+              )
+              match = pattern.search(text)
+              if not match:
+                  raise SystemExit(f"method {name} not found in {path}")
+              opening = match.end() - 1
+              depth = 0
+              for index in range(opening, len(text)):
+                  if text[index] == "{":
+                      depth += 1
+                  elif text[index] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          return text[match.start():index + 1]
+              raise SystemExit(f"method {name} truncated in {path}")
+
+          def extract_switch_cases(path, case_value):
+              text = path.read_text(errors="ignore")
+              starts = list(re.finditer(rf"\bcase\s+{case_value}\s*:", text))
+              if not starts:
+                  raise SystemExit(f"case {case_value} not found in {path}")
+              chunks = []
+              for match in starts:
+                  next_case = re.search(r"\n\s*case\s+[^:]+:", text[match.end():])
+                  end = match.end() + next_case.start() if next_case else min(len(text), match.end() + 12000)
+                  chunks.append(text[match.start():end].rstrip())
+              return "\n\n// ---- next matching case ----\n\n".join(chunks)
+
+          outputs = {
+              "AI_003_Fighters.cs.txt": extract_braced_method(npc_path, "AI_003_Fighters"),
+              "WorldGen.OpenDoor.cs.txt": extract_braced_method(world_gen_path, "OpenDoor"),
+              "WorldGen.ShiftTallGate.cs.txt": extract_braced_method(world_gen_path, "ShiftTallGate"),
+              "NetMessage.Case19.cs.txt": extract_switch_cases(net_message_path, 19),
+              "MessageBuffer.Case19.cs.txt": extract_switch_cases(message_buffer_path, 19),
+          }
+
+          for name, body in outputs.items():
+              (out / name).write_text(body, encoding="utf-8")
+
+          summary = {
+              name: {
+                  "characters": len(body),
+                  "lines": body.count("\n") + 1,
+                  "tileType10": body.count("type = 10") + body.count("type=10"),
+                  "tileType11": body.count("type = 11") + body.count("type=11"),
+                  "tileType388": body.count("type = 388") + body.count("type=388"),
+                  "tileType389": body.count("type = 389") + body.count("type=389"),
+                  "sendData19": len(re.findall(r"SendData\s*\(\s*19\b", body)),
+              }
+              for name, body in outputs.items()
+          }
+          print("NPC_DOOR_REFERENCE_SUMMARY=" + json.dumps(summary, sort_keys=True))
+          PY
+
+          cp decompiled/1458/REFERENCE_SOURCE.txt "$out/REFERENCE_SOURCE.txt"
+
+      - name: Upload local-only NPC door reference artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraria-1458-npc-door-reference
+          path: artifacts/reference-1458-npc-door
+          retention-days: 1
