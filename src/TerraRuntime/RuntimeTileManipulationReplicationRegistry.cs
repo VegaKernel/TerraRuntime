@@ -8,9 +8,9 @@ using TerraRuntime.Protocol.Multiplicity;
 namespace TerraRuntime;
 
 /// <summary>
-/// Relays accepted packet-17 tile effects to playing peers. Most accepted effects follow an authoritative world
-/// commit; vanilla failed-hit action 0 is intentionally relay-only. The originating connection is excluded,
-/// matching the pinned TerrariaServer 1.4.5.8 NetMessage.TrySendData(17, -1, whoAmI, ...) contract.
+/// Relays accepted packet-17 tile effects and committed packet-79 object placements to playing peers. Most
+/// packet-17 effects follow an authoritative world commit; vanilla failed-hit action 0 is intentionally relay-only.
+/// The originating connection is excluded, matching the server's ordinary client-originated world-effect fanout.
 /// Join baselines are intentionally omitted because packet 10 already carries authoritative tile state.
 /// </summary>
 internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlayerEventSink
@@ -48,19 +48,21 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
             return false;
         }
 
-        var frame = new OutboundFrame(encoded);
-        foreach ((GameCommandSourceId source, Endpoint endpoint) in endpoints)
-        {
-            if (source == excludedSource || !endpoint.IsPlaying)
-                continue;
+        return TryPublishFrame(excludedSource, encoded);
+    }
 
-            if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
-                Interlocked.Increment(ref relayedFrames);
-            else
-                Interlocked.Increment(ref rejectedFrames);
+    public bool TryPublishPlaceObject(
+        GameCommandSourceId excludedSource,
+        in TerrariaPlaceObjectState state)
+    {
+        if (TerrariaPlaceObjectCodec.TryEncode(in state, out byte[] encoded) !=
+            TerrariaPlaceObjectEncodeResult.Encoded)
+        {
+            Interlocked.Increment(ref encodeFailures);
+            return false;
         }
 
-        return true;
+        return TryPublishFrame(excludedSource, encoded);
     }
 
     public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)
@@ -83,6 +85,23 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
     public void PlayerHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest request) { }
     public void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request) { }
     public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request) { }
+
+    private bool TryPublishFrame(GameCommandSourceId excludedSource, byte[] encoded)
+    {
+        var frame = new OutboundFrame(encoded);
+        foreach ((GameCommandSourceId source, Endpoint endpoint) in endpoints)
+        {
+            if (source == excludedSource || !endpoint.IsPlaying)
+                continue;
+
+            if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref relayedFrames);
+            else
+                Interlocked.Increment(ref rejectedFrames);
+        }
+
+        return true;
+    }
 
     private sealed class Endpoint(TerrariaConnectionOutboundQueue outbound)
     {
