@@ -2,12 +2,24 @@ namespace TerraRuntime.Core;
 
 /// <summary>
 /// Normalizes packet-4 presentation fields using TerrariaServer 1.4.5.8 limits.
+/// Bit masks are named here because this class owns the semantic normalization after packet decoding;
+/// raw packet representation must not leak as unexplained masks into gameplay-owned code.
 /// </summary>
 public static class VanillaPlayerAppearanceNormalizer
 {
     public const byte PlayerVariantCount = 12;
     public const byte HairCount = 228;
     public const int MaximumNameLength = 20;
+
+    public const ushort HideVisibleAccessoryMask = (1 << 10) - 1;
+    public const byte HideMiscMask = (1 << 2) - 1;
+    public const byte TorchAndCartFlagsMask = (1 << 5) - 1;
+    public const byte ConsumableUnlockFlagsMask = (1 << 7) - 1;
+
+    public const byte MediumcoreDifficultyFlag = 1 << 0;
+    public const byte HardcoreDifficultyFlag = 1 << 1;
+    public const byte ExtraAccessoryDifficultyFlag = 1 << 2;
+    public const byte JourneyDifficultyFlag = 1 << 3;
 
     public static bool TryNormalize(
         in PlayerAppearanceCommitRequest request,
@@ -32,24 +44,24 @@ public static class VanillaPlayerAppearanceNormalizer
             VoicePitchOffset = pitch,
             Hair = request.Hair < HairCount ? request.Hair : (byte)0,
             Name = name,
-            HideVisibleAccessory = (ushort)(request.HideVisibleAccessory & 0x03ff),
-            HideMisc = (byte)(request.HideMisc & 0x03),
+            HideVisibleAccessory = (ushort)(request.HideVisibleAccessory & HideVisibleAccessoryMask),
+            HideMisc = (byte)(request.HideMisc & HideMiscMask),
             DifficultyFlags = difficulty,
-            TorchAndCartFlags = (byte)(request.TorchAndCartFlags & 0x1f),
-            ConsumableUnlockFlags = (byte)(request.ConsumableUnlockFlags & 0x7f)
+            TorchAndCartFlags = (byte)(request.TorchAndCartFlags & TorchAndCartFlagsMask),
+            ConsumableUnlockFlags = (byte)(request.ConsumableUnlockFlags & ConsumableUnlockFlagsMask)
         };
         return true;
     }
 
     private static byte NormalizeDifficulty(byte flags)
     {
-        byte difficulty = (flags & 0x08) != 0
-            ? (byte)0x08
-            : (flags & 0x02) != 0
-                ? (byte)0x02
-                : (flags & 0x01) != 0
-                    ? (byte)0x01
+        byte difficulty = (flags & JourneyDifficultyFlag) != 0
+            ? JourneyDifficultyFlag
+            : (flags & HardcoreDifficultyFlag) != 0
+                ? HardcoreDifficultyFlag
+                : (flags & MediumcoreDifficultyFlag) != 0
+                    ? MediumcoreDifficultyFlag
                     : (byte)0;
-        return (byte)(difficulty | (flags & 0x04));
+        return (byte)(difficulty | (flags & ExtraAccessoryDifficultyFlag));
     }
 }

@@ -26,11 +26,39 @@ public sealed class VanillaPlayerAppearanceNormalizerTests
         Assert.Equal(1f, actual.VoicePitchOffset);
         Assert.Equal((byte)0, actual.Hair);
         Assert.Equal("Player", actual.Name);
-        Assert.Equal((ushort)0x03ff, actual.HideVisibleAccessory);
-        Assert.Equal((byte)0x03, actual.HideMisc);
-        Assert.Equal((byte)0x0c, actual.DifficultyFlags);
-        Assert.Equal((byte)0x1f, actual.TorchAndCartFlags);
-        Assert.Equal((byte)0x7f, actual.ConsumableUnlockFlags);
+        Assert.Equal(VanillaPlayerAppearanceNormalizer.HideVisibleAccessoryMask, actual.HideVisibleAccessory);
+        Assert.Equal(VanillaPlayerAppearanceNormalizer.HideMiscMask, actual.HideMisc);
+        Assert.Equal(
+            (byte)(VanillaPlayerAppearanceNormalizer.JourneyDifficultyFlag |
+                   VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag),
+            actual.DifficultyFlags);
+        Assert.Equal(VanillaPlayerAppearanceNormalizer.TorchAndCartFlagsMask, actual.TorchAndCartFlags);
+        Assert.Equal(VanillaPlayerAppearanceNormalizer.ConsumableUnlockFlagsMask, actual.ConsumableUnlockFlags);
+    }
+
+    [Theory]
+    [InlineData(
+        VanillaPlayerAppearanceNormalizer.MediumcoreDifficultyFlag,
+        VanillaPlayerAppearanceNormalizer.MediumcoreDifficultyFlag)]
+    [InlineData(
+        VanillaPlayerAppearanceNormalizer.HardcoreDifficultyFlag,
+        VanillaPlayerAppearanceNormalizer.HardcoreDifficultyFlag)]
+    [InlineData(
+        VanillaPlayerAppearanceNormalizer.JourneyDifficultyFlag,
+        VanillaPlayerAppearanceNormalizer.JourneyDifficultyFlag)]
+    [InlineData(
+        (byte)(VanillaPlayerAppearanceNormalizer.MediumcoreDifficultyFlag |
+               VanillaPlayerAppearanceNormalizer.HardcoreDifficultyFlag |
+               VanillaPlayerAppearanceNormalizer.JourneyDifficultyFlag |
+               VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag),
+        (byte)(VanillaPlayerAppearanceNormalizer.JourneyDifficultyFlag |
+               VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag))]
+    public void Difficulty_normalization_uses_named_vanilla_precedence(byte input, byte expected)
+    {
+        PlayerAppearanceCommitRequest request = Request("Player") with { DifficultyFlags = input };
+
+        Assert.True(VanillaPlayerAppearanceNormalizer.TryNormalize(in request, out PlayerAppearanceCommitRequest actual));
+        Assert.Equal(expected, actual.DifficultyFlags);
     }
 
     [Fact]

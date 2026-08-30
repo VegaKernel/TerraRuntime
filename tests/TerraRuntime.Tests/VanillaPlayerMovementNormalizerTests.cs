@@ -28,12 +28,44 @@ public sealed class VanillaPlayerMovementNormalizerTests
         Assert.False(actual.HasCameraTarget);
     }
 
+    [Fact]
+    public void Named_presence_flags_enable_their_exact_optional_payloads()
+    {
+        PlayerMovementCommitRequest request = Request() with
+        {
+            MovementFlags = (byte)(VanillaPlayerMovementNormalizer.MovementVelocityPresentFlag |
+                                   VanillaPlayerMovementNormalizer.MovementMountPresentFlag),
+            MiscFlags1 = VanillaPlayerMovementNormalizer.Misc1PotionOfReturnPositionsPresentFlag,
+            MiscFlags2 = VanillaPlayerMovementNormalizer.Misc2CameraTargetPresentFlag,
+            VelocityX = 1.5f,
+            VelocityY = -2.5f,
+            MountType = 1,
+            PotionOfReturnOriginalPositionX = 10f,
+            PotionOfReturnOriginalPositionY = 20f,
+            PotionOfReturnHomePositionX = 30f,
+            PotionOfReturnHomePositionY = 40f,
+            CameraTargetX = 50f,
+            CameraTargetY = 60f
+        };
+
+        Assert.True(VanillaPlayerMovementNormalizer.TryNormalize(in request, out PlayerMovementCommitRequest actual));
+        Assert.True(actual.HasVelocity);
+        Assert.Equal(1.5f, actual.VelocityX);
+        Assert.Equal(-2.5f, actual.VelocityY);
+        Assert.True(actual.HasMount);
+        Assert.Equal((ushort)1, actual.MountType);
+        Assert.True(actual.HasPotionOfReturnPositions);
+        Assert.Equal(10f, actual.PotionOfReturnOriginalPositionX);
+        Assert.True(actual.HasCameraTarget);
+        Assert.Equal(50f, actual.CameraTargetX);
+    }
+
     [Theory]
     [InlineData(59, 0, 0, 0)]
-    [InlineData(0, 4, 0, 0)]
-    [InlineData(0, 128, 0, 0)]
-    [InlineData(0, 0, 64, 0)]
-    [InlineData(0, 0, 0, 32)]
+    [InlineData(0, VanillaPlayerMovementNormalizer.MovementVelocityPresentFlag, 0, 0)]
+    [InlineData(0, VanillaPlayerMovementNormalizer.MovementMountPresentFlag, 0, 0)]
+    [InlineData(0, 0, VanillaPlayerMovementNormalizer.Misc1PotionOfReturnPositionsPresentFlag, 0)]
+    [InlineData(0, 0, 0, VanillaPlayerMovementNormalizer.Misc2CameraTargetPresentFlag)]
     public void Rejects_invalid_selected_item_or_present_optional_state(
         byte selectedItem,
         byte movementFlags,

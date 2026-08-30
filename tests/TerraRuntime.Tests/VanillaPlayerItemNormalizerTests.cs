@@ -59,7 +59,9 @@ public sealed class VanillaPlayerItemNormalizerTests
         Assert.False(request.TryGetCanonicalItemType(out _));
         PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
 
-        Assert.Equal((7, (byte)3, (short)3764, (byte)1), Fields(normalized));
+        Assert.Equal(
+            (7, (byte)3, (short)3764, VanillaPlayerItemNormalizer.FavoriteItemFlag),
+            Fields(normalized));
         Assert.True(normalized.TryGetCanonicalItemType(out ItemTypeId itemType));
         Assert.Equal(3764, itemType.Value);
         Assert.Equal(3, normalized.PrefixId.Value);
