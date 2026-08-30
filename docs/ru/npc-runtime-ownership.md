@@ -10,11 +10,13 @@ flowchart LR
     Policy --> Store["RuntimeNpcStore\nslot + generation + revision + commit"]
     Store --> AI["Behavior-family AI"]
     AI --> Physics["Physics-family world motion"]
-    Store --> Role["RuntimeNpcRoleBoundary\nordinary / town / boss policy"]
+    Store --> CustomRole["RuntimeNpcRoleBoundary\nроль custom archetype"]
+    Store --> VanillaRole["RuntimeVanillaNpcRoleBoundary\nvanilla ordinary / town / boss"]
     Store --> Combat["RuntimeNpcDamageExecutor"]
     Combat --> Store
-    Store --> Death["RuntimeNpcDeathLootFinalizer"]
-    Death --> Loot["Loot rules + world-item transaction"]
+    Store --> DeathLoot["RuntimeNpcDeathLootFinalizer\nпуть с проверенным loot"]
+    Store --> DeathLifecycle["RuntimeNpcDeathLifecycleFinalizer\nfallback без импортированного loot"]
+    DeathLoot --> Loot["Loot rules + world-item transaction"]
 ```
 
 ## Spawn и локальное состояние
@@ -30,6 +32,8 @@ flowchart LR
 
 Так storage остаётся общим, а существующий sentinel-контракт (`LifeMax == 0`, `TimeLeft == -1`, совместимый нулевой sprite direction на ingress) сохраняется.
 
+Создание дочерних NPC из AI проходит через `INpcAiSpawnIntentPlanner`, а не мутирует slot-store прямо из AI. Executor предоставляет bounded scratch storage, planner может выдать упорядоченный batch из нуля или нескольких intents, и batch применяется только после успешного commit точной generation исходного NPC. Поэтому rejected/stale transition не может выпустить дочерние сущности в мир. После source commit отдельные spawn выполняются в vanilla-подобном best-effort порядке: если NPC table заполнится посередине batch, уже принятые дети остаются, а последующие spawn могут завершиться неудачей.
+
 ## AI family и physics family
 
 `VanillaNpcBehaviorFamily` и `VanillaNpcPhysicsFamily` намеренно являются разными metadata. Общая AI-реализация сама по себе не доказывает одинаковые collision, platform, gravity или obstacle rules.
@@ -41,24 +45,32 @@ flowchart LR
 | Blue Slime | `SlimeGround` | `SlimeGround` |
 | Demon Eye | `FlyingEye` | `FlyingEye` |
 | Zombie | `GroundFighter` | `GroundFighter` |
+| Eye of Cthulhu | `EyeOfCthulhu` | `NoClipFlight` |
+| Servant of Cthulhu | `Flyer` | `NoClipFlight` |
 
-Названия пока совпадают, потому что допущенный authoritative slice небольшой. Поля остаются раздельными, чтобы будущие source-backed definitions могли безопасно расходиться.
+Связь между именами считается допустимой только там, где её подтверждает текущий source-backed slice. Поля остаются раздельными, чтобы будущие definitions могли безопасно расходиться.
 
 `VanillaNpcWorldMotionAiStepper` выбирает special movement и platform behavior через `PhysicsFamily`, а не через `NpcTypeId`. Для `VanillaNpcGravity` authoritative gameplay overload принимает уже разрешённый definition; raw/typed ID overloads остаются compatibility boundary и сначала разрешают definition.
 
-## Combat и loot
+## Combat, смерть и loot
 
 Combat остаётся в `RuntimeNpcDamageExecutor` и `VanillaNpcDamageResolver`. Lethal damage коммитит `Life = 0`, но не despawn'ит NPC и не запускает loot внутри damage resolver.
 
-Death/loot остаётся в `RuntimeNpcDeathLootFinalizer`, `VanillaNpcLootRules`, vanilla world-item materializer и generation-safe loot transaction. Поэтому store не знает drop tables, prefix RNG и world-item capacity semantics.
+Для NPC с уже импортированным source-backed loot death/loot остаётся в `RuntimeNpcDeathLootFinalizer`, `VanillaNpcLootRules`, vanilla world-item materializer и generation-safe loot transaction. Поэтому store не знает drop tables, prefix RNG и world-item capacity semantics.
 
-## Граница ролей town и boss
+Отдельный `RuntimeNpcDeathLifecycleFinalizer.TryFinalizeWhenLootUnsupported` завершает entity lifecycle только для мёртвых vanilla типов, loot table которых ещё не импортирована. Он намеренно отказывает любому типу, уже присутствующему в `VanillaNpcLootRuleCatalog`, поэтому проверенные drops нельзя случайно обойти. Успешный fallback означает **неразрешённую loot parity**, а не пустой ванильный набор drops. Благодаря этому частично реализованный boss, например текущий Eye of Cthulhu, может generation-safe исчезнуть при `Life = 0`, не притворяясь, что его loot уже полностью реализован.
 
-`NpcArchetypeRole` явно классифицирует runtime-defined archetype как `Ordinary`, `Town` или `Boss`. Role является metadata runtime identity и никогда не выводится из vanilla presentation type или AI style. `RuntimeNpcRoleBoundary` разрешает её через точный live `NpcHandle`, generation-safe archetype binding и одну опубликованную revision descriptor catalog.
+## Границы ролей town и boss
 
-Полученный `RuntimeNpcRoleClassification` открывает взаимоисключающие policy gates: town interaction, boss lifecycle или ordinary lifecycle. Housing/shop policy не попадает в обычный combat AI, а boss progression/despawn policy не превращается в type-number branch внутри store. Missing, stale и unpublished bindings завершаются fail-closed.
+`NpcArchetypeRole` задаёт policy `Ordinary`, `Town` или `Boss`, но runtime-defined/custom и vanilla identity приходят к этой policy через разные доверенные источники.
 
-Это boundary декомпозиции, а не vanilla town/boss parity. Текущие vanilla definitions ещё не заявляют town/boss roles; housing, boss progression, boss bars, special despawn и широкая boss AI остаются отдельной source-backed работой. Actor-commerce smoke явно помечает custom merchant archetype как `Town`.
+`RuntimeNpcRoleBoundary` разрешает роль custom archetype через точный live `NpcHandle`, generation-safe archetype binding и одну опубликованную revision descriptor catalog. Такая роль является metadata custom runtime identity и никогда не выводится из vanilla presentation type или AI style.
+
+`RuntimeVanillaNpcRoleBoundary` разрешает live vanilla generation через `RuntimeNpcStore` и version-pinned `VanillaNpcDefinitionCatalog`. Stale generation и неподдерживаемые vanilla types завершаются fail-closed. Поэтому текущий source-backed definition Eye of Cthulhu выбирает `Boss` lifecycle policy через точный live handle, а Blue Slime, Demon Eye, Zombie и Servant остаются `Ordinary`.
+
+Оба результата классификации дают взаимоисключающие policy gates для town interaction, boss lifecycle или ordinary lifecycle. Housing/shop policy не попадает в обычный combat AI, а boss progression/despawn policy не превращается в raw type-number branch внутри store.
+
+Это ownership boundaries, а не полная vanilla town/boss parity. Housing, boss progression, boss bars, оставшиеся boss-specific death effects и широкая boss AI всё ещё требуют отдельной source-backed реализации. Actor-commerce smoke по-прежнему явно помечает custom merchant archetype как `Town`.
 
 ## Граница завершения D4
 
@@ -66,8 +78,10 @@ Death/loot остаётся в `RuntimeNpcDeathLootFinalizer`, `VanillaNpcLootRu
 
 - slot storage больше не содержит vanilla definition/default materialization;
 - physics dispatch больше не ветвится по конкретным ID Blue Slime/Demon Eye/Zombie;
-- combat и death/loot уже исполняются отдельными generation-safe компонентами;
+- дочерние AI spawn проходят через bounded post-commit intent boundary, а не мутируют store спекулятивно;
+- combat, entity death lifecycle и проверенный death/loot исполняются раздельными generation-safe компонентами;
+- custom и vanilla role policy разрешаются через явные generation-safe boundaries;
 - тесты фиксируют выбор catalog family и ownership локального состояния;
 - будущие definitions обязаны явно выбрать behavior и physics family.
 
-Это не означает поддержку всех NPC Terraria. Широкое vanilla town/housing и boss behavior остаётся открытым, хотя их ownership boundary теперь явная.
+Это не означает поддержку всех NPC Terraria. Широкие vanilla town/housing, boss progression и boss behavior остаются открытыми, хотя их ownership boundaries теперь явные.
