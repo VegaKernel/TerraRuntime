@@ -9,7 +9,7 @@ public sealed class RuntimeWorldClockBloodMoonTests
     {
         var metadata = new WorldFileRuntimeMetadata
         {
-            Time = 1_000d,
+            Time = 1_000,
             DayTime = false,
             MoonPhase = 0,
             BloodMoon = true
