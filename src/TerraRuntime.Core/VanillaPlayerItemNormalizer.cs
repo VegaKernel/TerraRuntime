@@ -9,6 +9,7 @@ namespace TerraRuntime.Core;
 public static class VanillaPlayerItemNormalizer
 {
     public const short ItemTypeCount = VanillaItemIds.Count;
+    public const byte FavoriteItemFlag = 1 << 0;
 
     // Exact signed Item.netDefaults compatibility bands from TerrariaServer 1.4.5.8. These are wire/file
     // canonicalization rules, so their arithmetic stays here rather than leaking into inventory gameplay.
@@ -40,7 +41,7 @@ public static class VanillaPlayerItemNormalizer
         return request with
         {
             ItemNetId = checked((short)itemType.Value),
-            ItemFlags = (byte)(request.ItemFlags & 1)
+            ItemFlags = (byte)(request.ItemFlags & FavoriteItemFlag)
         };
     }
 

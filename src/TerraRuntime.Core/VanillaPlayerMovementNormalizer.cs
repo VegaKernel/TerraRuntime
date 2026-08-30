@@ -2,20 +2,26 @@ namespace TerraRuntime.Core;
 
 /// <summary>
 /// Validates and canonicalizes packet-13 fields using TerrariaServer 1.4.5.8 limits.
+/// Presence bits are named semantic boundary facts; gameplay code must not rediscover packet masks.
 /// </summary>
 public static class VanillaPlayerMovementNormalizer
 {
     public const byte SelectedItemCount = 59;
     public const ushort MountTypeCount = 66;
 
+    public const byte MovementVelocityPresentFlag = 1 << 2;
+    public const byte MovementMountPresentFlag = 1 << 7;
+    public const byte Misc1PotionOfReturnPositionsPresentFlag = 1 << 6;
+    public const byte Misc2CameraTargetPresentFlag = 1 << 5;
+
     public static bool TryNormalize(
         in PlayerMovementCommitRequest request,
         out PlayerMovementCommitRequest normalized)
     {
-        bool hasVelocity = (request.MovementFlags & 0x04) != 0;
-        bool hasMount = (request.MovementFlags & 0x80) != 0;
-        bool hasPotionPositions = (request.MiscFlags1 & 0x40) != 0;
-        bool hasCameraTarget = (request.MiscFlags2 & 0x20) != 0;
+        bool hasVelocity = (request.MovementFlags & MovementVelocityPresentFlag) != 0;
+        bool hasMount = (request.MovementFlags & MovementMountPresentFlag) != 0;
+        bool hasPotionPositions = (request.MiscFlags1 & Misc1PotionOfReturnPositionsPresentFlag) != 0;
+        bool hasCameraTarget = (request.MiscFlags2 & Misc2CameraTargetPresentFlag) != 0;
 
         if (request.SelectedItem >= SelectedItemCount ||
             !float.IsFinite(request.PositionX) ||
