@@ -14,7 +14,7 @@ internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorS
     public static BuiltInWorldGeneratorSource Instance { get; } = new();
 
     private readonly FlatWorldGenerationProvider flat = new();
-    private readonly SourceBackedVanillaWorldGenerationProvider1458 vanilla = new();
+    private readonly SourceBackedVanillaWorldGenerationPipeline1458 vanilla = new();
     private readonly WorldGeneratorId[] ids =
         [FlatWorldGenerationProvider.GeneratorId, VanillaWorldGenerationProvider1458.GeneratorId];
 
@@ -91,9 +91,6 @@ internal sealed class FlatWorldGenerationProvider : IWorldGenerationProvider
 
                 for (int y = surface; y < height; y++)
                 {
-                    // Terraria tile 0 is Dirt Block and tile 1 is Stone Block. Both are deliberately frame-free,
-                    // making this baseline independent from frame-important style tables while still exercising the
-                    // complete candidate tile surface.
                     ushort type = y < rockLayer ? (ushort)0 : (ushort)1;
                     var tile = new WorldGenerationTile(
                         Type: type,
