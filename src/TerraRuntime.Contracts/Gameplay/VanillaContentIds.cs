@@ -17,15 +17,24 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId LavaSlime = new(59);
     public static readonly NpcTypeId DungeonSlime = new(71);
     public static readonly NpcTypeId CorruptSlime = new(81);
+    public static readonly NpcTypeId TheHungryII = new(116);
+    public static readonly NpcTypeId WanderingEye = new(133);
     public static readonly NpcTypeId IlluminantSlime = new(138);
     public static readonly NpcTypeId ToxicSludge = new(141);
     public static readonly NpcTypeId IceSlime = new(147);
     public static readonly NpcTypeId Crimslime = new(183);
     public static readonly NpcTypeId SpikedIceSlime = new(184);
+    public static readonly NpcTypeId CataractEye = new(190);
+    public static readonly NpcTypeId SleepyEye = new(191);
+    public static readonly NpcTypeId DilatedEye = new(192);
+    public static readonly NpcTypeId GreenEye = new(193);
+    public static readonly NpcTypeId PurpleEye = new(194);
     public static readonly NpcTypeId SpikedJungleSlime = new(204);
     public static readonly NpcTypeId UmbrellaSlime = new(225);
     public static readonly NpcTypeId RainbowSlime = new(244);
     public static readonly NpcTypeId SlimeMasked = new(302);
+    public static readonly NpcTypeId DemonEyeOwl = new(317);
+    public static readonly NpcTypeId DemonEyeSpaceship = new(318);
     public static readonly NpcTypeId SlimeRibbonWhite = new(333);
     public static readonly NpcTypeId SlimeRibbonYellow = new(334);
     public static readonly NpcTypeId SlimeRibbonGreen = new(335);
@@ -36,6 +45,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId QueenSlimeMinionPink = new(659);
     public static readonly NpcTypeId GoldenSlime = new(667);
     public static readonly NpcTypeId ShimmerSlime = new(676);
+    public static readonly NpcTypeId PigronCorruption = new(170);
+    public static readonly NpcTypeId PigronHallow = new(171);
+    public static readonly NpcTypeId PigronCrimson = new(180);
 }
 
 /// <summary>

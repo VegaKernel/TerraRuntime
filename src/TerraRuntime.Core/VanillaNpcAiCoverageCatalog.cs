@@ -17,7 +17,8 @@ public enum VanillaNpcAiCapability : ushort
     GroundFighterTraversalSlice = 1 << 8,
     GroundFighterDoorPressureSlice = 1 << 9,
     SlimeTimerProfileSlice = 1 << 10,
-    NegativeNetVariantDefaults = 1 << 11
+    NegativeNetVariantDefaults = 1 << 11,
+    FlyingEyeSteeringProfileSlice = 1 << 12
 }
 
 /// <summary>
@@ -71,13 +72,20 @@ public static class VanillaNpcAiCoverageCatalog
 
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
-        var entries = new VanillaNpcAiCoverage[7 + VanillaSlimeNpcCatalog.DefinitionCount];
+        var entries = new VanillaNpcAiCoverage[
+            7 +
+            VanillaSlimeNpcCatalog.DefinitionCount +
+            VanillaFlyingEyeNpcCatalog.DefinitionCount];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
             VanillaNpcAiCapability.SlimeTimerProfileSlice |
             VanillaNpcAiCapability.NegativeNetVariantDefaults);
-        entries[1] = Partial(VanillaNpcIds.DemonEye, OrdinaryCore);
+        entries[1] = Partial(
+            VanillaNpcIds.DemonEye,
+            OrdinaryCore |
+            VanillaNpcAiCapability.FlyingEyeSteeringProfileSlice |
+            VanillaNpcAiCapability.NegativeNetVariantDefaults);
         entries[2] = Partial(
             VanillaNpcIds.Zombie,
             OrdinaryCore |
@@ -111,6 +119,27 @@ public static class VanillaNpcAiCoverageCatalog
             entries[index++] = Partial(definition.Type, capabilities);
         }
 
+        foreach (VanillaNpcDefinition definition in VanillaFlyingEyeNpcCatalog.AllDefinitions)
+        {
+            VanillaNpcAiCapability capabilities =
+                OrdinaryCore | VanillaNpcAiCapability.FlyingEyeSteeringProfileSlice;
+            if (HasNegativeNetVariant(definition.Type))
+                capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
+
+            entries[index++] = Partial(definition.Type, capabilities);
+        }
+
         return entries;
+    }
+
+    private static bool HasNegativeNetVariant(NpcTypeId type)
+    {
+        foreach (VanillaNpcNetVariantDefinition variant in VanillaNpcNetVariantCatalog.All)
+        {
+            if (variant.Type == type)
+                return true;
+        }
+
+        return false;
     }
 }

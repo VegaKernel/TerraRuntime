@@ -36,9 +36,21 @@ public static class VanillaDemonEyeMotion
 {
     public static bool TryStep(
         in VanillaDemonEyeMotionInput input,
+        out VanillaDemonEyeMotionResult result) =>
+        TryStep(
+            in input,
+            new VanillaFlyingEyeMotionProfile(
+                new VanillaFlyingEyeAxisProfile(0.1f, 0.1f, 0.05f, 4f, 4f, 4f),
+                new VanillaFlyingEyeAxisProfile(0.04f, 0.05f, 0.03f, 1.5f, 1.5f, 1.5f),
+                RisesInWater: true),
+            out result);
+
+    public static bool TryStep(
+        in VanillaDemonEyeMotionInput input,
+        in VanillaFlyingEyeMotionProfile profile,
         out VanillaDemonEyeMotionResult result)
     {
-        if (!IsValid(in input))
+        if (!IsValid(in input) || !profile.IsValid)
         {
             result = default;
             return false;
@@ -68,52 +80,57 @@ public static class VanillaDemonEyeMotion
             }
         }
 
-        float maxVelocityX = 4f * (1f + (1f - input.Scale));
-        float maxVelocityY = 1.5f * (1f + (1f - input.Scale));
+        float scaleFactor = 2f - input.Scale;
+        float maxVelocityX = profile.Horizontal.MaximumSpeed * scaleFactor;
+        float overshootVelocityX = profile.Horizontal.OvershootThreshold * scaleFactor;
+        float positiveEngagementVelocityX = profile.Horizontal.PositiveEngagementThreshold * scaleFactor;
+        float maxVelocityY = profile.Vertical.MaximumSpeed * scaleFactor;
+        float overshootVelocityY = profile.Vertical.OvershootThreshold * scaleFactor;
+        float positiveEngagementVelocityY = profile.Vertical.PositiveEngagementThreshold * scaleFactor;
 
         if (input.DirectionX == -1 && velocityX > -maxVelocityX)
         {
-            velocityX -= 0.1f;
-            if (velocityX > maxVelocityX)
-                velocityX -= 0.1f;
+            velocityX -= profile.Horizontal.Acceleration;
+            if (velocityX > overshootVelocityX)
+                velocityX -= profile.Horizontal.OvershootAcceleration;
             else if (velocityX > 0f)
-                velocityX += 0.05f;
+                velocityX += profile.Horizontal.WrongDirectionBrake;
             if (velocityX < -maxVelocityX)
                 velocityX = -maxVelocityX;
         }
-        else if (input.DirectionX == 1 && velocityX < maxVelocityX)
+        else if (input.DirectionX == 1 && velocityX < positiveEngagementVelocityX)
         {
-            velocityX += 0.1f;
-            if (velocityX < -maxVelocityX)
-                velocityX += 0.1f;
+            velocityX += profile.Horizontal.Acceleration;
+            if (velocityX < -overshootVelocityX)
+                velocityX += profile.Horizontal.OvershootAcceleration;
             else if (velocityX < 0f)
-                velocityX -= 0.05f;
+                velocityX -= profile.Horizontal.WrongDirectionBrake;
             if (velocityX > maxVelocityX)
                 velocityX = maxVelocityX;
         }
 
         if (input.DirectionY == -1 && velocityY > -maxVelocityY)
         {
-            velocityY -= 0.04f;
-            if (velocityY > maxVelocityY)
-                velocityY -= 0.05f;
+            velocityY -= profile.Vertical.Acceleration;
+            if (velocityY > overshootVelocityY)
+                velocityY -= profile.Vertical.OvershootAcceleration;
             else if (velocityY > 0f)
-                velocityY += 0.03f;
+                velocityY += profile.Vertical.WrongDirectionBrake;
             if (velocityY < -maxVelocityY)
                 velocityY = -maxVelocityY;
         }
-        else if (input.DirectionY == 1 && velocityY < maxVelocityY)
+        else if (input.DirectionY == 1 && velocityY < positiveEngagementVelocityY)
         {
-            velocityY += 0.04f;
-            if (velocityY < -maxVelocityY)
-                velocityY += 0.05f;
+            velocityY += profile.Vertical.Acceleration;
+            if (velocityY < -overshootVelocityY)
+                velocityY += profile.Vertical.OvershootAcceleration;
             else if (velocityY < 0f)
-                velocityY -= 0.03f;
+                velocityY -= profile.Vertical.WrongDirectionBrake;
             if (velocityY > maxVelocityY)
                 velocityY = maxVelocityY;
         }
 
-        if (input.Wet)
+        if (input.Wet && profile.RisesInWater)
         {
             if (velocityY > 0f)
                 velocityY *= 0.95f;
@@ -132,7 +149,7 @@ public static class VanillaDemonEyeMotion
         float.IsFinite(input.OldVelocityX) &&
         float.IsFinite(input.OldVelocityY) &&
         float.IsFinite(input.Scale) &&
-        input.Scale > 0f &&
+        input.Scale is > 0f and < 2f &&
         input.DirectionX is >= -1 and <= 1 &&
         input.DirectionY is >= -1 and <= 1;
 }

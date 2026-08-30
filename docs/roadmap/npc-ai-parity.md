@@ -16,6 +16,7 @@ The executable truth is `VanillaNpcAiCoverageCatalog`. `FullVanillaAiParity` rem
 | Skeleton | yes | partial | partial | profiled AI_003 `1.5f` traversal/check-active/event door pressure | no |
 | King Slime | yes | partial | partial | teleport environment and minion intents | no |
 | 23 additional hostile AI_001 types | yes | partial | partial | typed timer bonus/jump-window profiles | no |
+| 12 additional hostile AI_002 types | yes | partial | partial | typed normal/special/enraged steering profiles | no |
 
 The admitted AI_001 set now covers Mother, Lava, Dungeon, Corrupt, Illuminant, Toxic Sludge, Ice,
 Crimslime, both biome Spiked Slimes, Umbrella, Rainbow, masked/ribbon variants, Spiked, Sand,
@@ -55,7 +56,9 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] typed definitions and movement profiles for the hostile AI_001 catalog;
 - [x] source-backed slime net variants `-1..-10` with effective spawn/packet defaults;
 - [ ] remaining AI_001 projectile, item-containment, split, transform, seed and visual branches;
-- [ ] flying-eye variants and AI_002 type branches;
+- [x] typed definitions, steering profiles and wet behavior for all hostile AI_002 identities;
+- [x] source-backed AI_002 net variants `-38..-43` with effective spawn/packet defaults;
+- [ ] AI_002 daylight despawn, Pigron line-of-sight phasing state and cosmetic branches;
 - [ ] AI_005 flyers beyond Servant of Cthulhu;
 - [ ] worm/segment ownership and synchronized parent-child lifecycle;
 - [ ] bats, fish, casters, mimics, critters and event enemy families;

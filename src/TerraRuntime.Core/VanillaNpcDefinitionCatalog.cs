@@ -180,6 +180,9 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
+        if (VanillaFlyingEyeNpcCatalog.TryGetDefinition(type, out definition))
+            return true;
+
         if (type == VanillaNpcIds.Zombie)
         {
             definition = new VanillaNpcDefinition(

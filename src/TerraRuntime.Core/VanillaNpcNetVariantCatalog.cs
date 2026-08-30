@@ -40,7 +40,7 @@ public readonly record struct VanillaNpcNetVariantDefinition(
 }
 
 /// <summary>
-/// Version-pinned slime net variants from NPCID.NetIdMap and NPC.SetDefaultsFromNetId.
+/// Version-pinned admitted net variants from NPCID.NetIdMap and NPC.SetDefaultsFromNetId.
 /// </summary>
 public static class VanillaNpcNetVariantCatalog
 {
@@ -54,6 +54,12 @@ public static class VanillaNpcNetVariantCatalog
     public static readonly NpcNetId RedSlime = new(-8);
     public static readonly NpcNetId YellowSlime = new(-9);
     public static readonly NpcNetId JungleSlime = new(-10);
+    public static readonly NpcNetId CataractEye2 = new(-38);
+    public static readonly NpcNetId SleepyEye2 = new(-39);
+    public static readonly NpcNetId DilatedEye2 = new(-40);
+    public static readonly NpcNetId GreenEye2 = new(-41);
+    public static readonly NpcNetId PurpleEye2 = new(-42);
+    public static readonly NpcNetId DemonEye2 = new(-43);
 
     private static readonly VanillaNpcNetVariantDefinition[] Entries =
     [
@@ -66,7 +72,13 @@ public static class VanillaNpcNetVariantCatalog
         Variant(PurpleSlime, "Purple Slime", 1.2f, 12, 6, 40, 0.9f),
         Variant(RedSlime, "Red Slime", 1.025f, 12, 4, 35, 1f),
         Variant(YellowSlime, "Yellow Slime", 1.2f, 15, 7, 45, 1f),
-        Variant(JungleSlime, "Jungle Slime", 1.1f, 18, 6, 60, 1f)
+        Variant(JungleSlime, "Jungle Slime", 1.1f, 18, 6, 60, 1f),
+        Variant(CataractEye2, VanillaNpcIds.CataractEye, "Large Cataract Eye", 1.15f, 20, 4, 74, 0.595f),
+        Variant(SleepyEye2, VanillaNpcIds.SleepyEye, "Large Sleepy Eye", 1.1f, 17, 2, 66, 0.765f),
+        Variant(DilatedEye2, VanillaNpcIds.DilatedEye, "Small Dilated Eye", 0.9f, 16, 1, 45, 0.88f),
+        Variant(GreenEye2, VanillaNpcIds.GreenEye, "Small Green Eye", 0.85f, 17, 0, 51, 0.92f),
+        Variant(PurpleEye2, VanillaNpcIds.PurpleEye, "Large Purple Eye", 1.1f, 15, 4, 66, 0.72f),
+        Variant(DemonEye2, VanillaNpcIds.DemonEye, "Large Demon Eye", 1.15f, 20, 2, 69, 0.68f)
     ];
 
     public static int Count => Entries.Length;

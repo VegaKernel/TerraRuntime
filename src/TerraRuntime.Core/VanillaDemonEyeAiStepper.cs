@@ -13,8 +13,7 @@ public sealed class VanillaDemonEyeAiStepper : INpcAiStateStepper
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
-            npcType != VanillaNpcIds.DemonEye ||
-            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
+            !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition) ||
             definition.AiStyle != VanillaNpcAiStyles.DemonEye)
         {
             next = default;
@@ -22,6 +21,18 @@ public sealed class VanillaDemonEyeAiStepper : INpcAiStateStepper
         }
 
         NpcSimulationState simulation = npc.Simulation;
+        int lifeMax = simulation.LifeMax > 0 ? simulation.LifeMax : definition.LifeMax;
+        int life = simulation.LifeMax > 0 ? simulation.Life : definition.LifeMax;
+        if (!VanillaFlyingEyeNpcCatalog.TryGetMotionProfile(
+                npcType,
+                life,
+                lifeMax,
+                out VanillaFlyingEyeMotionProfile profile))
+        {
+            next = default;
+            return false;
+        }
+
         var input = new VanillaDemonEyeMotionInput(
             VelocityX: npc.VelocityX,
             VelocityY: npc.VelocityY,
@@ -35,7 +46,7 @@ public sealed class VanillaDemonEyeAiStepper : INpcAiStateStepper
             CollideY: simulation.CollideY,
             Wet: simulation.Wet);
 
-        if (!VanillaDemonEyeMotion.TryStep(in input, out VanillaDemonEyeMotionResult result))
+        if (!VanillaDemonEyeMotion.TryStep(in input, in profile, out VanillaDemonEyeMotionResult result))
         {
             next = default;
             return false;
