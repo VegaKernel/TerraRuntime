@@ -32,8 +32,9 @@ public sealed class RuntimeNpcPacketProjectionTests
         Assert.Equal((byte)1, state.Generation);
         Assert.Equal(VanillaNpcIds.BlueSlime.Value, state.NpcType);
         Assert.Equal((short)-3, state.NpcNetId);
-        Assert.Equal(25, state.Life);
-        Assert.Equal(25, state.LifeMax);
+        // -3 = Green Slime variant (scale 0.9, life 14) applied via VanillaNpcNetVariantCatalog.
+        Assert.Equal(14, state.Life);
+        Assert.Equal(14, state.LifeMax);
         Assert.True(state.SpawnNeedsSyncing);
         Assert.Equal(-1, state.SpriteDirection);
     }
@@ -127,7 +128,8 @@ public sealed class RuntimeNpcPacketProjectionTests
     [Fact]
     public void Unverified_type_is_not_fabricated_for_network_sync()
     {
-        NpcSnapshot npc = CreateNpc(type: 99, netId: 99, generation: 1);
+        // 99 = SeekerBody is now admitted via VanillaWormNpcCatalog; use 900 as truly unverified.
+        NpcSnapshot npc = CreateNpc(type: 900, netId: 900, generation: 1);
 
         Assert.False(RuntimeNpcPacketProjection.TryCreate(
             in npc,

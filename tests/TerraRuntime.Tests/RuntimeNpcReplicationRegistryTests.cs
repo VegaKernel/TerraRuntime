@@ -77,10 +77,11 @@ public sealed class RuntimeNpcReplicationRegistryTests
         ConnectionHandle player = Connection(source, slot: 1, generation: 1);
         PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
         replication.PlayerSpawned(player, in spawn);
+        // 99 is now SeekerBody (worm) and is supported; 900 is truly unsupported.
         NpcSnapshot unsupported = CreateNpc(revision: 1, positionX: 100f) with
         {
-            Type = 99,
-            NetId = 99
+            Type = 900,
+            NetId = 900
         };
 
         replication.NpcStateCommitted(NpcStateCommitKind.Spawn, in unsupported);
@@ -126,11 +127,12 @@ public sealed class RuntimeNpcReplicationRegistryTests
         };
         replication.NpcStateCommitted(NpcStateCommitKind.Update, in rejected);
 
+        // 900 is truly unsupported; 99 is now worm-family supported.
         NpcSnapshot unsupported = rejected with
         {
             Revision = new NpcRevision(4),
-            Type = 99,
-            NetId = 99
+            Type = 900,
+            NetId = 900
         };
         replication.NpcStateCommitted(NpcStateCommitKind.Update, in unsupported);
 

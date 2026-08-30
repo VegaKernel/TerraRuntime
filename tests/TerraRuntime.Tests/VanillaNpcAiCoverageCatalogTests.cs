@@ -8,7 +8,12 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Every_coverage_entry_has_an_explicit_definition_and_behavior_family()
     {
-        Assert.Equal(7, VanillaNpcAiCoverageCatalog.Count);
+        int expected = 7 +
+            VanillaSlimeNpcCatalog.DefinitionCount +
+            VanillaFlyingEyeNpcCatalog.DefinitionCount +
+            VanillaFlyerNpcCatalog.DefinitionCount +
+            VanillaWormNpcCatalog.Count;
+        Assert.Equal(expected, VanillaNpcAiCoverageCatalog.Count);
 
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
         {
@@ -47,6 +52,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Unadmitted_npc_has_no_coverage_claim()
     {
-        Assert.False(VanillaNpcAiCoverageCatalog.TryGet(new NpcTypeId(6), out _));
+        // 6 = EaterOfSouls is now admitted via VanillaFlyerNpcCatalog; 900 is outside any catalog.
+        Assert.False(VanillaNpcAiCoverageCatalog.TryGet(new NpcTypeId(900), out _));
     }
 }
