@@ -140,6 +140,8 @@ public static class VanillaItemIds
 
     public static ItemTypeId None => default;
     public static readonly ItemTypeId DirtBlock = new(2);
+    public static readonly ItemTypeId StoneBlock = new(3);
+    public static readonly ItemTypeId SandBlock = new(169);
     public static readonly ItemTypeId Gel = new(23);
     public static readonly ItemTypeId Chest = new(48);
     public static readonly ItemTypeId SlimeStaff = new(1309);

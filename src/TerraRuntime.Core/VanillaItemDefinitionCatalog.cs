@@ -120,6 +120,26 @@ public static class VanillaItemDefinitionCatalog
         PickTool: null,
         WorldDrop: null);
 
+    private static readonly VanillaItemDefinition StoneBlockDefinition = new(
+        Type: VanillaItemIds.StoneBlock,
+        RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 12, Height: 12, MaximumStack: CommonMaximumStack),
+        UseTiming: DirtBlockUseTiming,
+        Placement: new VanillaItemPlacementDefinition(
+            TileType: VanillaTileIds.Stone,
+            Consumable: true),
+        PickTool: null,
+        WorldDrop: null);
+
+    private static readonly VanillaItemDefinition SandBlockDefinition = new(
+        Type: VanillaItemIds.SandBlock,
+        RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 12, Height: 12, MaximumStack: CommonMaximumStack),
+        UseTiming: DirtBlockUseTiming,
+        Placement: new VanillaItemPlacementDefinition(
+            TileType: VanillaTileIds.Sand,
+            Consumable: true),
+        PickTool: null,
+        WorldDrop: null);
+
     private static readonly VanillaItemDefinition CopperPickaxeDefinition = new(
         Type: VanillaItemIds.CopperPickaxe,
         RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 24, Height: 28, MaximumStack: CommonMaximumStack),
@@ -159,6 +179,18 @@ public static class VanillaItemDefinitionCatalog
         if (type == VanillaItemIds.DirtBlock)
         {
             definition = DirtBlockDefinition;
+            return true;
+        }
+
+        if (type == VanillaItemIds.StoneBlock)
+        {
+            definition = StoneBlockDefinition;
+            return true;
+        }
+
+        if (type == VanillaItemIds.SandBlock)
+        {
+            definition = SandBlockDefinition;
             return true;
         }
 

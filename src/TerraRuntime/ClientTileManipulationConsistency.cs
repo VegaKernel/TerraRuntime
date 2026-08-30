@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
+using TerraRuntime.World;
 
 namespace TerraRuntime;
 
@@ -34,15 +35,33 @@ internal static class ClientTileManipulationConsistency
             return ClientTileManipulationConsistencyResult.Mismatch;
         }
 
-        if (!VanillaItemDefinitionCatalog.TryGetPlacement(
+        if (VanillaItemDefinitionCatalog.TryGetPlacement(
                 selectedItem.ItemType,
                 out VanillaItemPlacementDefinition placement))
+        {
+            return requestedTile == placement.TileType
+                ? ClientTileManipulationConsistencyResult.Consistent
+                : ClientTileManipulationConsistencyResult.Mismatch;
+        }
+
+        // Sparse catalog fallback: truly unknown item types that request a valid simple tile are treated
+        // as consistent so generic tile placement (stone/sand/etc.) can be validated by the
+        // authoritative mutation service without requiring every block item to be pre-catalogued.
+        // Known non-placeable items (e.g., pickaxe) remain Unsupported.
+        if (VanillaItemDefinitionCatalog.TryGet(selectedItem.ItemType, out VanillaItemDefinition known) &&
+            known.Placement is null)
         {
             return ClientTileManipulationConsistencyResult.Unsupported;
         }
 
-        return requestedTile == placement.TileType
-            ? ClientTileManipulationConsistencyResult.Consistent
-            : ClientTileManipulationConsistencyResult.Mismatch;
+        if (VanillaTileIds.TryCreate(requestedTile.Value, out _) &&
+            VanillaTileDefinitionCatalog.TryGet(requestedTile, out VanillaTileDefinition definition) &&
+            !definition.IsFrameImportant &&
+            !VanillaMultiTileObjectCatalog.TryGet(requestedTile, out _))
+        {
+            return ClientTileManipulationConsistencyResult.Consistent;
+        }
+
+        return ClientTileManipulationConsistencyResult.Unsupported;
     }
 }
