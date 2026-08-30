@@ -48,10 +48,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
     [InlineData(3, VanillaNpcBehaviorFamily.GroundFighter, VanillaNpcPhysicsFamily.GroundFighter)]
     [InlineData(4, VanillaNpcBehaviorFamily.EyeOfCthulhu, VanillaNpcPhysicsFamily.NoClipFlight)]
     [InlineData(5, VanillaNpcBehaviorFamily.Flyer, VanillaNpcPhysicsFamily.NoClipFlight)]
-<<<<<<< Updated upstream
-=======
     [InlineData(21, VanillaNpcBehaviorFamily.GroundFighter, VanillaNpcPhysicsFamily.GroundFighter)]
->>>>>>> Stashed changes
     [InlineData(50, VanillaNpcBehaviorFamily.KingSlime, VanillaNpcPhysicsFamily.SlimeGround)]
     public void Verified_definitions_explicitly_opt_into_runtime_behavior_and_physics_families(
         int type,
