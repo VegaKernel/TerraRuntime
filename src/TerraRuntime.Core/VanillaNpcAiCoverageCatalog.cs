@@ -22,7 +22,8 @@ public enum VanillaNpcAiCapability : uint
     FlyerPursuitProfileSlice = 1 << 13,
     WormRelationshipCatalog = 1 << 14,
     WormMotionPrimitive = 1u << 15,
-    WormSegmentFollowSlice = 1u << 16
+    WormSegmentFollowSlice = 1u << 16,
+    WormHeadWorldSteeringSlice = 1u << 17
 }
 
 /// <summary>
@@ -160,6 +161,14 @@ public static class VanillaNpcAiCoverageCatalog
                     VanillaNpcAiCapability.StateTransitionSlice |
                     VanillaNpcAiCapability.WorldPhysicsSlice |
                     VanillaNpcAiCapability.WormSegmentFollowSlice;
+            }
+            else
+            {
+                capabilities |=
+                    VanillaNpcAiCapability.TargetingSlice |
+                    VanillaNpcAiCapability.StateTransitionSlice |
+                    VanillaNpcAiCapability.WorldPhysicsSlice |
+                    VanillaNpcAiCapability.WormHeadWorldSteeringSlice;
             }
 
             entries[index++] = Partial(

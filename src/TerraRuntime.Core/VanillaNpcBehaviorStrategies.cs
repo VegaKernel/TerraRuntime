@@ -430,6 +430,11 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
 
 internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    private IVanillaWormEnvironment? environment;
+
+    public void SetEnvironment(IVanillaWormEnvironment value) =>
+        environment = value ?? throw new ArgumentNullException(nameof(value));
+
     public bool TryStep(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -445,7 +450,7 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         }
 
         if (worm.Role == VanillaWormSegmentRole.Head)
-            return inner.TryStepState(in npc, out next);
+            return TryStepHead(in npc, in definition, in worm, context, inner, out next);
 
         float rawLeaderSlot = npc.Ai.Ai1;
         bool validLeaderSlot =
@@ -515,6 +520,65 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         type == VanillaNpcIds.EaterOfWorldsHead ||
         type == VanillaNpcIds.EaterOfWorldsBody ||
         type == VanillaNpcIds.EaterOfWorldsTail;
+
+    private bool TryStepHead(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        in VanillaWormNpcEntry worm,
+        VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner,
+        out NpcStateUpdate next)
+    {
+        if (environment is null ||
+            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !context.TrySelectClosestTarget(
+                in npc,
+                in definition,
+                out VanillaBlueSlimeTargetRefresh closest) ||
+            !context.TryFindCandidate(
+                checked((byte)closest.Target),
+                out VanillaNpcTargetCandidate target))
+        {
+            return inner.TryStepState(in npc, out next);
+        }
+
+        var input = new VanillaWormHeadMotionInput(
+            npc.PositionX + hitbox.Width * 0.5f,
+            npc.PositionY + hitbox.Height * 0.5f,
+            npc.VelocityX,
+            npc.VelocityY,
+            target.CenterX,
+            target.CenterY,
+            environment.IsDigging(
+                npc.PositionX,
+                npc.PositionY,
+                hitbox.Width,
+                hitbox.Height));
+        VanillaWormMotionProfile profile = worm.Motion;
+        if (!VanillaWormMotion.TryStepHead(in input, in profile, out VanillaWormHeadMotionResult result))
+        {
+            next = default;
+            return false;
+        }
+
+        next = new NpcStateUpdate(
+            definition.Type.Value,
+            npc.NetId,
+            npc.PositionX,
+            npc.PositionY,
+            result.VelocityX,
+            result.VelocityY,
+            closest.Target,
+            npc.Ai,
+            npc.Simulation with
+            {
+                DirectionX = closest.DirectionX,
+                DirectionY = closest.DirectionY,
+                NoGravity = true,
+                NoTileCollide = true
+            });
+        return true;
+    }
 
     private static NpcStateUpdate Terminal(in NpcSnapshot npc) =>
         new(

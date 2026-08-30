@@ -87,6 +87,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             targeting.EnableBlueSlimeMotion(worldSurfaceTiles);
             targeting.EnableZombieMotion(worldSurfaceTiles);
             targeting.SetKingSlimeEnvironment(new VanillaKingSlimeWorldEnvironment(tiles));
+            targeting.SetWormEnvironment(new VanillaWormWorldEnvironment(tiles));
         }
     }
 

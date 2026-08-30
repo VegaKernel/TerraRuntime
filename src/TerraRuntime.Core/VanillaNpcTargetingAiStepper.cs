@@ -28,7 +28,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _eyeOfCthulhu = new VanillaEyeOfCthulhuNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy();
-    private readonly IVanillaNpcBehaviorStrategy _worm = new VanillaWormNpcBehaviorStrategy();
+    private readonly VanillaWormNpcBehaviorStrategy _worm = new();
     private readonly VanillaKingSlimeNpcBehaviorStrategy _kingSlime;
     private readonly IVanillaNpcRandom _random;
 
@@ -51,6 +51,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public void SetKingSlimeEnvironment(IVanillaKingSlimeEnvironment environment) =>
         _kingSlime.SetEnvironment(environment);
+
+    public void SetWormEnvironment(IVanillaWormEnvironment environment) =>
+        _worm.SetEnvironment(environment);
 
     public void SetWorldConditions(bool dayTime, bool slimeRainActive, bool goodWorld = false) =>
         _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld);

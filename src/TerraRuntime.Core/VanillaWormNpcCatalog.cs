@@ -10,6 +10,11 @@ public enum VanillaWormSegmentRole : byte
     Tail = 3
 }
 
+public interface IVanillaWormEnvironment
+{
+    bool IsDigging(float positionX, float positionY, int width, int height);
+}
+
 public readonly record struct VanillaWormMotionProfile(
     float MaximumSpeed,
     float TurnRate,
