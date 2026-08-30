@@ -153,6 +153,8 @@ public sealed class WorldFileRuntimeMetadata
     public bool LanternsUp => LanternNightGenuine || LanternNightManual;
     public bool SlimeRainActive => SlimeRainTime > 0d;
     public float NetworkRain => Raining ? MaxRain : 0f;
+    public VanillaWorldProgressionState Progression => VanillaWorldStateProjection.GetProgression(this);
+    public VanillaWorldEventState Events => VanillaWorldStateProjection.GetEvents(this);
 }
 
 public readonly record struct WorldFileRuntimeMetadataLimits(

@@ -269,9 +269,9 @@ These subsystems are order-sensitive and can touch large world areas, so their i
 
 ## 22. Progression, events, town NPCs and bosses
 
-These are currently major parity gaps.
+Permanent milestones, active events and invasion identities now project from world metadata into separate typed gameplay state.
 
-Do not infer support from world header fields being readable or from generic NPC infrastructure existing. A world can load progression metadata without the runtime yet reproducing all transitions and gameplay consequences of that metadata.
+Their simulation remains a major parity gap. Do not infer full support from a readable milestone or generic NPC infrastructure: transitions, waves, spawn rules, rewards and gameplay consequences still require source-backed implementations.
 
 As these systems become authoritative, each needs explicit persistence, synchronization and official behavior evidence.
 

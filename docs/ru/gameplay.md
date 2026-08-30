@@ -269,9 +269,9 @@ Wiring, liquid material и growth commits теперь имеют отдельн
 
 ## 22. Progression, events, town NPCs и bosses
 
-Это major parity gaps.
+Permanent milestones, active events и invasion identities теперь проецируются из world metadata в отдельный typed gameplay state.
 
-Нельзя выводить support из readable world header fields или generic NPC infrastructure. World может load progression metadata, пока runtime не воспроизводит transitions/gameplay consequences.
+Их simulation остаётся major parity gap. Нельзя выводить full support из readable milestone или generic NPC infrastructure: transitions, waves, spawn rules, rewards и gameplay consequences всё ещё требуют source-backed implementations.
 
 При переходе этих systems в authoritative state каждой нужны explicit persistence, synchronization и official behavior evidence.
 
