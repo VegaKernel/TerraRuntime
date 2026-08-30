@@ -260,7 +260,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 - [x] CI audit for prohibited raw IDs/masks ([EN](../en/gameplay-domain-literal-gate.md), [RU](../ru/gameplay-domain-literal-gate.md));
 - [x] architecture tests ([EN](../en/architecture-gates.md), [RU](../ru/architecture-gates.md));
 - [ ] optional Roslyn analyzer if textual enforcement is insufficient;
-- [ ] document intentional remaining raw values and ownership.
+- [x] document intentional remaining raw values and ownership ([EN](../en/gameplay-literal-ownership.md), [RU](../ru/gameplay-literal-ownership.md)).
 
 ## 24. Definition of done
 
