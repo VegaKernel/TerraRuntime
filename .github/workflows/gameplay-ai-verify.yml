@@ -13,6 +13,9 @@ on:
       - 'tests/TerraRuntime.Tests/*ItemUse*.cs'
       - 'tests/TerraRuntime.Tests/*ItemDefinition*.cs'
       - 'tests/TerraRuntime.Tests/*NpcLoot*.cs'
+      - 'tools/ci/audit_gameplay_domain_literals.py'
+      - 'docs/en/gameplay-domain-literal-gate.md'
+      - 'docs/ru/gameplay-domain-literal-gate.md'
       - 'docs/roadmap/gameplay-decomposition-and-catalogs.md'
       - '.github/workflows/gameplay-ai-verify.yml'
   workflow_dispatch:
@@ -31,6 +34,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Gameplay raw-domain audit
+        run: python3 tools/ci/audit_gameplay_domain_literals.py
 
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5

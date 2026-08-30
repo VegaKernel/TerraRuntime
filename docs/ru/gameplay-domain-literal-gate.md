@@ -1,0 +1,44 @@
+# CI-гейт доменных числовых литералов gameplay
+
+[English](../en/gameplay-domain-literal-gate.md) · [Roadmap декомпозиции gameplay](../roadmap/gameplay-decomposition-and-catalogs.md)
+
+TerraRuntime считает числовую Terraria identity данными границы/версии, а не обычной деталью gameplay. `tools/ci/audit_gameplay_domain_literals.py` является высокосигнальным CI-гейтом этого правила.
+
+Гейт сканирует gameplay-owned C# в `src/TerraRuntime.Core` и `src/TerraRuntime`. Адаптеры packet/file, чьи имена явно обозначают packet, protocol, projection, frame encoder/decoder, codec или wire ownership, исключены: на этих границах raw representation допустим.
+
+Вне таких границ аудит запрещает:
+
+- создание `ItemTypeId`, `NpcTypeId`, `ProjectileTypeId`, `TileTypeId`, `WallTypeId`, `BuffTypeId`, `PrefixId`, `TileEntityTypeId`, `NpcAiStyleId` или `ProjectileAiStyleId` из числового литерала;
+- target-typed варианты вроде `NpcTypeId type = new(3)`;
+- прямые решения вроде `npc.Type == 3` или `projectile.AiStyle != 2`;
+- прямые числовые битовые операции над семантическими `Flags`, `ControlFlags`, `StateFlags`, `WireFlags` или `Bits`.
+
+Комментарии, строковые и символьные литералы перед проверкой вырезаются, поэтому примеры в документации не превращаются в ложные нарушения.
+
+## Правильная граница
+
+```mermaid
+flowchart LR
+    Raw["packet / .wld primitive"] --> Boundary["validate / normalize boundary"]
+    Boundary --> Typed["typed domain ID / named flags"]
+    Catalog["version-pinned vanilla catalog"] --> Typed
+    Typed --> Gameplay["authoritative gameplay"]
+```
+
+Gameplay использует `VanillaNpcIds.Zombie`, `VanillaProjectileIds.Shuriken`, `VanillaNpcAiStyles.Fighter` или проверенные metadata families вместо повторения их raw-значений.
+
+## Исключения
+
+Скрытого baseline-файла, который молча легализует старые нарушения, нет. Реально необходимый числовой литерал в gameplay обязан иметь заметное при review исключение на той же строке:
+
+```text
+// gameplay-domain-literal-audit: allow <rule> - <конкретная причина>
+```
+
+Имя rule должно совпадать с нарушением, а причина не может быть пустой формальностью. Обычное boundary representation лучше вынести в явно названный adapter, а не подавлять проверку.
+
+## Граница доказательства
+
+Зелёный гейт доказывает отсутствие запрещённых raw-domain форм в проверяемых gameplay roots. Он не означает, что любой числовой tuning-параметр плох или что protocol/persistence должны отказаться от primitives. Таймеры, размеры и математические значения остаются ответственностью своих подсистем и обычных правил roadmap по magic numbers.
+
+Гейт запускается в `Gameplay AI Verify` до .NET build, чтобы новый raw ID падал быстро и заметно.
