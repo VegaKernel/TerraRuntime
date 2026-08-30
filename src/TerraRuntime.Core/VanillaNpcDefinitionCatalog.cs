@@ -17,15 +17,29 @@ public enum VanillaNpcBehaviorFamily : byte
 }
 
 /// <summary>
+/// Runtime-owned physics family selected independently from AI behavior. A shared AI style/family does not
+/// prove identical gravity, collision, platform or obstacle semantics, so every admitted definition opts in
+/// explicitly to the world-motion path that has been verified for it.
+/// </summary>
+public enum VanillaNpcPhysicsFamily : byte
+{
+    None = 0,
+    SlimeGround = 1,
+    FlyingEye = 2,
+    GroundFighter = 3
+}
+
+/// <summary>
 /// Source-backed vanilla NPC defaults required by authoritative lifecycle and AI bring-up.
 /// Values are clean-room facts extracted from TerrariaServer 1.4.5.8 SetDefaults; behavior stays
-/// independently implemented in TerraRuntime. <see cref="BehaviorFamily"/> is runtime-owned metadata
-/// and is assigned only after the corresponding implementation has been verified for this definition.
+/// independently implemented in TerraRuntime. <see cref="BehaviorFamily"/> and <see cref="PhysicsFamily"/>
+/// are runtime-owned metadata assigned only after the corresponding implementations are verified.
 /// </summary>
 public readonly record struct VanillaNpcDefinition(
     NpcTypeId Type,
     NpcAiStyleId AiStyle,
     VanillaNpcBehaviorFamily BehaviorFamily,
+    VanillaNpcPhysicsFamily PhysicsFamily,
     int Width,
     int Height,
     int Damage,
@@ -43,6 +57,7 @@ public static class VanillaNpcDefinitionCatalog
 {
     public const ushort DefaultTarget = byte.MaxValue;
     public const int DefaultTimeLeft = 750;
+    public const int DefaultSpriteDirection = -1;
 
     /// <summary>
     /// Raw-id compatibility boundary for protocol/bootstrap callers that have not yet crossed into
@@ -67,6 +82,7 @@ public static class VanillaNpcDefinitionCatalog
                 Type: VanillaNpcIds.BlueSlime,
                 AiStyle: VanillaNpcAiStyles.Slime,
                 BehaviorFamily: VanillaNpcBehaviorFamily.SlimeGround,
+                PhysicsFamily: VanillaNpcPhysicsFamily.SlimeGround,
                 Width: 24,
                 Height: 18,
                 Damage: 7,
@@ -83,6 +99,7 @@ public static class VanillaNpcDefinitionCatalog
                 Type: VanillaNpcIds.DemonEye,
                 AiStyle: VanillaNpcAiStyles.DemonEye,
                 BehaviorFamily: VanillaNpcBehaviorFamily.FlyingEye,
+                PhysicsFamily: VanillaNpcPhysicsFamily.FlyingEye,
                 Width: 30,
                 Height: 32,
                 Damage: 18,
@@ -99,6 +116,7 @@ public static class VanillaNpcDefinitionCatalog
                 Type: VanillaNpcIds.Zombie,
                 AiStyle: VanillaNpcAiStyles.Fighter,
                 BehaviorFamily: VanillaNpcBehaviorFamily.GroundFighter,
+                PhysicsFamily: VanillaNpcPhysicsFamily.GroundFighter,
                 Width: 18,
                 Height: 40,
                 Damage: 14,

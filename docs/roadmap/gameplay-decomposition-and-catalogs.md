@@ -225,22 +225,22 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 - [x] projectile definitions;
 - [x] typed lifecycle/provenance;
 - [ ] behavior/physics/collision/combat decomposition;
-- [ ] remove raw projectile IDs and AI-style numbers from gameplay paths;
+- [x] remove raw projectile IDs and AI-style numbers from gameplay paths ([EN](../en/gameplay-domain-literal-gate.md), [RU](../ru/gameplay-domain-literal-gate.md));
 - [x] align with custom projectile extension pipeline.
 
 ### D4 - NPCs
 
 - [x] NPC definitions;
 - [x] AI family/behavior decomposition;
-- [ ] spawn/physics/combat/loot separation;
+- [x] spawn/physics/combat/loot separation ([EN](../en/npc-runtime-ownership.md), [RU](../ru/npc-runtime-ownership.md));
 - [ ] boss/town behavior boundaries;
-- [ ] remove raw NPC IDs/AI-style numbers;
+- [x] remove raw NPC IDs/AI-style numbers ([EN](../en/gameplay-domain-literal-gate.md), [RU](../ru/gameplay-domain-literal-gate.md));
 - [x] align with custom NPC extension pipeline.
 
 ### D5 - Tiles, walls and objects
 
 - [ ] tile/wall definitions;
-- [ ] named tile state flags;
+- [x] named tile state flags ([EN](../en/tile-state-flags.md), [RU](../ru/tile-state-flags.md));
 - [ ] multi-tile object definitions;
 - [ ] placement/break/framing operations;
 - [ ] wiring/liquids/growth decomposition;
@@ -257,7 +257,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 
 ### D7 - Enforcement
 
-- [ ] CI audit for prohibited raw IDs/masks;
+- [x] CI audit for prohibited raw IDs/masks ([EN](../en/gameplay-domain-literal-gate.md), [RU](../ru/gameplay-domain-literal-gate.md));
 - [x] architecture tests ([EN](../en/architecture-gates.md), [RU](../ru/architecture-gates.md));
 - [ ] optional Roslyn analyzer if textual enforcement is insufficient;
 - [ ] document intentional remaining raw values and ownership.

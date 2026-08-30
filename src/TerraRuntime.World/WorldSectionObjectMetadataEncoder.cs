@@ -1,5 +1,4 @@
 using System.Text;
-using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.World;
 
@@ -111,20 +110,7 @@ public static class WorldSectionObjectMetadataEncoder
                 continue;
 
             WorldTile tile = world.Tiles.Get(chest.X, chest.Y);
-            if (!tile.IsActive)
-                continue;
-
-            TileTypeId tileType = tile.TileType;
-            bool basicChest =
-                VanillaTileIds.IsChestAnchor(tileType) &&
-                tileType != VanillaTileIds.Dressers &&
-                tile.FrameX % 36 == 0 &&
-                tile.FrameY % 36 == 0;
-            bool dresser =
-                tileType == VanillaTileIds.Dressers &&
-                tile.FrameX % 54 == 0 &&
-                tile.FrameY % 36 == 0;
-            if (basicChest || dresser)
+            if (VanillaTileObjectAnchorCatalog.MatchesChestAnchor(tile))
                 result.Add(chest);
         }
 
@@ -146,13 +132,8 @@ public static class WorldSectionObjectMetadataEncoder
                 continue;
 
             WorldTile tile = world.Tiles.Get(sign.X, sign.Y);
-            if (tile.IsActive &&
-                VanillaTileIds.CarriesSignText(tile.TileType) &&
-                tile.FrameX % 36 == 0 &&
-                tile.FrameY % 36 == 0)
-            {
+            if (VanillaTileObjectAnchorCatalog.MatchesSignAnchor(tile))
                 result.Add(sign);
-            }
         }
 
         SortByVanillaScanOrder(result, static sign => sign.X, static sign => sign.Y);
@@ -173,37 +154,12 @@ public static class WorldSectionObjectMetadataEncoder
                 continue;
 
             WorldTile tile = world.Tiles.Get(entity.X, entity.Y);
-            if (tile.IsActive && MatchesVanillaTileEntityAnchor(entity.Kind, tile))
+            if (VanillaTileObjectAnchorCatalog.MatchesTileEntityAnchor(entity.Kind, tile))
                 result.Add(entity);
         }
 
         SortByVanillaScanOrder(result, static entity => entity.X, static entity => entity.Y);
         return result;
-    }
-
-    private static bool MatchesVanillaTileEntityAnchor(WorldTileEntityKind kind, in WorldTile tile)
-    {
-        TileTypeId tileType = tile.TileType;
-        return kind switch
-        {
-            WorldTileEntityKind.TrainingDummy =>
-                tileType == VanillaTileIds.TargetDummy && tile.FrameX % 36 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.ItemFrame =>
-                tileType == VanillaTileIds.ItemFrame && tile.FrameX % 36 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.DeadCellsDisplayJar =>
-                tileType == VanillaTileIds.DeadCellsDisplayJar && tile.FrameX % 18 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.FoodPlatter =>
-                tileType == VanillaTileIds.FoodPlatter && tile.FrameX % 18 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.WeaponsRack =>
-                tileType == VanillaTileIds.WeaponsRack2 && tile.FrameX % 54 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.DisplayDoll =>
-                tileType == VanillaTileIds.DisplayDoll && tile.FrameX % 36 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.HatRack =>
-                tileType == VanillaTileIds.HatRack && tile.FrameX % 54 == 0 && tile.FrameY == 0,
-            WorldTileEntityKind.TeleportationPylon =>
-                tileType == VanillaTileIds.TeleportationPylon && tile.FrameX % 54 == 0 && tile.FrameY % 72 == 0,
-            _ => false
-        };
     }
 
     private static bool TryWriteEntityPayload(BinaryWriter writer, WorldTileEntity entity)
