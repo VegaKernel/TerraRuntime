@@ -114,6 +114,37 @@ public static class VanillaWormNpcCatalog
         return false;
     }
 
+    public static bool TryGetInitialSegmentCountRange(
+        NpcTypeId headType,
+        out int minimumInclusive,
+        out int maximumExclusive)
+    {
+        if (headType == VanillaNpcIds.DevourerHead)
+        {
+            minimumInclusive = 8;
+            maximumExclusive = 13;
+            return true;
+        }
+
+        if (headType == VanillaNpcIds.GiantWormHead)
+        {
+            minimumInclusive = 4;
+            maximumExclusive = 7;
+            return true;
+        }
+
+        if (headType == VanillaNpcIds.BoneSerpentHead)
+        {
+            minimumInclusive = 14;
+            maximumExclusive = 23;
+            return true;
+        }
+
+        minimumInclusive = 0;
+        maximumExclusive = 0;
+        return false;
+    }
+
     private static VanillaWormNpcEntry FamilyEntry(
         NpcTypeId type,
         int width,

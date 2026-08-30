@@ -99,7 +99,36 @@ public sealed class RuntimeNpcAiStateExecutor
                 for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
                 {
                     NpcAiSpawnIntent intent = _spawnIntentBuffer[spawnIndex];
-                    RuntimeNpcSpawnIntentApplier.TryApply(_npcs, in intent, out _);
+                    if (!RuntimeNpcSpawnIntentApplier.TryApply(_npcs, in intent, out NpcSnapshot spawned) ||
+                        !intent.LinkSourceFollowerSlot)
+                    {
+                        continue;
+                    }
+
+                    NpcAiState linkedAi = new(
+                        spawned.Handle.Slot,
+                        committed.Ai.Ai1,
+                        committed.Ai.Ai2,
+                        committed.Ai.Ai3);
+                    var linkedUpdate = new NpcStateUpdate(
+                        committed.Type,
+                        committed.NetId,
+                        committed.PositionX,
+                        committed.PositionY,
+                        committed.VelocityX,
+                        committed.VelocityY,
+                        committed.Target,
+                        linkedAi,
+                        committed.Simulation);
+                    if (_npcs.TryUpdate(committed.Handle, in linkedUpdate, out NpcSnapshot linked))
+                    {
+                        committed = linked;
+                        commitSink?.NpcAiStateCommitted(in linked);
+                    }
+                    else
+                    {
+                        _npcs.TryDespawn(spawned.Handle);
+                    }
                 }
             }
             else

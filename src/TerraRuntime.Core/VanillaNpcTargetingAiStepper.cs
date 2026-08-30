@@ -122,7 +122,80 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanKingSlimeMinions(in source, in proposed, destination);
         }
 
+        if (NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType) &&
+            VanillaWormNpcCatalog.TryGet(sourceType, out _))
+        {
+            return PlanWormFollower(in source, in proposed, sourceType, destination);
+        }
+
         return 0;
+    }
+
+    private int PlanWormFollower(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        NpcTypeId sourceType,
+        Span<NpcAiSpawnIntent> destination)
+    {
+        if (source.Ai.Ai0 != 0f ||
+            proposed.Ai.Ai0 != 0f ||
+            proposed.Type != source.Type ||
+            !VanillaWormNpcCatalog.TryGet(sourceType, out VanillaWormNpcEntry worm) ||
+            worm.Role == VanillaWormSegmentRole.Tail ||
+            !worm.Definition.TryResolveHitbox(
+                proposed.Simulation.Scale,
+                out VanillaNpcHitboxSize hitbox))
+        {
+            return 0;
+        }
+
+        int remaining;
+        float rootSlot;
+        if (worm.Role == VanillaWormSegmentRole.Head)
+        {
+            if (!VanillaWormNpcCatalog.TryGetInitialSegmentCountRange(
+                    sourceType,
+                    out int minimum,
+                    out int maximum))
+            {
+                return 0;
+            }
+
+            remaining = _random.NextInt32(minimum, maximum) - 1;
+            rootSlot = source.Handle.Slot;
+        }
+        else
+        {
+            if (!float.IsFinite(source.Ai.Ai2) ||
+                source.Ai.Ai2 < 0f ||
+                source.Ai.Ai2 > int.MaxValue ||
+                source.Ai.Ai2 != MathF.Truncate(source.Ai.Ai2))
+            {
+                return 0;
+            }
+
+            remaining = (int)source.Ai.Ai2 - 1;
+            rootSlot = source.Ai.Ai3;
+        }
+
+        NpcTypeId childType = remaining >= 0 ? worm.BodyType : worm.TailType;
+        int childRemaining = Math.Max(remaining, 0);
+        destination[0] = new NpcAiSpawnIntent(
+            childType,
+            BottomX: (int)(proposed.PositionX + hitbox.Width * 0.5f),
+            BottomY: (int)(proposed.PositionY + hitbox.Height),
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget)
+        {
+            InitialAi = new NpcAiState(
+                Ai0: 0f,
+                Ai1: source.Handle.Slot,
+                Ai2: childRemaining,
+                Ai3: rootSlot),
+            LinkSourceFollowerSlot = true
+        };
+        return 1;
     }
 
     private int PlanEyeOfCthulhuServant(

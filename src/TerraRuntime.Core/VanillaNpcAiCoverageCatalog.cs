@@ -23,7 +23,8 @@ public enum VanillaNpcAiCapability : uint
     WormRelationshipCatalog = 1 << 14,
     WormMotionPrimitive = 1u << 15,
     WormSegmentFollowSlice = 1u << 16,
-    WormHeadWorldSteeringSlice = 1u << 17
+    WormHeadWorldSteeringSlice = 1u << 17,
+    WormChainSpawnSlice = 1u << 18
 }
 
 /// <summary>
@@ -169,6 +170,19 @@ public static class VanillaNpcAiCoverageCatalog
                     VanillaNpcAiCapability.StateTransitionSlice |
                     VanillaNpcAiCapability.WorldPhysicsSlice |
                     VanillaNpcAiCapability.WormHeadWorldSteeringSlice;
+                if (VanillaWormNpcCatalog.TryGetInitialSegmentCountRange(
+                        worm.Definition.Type,
+                        out _,
+                        out _))
+                {
+                    capabilities |= VanillaNpcAiCapability.WormChainSpawnSlice;
+                }
+            }
+
+            if (worm.Role == VanillaWormSegmentRole.Body &&
+                worm.HeadType != VanillaNpcIds.EaterOfWorldsHead)
+            {
+                capabilities |= VanillaNpcAiCapability.WormChainSpawnSlice;
             }
 
             entries[index++] = Partial(

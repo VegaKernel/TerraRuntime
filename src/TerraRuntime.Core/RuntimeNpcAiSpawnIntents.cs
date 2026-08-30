@@ -17,6 +17,12 @@ public readonly record struct NpcAiSpawnIntent(
     ushort Target)
 {
     public NpcAiState InitialAi { get; init; }
+
+    /// <summary>
+    /// After the child slot is allocated, write that slot into the committed source's ai[0].
+    /// Used by vanilla linked chains whose follower identity cannot be known speculatively.
+    /// </summary>
+    public bool LinkSourceFollowerSlot { get; init; }
 }
 
 /// <summary>
