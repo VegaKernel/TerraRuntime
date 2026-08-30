@@ -6,9 +6,10 @@ on:
     paths:
       - 'tools/ci/probe_worldgen_jungle_pass.py'
       - 'tools/ci/probe_worldgen_jungle_helpers.py'
+      - 'tools/ci/probe_worldgen_jungle_layers.py'
       - '.github/workflows/terraria-worldgen-jungle-pass.yml'
       - 'src/TerraRuntime.World/SourceBackedVanillaWorldGenerationProvider1458.cs'
-      - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrapPass1458.cs'
+      - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrap1458.cs'
       - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationProvider1458Tests.cs'
   workflow_dispatch:
 
@@ -63,6 +64,9 @@ jobs:
           python3 tools/ci/probe_worldgen_jungle_helpers.py \
             --world-gen artifacts/source-contract/world-gen.cs \
             --output artifacts/source-contract/jungle-helper-contract.txt
+          python3 tools/ci/probe_worldgen_jungle_layers.py \
+            --world-gen artifacts/source-contract/world-gen.cs \
+            --output artifacts/source-contract/jungle-layer-contract.txt
 
       - name: Upload JunglePass evidence
         uses: actions/upload-artifact@v4
@@ -71,5 +75,6 @@ jobs:
           path: |
             artifacts/source-contract/jungle-pass-contract.txt
             artifacts/source-contract/jungle-helper-contract.txt
+            artifacts/source-contract/jungle-layer-contract.txt
           if-no-files-found: error
           retention-days: 7
