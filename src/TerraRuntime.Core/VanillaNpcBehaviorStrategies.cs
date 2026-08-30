@@ -549,7 +549,7 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             npc.VelocityY,
             target.CenterX,
             target.CenterY,
-            environment.IsDigging(
+            worm.Motion.AlwaysDig || environment.IsDigging(
                 npc.PositionX,
                 npc.PositionY,
                 hitbox.Width,

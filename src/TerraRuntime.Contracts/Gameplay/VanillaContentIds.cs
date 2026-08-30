@@ -67,6 +67,12 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SlimeRibbonRed = new(336);
     public static readonly NpcTypeId SpikedSlime = new(535);
     public static readonly NpcTypeId SandSlime = new(537);
+    public static readonly NpcTypeId DuneSplicerHead = new(510);
+    public static readonly NpcTypeId DuneSplicerBody = new(511);
+    public static readonly NpcTypeId DuneSplicerTail = new(512);
+    public static readonly NpcTypeId TombCrawlerHead = new(513);
+    public static readonly NpcTypeId TombCrawlerBody = new(514);
+    public static readonly NpcTypeId TombCrawlerTail = new(515);
     public static readonly NpcTypeId QueenSlimeMinionBlue = new(658);
     public static readonly NpcTypeId QueenSlimeMinionPink = new(659);
     public static readonly NpcTypeId GoldenSlime = new(667);
@@ -86,6 +92,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId StingyHornet = new(235);
     public static readonly NpcTypeId Parrot = new(252);
     public static readonly NpcTypeId BloodSquid = new(619);
+    public static readonly NpcTypeId BloodEelHead = new(621);
+    public static readonly NpcTypeId BloodEelBody = new(622);
+    public static readonly NpcTypeId BloodEelTail = new(623);
 }
 
 /// <summary>

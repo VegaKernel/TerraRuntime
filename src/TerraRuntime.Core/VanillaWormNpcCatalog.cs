@@ -20,7 +20,8 @@ public readonly record struct VanillaWormMotionProfile(
     float TurnRate,
     float SegmentGap,
     float AirGravity,
-    float RisingAirGravity)
+    float RisingAirGravity,
+    bool AlwaysDig = false)
 {
     public bool IsValid =>
         float.IsFinite(MaximumSpeed) && MaximumSpeed > 0f &&
@@ -102,7 +103,28 @@ public static class VanillaWormNpcCatalog
         FamilyEntry(VanillaNpcIds.LeechBody, 14, 14, 22, 6, 60, VanillaWormSegmentRole.Body,
             VanillaNpcIds.LeechHead, VanillaNpcIds.LeechBody, VanillaNpcIds.LeechTail, 8f, 0.07f, 14f),
         FamilyEntry(VanillaNpcIds.LeechTail, 14, 14, 18, 10, 60, VanillaWormSegmentRole.Tail,
-            VanillaNpcIds.LeechHead, VanillaNpcIds.LeechBody, VanillaNpcIds.LeechTail, 8f, 0.07f, 14f)
+            VanillaNpcIds.LeechHead, VanillaNpcIds.LeechBody, VanillaNpcIds.LeechTail, 8f, 0.07f, 14f),
+
+        FamilyEntry(VanillaNpcIds.DuneSplicerHead, 34, 34, 58, 18, 500, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.DuneSplicerHead, VanillaNpcIds.DuneSplicerBody, VanillaNpcIds.DuneSplicerTail, 10f, 0.25f, 34f),
+        FamilyEntry(VanillaNpcIds.DuneSplicerBody, 34, 34, 54, 28, 500, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.DuneSplicerHead, VanillaNpcIds.DuneSplicerBody, VanillaNpcIds.DuneSplicerTail, 10f, 0.25f, 34f),
+        FamilyEntry(VanillaNpcIds.DuneSplicerTail, 34, 34, 50, 34, 500, VanillaWormSegmentRole.Tail,
+            VanillaNpcIds.DuneSplicerHead, VanillaNpcIds.DuneSplicerBody, VanillaNpcIds.DuneSplicerTail, 10f, 0.25f, 34f),
+
+        FamilyEntry(VanillaNpcIds.TombCrawlerHead, 22, 22, 18, 0, 60, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.TombCrawlerHead, VanillaNpcIds.TombCrawlerBody, VanillaNpcIds.TombCrawlerTail, 7f, 0.1f, 16f),
+        FamilyEntry(VanillaNpcIds.TombCrawlerBody, 22, 22, 7, 12, 60, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.TombCrawlerHead, VanillaNpcIds.TombCrawlerBody, VanillaNpcIds.TombCrawlerTail, 7f, 0.1f, 16f),
+        FamilyEntry(VanillaNpcIds.TombCrawlerTail, 22, 22, 7, 14, 60, VanillaWormSegmentRole.Tail,
+            VanillaNpcIds.TombCrawlerHead, VanillaNpcIds.TombCrawlerBody, VanillaNpcIds.TombCrawlerTail, 7f, 0.1f, 16f),
+
+        FamilyEntry(VanillaNpcIds.BloodEelHead, 28, 28, 90, 0, 6000, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.BloodEelHead, VanillaNpcIds.BloodEelBody, VanillaNpcIds.BloodEelTail, 15f, 0.45f, 24f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.BloodEelBody, 28, 28, 60, 30, 6000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.BloodEelHead, VanillaNpcIds.BloodEelBody, VanillaNpcIds.BloodEelTail, 15f, 0.45f, 24f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.BloodEelTail, 28, 28, 50, 40, 6000, VanillaWormSegmentRole.Tail,
+            VanillaNpcIds.BloodEelHead, VanillaNpcIds.BloodEelBody, VanillaNpcIds.BloodEelTail, 15f, 0.45f, 24f, alwaysDig: true)
     ];
 
     public static int Count => Entries.Length;
@@ -182,6 +204,27 @@ public static class VanillaWormNpcCatalog
             return true;
         }
 
+        if (headType == VanillaNpcIds.DuneSplicerHead)
+        {
+            minimumInclusive = 12;
+            maximumExclusive = 21;
+            return true;
+        }
+
+        if (headType == VanillaNpcIds.TombCrawlerHead)
+        {
+            minimumInclusive = 6;
+            maximumExclusive = 10;
+            return true;
+        }
+
+        if (headType == VanillaNpcIds.BloodEelHead)
+        {
+            minimumInclusive = 16;
+            maximumExclusive = 17;
+            return true;
+        }
+
         minimumInclusive = 0;
         maximumExclusive = 0;
         return false;
@@ -202,7 +245,8 @@ public static class VanillaWormNpcCatalog
         float turn,
         float gap,
         float risingGravity = 0.11f,
-        float scale = 1f) =>
+        float scale = 1f,
+        bool alwaysDig = false) =>
         new(
             new VanillaNpcDefinition(
                 type,
@@ -224,5 +268,5 @@ public static class VanillaWormNpcCatalog
             head,
             body,
             tail,
-            new VanillaWormMotionProfile(speed, turn, gap, 0.11f, risingGravity));
+            new VanillaWormMotionProfile(speed, turn, gap, 0.11f, risingGravity, alwaysDig));
 }
