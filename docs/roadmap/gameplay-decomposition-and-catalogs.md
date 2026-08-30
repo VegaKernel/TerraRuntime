@@ -240,7 +240,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 ### D5 - Tiles, walls and objects
 
 - [ ] tile/wall definitions;
-- [ ] named tile state flags;
+- [x] named tile state flags ([EN](../en/tile-state-flags.md), [RU](../ru/tile-state-flags.md));
 - [ ] multi-tile object definitions;
 - [ ] placement/break/framing operations;
 - [ ] wiring/liquids/growth decomposition;
