@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace TerraRuntime.World;
 
 public enum WorldFileFreshCompose326Result : byte
@@ -31,8 +33,8 @@ public readonly record struct WorldFileFreshCompose326Diagnostic(
 
 /// <summary>
 /// Composes a complete current-format Terraria world from a finalized generated candidate. Fresh generation owns the
-/// tile store, semantic header anchors and any generated chest side-table records. Other object/NPC/bestiary sections
-/// still start empty and are emitted through the same canonical encoders used by normal persistence.
+/// tile store, semantic header anchors and generated side-table records such as chests and town NPCs. Remaining
+/// object/bestiary sections start empty and are emitted through the same canonical encoders used by normal persistence.
 ///
 /// The completed byte image is fed back through <see cref="WorldFileLoader"/> before it can escape this method.
 /// Callers never receive a partially encoded or structurally invalid .wld candidate.
@@ -55,6 +57,7 @@ public static class WorldFileFreshComposer326
             generation,
             tiles,
             ReadOnlySpan<WorldChest>.Empty,
+            EmptyNpcPersistence(),
             gameMode,
             crimson,
             creationTimeBinary,
@@ -70,10 +73,34 @@ public static class WorldFileFreshComposer326
         bool crimson,
         long creationTimeBinary,
         long lastPlayedBinary,
+        out byte[] file) =>
+        TryCompose(
+            header,
+            generation,
+            tiles,
+            chests,
+            EmptyNpcPersistence(),
+            gameMode,
+            crimson,
+            creationTimeBinary,
+            lastPlayedBinary,
+            out file);
+
+    public static WorldFileFreshCompose326Diagnostic TryCompose(
+        WorldFileHeader header,
+        RuntimeWorldGenerationMetadataSnapshot generation,
+        WorldTileStore tiles,
+        ReadOnlySpan<WorldChest> chests,
+        WorldNpcPersistence npcs,
+        byte gameMode,
+        bool crimson,
+        long creationTimeBinary,
+        long lastPlayedBinary,
         out byte[] file)
     {
         ArgumentNullException.ThrowIfNull(header);
         ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentNullException.ThrowIfNull(npcs);
         file = Array.Empty<byte>();
 
         if (header.Dimensions.WidthTiles != tiles.Dimensions.WidthTiles ||
@@ -142,9 +169,8 @@ public static class WorldFileFreshComposer326
 
         if (!TryCapturePointer(stream, pointers, 4))
             return Fail(WorldFileFreshCompose326Result.FileTooLarge);
-        var emptyNpcs = new WorldNpcPersistence([], [], []);
-        var npcOptions = new WorldFileNpcDecodeOptions(0, 0, 0, 0, 0, 0);
-        WorldFileNpcEncodeResult npcResult = WorldFileNpcEncoder.TryEncode(emptyNpcs, npcOptions, stream, out _);
+        WorldFileNpcDecodeOptions npcOptions = CreateNpcOptions(npcs);
+        WorldFileNpcEncodeResult npcResult = WorldFileNpcEncoder.TryEncode(npcs, npcOptions, stream, out _);
         if (npcResult != WorldFileNpcEncodeResult.Encoded)
             return Fail(WorldFileFreshCompose326Result.NpcEncodeFailed, (int)npcResult);
 
@@ -227,9 +253,13 @@ public static class WorldFileFreshComposer326
         }
 
         file = stream.ToArray();
-        WorldFileLoadLimits validationLimits = CreateValidationLimits(tiles.Count, chests);
+        WorldFileLoadLimits validationLimits = CreateValidationLimits(tiles.Count, chests, npcs);
         WorldFileLoadDiagnostic validation = WorldFileLoader.TryLoad(file, validationLimits, out WorldFileData? loaded);
-        if (!validation.IsLoaded || loaded is null || loaded.Chests.Length != chests.Length)
+        if (!validation.IsLoaded ||
+            loaded is null ||
+            loaded.Chests.Length != chests.Length ||
+            loaded.Npcs.TownNpcs.Length != npcs.TownNpcs.Length ||
+            loaded.Npcs.PersistentNpcs.Length != npcs.PersistentNpcs.Length)
         {
             file = Array.Empty<byte>();
             return new WorldFileFreshCompose326Diagnostic(
@@ -242,9 +272,39 @@ public static class WorldFileFreshComposer326
             Validation: validation);
     }
 
+    private static WorldNpcPersistence EmptyNpcPersistence() => new([], [], []);
+
+    private static WorldFileNpcDecodeOptions CreateNpcOptions(WorldNpcPersistence npcs)
+    {
+        int maxNameBytes = 0;
+        long totalNameBytes = 0;
+        foreach (WorldTownNpc npc in npcs.TownNpcs)
+        {
+            int nameBytes = Encoding.UTF8.GetByteCount(npc.GivenName);
+            maxNameBytes = Math.Max(maxNameBytes, nameBytes);
+            totalNameBytes = checked(totalNameBytes + nameBytes);
+        }
+
+        int maxShimmerIndexExclusive = 0;
+        foreach (int index in npcs.ShimmeredTownNpcIndices)
+        {
+            if (index >= maxShimmerIndexExclusive)
+                maxShimmerIndexExclusive = checked(index + 1);
+        }
+
+        return new WorldFileNpcDecodeOptions(
+            npcs.ShimmeredTownNpcIndices.Length,
+            maxShimmerIndexExclusive,
+            npcs.TownNpcs.Length,
+            npcs.PersistentNpcs.Length,
+            maxNameBytes,
+            totalNameBytes);
+    }
+
     private static WorldFileLoadLimits CreateValidationLimits(
         int tileCount,
-        ReadOnlySpan<WorldChest> chests)
+        ReadOnlySpan<WorldChest> chests,
+        WorldNpcPersistence npcs)
     {
         int maxItemsPerChest = 0;
         long totalChestItems = 0;
@@ -261,7 +321,7 @@ public static class WorldFileFreshComposer326
             MaxTotalChestItems: totalChestItems,
             MaxTextBytesPerSign: 0,
             MaxTotalSignTextBytes: 0,
-            Npcs: new WorldFileNpcDecodeOptions(0, 0, 0, 0, 0, 0),
+            Npcs: CreateNpcOptions(npcs),
             MaxTileEntities: 0,
             MaxPressurePlates: 0,
             MaxTownRooms: 0,

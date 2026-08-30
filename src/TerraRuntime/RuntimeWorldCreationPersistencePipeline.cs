@@ -33,7 +33,7 @@ internal readonly record struct RuntimeWorldCreationPersistenceResult(
 /// and deterministic; file identity/timestamps are explicit inputs and are applied only after pass execution and
 /// semantic finalization have succeeded. Gameplay-visible world options and original seed text come exclusively from
 /// the generation request so provider execution and the persisted vanilla header cannot silently disagree.
-/// Generated object side tables travel with the candidate and are composed atomically with its tile frames.
+/// Generated object and NPC side tables travel with the candidate and are composed atomically with its tile frames.
 /// </summary>
 internal sealed class RuntimeWorldCreationPersistencePipeline
 {
@@ -134,11 +134,13 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
         }
 
         WorldChest[] generatedChests = created.Candidate.CaptureGeneratedChests();
+        WorldNpcPersistence generatedNpcs = created.Candidate.CaptureGeneratedNpcs();
         WorldFileFreshCompose326Diagnostic composition = WorldFileFreshComposer326.TryCompose(
             header,
             created.Metadata,
             created.Candidate.TileStore,
             generatedChests,
+            generatedNpcs,
             gameMode: (byte)request.Options.GameMode,
             crimson: request.Options.Evil == WorldGenerationEvil.Crimson,
             creationTimeBinary,

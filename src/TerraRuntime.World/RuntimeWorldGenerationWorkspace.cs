@@ -5,8 +5,8 @@ namespace TerraRuntime.World;
 /// <summary>
 /// Isolated mutable tile workspace for a candidate generated world. Writes bypass live-world dirty tracking because
 /// the store is not authoritative or network-visible until the caller explicitly accepts the completed candidate.
-/// Generated object metadata is accumulated beside the tile store so fresh .wld composition can publish tiles and
-/// their side tables atomically instead of manufacturing orphan frame-important objects.
+/// Generated object/NPC metadata is accumulated beside the tile store so fresh .wld composition can publish tiles
+/// and their side tables atomically instead of manufacturing orphan frame-important objects or transient NPCs.
 /// </summary>
 public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace, IWorldGenerationMetadataWorkspace
 {
@@ -25,6 +25,7 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
 
     private const int VanillaChestItemSlots = 40;
     private readonly List<WorldChest> generatedChests = [];
+    private readonly List<WorldTownNpc> generatedTownNpcs = [];
     private WorldGenerationPoint? spawn;
     private WorldGenerationPoint? dungeon;
     private WorldGenerationLayers? layers;
@@ -42,6 +43,7 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
     public int WidthTiles => Dimensions.WidthTiles;
     public int HeightTiles => Dimensions.HeightTiles;
     public int GeneratedChestCount => generatedChests.Count;
+    public int GeneratedTownNpcCount => generatedTownNpcs.Count;
 
     internal VanillaWorldSeedProfile1458 VanillaSeedProfile => vanillaSeedProfile;
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
@@ -105,6 +107,62 @@ public sealed class RuntimeWorldGenerationWorkspace : IWorldGenerationWorkspace,
             snapshot[i] = source with { Items = source.Items.ToArray() };
         }
         return snapshot;
+    }
+
+    /// <summary>
+    /// Registers one generated town NPC in the candidate-world side table. Coordinates are persisted in Terraria's
+    /// pixel coordinate space while home coordinates remain tile coordinates. Duplicate net identities are rejected
+    /// for generation-owned starting NPCs so retries cannot silently create duplicate Guide-like records.
+    /// </summary>
+    internal bool TryAddGeneratedTownNpc(
+        int netId,
+        string givenName,
+        float x,
+        float y,
+        bool homeless,
+        int homeTileX,
+        int homeTileY,
+        int? townNpcVariationIndex = null,
+        bool homelessDespawn = false)
+    {
+        ArgumentNullException.ThrowIfNull(givenName);
+        if (netId == 0 ||
+            !float.IsFinite(x) ||
+            !float.IsFinite(y) ||
+            x < 0f || y < 0f ||
+            x >= WidthTiles * 16f ||
+            y >= HeightTiles * 16f ||
+            (uint)homeTileX >= (uint)WidthTiles ||
+            (uint)homeTileY >= (uint)HeightTiles ||
+            townNpcVariationIndex is < 0)
+        {
+            return false;
+        }
+
+        foreach (WorldTownNpc npc in generatedTownNpcs)
+        {
+            if (npc.NetId == netId)
+                return false;
+        }
+
+        generatedTownNpcs.Add(new WorldTownNpc(
+            netId,
+            givenName,
+            x,
+            y,
+            homeless,
+            homeTileX,
+            homeTileY,
+            townNpcVariationIndex,
+            homelessDespawn));
+        return true;
+    }
+
+    /// <summary>Returns a detached NPC persistence snapshot suitable for fresh-world composition.</summary>
+    public WorldNpcPersistence CaptureGeneratedNpcs()
+    {
+        WorldTownNpc[] townNpcs = generatedTownNpcs.ToArray();
+        return new WorldNpcPersistence([], townNpcs, []);
     }
 
     public bool TryGetTile(int x, int y, out WorldGenerationTile tile)
