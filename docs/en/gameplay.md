@@ -255,9 +255,9 @@ A declarative loot table is useful only if it reproduces the verified sequence; 
 
 ## 20. Buffs, prefixes and item metadata
 
-The architecture is moving toward typed IDs and version-pinned metadata rather than scattered raw integers.
+Buffs and prefixes now have typed, version-pinned identity ranges and selected source-backed definition traits rather than scattered raw integers.
 
-These systems remain broad future work. New authoritative validation must not accept arbitrary unvalidated bytes as meaningful domain state, but it also must not reject values whose vanilla legality has not been verified.
+Their complete gameplay remains broad future work. Identity validation must not be confused with implementing every buff effect, immunity, prefix stat family or reforging rule.
 
 ## 21. Wiring, liquids and growth
 

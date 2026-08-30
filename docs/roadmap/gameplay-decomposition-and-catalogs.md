@@ -248,7 +248,7 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 
 ### D6 - Buffs, combat, loot and progression
 
-- [ ] buff/prefix catalogs;
+- [x] buff/prefix catalogs ([EN](../en/buff-prefix-catalogs.md), [RU](../ru/buff-prefix-catalogs.md));
 - [x] damage-source model;
 - [x] loot rules ([EN](../en/npc-loot-rules.md), [RU](../ru/npc-loot-rules.md));
 - [ ] event/progression IDs/state;

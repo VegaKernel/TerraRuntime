@@ -9,6 +9,14 @@ public enum VanillaItemPrefixFamily : byte
     Summon = 1
 }
 
+public readonly record struct VanillaPrefixDefinition(
+    PrefixId Type,
+    bool IsSummonRollable,
+    bool HasReducedNaturalChance)
+{
+    public bool IsPresent => Type != VanillaPrefixIds.None;
+}
+
 /// <summary>
 /// Sparse TerrariaServer 1.4.5.8 prefix catalog. Numeric IDs are version data and are kept here rather than
 /// leaking through loot/world-item orchestration. Absence means unverified, not impossible in vanilla.
@@ -17,9 +25,46 @@ public static class VanillaItemPrefixCatalog
 {
     private static readonly PrefixId[] SummonPrefixes =
     [
-        new(85), new(86), new(87), new(88), new(89), new(90), new(91), new(92), new(93), new(94), new(95),
-        new(96), new(97), new(55), new(38), new(54), new(53), new(57), new(40), new(56), new(41), new(39)
+        VanillaPrefixIds.Fabled,
+        VanillaPrefixIds.Loyal,
+        VanillaPrefixIds.Worthy,
+        VanillaPrefixIds.Focused,
+        VanillaPrefixIds.Patient,
+        VanillaPrefixIds.Rabid,
+        VanillaPrefixIds.IllTempered,
+        VanillaPrefixIds.Petty,
+        VanillaPrefixIds.Feeble,
+        VanillaPrefixIds.Skittish,
+        VanillaPrefixIds.Eager,
+        VanillaPrefixIds.Ballistic,
+        VanillaPrefixIds.Scraggling,
+        VanillaPrefixIds.Unpleasant,
+        VanillaPrefixIds.Forceful,
+        VanillaPrefixIds.Strong,
+        VanillaPrefixIds.Hurtful,
+        VanillaPrefixIds.Ruthless,
+        VanillaPrefixIds.Damaged,
+        VanillaPrefixIds.Weak,
+        VanillaPrefixIds.Shoddy,
+        VanillaPrefixIds.Broken
     ];
+
+    public const int Count = VanillaPrefixIds.Count;
+
+    public static bool TryGetDefinition(PrefixId type, out VanillaPrefixDefinition definition)
+    {
+        if (!VanillaPrefixIds.TryCreate(type.Value, out _))
+        {
+            definition = default;
+            return false;
+        }
+
+        definition = new VanillaPrefixDefinition(
+            type,
+            Contains(SummonPrefixes, type),
+            HasReducedNaturalChance(type));
+        return true;
+    }
 
     public static ReadOnlySpan<PrefixId> GetRollablePrefixes(VanillaItemPrefixFamily family) =>
         family == VanillaItemPrefixFamily.Summon
@@ -27,8 +72,24 @@ public static class VanillaItemPrefixCatalog
             : ReadOnlySpan<PrefixId>.Empty;
 
     public static bool HasReducedNaturalChance(PrefixId prefix) =>
-        prefix.Value is 7 or 8 or 9 or 10 or 11 or 22 or 23 or 24 or 29 or 30 or 31 or
-            39 or 40 or 41 or 47 or 48 or 49 or 56;
+        prefix == VanillaPrefixIds.Tiny ||
+        prefix == VanillaPrefixIds.Terrible ||
+        prefix == VanillaPrefixIds.Small ||
+        prefix == VanillaPrefixIds.Dull ||
+        prefix == VanillaPrefixIds.Unhappy ||
+        prefix == VanillaPrefixIds.Awful ||
+        prefix == VanillaPrefixIds.Lethargic ||
+        prefix == VanillaPrefixIds.Awkward ||
+        prefix == VanillaPrefixIds.Inept ||
+        prefix == VanillaPrefixIds.Ignorant ||
+        prefix == VanillaPrefixIds.Deranged ||
+        prefix == VanillaPrefixIds.Broken ||
+        prefix == VanillaPrefixIds.Damaged ||
+        prefix == VanillaPrefixIds.Shoddy ||
+        prefix == VanillaPrefixIds.Slow ||
+        prefix == VanillaPrefixIds.Sluggish ||
+        prefix == VanillaPrefixIds.Lazy ||
+        prefix == VanillaPrefixIds.Weak;
 
     /// <summary>
     /// Item-specific prefix validity after Terraria's stat-rounding guards. The current catalog only claims
@@ -39,7 +100,7 @@ public static class VanillaItemPrefixCatalog
         if (itemType != VanillaItemIds.SlimeStaff)
             return false;
 
-        if (prefix.Value == 0)
+        if (prefix == VanillaPrefixIds.None)
             return true;
 
         if (!Contains(GetRollablePrefixes(VanillaItemPrefixFamily.Summon), prefix))
@@ -47,7 +108,9 @@ public static class VanillaItemPrefixCatalog
 
         // TerrariaServer 1.4.5.8 Slime Staff damage is 8. These three generic/summon modifiers round their
         // damage multiplier back to 8, so TryGetPrefixStatMultipliersForItem rejects them and Prefix(-1) rerolls.
-        return prefix.Value is not (55 or 89 or 91);
+        return prefix != VanillaPrefixIds.Unpleasant &&
+               prefix != VanillaPrefixIds.Patient &&
+               prefix != VanillaPrefixIds.IllTempered;
     }
 
     private static bool Contains(ReadOnlySpan<PrefixId> prefixes, PrefixId prefix)

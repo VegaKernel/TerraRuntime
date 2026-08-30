@@ -255,9 +255,9 @@ Declarative loot table полезна только если воспроизво
 
 ## 20. Buffs, prefixes и item metadata
 
-Architecture движется к typed IDs/version-pinned metadata вместо scattered raw integers.
+Buffs и prefixes теперь имеют typed version-pinned identity ranges и выбранные source-backed definition traits вместо scattered raw integers.
 
-Эти systems остаются broad future work. New authoritative validation не должна принимать arbitrary unvalidated bytes как meaningful domain state, но и не должна reject values, чья vanilla legality не verified.
+Их complete gameplay остаётся broad future work. Identity validation нельзя путать с реализацией каждого buff effect, immunity, prefix stat family или reforging rule.
 
 ## 21. Wiring, liquids и growth
 
