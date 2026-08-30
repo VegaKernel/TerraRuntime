@@ -1,6 +1,8 @@
 using global::Multiplicity.Packets;
 using TerraRuntime.Protocol;
 
+using System.Buffers;
+
 namespace TerraRuntime.Protocol.Multiplicity;
 
 public readonly record struct TerrariaChestOpenRequest(short TileX, short TileY);
@@ -220,10 +222,11 @@ public static class TerrariaChestCodec
 
     private static byte[] Serialize(TerrariaPacket packet)
     {
-        using var stream = new MemoryStream();
+        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        using var stream = new ArrayBufferWriterStream(writer);
         packet.ToStream(stream);
-        if (stream.Length < TerrariaFrameDecoderOptions.MinimumFrameLength || stream.Length > ushort.MaxValue)
+        if (writer.WrittenCount < TerrariaFrameDecoderOptions.MinimumFrameLength || writer.WrittenCount > ushort.MaxValue)
             throw new InvalidOperationException("Encoded chest frame length is outside the Terraria frame envelope.");
-        return stream.ToArray();
+        return writer.WrittenSpan.ToArray();
     }
 }

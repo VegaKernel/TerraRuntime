@@ -1,3 +1,4 @@
+using System.Buffers;
 using global::Multiplicity.Packets;
 using TerraRuntime.Protocol;
 
@@ -52,9 +53,10 @@ public static class TerrariaNpcUpdateEncoder
         packet.AI[2] = state.Ai2;
         packet.AI[3] = state.Ai3;
 
-        using var stream = new MemoryStream(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        using var stream = new ArrayBufferWriterStream(writer);
         packet.ToStream(stream);
-        bytes = stream.ToArray();
+        bytes = writer.WrittenSpan.ToArray();
         return true;
     }
 

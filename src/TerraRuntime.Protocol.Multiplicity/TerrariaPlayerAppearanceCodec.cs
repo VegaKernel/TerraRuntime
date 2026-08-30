@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.IO;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Views;
@@ -58,9 +59,10 @@ public static class TerrariaPlayerAppearanceCodec
             ConsumableUnlockFlags = (PlayerConsumableUnlockFlags)appearance.ConsumableUnlockFlags
         };
 
-        using var stream = new MemoryStream(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        using var stream = new ArrayBufferWriterStream(writer);
         packet.ToStream(stream);
-        return stream.ToArray();
+        return writer.WrittenSpan.ToArray();
     }
 
     private static TerrariaPlayerAppearanceDecodeResult DecodePayload(

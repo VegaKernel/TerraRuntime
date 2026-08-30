@@ -1,3 +1,4 @@
+using System.Buffers;
 using global::Multiplicity.Packets;
 using TerraRuntime.Protocol;
 
@@ -32,8 +33,9 @@ public static class TerrariaPlayerMovementEncoder
             CameraTargetY = movement.CameraTargetY
         };
 
-        using var stream = new MemoryStream(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        using var stream = new ArrayBufferWriterStream(writer);
         packet.ToStream(stream);
-        return stream.ToArray();
+        return writer.WrittenSpan.ToArray();
     }
 }

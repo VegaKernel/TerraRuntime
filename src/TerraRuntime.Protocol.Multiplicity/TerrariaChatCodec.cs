@@ -168,9 +168,10 @@ public static class TerrariaChatCodec
         };
         var packet = new LoadNetModule { LoadedModule = module };
 
-        using var stream = new MemoryStream(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        using var stream = new ArrayBufferWriterStream(writer);
         packet.ToStream(stream);
-        return stream.ToArray();
+        return writer.WrittenSpan.ToArray();
     }
 
     private static ReadOnlyMemory<byte> CopyPayload(in TerrariaFrame frame)

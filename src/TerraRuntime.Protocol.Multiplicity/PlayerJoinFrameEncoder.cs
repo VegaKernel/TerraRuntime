@@ -1,3 +1,4 @@
+using System.Buffers;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Models;
 using TerraRuntime.Contracts.Runtime;
@@ -49,9 +50,10 @@ public static class PlayerJoinFrameEncoder
     private static byte[] Serialize(TerrariaPacket packet)
     {
         ArgumentNullException.ThrowIfNull(packet);
-        using var stream = new MemoryStream();
+        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
+        using var stream = new ArrayBufferWriterStream(writer);
         packet.ToStream(stream);
-        byte[] frame = stream.ToArray();
+        byte[] frame = writer.WrittenSpan.ToArray();
         if (frame.Length < TerrariaFrameDecoderOptions.MinimumFrameLength || frame.Length > ushort.MaxValue)
             throw new InvalidOperationException($"Multiplicity produced invalid bootstrap frame length {frame.Length}.");
         return frame;

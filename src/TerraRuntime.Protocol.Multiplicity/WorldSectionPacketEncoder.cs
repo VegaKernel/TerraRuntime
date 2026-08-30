@@ -123,7 +123,8 @@ public static class WorldSectionPacketEncoder
         byte[] compressed;
         try
         {
-            using var stream = new MemoryStream(Math.Min(uncompressed.Length, 64 * 1024));
+            var compressedWriter = new ArrayBufferWriter<byte>(Math.Min(uncompressed.Length, 64 * 1024));
+            using var stream = new ArrayBufferWriterStream(compressedWriter);
             using (var deflate = new DeflateStream(
                 stream,
                 CompressionLevel.SmallestSize,
@@ -131,7 +132,7 @@ public static class WorldSectionPacketEncoder
             {
                 deflate.Write(uncompressed);
             }
-            compressed = stream.ToArray();
+            compressed = compressedWriter.WrittenSpan.ToArray();
         }
         catch (InvalidDataException)
         {
