@@ -281,6 +281,7 @@ Benchmark zero extensions, one NPC decorator, dense replacement workload, high p
 - [x] runtime-owned `terraruntime:vanilla` compatibility generator;
 - [x] verified Terraria 1.4.5.8 per-pass vanilla RNG seed semantics;
 - [x] special/secret seed profile resolution and fresh `.wld` persistence;
+- [x] runtime-owned deterministic `terraruntime:skyblock` profile with separated biome-island layout, lowered depth metadata, starter spawn, reserved lower dungeon island and persistent generated chests;
 - [ ] source-exact 109-pass/reference-world vanilla parity.
 
 ### G5 - Vega/plugin integration
