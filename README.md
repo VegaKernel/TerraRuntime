@@ -98,5 +98,6 @@ See:
 - [`docs/roadmap.md`](docs/roadmap.md) for the broader implementation plan;
 - [`docs/roadmap/performance-tick-stability.md`](docs/roadmap/performance-tick-stability.md) for the detailed performance, tick-budget and interest-management roadmap;
 - [`docs/roadmap/gameplay-decomposition-and-catalogs.md`](docs/roadmap/gameplay-decomposition-and-catalogs.md) for gameplay decomposition, typed vanilla IDs/catalogs and the removal of magic numbers across items, NPCs, projectiles, tiles, walls, buffs and related systems;
+- [`docs/roadmap/npc-ai-parity.md`](docs/roadmap/npc-ai-parity.md) for the explicit non-complete vanilla NPC/AI coverage ledger and expansion plan;
 - [`docs/roadmap/gameplay-worldgen-extensibility.md`](docs/roadmap/gameplay-worldgen-extensibility.md) for custom NPC/projectile behavior, server-defined archetypes, Vega/plugin integration and pluggable world generation;
 - [`docs/roadmap/runtime-logging-pipeline.md`](docs/roadmap/runtime-logging-pipeline.md) for the runtime-owned bounded asynchronous structured logging pipeline and Vega integration boundary.

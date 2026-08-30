@@ -11,6 +11,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
     [InlineData(3, 3, 18, 40, 14, 6, 45, 0.5f, 1f, false, false)]
     [InlineData(4, 4, 100, 110, 15, 12, 2800, 0f, 1f, true, true)]
     [InlineData(5, 5, 20, 20, 12, 0, 8, 1f, 1f, true, true)]
+    [InlineData(21, 3, 18, 40, 20, 8, 60, 0.5f, 1f, false, false)]
     [InlineData(50, 15, 98, 92, 40, 10, 2000, 0f, 1.25f, false, false)]
     public void Verified_initial_definitions_match_official_1458_defaults(
         int type,
@@ -47,6 +48,10 @@ public sealed class VanillaNpcDefinitionCatalogTests
     [InlineData(3, VanillaNpcBehaviorFamily.GroundFighter, VanillaNpcPhysicsFamily.GroundFighter)]
     [InlineData(4, VanillaNpcBehaviorFamily.EyeOfCthulhu, VanillaNpcPhysicsFamily.NoClipFlight)]
     [InlineData(5, VanillaNpcBehaviorFamily.Flyer, VanillaNpcPhysicsFamily.NoClipFlight)]
+<<<<<<< Updated upstream
+=======
+    [InlineData(21, VanillaNpcBehaviorFamily.GroundFighter, VanillaNpcPhysicsFamily.GroundFighter)]
+>>>>>>> Stashed changes
     [InlineData(50, VanillaNpcBehaviorFamily.KingSlime, VanillaNpcPhysicsFamily.SlimeGround)]
     public void Verified_definitions_explicitly_opt_into_runtime_behavior_and_physics_families(
         int type,
@@ -77,6 +82,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Zombie, out VanillaNpcDefinition fighter));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition boss));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.ServantOfCthulhu, out VanillaNpcDefinition servant));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Skeleton, out VanillaNpcDefinition skeleton));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition kingSlime));
 
         Assert.Equal(VanillaNpcAiStyles.Slime, slime.AiStyle);
@@ -94,6 +100,9 @@ public sealed class VanillaNpcDefinitionCatalogTests
         Assert.Equal(VanillaNpcAiStyles.Flyer, servant.AiStyle);
         Assert.Equal(VanillaNpcBehaviorFamily.Flyer, servant.BehaviorFamily);
         Assert.Equal(VanillaNpcPhysicsFamily.NoClipFlight, servant.PhysicsFamily);
+        Assert.Equal(VanillaNpcAiStyles.Fighter, skeleton.AiStyle);
+        Assert.Equal(VanillaNpcBehaviorFamily.GroundFighter, skeleton.BehaviorFamily);
+        Assert.Equal(VanillaNpcPhysicsFamily.GroundFighter, skeleton.PhysicsFamily);
         Assert.Equal(VanillaNpcAiStyles.KingSlime, kingSlime.AiStyle);
         Assert.Equal(VanillaNpcBehaviorFamily.KingSlime, kingSlime.BehaviorFamily);
         Assert.Equal(VanillaNpcPhysicsFamily.SlimeGround, kingSlime.PhysicsFamily);

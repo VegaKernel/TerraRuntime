@@ -47,6 +47,8 @@ Current verified mappings are:
 | Zombie | `GroundFighter` | `GroundFighter` |
 | Eye of Cthulhu | `EyeOfCthulhu` | `NoClipFlight` |
 | Servant of Cthulhu | `Flyer` | `NoClipFlight` |
+| Skeleton | `GroundFighter` | `GroundFighter` |
+| King Slime | `KingSlime` | `SlimeGround` |
 
 The names line up only where the admitted source-backed behavior proves that relationship. They remain different fields so future definitions can diverge safely.
 

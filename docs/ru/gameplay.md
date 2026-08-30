@@ -189,13 +189,13 @@ NPC используют runtime-owned store и generation-safe handles.
 
 Current foundations: allocation/lifecycle state, version-pinned definition lookup, target selection primitives, gravity/world motion, spawn cadence primitives, check-active/despawn slices, replication projection и trusted-host actor control через semantic intent.
 
-Current verified definition catalog содержит **Blue Slime**, **Demon Eye** и **Zombie**. Это explicit coverage slice, а не предположение defaults остальных NPC по похожим entities.
+Current verified definition catalog содержит **Blue Slime**, **Demon Eye**, **Zombie**, **Eye of Cthulhu**, **Servant of Cthulhu**, **Skeleton** и **King Slime**. `VanillaNpcAiCoverageCatalog` записывает точные admitted capabilities и сейчас помечает каждую запись как неполный vanilla AI parity.
 
 ## 15. NPC AI
 
 AI декомпозируется по behavior/family вместо unbounded `switch(type)` в packet handler.
 
-Current selected implementation включает AI-specific/family primitives verified NPC slice, включая slime/fighter/flying-style behavior Blue Slime, Zombie и Demon Eye.
+Current selected implementation включает AI-specific/family primitives verified NPC slice: slime, fighter, flying и два boss paths. Skeleton явно разделяет ownership AI_003, но сохраняет свой source-backed horizontal speed band `1.5f`. Полный roster отслеживается в [roadmap NPC/AI parity](../roadmap/npc-ai-parity.md).
 
 Rules расширения AI:
 
@@ -205,7 +205,7 @@ Rules расширения AI:
 4. add deterministic state-transition tests;
 5. use official-server/client evidence, когда local tests могут разделять wrong assumption.
 
-Boss orchestration не нужно запихивать в abstractions, придуманные для трёх простых early-game NPCs.
+Boss orchestration не нужно запихивать в abstractions, придуманные для ordinary early-game NPCs.
 
 ## 16. Trusted-host NPC actors
 

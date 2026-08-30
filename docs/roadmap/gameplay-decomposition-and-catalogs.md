@@ -230,6 +230,8 @@ Inventory and classify raw content IDs, counts/ranges, masks, slot ranges, timer
 
 ### D4 - NPCs
 
+These checks prove decomposition and ownership for admitted slices. Exhaustive NPC/AI implementation is tracked separately in the [vanilla NPC and AI parity roadmap](npc-ai-parity.md).
+
 - [x] NPC definitions;
 - [x] AI family/behavior decomposition;
 - [x] spawn/physics/combat/loot separation ([EN](../en/npc-runtime-ownership.md), [RU](../ru/npc-runtime-ownership.md));

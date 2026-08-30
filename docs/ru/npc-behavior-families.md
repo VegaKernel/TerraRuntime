@@ -18,6 +18,10 @@ TerraRuntime разделяет два разных понятия NPC:
 | Blue Slime | `Slime` | `SlimeGround` |
 | Demon Eye | `DemonEye` | `FlyingEye` |
 | Zombie | `Fighter` | `GroundFighter` |
+| Eye of Cthulhu | `EyeOfCthulhu` | `EyeOfCthulhu` |
+| Servant of Cthulhu | `Flyer` | `Flyer` |
+| Skeleton | `Fighter` | `GroundFighter` |
+| King Slime | `KingSlime` | `KingSlime` |
 
 Family назначается только definitions, уже присутствующим в version-pinned `VanillaNpcDefinitionCatalog`. Для нового vanilla NPC требуется отдельное явное решение; один совпавший aiStyle доказательством не является.
 
@@ -44,7 +48,7 @@ flowchart LR
 - `VanillaNpcBehaviorContext` владеет фиксированным scratch-buffer кандидатов, target geometry helpers, переводом world surface в пиксели и текущими фактами day/slime-rain;
 - `VanillaSlimeGroundNpcBehaviorStrategy` владеет Slime-family engagement/targeting input и проверенным переходом `VanillaBlueSlimeMotion`;
 - `VanillaFlyingEyeNpcBehaviorStrategy` владеет FlyingEye target refresh перед передачей состояния независимо реализованному eye AI;
-- `VanillaGroundFighterNpcBehaviorStrategy` владеет Fighter-family target prepass, overlap semantics, day/surface pursuit policy и проверенным переходом `VanillaZombieMotion`.
+- `VanillaGroundFighterNpcBehaviorStrategy` владеет Fighter-family target prepass, overlap semantics, day/surface pursuit policy и проверенным compatibility-переходом `VanillaZombieMotion`. `VanillaGroundFighterBehaviorCatalog` сохраняет параметры admitted types, например base speed Skeleton `1.5f`.
 
 Facade сохраняет `EnableBlueSlimeMotion`, `EnableZombieMotion`, `SetWorldConditions` и `SetCandidates`, чтобы runtime composition и существующим callers не требовалась одновременная миграция API. Теперь эти методы настраивают context, а не накапливают внутри dispatcher поведение разных families.
 
@@ -65,14 +69,8 @@ AiStyle = Fighter   !=    BehaviorFamily = GroundFighter
 
 D4-пункт `AI family/behavior decomposition` описывает ownership и архитектуру dispatch, а не обещание реализовать каждый NPC Terraria. Для authoritative vanilla NPC slice, который сейчас допускает `VanillaNpcDefinitionCatalog`, выбор family, общий context и family behavior теперь являются отдельными единицами и имеют executable coverage. Новые NPC definitions расширяют эту схему, а не возвращают код в монолитный dispatcher.
 
-Это **не** закрывает остальные пункты D4:
-
-- разделение spawn / physics / combat / loot;
-- границы boss / town behavior;
-- устранение всех оставшихся raw NPC IDs и AI-style numbers.
-
-Они остаются отдельной работой и в roadmap остаются незакрытыми.
+Все D4 checkbox'ы описывают decomposition/ownership admitted slices, а не полный NPC roster. `VanillaNpcAiCoverageCatalog` оставляет `FullVanillaAiParity` false для каждой текущей записи; дальнейший roster отслеживается в [roadmap NPC/AI parity](../roadmap/npc-ai-parity.md).
 
 ## Проверка
 
-`VanillaNpcBehaviorFamilyDispatchTests` закрепляет fail-closed контракт dispatch: отключённые families уходят в fallback, неизвестные catalog types не наследуют поведение, а FlyingEye target refresh выполняется внутри family strategy до делегирования. Существующие Blue Slime, Demon Eye и Zombie targeting/motion tests продолжают работать через тот же публичный `VanillaNpcTargetingAiStepper`, поэтому меняется ownership реализации, а наблюдаемые state transitions сохраняются.
+`VanillaNpcBehaviorFamilyDispatchTests` закрепляет fail-closed контракт dispatch: отключённые families уходят в fallback, неизвестные catalog types не наследуют поведение, а FlyingEye target refresh выполняется внутри family strategy до делегирования. NPC-specific suites покрывают admitted ordinary и boss slices, а `VanillaNpcAiCoverageCatalogTests` не позволяет назвать эти slices полным parity.

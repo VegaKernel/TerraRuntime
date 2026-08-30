@@ -11,6 +11,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Zombie = new(3);
     public static readonly NpcTypeId EyeOfCthulhu = new(4);
     public static readonly NpcTypeId ServantOfCthulhu = new(5);
+    public static readonly NpcTypeId Skeleton = new(21);
     public static readonly NpcTypeId KingSlime = new(50);
 }
 

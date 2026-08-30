@@ -1,0 +1,45 @@
+using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Core;
+
+namespace TerraRuntime.Tests;
+
+public sealed class VanillaNpcAiCoverageCatalogTests
+{
+    [Fact]
+    public void Every_coverage_entry_has_an_explicit_definition_and_behavior_family()
+    {
+        Assert.Equal(7, VanillaNpcAiCoverageCatalog.Count);
+
+        foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
+        {
+            Assert.True(VanillaNpcDefinitionCatalog.TryGet(coverage.Type, out VanillaNpcDefinition definition));
+            Assert.NotEqual(VanillaNpcBehaviorFamily.None, definition.BehaviorFamily);
+            Assert.NotEqual(VanillaNpcPhysicsFamily.None, definition.PhysicsFamily);
+            Assert.True(coverage.Has(VanillaNpcAiCapability.DefinitionDefaults));
+            Assert.True(coverage.Has(VanillaNpcAiCapability.PacketSync));
+            Assert.False(coverage.FullVanillaAiParity);
+        }
+    }
+
+    [Fact]
+    public void Specialized_capabilities_are_claimed_only_for_their_tested_slices()
+    {
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.KingSlime,
+            out VanillaNpcAiCoverage kingSlime));
+        Assert.True(kingSlime.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+        Assert.True(kingSlime.Has(VanillaNpcAiCapability.TeleportEnvironmentSlice));
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.Skeleton,
+            out VanillaNpcAiCoverage skeleton));
+        Assert.True(skeleton.Has(VanillaNpcAiCapability.CheckActiveSlice));
+        Assert.False(skeleton.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+    }
+
+    [Fact]
+    public void Unadmitted_npc_has_no_coverage_claim()
+    {
+        Assert.False(VanillaNpcAiCoverageCatalog.TryGet(new NpcTypeId(6), out _));
+    }
+}

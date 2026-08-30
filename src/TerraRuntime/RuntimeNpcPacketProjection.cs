@@ -15,7 +15,7 @@ internal enum RuntimeNpcSyncKind : byte
 /// <summary>
 /// Converts generation-safe runtime NPC state into the protocol-neutral packet-23 projection.
 /// Runtime generations remain monotonic ulongs; vanilla wire generation is 1..255 and skips zero.
-/// Verified ordinary types 1, 2 and 3 use NPCID.Sets.SyncAnchor == Vector2.Zero in TerrariaServer 1.4.5.8.
+/// Each admitted definition supplies the TerrariaServer 1.4.5.8 NPCID.Sets.SyncAnchor used by the wire position.
 /// </summary>
 internal static class RuntimeNpcPacketProjection
 {
@@ -31,8 +31,9 @@ internal static class RuntimeNpcPacketProjection
         }
 
         NpcTypeId npcType = npc.TypeIdentity;
-        if (!IsSupportedType(npcType) ||
-            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
+        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
+            !definition.SyncAnchor.IsValid ||
+            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
             npc.Target == ushort.MaxValue)
         {
             state = default;
@@ -50,8 +51,8 @@ internal static class RuntimeNpcPacketProjection
             NpcSlot: npc.Handle.Slot,
             Generation: ToProtocolGeneration(npc.Handle.Generation),
             NpcType: npcType.Value,
-            PositionX: npc.PositionX,
-            PositionY: npc.PositionY,
+            PositionX: npc.PositionX + hitbox.Width * definition.SyncAnchor.X,
+            PositionY: npc.PositionY + hitbox.Height * definition.SyncAnchor.Y,
             VelocityX: npc.VelocityX,
             VelocityY: npc.VelocityY,
             Target: npc.Target,
@@ -74,9 +75,4 @@ internal static class RuntimeNpcPacketProjection
         ulong zeroBased = (generation.Value - 1UL) % byte.MaxValue;
         return checked((byte)(zeroBased + 1UL));
     }
-
-    private static bool IsSupportedType(NpcTypeId type) =>
-        type == VanillaNpcIds.BlueSlime ||
-        type == VanillaNpcIds.DemonEye ||
-        type == VanillaNpcIds.Zombie;
 }

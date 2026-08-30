@@ -39,6 +39,18 @@ public readonly record struct VanillaNpcHitboxSize(int Width, int Height)
     public bool IsValid => Width > 0 && Height > 0;
 }
 
+/// <summary>Terraria packet-23 position anchor expressed as fractions of the current live NPC hitbox.</summary>
+public readonly record struct VanillaNpcSyncAnchor(float X, float Y)
+{
+    public static VanillaNpcSyncAnchor TopLeft => default;
+
+    public bool IsValid =>
+        float.IsFinite(X) &&
+        float.IsFinite(Y) &&
+        X is >= 0f and <= 1f &&
+        Y is >= 0f and <= 1f;
+}
+
 /// <summary>
 /// Source-backed vanilla NPC defaults required by authoritative lifecycle and AI bring-up.
 /// BaseWidth/BaseHeight are the raw SetDefaults dimensions before vanilla applies NPC.scale. Width/Height expose
@@ -59,7 +71,8 @@ public readonly record struct VanillaNpcDefinition(
     float KnockBackResist,
     float Scale,
     bool NoGravityAtSpawn,
-    bool NoTileCollideAtSpawn)
+    bool NoTileCollideAtSpawn,
+    VanillaNpcSyncAnchor SyncAnchor)
 {
     public bool IsBoss => Role == NpcArchetypeRole.Boss;
 
@@ -138,7 +151,8 @@ public static class VanillaNpcDefinitionCatalog
                 KnockBackResist: 1f,
                 Scale: 1f,
                 NoGravityAtSpawn: false,
-                NoTileCollideAtSpawn: false);
+                NoTileCollideAtSpawn: false,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
             return true;
         }
 
@@ -158,7 +172,8 @@ public static class VanillaNpcDefinitionCatalog
                 KnockBackResist: 0.8f,
                 Scale: 1f,
                 NoGravityAtSpawn: false,
-                NoTileCollideAtSpawn: false);
+                NoTileCollideAtSpawn: false,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
             return true;
         }
 
@@ -178,7 +193,8 @@ public static class VanillaNpcDefinitionCatalog
                 KnockBackResist: 0.5f,
                 Scale: 1f,
                 NoGravityAtSpawn: false,
-                NoTileCollideAtSpawn: false);
+                NoTileCollideAtSpawn: false,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
             return true;
         }
 
@@ -198,7 +214,8 @@ public static class VanillaNpcDefinitionCatalog
                 KnockBackResist: 0f,
                 Scale: 1f,
                 NoGravityAtSpawn: true,
-                NoTileCollideAtSpawn: true);
+                NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
             return true;
         }
 
@@ -218,7 +235,29 @@ public static class VanillaNpcDefinitionCatalog
                 KnockBackResist: 1f,
                 Scale: 1f,
                 NoGravityAtSpawn: true,
-                NoTileCollideAtSpawn: true);
+                NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.Skeleton)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.Skeleton,
+                AiStyle: VanillaNpcAiStyles.Fighter,
+                BehaviorFamily: VanillaNpcBehaviorFamily.GroundFighter,
+                PhysicsFamily: VanillaNpcPhysicsFamily.GroundFighter,
+                Role: NpcArchetypeRole.Ordinary,
+                BaseWidth: 18,
+                BaseHeight: 40,
+                Damage: 20,
+                Defense: 8,
+                LifeMax: 60,
+                KnockBackResist: 0.5f,
+                Scale: 1f,
+                NoGravityAtSpawn: false,
+                NoTileCollideAtSpawn: false,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
             return true;
         }
 
@@ -238,7 +277,8 @@ public static class VanillaNpcDefinitionCatalog
                 KnockBackResist: 0f,
                 Scale: 1.25f,
                 NoGravityAtSpawn: false,
-                NoTileCollideAtSpawn: false);
+                NoTileCollideAtSpawn: false,
+                SyncAnchor: new VanillaNpcSyncAnchor(0.5f, 1f));
             return true;
         }
 

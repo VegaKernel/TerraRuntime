@@ -5,7 +5,7 @@ using TerraRuntime.Core;
 namespace TerraRuntime;
 
 /// <summary>
-/// Final ordinary-NPC lifecycle layer after AI and world movement. For the currently verified type-3 slice,
+/// Final ordinary-NPC lifecycle layer after AI and world movement. For explicitly admitted AI_003 fighters,
 /// vanilla CheckActive observes the final position, may reset/decrement timeLeft, and can request despawn.
 /// A requested despawn is represented by TimeLeft=0 so ServerRuntimeState can remove the exact generation
 /// after the state executor successfully commits this tick.
@@ -39,9 +39,9 @@ internal sealed class VanillaNpcCheckActiveAiStepper : INpcAiStateStepper, INpcA
             return false;
 
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
-            npcType != VanillaNpcIds.Zombie ||
             !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition) ||
             definition.AiStyle != VanillaNpcAiStyles.Fighter ||
+            definition.BehaviorFamily != VanillaNpcBehaviorFamily.GroundFighter ||
             next.Simulation.TimeLeft < 0)
         {
             return true;

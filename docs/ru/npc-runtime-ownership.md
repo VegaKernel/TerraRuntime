@@ -47,6 +47,8 @@ flowchart LR
 | Zombie | `GroundFighter` | `GroundFighter` |
 | Eye of Cthulhu | `EyeOfCthulhu` | `NoClipFlight` |
 | Servant of Cthulhu | `Flyer` | `NoClipFlight` |
+| Skeleton | `GroundFighter` | `GroundFighter` |
+| King Slime | `KingSlime` | `SlimeGround` |
 
 Связь между именами считается допустимой только там, где её подтверждает текущий source-backed slice. Поля остаются раздельными, чтобы будущие definitions могли безопасно расходиться.
 

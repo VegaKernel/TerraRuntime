@@ -85,6 +85,46 @@ public sealed class RuntimeNpcPacketProjectionTests
     }
 
     [Fact]
+    public void King_slime_projection_applies_live_hitbox_sync_anchor()
+    {
+        NpcSnapshot npc = CreateNpc(
+            type: VanillaNpcIds.KingSlime.Value,
+            netId: checked((short)VanillaNpcIds.KingSlime.Value),
+            generation: 1) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                Scale = 1.25f,
+                Life = 2_000,
+                LifeMax = 2_000
+            }
+        };
+
+        Assert.True(RuntimeNpcPacketProjection.TryCreate(
+            in npc,
+            RuntimeNpcSyncKind.Update,
+            out var state));
+
+        Assert.Equal(161f, state.PositionX);
+        Assert.Equal(315f, state.PositionY);
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(21)]
+    public void Every_other_admitted_definition_crosses_packet_projection(int rawType)
+    {
+        NpcSnapshot npc = CreateNpc(rawType, checked((short)rawType), generation: 1);
+
+        Assert.True(RuntimeNpcPacketProjection.TryCreate(
+            in npc,
+            RuntimeNpcSyncKind.Update,
+            out var state));
+        Assert.Equal(rawType, state.NpcType);
+    }
+
+    [Fact]
     public void Unverified_type_is_not_fabricated_for_network_sync()
     {
         NpcSnapshot npc = CreateNpc(type: 99, netId: 99, generation: 1);

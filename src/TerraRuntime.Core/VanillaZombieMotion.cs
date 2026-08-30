@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.Core;
 
@@ -28,6 +29,7 @@ public readonly record struct VanillaZombieMotionInput(
     bool TargetOverlaps,
     VanillaZombieTargetRefresh ClosestTarget)
 {
+    public float BaseMaximumHorizontalSpeed { get; init; } = 1f;
     public bool PursuitAllowed { get; init; } = true;
     public bool EncourageDespawn { get; init; }
     public bool JustHit { get; init; }
@@ -58,7 +60,6 @@ public static class VanillaZombieMotion
 {
     private const float StuckThreshold = 60f;
     private const float MaximumStuckCounter = StuckThreshold * 10f;
-    private const float BaseMaximumHorizontalSpeed = 1f;
     private const float HorizontalAcceleration = 0.07f;
     private const int EncouragedDespawnTime = 10;
 
@@ -72,6 +73,8 @@ public static class VanillaZombieMotion
             !float.IsFinite(input.VelocityY) ||
             !float.IsFinite(input.Scale) ||
             input.Scale <= 0f ||
+            !float.IsFinite(input.BaseMaximumHorizontalSpeed) ||
+            input.BaseMaximumHorizontalSpeed <= 0f ||
             input.DirectionX is < -1 or > 1 ||
             input.DirectionY is < -1 or > 1 ||
             input.SpriteDirection is < -1 or > 1 ||
@@ -149,7 +152,7 @@ public static class VanillaZombieMotion
                 directionX = 1;
         }
 
-        float maximumSpeed = BaseMaximumHorizontalSpeed * (1f + (1f - input.Scale));
+        float maximumSpeed = input.BaseMaximumHorizontalSpeed * (1f + (1f - input.Scale));
         if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
         {
             if (velocityY == 0f)
@@ -192,5 +195,32 @@ public static class VanillaZombieMotion
             directionX = closestTarget.DirectionX;
             directionY = closestTarget.DirectionY;
         }
+    }
+}
+
+public readonly record struct VanillaGroundFighterBehaviorParameters(float BaseMaximumHorizontalSpeed)
+{
+    public bool IsValid => float.IsFinite(BaseMaximumHorizontalSpeed) && BaseMaximumHorizontalSpeed > 0f;
+}
+
+/// <summary>Source-backed AI_003 horizontal family parameters for explicitly admitted NPC definitions.</summary>
+public static class VanillaGroundFighterBehaviorCatalog
+{
+    public static bool TryGet(NpcTypeId type, out VanillaGroundFighterBehaviorParameters parameters)
+    {
+        if (type == VanillaNpcIds.Zombie)
+        {
+            parameters = new VanillaGroundFighterBehaviorParameters(1f);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.Skeleton)
+        {
+            parameters = new VanillaGroundFighterBehaviorParameters(1.5f);
+            return true;
+        }
+
+        parameters = default;
+        return false;
     }
 }

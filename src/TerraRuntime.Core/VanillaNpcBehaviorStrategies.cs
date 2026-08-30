@@ -127,6 +127,12 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             return false;
         }
 
+        if (!VanillaGroundFighterBehaviorCatalog.TryGet(definition.Type, out VanillaGroundFighterBehaviorParameters parameters))
+        {
+            next = default;
+            return false;
+        }
+
         bool daytimeSurface = context.DayTime && npc.PositionY < context.WorldSurfacePixels;
         int startingDirectionY = npc.Simulation.DirectionY;
         if (npc.Target < byte.MaxValue &&
@@ -173,6 +179,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             TargetOverlaps: context.TargetOverlapsNpc(in npc, in definition),
             ClosestTarget: fighterTarget)
         {
+            BaseMaximumHorizontalSpeed = parameters.BaseMaximumHorizontalSpeed,
             PursuitAllowed = !daytimeSurface,
             EncourageDespawn = daytimeSurface,
             JustHit = simulation.JustHit,

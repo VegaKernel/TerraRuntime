@@ -189,13 +189,13 @@ NPCs use a runtime-owned store and generation-safe handles.
 
 Current foundations include allocation/lifecycle state, version-pinned definition lookup, target selection primitives, gravity/world motion, spawn cadence primitives, check-active/despawn behavior slices, replication projection and trusted-host actor control through semantic intent.
 
-The current verified definition catalog includes **Blue Slime**, **Demon Eye** and **Zombie**. This is an explicit coverage slice, not an implication that other NPC defaults are guessed from similar entities.
+The current verified definition catalog includes **Blue Slime**, **Demon Eye**, **Zombie**, **Eye of Cthulhu**, **Servant of Cthulhu**, **Skeleton** and **King Slime**. `VanillaNpcAiCoverageCatalog` records the exact admitted capabilities and currently marks every entry as incomplete vanilla AI parity.
 
 ## 15. NPC AI
 
 AI is decomposed by behavior/family instead of becoming one unbounded `switch(type)` in a packet handler.
 
-Current selected implementation includes AI-specific/family primitives for the verified NPC slice, including slime/fighter/flying-style work used by Blue Slime, Zombie and Demon Eye paths.
+Current selected implementation includes AI-specific/family primitives for the verified NPC slice, including slime, fighter, flying and two boss paths. Skeleton explicitly shares AI_003 ownership while retaining its source-backed `1.5f` horizontal speed band. Full roster progress is tracked in the [NPC/AI parity roadmap](../roadmap/npc-ai-parity.md).
 
 Rules for expanding AI:
 
@@ -205,7 +205,7 @@ Rules for expanding AI:
 4. add deterministic tests for state transitions;
 5. use official-server/client evidence when local tests can share the same wrong assumption.
 
-Boss orchestration should not be forced through abstractions designed for three simple early-game NPCs.
+Boss orchestration should not be forced through abstractions designed for ordinary early-game NPCs.
 
 ## 16. Trusted-host NPC actors
 
