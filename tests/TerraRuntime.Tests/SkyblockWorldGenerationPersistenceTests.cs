@@ -6,7 +6,7 @@ namespace TerraRuntime.Tests;
 public sealed class SkyblockWorldGenerationPersistenceTests
 {
     [Fact]
-    public void Skyblock_persists_and_reloads_island_chests_with_loot()
+    public void Skyblock_persists_and_reloads_island_chests_loot_and_progression_liquids()
     {
         string directory = Path.Combine(Path.GetTempPath(), "TerraRuntime.Tests", Guid.NewGuid().ToString("N"));
         string worldPath = Path.Combine(directory, "skyblock.wld");
@@ -56,6 +56,22 @@ public sealed class SkyblockWorldGenerationPersistenceTests
 
             Assert.True(world.Tiles.Get(starter.X, starter.Y).IsActive);
             Assert.Equal(VanillaTileIds.Containers.Value, world.Tiles.Get(starter.X, starter.Y).Type);
+
+            var liquidKinds = new HashSet<WorldLiquidKind>();
+            for (int x = 0; x < world.Header.Dimensions.WidthTiles; x++)
+            {
+                for (int y = 0; y < world.Header.Dimensions.HeightTiles; y++)
+                {
+                    WorldTile tile = world.Tiles.Get(x, y);
+                    if (tile.LiquidAmount > 0)
+                        liquidKinds.Add(tile.LiquidKind);
+                }
+            }
+
+            Assert.Contains(WorldLiquidKind.Water, liquidKinds);
+            Assert.Contains(WorldLiquidKind.Lava, liquidKinds);
+            Assert.Contains(WorldLiquidKind.Honey, liquidKinds);
+            Assert.Contains(WorldLiquidKind.Shimmer, liquidKinds);
         }
         finally
         {

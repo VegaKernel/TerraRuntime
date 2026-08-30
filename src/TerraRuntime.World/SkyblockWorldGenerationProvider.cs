@@ -4,7 +4,8 @@ namespace TerraRuntime.World;
 
 /// <summary>
 /// Runtime-owned deterministic Skyblock profile. The world starts as void, then receives spatially separated floating
-/// biome islands, a deliberately lowered dungeon island, persistent loot chests and semantic spawn/layer metadata.
+/// biome islands, guaranteed progression-liquid reservoirs, a deliberately lowered dungeon island, persistent loot
+/// chests and semantic spawn/layer metadata.
 /// </summary>
 public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
 {
@@ -12,6 +13,7 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
 
     private static readonly WorldGenerationPassId LayoutId = new("terraruntime:skyblock/layout");
     private static readonly WorldGenerationPassId IslandsId = new("terraruntime:skyblock/islands");
+    private static readonly WorldGenerationPassId ResourcesId = new("terraruntime:skyblock/resources");
     private static readonly WorldGenerationPassId DungeonId = new("terraruntime:skyblock/dungeon");
     private static readonly WorldGenerationPassId ChestsId = new("terraruntime:skyblock/chests");
     private static readonly WorldGenerationPassId MetadataId = new("terraruntime:skyblock/metadata");
@@ -32,7 +34,8 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
         var state = new GenerationState();
         Add(builder, LayoutId, new LayoutPass(state));
         Add(builder, IslandsId, new IslandsPass(state), LayoutId);
-        Add(builder, DungeonId, new DungeonPass(state), IslandsId);
+        Add(builder, ResourcesId, new ResourcePass(state), IslandsId);
+        Add(builder, DungeonId, new DungeonPass(state), ResourcesId);
         Add(builder, ChestsId, new ChestPass(state), DungeonId);
         Add(builder, MetadataId, new MetadataPass(state), ChestsId);
     }
@@ -53,6 +56,10 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
     {
         public List<IslandSpec> Islands { get; } = [];
         public IslandSpec SpawnIsland { get; set; }
+        public IslandSpec AetherIsland { get; set; }
+        public IslandSpec WaterIsland { get; set; }
+        public IslandSpec LavaIsland { get; set; }
+        public IslandSpec HoneyIsland { get; set; }
         public int DungeonCenterX { get; set; }
         public int DungeonSurfaceY { get; set; }
         public bool LayoutReady { get; set; }
@@ -66,7 +73,8 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
         Snow = 3,
         Jungle = 4,
         Evil = 5,
-        Cavern = 6
+        Cavern = 6,
+        Aether = 7
     }
 
     private readonly record struct IslandSpec(
@@ -102,7 +110,8 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
             state.SpawnIsland = spawn;
             state.Islands.Add(spawn);
 
-            int targetIslandCount = Math.Clamp(width / 70, 12, 120);
+            bool compactLayout = width < 512 || height < 220;
+            int randomIslandCount = compactLayout ? 0 : Math.Clamp(width / 70, 12, 120);
             int regularMinY = Math.Clamp((int)Math.Round(height * 0.14d), 18, height - 90);
             int regularMaxY = Math.Clamp((int)Math.Round(height * 0.56d), regularMinY + 20, height - 64);
             int deepMinY = Math.Clamp((int)Math.Round(height * 0.66d), regularMaxY + 12, height - 48);
@@ -110,7 +119,8 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
             int xMargin = Math.Clamp(width / 40, 28, 120);
 
             int dungeonMargin = Math.Clamp(width / 9, 64, width / 3);
-            state.DungeonCenterX = context.Random.NextInt32(2) == 0
+            bool dungeonOnLeft = context.Random.NextInt32(2) == 0;
+            state.DungeonCenterX = dungeonOnLeft
                 ? dungeonMargin
                 : width - dungeonMargin;
             state.DungeonSurfaceY = Math.Clamp((int)Math.Round(height * 0.72d), deepMinY, height - 40);
@@ -123,10 +133,44 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
                 IsSpawn: false,
                 Kind: IslandKind.Cavern);
 
-            int accepted = 0;
-            int maxAttempts = targetIslandCount * 120;
+            int nearX = dungeonOnLeft ? width / 4 : width * 3 / 4;
+            int farX = dungeonOnLeft ? width * 3 / 4 : width / 4;
+            int resourceRadius = Math.Clamp(width / 120, 10, 18);
+            int resourceDepth = Math.Clamp(height / 80, 7, 12);
 
-            for (int attempt = 0; attempt < maxAttempts && accepted < targetIslandCount; attempt++)
+            state.WaterIsland = AddReservedIsland(
+                state, dungeonReserve,
+                new IslandSpec(nearX, Math.Clamp((int)Math.Round(height * 0.20d), 24, height - 80), resourceRadius, resourceDepth, false, false, IslandKind.Snow),
+                "Water");
+            state.HoneyIsland = AddReservedIsland(
+                state, dungeonReserve,
+                new IslandSpec(nearX, Math.Clamp((int)Math.Round(height * 0.43d), 48, height - 64), resourceRadius, resourceDepth, false, false, IslandKind.Jungle),
+                "Honey");
+            state.AetherIsland = AddReservedIsland(
+                state, dungeonReserve,
+                new IslandSpec(farX, Math.Clamp((int)Math.Round(height * 0.42d), 44, height - 64), resourceRadius, resourceDepth, false, false, IslandKind.Aether),
+                "Aether");
+            state.LavaIsland = AddReservedIsland(
+                state, dungeonReserve,
+                new IslandSpec(width / 2, Math.Clamp((int)Math.Round(height * 0.84d), deepMinY + 8, height - 20), resourceRadius, resourceDepth, false, false, IslandKind.Cavern),
+                "Lava");
+            if (compactLayout)
+            {
+                int compactRadius = Math.Max(8, resourceRadius - 1);
+                AddReservedIsland(
+                    state, dungeonReserve,
+                    new IslandSpec(farX, Math.Clamp((int)Math.Round(height * 0.18d), 22, height - 100), compactRadius, resourceDepth, true, false, IslandKind.Desert),
+                    "compact Desert");
+                AddReservedIsland(
+                    state, dungeonReserve,
+                    new IslandSpec(farX, Math.Clamp((int)Math.Round(height * 0.66d), 84, height - 42), compactRadius, resourceDepth, false, false, IslandKind.Evil),
+                    "compact Evil");
+            }
+
+            int accepted = 0;
+            int maxAttempts = randomIslandCount * 120;
+
+            for (int attempt = 0; attempt < maxAttempts && accepted < randomIslandCount; attempt++)
             {
                 context.CancellationToken.ThrowIfCancellationRequested();
                 bool deep = accepted > 0 && accepted % 6 == 5;
@@ -152,22 +196,21 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
 
                 state.Islands.Add(candidate);
                 accepted++;
-                if ((accepted & 7) == 0 || accepted == targetIslandCount)
+                if ((accepted & 7) == 0 || accepted == randomIslandCount)
                 {
                     context.ReportProgress(
-                        Math.Min(0.95d, accepted / (double)targetIslandCount),
-                        "Planning biome island field");
+                        Math.Min(0.95d, accepted / (double)randomIslandCount),
+                        "Planning biome and progression-resource islands");
                 }
             }
 
-            if (accepted < targetIslandCount)
+            if (accepted < randomIslandCount)
             {
                 throw new InvalidOperationException(
-                    $"Skyblock layout placed only {accepted} of {targetIslandCount} requested islands.");
+                    $"Skyblock layout placed only {accepted} of {randomIslandCount} requested random islands.");
             }
-
             state.LayoutReady = true;
-            context.ReportProgress(1d, $"Planned {state.Islands.Count} floating biome islands");
+            context.ReportProgress(1d, $"Planned {state.Islands.Count} floating biome and resource islands");
         }
     }
 
@@ -183,8 +226,21 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
                 PlaceIsland(context.Workspace, state.Islands[index], context.Request.Options.Evil);
                 context.ReportProgress(
                     (index + 1d) / count,
-                    index == 0 ? "Building spawn island" : "Building biome islands");
+                    index == 0 ? "Building spawn island" : "Building biome and resource islands");
             }
+        }
+    }
+
+    private sealed class ResourcePass(GenerationState state) : IWorldGenerationPass
+    {
+        public void Execute(IWorldGenerationContext context)
+        {
+            RequireLayout(state);
+            PlaceLiquidBasin(context.Workspace, state.AetherIsland, WorldGenerationLiquidKind.Shimmer, halfWidth: 4, depth: 3);
+            PlaceLiquidBasin(context.Workspace, state.WaterIsland, WorldGenerationLiquidKind.Water, halfWidth: 4, depth: 3);
+            PlaceLiquidBasin(context.Workspace, state.HoneyIsland, WorldGenerationLiquidKind.Honey, halfWidth: 3, depth: 2);
+            PlaceLiquidBasin(context.Workspace, state.LavaIsland, WorldGenerationLiquidKind.Lava, halfWidth: 3, depth: 2);
+            context.ReportProgress(1d, "Building guaranteed Water, Lava, Honey and Shimmer reservoirs");
         }
     }
 
@@ -324,6 +380,22 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
             _ => IslandKind.Evil
         };
 
+    private static IslandSpec AddReservedIsland(
+        GenerationState state,
+        IslandSpec dungeonReserve,
+        IslandSpec island,
+        string role)
+    {
+        if (OverlapsExisting(island, state.Islands) || Overlaps(island, dungeonReserve))
+        {
+            throw new InvalidOperationException(
+                $"Skyblock layout could not reserve the {role} progression island without an overlap.");
+        }
+
+        state.Islands.Add(island);
+        return island;
+    }
+
     private static bool OverlapsExisting(IslandSpec candidate, List<IslandSpec> existing)
     {
         foreach (IslandSpec other in existing)
@@ -367,6 +439,37 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
         }
     }
 
+    private static void PlaceLiquidBasin(
+        IWorldGenerationWorkspace workspace,
+        IslandSpec island,
+        WorldGenerationLiquidKind kind,
+        int halfWidth,
+        int depth)
+    {
+        int basinHalfWidth = Math.Clamp(halfWidth, 2, Math.Max(2, island.RadiusX - 3));
+        int basinDepth = Math.Clamp(depth, 1, Math.Max(1, island.Depth - 2));
+        int left = island.CenterX - basinHalfWidth;
+        int right = island.CenterX + basinHalfWidth;
+        int top = island.SurfaceY;
+        int bottom = top + basinDepth - 1;
+
+        for (int x = left; x <= right; x++)
+        {
+            for (int y = top; y <= bottom; y++)
+            {
+                SetTile(
+                    workspace,
+                    x,
+                    y,
+                    type: 0,
+                    wall: 0,
+                    flags: WorldGenerationTileFlags.None,
+                    liquidAmount: byte.MaxValue,
+                    liquidKind: kind);
+            }
+        }
+    }
+
     private static (ushort TopType, ushort BodyType, int SurfaceDepth) ResolveIslandPalette(
         IslandKind kind,
         WorldGenerationEvil evil)
@@ -396,7 +499,7 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
                 checked((ushort)VanillaTileIds.CorruptGrass.Value),
                 checked((ushort)VanillaTileIds.Ebonstone.Value),
                 1),
-            IslandKind.Cavern => (stone, stone, 1),
+            IslandKind.Cavern or IslandKind.Aether => (stone, stone, 1),
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
     }
@@ -446,7 +549,9 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
         ushort wall,
         WorldGenerationTileFlags flags,
         short frameX = 0,
-        short frameY = 0)
+        short frameY = 0,
+        byte liquidAmount = 0,
+        WorldGenerationLiquidKind liquidKind = WorldGenerationLiquidKind.Water)
     {
         var tile = new WorldGenerationTile(
             Type: type,
@@ -454,11 +559,11 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
             FrameX: frameX,
             FrameY: frameY,
             Flags: flags,
-            LiquidAmount: 0,
+            LiquidAmount: liquidAmount,
             TileColor: 0,
             WallColor: 0,
             Shape: 0,
-            LiquidKind: WorldGenerationLiquidKind.Water);
+            LiquidKind: liquidKind);
         if (!workspace.TrySetTile(x, y, in tile))
         {
             throw new InvalidOperationException(

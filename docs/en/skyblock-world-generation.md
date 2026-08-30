@@ -1,86 +1,101 @@
 # Skyblock world generation
 
-[Русский](../ru/skyblock-world-generation.md) · [World generation](world-generation.md) · [Documentation](README.md)
+[Русский](../ru/skyblock-world-generation.md) · [World generation](world-generation.md) · [Documentation](README.md) · [Progression roadmap](../roadmap/skyblock-progression.md)
 
 ## 1. Scope
 
-`terraruntime:skyblock` is a runtime-owned deterministic world generator for Terraria-compatible Skyblock worlds. Unlike the source-parity vanilla effort, this profile is intentionally custom: most of the map remains empty, progression space is distributed across floating islands, spawn is guaranteed to stand on the starter island, vertical underground/cavern layers are moved down, and a dedicated dungeon island is generated in the lower part of the world.
+`terraruntime:skyblock` is a runtime-owned deterministic generator for Terraria-compatible Skyblock worlds. Most of the map remains empty, progression space is distributed across floating islands, spawn is guaranteed on a starter island, underground/cavern layers are moved downward, and a dedicated lower dungeon island is generated independently from the ordinary island field.
 
-The generator is not a vanilla-secret-seed alias. Selecting `terraruntime:skyblock` always means the TerraRuntime Skyblock profile.
+The profile is intentionally custom. It is not an alias for a vanilla secret seed and it does not claim source-exact output from Terraria's vanilla Skyblock generator.
 
 ## 2. Pass graph
 
 ```mermaid
 flowchart LR
-    Layout["layout\nplan separated island positions + roles"] --> Islands["islands\nbuild starter + biome islands"]
-    Islands --> Dungeon["dungeon\nbuild lowered dungeon island"]
+    Layout["layout\nreserve island roles + safety envelopes"] --> Islands["islands\nbuild starter + biome/resource islands"]
+    Islands --> Resources["resources\ncarve Water/Lava/Honey/Shimmer reservoirs"]
+    Resources --> Dungeon["dungeon\nbuild lowered dungeon island"]
     Dungeon --> Chests["chests\nplace objects + persistent loot"]
     Chests --> Metadata["metadata\nspawn + dungeon + layers"]
     Metadata --> Compose["canonical .wld composition"]
     Compose --> Validate["WorldFileLoader round-trip validation"]
 ```
 
-Every pass uses `IsolatedDeterministic` RNG. Its stream is derived from the world seed and stable pass ID, so unrelated later passes cannot silently perturb the existing island-layout stream.
+Every pass uses `IsolatedDeterministic` RNG. Its stream is derived from the world seed and stable pass ID, so future unrelated passes cannot silently shift an existing pass's random stream.
 
-## 3. Island field
+## 3. Island layout
 
-The starter island is centered horizontally at about `$0.28H$`, where `$H$` is world height. It has a dirt surface and stone core.
+The starter island is centered horizontally at about `$0.28H$`, where `$H$` is world height. It has a Dirt surface and Stone core.
 
-The layout pass targets
-
-$$
-N = \operatorname{clamp}\left(\left\lfloor\frac{W}{70}\right\rfloor, 12, 120\right)
-$$
-
-additional islands for world width `$W$`. Candidate islands are rejected when their horizontal and vertical safety envelopes overlap an existing island. The lower dungeon envelope is reserved during layout as well, so ordinary islands cannot later be overwritten by dungeon construction. Generation fails closed if the requested field cannot be placed rather than silently publishing a materially smaller world.
-
-Most islands occupy roughly `$0.14H \ldots 0.56H$`. Every sixth planned island is instead a cavern island drawn from the deeper `$0.66H \ldots 0.86H$` band.
-
-## 4. Biome island roles
-
-Surface islands rotate deterministically through Forest, Desert, Snow, Jungle and Evil roles. Coordinates and dimensions remain seed-driven, but the role cycle guarantees that even the minimum supported field contains progression-relevant terrain variety.
-
-| Role | Surface | Body |
-|---|---|---|
-| Starter / Forest | Dirt | Stone |
-| Desert | Sand | Sand |
-| Snow | Snow Block | Ice Block |
-| Jungle | Jungle Grass | Mud |
-| Evil, Corruption | Corrupt Grass | Ebonstone |
-| Evil, Crimson | Crimson Grass | Crimstone |
-| Cavern | Stone | Stone |
-
-The Evil role follows `WorldGenerationOptions.Evil`; a Crimson Skyblock does not also manufacture Corruption islands, and vice versa.
-
-These tile identities are not community-table literals. `probe_tile_wall_definitions.py` checks their exact `Terraria.ID.TileID` constants against the pinned official TerrariaServer 1.4.5.8 assembly through the repository's ILSpy source-contract workflow. The source-contract workflow also verifies the canonical managed server SHA-256 before decompilation.
-
-## 5. Spawn
-
-Spawn points to an air tile immediately above the starter island's center, and generation tests require the tile directly below spawn to be solid. The starter chest is offset from the spawn column so the player cannot materialize inside the chest object.
-
-## 6. Lowered underground and cavern layers
-
-Skyblock deliberately postpones ordinary depth classification:
+For ordinary worlds the random island field targets
 
 $$
-\text{worldSurface} \approx 0.62H
+N = \operatorname{clamp}\left(\left\lfloor\frac{W}{70}\right\rfloor, 12, 120\right),
+$$
+
+where `$W$` is world width. Candidate islands are rejected when their safety envelopes intersect an already reserved island or the lower dungeon envelope. Generation fails closed if the requested field cannot be placed.
+
+The generator also supports its documented minimum workspace of `$256\times160$`. Narrow or shallow worlds (`$W<512$` or `$H<220$`) use a compact deterministic layout instead of attempting to pack the normal random field into physically insufficient space. Compact layout still guarantees Forest/starter terrain, Desert, Snow, Jungle, Evil, Cavern and Aether roles.
+
+Most ordinary random islands occupy approximately `$0.14H\ldots0.56H$`; every sixth random island is instead a Cavern island drawn from the deeper `$0.66H\ldots0.86H$` band.
+
+## 4. Biome and resource roles
+
+| Role | Surface | Body | Additional guarantee |
+|---|---|---|---|
+| Starter / Forest | Dirt | Stone | spawn support |
+| Desert | Sand | Sand | guaranteed in compact layout |
+| Snow | Snow Block | Ice Block | Water reservoir |
+| Jungle | Jungle Grass | Mud | Honey reservoir |
+| Evil, Corruption | Corrupt Grass | Ebonstone | follows world evil |
+| Evil, Crimson | Crimson Grass | Crimstone | follows world evil |
+| Cavern | Stone | Stone | Lava reservoir |
+| Aether | Stone | Stone | Shimmer reservoir |
+
+The Evil role follows `WorldGenerationOptions.Evil`; a Crimson Skyblock does not manufacture Corruption terrain and vice versa.
+
+Named tile identities used by these palettes remain source-backed through TerraRuntime's pinned TerrariaServer 1.4.5.8 source-contract workflow. The progression-liquid work deliberately required no new guessed tile IDs.
+
+## 5. Guaranteed progression liquids
+
+The `resources` pass turns four reserved islands into deterministic liquid sources:
+
+- Snow island: Water;
+- Cavern island: Lava;
+- Jungle island: Honey;
+- Aether island: Shimmer.
+
+Each source is a bounded basin carved into the center of its island. Basin cells are inactive tiles with full liquid amount and an explicit `WorldGenerationLiquidKind`; the surrounding island body supplies the retaining floor and walls. The pass therefore stays inside the existing normalized tile ABI and `.wld` liquid encoding path.
+
+The dedicated Aether island is placed opposite the selected dungeon side. Water, Honey and Lava islands are reserved before the random field, so random placement can never consume their safety envelopes.
+
+## 6. Spawn
+
+Spawn points to an air tile immediately above the starter island center. Tests require the tile directly below spawn to be solid. The starter chest is offset from the spawn column so a player cannot materialize inside a multi-tile chest object.
+
+## 7. Lowered underground and cavern layers
+
+Skyblock deliberately postpones ordinary vertical depth classification:
+
+$$
+\text{worldSurface}\approx0.62H
 $$
 
 $$
-\text{rockLayer} \approx 0.80H
+\text{rockLayer}\approx0.80H
 $$
 
-This leaves most of the floating-island field in sky/surface space and moves underground/cavern behavior toward the bottom of the map.
+This leaves most floating islands in sky/surface space and moves underground/cavern behavior toward the lower part of the map.
 
-## 7. Dungeon island
+## 8. Dungeon island
 
-The dungeon anchor is placed on a large lower stone island near one side of the world at approximately `$0.72H$`. The island contains an enclosed room backed by the source-pinned unsafe Blue Dungeon wall identity, and the runtime dungeon metadata anchor points to this lower structure.
+The dungeon anchor is placed on a large Stone island near one side of the world at approximately `$0.72H$`. The island contains an enclosed room backed by the source-pinned unsafe Blue Dungeon wall identity, and runtime metadata points to this lower structure.
 
-This is a Skyblock dungeon structure, not a claim of source-exact vanilla `DungeonPass` output.
+This remains a Skyblock progression structure, not source-exact vanilla `DungeonPass` output.
 
-## 8. Generated chests
+## 9. Generated chests
 
-Skyblock extends the generation workspace through the optional `IWorldGenerationChestWorkspace` capability. A generator requests detached chests; it does not write raw `.wld` bytes.
+Skyblock uses the optional `IWorldGenerationChestWorkspace` capability. The generator requests detached chest state and never writes raw `.wld` bytes.
 
 ```mermaid
 flowchart TD
@@ -91,22 +106,37 @@ flowchart TD
     Encoder --> Load["full .wld reload validation"]
 ```
 
-Chest coordinates, duplicates, item stacks, prefixes and vanilla item ranges are validated before the chest enters the candidate. Fresh-world composition then writes those chests through the canonical chest encoder and reloads the resulting file before publication.
+Chest coordinates, duplicate anchors, item stacks, prefixes and vanilla item ranges are validated before candidate publication. The starter chest currently contains a Copper Pickaxe, `$100$` Dirt Blocks and `$50$` Gel. Ordinary caches use deterministic Dirt/Gel quantities with the existing rare Slime Staff tier, and the lower dungeon cache carries an additional reserve.
 
-Current source-pinned loot intentionally uses only item identities already verified in TerraRuntime's TerrariaServer 1.4.5.8 catalog: Copper Pickaxe, Dirt Block, Gel and the rare Slime Staff.
+Richer loot must continue to add named item identities only after source verification.
 
-## 9. Loot tiers
+## 10. Determinism and failure semantics
 
-The starter chest contains a Copper Pickaxe, `$100$` Dirt Blocks and `$50$` Gel. Ordinary biome caches contain deterministic seed-derived Dirt/Gel quantities. Every seventh non-starter cache receives a Slime Staff. The lower dungeon cache contains a Slime Staff plus larger Dirt/Gel stacks.
+Resource islands are reserved during layout, before random islands are accepted. The dungeon envelope is reserved at the same stage. This makes the layout dependency explicit:
 
-Future loot expansion must add named item identities only after source verification. Numeric IDs copied from community tables must not become disguised source-backed constants.
+```mermaid
+flowchart TD
+    Spawn["starter"] --> Reserve["reserve dungeon + four resource islands"]
+    Reserve --> Mode{"compact workspace?"}
+    Mode -->|yes| Compact["fixed Desert/Evil anchors"]
+    Mode -->|no| Random["seeded random biome field"]
+    Compact --> Build["build islands"]
+    Random --> Build
+    Build --> Liquids["carve four liquid basins"]
+```
 
-## 10. tModLoader research
+If a reserved role cannot be placed without violating an envelope, generation fails instead of silently dropping that progression resource. Fixed-seed tests compare the resulting liquid footprint in addition to metadata and chest state.
 
-The design was informed by public tModLoader world-generation patterns, especially splitting layout, terrain/structure placement and chest population into distinct passes, and retaining important generated coordinates for later passes. No tModLoader or Calamity implementation code is copied into TerraRuntime.
+## 11. tModLoader comparison and remaining progression work
 
-## 11. Acceptance boundary
+Public Skyblock mods in the tModLoader ecosystem commonly solve more than terrain layout: they add renewable-resource paths, special structures, loot fallbacks, altered drops/events and sometimes separate mining or dungeon spaces. TerraRuntime intentionally keeps world generation and authoritative gameplay rules separate.
 
-The dedicated Skyblock acceptance creates a canonical Small `$4200\times1200$` world through the normal TerraRuntime CLI, reloads it with TerraRuntime's world verifier, then starts the pinned official TerrariaServer 1.4.5.8 against that generated `.wld`. Focused generator tests separately verify deterministic layout, biome palettes, spawn support, lowered dungeon/layers, dungeon-reservation clearance and persistent chest round-tripping.
+The current generator now covers deterministic island geometry plus the four vanilla liquid classes, but full Skyblock progression still needs source-backed structure/resource fallbacks and a runtime gameplay profile. Those tasks are tracked in [the dedicated Skyblock progression roadmap](../roadmap/skyblock-progression.md).
 
-The profile still has deliberate expansion room for richer source-pinned loot, liquids/fishing islands, additional structures and progression-specific resources. Those enhancements do not weaken the existing deterministic world/persistence contract.
+No tModLoader implementation code is copied into TerraRuntime.
+
+## 12. Acceptance boundary
+
+The dedicated Skyblock acceptance creates a canonical Small `$4200\times1200$` world through the normal TerraRuntime CLI, reloads it with TerraRuntime's verifier, then starts the pinned official TerrariaServer 1.4.5.8 against the generated `.wld`.
+
+Focused tests additionally verify biome palettes, deterministic layout, compact minimum-world generation, spawn support, lowered dungeon/layers, dungeon reservation, persistent chest round-trip and persistence of Water/Lava/Honey/Shimmer through the normal world encoder/loader path.

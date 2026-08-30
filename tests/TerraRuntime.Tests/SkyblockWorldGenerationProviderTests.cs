@@ -6,7 +6,7 @@ namespace TerraRuntime.Tests;
 public sealed class SkyblockWorldGenerationProviderTests
 {
     [Fact]
-    public void Built_in_skyblock_generates_void_biome_islands_lowered_dungeon_and_persistent_chests()
+    public void Built_in_skyblock_generates_void_biome_islands_progression_liquids_lowered_dungeon_and_persistent_chests()
     {
         const int width = 512;
         const int height = 256;
@@ -36,11 +36,15 @@ public sealed class SkyblockWorldGenerationProviderTests
 
         long activeTiles = 0;
         var activeTypes = new HashSet<ushort>();
+        var liquidKinds = new HashSet<WorldGenerationLiquidKind>();
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
                 Assert.True(candidate.TryGetTile(x, y, out WorldGenerationTile tile));
+                if (tile.LiquidAmount > 0)
+                    liquidKinds.Add(tile.LiquidKind);
+
                 if ((tile.Flags & WorldGenerationTileFlags.Active) == 0)
                     continue;
 
@@ -57,6 +61,10 @@ public sealed class SkyblockWorldGenerationProviderTests
         Assert.Contains(checked((ushort)VanillaTileIds.Mud.Value), activeTypes);
         Assert.Contains(checked((ushort)VanillaTileIds.CorruptGrass.Value), activeTypes);
         Assert.Contains(checked((ushort)VanillaTileIds.Ebonstone.Value), activeTypes);
+        Assert.Contains(WorldGenerationLiquidKind.Water, liquidKinds);
+        Assert.Contains(WorldGenerationLiquidKind.Lava, liquidKinds);
+        Assert.Contains(WorldGenerationLiquidKind.Honey, liquidKinds);
+        Assert.Contains(WorldGenerationLiquidKind.Shimmer, liquidKinds);
 
         WorldChest[] chests = candidate.CaptureGeneratedChests();
         Assert.True(chests.Length >= 3);
@@ -88,7 +96,7 @@ public sealed class SkyblockWorldGenerationProviderTests
     }
 
     [Fact]
-    public void Skyblock_same_seed_repeats_layout_metadata_and_chest_contents()
+    public void Skyblock_same_seed_repeats_layout_metadata_chests_and_liquids()
     {
         RuntimeWorldCreationPipelineResult first = Generate(seed: 123456789UL);
         RuntimeWorldCreationPipelineResult second = Generate(seed: 123456789UL);
@@ -110,6 +118,34 @@ public sealed class SkyblockWorldGenerationProviderTests
             Assert.Equal(firstChests[index].Y, secondChests[index].Y);
             Assert.Equal(firstChests[index].Name, secondChests[index].Name);
             Assert.Equal(firstChests[index].Items, secondChests[index].Items);
+        }
+
+        Assert.Equal(CaptureLiquidTiles(firstCandidate), CaptureLiquidTiles(secondCandidate));
+    }
+
+    [Fact]
+    public void Skyblock_compact_minimum_world_guarantees_biomes_and_progression_liquids_across_seeds()
+    {
+        for (ulong seed = 0; seed < 32; seed++)
+        {
+            RuntimeWorldCreationPipelineResult result = Generate(seed, width: 256, height: 160);
+            Assert.True(result.Succeeded, $"Seed {seed}: {result.Generation.Execution?.Error}");
+
+            RuntimeWorldGenerationWorkspace candidate = Assert.IsType<RuntimeWorldGenerationWorkspace>(result.Candidate);
+            HashSet<ushort> activeTypes = CaptureActiveTypes(candidate);
+            HashSet<WorldGenerationLiquidKind> liquidKinds = CaptureLiquidKinds(candidate);
+
+            Assert.Contains(checked((ushort)VanillaTileIds.Sand.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.SnowBlock.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.IceBlock.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.JungleGrass.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.Mud.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.CorruptGrass.Value), activeTypes);
+            Assert.Contains(checked((ushort)VanillaTileIds.Ebonstone.Value), activeTypes);
+            Assert.Contains(WorldGenerationLiquidKind.Water, liquidKinds);
+            Assert.Contains(WorldGenerationLiquidKind.Lava, liquidKinds);
+            Assert.Contains(WorldGenerationLiquidKind.Honey, liquidKinds);
+            Assert.Contains(WorldGenerationLiquidKind.Shimmer, liquidKinds);
         }
     }
 
@@ -161,14 +197,16 @@ public sealed class SkyblockWorldGenerationProviderTests
 
     private static RuntimeWorldCreationPipelineResult Generate(
         ulong seed,
-        WorldGenerationEvil evil = WorldGenerationEvil.Corruption)
+        WorldGenerationEvil evil = WorldGenerationEvil.Corruption,
+        int width = 512,
+        int height = 256)
     {
         var request = new WorldGenerationRequest(
             SkyblockWorldGenerationProvider.GeneratorId,
             "Repeatable",
             seed,
-            WidthTiles: 512,
-            HeightTiles: 256)
+            WidthTiles: width,
+            HeightTiles: height)
         {
             Options = new WorldGenerationOptions(WorldGenerationGameMode.Classic, evil)
         };
@@ -190,5 +228,30 @@ public sealed class SkyblockWorldGenerationProviderTests
         }
 
         return activeTypes;
+    }
+
+    private static HashSet<WorldGenerationLiquidKind> CaptureLiquidKinds(RuntimeWorldGenerationWorkspace candidate)
+    {
+        var kinds = new HashSet<WorldGenerationLiquidKind>();
+        foreach (var tile in CaptureLiquidTiles(candidate))
+            kinds.Add(tile.Kind);
+        return kinds;
+    }
+
+    private static List<(int X, int Y, byte Amount, WorldGenerationLiquidKind Kind)> CaptureLiquidTiles(
+        RuntimeWorldGenerationWorkspace candidate)
+    {
+        var tiles = new List<(int X, int Y, byte Amount, WorldGenerationLiquidKind Kind)>();
+        for (int x = 0; x < candidate.WidthTiles; x++)
+        {
+            for (int y = 0; y < candidate.HeightTiles; y++)
+            {
+                Assert.True(candidate.TryGetTile(x, y, out WorldGenerationTile tile));
+                if (tile.LiquidAmount > 0)
+                    tiles.Add((x, y, tile.LiquidAmount, tile.LiquidKind));
+            }
+        }
+
+        return tiles;
     }
 }
