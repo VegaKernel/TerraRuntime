@@ -170,17 +170,14 @@ public static class VanillaNpcAiCoverageCatalog
                     VanillaNpcAiCapability.StateTransitionSlice |
                     VanillaNpcAiCapability.WorldPhysicsSlice |
                     VanillaNpcAiCapability.WormHeadWorldSteeringSlice;
-                if (VanillaWormNpcCatalog.TryGetInitialSegmentCountRange(
-                        worm.Definition.Type,
-                        out _,
-                        out _))
+                if (VanillaWormNpcCatalog.HasChainProfile(worm.Definition.Type))
                 {
                     capabilities |= VanillaNpcAiCapability.WormChainSpawnSlice;
                 }
             }
 
             if (worm.Role == VanillaWormSegmentRole.Body &&
-                worm.HeadType != VanillaNpcIds.EaterOfWorldsHead)
+                VanillaWormNpcCatalog.HasChainProfile(worm.HeadType))
             {
                 capabilities |= VanillaNpcAiCapability.WormChainSpawnSlice;
             }

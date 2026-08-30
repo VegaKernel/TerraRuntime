@@ -142,6 +142,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             proposed.Type != source.Type ||
             !VanillaWormNpcCatalog.TryGet(sourceType, out VanillaWormNpcEntry worm) ||
             worm.Role == VanillaWormSegmentRole.Tail ||
+            !VanillaWormNpcCatalog.HasChainProfile(worm.HeadType) ||
             !worm.Definition.TryResolveHitbox(
                 proposed.Simulation.Scale,
                 out VanillaNpcHitboxSize hitbox))
@@ -153,15 +154,22 @@ public sealed class VanillaNpcTargetingAiStepper :
         float rootSlot;
         if (worm.Role == VanillaWormSegmentRole.Head)
         {
-            if (!VanillaWormNpcCatalog.TryGetInitialSegmentCountRange(
-                    sourceType,
-                    out int minimum,
-                    out int maximum))
+            if (VanillaWormNpcCatalog.TryGetFixedFollowerCount(sourceType, out int fixedCount))
+            {
+                remaining = fixedCount - 1;
+            }
+            else if (VanillaWormNpcCatalog.TryGetInitialSegmentCountRange(
+                         sourceType,
+                         out int minimum,
+                         out int maximum))
+            {
+                remaining = _random.NextInt32(minimum, maximum) - 1;
+            }
+            else
             {
                 return 0;
             }
 
-            remaining = _random.NextInt32(minimum, maximum) - 1;
             rootSlot = source.Handle.Slot;
         }
         else
@@ -174,11 +182,25 @@ public sealed class VanillaNpcTargetingAiStepper :
                 return 0;
             }
 
+            if (VanillaWormNpcCatalog.TryGetFixedFollowerCount(worm.HeadType, out _) &&
+                source.Ai.Ai2 == 0f)
+            {
+                return 0;
+            }
+
             remaining = (int)source.Ai.Ai2 - 1;
             rootSlot = source.Ai.Ai3;
         }
 
-        NpcTypeId childType = remaining >= 0 ? worm.BodyType : worm.TailType;
+        NpcTypeId childType;
+        if (!VanillaWormNpcCatalog.TryGetFixedFollowerType(
+                worm.HeadType,
+                remaining,
+                out childType))
+        {
+            childType = remaining >= 0 ? worm.BodyType : worm.TailType;
+        }
+
         int childRemaining = Math.Max(remaining, 0);
         destination[0] = new NpcAiSpawnIntent(
             childType,

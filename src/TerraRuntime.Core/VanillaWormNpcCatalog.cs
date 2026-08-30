@@ -54,6 +54,58 @@ public readonly record struct VanillaWormNpcEntry(
 /// </summary>
 public static class VanillaWormNpcCatalog
 {
+    private static readonly NpcTypeId[] WyvernFollowers =
+    [
+        VanillaNpcIds.WyvernBody,
+        VanillaNpcIds.WyvernLegs,
+        VanillaNpcIds.WyvernBody,
+        VanillaNpcIds.WyvernBody,
+        VanillaNpcIds.WyvernBody,
+        VanillaNpcIds.WyvernBody,
+        VanillaNpcIds.WyvernBody,
+        VanillaNpcIds.WyvernBody,
+        VanillaNpcIds.WyvernLegs,
+        VanillaNpcIds.WyvernBody,
+        VanillaNpcIds.WyvernBody,
+        VanillaNpcIds.WyvernBody2,
+        VanillaNpcIds.WyvernBody3,
+        VanillaNpcIds.WyvernTail
+    ];
+
+    private static readonly NpcTypeId[] CultistDragonFollowers =
+    [
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody1,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody1,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody1,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody1,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody1,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody1,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody2,
+        VanillaNpcIds.CultistDragonBody3,
+        VanillaNpcIds.CultistDragonBody4,
+        VanillaNpcIds.CultistDragonTail
+    ];
+
     private static readonly VanillaWormNpcEntry[] Entries =
     [
         FamilyEntry(VanillaNpcIds.DevourerHead, 22, 22, 31, 2, 100, VanillaWormSegmentRole.Head,
@@ -84,6 +136,19 @@ public static class VanillaWormNpcCatalog
         FamilyEntry(VanillaNpcIds.BoneSerpentTail, 22, 22, 16, 18, 300, VanillaWormSegmentRole.Tail,
             VanillaNpcIds.BoneSerpentHead, VanillaNpcIds.BoneSerpentBody, VanillaNpcIds.BoneSerpentTail, 9f, 0.1f, 22f, 0.08f),
 
+        FamilyEntry(VanillaNpcIds.WyvernHead, 32, 32, 80, 10, 4000, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.WyvernHead, VanillaNpcIds.WyvernBody, VanillaNpcIds.WyvernTail, 11f, 0.25f, 42f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.WyvernLegs, 32, 32, 40, 20, 4000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.WyvernHead, VanillaNpcIds.WyvernBody, VanillaNpcIds.WyvernTail, 11f, 0.25f, 42f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.WyvernBody, 32, 32, 40, 20, 4000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.WyvernHead, VanillaNpcIds.WyvernBody, VanillaNpcIds.WyvernTail, 11f, 0.25f, 42f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.WyvernBody2, 32, 32, 40, 20, 4000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.WyvernHead, VanillaNpcIds.WyvernBody, VanillaNpcIds.WyvernTail, 11f, 0.25f, 42f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.WyvernBody3, 32, 32, 40, 20, 4000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.WyvernHead, VanillaNpcIds.WyvernBody, VanillaNpcIds.WyvernTail, 11f, 0.25f, 42f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.WyvernTail, 32, 32, 40, 20, 4000, VanillaWormSegmentRole.Tail,
+            VanillaNpcIds.WyvernHead, VanillaNpcIds.WyvernBody, VanillaNpcIds.WyvernTail, 11f, 0.25f, 42f, alwaysDig: true),
+
         FamilyEntry(VanillaNpcIds.DiggerHead, 22, 22, 45, 10, 200, VanillaWormSegmentRole.Head,
             VanillaNpcIds.DiggerHead, VanillaNpcIds.DiggerBody, VanillaNpcIds.DiggerTail, 5.5f, 0.045f, 22f, scale: 0.9f),
         FamilyEntry(VanillaNpcIds.DiggerBody, 22, 22, 28, 20, 200, VanillaWormSegmentRole.Body,
@@ -104,6 +169,32 @@ public static class VanillaWormNpcCatalog
             VanillaNpcIds.LeechHead, VanillaNpcIds.LeechBody, VanillaNpcIds.LeechTail, 8f, 0.07f, 14f),
         FamilyEntry(VanillaNpcIds.LeechTail, 14, 14, 18, 10, 60, VanillaWormSegmentRole.Tail,
             VanillaNpcIds.LeechHead, VanillaNpcIds.LeechBody, VanillaNpcIds.LeechTail, 8f, 0.07f, 14f),
+
+        FamilyEntry(VanillaNpcIds.TruffleWormDigger, 10, 10, 0, 0, 5, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.TruffleWormDigger, VanillaNpcIds.TruffleWormDigger, VanillaNpcIds.TruffleWormDigger, 6f, 0.15f, 10f),
+
+        FamilyEntry(VanillaNpcIds.StardustWormHead, 32, 32, 80, 10, 1200, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.StardustWormHead, VanillaNpcIds.StardustWormHead, VanillaNpcIds.StardustWormHead, 9f, 0.3f, 32f, alwaysDig: true),
+
+        FamilyEntry(VanillaNpcIds.SolarCrawltipedeHead, 20, 20, 120, 1000, 10000, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.SolarCrawltipedeHead, VanillaNpcIds.SolarCrawltipedeBody, VanillaNpcIds.SolarCrawltipedeTail, 10f, 0.3f, 26f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.SolarCrawltipedeBody, 20, 20, 80, 1000, 10000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.SolarCrawltipedeHead, VanillaNpcIds.SolarCrawltipedeBody, VanillaNpcIds.SolarCrawltipedeTail, 10f, 0.3f, 26f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.SolarCrawltipedeTail, 20, 20, 50, 0, 10000, VanillaWormSegmentRole.Tail,
+            VanillaNpcIds.SolarCrawltipedeHead, VanillaNpcIds.SolarCrawltipedeBody, VanillaNpcIds.SolarCrawltipedeTail, 10f, 0.3f, 26f, alwaysDig: true),
+
+        FamilyEntry(VanillaNpcIds.CultistDragonHead, 32, 32, 100, 15, 10000, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.CultistDragonHead, VanillaNpcIds.CultistDragonBody2, VanillaNpcIds.CultistDragonTail, 20f, 0.55f, 36f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.CultistDragonBody1, 32, 32, 50, 30, 10000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.CultistDragonHead, VanillaNpcIds.CultistDragonBody2, VanillaNpcIds.CultistDragonTail, 20f, 0.55f, 36f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.CultistDragonBody2, 32, 32, 50, 30, 10000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.CultistDragonHead, VanillaNpcIds.CultistDragonBody2, VanillaNpcIds.CultistDragonTail, 20f, 0.55f, 36f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.CultistDragonBody3, 32, 32, 50, 30, 10000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.CultistDragonHead, VanillaNpcIds.CultistDragonBody2, VanillaNpcIds.CultistDragonTail, 20f, 0.55f, 36f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.CultistDragonBody4, 32, 32, 50, 30, 10000, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.CultistDragonHead, VanillaNpcIds.CultistDragonBody2, VanillaNpcIds.CultistDragonTail, 20f, 0.55f, 36f, alwaysDig: true),
+        FamilyEntry(VanillaNpcIds.CultistDragonTail, 32, 32, 50, 30, 10000, VanillaWormSegmentRole.Tail,
+            VanillaNpcIds.CultistDragonHead, VanillaNpcIds.CultistDragonBody2, VanillaNpcIds.CultistDragonTail, 20f, 0.55f, 36f, alwaysDig: true),
 
         FamilyEntry(VanillaNpcIds.DuneSplicerHead, 34, 34, 58, 18, 500, VanillaWormSegmentRole.Head,
             VanillaNpcIds.DuneSplicerHead, VanillaNpcIds.DuneSplicerBody, VanillaNpcIds.DuneSplicerTail, 10f, 0.25f, 34f),
@@ -206,27 +297,87 @@ public static class VanillaWormNpcCatalog
 
         if (headType == VanillaNpcIds.DuneSplicerHead)
         {
-            minimumInclusive = 12;
-            maximumExclusive = 21;
+            minimumInclusive = 11;
+            maximumExclusive = 20;
             return true;
         }
 
         if (headType == VanillaNpcIds.TombCrawlerHead)
         {
-            minimumInclusive = 6;
-            maximumExclusive = 10;
+            minimumInclusive = 5;
+            maximumExclusive = 9;
             return true;
         }
 
         if (headType == VanillaNpcIds.BloodEelHead)
         {
-            minimumInclusive = 16;
-            maximumExclusive = 17;
+            minimumInclusive = 15;
+            maximumExclusive = 16;
+            return true;
+        }
+
+        if (headType == VanillaNpcIds.SolarCrawltipedeHead)
+        {
+            minimumInclusive = 29;
+            maximumExclusive = 30;
             return true;
         }
 
         minimumInclusive = 0;
         maximumExclusive = 0;
+        return false;
+    }
+
+    public static bool HasChainProfile(NpcTypeId headType) =>
+        TryGetInitialSegmentCountRange(headType, out _, out _) ||
+        TryGetFixedFollowerSequence(headType, out _);
+
+    public static bool TryGetFixedFollowerType(
+        NpcTypeId headType,
+        int remainingFollowersAfterChild,
+        out NpcTypeId followerType)
+    {
+        if (!TryGetFixedFollowerSequence(headType, out NpcTypeId[] sequence) ||
+            remainingFollowersAfterChild < 0 ||
+            remainingFollowersAfterChild >= sequence.Length)
+        {
+            followerType = default;
+            return false;
+        }
+
+        followerType = sequence[sequence.Length - remainingFollowersAfterChild - 1];
+        return true;
+    }
+
+    public static bool TryGetFixedFollowerCount(NpcTypeId headType, out int count)
+    {
+        if (TryGetFixedFollowerSequence(headType, out NpcTypeId[] sequence))
+        {
+            count = sequence.Length;
+            return true;
+        }
+
+        count = 0;
+        return false;
+    }
+
+    private static bool TryGetFixedFollowerSequence(
+        NpcTypeId headType,
+        out NpcTypeId[] sequence)
+    {
+        if (headType == VanillaNpcIds.WyvernHead)
+        {
+            sequence = WyvernFollowers;
+            return true;
+        }
+
+        if (headType == VanillaNpcIds.CultistDragonHead)
+        {
+            sequence = CultistDragonFollowers;
+            return true;
+        }
+
+        sequence = [];
         return false;
     }
 
