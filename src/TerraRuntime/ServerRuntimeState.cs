@@ -52,6 +52,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly VanillaWorldTileMutationService? _tileMutations;
     private readonly RuntimeWorldClock? _worldClock;
     private readonly bool _expertMode;
+    private const int MaxTileEditsPerTickPerPlayer = 8;
+    private readonly int[] _tileEditCounts = new int[MaxPlayerSlots];
+    private long _tileEditBudgetTick;
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
 
@@ -417,6 +420,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
 
     public void Tick()
     {
+        if (Updates != _tileEditBudgetTick)
+        {
+            Array.Clear(_tileEditCounts, 0, _tileEditCounts.Length);
+            _tileEditBudgetTick = Updates;
+        }
+
         _npcArchetypes.CommitPending();
         _npcShops.CommitPending();
         _npcActorCommands.CommitPending();
@@ -803,12 +812,82 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             return;
         }
 
+        byte slot = command.Connection.Player.Slot.Value;
+        if (_tileEditCounts[slot] >= MaxTileEditsPerTickPerPlayer)
+        {
+            RejectedClientTileManipulations++;
+            return;
+        }
+
+        _tileEditCounts[slot]++;
         ValidatedClientTileManipulations++;
         var tileState = command.State;
+
+        if (action == TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.KillWall)
+        {
+            if (!ApplyTileMutation(
+                    tileMutations,
+                    WorldTileMutationKind.KillWall,
+                    tileState.TileX,
+                    tileState.TileY))
+            {
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            AppliedClientTileManipulations++;
+            _tileManipulationReplication?.TryPublishCommitted(command.Connection.Source, in tileState);
+            return;
+        }
+
+        if (action == TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.PlaceWall)
+        {
+            if (!VanillaWallIds.TryCreate(tileState.Data, out WallTypeId wallType) ||
+                wallType == VanillaWallIds.None ||
+                !VanillaWallDefinitionCatalog.TryGet(wallType, out VanillaWallDefinition wallDefinition) ||
+                !wallDefinition.IsPresent)
+            {
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            if (!_playerInventory.TryGet(
+                    command.Connection,
+                    player.SelectedItem,
+                    out RuntimePlayerInventoryItem wallItem) ||
+                wallItem.IsEmpty)
+            {
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            if (!ApplyTileMutation(
+                    tileMutations,
+                    WorldTileMutationKind.PlaceWall,
+                    tileState.TileX,
+                    tileState.TileY,
+                    wallType: wallType))
+            {
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            AppliedClientTileManipulations++;
+            _tileManipulationReplication?.TryPublishCommitted(command.Connection.Source, in tileState);
+            return;
+        }
+
         if (action == TerraRuntime.Protocol.Multiplicity.TerrariaTileManipulationAction.KillTileNoItem)
         {
-            if (!VanillaDirtPlacement.CanKillIsolated(_worldTiles, tileState.TileX, tileState.TileY) ||
-                !ApplyTileMutation(
+            WorldTile before = _worldTiles.Get(tileState.TileX, tileState.TileY);
+            bool isDirt = before.TileType == VanillaTileIds.Dirt;
+            if (isDirt && !VanillaDirtPlacement.CanKillIsolated(_worldTiles, tileState.TileX, tileState.TileY))
+            {
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            if (!ApplyTileMutation(
                     tileMutations,
                     WorldTileMutationKind.KillTile,
                     tileState.TileX,
@@ -850,26 +929,50 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 return;
             }
 
-            if (!VanillaDirtPlacement.CanKillIsolated(
-                    _worldTiles,
+            WorldTile beforeKill = _worldTiles.Get(tileState.TileX, tileState.TileY);
+            bool isDirtKill = beforeKill.TileType == VanillaTileIds.Dirt;
+            if (isDirtKill && !VanillaDirtPlacement.CanKillIsolated(_worldTiles, tileState.TileX, tileState.TileY))
+            {
+                RejectedClientTileManipulations++;
+                return;
+            }
+
+            if (isDirtKill)
+            {
+                if (!_worldItems.TryReserveDropSlot(out WorldItemDropReservation reservation))
+                {
+                    RejectedClientTileManipulations++;
+                    RejectedWorldItemAllocations++;
+                    return;
+                }
+
+                WorldItemDropStateUpdate drop = VanillaDirtWorldItemDrop.Create(
                     tileState.TileX,
-                    tileState.TileY))
-            {
-                RejectedClientTileManipulations++;
+                    tileState.TileY,
+                    _worldItemSpawnRandom);
+
+                if (!ApplyTileMutation(
+                        tileMutations,
+                        WorldTileMutationKind.KillTile,
+                        tileState.TileX,
+                        tileState.TileY))
+                {
+                    _ = _worldItems.TryReleaseDropReservation(in reservation);
+                    RejectedClientTileManipulations++;
+                    return;
+                }
+
+                if (!_worldItems.TryCommitReservedDrop(in reservation, in drop, out _))
+                {
+                    throw new InvalidOperationException(
+                        "Reserved Dirt drop could not commit after authoritative tile mutation.");
+                }
+
+                AppliedWorldItemAllocations++;
+                AppliedClientTileManipulations++;
+                _tileManipulationReplication?.TryPublishCommitted(command.Connection.Source, in tileState);
                 return;
             }
-
-            if (!_worldItems.TryReserveDropSlot(out WorldItemDropReservation reservation))
-            {
-                RejectedClientTileManipulations++;
-                RejectedWorldItemAllocations++;
-                return;
-            }
-
-            WorldItemDropStateUpdate drop = VanillaDirtWorldItemDrop.Create(
-                tileState.TileX,
-                tileState.TileY,
-                _worldItemSpawnRandom);
 
             if (!ApplyTileMutation(
                     tileMutations,
@@ -877,18 +980,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                     tileState.TileX,
                     tileState.TileY))
             {
-                _ = _worldItems.TryReleaseDropReservation(in reservation);
                 RejectedClientTileManipulations++;
                 return;
             }
 
-            if (!_worldItems.TryCommitReservedDrop(in reservation, in drop, out _))
-            {
-                throw new InvalidOperationException(
-                    "Reserved Dirt drop could not commit after authoritative tile mutation.");
-            }
-
-            AppliedWorldItemAllocations++;
             AppliedClientTileManipulations++;
             _tileManipulationReplication?.TryPublishCommitted(command.Connection.Source, in tileState);
             return;
@@ -922,13 +1017,33 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 return;
 
             case ClientTileManipulationConsistencyResult.Consistent:
-                if (!VanillaDirtPlacement.CanPlaceOnEmpty(_worldTiles, tileState.TileX, tileState.TileY) ||
-                    !ApplyTileMutation(
+                if (!VanillaTileIds.TryCreate(tileState.Data, out TileTypeId requestedTile))
+                {
+                    RejectedClientTileManipulations++;
+                    return;
+                }
+
+                if (!VanillaTileDefinitionCatalog.TryGet(requestedTile, out VanillaTileDefinition definition) ||
+                    definition.IsFrameImportant ||
+                    VanillaMultiTileObjectCatalog.TryGet(requestedTile, out _))
+                {
+                    RejectedClientTileManipulations++;
+                    return;
+                }
+
+                if (requestedTile == VanillaTileIds.Dirt &&
+                    !VanillaDirtPlacement.CanPlaceOnEmpty(_worldTiles, tileState.TileX, tileState.TileY))
+                {
+                    RejectedClientTileManipulations++;
+                    return;
+                }
+
+                if (!ApplyTileMutation(
                         tileMutations,
                         WorldTileMutationKind.PlaceTile,
                         tileState.TileX,
                         tileState.TileY,
-                        VanillaTileIds.Dirt))
+                        requestedTile))
                 {
                     RejectedClientTileManipulations++;
                     return;
@@ -948,9 +1063,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         WorldTileMutationKind kind,
         int x,
         int y,
-        TileTypeId tileType = default)
+        TileTypeId tileType = default,
+        WallTypeId wallType = default)
     {
-        var request = new WorldTileMutationRequest(kind, x, y, TileType: tileType);
+        var request = new WorldTileMutationRequest(kind, x, y, TileType: tileType, WallType: wallType);
         return tileMutations.Apply(in request).Applied;
     }
 
