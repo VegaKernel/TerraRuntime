@@ -81,7 +81,28 @@ public static class VanillaWormNpcCatalog
         FamilyEntry(VanillaNpcIds.BoneSerpentBody, 22, 22, 20, 18, 300, VanillaWormSegmentRole.Body,
             VanillaNpcIds.BoneSerpentHead, VanillaNpcIds.BoneSerpentBody, VanillaNpcIds.BoneSerpentTail, 9f, 0.1f, 22f, 0.08f),
         FamilyEntry(VanillaNpcIds.BoneSerpentTail, 22, 22, 16, 18, 300, VanillaWormSegmentRole.Tail,
-            VanillaNpcIds.BoneSerpentHead, VanillaNpcIds.BoneSerpentBody, VanillaNpcIds.BoneSerpentTail, 9f, 0.1f, 22f, 0.08f)
+            VanillaNpcIds.BoneSerpentHead, VanillaNpcIds.BoneSerpentBody, VanillaNpcIds.BoneSerpentTail, 9f, 0.1f, 22f, 0.08f),
+
+        FamilyEntry(VanillaNpcIds.DiggerHead, 22, 22, 45, 10, 200, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.DiggerHead, VanillaNpcIds.DiggerBody, VanillaNpcIds.DiggerTail, 5.5f, 0.045f, 22f, scale: 0.9f),
+        FamilyEntry(VanillaNpcIds.DiggerBody, 22, 22, 28, 20, 200, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.DiggerHead, VanillaNpcIds.DiggerBody, VanillaNpcIds.DiggerTail, 5.5f, 0.045f, 22f, scale: 0.9f),
+        FamilyEntry(VanillaNpcIds.DiggerTail, 22, 22, 26, 30, 200, VanillaWormSegmentRole.Tail,
+            VanillaNpcIds.DiggerHead, VanillaNpcIds.DiggerBody, VanillaNpcIds.DiggerTail, 5.5f, 0.045f, 22f, scale: 0.9f),
+
+        FamilyEntry(VanillaNpcIds.SeekerHead, 22, 22, 70, 36, 500, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.SeekerHead, VanillaNpcIds.SeekerBody, VanillaNpcIds.SeekerTail, 8f, 0.07f, 22f),
+        FamilyEntry(VanillaNpcIds.SeekerBody, 22, 22, 55, 40, 500, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.SeekerHead, VanillaNpcIds.SeekerBody, VanillaNpcIds.SeekerTail, 8f, 0.07f, 22f),
+        FamilyEntry(VanillaNpcIds.SeekerTail, 22, 22, 40, 44, 500, VanillaWormSegmentRole.Tail,
+            VanillaNpcIds.SeekerHead, VanillaNpcIds.SeekerBody, VanillaNpcIds.SeekerTail, 8f, 0.07f, 22f),
+
+        FamilyEntry(VanillaNpcIds.LeechHead, 14, 14, 26, 2, 60, VanillaWormSegmentRole.Head,
+            VanillaNpcIds.LeechHead, VanillaNpcIds.LeechBody, VanillaNpcIds.LeechTail, 8f, 0.07f, 14f),
+        FamilyEntry(VanillaNpcIds.LeechBody, 14, 14, 22, 6, 60, VanillaWormSegmentRole.Body,
+            VanillaNpcIds.LeechHead, VanillaNpcIds.LeechBody, VanillaNpcIds.LeechTail, 8f, 0.07f, 14f),
+        FamilyEntry(VanillaNpcIds.LeechTail, 14, 14, 18, 10, 60, VanillaWormSegmentRole.Tail,
+            VanillaNpcIds.LeechHead, VanillaNpcIds.LeechBody, VanillaNpcIds.LeechTail, 8f, 0.07f, 14f)
     ];
 
     public static int Count => Entries.Length;
@@ -140,6 +161,27 @@ public static class VanillaWormNpcCatalog
             return true;
         }
 
+        if (headType == VanillaNpcIds.DiggerHead)
+        {
+            minimumInclusive = 6;
+            maximumExclusive = 12;
+            return true;
+        }
+
+        if (headType == VanillaNpcIds.SeekerHead)
+        {
+            minimumInclusive = 20;
+            maximumExclusive = 26;
+            return true;
+        }
+
+        if (headType == VanillaNpcIds.LeechHead)
+        {
+            minimumInclusive = 3;
+            maximumExclusive = 6;
+            return true;
+        }
+
         minimumInclusive = 0;
         maximumExclusive = 0;
         return false;
@@ -159,7 +201,8 @@ public static class VanillaWormNpcCatalog
         float speed,
         float turn,
         float gap,
-        float risingGravity = 0.11f) =>
+        float risingGravity = 0.11f,
+        float scale = 1f) =>
         new(
             new VanillaNpcDefinition(
                 type,
@@ -173,7 +216,7 @@ public static class VanillaWormNpcCatalog
                 defense,
                 lifeMax,
                 KnockBackResist: 0f,
-                Scale: 1f,
+                Scale: scale,
                 NoGravityAtSpawn: true,
                 NoTileCollideAtSpawn: true,
                 VanillaNpcSyncAnchor.TopLeft),

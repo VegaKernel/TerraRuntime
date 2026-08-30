@@ -33,7 +33,16 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId DungeonSlime = new(71);
     public static readonly NpcTypeId CorruptSlime = new(81);
     public static readonly NpcTypeId Corruptor = new(94);
+    public static readonly NpcTypeId DiggerHead = new(95);
+    public static readonly NpcTypeId DiggerBody = new(96);
+    public static readonly NpcTypeId DiggerTail = new(97);
+    public static readonly NpcTypeId SeekerHead = new(98);
+    public static readonly NpcTypeId SeekerBody = new(99);
+    public static readonly NpcTypeId SeekerTail = new(100);
     public static readonly NpcTypeId TheHungryII = new(116);
+    public static readonly NpcTypeId LeechHead = new(117);
+    public static readonly NpcTypeId LeechBody = new(118);
+    public static readonly NpcTypeId LeechTail = new(119);
     public static readonly NpcTypeId WanderingEye = new(133);
     public static readonly NpcTypeId Probe = new(139);
     public static readonly NpcTypeId IlluminantSlime = new(138);
