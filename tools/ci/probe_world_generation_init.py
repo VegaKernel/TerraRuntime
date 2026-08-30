@@ -225,53 +225,6 @@ def inspect_special_seed_filter(source: str) -> dict[str, str]:
     return {"signature": compact(signature), "fingerprint": fingerprint}
 
 
-def inspect_jungle_pass(source: str, output: Path | None) -> dict[str, object]:
-    signatures = all_signatures(source)
-    if not signatures:
-        raise SystemExit("Pinned JunglePass source exposed no methods.")
-
-    source_hash = hashlib.sha256(source.encode("utf-8")).hexdigest()
-    methods: list[tuple[str, str, str]] = []
-    print(f"JunglePass_source_sha256={source_hash}")
-    print(f"JunglePass_method_count={len(signatures)}")
-    for index, signature in enumerate(signatures):
-        name = method_name(signature)
-        body = extract_method(source, signature)
-        fingerprint = hashlib.sha256(body.encode("utf-8")).hexdigest()
-        methods.append((compact(signature), name, fingerprint))
-        print(f"JunglePass_method_{index:03d}_signature={compact(signature)}")
-        print(f"JunglePass_method_{index:03d}_sha256={fingerprint}")
-        # Method bodies stay in CI logs for clean-room inspection; artifacts retain only fingerprints/signatures.
-        print(f"BEGIN_JunglePass_{index:03d}_{name}")
-        print(compact(body))
-        print(f"END_JunglePass_{index:03d}_{name}")
-
-    apply_methods = [entry for entry in methods if entry[1] == "ApplyPass"]
-    if len(apply_methods) != 1:
-        raise SystemExit(
-            "Pinned JunglePass must expose exactly one ApplyPass method; "
-            f"found {len(apply_methods)}."
-        )
-
-    if output is not None:
-        lines = [
-            "source=TerrariaServer 1.4.5.8",
-            "decompiler=ilspycmd 11.0.0.9375",
-            f"JunglePass_source_sha256={source_hash}",
-            f"JunglePass_method_count={len(methods)}",
-        ]
-        for index, (signature, name, fingerprint) in enumerate(methods):
-            lines.extend([
-                f"JunglePass_method_{index:03d}_name={name}",
-                f"JunglePass_method_{index:03d}_signature={signature}",
-                f"JunglePass_method_{index:03d}_sha256={fingerprint}",
-            ])
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-    return {"source_hash": source_hash, "methods": methods}
-
-
 def parse_gen_pass_name_ids(source: str) -> dict[str, str]:
     pattern = re.compile(
         r'public\s+(?:const\s+|static\s+readonly\s+|static\s+)string\s+([A-Za-z_]\w*)\s*=\s*"((?:\\.|[^"\\])*)"\s*;'
@@ -435,7 +388,6 @@ def main() -> int:
     parser.add_argument("--jungle-pass")
     parser.add_argument("--dither-snake-pass")
     parser.add_argument("--pass-catalog-output")
-    parser.add_argument("--jungle-contract-output")
     args = parser.parse_args()
 
     world_gen = Path(args.world_gen).read_text(encoding="utf-8")
@@ -487,10 +439,6 @@ def main() -> int:
             list(registrations["registrations"]),
             name_id_source,
             class_sources,
-        )
-        inspect_jungle_pass(
-            class_sources["JunglePass"],
-            Path(args.jungle_contract_output) if args.jungle_contract_output else None,
         )
 
     required_world_gen = {"GenerateWorld", "Reset", "Finish", "DisablePassesForSpecialSeeds"}

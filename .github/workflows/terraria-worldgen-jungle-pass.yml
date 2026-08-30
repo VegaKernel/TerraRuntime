@@ -1,0 +1,68 @@
+name: Terraria JunglePass Source Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/ci/probe_worldgen_jungle_pass.py'
+      - '.github/workflows/terraria-worldgen-jungle-pass.yml'
+      - 'src/TerraRuntime.World/SourceBackedVanillaWorldGenerationProvider1458.cs'
+      - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrapPass1458.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationProvider1458Tests.cs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-jungle-pass-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  jungle-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Decompile pinned TerrariaServer 1.4.5.8 JunglePass
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/source-contract .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+
+          expected="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+
+          assembly_dir="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -l c "$assembly" > artifacts/source-contract/classes.txt
+          jungle_type="$(grep -E '(^|[.])JunglePass$' artifacts/source-contract/classes.txt | head -n 1 | sed 's/^[^ ]* //')"
+          test -n "$jungle_type"
+          echo "Pinned JunglePass type: $jungle_type"
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$jungle_type" "$assembly" > artifacts/source-contract/jungle-pass.cs
+
+          python3 tools/ci/probe_worldgen_jungle_pass.py \
+            --jungle-pass artifacts/source-contract/jungle-pass.cs \
+            --output artifacts/source-contract/jungle-pass-contract.txt
+
+      - name: Upload JunglePass evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraria-jungle-pass-${{ github.sha }}
+          path: artifacts/source-contract/jungle-pass-contract.txt
+          if-no-files-found: error
+          retention-days: 7

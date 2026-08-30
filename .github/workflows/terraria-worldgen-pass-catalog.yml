@@ -59,12 +59,12 @@ jobs:
           assembly_dir="$(dirname "$assembly")"
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Main "$assembly" > artifacts/source-contract/main.cs
-          .tools/ilspycmd --disable-updatecheck -l c,s "$assembly" > artifacts/source-contract/classes.txt
+          .tools/ilspycmd --disable-updatecheck -l c "$assembly" > artifacts/source-contract/classes.txt
 
           find_type() {
             local simple="$1"
             local line
-            line="$(grep -Ei "(^|[.])${simple}$" artifacts/source-contract/classes.txt | head -n 1 || true)"
+            line="$(grep -E "(^|[.])${simple}$" artifacts/source-contract/classes.txt | head -n 1 || true)"
             if [[ -z "$line" ]]; then
               echo "Could not locate pinned support type ${simple}." >&2
               return 1
@@ -183,8 +183,7 @@ jobs:
             --terrain-pass artifacts/source-contract/terrain-pass.cs \
             --jungle-pass artifacts/source-contract/jungle-pass.cs \
             --dither-snake-pass artifacts/source-contract/dither-snake-pass.cs \
-            --pass-catalog-output artifacts/source-contract/world-generation-pass-catalog.txt \
-            --jungle-contract-output artifacts/source-contract/jungle-pass-contract.txt
+            --pass-catalog-output artifacts/source-contract/world-generation-pass-catalog.txt
 
           python3 tools/ci/probe_worldgen_terrain_pass.py \
             --terrain-pass artifacts/source-contract/terrain-pass.cs \
@@ -228,7 +227,6 @@ jobs:
           path: |
             artifacts/source-contract/world-generation-pass-catalog.txt
             artifacts/source-contract/terrain-pass-contract.txt
-            artifacts/source-contract/jungle-pass-contract.txt
             artifacts/source-contract/worldgen-rng-contract.txt
             artifacts/source-contract/worldgen-seed-contract.txt
             artifacts/source-contract/worldgen-config-contract.txt
