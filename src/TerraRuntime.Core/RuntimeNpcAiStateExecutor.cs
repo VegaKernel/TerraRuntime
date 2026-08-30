@@ -63,8 +63,9 @@ public sealed class RuntimeNpcAiStateExecutor
                 continue;
 
             proposed++;
+            NpcAiSpawnIntent spawnIntent = default;
             bool hasSpawnIntent = spawnPlanner is not null &&
-                                  spawnPlanner.TryPlanNpcSpawn(in npc, in next, out NpcAiSpawnIntent spawnIntent);
+                                  spawnPlanner.TryPlanNpcSpawn(in npc, in next, out spawnIntent);
 
             if (_npcs.TryUpdate(npc.Handle, in next, out NpcSnapshot committed))
             {
