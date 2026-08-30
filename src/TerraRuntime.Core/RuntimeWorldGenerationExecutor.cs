@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.Core;
@@ -33,8 +35,6 @@ public readonly record struct WorldGenerationExecutionResult(
 /// </summary>
 public static class RuntimeWorldGenerationExecutor
 {
-    // Progress is diagnostic/UI work supplied by the provider. A hard ceiling prevents a custom pass from turning
-    // a tiny status channel into unbounded callback work during generation.
     public const int MaxProgressReportsPerPass = 1_024;
 
     public static WorldGenerationExecutionResult Execute(
@@ -110,34 +110,29 @@ public static class RuntimeWorldGenerationExecutor
             case WorldGenerationPlanCommitStatus.Published:
             case WorldGenerationPlanCommitStatus.NoChanges:
                 break;
-
             case WorldGenerationPlanCommitStatus.MissingRequiredDependency:
                 return new WorldGenerationExecutionResult(
                     WorldGenerationExecutionStatus.MissingRequiredDependency,
                     planCommit.PassId,
                     planCommit.DependencyId);
-
             case WorldGenerationPlanCommitStatus.DependencyCycle:
                 return new WorldGenerationExecutionResult(
                     WorldGenerationExecutionStatus.DependencyCycle,
                     planCommit.PassId);
-
             default:
                 return new WorldGenerationExecutionResult(WorldGenerationExecutionStatus.InvalidPlan);
         }
 
         RuntimeWorldGenerationPlan<IWorldGenerationPass> plan = passRegistry.Plan;
         ReadOnlySpan<RuntimeWorldGenerationPlanEntry<IWorldGenerationPass>> entries = plan.Entries.Span;
+        int? vanillaSeed = null;
         for (int passIndex = 0; passIndex < entries.Length; passIndex++)
         {
             RuntimeWorldGenerationPlanEntry<IWorldGenerationPass> entry = entries[passIndex];
             WorldGenerationPassDescriptor descriptor = entry.Descriptor;
 
-            if (descriptor.RngMode != WorldGenerationRngMode.IsolatedDeterministic)
+            if (descriptor.RngMode == WorldGenerationRngMode.CustomProviderRng)
             {
-                // VanillaSharedRng cannot be approximated: it needs the verified Terraria 1.4.5.8 worldgen RNG
-                // seed semantics and exact operation surface. CustomProviderRng likewise needs a future explicit
-                // provider-owned RNG contract. Reject both rather than silently producing a non-vanilla world.
                 return new WorldGenerationExecutionResult(
                     WorldGenerationExecutionStatus.UnsupportedRngMode,
                     descriptor.Id);
@@ -148,10 +143,19 @@ public static class RuntimeWorldGenerationExecutor
                 cancellationToken.ThrowIfCancellationRequested();
                 var random = new WorldGenerationRandomAdapter(
                     WorldGenerationPassRandom.Create(request.Seed, descriptor.Id));
+                IWorldGenerationVanillaRandom? vanillaRandom = null;
+                if (descriptor.RngMode == WorldGenerationRngMode.VanillaSharedRng)
+                {
+                    vanillaSeed ??= VanillaSeedText1458.Resolve(in request);
+                    vanillaRandom = new VanillaWorldGenerationRandomAdapter(
+                        new VanillaUnifiedRandom1458(vanillaSeed.Value));
+                }
+
                 var context = new PassContext(
                     request,
                     workspace,
                     random,
+                    vanillaRandom,
                     progress,
                     descriptor.Id,
                     passIndex,
@@ -212,6 +216,7 @@ public static class RuntimeWorldGenerationExecutor
             WorldGenerationRequest request,
             IWorldGenerationWorkspace workspace,
             IWorldGenerationRandom random,
+            IWorldGenerationVanillaRandom? vanillaRandom,
             IWorldGenerationProgressSink? progress,
             WorldGenerationPassId passId,
             int passIndex,
@@ -222,6 +227,7 @@ public static class RuntimeWorldGenerationExecutor
             Workspace = workspace;
             Metadata = workspace as IWorldGenerationMetadataWorkspace;
             Random = random;
+            VanillaRandom = vanillaRandom;
             this.progress = progress;
             this.passId = passId;
             this.passIndex = passIndex;
@@ -233,7 +239,7 @@ public static class RuntimeWorldGenerationExecutor
         public IWorldGenerationWorkspace Workspace { get; }
         public IWorldGenerationMetadataWorkspace? Metadata { get; }
         public IWorldGenerationRandom Random { get; }
-        public IWorldGenerationVanillaRandom? VanillaRandom => null;
+        public IWorldGenerationVanillaRandom? VanillaRandom { get; }
         public CancellationToken CancellationToken { get; }
 
         public void ReportProgress(double fraction, string? message = null)
@@ -260,6 +266,42 @@ public static class RuntimeWorldGenerationExecutor
         public ulong NextUInt64() => random.NextUInt64();
         public uint NextUInt32() => random.NextUInt32();
         public int NextInt32(int exclusiveMax) => random.NextInt32(exclusiveMax);
+    }
+
+    private sealed class VanillaWorldGenerationRandomAdapter : IWorldGenerationVanillaRandom
+    {
+        private readonly VanillaUnifiedRandom1458 random;
+
+        public VanillaWorldGenerationRandomAdapter(VanillaUnifiedRandom1458 random) => this.random = random;
+
+        public int Next() => random.Next();
+        public int Next(int maxValue) => random.Next(maxValue);
+        public int Next(int minValue, int maxValue) => random.Next(minValue, maxValue);
+        public double NextDouble() => random.NextDouble();
+        public void NextBytes(byte[] buffer) => random.NextBytes(buffer);
+    }
+
+    private static class VanillaSeedText1458
+    {
+        private const uint Polynomial = 0xEDB88320u;
+
+        public static int Resolve(in WorldGenerationRequest request)
+        {
+            string text = request.SeedText ?? request.Seed.ToString(CultureInfo.InvariantCulture);
+            if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int numeric))
+                return numeric;
+
+            byte[] bytes = Encoding.UTF8.GetBytes(text);
+            uint crc = uint.MaxValue;
+            foreach (byte value in bytes)
+            {
+                crc ^= value;
+                for (int bit = 0; bit < 8; bit++)
+                    crc = (crc >> 1) ^ ((crc & 1u) != 0 ? Polynomial : 0u);
+            }
+
+            return unchecked((int)(crc ^ uint.MaxValue));
+        }
     }
 
     private sealed class InvalidWorldGenerationPlanException : InvalidOperationException

@@ -13,11 +13,19 @@ public sealed class StartupWorldGeneratorSourceTests
 
         WorldGeneratorId[] ids = source.CaptureWorldGeneratorIds().ToArray();
 
-        Assert.Equal([new WorldGeneratorId("fixture:custom"), new WorldGeneratorId("terraruntime:flat")], ids);
+        Assert.Equal(
+            [
+                new WorldGeneratorId("fixture:custom"),
+                new WorldGeneratorId("terraruntime:flat"),
+                new WorldGeneratorId("terraruntime:vanilla")
+            ],
+            ids);
         Assert.True(source.TryResolveWorldGenerator(new WorldGeneratorId("fixture:custom"), out IWorldGenerationProvider? custom));
         Assert.Same(hostProvider, custom);
         Assert.True(source.TryResolveWorldGenerator(new WorldGeneratorId("terraruntime:flat"), out IWorldGenerationProvider? builtIn));
         Assert.NotNull(builtIn);
+        Assert.True(source.TryResolveWorldGenerator(new WorldGeneratorId("terraruntime:vanilla"), out IWorldGenerationProvider? vanilla));
+        Assert.NotNull(vanilla);
     }
 
     [Fact]
@@ -29,7 +37,9 @@ public sealed class StartupWorldGeneratorSourceTests
         Assert.True(source.TryResolveWorldGenerator(new WorldGeneratorId("terraruntime:flat"), out IWorldGenerationProvider? resolved));
         Assert.NotNull(resolved);
         Assert.NotSame(shadow, resolved);
-        Assert.Single(source.CaptureWorldGeneratorIds().ToArray());
+        Assert.Equal(
+            [new WorldGeneratorId("terraruntime:flat"), new WorldGeneratorId("terraruntime:vanilla")],
+            source.CaptureWorldGeneratorIds().ToArray());
     }
 
     private sealed class StubSource(IWorldGenerationProvider provider) : ITerraRuntimeWorldGeneratorSource
