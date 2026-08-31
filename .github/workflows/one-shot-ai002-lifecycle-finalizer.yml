@@ -27,6 +27,28 @@ jobs:
       - name: Apply source-backed AI_002 lifecycle block
         run: python3 tools/ci/apply_ai002_lifecycle.py
 
+      - name: Fix generated local scope
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('src/TerraRuntime.Core/Npcs/VanillaNpcBehaviorStrategies.cs')
+          text = path.read_text(encoding='utf-8')
+          old = '''if (!pigron && !lifecycle.Discouraged &&
+                      TryRefreshClosest(in staged, in definition, context, out NpcSnapshot refreshed, out _))
+                  {
+                      staged = refreshed;
+                  }'''
+          new = '''if (!pigron && !lifecycle.Discouraged &&
+                      TryRefreshClosest(in staged, in definition, context, out NpcSnapshot retargeted, out _))
+                  {
+                      staged = retargeted;
+                  }'''
+          if old not in text:
+              raise SystemExit('generated retarget marker changed')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
       - name: Validate documentation
         run: |
           python3 tools/ci/test_check_documentation.py
