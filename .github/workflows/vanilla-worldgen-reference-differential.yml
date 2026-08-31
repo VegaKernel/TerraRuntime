@@ -145,7 +145,7 @@ jobs:
           test -s "$reference"
           cat "$log"
 
-      - name: Compare structural fingerprints and enforce budgets
+      - name: Capture structural fingerprint report
         shell: bash
         run: |
           set -euo pipefail
@@ -156,9 +156,21 @@ jobs:
             -- \
             "artifacts/reference-differential/official-${SEED}.wld" \
             "artifacts/reference-differential/terraruntime-${SEED}.wld" \
-            --json "artifacts/reference-differential/comparison-${SEED}.json" \
-            --enforce
+            --json "artifacts/reference-differential/comparison-${SEED}.json"
           cat "artifacts/reference-differential/comparison-${SEED}.json"
+
+      - name: Enforce structural budgets
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \
+            -c Release \
+            --no-build \
+            -- \
+            "artifacts/reference-differential/official-${SEED}.wld" \
+            "artifacts/reference-differential/terraruntime-${SEED}.wld" \
+            --enforce
 
       - name: Upload differential evidence
         if: always()
@@ -167,9 +179,9 @@ jobs:
           name: vanilla-reference-differential-${{ env.SEED }}-${{ github.sha }}
           path: |
             artifacts/reference-differential/comparison-${{ env.SEED }}.json
-            artifacts/reference-differential/official-${{ env.SEED }}.log
-            artifacts/reference-differential/official-${{ env.SEED }}.config.txt
-            artifacts/reference-differential/official-${{ env.SEED }}.wld
-            artifacts/reference-differential/terraruntime-${{ env.SEED }}.wld
+            artifacts/reference-differential/official-${SEED}.log
+            artifacts/reference-differential/official-${SEED}.config.txt
+            artifacts/reference-differential/official-${SEED}.wld
+            artifacts/reference-differential/terraruntime-${SEED}.wld
           if-no-files-found: warn
           retention-days: 3
