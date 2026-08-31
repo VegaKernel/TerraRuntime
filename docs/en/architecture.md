@@ -237,7 +237,7 @@ flowchart TD
     Validate --> Candidate["Accepted runtime world candidate"]
 ```
 
-A trusted host registers a provider, while TerraRuntime retains control over execution boundaries and acceptance of the result. The built-in flat generator is an infrastructure baseline, not a vanilla-parity implementation.
+A trusted host registers a provider, while TerraRuntime retains control over execution boundaries and acceptance of the result. `terraruntime:flat` remains the infrastructure baseline. Separately, `terraruntime:vanilla` is the runtime-owned TerrariaServer 1.4.5.8 clean-room generator: ordinary canonical worlds now traverse all 109 pinned pass identities through `Final Cleanup`, with a per-pass vanilla RNG reseed matching `WorldGenerator.RunPass`. This is pass-pipeline coverage, not a claim of reference-world equality; fixed-seed differential parity and special/secret-seed behavior remain open work.
 
 ## 16. NativeAOT and CoreCLR split
 
