@@ -1,0 +1,592 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import textwrap
+
+
+def replace_once(path: str, old: str, new: str) -> None:
+    target = Path(path)
+    text = target.read_text(encoding="utf-8")
+    if old not in text:
+        if new in text:
+            return
+        raise SystemExit(f"anchor changed in {path}: {old[:100]!r}")
+    target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+behavior_path = Path("src/TerraRuntime.Core/Npcs/VanillaNpcBehaviorStrategies.cs")
+behavior = behavior_path.read_text(encoding="utf-8")
+start = behavior.index("    private static bool TryStepEaterOfWorldsLinks(")
+end = behavior.index("    private static NpcStateUpdate TransformEaterOfWorldsSegment(", start)
+replacement = r'''    private static bool TryStepEaterOfWorldsLinks(
+        in NpcSnapshot npc,
+        in VanillaWormNpcEntry worm,
+        VanillaNpcBehaviorContext context,
+        out NpcStateUpdate next)
+    {
+        WormLinkState predecessor = ResolveWormLink(npc.Ai.Ai1, context);
+        WormLinkState successor = ResolveWormLink(npc.Ai.Ai0, context);
+        bool predecessorActive = predecessor != WormLinkState.Missing;
+        bool successorActive = successor != WormLinkState.Missing;
+        bool predecessorCompatible = predecessor == WormLinkState.ActiveWorm;
+        bool successorCompatible = successor == WormLinkState.ActiveWorm;
+
+        // Vanilla AI_006 uses raw active-state checks for Eater of Worlds structural death, then
+        // separately uses active+aiStyle compatibility when a body decides whether to split into a
+        // replacement head/tail. Do not collapse those predicates: a live slot reused by a non-worm NPC
+        // keeps an existing head/tail alive but makes an attached body split at that boundary.
+        //
+        // TerraRuntime materializes vanilla's immediate chain allocation incrementally. A zero successor
+        // with a non-negative construction countdown therefore receives its follower after this commit.
+        bool awaitingFollower = npc.Ai.Ai0 == 0f && npc.Ai.Ai2 >= 0f;
+        if (worm.Role == VanillaWormSegmentRole.Head)
+        {
+            if (!successorActive && !awaitingFollower)
+            {
+                next = Terminal(in npc);
+                return true;
+            }
+
+            next = default;
+            return false;
+        }
+
+        if (worm.Role == VanillaWormSegmentRole.Tail)
+        {
+            if (!predecessorActive)
+            {
+                next = Terminal(in npc);
+                return true;
+            }
+
+            next = default;
+            return false;
+        }
+
+        if (!predecessorActive && !successorActive && !awaitingFollower)
+        {
+            next = Terminal(in npc);
+            return true;
+        }
+
+        if (!predecessorCompatible)
+        {
+            next = TransformEaterOfWorldsSegment(
+                in npc,
+                VanillaNpcIds.EaterOfWorldsHead,
+                new NpcAiState(npc.Ai.Ai0, 0f, 0f, 0f));
+            return true;
+        }
+
+        if (!successorCompatible && !awaitingFollower)
+        {
+            next = TransformEaterOfWorldsSegment(
+                in npc,
+                VanillaNpcIds.EaterOfWorldsTail,
+                new NpcAiState(0f, npc.Ai.Ai1, 0f, 0f));
+            return true;
+        }
+
+        next = default;
+        return false;
+    }
+
+    private static WormLinkState ResolveWormLink(float rawSlot, VanillaNpcBehaviorContext context)
+    {
+        if (!float.IsFinite(rawSlot) ||
+            rawSlot < 0f ||
+            rawSlot > byte.MaxValue ||
+            rawSlot != MathF.Truncate(rawSlot) ||
+            !context.TryFindNpcPeer(checked((byte)rawSlot), out NpcSnapshot peer))
+        {
+            return WormLinkState.Missing;
+        }
+
+        if (!NpcTypeId.TryCreate(peer.Type, out NpcTypeId peerType) ||
+            !VanillaNpcDefinitionCatalog.TryGet(
+                peerType,
+                peer.NetIdentity,
+                out VanillaNpcDefinition peerDefinition) ||
+            peerDefinition.AiStyle != VanillaNpcAiStyles.Worm)
+        {
+            return WormLinkState.ActiveOtherAiStyle;
+        }
+
+        return WormLinkState.ActiveWorm;
+    }
+
+    private enum WormLinkState : byte
+    {
+        Missing = 0,
+        ActiveWorm = 1,
+        ActiveOtherAiStyle = 2
+    }
+
+'''
+behavior_path.write_text(behavior[:start] + replacement + behavior[end:], encoding="utf-8")
+
+replace_once(
+    "src/TerraRuntime.Core/Npcs/VanillaNpcTargetingAiStepper.cs",
+    """            rootSlot = sourceType == VanillaNpcIds.EaterOfWorldsHead
+                ? 0f
+                : source.Handle.Slot;""",
+    """            rootSlot = source.Handle.Slot;""",
+)
+
+checker = r'''#!/usr/bin/env python3
+import argparse
+import hashlib
+import json
+import pathlib
+import re
+
+
+def extract_method(text: str, name: str) -> str:
+    match = re.search(rf"\b(?:private|public|internal)?\s*(?:unsafe\s+)?void\s+{re.escape(name)}\s*\([^)]*\)", text)
+    if not match:
+        raise SystemExit(f"{name} method was not found")
+    opening = text.find("{", match.end())
+    if opening < 0:
+        raise SystemExit(f"{name} opening brace was not found")
+    depth = 0
+    for index in range(opening, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[match.start():index + 1]
+    raise SystemExit(f"{name} method body is truncated")
+
+
+def compact(value: str) -> str:
+    return re.sub(r"\s+", "", value)
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("npc_cs")
+parser.add_argument("--json")
+args = parser.parse_args()
+
+source = pathlib.Path(args.npc_cs).read_text(encoding="utf-8", errors="ignore")
+body = extract_method(source, "AI_006_Worms")
+normalized = compact(body)
+
+facts = {
+    "head_initializes_root_ai3": compact("ai[3] = whoAmI;") in normalized,
+    "child_copies_root_ai3": compact("Main.npc[(int)ai[0]].ai[3] = ai[3];") in normalized,
+    "ordinary_predecessor_requires_active_same_ai_style": compact("!Main.npc[(int)ai[1]].active || Main.npc[(int)ai[1]].aiStyle != aiStyle") in normalized,
+    "ordinary_successor_requires_active_same_ai_style": compact("!Main.npc[(int)ai[0]].active || Main.npc[(int)ai[0]].aiStyle != aiStyle") in normalized,
+    "eow_single_segment_death_is_active_only": compact("!Main.npc[(int)ai[1]].active && !Main.npc[(int)ai[0]].active") in normalized,
+    "eow_head_death_is_successor_active_only": compact("type == 13 && !Main.npc[(int)ai[0]].active") in normalized,
+    "eow_tail_death_is_predecessor_active_only": compact("type == 15 && !Main.npc[(int)ai[1]].active") in normalized,
+    "eow_body_predecessor_split_checks_ai_style": compact("type == 14 && (!Main.npc[(int)ai[1]].active || Main.npc[(int)ai[1]].aiStyle != aiStyle)") in normalized,
+    "eow_body_predecessor_split_transforms_head": compact("Transform(13, ai[0]);") in normalized,
+    "eow_body_successor_split_checks_ai_style": compact("type == 14 && (!Main.npc[(int)ai[0]].active || Main.npc[(int)ai[0]].aiStyle != aiStyle)") in normalized,
+    "eow_body_successor_split_transforms_tail": compact("Transform(15, 0f, ai[1]);") in normalized,
+}
+
+order_tokens = [
+    compact("!Main.npc[(int)ai[1]].active && !Main.npc[(int)ai[0]].active"),
+    compact("type == 13 && !Main.npc[(int)ai[0]].active"),
+    compact("type == 15 && !Main.npc[(int)ai[1]].active"),
+    compact("type == 14 && (!Main.npc[(int)ai[1]].active || Main.npc[(int)ai[1]].aiStyle != aiStyle)"),
+    compact("Transform(13, ai[0]);"),
+    compact("type == 14 && (!Main.npc[(int)ai[0]].active || Main.npc[(int)ai[0]].aiStyle != aiStyle)"),
+    compact("Transform(15, 0f, ai[1]);"),
+]
+positions = [normalized.find(token) for token in order_tokens]
+facts["eow_lifecycle_branch_order"] = all(pos >= 0 for pos in positions) and positions == sorted(positions)
+
+failed = [name for name, passed in facts.items() if not passed]
+report = {
+    "schemaVersion": 1,
+    "reference": "TerrariaServer 1.4.5.8 / NPC.AI_006_Worms",
+    "methodSha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+    "methodLines": len(body.splitlines()),
+    "facts": facts,
+    "passed": not failed,
+}
+print("NPC_WORM_SOURCE_CONTRACT=" + json.dumps(report, sort_keys=True))
+if args.json:
+    output = pathlib.Path(args.json)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+if failed:
+    raise SystemExit("NPC worm source contract failed: " + ", ".join(failed))
+'''
+Path("tools/ci/check_npc_worm_reference.py").write_text(textwrap.dedent(checker), encoding="utf-8")
+
+workflow = r'''name: NPC Worm Reference Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/npc-worm-reference-probe.yml'
+      - 'tools/ci/check_npc_worm_reference.py'
+      - 'src/TerraRuntime.Core/Npcs/VanillaWorm*.cs'
+      - 'src/TerraRuntime.Core/Npcs/VanillaNpcBehaviorStrategies.cs'
+      - 'src/TerraRuntime.Core/Npcs/VanillaNpcTargetingAiStepper.cs'
+      - 'tests/TerraRuntime.Tests/*Worm*.cs'
+      - 'docs/en/npc-worm-ai-parity.md'
+      - 'docs/ru/npc-worm-ai-parity.md'
+      - 'docs/roadmap/npc-ai-parity.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-npc-worm-reference-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Decompile official TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+
+      - name: Verify AI_006 worm lifecycle contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          npc_file="$(find decompiled/1458 -type f -name 'NPC.cs' -print -quit)"
+          test -n "$npc_file"
+          python3 tools/ci/check_npc_worm_reference.py \
+            "$npc_file" \
+            --json artifacts/reference/npc-worm-reference.json
+
+      - name: Upload worm reference evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: npc-worm-reference-${{ github.sha }}
+          path: artifacts/reference/npc-worm-reference.json
+          retention-days: 14
+'''
+Path(".github/workflows/npc-worm-reference-probe.yml").write_text(textwrap.dedent(workflow), encoding="utf-8")
+
+tests = r'''using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
+
+namespace TerraRuntime.Tests;
+
+public sealed class VanillaWormLifecycleParityTests
+{
+    [Fact]
+    public void Eater_body_with_two_active_foreign_style_links_splits_into_head_instead_of_dying()
+    {
+        var stepper = CreateStepper();
+        NpcSnapshot predecessor = CreateSnapshot(1, VanillaNpcIds.BlueSlime, default);
+        NpcSnapshot successor = CreateSnapshot(2, VanillaNpcIds.Zombie, default);
+        stepper.SetNpcPeers([predecessor, successor]);
+        NpcSnapshot body = CreateSnapshot(
+            3,
+            VanillaNpcIds.EaterOfWorldsBody,
+            new NpcAiState(Ai0: 2f, Ai1: 1f, Ai2: -1f, Ai3: 3f));
+
+        Assert.True(stepper.TryStepState(in body, out NpcStateUpdate next));
+
+        Assert.Equal(VanillaNpcIds.EaterOfWorldsHead.Value, next.Type);
+        Assert.Equal(body.Simulation.Life, next.Simulation.Life);
+        Assert.Equal(2f, next.Ai.Ai0);
+        Assert.Equal(0f, next.Ai.Ai1);
+    }
+
+    [Fact]
+    public void Eater_head_uses_active_only_successor_death_gate()
+    {
+        var stepper = CreateStepper();
+        NpcSnapshot foreignSuccessor = CreateSnapshot(2, VanillaNpcIds.BlueSlime, default);
+        stepper.SetNpcPeers([foreignSuccessor]);
+        NpcSnapshot head = CreateSnapshot(
+            3,
+            VanillaNpcIds.EaterOfWorldsHead,
+            new NpcAiState(Ai0: 2f, Ai1: 0f, Ai2: -1f, Ai3: 3f));
+
+        Assert.True(stepper.TryStepState(in head, out NpcStateUpdate next));
+
+        Assert.Equal(VanillaNpcIds.EaterOfWorldsHead.Value, next.Type);
+        Assert.Equal(head.Simulation.Life, next.Simulation.Life);
+        Assert.NotEqual(0, next.Simulation.TimeLeft);
+    }
+
+    [Fact]
+    public void Eater_tail_uses_active_only_predecessor_death_gate()
+    {
+        var stepper = CreateStepper();
+        NpcSnapshot foreignPredecessor = CreateSnapshot(1, VanillaNpcIds.BlueSlime, default);
+        stepper.SetNpcPeers([foreignPredecessor]);
+        NpcSnapshot tail = CreateSnapshot(
+            3,
+            VanillaNpcIds.EaterOfWorldsTail,
+            new NpcAiState(Ai0: 0f, Ai1: 1f, Ai2: 0f, Ai3: 3f));
+
+        Assert.True(stepper.TryStepState(in tail, out NpcStateUpdate next));
+
+        Assert.Equal(VanillaNpcIds.EaterOfWorldsTail.Value, next.Type);
+        Assert.Equal(tail.Simulation.Life, next.Simulation.Life);
+        Assert.NotEqual(0, next.Simulation.TimeLeft);
+    }
+
+    [Fact]
+    public void Eater_body_with_both_structural_links_missing_is_terminal()
+    {
+        var stepper = CreateStepper();
+        stepper.SetNpcPeers([]);
+        NpcSnapshot body = CreateSnapshot(
+            3,
+            VanillaNpcIds.EaterOfWorldsBody,
+            new NpcAiState(Ai0: 2f, Ai1: 1f, Ai2: -1f, Ai3: 3f));
+
+        Assert.True(stepper.TryStepState(in body, out NpcStateUpdate next));
+
+        Assert.Equal(0, next.Simulation.Life);
+        Assert.Equal(0, next.Simulation.TimeLeft);
+    }
+
+    [Fact]
+    public void Eater_body_with_foreign_predecessor_and_worm_successor_splits_into_head()
+    {
+        var stepper = CreateStepper();
+        NpcSnapshot foreignPredecessor = CreateSnapshot(1, VanillaNpcIds.BlueSlime, default);
+        NpcSnapshot wormSuccessor = CreateSnapshot(2, VanillaNpcIds.EaterOfWorldsBody, default);
+        stepper.SetNpcPeers([foreignPredecessor, wormSuccessor]);
+        NpcSnapshot body = CreateSnapshot(
+            3,
+            VanillaNpcIds.EaterOfWorldsBody,
+            new NpcAiState(Ai0: 2f, Ai1: 1f, Ai2: -1f, Ai3: 3f));
+
+        Assert.True(stepper.TryStepState(in body, out NpcStateUpdate next));
+
+        Assert.Equal(VanillaNpcIds.EaterOfWorldsHead.Value, next.Type);
+        Assert.Equal(2f, next.Ai.Ai0);
+    }
+
+    [Fact]
+    public void Eater_head_spawn_propagates_root_slot_through_ai3()
+    {
+        var stepper = CreateStepper();
+        NpcSnapshot head = CreateSnapshot(
+            7,
+            VanillaNpcIds.EaterOfWorldsHead,
+            new NpcAiState(Ai0: 0f, Ai1: 0f, Ai2: 0f, Ai3: 0f));
+        NpcStateUpdate proposed = ToUpdate(in head);
+        var intents = new NpcAiSpawnIntent[4];
+
+        int count = stepper.PlanNpcSpawns(in head, in proposed, intents);
+
+        Assert.Equal(1, count);
+        Assert.Equal(7f, intents[0].InitialAi.Ai3);
+        Assert.Equal(7f, intents[0].InitialAi.Ai1);
+    }
+
+    [Fact]
+    public void Eater_body_spawn_preserves_existing_root_slot_through_ai3()
+    {
+        var stepper = CreateStepper();
+        NpcSnapshot body = CreateSnapshot(
+            8,
+            VanillaNpcIds.EaterOfWorldsBody,
+            new NpcAiState(Ai0: 0f, Ai1: 7f, Ai2: 20f, Ai3: 7f));
+        NpcStateUpdate proposed = ToUpdate(in body);
+        var intents = new NpcAiSpawnIntent[4];
+
+        int count = stepper.PlanNpcSpawns(in body, in proposed, intents);
+
+        Assert.Equal(1, count);
+        Assert.Equal(7f, intents[0].InitialAi.Ai3);
+        Assert.Equal(8f, intents[0].InitialAi.Ai1);
+    }
+
+    private static VanillaNpcTargetingAiStepper CreateStepper() =>
+        new(new PassthroughStepper());
+
+    private static NpcSnapshot CreateSnapshot(byte slot, NpcTypeId type, NpcAiState ai) =>
+        new(
+            new NpcHandle(slot, new NpcGeneration(1)),
+            new NpcRevision(1),
+            type.Value,
+            checked((short)type.Value),
+            PositionX: 100f + slot * 20f,
+            PositionY: 200f,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+            Ai: ai,
+            Simulation: NpcSimulationState.Initial with
+            {
+                Life = 100,
+                LifeMax = 100,
+                TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
+                NoGravity = true,
+                NoTileCollide = true
+            });
+
+    private static NpcStateUpdate ToUpdate(in NpcSnapshot npc) =>
+        new(
+            npc.Type,
+            npc.NetId,
+            npc.PositionX,
+            npc.PositionY,
+            npc.VelocityX,
+            npc.VelocityY,
+            npc.Target,
+            npc.Ai,
+            npc.Simulation);
+
+    private sealed class PassthroughStepper : INpcAiStateStepper
+    {
+        public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
+        {
+            next = ToUpdate(in npc);
+            return true;
+        }
+    }
+}
+'''
+Path("tests/TerraRuntime.Tests/VanillaWormLifecycleParityTests.cs").write_text(textwrap.dedent(tests), encoding="utf-8")
+
+en = r'''# Vanilla AI_006 worm lifecycle parity
+
+This guide records the source-backed chain-lifecycle slice implemented for TerrariaServer 1.4.5.8 worm AI. It is deliberately narrower than full NPC parity: movement families, chain construction and the link lifecycle described here are admitted, while complete death/loot/progression and every AI_006 side effect remain separate work.
+
+## Chain state
+
+TerraRuntime treats the synchronized `ai` slots as the vanilla linked-list state:
+
+| Slot | Source-backed meaning in the admitted chain slice |
+|---|---|
+| `ai[0]` | successor/follower NPC slot, or the construction sentinel before the next segment is committed |
+| `ai[1]` | predecessor/leader NPC slot |
+| `ai[2]` | remaining follower construction count for supported chain profiles |
+| `ai[3]` | root/head slot copied from the head into spawned descendants |
+
+The official 1.4.5.8 `AI_006_Worms` method initializes a chain head with its own `whoAmI` in `ai[3]` and copies that value into each newly spawned follower. TerraRuntime now preserves the same root-slot propagation for Eater of Worlds as well as ordinary admitted worm families. This does not by itself claim complete vanilla `realLife`/shared-health behavior.
+
+## Eater of Worlds link semantics
+
+Eater of Worlds does not use one generic "valid worm link" predicate for every lifecycle decision. The source has two distinct contracts:
+
+1. structural terminal checks use only whether the referenced predecessor/successor slot is active;
+2. a body split checks both activity and `aiStyle` compatibility before transforming into a replacement head or tail.
+
+That distinction matters when an NPC slot is reused. A live non-worm occupant keeps an existing Eater head/tail from satisfying the source's inactive-link death condition, but it is not a compatible body-chain neighbor. A body meeting that boundary splits, matching `AI_006_Worms`, instead of being incorrectly killed as an isolated segment.
+
+TerraRuntime keeps its defensive wire/runtime boundary for malformed float link values: a slot must be finite, integral and addressable before lookup. Normal server-authored chain links satisfy this automatically.
+
+```mermaid
+flowchart TD
+    Link["ai[0] / ai[1] slot"] --> Active{"Referenced slot active?"}
+    Active -- no --> Structural["EOW structural death / split decision"]
+    Active -- yes --> Style{"Referenced NPC uses worm aiStyle?"}
+    Style -- yes --> Continue["Compatible chain link"]
+    Style -- no --> Split["Body boundary may split; head/tail is not killed by style mismatch alone"]
+```
+
+## Executable evidence
+
+`.github/workflows/npc-worm-reference-probe.yml` decompiles the official TerrariaServer 1.4.5.8 binary and runs `tools/ci/check_npc_worm_reference.py`. The checker fails closed unless the pinned method still proves head `ai[3]` initialization, child root propagation, ordinary worm `active + aiStyle` guards, Eater active-only structural death gates, body `aiStyle` split gates, both transforms and their source order.
+
+`VanillaWormLifecycleParityTests` separately pins TerraRuntime behavior for reused non-worm slots, missing structural links and Eater root-slot propagation.
+
+## Still incomplete
+
+This evidence does not make `FullVanillaAiParity` true. Complete Eater of Worlds synchronized lifecycle, damage/death consequences, loot/progression, every `realLife` interaction, remaining AI_006 special branches and broad differential gameplay scenarios remain open in the NPC parity roadmap.
+'''
+ru = r'''# Vanilla parity жизненного цикла червей AI_006
+
+Этот документ фиксирует source-backed часть chain lifecycle для worm AI из TerrariaServer 1.4.5.8. Это намеренно уже полной NPC parity: movement families, построение цепочки и описанная здесь link lifecycle допускаются, а полный death/loot/progression и все побочные ветви AI_006 остаются отдельной работой.
+
+## Состояние цепочки
+
+TerraRuntime трактует синхронизируемые `ai` slots как vanilla linked-list state:
+
+| Slot | Source-backed смысл в реализованном chain slice |
+|---|---|
+| `ai[0]` | slot successor/follower NPC либо construction sentinel до commit следующего сегмента |
+| `ai[1]` | slot predecessor/leader NPC |
+| `ai[2]` | оставшийся follower construction count для поддержанных chain profiles |
+| `ai[3]` | slot root/head, копируемый из головы во все создаваемые descendants |
+
+Официальный метод `AI_006_Worms` версии 1.4.5.8 записывает собственный `whoAmI` головы в `ai[3]` и копирует это значение каждому новому follower. TerraRuntime теперь сохраняет такое же root-slot propagation и для Eater of Worlds, и для остальных допущенных worm families. Само по себе это ещё не означает полную реализацию vanilla `realLife`/shared-health behavior.
+
+## Link semantics Eater of Worlds
+
+Eater of Worlds не использует один общий predicate «валидная worm link» для всех решений lifecycle. В source есть два разных контракта:
+
+1. structural terminal checks смотрят только на активность slot predecessor/successor;
+2. split body проверяет и активность, и совместимость `aiStyle` перед transform в новую head или tail.
+
+Это важно при повторном использовании NPC slot. Живой non-worm occupant не удовлетворяет source-условию inactive-link для уже существующей Eater head/tail, поэтому одна только несовместимость `aiStyle` не должна убивать голову или хвост. Но для body такой сосед не является совместимым chain segment, поэтому body разрывает цепь через split, как в `AI_006_Worms`, а не ошибочно погибает как изолированный сегмент.
+
+TerraRuntime сохраняет defensive boundary для malformed float link values: slot обязан быть finite, integral и addressable до lookup. Обычные server-authored chain links автоматически удовлетворяют этому условию.
+
+```mermaid
+flowchart TD
+    Link["ai[0] / ai[1] slot"] --> Active{"Referenced slot active?"}
+    Active -- no --> Structural["EOW structural death / split decision"]
+    Active -- yes --> Style{"Referenced NPC uses worm aiStyle?"}
+    Style -- yes --> Continue["Compatible chain link"]
+    Style -- no --> Split["Body boundary may split; head/tail is not killed by style mismatch alone"]
+```
+
+## Исполняемое evidence
+
+`.github/workflows/npc-worm-reference-probe.yml` декомпилирует официальный binary TerrariaServer 1.4.5.8 и запускает `tools/ci/check_npc_worm_reference.py`. Checker fail-closed проверяет, что pinned method по-прежнему доказывает initialization `ai[3]` головы, child root propagation, обычные worm guards `active + aiStyle`, active-only structural death gates Eater, body split gates по `aiStyle`, оба transform и их source order.
+
+`VanillaWormLifecycleParityTests` отдельно фиксирует поведение TerraRuntime при reused non-worm slots, missing structural links и root-slot propagation Eater.
+
+## Что ещё не закончено
+
+Это evidence не делает `FullVanillaAiParity` истинным. Полный synchronized lifecycle Eater of Worlds, последствия damage/death, loot/progression, все взаимодействия `realLife`, оставшиеся специальные ветви AI_006 и широкие differential gameplay scenarios остаются открытыми в NPC parity roadmap.
+'''
+Path("docs/en/npc-worm-ai-parity.md").write_text(textwrap.dedent(en), encoding="utf-8")
+Path("docs/ru/npc-worm-ai-parity.md").write_text(textwrap.dedent(ru), encoding="utf-8")
+
+replace_once(
+    "docs/en/README.md",
+    "- [Gameplay and vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat and explicit parity gaps.",
+    "- [Gameplay and vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat and explicit parity gaps.\n- [Vanilla AI_006 worm lifecycle parity](npc-worm-ai-parity.md) — source-pinned chain slots, Eater of Worlds active/style link semantics, root propagation and remaining lifecycle gaps.",
+)
+replace_once(
+    "docs/ru/README.md",
+    "- [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.",
+    "- [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.\n- [Vanilla parity жизненного цикла червей AI_006](npc-worm-ai-parity.md) — source-pinned chain slots, active/style semantics Eater of Worlds, root propagation и оставшиеся lifecycle gaps.",
+)
+replace_once(
+    "docs/roadmap/npc-ai-parity.md",
+    "- [x] Eater of Worlds classic/expert chain length and missing-link head/tail split repair;",
+    "- [x] Eater of Worlds classic/expert chain length and missing-link head/tail split repair;\n- [x] pin AI_006 link lifecycle to official TerrariaServer 1.4.5.8 evidence: active-only Eater structural death gates, `aiStyle`-sensitive body split gates, source ordering and `ai[3]` root propagation;",
+)
+
+audit_path = Path("docs/roadmap/opencode-audit-2026-08-31.md")
+audit = audit_path.read_text(encoding="utf-8")
+worm_debt = "- new worm-family slot-link behavior should receive focused official-source/differential coverage before stronger stale-link or full-lifecycle claims are made. Vanilla AI may intentionally use raw slot references, so this is an evidence task rather than a guessed rewrite.\n"
+if worm_debt in audit:
+    audit = audit.replace(worm_debt, "", 1)
+heading = "## Positive findings\n"
+worm_fix = """### Worm AI_006 link-lifecycle source contract
+
+The worm-family slot-link evidence debt is now closed for the admitted chain slice. A dedicated official-binary probe extracts `NPC.AI_006_Worms` from TerrariaServer 1.4.5.8 and fail-closes on the source distinction between active-only Eater of Worlds structural death checks and active-plus-`aiStyle` body split checks. Runtime lifecycle predicates now preserve that distinction, and Eater chain construction propagates the source `ai[3]` root slot instead of zeroing it. Focused tests cover slot reuse, isolated segments and root propagation. Complete Eater death/loot/progression and the broader synchronized lifecycle remain explicitly incomplete.
+
+"""
+if worm_fix not in audit:
+    if heading not in audit:
+        raise SystemExit("audit positive-findings heading changed")
+    audit = audit.replace(heading, worm_fix + heading, 1)
+audit_path.write_text(audit, encoding="utf-8")
+
+Path(".github/workflows/apply-npc-worm-lifecycle-parity.yml").unlink(missing_ok=True)
+Path("tools/ci/apply_npc_worm_lifecycle.py").unlink(missing_ok=True)
