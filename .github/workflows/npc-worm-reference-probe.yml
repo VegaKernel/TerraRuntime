@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/npc-worm-reference-probe.yml'
+      - 'tools/ci/check_npc_worm_reference.py'
       - 'src/TerraRuntime.Core/Npcs/VanillaWorm*.cs'
       - 'src/TerraRuntime.Core/Npcs/VanillaNpcBehaviorStrategies.cs'
       - 'src/TerraRuntime.Core/Npcs/VanillaNpcTargetingAiStepper.cs'
@@ -37,86 +38,19 @@ jobs:
       - name: Decompile official TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
 
-      - name: Extract AI_006 worm lifecycle evidence
+      - name: Verify AI_006 worm lifecycle contract
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/reference
           npc_file="$(find decompiled/1458 -type f -name 'NPC.cs' -print -quit)"
           test -n "$npc_file"
-
-          python3 - "$npc_file" <<'PY'
-          import hashlib
-          import json
-          import pathlib
-          import re
-          import sys
-
-          path = pathlib.Path(sys.argv[1])
-          text = path.read_text(errors="ignore")
-
-          match = re.search(r"\b(?:private|public|internal)?\s*(?:unsafe\s+)?void\s+AI_006_Worms\s*\([^)]*\)", text)
-          if not match:
-              raise SystemExit("AI_006_Worms method was not found in official NPC.cs")
-
-          opening = text.find("{", match.end())
-          if opening < 0:
-              raise SystemExit("AI_006_Worms opening brace was not found")
-
-          depth = 0
-          closing = None
-          for index in range(opening, len(text)):
-              char = text[index]
-              if char == "{":
-                  depth += 1
-              elif char == "}":
-                  depth -= 1
-                  if depth == 0:
-                      closing = index + 1
-                      break
-          if closing is None:
-              raise SystemExit("AI_006_Worms method body is truncated")
-
-          body = text[match.start():closing]
-          body_path = pathlib.Path("artifacts/reference/AI_006_Worms.cs.txt")
-          body_path.write_text(body)
-
-          lines = body.splitlines()
-          interesting = []
-          marker = re.compile(
-              r"ai\s*\[[0-3]\]|realLife|active\s*=\s*false|life\s*=\s*0|lifeMax|"
-              r"GetEaterOfWorldsSegmentsCount|NewNPC|NPCID\.|type\s*==|Main\.npc\[")
-          for number, line in enumerate(lines, 1):
-              if marker.search(line):
-                  interesting.append({"line": number, "text": line.strip()})
-
-          summary = {
-              "sha256": hashlib.sha256(body.encode()).hexdigest(),
-              "characters": len(body),
-              "lines": len(lines),
-              "ai0Reads": len(re.findall(r"\bai\s*\[\s*0\s*\]", body)),
-              "ai1Reads": len(re.findall(r"\bai\s*\[\s*1\s*\]", body)),
-              "ai2Reads": len(re.findall(r"\bai\s*\[\s*2\s*\]", body)),
-              "ai3Reads": len(re.findall(r"\bai\s*\[\s*3\s*\]", body)),
-              "realLifeReads": len(re.findall(r"\brealLife\b", body)),
-              "newNpcCalls": body.count("NewNPC"),
-              "activeFalseAssignments": len(re.findall(r"\bactive\s*=\s*false\s*;", body)),
-              "lifeZeroAssignments": len(re.findall(r"\blife\s*=\s*0\s*;", body)),
-              "interesting": interesting,
-          }
-          pathlib.Path("artifacts/reference/npc-worm-reference.json").write_text(
-              json.dumps(summary, indent=2, ensure_ascii=False))
-
-          print("NPC_WORM_REFERENCE_SUMMARY=" + json.dumps({k: v for k, v in summary.items() if k != "interesting"}, sort_keys=True))
-          print("NPC_WORM_REFERENCE_INTERESTING_BEGIN")
-          for item in interesting:
-              print(f"{item['line']:04d}: {item['text']}")
-          print("NPC_WORM_REFERENCE_INTERESTING_END")
-          PY
+          python3 tools/ci/check_npc_worm_reference.py \
+            "$npc_file" \
+            --json artifacts/reference/npc-worm-reference.json
 
       - name: Upload worm reference evidence
         uses: actions/upload-artifact@v4
         with:
           name: npc-worm-reference-${{ github.sha }}
-          path: artifacts/reference
+          path: artifacts/reference/npc-worm-reference.json
           retention-days: 14
