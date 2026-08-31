@@ -71,6 +71,30 @@ jobs:
           -c Release
           -- artifacts/terraruntime-vanilla-${{ matrix.name }}.wld
 
+      - name: Sweep ordinary vanilla seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$GITHUB_WORKSPACE/artifacts/seed-sweep-${{ matrix.name }}.log"
+          : > "$log"
+          for seed in 1 42 8675309; do
+            world="$GITHUB_WORKSPACE/artifacts/seed-sweep-${{ matrix.name }}-${seed}.wld"
+            echo "=== seed=$seed size=${{ matrix.width }}x${{ matrix.height }} ===" | tee -a "$log"
+            dotnet run \
+              --project src/TerraRuntime/TerraRuntime.csproj \
+              -c Release \
+              --no-build \
+              -- --worldgen-create-smoke "$world" terraruntime:vanilla ${{ matrix.width }} ${{ matrix.height }} "$seed" \
+              2>&1 | tee -a "$log"
+            dotnet run \
+              --project tools/TerraRuntime.WorldVerify/TerraRuntime.WorldVerify.csproj \
+              -c Release \
+              --no-build \
+              -- "$world" \
+              2>&1 | tee -a "$log"
+            rm -f "$world"
+          done
+
       - name: Download pinned TerrariaServer 1.4.5.8
         shell: bash
         run: |
@@ -167,6 +191,7 @@ jobs:
           path: |
             artifacts/terraruntime-vanilla-${{ matrix.name }}.wld
             artifacts/worldgen-${{ matrix.name }}-resource-usage.txt
+            artifacts/seed-sweep-${{ matrix.name }}.log
             artifacts/official-${{ matrix.name }}-server.log
             artifacts/official-${{ matrix.name }}-serverconfig.txt
           if-no-files-found: warn
