@@ -27,8 +27,10 @@ public readonly record struct TerrariaTileManipulationState(
 {
     /// <summary>
     /// Resolves packet-17 actions that are currently admitted to the authoritative runtime path.
-    /// Wall actions remain wire-known but fail closed here until TerraRuntime can prove the selected
-    /// wall item / hammer capability and inventory transition rather than merely checking for a non-empty slot.
+    /// Wall actions remain wire-known but fail closed until TerraRuntime can prove selected wall-item / hammer
+    /// authority and the matching inventory transition. KillTileNoItem likewise remains wire-known but is not
+    /// admitted from an untrusted client until a legitimate source-backed sender path and destruction authority
+    /// are proven; accepting it today would bypass the held-tool and drop checks used by ordinary KillTile.
     /// </summary>
     public bool TryGetKnownAction(out TerrariaTileManipulationAction action)
     {
@@ -36,14 +38,12 @@ public readonly record struct TerrariaTileManipulationState(
         {
             (byte)TerrariaTileManipulationAction.KillTile => TerrariaTileManipulationAction.KillTile,
             (byte)TerrariaTileManipulationAction.PlaceTile => TerrariaTileManipulationAction.PlaceTile,
-            (byte)TerrariaTileManipulationAction.KillTileNoItem => TerrariaTileManipulationAction.KillTileNoItem,
             _ => default
         };
 
         return Action is
             (byte)TerrariaTileManipulationAction.KillTile or
-            (byte)TerrariaTileManipulationAction.PlaceTile or
-            (byte)TerrariaTileManipulationAction.KillTileNoItem;
+            (byte)TerrariaTileManipulationAction.PlaceTile;
     }
 }
 
