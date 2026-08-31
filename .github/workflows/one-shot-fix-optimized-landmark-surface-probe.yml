@@ -23,7 +23,7 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Patch ground probes and sky-lake collision guard
+      - name: Patch ground probes and sky landmark collision guards
         shell: python
         run: |
           from pathlib import Path
@@ -41,6 +41,12 @@ jobs:
                   raise SystemExit(f"expected surface probe not found: {old}")
               text = text.replace(old, new)
               print(f"replaced {count} occurrence(s): {old} -> {new}")
+
+          old = """        if (floorY < 0 || left < 3 || left + width >= context.Workspace.WidthTiles - 3 || floorY - height < 3)\n            return false;\n        int top = floorY - height;"""
+          new = """        if (floorY < 0 || left < 3 || left + width >= context.Workspace.WidthTiles - 3 || floorY - height < 3)\n            return false;\n        if (HasProtectedContentNearby(context.Workspace, island.Center, floorY - height / 2, width))\n            return false;\n        int top = floorY - height;"""
+          if text.count(old) != 1:
+              raise SystemExit(f"expected one sky-house insertion point, found {text.count(old)}")
+          text = text.replace(old, new)
 
           old = """        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);\n        int depth = Math.Clamp(island.Width / 16, 3, 5);\n        int waterCells = 0;"""
           new = """        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);\n        int depth = Math.Clamp(island.Width / 16, 3, 5);\n        if (HasProtectedContentNearby(workspace, centerX, floorY, halfWidth + 6))\n            return false;\n        int waterCells = 0;"""
@@ -62,7 +68,7 @@ jobs:
           git config user.name "Xekep"
           git config user.email "Xekep@users.noreply.github.com"
           git add src/TerraRuntime.World/Generation/Optimized/OptimizedLandmarkWorldGenerationProvider.cs .github/workflows/one-shot-fix-optimized-landmark-surface-probe.yml
-          git commit -m "Fix optimized landmark placement collisions" -m "Ignore floating-island terrain while discovering ground-level desert/forest candidates and reject Floating Lake carving near protected chest/frame-important content. Prove the deterministic and Crimson optimized-world regression class before pushing."
+          git commit -m "Fix optimized sky landmark collisions" -m "Ignore floating-island terrain while discovering ground-level desert/forest candidates and reject overlapping sky houses or Floating Lakes near protected chest/frame-important content. Prove the deterministic and Crimson optimized-world regression class before pushing."
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
