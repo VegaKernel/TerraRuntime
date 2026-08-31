@@ -7,7 +7,8 @@ public enum RuntimeWorldGenerationFinalizationStatus : byte
     Finalized = 0,
     MissingSpawn = 1,
     MissingDungeon = 2,
-    MissingLayers = 3
+    MissingLayers = 3,
+    ValidationFailed = 4
 }
 
 /// <summary>
@@ -29,7 +30,8 @@ public readonly record struct RuntimeWorldGenerationMetadataSnapshot(
 
 public readonly record struct RuntimeWorldGenerationFinalizationResult(
     RuntimeWorldGenerationFinalizationStatus Status,
-    RuntimeWorldGenerationMetadataSnapshot Metadata = default)
+    RuntimeWorldGenerationMetadataSnapshot Metadata = default,
+    VanillaWorldValidationResult? Validation = null)
 {
     public bool Succeeded => Status == RuntimeWorldGenerationFinalizationStatus.Finalized;
 }
@@ -70,8 +72,17 @@ public static class RuntimeWorldGenerationFinalizer
         {
             VanillaBootstrapState = candidate.VanillaBootstrapState
         };
+
+        VanillaWorldValidationResult validation = VanillaWorldGenerationValidator1458.Validate(candidate, metadata);
+        if (!validation.IsValid)
+            return new RuntimeWorldGenerationFinalizationResult(
+                RuntimeWorldGenerationFinalizationStatus.ValidationFailed,
+                metadata,
+                validation);
+
         return new RuntimeWorldGenerationFinalizationResult(
             RuntimeWorldGenerationFinalizationStatus.Finalized,
-            metadata);
+            metadata,
+            validation);
     }
 }

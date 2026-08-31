@@ -29,6 +29,8 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
         var context = new GenerationContext(workspace);
 
         pass.Execute(context);
+        FillMinimalValidWorld(workspace, bootstrap);
+        workspace.SetVanillaSeedProfile(new VanillaWorldSeedProfile1458(VanillaSpecialWorldSeed1458.NoTraps, VanillaSecretWorldSeed1458.None));
         RuntimeWorldGenerationFinalizationResult finalized = RuntimeWorldGenerationFinalizer.Finalize(workspace);
 
         Assert.True(finalized.Succeeded);
@@ -187,5 +189,73 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
         public int Next(int minValue, int maxValue) => random.Next(minValue, maxValue);
         public double NextDouble() => random.NextDouble();
         public void NextBytes(byte[] buffer) => random.NextBytes(buffer);
+    }
+
+    private static void FillMinimalValidWorld(RuntimeWorldGenerationWorkspace workspace, VanillaWorldGenerationBootstrapState1458 bootstrap)
+    {
+        int width = workspace.WidthTiles;
+        int height = workspace.HeightTiles;
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = height / 2; y < height; y++)
+            {
+                ushort type = y < height * 0.7d ? (ushort)0 : (ushort)1;
+                if (x % 400 == 0 && y == height / 2 + 5) type = 147;
+                if (x % 350 == 1 && y == height / 2 + 6) type = 59;
+                if (x % 300 == 2 && y == height / 2 + 7) type = 53;
+                if (x % 500 == 3 && y == height / 2 + 8) type = 41;
+                if (x % 600 == 4 && y == height / 2 + 9) type = 226;
+                if (x % 200 == 5 && y == height - 10) type = 58;
+                var tile = new WorldGenerationTile(type, 0, -1, -1, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
+                workspace.TrySetTile(x, y, in tile);
+            }
+        }
+        int leftBeach = bootstrap.LeftBeachEnd;
+        int rightBeach = bootstrap.RightBeachStart;
+        int waterLine = height / 3;
+        for (int x = 0; x < leftBeach; x++)
+        {
+            for (int y = waterLine; y < waterLine + 20 && y < height; y++)
+            {
+                var water = new WorldGenerationTile(0, 0, 0, 0, WorldGenerationTileFlags.None, 255, 0, 0, 0, WorldGenerationLiquidKind.Water);
+                workspace.TrySetTile(x, y, in water);
+            }
+            for (int y = waterLine + 20; y < waterLine + 30 && y < height; y++)
+            {
+                var sand = new WorldGenerationTile(53, 0, -1, -1, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
+                workspace.TrySetTile(x, y, in sand);
+            }
+        }
+        for (int x = rightBeach; x < width; x++)
+        {
+            for (int y = waterLine; y < waterLine + 20 && y < height; y++)
+            {
+                var water = new WorldGenerationTile(0, 0, 0, 0, WorldGenerationTileFlags.None, 255, 0, 0, 0, WorldGenerationLiquidKind.Water);
+                workspace.TrySetTile(x, y, in water);
+            }
+            for (int y = waterLine + 20; y < waterLine + 30 && y < height; y++)
+            {
+                var sand = new WorldGenerationTile(53, 0, -1, -1, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
+                workspace.TrySetTile(x, y, in sand);
+            }
+        }
+        var chestTile = new WorldGenerationTile(21, 0, 0, 0, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
+        var chestTile2 = new WorldGenerationTile(21, 0, 18, 0, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
+        var chestTile3 = new WorldGenerationTile(21, 0, 0, 18, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
+        var chestTile4 = new WorldGenerationTile(21, 0, 18, 18, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
+        int cx = width / 4;
+        int cy = height / 2 + 2;
+        workspace.TrySetTile(cx, cy, in chestTile);
+        workspace.TrySetTile(cx + 1, cy, in chestTile2);
+        workspace.TrySetTile(cx, cy + 1, in chestTile3);
+        workspace.TrySetTile(cx + 1, cy + 1, in chestTile4);
+        workspace.TryAddGeneratedChest(cx, cy, "Fixture", []);
+        int spawnX = 2100;
+        int spawnY = 280;
+        for (int y = spawnY + 2; y < spawnY + 6 && y < height; y++)
+        {
+            var solid = new WorldGenerationTile(0, 0, -1, -1, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
+            workspace.TrySetTile(spawnX, y, in solid);
+        }
     }
 }

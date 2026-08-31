@@ -198,12 +198,39 @@ The built-in ordinary canonical provider now reaches that full sequence using a 
 
 What remains is **deeper parity, not pass-name plumbing**: fixed-seed differential geometry/content checks against the official server, exact behavior/RNG consumption inside source-shaped passes, special/secret seed branches, and any remaining world-object/framing/content divergences discovered by reference worlds.
 
-## 18. Evidence and limitations
+## 18. Post-generation validation
 
-Current evidence covers planner validation/order, executor behavior, custom RNG isolation, pinned per-pass vanilla RNG reseeding, the exact Terraria 1.4.5.8 `UnifiedRandom` algorithm, the `$109$`-pass registration catalog, source contracts for multiple vanilla stages, canonical world creation/file reload, registry lifetime, startup world-creation parsing and trusted-host generation integration.
+Every validated world now passes the fail-closed `VanillaWorldGenerationValidator1458`:
 
-The strongest current claim is **complete ordinary canonical pass-identity coverage with a valid generated `.wld`**, not reference-world equality. The dedicated vanilla document and roadmap intentionally keep reference-world parity and special/secret-seed parity open until independent differential evidence closes them.
+```mermaid
+flowchart TD
+    Candidate["Candidate workspace + metadata"] --> Dimensions["Dimensions & layer bounds"]
+    Dimensions --> Tiles["Tile/Wall catalog & flag/shape"]
+    Tiles --> Liquids["Liquid kind/amount & solid/liquid exclusion"]
+    Liquids --> Objects["Frame-important footprints & chest anchors"]
+    Objects --> Dungeon["Dungeon & Temple presence"]
+    Dungeon --> Biomes["Biome presence for canonical worlds"]
+    Biomes --> Spawn["Spawn & ocean bounds"]
+    Spawn --> Valid["Valid → Finalized"]
+    Dimensions --> Invalid["Invalid → ValidationFailed"]
+    Tiles --> Invalid
+    Liquids --> Invalid
+    Objects --> Invalid
+    Dungeon --> Invalid
+    Biomes --> Invalid
+    Spawn --> Invalid
+```
 
-## 19. Change checklist
+For canonical `$4200\times1200$`, `$6400\times1800$` and `$8400\times2400$` ordinary worlds the validator checks active-tile density, `$147$`/`$161$` snow, `$59$`/`$60$` jungle, `$53$` desert, `$70$` mushroom, `$41$` dungeon, `$226$` temple, `$58$` hellstone, $2\times2$ `21`-chest footprints (modulo `$36$` style), chest-anchor uniqueness, duplicate chests, out-of-bounds objects, solid/liquid exclusion, spawn ground, and ocean sand/water (`$30$` water, `$50$` sand per beach). Non-canonical and custom-generator worlds are validated only for tile/wall catalog, liquid, chest-anchor and metadata bounds so that fixture generators and small synthetic worlds are not spuriously rejected.
 
-A worldgen change is incomplete unless dependencies are validated, candidate mutation remains isolated, RNG lifetime/order is pinned to official evidence, long work is cancellable, metadata stays semantic, provider lifetime is safe across unload, failure cannot publish a partial world, parity claims match independent evidence, diagrams use Mermaid, dimensional values use LaTeX where applicable, and this page changes together with `docs/ru/world-generation.md`.
+Validation is enforced inside `RuntimeWorldGenerationFinalizer`: `Finalized` is returned only when `Validate` is `Valid`; otherwise `ValidationFailed` is returned and the candidate is discarded before persistence. The new `VanillaWorldGenerationValidator1458Tests` exercise valid canonical generation, invalid tile/wall types, orphan chest anchors, duplicate chests, spawn outside world and ocean-bounds violations.
+
+## 19. Evidence and limitations
+
+Current evidence covers planner validation/order, executor behavior, custom RNG isolation, pinned per-pass vanilla RNG reseeding, the exact Terraria 1.4.5.8 `UnifiedRandom` algorithm, the `$109$`-pass registration catalog, source contracts for multiple vanilla stages, canonical world creation/file reload, post-generation structural validation, registry lifetime, startup world-creation parsing and trusted-host generation integration.
+
+The strongest current claim is **complete ordinary canonical pass-identity coverage with a valid generated `.wld` and fail-closed structural validation**, not reference-world equality. The dedicated vanilla document and roadmap intentionally keep reference-world parity and special/secret-seed parity open until independent differential evidence closes them.
+
+## 20. Change checklist
+
+A worldgen change is incomplete unless dependencies are validated, candidate mutation remains isolated, RNG lifetime/order is pinned to official evidence, long work is cancellable, metadata stays semantic, provider lifetime is safe across unload, failure cannot publish a partial world, post-generation validation is green, parity claims match independent evidence, diagrams use Mermaid, dimensional values use LaTeX where applicable, and this page changes together with `docs/ru/world-generation.md`.

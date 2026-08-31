@@ -65,6 +65,13 @@ Generation работает с неопубликованным `RuntimeWorldGen
 
 `Final Cleanup` отвергает tile/wall ID вне закреплённых vanilla catalogs и неизвестные runtime tile flags до передачи результата обычному world-generation finalizer и fresh `.wld` v326 composer.
 
+`RuntimeWorldGenerationFinalizer` теперь требует fail-closed `VanillaWorldGenerationValidator1458` перед публикацией:
+
+- `Finalized` возвращается только когда структурный валидатор даёт `Valid`;
+- любой `InvalidTileType`, `InvalidWallType`, `InvalidLiquid`, orphan frame-important object, chest-anchor mismatch, дубликат сундука, объект вне границ, отсутствие dungeon/temple, нарушение ocean bounds или невалидный spawn/beam даёт `ValidationFailed`, и candidate отбрасывается, не достигая `WorldFileFreshComposer326`.
+
+Для canonical ordinary миров валидатор дополнительно проверяет presence биомов (`$147$` snow, `$59$`/`$60$` jungle, `$53$` desert), плотность active tiles и per-beach минимумы `$30$` water / `$50$` sand, выведенные из `LeftBeachEnd`/`RightBeachStart` и `WorldSurface + 80`.
+
 ## Граница проверки
 
 Здесь есть две разные вехи, и смешивать их нельзя:
