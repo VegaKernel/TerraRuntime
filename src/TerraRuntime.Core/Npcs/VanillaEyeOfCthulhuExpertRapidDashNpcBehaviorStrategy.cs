@@ -4,10 +4,10 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Source-backed TerrariaServer 1.4.5.8 Expert Eye of Cthulhu rapid-dash extension. The ordinary Eye strategy
-/// remains authoritative for phase-one, transformation and deterministic phase-two motion; this decorator owns the
-/// RNG-shaped phase-two boundaries that require live player velocity and Main.rand-equivalent ordering. Good World
-/// uses the same rapid-dash RNG path; its LOS-only post-cycle re-entry remains a separate world-query boundary.
+/// Source-backed TerrariaServer 1.4.5.8 Eye of Cthulhu AI_004 extension. The ordinary Eye strategy remains
+/// authoritative for deterministic motion while this decorator owns Expert RNG-shaped rapid-dash boundaries,
+/// Good World Collision.CanHit re-entry, and transient defense/projectile-reflection state that must commit in
+/// the same NPC revision as the AI transition.
 /// </summary>
 internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
@@ -27,9 +27,13 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
 
     private readonly IVanillaNpcBehaviorStrategy _inner = new VanillaEyeOfCthulhuNpcBehaviorStrategy();
     private readonly IVanillaNpcRandom _random;
+    private IVanillaEyeOfCthulhuEnvironment? _environment;
 
     public VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy(IVanillaNpcRandom random) =>
         _random = random ?? throw new ArgumentNullException(nameof(random));
+
+    public void SetEnvironment(IVanillaEyeOfCthulhuEnvironment environment) =>
+        _environment = environment ?? throw new ArgumentNullException(nameof(environment));
 
     public bool TryStep(
         in NpcSnapshot npc,
@@ -38,49 +42,84 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
         INpcAiStateStepper inner,
         out NpcStateUpdate next)
     {
-        if (definition.AiStyle != VanillaNpcAiStyles.EyeOfCthulhu ||
-            !definition.IsBoss ||
-            !context.ExpertMode ||
-            context.DayTime)
-        {
+        if (definition.AiStyle != VanillaNpcAiStyles.EyeOfCthulhu || !definition.IsBoss)
             return _inner.TryStep(in npc, in definition, context, inner, out next);
-        }
 
         int lifeMax = npc.Simulation.LifeMax > 0 ? npc.Simulation.LifeMax : definition.LifeMax;
         int life = npc.Simulation.LifeMax > 0 ? npc.Simulation.Life : definition.LifeMax;
-        if (lifeMax <= 0 || life <= 0)
-            return _inner.TryStep(in npc, in definition, context, inner, out next);
+        bool handled = false;
+        next = default;
 
-        if (!TryResolveCurrentTarget(in npc, in definition, context, out NpcSnapshot targeted, out VanillaNpcTargetCandidate current))
-            return _inner.TryStep(in npc, in definition, context, inner, out next);
-
-        float ai0 = targeted.Ai.Ai0;
-        float ai1 = targeted.Ai.Ai1;
-        if (ai0 != 3f)
-            return _inner.TryStep(in targeted, in definition, context, inner, out next);
-
-        if (ai1 == 2f &&
-            targeted.Ai.Ai2 >= 89f &&
-            targeted.Ai.Ai3 >= 2f &&
-            (float)life < lifeMax * RapidEntryLifeFraction)
+        if (context.ExpertMode &&
+            !context.DayTime &&
+            lifeMax > 0 &&
+            life > 0 &&
+            TryResolveCurrentTarget(
+                in npc,
+                in definition,
+                context,
+                out NpcSnapshot targeted,
+                out VanillaNpcTargetCandidate current) &&
+            targeted.Ai.Ai0 == 3f)
         {
-            next = CompleteThirdDirectDashAndSeedRapid(in targeted, in definition);
-            return true;
+            float ai1 = targeted.Ai.Ai1;
+            if (ai1 == 2f &&
+                targeted.Ai.Ai2 >= 89f &&
+                targeted.Ai.Ai3 >= 2f &&
+                (float)life < lifeMax * RapidEntryLifeFraction)
+            {
+                next = CompleteThirdDirectDashAndSeedRapid(in targeted, in definition);
+                handled = true;
+            }
+            else if (ai1 == 3f)
+            {
+                if (!TryLaunchRapidDash(
+                        in targeted,
+                        in definition,
+                        in current,
+                        life,
+                        lifeMax,
+                        context,
+                        out next))
+                {
+                    return false;
+                }
+
+                handled = true;
+            }
+            else if (ai1 == 4f)
+            {
+                next = StepRapidDash(
+                    in targeted,
+                    in definition,
+                    in current,
+                    life,
+                    lifeMax,
+                    context);
+                handled = true;
+            }
+            else if (ai1 == 5f && targeted.Ai.Ai2 >= 69f)
+            {
+                if (!TryCompleteStateFive(
+                        in targeted,
+                        in definition,
+                        life,
+                        lifeMax,
+                        context,
+                        out next))
+                {
+                    return false;
+                }
+
+                handled = true;
+            }
         }
 
-        if (ai1 == 3f)
-            return TryLaunchRapidDash(in targeted, in definition, in current, life, lifeMax, context, out next);
+        if (!handled && !_inner.TryStep(in npc, in definition, context, inner, out next))
+            return false;
 
-        if (ai1 == 4f)
-        {
-            next = StepRapidDash(in targeted, in definition, in current, life, lifeMax);
-            return true;
-        }
-
-        if (ai1 == 5f && targeted.Ai.Ai2 >= 69f)
-            return TryCompleteStateFive(in targeted, in definition, life, lifeMax, context, out next);
-
-        return _inner.TryStep(in targeted, in definition, context, inner, out next);
+        ApplyCombatState(in npc, life, lifeMax, context, ref next);
+        return true;
     }
 
     private NpcStateUpdate CompleteThirdDirectDashAndSeedRapid(
@@ -122,21 +161,27 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
     {
         bool lowLife = (float)life < lifeMax * LowLifeFraction;
         bool criticalLife = (float)life < lifeMax * CriticalLifeFraction;
-        NpcSnapshot working = npc;
-        float centerX = working.PositionX + definition.Width * 0.5f;
-        float centerY = working.PositionY + definition.Height * 0.5f;
+        float centerX = npc.PositionX + definition.Width * 0.5f;
+        float centerY = npc.PositionY + definition.Height * 0.5f;
 
-        if (working.Ai.Ai3 == 4f && lowLife && centerY > current.CenterY)
+        // Source shape is `if (...) reset; else if (Main.netMode != 1) launch`. The reset therefore consumes no
+        // rapid-dash RNG and ends this AI branch for the current tick.
+        if (npc.Ai.Ai3 == 4f && lowLife && centerY > current.CenterY)
         {
-            ushort resetTarget = ResolveClosestTarget(in working, in definition, context, out _) ?? working.Target;
-            working = working with
-            {
-                Target = resetTarget,
-                Ai = new NpcAiState(3f, 0f, 0f, 0f)
-            };
+            ushort resetTarget = ResolveClosestTarget(in npc, in definition, context, out _) ?? npc.Target;
+            next = Build(
+                in npc,
+                in definition,
+                npc.VelocityX,
+                npc.VelocityY,
+                resetTarget,
+                ai1: 0f,
+                ai2: 0f,
+                ai3: 0f);
+            return true;
         }
 
-        ushort? selectedSlot = ResolveClosestTarget(in working, in definition, context, out VanillaNpcTargetCandidate selected);
+        ushort? selectedSlot = ResolveClosestTarget(in npc, in definition, context, out VanillaNpcTargetCandidate selected);
         if (selectedSlot is null ||
             !float.IsFinite(selected.CenterX) ||
             !float.IsFinite(selected.CenterY) ||
@@ -147,13 +192,11 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
             return false;
         }
 
-        centerX = working.PositionX + definition.Width * 0.5f;
-        centerY = working.PositionY + definition.Height * 0.5f;
         float speed = RapidDashSpeed;
         float prediction = MathF.Abs(selected.VelocityX) + MathF.Abs(selected.VelocityY) / 4f;
         prediction += 10f - prediction;
         prediction = Math.Clamp(prediction, 5f, 15f);
-        if (working.Ai.Ai2 == -1f && !criticalLife)
+        if (npc.Ai.Ai2 == -1f && !criticalLife)
         {
             prediction *= 4f;
             speed *= 1.3f;
@@ -226,14 +269,14 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
         }
 
         next = Build(
-            in working,
+            in npc,
             in definition,
             velocityX,
             velocityY,
             selectedSlot.Value,
             ai1: 4f,
-            ai2: working.Ai.Ai2,
-            ai3: working.Ai.Ai3);
+            ai2: npc.Ai.Ai2,
+            ai3: npc.Ai.Ai3);
         return true;
     }
 
@@ -242,7 +285,8 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
         in VanillaNpcDefinition definition,
         in VanillaNpcTargetCandidate target,
         int life,
-        int lifeMax)
+        int lifeMax,
+        VanillaNpcBehaviorContext context)
     {
         bool criticalLife = (float)life < lifeMax * CriticalLifeFraction;
         float duration = criticalLife ? 10f : 20f;
@@ -274,6 +318,29 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
             {
                 ai1 = 0f;
                 ai3 = 0f;
+                if (context.GoodWorld &&
+                    _environment is not null &&
+                    _environment.CanHit(
+                        npc.PositionX,
+                        npc.PositionY,
+                        definition.Width,
+                        definition.Height,
+                        targetLeft,
+                        targetTop,
+                        definition.Width,
+                        definition.Height))
+                {
+                    return Build(
+                        in npc,
+                        in definition,
+                        velocityX,
+                        velocityY,
+                        npc.Target,
+                        ai0: 2f,
+                        ai1: 0f,
+                        ai2: 0f,
+                        ai3: 1f);
+                }
             }
             else
             {
@@ -337,6 +404,49 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
         return true;
     }
 
+    private static void ApplyCombatState(
+        in NpcSnapshot source,
+        int life,
+        int lifeMax,
+        VanillaNpcBehaviorContext context,
+        ref NpcStateUpdate next)
+    {
+        bool hasLivingTarget =
+            !context.DayTime &&
+            next.Target < byte.MaxValue &&
+            context.TryFindCandidate(checked((byte)next.Target), out VanillaNpcTargetCandidate candidate) &&
+            candidate.Active &&
+            !candidate.Dead &&
+            !candidate.Ghost;
+
+        int? defenseOverride = source.Simulation.DefenseOverride;
+        if (hasLivingTarget && source.Ai.Ai0 == 3f)
+        {
+            defenseOverride = 0;
+            if (context.ExpertMode && lifeMax > 0)
+            {
+                if ((float)life < lifeMax * LowLifeFraction)
+                    defenseOverride = -15;
+                if ((float)life < lifeMax * CriticalLifeFraction)
+                    defenseOverride = -30;
+            }
+        }
+
+        bool reflectsProjectiles =
+            hasLivingTarget &&
+            context.GoodWorld &&
+            source.Ai.Ai0 is 1f or 2f;
+
+        next = next with
+        {
+            Simulation = next.Simulation with
+            {
+                DefenseOverride = defenseOverride,
+                ReflectsProjectiles = reflectsProjectiles
+            }
+        };
+    }
+
     private static bool TryResolveCurrentTarget(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -396,6 +506,18 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
         float ai1,
         float ai2,
         float ai3) =>
+        Build(in npc, in definition, velocityX, velocityY, target, 3f, ai1, ai2, ai3);
+
+    private static NpcStateUpdate Build(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        float velocityX,
+        float velocityY,
+        ushort target,
+        float ai0,
+        float ai1,
+        float ai2,
+        float ai3) =>
         new(
             definition.Type.Value,
             npc.NetId,
@@ -404,7 +526,7 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
             velocityX,
             velocityY,
             target,
-            new NpcAiState(3f, ai1, ai2, ai3),
+            new NpcAiState(ai0, ai1, ai2, ai3),
             npc.Simulation with
             {
                 NoGravity = true,
