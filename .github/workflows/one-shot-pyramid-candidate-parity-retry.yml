@@ -78,3 +78,5 @@ jobs:
           gh api --method POST \
             repos/${{ github.repository }}/actions/workflows/vanilla-worldgen-canonical-sizes.yml/dispatches \
             -f ref=main
+
+# Retry after telemetry compile repair.
