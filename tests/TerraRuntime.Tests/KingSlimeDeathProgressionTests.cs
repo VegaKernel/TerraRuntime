@@ -16,13 +16,29 @@ public sealed class KingSlimeDeathProgressionTests
 
         Assert.False(before.HasAny);
         Assert.False(before.IsCompleted(VanillaWorldProgressionId.KingSlime));
+        Assert.False(before.UnlockSlimeBlueSpawn);
         Assert.True(mutations.MarkCompleted(VanillaWorldProgressionId.KingSlime));
         Assert.False(mutations.MarkCompleted(VanillaWorldProgressionId.KingSlime));
+        Assert.True(mutations.MarkSlimeBlueSpawnUnlocked());
+        Assert.False(mutations.MarkSlimeBlueSpawnUnlocked());
 
         RuntimeWorldProgressionMutationSnapshot after = mutations.CaptureSnapshot();
         Assert.False(before.IsCompleted(VanillaWorldProgressionId.KingSlime));
+        Assert.False(before.UnlockSlimeBlueSpawn);
         Assert.True(after.HasAny);
         Assert.True(after.IsCompleted(VanillaWorldProgressionId.KingSlime));
+        Assert.True(after.UnlockSlimeBlueSpawn);
+    }
+
+    [Fact]
+    public void Persisted_blue_slime_unlock_is_baseline_not_a_new_save_mutation()
+    {
+        var mutations = new RuntimeWorldProgressionMutations();
+        mutations.SetSlimeBlueSpawnBaseline(true);
+
+        Assert.True(mutations.IsSlimeBlueSpawnUnlocked);
+        Assert.False(mutations.MarkSlimeBlueSpawnUnlocked());
+        Assert.False(mutations.CaptureSnapshot().UnlockSlimeBlueSpawn);
     }
 
     [Fact]
@@ -43,13 +59,14 @@ public sealed class KingSlimeDeathProgressionTests
     }
 
     [Fact]
-    public void Progression_header_patcher_sets_only_downed_slime_king_and_keeps_world_loadable()
+    public void Progression_header_patcher_sets_king_slime_and_blue_slime_unlock_and_keeps_world_loadable()
     {
         byte[] sourceFile = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
         WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
         Assert.True(WorldFileLoader.TryLoad(sourceFile, limits, out WorldFileData? sourceWorld).IsLoaded);
         WorldFileData source = Assert.IsType<WorldFileData>(sourceWorld);
         Assert.False(source.RuntimeMetadata.DownedSlimeKing);
+        Assert.False(source.RuntimeMetadata.UnlockedSlimeBlueSpawn);
         Assert.True(WorldFilePreservedSections.TryCapture(
             sourceFile,
             source.Envelope,
@@ -58,6 +75,7 @@ public sealed class KingSlimeDeathProgressionTests
 
         var mutations = new RuntimeWorldProgressionMutations();
         Assert.True(mutations.MarkCompleted(VanillaWorldProgressionId.KingSlime));
+        Assert.True(mutations.MarkSlimeBlueSpawnUnlocked());
         RuntimeWorldProgressionMutationSnapshot mutationSnapshot = mutations.CaptureSnapshot();
         byte[] originalHeader = preserved!.Header.ToArray();
 
@@ -69,7 +87,7 @@ public sealed class KingSlimeDeathProgressionTests
                 in mutationSnapshot,
                 out byte[] patchedHeader));
         Assert.Equal(originalHeader.Length, patchedHeader.Length);
-        Assert.Equal(1, originalHeader.Zip(patchedHeader).Count(pair => pair.First != pair.Second));
+        Assert.Equal(2, originalHeader.Zip(patchedHeader).Count(pair => pair.First != pair.Second));
         Assert.Equal(originalHeader, preserved.Header.ToArray());
 
         byte[] patchedFile = sourceFile.ToArray();
@@ -85,6 +103,7 @@ public sealed class KingSlimeDeathProgressionTests
         Assert.True(diagnostic.IsLoaded);
         WorldFileData loaded = Assert.IsType<WorldFileData>(loadedWorld);
         Assert.True(loaded.RuntimeMetadata.DownedSlimeKing);
+        Assert.True(loaded.RuntimeMetadata.UnlockedSlimeBlueSpawn);
         Assert.Equal(source.RuntimeMetadata.Time, loaded.RuntimeMetadata.Time);
         Assert.Equal(source.RuntimeMetadata.DayTime, loaded.RuntimeMetadata.DayTime);
         Assert.Equal(source.RuntimeMetadata.HardMode, loaded.RuntimeMetadata.HardMode);
@@ -118,6 +137,85 @@ public sealed class KingSlimeDeathProgressionTests
                 in snapshot,
                 out byte[] patchedHeader));
         Assert.Empty(patchedHeader);
+    }
+
+    [Fact]
+    public void Dead_king_slime_stops_slime_rain_unlocks_and_spawns_nerdy_slime_then_marks_progression()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var store = new RuntimeNpcStore(capacity: 4);
+        var worldClock = new RuntimeWorldClock(
+            time: 100d,
+            dayTime: true,
+            VanillaMoonPhases.FullMoon,
+            slimeRainTime: 5000d,
+            dayRate: 1,
+            slimeBlueSpawnUnlocked: false);
+        var random = new FixedDeathRandom(cooldownRoll: 4000, direction: 0.25f);
+        var stepper = new VanillaNpcWorldMotionAiStepper(
+            new PassthroughStepper(),
+            tiles,
+            worldSurfaceTiles: 40d,
+            worldEvents: worldClock,
+            kingSlimeDeathRandom: random);
+        RuntimeWorldProgressionMutations progression = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
+        NpcStateUpdate deadKingSlime = CreateDeadKingSlimeUpdate();
+
+        Assert.True(store.TrySpawn(0, in deadKingSlime, out NpcSnapshot spawned));
+        NpcAiStateTickSummary summary = new RuntimeNpcAiStateExecutor(store).Tick(stepper);
+
+        Assert.Equal(1, summary.Applied);
+        Assert.Equal(-400000d, worldClock.SlimeRainTime);
+        Assert.False(worldClock.SlimeRainActive);
+        Assert.True(worldClock.SlimeBlueSpawnUnlocked);
+        Assert.Equal(1, random.CooldownCalls);
+        Assert.Equal(1, random.DirectionCalls);
+        Assert.True(progression.IsCompleted(VanillaWorldProgressionId.KingSlime));
+        Assert.True(progression.CaptureSnapshot().UnlockSlimeBlueSpawn);
+        Assert.True(store.TryGet(spawned.Handle, out NpcSnapshot terminal));
+        Assert.Equal(0, terminal.Simulation.TimeLeft);
+
+        NpcSnapshot[] active = new NpcSnapshot[store.Capacity];
+        int activeCount = store.CopyActive(active);
+        NpcSnapshot nerdy = Assert.Single(active.AsSpan(0, activeCount).ToArray(),
+            npc => npc.TypeIdentity == VanillaNpcIds.TownSlimeBlue);
+        Assert.Equal(142f, nerdy.PositionX);
+        Assert.Equal(137f, nerdy.PositionY);
+        Assert.Equal(0.75f, nerdy.VelocityX, 5);
+        Assert.Equal(-10f, nerdy.VelocityY);
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, nerdy.Target);
+    }
+
+    [Fact]
+    public void Persisted_blue_slime_unlock_suppresses_repeat_nerdy_spawn_and_direction_rng()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var store = new RuntimeNpcStore(capacity: 4);
+        var worldClock = new RuntimeWorldClock(
+            0d,
+            true,
+            VanillaMoonPhases.FullMoon,
+            slimeRainTime: 0d,
+            dayRate: 1,
+            slimeBlueSpawnUnlocked: true);
+        var random = new FixedDeathRandom(4000, 0.5f);
+        var stepper = new VanillaNpcWorldMotionAiStepper(
+            new PassthroughStepper(),
+            tiles,
+            40d,
+            worldClock,
+            kingSlimeDeathRandom: random);
+        NpcStateUpdate dead = CreateDeadKingSlimeUpdate();
+        Assert.True(store.TrySpawn(0, in dead, out _));
+
+        new RuntimeNpcAiStateExecutor(store).Tick(stepper);
+
+        NpcSnapshot[] active = new NpcSnapshot[store.Capacity];
+        int count = store.CopyActive(active);
+        Assert.DoesNotContain(active.AsSpan(0, count).ToArray(), npc => npc.TypeIdentity == VanillaNpcIds.TownSlimeBlue);
+        Assert.Equal(0, random.CooldownCalls);
+        Assert.Equal(0, random.DirectionCalls);
+        Assert.False(RuntimeWorldProgressionRegistry.GetOrCreate(tiles).CaptureSnapshot().UnlockSlimeBlueSpawn);
     }
 
     [Fact]
@@ -224,6 +322,26 @@ public sealed class KingSlimeDeathProgressionTests
         {
             next = Copy(in npc);
             return true;
+        }
+    }
+
+    private sealed class FixedDeathRandom(int cooldownRoll, float direction) : IKingSlimeDeathRandom
+    {
+        public int CooldownCalls { get; private set; }
+        public int DirectionCalls { get; private set; }
+
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            CooldownCalls++;
+            Assert.InRange(cooldownRoll, inclusiveMin, exclusiveMax - 1);
+            return cooldownRoll;
+        }
+
+        public float NextFloatDirection()
+        {
+            DirectionCalls++;
+            Assert.InRange(direction, -1f, 1f);
+            return direction;
         }
     }
 

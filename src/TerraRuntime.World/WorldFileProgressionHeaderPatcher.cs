@@ -12,8 +12,7 @@ public enum WorldFileProgressionHeaderPatchResult : byte
 
 /// <summary>
 /// Applies source-backed runtime progression mutations to a validated Terraria 1.4.5.8 world-header section.
-/// Only bytes explicitly owned by a supported milestone are changed; every other byte is preserved verbatim.
-/// Unknown mutation bits fail closed rather than being silently discarded during a save.
+/// Only bytes explicitly owned by a supported milestone/unlock are changed; every other byte is preserved verbatim.
 /// </summary>
 public static class WorldFileProgressionHeaderPatcher
 {
@@ -64,20 +63,11 @@ public static class WorldFileProgressionHeaderPatcher
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
         }
 
-        // gameMode, 9 seed flags, creation/last-played ticks, moon type,
-        // tree/cave background tables, spawn, world-surface and rock-layer.
         const int bytesBeforeTime =
-            sizeof(int) +
-            9 +
-            (sizeof(long) * 2) +
-            sizeof(byte) +
-            (sizeof(int) * 3) +
-            (sizeof(int) * 4) +
-            (sizeof(int) * 3) +
-            (sizeof(int) * 4) +
-            (sizeof(int) * 3) +
-            (sizeof(int) * 2) +
-            (sizeof(double) * 2);
+            sizeof(int) + 9 + (sizeof(long) * 2) + sizeof(byte) +
+            (sizeof(int) * 3) + (sizeof(int) * 4) +
+            (sizeof(int) * 3) + (sizeof(int) * 4) + (sizeof(int) * 3) +
+            (sizeof(int) * 2) + (sizeof(double) * 2);
         if (!reader.TrySkip(bytesBeforeTime) ||
             !reader.TrySkip(sizeof(double)) ||
             !reader.TryReadBool(out _) ||
@@ -90,21 +80,132 @@ public static class WorldFileProgressionHeaderPatcher
         }
 
         // crimson; downedBoss1/2/3; Queen Bee; mech 1/2/3/any; Plantera; Golem.
-        for (int index = 0; index < 11; index++)
-        {
-            if (!reader.TryReadBool(out _))
-                return WorldFileProgressionHeaderPatchResult.InvalidHeader;
-        }
+        if (!reader.TrySkipBools(11))
+            return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         int downedSlimeKingOffset = reader.Offset;
         if (!reader.TryReadBool(out bool persistedDownedSlimeKing))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
+        int slimeBlueUnlockOffset = -1;
+        bool persistedSlimeBlueUnlock = false;
+        if (mutations.UnlockSlimeBlueSpawn &&
+            !TryLocateSlimeBlueSpawnUnlock(ref reader, out slimeBlueUnlockOffset, out persistedSlimeBlueUnlock))
+        {
+            return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        }
+
         patchedHeader = sourceHeader.ToArray();
         if (mutations.IsCompleted(VanillaWorldProgressionId.KingSlime) && !persistedDownedSlimeKing)
             patchedHeader[downedSlimeKingOffset] = 1;
+        if (mutations.UnlockSlimeBlueSpawn && !persistedSlimeBlueUnlock)
+            patchedHeader[slimeBlueUnlockOffset] = 1;
 
         return WorldFileProgressionHeaderPatchResult.Patched;
+    }
+
+    private static bool TryLocateSlimeBlueSpawnUnlock(
+        ref HeaderPrefixReader reader,
+        out int offset,
+        out bool persisted)
+    {
+        offset = -1;
+        persisted = false;
+
+        // savedGoblin/Wizard/Mechanic, seven invasion/world booleans after King Slime.
+        if (!reader.TrySkipBools(9) ||
+            !reader.TryReadByte(out _) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TrySkipBools(2) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadDouble(out _) ||
+            !reader.TryReadDouble(out _) ||
+            !reader.TryReadByte(out _) ||
+            !reader.TryReadBool(out _) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadSingle(out _) ||
+            !reader.TrySkip(sizeof(int) * 3) ||
+            !reader.TrySkip(8) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadInt16(out _) ||
+            !reader.TryReadSingle(out _))
+        {
+            return false;
+        }
+
+        if (!reader.TryReadInt32(out int anglerCount) || anglerCount < 0 || anglerCount > 255)
+            return false;
+        for (int i = 0; i < anglerCount; i++)
+        {
+            if (!reader.TryReadString(out _))
+                return false;
+        }
+
+        if (!reader.TryReadBool(out _) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TrySkipBools(3) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadInt32(out _))
+        {
+            return false;
+        }
+
+        // BannerSystem.Save: Int16 killCount length + Int32 entries, then Int16 claimable length + UInt16 entries.
+        if (!reader.TryReadInt16(out short killCount) || killCount < 0 ||
+            !reader.TrySkip(checked(killCount * sizeof(int))) ||
+            !reader.TryReadInt16(out short claimableCount) || claimableCount < 0 ||
+            !reader.TrySkip(checked(claimableCount * sizeof(ushort))))
+        {
+            return false;
+        }
+
+        // fastForwardTimeToDawn; 18 boss/event/tower booleans; party state and celebrating-NPC list.
+        if (!reader.TryReadBool(out _) ||
+            !reader.TrySkipBools(18) ||
+            !reader.TrySkipBools(2) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadInt32(out int partyCount) ||
+            partyCount < 0 || partyCount > 255 ||
+            !reader.TrySkip(checked(partyCount * sizeof(int))))
+        {
+            return false;
+        }
+
+        // sandstorm; bartender; DD2 T1/T2/T3; five background bytes; combat book.
+        if (!reader.TryReadBool(out _) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadSingle(out _) ||
+            !reader.TryReadSingle(out _) ||
+            !reader.TryReadBool(out _) ||
+            !reader.TrySkipBools(3) ||
+            !reader.TrySkip(5) ||
+            !reader.TryReadBool(out _) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TrySkipBools(3))
+        {
+            return false;
+        }
+
+        // TreeTopsInfo.Save: Int32 variation count + Int32 entries.
+        if (!reader.TryReadInt32(out int treeTopCount) ||
+            treeTopCount < 0 || treeTopCount > 64 ||
+            !reader.TrySkip(checked(treeTopCount * sizeof(int))))
+        {
+            return false;
+        }
+
+        // force Halloween/XMas today; four pre-Hardmode ore tiers; pets bought; Empress/Queen Slime/Deerclops.
+        if (!reader.TrySkipBools(2) ||
+            !reader.TrySkip(sizeof(int) * 4) ||
+            !reader.TrySkipBools(6))
+        {
+            return false;
+        }
+
+        offset = reader.Offset;
+        return reader.TryReadBool(out persisted);
     }
 
     private ref struct HeaderPrefixReader
@@ -124,8 +225,17 @@ public static class WorldFileProgressionHeaderPatcher
         {
             if (length < 0 || data.Length - offset < length)
                 return false;
-
             offset += length;
+            return true;
+        }
+
+        public bool TrySkipBools(int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (!TryReadBool(out _))
+                    return false;
+            }
             return true;
         }
 
@@ -136,8 +246,30 @@ public static class WorldFileProgressionHeaderPatcher
                 value = default;
                 return false;
             }
-
             value = data[offset++] != 0;
+            return true;
+        }
+
+        public bool TryReadByte(out byte value)
+        {
+            if (offset >= data.Length)
+            {
+                value = default;
+                return false;
+            }
+            value = data[offset++];
+            return true;
+        }
+
+        public bool TryReadInt16(out short value)
+        {
+            if (data.Length - offset < sizeof(short))
+            {
+                value = default;
+                return false;
+            }
+            value = BinaryPrimitives.ReadInt16LittleEndian(data[offset..]);
+            offset += sizeof(short);
             return true;
         }
 
@@ -148,7 +280,6 @@ public static class WorldFileProgressionHeaderPatcher
                 value = default;
                 return false;
             }
-
             value = BinaryPrimitives.ReadInt32LittleEndian(data[offset..]);
             offset += sizeof(int);
             return true;
@@ -161,9 +292,32 @@ public static class WorldFileProgressionHeaderPatcher
                 value = default;
                 return false;
             }
-
             value = BinaryPrimitives.ReadUInt64LittleEndian(data[offset..]);
             offset += sizeof(ulong);
+            return true;
+        }
+
+        public bool TryReadSingle(out float value)
+        {
+            if (data.Length - offset < sizeof(float))
+            {
+                value = default;
+                return false;
+            }
+            value = BitConverter.Int32BitsToSingle(BinaryPrimitives.ReadInt32LittleEndian(data[offset..]));
+            offset += sizeof(float);
+            return true;
+        }
+
+        public bool TryReadDouble(out double value)
+        {
+            if (data.Length - offset < sizeof(double))
+            {
+                value = default;
+                return false;
+            }
+            value = BitConverter.Int64BitsToDouble(BinaryPrimitives.ReadInt64LittleEndian(data[offset..]));
+            offset += sizeof(double);
             return true;
         }
 
@@ -174,7 +328,6 @@ public static class WorldFileProgressionHeaderPatcher
                 value = default;
                 return false;
             }
-
             value = new Guid(data.Slice(offset, 16));
             offset += 16;
             return true;
@@ -184,9 +337,7 @@ public static class WorldFileProgressionHeaderPatcher
         {
             value = string.Empty;
             if (!TryRead7BitEncodedInt(out int length) ||
-                length < 0 ||
-                length > MaximumStringBytes ||
-                data.Length - offset < length)
+                length < 0 || length > MaximumStringBytes || data.Length - offset < length)
             {
                 return false;
             }
@@ -231,7 +382,6 @@ public static class WorldFileProgressionHeaderPatcher
                     value = default;
                     return false;
                 }
-
                 value = (int)result;
                 return true;
             }
