@@ -480,6 +480,20 @@ internal sealed class VanillaEyeOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehavi
 
 internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    private const int ProbeClassicDamage = 25;
+    private const int ProbeExpertDamage = 22;
+    private const int BloodSquidDamage = 35;
+    private const float BloodSquidKnockBack = 1f;
+
+    private readonly IVanillaNpcRandom random;
+    private IVanillaNpcProjectileEnvironment? projectileEnvironment;
+
+    public VanillaServantOfCthulhuNpcBehaviorStrategy(IVanillaNpcRandom random) =>
+        this.random = random ?? throw new ArgumentNullException(nameof(random));
+
+    public void SetProjectileEnvironment(IVanillaNpcProjectileEnvironment environment) =>
+        projectileEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
+
     public bool TryStep(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -565,13 +579,32 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             return false;
         }
 
+        float finalVelocityX = result.VelocityX;
+        float finalVelocityY = result.VelocityY;
+        NpcAiState localAi = npc.Simulation.LocalAi;
+        if (VanillaFlyerProjectileAttack.IsSupportedShooter(definition.Type) &&
+            VanillaFlyerProjectileAttack.TryStep(
+                definition.Type,
+                in npc,
+                in hitbox,
+                in candidate,
+                result.VelocityX,
+                result.VelocityY,
+                projectileEnvironment,
+                out VanillaFlyerProjectileAttackResult attack))
+        {
+            finalVelocityX = attack.VelocityX;
+            finalVelocityY = attack.VelocityY;
+            localAi = attack.LocalAi;
+        }
+
         next = new NpcStateUpdate(
             definition.Type.Value,
             npc.NetId,
             npc.PositionX,
             npc.PositionY,
-            result.VelocityX,
-            result.VelocityY,
+            finalVelocityX,
+            finalVelocityY,
             closest.Target,
             result.Ai,
             npc.Simulation with
@@ -580,9 +613,94 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
                 DirectionY = closest.DirectionY,
                 NoGravity = true,
                 NoTileCollide = definition.NoTileCollideAtSpawn,
-                TimeLeft = result.TimeLeft
+                TimeLeft = result.TimeLeft,
+                LocalAi = localAi
             });
         return true;
+    }
+
+    public int PlanProjectileSpawns(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        VanillaNpcBehaviorContext context,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty ||
+            proposed.Type != source.Type ||
+            !NpcTypeId.TryCreate(source.Type, out NpcTypeId type) ||
+            !VanillaFlyerProjectileAttack.IsSupportedShooter(type) ||
+            !VanillaNpcDefinitionCatalog.TryGet(type, source.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            proposed.Target >= byte.MaxValue ||
+            !context.TryFindCandidate(checked((byte)proposed.Target), out VanillaNpcTargetCandidate target))
+        {
+            return 0;
+        }
+
+        if (!VanillaFlyerProjectileAttack.TryStep(
+                type,
+                in source,
+                in hitbox,
+                in target,
+                proposed.VelocityX,
+                proposed.VelocityY,
+                projectileEnvironment,
+                out VanillaFlyerProjectileAttackResult attack) ||
+            !attack.ProjectileReady ||
+            !attack.LocalAi.Equals(proposed.Simulation.LocalAi))
+        {
+            return 0;
+        }
+
+        float sourceCenterX = source.PositionX + hitbox.Width * 0.5f;
+        float sourceCenterY = source.PositionY + hitbox.Height * 0.5f;
+        if (type == VanillaNpcIds.Probe)
+        {
+            if (!VanillaFlyerNpcCatalog.TryGetMotionProfile(type, out VanillaFlyerMotionProfile profile))
+                return 0;
+
+            float velocityX = target.CenterX - sourceCenterX;
+            float velocityY = target.CenterY - sourceCenterY;
+            float distanceSquared = velocityX * velocityX + velocityY * velocityY;
+            if (distanceSquared < profile.MaximumSpeed * profile.MaximumSpeed)
+            {
+                velocityX = source.VelocityX;
+                velocityY = source.VelocityY;
+            }
+            else
+            {
+                VanillaFlyerProjectileAttack.Normalize(ref velocityX, ref velocityY, profile.MaximumSpeed);
+            }
+
+            destination[0] = new NpcAiProjectileIntent(
+                VanillaProjectileIds.ProbePinkLaser,
+                sourceCenterX,
+                sourceCenterY,
+                velocityX,
+                velocityY,
+                context.ExpertMode ? ProbeExpertDamage : ProbeClassicDamage,
+                KnockBack: 0f);
+            return 1;
+        }
+
+        float targetPositionY = target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f;
+        int offsetX = random.NextInt32(-100, 101);
+        int offsetY = random.NextInt32(-100, 101);
+        float shotX = target.CenterX + offsetX - sourceCenterX;
+        float shotY = targetPositionY + offsetY - sourceCenterY;
+        VanillaFlyerProjectileAttack.Normalize(
+            ref shotX,
+            ref shotY,
+            VanillaFlyerProjectileAttack.BloodSquidProjectileSpeed);
+        destination[0] = new NpcAiProjectileIntent(
+            VanillaProjectileIds.BloodShot,
+            sourceCenterX,
+            sourceCenterY,
+            shotX,
+            shotY,
+            BloodSquidDamage,
+            BloodSquidKnockBack);
+        return 1;
     }
 }
 

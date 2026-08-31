@@ -91,7 +91,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _worldClock = worldClock;
         _expertMode = expertMode;
         _npcs = npcs ?? new RuntimeNpcStore();
-        _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);
+        _projectiles = projectiles ?? new RuntimeProjectileStore();
+        _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs, _projectiles);
         _serverPlayerStates = serverPlayerStates;
         _serverPlayerEvents = serverPlayerEvents;
         if (serverPlayerIdentities is not null && serverPlayerStates is null)
@@ -108,7 +109,6 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _npcArchetypeIdentities = npcArchetypeIdentities ?? new RuntimeNpcArchetypeIdentityStore(_npcs.Capacity);
         _npcArchetypeSpawner = new RuntimeNpcArchetypeSpawner(_npcs, _npcArchetypes, _npcArchetypeIdentities);
         _npcShops = npcShops ?? new RuntimeNpcShopCatalogRegistry();
-        _projectiles = projectiles ?? new RuntimeProjectileStore();
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
         _projectileStepper = projectileStepper ??
             (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles));
@@ -149,6 +149,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 _vanillaNpcTargetingAiStepper.EnableBlueSlimeMotion(worldSurfaceTiles);
                 _vanillaNpcTargetingAiStepper.EnableZombieMotion(worldSurfaceTiles);
                 _vanillaNpcTargetingAiStepper.SetFlyingEyeEnvironment(new VanillaFlyingEyeWorldEnvironment(worldTiles));
+                _vanillaNpcTargetingAiStepper.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(worldTiles));
                 var worldMotion = new VanillaNpcWorldMotionAiStepper(
                     actorIntent,
                     worldTiles,

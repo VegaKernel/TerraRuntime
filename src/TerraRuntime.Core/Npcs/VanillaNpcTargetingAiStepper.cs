@@ -7,12 +7,13 @@ namespace TerraRuntime.Core;
 /// Compatibility facade for verified vanilla NPC targeting/AI dispatch. The facade resolves one version-pinned
 /// definition and delegates the state step to an explicit runtime-owned behavior family strategy. Family-specific
 /// targeting geometry, world conditions and motion rules are kept outside this dispatcher. Boss NPC spawn side
-/// effects are exposed separately as speculative intents and are committed only by RuntimeNpcAiStateExecutor
-/// after the source state transition succeeds.
+/// effects are exposed separately as speculative NPC/projectile intents and are committed only by
+/// RuntimeNpcAiStateExecutor after the source state transition succeeds.
 /// </summary>
 public sealed class VanillaNpcTargetingAiStepper :
     INpcAiStateStepper,
     INpcAiSpawnIntentPlanner,
+    INpcAiProjectileIntentPlanner,
     INpcAiPeerSnapshotConsumer
 {
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
@@ -34,7 +35,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
     private readonly VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy _eyeOfCthulhu;
-    private readonly IVanillaNpcBehaviorStrategy _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy();
+    private readonly VanillaServantOfCthulhuNpcBehaviorStrategy _flyer;
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
     private readonly VanillaKingSlimeNpcBehaviorStrategy _kingSlime;
     private readonly IVanillaNpcRandom _random;
@@ -47,6 +48,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
         _random = random ?? new SystemVanillaNpcRandom();
+        _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy(_random);
         _eyeOfCthulhu = new VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy(_random);
         _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
@@ -75,6 +77,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
         _flyingEye.SetEnvironment(environment);
+
+    public void SetProjectileEnvironment(IVanillaNpcProjectileEnvironment environment) =>
+        _flyer.SetProjectileEnvironment(environment);
 
     public void SetWorldConditions(
         bool dayTime,
@@ -155,6 +160,12 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         return 0;
     }
+
+    public int PlanProjectileSpawns(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination) =>
+        _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
 
     private int PlanWormFollower(
         in NpcSnapshot source,

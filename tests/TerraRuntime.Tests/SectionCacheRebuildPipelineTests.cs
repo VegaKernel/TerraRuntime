@@ -435,35 +435,39 @@ public sealed class SectionCacheRebuildPipelineTests
             $"waitCompleted={final.CacheWaitCompletions}, waitTimeouts={final.CacheWaitTimeouts}.");
     }
 
-    private static WorldFileData LoadCompleteWorld() =>
-        WorldFileLoader.Load(TestWorldBytes.CreateCompleteWorld()).World!;
+    private static WorldFileData LoadCompleteWorld()
+    {
+        byte[] source = (byte[])InvokeWorldLoaderTestHelper("CreateCompleteCurrentWorld")!;
+        WorldFileLoadLimits limits = (WorldFileLoadLimits)InvokeWorldLoaderTestHelper("CreateLimits")!;
+        Assert.True(WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded).IsLoaded);
+        return Assert.IsType<WorldFileData>(loaded);
+    }
 
     private static WorldFileData CreateMultiSectionWorld()
     {
+        WorldFileData source = LoadCompleteWorld();
         WorldDimensions dimensions = new(420, 320);
-        WorldHeader header = new()
+        var tiles = new WorldTileStore(dimensions);
+        WorldFileHeader header = source.Header with
         {
-            FormatVersion = 326,
-            Name = "Section Cache Rebuild Multi",
-            Dimensions = dimensions,
-            WorldSurface = 140,
-            RockLayer = 230,
-            SpawnX = 210,
-            SpawnY = 160
+            RightWorld = source.Header.LeftWorld + dimensions.WidthTiles * 16,
+            BottomWorld = source.Header.TopWorld + dimensions.HeightTiles * 16,
+            Dimensions = dimensions
         };
-        var tiles = new WorldTileGrid(dimensions, fillType: 1);
-        return new WorldFileData
+
+        return source with
         {
             Header = header,
-            Tiles = tiles,
-            Chests = [],
-            Signs = [],
-            Npcs = [],
-            TileEntities = [],
-            WeightedPressurePlates = [],
-            RuntimeMetadata = WorldRuntimeMetadata.FromHeader(header),
-            Bestiary = WorldBestiaryState.Empty,
-            CreativePowers = WorldCreativePowersState.Empty
+            Tiles = tiles
         };
+    }
+
+    private static object? InvokeWorldLoaderTestHelper(string name)
+    {
+        MethodInfo method = typeof(WorldFileLoaderTests).GetMethod(
+            name,
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException($"World loader test helper '{name}' was not found.");
+        return method.Invoke(null, null);
     }
 }

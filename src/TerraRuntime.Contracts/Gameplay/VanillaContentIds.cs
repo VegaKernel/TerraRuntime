@@ -221,7 +221,9 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
+    public static readonly ProjectileTypeId ProbePinkLaser = new(84);
     public static readonly ProjectileTypeId ConfettiGun = new(178);
+    public static readonly ProjectileTypeId BloodShot = new(811);
     public static readonly ProjectileTypeId ConfettiMelee = new(289);
     public static readonly ProjectileTypeId RottenEgg = new(318);
     public static readonly ProjectileTypeId StarAnise = new(330);

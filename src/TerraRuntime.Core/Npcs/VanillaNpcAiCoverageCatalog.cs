@@ -31,7 +31,8 @@ public enum VanillaNpcAiCapability : uint
     BossExpertTransformationSlice = 1u << 22,
     BossExpertPhaseTwoDeterministicSlice = 1u << 23,
     BossExpertRapidDashSlice = 1u << 24,
-    FlyingEyeLifecycleStateSlice = 1u << 25
+    FlyingEyeLifecycleStateSlice = 1u << 25,
+    FlyerProjectileSideEffectSlice = 1u << 26
 }
 
 /// <summary>
@@ -161,6 +162,8 @@ public static class VanillaNpcAiCoverageCatalog
                 OrdinaryCore | VanillaNpcAiCapability.FlyerPursuitProfileSlice;
             if (HasNegativeNetVariant(definition.Type))
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
+            if (definition.Type == VanillaNpcIds.Probe || definition.Type == VanillaNpcIds.BloodSquid)
+                capabilities |= VanillaNpcAiCapability.FlyerProjectileSideEffectSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);
         }
