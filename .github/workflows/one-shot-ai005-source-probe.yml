@@ -25,52 +25,32 @@ jobs:
       - name: Decompile TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
 
-      - name: Discover and print AI_005 source
+      - name: Discover AI_005 firing distance source
         shell: bash
         run: |
           set -euo pipefail
           npc_file="$(find decompiled/1458 -type f -name 'NPC.cs' -print -quit)"
-          npc_id="$(find decompiled/1458 -type f -name 'NPCID.cs' -print -quit)"
           test -n "$npc_file"
-          test -n "$npc_id"
-          grep -n 'AI_005' "$npc_file" | head -n 30 || true
-          python3 - "$npc_file" "$npc_id" <<'PY'
+          grep -n 'AI_GlobalFiringDistanceCheck' "$npc_file" | head -n 20
+          python3 - "$npc_file" <<'PY'
           import pathlib, re, sys
-          npc = pathlib.Path(sys.argv[1]).read_text(errors='ignore')
-          ids = pathlib.Path(sys.argv[2]).read_text(errors='ignore')
-
-          names = sorted(set(re.findall(r'\b(AI_005\w*)\s*\(', npc)))
-          print('AI005_SYMBOLS=' + ','.join(names))
-          if not names:
-              raise SystemExit('No AI_005 symbol found')
-          name = names[0]
-          m = re.search(rf'\b(?:private|public|internal)?\s*(?:unsafe\s+)?(?:void|bool|int|float)\s+{re.escape(name)}\s*\([^)]*\)', npc)
+          text = pathlib.Path(sys.argv[1]).read_text(errors='ignore')
+          name = 'AI_GlobalFiringDistanceCheck'
+          m = re.search(rf'\b(?:private|public|internal)?\s*(?:static\s+)?bool\s+{name}\s*\([^)]*\)', text)
           if not m:
-              m = re.search(rf'\b{re.escape(name)}\s*\([^)]*\)', npc)
-          if not m:
-              raise SystemExit(f'{name} declaration not found')
-          opening = npc.find('{', m.end())
+              raise SystemExit('firing-distance method not found')
+          opening = text.find('{', m.end())
           depth = 0
-          closing = None
-          for i in range(opening, len(npc)):
-              if npc[i] == '{': depth += 1
-              elif npc[i] == '}':
+          for i in range(opening, len(text)):
+              if text[i] == '{': depth += 1
+              elif text[i] == '}':
                   depth -= 1
                   if depth == 0:
-                      closing = i + 1
+                      body = text[m.start():i+1]
                       break
-          if closing is None:
-              raise SystemExit(f'{name} truncated')
-          body = npc[m.start():closing]
-          print('AI005_BEGIN')
-          for no, line in enumerate(body.splitlines(), 1):
-              print(f'{no:04d}: {line}')
-          print('AI005_END')
-
-          wanted = ['EaterOfSouls','MeteorHead','Hornet','Corruptor','Probe','Crimera','MossHornet','Moth','Bee','SmallBee','FattyHornet','HoneyHornet','LeafyHornet','SpikeyHornet','StingyHornet','Parrot','BloodSquid']
-          print('AI005_IDS_BEGIN')
-          for wanted_name in wanted:
-              mm = re.search(rf'\b(?:public|internal)\s+const\s+(?:short|int)\s+{re.escape(wanted_name)}\s*=\s*(-?\d+)\s*;', ids)
-              print(f'{wanted_name}={mm.group(1) if mm else "?"}')
-          print('AI005_IDS_END')
+          else:
+              raise SystemExit('firing-distance method truncated')
+          print('FIRING_DISTANCE_BEGIN')
+          print(body)
+          print('FIRING_DISTANCE_END')
           PY
