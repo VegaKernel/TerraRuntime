@@ -147,7 +147,7 @@ public sealed class KingSlimeDeathProgressionTests
         var worldClock = new RuntimeWorldClock(
             time: 100d,
             dayTime: true,
-            VanillaMoonPhases.FullMoon,
+            VanillaMoonPhase.Full,
             slimeRainTime: 5000d,
             dayRate: 1,
             slimeBlueSpawnUnlocked: false);
@@ -194,7 +194,7 @@ public sealed class KingSlimeDeathProgressionTests
         var worldClock = new RuntimeWorldClock(
             0d,
             true,
-            VanillaMoonPhases.FullMoon,
+            VanillaMoonPhase.Full,
             slimeRainTime: 0d,
             dayRate: 1,
             slimeBlueSpawnUnlocked: true);
