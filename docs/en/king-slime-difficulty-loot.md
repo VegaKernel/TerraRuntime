@@ -6,7 +6,9 @@ TerraRuntime now owns the source-backed gameplay semantics for King Slime's diff
 
 Terraria's boss-bag and per-player Master rules use `NPC.playerInteraction[playerSlot]`. TerraRuntime projects that state through `RuntimeNpcPlayerInteractionLedger`:
 
-- an interaction is recorded only after a player item/projectile damage transition has committed;
+- after the exact NPC generation is accepted, a player item/projectile attack records interaction before the later strike outcome, matching packet-28 source order;
+- an invulnerable generation-valid target can therefore still record the player interaction even when the damage transition itself is rejected;
+- stale NPC generations and malformed damage requests never receive interaction credit;
 - the NPC side is keyed by the exact generation-safe `NpcHandle`, so a reused NPC slot cannot inherit old interactions;
 - the source player identity remains the Terraria player slot;
 - death-time delivery re-checks which recorded slots currently contain active players;
