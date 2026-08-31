@@ -11,8 +11,8 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
 {
     public static readonly WorldGeneratorId GeneratorId = OptimizedWorldGenerationProvider.GeneratorId;
 
-    private static readonly WorldGenerationPassId OrganicFeaturesId = new("terraruntime:optimized/organic-features");
-    private static readonly WorldGenerationPassId LifeCrystalsId = new("terraruntime:optimized/life-crystals");
+    private static readonly WorldGenerationPassId TreasureId = new("terraruntime:optimized/treasure");
+    private static readonly WorldGenerationPassId MetadataId = new("terraruntime:optimized/metadata");
     private static readonly WorldGenerationPassId PlayabilityValidationId = new("terraruntime:optimized/playability-validation");
     private static readonly WorldGenerationPassId LandmarksId = new("terraruntime:optimized/landmarks");
     private static readonly WorldGenerationPassId LandmarkValidationId = new("terraruntime:optimized/landmark-validation");
@@ -62,9 +62,11 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
 
         foreach (CapturedPass entry in capture.Entries)
         {
-            if (entry.Descriptor.Id == LifeCrystalsId)
+            if (entry.Descriptor.Id == MetadataId)
             {
-                Add(builder, LandmarksId, OrganicFeaturesId, new LandmarkPass(state));
+                // Life Crystals and persistent treasure are committed first; landmarks then mutate the
+                // final candidate before metadata and all validators inspect it.
+                Add(builder, LandmarksId, TreasureId, new LandmarkPass(state));
                 builder.Add(CloneDescriptor(entry.Descriptor, [LandmarksId]), entry.Pass);
                 insertedLandmarks = true;
                 continue;
@@ -432,6 +434,8 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         int floorY = FindFirstActiveY(context.Workspace, island.Center, Math.Max(6, island.SurfaceY - 12), Math.Min(context.Workspace.HeightTiles - 6, island.SurfaceY + 18));
         if (floorY < 0 || left < 3 || left + width >= context.Workspace.WidthTiles - 3 || floorY - height < 3)
             return false;
+        if (HasProtectedContentNearby(context.Workspace, island.Center, floorY - height / 2, width))
+            return false;
         int top = floorY - height;
         for (int x = left; x < left + width; x++)
         {
@@ -461,6 +465,8 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
             return false;
         int halfWidth = Math.Clamp(island.Width / 7, 4, 8);
         int depth = Math.Clamp(island.Width / 16, 3, 5);
+        if (HasProtectedContentNearby(workspace, centerX, floorY, halfWidth + 6))
+            return false;
         int waterCells = 0;
         for (int dx = -halfWidth; dx <= halfWidth; dx++)
         {
@@ -486,9 +492,17 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         {
             if (state.PyramidsPlaced >= state.PyramidTarget)
                 break;
-            int surfaceY = FindFirstActiveY(context.Workspace, span.Center, Math.Max(8, layers.Surface - 48), Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer));
-            if (surfaceY >= 0 && TryBuildPyramid(context, chests, span, span.Center, surfaceY, state.PyramidsPlaced))
+            int step = Math.Max(5, span.Width / 8);
+            int[] offsets = [0, -step, step, -2 * step, 2 * step];
+            foreach (int offset in offsets)
+            {
+                int centerX = Math.Clamp(span.Center + offset, span.Left + 4, span.Right - 4);
+                int surfaceY = FindFirstActiveY(context.Workspace, centerX, Math.Max(8, layers.Surface - 28), Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer));
+                if (surfaceY < 0 || !TryBuildPyramid(context, chests, span, centerX, surfaceY, state.PyramidsPlaced))
+                    continue;
                 state.PyramidsPlaced++;
+                break;
+            }
         }
         if (state.PyramidsPlaced < state.PyramidTarget)
             throw new InvalidOperationException($"Optimized landmark layer placed only {state.PyramidsPlaced}/{state.PyramidTarget} required pyramids.");
@@ -500,6 +514,8 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         int height = Math.Clamp(halfBase, 13, 26);
         int topY = surfaceY - height + 4;
         if (topY < 4)
+            return false;
+        if (HasProtectedContentNearby(context.Workspace, centerX, surfaceY, Math.Min(24, halfBase)))
             return false;
         for (int row = 0; row < height; row++)
         {
@@ -541,7 +557,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         int stride = Math.Clamp(context.Workspace.WidthTiles / 80, 7, 28);
         for (int x = layers.OceanWidth + 20; x < context.Workspace.WidthTiles - layers.OceanWidth - 20; x += stride)
         {
-            int surface = FindFirstActiveY(context.Workspace, x, Math.Max(8, layers.Surface - 50), Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer));
+            int surface = FindFirstActiveY(context.Workspace, x, Math.Max(8, layers.Surface - 28), Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer));
             if (surface >= 0 && context.Workspace.TryGetTile(x, surface, out WorldGenerationTile tile) && tile.Type == Grass && Math.Abs(x - context.Workspace.WidthTiles / 2) >= Math.Clamp(context.Workspace.WidthTiles / 14, 30, 150))
                 candidates.Add(x);
         }
@@ -555,7 +571,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
                 break;
             if (x - last < minSpacing)
                 continue;
-            int surface = FindFirstActiveY(context.Workspace, x, Math.Max(8, layers.Surface - 50), Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer));
+            int surface = FindFirstActiveY(context.Workspace, x, Math.Max(8, layers.Surface - 28), Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer));
             if (surface >= 0 && TryBuildLivingTree(context, chests, x, surface, state.LivingTreesPlaced))
             {
                 last = x;
@@ -571,6 +587,9 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         int trunkHeight = Math.Clamp(context.Workspace.HeightTiles / 13 + ordinal * 2, 18, 36);
         int topY = surfaceY - trunkHeight;
         if (topY < 5)
+            return false;
+        if (HasProtectedContentNearby(context.Workspace, centerX, surfaceY, 20) ||
+            HasProtectedContentNearby(context.Workspace, centerX, topY + 8, 16))
             return false;
         for (int y = topY; y <= surfaceY + 10; y++)
         {
@@ -643,6 +662,8 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         int left = centerX - halfWidth;
         int right = centerX + halfWidth;
         int top = floorY - height;
+        if (HasProtectedContentNearby(context.Workspace, centerX, top + height / 2, halfWidth + 5))
+            return false;
         for (int x = left - 1; x <= right + 1; x++)
         for (int y = top - 1; y <= floorY + 2; y++)
             SetAir(context.Workspace, x, y);
@@ -764,7 +785,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         int bestX = -1;
         int bestY = int.MaxValue;
         for (int x = layers.OceanWidth + 8; x < context.Workspace.WidthTiles - layers.OceanWidth - 8; x++)
-        for (int y = Math.Max(8, layers.Surface - 50); y < Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer + 50); y++)
+        for (int y = Math.Max(8, layers.Surface - 28); y < Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer + 50); y++)
         {
             if (context.Workspace.TryGetTile(x, y, out WorldGenerationTile tile) && (tile.Flags & WorldGenerationTileFlags.Active) != 0 && tile.Type == 41 && y < bestY)
             {
@@ -792,7 +813,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         bool[] present = new bool[workspace.WidthTiles];
         for (int x = layers.OceanWidth; x < workspace.WidthTiles - layers.OceanWidth; x++)
         {
-            int y = FindFirstActiveY(workspace, x, Math.Max(6, layers.Surface - 55), Math.Min(workspace.HeightTiles - 5, layers.RockLayer));
+            int y = FindFirstActiveY(workspace, x, Math.Max(6, layers.Surface - 28), Math.Min(workspace.HeightTiles - 5, layers.RockLayer));
             if (y >= 0 && workspace.TryGetTile(x, y, out WorldGenerationTile tile) && predicate(tile.Type))
                 present[x] = true;
         }
