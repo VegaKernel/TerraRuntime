@@ -1,0 +1,62 @@
+name: One-shot optimized landmark surface probe fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/one-shot-fix-optimized-landmark-surface-probe.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Patch ground-level probes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/TerraRuntime.World/Generation/Optimized/OptimizedLandmarkWorldGenerationProvider.cs")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = {
+              "Math.Max(6, layers.Surface - 55)": "Math.Max(6, layers.Surface - 28)",
+              "Math.Max(8, layers.Surface - 50)": "Math.Max(8, layers.Surface - 28)",
+          }
+          for old, new in replacements.items():
+              count = text.count(old)
+              if count == 0:
+                  raise SystemExit(f"expected surface probe not found: {old}")
+              text = text.replace(old, new)
+              print(f"replaced {count} occurrence(s): {old} -> {new}")
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Build
+        run: dotnet build TerraRuntime.slnx -c Release
+
+      - name: Run optimized worldgen regression class
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build -- --filter-class TerraRuntime.Tests.OptimizedWorldGenerationProviderTests
+
+      - name: Commit fix and remove one-shot workflow
+        run: |
+          rm .github/workflows/one-shot-fix-optimized-landmark-surface-probe.yml
+          git config user.name "Xekep"
+          git config user.email "Xekep@users.noreply.github.com"
+          git add src/TerraRuntime.World/Generation/Optimized/OptimizedLandmarkWorldGenerationProvider.cs .github/workflows/one-shot-fix-optimized-landmark-surface-probe.yml
+          git commit -m "Fix optimized landmark ground surface probing" -m "Ignore the floating-island layer when discovering desert and forest ground candidates so mandatory pyramids and Living Trees cannot be starved by sky terrain above the same X range. Keep the landmark placement fail-closed and prove both deterministic and Crimson optimized-world regressions before pushing."
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
