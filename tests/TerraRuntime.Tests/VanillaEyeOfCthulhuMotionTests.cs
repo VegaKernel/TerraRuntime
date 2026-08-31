@@ -223,7 +223,7 @@ public sealed class VanillaEyeOfCthulhuMotionTests
     }
 
     [Fact]
-    public void Get_good_world_motion_remains_fail_closed_instead_of_inheriting_classic_or_expert_parameters()
+    public void Get_good_world_motion_is_admitted_by_the_source_backed_state_machine()
     {
         VanillaEyeOfCthulhuMotionInput input = CreateInput() with
         {
@@ -231,7 +231,8 @@ public sealed class VanillaEyeOfCthulhuMotionTests
             GoodWorld = true
         };
 
-        Assert.False(VanillaEyeOfCthulhuMotion.TryStep(in input, out _));
+        Assert.True(VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result));
+        Assert.Equal(1f, result.Ai.Ai2, 5);
     }
 
     [Fact]
