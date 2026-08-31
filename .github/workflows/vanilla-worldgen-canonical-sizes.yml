@@ -7,6 +7,7 @@ on:
       - 'src/TerraRuntime.Contracts/Gameplay/WorldGeneration*.cs'
       - 'src/TerraRuntime.Core/Worlds/Generation/**'
       - 'src/TerraRuntime.World/**'
+      - 'src/TerraRuntime/RuntimeWorldCreationPipeline.cs'
       - 'src/TerraRuntime/RuntimeWorldCreationPersistencePipeline.cs'
       - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
       - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
@@ -30,6 +31,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: small
+            width: 4200
+            height: 1200
           - name: medium
             width: 6400
             height: 1800
