@@ -20,16 +20,29 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
       - name: Decompile official TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
-      - name: Extract Main.MaxWorldViewSize initialization
+      - name: Extract remaining AI_005 side-effect branches
         shell: bash
         run: |
           set -euo pipefail
-          FILE="$(find decompiled/1458 -path '*/Terraria/Main.cs' -print -quit)"
+          FILE="$(find decompiled/1458 -path '*/Terraria/NPC.cs' -print -quit)"
           python3 - "$FILE" <<'PY'
           import sys
           from pathlib import Path
-          text=Path(sys.argv[1]).read_text(encoding='utf-8',errors='replace')
-          for i,line in enumerate(text.splitlines(),1):
-              if 'MaxWorldViewSize' in line:
-                  print(f'{i:06d}: {line}')
+          lines=Path(sys.argv[1]).read_text(encoding='utf-8',errors='replace').splitlines()
+          needles=['AI_005', 'type == 42', 'type == 231', 'type == 6', 'type == 666', 'Projectile.NewProjectile', 'localAI[0]', 'itemAnimation', 'stealth']
+          hits=[]
+          for i,line in enumerate(lines):
+              if any(n in line for n in needles):
+                  hits.append(i)
+          merged=[]
+          for i in hits:
+              lo=max(0,i-35); hi=min(len(lines),i+55)
+              if merged and lo <= merged[-1][1]:
+                  merged[-1]=(merged[-1][0],max(merged[-1][1],hi))
+              else:
+                  merged.append((lo,hi))
+          for lo,hi in merged:
+              print(f'===== lines {lo+1}-{hi} =====')
+              for n in range(lo,hi):
+                  print(f'{n+1:06d}: {lines[n]}')
           PY
