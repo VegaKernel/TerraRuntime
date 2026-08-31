@@ -4,8 +4,8 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 /// <summary>
-/// Short-lived executable proof for CI: generate one standard-small built-in world, validate its complete canonical
-/// image through TerraRuntime, publish it atomically, then exit without opening a game listener.
+/// Short-lived executable proof for CI: generate one built-in world at the requested dimensions, validate its complete
+/// canonical image through TerraRuntime, publish it atomically, then exit without opening a game listener.
 /// </summary>
 internal static class WorldGenerationCreateSmoke
 {
@@ -38,7 +38,7 @@ internal static class WorldGenerationCreateSmoke
 
         if (index + 1 >= args.Count || string.IsNullOrWhiteSpace(args[index + 1]))
         {
-            Console.Error.WriteLine($"Usage: TerraRuntime.Server {Option} <path.wld> [generator-id]");
+            Console.Error.WriteLine($"Usage: TerraRuntime.Server {Option} <path.wld> [generator-id [width height]]");
             exitCode = 31;
             return true;
         }
@@ -78,14 +78,36 @@ internal static class WorldGenerationCreateSmoke
             }
         }
 
+        int widthTiles = 4200;
+        int heightTiles = 1200;
+        bool widthSpecified = index + 3 < args.Count && !string.IsNullOrWhiteSpace(args[index + 3]);
+        bool heightSpecified = index + 4 < args.Count && !string.IsNullOrWhiteSpace(args[index + 4]);
+        if (widthSpecified != heightSpecified)
+        {
+            Console.Error.WriteLine("Worldgen smoke dimensions must specify both width and height.");
+            exitCode = 31;
+            return true;
+        }
+
+        if (widthSpecified)
+        {
+            if (!int.TryParse(args[index + 3], out widthTiles) || widthTiles <= 0 ||
+                !int.TryParse(args[index + 4], out heightTiles) || heightTiles <= 0)
+            {
+                Console.Error.WriteLine("Worldgen smoke width and height must be positive integers.");
+                exitCode = 31;
+                return true;
+            }
+        }
+
         var request = new WorldGenerationRequest(
             generatorId,
             generatorId == VanillaWorldGenerationProvider1458.GeneratorId
                 ? "TerraRuntimeVanillaSmoke"
                 : "TerraRuntimeGeneratedSmoke",
             Seed: 1458UL,
-            WidthTiles: 4200,
-            HeightTiles: 1200)
+            WidthTiles: widthTiles,
+            HeightTiles: heightTiles)
         {
             SeedText = generatorId == VanillaWorldGenerationProvider1458.GeneratorId ? "1458" : null,
             Options = WorldGenerationOptions.Default
