@@ -25,7 +25,7 @@ jobs:
       - name: Decompile TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
 
-      - name: Extract source-backed AI branches
+      - name: Extract exact remaining branches
         shell: bash
         run: |
           set -euo pipefail
@@ -33,55 +33,29 @@ jobs:
           test -n "$npc_file"
           python3 - "$npc_file" <<'PY'
           import pathlib, re, sys
+          text = pathlib.Path(sys.argv[1]).read_text(errors='ignore')
 
-          path = pathlib.Path(sys.argv[1])
-          text = path.read_text(errors='ignore')
-          lines = text.splitlines()
-
-          def extract_method(name):
-              pattern = re.compile(rf'\b(?:private|public|internal)?\s*(?:static\s+)?(?:void|bool)\s+{re.escape(name)}\s*\([^)]*\)')
-              m = pattern.search(text)
-              if not m:
-                  raise SystemExit(f'method not found: {name}')
-              opening = text.find('{', m.end())
-              depth = 0
-              end = None
+          def extract(name, return_type='(?:void|bool)'):
+              pat = re.compile(rf'\b(?:private|public|internal)?\s*(?:static\s+)?{return_type}\s+{re.escape(name)}\s*\([^)]*\)')
+              m = pat.search(text)
+              if not m: raise SystemExit(f'not found: {name}')
+              opening = text.find('{', m.end()); depth = 0
               for i in range(opening, len(text)):
                   if text[i] == '{': depth += 1
                   elif text[i] == '}':
                       depth -= 1
                       if depth == 0:
-                          end = i + 1
-                          break
-              if end is None:
-                  raise SystemExit(f'truncated method: {name}')
-              prefix = text[:m.start()].count('\n') + 1
-              body = text[m.start():end].splitlines()
-              return prefix, body
+                          base = text[:m.start()].count('\n') + 1
+                          return base, text[m.start():i+1].splitlines()
+              raise SystemExit(f'truncated: {name}')
 
-          def dump_context(name, keywords, radius=4):
-              base, body = extract_method(name)
-              print(f'=== {name} ===')
-              selected = set()
-              for idx, line in enumerate(body):
-                  if any(k in line for k in keywords):
-                      for j in range(max(0, idx-radius), min(len(body), idx+radius+1)):
-                          selected.add(j)
-              last = -2
-              for idx in sorted(selected):
-                  if idx > last + 1:
-                      print('---')
-                  print(f'{base+idx}: {body[idx]}')
-                  last = idx
+          base, body = extract('DespawnEncouragement_AIStyle2_FloatingEye_IsDiscouraged')
+          print('=== AI002_DESPAWN_HELPER ===')
+          for i, line in enumerate(body): print(f'{base+i}: {line}')
 
-          dump_context('AI_002_FloatingEye', [
-              'dayTime', 'EncourageDespawn', 'noTileCollide', 'CanHit', 'Collision.',
-              'ai[0]', 'type ==', 'type !=', 'TargetClosest', 'wet', 'collideX', 'collideY'
-          ])
-          dump_context('AI_005_EaterOfSouls', [
-              'Projectile.NewProjectile', 'NewProjectile', 'NPC.NewNPC', 'NewNPC', 'getGoodWorld',
-              'stealth', 'itemAnimation', 'ai[1]', 'AI_GlobalFiringDistanceCheck', 'Collision.CanHit',
-              'type == 42', 'type == 176', 'type == 139', 'type == 619', 'type == 6'
-          ], radius=6)
-          dump_context('AI_GlobalFiringDistanceCheck', ['return', 'MaxWorldViewSize', 'Inflate'], radius=3)
+          base, body = extract('AI_005_EaterOfSouls')
+          print('=== PROBE_139_CONTEXT ===')
+          for i, line in enumerate(body):
+              if 60280 <= base+i <= 60322:
+                  print(f'{base+i}: {line}')
           PY
