@@ -23,7 +23,7 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Patch phase ordering and atomic landmark guards
+      - name: Patch phase ordering and bounded landmark placement
         shell: python
         run: |
           from pathlib import Path
@@ -110,6 +110,36 @@ jobs:
           text = replace_once(old, new, "floating lake guard")
 
           old = (
+              '        foreach (HorizontalSpan span in spans)\n'
+              '        {\n'
+              '            if (state.PyramidsPlaced >= state.PyramidTarget)\n'
+              '                break;\n'
+              '            int surfaceY = FindFirstActiveY(context.Workspace, span.Center, Math.Max(8, layers.Surface - 48), Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer));\n'
+              '            if (surfaceY >= 0 && TryBuildPyramid(context, chests, span, span.Center, surfaceY, state.PyramidsPlaced))\n'
+              '                state.PyramidsPlaced++;\n'
+              '        }'
+          )
+          new = (
+              '        foreach (HorizontalSpan span in spans)\n'
+              '        {\n'
+              '            if (state.PyramidsPlaced >= state.PyramidTarget)\n'
+              '                break;\n'
+              '            int step = Math.Max(5, span.Width / 8);\n'
+              '            int[] offsets = [0, -step, step, -2 * step, 2 * step];\n'
+              '            foreach (int offset in offsets)\n'
+              '            {\n'
+              '                int centerX = Math.Clamp(span.Center + offset, span.Left + 4, span.Right - 4);\n'
+              '                int surfaceY = FindFirstActiveY(context.Workspace, centerX, Math.Max(8, layers.Surface - 28), Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer));\n'
+              '                if (surfaceY < 0 || !TryBuildPyramid(context, chests, span, centerX, surfaceY, state.PyramidsPlaced))\n'
+              '                    continue;\n'
+              '                state.PyramidsPlaced++;\n'
+              '                break;\n'
+              '            }\n'
+              '        }'
+          )
+          text = replace_once(old, new, "pyramid placement search")
+
+          old = (
               '        int topY = surfaceY - height + 4;\n'
               '        if (topY < 4)\n'
               '            return false;\n'
@@ -175,7 +205,7 @@ jobs:
           git config user.name "Xekep"
           git config user.email "Xekep@users.noreply.github.com"
           git add src/TerraRuntime.World/Generation/Optimized/OptimizedLandmarkWorldGenerationProvider.cs .github/workflows/one-shot-fix-optimized-landmark-surface-probe.yml
-          git commit -m "Fix optimized landmark phase ordering" -m "Run landmarks after guaranteed Life Crystals and persistent treasure, reject whole landmark placements that intersect protected progression content, and ignore sky terrain during ground discovery. Prove focused optimized-worldgen regressions and the full test suite before pushing."
+          git commit -m "Fix optimized landmark phase ordering" -m "Run landmarks after guaranteed Life Crystals and persistent treasure, use bounded alternate placement candidates when protected progression content occupies the preferred landmark location, and ignore sky terrain during ground discovery. Prove focused optimized-worldgen regressions and the full test suite before pushing."
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
