@@ -68,19 +68,19 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458 : IWorldGener
         Add(builder, MountCavesId, WorldGenerationRngMode.VanillaSharedRng, TunnelsId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.MountCaves, state));
 
-        Add(builder, DirtWallBackgroundsId, WorldGenerationRngMode.IsolatedDeterministic, MountCavesId,
+        Add(builder, DirtWallBackgroundsId, WorldGenerationRngMode.VanillaSharedRng, MountCavesId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.DirtWallBackgrounds, state));
-        Add(builder, RocksInDirtId, WorldGenerationRngMode.IsolatedDeterministic, DirtWallBackgroundsId,
+        Add(builder, RocksInDirtId, WorldGenerationRngMode.VanillaSharedRng, DirtWallBackgroundsId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.RocksInDirt, state));
-        Add(builder, DirtInRocksId, WorldGenerationRngMode.IsolatedDeterministic, RocksInDirtId,
+        Add(builder, DirtInRocksId, WorldGenerationRngMode.VanillaSharedRng, RocksInDirtId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.DirtInRocks, state));
-        Add(builder, ClayId, WorldGenerationRngMode.IsolatedDeterministic, DirtInRocksId,
+        Add(builder, ClayId, WorldGenerationRngMode.VanillaSharedRng, DirtInRocksId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.Clay, state));
-        Add(builder, SmallHolesId, WorldGenerationRngMode.IsolatedDeterministic, ClayId,
+        Add(builder, SmallHolesId, WorldGenerationRngMode.VanillaSharedRng, ClayId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.SmallHoles, state));
         Add(builder, DirtLayerCavesId, WorldGenerationRngMode.VanillaSharedRng, SmallHolesId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.DirtLayerCaves, state));
-        Add(builder, RockLayerCavesId, WorldGenerationRngMode.IsolatedDeterministic, DirtLayerCavesId,
+        Add(builder, RockLayerCavesId, WorldGenerationRngMode.VanillaSharedRng, DirtLayerCavesId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.RockLayerCaves, state));
         Add(builder, SurfaceCavesId, WorldGenerationRngMode.VanillaSharedRng, RockLayerCavesId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.SurfaceCaves, state));
@@ -261,25 +261,25 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
                 ApplyMountCaves(context, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.DirtWallBackgrounds:
-                ApplyDirtWallBackgrounds(context, grid, new IsolatedRandom(context.Random));
+                ApplyDirtWallBackgrounds(context, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.RocksInDirt:
-                ApplyRocksInDirt(context, grid, new IsolatedRandom(context.Random));
+                ApplyRocksInDirt(context, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.DirtInRocks:
-                ApplyDirtInRocks(context, grid, new IsolatedRandom(context.Random));
+                ApplyDirtInRocks(context, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.Clay:
-                ApplyClay(context, grid, new IsolatedRandom(context.Random));
+                ApplyClay(context, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.SmallHoles:
-                ApplySmallHoles(context, grid, new IsolatedRandom(context.Random));
+                ApplySmallHoles(context, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.DirtLayerCaves:
                 ApplyDirtLayerCaves(context, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.RockLayerCaves:
-                ApplyRockLayerCaves(context, grid, new IsolatedRandom(context.Random));
+                ApplyRockLayerCaves(context, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.SurfaceCaves:
                 ApplySurfaceCaves(context, grid, RequireVanilla(context));

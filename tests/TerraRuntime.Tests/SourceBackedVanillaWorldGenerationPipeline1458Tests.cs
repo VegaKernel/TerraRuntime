@@ -56,7 +56,9 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458Tests
 
         Assert.Equal(expected, builder.Entries.Select(static e => e.Descriptor.Id.Value));
         Assert.Equal(WorldGenerationRngMode.VanillaSharedRng, Find(builder, "terraria:1.4.5.8/Dunes").Descriptor.RngMode);
-        Assert.Equal(WorldGenerationRngMode.IsolatedDeterministic, Find(builder, "terraria:1.4.5.8/RocksInDirt").Descriptor.RngMode);
+        Assert.Equal(WorldGenerationRngMode.VanillaSharedRng, Find(builder, "terraria:1.4.5.8/RocksInDirt").Descriptor.RngMode);
+        Assert.Equal(WorldGenerationRngMode.VanillaSharedRng, Find(builder, "terraria:1.4.5.8/DirtWallBackgrounds").Descriptor.RngMode);
+        Assert.Equal(WorldGenerationRngMode.VanillaSharedRng, Find(builder, "terraria:1.4.5.8/Clay").Descriptor.RngMode);
         Assert.Equal(WorldGenerationRngMode.VanillaSharedRng, Find(builder, "terraria:1.4.5.8/Jungle").Descriptor.RngMode);
         Assert.Equal(WorldGenerationRngMode.IsolatedDeterministic, Find(builder, "terraria:1.4.5.8/Biomes").Descriptor.RngMode);
         Assert.Contains(
