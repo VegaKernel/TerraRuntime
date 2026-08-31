@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using TerraRuntime.World;
 
-if (args.Length is < 2 or > 4)
+if (args.Length < 2)
 {
     Console.Error.WriteLine(
         "Usage: TerraRuntime.WorldCompare <reference.wld> <candidate.wld> [--json <report.json>] [--enforce]");
