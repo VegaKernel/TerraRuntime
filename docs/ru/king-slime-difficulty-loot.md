@@ -6,7 +6,9 @@ TerraRuntime теперь владеет source-backed gameplay-семантик
 
 Boss bag и per-player Master rules Terraria используют `NPC.playerInteraction[playerSlot]`. TerraRuntime проецирует это состояние через `RuntimeNpcPlayerInteractionLedger`:
 
-- взаимодействие записывается только после успешно закоммиченного урона от предмета или projectile игрока;
+- после принятия точной NPC generation атака предметом/projectile игрока записывает interaction до результата последующего strike, как в исходном порядке packet 28;
+- поэтому generation-valid invulnerable target всё равно может записать interaction игрока, даже если само изменение HP отвергнуто;
+- stale NPC generations и некорректные damage requests interaction credit не получают;
 - NPC-сторона привязана к точному generation-safe `NpcHandle`, поэтому переиспользованный NPC slot не наследует старые взаимодействия;
 - исходной идентичностью игрока остаётся Terraria player slot;
 - в момент смерти доставка повторно проверяет, какие записанные slots сейчас заняты активными игроками;
