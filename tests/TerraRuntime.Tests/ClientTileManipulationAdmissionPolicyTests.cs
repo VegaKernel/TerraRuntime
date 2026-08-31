@@ -5,17 +5,16 @@ namespace TerraRuntime.Tests;
 public sealed class ClientTileManipulationAdmissionPolicyTests
 {
     [Theory]
-    [InlineData((byte)TerrariaTileManipulationAction.KillTile, ClientTileManipulationAdmissionResult.Admitted)]
-    [InlineData((byte)TerrariaTileManipulationAction.PlaceTile, ClientTileManipulationAdmissionResult.Admitted)]
-    [InlineData((byte)TerrariaTileManipulationAction.KillWall, ClientTileManipulationAdmissionResult.AuthorityUnavailable)]
-    [InlineData((byte)TerrariaTileManipulationAction.PlaceWall, ClientTileManipulationAdmissionResult.AuthorityUnavailable)]
-    [InlineData((byte)TerrariaTileManipulationAction.KillTileNoItem, ClientTileManipulationAdmissionResult.AuthorityUnavailable)]
-    [InlineData(255, ClientTileManipulationAdmissionResult.UnknownWireAction)]
-    public void Admission_is_runtime_owned_and_fail_closed(
-        byte rawAction,
-        ClientTileManipulationAdmissionResult expected)
+    [InlineData((byte)TerrariaTileManipulationAction.KillTile, (byte)ClientTileManipulationAdmissionResult.Admitted)]
+    [InlineData((byte)TerrariaTileManipulationAction.PlaceTile, (byte)ClientTileManipulationAdmissionResult.Admitted)]
+    [InlineData((byte)TerrariaTileManipulationAction.KillWall, (byte)ClientTileManipulationAdmissionResult.AuthorityUnavailable)]
+    [InlineData((byte)TerrariaTileManipulationAction.PlaceWall, (byte)ClientTileManipulationAdmissionResult.AuthorityUnavailable)]
+    [InlineData((byte)TerrariaTileManipulationAction.KillTileNoItem, (byte)ClientTileManipulationAdmissionResult.AuthorityUnavailable)]
+    [InlineData(255, (byte)ClientTileManipulationAdmissionResult.UnknownWireAction)]
+    public void Admission_is_runtime_owned_and_fail_closed(byte rawAction, byte expectedRaw)
     {
         var state = new TerrariaTileManipulationState(rawAction, 10, 10, 0, 0);
+        ClientTileManipulationAdmissionResult expected = (ClientTileManipulationAdmissionResult)expectedRaw;
 
         ClientTileManipulationAdmissionResult result =
             ClientTileManipulationAdmissionPolicy.Evaluate(in state, out TerrariaTileManipulationAction action);
