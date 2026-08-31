@@ -75,7 +75,7 @@ public sealed class TerrariaTileManipulationCodecTests
     [InlineData((byte)TerrariaTileManipulationAction.PlaceTile, true)]
     [InlineData((byte)TerrariaTileManipulationAction.KillWall, false)]
     [InlineData((byte)TerrariaTileManipulationAction.PlaceWall, false)]
-    [InlineData((byte)TerrariaTileManipulationAction.KillTileNoItem, true)]
+    [InlineData((byte)TerrariaTileManipulationAction.KillTileNoItem, false)]
     [InlineData(255, false)]
     public void Runtime_action_admission_is_explicit_and_fail_closed(byte rawAction, bool admitted)
     {
@@ -88,16 +88,19 @@ public sealed class TerrariaTileManipulationCodecTests
             Assert.Equal(rawAction, (byte)action);
     }
 
-    [Fact]
-    public void Wall_action_remains_wire_decodable_even_while_runtime_authority_is_disabled()
+    [Theory]
+    [InlineData((byte)TerrariaTileManipulationAction.KillWall)]
+    [InlineData((byte)TerrariaTileManipulationAction.PlaceWall)]
+    [InlineData((byte)TerrariaTileManipulationAction.KillTileNoItem)]
+    public void Wire_known_but_unproven_actions_remain_decodable_while_runtime_authority_is_disabled(byte rawAction)
     {
-        byte[] payload = [(byte)TerrariaTileManipulationAction.PlaceWall, 10, 0, 20, 0, 1, 0, 0];
+        byte[] payload = [rawAction, 10, 0, 20, 0, 1, 0, 0];
         TerrariaFrame frame = Frame((byte)TerrariaMessageId.TileManipulation, new ReadOnlySequence<byte>(payload));
 
         Assert.Equal(
             TerrariaTileManipulationDecodeResult.Decoded,
             TerrariaTileManipulationCodec.TryDecode(in frame, out TerrariaTileManipulationState state));
-        Assert.Equal((byte)TerrariaTileManipulationAction.PlaceWall, state.Action);
+        Assert.Equal(rawAction, state.Action);
         Assert.False(state.TryGetKnownAction(out _));
     }
 
