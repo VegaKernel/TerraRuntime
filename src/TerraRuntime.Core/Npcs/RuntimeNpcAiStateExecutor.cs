@@ -18,9 +18,7 @@ public interface INpcAiPeerSnapshotConsumer
     void SetNpcPeers(ReadOnlySpan<NpcSnapshot> peers);
 }
 
-/// <summary>
-/// Bounded accounting for one state-transition pass over the live NPC table.
-/// </summary>
+/// <summary>Bounded accounting for one state-transition pass over the live NPC table.</summary>
 public readonly record struct NpcAiStateTickSummary(
     int Examined,
     int Proposed,
@@ -28,17 +26,12 @@ public readonly record struct NpcAiStateTickSummary(
     int Rejected);
 
 /// <summary>
-/// Runs allocation-stable NPC AI state transitions against a pre-pass snapshot of the live NPC table.
-/// The executor and store are authoritative-thread components. A proposed transition is committed only
-/// if the exact generation captured at the start of the pass is still current, so reentrant lifecycle
-/// changes cannot let stale AI work mutate a replacement NPC in the same slot. Optional NPC spawn intents
-/// are planned speculatively into executor-owned bounded scratch storage and are applied in order only after
-/// that source-state commit succeeds; newly spawned NPCs therefore cannot enter the same pre-pass or escape
-/// from a rejected/stale transition. Decorator chains expose their inner stepper through
-/// INpcAiStateStepperWrapper so optional planners and post-commit observers remain discoverable under production
-/// composition layers.
+/// Runs allocation-stable NPC AI state transitions against a pre-pass snapshot of the live NPC table. Speculative
+/// spawn intents are collected before source commit but are applied only after it succeeds. Irreversible effects that
+/// require exact source ordering use <see cref="INpcAiStatePostCommitEffect"/> instead; that capability receives only
+/// a narrow generation-safe mutation sink after the source update is accepted.
 /// </summary>
-public sealed class RuntimeNpcAiStateExecutor
+public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
 {
     private readonly RuntimeNpcStore _npcs;
     private readonly NpcSnapshot[] _snapshotBuffer;
@@ -69,6 +62,8 @@ public sealed class RuntimeNpcAiStateExecutor
             NpcAiStateStepperComposition.FindCapability<INpcAiSpawnIntentPlanner>(stepper);
         INpcAiStatePostCommitObserver? postCommitObserver =
             NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitObserver>(stepper);
+        INpcAiStatePostCommitEffect? postCommitEffect =
+            NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(stepper);
         INpcAiPeerSnapshotConsumer? peerConsumer =
             NpcAiStateStepperComposition.FindCapability<INpcAiPeerSnapshotConsumer>(stepper);
         peerConsumer?.SetNpcPeers(_snapshotBuffer.AsSpan(0, examined));
@@ -94,6 +89,7 @@ public sealed class RuntimeNpcAiStateExecutor
             {
                 applied++;
                 postCommitObserver?.NpcAiStateCommitted(in npc, in committed);
+                postCommitEffect?.ApplyCommittedEffect(in npc, in committed, this);
                 commitSink?.NpcAiStateCommitted(in committed);
 
                 for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
@@ -138,5 +134,37 @@ public sealed class RuntimeNpcAiStateExecutor
         }
 
         return new NpcAiStateTickSummary(examined, proposed, applied, rejected);
+    }
+
+    bool INpcAiCommittedNpcMutationSink.TrySpawn(
+        in NpcAiSpawnIntent intent,
+        out NpcSnapshot spawned) =>
+        RuntimeNpcSpawnIntentApplier.TryApply(_npcs, in intent, out spawned);
+
+    bool INpcAiCommittedNpcMutationSink.TryUpdateVelocity(
+        NpcHandle npc,
+        float velocityX,
+        float velocityY,
+        out NpcSnapshot committed)
+    {
+        committed = default;
+        if (!float.IsFinite(velocityX) ||
+            !float.IsFinite(velocityY) ||
+            !_npcs.TryGet(npc, out NpcSnapshot current))
+        {
+            return false;
+        }
+
+        var update = new NpcStateUpdate(
+            current.Type,
+            current.NetId,
+            current.PositionX,
+            current.PositionY,
+            velocityX,
+            velocityY,
+            current.Target,
+            current.Ai,
+            current.Simulation);
+        return _npcs.TryUpdate(current.Handle, in update, out committed);
     }
 }
