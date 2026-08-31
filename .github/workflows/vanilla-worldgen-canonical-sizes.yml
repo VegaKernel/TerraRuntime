@@ -71,6 +71,94 @@ jobs:
           -c Release
           -- artifacts/terraruntime-vanilla-${{ matrix.name }}.wld
 
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+          expected="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          echo "Pinned TerrariaServer.exe SHA-256 verified."
+
+      - name: Load vanilla ${{ matrix.name }} world in official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server="$(realpath "$server")"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/terraruntime-vanilla-${{ matrix.name }}.wld"
+          config="$GITHUB_WORKSPACE/artifacts/official-${{ matrix.name }}-serverconfig.txt"
+          host_log="$GITHUB_WORKSPACE/artifacts/official-${{ matrix.name }}-server.log"
+          fifo="$GITHUB_WORKSPACE/artifacts/official-${{ matrix.name }}-server.stdin"
+
+          cat > "$config" <<EOF
+          world=$world
+          autocreate=0
+          maxplayers=1
+          port=17791
+          password=
+          motd=TerraRuntime canonical ${{ matrix.name }} vanilla world acceptance
+          secure=0
+          upnp=0
+          npcstream=0
+          priority=0
+          EOF
+
+          rm -f "$fifo"
+          mkfifo "$fifo"
+          exec 9<> "$fifo"
+          (
+            cd "$server_dir"
+            "./$server_name" -config "$config" < "$fifo"
+          ) > "$host_log" 2>&1 &
+          official_pid=$!
+
+          cleanup() {
+            printf 'exit\n' >&9 2>/dev/null || true
+            sleep 1
+            kill "$official_pid" 2>/dev/null || true
+            wait "$official_pid" 2>/dev/null || true
+            exec 9>&- || true
+          }
+          trap cleanup EXIT
+
+          listener=false
+          for _ in $(seq 1 180); do
+            if ! kill -0 "$official_pid" 2>/dev/null; then
+              cat "$host_log" >&2
+              echo "Official TerrariaServer exited while loading the ${{ matrix.name }} world." >&2
+              exit 1
+            fi
+            if ss -ltn | grep -q ':17791 '; then
+              listener=true
+              break
+            fi
+            sleep 0.5
+          done
+
+          cat "$host_log"
+          if [[ "$listener" != true ]]; then
+            echo "Official TerrariaServer did not open port 17791 for the ${{ matrix.name }} world." >&2
+            exit 1
+          fi
+          echo "Official TerrariaServer accepted the ${{ matrix.name }} vanilla world."
+
       - name: Upload canonical-size evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -79,5 +167,7 @@ jobs:
           path: |
             artifacts/terraruntime-vanilla-${{ matrix.name }}.wld
             artifacts/worldgen-${{ matrix.name }}-resource-usage.txt
+            artifacts/official-${{ matrix.name }}-server.log
+            artifacts/official-${{ matrix.name }}-serverconfig.txt
           if-no-files-found: warn
           retention-days: 7
