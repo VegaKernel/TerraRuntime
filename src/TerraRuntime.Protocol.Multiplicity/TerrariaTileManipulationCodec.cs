@@ -5,8 +5,9 @@ using TerraRuntime.Protocol;
 namespace TerraRuntime.Protocol.Multiplicity;
 
 /// <summary>
-/// Source-verified TerrariaServer 1.4.5.8 packet-17 action identities currently consumed by TerraRuntime.
-/// Extend only when the corresponding MessageBuffer behavior is pinned by the source-contract workflow.
+/// Source-verified TerrariaServer 1.4.5.8 packet-17 action identities currently represented by TerraRuntime.
+/// Wire identity and runtime authority are deliberately separate: an enum value may be source-known while the
+/// authoritative runtime still fails it closed until the required held-item/tool and world-state semantics exist.
 /// </summary>
 public enum TerrariaTileManipulationAction : byte
 {
@@ -24,16 +25,25 @@ public readonly record struct TerrariaTileManipulationState(
     short Data,
     byte Style)
 {
+    /// <summary>
+    /// Resolves packet-17 actions that are currently admitted to the authoritative runtime path.
+    /// Wall actions remain wire-known but fail closed here until TerraRuntime can prove the selected
+    /// wall item / hammer capability and inventory transition rather than merely checking for a non-empty slot.
+    /// </summary>
     public bool TryGetKnownAction(out TerrariaTileManipulationAction action)
     {
-        if (Action <= (byte)TerrariaTileManipulationAction.KillTileNoItem)
+        action = Action switch
         {
-            action = (TerrariaTileManipulationAction)Action;
-            return true;
-        }
+            (byte)TerrariaTileManipulationAction.KillTile => TerrariaTileManipulationAction.KillTile,
+            (byte)TerrariaTileManipulationAction.PlaceTile => TerrariaTileManipulationAction.PlaceTile,
+            (byte)TerrariaTileManipulationAction.KillTileNoItem => TerrariaTileManipulationAction.KillTileNoItem,
+            _ => default
+        };
 
-        action = default;
-        return false;
+        return Action is
+            (byte)TerrariaTileManipulationAction.KillTile or
+            (byte)TerrariaTileManipulationAction.PlaceTile or
+            (byte)TerrariaTileManipulationAction.KillTileNoItem;
     }
 }
 
