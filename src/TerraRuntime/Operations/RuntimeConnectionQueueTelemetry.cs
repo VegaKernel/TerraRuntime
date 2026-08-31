@@ -106,7 +106,7 @@ internal sealed class RuntimeConnectionQueueTelemetry
             TrackedQueues: trackedQueues,
             ConfiguredMaxFrames: checked((int)Math.Min(int.MaxValue, configuredMaxFrames)),
             ConfiguredMaxQueuedBytes: configuredMaxQueuedBytes,
-            QueuedFrames: queuedFrames,
+            QueuedFrames: checked((int)Math.Min(int.MaxValue, queuedFrames)),
             QueuedBytes: queuedBytes,
             PeakQueuedFrames: peakQueuedFrames,
             PeakQueuedBytes: peakQueuedBytes,
