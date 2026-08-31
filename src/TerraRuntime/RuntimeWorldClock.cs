@@ -15,6 +15,7 @@ internal interface IVanillaNpcWorldEventState
     bool SlimeBlueSpawnUnlocked { get; }
 
     bool TryStopSlimeRain(IKingSlimeDeathRandom random);
+    void MarkSlimeBlueSpawnUnlocked();
 }
 
 /// <summary>Random calls owned by TerrariaServer 1.4.5.8 King Slime death effects.</summary>
@@ -137,7 +138,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         BloodMoonActive = active && !DayTime;
     }
 
-    internal void MarkSlimeBlueSpawnUnlocked() => SlimeBlueSpawnUnlocked = true;
+    public void MarkSlimeBlueSpawnUnlocked() => SlimeBlueSpawnUnlocked = true;
 
     public bool TryStopSlimeRain(IKingSlimeDeathRandom random)
     {
