@@ -10,6 +10,7 @@ on:
       - 'tools/TerraRuntime.AtomicSaveCrashProbe/Program.cs'
       - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterRecoveryTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldCheckpointRecoveryTests.cs'
+      - 'tests/TerraRuntime.PersistenceRecovery.Tests/**'
       - '.github/workflows/interrupted-world-save-recovery.yml'
   workflow_dispatch:
 
@@ -33,13 +34,11 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Run focused recovery tests
+      - name: Run isolated recovery tests
         shell: bash
         run: |
           set -euo pipefail
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj \
-            -c Release \
-            --filter 'FullyQualifiedName~AtomicSaveFileWriterRecoveryTests|FullyQualifiedName~RuntimeWorldCheckpointRecoveryTests'
+          dotnet test tests/TerraRuntime.PersistenceRecovery.Tests/TerraRuntime.PersistenceRecovery.Tests.csproj -c Release
 
       - name: Download official TerrariaServer 1.4.5.8
         shell: bash
