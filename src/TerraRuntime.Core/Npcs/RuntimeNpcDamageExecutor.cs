@@ -59,9 +59,9 @@ public static class VanillaNpcDamageResolver
 /// Lethal damage commits Life=0 but deliberately does not despawn the NPC or run loot/death
 /// side effects; those observable ordering rules belong to the later death pipeline. Runtime-owned
 /// invulnerability and dynamic defense are checked from the same NPC revision as life/AI state so transient boss
-/// phases cannot race separate combat flags. When an interaction ledger is supplied, a player slot is recorded only
-/// after its damage transition commits, matching the source meaning of NPC.playerInteraction without crediting a
-/// rejected/stale hit.
+/// phases cannot race separate combat flags. When an interaction ledger is supplied, a generation-valid player
+/// item/projectile attack records the player slot before later strike rejection, matching TerrariaServer packet-28
+/// ordering where NPC.PlayerInteraction runs after the NPC-generation check and before StrikeNPC.
 /// </summary>
 public sealed class RuntimeNpcDamageExecutor
 {
@@ -81,9 +81,19 @@ public sealed class RuntimeNpcDamageExecutor
 
     public bool TryApply(in NpcDamageRequest request, out NpcDamageResult result)
     {
-        if (!request.IsValid ||
-            !_store.TryGet(request.Target, out NpcSnapshot current) ||
-            current.Simulation.DontTakeDamage ||
+        if (!request.IsValid || !_store.TryGet(request.Target, out NpcSnapshot current))
+        {
+            result = default;
+            return false;
+        }
+
+        // MessageBuffer packet 28 calls NPC.PlayerInteraction after validating the exact NPC generation and before
+        // StrikeNPC. Keep that observable ordering: invulnerable/rejected strikes may still grant interaction credit,
+        // while stale generations and malformed requests never do.
+        if (request.Source.Kind is DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)
+            _interactions?.TryMark(current.Handle, request.Source.Player);
+
+        if (current.Simulation.DontTakeDamage ||
             current.Simulation.LifeMax <= 0 ||
             current.Simulation.Life <= 0 ||
             !VanillaNpcDefinitionCatalog.TryGet(
@@ -142,9 +152,6 @@ public sealed class RuntimeNpcDamageExecutor
             result = default;
             return false;
         }
-
-        if (request.Source.Kind is DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)
-            _interactions?.TryMark(committed.Handle, request.Source.Player);
 
         result = new NpcDamageResult(
             committed.Handle,
