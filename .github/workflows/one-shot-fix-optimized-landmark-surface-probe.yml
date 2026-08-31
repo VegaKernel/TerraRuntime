@@ -1,4 +1,4 @@
-name: One-shot optimized landmark surface probe fix
+name: One-shot optimized landmark phase ordering fix
 
 on:
   push:
@@ -23,13 +23,48 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Patch ground probes and sky landmark collision guards
+      - name: Patch landmark phase ordering and protected-content writes
         shell: python
         run: |
           from pathlib import Path
 
           path = Path("src/TerraRuntime.World/Generation/Optimized/OptimizedLandmarkWorldGenerationProvider.cs")
           text = path.read_text(encoding="utf-8")
+
+          old = '''    private static readonly WorldGenerationPassId OrganicFeaturesId = new("terraruntime:optimized/organic-features");
+    private static readonly WorldGenerationPassId LifeCrystalsId = new("terraruntime:optimized/life-crystals");
+    private static readonly WorldGenerationPassId PlayabilityValidationId = new("terraruntime:optimized/playability-validation");'''
+          new = '''    private static readonly WorldGenerationPassId TreasureId = new("terraruntime:optimized/treasure");
+    private static readonly WorldGenerationPassId MetadataId = new("terraruntime:optimized/metadata");
+    private static readonly WorldGenerationPassId PlayabilityValidationId = new("terraruntime:optimized/playability-validation");'''
+          if text.count(old) != 1:
+              raise SystemExit("expected landmark pass-id block not found")
+          text = text.replace(old, new)
+
+          old = '''            if (entry.Descriptor.Id == LifeCrystalsId)
+            {
+                Add(builder, LandmarksId, OrganicFeaturesId, new LandmarkPass(state));
+                builder.Add(CloneDescriptor(entry.Descriptor, [LandmarksId]), entry.Pass);
+                insertedLandmarks = true;
+                continue;
+            }
+
+            builder.Add(entry.Descriptor, entry.Pass);'''
+          new = '''            if (entry.Descriptor.Id == MetadataId)
+            {
+                // Run landmarks only after the playability overlay has committed Life Crystals and persistent treasure.
+                // Metadata plus both validators then observe the final candidate instead of allowing later passes to
+                // invalidate landmark chest anchors.
+                Add(builder, LandmarksId, TreasureId, new LandmarkPass(state));
+                builder.Add(CloneDescriptor(entry.Descriptor, [LandmarksId]), entry.Pass);
+                insertedLandmarks = true;
+                continue;
+            }
+
+            builder.Add(entry.Descriptor, entry.Pass);'''
+          if text.count(old) != 1:
+              raise SystemExit("expected old landmark insertion block not found")
+          text = text.replace(old, new)
 
           replacements = {
               "Math.Max(6, layers.Surface - 55)": "Math.Max(6, layers.Surface - 28)",
@@ -42,17 +77,100 @@ jobs:
               text = text.replace(old, new)
               print(f"replaced {count} occurrence(s): {old} -> {new}")
 
-          old = """        if (floorY < 0 || left < 3 || left + width >= context.Workspace.WidthTiles - 3 || floorY - height < 3)\n            return false;\n        int top = floorY - height;"""
-          new = """        if (floorY < 0 || left < 3 || left + width >= context.Workspace.WidthTiles - 3 || floorY - height < 3)\n            return false;\n        if (HasProtectedContentNearby(context.Workspace, island.Center, floorY - height / 2, width))\n            return false;\n        int top = floorY - height;"""
+          old = '''        if (floorY < 0 || left < 3 || left + width >= context.Workspace.WidthTiles - 3 || floorY - height < 3)
+            return false;
+        int top = floorY - height;'''
+          new = '''        if (floorY < 0 || left < 3 || left + width >= context.Workspace.WidthTiles - 3 || floorY - height < 3)
+            return false;
+        if (HasProtectedContentNearby(context.Workspace, island.Center, floorY - height / 2, width))
+            return false;
+        int top = floorY - height;'''
           if text.count(old) != 1:
               raise SystemExit(f"expected one sky-house insertion point, found {text.count(old)}")
           text = text.replace(old, new)
 
-          old = """        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);\n        int depth = Math.Clamp(island.Width / 16, 3, 5);\n        int waterCells = 0;"""
-          new = """        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);\n        int depth = Math.Clamp(island.Width / 16, 3, 5);\n        if (HasProtectedContentNearby(workspace, centerX, floorY, halfWidth + 6))\n            return false;\n        int waterCells = 0;"""
+          old = '''        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);
+        int depth = Math.Clamp(island.Width / 16, 3, 5);
+        int waterCells = 0;'''
+          new = '''        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);
+        int depth = Math.Clamp(island.Width / 16, 3, 5);
+        if (HasProtectedContentNearby(workspace, centerX, floorY, halfWidth + 6))
+            return false;
+        int waterCells = 0;'''
           if text.count(old) != 1:
               raise SystemExit(f"expected one floating-lake insertion point, found {text.count(old)}")
           text = text.replace(old, new)
+
+          old = '''    private static void SetBlock(IWorldGenerationWorkspace workspace, int x, int y, ushort type, ushort wall = 0, byte wallColor = 0)
+    {
+        if ((uint)x >= (uint)workspace.WidthTiles || (uint)y >= (uint)workspace.HeightTiles)
+            return;
+        var tile = new WorldGenerationTile(type, wall, 0, 0, WorldGenerationTileFlags.Active, 0, 0, wallColor, 0, WorldGenerationLiquidKind.Water);'''
+          new = '''    private static void SetBlock(IWorldGenerationWorkspace workspace, int x, int y, ushort type, ushort wall = 0, byte wallColor = 0)
+    {
+        if ((uint)x >= (uint)workspace.WidthTiles || (uint)y >= (uint)workspace.HeightTiles)
+            return;
+        if (workspace.TryGetTile(x, y, out WorldGenerationTile existing) && IsProgressionProtected(existing))
+            return;
+        var tile = new WorldGenerationTile(type, wall, 0, 0, WorldGenerationTileFlags.Active, 0, 0, wallColor, 0, WorldGenerationLiquidKind.Water);'''
+          if text.count(old) != 1:
+              raise SystemExit("SetBlock insertion point not found")
+          text = text.replace(old, new)
+
+          old = '''    private static void SetAir(IWorldGenerationWorkspace workspace, int x, int y, ushort wall = 0, byte wallColor = 0)
+    {
+        if ((uint)x >= (uint)workspace.WidthTiles || (uint)y >= (uint)workspace.HeightTiles)
+            return;
+        var tile = new WorldGenerationTile(0, wall, 0, 0, WorldGenerationTileFlags.None, 0, 0, wallColor, 0, WorldGenerationLiquidKind.Water);'''
+          new = '''    private static void SetAir(IWorldGenerationWorkspace workspace, int x, int y, ushort wall = 0, byte wallColor = 0)
+    {
+        if ((uint)x >= (uint)workspace.WidthTiles || (uint)y >= (uint)workspace.HeightTiles)
+            return;
+        if (workspace.TryGetTile(x, y, out WorldGenerationTile existing) && IsProgressionProtected(existing))
+            return;
+        var tile = new WorldGenerationTile(0, wall, 0, 0, WorldGenerationTileFlags.None, 0, 0, wallColor, 0, WorldGenerationLiquidKind.Water);'''
+          if text.count(old) != 1:
+              raise SystemExit("SetAir insertion point not found")
+          text = text.replace(old, new)
+
+          old = '''    private static void SetLiquid(IWorldGenerationWorkspace workspace, int x, int y, WorldGenerationLiquidKind kind)
+    {
+        if ((uint)x >= (uint)workspace.WidthTiles || (uint)y >= (uint)workspace.HeightTiles)
+            return;
+        var tile = new WorldGenerationTile(0, 0, 0, 0, WorldGenerationTileFlags.None, byte.MaxValue, 0, 0, 0, kind);'''
+          new = '''    private static void SetLiquid(IWorldGenerationWorkspace workspace, int x, int y, WorldGenerationLiquidKind kind)
+    {
+        if ((uint)x >= (uint)workspace.WidthTiles || (uint)y >= (uint)workspace.HeightTiles)
+            return;
+        if (workspace.TryGetTile(x, y, out WorldGenerationTile existing) && IsProgressionProtected(existing))
+            return;
+        var tile = new WorldGenerationTile(0, 0, 0, 0, WorldGenerationTileFlags.None, byte.MaxValue, 0, 0, 0, kind);'''
+          if text.count(old) != 1:
+              raise SystemExit("SetLiquid insertion point not found")
+          text = text.replace(old, new)
+
+          marker = '''    private static bool HasProtectedContentNearby(IWorldGenerationWorkspace workspace, int centerX, int centerY, int radius)
+    {'''
+          helper = '''    private static bool IsProgressionProtected(in WorldGenerationTile tile)
+    {
+        if (tile.LiquidAmount > 0 && tile.LiquidKind is WorldGenerationLiquidKind.Honey or WorldGenerationLiquidKind.Shimmer)
+            return true;
+        if ((tile.Flags & WorldGenerationTileFlags.Active) == 0)
+            return false;
+        return tile.Type == VanillaTileIds.Hive.Value ||
+               tile.Type == VanillaTileIds.LihzahrdBrick.Value ||
+               tile.Type == VanillaTileIds.LihzahrdAltar.Value ||
+               tile.Type == VanillaTileIds.DemonAltar.Value ||
+               tile.Type == VanillaTileIds.Hellforge.Value ||
+               tile.Type == Containers ||
+               VanillaWorldFrameImportance326.IsFrameImportant(tile.Type);
+    }
+
+    private static bool HasProtectedContentNearby(IWorldGenerationWorkspace workspace, int centerX, int centerY, int radius)
+    {'''
+          if text.count(marker) != 1:
+              raise SystemExit("protected-content helper insertion point not found")
+          text = text.replace(marker, helper)
 
           path.write_text(text, encoding="utf-8")
 
@@ -62,13 +180,16 @@ jobs:
       - name: Run optimized worldgen regression class
         run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build -- --filter-class TerraRuntime.Tests.OptimizedWorldGenerationProviderTests
 
+      - name: Run complete test suite
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+
       - name: Commit fix and remove one-shot workflow
         run: |
           rm .github/workflows/one-shot-fix-optimized-landmark-surface-probe.yml
           git config user.name "Xekep"
           git config user.email "Xekep@users.noreply.github.com"
           git add src/TerraRuntime.World/Generation/Optimized/OptimizedLandmarkWorldGenerationProvider.cs .github/workflows/one-shot-fix-optimized-landmark-surface-probe.yml
-          git commit -m "Fix optimized sky landmark collisions" -m "Ignore floating-island terrain while discovering ground-level desert/forest candidates and reject overlapping sky houses or Floating Lakes near protected chest/frame-important content. Prove the deterministic and Crimson optimized-world regression class before pushing."
+          git commit -m "Fix optimized landmark phase ordering" -m "Run landmark generation after guaranteed Life Crystals and persistent treasure but before metadata and validation. Preserve progression-critical/frame-important content during landmark writes and ignore sky terrain when discovering ground-level candidates. Prove the focused optimized-worldgen regressions and full test suite before pushing."
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
