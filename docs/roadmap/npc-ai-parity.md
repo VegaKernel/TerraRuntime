@@ -76,6 +76,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] Dune Splicer, Tomb Crawler and Blood Eel definitions, gaps, always-dig policy and linked chains;
 - [x] Wyvern, Crawltipede and Cultist Dragon patterned chains plus Truffle/Stardust singleton worm profiles;
 - [x] Eater of Worlds classic/expert chain length and missing-link head/tail split repair;
+- [x] pin AI_006 link lifecycle to official TerrariaServer 1.4.5.8 evidence: active-only Eater structural death gates, `aiStyle`-sensitive body split gates, source ordering and `ai[3]` root propagation;
 - [ ] Eater of Worlds death/loot/progression and complete synchronized lifecycle;
 - [x] remaining AI_006 worm family definitions and profiles;
 - [ ] bats, fish, casters, mimics, critters and event enemy families;

@@ -535,9 +535,18 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         VanillaNpcBehaviorContext context,
         out NpcStateUpdate next)
     {
-        bool predecessorActive = TryResolveWormLink(npc.Ai.Ai1, context);
-        bool successorActive = TryResolveWormLink(npc.Ai.Ai0, context);
+        WormLinkState predecessor = ResolveWormLink(npc.Ai.Ai1, context);
+        WormLinkState successor = ResolveWormLink(npc.Ai.Ai0, context);
+        bool predecessorActive = predecessor != WormLinkState.Missing;
+        bool successorActive = successor != WormLinkState.Missing;
+        bool predecessorCompatible = predecessor == WormLinkState.ActiveWorm;
+        bool successorCompatible = successor == WormLinkState.ActiveWorm;
 
+        // Vanilla AI_006 uses raw active-state checks for Eater of Worlds structural death, then
+        // separately uses active+aiStyle compatibility when a body decides whether to split into a
+        // replacement head/tail. Do not collapse those predicates: a live slot reused by a non-worm NPC
+        // keeps an existing head/tail alive but makes an attached body split at that boundary.
+        //
         // TerraRuntime materializes vanilla's immediate chain allocation incrementally. A zero successor
         // with a non-negative construction countdown therefore receives its follower after this commit.
         bool awaitingFollower = npc.Ai.Ai0 == 0f && npc.Ai.Ai2 >= 0f;
@@ -571,7 +580,7 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             return true;
         }
 
-        if (!predecessorActive)
+        if (!predecessorCompatible)
         {
             next = TransformEaterOfWorldsSegment(
                 in npc,
@@ -580,7 +589,7 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             return true;
         }
 
-        if (!successorActive && !awaitingFollower)
+        if (!successorCompatible && !awaitingFollower)
         {
             next = TransformEaterOfWorldsSegment(
                 in npc,
@@ -593,20 +602,35 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         return false;
     }
 
-    private static bool TryResolveWormLink(float rawSlot, VanillaNpcBehaviorContext context)
+    private static WormLinkState ResolveWormLink(float rawSlot, VanillaNpcBehaviorContext context)
     {
         if (!float.IsFinite(rawSlot) ||
             rawSlot < 0f ||
             rawSlot > byte.MaxValue ||
             rawSlot != MathF.Truncate(rawSlot) ||
-            !context.TryFindNpcPeer(checked((byte)rawSlot), out NpcSnapshot peer) ||
-            !NpcTypeId.TryCreate(peer.Type, out NpcTypeId peerType) ||
-            !VanillaNpcDefinitionCatalog.TryGet(peerType, out VanillaNpcDefinition peerDefinition))
+            !context.TryFindNpcPeer(checked((byte)rawSlot), out NpcSnapshot peer))
         {
-            return false;
+            return WormLinkState.Missing;
         }
 
-        return peerDefinition.AiStyle == VanillaNpcAiStyles.Worm;
+        if (!NpcTypeId.TryCreate(peer.Type, out NpcTypeId peerType) ||
+            !VanillaNpcDefinitionCatalog.TryGet(
+                peerType,
+                peer.NetIdentity,
+                out VanillaNpcDefinition peerDefinition) ||
+            peerDefinition.AiStyle != VanillaNpcAiStyles.Worm)
+        {
+            return WormLinkState.ActiveOtherAiStyle;
+        }
+
+        return WormLinkState.ActiveWorm;
+    }
+
+    private enum WormLinkState : byte
+    {
+        Missing = 0,
+        ActiveWorm = 1,
+        ActiveOtherAiStyle = 2
     }
 
     private static NpcStateUpdate TransformEaterOfWorldsSegment(

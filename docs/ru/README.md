@@ -20,6 +20,7 @@
 - [Recovery прерванного save](interrupted-save-recovery.md) — durable recovery markers, SHA-256 sealing, preconditions roll-forward, conflict quarantine и crash windows.
 - [Телеметрия времени save pipeline](save-pipeline-telemetry.md) — границы времени authoritative snapshot, serializer и полной atomic-write транзакции и правила их интерпретации.
 - [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.
+- [Vanilla parity жизненного цикла червей AI_006](npc-worm-ai-parity.md) — source-pinned chain slots, active/style semantics Eater of Worlds, root propagation и оставшиеся lifecycle gaps.
 - [Synchronization и interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis и текущая passthrough policy.
 - [Performance и tick scheduling](performance-runtime.md) — $60\,\mathrm{Hz}$ authoritative loop, bounded mailbox/ingress/apply budgets, per-source fairness, missed-tick policy и правила performance evidence.
 - [Operations и Terminal UI](operations-tui.md) — startup без аргументов, CLI defaults, lifecycle TUI, fallback console, telemetry и правила dashboard extensions.

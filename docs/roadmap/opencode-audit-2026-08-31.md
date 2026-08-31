@@ -62,6 +62,10 @@ The dedicated vanilla guide, general world-generation guide and architecture pag
 
 Fixes: `881970debda8d9307566b8567024322bfb8ad947`, `fc6e39a38f27ea9e8388f5a8fc22bb060a33ad8d`, `a7dfe76e3455c24778f0951cca8f96e6a64a9717`, `1ed91205dc6ce85983faceda88494bcf743e8393`, `b0a914258fe8d93cbe00026393ef1e4bb4dfe0f9`, `e6b2649670b8b8d6a8d57981f8e34d047936d329`.
 
+### Worm AI_006 link-lifecycle source contract
+
+The worm-family slot-link evidence debt is now closed for the admitted chain slice. A dedicated official-binary probe extracts `NPC.AI_006_Worms` from TerrariaServer 1.4.5.8 and fail-closes on the source distinction between active-only Eater of Worlds structural death checks and active-plus-`aiStyle` body split checks. Runtime lifecycle predicates now preserve that distinction, and Eater chain construction propagates the source `ai[3]` root slot instead of zeroing it. Focused tests cover slot reuse, isolated segments and root propagation. Complete Eater death/loot/progression and the broader synchronized lifecycle remain explicitly incomplete.
+
 ## Positive findings
 
 The audited window is not a blanket architectural regression. Object placement follows the intended transaction boundary: authoritative selected inventory state is resolved, an explicit item-to-object mapping is required, world mutation commits before inventory consumption, failed inventory commit rolls the new object back, and replication occurs only after the transaction succeeds.
@@ -77,7 +81,6 @@ These items remain deliberately incomplete rather than being guessed into produc
 - broad client mining parity is still narrow: ordinary `KillTile` authority is currently tied to the imported Copper Pickaxe path and does not yet model the complete vanilla tool-power, tile-specific breakability, special destruction, reach, inventory and drop semantics; wall actions and `KillTileNoItem` must remain runtime-disabled until their own authority contracts exist;
 - non-numeric world-seed hashing still needs a dedicated pinned-source contract. `probe_worldgen_seed.py` was removed from the pass/RNG workflow dependency chain because its CRC helper assembly assumption was not proven; the runtime CRC implementation must not be described as exact source-verified seed-hash parity until that separate contract is established;
 - the `cc3898be2e5eeb9edab6e93c488a91cebd114c26` encoder change removes `MemoryStream` usage but its commit text overstates `ArrayPool`/pooling: `ArrayBufferWriter<byte>` plus `WrittenSpan.ToArray()` still allocates, so the performance claim needs the repository-required before/after allocation and throughput benchmark rather than prose;
-- new worm-family slot-link behavior should receive focused official-source/differential coverage before stronger stale-link or full-lifecycle claims are made. Vanilla AI may intentionally use raw slot references, so this is an evidence task rather than a guessed rewrite.
 
 ## Audit conclusion
 

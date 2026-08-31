@@ -196,9 +196,7 @@ public sealed class VanillaNpcTargetingAiStepper :
                 return 0;
             }
 
-            rootSlot = sourceType == VanillaNpcIds.EaterOfWorldsHead
-                ? 0f
-                : source.Handle.Slot;
+            rootSlot = source.Handle.Slot;
         }
         else
         {
