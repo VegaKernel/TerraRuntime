@@ -54,6 +54,10 @@ The names line up only where the admitted source-backed behavior proves that rel
 
 `VanillaNpcWorldMotionAiStepper` dispatches special movement and platform behavior from `PhysicsFamily`, not from `NpcTypeId`. `VanillaNpcGravity` accepts a resolved definition as its authoritative gameplay overload; raw/typed ID overloads remain compatibility boundaries and resolve the definition before entering the physics implementation.
 
+## Door and tall-gate production wiring
+
+`VanillaNpcWorldMotionAiStepper` now owns the production door-pressure projection and the tall-gate occupancy probe. `RuntimeWorldClock` supplies live `BloodMoonActive` (already filtered by `GetGoodWorld`) and `GetGoodWorld` itself; `VanillaWorldUnbreakableWallScan` supplies `TargetInsideUnbreakableWalls` (8×250 scan for wall 350, color ≥16); `RuntimeTallGateOccupancyProbe` supplies `IsActorFree` by testing live player (`20×42`) and NPC (live hitbox) rectangles via `Collision.EmptyTile(ignoreTiles:true)` semantics. The resolved `VanillaGroundFighterDoorEnvironment` therefore carries the exact vanilla policy inputs, and `VanillaWorldGroundFighterDoorOpeningService` executes the mutation behind `RuntimeGroundFighterDoorOpeningSink` which also replicates packet-19 to playing peers. Tall-gate opening fails closed without the probe; normal doors do not require it.
+
 ## Combat, death and loot
 
 Combat remains owned by `RuntimeNpcDamageExecutor` plus `VanillaNpcDamageResolver`. Lethal damage commits `Life = 0` and does not despawn or roll loot inside the damage resolver.

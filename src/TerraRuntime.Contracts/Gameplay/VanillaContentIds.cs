@@ -325,6 +325,7 @@ public static class VanillaWallIds
     public static readonly WallTypeId SpiderUnsafe = new(62);
     public static readonly WallTypeId HiveUnsafe = new(86);
     public static readonly WallTypeId LihzahrdBrickUnsafe = new(87);
+    public static readonly WallTypeId UnbreakableTemple = new(350);
 
     public static bool TryCreate(int rawType, out WallTypeId type)
     {
@@ -338,3 +339,4 @@ public static class VanillaWallIds
         return true;
     }
 }
+

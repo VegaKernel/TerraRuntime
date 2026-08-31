@@ -11,6 +11,7 @@ namespace TerraRuntime;
 internal interface IVanillaNpcWorldEventState
 {
     bool BloodMoonActive { get; }
+    bool GetGoodWorld { get; }
 }
 
 /// <summary>
@@ -73,6 +74,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public bool GetGoodWorld { get; }
 
     bool IVanillaNpcWorldEventState.BloodMoonActive => BloodMoonActive && !GetGoodWorld;
+    bool IVanillaNpcWorldEventState.GetGoodWorld => GetGoodWorld;
 
     public int DayRate => _dayRate;
 
@@ -160,3 +162,5 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             SlimeRainTime,
             _dayRate);
 }
+
+

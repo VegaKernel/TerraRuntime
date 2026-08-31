@@ -65,6 +65,17 @@ Terraria fact             TerraRuntime implementation decision
 AiStyle = Fighter   !=    BehaviorFamily = GroundFighter
 ```
 
+## GroundFighter door and tall-gate interactions
+
+The admitted `GroundFighter` slice now carries the full source-backed door-pressure path:
+
+- `VanillaWorldZombieDoorContact` accumulates per-contact `ai[1]` pressure (5 per door, 2 per tall-gate, plus type-specific bonuses) and emits a typed `VanillaGroundFighterDoorOpeningIntent` at the vanilla 10-point threshold;
+- `VanillaWorldGroundFighterDoorOpeningService` executes the exact `WorldGen.OpenDoor` / `ShiftTallGate` mutations (locked-door rejection, `1x3 -> 2x3` frame/style transform, paint/coating transfer, `tileCut` clearance, `388 -> 389` type shift);
+- `VanillaWorldUnbreakableWallScan` replicates `UnbreakableWallScan.InsideUnbreakableWalls` (8 directions ×250 tiles, wall 350, color ≥16) and feeds `TargetInsideUnbreakableWalls` into the pressure policy for the `+6` bonus;
+- `RuntimeTallGateOccupancyProbe` implements `Collision.EmptyTile(ignoreTiles:true)` by testing live player (`20×42`) and NPC (live hitbox) rectangles against each gate tile, now wired in `ServerRuntimeState` through `RuntimeGroundFighterDoorOpeningSink` with packet-19 replication.
+
+Normal doors open without an occupancy probe; tall-gates fail closed when any of the five gate tiles is occupied and succeed only when all five are free, matching vanilla `ShiftTallGate` semantics. The `GetGoodWorld` seed flag and `insideUnbreakableWalls` target state are now projected from live world state rather than defaulting to `false`.
+
 ## Why the roadmap AI-decomposition item is complete
 
 The D4 `AI family/behavior decomposition` item tracks ownership and dispatch architecture, not exhaustive support for every Terraria NPC. For the authoritative vanilla NPC slice currently admitted by `VanillaNpcDefinitionCatalog`, family selection, shared context and family behavior are now separate units with executable coverage. Adding future NPC definitions extends this architecture instead of reopening a monolithic dispatcher.

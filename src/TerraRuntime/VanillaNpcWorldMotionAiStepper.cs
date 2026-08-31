@@ -430,3 +430,4 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         _ => NpcLiquidContactKind.Water
     };
 }
+
