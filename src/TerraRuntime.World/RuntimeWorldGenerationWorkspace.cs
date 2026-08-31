@@ -34,6 +34,7 @@ public sealed class RuntimeWorldGenerationWorkspace :
     private WorldGenerationLayers? layers;
     private VanillaWorldSeedProfile1458 vanillaSeedProfile;
     private VanillaWorldGenerationBootstrapState1458? vanillaBootstrapState;
+    private VanillaTerrainGenerationState1458? vanillaTerrainState;
 
     public RuntimeWorldGenerationWorkspace(int widthTiles, int heightTiles)
     {
@@ -50,10 +51,13 @@ public sealed class RuntimeWorldGenerationWorkspace :
 
     internal VanillaWorldSeedProfile1458 VanillaSeedProfile => vanillaSeedProfile;
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
+    internal VanillaTerrainGenerationState1458? VanillaTerrainState => vanillaTerrainState;
 
     internal void SetVanillaSeedProfile(VanillaWorldSeedProfile1458 value) => vanillaSeedProfile = value;
     internal void SetVanillaBootstrapState(VanillaWorldGenerationBootstrapState1458 value) =>
         vanillaBootstrapState = value ?? throw new ArgumentNullException(nameof(value));
+    internal void SetVanillaTerrainState(VanillaTerrainGenerationState1458 value) =>
+        vanillaTerrainState = value;
 
     /// <summary>
     /// Registers one generated chest after its 2x2 tile object has been written. Slot identity is assigned densely in

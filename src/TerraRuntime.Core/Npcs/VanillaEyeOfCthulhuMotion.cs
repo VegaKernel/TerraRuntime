@@ -18,7 +18,9 @@ public readonly record struct VanillaEyeOfCthulhuMotionInput(
     bool TargetDead,
     float TargetCenterX,
     float TargetCenterY,
-    float TargetTopY);
+    float TargetTopY,
+    bool ExpertMode = false,
+    bool GoodWorld = false);
 
 public readonly record struct VanillaEyeOfCthulhuMotionResult(
     float VelocityX,
@@ -28,10 +30,11 @@ public readonly record struct VanillaEyeOfCthulhuMotionResult(
     int TimeLeft);
 
 /// <summary>
-/// Allocation-free classic-mode state machine for TerrariaServer 1.4.5.8 Eye of Cthulhu aiStyle 4.
+/// Allocation-free state machine for the verified TerrariaServer 1.4.5.8 Eye of Cthulhu aiStyle 4 slice.
 /// Cosmetic rotation/dust/sounds are deliberately absent. Phase-one servant cadence is represented in ai[3]
 /// exactly like vanilla; the actual spawn remains an explicit post-commit side effect planned by the runtime.
-/// Expert/Master/getGoodWorld branches are not silently approximated by this classic-mode implementation.
+/// Classic motion and Expert phase one are admitted. Expert transformation/phase two and getGoodWorld branches
+/// are not silently approximated.
 /// </summary>
 public static class VanillaEyeOfCthulhuMotion
 {
@@ -92,10 +95,18 @@ public static class VanillaEyeOfCthulhuMotion
             return true;
         }
 
+        if (input.GoodWorld)
+        {
+            result = default;
+            return false;
+        }
+
         if (ai0 == 0f)
         {
             if (ai1 == 0f)
             {
+                float hoverSpeed = input.ExpertMode ? 7f : PhaseOneHoverSpeed;
+                float hoverAcceleration = input.ExpertMode ? 0.15f : PhaseOneHoverAcceleration;
                 float hoverTargetY = input.TargetCenterY - PhaseOneHoverOffsetY;
                 float hoverDeltaX = input.TargetCenterX - input.NpcCenterX;
                 float hoverDeltaY = hoverTargetY - input.NpcCenterY;
@@ -106,23 +117,28 @@ public static class VanillaEyeOfCthulhuMotion
                     input.NpcCenterY,
                     input.TargetCenterX,
                     hoverTargetY,
-                    PhaseOneHoverSpeed,
-                    PhaseOneHoverAcceleration,
+                    hoverSpeed,
+                    hoverAcceleration,
                     ref velocityX,
                     ref velocityY);
 
                 ai2++;
-                if (ai2 >= PhaseOneHoverTicks)
+                float hoverTicks = input.ExpertMode ? PhaseOneHoverTicks * 0.35f : PhaseOneHoverTicks;
+                if (ai2 >= hoverTicks)
                 {
                     ai1 = 1f;
                     ai2 = 0f;
                     ai3 = 0f;
                     target = VanillaNpcDefinitionCatalog.DefaultTarget;
                 }
-                else if (input.NpcBottomY < input.TargetTopY && hoverDistance < PhaseOneServantRange)
+                else if ((input.NpcBottomY < input.TargetTopY || input.ExpertMode) &&
+                         hoverDistance < PhaseOneServantRange)
                 {
                     ai3++;
-                    if (ai3 >= PhaseOneServantTicks)
+                    float servantTicks = input.ExpertMode
+                        ? PhaseOneServantTicks * 0.4f
+                        : PhaseOneServantTicks;
+                    if (ai3 >= servantTicks)
                         ai3 = 0f;
                 }
             }
@@ -133,7 +149,7 @@ public static class VanillaEyeOfCthulhuMotion
                     input.NpcCenterY,
                     input.TargetCenterX,
                     input.TargetCenterY,
-                    PhaseOneDashSpeed,
+                    input.ExpertMode ? 7f : PhaseOneDashSpeed,
                     ref velocityX,
                     ref velocityY);
                 ai1 = 2f;
@@ -142,9 +158,15 @@ public static class VanillaEyeOfCthulhuMotion
             {
                 ai2++;
                 if (ai2 >= PhaseOneDashSlowdownStart)
-                    SlowAndStop(ref velocityX, ref velocityY, PhaseOneDashSlowdown);
+                {
+                    ScaleVelocity(ref velocityX, ref velocityY, PhaseOneDashSlowdown);
+                    if (input.ExpertMode)
+                        ScaleVelocity(ref velocityX, ref velocityY, 0.985f);
+                    StopSmallVelocity(ref velocityX, ref velocityY);
+                }
 
-                if (ai2 >= PhaseOneDashTicks)
+                float dashTicks = input.ExpertMode ? 100f : PhaseOneDashTicks;
+                if (ai2 >= dashTicks)
                 {
                     ai3++;
                     ai2 = 0f;
@@ -166,7 +188,8 @@ public static class VanillaEyeOfCthulhuMotion
                 return false;
             }
 
-            if ((float)input.Life < input.LifeMax * 0.5f)
+            float transformationLifeFraction = input.ExpertMode ? 0.65f : 0.5f;
+            if ((float)input.Life < input.LifeMax * transformationLifeFraction)
             {
                 ai0 = 1f;
                 ai1 = 0f;
@@ -176,6 +199,14 @@ public static class VanillaEyeOfCthulhuMotion
 
             result = Build(velocityX, velocityY, target, ai0, ai1, ai2, ai3, timeLeft);
             return true;
+        }
+
+        // AI_004's Expert transformation emits random Servants every 20 ticks; phase two also enters
+        // RNG-shaped rapid dashes. Keep those states fail-closed until their side effects are imported.
+        if (input.ExpertMode)
+        {
+            result = default;
+            return false;
         }
 
         if (ai0 == 1f || ai0 == 2f)
@@ -378,8 +409,18 @@ public static class VanillaEyeOfCthulhuMotion
 
     private static void SlowAndStop(ref float velocityX, ref float velocityY, float scale)
     {
+        ScaleVelocity(ref velocityX, ref velocityY, scale);
+        StopSmallVelocity(ref velocityX, ref velocityY);
+    }
+
+    private static void ScaleVelocity(ref float velocityX, ref float velocityY, float scale)
+    {
         velocityX *= scale;
         velocityY *= scale;
+    }
+
+    private static void StopSmallVelocity(ref float velocityX, ref float velocityY)
+    {
         if (velocityX > -VelocityStopEpsilon && velocityX < VelocityStopEpsilon)
             velocityX = 0f;
         if (velocityY > -VelocityStopEpsilon && velocityY < VelocityStopEpsilon)

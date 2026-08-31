@@ -65,6 +65,12 @@ Terraria fact             TerraRuntime implementation decision
 AiStyle = Fighter   !=    BehaviorFamily = GroundFighter
 ```
 
+## Eye of Cthulhu difficulty boundary
+
+`VanillaEyeOfCthulhuMotion` now consumes the live Expert-mode world condition for the complete first-phase `AI_004` branch verified against TerrariaServer `1.4.5.8`. That slice includes the Expert hover speed and acceleration, the $210\,\text{tick}$ hover window, the $44\,\text{tick}$ Servant cadence at any vertical offset, $6\,\text{pixels/tick}$ Servant launches, $7\,\text{pixels/tick}$ direct dashes, the sequential `0.98f` and `0.985f` dash slowdown, the $100\,\text{tick}$ dash window and the transition below $65\%$ life. Servant creation remains a post-commit spawn intent, so cadence state and the irreversible child allocation cannot diverge.
+
+This is a bounded capability, recorded as `BossExpertPhaseOneSlice`; it is not a full difficulty claim. Expert transformation and phase two remain fail-closed because transformation introduces random Servant spawns and later states introduce RNG-shaped rapid dashes. Master damage scaling and `getGoodWorld` parameter/effect branches are also still outside this slice. Classic behavior remains unchanged.
+
 ## GroundFighter door and tall-gate interactions
 
 The admitted `GroundFighter` slice now carries the full source-backed door-pressure path:

@@ -11,7 +11,7 @@ The executable truth is `VanillaNpcAiCoverageCatalog`. `FullVanillaAiParity` rem
 | Blue Slime | yes | partial | partial | slime engagement/jump cadence | no |
 | Demon Eye | yes | partial | partial | flying-eye collision response | no |
 | Zombie | yes | partial | partial | profiled AI_003 traversal/check-active/event door pressure | no |
-| Eye of Cthulhu | yes | partial | partial | phases/dashes and Servant spawn intents | no |
+| Eye of Cthulhu | yes | partial | partial | classic phases/dashes, Servant intents and Expert phase one | no |
 | Servant of Cthulhu | yes | partial | partial | source-backed flyer pursuit | no |
 | Skeleton | yes | partial | partial | profiled AI_003 `1.5f` traversal/check-active/event door pressure | no |
 | King Slime | yes | partial | partial | teleport environment and minion intents | no |
@@ -83,6 +83,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 
 ## N3 — Bosses
 
+- [x] import the source-backed Eye of Cthulhu Expert phase-one parameters and synchronized Servant intent cadence while keeping later RNG-dependent states fail-closed;
 - [ ] finish Eye of Cthulhu expert/master/seed branches and all irreversible effects;
 - [ ] finish King Slime difficulty/seed branches, despawn, progression and loot integration;
 - [ ] add remaining pre-Hardmode bosses with complete child/projectile ownership;

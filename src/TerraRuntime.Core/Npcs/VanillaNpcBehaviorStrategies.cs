@@ -287,7 +287,9 @@ internal sealed class VanillaEyeOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehavi
             TargetDead: !targetAvailable || candidate.Dead,
             TargetCenterX: candidate.CenterX,
             TargetCenterY: candidate.CenterY,
-            TargetTopY: candidate.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f);
+            TargetTopY: candidate.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f,
+            ExpertMode: context.ExpertMode,
+            GoodWorld: context.GoodWorld);
 
         if (!VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result))
         {

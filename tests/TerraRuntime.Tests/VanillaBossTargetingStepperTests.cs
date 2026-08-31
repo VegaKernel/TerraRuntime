@@ -35,6 +35,31 @@ public sealed class VanillaBossTargetingStepperTests
     }
 
     [Fact]
+    public void Eye_of_cthulhu_receives_expert_phase_one_world_condition()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: true);
+        stepper.SetCandidates([
+            new VanillaNpcTargetCandidate(
+                Slot: 7,
+                CenterX: 250f,
+                CenterY: 355f,
+                Aggro: 0,
+                Active: true,
+                Dead: false,
+                Ghost: false,
+                NoAggro: false)
+        ]);
+        NpcSnapshot npc = CreateNpc(VanillaNpcIds.EyeOfCthulhu, lifeMax: 2800);
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(0.15f, next.VelocityX, 5);
+        Assert.Equal(0f, next.VelocityY, 5);
+        Assert.Equal(1f, next.Ai.Ai2, 5);
+    }
+
+    [Fact]
     public void Daytime_eye_uses_source_backed_retreat_lifecycle()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());

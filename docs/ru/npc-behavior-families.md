@@ -65,6 +65,12 @@ Terraria fact             TerraRuntime implementation decision
 AiStyle = Fighter   !=    BehaviorFamily = GroundFighter
 ```
 
+## Граница сложности Eye of Cthulhu
+
+`VanillaEyeOfCthulhuMotion` теперь получает live-флаг Expert mode для полной ветви первой фазы `AI_004`, проверенной по TerrariaServer `1.4.5.8`. Этот slice включает Expert-скорость и ускорение hover, окно hover в $210\,\text{тиков}$, cadence Servant в $44\,\text{тика}$ при любом вертикальном смещении, запуск Servant со скоростью $6\,\text{пикселей/тик}$, прямой dash со скоростью $7\,\text{пикселей/тик}$, последовательное замедление dash на `0.98f` и `0.985f`, окно dash в $100\,\text{тиков}$ и переход при здоровье ниже $65\%$. Создание Servant остаётся post-commit spawn intent, поэтому cadence-state не может разойтись с необратимым выделением child NPC.
+
+Это ограниченная capability, записанная как `BossExpertPhaseOneSlice`, а не заявление о полной поддержке сложности. Expert transformation и вторая фаза остаются fail-closed: transformation вводит случайные spawns Servant, а последующие состояния — зависящие от RNG быстрые dash. Master-масштабирование damage и ветви параметров/эффектов `getGoodWorld` также пока не входят в этот slice. Classic-поведение не изменено.
+
 ## Взаимодействия GroundFighter с дверями и tall-gate
 
 Admitted `GroundFighter` slice теперь несёт полный source-backed путь давления на двери:

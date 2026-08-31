@@ -17,8 +17,12 @@ public sealed class VanillaNpcTargetingAiStepper :
 {
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
 
-    private const float EyeOfCthulhuServantCadenceThreshold = 110f;
-    private const float EyeOfCthulhuServantSpeed = 5f;
+    private const float EyeOfCthulhuClassicServantCadenceThreshold = 110f;
+    private const float EyeOfCthulhuExpertServantCadenceThreshold = 44f;
+    private const float EyeOfCthulhuClassicServantSpeed = 5f;
+    private const float EyeOfCthulhuExpertServantSpeed = 6f;
+    private const float EyeOfCthulhuClassicPhaseOneHoverTicks = 600f;
+    private const float EyeOfCthulhuExpertPhaseOneHoverTicks = 210f;
     private const float EyeOfCthulhuServantSpawnLeadTicks = 10f;
 
     private readonly INpcAiStateStepper _inner;
@@ -235,14 +239,20 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiSpawnIntent> destination)
     {
+        float cadenceThreshold = _context.ExpertMode
+            ? EyeOfCthulhuExpertServantCadenceThreshold
+            : EyeOfCthulhuClassicServantCadenceThreshold;
+        float hoverTicks = _context.ExpertMode
+            ? EyeOfCthulhuExpertPhaseOneHoverTicks
+            : EyeOfCthulhuClassicPhaseOneHoverTicks;
         if (source.Ai.Ai0 != 0f ||
             source.Ai.Ai1 != 0f ||
             proposed.Ai.Ai0 != 0f ||
             proposed.Ai.Ai1 != 0f ||
-            source.Ai.Ai3 < EyeOfCthulhuServantCadenceThreshold - 1f ||
+            source.Ai.Ai3 < cadenceThreshold - 1f ||
             proposed.Ai.Ai3 != 0f ||
             proposed.Ai.Ai2 != source.Ai.Ai2 + 1f ||
-            proposed.Ai.Ai2 >= 600f ||
+            proposed.Ai.Ai2 >= hoverTicks ||
             proposed.Target >= byte.MaxValue ||
             !_context.TryFindCandidate(checked((byte)proposed.Target), out VanillaNpcTargetCandidate target) ||
             !target.Active ||
@@ -262,7 +272,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (!float.IsFinite(distance) || distance <= float.Epsilon)
             return 0;
 
-        float scale = EyeOfCthulhuServantSpeed / distance;
+        float servantSpeed = _context.ExpertMode
+            ? EyeOfCthulhuExpertServantSpeed
+            : EyeOfCthulhuClassicServantSpeed;
+        float scale = servantSpeed / distance;
         float velocityX = deltaX * scale;
         float velocityY = deltaY * scale;
         int bottomX = (int)(centerX + velocityX * EyeOfCthulhuServantSpawnLeadTicks);

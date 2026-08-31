@@ -83,6 +83,16 @@ internal sealed class VanillaWorldGenerationParityState1458
     public WorldGenerationLayers? TerrainLayers { get; set; }
 }
 
+internal readonly record struct VanillaTerrainGenerationState1458(
+    double WorldSurface,
+    double RockLayer,
+    double CurrentWorldSurface,
+    double CurrentRockLayer,
+    double WorldSurfaceLow,
+    double WorldSurfaceHigh,
+    double RockLayerLow,
+    double RockLayerHigh);
+
 /// <summary>
 /// Clean-room port of the ordinary-world and pure Don't Dig Up TerrainPass branches from TerrariaServer 1.4.5.8.
 /// The source-backed slice is used only for Terraria's three canonical dimensions. Its pre-Terrain WorldGen.Reset
@@ -261,6 +271,18 @@ internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
         }
 
         state.TerrainLayers = new WorldGenerationLayers(worldSurface, rockLayer);
+        if (context.Workspace is RuntimeWorldGenerationWorkspace runtimeWorkspace)
+        {
+            runtimeWorkspace.SetVanillaTerrainState(new VanillaTerrainGenerationState1458(
+                worldSurface,
+                rockLayer,
+                surface,
+                rock,
+                surfaceLow,
+                surfaceHigh,
+                rockLow,
+                rockHigh));
+        }
     }
 
     internal static bool IsCanonicalWorldSize(int width, int height) =>

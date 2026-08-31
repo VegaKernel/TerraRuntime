@@ -46,6 +46,26 @@ public sealed class RuntimeNpcAiSpawnIntentTests
     }
 
     [Fact]
+    public void Expert_eye_uses_forty_four_tick_cadence_and_six_pixel_servant_speed()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate eye = CreateEye(ai3: 43f);
+        Assert.True(store.TrySpawnVanilla(in eye, out _));
+
+        var stepper = CreateEyeStepper(expertMode: true);
+        var executor = new RuntimeNpcAiStateExecutor(store);
+
+        NpcAiStateTickSummary summary = executor.Tick(stepper);
+
+        Assert.Equal(new NpcAiStateTickSummary(1, 1, 1, 0), summary);
+        Assert.True(store.TryGetActive(1, out NpcSnapshot servant));
+        float speed = MathF.Sqrt(
+            servant.VelocityX * servant.VelocityX +
+            servant.VelocityY * servant.VelocityY);
+        Assert.Equal(6f, speed, 5);
+    }
+
+    [Fact]
     public void Committed_transition_applies_multiple_spawn_intents_in_source_order()
     {
         var store = new RuntimeNpcStore(capacity: 4);
@@ -134,10 +154,10 @@ public sealed class RuntimeNpcAiSpawnIntentTests
         Assert.Equal(0f, committed.Ai.Ai3);
     }
 
-    private static VanillaNpcTargetingAiStepper CreateEyeStepper()
+    private static VanillaNpcTargetingAiStepper CreateEyeStepper(bool expertMode = false)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
-        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: expertMode);
         stepper.SetCandidates([
             new VanillaNpcTargetCandidate(
                 Slot: 7,

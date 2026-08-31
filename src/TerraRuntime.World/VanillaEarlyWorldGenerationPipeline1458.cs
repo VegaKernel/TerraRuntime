@@ -41,7 +41,10 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458 : IWorldGener
 
         WorldGenerationRequest requestCopy = request;
         VanillaWorldSeedProfile1458 profile = VanillaWorldSeedResolver1458.Resolve(in requestCopy);
-        if (!profile.IsDefault || !VanillaTerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
+        bool pureRemix = profile.Special == VanillaSpecialWorldSeed1458.Remix &&
+            profile.Secret == VanillaSecretWorldSeed1458.None;
+        if ((!profile.IsDefault && !pureRemix) ||
+            !VanillaTerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
         {
             capture.Replay(builder);
             return;
@@ -59,6 +62,18 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458 : IWorldGener
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.TerrainLayers, state, metadata.Pass));
         Add(builder, DunesId, WorldGenerationRngMode.VanillaSharedRng, TerrainLayersId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.Dunes, state));
+
+        if (pureRemix)
+        {
+            // WorldGen.AddPasses has no Remix-specific dune placement branch. The only difference in this pass is
+            // SetupDungeonGenVarVariables, which consumes the same roll but pins the dungeon palette from evil type.
+            // Stop immediately afterwards: Ocean Sand and every later early pass still need separate Remix evidence.
+            builder.Add(CloneDescriptor(biomes.Descriptor, biomes.Descriptor.RngMode, [DunesId]), biomes.Pass);
+            ReplayCompatibilityTail(capture, builder);
+            builder.Add(metadata.Descriptor, metadata.Pass);
+            return;
+        }
+
         Add(builder, OceanSandId, WorldGenerationRngMode.VanillaSharedRng, DunesId,
             new VanillaEarlyWorldGenerationPass1458(VanillaEarlyWorldGenerationStage1458.OceanSand, state));
         Add(builder, SandPatchesId, WorldGenerationRngMode.VanillaSharedRng, OceanSandId,
@@ -97,6 +112,13 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458 : IWorldGener
             CloneDescriptor(biomes.Descriptor, WorldGenerationRngMode.IsolatedDeterministic, [JungleId]),
             new VanillaResidualCompatibilityBiomesPass1458(biomes.Pass));
 
+        ReplayCompatibilityTail(capture, builder);
+
+        builder.Add(metadata.Descriptor, metadata.Pass);
+    }
+
+    private static void ReplayCompatibilityTail(CapturePlanBuilder capture, IWorldGenerationPlanBuilder builder)
+    {
         foreach (CapturedPass entry in capture.Entries)
         {
             if (entry.Descriptor.Id == SourceBackedVanillaWorldGenerationProvider1458.ResetPassId ||
@@ -109,8 +131,6 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458 : IWorldGener
 
             builder.Add(entry.Descriptor, entry.Pass);
         }
-
-        builder.Add(metadata.Descriptor, metadata.Pass);
     }
 
     private static void Add(
@@ -199,8 +219,19 @@ internal sealed class VanillaEarlyWorldGenerationState1458
     public int[] SnowMaxX { get; set; } = [];
     public int JungleX { get; set; }
     public bool MudWall { get; set; }
+    public VanillaDungeonPalette1458 DungeonPalette { get; set; }
     public List<int> MountainCaveX { get; } = [];
 }
+
+internal readonly record struct VanillaDungeonPalette1458(
+    int Color,
+    ushort BrickTileType,
+    ushort BrickWallType,
+    ushort CrackedBrickTileType,
+    ushort WindowGlassWallType,
+    ushort WindowClosedGlassWallType,
+    ushort WindowEdgeWallType,
+    int WindowPlatformItemType);
 
 internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
 {
@@ -317,57 +348,56 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         if (context.Metadata is null || !context.Metadata.TryGetLayers(out WorldGenerationLayers layers))
             throw new InvalidOperationException("Source-backed Terrain did not publish world layers.");
 
-        state.MainWorldSurface = layers.WorldSurface;
-        state.MainRockLayer = layers.RockLayer;
-        ScanTerrainBands(grid, out double surfaceLow, out double surfaceHigh, out double rockLow, out double rockHigh);
-        state.WorldSurfaceLow = surfaceLow;
-        state.WorldSurfaceHigh = surfaceHigh;
-        state.RockLayerLow = rockLow;
-        state.RockLayerHigh = rockHigh;
+        VanillaTerrainGenerationState1458 terrain = workspace.VanillaTerrainState ??
+            throw new InvalidOperationException("Source-backed Terrain did not publish its exact end state.");
+        state.MainWorldSurface = terrain.WorldSurface;
+        state.MainRockLayer = terrain.RockLayer;
+        state.WorldSurfaceLow = terrain.WorldSurfaceLow;
+        state.WorldSurfaceHigh = terrain.WorldSurfaceHigh;
+        state.RockLayerLow = terrain.RockLayerLow;
+        state.RockLayerHigh = terrain.RockLayerHigh;
 
         IRandom random = RequireVanilla(context);
-        state.WaterLine = (int)(state.MainRockLayer + grid.Height) / 2 + random.Next(-100, 20);
-        state.LavaLine = state.WaterLine + random.Next(50, 80);
+        WorldGenerationRequest request = context.Request;
+        VanillaWorldSeedProfile1458 profile = VanillaWorldSeedResolver1458.Resolve(in request);
+        (state.WaterLine, state.LavaLine) = ResolveLiquidLines(
+            random,
+            state.MainWorldSurface,
+            state.MainRockLayer,
+            terrain.CurrentRockLayer,
+            grid.Height,
+            profile.Special == VanillaSpecialWorldSeed1458.Remix);
         state.SnowMinX = new int[grid.Height];
         state.SnowMaxX = new int[grid.Height];
         context.ReportProgress(1d, "Finalizing Terraria Terrain layer state");
     }
 
-    private static void ScanTerrainBands(RuntimeGrid grid, out double surfaceLow, out double surfaceHigh, out double rockLow, out double rockHigh)
+    internal static (int WaterLine, int LavaLine) ResolveLiquidLines(
+        IRandom random,
+        double worldSurface,
+        double rockLayer,
+        double currentRockLayer,
+        int height,
+        bool isRemix)
     {
-        surfaceLow = grid.Height;
-        surfaceHigh = 0;
-        rockLow = grid.Height;
-        rockHigh = 0;
-        for (int x = 0; x < grid.Width; x++)
-        {
-            int surface = grid.FindFirstActiveY(x, 0, grid.Height);
-            int rock = surface;
-            for (int y = surface; y < grid.Height; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive && tile.Type == Stone)
-                {
-                    rock = y;
-                    break;
-                }
-            }
-            surfaceLow = Math.Min(surfaceLow, surface);
-            surfaceHigh = Math.Max(surfaceHigh, surface);
-            rockLow = Math.Min(rockLow, rock);
-            rockHigh = Math.Max(rockHigh, rock);
-        }
+        ArgumentNullException.ThrowIfNull(random);
+        int waterLine = (int)(rockLayer + height) / 2 + random.Next(-100, 20);
+        int ordinaryLavaLine = waterLine + random.Next(50, 80);
+        int lavaLine = isRemix
+            ? (int)(worldSurface * 4d + currentRockLayer) / 5
+            : ordinaryLavaLine;
+        return (waterLine, lavaLine);
     }
 
     private void ApplyDunes(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 b = RequireBootstrap();
-        _ = random.Next(3);
-        _ = random.Next(3);
-        _ = random.Next(3);
-        _ = random.Next();
+        WorldGenerationRequest request = context.Request;
+        VanillaWorldSeedProfile1458 profile = VanillaWorldSeedResolver1458.Resolve(in request);
+        state.DungeonPalette = SetupDungeonPalette(random, profile.Special == VanillaSpecialWorldSeed1458.Remix, b.EffectiveCrimson);
 
-        int count = random.Next(1, 3);
+        (int minimum, int maximum) = GetDuneCountRange(grid.Width);
+        int count = random.Next(minimum, maximum + 1);
         for (int i = 0; i < count; i++)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
@@ -380,6 +410,29 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
             }
             context.ReportProgress((i + 1d) / count, "Generating Terraria dunes");
         }
+    }
+
+    internal static VanillaDungeonPalette1458 SetupDungeonPalette(IRandom random, bool isRemix, bool crimson)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        int color = random.Next(3);
+        if (isRemix)
+            color = crimson ? 2 : 0;
+
+        return color switch
+        {
+            0 => new VanillaDungeonPalette1458(0, 41, 7, 481, 91, 96, 8, 1386),
+            1 => new VanillaDungeonPalette1458(1, 43, 8, 482, 92, 94, 9, 1385),
+            _ => new VanillaDungeonPalette1458(2, 44, 9, 483, 90, 98, 7, 1384)
+        };
+    }
+
+    internal static (int Minimum, int Maximum) GetDuneCountRange(int width)
+    {
+        if (width is not (4200 or 6400 or 8400))
+            throw new ArgumentOutOfRangeException(nameof(width));
+        double scale = width / 4200d;
+        return ((int)scale, (int)(2d * scale));
     }
 
     private static int PickDuneOrigin(int width, VanillaWorldGenerationBootstrapState1458 b, IRandom random)
