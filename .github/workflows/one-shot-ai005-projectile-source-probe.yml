@@ -1,0 +1,56 @@
+name: One Shot AI005 Projectile Source Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-ai005-projectile-source-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Decompile official TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+      - name: Extract AI_005 projectile branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="$(find decompiled/1458 -path '*/Terraria/NPC.cs' -print -quit)"
+          test -n "$FILE"
+          python3 - "$FILE" <<'PY'
+          import re, sys
+          from pathlib import Path
+          text = Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace')
+          start = text.find('void AI_005_')
+          if start < 0:
+              start = text.find('AI_005_')
+          if start < 0:
+              raise SystemExit('AI_005 method not found')
+          end = text.find('\n\tprivate void AI_006_', start)
+          if end < 0:
+              end = min(len(text), start + 70000)
+          block = text[start:end]
+          needles = ['type == 139', 'type == 619', 'Projectile.NewProjectile', '84', '811', 'localAI', 'ai[1]', 'ai[2]']
+          lines = block.splitlines()
+          hits = []
+          for i,line in enumerate(lines):
+              if any(n in line for n in needles):
+                  lo=max(0,i-14); hi=min(len(lines),i+22)
+                  hits.append((i, '\n'.join(f'{j+1:04d}: {lines[j]}' for j in range(lo,hi))))
+          seen=set()
+          for i,snip in hits:
+              key=snip[:300]
+              if key in seen: continue
+              seen.add(key)
+              print(f'===== AI005 HIT {i+1} =====')
+              print(snip)
+          PY
