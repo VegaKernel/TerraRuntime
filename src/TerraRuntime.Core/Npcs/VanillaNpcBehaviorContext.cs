@@ -15,6 +15,7 @@ internal sealed class VanillaNpcBehaviorContext
 
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
     private readonly NpcSnapshot[] _npcPeers = new NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
+    private IRuntimePlayerSlotSnapshotLookup? _playerSnapshots;
     private int _candidateCount;
     private int _npcPeerCount;
 
@@ -31,6 +32,9 @@ internal sealed class VanillaNpcBehaviorContext
     public bool GoodWorld { get; private set; }
 
     public bool ExpertMode { get; private set; }
+
+    public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
+        _playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
 
     public void EnableSlimeGround(double worldSurfaceTiles)
     {
@@ -63,7 +67,24 @@ internal sealed class VanillaNpcBehaviorContext
         if (candidates.Length > _candidates.Length)
             throw new ArgumentException("Too many vanilla player target candidates.", nameof(candidates));
 
-        candidates.CopyTo(_candidates);
+        for (int index = 0; index < candidates.Length; index++)
+        {
+            VanillaNpcTargetCandidate candidate = candidates[index];
+            if (_playerSnapshots is not null &&
+                _playerSnapshots.TryGetPlayer(new PlayerSlotId(candidate.Slot), out PlayerStateSnapshot player) &&
+                float.IsFinite(player.VelocityX) &&
+                float.IsFinite(player.VelocityY))
+            {
+                candidate = candidate with
+                {
+                    VelocityX = player.VelocityX,
+                    VelocityY = player.VelocityY
+                };
+            }
+
+            _candidates[index] = candidate;
+        }
+
         _candidateCount = candidates.Length;
     }
 

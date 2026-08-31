@@ -44,6 +44,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
         Assert.True(eyeOfCthulhu.Has(VanillaNpcAiCapability.BossExpertPhaseOneSlice));
         Assert.True(eyeOfCthulhu.Has(VanillaNpcAiCapability.BossExpertTransformationSlice));
         Assert.True(eyeOfCthulhu.Has(VanillaNpcAiCapability.BossExpertPhaseTwoDeterministicSlice));
+        Assert.True(eyeOfCthulhu.Has(VanillaNpcAiCapability.BossExpertRapidDashSlice));
         Assert.False(eyeOfCthulhu.FullVanillaAiParity);
 
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(

@@ -3,7 +3,8 @@ namespace TerraRuntime.Core;
 /// <summary>
 /// Player-side facts consumed by vanilla NPC target scoring. NoAggro is already resolved for the
 /// NPC type being evaluated; tank-pet redirection is a later targeting layer and does not change
-/// which player slot TargetClosest selects.
+/// which player slot TargetClosest selects. Velocity is carried separately from scoring because some
+/// boss AI families, notably Eye of Cthulhu rapid dashes, consume the selected player's live motion.
 /// </summary>
 public readonly record struct VanillaNpcTargetCandidate(
     byte Slot,
@@ -13,7 +14,12 @@ public readonly record struct VanillaNpcTargetCandidate(
     bool Active,
     bool Dead,
     bool Ghost,
-    bool NoAggro);
+    bool NoAggro)
+{
+    public float VelocityX { get; init; }
+
+    public float VelocityY { get; init; }
+}
 
 public readonly record struct VanillaNpcTargetSelection(
     byte PlayerSlot,

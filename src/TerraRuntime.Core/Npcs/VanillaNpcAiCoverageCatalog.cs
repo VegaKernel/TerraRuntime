@@ -29,7 +29,8 @@ public enum VanillaNpcAiCapability : uint
     BossExpertPhaseOneSlice = 1u << 20,
     KingSlimeDifficultySeedSlice = 1u << 21,
     BossExpertTransformationSlice = 1u << 22,
-    BossExpertPhaseTwoDeterministicSlice = 1u << 23
+    BossExpertPhaseTwoDeterministicSlice = 1u << 23,
+    BossExpertRapidDashSlice = 1u << 24
 }
 
 /// <summary>
@@ -111,7 +112,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAiCapability.ChildSpawnSlice |
             VanillaNpcAiCapability.BossExpertPhaseOneSlice |
             VanillaNpcAiCapability.BossExpertTransformationSlice |
-            VanillaNpcAiCapability.BossExpertPhaseTwoDeterministicSlice);
+            VanillaNpcAiCapability.BossExpertPhaseTwoDeterministicSlice |
+            VanillaNpcAiCapability.BossExpertRapidDashSlice);
         entries[4] = Partial(
             VanillaNpcIds.ServantOfCthulhu,
             OrdinaryCore | VanillaNpcAiCapability.FlyerPursuitProfileSlice);
@@ -181,23 +183,17 @@ public static class VanillaNpcAiCoverageCatalog
                     VanillaNpcAiCapability.WorldPhysicsSlice |
                     VanillaNpcAiCapability.WormHeadWorldSteeringSlice;
                 if (VanillaWormNpcCatalog.HasChainProfile(worm.Definition.Type))
-                {
                     capabilities |= VanillaNpcAiCapability.WormChainSpawnSlice;
-                }
             }
 
             if (worm.Role == VanillaWormSegmentRole.Body &&
                 VanillaWormNpcCatalog.HasChainProfile(worm.HeadType))
-            {
                 capabilities |= VanillaNpcAiCapability.WormChainSpawnSlice;
-            }
 
             if (worm.HeadType == VanillaNpcIds.EaterOfWorldsHead)
                 capabilities |= VanillaNpcAiCapability.WormSplitRepairSlice;
 
-            entries[index++] = Partial(
-                worm.Definition.Type,
-                capabilities);
+            entries[index++] = Partial(worm.Definition.Type, capabilities);
         }
 
         return entries;

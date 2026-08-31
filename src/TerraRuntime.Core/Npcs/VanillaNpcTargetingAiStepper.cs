@@ -32,7 +32,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _flyingEye = new VanillaFlyingEyeNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
-    private readonly IVanillaNpcBehaviorStrategy _eyeOfCthulhu = new VanillaEyeOfCthulhuNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _eyeOfCthulhu;
     private readonly IVanillaNpcBehaviorStrategy _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy();
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
     private readonly VanillaKingSlimeNpcBehaviorStrategy _kingSlime;
@@ -45,8 +45,9 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
-        _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
         _random = random ?? new SystemVanillaNpcRandom();
+        _eyeOfCthulhu = new VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy(_random);
+        _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
     }
 
     public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity) =>
@@ -54,6 +55,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public void EnableZombieMotion(double worldSurfaceTiles) =>
         _context.EnableGroundFighter(worldSurfaceTiles);
+
+    public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
+        _context.SetPlayerSnapshotLookup(playerSnapshots);
 
     public void SetKingSlimeEnvironment(IVanillaKingSlimeEnvironment environment) =>
         _kingSlime.SetEnvironment(environment);

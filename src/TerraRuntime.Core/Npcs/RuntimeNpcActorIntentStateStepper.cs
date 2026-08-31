@@ -28,6 +28,12 @@ public sealed class RuntimeNpcActorIntentStateStepper : INpcAiStateStepper, INpc
         _fallback = fallback;
         _controls = controls;
         _players = players;
+
+        if (fallback is VanillaNpcTargetingAiStepper targeting &&
+            players is IRuntimePlayerSlotSnapshotLookup playerSlots)
+        {
+            targeting.SetPlayerSnapshotLookup(playerSlots);
+        }
     }
 
     public INpcAiStateStepper InnerStepper => _fallback;

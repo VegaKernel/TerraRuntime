@@ -45,7 +45,7 @@ flowchart LR
 Границы ownership теперь явные:
 
 - `VanillaNpcTargetingAiStepper` преобразует тип в `NpcTypeId`, один раз получает `VanillaNpcDefinition`, выбирает явную family и сохраняет прежний fallback-контракт;
-- `VanillaNpcBehaviorContext` владеет фиксированным scratch-buffer кандидатов, target geometry helpers, переводом world surface в пиксели и текущими фактами day/slime-rain;
+- `VanillaNpcBehaviorContext` владеет фиксированным scratch-buffer кандидатов, target geometry helpers, обогащением live-скоростью игрока, переводом world surface в пиксели и текущими фактами day/slime-rain;
 - `VanillaSlimeGroundNpcBehaviorStrategy` владеет Slime-family engagement/targeting input и проверенным переходом `VanillaBlueSlimeMotion`;
 - `VanillaFlyingEyeNpcBehaviorStrategy` владеет FlyingEye target refresh перед передачей состояния независимо реализованному eye AI;
 - `VanillaGroundFighterNpcBehaviorStrategy` владеет Fighter-family target prepass, overlap semantics, day/surface pursuit policy и проверенным compatibility-переходом `VanillaZombieMotion`. `VanillaGroundFighterBehaviorCatalog` сохраняет параметры admitted types, например base speed Skeleton `1.5f`.
@@ -67,13 +67,15 @@ AiStyle = Fighter   !=    BehaviorFamily = GroundFighter
 
 ## Граница сложности Eye of Cthulhu
 
-`VanillaEyeOfCthulhuMotion` теперь получает live-флаг Expert mode для source-backed детерминированной части `AI_004`, проверенной по TerrariaServer `1.4.5.8`. Первая фаза включает Expert-скорость и ускорение hover, окно hover в $210\,\text{тиков}$, cadence Servant в $44\,\text{тика}$ при любом вертикальном смещении, запуск Servant со скоростью $6\,\text{пикселей/тик}$, прямой dash со скоростью $7\,\text{пикселей/тик}$, последовательное замедление dash на `0.98f` и `0.985f`, окно dash в $100\,\text{тиков}$ и переход при здоровье ниже $65\%$.
+`VanillaEyeOfCthulhuMotion` получает live-флаг Expert mode для source-backed детерминированной части `AI_004`, проверенной по TerrariaServer `1.4.5.8`. Первая фаза включает Expert-скорость и ускорение hover, окно hover в $210\,\text{тиков}$, cadence Servant в $44\,\text{тика}$ при любом вертикальном смещении, запуск Servant со скоростью $6\,\text{пикселей/тик}$, прямой dash со скоростью $7\,\text{пикселей/тик}$, последовательное замедление dash на `0.98f` и `0.985f`, окно dash в $100\,\text{тиков}$ и переход при здоровье ниже $65\%$.
 
-Expert transformation теперь тоже authoritative. Обе стадии transformation по $100\,\text{тиков}$ продвигают source spin/timer state и применяют decay скорости `0.98f`. Каждый двадцатый тик transformation создаёт post-commit intent Servant из двух точных вызовов `Main.rand.Next(-200, 200)`, нормализует вектор до $5\,\text{пикселей/тик}$ и сдвигает spawn на десять тиков от центра Eye. Spawn на 100-м тике сохраняется до смены стадии transformation, то есть порядок вызовов совпадает с source.
+Expert transformation тоже authoritative. Обе стадии transformation по $100\,\text{тиков}$ продвигают source spin/timer state и применяют decay скорости `0.98f`. Каждый двадцатый тик transformation создаёт post-commit intent Servant из двух точных вызовов `Main.rand.Next(-200, 200)`, нормализует вектор до $5\,\text{пикселей/тик}$ и сдвигает spawn на десять тиков от центра Eye. Spawn на 100-м тике сохраняется до смены стадии transformation, то есть порядок вызовов совпадает с source.
 
-Детерминированный Expert slice второй фазы включает source-полосы расстояния выше $400/600/800\,\text{пикселей}$, множители скорости следующих прямых dash `1.15f` и `1.30f`, Expert-границы slowdown/duration $50$ и $90$ тиков, а также движение low-life state `ai[1] = 5` к точке на $600\,\text{пикселей}$ ниже target. Motion остаётся fail-closed ровно там, где vanilla впервые требует случайного seed состояния (`Main.rand.Next(1, 4)` или `Main.rand.Next(-3, 1)`) либо RNG-shaped predictive rapid-dash `ai[1] = 3/4`.
+Детерминированный Expert slice второй фазы включает source-полосы расстояния выше $400/600/800\,\text{пикселей}$, множители скорости следующих прямых dash `1.15f` и `1.30f`, Expert-границы slowdown/duration $50$ и $90$ тиков, а также движение low-life state `ai[1] = 5` к точке на $600\,\text{пикселей}$ ниже target.
 
-Это ограниченные capabilities `BossExpertPhaseOneSlice`, `BossExpertTransformationSlice` и `BossExpertPhaseTwoDeterministicSlice`, а не заявление о полной поддержке сложности. Predictive rapid dashes, их player-velocity/randomization inputs, Master-масштабирование damage и ветви reflection/re-entry `getGoodWorld` пока остаются вне admitted slice. Classic-поведение не изменено.
+`VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy` владеет оставшейся Expert rapid-dash веткой, кроме Good World. Сохраняется source-порядок RNG для seed `Main.rand.Next(1, 4)` после третьего обычного dash второй фазы, low-life seed `Main.rand.Next(-3, 1)`, predictive launch `ai[1] = 3` с live velocity игрока, обоих слоёв ±10% perturbation, velocity jitter, critical-life rotation/renormalization и cadence state `ai[1] = 4` с окнами $20/10 + 13\,\text{тиков}$. Target candidates перед boss AI обогащаются из authoritative player-slot snapshot lookup, поэтому prediction больше не подменяет скорость игрока нулями.
+
+Это ограниченные capabilities `BossExpertPhaseOneSlice`, `BossExpertTransformationSlice`, `BossExpertPhaseTwoDeterministicSlice` и `BossExpertRapidDashSlice`, а не заявление о полной поддержке сложности. Master-масштабирование damage и reflection/re-entry ветви `getGoodWorld` остаются вне admitted slice; Good World по-прежнему fail-closed и не наследует Expert-параметры молча. Classic-поведение не изменено.
 
 ## Взаимодействия GroundFighter с дверями и tall-gate
 
@@ -94,4 +96,4 @@ D4-пункт `AI family/behavior decomposition` описывает ownership и
 
 ## Проверка
 
-`VanillaNpcBehaviorFamilyDispatchTests` закрепляет fail-closed контракт dispatch: отключённые families уходят в fallback, неизвестные catalog types не наследуют поведение, а FlyingEye target refresh выполняется внутри family strategy до делегирования. NPC-specific suites покрывают admitted ordinary и boss slices, а `VanillaNpcAiCoverageCatalogTests` не позволяет назвать эти slices полным parity.
+`VanillaNpcBehaviorFamilyDispatchTests` закрепляет fail-closed контракт dispatch: отключённые families уходят в fallback, неизвестные catalog types не наследуют поведение, а FlyingEye target refresh выполняется внутри family strategy до делегирования. `VanillaEyeOfCthulhuExpertRapidDashTests` закрепляет source RNG consumption, prediction по live velocity игрока, low-life seeding и cadence rapid states. `VanillaNpcAiCoverageCatalogTests` не позволяет назвать эти slices полным parity.

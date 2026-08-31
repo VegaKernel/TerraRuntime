@@ -45,7 +45,7 @@ flowchart LR
 Ownership is intentionally narrow:
 
 - `VanillaNpcTargetingAiStepper` resolves `NpcTypeId`, looks up one `VanillaNpcDefinition`, selects the explicit family and preserves the existing fallback contract;
-- `VanillaNpcBehaviorContext` owns the fixed-size target-candidate scratch buffer, target geometry helpers, world-surface conversion and current day/slime-rain facts;
+- `VanillaNpcBehaviorContext` owns the fixed-size target-candidate scratch buffer, target geometry helpers, live player velocity enrichment, world-surface conversion and current day/slime-rain facts;
 - `VanillaSlimeGroundNpcBehaviorStrategy` owns Slime-family engagement/targeting input and the verified `VanillaBlueSlimeMotion` transition;
 - `VanillaFlyingEyeNpcBehaviorStrategy` owns FlyingEye target refresh before the independently implemented eye AI receives the state;
 - `VanillaGroundFighterNpcBehaviorStrategy` owns Fighter-family target prepass, overlap semantics, day/surface pursuit policy and the verified `VanillaZombieMotion` compatibility transition. `VanillaGroundFighterBehaviorCatalog` retains admitted type-specific parameters such as Skeleton's `1.5f` base speed.
@@ -69,11 +69,13 @@ AiStyle = Fighter   !=    BehaviorFamily = GroundFighter
 
 `VanillaEyeOfCthulhuMotion` consumes the live Expert-mode world condition for the source-backed deterministic parts of `AI_004` verified against TerrariaServer `1.4.5.8`. Phase one includes the Expert hover speed/acceleration, the $210\,\text{tick}$ hover window, the $44\,\text{tick}$ Servant cadence at any vertical offset, $6\,\text{pixels/tick}$ Servant launches, $7\,\text{pixels/tick}$ direct dashes, the sequential `0.98f` and `0.985f` slowdown, the $100\,\text{tick}$ dash window and the transition below $65\%$ life.
 
-Expert transformation is also authoritative now. The two $100\,\text{tick}$ transformation stages advance the source spin/timer state and apply the `0.98f` velocity decay. Every twentieth transformation tick produces a post-commit Servant intent from the exact two `Main.rand.Next(-200, 200)` direction rolls, normalized to $5\,\text{pixels/tick}$ and advanced ten ticks from the Eye center before spawning. The tick-100 spawn is preserved before the transformation stage changes, matching source call order.
+Expert transformation is also authoritative. The two $100\,\text{tick}$ transformation stages advance the source spin/timer state and apply the `0.98f` velocity decay. Every twentieth transformation tick produces a post-commit Servant intent from the exact two `Main.rand.Next(-200, 200)` direction rolls, normalized to $5\,\text{pixels/tick}$ and advanced ten ticks from the Eye center before spawning. The tick-100 spawn is preserved before the transformation stage changes, matching source call order.
 
-The deterministic Expert phase-two slice includes the source distance bands above $400/600/800\,\text{pixels}$, later direct-dash speed multipliers `1.15f` and `1.30f`, the Expert slowdown/duration boundaries of $50$ and $90$ ticks, and low-life state `ai[1] = 5` movement toward the point $600\,\text{pixels}$ below the target. Motion fails closed exactly where vanilla first requires random state seeding (`Main.rand.Next(1, 4)` or `Main.rand.Next(-3, 1)`) or the RNG-shaped predictive rapid-dash states `ai[1] = 3/4`.
+The deterministic Expert phase-two slice includes the source distance bands above $400/600/800\,\text{pixels}$, later direct-dash speed multipliers `1.15f` and `1.30f`, the Expert slowdown/duration boundaries of $50$ and $90$ ticks, and low-life state `ai[1] = 5` movement toward the point $600\,\text{pixels}$ below the target.
 
-These are bounded capabilities (`BossExpertPhaseOneSlice`, `BossExpertTransformationSlice` and `BossExpertPhaseTwoDeterministicSlice`), not a full difficulty claim. Predictive rapid dashes, their player-velocity/randomization inputs, Master damage scaling and `getGoodWorld` reflection/re-entry effects remain outside the admitted slice. Classic behavior remains unchanged.
+`VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy` owns the remaining non-Good-World Expert rapid-dash boundary. It preserves source RNG order for the `Main.rand.Next(1, 4)` seed after the third ordinary phase-two dash, the `Main.rand.Next(-3, 1)` low-life seed, the predictive `ai[1] = 3` launch using live player velocity, both ±10% direction perturbation layers, velocity jitter, critical-life vector rotation/renormalization and the `ai[1] = 4` $20/10 + 13\,\text{tick}$ cadence. Runtime target candidates are enriched from the authoritative player-slot snapshot lookup before boss AI reads them, so prediction uses the same live motion state rather than a fabricated zero velocity.
+
+These are bounded capabilities (`BossExpertPhaseOneSlice`, `BossExpertTransformationSlice`, `BossExpertPhaseTwoDeterministicSlice` and `BossExpertRapidDashSlice`), not a full difficulty claim. Master damage scaling and `getGoodWorld` reflection/re-entry effects remain outside the admitted slice; Good World still fails closed instead of silently inheriting Expert values. Classic behavior remains unchanged.
 
 ## GroundFighter door and tall-gate interactions
 
@@ -94,4 +96,4 @@ All D4 checkboxes describe decomposition/ownership for admitted slices. They do 
 
 ## Verification
 
-`VanillaNpcBehaviorFamilyDispatchTests` pins the fail-closed dispatch contract: disabled families fall back, unknown catalog types do not inherit a behavior, and FlyingEye target refresh occurs in the family strategy before delegation. NPC-specific suites cover the admitted ordinary and boss slices, while `VanillaNpcAiCoverageCatalogTests` prevents those slices from being mislabeled as full parity.
+`VanillaNpcBehaviorFamilyDispatchTests` pins the fail-closed dispatch contract: disabled families fall back, unknown catalog types do not inherit a behavior, and FlyingEye target refresh occurs in the family strategy before delegation. `VanillaEyeOfCthulhuExpertRapidDashTests` pins source RNG consumption, live-player-velocity prediction, low-life seeding and rapid-state cadence. `VanillaNpcAiCoverageCatalogTests` prevents those slices from being mislabeled as full parity.
