@@ -97,3 +97,9 @@ All D4 checkboxes describe decomposition/ownership for admitted slices. They do 
 ## Verification
 
 `VanillaNpcBehaviorFamilyDispatchTests` pins the fail-closed dispatch contract: disabled families fall back, unknown catalog types do not inherit a behavior, and FlyingEye target refresh occurs in the family strategy before delegation. `VanillaEyeOfCthulhuExpertRapidDashTests` pins source RNG consumption, live-player-velocity prediction, low-life seeding and rapid-state cadence. `VanillaNpcAiCoverageCatalogTests` prevents those slices from being mislabeled as full parity.
+
+## AI_002 lifecycle world state
+
+AI_002 now keeps its non-cosmetic lifecycle rules outside packet/state guessing. Daylight discouragement is source-shaped: only the pinned fleeing identities, during daytime, at or above `worldSurface`, and only when the current target is not in a functional Graveyard. The branch clamps `timeLeft` to 10, forces upward intent, and deliberately skips `TargetClosest` for that tick.
+
+Pigrons now preserve the source `ai[0]/ai[1]` phase machine. Missing line of sight increments `ai[0]`; tick 300 enters no-tile-collision mode. Restored LOS only exits phasing after `Collision.SolidCollision` is false. Production facts come from `VanillaWorldCanHit`, `VanillaWorldSolidCollision`, and `VanillaWorldGraveyardScene`. Cosmetic alpha, rotation, dust and sound remain outside the authoritative state claim.

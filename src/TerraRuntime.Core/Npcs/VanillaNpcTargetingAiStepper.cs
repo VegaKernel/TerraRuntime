@@ -31,7 +31,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly INpcAiStateStepper _inner;
     private readonly VanillaNpcBehaviorContext _context = new();
     private readonly IVanillaNpcBehaviorStrategy _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy();
-    private readonly IVanillaNpcBehaviorStrategy _flyingEye = new VanillaFlyingEyeNpcBehaviorStrategy();
+    private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
     private readonly VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy _eyeOfCthulhu;
     private readonly IVanillaNpcBehaviorStrategy _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy();
@@ -72,6 +72,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public void SetWormEnvironment(IVanillaWormEnvironment environment) =>
         _worm.SetEnvironment(environment);
+
+    public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
+        _flyingEye.SetEnvironment(environment);
 
     public void SetWorldConditions(
         bool dayTime,

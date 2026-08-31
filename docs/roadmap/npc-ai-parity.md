@@ -63,7 +63,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [ ] remaining AI_001 projectile, item-containment, split, transform, seed and visual branches;
 - [x] typed definitions, steering profiles and wet behavior for all hostile AI_002 identities;
 - [x] source-backed AI_002 net variants `-38..-43` with effective spawn/packet defaults;
-- [ ] AI_002 daylight despawn, Pigron line-of-sight phasing state and cosmetic branches;
+- [x] AI_002 source-backed daylight discouragement/despawn and Pigron 300-tick line-of-sight phasing/re-entry state with live world collision/Graveyard queries;
+- [ ] AI_002 presentation-only alpha/rotation/dust/sound branches and remaining type-specific transforms/effects;
 - [x] typed definitions and classic pursuit/bounce/water profiles for hostile AI_005 identities;
 - [x] admitted AI_005 size net variants for Eaters, Crimeras and Hornet families;
 - [x] AI_005 source-ordered jitter, close homing, Bee/SmallBee acceleration ramp, daylight flight/despawn, surface Hornet damping, bounce minima and wet-rise movement;

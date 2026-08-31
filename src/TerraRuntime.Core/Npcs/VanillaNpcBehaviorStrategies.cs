@@ -15,6 +15,11 @@ internal interface IVanillaNpcBehaviorStrategy
 
 internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    private IVanillaFlyingEyeEnvironment? _environment;
+
+    public void SetEnvironment(IVanillaFlyingEyeEnvironment environment) =>
+        _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+
     public bool TryStep(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -28,10 +33,147 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
             return false;
         }
 
-        NpcSnapshot targeted = npc;
-        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest))
+        if (_environment is null ||
+            !NpcTypeId.TryCreate(npc.Type, out NpcTypeId type) ||
+            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
         {
-            targeted = npc with
+            return TryLegacyTargetRefresh(in npc, in definition, context, inner, out next);
+        }
+
+        NpcSnapshot staged = npc;
+        VanillaNpcTargetCandidate target = default;
+        bool hasTarget = TryGetCurrentTarget(in npc, context, out target);
+        bool pigron = VanillaFlyingEyeNpcCatalog.IsPigron(type);
+
+        // Pigrons call TargetClosest before their LOS/phasing branch. Other style-2 eyes evaluate
+        // daylight discouragement against the current target and only call TargetClosest when not discouraged.
+        if ((pigron || !hasTarget) &&
+            TryRefreshClosest(in staged, in definition, context, out NpcSnapshot refreshed, out target))
+        {
+            staged = refreshed;
+            hasTarget = true;
+        }
+
+        bool targetInGraveyard = hasTarget && _environment.IsGraveyardAt(target.CenterX, target.CenterY);
+        bool hasLineOfSight = false;
+        bool solidCollision = false;
+        if (pigron)
+        {
+            if (hasTarget)
+            {
+                float targetX = target.CenterX - VanillaNpcBehaviorContext.BasePlayerWidth * 0.5f;
+                float targetY = target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f;
+                hasLineOfSight = _environment.CanHit(
+                    staged.PositionX,
+                    staged.PositionY,
+                    hitbox.Width,
+                    hitbox.Height,
+                    targetX,
+                    targetY,
+                    (int)VanillaNpcBehaviorContext.BasePlayerWidth,
+                    (int)VanillaNpcBehaviorContext.BasePlayerHeight);
+            }
+
+            solidCollision = _environment.SolidCollision(
+                staged.PositionX,
+                staged.PositionY,
+                hitbox.Width,
+                hitbox.Height);
+        }
+
+        var lifecycleInput = new VanillaFlyingEyeLifecycleInput(
+            PositionY: staged.PositionY,
+            VelocityY: staged.VelocityY,
+            Ai: staged.Ai,
+            TimeLeft: staged.Simulation.TimeLeft,
+            NoTileCollide: staged.Simulation.NoTileCollide,
+            DayTime: context.DayTime,
+            WorldSurfacePixels: context.WorldSurfacePixels,
+            TargetInGraveyard: targetInGraveyard,
+            HasLineOfSight: hasLineOfSight,
+            SolidCollision: solidCollision);
+        if (!VanillaFlyingEyeLifecycle.TryStep(type, in lifecycleInput, out VanillaFlyingEyeLifecycleResult lifecycle))
+        {
+            next = default;
+            return false;
+        }
+
+        if (!pigron && !lifecycle.Discouraged &&
+            TryRefreshClosest(in staged, in definition, context, out NpcSnapshot retargeted, out _))
+        {
+            staged = retargeted;
+        }
+        else if (lifecycle.Discouraged)
+        {
+            staged = staged with
+            {
+                Simulation = staged.Simulation with
+                {
+                    DirectionX = staged.VelocityY > 0f ? 1 : staged.Simulation.DirectionX,
+                    DirectionY = -1,
+                    TimeLeft = lifecycle.TimeLeft
+                }
+            };
+        }
+
+        // Preserve pre-transition NoTileCollide through collision response. The source applies generic
+        // collideX/collideY rebound before it updates the Pigron phase flag for subsequent movement.
+        staged = staged with { Ai = lifecycle.Ai };
+        if (!inner.TryStepState(in staged, out next))
+            return false;
+
+        next = next with
+        {
+            Ai = lifecycle.Ai,
+            Simulation = next.Simulation with
+            {
+                NoTileCollide = lifecycle.NoTileCollide,
+                TimeLeft = lifecycle.TimeLeft
+            }
+        };
+        return true;
+    }
+
+    private static bool TryLegacyTargetRefresh(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner,
+        out NpcStateUpdate next)
+    {
+        NpcSnapshot targeted = npc;
+        if (TryRefreshClosest(in npc, in definition, context, out NpcSnapshot refreshed, out _))
+            targeted = refreshed;
+        return inner.TryStepState(in targeted, out next);
+    }
+
+    private static bool TryGetCurrentTarget(
+        in NpcSnapshot npc,
+        VanillaNpcBehaviorContext context,
+        out VanillaNpcTargetCandidate candidate)
+    {
+        if (npc.Target < byte.MaxValue &&
+            context.TryFindCandidate(checked((byte)npc.Target), out candidate) &&
+            candidate.Active && !candidate.Dead && !candidate.Ghost)
+        {
+            return true;
+        }
+
+        candidate = default;
+        return false;
+    }
+
+    private static bool TryRefreshClosest(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context,
+        out NpcSnapshot refreshed,
+        out VanillaNpcTargetCandidate candidate)
+    {
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) &&
+            context.TryFindCandidate(checked((byte)closest.Target), out candidate))
+        {
+            refreshed = npc with
             {
                 Target = closest.Target,
                 Simulation = npc.Simulation with
@@ -40,9 +182,12 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
                     DirectionY = closest.DirectionY
                 }
             };
+            return true;
         }
 
-        return inner.TryStepState(in targeted, out next);
+        refreshed = npc;
+        candidate = default;
+        return false;
     }
 }
 

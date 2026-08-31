@@ -30,7 +30,8 @@ public enum VanillaNpcAiCapability : uint
     KingSlimeDifficultySeedSlice = 1u << 21,
     BossExpertTransformationSlice = 1u << 22,
     BossExpertPhaseTwoDeterministicSlice = 1u << 23,
-    BossExpertRapidDashSlice = 1u << 24
+    BossExpertRapidDashSlice = 1u << 24,
+    FlyingEyeLifecycleStateSlice = 1u << 25
 }
 
 /// <summary>
@@ -99,6 +100,7 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcIds.DemonEye,
             OrdinaryCore |
             VanillaNpcAiCapability.FlyingEyeSteeringProfileSlice |
+            VanillaNpcAiCapability.FlyingEyeLifecycleStateSlice |
             VanillaNpcAiCapability.NegativeNetVariantDefaults);
         entries[2] = Partial(
             VanillaNpcIds.Zombie,
@@ -144,7 +146,9 @@ public static class VanillaNpcAiCoverageCatalog
         foreach (VanillaNpcDefinition definition in VanillaFlyingEyeNpcCatalog.AllDefinitions)
         {
             VanillaNpcAiCapability capabilities =
-                OrdinaryCore | VanillaNpcAiCapability.FlyingEyeSteeringProfileSlice;
+                OrdinaryCore |
+                VanillaNpcAiCapability.FlyingEyeSteeringProfileSlice |
+                VanillaNpcAiCapability.FlyingEyeLifecycleStateSlice;
             if (HasNegativeNetVariant(definition.Type))
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
 

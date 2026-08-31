@@ -97,3 +97,9 @@ D4-пункт `AI family/behavior decomposition` описывает ownership и
 ## Проверка
 
 `VanillaNpcBehaviorFamilyDispatchTests` закрепляет fail-closed контракт dispatch: отключённые families уходят в fallback, неизвестные catalog types не наследуют поведение, а FlyingEye target refresh выполняется внутри family strategy до делегирования. `VanillaEyeOfCthulhuExpertRapidDashTests` закрепляет source RNG consumption, prediction по live velocity игрока, low-life seeding и cadence rapid states. `VanillaNpcAiCoverageCatalogTests` не позволяет назвать эти slices полным parity.
+
+## Состояние мира для жизненного цикла AI_002
+
+AI_002 теперь хранит не косметические правила жизненного цикла отдельно от догадок по пакетам и состоянию. Дневное бегство повторяет исходник: только закреплённые типы, только днём, на уровне или выше `worldSurface` и только если текущая цель не находится в функциональном Graveyard. Ветка ограничивает `timeLeft` значением 10, задаёт движение вверх и намеренно не вызывает `TargetClosest` на этом тике.
+
+Pigron теперь использует исходный автомат `ai[0]/ai[1]`. Отсутствие прямой видимости увеличивает `ai[0]`; на 300-м тике включается проход сквозь тайлы. Возврат прямой видимости отключает фазирование только после того, как `Collision.SolidCollision` становится ложным. Production-факты берутся из `VanillaWorldCanHit`, `VanillaWorldSolidCollision` и `VanillaWorldGraveyardScene`. Косметические alpha, rotation, dust и sound не входят в authoritative claim.

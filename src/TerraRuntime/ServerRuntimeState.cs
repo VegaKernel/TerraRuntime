@@ -148,6 +148,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                     Math.Max(1d, worldTiles.Dimensions.HeightTiles / 3d);
                 _vanillaNpcTargetingAiStepper.EnableBlueSlimeMotion(worldSurfaceTiles);
                 _vanillaNpcTargetingAiStepper.EnableZombieMotion(worldSurfaceTiles);
+                _vanillaNpcTargetingAiStepper.SetFlyingEyeEnvironment(new VanillaFlyingEyeWorldEnvironment(worldTiles));
                 var worldMotion = new VanillaNpcWorldMotionAiStepper(
                     actorIntent,
                     worldTiles,
