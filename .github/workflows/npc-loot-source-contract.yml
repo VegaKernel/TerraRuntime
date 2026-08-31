@@ -5,8 +5,8 @@ on:
     branches: [main]
     paths:
       - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
-      - 'src/TerraRuntime.Core/VanillaItemDefinitionCatalog.cs'
-      - 'src/TerraRuntime.Core/VanillaItemPrefixCatalog.cs'
+      - 'src/TerraRuntime.Core/Items/VanillaItemDefinitionCatalog.cs'
+      - 'src/TerraRuntime.Core/Items/VanillaItemPrefixCatalog.cs'
       - 'src/TerraRuntime.Core/VanillaNpcLoot*.cs'
       - 'tests/TerraRuntime.Tests/*NpcLoot*.cs'
       - 'tools/ci/probe_npc_loot.py'
