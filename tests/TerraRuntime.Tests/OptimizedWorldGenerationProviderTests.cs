@@ -17,7 +17,7 @@ public sealed class OptimizedWorldGenerationProviderTests
                 OptimizedWorldGenerationProvider.GeneratorId,
                 out IWorldGenerationProvider? provider));
         Assert.NotNull(provider);
-        Assert.IsType<OptimizedPlayableWorldGenerationProvider>(provider);
+        Assert.IsType<OptimizedLandmarkWorldGenerationProvider>(provider);
 
         var request = new WorldGenerationRequest(
             OptimizedWorldGenerationProvider.GeneratorId,
@@ -56,13 +56,26 @@ public sealed class OptimizedWorldGenerationProviderTests
 
         int skyLimit = Math.Max(1, (int)result.Metadata.Layers.WorldSurface - 20);
         Assert.True(CountActiveTilesAbove(world, skyLimit) >= 90, "Floating-island terrain must exist above the normal surface.");
+        Assert.True(ContainsWaterAbove(world, skyLimit), "The landmark layer must keep at least one explicit Floating Lake.");
 
         Assert.True(CountActiveTiles(world, 12) >= 32, "A 640x320 optimized world must contain at least eight complete Life Crystals.");
-        Assert.True(world.GeneratedChestCount >= 7, "The optimized playability overlay must persist surface/underground/cavern cache budgets.");
+        Assert.True(world.GeneratedChestCount >= 12, "The optimized world must persist generic caches plus landmark caches.");
         Assert.True(ContainsInteriorWaterBelow(world, (int)result.Metadata.Layers.RockLayer), "Organic cavern generation must include inland underground water.");
-        Assert.Contains(
-            world.CaptureGeneratedChests(),
-            static chest => chest.Items.Any(static item => !item.IsEmpty));
+
+        Assert.True(CountActiveTiles(world, 202) >= 30, "At least one Sunplate sky house must exist.");
+        Assert.True(CountActiveTiles(world, 151) >= 30, "At least one sandstone-brick pyramid must exist.");
+        Assert.True(CountActiveTiles(world, 191) >= 40, "At least one Living Wood structure must exist.");
+        Assert.True(CountActiveTiles(world, 57) >= 40, "Underworld settlement material must exist.");
+        Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.Granite.Value)) >= 35, "Granite micro-biome budget must exist.");
+        Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.Marble.Value)) >= 35, "Marble micro-biome budget must exist.");
+        Assert.True(CountWall(world, 62) >= 20, "Spider-grotto wall budget must exist.");
+
+        WorldChest[] generated = world.CaptureGeneratedChests();
+        Assert.Contains(generated, static chest => chest.Items.Any(static item => !item.IsEmpty));
+        Assert.Contains(generated, static chest => chest.Name.StartsWith("Sky Cache ", StringComparison.Ordinal));
+        Assert.Contains(generated, static chest => chest.Name.StartsWith("Pyramid Cache ", StringComparison.Ordinal));
+        Assert.Contains(generated, static chest => chest.Name.StartsWith("Living Tree Cache ", StringComparison.Ordinal));
+        Assert.Contains(generated, static chest => chest.Name.StartsWith("Underworld Cache ", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -103,6 +116,37 @@ public sealed class OptimizedWorldGenerationProviderTests
         AssertGeneratedChestsEqual(
             first.Candidate.CaptureGeneratedChests(),
             second.Candidate.CaptureGeneratedChests());
+    }
+
+    [Fact]
+    public void Optimized_generator_builds_landmarks_for_crimson_worlds()
+    {
+        var request = new WorldGenerationRequest(
+            OptimizedWorldGenerationProvider.GeneratorId,
+            "Optimized crimson",
+            Seed: 0xC11A50UL,
+            WidthTiles: 512,
+            HeightTiles: 240)
+        {
+            Options = new WorldGenerationOptions(
+                WorldGenerationGameMode.Classic,
+                WorldGenerationEvil.Crimson)
+        };
+        var pipeline = new RuntimeWorldCreationPipeline(BuiltInWorldGeneratorSource.Instance);
+
+        RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(
+            in request,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
+        Assert.NotNull(result.Candidate);
+        Assert.True(CountActiveTiles(result.Candidate!, 203) > 0, "Crimson optimized worlds must retain Crimstone.");
+        Assert.Contains(
+            result.Candidate!.CaptureGeneratedChests(),
+            static chest => chest.Name.StartsWith("Pyramid Cache ", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Candidate.CaptureGeneratedChests(),
+            static chest => chest.Name.StartsWith("Sky Cache ", StringComparison.Ordinal));
     }
 
     private static void AssertSpawnHasGround(
@@ -148,6 +192,21 @@ public sealed class OptimizedWorldGenerationProviderTests
         return count;
     }
 
+    private static int CountWall(RuntimeWorldGenerationWorkspace workspace, ushort wall)
+    {
+        int count = 0;
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        {
+            for (int x = 0; x < workspace.WidthTiles; x++)
+            {
+                if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) && tile.Wall == wall)
+                    count++;
+            }
+        }
+
+        return count;
+    }
+
     private static bool ContainsLiquid(
         RuntimeWorldGenerationWorkspace workspace,
         WorldGenerationLiquidKind kind)
@@ -159,6 +218,26 @@ public sealed class OptimizedWorldGenerationProviderTests
                 if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
                     tile.LiquidAmount > 0 &&
                     tile.LiquidKind == kind)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsWaterAbove(
+        RuntimeWorldGenerationWorkspace workspace,
+        int maxYExclusive)
+    {
+        for (int y = 1; y < Math.Min(maxYExclusive, workspace.HeightTiles); y++)
+        {
+            for (int x = 1; x < workspace.WidthTiles - 1; x++)
+            {
+                if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
+                    tile.LiquidAmount > 0 &&
+                    tile.LiquidKind == WorldGenerationLiquidKind.Water)
                 {
                     return true;
                 }

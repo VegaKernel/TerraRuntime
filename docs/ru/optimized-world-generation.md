@@ -1,176 +1,157 @@
 # Оптимизированная генерация мира
 
-`terraruntime:optimized` — собственный production-oriented генератор мира TerraRuntime. Он намеренно **не** обязан
-создавать тот же мир, что Terraria, при одинаковом seed. Его контракт строг в другом месте: каждый опубликованный мир
-должен быть детерминированным для той же версии TerraRuntime и seed, вмещать все обязательные зоны в заданные размеры
-карты, оставаться совместимым с набором контента официального клиента и содержать географию и progression-ресурсы,
-необходимые для нормального прохождения.
+`terraruntime:optimized` — production-oriented собственный генератор TerraRuntime. Он намеренно **не** обещает
+seed-identical генерацию Terraria. Контракт другой: одинаковые версия TerraRuntime и seed должны воспроизводить один и
+тот же candidate, обязательные роли мира обязаны помещаться, content IDs должны оставаться совместимыми с официальным
+клиентом, а результат должен быть визуально цельным и проходимым без импорта второго мира.
 
-`terraruntime:vanilla` остаётся профилем source-parity. Оптимизированный профиль его не заменяет.
+`terraruntime:vanilla` остаётся профилем source/reference parity. Optimized его не заменяет.
 
 ## Раскладка исходников
 
-Реализации встроенных генераторов находятся под `src/TerraRuntime.World/Generation/` и разделены по профилям:
+Встроенные генераторы разделены по профилям:
 
 ```text
-Generation/
+src/TerraRuntime.World/Generation/
 ├── Flat/
 ├── Optimized/
 ├── Skyblock/
 └── Vanilla/
 ```
 
-Runtime registry только явно регистрирует providers. Реализация конкретного генератора внутри registry больше не
-живет.
-
-## Цели проектирования
-
-Оптимизированный генератор строится вокруг четырёх правил:
-
-1. **Сначала план, потом рисование.** Крупные структуры и progression-зоны получают ограниченные reservation до
-   изменения terrain.
-2. **Для органичной геометрии разрешена собственная математика.** Terrain, caves и floating islands могут использовать
-   deterministic value noise, fractal combinations, random walks, signed-distance-подобные маски, связанные cavern
-   graphs и другие измеренные позднее алгоритмы. Повторять историческую реализацию Re-Logic не требуется.
-3. **Gameplay requirements являются жёсткими требованиями.** Обязательный dungeon, temple, ocean, бюджет Life Crystals
-   или другой progression resource не является пожеланием RNG. Если объект не помещается или исчез, generation
-   завершается ошибкой до commit.
-4. **Validation является частью generation.** Candidate нельзя публиковать только потому, что все passes вернулись без
-   exception.
+Optimized строится слоями, а не одним разрастающимся provider:
 
 ```mermaid
 flowchart TD
-    Request["WorldGenerationRequest"] --> Layout["Bounded layout / reservations"]
-    Layout --> Terrain["Coherent terrain"]
-    Terrain --> Biomes["Biome regions"]
-    Biomes --> Caves["Correlated cave networks"]
-    Caves --> Islands["Floating islands"]
-    Islands --> Ores["Progression ores"]
-    Ores --> Structures["Dungeon / temple / hive / Aether"]
-    Structures --> Organic["Large caverns / shafts / underground lakes"]
-    Organic --> Crystals["Guaranteed Life Crystal budget"]
-    Crystals --> Chests["Persistent surface / underground / cavern caches"]
-    Chests --> Metadata["Spawn / dungeon / layers / Guide"]
-    Metadata --> BaseValidate["Geography validator"]
-    BaseValidate --> PlayValidate["Playability validator"]
-    PlayValidate --> Commit["Normal runtime finalization + commit"]
+    Base["OptimizedWorldGenerationProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
+    Play["OptimizedPlayableWorldGenerationProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
+    Land["OptimizedLandmarkWorldGenerationProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
+    Meta["metadata + base validator"]
+    PVal["playability validator"]
+    LVal["landmark validator"]
+    Commit["candidate finalization / commit"]
+
+    Base --> Play --> Land --> Meta --> PVal --> LVal --> Commit
 ```
 
-Все optimized passes используют `WorldGenerationRngMode.IsolatedDeterministic`. Поэтому добавление несвязанного pass
-не должно сдвигать RNG stream уже существующих passes.
+Все optimized passes используют `WorldGenerationRngMode.IsolatedDeterministic`. Поэтому новый несвязанный pass не
+должен сдвигать random stream уже существующего pass.
 
-## Текущий реализованный срез
+## Что сейчас генерируется
 
-Текущая реализация резервирует или генерирует:
+Optimized profile сейчас создаёт и валидирует:
 
-- безопасную центральную spawn-зону и стартового Guide;
-- левый и правый oceans с ограниченными beaches;
-- forest terrain, а также snow, desert, jungle, world evil и underground mushroom regions;
-- Underworld band с Lava и Hellstone;
-- детерминированные correlated cave walkers;
-- крупные noise-warped cavern landmarks, соединённые извилистыми tunnels;
-- естественные vertical shafts и гарантированные inland underground lakes;
-- несколько floating islands внутри заранее выделенных sky regions;
-- dungeon region на стороне, противоположной jungle;
-- jungle hive с Honey;
-- ограниченный Jungle Temple с Lihzahrd brick и Lihzahrd Altar;
-- Aether pocket с Shimmer;
-- Demon Altar в world-evil зоне и Hellforge в Underworld;
-- первые четыре pre-hardmode ore tiers;
-- детерминированный минимальный бюджет Life Crystals, масштабируемый по площади мира;
-- persistent бюджеты surface, underground и cavern exploration caches.
+- защищённую центральную spawn-зону и стартового Guide;
+- оба океана и beaches;
+- forest, snow, desert, jungle, corruption/crimson и underground mushroom regions;
+- Underworld band с Lava, Hellstone и Hellforge;
+- малые correlated caves, крупные warped caverns, vertical shafts и inland underground lakes;
+- несколько floating islands;
+- dungeon, jungle hive, Jungle Temple и Aether/Shimmer pocket;
+- pre-Hardmode ore tiers;
+- масштабируемый по площади мира бюджет Life Crystals;
+- persistent surface, underground и cavern exploration caches;
+- persistent sky houses на части floating islands;
+- отдельные Floating Lakes на других островах;
+- детерминированные desert pyramids с внутренней chamber и persistent cache;
+- полые Living Wood trees с roots, underground room и persistent cache;
+- ограниченное число Underworld houses, соединённых волнистыми platform bridges;
+- granite, marble и spider/cobweb micro-biomes;
+- явный читаемый вход в dungeon;
+- domain-warped material tongues на границах snow, desert, jungle и world evil.
 
-Loot этих cache намеренно собственный и пока консервативный. Используются только item identities, уже подтверждённые
-source-backed данными репозитория. Это доказывает persistent non-empty exploration loot, но не выдаётся за готовую
-замену полных vanilla chest loot tables.
+Landmark layer использует только tile/wall identities, которые уже source-backed текущей работой репозитория с
+TerrariaServer `1.4.5.8`. Loot landmark caches пока намеренно собственный и консервативный, пока полный vanilla
+biome-loot catalog не подтверждён source-backed данными.
 
-## Органичная подземная геометрия
+## Органичные переходы
 
-Базовые correlated cave walkers дают локальные tunnels. Playability overlay добавляет крупные landmarks через warped
-signed-distance field, после чего принятые caverns соединяются детерминированными извилистыми tunnels. Часть caverns
-получает ограниченные водные бассейны, а один или несколько natural shafts связывают вертикальные слои в стороне от
-защищённой spawn envelope.
+Base generator по-прежнему владеет крупной раскладкой биомов. Landmark pass не переставляет биомы после резервирования
+major structures. Вместо этого он измеряет уже созданный material band, находит границы и выращивает в соседнюю
+естественную породу детерминированные noise-shaped tongues. Заменяться могут только natural terrain families, поэтому
+ores, frame-important objects и обязательные structures не рассматриваются как материал для перекраски.
 
-При carving защищаются frame-important objects, dungeon material, hive/temple content, Honey и Shimmer. После overlay
-всё равно запускается исходный geography validator, поэтому визуальный pass не может тихо стереть обязательную
-структуру и всё равно опубликовать candidate.
+Это убирает наиболее заметные прямые вертикальные границы, не ломая bounded layout contract.
 
-Цель — не максимальное количество пустоты. Малые tunnels, большие rooms, водные landmarks и вертикальные разрывы
-должны создавать читаемый ритм исследования вместо одной равномерной random-walk текстуры.
+## Роли летающих островов
 
-## Бюджеты progression
+Sky terrain сканируется как отдельные горизонтальные masses. Landmark pass назначает две роли:
 
-Life Crystals используют source-backed Terraria `1.4.5.8` tile identity, уже проверяемый vanilla post-settle
-world-generation реализацией. Optimized profile выводит ограниченный target из площади карты, сначала пытается
-органично разместить crystals на полу caves, а затем использует детерминированные безопасные fallback niches, если RNG
-не смог закрыть target. Pass завершается ошибкой, если полный бюджет разместить не удалось.
+- **sky house**: Sunplate shell, Disc Wall interior и persistent custom sky cache;
+- **Floating Lake**: ограниченный вырезанный water basin внутри существующей island mass.
 
-Surface, underground и cavern chests имеют отдельные бюджеты, масштабируемые по ширине мира. Chest tiles и persistent
-chest side table коммитятся совместно через `IWorldGenerationChestWorkspace`. Просто нарисованный chest tile без
-side-table записи не считается успешно созданным cache.
+У обеих ролей есть явные минимальные бюджеты. Если pass не может разместить требуемое число houses/lakes, generation
+завершается ошибкой вместо тихой публикации неполного мира.
 
-## Проверка играбельности
+Текущий sky cache не выдаётся за точное vanilla Skyware loot. Source-backed роли Starfury/Horseshoe/Balloon остаются
+отдельной progression-задачей.
 
-Исходный optimized validator продолжает проверять крупную географию. Второй fail-closed validator дополнительно
-проверяет:
+## Наземные и подземные landmarks
 
-- сохранность всех требуемых Life Crystal objects;
-- полный persistent бюджет generated chests и корректный tile anchor каждого chest;
-- выполнение минимумов по large caverns, underground lakes и vertical shafts;
-- наличие вокруг spawn ограниченного количества сухих walkable columns высотой минимум в две tiles.
+### Pyramids
 
-Эти проверки намеренно сильнее проверки одного representative tile. Pass, который тихо сдался на половине target, не
-может отметить candidate готовым.
+Desert surface spans определяются по реально сгенерированному материалу, а не по захардкоженным X. Генератор выводит
+budget из ширины мира, строит sandstone-brick shell, внутренний shaft и chamber, после чего сохраняет cache внутри.
 
-## Гарантии layout
+### Living trees
 
-Layout pass рассматривает крупные структуры как прямоугольники с явными bounds и collision checks. Текущий минимальный
-размер candidate — `512x240`; меньший запрос отклоняется до terrain generation, потому что TerraRuntime не может
-гарантировать там разумную полную раскладку.
+Forest candidates выбираются вне защищённой spawn envelope. Каждое дерево имеет Living Wood trunk, Leaf Block crown,
+roots, полое вертикальное ядро, underground room из Living Wood и persistent cache.
 
-Biome regions могут содержать structures намеренно. Но reservations крупных structures не должны пересекаться друг с
-другом. Floating islands удерживаются выше обычного terrain envelope и внутри ocean margins.
+### Underworld settlements
 
-Это принципиально отличается от схемы «попробовать N случайных позиций и молча сдаться»: место для обязательного
-контента выделяется до дорогих passes, а post-layout resource budgets имеют fail-closed fallback placement.
+Underworld получает ограниченное число Ash houses. Открытые проходы и platform bridges делают structures
+используемыми без угадывания furniture/door frame metadata. Более богатые vanilla-inspired наборы мебели можно добавить
+после source-backed подтверждения соответствующих content contracts.
 
-## Визуальное качество
+## Micro-biomes
 
-Surface heightfield объединяет несколько детерминированных one-dimensional noise octaves разных масштабов. Spawn area
-плавно смешивается с более спокойным профилем вместо жёсткой прямоугольной площадки. Малые caves используют correlated
-random walks с меняющимся radius, крупные caverns — two-dimensional fractal-noise warp, а floating islands —
-ellipse/SDF-подобную форму с low-frequency perturbation вместо прямоугольных кусков.
+Landmark pass добавляет ограниченные granite и marble lenses, а также spider grottoes. Spider grotto вырезает подземную
+chamber, ставит source-backed unsafe spider wall и распределяет Cobweb tiles. Placement отклоняет зоны рядом с
+frame-important, hive, temple, dungeon, chest, Honey и Shimmer content.
 
-Эти алгоритмы намеренно заменяемы. Визуальное улучшение допустимо, если сохраняются детерминизм новой версии
-генератора, bounded work, official-client content IDs и все validation guarantees.
+Это визуальные/exploration роли, а не заявление о повторении точных vanilla placement algorithms.
+
+## Validation
+
+Generation остаётся fail-closed. Landmark validator запускается после существующих geography/playability validators и
+требует:
+
+- точные бюджеты sky houses и Floating Lakes;
+- точные бюджеты pyramids, Living Trees и Underworld houses;
+- точные бюджеты granite, marble и spider grottoes;
+- нетривиальное число warped biome-transition cells;
+- persistent side-table entries для landmark chests;
+- минимальные количества material/wall для каждого landmark family;
+- успешно открытый dungeon entrance.
+
+Это намеренно строже проверки одного representative tile. Наполовину созданный набор landmarks отклоняется.
 
 ## Совместимость и не-цели
 
-Одинаковый текстовый или числовой seed **не обязан** создавать тот же мир, что Terraria. Для source/reference parity
-используется `terraruntime:vanilla`.
+Одинаковый seed **не обязан** создавать тот же мир, что Terraria. Для source/reference parity используется
+`terraruntime:vanilla`.
 
-При этом optimized profile по-прежнему ориентирован на official-client-compatible tiles, walls, liquids, metadata и
-`.wld` finalization. Загрузка существующих vanilla worlds не зависит от того, какой generator создаёт новые миры.
+Optimized worlds всё ещё ориентированы на official-client-compatible tile, wall, liquid, object и `.wld` finalization
+contracts. Загрузка существующего vanilla `.wld` не зависит от генератора новых миров.
 
-## Оставшаяся работа по progression и качеству
+## Что ещё осталось
 
-Текущий срез уже заметно ближе к реальной игре, но это ещё не финальный content pass. До production-complete состояния
-roadmap всё ещё требует:
+Большой landmark slice закрывает заметный визуальный/content gap, но `terraruntime:optimized` ещё не production-complete.
+Основные оставшиеся задачи:
 
-- более богатый граф dungeon rooms, locked/dungeon loot и разнообразие structures;
-- гарантированные Floating Island house/loot variants и отдельные Floating Lakes;
-- полноценные biome-aware chest loot families вместо текущих консервативных custom caches;
-- Shadow Orb / Crimson Heart progression anchors;
-- полноценные Underworld houses и resource distribution;
-- pyramids, living trees и representative granite/marble/spider/mushroom micro-biomes с ограниченными counts;
-- более сильные гарантии traversal в jungle/temple и несколько hives с Queen Bee space на больших мирах;
-- vegetation, decoration и domain-warped biome transition passes без разрушения читаемого силуэта biomes;
-- path/reachability checks от spawn до critical entrances вместо одной проверки starter-area safety;
-- minimum ore/resource quantity gates и hardmode-ready anchor validation;
-- измерения generation time, allocations и output quality на Small/Medium/Large worlds;
-- acceptance generated `.wld` официальным client/server и deterministic visual-regression artifacts.
-
-До закрытия этих gates `terraruntime:optimized` является активно развиваемым встроенным профилем, а не заявлением о
-полной parity всего world-content Terraria.
+- Shadow Orb / Crimson Heart anchors;
+- настоящие source-backed biome и Skyware loot families;
+- dungeon locked chest/key progression и более богатые dungeon branches/traps;
+- несколько hives и более сильная гарантия Queen Bee space на больших мирах;
+- более строгие traversal proofs для Jungle Temple/hive/dungeon;
+- glowing-mushroom и дополнительные decorative micro-biomes;
+- vegetation и surface decoration сверх Living Trees;
+- реальный reachability graph от spawn до critical entrances;
+- minimum quantity gates для ores и progression resources;
+- Hardmode-ready mutation anchors;
+- измерения generation time и peak memory на Small/Medium/Large;
+- deterministic map/screenshot visual-regression fixtures;
+- acceptance через pinned TerrariaServer `1.4.5.8` и official-client join smoke.
 
 Список работ находится в [`../roadmap/optimized-worldgen.md`](../roadmap/optimized-worldgen.md).

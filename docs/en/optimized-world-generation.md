@@ -1,172 +1,158 @@
 # Optimized world generation
 
-`terraruntime:optimized` is TerraRuntime's production-oriented custom world generator. It is intentionally **not**
-seed-identical to Terraria world generation. Its contract is stronger in a different direction: every published world
-must be deterministic for the same TerraRuntime version and seed, fit all mandatory regions inside the requested map,
-remain compatible with the official client content space, and contain the geography and progression resources required
-for a normal playthrough.
+`terraruntime:optimized` is TerraRuntime's production-oriented custom world generator. It intentionally does **not**
+promise seed-identical Terraria world generation. Its contract is different: the same TerraRuntime version and seed
+must reproduce the same candidate, mandatory world roles must fit, official-client content IDs must remain valid, and
+the result must be visually coherent and playable without importing a second world.
 
-`terraruntime:vanilla` remains the source-parity profile. The optimized profile does not replace it.
+`terraruntime:vanilla` remains the source/reference-parity profile. Optimized generation does not replace it.
 
 ## Source layout
 
-Built-in generator implementations live below `src/TerraRuntime.World/Generation/` and are separated by profile:
+Built-in generator implementations are separated by profile:
 
 ```text
-Generation/
+src/TerraRuntime.World/Generation/
 ├── Flat/
 ├── Optimized/
 ├── Skyblock/
 └── Vanilla/
 ```
 
-The runtime registry only performs explicit registration. Generator implementation does not live inside the registry.
-
-## Design goals
-
-The optimized generator is built around four rules:
-
-1. **Plan before drawing.** Large structures and progression regions receive bounded reservations before terrain is
-   mutated.
-2. **Organic geometry may use custom mathematics.** Terrain, caves and floating islands may use deterministic value
-   noise, fractal combinations, random walks, signed-distance-style masks, connected cavern graphs and later measured
-   alternatives. They do not need to reproduce Re-Logic's historical implementation.
-3. **Gameplay requirements are hard requirements.** A required dungeon, temple, ocean, Life Crystal budget or other
-   progression resource is not an RNG suggestion. If it cannot fit or disappears, generation fails before commit.
-4. **Validation is part of generation.** A candidate is not publishable merely because all passes returned.
+The optimized profile is layered instead of growing one monolithic provider:
 
 ```mermaid
 flowchart TD
-    Request["WorldGenerationRequest"] --> Layout["Bounded layout / reservations"]
-    Layout --> Terrain["Coherent terrain"]
-    Terrain --> Biomes["Biome regions"]
-    Biomes --> Caves["Correlated cave networks"]
-    Caves --> Islands["Floating islands"]
-    Islands --> Ores["Progression ores"]
-    Ores --> Structures["Dungeon / temple / hive / Aether"]
-    Structures --> Organic["Large caverns / shafts / underground lakes"]
-    Organic --> Crystals["Guaranteed Life Crystal budget"]
-    Crystals --> Chests["Persistent surface / underground / cavern caches"]
-    Chests --> Metadata["Spawn / dungeon / layers / Guide"]
-    Metadata --> BaseValidate["Geography validator"]
-    BaseValidate --> PlayValidate["Playability validator"]
-    PlayValidate --> Commit["Normal runtime finalization + commit"]
+    Base["OptimizedWorldGenerationProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
+    Play["OptimizedPlayableWorldGenerationProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
+    Land["OptimizedLandmarkWorldGenerationProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
+    Meta["metadata + base validator"]
+    PVal["playability validator"]
+    LVal["landmark validator"]
+    Commit["candidate finalization / commit"]
+
+    Base --> Play --> Land --> Meta --> PVal --> LVal --> Commit
 ```
 
-All optimized passes use `WorldGenerationRngMode.IsolatedDeterministic`. Adding one unrelated pass therefore does not
-shift the RNG stream of existing passes.
+All optimized passes use `WorldGenerationRngMode.IsolatedDeterministic`. Adding an unrelated later pass therefore does
+not silently shift the random stream of an existing pass.
 
-## Current implementation slice
+## Current generated world
 
-The current implementation reserves or generates:
+The optimized profile currently produces and validates:
 
-- a safe central spawn region and starting Guide;
-- left and right oceans with bounded beaches;
-- forest terrain plus snow, desert, jungle, world-evil and underground mushroom regions;
-- an underworld band with Lava and Hellstone;
-- deterministic correlated cave walkers;
-- large noise-warped cavern landmarks connected by meandering tunnels;
-- natural vertical shafts and guaranteed inland underground lakes;
-- multiple floating islands placed inside reserved sky regions;
-- a dungeon region on the side opposite the jungle;
-- a jungle hive with Honey;
-- a bounded Jungle Temple containing Lihzahrd brick and a Lihzahrd Altar;
-- an Aether pocket containing Shimmer;
-- a world-evil Demon Altar and an underworld Hellforge;
-- the initial four pre-hardmode ore tiers;
-- a deterministic minimum Life Crystal budget scaled by world area;
-- persistent surface, underground and cavern exploration-cache budgets.
+- a protected central spawn and starting Guide;
+- both oceans and beaches;
+- forest, snow, desert, jungle, corruption/crimson and underground mushroom regions;
+- an Underworld band with Lava, Hellstone and a Hellforge;
+- small correlated caves plus large warped caverns, vertical shafts and inland underground lakes;
+- multiple floating islands;
+- a dungeon, jungle hive, Jungle Temple and Aether/Shimmer pocket;
+- pre-Hardmode ore tiers;
+- a world-area-scaled Life Crystal budget;
+- persistent surface, underground and cavern exploration caches;
+- persistent sky houses on a subset of floating islands;
+- explicit Floating Lakes on other islands;
+- deterministic desert pyramids with internal chambers and persistent caches;
+- hollow Living Wood trees with roots, underground rooms and persistent caches;
+- bounded Underworld houses connected by undulating platform bridges;
+- granite, marble and spider/cobweb micro-biomes;
+- an explicit readable dungeon opening;
+- domain-warped material tongues at snow, desert, jungle and world-evil boundaries.
 
-The cache loot is intentionally custom and currently conservative. It uses only item identities already source-backed
-by the repository. This proves persistent non-empty exploration loot without pretending the current cache tables are a
-complete vanilla chest-loot replacement.
+The landmark layer uses only tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
+world-generation work. Landmark cache loot remains deliberately custom and conservative until the full vanilla
+biome-loot catalog is source-backed.
 
-## Organic underground geometry
+## Organic transitions
 
-The baseline correlated cave walkers provide local tunnels. The playability overlay adds larger landmarks using a
-warped signed-distance field, then connects accepted caverns with deterministic meandering tunnels. A subset of those
-caverns receives bounded water basins, and one or more natural shafts connect vertical layers away from the protected
-spawn envelope.
+The base generator still owns the large biome layout. The landmark pass does not reshuffle biome positions after major
+structures have been reserved. Instead it measures the existing material band, finds each edge and grows deterministic
+noise-shaped tongues into adjacent natural terrain. Only natural terrain families are eligible for replacement, so ores,
+frame-important objects and mandatory structures are not treated as paintable transition material.
 
-Feature carving treats frame-important objects, dungeon material, hive/temple content, Honey and Shimmer as protected
-content. The original geography validator still runs after the overlay, so a visual feature cannot silently erase a
-mandatory structure and still publish the candidate.
+This removes the most obvious straight vertical material boundaries while preserving the bounded layout contract.
 
-The objective is not maximum empty space. Small tunnels, large rooms, water landmarks and vertical breaks should form a
-readable exploration rhythm instead of one uniform random-walk texture.
+## Floating-island roles
 
-## Progression budgets
+Sky terrain is scanned as separate horizontal masses. The landmark pass assigns two distinct roles:
 
-Life Crystals use the source-backed Terraria `1.4.5.8` tile identity already exercised by the vanilla post-settle
-world-generation implementation. The optimized profile derives a bounded target from map area, tries organic cave-floor
-placement first, and then uses deterministic safe fallback niches if random placement cannot satisfy the target. The
-pass fails if the complete budget cannot be placed.
+- **sky house**: Sunplate shell, Disc Wall interior and a persistent custom sky cache;
+- **Floating Lake**: a carved bounded water basin reinforced inside the existing island mass.
 
-Surface, underground and cavern chests have separate world-width-scaled budgets. Chest tiles and the persistent chest
-side table are committed together through `IWorldGenerationChestWorkspace`. A tile-only chest is not counted as a
-successful generated cache.
+Both roles have explicit minimum budgets. A pass that cannot place the requested house/lake counts fails generation
+rather than silently returning a visually incomplete world.
 
-## Playability validation
+The current sky cache is not claimed to reproduce vanilla Skyware loot. Source-backed Starfury/Horseshoe/Balloon roles
+remain a separate progression task.
 
-The original optimized validator still checks the major geography. A second fail-closed validator now also checks:
+## Surface and underground landmarks
 
-- every required Life Crystal object remains present;
-- the complete generated-chest budget is persisted and every chest has a valid tile anchor;
-- the large-cavern, underground-lake and vertical-shaft minimums were satisfied;
-- the spawn area retains a bounded set of dry, two-tile-high walkable starter columns.
+### Pyramids
 
-These checks are deliberately stronger than checking one representative tile. A generator pass that quietly gives up
-cannot mark the candidate complete.
+Desert surface spans are detected from generated material rather than hard-coded X coordinates. The generator derives a
+world-width-scaled pyramid budget, builds a sandstone-brick shell, opens an internal shaft and chamber, and persists a
+cache inside the chamber.
 
-## Layout guarantees
+### Living trees
 
-The layout pass treats major structures as rectangles with explicit bounds and collision checks. The current minimum
-candidate size is `512x240`; smaller requests fail before terrain generation because TerraRuntime cannot guarantee a
-sensible complete layout there.
+Forest surface candidates are selected away from the protected spawn envelope. Each generated tree has a Living Wood
+trunk, Leaf Block crown, roots, a hollow vertical core, a Living Wood underground room and a persistent cache.
 
-Biome regions may contain structures by design. Structure reservations, however, must not collide with other major
-structure reservations. Floating islands are kept above the ordinary terrain envelope and inside the ocean margins.
+### Underworld settlements
 
-This is the key difference from "try N random positions and quietly give up": mandatory content has a place before the
-expensive passes begin, and post-layout resource budgets have fail-closed placement fallbacks.
+The Underworld receives a bounded number of Ash houses. Open doorways and platform bridges keep the structures usable
+without requiring guessed furniture/door frame metadata. Later work can replace the conservative shell with richer
+vanilla-inspired furniture sets after those content contracts are source-backed.
 
-## Visual quality
+## Micro-biomes
 
-The surface heightfield combines several deterministic one-dimensional noise octaves at different scales. The spawn
-area is blended toward a gentler profile rather than flattened with a hard rectangle. Small caves use correlated random
-walks with varying radius, large caverns use a two-dimensional fractal-noise warp, and floating islands use an
-ellipse/SDF-like arch with low-frequency perturbation instead of rectangular blobs.
+The landmark pass adds bounded granite and marble lenses plus spider grottoes. Spider grottoes carve an underground
+chamber, apply the source-backed unsafe spider wall and seed Cobweb tiles. Placement rejects areas near frame-important,
+hive, temple, dungeon, chest, Honey or Shimmer content.
 
-These algorithms are intentionally replaceable. A visual improvement is acceptable when it preserves deterministic
-output for the new generator version, bounded work, official-client content IDs and all validation guarantees.
+These are visual/exploration roles, not claims of exact vanilla placement algorithms.
+
+## Validation
+
+Generation remains fail-closed. The landmark validator runs after the existing geography and playability validators and
+requires:
+
+- the exact sky-house and Floating-Lake budgets;
+- the exact pyramid, Living Tree and Underworld-house budgets;
+- the exact granite, marble and spider-grotto budgets;
+- a non-trivial number of warped biome-transition cells;
+- persistent landmark chest side-table entries;
+- minimum generated material/wall counts for each landmark family;
+- a successfully opened dungeon entrance.
+
+This is deliberately stronger than checking for one representative tile. A half-generated landmark set is rejected.
 
 ## Compatibility and non-goals
 
-The same textual or numeric seed is **not expected** to produce the Terraria world for that seed. Use
-`terraruntime:vanilla` when source/reference parity is the goal.
+The same seed is **not** expected to create the Terraria world for that seed. Use `terraruntime:vanilla` for
+source/reference parity.
 
-The optimized profile still targets official-client-compatible tiles, walls, liquids, metadata and `.wld`
-finalization. Loading existing vanilla worlds remains independent of which generator created new worlds.
+Optimized worlds still target official-client-compatible tile, wall, liquid, object and `.wld` finalization contracts.
+Loading an existing vanilla `.wld` remains independent of which generator is used for new worlds.
 
-## Remaining progression and quality work
+## Remaining work
 
-The current slice is substantially more playable, but it is not the final content pass. Before the optimized profile is
-called production-complete, the roadmap still requires:
+The large landmark slice closes a substantial visual/content gap, but `terraruntime:optimized` is not yet
+production-complete. Important remaining items include:
 
-- richer dungeon room graphs, locked/dungeon loot and structure variety;
-- guaranteed Floating Island house/loot variants and explicit Floating Lakes;
-- full biome-aware chest loot families instead of the current conservative custom caches;
-- Shadow Orb / Crimson Heart progression anchors;
-- full Underworld houses/resource distribution;
-- pyramids, living trees and representative granite/marble/spider/mushroom micro-biomes with bounded counts;
-- stronger jungle/temple traversal guarantees and multiple-hive/Queen Bee support on larger worlds;
-- vegetation, decoration and domain-warped biome transition passes that preserve readable silhouettes;
-- path/reachability checks from spawn to critical entrances rather than starter-area safety alone;
-- minimum ore/resource quantity gates and hardmode-ready anchor validation;
-- generation-time, allocation and output-quality measurements on Small/Medium/Large worlds;
-- official-client/server acceptance for generated `.wld` files and deterministic visual-regression artifacts.
-
-Until those gates are complete, `terraruntime:optimized` is an actively developed built-in profile rather than a claim
-of complete Terraria world-content parity.
+- Shadow Orb / Crimson Heart anchors;
+- true source-backed biome and Skyware loot families;
+- dungeon locked chest/key progression and richer dungeon branches/traps;
+- multiple hives and stronger Queen Bee space on larger worlds;
+- stronger Jungle Temple/hive/dungeon traversal proofs;
+- glowing-mushroom and additional decorative micro-biomes;
+- vegetation and surface decoration beyond Living Trees;
+- a real reachability graph from spawn to critical entrances;
+- minimum quantity gates for ores and progression resources;
+- Hardmode-ready mutation anchors;
+- Small/Medium/Large generation-time and peak-memory measurements;
+- deterministic map/screenshot visual-regression fixtures;
+- pinned TerrariaServer `1.4.5.8` acceptance plus official-client join smoke.
 
 See [`../roadmap/optimized-worldgen.md`](../roadmap/optimized-worldgen.md) for the implementation checklist.
