@@ -1,0 +1,251 @@
+name: Startup Performance Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/TerrariaServerHost.cs'
+      - 'src/TerraRuntime/PlayerBootstrapPacketSet*.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldSnapshotCache.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldSnapshotProfiler.cs'
+      - 'src/TerraRuntime.World/WorldFileLoadProfile.cs'
+      - 'src/TerraRuntime.World/WorldFileLoader*.cs'
+      - 'tools/TerraRuntime.StartupGate/**'
+      - 'docs/en/startup-performance-gate.md'
+      - 'docs/ru/startup-performance-gate.md'
+      - 'docs/roadmap.md'
+      - '.github/workflows/startup-performance-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-startup-performance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  startup-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download official TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+      - name: Generate official small world
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server_dir="$(dirname "$server")"
+          server_name="$(basename "$server")"
+          world="$GITHUB_WORKSPACE/artifacts/startup-world.wld"
+          config="$GITHUB_WORKSPACE/artifacts/startup-worldgen-serverconfig.txt"
+
+          cat > "$config" <<EOF2
+          world=$world
+          autocreate=1
+          worldname=TerraRuntimeStartupGate
+          difficulty=0
+          maxplayers=1
+          port=17830
+          password=
+          motd=TerraRuntime startup performance gate
+          secure=1
+          upnp=0
+          EOF2
+
+          set +e
+          (
+            cd "$server_dir"
+            printf 'exit\n' | timeout 180 "./$server_name" -config "$config"
+          ) > "$GITHUB_WORKSPACE/artifacts/startup-worldgen.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$GITHUB_WORKSPACE/artifacts/startup-worldgen.log"
+          test -s "$world"
+          if [[ $status -ne 0 && $status -ne 124 ]]; then
+            exit "$status"
+          fi
+
+      - name: Build startup gate and host
+        run: |
+          dotnet build tools/TerraRuntime.StartupGate/TerraRuntime.StartupGate.csproj -c Release
+          dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+
+      - name: Measure canonical and runtime-cache stages
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/startup-world.wld"
+          dotnet run --project tools/TerraRuntime.StartupGate/TerraRuntime.StartupGate.csproj \
+            -c Release --no-build -- "$world" | tee artifacts/startup-gate.log
+
+          python3 - artifacts/startup-gate.log <<'PY'
+          import math
+          import pathlib
+          import sys
+
+          lines = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8').splitlines()
+          line = next((line for line in lines if line.startswith('startup_gate ')), None)
+          if line is None:
+              raise SystemExit('startup_gate line missing')
+
+          fields = {}
+          for token in line.split()[1:]:
+              if '=' in token:
+                  key, value = token.split('=', 1)
+                  fields[key] = value
+
+          required_float = [
+              'file_read_ms', 'wld_total_ms', 'wld_tile_reconstruction_ms', 'wld_non_tile_ms',
+              'cache_write_ms', 'cache_validated_load_ms', 'cache_validation_ms', 'cache_parallel_wall_ms',
+              'cache_tile_reconstruction_ms', 'cache_liquid_postload_ms', 'cache_prepared_state_ms',
+              'index_construction_ms', 'world_ready_cold_ms', 'world_ready_warm_ms', 'allocated_mib',
+          ]
+          required_int = [
+              'gen0_collections', 'gen1_collections', 'gen2_collections',
+              'cache_shards', 'cache_tile_bytes', 'cache_prepared_bytes', 'cache_liquid_bytes',
+          ]
+
+          for key in required_float:
+              if key not in fields:
+                  raise SystemExit(f'missing startup metric: {key}')
+              value = float(fields[key])
+              if not math.isfinite(value) or value < 0:
+                  raise SystemExit(f'invalid startup metric: {key}={fields[key]}')
+
+          for key in required_int:
+              if key not in fields:
+                  raise SystemExit(f'missing startup metric: {key}')
+              value = int(fields[key])
+              if value < 0:
+                  raise SystemExit(f'invalid startup metric: {key}={fields[key]}')
+
+          for key in [
+              'file_read_ms', 'wld_total_ms', 'wld_tile_reconstruction_ms',
+              'cache_write_ms', 'cache_validated_load_ms', 'cache_validation_ms',
+              'cache_parallel_wall_ms', 'cache_tile_reconstruction_ms',
+              'index_construction_ms', 'world_ready_cold_ms', 'world_ready_warm_ms'
+          ]:
+              if float(fields[key]) <= 0:
+                  raise SystemExit(f'startup phase was not exercised: {key}={fields[key]}')
+
+          if int(fields['cache_shards']) <= 0 or int(fields['cache_tile_bytes']) <= 0:
+              raise SystemExit('runtime cache tile reconstruction was not exercised')
+          print('startup_stage_metrics_ok')
+          PY
+
+      - name: Prove cold and warm NetworkReady on the real host
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/startup-world.wld"
+          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+          runtime_cache="${world%.wld}.runtime-world"
+          bootstrap_cache="${world%.wld}.runtime-bootstrap"
+
+          run_host() {
+            local label="$1"
+            local port="$2"
+            local log="$GITHUB_WORKSPACE/artifacts/startup-${label}.log"
+            local timing="$GITHUB_WORKSPACE/artifacts/startup-${label}-timing.txt"
+            local start_ns end_ns elapsed_ms
+
+            start_ns="$(date +%s%N)"
+            dotnet "$server_dll" \
+              --world "$world" \
+              --port "$port" \
+              --max-players 1 \
+              --no-tui \
+              > "$log" 2>&1 &
+            local pid=$!
+
+            cleanup() {
+              kill "$pid" 2>/dev/null || true
+              wait "$pid" 2>/dev/null || true
+            }
+            trap cleanup RETURN
+
+            for _ in $(seq 1 180); do
+              if ! kill -0 "$pid" 2>/dev/null; then
+                cat "$log" >&2
+                return 1
+              fi
+              if grep -q "TerraRuntime listening on 0.0.0.0:${port}" "$log"; then
+                break
+              fi
+              sleep 0.25
+            done
+            grep -q "TerraRuntime listening on 0.0.0.0:${port}" "$log"
+            end_ns="$(date +%s%N)"
+            elapsed_ms="$(python3 - "$start_ns" "$end_ns" <<'PY'
+          import sys
+          print((int(sys.argv[2]) - int(sys.argv[1])) / 1_000_000.0)
+          PY
+            )"
+            printf 'network_ready_%s_ms=%s\n' "$label" "$elapsed_ms" | tee "$timing"
+
+            kill -TERM "$pid"
+            for _ in $(seq 1 120); do
+              if ! kill -0 "$pid" 2>/dev/null; then
+                break
+              fi
+              sleep 0.25
+            done
+            if kill -0 "$pid" 2>/dev/null; then
+              cat "$log" >&2
+              return 1
+            fi
+            set +e
+            wait "$pid"
+            local status=$?
+            set -e
+            trap - RETURN
+            test "$status" -eq 0
+          }
+
+          rm -f "$runtime_cache" "$bootstrap_cache"
+          run_host cold 17831
+          test -s "$runtime_cache"
+          test -s "$bootstrap_cache"
+          run_host warm 17832
+
+          python3 - artifacts/startup-cold-timing.txt artifacts/startup-warm-timing.txt <<'PY'
+          import math
+          import pathlib
+          import sys
+          for path in sys.argv[1:]:
+              text = pathlib.Path(path).read_text(encoding='utf-8').strip()
+              _, raw = text.split('=', 1)
+              value = float(raw)
+              if not math.isfinite(value) or value <= 0:
+                  raise SystemExit(f'invalid NetworkReady measurement: {text}')
+          print('startup_network_ready_ok cold=true warm=true')
+          PY
+
+      - name: Upload startup gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: startup-performance-gate
+          path: artifacts/
+          if-no-files-found: error
