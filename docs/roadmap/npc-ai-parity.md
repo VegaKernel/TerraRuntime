@@ -14,7 +14,7 @@ The executable truth is `VanillaNpcAiCoverageCatalog`. `FullVanillaAiParity` rem
 | Eye of Cthulhu | yes | partial | partial | classic phases, Expert phase one/transformation, Servant RNG and source-ordered rapid-dash states | no |
 | Servant of Cthulhu | yes | partial | partial | source-backed flyer pursuit | no |
 | Skeleton | yes | partial | partial | profiled AI_003 `1.5f` traversal/check-active/event door pressure | no |
-| King Slime | yes | partial | partial | teleport/despawn, Good World scaling and classic/Expert minion intents | no |
+| King Slime | yes | partial | partial | teleport/despawn, Good World scaling, minions, death/progression and source-ordered loot semantics | no |
 | 23 additional hostile AI_001 types | yes | partial | partial | typed timer bonus/jump-window profiles | no |
 | 12 additional hostile AI_002 types | yes | partial | partial | typed normal/special/enraged steering profiles | no |
 | 17 additional hostile AI_005 types | yes | partial | partial | typed pursuit/bounce/water profiles | no |
@@ -92,14 +92,15 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [ ] finish Eye of Cthulhu Good World reflection/re-entry, damage/defense difficulty projection and remaining irreversible/cosmetic effects;
 - [x] finish King Slime `AI_015` difficulty/seed branches and despawn: Good World scale/air-speed behavior plus source-ordered Expert `1/4` Spiked Slime minion selection are authoritative; the pinned method has no separate Master AI branch;
 - [x] finish King Slime authoritative death lifecycle and `downedSlimeKing` progression persistence;
-- [ ] finish King Slime NPC-specific loot and remaining death-time side effects;
+- [x] import King Slime normal-mode NPC-specific loot plus Expert/Master source-ordered gameplay rule semantics, packet-28-timed `playerInteraction` accounting, active-recipient filtering, Master relic delivery and per-player Master pet placement;
+- [ ] wire the concrete packet-90 instanced Boss Bag encoder/`54000`-tick slot lease and remaining King Slime death-time world effects (Slime Rain termination and first-kill Nerdy Slime unlock/spawn);
 - [ ] add remaining pre-Hardmode bosses with complete child/projectile ownership;
 - [ ] add Hardmode, event and endgame bosses;
 - [ ] boss bars, announcements, progression transitions and multiplayer targeting parity.
 
 Eye of Cthulhu still intentionally reports `FullVanillaAiParity = false`. Expert rapid dashes now consume the source RNG sequence through the injected authoritative NPC random stream and read live target velocity through the player-slot snapshot boundary. Good World reflection/re-entry and combat-stat difficulty projection remain separate open work, so the coverage catalog advertises `BossExpertRapidDashSlice` rather than full parity.
 
-King Slime still intentionally reports `FullVanillaAiParity = false`: the AI/difficulty/seed/despawn slice is distinct from loot and death-side-effect parity. Expert minion RNG consumes the source `Next(4)` between spawn coordinates and velocity/`ai[0]` rolls, preserving downstream RNG order instead of merely swapping the child type after the fact.
+King Slime still intentionally reports `FullVanillaAiParity = false`. Normal-mode loot owns its ordered world-item transaction. Expert/Master gameplay now preserves the pinned raw-RNG order for Boss Bag, Master relic and the per-active-interacting-player pet rule, including inline `Item.NewItem`-equivalent delivery points. Boss Bag transport remains explicitly incomplete until packet 90 and its `54000`-tick server-side slot-reuse lease are represented; Slime Rain termination and the first-kill Nerdy Slime world side effect also remain open.
 
 ## N4 — Town, friendly and special NPCs
 
