@@ -20,28 +20,16 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
       - name: Decompile official TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
-      - name: Extract global firing distance helper
+      - name: Extract Main.MaxWorldViewSize initialization
         shell: bash
         run: |
           set -euo pipefail
-          FILE="$(find decompiled/1458 -path '*/Terraria/NPC.cs' -print -quit)"
+          FILE="$(find decompiled/1458 -path '*/Terraria/Main.cs' -print -quit)"
           python3 - "$FILE" <<'PY'
           import sys
           from pathlib import Path
           text=Path(sys.argv[1]).read_text(encoding='utf-8',errors='replace')
-          needle='AI_GlobalFiringDistanceCheck'
-          pos=0
-          while True:
-              pos=text.find(needle,pos)
-              if pos<0: break
-              line=text.count('\n',0,pos)+1
-              lo=max(0,text.rfind('\n',0,max(0,pos-1200)))
-              hi=text.find('\n\t}',pos)
-              if hi<0: hi=min(len(text),pos+1800)
-              else: hi+=4
-              chunk=text[lo:hi]
-              if 'bool AI_GlobalFiringDistanceCheck' in chunk:
-                  print(f'===== helper at line {line} =====')
-                  print(chunk)
-              pos+=len(needle)
+          for i,line in enumerate(text.splitlines(),1):
+              if 'MaxWorldViewSize' in line:
+                  print(f'{i:06d}: {line}')
           PY
