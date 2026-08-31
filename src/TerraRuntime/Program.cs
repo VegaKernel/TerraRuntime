@@ -76,6 +76,40 @@ internal static class Program
                 return 23;
             }
 
+            AtomicSaveAbandonedWriteRecoveryDiagnostic interruptedRecovery =
+                RuntimeWorldCheckpointRecovery.TryRecoverInterruptedSaveAsync(
+                    options.WorldPath,
+                    TerrariaServerHost.CreateServerWorldLoadLimits()).GetAwaiter().GetResult();
+            switch (interruptedRecovery.Result)
+            {
+                case AtomicSaveAbandonedWriteRecoveryResult.Recovered:
+                    Console.WriteLine(
+                        $"Interrupted world save recovered from validated managed candidate: '{options.WorldPath}', " +
+                        $"examined={interruptedRecovery.CandidatesExamined}, invalid_removed={interruptedRecovery.InvalidCandidatesRemoved}.");
+                    break;
+
+                case AtomicSaveAbandonedWriteRecoveryResult.InvalidCandidatesRemoved:
+                    Console.WriteLine(
+                        $"Discarded invalid interrupted world-save candidates before startup: '{options.WorldPath}', " +
+                        $"examined={interruptedRecovery.CandidatesExamined}, invalid_removed={interruptedRecovery.InvalidCandidatesRemoved}.");
+                    break;
+
+                case AtomicSaveAbandonedWriteRecoveryResult.LiveWriterPresent:
+                    Console.Error.WriteLine(
+                        $"Refusing world startup while another managed save writer still owns a live lease: '{options.WorldPath}'.");
+                    return 26;
+
+                case AtomicSaveAbandonedWriteRecoveryResult.IoError:
+                    Console.Error.WriteLine(
+                        $"Interrupted world-save recovery could not inspect or publish managed candidates safely: '{options.WorldPath}'.");
+                    return 26;
+
+                case AtomicSaveAbandonedWriteRecoveryResult.SuppressedByDestinationPolicy:
+                    Console.Error.WriteLine(
+                        $"Interrupted world-save recovery is suppressed because the visible canonical world is explicitly incompatible: '{options.WorldPath}'.");
+                    return 26;
+            }
+
             return TerrariaServerHost.RunAsync(options).GetAwaiter().GetResult();
         }
 

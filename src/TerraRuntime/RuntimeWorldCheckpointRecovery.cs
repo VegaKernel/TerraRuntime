@@ -21,9 +21,9 @@ internal readonly record struct RuntimeWorldCheckpointRestoreDiagnostic(
 }
 
 /// <summary>
-/// Owns the validated recovery boundary around the canonical .wld and its previous-generation backup.
-/// A backup is never restored merely because it exists: the complete Terraria 1.4.5.8 world loader must accept it
-/// first. Restore deliberately does not rotate the broken canonical file over the known-good backup.
+/// Owns the validated recovery boundary around the canonical .wld, interrupted managed save transactions and the
+/// previous-generation backup. Recovery candidates are never trusted merely because a .tmp exists: the complete
+/// supported world loader must accept them before publication.
 /// </summary>
 internal static class RuntimeWorldCheckpointRecovery
 {
@@ -51,6 +51,29 @@ internal static class RuntimeWorldCheckpointRecovery
             && diagnostic.StageResultCode == (int)WorldFileHeaderParseResult.UnsupportedVersion;
 
         return !invalidEnvelopeVersion && !unsupportedHeaderVersion;
+    }
+
+    /// <summary>
+    /// Recovers a complete managed .tmp left by a dead save writer before ordinary orphan cleanup can discard it.
+    /// A valid current canonical checkpoint is rotated to .bak before publication. A corrupt canonical is replaced
+    /// without overwriting an existing known-good backup, while an explicitly incompatible canonical version suppresses
+    /// interrupted-save recovery entirely and leaves both files untouched for manual/version-aware handling.
+    /// </summary>
+    public static Task<AtomicSaveAbandonedWriteRecoveryDiagnostic> TryRecoverInterruptedSaveAsync(
+        string worldPath,
+        WorldFileLoadLimits limits,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(worldPath);
+        limits.Validate();
+
+        string fullWorldPath = Path.GetFullPath(worldPath);
+        var options = new AtomicSaveAbandonedWriteRecoveryOptions(
+            ValidateCandidateAsync: (path, token) => ValidateAsync(path, limits, token),
+            BackupPath: GetBackupPath(fullWorldPath),
+            ValidateBackupAsync: (path, token) => ValidateAsync(path, limits, token),
+            EvaluateDestinationAsync: (path, token) => EvaluateInterruptedRecoveryDestinationAsync(path, limits, token));
+        return AtomicSaveFileWriter.TryRecoverAbandonedWriteAsync(fullWorldPath, options, cancellationToken);
     }
 
     public static async Task ValidateAsync(
@@ -125,5 +148,37 @@ internal static class RuntimeWorldCheckpointRecovery
         }
 
         return new RuntimeWorldCheckpointRestoreDiagnostic(RuntimeWorldCheckpointRestoreResult.Restored);
+    }
+
+    private static async Task<AtomicSaveRecoveryDestinationDisposition> EvaluateInterruptedRecoveryDestinationAsync(
+        string canonicalPath,
+        WorldFileLoadLimits limits,
+        CancellationToken cancellationToken)
+    {
+        byte[] canonicalBytes;
+        try
+        {
+            canonicalBytes = await File.ReadAllBytesAsync(canonicalPath, cancellationToken).ConfigureAwait(false);
+        }
+        catch (FileNotFoundException)
+        {
+            return AtomicSaveRecoveryDestinationDisposition.PublishWithoutBackup;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return AtomicSaveRecoveryDestinationDisposition.PublishWithoutBackup;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        WorldFileLoadDiagnostic canonicalDiagnostic = WorldFileLoader.TryLoad(
+            canonicalBytes,
+            limits,
+            out WorldFileData? canonicalWorld);
+        if (canonicalDiagnostic.IsLoaded && canonicalWorld is not null)
+            return AtomicSaveRecoveryDestinationDisposition.PublishWithBackup;
+
+        return CanAutomaticallyRestoreAfter(canonicalDiagnostic)
+            ? AtomicSaveRecoveryDestinationDisposition.PublishWithoutBackup
+            : AtomicSaveRecoveryDestinationDisposition.Suppress;
     }
 }
