@@ -22,10 +22,18 @@ public static partial class AtomicSaveFileWriter
         CancellationToken cancellationToken = default) =>
         WriteAsync(destinationPath, writeAsync, options: null, cancellationToken);
 
-    public static async Task WriteAsync(
+    public static Task WriteAsync(
         string destinationPath,
         Func<Stream, CancellationToken, Task> writeAsync,
         AtomicSaveFileWriterOptions? options,
+        CancellationToken cancellationToken = default) =>
+        WriteAsync(destinationPath, writeAsync, options, afterPublicationAsync: null, cancellationToken);
+
+    internal static async Task WriteAsync(
+        string destinationPath,
+        Func<Stream, CancellationToken, Task> writeAsync,
+        AtomicSaveFileWriterOptions? options,
+        Func<string, CancellationToken, Task>? afterPublicationAsync,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
@@ -91,6 +99,22 @@ public static partial class AtomicSaveFileWriter
             cancellationToken.ThrowIfCancellationRequested();
             PublishTemporaryFile(temporaryPath, fullDestinationPath);
             temporaryConsumed = true;
+
+            if (afterPublicationAsync is not null)
+            {
+                try
+                {
+                    await afterPublicationAsync(fullDestinationPath, cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // The hook exists only for deterministic crash/process proofs. If the process is still alive and
+                    // the hook fails normally, do not intentionally strand a marker that no longer has a candidate.
+                    TryDelete(recoveryMarkerPath);
+                    throw;
+                }
+            }
+
             TryDelete(recoveryMarkerPath);
         }
         finally

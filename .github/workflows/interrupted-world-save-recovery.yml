@@ -263,6 +263,77 @@ jobs:
           test "${#leases[@]}" -eq 1
           echo 'interrupted_marker_conflict_ok startup_blocked=true canonical_preserved=true quarantined=true'
 
+      - name: Prove post-publication SIGKILL preserves canonical and reaps stale sidecars
+        shell: bash
+        run: |
+          set -euo pipefail
+          source="$GITHUB_WORKSPACE/artifacts/interrupted-original.wld"
+          world="$GITHUB_WORKSPACE/artifacts/interrupted-post-publish.wld"
+          ready="$GITHUB_WORKSPACE/artifacts/interrupted-post-publish.ready"
+          probe_log="$GITHUB_WORKSPACE/artifacts/interrupted-post-publish-probe.log"
+          host_log="$GITHUB_WORKSPACE/artifacts/interrupted-post-publish-host.log"
+          probe="$GITHUB_WORKSPACE/tools/TerraRuntime.AtomicSaveCrashProbe/bin/Release/net11.0/TerraRuntime.AtomicSaveCrashProbe.dll"
+          host="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          rm -f "$world" "$world.bak" "$ready" "$world.runtime-world" "$world.runtime-bootstrap"
+          dotnet "$probe" stall-after-publish-file "$world" "$source" "$ready" > "$probe_log" 2>&1 &
+          writer_pid=$!
+          trap 'kill -KILL "$writer_pid" 2>/dev/null || true; wait "$writer_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$writer_pid" 2>/dev/null; then cat "$probe_log" >&2; exit 1; fi
+            [[ -f "$ready" ]] && break
+            sleep 0.25
+          done
+          test -f "$ready"
+          grep -q 'atomic_save_post_publish_stalled' "$probe_log"
+          cmp "$source" "$world"
+
+          shopt -s nullglob
+          temps=("$(dirname "$world")"/."$(basename "$world")".*.tmp)
+          leases=("$(dirname "$world")"/."$(basename "$world")".*.tmp.lease)
+          markers=("$(dirname "$world")"/."$(basename "$world")".*.tmp.recovery)
+          test "${#temps[@]}" -eq 0
+          test "${#leases[@]}" -eq 1
+          test "${#markers[@]}" -eq 1
+
+          kill -KILL "$writer_pid"
+          set +e
+          wait "$writer_pid"
+          writer_status=$?
+          set -e
+          trap - EXIT
+          test "$writer_status" -eq 137
+
+          dotnet "$host" --world "$world" --port 17825 --max-players 1 --no-tui > "$host_log" 2>&1 &
+          host_pid=$!
+          trap 'kill -TERM "$host_pid" 2>/dev/null || true; wait "$host_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 160); do
+            if ! kill -0 "$host_pid" 2>/dev/null; then cat "$host_log" >&2; exit 1; fi
+            grep -q 'TerraRuntime listening on 0.0.0.0:17825' "$host_log" && break
+            sleep 0.25
+          done
+          grep -q 'TerraRuntime listening on 0.0.0.0:17825' "$host_log"
+          cmp "$source" "$world"
+          if compgen -G "$(dirname "$world")/.$(basename "$world").*.tmp*" >/dev/null; then
+            echo 'post-publication recovery left managed sidecars behind' >&2
+            find "$(dirname "$world")" -maxdepth 1 -name ".$(basename "$world").*.tmp*" -print >&2
+            exit 1
+          fi
+
+          kill -TERM "$host_pid"
+          for _ in $(seq 1 120); do
+            ! kill -0 "$host_pid" 2>/dev/null && break
+            sleep 0.25
+          done
+          if kill -0 "$host_pid" 2>/dev/null; then cat "$host_log" >&2; exit 1; fi
+          set +e
+          wait "$host_pid"
+          host_status=$?
+          set -e
+          trap - EXIT
+          test "$host_status" -eq 0
+          echo 'interrupted_post_publish_sigkill_ok canonical_preserved=true stale_sidecars_reaped=true'
+
       - name: Upload interrupted-save recovery evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -276,5 +347,7 @@ jobs:
             artifacts/interrupted-unsealed.log
             artifacts/interrupted-conflict-probe.log
             artifacts/interrupted-conflict-host.log
+            artifacts/interrupted-post-publish-probe.log
+            artifacts/interrupted-post-publish-host.log
           if-no-files-found: warn
           retention-days: 7

@@ -121,6 +121,43 @@ public sealed class AtomicSaveFileWriterConsolidatedRecoveryTests
         }
     }
 
+    [Fact]
+    public async Task Published_candidate_with_stale_marker_and_lease_is_cleaned_without_replacing_canonical()
+    {
+        string directory = CreateTempDirectory();
+        string target = Path.Combine(directory, "world.wld");
+        string temporary = Path.Combine(directory, $".world.wld.{Guid.NewGuid():N}.tmp");
+        string lease = temporary + ".lease";
+        string marker = temporary + ".recovery";
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+
+        try
+        {
+            await File.WriteAllTextAsync(temporary, "published-generation", cancellationToken);
+            await File.WriteAllTextAsync(lease, "lease", cancellationToken);
+            await AtomicSaveFileWriter.WriteRecoveryMarkerForTestingAsync(
+                marker,
+                temporary,
+                backupPath: null,
+                cancellationToken);
+
+            File.Move(temporary, target);
+            AtomicSaveFileRecoveryDiagnostic recovery = AtomicSaveFileWriter.RecoverAbandonedWrites(target);
+
+            Assert.Equal(0, recovery.RecoveredWrites);
+            Assert.Equal(1, recovery.RemovedWrites);
+            Assert.Equal(0, recovery.SuppressedWrites);
+            Assert.Equal("published-generation", await File.ReadAllTextAsync(target, cancellationToken));
+            Assert.False(File.Exists(temporary));
+            Assert.False(File.Exists(marker));
+            Assert.False(File.Exists(lease));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static string CreateTempDirectory()
     {
         string path = Path.Combine(Path.GetTempPath(), $"TerraRuntime-Consolidated-Recovery-{Guid.NewGuid():N}");

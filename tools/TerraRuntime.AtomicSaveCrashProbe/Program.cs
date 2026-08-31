@@ -4,7 +4,7 @@ using TerraRuntime.World;
 
 if (args.Length < 3)
 {
-    Console.Error.WriteLine("usage: <write|stall|stall-file|stall-recovery-ready-file|publish|publish-refuse> <destination> <payload-or-source> [ready-file]");
+    Console.Error.WriteLine("usage: <write|stall|stall-file|stall-recovery-ready-file|stall-after-publish-file|recover|publish|publish-refuse> <destination> <payload-or-source> [ready-file]");
     return 2;
 }
 
@@ -167,6 +167,63 @@ switch (mode)
         Console.Out.Flush();
         await Task.Delay(Timeout.InfiniteTimeSpan);
         return 0;
+    }
+
+    case "stall-after-publish-file":
+    {
+        if (args.Length != 4)
+        {
+            Console.Error.WriteLine("stall-after-publish-file mode requires a ready-file argument");
+            return 2;
+        }
+
+        string sourcePath = Path.GetFullPath(args[2]);
+        string readyFile = Path.GetFullPath(args[3]);
+        var sourceInfo = new FileInfo(sourcePath);
+        if (!sourceInfo.Exists)
+        {
+            Console.Error.WriteLine($"stall-after-publish-file source does not exist: {sourcePath}");
+            return 2;
+        }
+
+        await AtomicSaveFileWriter.WriteAsync(
+            destination,
+            async (stream, cancellationToken) =>
+            {
+                await using var source = new FileStream(
+                    sourcePath,
+                    new FileStreamOptions
+                    {
+                        Mode = FileMode.Open,
+                        Access = FileAccess.Read,
+                        Share = FileShare.Read,
+                        BufferSize = 64 * 1024,
+                        Options = FileOptions.Asynchronous | FileOptions.SequentialScan
+                    });
+                await source.CopyToAsync(stream, 64 * 1024, cancellationToken);
+            },
+            options: null,
+            afterPublicationAsync: async (publishedPath, cancellationToken) =>
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(readyFile)!);
+                await File.WriteAllTextAsync(readyFile, "ready", cancellationToken);
+                Console.WriteLine(
+                    $"atomic_save_post_publish_stalled destination={publishedPath} source={sourcePath} bytes={sourceInfo.Length}");
+                Console.Out.Flush();
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            },
+            cancellationToken: default);
+        return 0;
+    }
+
+    case "recover":
+    {
+        AtomicSaveFileRecoveryDiagnostic recovery = AtomicSaveFileWriter.RecoverAbandonedWrites(destination);
+        Console.WriteLine(
+            $"atomic_save_recover destination={destination} recovered={recovery.RecoveredWrites} " +
+            $"removed={recovery.RemovedWrites} suppressed={recovery.SuppressedWrites} " +
+            $"live={recovery.LiveWrites} io_failed={recovery.IoFailed}");
+        return recovery.IoFailed || recovery.SuppressedWrites != 0 || recovery.LiveWrites != 0 ? 1 : 0;
     }
 
     case "publish":

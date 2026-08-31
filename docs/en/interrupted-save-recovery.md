@@ -86,3 +86,7 @@ Recovery hashing and marker I/O run inside the detached background save transact
 ## Verification
 
 `AtomicSaveFileWriterCleanupTests` covers marker parsing, roll-forward, tamper rejection, conflict quarantine and live-lease isolation. `AtomicSaveFileWriterConsolidatedRecoveryTests` additionally proves that unsealed candidates never publish, a live same-target writer blocks a second write, and quarantined conflicts block later writes. The dedicated `Interrupted World Save Recovery` workflow creates a real TerrariaServer 1.4.5.8 world, holds a recovery-ready transaction under a live lease, proves startup refusal, kills that writer with real `SIGKILL`, then proves marker-authorized startup roll-forward. It separately proves rejection of an unsealed orphan and conflict quarantine without changing the newer canonical bytes.
+
+## Post-publication crash proof
+
+The dedicated recovery workflow also kills a writer after the atomic canonical rename has completed but before the recovery marker and lease can be removed. At that point the managed `.tmp` has already been consumed, while `.tmp.recovery` and `.tmp.lease` still exist. The next host startup must keep the newly published canonical bytes unchanged, remove those stale sidecars, and proceed normally. This real post-publication SIGKILL closes the final namespace-publication cleanup window in addition to the recovery-ready pre-publication roll-forward proof.

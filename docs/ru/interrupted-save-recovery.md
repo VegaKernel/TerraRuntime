@@ -86,3 +86,7 @@ Recovery hashing и marker I/O выполняются внутри detached back
 ## Verification
 
 `AtomicSaveFileWriterCleanupTests` покрывает marker parsing, roll-forward, tamper rejection, conflict quarantine и isolation live lease. `AtomicSaveFileWriterConsolidatedRecoveryTests` дополнительно доказывает, что unsealed candidate никогда не публикуется, live same-target writer блокирует второй write, а quarantined conflict блокирует последующие writes. Dedicated workflow `Interrupted World Save Recovery` создаёт настоящий мир TerrariaServer 1.4.5.8, удерживает recovery-ready transaction под live lease, доказывает отказ startup, убивает writer настоящим `SIGKILL`, затем доказывает marker-authorized roll-forward при startup. Отдельно проверяются rejection unsealed orphan и conflict quarantine без изменения более нового canonical.
+
+## Проверка сбоя после публикации
+
+Выделенный recovery workflow также убивает writer после завершения атомарного rename canonical-файла, но до удаления recovery marker и lease. В этот момент managed `.tmp` уже поглощён rename-операцией, а `.tmp.recovery` и `.tmp.lease` ещё существуют. Следующий запуск host обязан оставить новые canonical bytes неизменными, удалить устаревшие sidecars и нормально продолжить запуск. Этот реальный post-publication SIGKILL закрывает последнее окно очистки после namespace publication вместе с уже существующей проверкой roll-forward до публикации.
