@@ -70,7 +70,87 @@ public sealed class VanillaEyeOfCthulhuExpertSpawnTests
         Assert.Equal(5f, intents[0].VelocityY, 5);
     }
 
-    private static NpcSnapshot CreateEye(NpcAiState ai) =>
+    [Fact]
+    public void Expert_good_world_below_one_third_life_uses_ten_tick_transformation_servant_cadence()
+    {
+        var random = new SequenceRandom(-200, 0);
+        var stepper = new VanillaNpcTargetingAiStepper(
+            new VanillaDemonEyeAiStepper(),
+            random: random);
+        stepper.SetWorldConditions(
+            dayTime: false,
+            slimeRainActive: false,
+            goodWorld: true,
+            expertMode: true);
+        NpcSnapshot source = CreateEye(new NpcAiState(1f, 9f, 0.1f, 0f), life: 900);
+        NpcStateUpdate proposed = Proposed(source, new NpcAiState(1f, 10f, 0.105f, 0f));
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[1];
+
+        int count = stepper.PlanNpcSpawns(in source, in proposed, intents);
+
+        Assert.Equal(1, count);
+        Assert.Equal(2, random.Consumed);
+        Assert.Equal(VanillaNpcIds.ServantOfCthulhu, intents[0].Type);
+        Assert.Equal(-5f, intents[0].VelocityX, 5);
+    }
+
+    [Fact]
+    public void Expert_good_world_above_one_third_life_keeps_twenty_tick_transformation_cadence()
+    {
+        var random = new SequenceRandom();
+        var stepper = new VanillaNpcTargetingAiStepper(
+            new VanillaDemonEyeAiStepper(),
+            random: random);
+        stepper.SetWorldConditions(
+            dayTime: false,
+            slimeRainActive: false,
+            goodWorld: true,
+            expertMode: true);
+        NpcSnapshot source = CreateEye(new NpcAiState(1f, 9f, 0.1f, 0f), life: 1000);
+        NpcStateUpdate proposed = Proposed(source, new NpcAiState(1f, 10f, 0.105f, 0f));
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[1];
+
+        int count = stepper.PlanNpcSpawns(in source, in proposed, intents);
+
+        Assert.Equal(0, count);
+        Assert.Equal(0, random.Consumed);
+    }
+
+    [Fact]
+    public void Expert_good_world_phase_one_uses_point_eight_servant_cadence_in_spawn_planner()
+    {
+        var random = new SequenceRandom();
+        var stepper = new VanillaNpcTargetingAiStepper(
+            new VanillaDemonEyeAiStepper(),
+            random: random);
+        stepper.SetWorldConditions(
+            dayTime: false,
+            slimeRainActive: false,
+            goodWorld: true,
+            expertMode: true);
+        stepper.SetCandidates([
+            new VanillaNpcTargetCandidate(
+                Slot: 7,
+                CenterX: 300f,
+                CenterY: 300f,
+                Aggro: 0,
+                Active: true,
+                Dead: false,
+                Ghost: false,
+                NoAggro: false)
+        ]);
+        NpcSnapshot source = CreateEye(new NpcAiState(0f, 0f, 42f, 35f));
+        NpcStateUpdate proposed = Proposed(source, new NpcAiState(0f, 0f, 43f, 0f));
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[1];
+
+        int count = stepper.PlanNpcSpawns(in source, in proposed, intents);
+
+        Assert.Equal(1, count);
+        Assert.Equal(VanillaNpcIds.ServantOfCthulhu, intents[0].Type);
+        Assert.Equal(0, random.Consumed);
+    }
+
+    private static NpcSnapshot CreateEye(NpcAiState ai, int life = 1800) =>
         new(
             Handle: new NpcHandle(0, new NpcGeneration(1)),
             Revision: new NpcRevision(1),
@@ -84,7 +164,7 @@ public sealed class VanillaEyeOfCthulhuExpertSpawnTests
             Ai: ai,
             Simulation: NpcSimulationState.Initial with
             {
-                Life = 1800,
+                Life = life,
                 LifeMax = 2800,
                 TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
                 Scale = 1f,
