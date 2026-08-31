@@ -6,19 +6,19 @@
 
 `tools/TerraRuntime.ProtocolBench` даёт воспроизводимое before/after evidence для изменения materialization в protocol serialization. Benchmark намеренно содержит только benchmark-копию предыдущего growable-buffer пути:
 
-```text
-Multiplicity packet
-  -> ArrayBufferWriter<byte>
-  -> Stream adapter
-  -> WrittenSpan.ToArray()
+```mermaid
+flowchart LR
+    Packet["Multiplicity packet"] --> Grow["ArrayBufferWriter<byte>"]
+    Grow --> Adapter["Stream adapter"]
+    Adapter --> Copy["WrittenSpan.ToArray()"]
 ```
 
 и сравнивает её с production exact-size path:
 
-```text
-Multiplicity packet
-  -> exact final byte[]
-  -> FixedBufferWriteStream
+```mermaid
+flowchart LR
+    Packet["Multiplicity packet"] --> Final["Exact final byte[]"]
+    Final --> Fixed["FixedBufferWriteStream"]
 ```
 
 Legacy implementation существует только внутри benchmark и не должна возвращаться в production runtime path.
@@ -38,7 +38,7 @@ Suite покрывает четыре representative operations:
 
 ## Measurement contract
 
-Каждый case получает warmup и нечётное количество measured samples. В report используется median sample для:
+Обе реализации получают одинаковый warmup до начала measured samples. Порядок samples чередуется между current-first и legacy-first, чтобы tiered PGO, изменение CPU frequency, cache temperature и drift shared runner не давали систематическое преимущество реализации, которая измеряется второй. В report используется median нечётного количества samples для:
 
 $$
 A = \frac{\text{allocated bytes}}{\text{operations}},
@@ -56,7 +56,7 @@ $$
 R = \frac{10^9}{T}\ \mathrm{operations/s}.
 $$
 
-Benchmark записывает runtime description, OS, process architecture, processor count, commit SHA, iteration/sample counts и per-case measurements в JSON.
+Benchmark записывает runtime description, OS, process architecture, processor count, commit SHA, iteration/sample counts, warmup count и признак alternating order в JSON.
 
 ## CI gate
 
@@ -66,6 +66,8 @@ Benchmark записывает runtime description, OS, process architecture, pr
 2. current median time per operation не хуже `$1.50\times$` legacy median.
 
 Throughput tolerance намеренно мягкий, потому что shared CI CPU scheduling шумный. Allocation является жёстким deterministic claim; throughput защищает от ситуации, когда удалённая copy заменена неожиданно дорогой реализацией.
+
+Exact-size stream держит successful write path минимальным: одна capacity check и одна copy. Invalid over-write только помечает candidate failed и не тратит CPU на partial prefix, который всё равно никогда не будет опубликован.
 
 JSON report загружается как `protocol-hotpath-<commit>` на 14 дней. Это evidence только для serializer/framing materialization change; оно не заменяет `$24/64/128/255$` connection workload matrix и end-to-end tick profiling.
 

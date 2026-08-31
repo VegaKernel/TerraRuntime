@@ -6,19 +6,19 @@
 
 `tools/TerraRuntime.ProtocolBench` provides reproducible before/after evidence for the protocol serialization materialization change. The benchmark intentionally keeps a benchmark-only copy of the previous growable-buffer path:
 
-```text
-Multiplicity packet
-  -> ArrayBufferWriter<byte>
-  -> Stream adapter
-  -> WrittenSpan.ToArray()
+```mermaid
+flowchart LR
+    Packet["Multiplicity packet"] --> Grow["ArrayBufferWriter<byte>"]
+    Grow --> Adapter["Stream adapter"]
+    Adapter --> Copy["WrittenSpan.ToArray()"]
 ```
 
 and compares it with the production exact-size path:
 
-```text
-Multiplicity packet
-  -> exact final byte[]
-  -> FixedBufferWriteStream
+```mermaid
+flowchart LR
+    Packet["Multiplicity packet"] --> Final["Exact final byte[]"]
+    Final --> Fixed["FixedBufferWriteStream"]
 ```
 
 The benchmark-only legacy implementation is not production code and must not be reused by runtime paths.
@@ -38,7 +38,7 @@ Before measurement, current and legacy output must be byte-for-byte identical fo
 
 ## Measurement contract
 
-Each case receives a warmup and an odd number of measured samples. The report uses the median sample for:
+Both implementations receive equal warmup before measured samples begin. Measured sample order alternates between current-first and legacy-first so tiered PGO, CPU-frequency changes, cache temperature and shared-runner drift do not systematically favor the implementation measured second. The report uses the median of an odd number of samples for:
 
 $$
 A = \frac{\text{allocated bytes}}{\text{operations}},
@@ -56,7 +56,7 @@ $$
 R = \frac{10^9}{T}\ \mathrm{operations/s}.
 $$
 
-The benchmark records runtime description, OS, process architecture, processor count, commit SHA, iteration count, sample count and per-case measurements in JSON.
+The benchmark records runtime description, OS, process architecture, processor count, commit SHA, iteration count, sample count, warmup count and whether alternating order was enabled in JSON.
 
 ## CI gate
 
@@ -66,6 +66,8 @@ The benchmark records runtime description, OS, process architecture, processor c
 2. current median time per operation is no worse than `$1.50\times$` the legacy median.
 
 The throughput tolerance is deliberately loose because shared CI CPU scheduling is noisy. Allocation is the hard deterministic claim; throughput protects against replacing a removed copy with an unexpectedly expensive implementation.
+
+The exact-size stream keeps the successful write path minimal: one capacity check and one copy. An invalid over-write marks the candidate failed without wasting time copying a partial prefix that can never be published.
 
 The JSON report is uploaded as `protocol-hotpath-<commit>` for 14 days. This is evidence for the serializer/framing materialization change only; it does not substitute for the `$24/64/128/255$` connection workload matrix or end-to-end tick profiling.
 

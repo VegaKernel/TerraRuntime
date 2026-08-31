@@ -1,17 +1,18 @@
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace TerraRuntime.Protocol.Multiplicity;
 
 /// <summary>
-/// Write-only stream over an exact-size final byte array. Writes beyond the supplied storage are counted but
-/// not exposed, allowing callers to reject a packet whose model under-reports <c>GetLength()</c> without growing
-/// a second temporary buffer. The backing array is safe to publish only when <see cref="Overflowed"/> is false
-/// and <see cref="WrittenCount"/> exactly matches its length.
+/// Write-only stream over an exact-size final byte array. The normal write path is deliberately minimal because
+/// every Multiplicity serializer reaches it repeatedly through <see cref="BinaryWriter"/>. An over-write marks the
+/// stream invalid and discards the candidate frame; invalid packets are not worth partially copying into storage.
+/// The backing array is safe to publish only when <see cref="Overflowed"/> is false and
+/// <see cref="WrittenCount"/> exactly matches its length.
 /// </summary>
 internal sealed class FixedBufferWriteStream : Stream
 {
     private readonly byte[] buffer;
-    private int storedCount;
     private int writtenCount;
     private bool overflowed;
 
@@ -49,37 +50,40 @@ internal sealed class FixedBufferWriteStream : Stream
 
     public override void SetLength(long value) => throw new NotSupportedException();
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override void Write(byte[] buffer, int offset, int count)
     {
         Write(buffer.AsSpan(offset, count));
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override void Write(ReadOnlySpan<byte> source)
     {
         if (source.IsEmpty)
             return;
 
-        int nextWrittenCount = checked(writtenCount + source.Length);
-        int remaining = buffer.Length - storedCount;
-        int copyLength = Math.Min(remaining, source.Length);
-        if (copyLength > 0)
+        int offset = writtenCount;
+        writtenCount = checked(offset + source.Length);
+
+        // The successful path is one bounds check plus one copy. Once overflow occurs the entire candidate frame
+        // is rejected, so copying a partial prefix only burns CPU and cannot improve diagnostics or correctness.
+        if ((uint)offset <= (uint)buffer.Length && source.Length <= buffer.Length - offset)
         {
-            source[..copyLength].CopyTo(buffer.AsSpan(storedCount, copyLength));
-            storedCount += copyLength;
+            source.CopyTo(buffer.AsSpan(offset));
+            return;
         }
 
-        if (copyLength != source.Length)
-            overflowed = true;
-
-        writtenCount = nextWrittenCount;
+        overflowed = true;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override void WriteByte(byte value)
     {
-        writtenCount = checked(writtenCount + 1);
-        if (storedCount < buffer.Length)
+        int offset = writtenCount;
+        writtenCount = checked(offset + 1);
+        if ((uint)offset < (uint)buffer.Length)
         {
-            buffer[storedCount++] = value;
+            buffer[offset] = value;
             return;
         }
 

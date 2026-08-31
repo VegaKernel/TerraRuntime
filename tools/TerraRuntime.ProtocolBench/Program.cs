@@ -12,7 +12,7 @@ internal static class Program
 {
     private const int DefaultIterations = 200_000;
     private const int DefaultSamples = 5;
-    private const int WarmupIterations = 10_000;
+    private const int WarmupIterations = 50_000;
     private const double MaximumThroughputRegressionRatio = 1.50;
 
     private static readonly byte[] FramePayload = CreateFramePayload();
@@ -82,8 +82,13 @@ internal static class Program
                 return 3;
             }
 
-            BenchmarkMeasurement current = Measure(benchmarkCase.Current, options.Iterations, options.Samples);
-            BenchmarkMeasurement legacy = Measure(benchmarkCase.Legacy, options.Iterations, options.Samples);
+            BenchmarkPairMeasurement pair = MeasurePair(
+                benchmarkCase.Current,
+                benchmarkCase.Legacy,
+                options.Iterations,
+                options.Samples);
+            BenchmarkMeasurement current = pair.Current;
+            BenchmarkMeasurement legacy = pair.Legacy;
 
             double allocationRatio = legacy.BytesPerOperation == 0
                 ? 0
@@ -117,7 +122,7 @@ internal static class Program
         }
 
         var report = new BenchmarkReport(
-            SchemaVersion: 1,
+            SchemaVersion: 2,
             CreatedUtc: DateTimeOffset.UtcNow,
             CommitSha: Environment.GetEnvironmentVariable("GITHUB_SHA") ?? "local",
             Runtime: RuntimeInformation.FrameworkDescription,
@@ -126,7 +131,8 @@ internal static class Program
             ProcessorCount: Environment.ProcessorCount,
             Iterations: options.Iterations,
             Samples: options.Samples,
-            WarmupIterations: WarmupIterations,
+            WarmupIterationsPerImplementation: WarmupIterations,
+            AlternatingSampleOrder: true,
             MaximumThroughputRegressionRatio: MaximumThroughputRegressionRatio,
             GatePassed: gatePassed,
             Cases: results);
@@ -153,39 +159,84 @@ internal static class Program
         return 0;
     }
 
-    private static BenchmarkMeasurement Measure(Func<byte[]> operation, int iterations, int samples)
+    private static BenchmarkPairMeasurement MeasurePair(
+        Func<byte[]> current,
+        Func<byte[]> legacy,
+        int iterations,
+        int samples)
     {
-        for (int i = 0; i < WarmupIterations; i++)
-            _ = operation();
+        // Warm both implementations before either is measured. Multiplicity packet serializers share ToStream
+        // methods, so measuring the current path first and the legacy path second can otherwise hand tiered-PGO
+        // optimization to the second implementation and manufacture a throughput regression that is not real.
+        Warm(current);
+        Warm(legacy);
+        Warm(current);
+        Warm(legacy);
 
-        var nanoseconds = new double[samples];
-        var bytes = new double[samples];
-        long checksum = 0;
+        var currentNanoseconds = new double[samples];
+        var currentBytes = new double[samples];
+        var legacyNanoseconds = new double[samples];
+        var legacyBytes = new double[samples];
 
         for (int sample = 0; sample < samples; sample++)
         {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-            long timestampBefore = Stopwatch.GetTimestamp();
-
-            for (int iteration = 0; iteration < iterations; iteration++)
-                checksum += operation().Length;
-
-            long timestampAfter = Stopwatch.GetTimestamp();
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            nanoseconds[sample] =
-                Stopwatch.GetElapsedTime(timestampBefore, timestampAfter).TotalNanoseconds / iterations;
-            bytes[sample] = (allocatedAfter - allocatedBefore) / (double)iterations;
+            // Alternate order to cancel runner temperature, CPU-frequency and cache-order bias across the median.
+            if ((sample & 1) == 0)
+            {
+                MeasureSample(current, iterations, out currentNanoseconds[sample], out currentBytes[sample]);
+                MeasureSample(legacy, iterations, out legacyNanoseconds[sample], out legacyBytes[sample]);
+            }
+            else
+            {
+                MeasureSample(legacy, iterations, out legacyNanoseconds[sample], out legacyBytes[sample]);
+                MeasureSample(current, iterations, out currentNanoseconds[sample], out currentBytes[sample]);
+            }
         }
 
+        return new BenchmarkPairMeasurement(
+            ToMeasurement(currentNanoseconds, currentBytes),
+            ToMeasurement(legacyNanoseconds, legacyBytes));
+    }
+
+    private static void Warm(Func<byte[]> operation)
+    {
+        long checksum = 0;
+        for (int iteration = 0; iteration < WarmupIterations; iteration++)
+            checksum += operation().Length;
         GC.KeepAlive(checksum);
+    }
+
+    private static void MeasureSample(
+        Func<byte[]> operation,
+        int iterations,
+        out double nanosecondsPerOperation,
+        out double bytesPerOperation)
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        long checksum = 0;
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        long timestampBefore = Stopwatch.GetTimestamp();
+
+        for (int iteration = 0; iteration < iterations; iteration++)
+            checksum += operation().Length;
+
+        long timestampAfter = Stopwatch.GetTimestamp();
+        long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
+        GC.KeepAlive(checksum);
+
+        nanosecondsPerOperation =
+            Stopwatch.GetElapsedTime(timestampBefore, timestampAfter).TotalNanoseconds / iterations;
+        bytesPerOperation = (allocatedAfter - allocatedBefore) / (double)iterations;
+    }
+
+    private static BenchmarkMeasurement ToMeasurement(double[] nanoseconds, double[] bytes)
+    {
         Array.Sort(nanoseconds);
         Array.Sort(bytes);
-        int medianIndex = samples / 2;
+        int medianIndex = nanoseconds.Length / 2;
         double medianNanoseconds = nanoseconds[medianIndex];
 
         return new BenchmarkMeasurement(
@@ -338,6 +389,10 @@ internal static class Program
 
     private sealed record BenchmarkCase(string Name, Func<byte[]> Current, Func<byte[]> Legacy);
 
+    private sealed record BenchmarkPairMeasurement(
+        BenchmarkMeasurement Current,
+        BenchmarkMeasurement Legacy);
+
     private sealed record BenchmarkMeasurement(
         double BytesPerOperation,
         double NanosecondsPerOperation,
@@ -364,7 +419,8 @@ internal static class Program
         int ProcessorCount,
         int Iterations,
         int Samples,
-        int WarmupIterations,
+        int WarmupIterationsPerImplementation,
+        bool AlternatingSampleOrder,
         double MaximumThroughputRegressionRatio,
         bool GatePassed,
         IReadOnlyList<BenchmarkCaseResult> Cases);
