@@ -20,6 +20,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Interrupted-save recovery](interrupted-save-recovery.md) — durable recovery markers, SHA-256 sealing, roll-forward preconditions, conflict quarantine and crash windows.
 - [Save pipeline timing telemetry](save-pipeline-telemetry.md) — authoritative snapshot, serializer and full atomic-write timing boundaries and interpretation rules.
 - [Gameplay and vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat and explicit parity gaps.
+- [Town NPC housing and shops](town-npc-housing-shops.md) — authoritative residents, housing packet 60, persistent rooms, NPC talk, ordinary/special shops, pylons and happiness pricing.
 - [Vanilla AI_006 worm lifecycle parity](npc-worm-ai-parity.md) — source-pinned chain slots, Eater of Worlds active/style link semantics, root propagation and remaining lifecycle gaps.
 - [Synchronization and interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis and current passthrough policy.
 - [Performance and tick scheduling](performance-runtime.md) — $60\,\mathrm{Hz}$ authoritative loop, bounded mailbox/ingress/apply budgets, per-source fairness, missed-tick policy and performance evidence rules.

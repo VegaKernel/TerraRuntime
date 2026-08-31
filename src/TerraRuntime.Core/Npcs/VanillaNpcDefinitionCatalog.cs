@@ -136,6 +136,9 @@ public static class VanillaNpcDefinitionCatalog
 
     public static bool TryGet(NpcTypeId type, out VanillaNpcDefinition definition)
     {
+        if (VanillaTownNpcFacts1458.TryGetDefinition(type, out definition))
+            return true;
+
         if (type == VanillaNpcIds.BlueSlime)
         {
             definition = new VanillaNpcDefinition(

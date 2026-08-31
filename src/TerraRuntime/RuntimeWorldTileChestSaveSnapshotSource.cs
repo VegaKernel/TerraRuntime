@@ -10,7 +10,7 @@ internal readonly record struct RuntimeWorldClockSaveState(
 
 /// <summary>
 /// Deliberately partial persistence snapshot containing the authoritative subsystems currently supported by the
-/// lossless world rewriter: world tiles, world chests, canonical world signs, runtime clock fields and detached
+/// lossless world rewriter: world tiles, world chests, canonical world signs, town NPC/room state, runtime clock fields and detached
 /// progression mutations completed since the canonical .wld was loaded.
 /// </summary>
 internal sealed record RuntimeWorldTileChestSaveSnapshot(
@@ -18,7 +18,9 @@ internal sealed record RuntimeWorldTileChestSaveSnapshot(
     WorldChest[] Chests,
     RuntimeWorldClockSaveState? Clock = null,
     WorldSign[]? Signs = null,
-    RuntimeWorldProgressionMutationSnapshot? ProgressionMutations = null);
+    RuntimeWorldProgressionMutationSnapshot? ProgressionMutations = null,
+    WorldNpcPersistence? Npcs = null,
+    WorldTownRoom[]? TownRooms = null);
 
 /// <summary>
 /// Game-thread-owned snapshot source for the current persistence slice. Tile copying is spread across bounded section
@@ -30,6 +32,7 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
     private readonly RuntimeChestStore chestStore;
     private readonly RuntimeWorldClock? worldClock;
     private readonly RuntimeSignStore? signStore;
+    private readonly RuntimeTownNpcStateStore? townNpcStore;
     private readonly RuntimeWorldProgressionMutations progressionMutations;
 
     public RuntimeWorldTileChestSaveSnapshotSource(
@@ -37,7 +40,8 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
         RuntimeChestStore chestStore,
         int dirtyBatchCapacity,
         RuntimeWorldClock? worldClock = null,
-        RuntimeSignStore? signStore = null)
+        RuntimeSignStore? signStore = null,
+        RuntimeTownNpcStateStore? townNpcStore = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
@@ -45,6 +49,7 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
         this.chestStore = chestStore;
         this.worldClock = worldClock;
         this.signStore = signStore;
+        this.townNpcStore = townNpcStore;
         progressionMutations = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
         tileSynchronizer = new WorldTileSaveShadowSynchronizer(tiles, dirtyBatchCapacity);
     }
@@ -63,7 +68,7 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
 
     /// <summary>
     /// Captures one detached persistence image. The caller must invoke this on the authoritative owner so mutable
-    /// chest, clock, sign and progression state cannot interleave with the tile-image reference capture.
+    /// chest, clock, sign, town-NPC and progression state cannot interleave with the tile-image reference capture.
     /// </summary>
     public bool TryCapture(out RuntimeWorldTileChestSaveSnapshot? snapshot)
     {
@@ -90,7 +95,9 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
             chestStore.CaptureSnapshot(),
             clock,
             signs,
-            progressionMutations.CaptureSnapshot());
+            progressionMutations.CaptureSnapshot(),
+            townNpcStore?.CaptureNpcPersistence(),
+            townNpcStore?.CaptureTownRooms());
         return true;
     }
 }

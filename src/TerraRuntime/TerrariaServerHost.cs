@@ -390,6 +390,10 @@ public static class TerrariaServerHost
             observableNpcCommitSink,
             npcArchetypeIdentities);
         var npcStore = new RuntimeNpcStore(commitSink: npcCommitSink);
+        var townNpcStore = new RuntimeTownNpcStateStore(world.Npcs, world.TownRooms, world.Header.Dimensions);
+        if (!townNpcStore.TryReserveRuntimeSlots(npcStore))
+            throw new InvalidDataException("Failed to reserve authoritative runtime slots for persisted town NPCs.");
+        npcReplication.ConfigureTownHomeBaselines(townNpcStore.CaptureHomeBaselines());
         var npcArchetypes = new RuntimeNpcArchetypeRegistry();
         var projectileReplication = new RuntimeProjectileReplicationRegistry();
         RuntimeProjectileOperationsTelemetry? projectileOperations = options.TerminalUiEnabled
@@ -415,6 +419,7 @@ public static class TerrariaServerHost
             chestStore,
             worldClock: worldClock,
             signStore: signStore,
+            townNpcStore: townNpcStore,
             checkpointValidationLimits: worldLoadLimits);
         var worldAutosave = new VanillaWorldAutosaveScheduler();
         var vitalsReplication = new RuntimePlayerVitalsReplicator();
@@ -450,6 +455,8 @@ public static class TerrariaServerHost
             projectiles: projectileStore,
             worldItems: worldItems,
             projectileReplication: projectileReplication,
+            npcReplication: npcReplication,
+            townNpcs: townNpcStore,
             tileManipulationReplication: tileManipulationReplication,
             serverPlayerStates: serverPlayerStates,
             serverPlayerIdentities: serverPlayerIdentities,
@@ -492,6 +499,8 @@ public static class TerrariaServerHost
         var projectileIngress = new RuntimeProjectileNetworkIngress(commandIngress);
         var chestIngress = new RuntimeChestNetworkIngress(commandIngress);
         var signIngress = new RuntimeSignNetworkIngress(commandIngress);
+        var townNpcHomeIngress = new RuntimeTownNpcHomeNetworkIngress(commandIngress);
+        var npcTalkIngress = new RuntimeNpcTalkNetworkIngress(commandIngress);
         var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
         var queueTelemetry = new RuntimeConnectionQueueTelemetry();
@@ -723,6 +732,8 @@ public static class TerrariaServerHost
                     projectileIngress,
                     chestIngress,
                     signIngress,
+                    townNpcHomeIngress,
+                    npcTalkIngress,
                     disconnectIngress,
                     runtimeConnections,
                     npcReplication,
@@ -888,6 +899,8 @@ public static class TerrariaServerHost
         IProjectileNetworkIngress projectileIngress,
         IChestNetworkIngress chestIngress,
         ISignNetworkIngress signIngress,
+        ITownNpcHomeNetworkIngress townNpcHomeIngress,
+        INpcTalkNetworkIngress npcTalkIngress,
         RuntimePlayerDisconnectIngress disconnectIngress,
         RuntimeConnectionRegistry runtimeConnections,
         RuntimeNpcReplicationRegistry npcReplication,
@@ -1064,6 +1077,16 @@ public static class TerrariaServerHost
                 bootstrapSink,
                 chestSink,
                 signIngress);
+            var townNpcHomeSink = new NpcHomeFrameSink(
+                source,
+                bootstrapSink,
+                signSink,
+                townNpcHomeIngress);
+            var npcTalkSink = new NpcTalkFrameSink(
+                source,
+                bootstrapSink,
+                townNpcHomeSink,
+                npcTalkIngress);
 
             try
             {
@@ -1071,7 +1094,7 @@ public static class TerrariaServerHost
                 {
                     TerrariaSocketRunResult result = await TerrariaSocketConnection.RunAsync(
                         socket,
-                        signSink,
+                        npcTalkSink,
                         outbound,
                         TerrariaFrameDecoderOptions.Default,
                         policyOptions,
@@ -1080,7 +1103,7 @@ public static class TerrariaServerHost
                     stopTelemetry.Record(result.StopReason);
                     string message =
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
-                        $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, chests={chestSink.StopReason}, signs={signSink.StopReason}, tiles={projectileSink.TileStopReason}, state={bootstrapSink.JoinState}; " +
+                        $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, chests={chestSink.StopReason}, signs={signSink.StopReason}, housing={townNpcHomeSink.StopReason}, talk={npcTalkSink.StopReason}, tiles={projectileSink.TileStopReason}, state={bootstrapSink.JoinState}; " +
                         $"inbound={result.Inbound}; rate={result.Rate}; outbound={result.Outbound.Reason}.";
                     hostLog.Log(
                         RuntimeLogLevel.Information,

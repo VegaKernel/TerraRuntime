@@ -72,6 +72,7 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         RuntimeWorldClock? worldClock = null,
         int synchronizationSectionsPerTick = DefaultSynchronizationSectionsPerTick,
         RuntimeSignStore? signStore = null,
+        RuntimeTownNpcStateStore? townNpcStore = null,
         WorldFileLoadLimits? checkpointValidationLimits = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
@@ -119,7 +120,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             chestStore,
             synchronizationSectionsPerTick,
             worldClock,
-            signStore);
+            signStore,
+            townNpcStore);
         coordinator = new WorldSaveCoordinator<RuntimeWorldTileChestSaveSnapshot>(
             destinationPath,
             CaptureSnapshotOnOwner,
@@ -365,6 +367,48 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             signSection = encodedSigns;
         }
 
+        ReadOnlySpan<byte> npcSection = preserved.Npcs.Span;
+        byte[]? encodedNpcs = null;
+        if (snapshot.Npcs is WorldNpcPersistence npcs)
+        {
+            using var npcStream = new MemoryStream();
+            WorldFileNpcDecodeOptions npcLimits = new(
+                MaxShimmeredTownNpcIndices: VanillaWorldFormat326.NpcTypeCount,
+                MaxShimmerIndexExclusive: VanillaWorldFormat326.NpcTypeCount,
+                MaxTownNpcs: RuntimeTownNpcStateStore.MaximumTownNpcs,
+                MaxPersistentNpcs: RuntimeTownNpcStateStore.MaximumTownNpcs,
+                MaxNameBytesPerTownNpc: 16 * 1024,
+                MaxTotalNameBytes: 4L * 1024 * 1024);
+            WorldFileNpcEncodeResult npcResult = WorldFileNpcEncoder.TryEncode(
+                npcs,
+                npcLimits,
+                npcStream,
+                out _);
+            if (npcResult != WorldFileNpcEncodeResult.Encoded)
+                throw new InvalidDataException($"Authoritative town-NPC persistence encoding failed: {npcResult}.");
+
+            encodedNpcs = npcStream.ToArray();
+            npcSection = encodedNpcs;
+        }
+
+        ReadOnlySpan<byte> townRoomSection = preserved.TownRooms.Span;
+        byte[]? encodedTownRooms = null;
+        if (snapshot.TownRooms is WorldTownRoom[] townRooms)
+        {
+            using var roomStream = new MemoryStream();
+            WorldFileTownRoomEncodeResult roomResult = WorldFileTownRoomEncoder.TryEncode(
+                townRooms,
+                sourceHeader.Dimensions,
+                VanillaWorldFormat326.NpcTypeCount,
+                roomStream,
+                out _);
+            if (roomResult != WorldFileTownRoomEncodeResult.Encoded)
+                throw new InvalidDataException($"Authoritative town-room persistence encoding failed: {roomResult}.");
+
+            encodedTownRooms = roomStream.ToArray();
+            townRoomSection = encodedTownRooms;
+        }
+
         WorldFileTileChestRewriteResult result = WorldFileTileChestRewriter.TryRewrite(
             sourceEnvelope,
             sourceHeader,
@@ -373,10 +417,12 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             snapshot.Tiles,
             snapshot.Chests,
             signSection,
+            npcSection,
+            townRoomSection,
             destination,
             out _);
         if (result != WorldFileTileChestRewriteResult.Rewritten)
-            throw new InvalidDataException($"Authoritative tile/chest/sign world save failed: {result}.");
+            throw new InvalidDataException($"Authoritative tile/chest/sign/town world save failed: {result}.");
 
         return Task.CompletedTask;
     }

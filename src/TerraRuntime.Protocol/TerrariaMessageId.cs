@@ -37,6 +37,8 @@ public enum TerrariaMessageId : byte
     SignNew = 47,
     LiquidSet = 48,
     PlayerSpawnSelf = 49,
+    SetNpcTalk = 40,
+    UpdateNpcHome = 60,
     ChestName = 69,
     PlaceObject = 79,
     SyncPlayerChestIndex = 80,

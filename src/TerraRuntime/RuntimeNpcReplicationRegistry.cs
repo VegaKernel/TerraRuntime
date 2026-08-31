@@ -17,6 +17,7 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private readonly byte[]?[] baselineFrames = new byte[MaxNpcSlots][];
+    private readonly byte[]?[] townHomeBaselineFrames = new byte[RuntimeTownNpcStateStore.MaximumTownNpcs][];
     private long relayedFrames;
     private long baselineFrameCount;
     private long rejectedFrames;
@@ -40,6 +41,43 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     }
 
     public bool TryUnregister(GameCommandSourceId source) => endpoints.TryRemove(source, out _);
+
+    public void ConfigureTownHomeBaselines(ReadOnlySpan<RuntimeTownNpcHomeCommit> homes)
+    {
+        Array.Clear(townHomeBaselineFrames, 0, townHomeBaselineFrames.Length);
+        foreach (RuntimeTownNpcHomeCommit home in homes)
+        {
+            if ((uint)home.NpcSlot >= (uint)townHomeBaselineFrames.Length)
+                continue;
+            TerrariaNpcHomeState state = home.ToWireState();
+            if (TerrariaNpcHomeCodec.TryEncode(in state, out byte[] encoded) != TerrariaNpcHomeEncodeResult.Encoded)
+                continue;
+            Volatile.Write(ref townHomeBaselineFrames[home.NpcSlot], encoded);
+        }
+    }
+
+    public bool TryPublishNpcTalk(ConnectionHandle connection, short npcSlot)
+    {
+        if (!connection.IsAssigned || !TerrariaNpcTalkCodec.IsValidNpcSlot(npcSlot))
+            return false;
+        var state = new TerrariaNpcTalkState(connection.Player.Slot.Value, npcSlot);
+        if (TerrariaNpcTalkCodec.TryEncode(in state, out byte[] encoded) != TerrariaNpcTalkEncodeResult.Encoded)
+            return false;
+        BroadcastExcept(connection.Source, encoded);
+        return true;
+    }
+
+    public bool TryPublishTownHome(in RuntimeTownNpcHomeCommit home)
+    {
+        if ((uint)home.NpcSlot >= (uint)townHomeBaselineFrames.Length)
+            return false;
+        TerrariaNpcHomeState state = home.ToWireState();
+        if (TerrariaNpcHomeCodec.TryEncode(in state, out byte[] encoded) != TerrariaNpcHomeEncodeResult.Encoded)
+            return false;
+        Volatile.Write(ref townHomeBaselineFrames[home.NpcSlot], encoded);
+        Broadcast(encoded);
+        return true;
+    }
 
     public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot)
     {
@@ -99,6 +137,18 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             else
                 Interlocked.Increment(ref rejectedFrames);
         }
+
+        for (int slot = 0; slot < townHomeBaselineFrames.Length; slot++)
+        {
+            byte[]? encoded = Volatile.Read(ref townHomeBaselineFrames[slot]);
+            if (encoded is null)
+                continue;
+
+            if (endpoint.Outbound.TryEnqueue(new OutboundFrame(encoded)) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref baselineFrameCount);
+            else
+                Interlocked.Increment(ref rejectedFrames);
+        }
     }
 
     public void PlayerDisconnected(ConnectionHandle connection)
@@ -133,6 +183,21 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         foreach (Endpoint endpoint in endpoints.Values)
         {
             if (!endpoint.IsPlaying)
+                continue;
+
+            if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref relayedFrames);
+            else
+                Interlocked.Increment(ref rejectedFrames);
+        }
+    }
+
+    private void BroadcastExcept(GameCommandSourceId excludedSource, byte[] encoded)
+    {
+        var frame = new OutboundFrame(encoded);
+        foreach ((GameCommandSourceId source, Endpoint endpoint) in endpoints)
+        {
+            if (source == excludedSource || !endpoint.IsPlaying)
                 continue;
 
             if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)

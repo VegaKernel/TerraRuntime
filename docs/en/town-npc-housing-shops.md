@@ -1,0 +1,33 @@
+# Town NPC housing and shop authority
+
+TerraRuntime owns persistent town-NPC household state instead of treating the `.wld` NPC and `TownRoomManager` sections as bootstrap-only data.
+
+## Implemented 1.4.5.8 slice
+
+The runtime loads the persistent town roster and room mapping into `RuntimeTownNpcStateStore`, reserves stable runtime NPC slots for the loaded roster, and materializes source-pinned TerrariaServer 1.4.5.8 defaults for ordinary residents, town pets and town slimes. Old Man, Traveling Merchant and Skeleton Merchant remain outside this persistent household catalog.
+
+Client packet `60` (`UpdateNpcHome`) is decoded as the exact seven-byte Terraria 1.4.5.8 payload. A client may request an assignment (`status = 0`) or kick-out (`status = 1`). `status = 2` remains server-authored state. Requests are accepted only from a playing connection and are committed on the authoritative game thread.
+
+Housing assignment uses a clean-room source-shaped room check with the pinned room flood bounds, minimum/maximum room size, safe-wall continuity, `RoomNeeds` chair/table/torch/door sets, stinkbug restriction, evil-room score, standing-position selection and TownRoomManager housing-category occupancy. Ordinary residents cannot occupy the same room; a town pet/slime may share a room with an ordinary resident, matching the source housing-category rule. Truffle assignment currently fails closed because its complete mushroom-scene/unlock condition is not yet runtime-owned.
+
+Home-state commits are replicated as packet `60` to playing peers and retained as reconnect baselines. Save snapshots now detach both `WorldNpcPersistence` and `WorldTownRoom[]`; the lossless world rewriter replaces the NPC and town-room sections together with tiles/chests/signs instead of preserving stale household bytes.
+
+## Shop inventory slice
+
+`VanillaTownShopCatalog1458` owns source-pinned `Chest.SetupShop` inventory membership for all ordinary vendor branches `1..18`, from Merchant through Stylist: Merchant, Arms Dealer, Dryad, Demolitionist, Clothier, Goblin Tinkerer, Wizard, Mechanic, Santa Claus, Truffle, Steampunker, Dye Trader, Party Girl, Cyborg, Painter, Witch Doctor, Pirate and Stylist.
+
+The resolver preserves source order and the implemented progression inputs, including Hardmode, boss/event progression, Blood Moon/Eclipse/day/night, biome/graveyard/sky/beach state, secret-seed flags, world ore choice, live-town-NPC presence, golfer score, player life/mana/team/coin state and player-owned-item unlocks. Every resolved inventory is bounded to the vanilla 40-slot shop capacity.
+
+`VanillaSpecialTownShopCatalog1458` owns the source-shaped special branches `19..25`: Traveling Merchant, Skeleton Merchant, Tavernkeep, Golfer, Zoologist, Princess and Painter's secondary decor shop. The model preserves sparse vanilla slots, custom coin prices and Defender Medal currency instead of flattening those shops into an ordinary item list. Traveling inventory, moon/time state, progression, bestiary completion, Golfer score and pylon eligibility are explicit inputs.
+
+`VanillaTownHappiness1458` implements the numeric `ShopHelper` price path: biome preferences, the full admitted NPC relationship table, Princess loneliness/relationship handling, nearby-house/village crowding, homeless/far-home and evil-biome penalties, LoveStruck, and the vanilla `0.75..1.5` clamp/rounding behavior. Localized mood-report text remains outside this numeric primitive.
+
+## Not claimed
+
+This slice does **not** claim full town AI parity. AI style `7` defaults are admitted so persistent residents have correct hitbox/life/wire state, but day/night schedules, teleport-home behavior, doors/chairs, attacks, conversations, localized happiness dialogue, rescue/transform lifecycle and special-seed/shimmer branches remain separate parity gates.
+
+## NPC talk / shop session sync
+
+Packet 40 (`SetNpcTalk`) is now decoded on the connection boundary, posted to the authoritative loop and re-encoded with the authenticated player slot before replication. The client-provided player byte is never accepted as authority. NPC slot `-1` closes the conversation; live wire slots are bounded to `0..199`.
+
+The ordinary vendor inventory table is guarded by a pinned TerrariaServer 1.4.5.8 `Chest.SetupShop` source contract in CI. Cases `1..18`, including the Santa and Painter range loops, must keep their exact source item sequence.

@@ -16,7 +16,9 @@ public enum WorldFileTileChestRewriteResult : byte
     FooterEncodingFailed = 11,
     WriteFailed = 12,
     InvalidHeaderSection = 13,
-    InvalidSignSection = 14
+    InvalidSignSection = 14,
+    InvalidNpcSection = 15,
+    InvalidTownRoomSection = 16
 }
 
 /// <summary>
@@ -93,10 +95,52 @@ public static class WorldFileTileChestRewriter
         ArgumentNullException.ThrowIfNull(destination);
         bytesWritten = 0;
 
+        return TryRewrite(
+            sourceEnvelope,
+            header,
+            headerSection,
+            preserved,
+            tiles,
+            chests,
+            signSection,
+            preserved.Npcs.Span,
+            preserved.TownRooms.Span,
+            destination,
+            out bytesWritten);
+    }
+
+    /// <summary>
+    /// Rewrites the currently authoritative semantic sections while preserving all remaining opaque sections.
+    /// NPC and town-room payloads must already be encoded in the pinned world format.
+    /// </summary>
+    public static WorldFileTileChestRewriteResult TryRewrite(
+        WorldFileEnvelope sourceEnvelope,
+        WorldFileHeader header,
+        ReadOnlySpan<byte> headerSection,
+        WorldFilePreservedSections preserved,
+        WorldTileSaveImage tiles,
+        ReadOnlySpan<WorldChest> chests,
+        ReadOnlySpan<byte> signSection,
+        ReadOnlySpan<byte> npcSection,
+        ReadOnlySpan<byte> townRoomSection,
+        Stream destination,
+        out long bytesWritten)
+    {
+        ArgumentNullException.ThrowIfNull(sourceEnvelope);
+        ArgumentNullException.ThrowIfNull(header);
+        ArgumentNullException.ThrowIfNull(preserved);
+        ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentNullException.ThrowIfNull(destination);
+        bytesWritten = 0;
+
         if (headerSection.Length != preserved.Header.Length || headerSection.IsEmpty)
             return WorldFileTileChestRewriteResult.InvalidHeaderSection;
         if (signSection.IsEmpty)
             return WorldFileTileChestRewriteResult.InvalidSignSection;
+        if (npcSection.IsEmpty)
+            return WorldFileTileChestRewriteResult.InvalidNpcSection;
+        if (townRoomSection.IsEmpty)
+            return WorldFileTileChestRewriteResult.InvalidTownRoomSection;
         if (!destination.CanWrite)
             return WorldFileTileChestRewriteResult.DestinationNotWritable;
         if (!destination.CanSeek)
@@ -149,7 +193,7 @@ public static class WorldFileTileChestRewriter
             destination.Write(signSection);
             if (!TryRecordOffset(destination, offsets, 4))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
-            destination.Write(preserved.Npcs.Span);
+            destination.Write(npcSection);
             if (!TryRecordOffset(destination, offsets, 5))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
             destination.Write(preserved.TileEntities.Span);
@@ -158,7 +202,7 @@ public static class WorldFileTileChestRewriter
             destination.Write(preserved.PressurePlates.Span);
             if (!TryRecordOffset(destination, offsets, 7))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
-            destination.Write(preserved.TownRooms.Span);
+            destination.Write(townRoomSection);
             if (!TryRecordOffset(destination, offsets, 8))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
             destination.Write(preserved.Bestiary.Span);

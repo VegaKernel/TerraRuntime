@@ -15,6 +15,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
 
     private readonly Dictionary<byte, RuntimePlayerState> _players = [];
     private readonly PendingPlayerVitals?[] _pendingVitals = new PendingPlayerVitals?[MaxPlayerSlots];
+    private readonly short[] _playerTalkNpcSlots = new short[MaxPlayerSlots];
     private readonly RuntimePlayerInventoryStore _playerInventory = new();
     private readonly VanillaNpcTargetCandidate[] _npcTargetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
@@ -44,6 +45,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly RuntimeProjectileStateExecutor _projectileExecutor;
     private readonly IProjectileStateStepper? _projectileStepper;
     private readonly RuntimeProjectileReplicationRegistry? _projectileReplication;
+    private readonly RuntimeNpcReplicationRegistry? _npcReplication;
+    private readonly RuntimeTownNpcStateStore? _townNpcs;
+    private readonly VanillaHousingValidator1458? _housingValidator;
     private readonly RuntimeTileManipulationReplicationRegistry? _tileManipulationReplication;
     private readonly RuntimeObjectPlacementCommandProcessor? _objectPlacementProcessor;
     private readonly RuntimeWorldItemStore _worldItems;
@@ -69,6 +73,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         IProjectileStateStepper? projectileStepper = null,
         RuntimeWorldItemStore? worldItems = null,
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
+        RuntimeNpcReplicationRegistry? npcReplication = null,
+        RuntimeTownNpcStateStore? townNpcs = null,
         RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null,
         RuntimeServerPlayerStateStore? serverPlayerStates = null,
         RuntimeServerPlayerSlotRegistry? serverPlayerIdentities = null,
@@ -78,6 +84,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities = null,
         bool expertMode = false)
     {
+        Array.Fill(_playerTalkNpcSlots, TerrariaNpcTalkCodec.NoNpc);
         _playerEvents = playerEvents;
         _worldTiles = worldTiles;
         _tileMutations = worldTiles is null ? null : new VanillaWorldTileMutationService(worldTiles);
@@ -106,6 +113,11 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _projectileStepper = projectileStepper ??
             (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles));
         _projectileReplication = projectileReplication;
+        _npcReplication = npcReplication;
+        _townNpcs = townNpcs;
+        _housingValidator = worldTiles is not null && townNpcs is not null
+            ? new VanillaHousingValidator1458(worldTiles)
+            : null;
         _tileManipulationReplication = tileManipulationReplication;
         if (worldTiles is not null &&
             RuntimeWorldObjectMetadataRegistry.TryGet(
@@ -379,6 +391,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 break;
             case ClientTileManipulationRuntimeCommand tile:
                 ApplyClientTileManipulation(tile);
+                break;
+            case ClientNpcHomeRuntimeCommand home:
+                ApplyClientNpcHome(home);
+                break;
+            case ClientNpcTalkRuntimeCommand talk:
+                ApplyClientNpcTalk(talk);
                 break;
             case WorldItemAllocateRuntimeCommand allocate:
                 ApplyWorldItemAllocate(allocate);
@@ -1166,6 +1184,62 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         return true;
     }
 
+    private void ApplyClientNpcTalk(ClientNpcTalkRuntimeCommand command)
+    {
+        if (!IsCurrentPlayerConnection(command.Connection) ||
+            !TerrariaNpcTalkCodec.IsValidNpcSlot(command.State.NpcSlot))
+        {
+            return;
+        }
+
+        _playerTalkNpcSlots[command.Connection.Player.Slot.Value] = command.State.NpcSlot;
+        _npcReplication?.TryPublishNpcTalk(command.Connection, command.State.NpcSlot);
+    }
+
+    internal bool TryGetPlayerTalkNpc(PlayerHandle player, out short npcSlot)
+    {
+        if (!player.IsAssigned ||
+            !_players.TryGetValue(player.Slot.Value, out RuntimePlayerState? state) ||
+            state.Connection.Player != player)
+        {
+            npcSlot = TerrariaNpcTalkCodec.NoNpc;
+            return false;
+        }
+
+        npcSlot = _playerTalkNpcSlots[player.Slot.Value];
+        return true;
+    }
+
+    private void ApplyClientNpcHome(ClientNpcHomeRuntimeCommand command)
+    {
+        if (!IsCurrentPlayerConnection(command.Connection) ||
+            _townNpcs is null ||
+            _housingValidator is null ||
+            !command.State.TryGetStatus(out TerrariaNpcHomeStatus status))
+        {
+            return;
+        }
+
+        RuntimeTownNpcHomeCommit commit = default;
+        bool applied = status switch
+        {
+            TerrariaNpcHomeStatus.Homeless => _townNpcs.TryKickOut(command.State.NpcSlot, out commit),
+            TerrariaNpcHomeStatus.None => _townNpcs.TryAssignRoom(
+                command.State.NpcSlot,
+                command.State.HomeTileX,
+                command.State.HomeTileY,
+                _housingValidator,
+                out commit,
+                out _),
+            // Status 2 is server-authored GetHouseholdStatus state, not a client room-move request.
+            TerrariaNpcHomeStatus.HasRoom => false,
+            _ => false
+        };
+
+        if (applied)
+            _npcReplication?.TryPublishTownHome(in commit);
+    }
+
     private bool IsCurrentPlayerConnection(ConnectionHandle connection) =>
         connection.IsAssigned &&
         _players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) &&
@@ -1521,6 +1595,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             return;
         }
 
+        _playerTalkNpcSlots[connection.Player.Slot.Value] = TerrariaNpcTalkCodec.NoNpc;
         _players.Remove(connection.Player.Slot.Value);
         DisconnectedPlayers++;
         _playerEvents?.PlayerDisconnected(connection);
