@@ -18,6 +18,14 @@ Packet-17 wall actions were admitted into the authoritative path before the runt
 
 Fixes: `d4aac5a3d782c45f4d04929dca644726acc52038`, `f4aecb9ebf1de4172ddc7d6f5c561fd325c0491d`.
 
+### Client packet-17 no-item destruction authority
+
+Packet-17 action `4` (`KillTileNoItem`) was still admitted from an untrusted client even though that path did not prove a selected destruction tool and deliberately bypassed the ordinary tile-drop transaction. The wire action remains source-known and decodable, but client runtime admission now fails it closed until TerraRuntime has a legitimate source-backed sender path and the matching destruction authority semantics. Focused ingress and replication tests prove the action cannot mutate a tile, advance section state or enter peer replication while authority is disabled.
+
+Fixes: `3c6cd9cf53bda6dec92af8f661b7b16c4c5ca217`, `0c11a13bc1bf2d5564a55226a8679e3506dc8452`, `0e0276f7775d9cf08ad80c774d770464b23aa2d5`, `d809101c15f69bd1c470dcf07e60587fc6b46ade`.
+
+The pinned packet-17 protocol contract remains green with action `4` represented as a wire identity; runtime admission is intentionally stricter than TerrariaServer's packet handler.
+
 ### Completed one-shot workflow residue
 
 `security-idle-doc-sync.yml` was a self-removing documentation migration workflow whose target ten-minute idle-timeout documentation had already been applied. The workflow remained in `main` and produced a startup failure with no useful job. It was removed after verifying the runtime and documentation already carried the intended value.
@@ -28,9 +36,17 @@ Fix: `a81b7dc917e916d78cd80d5afd59c9c500307586`.
 
 A pre-existing change outside the ten-hour audit window had converted `VanillaSharedRng` into one continuously advancing RNG across registered passes. The new world-generation work in the audited window built the complete ordinary canonical pass pipeline on top of that assumption, making the inherited mismatch material.
 
-Pinned TerrariaServer 1.4.5.8 `WorldGenerator.RunPass` reseeds `Main.rand` from `_seed` before applying every enabled pass. TerraRuntime now creates a fresh source-pinned `VanillaUnifiedRandom1458` for every `VanillaSharedRng` pass. A regression test pins the per-pass reseed, and the official-source CI probe now fails if the pinned `RunPass` reseed disappears or moves after pass application.
+Pinned TerrariaServer 1.4.5.8 `WorldGenerator.RunPass` reseeds `Main.rand` from `_seed` before applying every enabled pass. TerraRuntime now creates a fresh source-pinned `VanillaUnifiedRandom1458` for every `VanillaSharedRng` pass. A regression test pins the per-pass reseed, and the official-source CI probe fails if the pinned `RunPass` reseed disappears or moves after pass application.
 
 Fixes: `e1b7aef7b50a0dcd78d8156dfac0326424526cf8`, `a080374ce61fd2cd83e1ae6f2627a2e7c9c74685`, `0ea6e53749ebf90257f5da482df152802889ee82`.
+
+### Worldgen source-contract isolation
+
+The `Terraria Worldgen Pass Catalog` workflow mixed pass/RNG verification with an unrelated seed/CRC discovery step. That coupling prevented the pass/RNG source contract from reaching its actual verification steps when the assumed CRC helper assembly boundary could not be resolved from the pinned deployment. The workflow now owns only pass registration, terrain-pass, RNG and configuration evidence. Seed hashing remains separate evidence debt rather than a prerequisite for proving `WorldGenerator.RunPass`.
+
+Fix: `4f4fbd6a93c72ad0bae0efbaa5a21adb11f16d42`.
+
+Exact source-contract run `33358834457` completed successfully: pinned-source extraction, runtime pass-catalog fingerprint verification, runtime RNG fingerprint verification, `VanillaUnifiedRandom1458` build and evidence upload all passed. This closes the per-pass RNG-lifetime finding with executable evidence from the pinned TerrariaServer 1.4.5.8 binary rather than repository-internal agreement.
 
 ### World-generation documentation drift
 
@@ -44,14 +60,18 @@ The audited window is not a blanket architectural regression. Object placement f
 
 The NPC roadmap remains conservative despite the large AI-family expansion: admitted families do not claim full vanilla AI parity. The Skyblock roadmap likewise keeps custom progression gaps explicit. The vanilla world-generation roadmap distinguishes complete pass-identity coverage and official-server load acceptance from still-open reference-world parity.
 
+The post-audit code baseline at `4f4fbd6a93c72ad0bae0efbaa5a21adb11f16d42` passed the full ordinary CI matrix: build/test plus authoritative-loop, protocol, network, world and TUI smoke; NativeAOT Linux/Windows; and CoreCLR extensible Linux/Windows.
+
 ## Remaining evidence work
 
-These items were not changed speculatively during this audit:
+These items remain deliberately incomplete rather than being guessed into production:
 
-- packet-17 `KillTileNoItem` and broad simple-tile destruction still need official-client/source evidence plus tile-specific mining/tool/drop authority before the runtime can claim broad server-authoritative mining parity;
+- broad client mining parity is still narrow: ordinary `KillTile` authority is currently tied to the imported Copper Pickaxe path and does not yet model the complete vanilla tool-power, tile-specific breakability, special destruction, reach, inventory and drop semantics; wall actions and `KillTileNoItem` must remain runtime-disabled until their own authority contracts exist;
+- packet-17 wire identity and client-runtime admission are still represented by the same protocol-facing `TryGetKnownAction` helper. The behavior is fail-closed, but a future cleanup should split source-known wire action resolution from gameplay admission policy so `TerraRuntime.Protocol.Multiplicity` does not conceptually own a gameplay legality decision;
+- non-numeric world-seed hashing still needs a dedicated pinned-source contract. `probe_worldgen_seed.py` was removed from the pass/RNG workflow dependency chain because its CRC helper assembly assumption was not proven; the runtime CRC implementation must not be described as exact source-verified seed-hash parity until that separate contract is established;
 - the `cc3898be2e5eeb9edab6e93c488a91cebd114c26` encoder change removes `MemoryStream` usage but its commit text overstates `ArrayPool`/pooling: `ArrayBufferWriter<byte>` plus `WrittenSpan.ToArray()` still allocates, so the performance claim needs the repository-required before/after allocation and throughput benchmark rather than prose;
 - new worm-family slot-link behavior should receive focused official-source/differential coverage before stronger stale-link or full-lifecycle claims are made. Vanilla AI may intentionally use raw slot references, so this is an evidence task rather than a guessed rewrite.
 
 ## Audit conclusion
 
-The high-volume change window made substantial real progress, especially in NPC-family coverage, Skyblock, object placement and ordinary canonical world-generation pass coverage. The main architectural defects found were narrow but important: client mutation authority was widened beyond imported gameplay facts, a dead one-shot workflow polluted checks, and the expanded vanilla worldgen relied on an inherited incorrect RNG-lifetime assumption. Those confirmed defects are corrected; remaining uncertain behavior stays fail-closed or explicitly incomplete rather than being rewritten from guesswork.
+The high-volume change window made substantial real progress, especially in NPC-family coverage, Skyblock, object placement and ordinary canonical world-generation pass coverage. The main architectural defects found were narrow but important: client mutation authority was widened beyond imported gameplay facts, a dead one-shot workflow polluted checks, and the expanded vanilla worldgen relied on an inherited incorrect RNG-lifetime assumption. Unknown tile placement, wall mutation and no-item destruction are now fail-closed; the worldgen RNG correction is pinned by a successful official-binary source contract; and the ordinary CI matrix is green on the corrected code baseline. Remaining uncertain behavior is explicitly incomplete and isolated as evidence debt rather than being promoted through optimistic compatibility claims.
