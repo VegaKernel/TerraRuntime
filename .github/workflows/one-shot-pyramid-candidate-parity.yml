@@ -8,11 +8,12 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   patch-test-commit:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -26,265 +27,32 @@ jobs:
 
       - name: Apply clean-room pyramid candidate parity patch
         shell: bash
+        env:
+          PATCH_B64: ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpkZWYgcmVwbGFjZV9vbmNlKHBhdGgsIG9sZCwgbmV3KToKICAgIHAgPSBQYXRoKHBhdGgpCiAgICB0ZXh0ID0gcC5yZWFkX3RleHQoKQogICAgY291bnQgPSB0ZXh0LmNvdW50KG9sZCkKICAgIGlmIGNvdW50ICE9IDE6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChmIntwYXRofTogZXhwZWN0ZWQgb25lIG1hdGNoLCBmb3VuZCB7Y291bnR9OiB7b2xkWzoxMjBdIXJ9IikKICAgIHAud3JpdGVfdGV4dCh0ZXh0LnJlcGxhY2Uob2xkLCBuZXcsIDEpKQoKZGVmIHJlcGxhY2VfYmV0d2VlbihwYXRoLCBzdGFydCwgZW5kLCByZXBsYWNlbWVudCk6CiAgICBwID0gUGF0aChwYXRoKQogICAgdGV4dCA9IHAucmVhZF90ZXh0KCkKICAgIGEgPSB0ZXh0LmZpbmQoc3RhcnQpCiAgICBpZiBhIDwgMDoKICAgICAgICByYWlzZSBTeXN0ZW1FeGl0KGYie3BhdGh9OiBzdGFydCBtYXJrZXIgbm90IGZvdW5kOiB7c3RhcnRbOjEyMF0hcn0iKQogICAgYiA9IHRleHQuZmluZChlbmQsIGEpCiAgICBpZiBiIDwgMDoKICAgICAgICByYWlzZSBTeXN0ZW1FeGl0KGYie3BhdGh9OiBlbmQgbWFya2VyIG5vdCBmb3VuZDoge2VuZFs6MTIwXSFyfSIpCiAgICBpZiB0ZXh0LmZpbmQoc3RhcnQsIGEgKyAxKSA+PSAwOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoZiJ7cGF0aH06IHN0YXJ0IG1hcmtlciBpcyBub3QgdW5pcXVlIikKICAgIHAud3JpdGVfdGV4dCh0ZXh0WzphXSArIHJlcGxhY2VtZW50ICsgdGV4dFtiOl0pCgp3b3Jrc3BhY2UgPSAic3JjL1RlcnJhUnVudGltZS5Xb3JsZC9SdW50aW1lV29ybGRHZW5lcmF0aW9uV29ya3NwYWNlLmNzIgpyZXBsYWNlX29uY2UoCiAgICB3b3Jrc3BhY2UsCiAgICAibmFtZXNwYWNlIFRlcnJhUnVudGltZS5Xb3JsZDtcblxuLy8vIDxzdW1tYXJ5PiIsCiAgICAibmFtZXNwYWNlIFRlcnJhUnVudGltZS5Xb3JsZDtcblxuaW50ZXJuYWwgcmVhZG9ubHkgcmVjb3JkIHN0cnVjdCBWYW5pbGxhUHlyYW1pZENhbmRpZGF0ZTE0NTgoaW50IFgsIGludCBZKTtcblxuLy8vIDxzdW1tYXJ5PiIpCnJlcGxhY2Vfb25jZSgKICAgIHdvcmtzcGFjZSwKICAgICIgICAgcHJpdmF0ZSBWYW5pbGxhVGVycmFpbkdlbmVyYXRpb25TdGF0ZTE0NTg/IHZhbmlsbGFUZXJyYWluU3RhdGU7XG4iLAogICAgIiAgICBwcml2YXRlIFZhbmlsbGFUZXJyYWluR2VuZXJhdGlvblN0YXRlMTQ1OD8gdmFuaWxsYVRlcnJhaW5TdGF0ZTtcbiAgICBwcml2YXRlIHJlYWRvbmx5IExpc3Q8VmFuaWxsYVB5cmFtaWRDYW5kaWRhdGUxNDU4PiB2YW5pbGxhUHlyYW1pZENhbmRpZGF0ZXMgPSBbXTtcbiIpCnJlcGxhY2Vfb25jZSgKICAgIHdvcmtzcGFjZSwKICAgICIgICAgaW50ZXJuYWwgdm9pZCBTZXRWYW5pbGxhVGVycmFpblN0YXRlKFZhbmlsbGFUZXJyYWluR2VuZXJhdGlvblN0YXRlMTQ1OCB2YWx1ZSkgPT5cbiAgICAgICAgdmFuaWxsYVRlcnJhaW5TdGF0ZSA9IHZhbHVlO1xuIiwKICAgICIiIiAgICBpbnRlcm5hbCB2b2lkIFNldFZhbmlsbGFUZXJyYWluU3RhdGUoVmFuaWxsYVRlcnJhaW5HZW5lcmF0aW9uU3RhdGUxNDU4IHZhbHVlKSA9PgogICAgICAgIHZhbmlsbGFUZXJyYWluU3RhdGUgPSB2YWx1ZTsKCiAgICBpbnRlcm5hbCB2b2lkIFJlc2V0VmFuaWxsYVB5cmFtaWRDYW5kaWRhdGVzKCkgPT4gdmFuaWxsYVB5cmFtaWRDYW5kaWRhdGVzLkNsZWFyKCk7CgogICAgaW50ZXJuYWwgdm9pZCBBZGRWYW5pbGxhUHlyYW1pZENhbmRpZGF0ZShpbnQgeCwgaW50IHkpCiAgICB7CiAgICAgICAgaWYgKCh1aW50KXggPj0gKHVpbnQpV2lkdGhUaWxlcyB8fCAodWludCl5ID49ICh1aW50KUhlaWdodFRpbGVzKQogICAgICAgICAgICB0aHJvdyBuZXcgQXJndW1lbnRPdXRPZlJhbmdlRXhjZXB0aW9uKG5hbWVvZih4KSwgJCJWYW5pbGxhIHB5cmFtaWQgY2FuZGlkYXRlICh7eH0sIHt5fSkgaXMgb3V0c2lkZSB0aGUgZ2VuZXJhdGlvbiB3b3Jrc3BhY2UuIik7CgogICAgICAgIHZhbmlsbGFQeXJhbWlkQ2FuZGlkYXRlcy5BZGQobmV3IFZhbmlsbGFQeXJhbWlkQ2FuZGlkYXRlMTQ1OCh4LCB5KSk7CiAgICB9CgogICAgaW50ZXJuYWwgVmFuaWxsYVB5cmFtaWRDYW5kaWRhdGUxNDU4W10gQ2FwdHVyZVZhbmlsbGFQeXJhbWlkQ2FuZGlkYXRlcygpID0+CiAgICAgICAgdmFuaWxsYVB5cmFtaWRDYW5kaWRhdGVzLlRvQXJyYXkoKTsKIiIiKQoKZWFybHkgPSAic3JjL1RlcnJhUnVudGltZS5Xb3JsZC9WYW5pbGxhRWFybHlXb3JsZEdlbmVyYXRpb25QaXBlbGluZTE0NTguY3MiCnJlcGxhY2Vfb25jZSgKICAgIGVhcmx5LAogICAgIiAgICAgICAgICAgICAgICBBcHBseUR1bmVzKGNvbnRleHQsIGdyaWQsIFJlcXVpcmVWYW5pbGxhKGNvbnRleHQpKTsiLAogICAgIiAgICAgICAgICAgICAgICBBcHBseUR1bmVzKGNvbnRleHQsIHdvcmtzcGFjZSwgZ3JpZCwgUmVxdWlyZVZhbmlsbGEoY29udGV4dCkpOyIpCnJlcGxhY2Vfb25jZSgKICAgIGVhcmx5LAogICAgIiAgICAgICAgICAgICAgICBBcHBseU9jZWFuU2FuZChjb250ZXh0LCBncmlkLCBSZXF1aXJlVmFuaWxsYShjb250ZXh0KSk7IiwKICAgICIgICAgICAgICAgICAgICAgQXBwbHlPY2VhblNhbmQoY29udGV4dCwgd29ya3NwYWNlLCBncmlkLCBSZXF1aXJlVmFuaWxsYShjb250ZXh0KSk7IikKcmVwbGFjZV9vbmNlKAogICAgZWFybHksCiAgICAiIiIgICAgcHJpdmF0ZSB2b2lkIEFwcGx5RHVuZXMoSVdvcmxkR2VuZXJhdGlvbkNvbnRleHQgY29udGV4dCwgUnVudGltZUdyaWQgZ3JpZCwgSVJhbmRvbSByYW5kb20pCiAgICB7CiAgICAgICAgVmFuaWxsYVdvcmxkR2VuZXJhdGlvbkJvb3RzdHJhcFN0YXRlMTQ1OCBiID0gUmVxdWlyZUJvb3RzdHJhcCgpOyIiIiwKICAgICIiIiAgICBwcml2YXRlIHZvaWQgQXBwbHlEdW5lcygKICAgICAgICBJV29ybGRHZW5lcmF0aW9uQ29udGV4dCBjb250ZXh0LAogICAgICAgIFJ1bnRpbWVXb3JsZEdlbmVyYXRpb25Xb3Jrc3BhY2Ugd29ya3NwYWNlLAogICAgICAgIFJ1bnRpbWVHcmlkIGdyaWQsCiAgICAgICAgSVJhbmRvbSByYW5kb20pCiAgICB7CiAgICAgICAgVmFuaWxsYVdvcmxkR2VuZXJhdGlvbkJvb3RzdHJhcFN0YXRlMTQ1OCBiID0gUmVxdWlyZUJvb3RzdHJhcCgpOwogICAgICAgIHdvcmtzcGFjZS5SZXNldFZhbmlsbGFQeXJhbWlkQ2FuZGlkYXRlcygpOyIiIikKcmVwbGFjZV9vbmNlKAogICAgZWFybHksCiAgICAiIiIgICAgICAgICAgICBpZiAocmFuZG9tLk5leHREb3VibGUoKSA8PSAwLjhkKQogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICBpbnQgY2FuZGlkYXRlWCA9IHJhbmRvbS5OZXh0KG9yaWdpblggLSAyMDAsIG9yaWdpblggKyAyMDApOwogICAgICAgICAgICAgICAgXyA9IGdyaWQuRmluZEZpcnN0QWN0aXZlWShjYW5kaWRhdGVYLCAwLCBncmlkLkhlaWdodCk7CiAgICAgICAgICAgIH0iIiIsCiAgICAiIiIgICAgICAgICAgICBpZiAocmFuZG9tLk5leHREb3VibGUoKSA8PSAwLjhkKQogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICBpbnQgY2FuZGlkYXRlWCA9IHJhbmRvbS5OZXh0KG9yaWdpblggLSAyMDAsIG9yaWdpblggKyAyMDApOwogICAgICAgICAgICAgICAgaW50IGNhbmRpZGF0ZVN1cmZhY2UgPSBncmlkLkZpbmRGaXJzdEFjdGl2ZVkoY2FuZGlkYXRlWCwgMCwgZ3JpZC5IZWlnaHQpOwogICAgICAgICAgICAgICAgaWYgKGNhbmRpZGF0ZVN1cmZhY2UgPCBncmlkLkhlaWdodCkKICAgICAgICAgICAgICAgICAgICB3b3Jrc3BhY2UuQWRkVmFuaWxsYVB5cmFtaWRDYW5kaWRhdGUoY2FuZGlkYXRlWCwgY2FuZGlkYXRlU3VyZmFjZSArIDIwKTsKICAgICAgICAgICAgfSIiIikKcmVwbGFjZV9vbmNlKAogICAgZWFybHksCiAgICAiIiIgICAgcHJpdmF0ZSB2b2lkIEFwcGx5T2NlYW5TYW5kKElXb3JsZEdlbmVyYXRpb25Db250ZXh0IGNvbnRleHQsIFJ1bnRpbWVHcmlkIGdyaWQsIElSYW5kb20gcmFuZG9tKQogICAgeyIiIiwKICAgICIiIiAgICBwcml2YXRlIHZvaWQgQXBwbHlPY2VhblNhbmQoCiAgICAgICAgSVdvcmxkR2VuZXJhdGlvbkNvbnRleHQgY29udGV4dCwKICAgICAgICBSdW50aW1lV29ybGRHZW5lcmF0aW9uV29ya3NwYWNlIHdvcmtzcGFjZSwKICAgICAgICBSdW50aW1lR3JpZCBncmlkLAogICAgICAgIElSYW5kb20gcmFuZG9tKQogICAgeyIiIikKcmVwbGFjZV9vbmNlKAogICAgZWFybHksCiAgICAiICAgICAgICAgICAgICAgIGlmICh4ID09IChsZWZ0ICsgcmlnaHQpIC8gMiAmJiByYW5kb20uTmV4dCg2KSA9PSAwKSB7IH0iLAogICAgIiIiICAgICAgICAgICAgICAgIGlmICh4ID09IChsZWZ0ICsgcmlnaHQpIC8gMiAmJiByYW5kb20uTmV4dCg2KSA9PSAwKQogICAgICAgICAgICAgICAgICAgIHdvcmtzcGFjZS5BZGRWYW5pbGxhUHlyYW1pZENhbmRpZGF0ZSh4LCB5KTsiIiIpCgpkdW5nZW9uID0gInNyYy9UZXJyYVJ1bnRpbWUuV29ybGQvVmFuaWxsYUR1bmdlb25Xb3JsZEdlbmVyYXRpb25QaXBlbGluZTE0NTguY3MiCnJlcGxhY2Vfb25jZSgKICAgIGR1bmdlb24sCiAgICAiICAgIHB1YmxpYyBpbnQgRHVuZ2VvblggeyBnZXQ7IHNldDsgfVxuICAgIHB1YmxpYyBpbnQgRHVuZ2VvblkgeyBnZXQ7IHNldDsgfSIsCiAgICAiICAgIHB1YmxpYyBpbnQgRHVuZ2VvblggeyBnZXQ7IHNldDsgfVxuICAgIHB1YmxpYyBpbnQgRHVuZ2VvbkdlbmVyYXRpb25YIHsgZ2V0OyBzZXQ7IH1cbiAgICBwdWJsaWMgaW50IER1bmdlb25ZIHsgZ2V0OyBzZXQ7IH0iKQpyZXBsYWNlX29uY2UoCiAgICBkdW5nZW9uLAogICAgIiAgICAgICAgRHVuZ2VvblggPSBNYXRoLkNsYW1wKEJvb3RzdHJhcC5EdW5nZW9uTG9jYXRpb24sIDIwLCB3b3Jrc3BhY2UuV2lkdGhUaWxlcyAtIDIxKTtcbiIsCiAgICAiICAgICAgICBEdW5nZW9uWCA9IE1hdGguQ2xhbXAoQm9vdHN0cmFwLkR1bmdlb25Mb2NhdGlvbiwgMjAsIHdvcmtzcGFjZS5XaWR0aFRpbGVzIC0gMjEpO1xuICAgICAgICBEdW5nZW9uR2VuZXJhdGlvblggPSBEdW5nZW9uWDtcbiIpCnJlcGxhY2Vfb25jZSgKICAgIGR1bmdlb24sCiAgICAiICAgICAgICAgICAgY2FzZSBWYW5pbGxhRHVuZ2VvbldvcmxkR2VuZXJhdGlvblN0YWdlMTQ1OC5QeXJhbWlkczpcbiAgICAgICAgICAgICAgICBBcHBseVB5cmFtaWRzKGNvbnRleHQsIGdyaWQsIHJhbmRvbSk7IiwKICAgICIgICAgICAgICAgICBjYXNlIFZhbmlsbGFEdW5nZW9uV29ybGRHZW5lcmF0aW9uU3RhZ2UxNDU4LlB5cmFtaWRzOlxuICAgICAgICAgICAgICAgIEFwcGx5UHlyYW1pZHMoY29udGV4dCwgd29ya3NwYWNlLCBncmlkLCByYW5kb20pOyIpCnJlcGxhY2Vfb25jZSgKICAgIGR1bmdlb24sCiAgICAiIiIgICAgICAgIEJ1aWxkRHVuZ2VvbkVudHJhbmNlKGdyaWQsIGNlbnRlclgsIHN1cmZhY2UsIGJyaWNrKTsKICAgICAgICBpZiAoY29udGV4dC5NZXRhZGF0YSBpcyBub3QgbnVsbCAmJiAhY29udGV4dC5NZXRhZGF0YS5UcnlTZXREdW5nZW9uKGNlbnRlclgsIHN0YXRlLkR1bmdlb25ZKSkiIiIsCiAgICAiIiIgICAgICAgIHN0YXRlLkR1bmdlb25HZW5lcmF0aW9uWCA9IHNoYWZ0WDsKICAgICAgICBCdWlsZER1bmdlb25FbnRyYW5jZShncmlkLCBjZW50ZXJYLCBzdXJmYWNlLCBicmljayk7CiAgICAgICAgaWYgKGNvbnRleHQuTWV0YWRhdGEgaXMgbm90IG51bGwgJiYgIWNvbnRleHQuTWV0YWRhdGEuVHJ5U2V0RHVuZ2VvbihjZW50ZXJYLCBzdGF0ZS5EdW5nZW9uWSkpIiIiKQoKcHlyYW1pZF9yZXBsYWNlbWVudCA9ICIiIiAgICBwcml2YXRlIHZvaWQgQXBwbHlQeXJhbWlkcygKICAgICAgICBJV29ybGRHZW5lcmF0aW9uQ29udGV4dCBjb250ZXh0LAogICAgICAgIFJ1bnRpbWVXb3JsZEdlbmVyYXRpb25Xb3Jrc3BhY2Ugd29ya3NwYWNlLAogICAgICAgIFJ1bnRpbWVHcmlkIGdyaWQsCiAgICAgICAgSVJhbmRvbSByYW5kb20pCiAgICB7CiAgICAgICAgVmFuaWxsYVB5cmFtaWRDYW5kaWRhdGUxNDU4W10gY2FuZGlkYXRlcyA9IHdvcmtzcGFjZS5DYXB0dXJlVmFuaWxsYVB5cmFtaWRDYW5kaWRhdGVzKCk7CiAgICAgICAgaW50IHBsYWNlZCA9IDA7CiAgICAgICAgaW50IHdvcmxkU3VyZmFjZSA9IE1hdGguQ2xhbXAoKGludClNYXRoLkNlaWxpbmcoc3RhdGUuV29ybGRTdXJmYWNlKSwgMSwgZ3JpZC5IZWlnaHQgLSAxKTsKICAgICAgICBpbnQgZHVuZ2VvblNpZGUgPSBSZXF1aXJlQm9vdHN0cmFwKCkuRHVuZ2VvblNpZGU7CgogICAgICAgIGZvciAoaW50IGkgPSAwOyBpIDwgY2FuZGlkYXRlcy5MZW5ndGg7IGkrKykKICAgICAgICB7CiAgICAgICAgICAgIGNvbnRleHQuQ2FuY2VsbGF0aW9uVG9rZW4uVGhyb3dJZkNhbmNlbGxhdGlvblJlcXVlc3RlZCgpOwogICAgICAgICAgICBpZiAoIUlzT3JkaW5hcnlQeXJhbWlkQ2FuZGlkYXRlUG9zaXRpb25FbGlnaWJsZSgKICAgICAgICAgICAgICAgICAgICBjYW5kaWRhdGVzLAogICAgICAgICAgICAgICAgICAgIGksCiAgICAgICAgICAgICAgICAgICAgZ3JpZC5XaWR0aCwKICAgICAgICAgICAgICAgICAgICBkdW5nZW9uU2lkZSwKICAgICAgICAgICAgICAgICAgICBzdGF0ZS5EdW5nZW9uR2VuZXJhdGlvblgpKQogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICBjb250aW51ZTsKICAgICAgICAgICAgfQoKICAgICAgICAgICAgVmFuaWxsYVB5cmFtaWRDYW5kaWRhdGUxNDU4IGNhbmRpZGF0ZSA9IGNhbmRpZGF0ZXNbaV07CiAgICAgICAgICAgIGludCBzdXJmYWNlID0gTWF0aC5DbGFtcChjYW5kaWRhdGUuWSwgMSwgZ3JpZC5IZWlnaHQgLSAyKTsKICAgICAgICAgICAgd2hpbGUgKHN1cmZhY2UgPCB3b3JsZFN1cmZhY2UgJiYgIWdyaWQuQXQoY2FuZGlkYXRlLlgsIHN1cmZhY2UpLklzQWN0aXZlKQogICAgICAgICAgICAgICAgc3VyZmFjZSsrOwoKICAgICAgICAgICAgaWYgKHN1cmZhY2UgPj0gd29ybGRTdXJmYWNlIHx8IGdyaWQuQXQoY2FuZGlkYXRlLlgsIHN1cmZhY2UpLlR5cGUgIT0gU2FuZCkKICAgICAgICAgICAgICAgIGNvbnRpbnVlOwoKICAgICAgICAgICAgc3VyZmFjZS0tOwogICAgICAgICAgICBpbnQgaGFsZldpZHRoID0gcmFuZG9tLk5leHQoMzAsIDQ3KTsKICAgICAgICAgICAgaW50IGhlaWdodCA9IHJhbmRvbS5OZXh0KDI0LCAzOCk7CiAgICAgICAgICAgIEJ1aWxkUHlyYW1pZChncmlkLCBjYW5kaWRhdGUuWCwgc3VyZmFjZSwgaGFsZldpZHRoLCBoZWlnaHQpOwogICAgICAgICAgICBwbGFjZWQrKzsKICAgICAgICB9CgogICAgICAgIHN0YXRlLlB5cmFtaWRDb3VudCA9IHBsYWNlZDsKICAgICAgICBjb250ZXh0LlJlcG9ydFByb2dyZXNzKAogICAgICAgICAgICAxZCwKICAgICAgICAgICAgJCJHZW5lcmF0aW5nIGRlc2VydCBweXJhbWlkcyBmcm9tIHNvdXJjZSBjYW5kaWRhdGVzICh7cGxhY2VkfS97Y2FuZGlkYXRlcy5MZW5ndGh9KSIpOwogICAgfQoKICAgIGludGVybmFsIHN0YXRpYyBib29sIElzT3JkaW5hcnlQeXJhbWlkQ2FuZGlkYXRlUG9zaXRpb25FbGlnaWJsZSgKICAgICAgICBSZWFkT25seVNwYW48VmFuaWxsYVB5cmFtaWRDYW5kaWRhdGUxNDU4PiBjYW5kaWRhdGVzLAogICAgICAgIGludCBpbmRleCwKICAgICAgICBpbnQgd29ybGRXaWR0aCwKICAgICAgICBpbnQgZHVuZ2VvblNpZGUsCiAgICAgICAgaW50IGR1bmdlb25HZW5lcmF0aW9uWCkKICAgIHsKICAgICAgICBpZiAoKHVpbnQpaW5kZXggPj0gKHVpbnQpY2FuZGlkYXRlcy5MZW5ndGgpCiAgICAgICAgICAgIHRocm93IG5ldyBBcmd1bWVudE91dE9mUmFuZ2VFeGNlcHRpb24obmFtZW9mKGluZGV4KSk7CiAgICAgICAgaWYgKHdvcmxkV2lkdGggPD0gMCB8fCAodWludClkdW5nZW9uR2VuZXJhdGlvblggPj0gKHVpbnQpd29ybGRXaWR0aCkKICAgICAgICAgICAgdGhyb3cgbmV3IEFyZ3VtZW50T3V0T2ZSYW5nZUV4Y2VwdGlvbihuYW1lb2Yod29ybGRXaWR0aCkpOwoKICAgICAgICBpbnQgeCA9IGNhbmRpZGF0ZXNbaW5kZXhdLlg7CiAgICAgICAgaWYgKHggPD0gMzAwIHx8IHggPj0gd29ybGRXaWR0aCAtIDMwMCkKICAgICAgICAgICAgcmV0dXJuIGZhbHNlOwoKICAgICAgICBkb3VibGUgZHVuZ2VvblBhZGRpbmcgPSB3b3JsZFdpZHRoICogMC4xNWQ7CiAgICAgICAgaWYgKGR1bmdlb25TaWRlIDw9IC0xICYmIHggPCBkdW5nZW9uR2VuZXJhdGlvblggKyBkdW5nZW9uUGFkZGluZykKICAgICAgICAgICAgcmV0dXJuIGZhbHNlOwogICAgICAgIGlmIChkdW5nZW9uU2lkZSA+PSAxICYmIHggPiBkdW5nZW9uR2VuZXJhdGlvblggLSBkdW5nZW9uUGFkZGluZykKICAgICAgICAgICAgcmV0dXJuIGZhbHNlOwoKICAgICAgICBpbnQgbmVhcmVzdEVhcmxpZXJDYW5kaWRhdGUgPSB3b3JsZFdpZHRoOwogICAgICAgIGZvciAoaW50IGkgPSAwOyBpIDwgaW5kZXg7IGkrKykKICAgICAgICAgICAgbmVhcmVzdEVhcmxpZXJDYW5kaWRhdGUgPSBNYXRoLk1pbihuZWFyZXN0RWFybGllckNhbmRpZGF0ZSwgTWF0aC5BYnMoeCAtIGNhbmRpZGF0ZXNbaV0uWCkpOwoKICAgICAgICByZXR1cm4gbmVhcmVzdEVhcmxpZXJDYW5kaWRhdGUgPj0gMjIwOwogICAgfQoKIiIiCnJlcGxhY2VfYmV0d2VlbigKICAgIGR1bmdlb24sCiAgICAiICAgIHByaXZhdGUgdm9pZCBBcHBseVB5cmFtaWRzKElXb3JsZEdlbmVyYXRpb25Db250ZXh0IGNvbnRleHQsIFJ1bnRpbWVHcmlkIGdyaWQsIElSYW5kb20gcmFuZG9tKVxuIiwKICAgICIgICAgcHJpdmF0ZSBzdGF0aWMgdm9pZCBCdWlsZFB5cmFtaWQoIiwKICAgIHB5cmFtaWRfcmVwbGFjZW1lbnQpCgplYXJseV90ZXN0cyA9ICJ0ZXN0cy9UZXJyYVJ1bnRpbWUuVGVzdHMvU291cmNlQmFja2VkVmFuaWxsYVdvcmxkR2VuZXJhdGlvblBpcGVsaW5lMTQ1OFRlc3RzLmNzIgpyZXBsYWNlX29uY2UoCiAgICBlYXJseV90ZXN0cywKICAgICIgICAgcHJpdmF0ZSBzdGF0aWMgQ2FwdHVyZUVudHJ5IEZpbmQoQ2FwdHVyZUJ1aWxkZXIgYnVpbGRlciwgc3RyaW5nIGlkKSA9PiIsCiAgICAiIiIgICAgW0ZhY3RdCiAgICBwdWJsaWMgdm9pZCBQeXJhbWlkX2NhbmRpZGF0ZV93b3Jrc3BhY2Vfc3RhdGVfcHJlc2VydmVzX3NvdXJjZV9nZW5lcmF0aW9uX29yZGVyKCkKICAgIHsKICAgICAgICB2YXIgd29ya3NwYWNlID0gbmV3IFJ1bnRpbWVXb3JsZEdlbmVyYXRpb25Xb3Jrc3BhY2UoNjQsIDY0KTsKICAgICAgICB3b3Jrc3BhY2UuUmVzZXRWYW5pbGxhUHlyYW1pZENhbmRpZGF0ZXMoKTsKICAgICAgICB3b3Jrc3BhY2UuQWRkVmFuaWxsYVB5cmFtaWRDYW5kaWRhdGUoMTAsIDIwKTsKICAgICAgICB3b3Jrc3BhY2UuQWRkVmFuaWxsYVB5cmFtaWRDYW5kaWRhdGUoMzAsIDQwKTsKCiAgICAgICAgVmFuaWxsYVB5cmFtaWRDYW5kaWRhdGUxNDU4W10gY2FuZGlkYXRlcyA9IHdvcmtzcGFjZS5DYXB0dXJlVmFuaWxsYVB5cmFtaWRDYW5kaWRhdGVzKCk7CgogICAgICAgIEFzc2VydC5FcXVhbCgKICAgICAgICAgICAgW25ldyBWYW5pbGxhUHlyYW1pZENhbmRpZGF0ZTE0NTgoMTAsIDIwKSwgbmV3IFZhbmlsbGFQeXJhbWlkQ2FuZGlkYXRlMTQ1OCgzMCwgNDApXSwKICAgICAgICAgICAgY2FuZGlkYXRlcyk7CgogICAgICAgIHdvcmtzcGFjZS5SZXNldFZhbmlsbGFQeXJhbWlkQ2FuZGlkYXRlcygpOwogICAgICAgIEFzc2VydC5FbXB0eSh3b3Jrc3BhY2UuQ2FwdHVyZVZhbmlsbGFQeXJhbWlkQ2FuZGlkYXRlcygpKTsKICAgIH0KCiAgICBwcml2YXRlIHN0YXRpYyBDYXB0dXJlRW50cnkgRmluZChDYXB0dXJlQnVpbGRlciBidWlsZGVyLCBzdHJpbmcgaWQpID0+IiIiKQoKZHVuZ2Vvbl90ZXN0cyA9ICJ0ZXN0cy9UZXJyYVJ1bnRpbWUuVGVzdHMvU291cmNlQmFja2VkVmFuaWxsYVdvcmxkR2VuZXJhdGlvbkR1bmdlb25QaXBlbGluZTE0NThUZXN0cy5jcyIKcmVwbGFjZV9vbmNlKAogICAgZHVuZ2Vvbl90ZXN0cywKICAgICIgICAgcHJpdmF0ZSBzdGF0aWMgQ2FwdHVyZUVudHJ5IEZpbmQoQ2FwdHVyZUJ1aWxkZXIgYnVpbGRlciwgc3RyaW5nIGlkKSA9PiIsCiAgICAiIiIgICAgW0ZhY3RdCiAgICBwdWJsaWMgdm9pZCBPcmRpbmFyeV9weXJhbWlkX2NhbmRpZGF0ZV9maWx0ZXJfbWF0Y2hlc19zb3VyY2VfZWRnZXNfZHVuZ2Vvbl9zaWRlX2FuZF9zcGFjaW5nKCkKICAgIHsKICAgICAgICBWYW5pbGxhUHlyYW1pZENhbmRpZGF0ZTE0NThbXSBjYW5kaWRhdGVzID0KICAgICAgICBbCiAgICAgICAgICAgIG5ldygzMDAsIDIwMCksCiAgICAgICAgICAgIG5ldygxMjAwLCAyMDApLAogICAgICAgICAgICBuZXcoMTMwMCwgMjAwKSwKICAgICAgICAgICAgbmV3KDIwMDAsIDIwMCksCiAgICAgICAgICAgIG5ldygzOTAwLCAyMDApCiAgICAgICAgXTsKCiAgICAgICAgQXNzZXJ0LkZhbHNlKFZhbmlsbGFEdW5nZW9uV29ybGRHZW5lcmF0aW9uUGFzczE0NTguSXNPcmRpbmFyeVB5cmFtaWRDYW5kaWRhdGVQb3NpdGlvbkVsaWdpYmxlKAogICAgICAgICAgICBjYW5kaWRhdGVzLCAwLCB3b3JsZFdpZHRoOiA0MjAwLCBkdW5nZW9uU2lkZTogLTEsIGR1bmdlb25HZW5lcmF0aW9uWDogNDAwKSk7CiAgICAgICAgQXNzZXJ0LlRydWUoVmFuaWxsYUR1bmdlb25Xb3JsZEdlbmVyYXRpb25QYXNzMTQ1OC5Jc09yZGluYXJ5UHlyYW1pZENhbmRpZGF0ZVBvc2l0aW9uRWxpZ2libGUoCiAgICAgICAgICAgIGNhbmRpZGF0ZXMsIDEsIHdvcmxkV2lkdGg6IDQyMDAsIGR1bmdlb25TaWRlOiAtMSwgZHVuZ2VvbkdlbmVyYXRpb25YOiA0MDApKTsKICAgICAgICBBc3NlcnQuRmFsc2UoVmFuaWxsYUR1bmdlb25Xb3JsZEdlbmVyYXRpb25QYXNzMTQ1OC5Jc09yZGluYXJ5UHlyYW1pZENhbmRpZGF0ZVBvc2l0aW9uRWxpZ2libGUoCiAgICAgICAgICAgIGNhbmRpZGF0ZXMsIDIsIHdvcmxkV2lkdGg6IDQyMDAsIGR1bmdlb25TaWRlOiAtMSwgZHVuZ2VvbkdlbmVyYXRpb25YOiA0MDApKTsKICAgICAgICBBc3NlcnQuVHJ1ZShWYW5pbGxhRHVuZ2VvbldvcmxkR2VuZXJhdGlvblBhc3MxNDU4LklzT3JkaW5hcnlQeXJhbWlkQ2FuZGlkYXRlUG9zaXRpb25FbGlnaWJsZSgKICAgICAgICAgICAgY2FuZGlkYXRlcywgMywgd29ybGRXaWR0aDogNDIwMCwgZHVuZ2VvblNpZGU6IC0xLCBkdW5nZW9uR2VuZXJhdGlvblg6IDQwMCkpOwogICAgICAgIEFzc2VydC5GYWxzZShWYW5pbGxhRHVuZ2VvbldvcmxkR2VuZXJhdGlvblBhc3MxNDU4LklzT3JkaW5hcnlQeXJhbWlkQ2FuZGlkYXRlUG9zaXRpb25FbGlnaWJsZSgKICAgICAgICAgICAgY2FuZGlkYXRlcywgNCwgd29ybGRXaWR0aDogNDIwMCwgZHVuZ2VvblNpZGU6IC0xLCBkdW5nZW9uR2VuZXJhdGlvblg6IDQwMCkpOwoKICAgICAgICBWYW5pbGxhUHlyYW1pZENhbmRpZGF0ZTE0NThbXSByaWdodER1bmdlb25DYW5kaWRhdGVzID0gW25ldygzMDAwLCAyMDApLCBuZXcoMzMwMCwgMjAwKV07CiAgICAgICAgQXNzZXJ0LlRydWUoVmFuaWxsYUR1bmdlb25Xb3JsZEdlbmVyYXRpb25QYXNzMTQ1OC5Jc09yZGluYXJ5UHlyYW1pZENhbmRpZGF0ZVBvc2l0aW9uRWxpZ2libGUoCiAgICAgICAgICAgIHJpZ2h0RHVuZ2VvbkNhbmRpZGF0ZXMsIDAsIHdvcmxkV2lkdGg6IDQyMDAsIGR1bmdlb25TaWRlOiAxLCBkdW5nZW9uR2VuZXJhdGlvblg6IDM4MDApKTsKICAgICAgICBBc3NlcnQuRmFsc2UoVmFuaWxsYUR1bmdlb25Xb3JsZEdlbmVyYXRpb25QYXNzMTQ1OC5Jc09yZGluYXJ5UHlyYW1pZENhbmRpZGF0ZVBvc2l0aW9uRWxpZ2libGUoCiAgICAgICAgICAgIHJpZ2h0RHVuZ2VvbkNhbmRpZGF0ZXMsIDEsIHdvcmxkV2lkdGg6IDQyMDAsIGR1bmdlb25TaWRlOiAxLCBkdW5nZW9uR2VuZXJhdGlvblg6IDM4MDApKTsKICAgIH0KCiAgICBwcml2YXRlIHN0YXRpYyBDYXB0dXJlRW50cnkgRmluZChDYXB0dXJlQnVpbGRlciBidWlsZGVyLCBzdHJpbmcgaWQpID0+IiIiKQo=
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          def replace_once(path, old, new):
-              p = Path(path)
-              text = p.read_text()
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"{path}: expected one match, found {count}: {old[:100]!r}")
-              p.write_text(text.replace(old, new, 1))
-
-          def replace_between(path, start, end, replacement):
-              p = Path(path)
-              text = p.read_text()
-              a = text.find(start)
-              if a < 0:
-                  raise SystemExit(f"{path}: start marker not found")
-              b = text.find(end, a)
-              if b < 0:
-                  raise SystemExit(f"{path}: end marker not found")
-              if text.find(start, a + 1) >= 0:
-                  raise SystemExit(f"{path}: start marker is not unique")
-              p.write_text(text[:a] + replacement + text[b:])
-
-          workspace = 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
-          replace_once(
-              workspace,
-              'namespace TerraRuntime.World;\n\n/// <summary>',
-              'namespace TerraRuntime.World;\n\ninternal readonly record struct VanillaPyramidCandidate1458(int X, int Y);\n\n/// <summary>')
-          replace_once(
-              workspace,
-              '    private VanillaTerrainGenerationState1458? vanillaTerrainState;\n',
-              '    private VanillaTerrainGenerationState1458? vanillaTerrainState;\n    private readonly List<VanillaPyramidCandidate1458> vanillaPyramidCandidates = [];\n')
-          replace_once(
-              workspace,
-              '    internal void SetVanillaTerrainState(VanillaTerrainGenerationState1458 value) =>\n        vanillaTerrainState = value;\n',
-              '''    internal void SetVanillaTerrainState(VanillaTerrainGenerationState1458 value) =>
-        vanillaTerrainState = value;
-
-    internal void ResetVanillaPyramidCandidates() => vanillaPyramidCandidates.Clear();
-
-    internal void AddVanillaPyramidCandidate(int x, int y)
-    {
-        if ((uint)x >= (uint)WidthTiles || (uint)y >= (uint)HeightTiles)
-            throw new ArgumentOutOfRangeException(nameof(x), $"Vanilla pyramid candidate ({x}, {y}) is outside the generation workspace.");
-        vanillaPyramidCandidates.Add(new VanillaPyramidCandidate1458(x, y));
-    }
-
-    internal VanillaPyramidCandidate1458[] CaptureVanillaPyramidCandidates() => vanillaPyramidCandidates.ToArray();
-''')
-
-          early = 'src/TerraRuntime.World/VanillaEarlyWorldGenerationPipeline1458.cs'
-          replace_once(
-              early,
-              '                ApplyDunes(context, grid, RequireVanilla(context));',
-              '                ApplyDunes(context, workspace, grid, RequireVanilla(context));')
-          replace_once(
-              early,
-              '                ApplyOceanSand(context, grid, RequireVanilla(context));',
-              '                ApplyOceanSand(context, workspace, grid, RequireVanilla(context));')
-          replace_once(
-              early,
-              '    private void ApplyDunes(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)\n    {\n        VanillaWorldGenerationBootstrapState1458 b = RequireBootstrap();',
-              '''    private void ApplyDunes(
-        IWorldGenerationContext context,
-        RuntimeWorldGenerationWorkspace workspace,
-        RuntimeGrid grid,
-        IRandom random)
-    {
-        VanillaWorldGenerationBootstrapState1458 b = RequireBootstrap();
-        workspace.ResetVanillaPyramidCandidates();''')
-          replace_once(
-              early,
-              '''            if (random.NextDouble() <= 0.8d)
-            {
-                int candidateX = random.Next(originX - 200, originX + 200);
-                _ = grid.FindFirstActiveY(candidateX, 0, grid.Height);
-            }''',
-              '''            if (random.NextDouble() <= 0.8d)
-            {
-                int candidateX = random.Next(originX - 200, originX + 200);
-                int candidateSurface = grid.FindFirstActiveY(candidateX, 0, grid.Height);
-                if (candidateSurface < grid.Height)
-                    workspace.AddVanillaPyramidCandidate(candidateX, candidateSurface + 20);
-            }''')
-          replace_once(
-              early,
-              '    private void ApplyOceanSand(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)\n    {',
-              '''    private void ApplyOceanSand(
-        IWorldGenerationContext context,
-        RuntimeWorldGenerationWorkspace workspace,
-        RuntimeGrid grid,
-        IRandom random)
-    {''')
-          replace_once(
-              early,
-              '                if (x == (left + right) / 2 && random.Next(6) == 0) { }',
-              '''                if (x == (left + right) / 2 && random.Next(6) == 0)
-                    workspace.AddVanillaPyramidCandidate(x, y);''')
-
-          dungeon = 'src/TerraRuntime.World/VanillaDungeonWorldGenerationPipeline1458.cs'
-          replace_once(
-              dungeon,
-              '                ApplyPyramids(context, grid, random);',
-              '                ApplyPyramids(context, workspace, grid, random);')
-          replacement = '''    private void ApplyPyramids(
-        IWorldGenerationContext context,
-        RuntimeWorldGenerationWorkspace workspace,
-        RuntimeGrid grid,
-        IRandom random)
-    {
-        VanillaPyramidCandidate1458[] candidates = workspace.CaptureVanillaPyramidCandidates();
-        int placed = 0;
-        int worldSurface = Math.Clamp((int)Math.Ceiling(state.WorldSurface), 1, grid.Height - 1);
-
-        for (int i = 0; i < candidates.Length; i++)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            if (!IsOrdinaryPyramidCandidatePositionEligible(candidates, i, grid.Width, state.DungeonX))
-                continue;
-
-            VanillaPyramidCandidate1458 candidate = candidates[i];
-            int surface = Math.Clamp(candidate.Y, 1, grid.Height - 2);
-            while (surface < worldSurface && !grid.At(candidate.X, surface).IsActive)
-                surface++;
-
-            if (surface >= worldSurface || grid.At(candidate.X, surface).Type != Sand)
-                continue;
-
-            int halfWidth = random.Next(30, 47);
-            int height = random.Next(24, 38);
-            BuildPyramid(grid, candidate.X, surface - 1, halfWidth, height);
-            placed++;
-        }
-
-        state.PyramidCount = placed;
-        context.ReportProgress(1d, $"Generating desert pyramids from source candidates ({placed}/{candidates.Length})");
-    }
-
-    internal static bool IsOrdinaryPyramidCandidatePositionEligible(
-        ReadOnlySpan<VanillaPyramidCandidate1458> candidates,
-        int index,
-        int worldWidth,
-        int dungeonX)
-    {
-        if ((uint)index >= (uint)candidates.Length)
-            throw new ArgumentOutOfRangeException(nameof(index));
-        if (worldWidth <= 0 || (uint)dungeonX >= (uint)worldWidth)
-            throw new ArgumentOutOfRangeException(nameof(worldWidth));
-
-        int x = candidates[index].X;
-        if (x <= 300 || x >= worldWidth - 300)
-            return false;
-
-        int dungeonPadding = (int)(worldWidth * 0.15d);
-        bool dungeonOnLeft = dungeonX < worldWidth / 2;
-        if (dungeonOnLeft)
-        {
-            if (x < dungeonX + dungeonPadding)
-                return false;
-        }
-        else if (x > dungeonX - dungeonPadding)
-        {
-            return false;
-        }
-
-        int nearestEarlierCandidate = worldWidth;
-        for (int i = 0; i < index; i++)
-            nearestEarlierCandidate = Math.Min(nearestEarlierCandidate, Math.Abs(x - candidates[i].X));
-
-        return nearestEarlierCandidate >= 220;
-    }
-
-'''
-          replace_between(
-              dungeon,
-              '    private void ApplyPyramids(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)\n',
-              '    private static bool TryFindDesertBand',
-              replacement)
-
-          early_tests = 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationPipeline1458Tests.cs'
-          replace_once(
-              early_tests,
-              '    private static CaptureEntry Find(CaptureBuilder builder, string id) =>',
-              '''    [Fact]
-    public void Pyramid_candidate_workspace_state_preserves_source_generation_order()
-    {
-        var workspace = new RuntimeWorldGenerationWorkspace(64, 64);
-        workspace.ResetVanillaPyramidCandidates();
-        workspace.AddVanillaPyramidCandidate(10, 20);
-        workspace.AddVanillaPyramidCandidate(30, 40);
-
-        VanillaPyramidCandidate1458[] candidates = workspace.CaptureVanillaPyramidCandidates();
-
-        Assert.Equal(
-            [new VanillaPyramidCandidate1458(10, 20), new VanillaPyramidCandidate1458(30, 40)],
-            candidates);
-
-        workspace.ResetVanillaPyramidCandidates();
-        Assert.Empty(workspace.CaptureVanillaPyramidCandidates());
-    }
-
-    private static CaptureEntry Find(CaptureBuilder builder, string id) =>''')
-
-          dungeon_tests = 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationDungeonPipeline1458Tests.cs'
-          replace_once(
-              dungeon_tests,
-              '    private static CaptureEntry Find(CaptureBuilder builder, string id) =>',
-              '''    [Fact]
-    public void Ordinary_pyramid_candidate_filter_uses_source_edges_dungeon_side_and_prior_candidate_spacing()
-    {
-        VanillaPyramidCandidate1458[] leftDungeonCandidates =
-        [
-            new(500, 200),
-            new(1200, 200),
-            new(1300, 200),
-            new(2000, 200)
-        ];
-
-        Assert.False(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
-            leftDungeonCandidates, 0, worldWidth: 4200, dungeonX: 400));
-        Assert.True(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
-            leftDungeonCandidates, 1, worldWidth: 4200, dungeonX: 400));
-        Assert.False(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
-            leftDungeonCandidates, 2, worldWidth: 4200, dungeonX: 400));
-        Assert.True(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
-            leftDungeonCandidates, 3, worldWidth: 4200, dungeonX: 400));
-
-        VanillaPyramidCandidate1458[] rightDungeonCandidates = [new(3300, 200), new(3000, 200)];
-        Assert.False(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
-            rightDungeonCandidates, 0, worldWidth: 4200, dungeonX: 3800));
-        Assert.True(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
-            rightDungeonCandidates, 1, worldWidth: 4200, dungeonX: 3800));
-
-        Assert.False(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
-            [new VanillaPyramidCandidate1458(300, 200)], 0, worldWidth: 4200, dungeonX: 3800));
-    }
-
-    private static CaptureEntry Find(CaptureBuilder builder, string id) =>''')
-          PY
-
-      - name: Validate patch
-        run: |
+          set -euo pipefail
+          printf '%s' "$PATCH_B64" | base64 -d > /tmp/pyramid-parity-patch.py
+          python /tmp/pyramid-parity-patch.py
           git diff --check
-          git diff -- src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs \
-            src/TerraRuntime.World/VanillaEarlyWorldGenerationPipeline1458.cs \
-            src/TerraRuntime.World/VanillaDungeonWorldGenerationPipeline1458.cs \
-            tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationPipeline1458Tests.cs \
-            tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationDungeonPipeline1458Tests.cs
 
-      - name: Build and run focused worldgen tests
+      - name: Build and run worldgen tests
+        shell: bash
         run: |
+          set -euo pipefail
           dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build \
             --filter 'FullyQualifiedName~SourceBackedVanillaWorldGenerationPipeline1458Tests|FullyQualifiedName~SourceBackedVanillaWorldGenerationDungeonPipeline1458Tests'
 
-      - name: Smoke canonical small world
+      - name: Run complete test suite
+        shell: bash
         run: |
+          set -euo pipefail
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+
+      - name: Smoke canonical small world
+        shell: bash
+        run: |
+          set -euo pipefail
           mkdir -p artifacts
           dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- \
             --worldgen-create-smoke artifacts/pyramid-parity-small.wld terraruntime:vanilla 4200 1200 1458
@@ -306,3 +74,14 @@ jobs:
           git commit -m 'Preserve vanilla pyramid candidates across passes'
           git pull --rebase origin main
           git push origin HEAD:main
+
+      - name: Dispatch canonical-size acceptance on committed main
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api \
+            --method POST \
+            repos/${{ github.repository }}/actions/workflows/vanilla-worldgen-canonical-sizes.yml/dispatches \
+            -f ref=main
