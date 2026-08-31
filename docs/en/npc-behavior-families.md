@@ -67,9 +67,13 @@ AiStyle = Fighter   !=    BehaviorFamily = GroundFighter
 
 ## Eye of Cthulhu difficulty boundary
 
-`VanillaEyeOfCthulhuMotion` now consumes the live Expert-mode world condition for the complete first-phase `AI_004` branch verified against TerrariaServer `1.4.5.8`. That slice includes the Expert hover speed and acceleration, the $210\,\text{tick}$ hover window, the $44\,\text{tick}$ Servant cadence at any vertical offset, $6\,\text{pixels/tick}$ Servant launches, $7\,\text{pixels/tick}$ direct dashes, the sequential `0.98f` and `0.985f` dash slowdown, the $100\,\text{tick}$ dash window and the transition below $65\%$ life. Servant creation remains a post-commit spawn intent, so cadence state and the irreversible child allocation cannot diverge.
+`VanillaEyeOfCthulhuMotion` consumes the live Expert-mode world condition for the source-backed deterministic parts of `AI_004` verified against TerrariaServer `1.4.5.8`. Phase one includes the Expert hover speed/acceleration, the $210\,\text{tick}$ hover window, the $44\,\text{tick}$ Servant cadence at any vertical offset, $6\,\text{pixels/tick}$ Servant launches, $7\,\text{pixels/tick}$ direct dashes, the sequential `0.98f` and `0.985f` slowdown, the $100\,\text{tick}$ dash window and the transition below $65\%$ life.
 
-This is a bounded capability, recorded as `BossExpertPhaseOneSlice`; it is not a full difficulty claim. Expert transformation and phase two remain fail-closed because transformation introduces random Servant spawns and later states introduce RNG-shaped rapid dashes. Master damage scaling and `getGoodWorld` parameter/effect branches are also still outside this slice. Classic behavior remains unchanged.
+Expert transformation is also authoritative now. The two $100\,\text{tick}$ transformation stages advance the source spin/timer state and apply the `0.98f` velocity decay. Every twentieth transformation tick produces a post-commit Servant intent from the exact two `Main.rand.Next(-200, 200)` direction rolls, normalized to $5\,\text{pixels/tick}$ and advanced ten ticks from the Eye center before spawning. The tick-100 spawn is preserved before the transformation stage changes, matching source call order.
+
+The deterministic Expert phase-two slice includes the source distance bands above $400/600/800\,\text{pixels}$, later direct-dash speed multipliers `1.15f` and `1.30f`, the Expert slowdown/duration boundaries of $50$ and $90$ ticks, and low-life state `ai[1] = 5` movement toward the point $600\,\text{pixels}$ below the target. Motion fails closed exactly where vanilla first requires random state seeding (`Main.rand.Next(1, 4)` or `Main.rand.Next(-3, 1)`) or the RNG-shaped predictive rapid-dash states `ai[1] = 3/4`.
+
+These are bounded capabilities (`BossExpertPhaseOneSlice`, `BossExpertTransformationSlice` and `BossExpertPhaseTwoDeterministicSlice`), not a full difficulty claim. Predictive rapid dashes, their player-velocity/randomization inputs, Master damage scaling and `getGoodWorld` reflection/re-entry effects remain outside the admitted slice. Classic behavior remains unchanged.
 
 ## GroundFighter door and tall-gate interactions
 

@@ -27,7 +27,9 @@ public enum VanillaNpcAiCapability : uint
     WormChainSpawnSlice = 1u << 18,
     WormSplitRepairSlice = 1u << 19,
     BossExpertPhaseOneSlice = 1u << 20,
-    KingSlimeDifficultySeedSlice = 1u << 21
+    KingSlimeDifficultySeedSlice = 1u << 21,
+    BossExpertTransformationSlice = 1u << 22,
+    BossExpertPhaseTwoDeterministicSlice = 1u << 23
 }
 
 /// <summary>
@@ -107,7 +109,9 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcIds.EyeOfCthulhu,
             OrdinaryCore |
             VanillaNpcAiCapability.ChildSpawnSlice |
-            VanillaNpcAiCapability.BossExpertPhaseOneSlice);
+            VanillaNpcAiCapability.BossExpertPhaseOneSlice |
+            VanillaNpcAiCapability.BossExpertTransformationSlice |
+            VanillaNpcAiCapability.BossExpertPhaseTwoDeterministicSlice);
         entries[4] = Partial(
             VanillaNpcIds.ServantOfCthulhu,
             OrdinaryCore | VanillaNpcAiCapability.FlyerPursuitProfileSlice);

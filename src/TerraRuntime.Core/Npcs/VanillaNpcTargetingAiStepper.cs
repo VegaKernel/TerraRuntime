@@ -23,6 +23,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     private const float EyeOfCthulhuExpertServantSpeed = 6f;
     private const float EyeOfCthulhuClassicPhaseOneHoverTicks = 600f;
     private const float EyeOfCthulhuExpertPhaseOneHoverTicks = 210f;
+    private const int EyeOfCthulhuTransformationServantCadenceTicks = 20;
+    private const float EyeOfCthulhuTransformationServantSpeed = 5f;
     private const float EyeOfCthulhuServantSpawnLeadTicks = 10f;
 
     private readonly INpcAiStateStepper _inner;
@@ -239,6 +241,20 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiSpawnIntent> destination)
     {
+        if (_context.ExpertMode &&
+            source.Ai.Ai0 is 1f or 2f &&
+            float.IsFinite(source.Ai.Ai1) &&
+            source.Ai.Ai1 >= 0f &&
+            source.Ai.Ai1 < 100f)
+        {
+            float nextTick = source.Ai.Ai1 + 1f;
+            if (nextTick == MathF.Truncate(nextTick) &&
+                (int)nextTick % EyeOfCthulhuTransformationServantCadenceTicks == 0)
+            {
+                return PlanEyeOfCthulhuTransformationServant(in source, destination);
+            }
+        }
+
         float cadenceThreshold = _context.ExpertMode
             ? EyeOfCthulhuExpertServantCadenceThreshold
             : EyeOfCthulhuClassicServantCadenceThreshold;
@@ -285,6 +301,40 @@ public sealed class VanillaNpcTargetingAiStepper :
             Type: VanillaNpcIds.ServantOfCthulhu,
             BottomX: bottomX,
             BottomY: bottomY,
+            VelocityX: velocityX,
+            VelocityY: velocityY,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget);
+        return 1;
+    }
+
+    private int PlanEyeOfCthulhuTransformationServant(
+        in NpcSnapshot source,
+        Span<NpcAiSpawnIntent> destination)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(
+                VanillaNpcIds.EyeOfCthulhu,
+                out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            return 0;
+        }
+
+        float randomX = _random.NextInt32(-200, 200);
+        float randomY = _random.NextInt32(-200, 200);
+        float distance = MathF.Sqrt(randomX * randomX + randomY * randomY);
+        if (!float.IsFinite(distance) || distance <= float.Epsilon)
+            return 0;
+
+        float velocityScale = EyeOfCthulhuTransformationServantSpeed / distance;
+        float velocityX = randomX * velocityScale;
+        float velocityY = randomY * velocityScale;
+        float centerX = source.PositionX + hitbox.Width * 0.5f;
+        float centerY = source.PositionY + hitbox.Height * 0.5f;
+
+        destination[0] = new NpcAiSpawnIntent(
+            Type: VanillaNpcIds.ServantOfCthulhu,
+            BottomX: (int)(centerX + velocityX * EyeOfCthulhuServantSpawnLeadTicks),
+            BottomY: (int)(centerY + velocityY * EyeOfCthulhuServantSpawnLeadTicks),
             VelocityX: velocityX,
             VelocityY: velocityY,
             Target: VanillaNpcDefinitionCatalog.DefaultTarget);

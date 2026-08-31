@@ -31,10 +31,9 @@ public readonly record struct VanillaEyeOfCthulhuMotionResult(
 
 /// <summary>
 /// Allocation-free state machine for the verified TerrariaServer 1.4.5.8 Eye of Cthulhu aiStyle 4 slice.
-/// Cosmetic rotation/dust/sounds are deliberately absent. Phase-one servant cadence is represented in ai[3]
-/// exactly like vanilla; the actual spawn remains an explicit post-commit side effect planned by the runtime.
-/// Classic motion and Expert phase one are admitted. Expert transformation/phase two and getGoodWorld branches
-/// are not silently approximated.
+/// Cosmetic rotation/dust/sounds are deliberately absent. Phase-one and Expert transformation Servant spawns are
+/// explicit post-commit intents. Classic motion plus the deterministic Expert transformation/phase-two states are
+/// authoritative; RNG-shaped rapid dashes and getGoodWorld remain fail-closed at their exact source boundaries.
 /// </summary>
 public static class VanillaEyeOfCthulhuMotion
 {
@@ -62,6 +61,17 @@ public static class VanillaEyeOfCthulhuMotion
     private const float PhaseTwoDashSlowdownStart = 40f;
     private const float PhaseTwoDashTicks = 130f;
     private const float PhaseTwoDashSlowdown = 0.97f;
+    private const float ExpertPhaseTwoDashSlowdownStart = 50f;
+    private const float ExpertPhaseTwoDashTicks = 90f;
+    private const float ExpertPhaseTwoExtraSlowdown = 0.98f;
+    private const float ExpertRapidDashLifeFraction = 0.5f;
+    private const float ExpertRapidDashImmediateLifeFraction = 0.35f;
+    private const float ExpertLowLifeFraction = 0.12f;
+    private const float ExpertCriticalLifeFraction = 0.04f;
+    private const float ExpertLowLifeHoverOffsetY = 600f;
+    private const float ExpertLowLifeHoverSpeed = 9f;
+    private const float ExpertLowLifeHoverAcceleration = 0.3f;
+    private const float ExpertLowLifeHoverTicks = 70f;
 
     private const float VelocityStopEpsilon = 0.1f;
     private const int RetreatDespawnTime = 10;
@@ -201,14 +211,6 @@ public static class VanillaEyeOfCthulhuMotion
             return true;
         }
 
-        // AI_004's Expert transformation emits random Servants every 20 ticks; phase two also enters
-        // RNG-shaped rapid dashes. Keep those states fail-closed until their side effects are imported.
-        if (input.ExpertMode)
-        {
-            result = default;
-            return false;
-        }
-
         if (ai0 == 1f || ai0 == 2f)
         {
             if (ai0 == 1f || ai3 == 1f)
@@ -244,35 +246,77 @@ public static class VanillaEyeOfCthulhuMotion
             return false;
         }
 
+        bool lowLife = input.ExpertMode && (float)input.Life < input.LifeMax * ExpertLowLifeFraction;
+        bool criticalLife = input.ExpertMode && (float)input.Life < input.LifeMax * ExpertCriticalLifeFraction;
+        if (ai1 == 0f && lowLife)
+            ai1 = 5f;
+
         if (ai1 == 0f)
         {
+            float hoverSpeed = PhaseTwoHoverSpeed;
+            float hoverAcceleration = PhaseTwoHoverAcceleration;
+            float hoverDeltaX = input.TargetCenterX - input.NpcCenterX;
+            float hoverDeltaY = input.TargetCenterY - PhaseTwoHoverOffsetY - input.NpcCenterY;
+            float hoverDistance = MathF.Sqrt(hoverDeltaX * hoverDeltaX + hoverDeltaY * hoverDeltaY);
+            if (input.ExpertMode && hoverDistance > 400f)
+            {
+                hoverSpeed += 1f;
+                hoverAcceleration += 0.05f;
+                if (hoverDistance > 600f)
+                {
+                    hoverSpeed += 1f;
+                    hoverAcceleration += 0.05f;
+                    if (hoverDistance > 800f)
+                    {
+                        hoverSpeed += 1f;
+                        hoverAcceleration += 0.05f;
+                    }
+                }
+            }
+
             SteerToward(
                 input.NpcCenterX,
                 input.NpcCenterY,
                 input.TargetCenterX,
                 input.TargetCenterY - PhaseTwoHoverOffsetY,
-                PhaseTwoHoverSpeed,
-                PhaseTwoHoverAcceleration,
+                hoverSpeed,
+                hoverAcceleration,
                 ref velocityX,
                 ref velocityY);
 
             ai2++;
             if (ai2 >= PhaseTwoHoverTicks)
             {
-                ai1 = 1f;
+                ai1 = input.ExpertMode &&
+                      (float)input.Life < input.LifeMax * ExpertRapidDashImmediateLifeFraction
+                    ? 3f
+                    : 1f;
                 ai2 = 0f;
                 ai3 = 0f;
                 target = VanillaNpcDefinitionCatalog.DefaultTarget;
             }
+
+            if (criticalLife)
+            {
+                ai1 = 3f;
+                ai2 = 0f;
+                ai3 -= 1000f;
+            }
         }
         else if (ai1 == 1f)
         {
+            float dashSpeed = PhaseTwoDashSpeed;
+            if (input.ExpertMode && ai3 == 1f)
+                dashSpeed *= 1.15f;
+            if (input.ExpertMode && ai3 == 2f)
+                dashSpeed *= 1.3f;
+
             SetDirectVelocity(
                 input.NpcCenterX,
                 input.NpcCenterY,
                 input.TargetCenterX,
                 input.TargetCenterY,
-                PhaseTwoDashSpeed,
+                dashSpeed,
                 ref velocityX,
                 ref velocityY);
             ai1 = 2f;
@@ -280,12 +324,31 @@ public static class VanillaEyeOfCthulhuMotion
         else if (ai1 == 2f)
         {
             ai2++;
-            if (ai2 >= PhaseTwoDashSlowdownStart)
-                SlowAndStop(ref velocityX, ref velocityY, PhaseTwoDashSlowdown);
-
-            if (ai2 >= PhaseTwoDashTicks)
+            float slowdownStart = input.ExpertMode
+                ? ExpertPhaseTwoDashSlowdownStart
+                : PhaseTwoDashSlowdownStart;
+            if (ai2 >= slowdownStart)
             {
-                ai3++;
+                ScaleVelocity(ref velocityX, ref velocityY, PhaseTwoDashSlowdown);
+                if (input.ExpertMode)
+                    ScaleVelocity(ref velocityX, ref velocityY, ExpertPhaseTwoExtraSlowdown);
+                StopSmallVelocity(ref velocityX, ref velocityY);
+            }
+
+            float dashTicks = input.ExpertMode ? ExpertPhaseTwoDashTicks : PhaseTwoDashTicks;
+            if (ai2 >= dashTicks)
+            {
+                float completedDashes = ai3 + 1f;
+                if (completedDashes >= 3f &&
+                    input.ExpertMode &&
+                    (float)input.Life < input.LifeMax * ExpertRapidDashLifeFraction)
+                {
+                    // Vanilla consumes Main.rand.Next(1, 4) here to seed ai[3] before rapid state 3.
+                    result = default;
+                    return false;
+                }
+
+                ai3 = completedDashes;
                 ai2 = 0f;
                 target = VanillaNpcDefinitionCatalog.DefaultTarget;
                 if (ai3 >= 3f)
@@ -299,9 +362,32 @@ public static class VanillaEyeOfCthulhuMotion
                 }
             }
         }
+        else if (ai1 == 5f && input.ExpertMode)
+        {
+            SteerToward(
+                input.NpcCenterX,
+                input.NpcCenterY,
+                input.TargetCenterX,
+                input.TargetCenterY + ExpertLowLifeHoverOffsetY,
+                ExpertLowLifeHoverSpeed,
+                ExpertLowLifeHoverAcceleration,
+                ref velocityX,
+                ref velocityY);
+
+            ai2++;
+            if (ai2 >= ExpertLowLifeHoverTicks)
+            {
+                // Vanilla consumes Main.rand.Next(-3, 1) here before entering rapid state 3.
+                result = default;
+                return false;
+            }
+
+            if (criticalLife)
+                ai1 = 3f;
+        }
         else
         {
-            // ai[1] 3/4/5 belong to expert-mode rapid-dash branches and must not be fabricated here.
+            // Expert ai[1] states 3/4 use RNG-shaped predictive rapid dashes and remain fail-closed.
             result = default;
             return false;
         }

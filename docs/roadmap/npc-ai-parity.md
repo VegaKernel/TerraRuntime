@@ -11,7 +11,7 @@ The executable truth is `VanillaNpcAiCoverageCatalog`. `FullVanillaAiParity` rem
 | Blue Slime | yes | partial | partial | slime engagement/jump cadence | no |
 | Demon Eye | yes | partial | partial | flying-eye collision response | no |
 | Zombie | yes | partial | partial | profiled AI_003 traversal/check-active/event door pressure | no |
-| Eye of Cthulhu | yes | partial | partial | classic phases/dashes, Servant intents and Expert phase one | no |
+| Eye of Cthulhu | yes | partial | partial | classic phases, Expert phase one/transformation, transformation Servants and deterministic phase-two states | no |
 | Servant of Cthulhu | yes | partial | partial | source-backed flyer pursuit | no |
 | Skeleton | yes | partial | partial | profiled AI_003 `1.5f` traversal/check-active/event door pressure | no |
 | King Slime | yes | partial | partial | teleport/despawn, Good World scaling and classic/Expert minion intents | no |
@@ -47,7 +47,7 @@ the signed identity instead of silently using the positive type defaults.
 - [x] import the `ShiftTallGate` `388 -> 389` object mutation behind an explicit `Collision.EmptyTile(ignoreTiles:true)` actor-occupancy boundary, failing closed when that boundary is unavailable;
 - [x] import the pinned AI_003 door-pressure policy: exact restricted-reset type set, `Main.getGoodWorld` Blood Moon suppression, `insideUnbreakableWalls +6`, type `27 +1`, types `31/294/295/296 +6`, type `460` force-open and type `26` destroy-door disposition;
 - [x] carry persisted `GetGoodWorld` into the admitted Zombie/Skeleton event projection so Blood Moon no longer incorrectly grants accumulation there;
-- [x] wire live player/NPC occupancy into the tall-gate boundary and enable the authoritative production opening sink in default server composition;
+- [x] wire live player/NPC occupancy into the tall-gate boundary and enable the authoritative production opening sink in default `ServerRuntimeState` composition;
 - [x] project live `insideUnbreakableWalls` target state via `VanillaWorldUnbreakableWallScan` (8×250 ray scan for wall 350, color ≥16);
 - [ ] route concrete future AI_003 types into the pressure policy and implement type `26` authoritative door destruction before admitting those special branches;
 - [ ] partition and import remaining AI_003 movement parameter families;
@@ -83,14 +83,18 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 
 ## N3 — Bosses
 
-- [x] import the source-backed Eye of Cthulhu Expert phase-one parameters and synchronized Servant intent cadence while keeping later RNG-dependent states fail-closed;
-- [ ] finish Eye of Cthulhu expert/master/seed branches and all irreversible effects;
+- [x] import the source-backed Eye of Cthulhu Expert phase-one parameters and synchronized Servant intent cadence;
+- [x] import Expert transformation timing and the source-ordered random Servant spawn every 20 ticks, including the tick-100 stage transition spawn;
+- [x] import deterministic Expert phase-two hover/dash behavior: long-range `400/600/800` acceleration bands, `1.15/1.30` later-dash speed multipliers, `50/90` slowdown/duration and low-life state `5` movement up to its RNG transition;
+- [ ] finish Eye of Cthulhu RNG-shaped rapid-dash states `ai[1]=3/4`, their player-velocity prediction/randomization, low-life random state seeding, Good World reflection/re-entry and remaining irreversible effects;
 - [x] finish King Slime `AI_015` difficulty/seed branches and despawn: Good World scale/air-speed behavior plus source-ordered Expert `1/4` Spiked Slime minion selection are authoritative; the pinned method has no separate Master AI branch;
 - [x] finish King Slime authoritative death lifecycle and `downedSlimeKing` progression persistence;
 - [ ] finish King Slime NPC-specific loot and remaining death-time side effects;
 - [ ] add remaining pre-Hardmode bosses with complete child/projectile ownership;
 - [ ] add Hardmode, event and endgame bosses;
 - [ ] boss bars, announcements, progression transitions and multiplayer targeting parity.
+
+Eye of Cthulhu still intentionally reports `FullVanillaAiParity = false`. The Expert transformation child-spawn RNG is now owned by the post-commit spawn-intent planner, while motion remains fail-closed exactly where the pinned source first needs random rapid-dash state seeding or predictive random velocity. This keeps implemented deterministic states authoritative without inventing values for `ai[1]=3/4`.
 
 King Slime still intentionally reports `FullVanillaAiParity = false`: the AI/difficulty/seed/despawn slice is distinct from loot and death-side-effect parity. Expert minion RNG consumes the source `Next(4)` between spawn coordinates and velocity/`ai[0]` rolls, preserving downstream RNG order instead of merely swapping the child type after the fact.
 

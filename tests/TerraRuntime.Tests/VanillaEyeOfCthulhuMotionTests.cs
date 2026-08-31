@@ -203,15 +203,23 @@ public sealed class VanillaEyeOfCthulhuMotionTests
     }
 
     [Fact]
-    public void Expert_transformation_remains_fail_closed_until_random_servant_spawns_are_imported()
+    public void Expert_transformation_advances_spin_timer_and_velocity_like_source()
     {
         VanillaEyeOfCthulhuMotionInput input = CreateInput() with
         {
-            Ai = new NpcAiState(1f, 0f, 0f, 0f),
+            VelocityX = 10f,
+            VelocityY = -5f,
+            Ai = new NpcAiState(1f, 19f, 0.1f, 0f),
             ExpertMode = true
         };
 
-        Assert.False(VanillaEyeOfCthulhuMotion.TryStep(in input, out _));
+        Assert.True(VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result));
+
+        Assert.Equal(1f, result.Ai.Ai0, 5);
+        Assert.Equal(20f, result.Ai.Ai1, 5);
+        Assert.Equal(0.105f, result.Ai.Ai2, 5);
+        Assert.Equal(9.8f, result.VelocityX, 5);
+        Assert.Equal(-4.9f, result.VelocityY, 5);
     }
 
     [Fact]
@@ -246,6 +254,26 @@ public sealed class VanillaEyeOfCthulhuMotionTests
     }
 
     [Fact]
+    public void Expert_second_transformation_stage_enters_phase_two_at_tick_one_hundred()
+    {
+        VanillaEyeOfCthulhuMotionInput input = CreateInput() with
+        {
+            VelocityX = 2f,
+            VelocityY = -2f,
+            Ai = new NpcAiState(2f, 99f, 0.25f, 0f),
+            ExpertMode = true
+        };
+
+        Assert.True(VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result));
+
+        Assert.Equal(3f, result.Ai.Ai0, 5);
+        Assert.Equal(0f, result.Ai.Ai1, 5);
+        Assert.Equal(0f, result.Ai.Ai2, 5);
+        Assert.Equal(1.96f, result.VelocityX, 5);
+        Assert.Equal(-1.96f, result.VelocityY, 5);
+    }
+
+    [Fact]
     public void Second_phase_direct_dash_uses_six_point_eight_pixel_speed()
     {
         VanillaEyeOfCthulhuMotionInput input = CreateInput() with
@@ -265,11 +293,104 @@ public sealed class VanillaEyeOfCthulhuMotionTests
     }
 
     [Fact]
+    public void Expert_phase_two_long_range_hover_uses_source_distance_bands()
+    {
+        VanillaEyeOfCthulhuMotionInput input = CreateInput() with
+        {
+            NpcCenterX = 0f,
+            NpcCenterY = 0f,
+            TargetCenterX = 1000f,
+            TargetCenterY = 120f,
+            Ai = new NpcAiState(3f, 0f, 0f, 0f),
+            ExpertMode = true
+        };
+
+        Assert.True(VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result));
+
+        Assert.Equal(0.22f, result.VelocityX, 5);
+        Assert.Equal(0f, result.VelocityY, 5);
+        Assert.Equal(1f, result.Ai.Ai2, 5);
+    }
+
+    [Fact]
+    public void Expert_phase_two_third_direct_dash_uses_one_point_three_speed_multiplier()
+    {
+        VanillaEyeOfCthulhuMotionInput input = CreateInput() with
+        {
+            NpcCenterX = 100f,
+            NpcCenterY = 100f,
+            TargetCenterX = 200f,
+            TargetCenterY = 100f,
+            Ai = new NpcAiState(3f, 1f, 0f, 2f),
+            ExpertMode = true
+        };
+
+        Assert.True(VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result));
+
+        Assert.Equal(6.8f * 1.3f, result.VelocityX, 5);
+        Assert.Equal(0f, result.VelocityY, 5);
+        Assert.Equal(2f, result.Ai.Ai1, 5);
+    }
+
+    [Fact]
+    public void Expert_phase_two_dash_uses_fifty_tick_slowdown_boundary()
+    {
+        VanillaEyeOfCthulhuMotionInput input = CreateInput() with
+        {
+            VelocityX = 10f,
+            Ai = new NpcAiState(3f, 2f, 49f, 0f),
+            ExpertMode = true
+        };
+
+        Assert.True(VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result));
+
+        Assert.Equal(10f * 0.97f * 0.98f, result.VelocityX, 5);
+        Assert.Equal(50f, result.Ai.Ai2, 5);
+    }
+
+    [Fact]
+    public void Expert_low_life_state_five_moves_toward_six_hundred_pixel_below_target()
+    {
+        VanillaEyeOfCthulhuMotionInput input = CreateInput() with
+        {
+            NpcCenterX = 100f,
+            NpcCenterY = 100f,
+            TargetCenterX = 100f,
+            TargetCenterY = 100f,
+            Life = 300,
+            Ai = new NpcAiState(3f, 0f, 0f, 0f),
+            ExpertMode = true
+        };
+
+        Assert.True(VanillaEyeOfCthulhuMotion.TryStep(in input, out VanillaEyeOfCthulhuMotionResult result));
+
+        Assert.Equal(5f, result.Ai.Ai1, 5);
+        Assert.Equal(1f, result.Ai.Ai2, 5);
+        Assert.Equal(0f, result.VelocityX, 5);
+        Assert.Equal(0.3f, result.VelocityY, 5);
+    }
+
+    [Fact]
+    public void Expert_random_rapid_dash_entry_remains_fail_closed_at_exact_rng_boundary()
+    {
+        VanillaEyeOfCthulhuMotionInput input = CreateInput() with
+        {
+            Life = 1300,
+            VelocityX = 10f,
+            Ai = new NpcAiState(3f, 2f, 89f, 2f),
+            ExpertMode = true
+        };
+
+        Assert.False(VanillaEyeOfCthulhuMotion.TryStep(in input, out _));
+    }
+
+    [Fact]
     public void Expert_only_rapid_dash_state_is_not_silently_approximated()
     {
         VanillaEyeOfCthulhuMotionInput input = CreateInput() with
         {
-            Ai = new NpcAiState(3f, 3f, 0f, 0f)
+            Ai = new NpcAiState(3f, 3f, 0f, 0f),
+            ExpertMode = true
         };
 
         Assert.False(VanillaEyeOfCthulhuMotion.TryStep(in input, out _));
