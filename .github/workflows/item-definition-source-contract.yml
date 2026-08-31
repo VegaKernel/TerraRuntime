@@ -5,10 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
-      - 'src/TerraRuntime.Core/PlayerItemUseRequest.cs'
-      - 'src/TerraRuntime.Core/VanillaItemDefinitionCatalog.cs'
-      - 'src/TerraRuntime.Core/VanillaPlayerItemNormalizer.cs'
-      - 'src/TerraRuntime.Core/VanillaPlayerItemUseSemanticResolver.cs'
+      - 'src/TerraRuntime.Core/Items/**'
       - 'src/TerraRuntime/RuntimePlayerInventoryStore.cs'
       - 'tests/TerraRuntime.Tests/RuntimePlayerInventoryStoreTests.cs'
       - 'tests/TerraRuntime.Tests/VanillaItemDefinitionCatalogTests.cs'
