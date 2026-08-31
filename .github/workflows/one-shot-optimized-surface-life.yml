@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'tools/ci/apply_optimized_surface_life.py'
+      - 'tools/ci/apply_optimized_surface_life_compile_fix.py'
       - '.github/workflows/one-shot-optimized-surface-life.yml'
   workflow_dispatch:
 
@@ -33,6 +34,9 @@ jobs:
       - name: Apply optimized surface-life block
         run: python3 tools/ci/apply_optimized_surface_life.py
 
+      - name: Fix surface-life tile constructor
+        run: python3 tools/ci/apply_optimized_surface_life_compile_fix.py
+
       - name: Validate bilingual documentation
         run: |
           python3 tools/ci/test_check_documentation.py
@@ -53,7 +57,9 @@ jobs:
           set -euo pipefail
           git config user.name "Xekep"
           git config user.email "Xekep@users.noreply.github.com"
-          git rm tools/ci/apply_optimized_surface_life.py .github/workflows/one-shot-optimized-surface-life.yml
+          git rm tools/ci/apply_optimized_surface_life.py \
+                 tools/ci/apply_optimized_surface_life_compile_fix.py \
+                 .github/workflows/one-shot-optimized-surface-life.yml
           git add src/TerraRuntime.World/Generation/Optimized/OptimizedSurfaceDecorationWorldGenerationProvider.cs \
                   src/TerraRuntime/BuiltInWorldGeneratorSource.cs \
                   tests/TerraRuntime.Tests/OptimizedWorldGenerationProviderTests.cs \
