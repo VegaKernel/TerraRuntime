@@ -11,6 +11,7 @@ on:
       - 'tools/ci/probe_player_inventory.py'
       - 'tools/ci/probe_tile_authority.py'
       - 'tools/ci/probe_tile_mining.py'
+      - 'tools/ci/probe_pickaxe_catalog.py'
       - 'src/TerraRuntime.Core/VanillaPlayerItemSlotCatalog.cs'
       - 'src/TerraRuntime/RuntimeNpcShopPurchaseExecutor.cs'
       - 'tests/TerraRuntime.Tests/VanillaPlayerItemSlotCatalogTests.cs'
@@ -127,6 +128,10 @@ jobs:
             --player artifacts/source-contract/player.cs \
             --world-gen artifacts/source-contract/world-gen.cs \
             --tile-id artifacts/source-contract/tile-id.cs
+
+          python3 tools/ci/probe_pickaxe_catalog.py \
+            --item artifacts/source-contract/item.cs \
+            --item-id artifacts/source-contract/item-id.cs
 
           python3 tools/ci/probe_dirt_placement.py \
             --world-gen artifacts/source-contract/world-gen.cs \
