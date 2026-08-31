@@ -15,6 +15,7 @@
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
 - [Evidence для sizing outbound queue](outbound-queue-sizing-evidence.md) — process-lifetime high-water measurements, structural floor, модель 75% headroom и безопасная sizing recommendation.
 - [Телеметрия пакетов по message ID](packet-telemetry.md) — bounded frame/byte counters по ID и direction, rolling top traffic, malformed/unknown traffic и нормализованные rejection counters.
+- [Evidence производительности protocol hot path](protocol-hotpath-performance.md) — same-process legacy/current comparison allocation и throughput для framing и representative protocol-326 serializers, JSON evidence и CI gates.
 - [Загрузка мира и persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state и recovery.
 - [Recovery прерванного save](interrupted-save-recovery.md) — durable recovery markers, SHA-256 sealing, preconditions roll-forward, conflict quarantine и crash windows.
 - [Телеметрия времени save pipeline](save-pipeline-telemetry.md) — границы времени authoritative snapshot, serializer и полной atomic-write транзакции и правила их интерпретации.

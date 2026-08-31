@@ -1,0 +1,74 @@
+name: Protocol Hot-Path Performance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Protocol/**'
+      - 'src/TerraRuntime.Protocol.Multiplicity/**'
+      - 'tools/TerraRuntime.ProtocolBench/**'
+      - '.github/workflows/protocol-hotpath-performance.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Protocol/**'
+      - 'src/TerraRuntime.Protocol.Multiplicity/**'
+      - 'tools/TerraRuntime.ProtocolBench/**'
+      - '.github/workflows/protocol-hotpath-performance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-protocol-hotpath-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare-current-to-legacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Restore benchmark
+        run: dotnet restore tools/TerraRuntime.ProtocolBench/TerraRuntime.ProtocolBench.csproj
+
+      - name: Build benchmark
+        run: dotnet build tools/TerraRuntime.ProtocolBench/TerraRuntime.ProtocolBench.csproj -c Release --no-restore
+
+      - name: Run allocation and throughput gate
+        run: >-
+          dotnet run
+          --project tools/TerraRuntime.ProtocolBench/TerraRuntime.ProtocolBench.csproj
+          -c Release
+          --no-build
+          --
+          --gate
+          --iterations 200000
+          --samples 5
+          --json artifacts/performance/protocol-hotpath.json
+
+      - name: Show benchmark evidence
+        if: always()
+        shell: bash
+        run: |
+          if [ -f artifacts/performance/protocol-hotpath.json ]; then
+            cat artifacts/performance/protocol-hotpath.json
+          fi
+
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: protocol-hotpath-${{ github.sha }}
+          path: artifacts/performance/protocol-hotpath.json
+          if-no-files-found: warn
+          retention-days: 14
