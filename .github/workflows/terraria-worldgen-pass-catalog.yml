@@ -57,6 +57,12 @@ jobs:
           test -n "$assembly"
 
           assembly_dir="$(dirname "$assembly")"
+          relogic_assembly="$(find "$assembly_dir" -maxdepth 1 -type f -iname 'ReLogic.dll' | head -n 1 || true)"
+          if [[ -z "$relogic_assembly" ]]; then
+            echo "Pinned TerrariaServer 1.4.5.8 deployment is missing ReLogic.dll required by WorldFileData seed semantics." >&2
+            exit 1
+          fi
+
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.Main "$assembly" > artifacts/source-contract/main.cs
           .tools/ilspycmd --disable-updatecheck -l c "$assembly" > artifacts/source-contract/classes.txt
@@ -64,9 +70,9 @@ jobs:
           find_type() {
             local simple="$1"
             local line
-            line="$(grep -Ei "(^|[.])${simple}$" artifacts/source-contract/classes.txt | head -n 1 || true)"
+            line="$(grep -E "(^|[.])${simple}$" artifacts/source-contract/classes.txt | head -n 1 || true)"
             if [[ -z "$line" ]]; then
-              echo "Could not locate pinned support type ${simple}." >&2
+              echo "Could not locate pinned TerrariaServer support type ${simple}." >&2
               return 1
             fi
             echo "${line#* }"
@@ -80,7 +86,7 @@ jobs:
           gen_base="$(find_type GenBase)"
           world_generator="$(find_type WorldGenerator)"
           world_file_data="$(find_type WorldFileData)"
-          crc32="$(find_type Crc32)"
+          crc32="ReLogic.Utilities.Crc32"
           echo "GenPassNameID type: $gen_pass_name_id"
           echo "TerrainPass type: $terrain_pass"
           echo "JunglePass type: $jungle_pass"
@@ -89,7 +95,7 @@ jobs:
           echo "GenBase type: $gen_base"
           echo "WorldGenerator type: $world_generator"
           echo "WorldFileData type: $world_file_data"
-          echo "Crc32 type: $crc32"
+          echo "Crc32 type: $crc32 from $relogic_assembly"
 
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_pass_name_id" "$assembly" > artifacts/source-contract/gen-pass-name-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$terrain_pass" "$assembly" > artifacts/source-contract/terrain-pass.cs
@@ -99,7 +105,7 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_base" "$assembly" > artifacts/source-contract/gen-base.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_generator" "$assembly" > artifacts/source-contract/world-generator.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_file_data" "$assembly" > artifacts/source-contract/world-file-data.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$crc32" "$assembly" > artifacts/source-contract/crc32.cs
+          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$crc32" "$relogic_assembly" > artifacts/source-contract/crc32.cs
 
           resource_probe=.tools/resource-probe
           mkdir -p "$resource_probe"
