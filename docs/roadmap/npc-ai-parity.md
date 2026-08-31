@@ -68,7 +68,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] typed definitions and classic pursuit/bounce/water profiles for hostile AI_005 identities;
 - [x] admitted AI_005 size net variants for Eaters, Crimeras and Hornet families;
 - [x] AI_005 source-ordered jitter, close homing, Bee/SmallBee acceleration ramp, daylight flight/despawn, surface Hornet damping, bounce minima and wet-rise movement;
-- [ ] AI_005 projectile/NPC side effects: Hornet/Moss Hornet stingers, Probe laser, Blood Squid blood shot and Good World Eater spawn branch;
+- [x] ordinary AI_005 Probe laser and Blood Squid blood-shot/recoil side effects through generation-safe post-commit projectile intents;
+- [ ] remaining AI_005 side effects: Hornet/Moss Hornet stingers require authoritative player stealth/item-animation state; Good World Eater spawn requires admitted NPC 666 defaults/lifecycle;
 - [x] typed AI_006 head/body/tail family relationships for Devourer, Giant Worm, Eater of Worlds and Bone Serpent;
 - [x] source-backed worm head burrow/air steering and exact segment-gap follow primitives;
 - [x] frozen-prepass runtime leader lookup and authoritative body/tail follow for admitted ordinary worm segments;
@@ -94,14 +95,15 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] finish King Slime `AI_015` difficulty/seed branches and despawn: Good World scale/air-speed behavior plus source-ordered Expert `1/4` Spiked Slime minion selection are authoritative; the pinned method has no separate Master AI branch;
 - [x] finish King Slime authoritative death lifecycle and `downedSlimeKing` progression persistence;
 - [x] import King Slime normal-mode NPC-specific loot plus Expert/Master source-ordered gameplay rule semantics, packet-28-timed `playerInteraction` accounting, active-recipient filtering, Master relic delivery and per-player Master pet placement;
-- [ ] wire the concrete packet-90 instanced Boss Bag encoder/`54000`-tick slot lease and remaining King Slime death-time world effects (Slime Rain termination and first-kill Nerdy Slime unlock/spawn);
+- [x] implement the concrete packet-90 instanced Boss Bag frame, packet-151 slot-release frame and `54000`-tick unpublished slot lease, plus source-ordered Slime Rain termination and first-kill Nerdy Slime unlock/spawn with `.wld` persistence;
+- [ ] connect the Expert/Master difficulty-loot finalizer to live packet-28/playerInteraction combat ingress and advance leased slots from the authoritative item-update phase;
 - [ ] add remaining pre-Hardmode bosses with complete child/projectile ownership;
 - [ ] add Hardmode, event and endgame bosses;
 - [ ] boss bars, announcements, progression transitions and multiplayer targeting parity.
 
 Eye of Cthulhu still intentionally reports `FullVanillaAiParity = false`. Expert rapid dashes now consume the source RNG sequence through the injected authoritative NPC random stream and read live target velocity through the player-slot snapshot boundary. Good World reflection/re-entry and combat-stat difficulty projection remain separate open work, so the coverage catalog advertises `BossExpertRapidDashSlice` rather than full parity.
 
-King Slime still intentionally reports `FullVanillaAiParity = false`. Normal-mode loot owns its ordered world-item transaction. Expert/Master gameplay now preserves the pinned raw-RNG order for Boss Bag, Master relic and the per-active-interacting-player pet rule, including inline `Item.NewItem`-equivalent delivery points. Boss Bag transport remains explicitly incomplete until packet 90 and its `54000`-tick server-side slot-reuse lease are represented; Slime Rain termination and the first-kill Nerdy Slime world side effect also remain open.
+King Slime still intentionally reports `FullVanillaAiParity = false`. Normal-mode loot owns its ordered world-item transaction. Expert/Master rule evaluation preserves the pinned raw-RNG order for Boss Bag, Master relic and per-active-interacting-player pet drops. Packet 90 now reuses the exact packet-21 payload, packet 151 releases an expired instanced slot, and the server-side lease store keeps that unpublished slot unavailable for `54000` ticks. The committed death slice also follows source order for `StopSlimeRain`, the first-kill blue town-slime unlock/Nerdy spawn and `downedSlimeKing`, with both persistent flags patched back into the canonical `.wld`. The remaining integration gap is the live packet-28 combat/death ingress plus authoritative per-tick lease advancement, not the wire or rule semantics themselves.
 
 ## N4 — Town, friendly and special NPCs
 
