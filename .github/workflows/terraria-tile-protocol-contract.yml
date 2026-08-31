@@ -18,6 +18,11 @@ on:
       - 'src/TerraRuntime.Core/VanillaPlayerItemUseSemanticResolver.cs'
       - 'tests/TerraRuntime.Tests/VanillaItemDefinitionCatalogTests.cs'
       - 'tests/TerraRuntime.Tests/VanillaPlayerItemUseSemanticResolverTests.cs'
+      - 'src/TerraRuntime.World/VanillaSimpleTileKillCatalog.cs'
+      - 'src/TerraRuntime.World/VanillaWorldTileMutationService.cs'
+      - 'tests/TerraRuntime.Tests/ServerRuntimeSimpleTileKillAuthorityTests.cs'
+      - 'docs/en/world-mutation-operations.md'
+      - 'docs/ru/world-mutation-operations.md'
       - 'docs/en/item-definitions.md'
       - 'docs/ru/item-definitions.md'
       - 'docs/en/item-use-capabilities.md'
@@ -120,7 +125,8 @@ jobs:
 
           python3 tools/ci/probe_tile_mining.py \
             --player artifacts/source-contract/player.cs \
-            --world-gen artifacts/source-contract/world-gen.cs
+            --world-gen artifacts/source-contract/world-gen.cs \
+            --tile-id artifacts/source-contract/tile-id.cs
 
           python3 tools/ci/probe_dirt_placement.py \
             --world-gen artifacts/source-contract/world-gen.cs \
