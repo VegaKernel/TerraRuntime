@@ -192,6 +192,24 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458Tests
         Assert.Equal(2, random.CallCount);
     }
 
+    [Fact]
+    public void Pyramid_candidate_workspace_state_preserves_source_generation_order()
+    {
+        var workspace = new RuntimeWorldGenerationWorkspace(64, 64);
+        workspace.ResetVanillaPyramidCandidates();
+        workspace.AddVanillaPyramidCandidate(10, 20);
+        workspace.AddVanillaPyramidCandidate(30, 40);
+
+        VanillaPyramidCandidate1458[] candidates = workspace.CaptureVanillaPyramidCandidates();
+
+        Assert.Equal(
+            [new VanillaPyramidCandidate1458(10, 20), new VanillaPyramidCandidate1458(30, 40)],
+            candidates);
+
+        workspace.ResetVanillaPyramidCandidates();
+        Assert.Empty(workspace.CaptureVanillaPyramidCandidates());
+    }
+
     private static CaptureEntry Find(CaptureBuilder builder, string id) =>
         Assert.Single(builder.Entries, e => e.Descriptor.Id.Value == id);
 

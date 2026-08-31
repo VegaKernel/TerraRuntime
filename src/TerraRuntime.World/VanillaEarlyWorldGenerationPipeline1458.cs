@@ -277,10 +277,10 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
                 CaptureTerrainState(context, workspace, grid);
                 break;
             case VanillaEarlyWorldGenerationStage1458.Dunes:
-                ApplyDunes(context, grid, RequireVanilla(context));
+                ApplyDunes(context, workspace, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.OceanSand:
-                ApplyOceanSand(context, grid, RequireVanilla(context));
+                ApplyOceanSand(context, workspace, grid, RequireVanilla(context));
                 break;
             case VanillaEarlyWorldGenerationStage1458.SandPatches:
                 ApplySandPatches(context, grid, RequireVanilla(context));
@@ -389,9 +389,14 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         return (waterLine, lavaLine);
     }
 
-    private void ApplyDunes(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyDunes(
+        IWorldGenerationContext context,
+        RuntimeWorldGenerationWorkspace workspace,
+        RuntimeGrid grid,
+        IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 b = RequireBootstrap();
+        workspace.ResetVanillaPyramidCandidates();
         WorldGenerationRequest request = context.Request;
         VanillaWorldSeedProfile1458 profile = VanillaWorldSeedResolver1458.Resolve(in request);
         state.DungeonPalette = SetupDungeonPalette(random, profile.Special == VanillaSpecialWorldSeed1458.Remix, b.EffectiveCrimson);
@@ -406,7 +411,9 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
             if (random.NextDouble() <= 0.8d)
             {
                 int candidateX = random.Next(originX - 200, originX + 200);
-                _ = grid.FindFirstActiveY(candidateX, 0, grid.Height);
+                int candidateSurface = grid.FindFirstActiveY(candidateX, 0, grid.Height);
+                if (candidateSurface < grid.Height)
+                    workspace.AddVanillaPyramidCandidate(candidateX, candidateSurface + 20);
             }
             context.ReportProgress((i + 1d) / count, "Generating Terraria dunes");
         }
@@ -542,7 +549,11 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         }
     }
 
-    private void ApplyOceanSand(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyOceanSand(
+        IWorldGenerationContext context,
+        RuntimeWorldGenerationWorkspace workspace,
+        RuntimeGrid grid,
+        IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 b = RequireBootstrap();
         double widthScale = grid.Width / 4200d;
@@ -571,7 +582,8 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
                 int maxScan = Math.Min(grid.Height, (int)((state.MainWorldSurface + state.MainRockLayer) / 2d));
                 int y = grid.FindFirstActiveY(x, 0, maxScan);
                 if (y >= maxScan) continue;
-                if (x == (left + right) / 2 && random.Next(6) == 0) { }
+                if (x == (left + right) / 2 && random.Next(6) == 0)
+                    workspace.AddVanillaPyramidCandidate(x, y);
                 int depth = Math.Min(sandDepth, Math.Min(x - left, right - x)) + random.Next(5);
                 for (int yy = y; yy < y + depth && yy < grid.Height; yy++)
                 {

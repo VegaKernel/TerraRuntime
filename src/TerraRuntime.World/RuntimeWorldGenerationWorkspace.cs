@@ -2,6 +2,8 @@ using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.World;
 
+internal readonly record struct VanillaPyramidCandidate1458(int X, int Y);
+
 /// <summary>
 /// Isolated mutable tile workspace for a candidate generated world. Writes bypass live-world dirty tracking because
 /// the store is not authoritative or network-visible until the caller explicitly accepts the completed candidate.
@@ -35,6 +37,7 @@ public sealed class RuntimeWorldGenerationWorkspace :
     private VanillaWorldSeedProfile1458 vanillaSeedProfile;
     private VanillaWorldGenerationBootstrapState1458? vanillaBootstrapState;
     private VanillaTerrainGenerationState1458? vanillaTerrainState;
+    private readonly List<VanillaPyramidCandidate1458> vanillaPyramidCandidates = [];
 
     public RuntimeWorldGenerationWorkspace(int widthTiles, int heightTiles)
     {
@@ -58,6 +61,19 @@ public sealed class RuntimeWorldGenerationWorkspace :
         vanillaBootstrapState = value ?? throw new ArgumentNullException(nameof(value));
     internal void SetVanillaTerrainState(VanillaTerrainGenerationState1458 value) =>
         vanillaTerrainState = value;
+
+    internal void ResetVanillaPyramidCandidates() => vanillaPyramidCandidates.Clear();
+
+    internal void AddVanillaPyramidCandidate(int x, int y)
+    {
+        if ((uint)x >= (uint)WidthTiles || (uint)y >= (uint)HeightTiles)
+            throw new ArgumentOutOfRangeException(nameof(x), $"Vanilla pyramid candidate ({x}, {y}) is outside the generation workspace.");
+
+        vanillaPyramidCandidates.Add(new VanillaPyramidCandidate1458(x, y));
+    }
+
+    internal VanillaPyramidCandidate1458[] CaptureVanillaPyramidCandidates() =>
+        vanillaPyramidCandidates.ToArray();
 
     /// <summary>
     /// Registers one generated chest after its 2x2 tile object has been written. Slot identity is assigned densely in

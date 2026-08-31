@@ -176,6 +176,7 @@ internal sealed class VanillaDungeonWorldGenerationState1458
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; private set; }
     public int DungeonX { get; set; }
+    public int DungeonGenerationX { get; set; }
     public int DungeonY { get; set; }
     public ushort DungeonBrick { get; set; }
     public int ShimmerX { get; set; } = -1;
@@ -196,6 +197,7 @@ internal sealed class VanillaDungeonWorldGenerationState1458
         RockLayer = layers.RockLayer;
         UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
         DungeonX = Math.Clamp(Bootstrap.DungeonLocation, 20, workspace.WidthTiles - 21);
+        DungeonGenerationX = DungeonX;
     }
 }
 
@@ -289,7 +291,7 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
                 ApplyCleanUpDirt(context, grid);
                 break;
             case VanillaDungeonWorldGenerationStage1458.Pyramids:
-                ApplyPyramids(context, grid, random);
+                ApplyPyramids(context, workspace, grid, random);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -356,6 +358,7 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
             }
         }
 
+        state.DungeonGenerationX = shaftX;
         BuildDungeonEntrance(grid, centerX, surface, brick);
         if (context.Metadata is not null && !context.Metadata.TrySetDungeon(centerX, state.DungeonY))
             throw new InvalidOperationException("Source-backed Dungeon produced an invalid dungeon anchor.");
@@ -782,92 +785,78 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
         context.ReportProgress(1d, $"Cleaning isolated dirt remnants ({cleaned} tiles)");
     }
 
-    private void ApplyPyramids(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyPyramids(
+        IWorldGenerationContext context,
+        RuntimeWorldGenerationWorkspace workspace,
+        RuntimeGrid grid,
+        IRandom random)
     {
-        if (!TryFindDesertBand(grid, out int desertLeft, out int desertRight))
-        {
-            state.PyramidCount = 0;
-            context.ReportProgress(1d, "No stable desert band available for pyramids");
-            return;
-        }
-
-        int width = desertRight - desertLeft;
-        int capacity = width >= 700 ? 2 : 1;
-        int target = random.Next(3) == 0 ? 0 : 1;
-        if (capacity > 1 && random.Next(4) == 0)
-            target++;
-
+        VanillaPyramidCandidate1458[] candidates = workspace.CaptureVanillaPyramidCandidates();
         int placed = 0;
-        for (int i = 0; i < target; i++)
+        int worldSurface = Math.Clamp((int)Math.Ceiling(state.WorldSurface), 1, grid.Height - 1);
+        int dungeonSide = RequireBootstrap().DungeonSide;
+
+        for (int i = 0; i < candidates.Length; i++)
         {
-            int segmentStart = desertLeft + 50 + i * width / Math.Max(1, target);
-            int segmentEnd = desertLeft + (i + 1) * width / Math.Max(1, target) - 50;
-            if (segmentEnd <= segmentStart)
+            context.CancellationToken.ThrowIfCancellationRequested();
+            if (!IsOrdinaryPyramidCandidatePositionEligible(
+                    candidates,
+                    i,
+                    grid.Width,
+                    dungeonSide,
+                    state.DungeonGenerationX))
+            {
+                continue;
+            }
+
+            VanillaPyramidCandidate1458 candidate = candidates[i];
+            int surface = Math.Clamp(candidate.Y, 1, grid.Height - 2);
+            while (surface < worldSurface && !grid.At(candidate.X, surface).IsActive)
+                surface++;
+
+            if (surface >= worldSurface || grid.At(candidate.X, surface).Type != Sand)
                 continue;
 
-            int centerX = random.Next(segmentStart, segmentEnd);
-            int surface = grid.FindFirstActiveY(
-                centerX,
-                Math.Max(20, (int)state.WorldSurface - 70),
-                Math.Min(grid.Height, (int)state.RockLayer + 80));
-            if (surface >= grid.Height)
-                continue;
-
+            surface--;
             int halfWidth = random.Next(30, 47);
             int height = random.Next(24, 38);
-            BuildPyramid(grid, centerX, surface, halfWidth, height);
+            BuildPyramid(grid, candidate.X, surface, halfWidth, height);
             placed++;
         }
 
         state.PyramidCount = placed;
-        context.ReportProgress(1d, $"Generating desert pyramids ({placed})");
+        context.ReportProgress(
+            1d,
+            $"Generating desert pyramids from source candidates ({placed}/{candidates.Length})");
     }
 
-    private static bool TryFindDesertBand(RuntimeGrid grid, out int left, out int right)
+    internal static bool IsOrdinaryPyramidCandidatePositionEligible(
+        ReadOnlySpan<VanillaPyramidCandidate1458> candidates,
+        int index,
+        int worldWidth,
+        int dungeonSide,
+        int dungeonGenerationX)
     {
-        int scanTop = Math.Max(20, grid.Height / 7);
-        int scanBottom = Math.Min(grid.Height - 20, grid.Height / 2);
-        int bestLeft = -1;
-        int bestRight = -1;
-        int currentLeft = -1;
+        if ((uint)index >= (uint)candidates.Length)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        if (worldWidth <= 0 || (uint)dungeonGenerationX >= (uint)worldWidth)
+            throw new ArgumentOutOfRangeException(nameof(worldWidth));
 
-        for (int x = 1; x < grid.Width - 1; x++)
-        {
-            int surface = grid.FindFirstActiveY(x, scanTop, scanBottom);
-            bool desert = surface < scanBottom && IsDesertTile(grid.At(x, surface).Type);
-
-            if (desert)
-            {
-                if (currentLeft < 0)
-                    currentLeft = x;
-            }
-            else if (currentLeft >= 0)
-            {
-                if (bestLeft < 0 || x - currentLeft > bestRight - bestLeft)
-                {
-                    bestLeft = currentLeft;
-                    bestRight = x;
-                }
-                currentLeft = -1;
-            }
-        }
-
-        if (currentLeft >= 0 &&
-            (bestLeft < 0 || grid.Width - 1 - currentLeft > bestRight - bestLeft))
-        {
-            bestLeft = currentLeft;
-            bestRight = grid.Width - 1;
-        }
-
-        if (bestLeft < 0 || bestRight - bestLeft < 120)
-        {
-            left = right = 0;
+        int x = candidates[index].X;
+        if (x <= 300 || x >= worldWidth - 300)
             return false;
-        }
 
-        left = bestLeft;
-        right = bestRight;
-        return true;
+        double dungeonPadding = worldWidth * 0.15d;
+        if (dungeonSide <= -1 && x < dungeonGenerationX + dungeonPadding)
+            return false;
+        if (dungeonSide >= 1 && x > dungeonGenerationX - dungeonPadding)
+            return false;
+
+        int nearestEarlierCandidate = worldWidth;
+        for (int i = 0; i < index; i++)
+            nearestEarlierCandidate = Math.Min(nearestEarlierCandidate, Math.Abs(x - candidates[i].X));
+
+        return nearestEarlierCandidate >= 220;
     }
 
     private static void BuildPyramid(

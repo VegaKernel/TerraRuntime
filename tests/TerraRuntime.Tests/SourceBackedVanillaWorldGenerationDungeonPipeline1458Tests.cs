@@ -156,6 +156,36 @@ public sealed class SourceBackedVanillaWorldGenerationDungeonPipeline1458Tests
             entry.Descriptor.Id == SourceBackedVanillaWorldGenerationDungeonPipeline1458.ShimmerId);
     }
 
+    [Fact]
+    public void Ordinary_pyramid_candidate_filter_matches_source_edges_dungeon_side_and_spacing()
+    {
+        VanillaPyramidCandidate1458[] candidates =
+        [
+            new(300, 200),
+            new(1200, 200),
+            new(1300, 200),
+            new(2000, 200),
+            new(3900, 200)
+        ];
+
+        Assert.False(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
+            candidates, 0, worldWidth: 4200, dungeonSide: -1, dungeonGenerationX: 400));
+        Assert.True(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
+            candidates, 1, worldWidth: 4200, dungeonSide: -1, dungeonGenerationX: 400));
+        Assert.False(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
+            candidates, 2, worldWidth: 4200, dungeonSide: -1, dungeonGenerationX: 400));
+        Assert.True(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
+            candidates, 3, worldWidth: 4200, dungeonSide: -1, dungeonGenerationX: 400));
+        Assert.False(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
+            candidates, 4, worldWidth: 4200, dungeonSide: -1, dungeonGenerationX: 400));
+
+        VanillaPyramidCandidate1458[] rightDungeonCandidates = [new(3000, 200), new(3300, 200)];
+        Assert.True(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
+            rightDungeonCandidates, 0, worldWidth: 4200, dungeonSide: 1, dungeonGenerationX: 3800));
+        Assert.False(VanillaDungeonWorldGenerationPass1458.IsOrdinaryPyramidCandidatePositionEligible(
+            rightDungeonCandidates, 1, worldWidth: 4200, dungeonSide: 1, dungeonGenerationX: 3800));
+    }
+
     private static CaptureEntry Find(CaptureBuilder builder, string id) =>
         Assert.Single(builder.Entries, entry => entry.Descriptor.Id.Value == id);
 
