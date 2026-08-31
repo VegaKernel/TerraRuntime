@@ -69,18 +69,22 @@ public sealed class TerrariaPlaceObjectCodecTests
             TerrariaPlaceObjectCodec.TryDecode(in frame, out _));
     }
 
-    [Fact]
-    public void Non_boolean_direction_is_rejected()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(255)]
+    public void Any_nonzero_direction_is_true_like_vanilla_BinaryReader(int direction)
     {
         byte[] payload = new byte[TerrariaPlaceObjectCodec.PayloadLength];
-        payload[10] = 2;
+        payload[10] = checked((byte)direction);
         TerrariaFrame frame = Frame(
             (byte)TerrariaMessageId.PlaceObject,
             new ReadOnlySequence<byte>(payload));
 
         Assert.Equal(
-            TerrariaPlaceObjectDecodeResult.InvalidDirectionValue,
-            TerrariaPlaceObjectCodec.TryDecode(in frame, out _));
+            TerrariaPlaceObjectDecodeResult.Decoded,
+            TerrariaPlaceObjectCodec.TryDecode(in frame, out TerrariaPlaceObjectState state));
+        Assert.True(state.Direction);
     }
 
     [Fact]

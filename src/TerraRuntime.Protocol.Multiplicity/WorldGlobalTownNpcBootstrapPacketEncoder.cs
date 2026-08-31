@@ -1,5 +1,4 @@
 using global::Multiplicity.Packets;
-using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Protocol.Multiplicity;
@@ -57,17 +56,14 @@ public static class WorldGlobalTownNpcBootstrapPacketEncoder
                 NpcId = checked((short)npcSlot)
             };
 
-            using var stream = new MemoryStream();
-            buffs.ToStream(stream);
-            if (stream.Length < TerrariaFrameDecoderOptions.MinimumFrameLength ||
-                stream.Length > ushort.MaxValue)
+            if (!MultiplicityPacketSerializer.TrySerialize(buffs, out byte[] buffFrame))
             {
                 frames = [];
                 return WorldGlobalTownNpcBootstrapPacketEncodeResult.FrameTooLarge;
             }
 
             encoded[frameIndex++] = updateFrame;
-            encoded[frameIndex++] = stream.ToArray();
+            encoded[frameIndex++] = buffFrame;
         }
 
         frames = encoded;

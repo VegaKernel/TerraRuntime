@@ -1,12 +1,12 @@
-using System.Buffers;
-using System.Buffers.Binary;
+using global::Multiplicity.Packets;
+using global::Multiplicity.Packets.Views;
 using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Protocol.Multiplicity;
 
 /// <summary>
 /// TerrariaServer 1.4.5.8 packet-19 door/tall-gate actions. The wire direction is a single boolean byte:
-/// one means +1, zero (and, on decode, every other zero value) means -1.
+/// any non-zero value means +1 while zero means -1, matching MessageBuffer.ReadBoolean-style handling.
 /// </summary>
 public enum TerrariaDoorToggleAction : byte
 {
@@ -55,8 +55,8 @@ public enum TerrariaDoorToggleEncodeResult : byte
 }
 
 /// <summary>
-/// Wire-only adapter for Terraria 1.4.5.8 packet 19: action byte, X/Y Int16 values and one direction byte.
-/// Mutation authority stays above this codec.
+/// Wire-only adapter for Terraria 1.4.5.8 packet 19. Multiplicity owns the packet layout while TerraRuntime
+/// projects only protocol-neutral values; mutation authority stays above this codec.
 /// </summary>
 public static class TerrariaDoorToggleCodec
 {
@@ -85,7 +85,6 @@ public static class TerrariaDoorToggleCodec
             segment.Span.CopyTo(scratch[offset..]);
             offset += segment.Length;
         }
-
         state = DecodePayload(scratch);
         return TerrariaDoorToggleDecodeResult.Decoded;
     }
@@ -100,36 +99,25 @@ public static class TerrariaDoorToggleCodec
             return TerrariaDoorToggleEncodeResult.InvalidState;
         }
 
-        Span<byte> payload = stackalloc byte[PayloadLength];
-        payload[0] = state.Action;
-        BinaryPrimitives.WriteInt16LittleEndian(payload[1..3], state.TileX);
-        BinaryPrimitives.WriteInt16LittleEndian(payload[3..5], state.TileY);
-        payload[5] = state.DirectionX == 1 ? (byte)1 : (byte)0;
-
-        var writer = new ArrayBufferWriter<byte>(PayloadLength + TerrariaFrameDecoderOptions.MinimumFrameLength);
-        TerrariaFrameWriteResult result = TerrariaFrameEncoder.TryWrite(
-            writer,
-            (byte)TerrariaMessageId.DoorToggle,
-            payload);
-        if (result == TerrariaFrameWriteResult.FrameTooLarge)
+        var packet = new DoorUse
         {
-            frame = [];
-            return TerrariaDoorToggleEncodeResult.FrameTooLarge;
-        }
-        if (result != TerrariaFrameWriteResult.Written)
-        {
-            frame = [];
-            return TerrariaDoorToggleEncodeResult.Failed;
-        }
+            Action = (DoorUseAction)state.Action,
+            TileX = state.TileX,
+            TileY = state.TileY,
+            Direction = state.DirectionX == 1 ? (byte)1 : (byte)0
+        };
 
-        frame = writer.WrittenSpan.ToArray();
+        frame = MultiplicityPacketSerializer.Serialize(packet);
         return TerrariaDoorToggleEncodeResult.Encoded;
     }
 
-    private static TerrariaDoorToggleState DecodePayload(ReadOnlySpan<byte> payload) =>
-        new(
-            Action: payload[0],
-            TileX: BinaryPrimitives.ReadInt16LittleEndian(payload[1..3]),
-            TileY: BinaryPrimitives.ReadInt16LittleEndian(payload[3..5]),
-            DirectionX: payload[5] != 0 ? 1 : -1);
+    private static TerrariaDoorToggleState DecodePayload(ReadOnlySpan<byte> payload)
+    {
+        DoorUseView packet = DoorUseView.FromPayload(payload);
+        return new TerrariaDoorToggleState(
+            Action: (byte)packet.Action,
+            TileX: packet.TileX,
+            TileY: packet.TileY,
+            DirectionX: packet.Direction != 0 ? 1 : -1);
+    }
 }

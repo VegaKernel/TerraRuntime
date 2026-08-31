@@ -1,5 +1,4 @@
 using global::Multiplicity.Packets;
-using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Protocol.Multiplicity;
 
@@ -90,15 +89,13 @@ public static class TerrariaWorldItemBootstrapEncoder
 
     private static bool TrySerialize(TerrariaPacket packet, out ReadOnlyMemory<byte> frame)
     {
-        using var stream = new MemoryStream();
-        packet.ToStream(stream);
-        if (stream.Length < TerrariaFrameDecoderOptions.MinimumFrameLength || stream.Length > ushort.MaxValue)
+        if (!MultiplicityPacketSerializer.TrySerialize(packet, out byte[] encoded))
         {
             frame = default;
             return false;
         }
 
-        frame = stream.ToArray();
+        frame = encoded;
         return true;
     }
 }

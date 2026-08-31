@@ -1,6 +1,5 @@
 using global::Multiplicity.Packets;
 using TerraRuntime.Contracts.Gameplay;
-using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Protocol.Multiplicity;
@@ -55,15 +54,10 @@ public static class WorldTownNpcSyncPacketEncoder
             LifeBytes = 0
         };
 
-        using var stream = new MemoryStream();
-        packet.ToStream(stream);
-        if (stream.Length < TerrariaFrameDecoderOptions.MinimumFrameLength ||
-            stream.Length > ushort.MaxValue)
-        {
+        if (!MultiplicityPacketSerializer.TrySerialize(packet, out byte[] encoded))
             return WorldTownNpcSyncPacketEncodeResult.FrameTooLarge;
-        }
 
-        frame = stream.ToArray();
+        frame = encoded;
         return WorldTownNpcSyncPacketEncodeResult.Encoded;
     }
 }

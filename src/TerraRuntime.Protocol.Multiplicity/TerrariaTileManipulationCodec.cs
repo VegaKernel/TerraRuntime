@@ -1,5 +1,5 @@
-using System.Buffers;
-using System.Buffers.Binary;
+using global::Multiplicity.Packets;
+using global::Multiplicity.Packets.Views;
 using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Protocol.Multiplicity;
@@ -59,9 +59,8 @@ public enum TerrariaTileManipulationEncodeResult : byte
 }
 
 /// <summary>
-/// Wire-only adapter for Terraria 1.4.5.8 packet 17. The protocol contract is exactly eight payload bytes:
-/// action byte, X/Y/data Int16 values and style byte. Action semantics and permission checks intentionally live
-/// above this codec so decoding a client packet never grants authority to mutate the world.
+/// Wire-only adapter for Terraria 1.4.5.8 packet 17. Multiplicity owns the exact eight-byte payload layout;
+/// action semantics and permission checks intentionally live above this codec.
 /// </summary>
 public static class TerrariaTileManipulationCodec
 {
@@ -90,7 +89,6 @@ public static class TerrariaTileManipulationCodec
             segment.Span.CopyTo(scratch[offset..]);
             offset += segment.Length;
         }
-
         state = DecodePayload(scratch);
         return TerrariaTileManipulationDecodeResult.Decoded;
     }
@@ -99,38 +97,27 @@ public static class TerrariaTileManipulationCodec
         in TerrariaTileManipulationState state,
         out byte[] frame)
     {
-        Span<byte> payload = stackalloc byte[PayloadLength];
-        payload[0] = state.Action;
-        BinaryPrimitives.WriteInt16LittleEndian(payload[1..3], state.TileX);
-        BinaryPrimitives.WriteInt16LittleEndian(payload[3..5], state.TileY);
-        BinaryPrimitives.WriteInt16LittleEndian(payload[5..7], state.Data);
-        payload[7] = state.Style;
-
-        var writer = new ArrayBufferWriter<byte>(PayloadLength + TerrariaFrameDecoderOptions.MinimumFrameLength);
-        TerrariaFrameWriteResult result = TerrariaFrameEncoder.TryWrite(
-            writer,
-            (byte)TerrariaMessageId.TileManipulation,
-            payload);
-        if (result == TerrariaFrameWriteResult.FrameTooLarge)
+        var packet = new Tile
         {
-            frame = [];
-            return TerrariaTileManipulationEncodeResult.FrameTooLarge;
-        }
-        if (result != TerrariaFrameWriteResult.Written)
-        {
-            frame = [];
-            return TerrariaTileManipulationEncodeResult.Failed;
-        }
+            Action = (TileAction)state.Action,
+            TileX = state.TileX,
+            TileY = state.TileY,
+            Value = state.Data,
+            Style = state.Style
+        };
 
-        frame = writer.WrittenSpan.ToArray();
+        frame = MultiplicityPacketSerializer.Serialize(packet);
         return TerrariaTileManipulationEncodeResult.Encoded;
     }
 
-    private static TerrariaTileManipulationState DecodePayload(ReadOnlySpan<byte> payload) =>
-        new(
-            Action: payload[0],
-            TileX: BinaryPrimitives.ReadInt16LittleEndian(payload[1..3]),
-            TileY: BinaryPrimitives.ReadInt16LittleEndian(payload[3..5]),
-            Data: BinaryPrimitives.ReadInt16LittleEndian(payload[5..7]),
-            Style: payload[7]);
+    private static TerrariaTileManipulationState DecodePayload(ReadOnlySpan<byte> payload)
+    {
+        TileView packet = TileView.FromPayload(payload);
+        return new TerrariaTileManipulationState(
+            Action: (byte)packet.Action,
+            TileX: packet.TileX,
+            TileY: packet.TileY,
+            Data: packet.Value,
+            Style: packet.Style);
+    }
 }

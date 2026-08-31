@@ -1,10 +1,19 @@
-using System.Buffers.Binary;
+using System.Buffers;
 using System.Text;
+using global::Multiplicity.Packets;
+using global::Multiplicity.Packets.Views;
 using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Protocol.Multiplicity;
 
 public readonly record struct TerrariaSignReadRequest(short TileX, short TileY);
+
+[Flags]
+public enum TerrariaSignFlags : byte
+{
+    None = 0,
+    SuppressOpen = 1 << 0
+}
 
 public readonly record struct TerrariaSignState(
     short SignId,
@@ -12,7 +21,12 @@ public readonly record struct TerrariaSignState(
     short TileY,
     string Text,
     byte Player,
-    byte Flags);
+    byte Flags)
+{
+    public TerrariaSignFlags SignFlags => (TerrariaSignFlags)Flags;
+
+    public bool SuppressOpen => (SignFlags & TerrariaSignFlags.SuppressOpen) != 0;
+}
 
 public enum TerrariaSignDecodeResult : byte
 {
@@ -23,15 +37,16 @@ public enum TerrariaSignDecodeResult : byte
 }
 
 /// <summary>
-/// Terraria 1.4.5.8 / protocol-326 sign boundary for packets 46 and 47. The layout is pinned by the
-/// Vanilla Sign Source Probe against the official TerrariaServer 1.4.5.8 assembly. This codec intentionally
-/// projects immutable primitive values and does not make gameplay or authority decisions.
+/// Terraria 1.4.5.8 / protocol-326 sign boundary for packets 46 and 47. Layout is pinned to the official
+/// TerrariaServer 1.4.5.8 MessageBuffer/NetMessage implementation. Decoding uses Multiplicity's bounded packet
+/// reader without MemoryStream/BinaryReader staging; re-serialization uses Multiplicity's owned SignNew model.
 /// </summary>
 public static class TerrariaSignCodec
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private const int ReadRequestPayloadLength = 4;
     private const int MinimumSignPayloadLength = 9;
+    private const int MaximumMultiplicityPayloadLength = short.MaxValue - TerrariaPacket.PacketHeaderLength;
 
     public static TerrariaSignDecodeResult TryDecodeReadRequest(
         in TerrariaFrame frame,
@@ -43,18 +58,12 @@ public static class TerrariaSignCodec
         if (frame.Payload.Length != ReadRequestPayloadLength)
             return TerrariaSignDecodeResult.InvalidPayloadLength;
 
-        try
-        {
-            byte[] payload = FlattenPayload(in frame);
-            request = new TerrariaSignReadRequest(
-                BinaryPrimitives.ReadInt16LittleEndian(payload.AsSpan(0, 2)),
-                BinaryPrimitives.ReadInt16LittleEndian(payload.AsSpan(2, 2)));
-            return TerrariaSignDecodeResult.Decoded;
-        }
-        catch (Exception exception) when (exception is OverflowException or ArgumentException)
-        {
-            return TerrariaSignDecodeResult.Malformed;
-        }
+        if (frame.Payload.IsSingleSegment)
+            return DecodeReadRequest(frame.Payload.FirstSpan, out request);
+
+        Span<byte> scratch = stackalloc byte[ReadRequestPayloadLength];
+        CopyPayload(in frame, scratch);
+        return DecodeReadRequest(scratch, out request);
     }
 
     public static TerrariaSignDecodeResult TryDecodeState(
@@ -64,36 +73,23 @@ public static class TerrariaSignCodec
         state = default;
         if (frame.MessageId != (byte)TerrariaMessageId.SignNew)
             return TerrariaSignDecodeResult.WrongMessageId;
-        if (frame.Payload.Length < MinimumSignPayloadLength || frame.Payload.Length > ushort.MaxValue - 3)
+        if (frame.Payload.Length < MinimumSignPayloadLength || frame.Payload.Length > MaximumMultiplicityPayloadLength)
             return TerrariaSignDecodeResult.InvalidPayloadLength;
 
+        if (frame.Payload.IsSingleSegment)
+            return DecodeStatePayload(frame.Payload.FirstSpan, out state);
+
+        int payloadLength = checked((int)frame.Payload.Length);
+        byte[] rented = ArrayPool<byte>.Shared.Rent(payloadLength);
         try
         {
-            byte[] payload = FlattenPayload(in frame);
-            using var stream = new MemoryStream(payload, writable: false);
-            using var reader = new BinaryReader(stream, StrictUtf8, leaveOpen: false);
-
-            short signId = reader.ReadInt16();
-            short tileX = reader.ReadInt16();
-            short tileY = reader.ReadInt16();
-            string text = reader.ReadString();
-            byte player = reader.ReadByte();
-            byte flags = reader.ReadByte();
-            if (stream.Position != stream.Length)
-                return TerrariaSignDecodeResult.Malformed;
-
-            state = new TerrariaSignState(signId, tileX, tileY, text, player, flags);
-            return TerrariaSignDecodeResult.Decoded;
+            Span<byte> payload = rented.AsSpan(0, payloadLength);
+            CopyPayload(in frame, payload);
+            return DecodeStatePayload(payload, out state);
         }
-        catch (Exception exception) when (
-            exception is InvalidDataException or
-            EndOfStreamException or
-            IOException or
-            DecoderFallbackException or
-            OverflowException or
-            ArgumentException)
+        finally
         {
-            return TerrariaSignDecodeResult.Malformed;
+            ArrayPool<byte>.Shared.Return(rented);
         }
     }
 
@@ -102,41 +98,92 @@ public static class TerrariaSignCodec
         if (state.Text is null)
             throw new ArgumentException("Sign text cannot be null.", nameof(state));
 
-        using var stream = new MemoryStream();
-        using (var writer = new BinaryWriter(stream, StrictUtf8, leaveOpen: true))
+        int textByteCount = StrictUtf8.GetByteCount(state.Text);
+        int serializedTextLength = checked(Get7BitEncodedIntLength(textByteCount) + textByteCount);
+        int payloadLength = checked(8 + serializedTextLength);
+        if (payloadLength > MaximumMultiplicityPayloadLength)
+            throw new InvalidOperationException("Encoded sign frame length is outside the Multiplicity/Terraria frame envelope.");
+
+        var packet = new SignNew
         {
-            writer.Write((ushort)0);
-            writer.Write((byte)TerrariaMessageId.SignNew);
-            writer.Write(state.SignId);
-            writer.Write(state.TileX);
-            writer.Write(state.TileY);
-            writer.Write(state.Text);
-            writer.Write(state.Player);
-            writer.Write(state.Flags);
-            writer.Flush();
-        }
+            SignId = state.SignId,
+            X = state.TileX,
+            Y = state.TileY,
+            Text = state.Text,
+            PlayerId = state.Player,
+            Flags = state.Flags
+        };
 
-        if (stream.Length < TerrariaFrameDecoderOptions.MinimumFrameLength || stream.Length > ushort.MaxValue)
-            throw new InvalidOperationException("Encoded sign frame length is outside the Terraria frame envelope.");
-
-        byte[] frame = stream.ToArray();
-        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0, 2), checked((ushort)frame.Length));
-        return frame;
+        return MultiplicityPacketSerializer.Serialize(packet);
     }
 
-    private static byte[] FlattenPayload(in TerrariaFrame frame)
+    private static TerrariaSignDecodeResult DecodeReadRequest(
+        ReadOnlySpan<byte> payload,
+        out TerrariaSignReadRequest request)
     {
-        int length = checked((int)frame.Payload.Length);
-        if (frame.Payload.IsSingleSegment)
-            return frame.Payload.First.ToArray();
+        try
+        {
+            var reader = new PacketReader(payload);
+            request = new TerrariaSignReadRequest(reader.ReadInt16(), reader.ReadInt16());
+            reader.EnsureEnd();
+            return TerrariaSignDecodeResult.Decoded;
+        }
+        catch (Exception exception) when (exception is InvalidDataException or ArgumentException)
+        {
+            request = default;
+            return TerrariaSignDecodeResult.Malformed;
+        }
+    }
 
-        byte[] payload = GC.AllocateUninitializedArray<byte>(length);
+    private static TerrariaSignDecodeResult DecodeStatePayload(
+        ReadOnlySpan<byte> payload,
+        out TerrariaSignState state)
+    {
+        try
+        {
+            var reader = new PacketReader(payload);
+            short signId = reader.ReadInt16();
+            short tileX = reader.ReadInt16();
+            short tileY = reader.ReadInt16();
+            string text = StrictUtf8.GetString(reader.ReadLengthPrefixedBytes());
+            byte player = reader.ReadByte();
+            byte flags = reader.ReadByte();
+            reader.EnsureEnd();
+
+            state = new TerrariaSignState(signId, tileX, tileY, text, player, flags);
+            return TerrariaSignDecodeResult.Decoded;
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or
+            DecoderFallbackException or
+            OverflowException or
+            ArgumentException)
+        {
+            state = default;
+            return TerrariaSignDecodeResult.Malformed;
+        }
+    }
+
+    private static void CopyPayload(in TerrariaFrame frame, Span<byte> destination)
+    {
         int offset = 0;
         foreach (ReadOnlyMemory<byte> segment in frame.Payload)
         {
-            segment.Span.CopyTo(payload.AsSpan(offset));
+            segment.Span.CopyTo(destination[offset..]);
             offset += segment.Length;
         }
-        return payload;
+    }
+
+    private static int Get7BitEncodedIntLength(int value)
+    {
+        uint remaining = checked((uint)value);
+        int length = 1;
+        while (remaining >= 0x80)
+        {
+            remaining >>= 7;
+            length++;
+        }
+
+        return length;
     }
 }
