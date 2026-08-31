@@ -73,10 +73,16 @@ The behavior is intentionally asymmetric:
 
 This closes the dangerous interrupted-publication gap without turning arbitrary temporary files into recovery sources.
 
+## Single recovery authority and writer exclusion
+
+There is no second `LastWriteTimeUtc`-ordered orphan recovery path. Executable startup calls the same marker-aware `AtomicSaveFileWriter.RecoverAbandonedWrites` boundary used by save cleanup. An unsealed managed `.tmp` is therefore cleanup input only and can never become canonical merely because its bytes happen to parse as a world.
+
+The same boundary is enforced when a new atomic write starts. If another process still owns a same-target lease, recovery I/O is uncertain, or a transaction has been quarantined as `.recovery-conflict`, the new writer fails before creating its own temporary. This gives one cross-process owner for a canonical target instead of allowing two save transactions to race publication.
+
 ## Cost and ownership
 
 Recovery hashing and marker I/O run inside the detached background save transaction, not on the authoritative game-loop thread. The implementation currently re-reads the sealed candidate and backup to compute SHA-256. That extra sequential I/O is accepted as a correctness-first recovery cost; it can be optimized later only with measurements and without weakening the guarantee that the marker authenticates the exact validated bytes.
 
 ## Verification
 
-`AtomicSaveFileWriterCleanupTests` covers ordinary orphan cleanup plus recovery-ready first-save publication, existing canonical/backup roll-forward, candidate tamper rejection, invalid/partial marker rejection, missing-backup suppression, conflict quarantine and live-lease isolation. The existing `Authoritative World Save` workflow already builds and executes this test class together with the process-level `SIGKILL` atomic-publication proof.
+`AtomicSaveFileWriterCleanupTests` covers marker parsing, roll-forward, tamper rejection, conflict quarantine and live-lease isolation. `AtomicSaveFileWriterConsolidatedRecoveryTests` additionally proves that unsealed candidates never publish, a live same-target writer blocks a second write, and quarantined conflicts block later writes. The dedicated `Interrupted World Save Recovery` workflow creates a real TerrariaServer 1.4.5.8 world, holds a recovery-ready transaction under a live lease, proves startup refusal, kills that writer with real `SIGKILL`, then proves marker-authorized startup roll-forward. It separately proves rejection of an unsealed orphan and conflict quarantine without changing the newer canonical bytes.

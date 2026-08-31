@@ -4,7 +4,7 @@ using TerraRuntime.World;
 
 if (args.Length < 3)
 {
-    Console.Error.WriteLine("usage: <write|stall|stall-file|publish|publish-refuse> <destination> <payload-or-source> [ready-file]");
+    Console.Error.WriteLine("usage: <write|stall|stall-file|stall-recovery-ready-file|publish|publish-refuse> <destination> <payload-or-source> [ready-file]");
     return 2;
 }
 
@@ -90,6 +90,82 @@ switch (mode)
                 Console.Out.Flush();
                 await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
             });
+        return 0;
+    }
+
+    case "stall-recovery-ready-file":
+    {
+        if (args.Length != 4)
+        {
+            Console.Error.WriteLine("stall-recovery-ready-file mode requires a ready-file argument");
+            return 2;
+        }
+
+        string sourcePath = Path.GetFullPath(args[2]);
+        string readyFile = Path.GetFullPath(args[3]);
+        var sourceInfo = new FileInfo(sourcePath);
+        if (!sourceInfo.Exists)
+        {
+            Console.Error.WriteLine($"stall-recovery-ready-file source does not exist: {sourcePath}");
+            return 2;
+        }
+
+        string directory = Path.GetDirectoryName(destination)!;
+        Directory.CreateDirectory(directory);
+        string token = Guid.NewGuid().ToString("N");
+        string temporary = Path.Combine(directory, $".{Path.GetFileName(destination)}.{token}.tmp");
+        string leasePath = temporary + ".lease";
+        string markerPath = temporary + ".recovery";
+
+        await using var lease = new FileStream(
+            leasePath,
+            new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.ReadWrite,
+                Share = FileShare.None,
+                BufferSize = 1,
+                Options = FileOptions.WriteThrough
+            });
+
+        await using (var source = new FileStream(
+            sourcePath,
+            new FileStreamOptions
+            {
+                Mode = FileMode.Open,
+                Access = FileAccess.Read,
+                Share = FileShare.Read,
+                BufferSize = 64 * 1024,
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan
+            }))
+        await using (var temporaryStream = new FileStream(
+            temporary,
+            new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                Share = FileShare.None,
+                BufferSize = 64 * 1024,
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough
+            }))
+        {
+            await source.CopyToAsync(temporaryStream, 64 * 1024);
+            await temporaryStream.FlushAsync();
+            temporaryStream.Flush(flushToDisk: true);
+        }
+
+        await AtomicSaveFileWriter.WriteRecoveryMarkerForTestingAsync(
+            markerPath,
+            temporary,
+            backupPath: null);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(readyFile)!);
+        await File.WriteAllTextAsync(readyFile, "ready");
+        Console.WriteLine(
+            $"atomic_save_recovery_ready_stalled destination={destination} source={sourcePath} bytes={sourceInfo.Length} " +
+            $"temporary={temporary} marker={markerPath}");
+        Console.Out.Flush();
+        await Task.Delay(Timeout.InfiniteTimeSpan);
         return 0;
     }
 

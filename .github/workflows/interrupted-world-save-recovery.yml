@@ -4,13 +4,21 @@ on:
   push:
     branches: [main]
     paths:
+      - 'src/TerraRuntime.Core/Worlds/Persistence/AtomicSaveFileWriter.cs'
+      - 'src/TerraRuntime.Core/Worlds/Persistence/AtomicSaveFileWriter.Cleanup.cs'
       - 'src/TerraRuntime.Core/Worlds/Persistence/AtomicSaveFileWriter.Recovery.cs'
-      - 'src/TerraRuntime/RuntimeWorldCheckpointRecovery.cs'
+      - 'src/TerraRuntime.Core/TerraRuntime.Core.csproj'
       - 'src/TerraRuntime/Program.cs'
+      - 'src/TerraRuntime/RuntimeWorldCheckpointRecovery.cs'
       - 'tools/TerraRuntime.AtomicSaveCrashProbe/Program.cs'
+      - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterCleanupTests.cs'
+      - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterConsolidatedRecoveryTests.cs'
       - 'tests/TerraRuntime.Tests/AtomicSaveFileWriterRecoveryTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldCheckpointRecoveryTests.cs'
+      - 'tests/TerraRuntime.Tests/TerrariaServerHostStartupCleanupTests.cs'
       - 'tests/TerraRuntime.PersistenceRecovery.Tests/**'
+      - 'docs/en/interrupted-save-recovery.md'
+      - 'docs/ru/interrupted-save-recovery.md'
       - '.github/workflows/interrupted-world-save-recovery.yml'
   workflow_dispatch:
 
@@ -22,9 +30,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  interrupted-save-proof:
+  marker-recovery-proof:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -34,11 +42,20 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Run isolated recovery tests
+      - name: Build persistence tests and crash probe
+        run: |
+          dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+          dotnet build tools/TerraRuntime.AtomicSaveCrashProbe/TerraRuntime.AtomicSaveCrashProbe.csproj -c Release
+
+      - name: Prove consolidated recovery unit contract
         shell: bash
         run: |
           set -euo pipefail
-          dotnet test tests/TerraRuntime.PersistenceRecovery.Tests/TerraRuntime.PersistenceRecovery.Tests.csproj -c Release
+          tests='tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj'
+          dotnet run --project "$tests" -c Release --no-build -- -class "TerraRuntime.Tests.AtomicSaveFileWriterCleanupTests"
+          dotnet run --project "$tests" -c Release --no-build -- -class "TerraRuntime.Tests.AtomicSaveFileWriterConsolidatedRecoveryTests"
+          dotnet run --project "$tests" -c Release --no-build -- -class "TerraRuntime.Tests.RuntimeWorldCheckpointRecoveryTests"
+          dotnet run --project "$tests" -c Release --no-build -- -class "TerraRuntime.Tests.TerrariaServerHostStartupCleanupTests"
 
       - name: Download official TerrariaServer 1.4.5.8
         shell: bash
@@ -61,7 +78,7 @@ jobs:
           server_name="$(basename "$server")"
           world="$GITHUB_WORKSPACE/artifacts/interrupted-original.wld"
           config="$GITHUB_WORKSPACE/artifacts/interrupted-worldgen-serverconfig.txt"
-          cat > "$config" <<EOF
+          cat > "$config" <<CFG
           world=$world
           autocreate=1
           worldname=TerraRuntimeInterruptedRecovery
@@ -72,7 +89,7 @@ jobs:
           motd=TerraRuntime interrupted save recovery verification
           secure=1
           upnp=0
-          EOF
+          CFG
           set +e
           (
             cd "$server_dir"
@@ -84,12 +101,10 @@ jobs:
           test -s "$world"
           if [[ $status -ne 0 && $status -ne 124 ]]; then exit "$status"; fi
 
-      - name: Build host and crash probe
-        run: |
-          dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
-          dotnet build tools/TerraRuntime.AtomicSaveCrashProbe/TerraRuntime.AtomicSaveCrashProbe.csproj -c Release
+      - name: Build host
+        run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
 
-      - name: Prove SIGKILL first-save candidate is recovered before cleanup
+      - name: Prove live lease blocks startup then SIGKILL marker rolls forward
         shell: bash
         run: |
           set -euo pipefail
@@ -97,12 +112,13 @@ jobs:
           world="$GITHUB_WORKSPACE/artifacts/interrupted-recovered.wld"
           ready="$GITHUB_WORKSPACE/artifacts/interrupted-writer.ready"
           probe_log="$GITHUB_WORKSPACE/artifacts/interrupted-writer.log"
+          live_log="$GITHUB_WORKSPACE/artifacts/interrupted-live-block.log"
           host_log="$GITHUB_WORKSPACE/artifacts/interrupted-host-recovery.log"
-          probe_dll="$GITHUB_WORKSPACE/tools/TerraRuntime.AtomicSaveCrashProbe/bin/Release/net11.0/TerraRuntime.AtomicSaveCrashProbe.dll"
-          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+          probe="$GITHUB_WORKSPACE/tools/TerraRuntime.AtomicSaveCrashProbe/bin/Release/net11.0/TerraRuntime.AtomicSaveCrashProbe.dll"
+          host="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
 
-          rm -f "$world" "$world.bak" "$ready" "${world%.wld}.runtime-world" "${world%.wld}.runtime-bootstrap"
-          dotnet "$probe_dll" stall-file "$world" "$source" "$ready" > "$probe_log" 2>&1 &
+          rm -f "$world" "$world.bak" "$ready" "$world.runtime-world" "$world.runtime-bootstrap"
+          dotnet "$probe" stall-recovery-ready-file "$world" "$source" "$ready" > "$probe_log" 2>&1 &
           writer_pid=$!
           trap 'kill -KILL "$writer_pid" 2>/dev/null || true; wait "$writer_pid" 2>/dev/null || true' EXIT
           for _ in $(seq 1 120); do
@@ -111,7 +127,17 @@ jobs:
             sleep 0.25
           done
           test -f "$ready"
-          grep -q 'atomic_save_file_stalled' "$probe_log"
+          grep -q 'atomic_save_recovery_ready_stalled' "$probe_log"
+
+          set +e
+          dotnet "$host" --world "$world" --port 17821 --max-players 1 --no-tui > "$live_log" 2>&1
+          live_status=$?
+          set -e
+          cat "$live_log"
+          test "$live_status" -eq 26
+          grep -q 'Refusing world startup while another managed save writer still owns a live lease' "$live_log"
+          test ! -e "$world"
+
           kill -KILL "$writer_pid"
           set +e
           wait "$writer_pid"
@@ -119,31 +145,32 @@ jobs:
           set -e
           trap - EXIT
           test "$writer_status" -eq 137
-          test ! -e "$world"
 
           shopt -s nullglob
           orphan_temps=("$(dirname "$world")"/."$(basename "$world")".*.tmp)
           orphan_leases=("$(dirname "$world")"/."$(basename "$world")".*.tmp.lease)
+          orphan_markers=("$(dirname "$world")"/."$(basename "$world")".*.tmp.recovery)
           test "${#orphan_temps[@]}" -eq 1
           test "${#orphan_leases[@]}" -eq 1
+          test "${#orphan_markers[@]}" -eq 1
           cmp "$source" "${orphan_temps[0]}"
 
-          dotnet "$server_dll" --world "$world" --port 17821 --max-players 1 --no-tui > "$host_log" 2>&1 &
+          dotnet "$host" --world "$world" --port 17822 --max-players 1 --no-tui > "$host_log" 2>&1 &
           host_pid=$!
           trap 'kill -TERM "$host_pid" 2>/dev/null || true; wait "$host_pid" 2>/dev/null || true' EXIT
           for _ in $(seq 1 160); do
             if ! kill -0 "$host_pid" 2>/dev/null; then cat "$host_log" >&2; exit 1; fi
-            grep -q 'TerraRuntime listening on 0.0.0.0:17821' "$host_log" && break
+            grep -q 'TerraRuntime listening on 0.0.0.0:17822' "$host_log" && break
             sleep 0.25
           done
-          grep -q 'Interrupted world save recovered from validated managed candidate:' "$host_log"
-          grep -q 'TerraRuntime listening on 0.0.0.0:17821' "$host_log"
+          grep -q 'Interrupted world save recovered from durable marker:' "$host_log"
+          grep -q 'TerraRuntime listening on 0.0.0.0:17822' "$host_log"
           cmp "$source" "$world"
-          remaining_temps=("$(dirname "$world")"/."$(basename "$world")".*.tmp)
-          remaining_leases=("$(dirname "$world")"/."$(basename "$world")".*.tmp.lease)
-          test "${#remaining_temps[@]}" -eq 0
-          test "${#remaining_leases[@]}" -eq 0
-          echo 'interrupted_save_sigkill_recovery_ok first_save_hidden=true candidate_validated=true canonical_recovered=true'
+          if compgen -G "$(dirname "$world")/.$(basename "$world").*.tmp*" >/dev/null; then
+            echo 'recovered transaction left managed sidecars behind' >&2
+            find "$(dirname "$world")" -maxdepth 1 -name ".$(basename "$world").*.tmp*" -print >&2
+            exit 1
+          fi
 
           kill -TERM "$host_pid"
           for _ in $(seq 1 120); do
@@ -157,43 +184,84 @@ jobs:
           set -e
           trap - EXIT
           test "$host_status" -eq 0
+          echo 'interrupted_marker_sigkill_ok live_blocked=true marker_durable=true canonical_recovered=true'
 
-      - name: Prove future-version canonical suppresses orphan recovery
+      - name: Prove unsealed orphan is discarded instead of recovered
         shell: bash
         run: |
           set -euo pipefail
           source="$GITHUB_WORKSPACE/artifacts/interrupted-original.wld"
-          world="$GITHUB_WORKSPACE/artifacts/interrupted-future.wld"
-          expected="$GITHUB_WORKSPACE/artifacts/interrupted-future.expected"
-          host_log="$GITHUB_WORKSPACE/artifacts/interrupted-future.log"
-          server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
-          cp "$source" "$world"
-          python3 - "$world" <<'PY'
-          import pathlib, struct, sys
-          path = pathlib.Path(sys.argv[1])
-          data = bytearray(path.read_bytes())
-          current = struct.unpack_from('<i', data, 0)[0]
-          if current != 326: raise SystemExit(f'expected version 326, got {current}')
-          struct.pack_into('<i', data, 0, 327)
-          path.write_bytes(data)
-          PY
-          cp "$world" "$expected"
+          world="$GITHUB_WORKSPACE/artifacts/interrupted-unsealed.wld"
+          log="$GITHUB_WORKSPACE/artifacts/interrupted-unsealed.log"
+          host="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
           token="$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
           temporary="$(dirname "$world")/.$(basename "$world").${token}.tmp"
           lease="$temporary.lease"
+          rm -f "$world" "$world.bak"
           cp "$source" "$temporary"
           : > "$lease"
+
           set +e
-          dotnet "$server_dll" --world "$world" --port 17822 --max-players 1 --no-tui > "$host_log" 2>&1
+          dotnet "$host" --world "$world" --port 17823 --max-players 1 --no-tui > "$log" 2>&1
+          status=$?
+          set -e
+          cat "$log"
+          test "$status" -eq 24
+          grep -q 'Discarded unsealed or invalid interrupted world-save transactions before startup:' "$log"
+          test ! -e "$world"
+          test ! -e "$temporary"
+          test ! -e "$lease"
+          echo 'interrupted_unsealed_orphan_ok recovered=false removed=true'
+
+      - name: Prove stale marker conflict is quarantined and blocks startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          source="$GITHUB_WORKSPACE/artifacts/interrupted-original.wld"
+          world="$GITHUB_WORKSPACE/artifacts/interrupted-conflict.wld"
+          ready="$GITHUB_WORKSPACE/artifacts/interrupted-conflict.ready"
+          probe_log="$GITHUB_WORKSPACE/artifacts/interrupted-conflict-probe.log"
+          host_log="$GITHUB_WORKSPACE/artifacts/interrupted-conflict-host.log"
+          expected="$GITHUB_WORKSPACE/artifacts/interrupted-conflict.expected"
+          probe="$GITHUB_WORKSPACE/tools/TerraRuntime.AtomicSaveCrashProbe/bin/Release/net11.0/TerraRuntime.AtomicSaveCrashProbe.dll"
+          host="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+
+          rm -f "$world" "$world.bak" "$ready"
+          dotnet "$probe" stall-recovery-ready-file "$world" "$source" "$ready" > "$probe_log" 2>&1 &
+          writer_pid=$!
+          trap 'kill -KILL "$writer_pid" 2>/dev/null || true; wait "$writer_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$writer_pid" 2>/dev/null; then cat "$probe_log" >&2; exit 1; fi
+            [[ -f "$ready" ]] && break
+            sleep 0.25
+          done
+          test -f "$ready"
+          kill -KILL "$writer_pid"
+          set +e
+          wait "$writer_pid"
+          writer_status=$?
+          set -e
+          trap - EXIT
+          test "$writer_status" -eq 137
+
+          printf 'newer-canonical-must-win' > "$world"
+          cp "$world" "$expected"
+          set +e
+          dotnet "$host" --world "$world" --port 17824 --max-players 1 --no-tui > "$host_log" 2>&1
           status=$?
           set -e
           cat "$host_log"
           test "$status" -eq 26
-          grep -q 'Interrupted world-save recovery is suppressed because the visible canonical world is explicitly incompatible:' "$host_log"
+          grep -q 'candidate was quarantined and startup is blocked' "$host_log"
           cmp "$expected" "$world"
-          cmp "$source" "$temporary"
-          test -f "$lease"
-          echo 'interrupted_save_future_version_ok recovery_suppressed=true canonical_untouched=true orphan_preserved=true'
+          shopt -s nullglob
+          conflicts=("$(dirname "$world")"/."$(basename "$world")".*.tmp.recovery-conflict)
+          temps=("$(dirname "$world")"/."$(basename "$world")".*.tmp)
+          leases=("$(dirname "$world")"/."$(basename "$world")".*.tmp.lease)
+          test "${#conflicts[@]}" -eq 1
+          test "${#temps[@]}" -eq 1
+          test "${#leases[@]}" -eq 1
+          echo 'interrupted_marker_conflict_ok startup_blocked=true canonical_preserved=true quarantined=true'
 
       - name: Upload interrupted-save recovery evidence
         if: always()
@@ -203,7 +271,10 @@ jobs:
           path: |
             artifacts/interrupted-worldgen.log
             artifacts/interrupted-writer.log
+            artifacts/interrupted-live-block.log
             artifacts/interrupted-host-recovery.log
-            artifacts/interrupted-future.log
+            artifacts/interrupted-unsealed.log
+            artifacts/interrupted-conflict-probe.log
+            artifacts/interrupted-conflict-host.log
           if-no-files-found: warn
           retention-days: 7

@@ -1,6 +1,5 @@
 using System.Buffers.Binary;
 using System.Reflection;
-using TerraRuntime.Core;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -146,121 +145,6 @@ public sealed class RuntimeWorldCheckpointRecoveryTests
             await service.DisposeAsync();
             Directory.Delete(directory, recursive: true);
         }
-    }
-
-    [Fact]
-    public async Task Interrupted_first_save_recovers_complete_valid_world_candidate()
-    {
-        byte[] candidate = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
-        WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
-        string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-interrupted-first-{Guid.NewGuid():N}");
-        string worldPath = Path.Combine(directory, "world.wld");
-        Directory.CreateDirectory(directory);
-        (string temporary, string lease) = await CreateManagedCandidateAsync(
-            worldPath,
-            candidate,
-            TestContext.Current.CancellationToken);
-
-        try
-        {
-            AtomicSaveAbandonedWriteRecoveryDiagnostic result =
-                await RuntimeWorldCheckpointRecovery.TryRecoverInterruptedSaveAsync(
-                    worldPath,
-                    limits,
-                    TestContext.Current.CancellationToken);
-
-            Assert.True(result.IsRecovered);
-            Assert.Equal(candidate, await File.ReadAllBytesAsync(worldPath, TestContext.Current.CancellationToken));
-            Assert.False(File.Exists(temporary));
-            Assert.False(File.Exists(lease));
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task Interrupted_save_replaces_corrupt_canonical_without_overwriting_known_good_backup()
-    {
-        byte[] candidate = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
-        byte[] backup = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
-        WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
-        string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-interrupted-corrupt-{Guid.NewGuid():N}");
-        string worldPath = Path.Combine(directory, "world.wld");
-        string backupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(worldPath);
-        Directory.CreateDirectory(directory);
-        await File.WriteAllBytesAsync(worldPath, [1, 2, 3, 4], TestContext.Current.CancellationToken);
-        await File.WriteAllBytesAsync(backupPath, backup, TestContext.Current.CancellationToken);
-        await CreateManagedCandidateAsync(worldPath, candidate, TestContext.Current.CancellationToken);
-
-        try
-        {
-            AtomicSaveAbandonedWriteRecoveryDiagnostic result =
-                await RuntimeWorldCheckpointRecovery.TryRecoverInterruptedSaveAsync(
-                    worldPath,
-                    limits,
-                    TestContext.Current.CancellationToken);
-
-            Assert.True(result.IsRecovered);
-            Assert.Equal(candidate, await File.ReadAllBytesAsync(worldPath, TestContext.Current.CancellationToken));
-            Assert.Equal(backup, await File.ReadAllBytesAsync(backupPath, TestContext.Current.CancellationToken));
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task Interrupted_save_never_replaces_explicitly_newer_canonical_world()
-    {
-        byte[] futureWorld = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
-        BinaryPrimitives.WriteInt32LittleEndian(
-            futureWorld.AsSpan(0, sizeof(int)),
-            WorldFileFormatPolicy.CurrentVersion + 1);
-        byte[] candidate = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
-        WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
-        string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-interrupted-future-{Guid.NewGuid():N}");
-        string worldPath = Path.Combine(directory, "world.wld");
-        Directory.CreateDirectory(directory);
-        await File.WriteAllBytesAsync(worldPath, futureWorld, TestContext.Current.CancellationToken);
-        (string temporary, string lease) = await CreateManagedCandidateAsync(
-            worldPath,
-            candidate,
-            TestContext.Current.CancellationToken);
-
-        try
-        {
-            AtomicSaveAbandonedWriteRecoveryDiagnostic result =
-                await RuntimeWorldCheckpointRecovery.TryRecoverInterruptedSaveAsync(
-                    worldPath,
-                    limits,
-                    TestContext.Current.CancellationToken);
-
-            Assert.Equal(AtomicSaveAbandonedWriteRecoveryResult.SuppressedByDestinationPolicy, result.Result);
-            Assert.Equal(futureWorld, await File.ReadAllBytesAsync(worldPath, TestContext.Current.CancellationToken));
-            Assert.True(File.Exists(temporary));
-            Assert.True(File.Exists(lease));
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    private static async Task<(string Temporary, string Lease)> CreateManagedCandidateAsync(
-        string worldPath,
-        byte[] bytes,
-        CancellationToken cancellationToken)
-    {
-        string directory = Path.GetDirectoryName(Path.GetFullPath(worldPath))!;
-        string targetName = Path.GetFileName(worldPath);
-        string temporary = Path.Combine(directory, $".{targetName}.{Guid.NewGuid():N}.tmp");
-        string lease = temporary + ".lease";
-        await File.WriteAllBytesAsync(temporary, bytes, cancellationToken);
-        await File.WriteAllTextAsync(lease, string.Empty, cancellationToken);
-        return (temporary, lease);
     }
 
     private static T LoaderFixture<T>(string methodName)

@@ -53,29 +53,6 @@ internal static class RuntimeWorldCheckpointRecovery
         return !invalidEnvelopeVersion && !unsupportedHeaderVersion;
     }
 
-    /// <summary>
-    /// Recovers a complete managed .tmp left by a dead save writer before ordinary orphan cleanup can discard it.
-    /// A valid current canonical checkpoint is rotated to .bak before publication. A corrupt canonical is replaced
-    /// without overwriting an existing known-good backup, while an explicitly incompatible canonical version suppresses
-    /// interrupted-save recovery entirely and leaves both files untouched for manual/version-aware handling.
-    /// </summary>
-    public static Task<AtomicSaveAbandonedWriteRecoveryDiagnostic> TryRecoverInterruptedSaveAsync(
-        string worldPath,
-        WorldFileLoadLimits limits,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(worldPath);
-        limits.Validate();
-
-        string fullWorldPath = Path.GetFullPath(worldPath);
-        var options = new AtomicSaveAbandonedWriteRecoveryOptions(
-            ValidateCandidateAsync: (path, token) => ValidateAsync(path, limits, token),
-            BackupPath: GetBackupPath(fullWorldPath),
-            ValidateBackupAsync: (path, token) => ValidateAsync(path, limits, token),
-            EvaluateDestinationAsync: (path, token) => EvaluateInterruptedRecoveryDestinationAsync(path, limits, token));
-        return AtomicSaveFileWriter.TryRecoverAbandonedWriteAsync(fullWorldPath, options, cancellationToken);
-    }
-
     public static async Task ValidateAsync(
         string checkpointPath,
         WorldFileLoadLimits limits,
@@ -150,35 +127,4 @@ internal static class RuntimeWorldCheckpointRecovery
         return new RuntimeWorldCheckpointRestoreDiagnostic(RuntimeWorldCheckpointRestoreResult.Restored);
     }
 
-    private static async Task<AtomicSaveRecoveryDestinationDisposition> EvaluateInterruptedRecoveryDestinationAsync(
-        string canonicalPath,
-        WorldFileLoadLimits limits,
-        CancellationToken cancellationToken)
-    {
-        byte[] canonicalBytes;
-        try
-        {
-            canonicalBytes = await File.ReadAllBytesAsync(canonicalPath, cancellationToken).ConfigureAwait(false);
-        }
-        catch (FileNotFoundException)
-        {
-            return AtomicSaveRecoveryDestinationDisposition.PublishWithoutBackup;
-        }
-        catch (DirectoryNotFoundException)
-        {
-            return AtomicSaveRecoveryDestinationDisposition.PublishWithoutBackup;
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        WorldFileLoadDiagnostic canonicalDiagnostic = WorldFileLoader.TryLoad(
-            canonicalBytes,
-            limits,
-            out WorldFileData? canonicalWorld);
-        if (canonicalDiagnostic.IsLoaded && canonicalWorld is not null)
-            return AtomicSaveRecoveryDestinationDisposition.PublishWithBackup;
-
-        return CanAutomaticallyRestoreAfter(canonicalDiagnostic)
-            ? AtomicSaveRecoveryDestinationDisposition.PublishWithoutBackup
-            : AtomicSaveRecoveryDestinationDisposition.Suppress;
-    }
 }

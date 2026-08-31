@@ -44,9 +44,13 @@ public static partial class AtomicSaveFileWriter
                 throw new ArgumentException("Backup path must differ from the destination path.", nameof(options));
         }
 
-        CleanupAbandonedTemporaries(fullDestinationPath);
+        AtomicSaveFileRecoveryDiagnostic destinationRecovery = CleanupAbandonedTemporaries(fullDestinationPath);
+        ThrowIfRecoveryBoundaryBlocksWrite(fullDestinationPath, in destinationRecovery);
         if (fullBackupPath is not null)
-            CleanupAbandonedTemporaries(fullBackupPath);
+        {
+            AtomicSaveFileRecoveryDiagnostic backupRecovery = CleanupAbandonedTemporaries(fullBackupPath);
+            ThrowIfRecoveryBoundaryBlocksWrite(fullBackupPath, in backupRecovery);
+        }
 
         using TemporaryFileLease temporaryLease = CreateTemporaryLease(destinationDirectory, fullDestinationPath);
         string temporaryPath = temporaryLease.TemporaryPath;
@@ -143,6 +147,18 @@ public static partial class AtomicSaveFileWriter
             if (!temporaryConsumed)
                 TryDelete(backupTemporaryPath);
         }
+    }
+
+    private static void ThrowIfRecoveryBoundaryBlocksWrite(
+        string targetPath,
+        in AtomicSaveFileRecoveryDiagnostic recovery)
+    {
+        if (recovery.Succeeded && recovery.LiveWrites == 0)
+            return;
+
+        throw new IOException(
+            $"Atomic save cannot start while recovery for '{targetPath}' is unresolved: " +
+            $"live={recovery.LiveWrites}, suppressed={recovery.SuppressedWrites}, io_failed={recovery.IoFailed}.");
     }
 
     private static FileStream CreateDurableWriteStream(string path) =>

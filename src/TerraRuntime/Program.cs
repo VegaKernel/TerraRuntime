@@ -76,38 +76,44 @@ internal static class Program
                 return 23;
             }
 
-            AtomicSaveAbandonedWriteRecoveryDiagnostic interruptedRecovery =
-                RuntimeWorldCheckpointRecovery.TryRecoverInterruptedSaveAsync(
-                    options.WorldPath,
-                    TerrariaServerHost.CreateServerWorldLoadLimits()).GetAwaiter().GetResult();
-            switch (interruptedRecovery.Result)
+            AtomicSaveFileRecoveryDiagnostic interruptedRecovery =
+                AtomicSaveFileWriter.RecoverAbandonedWrites(options.WorldPath);
+
+            if (interruptedRecovery.IoFailed)
             {
-                case AtomicSaveAbandonedWriteRecoveryResult.Recovered:
-                    Console.WriteLine(
-                        $"Interrupted world save recovered from validated managed candidate: '{options.WorldPath}', " +
-                        $"examined={interruptedRecovery.CandidatesExamined}, invalid_removed={interruptedRecovery.InvalidCandidatesRemoved}.");
-                    break;
+                Console.Error.WriteLine(
+                    $"Interrupted world-save recovery could not inspect managed transactions safely: '{options.WorldPath}'.");
+                return 26;
+            }
 
-                case AtomicSaveAbandonedWriteRecoveryResult.InvalidCandidatesRemoved:
-                    Console.WriteLine(
-                        $"Discarded invalid interrupted world-save candidates before startup: '{options.WorldPath}', " +
-                        $"examined={interruptedRecovery.CandidatesExamined}, invalid_removed={interruptedRecovery.InvalidCandidatesRemoved}.");
-                    break;
+            if (interruptedRecovery.LiveWrites != 0)
+            {
+                Console.Error.WriteLine(
+                    $"Refusing world startup while another managed save writer still owns a live lease: '{options.WorldPath}', " +
+                    $"live={interruptedRecovery.LiveWrites}.");
+                return 26;
+            }
 
-                case AtomicSaveAbandonedWriteRecoveryResult.LiveWriterPresent:
-                    Console.Error.WriteLine(
-                        $"Refusing world startup while another managed save writer still owns a live lease: '{options.WorldPath}'.");
-                    return 26;
+            if (interruptedRecovery.SuppressedWrites != 0)
+            {
+                Console.Error.WriteLine(
+                    $"Interrupted world-save recovery found a durable transaction whose publication preconditions no longer match; " +
+                    $"the candidate was quarantined and startup is blocked: '{options.WorldPath}', " +
+                    $"suppressed={interruptedRecovery.SuppressedWrites}.");
+                return 26;
+            }
 
-                case AtomicSaveAbandonedWriteRecoveryResult.IoError:
-                    Console.Error.WriteLine(
-                        $"Interrupted world-save recovery could not inspect or publish managed candidates safely: '{options.WorldPath}'.");
-                    return 26;
-
-                case AtomicSaveAbandonedWriteRecoveryResult.SuppressedByDestinationPolicy:
-                    Console.Error.WriteLine(
-                        $"Interrupted world-save recovery is suppressed because the visible canonical world is explicitly incompatible: '{options.WorldPath}'.");
-                    return 26;
+            if (interruptedRecovery.RecoveredWrites != 0)
+            {
+                Console.WriteLine(
+                    $"Interrupted world save recovered from durable marker: '{options.WorldPath}', " +
+                    $"recovered={interruptedRecovery.RecoveredWrites}, removed={interruptedRecovery.RemovedWrites}.");
+            }
+            else if (interruptedRecovery.RemovedWrites != 0)
+            {
+                Console.WriteLine(
+                    $"Discarded unsealed or invalid interrupted world-save transactions before startup: '{options.WorldPath}', " +
+                    $"removed={interruptedRecovery.RemovedWrites}.");
             }
 
             return TerrariaServerHost.RunAsync(options).GetAwaiter().GetResult();

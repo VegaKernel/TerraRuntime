@@ -73,10 +73,16 @@ First-save candidate может roll-forward только пока canonical tar
 
 Так закрывается interrupted-publication gap без превращения любой времянки в recovery source.
 
+## Единый recovery authority и writer exclusion
+
+В runtime больше нет второго recovery path, который выбирает orphan по `LastWriteTimeUtc`. Executable startup вызывает ту же marker-aware границу `AtomicSaveFileWriter.RecoverAbandonedWrites`, что используется save cleanup. Поэтому unsealed managed `.tmp` является только cleanup input и не может стать canonical лишь потому, что его bytes случайно проходят parser.
+
+Та же граница проверяется перед стартом нового atomic write. Если другой process всё ещё держит same-target lease, recovery I/O остаётся неопределённым или transaction уже quarantine'нут как `.recovery-conflict`, новый writer отказывает ещё до создания собственного temporary. Для canonical target остаётся один cross-process owner вместо гонки двух save transactions за publication.
+
 ## Стоимость и ownership
 
 Recovery hashing и marker I/O выполняются внутри detached background save transaction, а не на authoritative game-loop thread. Сейчас implementation повторно sequentially читает sealed candidate и backup для SHA-256. Это принятый correctness-first I/O cost; оптимизировать его можно позже только по measurements и без ослабления гарантии, что marker аутентифицирует exact validated bytes.
 
 ## Verification
 
-`AtomicSaveFileWriterCleanupTests` покрывает ordinary orphan cleanup и recovery-ready first-save publication, roll-forward existing canonical/backup, rejection tampered candidate, rejection invalid/partial marker, suppression при missing backup, conflict quarantine и isolation live lease. Existing workflow `Authoritative World Save` уже build'ит и исполняет этот test class вместе с process-level `SIGKILL` proof atomic publication.
+`AtomicSaveFileWriterCleanupTests` покрывает marker parsing, roll-forward, tamper rejection, conflict quarantine и isolation live lease. `AtomicSaveFileWriterConsolidatedRecoveryTests` дополнительно доказывает, что unsealed candidate никогда не публикуется, live same-target writer блокирует второй write, а quarantined conflict блокирует последующие writes. Dedicated workflow `Interrupted World Save Recovery` создаёт настоящий мир TerrariaServer 1.4.5.8, удерживает recovery-ready transaction под live lease, доказывает отказ startup, убивает writer настоящим `SIGKILL`, затем доказывает marker-authorized roll-forward при startup. Отдельно проверяются rejection unsealed orphan и conflict quarantine без изменения более нового canonical.

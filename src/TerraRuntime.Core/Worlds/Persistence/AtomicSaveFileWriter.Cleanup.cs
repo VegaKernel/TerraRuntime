@@ -4,7 +4,7 @@ using System.Text;
 
 namespace TerraRuntime.Core;
 
-internal readonly record struct AtomicSaveFileRecoveryDiagnostic(
+public readonly record struct AtomicSaveFileRecoveryDiagnostic(
     int RecoveredWrites,
     int RemovedWrites,
     int SuppressedWrites,
@@ -36,7 +36,7 @@ public static partial class AtomicSaveFileWriter
     /// Inspects abandoned managed save transactions for one target, completes recovery-ready transactions when safe,
     /// removes invalid/partial transactions and quarantines conflicting recovery-ready transactions for inspection.
     /// </summary>
-    internal static AtomicSaveFileRecoveryDiagnostic RecoverAbandonedWrites(string targetPath)
+    public static AtomicSaveFileRecoveryDiagnostic RecoverAbandonedWrites(string targetPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(targetPath);
 
