@@ -26,6 +26,14 @@ Fixes: `3c6cd9cf53bda6dec92af8f661b7b16c4c5ca217`, `0c11a13bc1bf2d5564a55226a867
 
 The pinned packet-17 protocol contract remains green with action `4` represented as a wire identity; runtime admission is intentionally stricter than TerrariaServer's packet handler.
 
+### Packet-17 protocol/runtime ownership split
+
+Packet-17 wire resolution and gameplay admission previously shared `TerrariaTileManipulationState.TryGetKnownAction`, which lived in `TerraRuntime.Protocol.Multiplicity`. That made the protocol adapter conceptually own a gameplay legality decision even though the runtime was intentionally stricter than the wire contract.
+
+The protocol state now exposes only `TryGetWireAction`, resolving all five source-known TerrariaServer 1.4.5.8 packet-17 identities without granting mutation authority. `ClientTileManipulationAdmissionPolicy` now lives in the runtime assembly and independently admits only the authoritative `KillTile` and `PlaceTile` slices. Known-but-unimplemented wall/no-item actions are distinguished from an unknown action byte, and focused tests pin both the complete wire identity set and the fail-closed runtime admission set. Existing authoritative call sites keep their compact call shape through a runtime-owned extension rather than a protocol-owned legality helper.
+
+This closes the audit's protocol/gameplay ownership debt without widening client authority.
+
 ### Completed one-shot workflow residue
 
 `security-idle-doc-sync.yml` was a self-removing documentation migration workflow whose target ten-minute idle-timeout documentation had already been applied. The workflow remained in `main` and produced a startup failure with no useful job. It was removed after verifying the runtime and documentation already carried the intended value.
@@ -67,11 +75,10 @@ The post-audit code baseline at `4f4fbd6a93c72ad0bae0efbaa5a21adb11f16d42` passe
 These items remain deliberately incomplete rather than being guessed into production:
 
 - broad client mining parity is still narrow: ordinary `KillTile` authority is currently tied to the imported Copper Pickaxe path and does not yet model the complete vanilla tool-power, tile-specific breakability, special destruction, reach, inventory and drop semantics; wall actions and `KillTileNoItem` must remain runtime-disabled until their own authority contracts exist;
-- packet-17 wire identity and client-runtime admission are still represented by the same protocol-facing `TryGetKnownAction` helper. The behavior is fail-closed, but a future cleanup should split source-known wire action resolution from gameplay admission policy so `TerraRuntime.Protocol.Multiplicity` does not conceptually own a gameplay legality decision;
 - non-numeric world-seed hashing still needs a dedicated pinned-source contract. `probe_worldgen_seed.py` was removed from the pass/RNG workflow dependency chain because its CRC helper assembly assumption was not proven; the runtime CRC implementation must not be described as exact source-verified seed-hash parity until that separate contract is established;
 - the `cc3898be2e5eeb9edab6e93c488a91cebd114c26` encoder change removes `MemoryStream` usage but its commit text overstates `ArrayPool`/pooling: `ArrayBufferWriter<byte>` plus `WrittenSpan.ToArray()` still allocates, so the performance claim needs the repository-required before/after allocation and throughput benchmark rather than prose;
 - new worm-family slot-link behavior should receive focused official-source/differential coverage before stronger stale-link or full-lifecycle claims are made. Vanilla AI may intentionally use raw slot references, so this is an evidence task rather than a guessed rewrite.
 
 ## Audit conclusion
 
-The high-volume change window made substantial real progress, especially in NPC-family coverage, Skyblock, object placement and ordinary canonical world-generation pass coverage. The main architectural defects found were narrow but important: client mutation authority was widened beyond imported gameplay facts, a dead one-shot workflow polluted checks, and the expanded vanilla worldgen relied on an inherited incorrect RNG-lifetime assumption. Unknown tile placement, wall mutation and no-item destruction are now fail-closed; the worldgen RNG correction is pinned by a successful official-binary source contract; and the ordinary CI matrix is green on the corrected code baseline. Remaining uncertain behavior is explicitly incomplete and isolated as evidence debt rather than being promoted through optimistic compatibility claims.
+The high-volume change window made substantial real progress, especially in NPC-family coverage, Skyblock, object placement and ordinary canonical world-generation pass coverage. The main architectural defects found were narrow but important: client mutation authority was widened beyond imported gameplay facts, a dead one-shot workflow polluted checks, and the expanded vanilla worldgen relied on an inherited incorrect RNG-lifetime assumption. Unknown tile placement, wall mutation and no-item destruction are now fail-closed; packet-17 wire knowledge is separated from runtime gameplay admission; the worldgen RNG correction is pinned by a successful official-binary source contract; and the ordinary CI matrix is green on the corrected code baseline. Remaining uncertain behavior is explicitly incomplete and isolated as evidence debt rather than being promoted through optimistic compatibility claims.
