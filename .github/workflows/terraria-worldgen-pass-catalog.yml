@@ -57,9 +57,9 @@ jobs:
           test -n "$assembly"
 
           assembly_dir="$(dirname "$assembly")"
-          relogic_assembly="$(find "$assembly_dir" -maxdepth 1 -type f -iname 'ReLogic.dll' | head -n 1 || true)"
+          relogic_assembly="$(find "$assembly_dir" -type f -iname 'ReLogic.dll' | head -n 1 || true)"
           if [[ -z "$relogic_assembly" ]]; then
-            echo "Pinned TerrariaServer 1.4.5.8 deployment is missing ReLogic.dll required by WorldFileData seed semantics." >&2
+            echo "Pinned TerrariaServer 1.4.5.8 deployment subtree is missing ReLogic.dll required by WorldFileData seed semantics." >&2
             exit 1
           fi
 
