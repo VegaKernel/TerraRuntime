@@ -141,7 +141,7 @@ public sealed class AtomicSaveFileWriterTests
     }
 
     [Fact]
-    public async Task Cleanup_never_deletes_temp_owned_by_a_live_lease()
+    public async Task Live_lease_blocks_new_write_without_deleting_owner_temp()
     {
         string directory = CreateTempDirectory();
         string destination = Path.Combine(directory, "world.wld");
@@ -164,15 +164,18 @@ public sealed class AtomicSaveFileWriterTests
                     Options = FileOptions.Asynchronous
                 }))
             {
-                await AtomicSaveFileWriter.WriteAsync(
-                    destination,
-                    async (stream, tokenValue) =>
-                    {
-                        byte[] payload = Encoding.UTF8.GetBytes("first");
-                        await stream.WriteAsync(payload, tokenValue);
-                    },
-                    cancellationToken);
+                IOException error = await Assert.ThrowsAsync<IOException>(() =>
+                    AtomicSaveFileWriter.WriteAsync(
+                        destination,
+                        async (stream, tokenValue) =>
+                        {
+                            byte[] payload = Encoding.UTF8.GetBytes("blocked");
+                            await stream.WriteAsync(payload, tokenValue);
+                        },
+                        cancellationToken));
 
+                Assert.Contains("live=1", error.Message, StringComparison.Ordinal);
+                Assert.False(File.Exists(destination));
                 Assert.True(File.Exists(liveTemp));
                 Assert.True(File.Exists(liveLease));
             }
@@ -181,14 +184,14 @@ public sealed class AtomicSaveFileWriterTests
                 destination,
                 async (stream, tokenValue) =>
                 {
-                    byte[] payload = Encoding.UTF8.GetBytes("second");
+                    byte[] payload = Encoding.UTF8.GetBytes("committed");
                     await stream.WriteAsync(payload, tokenValue);
                 },
                 cancellationToken);
 
             Assert.False(File.Exists(liveTemp));
             Assert.False(File.Exists(liveLease));
-            Assert.Equal("second", await File.ReadAllTextAsync(destination, cancellationToken));
+            Assert.Equal("committed", await File.ReadAllTextAsync(destination, cancellationToken));
         }
         finally
         {
