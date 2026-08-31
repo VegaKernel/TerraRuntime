@@ -254,7 +254,7 @@ public static class WorldFileFreshComposer326
 
         file = stream.ToArray();
         WorldFileLoadLimits validationLimits = CreateValidationLimits(tiles.Count, chests, npcs);
-        WorldFileLoadDiagnostic validation = WorldFileLoader.TryLoad(file, validationLimits, out WorldFileData? loaded);
+        WorldFileLoadDiagnostic validation = WorldFileLoader.TryLoadReusingTiles(file, validationLimits, tiles, out WorldFileData? loaded);
         if (!validation.IsLoaded ||
             loaded is null ||
             loaded.Chests.Length != chests.Length ||
