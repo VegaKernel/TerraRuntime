@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.IO;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Views;
@@ -38,9 +37,8 @@ public static class TerrariaPlayerEquipmentCodec
         return DecodePayload(scratch, out equipment);
     }
 
-    public static byte[] Encode(in TerrariaPlayerEquipmentState equipment)
-    {
-        var packet = new PlayerSlot
+    public static byte[] Encode(in TerrariaPlayerEquipmentState equipment) =>
+        MultiplicityPacketSerializer.Serialize(new PlayerSlot
         {
             PlayerId = equipment.PlayerId,
             SlotId = equipment.SlotId,
@@ -48,13 +46,7 @@ public static class TerrariaPlayerEquipmentCodec
             Prefix = equipment.Prefix,
             ItemNetId = equipment.ItemNetId,
             ItemFlags = equipment.ItemFlags
-        };
-
-        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream = new ArrayBufferWriterStream(writer);
-        packet.ToStream(stream);
-        return writer.WrittenSpan.ToArray();
-    }
+        });
 
     private static TerrariaPlayerEquipmentDecodeResult DecodePayload(
         ReadOnlySpan<byte> payload,

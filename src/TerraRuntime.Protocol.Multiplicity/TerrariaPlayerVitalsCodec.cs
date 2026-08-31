@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.IO;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Views;
@@ -62,35 +61,21 @@ public static class TerrariaPlayerVitalsCodec
         return DecodeManaPayload(scratch, out mana);
     }
 
-    public static byte[] EncodeHealth(in TerrariaPlayerHealthState health)
-    {
-        var packet = new PlayerHp
+    public static byte[] EncodeHealth(in TerrariaPlayerHealthState health) =>
+        MultiplicityPacketSerializer.Serialize(new PlayerHp
         {
             PlayerId = health.PlayerId,
             Hp = health.Life,
             MaxHp = health.MaxLife
-        };
+        });
 
-        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream = new ArrayBufferWriterStream(writer);
-        packet.ToStream(stream);
-        return writer.WrittenSpan.ToArray();
-    }
-
-    public static byte[] EncodeMana(in TerrariaPlayerManaState mana)
-    {
-        var packet = new PlayerMana
+    public static byte[] EncodeMana(in TerrariaPlayerManaState mana) =>
+        MultiplicityPacketSerializer.Serialize(new PlayerMana
         {
             PlayerId = mana.PlayerId,
             Mana = mana.Mana,
             MaxMana = mana.MaxMana
-        };
-
-        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream = new ArrayBufferWriterStream(writer);
-        packet.ToStream(stream);
-        return writer.WrittenSpan.ToArray();
-    }
+        });
 
     private static TerrariaPlayerHealthDecodeResult DecodeHealthPayload(
         ReadOnlySpan<byte> payload,

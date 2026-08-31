@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.IO;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Views;
@@ -34,9 +33,8 @@ public static class TerrariaPlayerAppearanceCodec
         return DecodePayload(scratch[..length], out appearance);
     }
 
-    public static byte[] Encode(in TerrariaPlayerAppearanceState appearance)
-    {
-        var packet = new PlayerInfo
+    public static byte[] Encode(in TerrariaPlayerAppearanceState appearance) =>
+        MultiplicityPacketSerializer.Serialize(new PlayerInfo
         {
             PlayerId = appearance.PlayerId,
             SkinVariant = appearance.SkinVariant,
@@ -57,13 +55,7 @@ public static class TerrariaPlayerAppearanceCodec
             DifficultyFlags = (PlayerDifficultyFlags)appearance.DifficultyFlags,
             TorchAndCartFlags = (PlayerTorchAndCartFlags)appearance.TorchAndCartFlags,
             ConsumableUnlockFlags = (PlayerConsumableUnlockFlags)appearance.ConsumableUnlockFlags
-        };
-
-        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream = new ArrayBufferWriterStream(writer);
-        packet.ToStream(stream);
-        return writer.WrittenSpan.ToArray();
-    }
+        });
 
     private static TerrariaPlayerAppearanceDecodeResult DecodePayload(
         ReadOnlySpan<byte> payload,

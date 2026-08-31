@@ -1,4 +1,3 @@
-using System.Buffers;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Models;
 using TerraRuntime.Protocol;
@@ -37,11 +36,7 @@ public static class TerrariaProjectileEncoder
             OriginalDamage = state.OriginalDamage
         };
 
-        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream = new ArrayBufferWriterStream(writer);
-        packet.ToStream(stream);
-        bytes = writer.WrittenSpan.ToArray();
-        return true;
+        return MultiplicityPacketSerializer.TrySerialize(packet, out bytes);
     }
 
     public static bool TryEncodeDestroy(in TerrariaProjectileDestroyState state, out byte[] bytes)
@@ -60,10 +55,6 @@ public static class TerrariaProjectileEncoder
             PositionY = state.PositionY
         };
 
-        var writer2 = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream2 = new ArrayBufferWriterStream(writer2);
-        packet.ToStream(stream2);
-        bytes = writer2.WrittenSpan.ToArray();
-        return true;
+        return MultiplicityPacketSerializer.TrySerialize(packet, out bytes);
     }
 }

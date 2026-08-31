@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.IO;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Models;
 using TerraRuntime.Protocol;
@@ -44,46 +43,29 @@ public static class TerrariaChatCodec
         if (frame.Payload.Length < sizeof(ushort) + 2 || frame.Payload.Length > MaximumPayloadLength)
             return TerrariaClientChatDecodeResult.InvalidPayloadLength;
 
-        try
+        if (!MultiplicityPacketDeserializer.TryDeserialize(in frame, out TerrariaPacket packet) ||
+            packet is not LoadNetModule load)
         {
-            ReadOnlyMemory<byte> payload = CopyPayload(in frame);
-            if (!TerrariaPacket.TryDeserializePayload(
-                    (byte)TerrariaMessageId.LoadNetModule,
-                    payload,
-                    out TerrariaPacket packet) ||
-                packet is not LoadNetModule load)
-            {
-                return TerrariaClientChatDecodeResult.Malformed;
-            }
-
-            if (load.LoadedModule is not NetTextModule textModule)
-                return TerrariaClientChatDecodeResult.WrongModule;
-            if (textModule.PayloadKind != NetTextModulePayloadKind.ClientChatMessage)
-                return TerrariaClientChatDecodeResult.WrongDirection;
-
-            string commandName = textModule.CommandName ?? string.Empty;
-            string text = textModule.ChatMessage ?? string.Empty;
-            if (commandName.Length > MaximumCommandNameLength ||
-                text.Length == 0 ||
-                text.Length > MaximumTextLength ||
-                text.IndexOf('\0') >= 0)
-            {
-                return TerrariaClientChatDecodeResult.InvalidText;
-            }
-
-            message = new TerrariaClientChatMessage(commandName, text);
-            return TerrariaClientChatDecodeResult.Decoded;
-        }
-        catch (Exception exception) when (
-            exception is InvalidDataException or
-            EndOfStreamException or
-            IOException or
-            OverflowException or
-            ArgumentException)
-        {
-            message = default;
             return TerrariaClientChatDecodeResult.Malformed;
         }
+
+        if (load.LoadedModule is not NetTextModule textModule)
+            return TerrariaClientChatDecodeResult.WrongModule;
+        if (textModule.PayloadKind != NetTextModulePayloadKind.ClientChatMessage)
+            return TerrariaClientChatDecodeResult.WrongDirection;
+
+        string commandName = textModule.CommandName ?? string.Empty;
+        string text = textModule.ChatMessage ?? string.Empty;
+        if (commandName.Length > MaximumCommandNameLength ||
+            text.Length == 0 ||
+            text.Length > MaximumTextLength ||
+            text.IndexOf('\0') >= 0)
+        {
+            return TerrariaClientChatDecodeResult.InvalidText;
+        }
+
+        message = new TerrariaClientChatMessage(commandName, text);
+        return TerrariaClientChatDecodeResult.Decoded;
     }
 
     public static bool TryDecodeServerFrame(
@@ -97,50 +79,29 @@ public static class TerrariaChatCodec
             return false;
         }
 
-        try
+        var input = new ReadOnlySequence<byte>(encodedFrame);
+        if (TerrariaFrameDecoder.TryRead(ref input, out TerrariaFrame frame) != TerrariaFrameReadResult.Frame ||
+            !input.IsEmpty ||
+            frame.MessageId != (byte)TerrariaMessageId.LoadNetModule ||
+            !MultiplicityPacketDeserializer.TryDeserialize(in frame, out TerrariaPacket packet) ||
+            packet is not LoadNetModule load ||
+            load.LoadedModule is not NetTextModule textModule ||
+            textModule.PayloadKind != NetTextModulePayloadKind.ServerChatMessage ||
+            textModule.ServerText is null)
         {
-            var input = new ReadOnlySequence<byte>(encodedFrame);
-            if (TerrariaFrameDecoder.TryRead(ref input, out TerrariaFrame frame) != TerrariaFrameReadResult.Frame ||
-                !input.IsEmpty ||
-                frame.MessageId != (byte)TerrariaMessageId.LoadNetModule)
-            {
-                return false;
-            }
-
-            ReadOnlyMemory<byte> payload = CopyPayload(in frame);
-            if (!TerrariaPacket.TryDeserializePayload(
-                    (byte)TerrariaMessageId.LoadNetModule,
-                    payload,
-                    out TerrariaPacket packet) ||
-                packet is not LoadNetModule load ||
-                load.LoadedModule is not NetTextModule textModule ||
-                textModule.PayloadKind != NetTextModulePayloadKind.ServerChatMessage ||
-                textModule.ServerText is null)
-            {
-                return false;
-            }
-
-            string text = textModule.ServerText.Text ?? string.Empty;
-            if (text.Length == 0 || text.Length > MaximumTextLength || text.IndexOf('\0') >= 0)
-                return false;
-
-            ColorStruct color = textModule.MessageColor;
-            message = new TerrariaServerChatMessage(
-                textModule.AuthorId,
-                text,
-                new TerrariaRgbColor(color.R, color.G, color.B));
-            return true;
-        }
-        catch (Exception exception) when (
-            exception is InvalidDataException or
-            EndOfStreamException or
-            IOException or
-            OverflowException or
-            ArgumentException)
-        {
-            message = default;
             return false;
         }
+
+        string text = textModule.ServerText.Text ?? string.Empty;
+        if (text.Length == 0 || text.Length > MaximumTextLength || text.IndexOf('\0') >= 0)
+            return false;
+
+        ColorStruct color = textModule.MessageColor;
+        message = new TerrariaServerChatMessage(
+            textModule.AuthorId,
+            text,
+            new TerrariaRgbColor(color.R, color.G, color.B));
+        return true;
     }
 
     public static byte[] EncodeServerMessage(byte authorId, string text, TerrariaRgbColor color)
@@ -166,28 +127,7 @@ public static class TerrariaChatCodec
                 B = color.B
             }
         };
-        var packet = new LoadNetModule { LoadedModule = module };
 
-        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream = new ArrayBufferWriterStream(writer);
-        packet.ToStream(stream);
-        return writer.WrittenSpan.ToArray();
-    }
-
-    private static ReadOnlyMemory<byte> CopyPayload(in TerrariaFrame frame)
-    {
-        int length = checked((int)frame.Payload.Length);
-        if (frame.Payload.IsSingleSegment)
-            return frame.Payload.First;
-
-        byte[] buffer = GC.AllocateUninitializedArray<byte>(length);
-        int offset = 0;
-        foreach (ReadOnlyMemory<byte> segment in frame.Payload)
-        {
-            segment.Span.CopyTo(buffer.AsSpan(offset));
-            offset += segment.Length;
-        }
-
-        return buffer;
+        return MultiplicityPacketSerializer.Serialize(new LoadNetModule { LoadedModule = module });
     }
 }

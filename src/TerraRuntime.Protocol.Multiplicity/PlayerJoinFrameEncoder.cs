@@ -1,4 +1,3 @@
-using System.Buffers;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Models;
 using TerraRuntime.Contracts.Runtime;
@@ -18,14 +17,14 @@ public static class PlayerJoinFrameEncoder
     public static byte[] EncodeContinueConnecting(
         PlayerSlotId slot,
         bool serverSpecialFlag2 = false) =>
-        Serialize(PlayerJoinPacketFactory.CreateContinueConnecting(slot, serverSpecialFlag2));
+        MultiplicityPacketSerializer.Serialize(PlayerJoinPacketFactory.CreateContinueConnecting(slot, serverSpecialFlag2));
 
     public static byte[] EncodeWorldInfo(
         WorldFileData world,
         WorldInfoTransientState transient = default)
     {
         ArgumentNullException.ThrowIfNull(world);
-        return Serialize(PlayerJoinPacketFactory.CreateWorldInfo(world, transient));
+        return MultiplicityPacketSerializer.Serialize(PlayerJoinPacketFactory.CreateWorldInfo(world, transient));
     }
 
     public static byte[] EncodeStatus(int sectionCount)
@@ -44,18 +43,6 @@ public static class PlayerJoinFrameEncoder
             SpecialFlags = StatusSpecialFlags.None
         };
 
-        return Serialize(packet);
-    }
-
-    private static byte[] Serialize(TerrariaPacket packet)
-    {
-        ArgumentNullException.ThrowIfNull(packet);
-        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream = new ArrayBufferWriterStream(writer);
-        packet.ToStream(stream);
-        byte[] frame = writer.WrittenSpan.ToArray();
-        if (frame.Length < TerrariaFrameDecoderOptions.MinimumFrameLength || frame.Length > ushort.MaxValue)
-            throw new InvalidOperationException($"Multiplicity produced invalid bootstrap frame length {frame.Length}.");
-        return frame;
+        return MultiplicityPacketSerializer.Serialize(packet);
     }
 }

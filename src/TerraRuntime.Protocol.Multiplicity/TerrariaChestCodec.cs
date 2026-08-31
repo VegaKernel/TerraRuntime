@@ -1,8 +1,6 @@
 using global::Multiplicity.Packets;
 using TerraRuntime.Protocol;
 
-using System.Buffers;
-
 namespace TerraRuntime.Protocol.Multiplicity;
 
 public readonly record struct TerrariaChestOpenRequest(short TileX, short TileY);
@@ -59,8 +57,11 @@ public static class TerrariaChestCodec
         if (frame.Payload.Length != RequestOpenPayloadLength)
             return TerrariaChestDecodeResult.InvalidPayloadLength;
 
-        if (!TryDeserialize(in frame, out TerrariaPacket packet) || packet is not ChestGetContents chest)
+        if (!MultiplicityPacketDeserializer.TryDeserialize(in frame, out TerrariaPacket packet) ||
+            packet is not ChestGetContents chest)
+        {
             return TerrariaChestDecodeResult.Malformed;
+        }
 
         request = new TerrariaChestOpenRequest(chest.TileX, chest.TileY);
         return TerrariaChestDecodeResult.Decoded;
@@ -76,8 +77,11 @@ public static class TerrariaChestCodec
         if (frame.Payload.Length != ChestItemPayloadLength)
             return TerrariaChestDecodeResult.InvalidPayloadLength;
 
-        if (!TryDeserialize(in frame, out TerrariaPacket packet) || packet is not ChestItem item)
+        if (!MultiplicityPacketDeserializer.TryDeserialize(in frame, out TerrariaPacket packet) ||
+            packet is not ChestItem item)
+        {
             return TerrariaChestDecodeResult.Malformed;
+        }
 
         state = new TerrariaChestItemState(
             item.ChestId,
@@ -101,8 +105,11 @@ public static class TerrariaChestCodec
             return TerrariaChestDecodeResult.InvalidPayloadLength;
         }
 
-        if (!TryDeserialize(in frame, out TerrariaPacket packet) || packet is not ChestOpen chest)
+        if (!MultiplicityPacketDeserializer.TryDeserialize(in frame, out TerrariaPacket packet) ||
+            packet is not ChestOpen chest)
+        {
             return TerrariaChestDecodeResult.Malformed;
+        }
 
         state = new TerrariaActiveChestState(
             chest.ChestId,
@@ -123,7 +130,7 @@ public static class TerrariaChestCodec
         if (frame.Payload.Length != ChestNameLookupPayloadLength)
             return TerrariaChestDecodeResult.InvalidPayloadLength;
 
-        if (!TryDeserialize(in frame, out TerrariaPacket packet) ||
+        if (!MultiplicityPacketDeserializer.TryDeserialize(in frame, out TerrariaPacket packet) ||
             packet is not ChestName chest ||
             chest.HasName)
         {
@@ -141,40 +148,34 @@ public static class TerrariaChestCodec
         short chestId,
         short chestX,
         short chestY,
-        string? chestName = null)
-    {
-        var packet = new ChestOpen
+        string? chestName = null) =>
+        MultiplicityPacketSerializer.Serialize(new ChestOpen
         {
             ChestId = chestId,
             ChestX = chestX,
             ChestY = chestY,
             ChestName = chestName ?? string.Empty
-        };
-        return Serialize(packet);
-    }
+        });
 
-    public static byte[] EncodeChestItem(in TerrariaChestItemState state)
-    {
-        var packet = new ChestItem
+    public static byte[] EncodeChestItem(in TerrariaChestItemState state) =>
+        MultiplicityPacketSerializer.Serialize(new ChestItem
         {
             ChestId = state.ChestId,
             ItemSlot = state.ItemSlot,
             Stack = state.Stack,
             Prefix = state.Prefix,
             ItemNetId = state.ItemNetId
-        };
-        return Serialize(packet);
-    }
+        });
 
     public static byte[] EncodePlayerChestIndex(byte playerSlot, short chestId) =>
-        Serialize(new SyncPlayerChestIndex
+        MultiplicityPacketSerializer.Serialize(new SyncPlayerChestIndex
         {
             Player = playerSlot,
             Chest = chestId
         });
 
     public static byte[] EncodeChestName(short chestId, short chestX, short chestY, string name) =>
-        Serialize(new ChestName
+        MultiplicityPacketSerializer.Serialize(new ChestName
         {
             ChestId = chestId,
             ChestX = chestX,
@@ -182,51 +183,4 @@ public static class TerrariaChestCodec
             HasName = true,
             Name = name ?? string.Empty
         });
-
-    private static bool TryDeserialize(in TerrariaFrame frame, out TerrariaPacket packet)
-    {
-        try
-        {
-            int length = checked((int)frame.Payload.Length);
-            ReadOnlyMemory<byte> payload;
-            if (frame.Payload.IsSingleSegment)
-            {
-                payload = frame.Payload.First;
-            }
-            else
-            {
-                byte[] buffer = GC.AllocateUninitializedArray<byte>(length);
-                int offset = 0;
-                foreach (ReadOnlyMemory<byte> segment in frame.Payload)
-                {
-                    segment.Span.CopyTo(buffer.AsSpan(offset));
-                    offset += segment.Length;
-                }
-                payload = buffer;
-            }
-
-            return TerrariaPacket.TryDeserializePayload(frame.MessageId, payload, out packet);
-        }
-        catch (Exception exception) when (
-            exception is InvalidDataException or
-            EndOfStreamException or
-            IOException or
-            OverflowException or
-            FormatException or
-            ArgumentException)
-        {
-            packet = null!;
-            return false;
-        }
-    }
-
-    private static byte[] Serialize(TerrariaPacket packet)
-    {
-        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream = new ArrayBufferWriterStream(writer);
-        packet.ToStream(stream);
-        if (writer.WrittenCount < TerrariaFrameDecoderOptions.MinimumFrameLength || writer.WrittenCount > ushort.MaxValue)
-            throw new InvalidOperationException("Encoded chest frame length is outside the Terraria frame envelope.");
-        return writer.WrittenSpan.ToArray();
-    }
 }

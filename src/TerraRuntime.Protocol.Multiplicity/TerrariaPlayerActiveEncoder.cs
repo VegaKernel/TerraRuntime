@@ -1,4 +1,3 @@
-using System.Buffers;
 using global::Multiplicity.Packets;
 
 namespace TerraRuntime.Protocol.Multiplicity;
@@ -18,9 +17,6 @@ public static class TerrariaPlayerActiveEncoder
             Active = active
         };
 
-        var writer = new ArrayBufferWriter<byte>(packet.GetLength() + TerrariaPacket.PacketHeaderLength);
-        using var stream = new ArrayBufferWriterStream(writer);
-        packet.ToStream(stream);
-        return writer.WrittenSpan.ToArray();
+        return MultiplicityPacketSerializer.Serialize(packet);
     }
 }
