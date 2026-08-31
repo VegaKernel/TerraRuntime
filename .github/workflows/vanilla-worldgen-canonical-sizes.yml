@@ -1,0 +1,100 @@
+name: Vanilla Worldgen Canonical Sizes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationContracts.cs'
+      - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationPassContracts.cs'
+      - 'src/TerraRuntime.Core/Worlds/Generation/RuntimeWorldGenerationExecutor.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
+      - 'src/TerraRuntime.World/WorldFileFreshComposer326.cs'
+      - 'src/TerraRuntime.World/WorldFileLoader.ReuseTiles.cs'
+      - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrap1458.cs'
+      - 'src/TerraRuntime.World/SourceBackedVanillaWorldGenerationProvider1458.cs'
+      - 'src/TerraRuntime.World/VanillaEarlyWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaMidWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaDungeonWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaJungleStructureWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaPostSettleWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaChestPlacementWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaLateStructureWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaSurfaceFinishWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaStartingNpcWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaVegetationWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaUndergroundFinishWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaMicroBiomesWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime.World/VanillaFinalWorldGenerationPipeline1458.cs'
+      - 'src/TerraRuntime/RuntimeWorldCreationPersistencePipeline.cs'
+      - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
+      - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
+      - '.github/workflows/vanilla-worldgen-canonical-sizes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-vanilla-worldgen-canonical-sizes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-and-reload:
+    name: ${{ matrix.name }} ${{ matrix.width }}x${{ matrix.height }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: medium
+            width: 6400
+            height: 1800
+          - name: large
+            width: 8400
+            height: 2400
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Build TerraRuntime
+        run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+
+      - name: Generate vanilla ${{ matrix.name }} world
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          world="$GITHUB_WORKSPACE/artifacts/terraruntime-vanilla-${{ matrix.name }}.wld"
+          /usr/bin/time -v dotnet run \
+            --project src/TerraRuntime/TerraRuntime.csproj \
+            -c Release \
+            --no-build \
+            -- --worldgen-create-smoke "$world" terraruntime:vanilla ${{ matrix.width }} ${{ matrix.height }} \
+            2> "$GITHUB_WORKSPACE/artifacts/worldgen-${{ matrix.name }}-resource-usage.txt"
+          test -s "$world"
+          cat "$GITHUB_WORKSPACE/artifacts/worldgen-${{ matrix.name }}-resource-usage.txt"
+
+      - name: Verify generated world with TerraRuntime loader
+        run: >-
+          dotnet run
+          --project tools/TerraRuntime.WorldVerify/TerraRuntime.WorldVerify.csproj
+          -c Release
+          -- artifacts/terraruntime-vanilla-${{ matrix.name }}.wld
+
+      - name: Upload canonical-size evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vanilla-worldgen-${{ matrix.name }}-${{ github.sha }}
+          path: |
+            artifacts/terraruntime-vanilla-${{ matrix.name }}.wld
+            artifacts/worldgen-${{ matrix.name }}-resource-usage.txt
+          if-no-files-found: warn
+          retention-days: 7
