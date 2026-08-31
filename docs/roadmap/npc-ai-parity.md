@@ -14,7 +14,7 @@ The executable truth is `VanillaNpcAiCoverageCatalog`. `FullVanillaAiParity` rem
 | Eye of Cthulhu | yes | partial | partial | classic phases/dashes, Servant intents and Expert phase one | no |
 | Servant of Cthulhu | yes | partial | partial | source-backed flyer pursuit | no |
 | Skeleton | yes | partial | partial | profiled AI_003 `1.5f` traversal/check-active/event door pressure | no |
-| King Slime | yes | partial | partial | teleport environment and minion intents | no |
+| King Slime | yes | partial | partial | teleport/despawn, Good World scaling and classic/Expert minion intents | no |
 | 23 additional hostile AI_001 types | yes | partial | partial | typed timer bonus/jump-window profiles | no |
 | 12 additional hostile AI_002 types | yes | partial | partial | typed normal/special/enraged steering profiles | no |
 | 17 additional hostile AI_005 types | yes | partial | partial | typed pursuit/bounce/water profiles | no |
@@ -85,10 +85,14 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 
 - [x] import the source-backed Eye of Cthulhu Expert phase-one parameters and synchronized Servant intent cadence while keeping later RNG-dependent states fail-closed;
 - [ ] finish Eye of Cthulhu expert/master/seed branches and all irreversible effects;
-- [ ] finish King Slime difficulty/seed branches, despawn, progression and loot integration;
+- [x] finish King Slime `AI_015` difficulty/seed branches and despawn: Good World scale/air-speed behavior plus source-ordered Expert `1/4` Spiked Slime minion selection are authoritative; the pinned method has no separate Master AI branch;
+- [x] finish King Slime authoritative death lifecycle and `downedSlimeKing` progression persistence;
+- [ ] finish King Slime NPC-specific loot and remaining death-time side effects;
 - [ ] add remaining pre-Hardmode bosses with complete child/projectile ownership;
 - [ ] add Hardmode, event and endgame bosses;
 - [ ] boss bars, announcements, progression transitions and multiplayer targeting parity.
+
+King Slime still intentionally reports `FullVanillaAiParity = false`: the AI/difficulty/seed/despawn slice is distinct from loot and death-side-effect parity. Expert minion RNG consumes the source `Next(4)` between spawn coordinates and velocity/`ai[0]` rolls, preserving downstream RNG order instead of merely swapping the child type after the fact.
 
 ## N4 — Town, friendly and special NPCs
 

@@ -26,7 +26,8 @@ public enum VanillaNpcAiCapability : uint
     WormHeadWorldSteeringSlice = 1u << 17,
     WormChainSpawnSlice = 1u << 18,
     WormSplitRepairSlice = 1u << 19,
-    BossExpertPhaseOneSlice = 1u << 20
+    BossExpertPhaseOneSlice = 1u << 20,
+    KingSlimeDifficultySeedSlice = 1u << 21
 }
 
 /// <summary>
@@ -120,7 +121,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcIds.KingSlime,
             OrdinaryCore |
             VanillaNpcAiCapability.ChildSpawnSlice |
-            VanillaNpcAiCapability.TeleportEnvironmentSlice);
+            VanillaNpcAiCapability.TeleportEnvironmentSlice |
+            VanillaNpcAiCapability.KingSlimeDifficultySeedSlice);
 
         int index = 7;
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)

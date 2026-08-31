@@ -34,6 +34,8 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             out VanillaNpcAiCoverage kingSlime));
         Assert.True(kingSlime.Has(VanillaNpcAiCapability.ChildSpawnSlice));
         Assert.True(kingSlime.Has(VanillaNpcAiCapability.TeleportEnvironmentSlice));
+        Assert.True(kingSlime.Has(VanillaNpcAiCapability.KingSlimeDifficultySeedSlice));
+        Assert.False(kingSlime.FullVanillaAiParity);
 
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
             VanillaNpcIds.EyeOfCthulhu,

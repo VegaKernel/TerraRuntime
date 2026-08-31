@@ -317,12 +317,16 @@ public sealed class VanillaNpcTargetingAiStepper :
         {
             int bottomX = (int)(proposed.PositionX + _random.NextInt32(0, hitbox.Width - 32));
             int bottomY = (int)(proposed.PositionY + _random.NextInt32(0, hitbox.Height - 32));
+            NpcTypeId minionType = VanillaNpcIds.BlueSlime;
+            if (_context.ExpertMode && _random.NextInt32(0, 4) == 0)
+                minionType = VanillaNpcIds.SpikedSlime;
+
             float velocityX = _random.NextInt32(-15, 16) * 0.1f;
             float velocityY = _random.NextInt32(-30, 1) * 0.1f;
             float ai0 = -1000f * _random.NextInt32(0, 3);
 
             destination[index] = new NpcAiSpawnIntent(
-                Type: VanillaNpcIds.BlueSlime,
+                Type: minionType,
                 BottomX: bottomX,
                 BottomY: bottomY,
                 VelocityX: velocityX,
