@@ -1,0 +1,173 @@
+name: Vanilla Worldgen Reference Differential
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.World/Vanilla*.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
+      - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
+      - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
+      - 'tools/TerraRuntime.WorldCompare/**'
+      - '.github/workflows/vanilla-worldgen-reference-differential.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-vanilla-reference-differential-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  small-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SEED: '8675309'
+      WIDTH: '4200'
+      HEIGHT: '1200'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Build runtime and comparison tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+          dotnet build tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj -c Release
+
+      - name: Generate TerraRuntime candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/reference-differential
+          candidate="$GITHUB_WORKSPACE/artifacts/reference-differential/terraruntime-${SEED}.wld"
+          dotnet run \
+            --project src/TerraRuntime/TerraRuntime.csproj \
+            -c Release \
+            --no-build \
+            -- --worldgen-create-smoke "$candidate" terraruntime:vanilla "$WIDTH" "$HEIGHT" "$SEED"
+          test -s "$candidate"
+
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+
+          expected="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          echo "Pinned TerrariaServer.exe SHA-256 verified."
+
+      - name: Generate official reference world
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="$(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.bin.x86_64' -print -quit)"
+          test -n "$server"
+          chmod +x "$server"
+          server="$(realpath "$server")"
+          server_dir="$(dirname "$server")"
+          reference="$GITHUB_WORKSPACE/artifacts/reference-differential/official-${SEED}.wld"
+          log="$GITHUB_WORKSPACE/artifacts/reference-differential/official-${SEED}.log"
+          config="$GITHUB_WORKSPACE/artifacts/reference-differential/official-${SEED}.config.txt"
+
+          cat > "$config" <<EOF
+          world=$reference
+          autocreate=1
+          seed=$SEED
+          worldname=TerraRuntimeReference$SEED
+          difficulty=0
+          maxplayers=1
+          port=17793
+          secure=0
+          upnp=0
+          npcstream=0
+          priority=0
+          EOF
+
+          (
+            cd "$server_dir"
+            "$server" -config "$config"
+          ) > "$log" 2>&1 &
+          pid=$!
+
+          generated=false
+          for _ in $(seq 1 300); do
+            if [[ -s "$reference" ]]; then
+              generated=true
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "$generated" != true ]]; then
+            cat "$log" >&2
+            kill -KILL "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+            echo "Official TerrariaServer did not generate the reference world." >&2
+            exit 1
+          fi
+
+          sleep 2
+          kill -TERM "$pid" 2>/dev/null || true
+          for _ in $(seq 1 10); do
+            if ! kill -0 "$pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          kill -KILL "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+          test -s "$reference"
+          cat "$log"
+
+      - name: Compare structural fingerprints
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \
+            -c Release \
+            --no-build \
+            -- \
+            "artifacts/reference-differential/official-${SEED}.wld" \
+            "artifacts/reference-differential/terraruntime-${SEED}.wld" \
+            --json "artifacts/reference-differential/comparison-${SEED}.json"
+          cat "artifacts/reference-differential/comparison-${SEED}.json"
+
+      - name: Upload differential evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vanilla-reference-differential-${{ env.SEED }}-${{ github.sha }}
+          path: |
+            artifacts/reference-differential/comparison-${{ env.SEED }}.json
+            artifacts/reference-differential/official-${{ env.SEED }}.log
+            artifacts/reference-differential/official-${{ env.SEED }}.config.txt
+            artifacts/reference-differential/official-${{ env.SEED }}.wld
+            artifacts/reference-differential/terraruntime-${{ env.SEED }}.wld
+          if-no-files-found: warn
+          retention-days: 3
