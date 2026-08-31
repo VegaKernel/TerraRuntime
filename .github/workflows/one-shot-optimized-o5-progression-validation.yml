@@ -29,6 +29,9 @@ jobs:
       - name: Add canonical optimized crash regression
         run: python3 tools/ci/apply_optimized_crash_regression.py
 
+      - name: Repair parallel King Slime compile regression
+        run: python3 tools/ci/apply_parallel_compile_regression_fix.py
+
       - name: Validate bilingual documentation
         run: |
           python3 tools/ci/test_check_documentation.py
@@ -56,19 +59,22 @@ jobs:
           rm .github/workflows/one-shot-optimized-o5-progression-validation.yml
           rm tools/ci/apply_optimized_o5_progression_validation.py
           rm tools/ci/apply_optimized_crash_regression.py
+          rm tools/ci/apply_parallel_compile_regression_fix.py
           git config user.name "Xekep"
           git config user.email "Xekep@users.noreply.github.com"
           git add \
             src/TerraRuntime.World/Generation/Optimized/OptimizedProgressionValidationWorldGenerationProvider.cs \
             src/TerraRuntime/BuiltInWorldGeneratorSource.cs \
             tests/TerraRuntime.Tests/OptimizedWorldGenerationProviderTests.cs \
+            tests/TerraRuntime.Tests/VanillaKingSlimeDifficultyLootTests.cs \
             docs/roadmap/optimized-worldgen.md \
             docs/en/optimized-world-generation.md \
             docs/ru/optimized-world-generation.md \
             .github/workflows/one-shot-optimized-o5-progression-validation.yml \
             tools/ci/apply_optimized_o5_progression_validation.py \
-            tools/ci/apply_optimized_crash_regression.py
-          git commit -m "Close optimized O5 and canonical generation crash gate" -m "Promote the final optimized progression validator into the built-in provider chain, fix request ref binding, enforce area-scaled ore budgets, complete progression-object footprints, connected dungeon/hive/temple interiors and excavation-aware reachability, and add a canonical 4200x1200 regression. Prove both the in-memory candidate path and production .wld persistence path before committing."
+            tools/ci/apply_optimized_crash_regression.py \
+            tools/ci/apply_parallel_compile_regression_fix.py
+          git commit -m "Close optimized O5 and canonical generation crash gate" -m "Promote the final optimized progression validator into the built-in provider chain, fix request ref binding, enforce area-scaled ore budgets, complete progression-object footprints, connected dungeon/hive/temple interiors and excavation-aware reachability, and add a canonical 4200x1200 regression. Repair the parallel King Slime projectile provenance test regression and prove both the in-memory candidate path and production .wld persistence path before committing."
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
