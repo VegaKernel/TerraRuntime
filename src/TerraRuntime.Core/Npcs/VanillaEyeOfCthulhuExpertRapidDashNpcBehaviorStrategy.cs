@@ -5,9 +5,9 @@ namespace TerraRuntime.Core;
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 Expert Eye of Cthulhu rapid-dash extension. The ordinary Eye strategy
-/// remains authoritative for classic, phase-one, transformation and deterministic phase-two motion; this decorator
-/// owns only the RNG-shaped phase-two boundaries that require live player velocity and Main.rand-equivalent order.
-/// Good World remains deliberately fail-closed in the wrapped strategy.
+/// remains authoritative for phase-one, transformation and deterministic phase-two motion; this decorator owns the
+/// RNG-shaped phase-two boundaries that require live player velocity and Main.rand-equivalent ordering. Good World
+/// uses the same rapid-dash RNG path; its LOS-only post-cycle re-entry remains a separate world-query boundary.
 /// </summary>
 internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
@@ -41,7 +41,6 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
         if (definition.AiStyle != VanillaNpcAiStyles.EyeOfCthulhu ||
             !definition.IsBoss ||
             !context.ExpertMode ||
-            context.GoodWorld ||
             context.DayTime)
         {
             return _inner.TryStep(in npc, in definition, context, inner, out next);
@@ -123,25 +122,21 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
     {
         bool lowLife = (float)life < lifeMax * LowLifeFraction;
         bool criticalLife = (float)life < lifeMax * CriticalLifeFraction;
-        float centerX = npc.PositionX + definition.Width * 0.5f;
-        float centerY = npc.PositionY + definition.Height * 0.5f;
+        NpcSnapshot working = npc;
+        float centerX = working.PositionX + definition.Width * 0.5f;
+        float centerY = working.PositionY + definition.Height * 0.5f;
 
-        if (npc.Ai.Ai3 == 4f && lowLife && centerY > current.CenterY)
+        if (working.Ai.Ai3 == 4f && lowLife && centerY > current.CenterY)
         {
-            ushort resetTarget = ResolveClosestTarget(in npc, in definition, context, out _) ?? npc.Target;
-            next = Build(
-                in npc,
-                in definition,
-                npc.VelocityX,
-                npc.VelocityY,
-                resetTarget,
-                ai1: 0f,
-                ai2: 0f,
-                ai3: 0f);
-            return true;
+            ushort resetTarget = ResolveClosestTarget(in working, in definition, context, out _) ?? working.Target;
+            working = working with
+            {
+                Target = resetTarget,
+                Ai = new NpcAiState(3f, 0f, 0f, 0f)
+            };
         }
 
-        ushort? selectedSlot = ResolveClosestTarget(in npc, in definition, context, out VanillaNpcTargetCandidate selected);
+        ushort? selectedSlot = ResolveClosestTarget(in working, in definition, context, out VanillaNpcTargetCandidate selected);
         if (selectedSlot is null ||
             !float.IsFinite(selected.CenterX) ||
             !float.IsFinite(selected.CenterY) ||
@@ -152,11 +147,13 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
             return false;
         }
 
+        centerX = working.PositionX + definition.Width * 0.5f;
+        centerY = working.PositionY + definition.Height * 0.5f;
         float speed = RapidDashSpeed;
         float prediction = MathF.Abs(selected.VelocityX) + MathF.Abs(selected.VelocityY) / 4f;
         prediction += 10f - prediction;
         prediction = Math.Clamp(prediction, 5f, 15f);
-        if (npc.Ai.Ai2 == -1f && !criticalLife)
+        if (working.Ai.Ai2 == -1f && !criticalLife)
         {
             prediction *= 4f;
             speed *= 1.3f;
@@ -229,14 +226,14 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
         }
 
         next = Build(
-            in npc,
+            in working,
             in definition,
             velocityX,
             velocityY,
             selectedSlot.Value,
             ai1: 4f,
-            ai2: npc.Ai.Ai2,
-            ai3: npc.Ai.Ai3);
+            ai2: working.Ai.Ai2,
+            ai3: working.Ai.Ai3);
         return true;
     }
 
