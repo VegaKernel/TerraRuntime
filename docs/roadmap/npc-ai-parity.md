@@ -91,7 +91,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [ ] finish Eye of Cthulhu Good World reflection/re-entry, damage/defense difficulty projection and remaining irreversible/cosmetic effects;
 - [x] finish King Slime `AI_015` difficulty/seed branches and despawn: Good World scale/air-speed behavior plus source-ordered Expert `1/4` Spiked Slime minion selection are authoritative; the pinned method has no separate Master AI branch;
 - [x] finish King Slime authoritative death lifecycle and `downedSlimeKing` progression persistence;
-- [x] import King Slime normal-mode NPC-specific loot plus Expert/Master source-ordered gameplay rule semantics, committed-hit `playerInteraction` accounting, active-recipient filtering, Master relic delivery and per-player Master pet placement;
+- [x] import King Slime normal-mode NPC-specific loot plus Expert/Master source-ordered gameplay rule semantics, packet-28-timed `playerInteraction` accounting, active-recipient filtering, Master relic delivery and per-player Master pet placement;
 - [ ] wire the concrete packet-90 instanced Boss Bag encoder/`54000`-tick slot lease and remaining King Slime death-time world effects (Slime Rain termination and first-kill Nerdy Slime unlock/spawn);
 - [ ] add remaining pre-Hardmode bosses with complete child/projectile ownership;
 - [ ] add Hardmode, event and endgame bosses;
