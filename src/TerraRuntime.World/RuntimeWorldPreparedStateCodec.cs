@@ -199,7 +199,8 @@ internal static class RuntimeWorldPreparedStateCodec
         WriteBools(writer,
             m.Crimson, m.DownedBoss1, m.DownedBoss2, m.DownedBoss3, m.DownedQueenBee,
             m.DownedMechBoss1, m.DownedMechBoss2, m.DownedMechBoss3, m.DownedMechBossAny,
-            m.DownedPlantBoss, m.DownedGolemBoss, m.DownedSlimeKing, m.DownedGoblins,
+            m.DownedPlantBoss, m.DownedGolemBoss, m.DownedSlimeKing,
+            m.SavedGoblin, m.SavedWizard, m.SavedMechanic, m.DownedGoblins,
             m.DownedClown, m.DownedFrost, m.DownedPirates, m.ShadowOrbSmashed, m.HardMode);
 
         writer.Write(m.SlimeRainTime);
@@ -236,7 +237,8 @@ internal static class RuntimeWorldPreparedStateCodec
             m.DownedMoonlord, m.DownedHalloweenKing, m.DownedHalloweenTree,
             m.DownedChristmasIceQueen, m.DownedChristmasSantank, m.DownedChristmasTree,
             m.DownedTowerSolar, m.DownedTowerVortex, m.DownedTowerNebula, m.DownedTowerStardust,
-            m.PartyManual, m.PartyGenuine, m.SandstormHappening);
+            m.PartyManual, m.PartyGenuine, m.SandstormHappening,
+            m.SavedAngler, m.SavedStylist, m.SavedTaxCollector, m.SavedGolfer, m.SavedBartender);
         writer.Write(m.SandstormIntendedSeverity);
         WriteBools(writer, m.DownedDd2InvasionT1, m.DownedDd2InvasionT2, m.DownedDd2InvasionT3,
             m.CombatBookWasUsed, m.LanternNightGenuine, m.LanternNightManual);
@@ -244,7 +246,10 @@ internal static class RuntimeWorldPreparedStateCodec
         WriteBools(writer, m.ForceHalloweenForToday, m.ForceXMasForToday,
             m.BoughtCat, m.BoughtDog, m.BoughtBunny, m.DownedEmpressOfLight,
             m.DownedQueenSlime, m.DownedDeerclops, m.UnlockedSlimeBlueSpawn,
-            m.UnlockedTruffleSpawn, m.CombatBookVolumeTwoWasUsed, m.PeddlersSatchelWasUsed,
+            m.UnlockedMerchantSpawn, m.UnlockedDemolitionistSpawn, m.UnlockedPartyGirlSpawn,
+            m.UnlockedDyeTraderSpawn, m.UnlockedTruffleSpawn, m.UnlockedArmsDealerSpawn,
+            m.UnlockedNurseSpawn, m.UnlockedPrincessSpawn,
+            m.CombatBookVolumeTwoWasUsed, m.PeddlersSatchelWasUsed,
             m.UnlockedSlimeGreenSpawn, m.UnlockedSlimeOldSpawn, m.UnlockedSlimePurpleSpawn,
             m.UnlockedSlimeRainbowSpawn, m.UnlockedSlimeRedSpawn, m.UnlockedSlimeYellowSpawn,
             m.UnlockedSlimeCopperSpawn, m.FastForwardTimeToDusk);
@@ -284,7 +289,7 @@ internal static class RuntimeWorldPreparedStateCodec
         short dungeonX = reader.ReadInt16();
         short dungeonY = reader.ReadInt16();
 
-        bool[] progression = ReadBools(reader, 18);
+        bool[] progression = ReadBools(reader, 21);
         double slimeRainTime = reader.ReadDouble();
         byte sundialCooldown = reader.ReadByte();
         bool raining = reader.ReadBoolean();
@@ -310,11 +315,11 @@ internal static class RuntimeWorldPreparedStateCodec
         byte cloudCount = reader.ReadByte();
         float windSpeed = reader.ReadSingle();
 
-        bool[] eventFlags = ReadBools(reader, 17);
+        bool[] eventFlags = ReadBools(reader, 22);
         float sandstormIntendedSeverity = reader.ReadSingle();
         bool[] dd2AndLantern = ReadBools(reader, 6);
         byte[] treeTopVariations = ReadBytes(reader, 13, exact: true);
-        bool[] lateFlags = ReadBools(reader, 20);
+        bool[] lateFlags = ReadBools(reader, 27);
         byte moondialCooldown = reader.ReadByte();
         bool[] foreverFlags = ReadBools(reader, 2);
         sbyte invasionType = reader.ReadSByte();
@@ -372,12 +377,15 @@ internal static class RuntimeWorldPreparedStateCodec
             DownedPlantBoss = progression[9],
             DownedGolemBoss = progression[10],
             DownedSlimeKing = progression[11],
-            DownedGoblins = progression[12],
-            DownedClown = progression[13],
-            DownedFrost = progression[14],
-            DownedPirates = progression[15],
-            ShadowOrbSmashed = progression[16],
-            HardMode = progression[17],
+            SavedGoblin = progression[12],
+            SavedWizard = progression[13],
+            SavedMechanic = progression[14],
+            DownedGoblins = progression[15],
+            DownedClown = progression[16],
+            DownedFrost = progression[17],
+            DownedPirates = progression[18],
+            ShadowOrbSmashed = progression[19],
+            HardMode = progression[20],
             SlimeRainTime = slimeRainTime,
             SundialCooldown = sundialCooldown,
             Raining = raining,
@@ -416,6 +424,11 @@ internal static class RuntimeWorldPreparedStateCodec
             PartyManual = eventFlags[14],
             PartyGenuine = eventFlags[15],
             SandstormHappening = eventFlags[16],
+            SavedAngler = eventFlags[17],
+            SavedStylist = eventFlags[18],
+            SavedTaxCollector = eventFlags[19],
+            SavedGolfer = eventFlags[20],
+            SavedBartender = eventFlags[21],
             SandstormIntendedSeverity = sandstormIntendedSeverity,
             DownedDd2InvasionT1 = dd2AndLantern[0],
             DownedDd2InvasionT2 = dd2AndLantern[1],
@@ -433,17 +446,24 @@ internal static class RuntimeWorldPreparedStateCodec
             DownedQueenSlime = lateFlags[6],
             DownedDeerclops = lateFlags[7],
             UnlockedSlimeBlueSpawn = lateFlags[8],
-            UnlockedTruffleSpawn = lateFlags[9],
-            CombatBookVolumeTwoWasUsed = lateFlags[10],
-            PeddlersSatchelWasUsed = lateFlags[11],
-            UnlockedSlimeGreenSpawn = lateFlags[12],
-            UnlockedSlimeOldSpawn = lateFlags[13],
-            UnlockedSlimePurpleSpawn = lateFlags[14],
-            UnlockedSlimeRainbowSpawn = lateFlags[15],
-            UnlockedSlimeRedSpawn = lateFlags[16],
-            UnlockedSlimeYellowSpawn = lateFlags[17],
-            UnlockedSlimeCopperSpawn = lateFlags[18],
-            FastForwardTimeToDusk = lateFlags[19],
+            UnlockedMerchantSpawn = lateFlags[9],
+            UnlockedDemolitionistSpawn = lateFlags[10],
+            UnlockedPartyGirlSpawn = lateFlags[11],
+            UnlockedDyeTraderSpawn = lateFlags[12],
+            UnlockedTruffleSpawn = lateFlags[13],
+            UnlockedArmsDealerSpawn = lateFlags[14],
+            UnlockedNurseSpawn = lateFlags[15],
+            UnlockedPrincessSpawn = lateFlags[16],
+            CombatBookVolumeTwoWasUsed = lateFlags[17],
+            PeddlersSatchelWasUsed = lateFlags[18],
+            UnlockedSlimeGreenSpawn = lateFlags[19],
+            UnlockedSlimeOldSpawn = lateFlags[20],
+            UnlockedSlimePurpleSpawn = lateFlags[21],
+            UnlockedSlimeRainbowSpawn = lateFlags[22],
+            UnlockedSlimeRedSpawn = lateFlags[23],
+            UnlockedSlimeYellowSpawn = lateFlags[24],
+            UnlockedSlimeCopperSpawn = lateFlags[25],
+            FastForwardTimeToDusk = lateFlags[26],
             MoondialCooldown = moondialCooldown,
             ForceHalloweenForever = foreverFlags[0],
             ForceXMasForever = foreverFlags[1],

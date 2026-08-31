@@ -64,6 +64,9 @@ public sealed class WorldFileRuntimeMetadata
     public bool DownedPlantBoss { get; init; }
     public bool DownedGolemBoss { get; init; }
     public bool DownedSlimeKing { get; init; }
+    public bool SavedGoblin { get; init; }
+    public bool SavedWizard { get; init; }
+    public bool SavedMechanic { get; init; }
     public bool DownedGoblins { get; init; }
     public bool DownedClown { get; init; }
     public bool DownedFrost { get; init; }
@@ -93,6 +96,12 @@ public sealed class WorldFileRuntimeMetadata
     public bool CloudBackgroundActive { get; init; }
     public byte CloudCount { get; init; }
     public float WindSpeed { get; init; }
+
+    public bool SavedAngler { get; init; }
+    public bool SavedStylist { get; init; }
+    public bool SavedTaxCollector { get; init; }
+    public bool SavedGolfer { get; init; }
+    public bool SavedBartender { get; init; }
 
     public bool FastForwardTimeToDawn { get; init; }
     public bool DownedFishron { get; init; }
@@ -131,7 +140,14 @@ public sealed class WorldFileRuntimeMetadata
     public bool DownedQueenSlime { get; init; }
     public bool DownedDeerclops { get; init; }
     public bool UnlockedSlimeBlueSpawn { get; init; }
+    public bool UnlockedMerchantSpawn { get; init; }
+    public bool UnlockedDemolitionistSpawn { get; init; }
+    public bool UnlockedPartyGirlSpawn { get; init; }
+    public bool UnlockedDyeTraderSpawn { get; init; }
     public bool UnlockedTruffleSpawn { get; init; }
+    public bool UnlockedArmsDealerSpawn { get; init; }
+    public bool UnlockedNurseSpawn { get; init; }
+    public bool UnlockedPrincessSpawn { get; init; }
     public bool CombatBookVolumeTwoWasUsed { get; init; }
     public bool PeddlersSatchelWasUsed { get; init; }
     public bool UnlockedSlimeGreenSpawn { get; init; }

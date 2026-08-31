@@ -178,9 +178,9 @@ public static class WorldFileRuntimeMetadataParser
             !ReadBool(ref reader, out bool downedPlantBoss) ||
             !ReadBool(ref reader, out bool downedGolemBoss) ||
             !ReadBool(ref reader, out bool downedSlimeKing) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
+            !ReadBool(ref reader, out bool savedGoblin) ||
+            !ReadBool(ref reader, out bool savedWizard) ||
+            !ReadBool(ref reader, out bool savedMechanic) ||
             !ReadBool(ref reader, out bool downedGoblins) ||
             !ReadBool(ref reader, out bool downedClown) ||
             !ReadBool(ref reader, out bool downedFrost) ||
@@ -239,11 +239,11 @@ public static class WorldFileRuntimeMetadataParser
                 return Finish(result, ref reader, out bytesConsumed);
         }
 
-        if (!ReadBool(ref reader, out _) ||
+        if (!ReadBool(ref reader, out bool savedAngler) ||
             !reader.TryReadInt32(out _) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
+            !ReadBool(ref reader, out bool savedStylist) ||
+            !ReadBool(ref reader, out bool savedTaxCollector) ||
+            !ReadBool(ref reader, out bool savedGolfer) ||
             !reader.TryReadInt32(out _) ||
             !reader.TryReadInt32(out _))
         {
@@ -294,7 +294,7 @@ public static class WorldFileRuntimeMetadataParser
             !reader.TryReadInt32(out _) ||
             !reader.TryReadSingle(out float sandstormSeverity) || !float.IsFinite(sandstormSeverity) ||
             !reader.TryReadSingle(out float sandstormIntendedSeverity) || !float.IsFinite(sandstormIntendedSeverity) ||
-            !ReadBool(ref reader, out _) ||
+            !ReadBool(ref reader, out bool savedBartender) ||
             !ReadBool(ref reader, out bool downedDd2T1) ||
             !ReadBool(ref reader, out bool downedDd2T2) ||
             !ReadBool(ref reader, out bool downedDd2T3) ||
@@ -335,14 +335,14 @@ public static class WorldFileRuntimeMetadataParser
             !ReadBool(ref reader, out bool downedQueenSlime) ||
             !ReadBool(ref reader, out bool downedDeerclops) ||
             !ReadBool(ref reader, out bool unlockedSlimeBlueSpawn) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
+            !ReadBool(ref reader, out bool unlockedMerchantSpawn) ||
+            !ReadBool(ref reader, out bool unlockedDemolitionistSpawn) ||
+            !ReadBool(ref reader, out bool unlockedPartyGirlSpawn) ||
+            !ReadBool(ref reader, out bool unlockedDyeTraderSpawn) ||
             !ReadBool(ref reader, out bool unlockedTruffleSpawn) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
+            !ReadBool(ref reader, out bool unlockedArmsDealerSpawn) ||
+            !ReadBool(ref reader, out bool unlockedNurseSpawn) ||
+            !ReadBool(ref reader, out bool unlockedPrincessSpawn) ||
             !ReadBool(ref reader, out bool combatBookVolumeTwoWasUsed) ||
             !ReadBool(ref reader, out bool peddlersSatchelWasUsed) ||
             !ReadBool(ref reader, out bool unlockedSlimeGreenSpawn) ||
@@ -443,6 +443,9 @@ public static class WorldFileRuntimeMetadataParser
             DownedPlantBoss = downedPlantBoss,
             DownedGolemBoss = downedGolemBoss,
             DownedSlimeKing = downedSlimeKing,
+            SavedGoblin = savedGoblin,
+            SavedWizard = savedWizard,
+            SavedMechanic = savedMechanic,
             DownedGoblins = downedGoblins,
             DownedClown = downedClown,
             DownedFrost = downedFrost,
@@ -470,6 +473,11 @@ public static class WorldFileRuntimeMetadataParser
             CloudBackgroundActive = cloudBackground >= 1,
             CloudCount = (byte)cloudCountRaw,
             WindSpeed = windSpeed,
+            SavedAngler = savedAngler,
+            SavedStylist = savedStylist,
+            SavedTaxCollector = savedTaxCollector,
+            SavedGolfer = savedGolfer,
+            SavedBartender = savedBartender,
             FastForwardTimeToDawn = fastForwardTimeToDawn,
             DownedFishron = downedFishron,
             DownedMartians = downedMartians,
@@ -504,7 +512,14 @@ public static class WorldFileRuntimeMetadataParser
             DownedQueenSlime = downedQueenSlime,
             DownedDeerclops = downedDeerclops,
             UnlockedSlimeBlueSpawn = unlockedSlimeBlueSpawn,
+            UnlockedMerchantSpawn = unlockedMerchantSpawn,
+            UnlockedDemolitionistSpawn = unlockedDemolitionistSpawn,
+            UnlockedPartyGirlSpawn = unlockedPartyGirlSpawn,
+            UnlockedDyeTraderSpawn = unlockedDyeTraderSpawn,
             UnlockedTruffleSpawn = unlockedTruffleSpawn,
+            UnlockedArmsDealerSpawn = unlockedArmsDealerSpawn,
+            UnlockedNurseSpawn = unlockedNurseSpawn,
+            UnlockedPrincessSpawn = unlockedPrincessSpawn,
             CombatBookVolumeTwoWasUsed = combatBookVolumeTwoWasUsed,
             PeddlersSatchelWasUsed = peddlersSatchelWasUsed,
             UnlockedSlimeGreenSpawn = unlockedSlimeGreenSpawn,
