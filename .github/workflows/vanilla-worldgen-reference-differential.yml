@@ -45,6 +45,27 @@ jobs:
           dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
           dotnet build tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj -c Release
 
+      - name: Verify WorldCompare combined CLI contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          dotnet run \
+            --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \
+            -c Release \
+            --no-build \
+            -- \
+            --missing-reference.wld \
+            --missing-candidate.wld \
+            --json /tmp/worldcompare-contract.json \
+            --enforce
+          rc=$?
+          set -e
+          if [[ "$rc" -ne 3 ]]; then
+            echo "Expected combined --json + --enforce invocation to reach reference loading and return 3; got $rc." >&2
+            exit 1
+          fi
+
       - name: Generate TerraRuntime candidate
         shell: bash
         run: |
@@ -178,7 +199,7 @@ jobs:
         with:
           name: vanilla-reference-differential-${{ env.SEED }}-${{ github.sha }}
           path: |
-            artifacts/reference-differential/comparison-${{ env.SEED }}.json
+            artifacts/reference-differential/comparison-${SEED}.json
             artifacts/reference-differential/official-${SEED}.log
             artifacts/reference-differential/official-${SEED}.config.txt
             artifacts/reference-differential/official-${SEED}.wld
