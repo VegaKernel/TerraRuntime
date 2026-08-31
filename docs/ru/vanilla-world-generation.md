@@ -55,7 +55,7 @@ flowchart LR
 - seed profile обычный/default;
 - размер мира является одним из canonical Terraria sizes.
 
-Special/secret seeds и synthetic noncanonical dimensions намеренно воспроизводят compatibility provider. Ordinary-world source-backed implementations не используются как приблизительная подмена их собственных правил генерации.
+Synthetic noncanonical dimensions намеренно воспроизводят compatibility provider. Special и secret profiles также используют его, кроме узкого source-backed исключения: чистый профиль `Don't Dig Up`/Remix на canonical размере исполняет проверенные ветви `Reset` и `Terrain`, а затем возвращается к compatibility-проходам. Он не включает ordinary source-shaped overlays или canonical structural checks. Zenith, комбинации специальных переключателей и любой secret switch остаются только compatibility-путём, поскольку их поздние pass-модификации ещё не перенесены.
 
 Production-регистрация в `BuiltInWorldGeneratorSource` разрешает `terraruntime:vanilla` в `SourceBackedVanillaWorldGenerationFinal1458`. Более ранние overlay-классы остаются внутренними слоями этой цепочки, а не отдельными публичными генераторами.
 

@@ -74,6 +74,19 @@ public readonly record struct VanillaWorldSeedProfile1458(
     public bool Has(VanillaSpecialWorldSeed1458 value) => (Special & value) == value;
     public bool Has(VanillaSecretWorldSeed1458 value) => (Secret & value) == value;
     public bool IsDefault => Special == VanillaSpecialWorldSeed1458.None && Secret == VanillaSecretWorldSeed1458.None;
+
+    /// <summary>
+    /// True when the source-backed <c>WorldGen.Reset</c> and <c>TerrainPass</c> slice can run.
+    /// TerrariaServer 1.4.5.8 gives the pure Don't Dig Up/Remix profile distinct Reset and
+    /// Terrain branches, both of which are ported here. Zenith implies Remix but also enables
+    /// several other special-seed branches, so it is deliberately excluded until those branches
+    /// have independent source-backed evidence. Secret switches are excluded for the same reason.
+    /// This is intentionally narrower than complete source-backed pipeline support: all later
+    /// source-shaped overlays remain ordinary-world only.
+    /// </summary>
+    public bool SupportsSourceBackedResetAndTerrain =>
+        IsDefault ||
+        (Special == VanillaSpecialWorldSeed1458.Remix && Secret == VanillaSecretWorldSeed1458.None);
 }
 
 public static class VanillaWorldSeedResolver1458

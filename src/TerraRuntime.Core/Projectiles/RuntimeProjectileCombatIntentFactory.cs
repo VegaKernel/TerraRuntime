@@ -13,6 +13,7 @@ public static class RuntimeProjectileCombatIntentFactory
     public static bool TryCreateNpcHit(
         in ProjectileSnapshot projectile,
         NpcHandle target,
+        int hitDirection,
         IRuntimePlayerSlotSnapshotLookup players,
         out ProjectileNpcHitIntent intent)
     {
@@ -23,6 +24,7 @@ public static class RuntimeProjectileCombatIntentFactory
             projectile.Damage <= 0 ||
             !float.IsFinite(projectile.KnockBack) ||
             projectile.KnockBack < 0f ||
+            hitDirection is < -1 or > 1 ||
             !VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner))
         {
             intent = default;
@@ -42,7 +44,8 @@ public static class RuntimeProjectileCombatIntentFactory
             target,
             DamageSource.FromPlayerProjectile(owner.Player, projectile.Handle),
             projectile.Damage,
-            projectile.KnockBack);
+            projectile.KnockBack,
+            hitDirection);
         return intent.IsValid;
     }
 }

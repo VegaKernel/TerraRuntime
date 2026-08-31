@@ -17,6 +17,7 @@ public sealed class RuntimeProjectileCombatIntentFactoryTests
         Assert.True(RuntimeProjectileCombatIntentFactory.TryCreateNpcHit(
             in projectile,
             target,
+            hitDirection: -1,
             players,
             out ProjectileNpcHitIntent intent));
 
@@ -27,10 +28,13 @@ public sealed class RuntimeProjectileCombatIntentFactoryTests
         Assert.Equal(projectile.Handle, intent.Source.Projectile);
         Assert.Equal(25, intent.BaseDamage);
         Assert.Equal(2.5f, intent.KnockBack);
+        Assert.Equal(-1, intent.HitDirection);
         Assert.True(intent.TryCreateDamageRequest(out NpcDamageRequest damage));
         Assert.Equal(target, damage.Target);
         Assert.Equal(intent.Source, damage.Source);
         Assert.Equal(intent.BaseDamage, damage.BaseDamage);
+        Assert.Equal(intent.KnockBack, damage.KnockBack);
+        Assert.Equal(intent.HitDirection, damage.HitDirection);
     }
 
     [Fact]
@@ -43,6 +47,7 @@ public sealed class RuntimeProjectileCombatIntentFactoryTests
         Assert.False(RuntimeProjectileCombatIntentFactory.TryCreateNpcHit(
             in projectile,
             Npc(slot: 1, generation: 1),
+            hitDirection: 1,
             players,
             out _));
     }
@@ -62,6 +67,21 @@ public sealed class RuntimeProjectileCombatIntentFactoryTests
         Assert.False(RuntimeProjectileCombatIntentFactory.TryCreateNpcHit(
             in projectile,
             Npc(slot: 1, generation: 1),
+            hitDirection: 1,
+            players,
+            out _));
+    }
+
+    [Fact]
+    public void Projectile_hit_direction_must_be_source_resolved_and_bounded()
+    {
+        var players = new FixedSlotLookup(CreatePlayer(slot: 4, generation: 1));
+        ProjectileSnapshot projectile = CreateProjectile(spawner: 4, damage: 25, knockBack: 1f);
+
+        Assert.False(RuntimeProjectileCombatIntentFactory.TryCreateNpcHit(
+            in projectile,
+            Npc(slot: 1, generation: 1),
+            hitDirection: 2,
             players,
             out _));
     }

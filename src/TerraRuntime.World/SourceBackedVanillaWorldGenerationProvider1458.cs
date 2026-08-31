@@ -84,9 +84,9 @@ internal sealed class VanillaWorldGenerationParityState1458
 }
 
 /// <summary>
-/// Clean-room port of the ordinary-world TerrainPass shape from TerrariaServer 1.4.5.8. The exact pass algorithm is
-/// used only for Terraria's three canonical dimensions and ordinary seeds. Its pre-Terrain WorldGen.Reset RNG state
-/// and beach bounds are supplied by <see cref="VanillaWorldGenerationBootstrapPass1458"/>.
+/// Clean-room port of the ordinary-world and pure Don't Dig Up TerrainPass branches from TerrariaServer 1.4.5.8.
+/// The source-backed slice is used only for Terraria's three canonical dimensions. Its pre-Terrain WorldGen.Reset
+/// RNG state and beach bounds are supplied by <see cref="VanillaWorldGenerationBootstrapPass1458"/>.
 /// </summary>
 internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
 {
@@ -107,7 +107,7 @@ internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
         ArgumentNullException.ThrowIfNull(context);
         WorldGenerationRequest request = context.Request;
         VanillaWorldSeedProfile1458 seedProfile = VanillaWorldSeedResolver1458.Resolve(in request);
-        if (!seedProfile.IsDefault || !IsCanonicalWorldSize(context.Workspace.WidthTiles, context.Workspace.HeightTiles))
+        if (!seedProfile.SupportsSourceBackedResetAndTerrain || !IsCanonicalWorldSize(context.Workspace.WidthTiles, context.Workspace.HeightTiles))
         {
             fallback.Execute(context);
             return;
@@ -127,10 +127,20 @@ internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
 
         TerrainFeatureType feature = TerrainFeatureType.Plateau;
         int featureRemaining = leftBeachEnd + FlatBeachPadding;
+        // The profile admission gate above admits only the pure Remix profile, never Zenith.
+        bool isRemix = seedProfile.Special == VanillaSpecialWorldSeed1458.Remix;
+
         double surface = height * 0.3d;
         surface *= random.Next(90, 110) * 0.005d;
         double rock = surface + height * 0.2d;
         rock *= random.Next(90, 110) * 0.01d;
+        if (isRemix)
+        {
+            rock = height * 0.5d;
+            if (width > 2500)
+                rock = height * 0.6d;
+            rock *= random.Next(95, 106) * 0.01d;
+        }
 
         double surfaceLow = surface;
         double surfaceHigh = surface;
@@ -168,7 +178,7 @@ internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
             if (x > width * 0.48d && x < width * 0.52d)
                 feature = TerrainFeatureType.Plateau;
 
-            surface += GenerateWorldSurfaceOffset(random, feature);
+            surface += GenerateWorldSurfaceOffset(random, feature, isRemix);
 
             double minimumSurfacePercent = 0.17d;
             const double maximumSurfacePercent = 0.26d;
@@ -193,10 +203,25 @@ internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
             while (random.Next(0, 3) == 0)
                 rock += random.Next(-2, 3);
 
-            if (rock < surface + height * 0.06d)
-                rock++;
-            if (rock > surface + height * 0.35d)
-                rock--;
+            if (isRemix)
+            {
+                if (width > 2500)
+                {
+                    if (rock > height * 0.7d)
+                        rock--;
+                }
+                else if (rock > height * 0.6d)
+                {
+                    rock--;
+                }
+            }
+            else
+            {
+                if (rock < surface + height * 0.06d)
+                    rock++;
+                if (rock > surface + height * 0.35d)
+                    rock--;
+            }
 
             history.Record(surface);
             FillColumn(context.Workspace, x, surface, rock);
@@ -245,9 +270,49 @@ internal sealed class VanillaTerrainPass1458 : IWorldGenerationPass
 
     private static double GenerateWorldSurfaceOffset(
         IWorldGenerationVanillaRandom random,
-        TerrainFeatureType feature)
+        TerrainFeatureType feature,
+        bool isDrunkOrGoodOrRemix = false)
     {
         double offset = 0d;
+        if (isDrunkOrGoodOrRemix && random.Next(2) == 0)
+        {
+            // Vanilla alternative distribution for Drunk/ForTheWorthy/Remix (see TerrainPass.GenerateWorldSurfaceOffset).
+            switch (feature)
+            {
+                case TerrainFeatureType.Plateau:
+                    while (random.Next(0, 6) == 0)
+                        offset += random.Next(-1, 2);
+                    break;
+                case TerrainFeatureType.Hill:
+                    while (random.Next(0, 3) == 0)
+                        offset--;
+                    while (random.Next(0, 10) == 0)
+                        offset++;
+                    break;
+                case TerrainFeatureType.Dale:
+                    while (random.Next(0, 3) == 0)
+                        offset++;
+                    while (random.Next(0, 10) == 0)
+                        offset--;
+                    break;
+                case TerrainFeatureType.Mountain:
+                    while (random.Next(0, 3) != 0)
+                        offset--;
+                    while (random.Next(0, 6) == 0)
+                        offset++;
+                    break;
+                case TerrainFeatureType.Valley:
+                    while (random.Next(0, 3) != 0)
+                        offset++;
+                    while (random.Next(0, 5) == 0)
+                        offset--;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(feature));
+            }
+            return offset;
+        }
+
         switch (feature)
         {
             case TerrainFeatureType.Plateau:

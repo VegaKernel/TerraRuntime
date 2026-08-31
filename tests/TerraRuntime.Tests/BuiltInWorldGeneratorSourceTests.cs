@@ -100,7 +100,7 @@ public sealed class BuiltInWorldGeneratorSourceTests
             in request,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
+        Assert.True(result.Succeeded, $"{result.Status} gen={result.Generation.Status} fin={result.Finalization?.Status} validation={result.Finalization?.Validation} err={result.Generation.Execution?.Error}");
         Assert.True(result.Metadata.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Zenith));
         Assert.True(result.Metadata.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy));
         Assert.True(result.Metadata.VanillaSeedProfile.Has(VanillaSecretWorldSeed1458.Planetoids));

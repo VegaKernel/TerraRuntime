@@ -60,4 +60,27 @@ public sealed class VanillaWorldSeedResolver1458Tests
 
         Assert.True(VanillaWorldSeedResolver1458.Resolve(in request).IsDefault);
     }
+
+    [Theory]
+    [InlineData("1458", true)]
+    [InlineData("Don't Dig Up", true)]
+    [InlineData("Don't Dig Up|planetoids", false)]
+    [InlineData("get fixed boi", false)]
+    [InlineData("05162020", false)]
+    public void Source_backed_reset_and_terrain_admission_is_limited_to_profiles_with_ported_branches(
+        string seedText,
+        bool expected)
+    {
+        var request = new WorldGenerationRequest(
+            VanillaWorldGenerationProvider1458.GeneratorId,
+            "Profile",
+            Seed: 1458,
+            WidthTiles: 4200,
+            HeightTiles: 1200)
+        {
+            SeedText = seedText
+        };
+
+        Assert.Equal(expected, VanillaWorldSeedResolver1458.Resolve(in request).SupportsSourceBackedResetAndTerrain);
+    }
 }

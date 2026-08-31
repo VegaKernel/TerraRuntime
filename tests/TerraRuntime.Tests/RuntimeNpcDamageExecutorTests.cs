@@ -44,7 +44,135 @@ public sealed class RuntimeNpcDamageExecutorTests
         Assert.False(result.Lethal);
         Assert.True(store.TryGet(target.Handle, out NpcSnapshot committed));
         Assert.Equal(16, committed.Simulation.Life);
+        Assert.True(committed.Simulation.JustHit);
         Assert.Equal(new NpcRevision(2), committed.Revision);
+    }
+
+    [Fact]
+    public void Strong_hit_uses_source_direction_and_vanilla_resistance_multiplier()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot target = SpawnZombie(store);
+        target = UpdateMotion(store, target, velocityX: 2f, velocityY: 1f);
+        var executor = new RuntimeNpcDamageExecutor(store);
+        var request = new NpcDamageRequest(
+            target.Handle,
+            DamageSource.FromPlayerItem(Player(7, 1)),
+            BaseDamage: 10,
+            KnockBack: 10f,
+            HitDirection: -1);
+
+        Assert.True(executor.TryApply(in request, out NpcDamageResult result));
+        Assert.Equal(7, result.ResolvedDamage);
+        Assert.True(store.TryGet(target.Handle, out NpcSnapshot committed));
+        Assert.Equal(-5f, committed.VelocityX);
+        Assert.Equal(-2.75f, committed.VelocityY);
+        Assert.True(committed.Simulation.JustHit);
+    }
+
+    [Fact]
+    public void Weak_hit_replaces_velocity_and_applies_resistance_twice_like_vanilla()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot target = SpawnZombie(store);
+        target = UpdateMotion(store, target, velocityX: -7f, velocityY: 4f);
+        var executor = new RuntimeNpcDamageExecutor(store);
+        var request = new NpcDamageRequest(
+            target.Handle,
+            DamageSource.Server,
+            BaseDamage: 1,
+            KnockBack: 10f,
+            HitDirection: 1);
+
+        Assert.True(executor.TryApply(in request, out NpcDamageResult result));
+        Assert.Equal(1, result.ResolvedDamage);
+        Assert.True(store.TryGet(target.Handle, out NpcSnapshot committed));
+        Assert.Equal(2.5f, committed.VelocityX);
+        Assert.Equal(-1.875f, committed.VelocityY);
+    }
+
+    [Fact]
+    public void Expert_threshold_can_select_strong_knockback_branch()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot target = SpawnZombie(store);
+        var executor = new RuntimeNpcDamageExecutor(store, expertMode: true);
+        var request = new NpcDamageRequest(
+            target.Handle,
+            DamageSource.Server,
+            BaseDamage: 7,
+            KnockBack: 4f,
+            HitDirection: 1);
+
+        Assert.True(executor.TryApply(in request, out NpcDamageResult result));
+        Assert.Equal(4, result.ResolvedDamage);
+        Assert.True(store.TryGet(target.Handle, out NpcSnapshot committed));
+        Assert.Equal(2f, committed.VelocityX);
+        Assert.Equal(-1.5f, committed.VelocityY);
+    }
+
+    [Fact]
+    public void Critical_knockback_applies_soft_caps_before_critical_multiplier()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot target = SpawnBlueSlime(store);
+        var executor = new RuntimeNpcDamageExecutor(store);
+        var request = new NpcDamageRequest(
+            target.Handle,
+            DamageSource.Server,
+            BaseDamage: 100,
+            Critical: true,
+            KnockBack: 30f,
+            HitDirection: 1);
+
+        Assert.True(executor.TryApply(in request, out _));
+        Assert.True(store.TryGet(target.Handle, out NpcSnapshot committed));
+        Assert.Equal(22.4f, committed.VelocityX, precision: 4);
+        Assert.Equal(-16.8f, committed.VelocityY, precision: 4);
+    }
+
+    [Fact]
+    public void Zero_resistance_boss_is_just_hit_without_velocity_change()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot target = Spawn(store, VanillaNpcIds.EyeOfCthulhu.Value);
+        target = UpdateMotion(store, target, velocityX: 3f, velocityY: -2f);
+        var executor = new RuntimeNpcDamageExecutor(store);
+        var request = new NpcDamageRequest(
+            target.Handle,
+            DamageSource.Server,
+            BaseDamage: 10,
+            KnockBack: 20f,
+            HitDirection: -1);
+
+        Assert.True(executor.TryApply(in request, out _));
+        Assert.True(store.TryGet(target.Handle, out NpcSnapshot committed));
+        Assert.Equal(3f, committed.VelocityX);
+        Assert.Equal(-2f, committed.VelocityY);
+        Assert.True(committed.Simulation.JustHit);
+    }
+
+    [Fact]
+    public void Net_variant_knockback_uses_effective_definition_instead_of_positive_type_defaults()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot target = Spawn(
+            store,
+            VanillaNpcIds.BlueSlime.Value,
+            checked((short)VanillaNpcNetVariantCatalog.GreenSlime.Value));
+        var executor = new RuntimeNpcDamageExecutor(store);
+        var request = new NpcDamageRequest(
+            target.Handle,
+            DamageSource.Server,
+            BaseDamage: 1,
+            KnockBack: 5f,
+            HitDirection: 1);
+
+        Assert.True(executor.TryApply(in request, out NpcDamageResult result));
+        Assert.Equal(0, result.Defense);
+        Assert.True(store.TryGet(target.Handle, out NpcSnapshot committed));
+        Assert.Equal(7.2f, committed.VelocityX, precision: 4);
+        Assert.Equal(-5.4f, committed.VelocityY, precision: 4);
     }
 
     [Fact]
@@ -184,11 +312,11 @@ public sealed class RuntimeNpcDamageExecutorTests
     private static NpcSnapshot SpawnZombie(RuntimeNpcStore store) =>
         Spawn(store, type: 3);
 
-    private static NpcSnapshot Spawn(RuntimeNpcStore store, int type)
+    private static NpcSnapshot Spawn(RuntimeNpcStore store, int type, short? netId = null)
     {
         var update = new NpcStateUpdate(
             Type: type,
-            NetId: checked((short)type),
+            NetId: netId ?? checked((short)type),
             PositionX: 0f,
             PositionY: 0f,
             VelocityX: 0f,
@@ -199,6 +327,27 @@ public sealed class RuntimeNpcDamageExecutorTests
 
         Assert.True(store.TrySpawn(0, in update, out NpcSnapshot snapshot));
         return snapshot;
+    }
+
+    private static NpcSnapshot UpdateMotion(
+        RuntimeNpcStore store,
+        NpcSnapshot target,
+        float velocityX,
+        float velocityY)
+    {
+        var update = new NpcStateUpdate(
+            target.Type,
+            target.NetId,
+            target.PositionX,
+            target.PositionY,
+            velocityX,
+            velocityY,
+            target.Target,
+            target.Ai,
+            target.Simulation);
+
+        Assert.True(store.TryUpdate(target.Handle, in update, out NpcSnapshot committed));
+        return committed;
     }
 
     private static PlayerHandle Player(byte slot, ulong generation) =>

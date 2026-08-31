@@ -52,9 +52,13 @@ public static class VanillaNpcDamageResolver
 public sealed class RuntimeNpcDamageExecutor
 {
     private readonly RuntimeNpcStore _store;
+    private readonly bool _expertMode;
 
-    public RuntimeNpcDamageExecutor(RuntimeNpcStore store) =>
+    public RuntimeNpcDamageExecutor(RuntimeNpcStore store, bool expertMode = false)
+    {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _expertMode = expertMode;
+    }
 
     public bool TryApply(in NpcDamageRequest request, out NpcDamageResult result)
     {
@@ -63,7 +67,10 @@ public sealed class RuntimeNpcDamageExecutor
             current.Simulation.DontTakeDamage ||
             current.Simulation.LifeMax <= 0 ||
             current.Simulation.Life <= 0 ||
-            !VanillaNpcDefinitionCatalog.TryGet(current.Type, out VanillaNpcDefinition definition) ||
+            !VanillaNpcDefinitionCatalog.TryGet(
+                current.TypeIdentity,
+                current.NetIdentity,
+                out VanillaNpcDefinition definition) ||
             !VanillaNpcDamageResolver.TryResolve(
                 in definition,
                 in request,
@@ -76,15 +83,31 @@ public sealed class RuntimeNpcDamageExecutor
 
         int lifeBefore = current.Simulation.Life;
         int lifeAfter = Math.Max(0, lifeBefore - damage);
-        NpcSimulationState simulation = current.Simulation with { Life = lifeAfter };
+        VanillaNpcKnockbackResult knockback = VanillaNpcKnockbackResolver.Resolve(
+            current.VelocityX,
+            current.VelocityY,
+            current.Simulation.NoGravity,
+            current.Simulation.LifeMax,
+            definition.KnockBackResist,
+            request.KnockBack,
+            request.HitDirection,
+            damage,
+            request.Critical,
+            _expertMode);
+
+        NpcSimulationState simulation = current.Simulation with
+        {
+            Life = lifeAfter,
+            JustHit = true
+        };
 
         var update = new NpcStateUpdate(
             current.Type,
             current.NetId,
             current.PositionX,
             current.PositionY,
-            current.VelocityX,
-            current.VelocityY,
+            knockback.VelocityX,
+            knockback.VelocityY,
             current.Target,
             current.Ai,
             simulation);

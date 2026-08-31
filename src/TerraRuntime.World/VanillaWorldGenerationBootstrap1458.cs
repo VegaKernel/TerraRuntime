@@ -57,9 +57,9 @@ internal sealed class VanillaWorldGenerationBootstrapState1458
 }
 
 /// <summary>
-/// Clean-room ordinary-world WorldGen.Reset RNG/bootstrap port for TerrariaServer 1.4.5.8. This pass is enabled only
-/// for the three canonical vanilla dimensions and an ordinary seed profile. Compatibility-only special seeds and
-/// synthetic test dimensions intentionally consume no extra RNG until their own Reset branches are source-ported.
+/// Clean-room WorldGen.Reset RNG/bootstrap port for TerrariaServer 1.4.5.8. This pass is enabled for the three
+/// canonical vanilla dimensions and either an ordinary profile or the pure Don't Dig Up/Remix profile. Other special
+/// seeds and synthetic test dimensions intentionally consume no extra RNG until their own Reset branches are ported.
 /// </summary>
 internal sealed class VanillaWorldGenerationBootstrapPass1458 : IWorldGenerationPass
 {
@@ -82,7 +82,7 @@ internal sealed class VanillaWorldGenerationBootstrapPass1458 : IWorldGeneration
         ArgumentNullException.ThrowIfNull(context);
         WorldGenerationRequest request = context.Request;
         VanillaWorldSeedProfile1458 seedProfile = VanillaWorldSeedResolver1458.Resolve(in request);
-        if (!seedProfile.IsDefault ||
+        if (!seedProfile.SupportsSourceBackedResetAndTerrain ||
             !VanillaTerrainPass1458.IsCanonicalWorldSize(context.Workspace.WidthTiles, context.Workspace.HeightTiles))
         {
             return;
@@ -93,14 +93,16 @@ internal sealed class VanillaWorldGenerationBootstrapPass1458 : IWorldGeneration
         state.Bootstrap = Run(
             random,
             context.Workspace.WidthTiles,
-            request.Options.Evil == WorldGenerationEvil.Crimson);
+            request.Options.Evil == WorldGenerationEvil.Crimson,
+            seedProfile.Special == VanillaSpecialWorldSeed1458.Remix);
         context.ReportProgress(1d, "Applying source-backed Terraria WorldGen.Reset bootstrap");
     }
 
     internal static VanillaWorldGenerationBootstrapState1458 Run(
         IWorldGenerationVanillaRandom random,
         int width,
-        bool effectiveCrimson)
+        bool effectiveCrimson,
+        bool isRemix = false)
     {
         ArgumentNullException.ThrowIfNull(random);
         if (width is not (4200 or 6400 or 8400))
@@ -116,7 +118,7 @@ internal sealed class VanillaWorldGenerationBootstrapPass1458 : IWorldGeneration
             windSpeedCurrent = (float)random.NextDouble() * 0.35f * (random.Next(2) * 2 - 1);
         }
 
-        int[] hellChestItems = ShuffleHellChestItems(random);
+        int[] hellChestItems = ShuffleHellChestItems(random, isRemix);
         int slimeRainTime = -random.Next(86400 * 2, 86400 * 3);
         int cloudBackgroundActive = -random.Next(8640, 86400);
 
@@ -180,10 +182,12 @@ internal sealed class VanillaWorldGenerationBootstrapPass1458 : IWorldGeneration
 
         int dungeonSide = random.Next(2) == 0 ? DungeonSideLeft : DungeonSideRight;
         int jungleOriginX;
+        int jungleDistanceMin = isRemix ? 20 : 15;
+        int jungleDistanceMax = isRemix ? 35 : 30;
         if (dungeonSide <= DungeonSideLeft)
-            jungleOriginX = (int)(width * (1d - random.Next(15, 30) * 0.01d));
+            jungleOriginX = (int)(width * (1d - random.Next(jungleDistanceMin, jungleDistanceMax) * 0.01d));
         else
-            jungleOriginX = (int)(width * (random.Next(15, 30) * 0.01d));
+            jungleOriginX = (int)(width * (random.Next(jungleDistanceMin, jungleDistanceMax) * 0.01d));
 
         int snowCenter = random.Next(width);
         if (dungeonSide == DungeonSideRight)
@@ -279,9 +283,12 @@ internal sealed class VanillaWorldGenerationBootstrapPass1458 : IWorldGeneration
         };
     }
 
-    private static int[] ShuffleHellChestItems(IWorldGenerationVanillaRandom random)
+    private static int[] ShuffleHellChestItems(IWorldGenerationVanillaRandom random, bool isRemix)
     {
-        var source = new List<int> { 274, 220, 112, 218, 3019 };
+        // WorldGen.Reset substitutes the Sunfury (112) slot with the Dark Lance (683) for Remix.
+        var source = isRemix
+            ? new List<int> { 274, 220, 683, 218, 3019 }
+            : new List<int> { 274, 220, 112, 218, 3019 };
         var shuffled = new int[source.Count];
         for (int output = 0; output < shuffled.Length; output++)
         {

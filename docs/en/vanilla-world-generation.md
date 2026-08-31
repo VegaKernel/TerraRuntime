@@ -55,7 +55,7 @@ The full source-backed chain is selected only when both conditions are true:
 - the seed profile is ordinary/default;
 - the world dimensions are one of Terraria's canonical sizes.
 
-Special/secret seeds and noncanonical synthetic dimensions deliberately replay the compatibility provider. They are not allowed to consume ordinary-world source-backed implementations as an approximation of their own generation rules.
+Noncanonical synthetic dimensions deliberately replay the compatibility provider. Special and secret profiles do too, with one narrow source-backed exception: a pure `Don't Dig Up`/Remix profile on a canonical size executes the verified `Reset` and `Terrain` branches, then returns to the compatibility passes. It does not activate the ordinary source-shaped overlays or canonical structural checks. Zenith, combined special switches and every secret switch remain compatibility-only because their later pass mutations have not been ported.
 
 The production registration in `BuiltInWorldGeneratorSource` resolves `terraruntime:vanilla` to `SourceBackedVanillaWorldGenerationFinal1458`. The older overlay classes remain implementation layers in the chain, not alternative public generators.
 

@@ -137,6 +137,42 @@ public sealed class SourceBackedVanillaWorldGenerationProvider1458Tests
     }
 
     [Fact]
+    public void Canonical_pure_remix_uses_the_pinned_reset_and_terrain_branches()
+    {
+        bool fallbackExecuted = false;
+        var fallback = new ActionPass(_ => fallbackExecuted = true);
+        var state = new VanillaWorldGenerationParityState1458();
+        var bootstrapPass = new VanillaWorldGenerationBootstrapPass1458(state);
+        var terrainPass = new VanillaTerrainPass1458(fallback, state);
+        var request = new WorldGenerationRequest(
+            VanillaWorldGenerationProvider1458.GeneratorId,
+            "Don't Dig Up",
+            Seed: 1458,
+            WidthTiles: 4200,
+            HeightTiles: 1200)
+        {
+            SeedText = "don't dig up"
+        };
+        var workspace = new CountingWorkspace(request.WidthTiles, request.HeightTiles);
+        var context = new GenerationContext(
+            request,
+            workspace,
+            new VanillaRandomAdapter(new VanillaUnifiedRandom1458(1458)));
+
+        bootstrapPass.Execute(context);
+        terrainPass.Execute(context);
+
+        Assert.False(fallbackExecuted);
+        VanillaWorldGenerationBootstrapState1458 bootstrap = Assert.IsType<VanillaWorldGenerationBootstrapState1458>(state.Bootstrap);
+        Assert.Contains(683, bootstrap.HellChestItems);
+        Assert.DoesNotContain(112, bootstrap.HellChestItems);
+        Assert.Equal(3192, bootstrap.JungleOriginX);
+        Assert.True(workspace.TryGetLayers(out WorldGenerationLayers layers));
+        Assert.True(layers.RockLayer > request.HeightTiles * 0.55d);
+        Assert.Equal(layers, state.TerrainLayers);
+    }
+
+    [Fact]
     public void Noncanonical_world_keeps_existing_compatibility_terrain()
     {
         bool fallbackExecuted = false;

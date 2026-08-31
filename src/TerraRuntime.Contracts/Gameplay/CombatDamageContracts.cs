@@ -68,21 +68,26 @@ public readonly record struct DamageSource(
 /// <summary>
 /// Deterministic NPC damage input after upstream source-specific modifiers such as weapon/projectile
 /// scaling and random damage variation have been resolved. This slice owns NPC defense, flat armor
-/// penetration and the ordinary vanilla critical multiplier; broader banner/buff/immunity rules remain
-/// separate gameplay work.
+/// penetration, the ordinary vanilla critical multiplier and a source-resolved hit direction for
+/// knockback; broader banner/buff/immunity rules remain separate gameplay work.
 /// </summary>
 public readonly record struct NpcDamageRequest(
     NpcHandle Target,
     DamageSource Source,
     int BaseDamage,
     int ArmorPenetration = 0,
-    bool Critical = false)
+    bool Critical = false,
+    float KnockBack = 0f,
+    int HitDirection = 0)
 {
     public bool IsValid =>
         Target.IsAssigned &&
         Source.IsValid &&
         BaseDamage > 0 &&
-        ArmorPenetration >= 0;
+        ArmorPenetration >= 0 &&
+        float.IsFinite(KnockBack) &&
+        KnockBack >= 0f &&
+        HitDirection is >= -1 and <= 1;
 }
 
 /// <summary>
@@ -93,7 +98,8 @@ public readonly record struct ProjectileNpcHitIntent(
     NpcHandle Target,
     DamageSource Source,
     int BaseDamage,
-    float KnockBack)
+    float KnockBack,
+    int HitDirection)
 {
     public bool IsValid =>
         Target.IsAssigned &&
@@ -101,7 +107,8 @@ public readonly record struct ProjectileNpcHitIntent(
         Source.IsValid &&
         BaseDamage > 0 &&
         float.IsFinite(KnockBack) &&
-        KnockBack >= 0f;
+        KnockBack >= 0f &&
+        HitDirection is >= -1 and <= 1;
 
     public bool TryCreateDamageRequest(out NpcDamageRequest request)
     {
@@ -111,7 +118,12 @@ public readonly record struct ProjectileNpcHitIntent(
             return false;
         }
 
-        request = new NpcDamageRequest(Target, Source, BaseDamage);
+        request = new NpcDamageRequest(
+            Target,
+            Source,
+            BaseDamage,
+            KnockBack: KnockBack,
+            HitDirection: HitDirection);
         return true;
     }
 }

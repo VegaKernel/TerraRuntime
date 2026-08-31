@@ -118,6 +118,30 @@ public sealed class SourceBackedVanillaWorldGenerationFinal1458Tests
         Assert.DoesNotContain(builder.Entries, static entry => FinalPassIds.Contains(entry.Descriptor.Id));
     }
 
+    [Fact]
+    public void Pure_remix_keeps_later_overlays_on_the_compatibility_path()
+    {
+        var provider = new SourceBackedVanillaWorldGenerationFinal1458();
+        var request = new WorldGenerationRequest(
+            VanillaWorldGenerationProvider1458.GeneratorId,
+            "Don't Dig Up",
+            Seed: 1458,
+            WidthTiles: 4200,
+            HeightTiles: 1200)
+        {
+            SeedText = "don't dig up"
+        };
+        var builder = new CaptureBuilder();
+
+        provider.BuildPlan(in request, builder);
+
+        Assert.Equal(8, builder.Entries.Count);
+        Assert.DoesNotContain(builder.Entries, static entry => FinalPassIds.Contains(entry.Descriptor.Id));
+        CaptureEntry terrain = Assert.Single(builder.Entries, static entry =>
+            entry.Descriptor.Id == SourceBackedVanillaWorldGenerationProvider1458.TerrainPassId);
+        Assert.IsType<VanillaTerrainPass1458>(terrain.Pass);
+    }
+
     private readonly record struct CaptureEntry(WorldGenerationPassDescriptor Descriptor, IWorldGenerationPass Pass);
 
     private sealed class CaptureBuilder : IWorldGenerationPlanBuilder
