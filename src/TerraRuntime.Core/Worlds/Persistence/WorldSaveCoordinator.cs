@@ -18,6 +18,7 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
 {
     private readonly object gate = new();
     private readonly Func<TSnapshot> captureSnapshot;
+    private readonly Action<TSnapshot>? onCommitted;
     private readonly CoalescingSaveScheduler<TSnapshot> scheduler;
     private long lastSnapshotCaptureTicks;
     private long lastSerializationTicks;
@@ -31,7 +32,8 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
         string destinationPath,
         Func<TSnapshot> captureSnapshot,
         Func<TSnapshot, Stream, CancellationToken, Task> serializeAsync,
-        AtomicSaveFileWriterOptions? writerOptions = null)
+        AtomicSaveFileWriterOptions? writerOptions = null,
+        Action<TSnapshot>? onCommitted = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(captureSnapshot);
@@ -39,6 +41,7 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
 
         string fullDestinationPath = Path.GetFullPath(destinationPath);
         this.captureSnapshot = captureSnapshot;
+        this.onCommitted = onCommitted;
         scheduler = new CoalescingSaveScheduler<TSnapshot>(async (snapshot, cancellationToken) =>
         {
             long writeStartedAt = Stopwatch.GetTimestamp();
@@ -63,6 +66,8 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
                     },
                     writerOptions,
                     cancellationToken).ConfigureAwait(false);
+
+                this.onCommitted?.Invoke(snapshot);
             }
             finally
             {

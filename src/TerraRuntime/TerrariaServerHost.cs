@@ -837,7 +837,6 @@ public static class TerrariaServerHost
                 {
                     worldSaveService.CaptureFinalSaveAfterOwnerStopped();
                     await worldSaveService.CompleteAsync(CancellationToken.None).ConfigureAwait(false);
-                    InvalidateRuntimeCache(runtimeCachePath, hostLog);
                     InvalidateRuntimeCache(runtimeBootstrapCachePath, hostLog);
                     hostLog.Log(
                         RuntimeLogLevel.Information,

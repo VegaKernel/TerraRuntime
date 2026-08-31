@@ -29,7 +29,14 @@ internal readonly record struct RuntimeWorldSaveStatus(
     TimeSpan LastWriteDuration = default,
     TimeSpan TotalSnapshotCaptureDuration = default,
     TimeSpan TotalSerializationDuration = default,
-    TimeSpan TotalWriteDuration = default);
+    TimeSpan TotalWriteDuration = default,
+    bool RuntimeCacheRebuildActive = false,
+    bool RuntimeCacheRebuildPending = false,
+    long RuntimeCacheRebuildRequests = 0,
+    long RuntimeCacheRebuilds = 0,
+    long RuntimeCacheRebuildCoalesced = 0,
+    long RuntimeCacheRebuildFailures = 0,
+    RuntimeWorldSnapshotRebuildResult? LastRuntimeCacheRebuildResult = null);
 
 /// <summary>
 /// Bridges thread-safe save requests into game-thread-owned snapshot capture. Tile shadow maintenance and mutable
@@ -44,7 +51,11 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
 
     private readonly RuntimeWorldTileChestSaveSnapshotSource snapshotSource;
     private readonly WorldSaveCoordinator<RuntimeWorldTileChestSaveSnapshot> coordinator;
+    private readonly CoalescingSaveScheduler<long>? runtimeCacheRebuildScheduler;
     private readonly int synchronizationSectionsPerTick;
+    private long runtimeCacheRebuildGeneration;
+    private long runtimeCacheRebuildFailures;
+    private int lastRuntimeCacheRebuildResult = -1;
     private int saveRequested;
     private int acceptingRequests = 1;
     private int tileShadowReady;
@@ -86,6 +97,20 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
                     RuntimeWorldCheckpointRecovery.ValidateAsync(path, limits, cancellationToken),
                 ValidateBackupAsync: (path, cancellationToken) =>
                     RuntimeWorldCheckpointRecovery.ValidateAsync(path, limits, cancellationToken));
+
+            string runtimeCachePath = RuntimeWorldSnapshotCache.GetCachePath(destinationPath);
+            runtimeCacheRebuildScheduler = new CoalescingSaveScheduler<long>(async (_, cancellationToken) =>
+            {
+                RuntimeWorldSnapshotRebuildDiagnostic rebuild =
+                    await RuntimeWorldSnapshotRebuilder.TryRebuildAsync(
+                        destinationPath,
+                        runtimeCachePath,
+                        limits,
+                        cancellationToken).ConfigureAwait(false);
+                Volatile.Write(ref lastRuntimeCacheRebuildResult, (int)rebuild.Result);
+                if (!rebuild.IsRebuilt)
+                    Interlocked.Increment(ref runtimeCacheRebuildFailures);
+            });
         }
 
         this.synchronizationSectionsPerTick = synchronizationSectionsPerTick;
@@ -105,7 +130,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
                 snapshot,
                 stream,
                 cancellationToken),
-            writerOptions);
+            writerOptions,
+            onCommitted: _ => QueueRuntimeCacheRebuild());
         PublishOwnerStatus();
     }
 
@@ -117,6 +143,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
     {
         CoalescingSaveSchedulerSnapshot scheduler = coordinator.CaptureSnapshot();
         WorldSaveCoordinatorTimingSnapshot timing = coordinator.CaptureTimingSnapshot();
+        CoalescingSaveSchedulerSnapshot cacheScheduler = runtimeCacheRebuildScheduler?.CaptureSnapshot() ?? default;
+        int cacheResult = Volatile.Read(ref lastRuntimeCacheRebuildResult);
         return new RuntimeWorldSaveStatus(
             AcceptingRequests: Volatile.Read(ref acceptingRequests) != 0,
             TileShadowReady: Volatile.Read(ref tileShadowReady) != 0,
@@ -135,7 +163,16 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             LastWriteDuration: timing.LastWriteDuration,
             TotalSnapshotCaptureDuration: timing.TotalSnapshotCaptureDuration,
             TotalSerializationDuration: timing.TotalSerializationDuration,
-            TotalWriteDuration: timing.TotalWriteDuration);
+            TotalWriteDuration: timing.TotalWriteDuration,
+            RuntimeCacheRebuildActive: cacheScheduler.WriteActive,
+            RuntimeCacheRebuildPending: cacheScheduler.HasPendingSnapshot,
+            RuntimeCacheRebuildRequests: cacheScheduler.RequestedSaves,
+            RuntimeCacheRebuilds: cacheScheduler.CompletedWrites,
+            RuntimeCacheRebuildCoalesced: cacheScheduler.CoalescedRequests,
+            RuntimeCacheRebuildFailures: Volatile.Read(ref runtimeCacheRebuildFailures),
+            LastRuntimeCacheRebuildResult: cacheResult < 0
+                ? null
+                : (RuntimeWorldSnapshotRebuildResult)cacheResult);
     }
 
     /// <summary>
@@ -223,13 +260,32 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         }
     }
 
-    public Task CompleteAsync(CancellationToken cancellationToken = default)
+    public async Task CompleteAsync(CancellationToken cancellationToken = default)
     {
         Interlocked.Exchange(ref acceptingRequests, 0);
-        return coordinator.CompleteAsync(cancellationToken);
+        await coordinator.CompleteAsync(cancellationToken).ConfigureAwait(false);
+        if (runtimeCacheRebuildScheduler is not null)
+            await runtimeCacheRebuildScheduler.CompleteAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public ValueTask DisposeAsync() => new(CompleteAsync());
+
+    private void QueueRuntimeCacheRebuild()
+    {
+        if (runtimeCacheRebuildScheduler is null)
+            return;
+
+        try
+        {
+            runtimeCacheRebuildScheduler.RequestSave(Interlocked.Increment(ref runtimeCacheRebuildGeneration));
+        }
+        catch (InvalidOperationException)
+        {
+            // Canonical publication has already succeeded. A derived-cache scheduling failure must never
+            // retroactively turn a valid .wld commit into a failed save result.
+            Interlocked.Increment(ref runtimeCacheRebuildFailures);
+        }
+    }
 
     private void PublishOwnerStatus()
     {
