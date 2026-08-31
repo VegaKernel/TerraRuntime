@@ -135,7 +135,9 @@ public sealed class SourceBackedVanillaWorldGenerationFinal1458Tests
 
         provider.BuildPlan(in request, builder);
 
-        Assert.Equal(8, builder.Entries.Count);
+        Assert.Equal(10, builder.Entries.Count);
+        Assert.Contains(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/TerrainLayers");
+        Assert.Contains(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/Dunes");
         Assert.DoesNotContain(builder.Entries, static entry => FinalPassIds.Contains(entry.Descriptor.Id));
         CaptureEntry terrain = Assert.Single(builder.Entries, static entry =>
             entry.Descriptor.Id == SourceBackedVanillaWorldGenerationProvider1458.TerrainPassId);
