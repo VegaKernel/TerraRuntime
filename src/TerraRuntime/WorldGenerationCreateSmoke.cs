@@ -127,8 +127,13 @@ internal static class WorldGenerationCreateSmoke
             lastPlayedBinary: timestamp);
         if (!result.Succeeded)
         {
+            RuntimeWorldGenerationFinalizationResult? finalization = result.Creation?.Finalization;
             Console.Error.WriteLine(
                 $"Worldgen create smoke failed: status={result.Status}, " +
+                $"generation={result.Creation?.Generation.Status}, " +
+                $"finalization={finalization?.Status}, " +
+                $"validation={finalization?.Validation?.Status}, " +
+                $"validationDetail={finalization?.Validation?.Detail}, " +
                 $"composition={result.Composition?.Result}, publication={result.Publication?.Result}.");
             exitCode = 32;
             return true;
