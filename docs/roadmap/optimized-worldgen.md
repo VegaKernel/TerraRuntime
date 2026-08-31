@@ -1,0 +1,130 @@
+# Optimized world-generation roadmap
+
+This roadmap owns the delivery of the built-in `terraruntime:optimized` profile.
+
+The profile is intentionally independent from source-exact `terraruntime:vanilla` generation. The release criterion is
+not seed-identical output. The release criterion is a deterministic, official-client-compatible, visually coherent and
+**playable** Terraria world whose required geography, structures and progression resources are guaranteed to fit.
+
+> Checkbox policy: `[x]` means implementation plus executable evidence exists on `main`. Presence-only placeholders do
+> not count as completed gameplay.
+
+## O0 - Spatial planning and generator identity
+
+- [x] register `terraruntime:optimized` as a separate built-in profile without replacing `terraruntime:vanilla`;
+- [x] use a deterministic pass graph with isolated per-pass RNG;
+- [x] allocate major structure regions before terrain mutation;
+- [x] reject layouts where mandatory reserved structures overlap or escape map bounds;
+- [x] keep a protected central spawn envelope;
+- [ ] add versioned generator-layout metadata so future algorithm revisions can intentionally reproduce old worlds.
+
+## O1 - Organic base world
+
+- [x] coherent multi-octave terrain heightfield;
+- [x] softened/flattened spawn transition without a hard rectangular platform;
+- [x] bounded left/right oceans and beach floor;
+- [x] forest baseline;
+- [x] snow biome;
+- [x] desert biome;
+- [x] jungle biome;
+- [x] corruption/crimson biome selected from `WorldGenerationOptions`;
+- [x] underground mushroom region;
+- [x] underworld band;
+- [x] deterministic variable-radius cave walkers protected from mandatory structure reservations;
+- [ ] add large caverns, vertical shafts, underground lakes and biome-sensitive cave morphology;
+- [ ] add erosion/transition pass so biome edges do not read as simple material bands;
+- [ ] add measured terrain-quality fixtures for Small/Medium/Large world silhouettes.
+
+## O2 - Guaranteed structures and map elements
+
+Every mandatory role must have a reserved region or an explicit count/range budget before generation starts.
+
+- [x] dungeon reservation and first traversable shaft/room geometry;
+- [x] multiple bounded floating islands;
+- [x] jungle hive with Honey;
+- [x] Jungle Temple shell/interior plus Lihzahrd Altar;
+- [x] Aether pocket plus Shimmer;
+- [x] world-evil Demon Altar;
+- [x] Underworld Hellforge;
+- [ ] richer dungeon graph with entrances, branches, rooms, spikes/traps, locked chests and biome-safe placement;
+- [ ] Floating Island houses with guaranteed Skyware loot roles;
+- [ ] Floating Lakes as a distinct island variant;
+- [ ] pyramids with deterministic minimum/maximum count based on world size;
+- [ ] living trees / living wood rooms;
+- [ ] full Underworld houses and bridge/cavern variation;
+- [ ] multiple hives on larger worlds with valid Queen Bee progression space;
+- [ ] granite, marble, spider, glowing-mushroom and other representative micro-biomes;
+- [ ] optional decorative structures must have explicit density budgets so they cannot crowd critical regions.
+
+## O3 - Progression resources and loot
+
+Presence of terrain alone is not considered playable progression.
+
+- [x] Copper/Iron/Silver/Gold-tier ore placement;
+- [x] Hellstone placement;
+- [x] Water, Lava, Honey and Shimmer availability;
+- [x] starting Guide persistence;
+- [ ] Life Crystal distribution with minimum count by world size;
+- [ ] surface/underground/cavern chest budgets;
+- [ ] biome chest/loot families needed for ordinary pre-hardmode exploration;
+- [ ] dungeon locked chest/key progression;
+- [ ] Shadow Orb / Crimson Heart progression anchors;
+- [ ] jungle spores/stingers/bee progression resource audit;
+- [ ] hellstone/obsidian/hellforge resource reachability audit;
+- [ ] hardmode-ready world anchors required by later progression mutation logic.
+
+## O4 - Organic presentation
+
+The optimized profile may use any deterministic mathematics that produces better worlds while preserving bounded work
+and validation guarantees.
+
+Candidate techniques include value/simplex-style noise implemented in-repo, fractal octave combinations, domain
+warping, signed-distance masks, splines, cellular fields and correlated random walks. No technique is adopted merely
+because it is fashionable; output quality and cost must be measured.
+
+- [x] multi-scale value-noise surface;
+- [x] correlated variable-radius caves;
+- [x] SDF/ellipse-like perturbed floating islands;
+- [ ] domain-warped biome boundaries;
+- [ ] cave-room graph blended with random walkers;
+- [ ] slope-aware beaches and cliffs;
+- [ ] vegetation and decoration passes;
+- [ ] deterministic screenshot/map fixtures for visual regression review;
+- [ ] generation-time and allocation budgets on canonical world sizes.
+
+## O5 - Fail-closed playability validation
+
+A generated candidate is rejected before commit if a mandatory element is absent.
+
+- [x] validate dungeon region and dungeon material;
+- [x] validate Jungle Temple;
+- [x] validate hive;
+- [x] validate Aether/Shimmer;
+- [x] validate snow/desert/jungle/world-evil biome material;
+- [x] validate both oceans;
+- [x] validate floating-island mass;
+- [x] validate Demon Altar, Hellforge and Hellstone;
+- [ ] validate spawn safety with a bounded walkable starter area;
+- [ ] validate path/reachability graph from spawn to surface biomes and major structure entrances;
+- [ ] validate minimum ore/resource quantities instead of presence only;
+- [ ] validate chest and Life Crystal budgets;
+- [ ] validate dungeon/temple/hive interior traversal;
+- [ ] validate no required structure was overwritten by a later pass;
+- [ ] run generated `.wld` through pinned TerrariaServer `1.4.5.8` acceptance and an official-client join smoke.
+
+## O6 - Production gate
+
+`terraruntime:optimized` becomes the recommended new-world profile only after all of the following are true:
+
+- [ ] a normal character can progress from spawn through pre-hardmode without importing a second world;
+- [ ] required biome, dungeon, hive, temple, floating-island, Aether and Underworld roles are guaranteed for every
+      supported world size;
+- [ ] progression-critical resources and loot have minimum-count gates;
+- [ ] generated worlds pass TerraRuntime structural validation and pinned official-server acceptance;
+- [ ] deterministic replay is covered for fixed seeds;
+- [ ] generation time and peak memory are measured and bounded;
+- [ ] visual-regression review shows organic terrain, caves and structure placement rather than obvious rectangular
+      generation artifacts.
+
+`terraruntime:vanilla` continues independently toward source/reference parity. Its unfinished byte-identical worldgen
+parity does not block the optimized profile, and optimized visual/algorithmic changes do not weaken vanilla evidence.

@@ -7,7 +7,8 @@ namespace TerraRuntime;
 /// <summary>
 /// Runtime-owned generators are registered explicitly rather than discovered. Flat remains the minimal deterministic
 /// baseline; vanilla is the Terraria 1.4.5.8-compatible built-in profile whose passes advance independently toward
-/// source-backed parity; skyblock is a deterministic runtime-owned void/island profile.
+/// source-backed parity; optimized is the progression-validated production-oriented custom profile; skyblock is a
+/// deterministic runtime-owned void/island profile.
 /// </summary>
 internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorSource
 {
@@ -15,11 +16,13 @@ internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorS
 
     private readonly FlatWorldGenerationProvider flat = new();
     private readonly SourceBackedVanillaWorldGenerationCanonical1458 vanilla = new();
+    private readonly OptimizedWorldGenerationProvider optimized = new();
     private readonly SkyblockWorldGenerationProvider skyblock = new();
     private readonly WorldGeneratorId[] ids =
         [
             FlatWorldGenerationProvider.GeneratorId,
             VanillaWorldGenerationProvider1458.GeneratorId,
+            OptimizedWorldGenerationProvider.GeneratorId,
             SkyblockWorldGenerationProvider.GeneratorId
         ];
 
@@ -40,6 +43,12 @@ internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorS
         if (id == vanilla.Id)
         {
             provider = vanilla;
+            return true;
+        }
+
+        if (id == optimized.Id)
+        {
+            provider = optimized;
             return true;
         }
 
