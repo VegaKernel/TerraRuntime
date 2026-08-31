@@ -21,3 +21,28 @@ public interface INpcAiStatePostCommitObserver
 {
     void NpcAiStateCommitted(in NpcSnapshot before, in NpcSnapshot committed);
 }
+
+/// <summary>
+/// Narrow authoritative mutation surface for irreversible NPC side effects that must occur only after the source
+/// NPC generation has committed. It deliberately exposes spawn and exact-generation update only, rather than the
+/// mutable NPC store, so side-effect implementations cannot bypass lifecycle validation accidentally.
+/// </summary>
+public interface INpcAiCommittedNpcMutationSink
+{
+    bool TrySpawn(in NpcAiSpawnIntent intent, out NpcSnapshot spawned);
+
+    bool TryUpdateVelocity(NpcHandle npc, float velocityX, float velocityY, out NpcSnapshot committed);
+}
+
+/// <summary>
+/// Optional post-commit gameplay effect. This runs after the exact source state update succeeds and may perform
+/// source-ordered irreversible mutations through <see cref="INpcAiCommittedNpcMutationSink"/>. It is distinct from
+/// speculative spawn planning so RNG and world effects do not escape a rejected/stale source transition.
+/// </summary>
+public interface INpcAiStatePostCommitEffect
+{
+    void ApplyCommittedEffect(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations);
+}

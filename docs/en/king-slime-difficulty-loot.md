@@ -1,6 +1,6 @@
 # King Slime Expert and Master loot semantics
 
-TerraRuntime now owns the source-backed gameplay semantics for King Slime's difficulty-only loot rules from TerrariaServer 1.4.5.8. This slice deliberately keeps the three delivery shapes distinct instead of flattening them into ordinary shared world-item drops.
+TerraRuntime owns the source-backed gameplay semantics for King Slime's difficulty-only loot rules from TerrariaServer 1.4.5.8. The three delivery shapes remain distinct instead of being flattened into ordinary shared world-item drops.
 
 ## Player interaction ownership
 
@@ -26,9 +26,9 @@ The pinned King Slime rule is `BossBag(3318)`. On the server it resolves to `Dro
 4. packet 90 to each currently active interacting player;
 5. the server turns its copy to air but keeps that world-item slot unavailable for `54000` ticks.
 
-`IKingSlimeDifficultyLootDeliverySink` models that as one logical instanced item plus an ordered recipient span and an explicit `54000`-tick slot lease. The gameplay evaluator materializes the bag before evaluating later Master rules so `Item.NewItem` RNG remains interleaved in source order.
+`RuntimeKingSlimeDifficultyLootDeliverySink` now implements that transport boundary. It materializes the item through the same source-backed world-item materializer, reserves an unpublished exact slot, encodes packet 90 with the byte-for-byte packet-21 payload shape, and sends it only to the requested playing player slots. The reservation is represented by `RuntimeWorldItemInstancedLeaseStore`, so ordinary item allocation cannot reuse the slot while the instanced client copy exists.
 
-The packet-90 encoder and the concrete leased-slot transport adapter are **not** part of this slice yet. The contract stays explicit so production code cannot falsely substitute a globally visible packet-21 world item for the boss bag.
+When a lease reaches zero, `TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease` emits the five-byte packet 151 contract carrying the released item slot. The remaining runtime integration task is to advance these leases from the authoritative item-update phase; the encoder and lease semantics themselves are concrete.
 
 ## Master relic
 
@@ -55,4 +55,4 @@ TerraRuntime preserves that ordering, including the interleaving between success
 
 `RuntimeKingSlimeDifficultyLootFinalizer` accepts only dead King Slime generations in Expert/Master contexts. It captures active interacting players, executes the ordered difficulty rules and despawns the exact NPC generation only after delivery succeeds. Normal mode remains owned by the existing normal-loot transaction.
 
-This closes the authoritative gameplay rule semantics and interaction accounting. Remaining work is the concrete packet-90/leased-slot adapter plus the still-open King Slime death-time world effects such as Slime Rain termination and the first-kill Nerdy Slime unlock/spawn path.
+The rule semantics, packet-90/151 wire representation and leased-slot storage are now explicit. The remaining integration boundary is live packet-28/playerInteraction combat/death ingress plus authoritative lease ticking; King Slime's Slime Rain stop and first-kill Nerdy Slime world effects are covered by the separate committed death-progression slice.

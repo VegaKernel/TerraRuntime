@@ -6,21 +6,14 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 /// <summary>
-/// Post-AI authoritative movement for the verified ordinary NPC physics families. Vanilla computes gravity
-/// parameters before AI, applies AI, then gravity, epsilon velocity clamp, the pre-collision walk-down-slope
-/// pass, wet/tile collision, position movement and the post-move slope pass. Collision/liquid state becomes
-/// input for the next AI tick. Concrete content IDs are resolved to explicit physics-family metadata before
-/// this stage chooses special movement behavior. Every collision query resolves the hitbox from the live
-/// post-AI scale so dynamic-size NPCs do not keep their spawn geometry after an AI scale transition.
-///
-/// This layer also owns the currently source-backed King Slime terminal transition. A dead King Slime proposes
-/// TimeLeft=0 without running another live AI/movement step. Its progression mutation is published only through
-/// the post-commit observer after the exact generation-safe state update succeeds.
+/// Post-AI authoritative movement for the verified ordinary NPC physics families. This layer also owns the
+/// source-backed King Slime terminal transition and its committed world effects: Slime Rain termination, first-kill
+/// blue town-slime unlock/Nerdy spawn, and downedSlimeKing progression.
 /// </summary>
 internal sealed class VanillaNpcWorldMotionAiStepper :
     INpcAiStateStepper,
     INpcAiStateStepperWrapper,
-    INpcAiStatePostCommitObserver
+    INpcAiStatePostCommitEffect
 {
     private const float WaterMovementSpeed = 0.5f;
     private const float LavaMovementSpeed = 0.5f;
@@ -36,6 +29,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     private readonly IVanillaGroundFighterDoorRandom? doorRandom;
     private readonly IVanillaGroundFighterDoorOpeningSink? doorOpeningSink;
     private readonly RuntimeWorldProgressionMutations progressionMutations;
+    private readonly IKingSlimeDeathRandom kingSlimeDeathRandom;
 
     public VanillaNpcWorldMotionAiStepper(INpcAiStateStepper inner, WorldTileStore tiles)
         : this(
@@ -44,7 +38,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             tiles?.WorldSurfaceTiles ?? Math.Max(1d, tiles?.Dimensions.HeightTiles / 3d ?? 1d),
             worldEvents: null,
             doorRandom: null,
-            doorOpeningSink: null)
+            doorOpeningSink: null,
+            kingSlimeDeathRandom: null)
     {
     }
 
@@ -58,7 +53,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             worldSurfaceTiles,
             worldEvents: null,
             doorRandom: null,
-            doorOpeningSink: null)
+            doorOpeningSink: null,
+            kingSlimeDeathRandom: null)
     {
     }
 
@@ -68,7 +64,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         double worldSurfaceTiles,
         IVanillaNpcWorldEventState? worldEvents,
         IVanillaGroundFighterDoorRandom? doorRandom = null,
-        IVanillaGroundFighterDoorOpeningSink? doorOpeningSink = null)
+        IVanillaGroundFighterDoorOpeningSink? doorOpeningSink = null,
+        IKingSlimeDeathRandom? kingSlimeDeathRandom = null)
     {
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
@@ -79,7 +76,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         this.worldEvents = worldEvents;
         this.doorRandom = doorRandom;
         this.doorOpeningSink = doorOpeningSink;
+        this.kingSlimeDeathRandom = kingSlimeDeathRandom ?? new SystemKingSlimeDeathRandom();
         progressionMutations = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
+        progressionMutations.SetSlimeBlueSpawnBaseline(worldEvents?.SlimeBlueSpawnUnlocked == true);
 
         targeting = NpcAiStateStepperComposition.FindCapability<VanillaNpcTargetingAiStepper>(inner);
         if (targeting is not null)
@@ -360,16 +359,33 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         return true;
     }
 
-    public void NpcAiStateCommitted(in NpcSnapshot before, in NpcSnapshot committed)
+    public void ApplyCommittedEffect(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations)
     {
-        if (before.Handle != committed.Handle ||
-            before.Type != VanillaNpcIds.KingSlime.Value ||
-            before.Simulation.LifeMax <= 0 ||
-            before.Simulation.Life != 0 ||
-            committed.Simulation.Life != 0 ||
-            committed.Simulation.TimeLeft != 0)
-        {
+        ArgumentNullException.ThrowIfNull(mutations);
+        if (!IsCommittedKingSlimeDeathShape(in before, in committed))
             return;
+
+        // TerrariaServer 1.4.5.8 case 50 source order:
+        // StopSlimeRain -> set unlock -> NewNPC -> velocity RNG/update -> downedSlimeKing.
+        worldEvents?.TryStopSlimeRain(kingSlimeDeathRandom);
+
+        if (worldEvents is not null && progressionMutations.MarkSlimeBlueSpawnUnlocked())
+        {
+            worldEvents.MarkSlimeBlueSpawnUnlocked();
+            if (TryCreateNerdySlimeSpawnIntent(in before, out NpcAiSpawnIntent intent))
+            {
+                bool spawned = mutations.TrySpawn(in intent, out NpcSnapshot nerdy);
+                float velocityX = kingSlimeDeathRandom.NextFloatDirection() * 3f;
+                if (spawned &&
+                    !mutations.TryUpdateVelocity(nerdy.Handle, velocityX, -10f, out _))
+                {
+                    throw new InvalidOperationException(
+                        "The committed Nerdy Slime spawn could not receive its source-ordered launch velocity.");
+                }
+            }
         }
 
         progressionMutations.MarkCompleted(VanillaWorldProgressionId.KingSlime);
@@ -399,6 +415,37 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             npc.Simulation with { TimeLeft = 0 });
         return true;
     }
+
+    private static bool TryCreateNerdySlimeSpawnIntent(
+        in NpcSnapshot source,
+        out NpcAiSpawnIntent intent)
+    {
+        intent = default;
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            return false;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * 0.5f;
+        float centerY = source.PositionY + hitbox.Height * 0.5f;
+        intent = new NpcAiSpawnIntent(
+            VanillaNpcIds.TownSlimeBlue,
+            BottomX: (int)centerX - 10,
+            BottomY: (int)centerY,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: checked((ushort)VanillaNpcDefinitionCatalog.DefaultTarget));
+        return true;
+    }
+
+    private static bool IsCommittedKingSlimeDeathShape(in NpcSnapshot before, in NpcSnapshot committed) =>
+        before.Handle == committed.Handle &&
+        before.Type == VanillaNpcIds.KingSlime.Value &&
+        before.Simulation.LifeMax > 0 &&
+        before.Simulation.Life == 0 &&
+        committed.Simulation.Life == 0 &&
+        committed.Simulation.TimeLeft == 0;
 
     private VanillaGroundFighterDoorEnvironment ResolveDoorEnvironment(in NpcStateUpdate aiState)
     {
@@ -430,4 +477,3 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         _ => NpcLiquidContactKind.Water
     };
 }
-

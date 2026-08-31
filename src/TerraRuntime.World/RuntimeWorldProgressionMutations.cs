@@ -3,13 +3,14 @@ using System.Runtime.CompilerServices;
 namespace TerraRuntime.World;
 
 /// <summary>
-/// Immutable owner-thread save image of progression milestones completed after the canonical .wld was loaded.
-/// The bit layout is keyed by <see cref="VanillaWorldProgressionId"/> and is deliberately independent from the
-/// physical SaveWorldFlags byte order in Terraria's header.
+/// Immutable owner-thread save image of progression milestones and source-backed world unlocks produced after the
+/// canonical .wld was loaded. Milestone bits remain independent from the physical SaveWorldFlags byte order.
 /// </summary>
 public readonly record struct RuntimeWorldProgressionMutationSnapshot(ulong CompletedMask)
 {
-    public bool HasAny => CompletedMask != 0;
+    public bool UnlockSlimeBlueSpawn { get; init; }
+
+    public bool HasAny => CompletedMask != 0 || UnlockSlimeBlueSpawn;
 
     public bool IsCompleted(VanillaWorldProgressionId milestone)
     {
@@ -20,13 +21,15 @@ public readonly record struct RuntimeWorldProgressionMutationSnapshot(ulong Comp
 }
 
 /// <summary>
-/// Single-writer progression journal for mutations produced by authoritative gameplay after world load.
-/// It records only newly completed milestones and therefore never needs to rewrite or clear unrelated persisted
-/// SaveWorldFlags. Owner-thread snapshot capture detaches the packed value before background serialization begins.
+/// Single-writer progression journal for mutations produced by authoritative gameplay after world load. Persisted
+/// baseline facts are tracked separately from newly produced mutations so save patching changes only facts that this
+/// runtime actually made true.
 /// </summary>
 public sealed class RuntimeWorldProgressionMutations
 {
     private ulong completedMask;
+    private bool baselineSlimeBlueSpawnUnlocked;
+    private bool unlockSlimeBlueSpawn;
 
     public bool MarkCompleted(VanillaWorldProgressionId milestone)
     {
@@ -43,7 +46,25 @@ public sealed class RuntimeWorldProgressionMutations
     public bool IsCompleted(VanillaWorldProgressionId milestone) =>
         CaptureSnapshot().IsCompleted(milestone);
 
-    public RuntimeWorldProgressionMutationSnapshot CaptureSnapshot() => new(completedMask);
+    public void SetSlimeBlueSpawnBaseline(bool unlocked)
+    {
+        if (unlocked)
+            baselineSlimeBlueSpawnUnlocked = true;
+    }
+
+    public bool IsSlimeBlueSpawnUnlocked => baselineSlimeBlueSpawnUnlocked || unlockSlimeBlueSpawn;
+
+    public bool MarkSlimeBlueSpawnUnlocked()
+    {
+        if (IsSlimeBlueSpawnUnlocked)
+            return false;
+
+        unlockSlimeBlueSpawn = true;
+        return true;
+    }
+
+    public RuntimeWorldProgressionMutationSnapshot CaptureSnapshot() =>
+        new(completedMask) { UnlockSlimeBlueSpawn = unlockSlimeBlueSpawn };
 }
 
 /// <summary>
