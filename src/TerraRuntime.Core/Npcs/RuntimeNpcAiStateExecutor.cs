@@ -18,7 +18,9 @@ public interface INpcAiPeerSnapshotConsumer
     void SetNpcPeers(ReadOnlySpan<NpcSnapshot> peers);
 }
 
-/// <summary>Bounded accounting for one state-transition pass over the live NPC table.</summary>
+/// <summary>
+/// Bounded accounting for one state-transition pass over the live NPC table.
+/// </summary>
 public readonly record struct NpcAiStateTickSummary(
     int Examined,
     int Proposed,
@@ -26,23 +28,33 @@ public readonly record struct NpcAiStateTickSummary(
     int Rejected);
 
 /// <summary>
-/// Runs allocation-stable NPC AI state transitions against a pre-pass snapshot of the live NPC table. Speculative
-/// spawn intents are collected before source commit but are applied only after it succeeds. Irreversible effects that
-/// require exact source ordering use <see cref="INpcAiStatePostCommitEffect"/> instead; that capability receives only
-/// a narrow generation-safe mutation sink after the source update is accepted.
+/// Runs allocation-stable NPC AI state transitions against a pre-pass snapshot of the live NPC table.
+/// The executor and store are authoritative-thread components. A proposed transition is committed only
+/// if the exact generation captured at the start of the pass is still current, so reentrant lifecycle
+/// changes cannot let stale AI work mutate a replacement NPC in the same slot. Optional NPC and projectile
+/// spawn intents are planned speculatively into executor-owned bounded scratch storage and are applied in order
+/// only after that source-state commit succeeds; spawned entities therefore cannot enter the same pre-pass or escape
+/// from a rejected/stale transition. Irreversible effects that require exact source ordering use a post-commit
+/// mutation surface and therefore cannot consume RNG or mutate the world for a rejected source generation.
 /// </summary>
 public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
 {
+    private const int MaximumProjectileIntentsPerNpcStep = 8;
+
     private readonly RuntimeNpcStore _npcs;
+    private readonly RuntimeProjectileStore? _projectiles;
     private readonly NpcSnapshot[] _snapshotBuffer;
     private readonly NpcAiSpawnIntent[] _spawnIntentBuffer;
+    private readonly NpcAiProjectileIntent[] _projectileIntentBuffer;
 
-    public RuntimeNpcAiStateExecutor(RuntimeNpcStore npcs)
+    public RuntimeNpcAiStateExecutor(RuntimeNpcStore npcs, RuntimeProjectileStore? projectiles = null)
     {
         ArgumentNullException.ThrowIfNull(npcs);
         _npcs = npcs;
+        _projectiles = projectiles;
         _snapshotBuffer = new NpcSnapshot[npcs.Capacity];
         _spawnIntentBuffer = new NpcAiSpawnIntent[npcs.Capacity];
+        _projectileIntentBuffer = new NpcAiProjectileIntent[MaximumProjectileIntentsPerNpcStep];
     }
 
     public NpcAiStateTickSummary Tick(INpcAiStateStepper stepper) =>
@@ -60,6 +72,9 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         int rejected = 0;
         INpcAiSpawnIntentPlanner? spawnPlanner =
             NpcAiStateStepperComposition.FindCapability<INpcAiSpawnIntentPlanner>(stepper);
+        INpcAiProjectileIntentPlanner? projectilePlanner = _projectiles is null
+            ? null
+            : NpcAiStateStepperComposition.FindCapability<INpcAiProjectileIntentPlanner>(stepper);
         INpcAiStatePostCommitObserver? postCommitObserver =
             NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitObserver>(stepper);
         INpcAiStatePostCommitEffect? postCommitEffect =
@@ -85,12 +100,31 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 continue;
             }
 
+            int projectileCount = projectilePlanner?.PlanProjectileSpawns(
+                in npc,
+                in next,
+                _projectileIntentBuffer) ?? 0;
+            if ((uint)projectileCount > (uint)_projectileIntentBuffer.Length)
+            {
+                rejected++;
+                continue;
+            }
+
             if (_npcs.TryUpdate(npc.Handle, in next, out NpcSnapshot committed))
             {
                 applied++;
                 postCommitObserver?.NpcAiStateCommitted(in npc, in committed);
                 postCommitEffect?.ApplyCommittedEffect(in npc, in committed, this);
                 commitSink?.NpcAiStateCommitted(in committed);
+
+                if (_projectiles is not null)
+                {
+                    for (int projectileIndex = 0; projectileIndex < projectileCount; projectileIndex++)
+                    {
+                        NpcAiProjectileIntent intent = _projectileIntentBuffer[projectileIndex];
+                        RuntimeNpcProjectileIntentApplier.TryApply(_projectiles, in intent, out _);
+                    }
+                }
 
                 for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
                 {
