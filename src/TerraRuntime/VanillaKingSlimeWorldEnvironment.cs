@@ -7,9 +7,12 @@ namespace TerraRuntime;
 /// <summary>
 /// Runtime-owned TerrariaServer 1.4.5.8 King Slime world queries. Teleport candidate enumeration mirrors
 /// BuildKingSlimeTeleportCache/AddKingSlimeTeleportCacheTiles: the 10/7 ring is tried first, then 6/2, with
-/// a uniformly selected candidate. Anti-cheese and empty-cache fallback use the closest target bottom.
+/// a uniformly selected candidate. Anti-cheese and empty-cache fallback use the closest target bottom. The same
+/// world owner also exposes the exact rectangle-based Collision.CanHit query required by Good World Eye AI.
 /// </summary>
-internal sealed class VanillaKingSlimeWorldEnvironment : IVanillaKingSlimeEnvironment
+internal sealed class VanillaKingSlimeWorldEnvironment :
+    IVanillaKingSlimeEnvironment,
+    IVanillaEyeOfCthulhuEnvironment
 {
     private const int TileSize = 16;
     private const float BasePlayerHeight = 42f;
@@ -34,6 +37,26 @@ internal sealed class VanillaKingSlimeWorldEnvironment : IVanillaKingSlimeEnviro
 
     public bool CanHitLine(float fromX, float fromY, float toX, float toY) =>
         VanillaWorldLineOfSight.CanHitLine(_tiles, fromX, fromY, toX, toY);
+
+    public bool CanHit(
+        float sourcePositionX,
+        float sourcePositionY,
+        int sourceWidth,
+        int sourceHeight,
+        float targetPositionX,
+        float targetPositionY,
+        int targetWidth,
+        int targetHeight) =>
+        VanillaWorldCanHit.HasLineOfSight(
+            _tiles,
+            sourcePositionX,
+            sourcePositionY,
+            sourceWidth,
+            sourceHeight,
+            targetPositionX,
+            targetPositionY,
+            targetWidth,
+            targetHeight);
 
     public bool TryResolveTeleport(
         in NpcSnapshot npc,
