@@ -14,7 +14,7 @@ internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorS
     public static BuiltInWorldGeneratorSource Instance { get; } = new();
 
     private readonly FlatWorldGenerationProvider flat = new();
-    private readonly SourceBackedVanillaWorldGenerationFinal1458 vanilla = new();
+    private readonly SourceBackedVanillaWorldGenerationCanonical1458 vanilla = new();
     private readonly SkyblockWorldGenerationProvider skyblock = new();
     private readonly WorldGeneratorId[] ids =
         [
@@ -151,7 +151,7 @@ internal sealed class FlatWorldGenerationProvider : IWorldGenerationProvider
             if (!metadata.TrySetSpawn(width / 2, spawnY))
                 throw new InvalidOperationException("Flat generator could not set a valid spawn point.");
             if (!metadata.TrySetDungeon(dungeonX, spawnY))
-                throw new InvalidOperationException("Flat generator could not set a valid dungeon anchor.");
+                throw new InvalidOperationException("Flat generator could not set valid dungeon anchor.");
             if (!metadata.TrySetLayers(surface, rockLayer))
                 throw new InvalidOperationException("Flat generator could not set valid world layers.");
 
