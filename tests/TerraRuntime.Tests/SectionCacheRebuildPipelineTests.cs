@@ -99,7 +99,9 @@ public sealed class SectionCacheRebuildPipelineTests
             Assert.Equal(1, requested.OnDemandDeduplicatedRequests);
             Assert.Equal(1, requested.OnDemandPendingRequests);
             Assert.Equal(2, requested.CacheMisses);
-            Assert.Equal(2, requested.CacheStaleReads);
+            // The first lookup removes the stale cache entry while holding _sectionCacheGate. The concurrent
+            // deduplicated lookup therefore observes a normal miss, not a second stale-entry invalidation.
+            Assert.Equal(1, requested.CacheStaleReads);
             Assert.Equal(2, requested.CacheWaits);
 
             pipeline.Tick();
@@ -428,40 +430,40 @@ public sealed class SectionCacheRebuildPipelineTests
         throw new TimeoutException(
             $"Section cache rebuild did not reach the expected state. " +
             $"dirty={final.DirtyBacklog}, inFlight={final.InFlight}, submitted={final.SubmittedRebuilds}, " +
-            $"published={final.PublishedFrames}, stale={final.StaleResults}, failures={final.EncodeFailures}.");
+            $"published={final.PublishedFrames}, stale={final.StaleResults}, failed={final.EncodeFailures}, " +
+            $"onDemandPending={final.OnDemandPendingRequests}, waits={final.CacheWaits}, " +
+            $"waitCompleted={final.CacheWaitCompletions}, waitTimeouts={final.CacheWaitTimeouts}.");
     }
+
+    private static WorldFileData LoadCompleteWorld() =>
+        WorldFileLoader.Load(TestWorldBytes.CreateCompleteWorld()).World!;
 
     private static WorldFileData CreateMultiSectionWorld()
     {
-        WorldFileData source = LoadCompleteWorld();
-        var dimensions = new WorldDimensions(widthTiles: 201, heightTiles: 151);
-        WorldFileHeader header = source.Header with
+        WorldDimensions dimensions = new(420, 320);
+        WorldHeader header = new()
         {
-            RightWorld = dimensions.WidthTiles * 16,
-            BottomWorld = dimensions.HeightTiles * 16,
-            Dimensions = dimensions
+            FormatVersion = 326,
+            Name = "Section Cache Rebuild Multi",
+            Dimensions = dimensions,
+            WorldSurface = 140,
+            RockLayer = 230,
+            SpawnX = 210,
+            SpawnY = 160
         };
-        return source with
+        var tiles = new WorldTileGrid(dimensions, fillType: 1);
+        return new WorldFileData
         {
             Header = header,
-            Tiles = new WorldTileStore(dimensions)
+            Tiles = tiles,
+            Chests = [],
+            Signs = [],
+            Npcs = [],
+            TileEntities = [],
+            WeightedPressurePlates = [],
+            RuntimeMetadata = WorldRuntimeMetadata.FromHeader(header),
+            Bestiary = WorldBestiaryState.Empty,
+            CreativePowers = WorldCreativePowersState.Empty
         };
-    }
-
-    private static WorldFileData LoadCompleteWorld()
-    {
-        byte[] source = (byte[])InvokeWorldLoaderTestHelper("CreateCompleteCurrentWorld")!;
-        WorldFileLoadLimits limits = (WorldFileLoadLimits)InvokeWorldLoaderTestHelper("CreateLimits")!;
-        Assert.True(WorldFileLoader.TryLoad(source, limits, out WorldFileData? loaded).IsLoaded);
-        return Assert.IsType<WorldFileData>(loaded);
-    }
-
-    private static object? InvokeWorldLoaderTestHelper(string name)
-    {
-        MethodInfo method = typeof(WorldFileLoaderTests).GetMethod(
-            name,
-            BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException($"World loader test helper '{name}' was not found.");
-        return method.Invoke(null, null);
     }
 }
