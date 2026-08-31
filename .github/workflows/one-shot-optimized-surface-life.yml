@@ -1,0 +1,72 @@
+name: One-shot optimized surface life
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/ci/apply_optimized_surface_life.py'
+      - '.github/workflows/one-shot-optimized-surface-life.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-optimized-surface-life
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Apply optimized surface-life block
+        run: python3 tools/ci/apply_optimized_surface_life.py
+
+      - name: Validate bilingual documentation
+        run: |
+          python3 tools/ci/test_check_documentation.py
+          python3 tools/ci/check_documentation.py
+
+      - name: Build
+        run: dotnet build TerraRuntime.slnx -c Release
+
+      - name: Run optimized worldgen regressions
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build -- --filter-class TerraRuntime.Tests.OptimizedWorldGenerationProviderTests
+
+      - name: Run complete test suite
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+
+      - name: Commit surface-life block and remove one-shot helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Xekep"
+          git config user.email "Xekep@users.noreply.github.com"
+          git rm tools/ci/apply_optimized_surface_life.py .github/workflows/one-shot-optimized-surface-life.yml
+          git add src/TerraRuntime.World/Generation/Optimized/OptimizedSurfaceDecorationWorldGenerationProvider.cs \
+                  src/TerraRuntime/BuiltInWorldGeneratorSource.cs \
+                  tests/TerraRuntime.Tests/OptimizedWorldGenerationProviderTests.cs \
+                  docs/roadmap/optimized-worldgen.md \
+                  docs/en/optimized-world-generation.md \
+                  docs/ru/optimized-world-generation.md
+          git commit -m "Populate optimized worlds with surface life"
+          for attempt in 1 2 3 4; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort || true
+            sleep 2
+          done
+          echo "Unable to rebase optimized surface-life block onto current main." >&2
+          exit 1
