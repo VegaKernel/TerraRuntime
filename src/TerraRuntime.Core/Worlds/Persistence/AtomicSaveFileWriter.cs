@@ -13,6 +13,8 @@ public static partial class AtomicSaveFileWriter
     private const int IoBufferSize = 64 * 1024;
     private const string TemporarySuffix = ".tmp";
     private const string LeaseSuffix = ".lease";
+    private const string RecoveryMarkerSuffix = ".recovery";
+    private const string RecoveryConflictSuffix = ".recovery-conflict";
 
     public static Task WriteAsync(
         string destinationPath,
@@ -48,6 +50,7 @@ public static partial class AtomicSaveFileWriter
 
         using TemporaryFileLease temporaryLease = CreateTemporaryLease(destinationDirectory, fullDestinationPath);
         string temporaryPath = temporaryLease.TemporaryPath;
+        string recoveryMarkerPath = temporaryPath + RecoveryMarkerSuffix;
         bool temporaryConsumed = false;
 
         try
@@ -62,6 +65,7 @@ public static partial class AtomicSaveFileWriter
             if (options?.ValidateCandidateAsync is { } validateCandidateAsync)
                 await validateCandidateAsync(temporaryPath, cancellationToken).ConfigureAwait(false);
 
+            string? recoveryBackupPath = null;
             cancellationToken.ThrowIfCancellationRequested();
             if (fullBackupPath is not null && File.Exists(fullDestinationPath))
             {
@@ -70,16 +74,28 @@ public static partial class AtomicSaveFileWriter
                     fullBackupPath,
                     options?.ValidateBackupAsync,
                     cancellationToken).ConfigureAwait(false);
+                recoveryBackupPath = fullBackupPath;
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await WriteRecoveryMarkerAsync(
+                recoveryMarkerPath,
+                temporaryPath,
+                recoveryBackupPath,
+                cancellationToken).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
             PublishTemporaryFile(temporaryPath, fullDestinationPath);
             temporaryConsumed = true;
+            TryDelete(recoveryMarkerPath);
         }
         finally
         {
             if (!temporaryConsumed)
+            {
                 TryDelete(temporaryPath);
+                TryDelete(recoveryMarkerPath);
+            }
         }
     }
 
@@ -164,49 +180,6 @@ public static partial class AtomicSaveFileWriter
                 Options = FileOptions.WriteThrough
             });
         return new TemporaryFileLease(temporaryPath, leasePath, leaseStream);
-    }
-
-    private static void CleanupAbandonedTemporaries(string targetPath)
-    {
-        string directory = Path.GetDirectoryName(targetPath)
-            ?? throw new ArgumentException("Target path has no directory.", nameof(targetPath));
-        string targetName = Path.GetFileName(targetPath);
-
-        foreach (string leasePath in Directory.EnumerateFiles(directory, $"*{TemporarySuffix}{LeaseSuffix}"))
-        {
-            if (!IsLeaseForTarget(leasePath, targetName))
-                continue;
-
-            FileStream? orphanLease = null;
-            try
-            {
-                orphanLease = new FileStream(
-                    leasePath,
-                    new FileStreamOptions
-                    {
-                        Mode = FileMode.Open,
-                        Access = FileAccess.ReadWrite,
-                        Share = FileShare.None,
-                        BufferSize = 1,
-                        Options = FileOptions.None
-                    });
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            {
-                continue;
-            }
-
-            string temporaryPath = leasePath[..^LeaseSuffix.Length];
-            try
-            {
-                TryDelete(temporaryPath);
-            }
-            finally
-            {
-                orphanLease.Dispose();
-                TryDelete(leasePath);
-            }
-        }
     }
 
     private static bool IsLeaseForTarget(string leasePath, string targetName)

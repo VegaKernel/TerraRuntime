@@ -15,6 +15,7 @@
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
 - [Телеметрия пакетов по message ID](packet-telemetry.md) — bounded frame/byte counters по ID и direction, rolling top traffic, malformed/unknown traffic и нормализованные rejection counters.
 - [Загрузка мира и persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state и recovery.
+- [Recovery прерванного save](interrupted-save-recovery.md) — durable recovery markers, SHA-256 sealing, preconditions roll-forward, conflict quarantine и crash windows.
 - [Телеметрия времени save pipeline](save-pipeline-telemetry.md) — границы времени authoritative snapshot, serializer и полной atomic-write транзакции и правила их интерпретации.
 - [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.
 - [Synchronization и interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis и текущая passthrough policy.

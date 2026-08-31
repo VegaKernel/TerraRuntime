@@ -1,56 +1,82 @@
-# Восстановление прерванного сохранения `.wld`
+# Recovery прерванного save
 
-[Сохранение мира](world-persistence.md) · [Архитектура](architecture.md) · [Дорожная карта](../roadmap.md)
+[English](../en/interrupted-save-recovery.md) · [Документация](README.md) · [World persistence](world-persistence.md)
 
-## Зачем это нужно
+## Назначение
 
-Атомарная публикация уже гарантирует, что убитый процесс не выставит частично записанный canonical `.wld`. Но остаётся второй случай: процесс может погибнуть после того, как полный кандидат уже записан в managed `.tmp` в том же каталоге, но до атомарного rename в canonical path. Если всякий abandoned temporary без разбора удалять как мусор, старый canonical останется цел, зато можно потерять самое новое полностью восстановимое поколение.
+Atomic replacement защищает canonical `.wld` от partial publication, но процесс всё равно может погибнуть после того, как полный validated candidate и rollback backup уже durable, а финальный namespace replace ещё не выполнен. TerraRuntime теперь рассматривает такое состояние как recoverable transaction, а не просто удаляет candidate.
 
-Поэтому TerraRuntime рассматривает managed orphan candidate не как мусор, а как недоверенный вход recovery-процедуры.
+Механизм живёт внутри `AtomicSaveFileWriter`, поэтому host startup и следующий save используют одну и ту же lease-safe transaction model.
 
-## Порядок startup
+## Граница transaction
 
-Исполняемый путь `--world` выполняет interrupted-save recovery до обычного host cleanup и до cache/stat/load canonical мира.
+Для authoritative `.wld` save порядок такой:
 
 ```mermaid
 flowchart TD
-    A["Managed .wld.tmp + .tmp.lease"] --> B{"Lease можно получить эксклюзивно?"}
-    B -->|нет| C["Отказ от concurrent startup"]
-    B -->|да| D["Полная валидация candidate через .wld loader"]
-    D -->|invalid| E["Удалить invalid managed orphan"]
-    D -->|valid| F{"Состояние canonical destination"}
-    F -->|отсутствует| G["Опубликовать candidate как первый canonical save"]
-    F -->|valid supported| H["Сохранить canonical в validated .bak"]
-    H --> I["Атомарно опубликовать candidate"]
-    F -->|структурно повреждён| J["Не перетирать существующий .bak"]
-    J --> I
-    F -->|явно новая/несовместимая версия| K["Подавить recovery и сохранить оба файла"]
+    Snapshot["Detached authoritative snapshot"] --> Temp["Serialize same-directory .tmp"]
+    Temp --> Flush["Flush candidate to durable storage"]
+    Flush --> Validate["Validate complete candidate"]
+    Validate --> Backup["Publish validated previous-generation .bak"]
+    Backup --> Seal["Write + fsync recovery marker"]
+    Seal --> Publish["Atomic canonical replace"]
+    Publish --> Cleanup["Remove marker + lease"]
 ```
 
-Candidate публикуется через тот же atomic rename и Linux parent-directory `fsync`, что и обычный save. При I/O error candidate и lease остаются на диске, чтобы recovery можно было повторить, а не превращать неопределённость в тихую потерю данных.
+Для first save предыдущего backup нет, поэтому recovery marker seal'ится после validation candidate и до первой canonical publication.
 
-## Выбор candidate
+Ключевое правило: случайного orphan `.tmp` **недостаточно** для recovery. Roll-forward разрешается только когда существует durable recovery marker.
 
-Рассматриваются только корректно именованные managed transaction TerraRuntime. Candidate сортируются по `LastWriteTimeUtc` temporary-файла; сначала проверяется самый новый abandoned candidate. Если полная `.wld` validation его отвергает, этот orphan удаляется и recovery переходит к следующему более старому кандидату. Живой exclusive lease останавливает recovery, чтобы старый orphan не обогнал более новый active writer.
+## Recovery marker
 
-Legacy temporary без распознаваемого TerraRuntime lease в эту схему не входят: их ownership безопасно доказать нельзя.
+У recovery-ready managed temporary может быть sibling `.recovery` marker. Текущий формат хранит:
 
-## Политика canonical и backup
+- `$8\,\mathrm{B}$` format magic и mode byte;
+- byte length candidate и `$32\,\mathrm{B}$` SHA-256 digest;
+- byte length и SHA-256 предыдущего `.bak`, если backup существует;
+- normalized backup path, когда он нужен.
 
-Если текущий canonical валиден и поддерживается, перед публикацией recovered candidate он сохраняется как предыдущее поколение. Backup тоже создаётся через temporary, проходит validation и публикуется атомарно.
+Marker bounded до `$64\,\mathrm{KiB}$`, пишется через durable file path, flush'ится через `Flush(flushToDisk: true)` и на Linux получает parent-directory `fsync` barrier до того, как сможет дать transaction право на recovery.
 
-Если canonical структурно повреждён, interrupted candidate может заменить его без ротации повреждённых байтов поверх уже известного хорошего `.bak`. Так сохраняются два независимых recovery-источника.
+Для runtime `.wld` marker создаётся только после того, как `ValidateCandidateAsync` принял exact candidate. `RuntimeWorldTileChestSaveService` привязывает этот callback к полному supported `WorldFileLoader`, поэтому SHA-256 seal'ит bytes, уже прошедшие Terraria 1.4.5.8 structural/content validation. Для existing canonical marker создаётся только после copy, validation и publication предыдущей generation в `<world>.wld.bak`.
 
-Явно неподдерживаемый формат мира не считается corruption. Например, canonical Terraria world с версией `327` не заменяется валидным orphan candidate для текущей поддерживаемой версии `326`. Startup завершается fail-closed, сохраняя и несовместимый canonical, и managed orphan для version-aware/manual обработки.
+## Recovery при startup и следующем write
 
-## Проверка реальным падением процесса
+Сначала recovery пытается эксклюзивно получить abandoned `.tmp.lease`. Live writer продолжает держать lease с `FileShare.None`, поэтому его transaction не инспектируется и не удаляется.
 
-Отдельный workflow `Interrupted World Save Recovery` создаёт настоящий version-326 `.wld` через официальный TerrariaServer 1.4.5.8. Затем `TerraRuntime.AtomicSaveCrashProbe` начинает первый save, копирует полный официальный мир в temporary writer-а, держит lease и получает реальный `SIGKILL` до publication.
+```mermaid
+flowchart TD
+    Lease["Acquire abandoned lease"] --> Temp{"Candidate exists?"}
+    Temp -->|no| RemoveLease["Remove stale marker/lease"]
+    Temp -->|yes| Marker{"Durable .recovery marker?"}
+    Marker -->|no| RemovePartial["Discard ordinary partial orphan"]
+    Marker -->|yes| Hash{"Candidate length + SHA-256 match?"}
+    Hash -->|no| RemoveTampered["Discard tampered/invalid transaction"]
+    Hash -->|yes| Preconditions{"Publication preconditions still match?"}
+    Preconditions -->|yes| RollForward["Atomic roll-forward candidate"]
+    Preconditions -->|no| Quarantine["Rename marker to .recovery-conflict"]
+```
 
-Proof требует, чтобы canonical path после `SIGKILL` оставался скрытым, managed orphan byte-for-byte совпадал с официальным source world, executable startup валидировал и публиковал его до cleanup, а явно более новая версия canonical подавляла recovery без изменения обоих файлов.
+First-save candidate может roll-forward только пока canonical target всё ещё отсутствует. Existing-save candidate может roll-forward только пока current canonical и `.bak` оба совпадают с fingerprint предыдущей generation, sealed в marker. Поэтому старый orphan не может затереть более новый successful save или externally replaced world.
 
-## Границы гарантии
+Если preconditions уже не совпадают, TerraRuntime не гадает. Candidate и lease остаются на месте, marker quarantine'ится как `.recovery-conflict` для явной диагностики. Повторный cleanup остаётся fail-closed и никогда не overwrite'ит current canonical bytes.
 
-Механизм восстанавливает полный managed `.wld` candidate, переживший process crash. Он не утверждает, что байты, которые ещё не были durably flushed, переживут внезапное отключение питания; это отдельная гарантия существующих file-content и directory-metadata durability barriers.
+## Crash windows
 
-Preflight сейчас относится к composition path исполняемого `TerraRuntime.Server --world`. Низкоуровневый embedder, который напрямую вызывает `TerrariaServerHost.RunAsync`, должен вызвать тот же recovery boundary до host cleanup, если ему нужна идентичная interrupted-save семантика.
+Поведение намеренно асимметрично:
+
+- crash до durable recovery marker: authoritative остаётся старый canonical checkpoint; abandoned managed temporary позже удаляется;
+- crash после durable recovery marker, но до canonical publication: exact sealed candidate может быть roll-forward;
+- crash после canonical rename, но до cleanup marker/lease: canonical path уже содержит новую generation, startup удаляет stale sidecars;
+- live lease: cleanup/recovery не трогает transaction;
+- unknown legacy `.tmp` без TerraRuntime lease: остаётся untouched, потому что ownership доказать нельзя.
+
+Так закрывается interrupted-publication gap без превращения любой времянки в recovery source.
+
+## Стоимость и ownership
+
+Recovery hashing и marker I/O выполняются внутри detached background save transaction, а не на authoritative game-loop thread. Сейчас implementation повторно sequentially читает sealed candidate и backup для SHA-256. Это принятый correctness-first I/O cost; оптимизировать его можно позже только по measurements и без ослабления гарантии, что marker аутентифицирует exact validated bytes.
+
+## Verification
+
+`AtomicSaveFileWriterCleanupTests` покрывает ordinary orphan cleanup и recovery-ready first-save publication, roll-forward existing canonical/backup, rejection tampered candidate, rejection invalid/partial marker, suppression при missing backup, conflict quarantine и isolation live lease. Existing workflow `Authoritative World Save` уже build'ит и исполняет этот test class вместе с process-level `SIGKILL` proof atomic publication.

@@ -1,56 +1,82 @@
-# Interrupted `.wld` save recovery
+# Interrupted-save recovery
 
-[World persistence](world-persistence.md) · [Architecture](architecture.md) · [Roadmap](../roadmap.md)
+[Русский](../ru/interrupted-save-recovery.md) · [Documentation](README.md) · [World persistence](world-persistence.md)
 
 ## Purpose
 
-Atomic publication already guarantees that a killed writer cannot expose a partially written canonical `.wld`. That leaves a second recovery problem: a process may die after a complete candidate has reached its managed same-directory `.tmp`, but before the atomic rename publishes it. Deleting every abandoned temporary is safe for the old canonical checkpoint, but it can discard the newest fully recoverable generation.
+Atomic replacement protects the canonical `.wld` from partial publication, but a process can still die after a complete, validated candidate and its rollback backup are durable and before the final namespace replace. TerraRuntime treats that state as a recoverable transaction instead of blindly deleting the candidate.
 
-TerraRuntime therefore treats a managed orphan candidate as untrusted recovery input rather than immediate garbage.
+The recovery mechanism is implemented inside `AtomicSaveFileWriter`, so host startup and the next save use the same lease-safe transaction rules.
 
-## Startup order
+## Transaction boundary
 
-The executable `--world` startup path performs interrupted-save recovery before the host's ordinary orphan cleanup and before canonical cache/stat/load work.
+For the authoritative `.wld` save path the ordering is:
 
 ```mermaid
 flowchart TD
-    A["Managed .wld.tmp + .tmp.lease"] --> B{"Lease can be acquired exclusively?"}
-    B -->|no| C["Refuse concurrent startup"]
-    B -->|yes| D["Validate candidate with complete .wld loader"]
-    D -->|invalid| E["Delete invalid managed orphan"]
-    D -->|valid| F{"Canonical destination state"}
-    F -->|missing| G["Publish candidate as first canonical save"]
-    F -->|valid supported| H["Rotate canonical to validated .bak"]
-    H --> I["Atomically publish candidate"]
-    F -->|structurally corrupt| J["Keep existing .bak untouched"]
-    J --> I
-    F -->|explicit newer/incompatible version| K["Suppress recovery and preserve both files"]
+    Snapshot["Detached authoritative snapshot"] --> Temp["Serialize same-directory .tmp"]
+    Temp --> Flush["Flush candidate to durable storage"]
+    Flush --> Validate["Validate complete candidate"]
+    Validate --> Backup["Publish validated previous-generation .bak"]
+    Backup --> Seal["Write + fsync recovery marker"]
+    Seal --> Publish["Atomic canonical replace"]
+    Publish --> Cleanup["Remove marker + lease"]
 ```
 
-The candidate is published through the same atomic rename plus Linux parent-directory `fsync` boundary used by normal saves. I/O failure leaves the candidate and lease on disk so recovery can be retried instead of silently converting uncertainty into data loss.
+For a first save there is no previous-generation backup, so the recovery marker is sealed after candidate validation and before the first canonical publication.
 
-## Candidate selection
+The important distinction is that a random orphan `.tmp` is **not** enough to authorize recovery. Roll-forward is possible only after a durable recovery marker exists.
 
-Only correctly named TerraRuntime managed transactions are considered. Candidates are ordered by temporary-file `LastWriteTimeUtc`; the newest abandoned candidate is tried first. If that candidate fails complete `.wld` validation, it is removed and recovery continues to the next older candidate. A live exclusive lease stops recovery rather than allowing an older orphan to race a newer active writer.
+## Recovery marker
 
-Legacy temporary files without a recognized TerraRuntime lease remain outside this mechanism because their ownership cannot be proven.
+Each recovery-ready managed temporary may have a sibling `.recovery` marker. The current marker stores:
 
-## Canonical and backup policy
+- an `$8\,\mathrm{B}$` format magic and a mode byte;
+- candidate byte length and a `$32\,\mathrm{B}$` SHA-256 digest;
+- previous-generation backup byte length and SHA-256 digest when a backup exists;
+- the normalized backup path when required.
 
-A valid supported canonical checkpoint is preserved as the previous generation before a recovered candidate becomes visible. Backup publication is itself temporary-file based, validated and atomic.
+The marker is bounded to `$64\,\mathrm{KiB}$`, written through the durable file path, flushed with `Flush(flushToDisk: true)`, and followed by the Linux parent-directory `fsync` barrier before it can grant recovery authority.
 
-If the visible canonical checkpoint is structurally corrupt, the interrupted candidate may replace it without rotating the corrupt bytes over an already known-good `.bak`. This preserves both independent recovery sources.
+For runtime `.wld` saves the marker is created only after `ValidateCandidateAsync` has accepted the exact candidate. `RuntimeWorldTileChestSaveService` binds that callback to the complete supported `WorldFileLoader`, so the SHA-256 seals bytes that already passed Terraria 1.4.5.8 structural/content validation. For an existing canonical world the marker is created only after the previous generation has also been copied, validated and published at `<world>.wld.bak`.
 
-An explicitly unsupported world format is different from corruption. For example, a canonical Terraria world reporting version `327` is not replaced by a valid orphan candidate built for the currently supported version `326`. Startup fails closed and preserves the incompatible canonical plus the managed orphan for version-aware/manual handling.
+## Startup and next-write recovery
 
-## Process-crash proof
+Recovery first acquires the abandoned `.tmp.lease` exclusively. A live writer still owns its lease with `FileShare.None`, so its transaction is never inspected or deleted.
 
-The dedicated `Interrupted World Save Recovery` workflow uses the official TerrariaServer 1.4.5.8 to create a real version-326 `.wld`. `TerraRuntime.AtomicSaveCrashProbe` then starts a first save, copies the complete official world into the writer-owned temporary, holds the lease, and is killed with real `SIGKILL` before publication.
+```mermaid
+flowchart TD
+    Lease["Acquire abandoned lease"] --> Temp{"Candidate exists?"}
+    Temp -->|no| RemoveLease["Remove stale marker/lease"]
+    Temp -->|yes| Marker{"Durable .recovery marker?"}
+    Marker -->|no| RemovePartial["Discard ordinary partial orphan"]
+    Marker -->|yes| Hash{"Candidate length + SHA-256 match?"}
+    Hash -->|no| RemoveTampered["Discard tampered/invalid transaction"]
+    Hash -->|yes| Preconditions{"Publication preconditions still match?"}
+    Preconditions -->|yes| RollForward["Atomic roll-forward candidate"]
+    Preconditions -->|no| Quarantine["Rename marker to .recovery-conflict"]
+```
 
-The proof requires the canonical path to remain hidden after `SIGKILL`, the managed orphan to match the official source byte-for-byte, executable startup to validate and publish it before cleanup, and an explicitly newer canonical to suppress recovery without changing either file.
+A first-save candidate can roll forward only while the canonical target is still absent. An existing-save candidate can roll forward only while both the current canonical and `.bak` still match the previous-generation fingerprint sealed into the marker. This prevents an old orphan from overwriting a newer successful save or an externally replaced world.
 
-## Scope and limitations
+When those preconditions no longer match, TerraRuntime does not guess. The candidate and lease stay in place and the marker is quarantined as `.recovery-conflict` for explicit inspection. Repeated cleanup attempts remain fail-closed and never overwrite the current canonical bytes.
 
-This mechanism recovers complete managed `.wld` candidates that survived a process crash. It does not claim that bytes which were never durably flushed will survive sudden power loss; the existing file-content and directory-metadata durability barriers define that separate guarantee.
+## Crash windows
 
-The preflight is currently part of the `TerraRuntime.Server --world` executable startup composition. Low-level embedders that call `TerrariaServerHost.RunAsync` directly must invoke the same recovery boundary before host cleanup if they want identical interrupted-save behavior.
+The behavior is intentionally asymmetric:
+
+- crash before a recovery marker becomes durable: the old canonical checkpoint remains authoritative; the abandoned managed temporary is later removed;
+- crash after the recovery marker becomes durable but before canonical publication: the exact sealed candidate may be rolled forward;
+- crash after canonical rename but before marker/lease cleanup: the canonical path already contains the new generation; startup removes the stale sidecars;
+- live lease: no cleanup or recovery action touches that transaction;
+- unknown legacy `.tmp` without a TerraRuntime lease: left untouched because ownership cannot be proven.
+
+This closes the dangerous interrupted-publication gap without turning arbitrary temporary files into recovery sources.
+
+## Cost and ownership
+
+Recovery hashing and marker I/O run inside the detached background save transaction, not on the authoritative game-loop thread. The implementation currently re-reads the sealed candidate and backup to compute SHA-256. That extra sequential I/O is accepted as a correctness-first recovery cost; it can be optimized later only with measurements and without weakening the guarantee that the marker authenticates the exact validated bytes.
+
+## Verification
+
+`AtomicSaveFileWriterCleanupTests` covers ordinary orphan cleanup plus recovery-ready first-save publication, existing canonical/backup roll-forward, candidate tamper rejection, invalid/partial marker rejection, missing-backup suppression, conflict quarantine and live-lease isolation. The existing `Authoritative World Save` workflow already builds and executes this test class together with the process-level `SIGKILL` atomic-publication proof.
