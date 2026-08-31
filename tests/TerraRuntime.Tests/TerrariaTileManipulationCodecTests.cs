@@ -70,6 +70,41 @@ public sealed class TerrariaTileManipulationCodecTests
             TerrariaTileManipulationCodec.TryDecode(in frame, out _));
     }
 
+    [Theory]
+    [InlineData((byte)TerrariaTileManipulationAction.KillTile, true)]
+    [InlineData((byte)TerrariaTileManipulationAction.PlaceTile, true)]
+    [InlineData((byte)TerrariaTileManipulationAction.KillWall, true)]
+    [InlineData((byte)TerrariaTileManipulationAction.PlaceWall, true)]
+    [InlineData((byte)TerrariaTileManipulationAction.KillTileNoItem, true)]
+    [InlineData(255, false)]
+    public void Wire_action_resolution_covers_source_known_actions_only(byte rawAction, bool known)
+    {
+        var state = new TerrariaTileManipulationState(rawAction, 10, 10, 0, 0);
+
+        bool resolved = state.TryGetWireAction(out TerrariaTileManipulationAction action);
+
+        Assert.Equal(known, resolved);
+        if (known)
+            Assert.Equal(rawAction, (byte)action);
+    }
+
+    [Theory]
+    [InlineData((byte)TerrariaTileManipulationAction.KillWall)]
+    [InlineData((byte)TerrariaTileManipulationAction.PlaceWall)]
+    [InlineData((byte)TerrariaTileManipulationAction.KillTileNoItem)]
+    public void Wire_known_actions_remain_decodable_without_implying_runtime_authority(byte rawAction)
+    {
+        byte[] payload = [rawAction, 10, 0, 20, 0, 1, 0, 0];
+        TerrariaFrame frame = Frame((byte)TerrariaMessageId.TileManipulation, new ReadOnlySequence<byte>(payload));
+
+        Assert.Equal(
+            TerrariaTileManipulationDecodeResult.Decoded,
+            TerrariaTileManipulationCodec.TryDecode(in frame, out TerrariaTileManipulationState state));
+        Assert.Equal(rawAction, state.Action);
+        Assert.True(state.TryGetWireAction(out TerrariaTileManipulationAction action));
+        Assert.Equal(rawAction, (byte)action);
+    }
+
     [Fact]
     public void Encode_matches_verified_layout_and_round_trips()
     {

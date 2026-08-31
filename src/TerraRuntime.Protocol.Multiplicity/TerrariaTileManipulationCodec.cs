@@ -5,8 +5,8 @@ using TerraRuntime.Protocol;
 namespace TerraRuntime.Protocol.Multiplicity;
 
 /// <summary>
-/// Source-verified TerrariaServer 1.4.5.8 packet-17 action identities currently consumed by TerraRuntime.
-/// Extend only when the corresponding MessageBuffer behavior is pinned by the source-contract workflow.
+/// Source-verified TerrariaServer 1.4.5.8 packet-17 action identities represented by TerraRuntime.
+/// This enum describes wire identity only. Runtime authority is owned by the gameplay/runtime layer.
 /// </summary>
 public enum TerrariaTileManipulationAction : byte
 {
@@ -24,16 +24,23 @@ public readonly record struct TerrariaTileManipulationState(
     short Data,
     byte Style)
 {
-    public bool TryGetKnownAction(out TerrariaTileManipulationAction action)
+    /// <summary>
+    /// Resolves source-known packet-17 wire action identities. A successful result says only that the action byte
+    /// is part of the pinned TerrariaServer 1.4.5.8 protocol contract; it does not grant authority to mutate state.
+    /// </summary>
+    public bool TryGetWireAction(out TerrariaTileManipulationAction action)
     {
-        if (Action <= (byte)TerrariaTileManipulationAction.KillTileNoItem)
+        action = Action switch
         {
-            action = (TerrariaTileManipulationAction)Action;
-            return true;
-        }
+            (byte)TerrariaTileManipulationAction.KillTile => TerrariaTileManipulationAction.KillTile,
+            (byte)TerrariaTileManipulationAction.PlaceTile => TerrariaTileManipulationAction.PlaceTile,
+            (byte)TerrariaTileManipulationAction.KillWall => TerrariaTileManipulationAction.KillWall,
+            (byte)TerrariaTileManipulationAction.PlaceWall => TerrariaTileManipulationAction.PlaceWall,
+            (byte)TerrariaTileManipulationAction.KillTileNoItem => TerrariaTileManipulationAction.KillTileNoItem,
+            _ => default
+        };
 
-        action = default;
-        return false;
+        return Action <= (byte)TerrariaTileManipulationAction.KillTileNoItem;
     }
 }
 

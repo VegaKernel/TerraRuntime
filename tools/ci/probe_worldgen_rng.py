@@ -136,6 +136,23 @@ def main() -> int:
         raise SystemExit("Pinned WorldGenerator exposes no GenerateWorld method.")
     emit_bodies("WorldGenerator_method", generator, generator_methods, lines)
 
+    run_pass_signatures = [signature for signature in generator_methods if "RunPass(" in signature]
+    if len(run_pass_signatures) != 1:
+        raise SystemExit(f"Pinned WorldGenerator must expose exactly one RunPass method; found {len(run_pass_signatures)}.")
+    run_pass_body = extract_method(generator, run_pass_signatures[0])
+    run_pass_seed_assignments = [
+        compact(match.group(0))
+        for match in re.finditer(r"Main\.rand\s*=\s*new\s+UnifiedRandom\s*\(\s*_seed\s*\)\s*;", run_pass_body)
+    ]
+    if run_pass_seed_assignments != ["Main.rand = new UnifiedRandom(_seed);"]:
+        raise SystemExit(f"Pinned WorldGenerator.RunPass RNG reseed changed: {run_pass_seed_assignments}")
+    seed_position = run_pass_body.find(run_pass_seed_assignments[0])
+    apply_position = run_pass_body.find(".Apply(")
+    if apply_position < 0 or seed_position < 0 or seed_position > apply_position:
+        raise SystemExit("Pinned WorldGenerator.RunPass no longer reseeds before applying the generation pass.")
+    lines.append("WorldGenerator_RunPass_rng_seed=Main.rand = new UnifiedRandom(_seed);")
+    print("WorldGenerator_RunPass_rng_seed=Main.rand = new UnifiedRandom(_seed);")
+
     reset_signatures = method_signatures(world_gen, {"Reset"})
     if len(reset_signatures) != 1:
         raise SystemExit(f"Pinned WorldGen must expose exactly one Reset method; found {len(reset_signatures)}.")

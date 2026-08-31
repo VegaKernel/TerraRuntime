@@ -6,7 +6,7 @@ on:
     paths:
       - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationContracts.cs'
       - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationPassContracts.cs'
-      - 'src/TerraRuntime.Core/RuntimeWorldGenerationExecutor.cs'
+      - 'src/TerraRuntime.Core/Worlds/Generation/RuntimeWorldGenerationExecutor.cs'
       - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
       - 'src/TerraRuntime.World/WorldFileFreshComposer326.cs'
       - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrap1458.cs'

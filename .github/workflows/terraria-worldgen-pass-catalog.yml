@@ -7,7 +7,6 @@ on:
       - 'tools/ci/probe_world_generation_init.py'
       - 'tools/ci/probe_worldgen_terrain_pass.py'
       - 'tools/ci/probe_worldgen_rng.py'
-      - 'tools/ci/probe_worldgen_seed.py'
       - 'tools/ci/probe_worldgen_config.py'
       - 'tools/ci/verify_runtime_worldgen_catalog.py'
       - 'tools/ci/verify_runtime_worldgen_rng.py'
@@ -37,7 +36,7 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Extract pinned Terraria 1.4.5.8 pass registration evidence
+      - name: Extract pinned Terraria 1.4.5.8 pass and RNG evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -66,7 +65,7 @@ jobs:
             local line
             line="$(grep -E "(^|[.])${simple}$" artifacts/source-contract/classes.txt | head -n 1 || true)"
             if [[ -z "$line" ]]; then
-              echo "Could not locate pinned support type ${simple}." >&2
+              echo "Could not locate pinned TerrariaServer support type ${simple}." >&2
               return 1
             fi
             echo "${line#* }"
@@ -79,8 +78,6 @@ jobs:
           unified_random="$(find_type UnifiedRandom)"
           gen_base="$(find_type GenBase)"
           world_generator="$(find_type WorldGenerator)"
-          world_file_data="$(find_type WorldFileData)"
-          crc32="$(find_type Crc32)"
           echo "GenPassNameID type: $gen_pass_name_id"
           echo "TerrainPass type: $terrain_pass"
           echo "JunglePass type: $jungle_pass"
@@ -88,8 +85,6 @@ jobs:
           echo "UnifiedRandom type: $unified_random"
           echo "GenBase type: $gen_base"
           echo "WorldGenerator type: $world_generator"
-          echo "WorldFileData type: $world_file_data"
-          echo "Crc32 type: $crc32"
 
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_pass_name_id" "$assembly" > artifacts/source-contract/gen-pass-name-id.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$terrain_pass" "$assembly" > artifacts/source-contract/terrain-pass.cs
@@ -98,8 +93,6 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$unified_random" "$assembly" > artifacts/source-contract/unified-random.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$gen_base" "$assembly" > artifacts/source-contract/gen-base.cs
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_generator" "$assembly" > artifacts/source-contract/world-generator.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$world_file_data" "$assembly" > artifacts/source-contract/world-file-data.cs
-          .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t "$crc32" "$assembly" > artifacts/source-contract/crc32.cs
 
           resource_probe=.tools/resource-probe
           mkdir -p "$resource_probe"
@@ -196,11 +189,6 @@ jobs:
             --world-gen artifacts/source-contract/world-gen.cs \
             --output artifacts/source-contract/worldgen-rng-contract.txt
 
-          python3 tools/ci/probe_worldgen_seed.py \
-            --world-file-data artifacts/source-contract/world-file-data.cs \
-            --crc32 artifacts/source-contract/crc32.cs \
-            --output artifacts/source-contract/worldgen-seed-contract.txt
-
           python3 tools/ci/probe_worldgen_config.py \
             --configuration artifacts/source-contract/worldgen-configuration.json \
             --output artifacts/source-contract/worldgen-config-contract.txt
@@ -220,7 +208,7 @@ jobs:
       - name: Build pinned RNG implementation
         run: dotnet build src/TerraRuntime.Core/TerraRuntime.Core.csproj -c Release
 
-      - name: Upload pass registration evidence
+      - name: Upload pass and RNG evidence
         uses: actions/upload-artifact@v4
         with:
           name: terraria-worldgen-pass-catalog-${{ github.sha }}
@@ -228,7 +216,6 @@ jobs:
             artifacts/source-contract/world-generation-pass-catalog.txt
             artifacts/source-contract/terrain-pass-contract.txt
             artifacts/source-contract/worldgen-rng-contract.txt
-            artifacts/source-contract/worldgen-seed-contract.txt
             artifacts/source-contract/worldgen-config-contract.txt
           if-no-files-found: error
           retention-days: 7

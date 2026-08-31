@@ -126,7 +126,6 @@ public static class RuntimeWorldGenerationExecutor
         RuntimeWorldGenerationPlan<IWorldGenerationPass> plan = passRegistry.Plan;
         ReadOnlySpan<RuntimeWorldGenerationPlanEntry<IWorldGenerationPass>> entries = plan.Entries.Span;
         int? vanillaSeed = null;
-        VanillaWorldGenerationRandomAdapter? sharedVanillaRandom = null;
         for (int passIndex = 0; passIndex < entries.Length; passIndex++)
         {
             RuntimeWorldGenerationPlanEntry<IWorldGenerationPass> entry = entries[passIndex];
@@ -148,9 +147,11 @@ public static class RuntimeWorldGenerationExecutor
                 if (descriptor.RngMode == WorldGenerationRngMode.VanillaSharedRng)
                 {
                     vanillaSeed ??= VanillaSeedText1458.Resolve(in request);
-                    sharedVanillaRandom ??= new VanillaWorldGenerationRandomAdapter(
+                    // TerrariaServer 1.4.5.8 WorldGenerator.RunPass reassigns Main.rand to
+                    // new UnifiedRandom(_seed) before each enabled pass. GenBase._random/WorldGen.genRand
+                    // are shared by code within that pass, not as one continuous stream across passes.
+                    vanillaRandom = new VanillaWorldGenerationRandomAdapter(
                         new VanillaUnifiedRandom1458(vanillaSeed.Value));
-                    vanillaRandom = sharedVanillaRandom;
                 }
 
                 var context = new PassContext(

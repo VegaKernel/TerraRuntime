@@ -27,7 +27,9 @@ flowchart LR
     Secrets --> Metadata["Metadata + fresh .wld v326"]
 ```
 
-Все source-backed проходы ordinary world, участвующие в vanilla generation, сохраняют `WorldGenerationRngMode.VanillaSharedRng`. По упорядоченной цепочке движется один общий `VanillaUnifiedRandom1458`. Поэтому перестановка pass, независимый reseed или параллельное выполнение RNG-sensitive vanilla work являются ошибкой совместимости.
+Все source-backed проходы ordinary world, участвующие в vanilla generation, сохраняют `WorldGenerationRngMode.VanillaSharedRng`. Здесь `SharedRng` означает общий vanilla worldgen RNG API **внутри одного pass**, а не непрерывный поток через весь generation plan. Закреплённый TerrariaServer 1.4.5.8 в `WorldGenerator.RunPass` выполняет `Main.rand = new UnifiedRandom(_seed)` перед применением каждого enabled pass, поэтому TerraRuntime создаёт новый `VanillaUnifiedRandom1458` из разрешённого world seed для каждого такого прохода. RNG-вызовы внутри pass последовательно двигают его локальное состояние; перенос состояния RNG из одного зарегистрированного pass в следующий является ошибкой совместимости.
+
+Постоянный source contract `terraria-worldgen-pass-catalog.yml` декомпилирует закреплённый официальный сервер и теперь падает, если reseed в `RunPass` перестанет происходить до применения pass. Так runtime-тесты больше не могут сами себе доказать неверное время жизни RNG.
 
 ## Финальный overlay из восьми проходов
 
@@ -42,7 +44,7 @@ flowchart LR
 7. `Remove Broken Traps`
 8. `Final Cleanup`
 
-Они намеренно остаются отдельными passes, а не сливаются в один огромный cleanup. Так сохраняются source order, граница владения shared RNG, pass-level progress, диагностика зависимостей и точка замены каждого алгоритма при дальнейшем parity-порте.
+Они намеренно остаются отдельными passes, а не сливаются в один огромный cleanup. Так сохраняются source order, граница per-pass RNG reseed, pass-level progress, диагностика зависимостей и точка замены каждого алгоритма при дальнейшем parity-порте.
 
 Поздние passes выполняют детерминированное осаждение жидкостей, размещение пустынной/пляжной растительности и coral, нормализацию tile state, установку Lihzahrd altar в Temple, водные растения, cave stalactite/stalagmite decoration, удаление orphan traps и финальную проверку vanilla content/flags перед compatibility barrier секретных seed.
 
@@ -53,7 +55,7 @@ flowchart LR
 - seed profile обычный/default;
 - размер мира является одним из canonical Terraria sizes.
 
-Special/secret seeds и synthetic noncanonical dimensions намеренно воспроизводят compatibility provider. Они не должны потреблять ordinary-world source-backed RNG sequence в качестве приблизительной подмены.
+Special/secret seeds и synthetic noncanonical dimensions намеренно воспроизводят compatibility provider. Ordinary-world source-backed implementations не используются как приблизительная подмена их собственных правил генерации.
 
 Production-регистрация в `BuiltInWorldGeneratorSource` разрешает `terraruntime:vanilla` в `SourceBackedVanillaWorldGenerationFinal1458`. Более ранние overlay-классы остаются внутренними слоями этой цепочки, а не отдельными публичными генераторами.
 
@@ -68,9 +70,9 @@ Generation работает с неопубликованным `RuntimeWorldGen
 Здесь есть две разные вехи, и смешивать их нельзя:
 
 - **полное source-pinned покрытие pass pipeline**: ordinary canonical plan проходит все 109 identity TerrariaServer 1.4.5.8 вплоть до `Final Cleanup`;
-- **reference-world parity**: фиксированные официальные seeds дают reference-equivalent результат с доказанным потреблением RNG и parity геометрии/content по passes.
+- **reference-world parity**: фиксированные официальные seeds дают reference-equivalent результат с доказанным per-pass RNG behavior и parity геометрии/content.
 
-Первая веха реализована финальным overlay. Вторая остаётся задачей доказательства, пока reference-world differential tests её не подтвердят. Ряд уже существующих source-shaped алгоритмов сохраняет правильные pass boundaries и deterministic ownership, но ещё требует method-for-method parity.
+Первая веха реализована финальным overlay. Вторая остаётся задачей доказательства, пока reference-world differential tests её не подтвердят. Ряд уже существующих source-shaped алгоритмов сохраняет pass boundaries и deterministic ownership, но ещё требует более глубокого parity.
 
 `terraria-vanilla-generated-world-acceptance.yml` остаётся executable production gate: сборка runtime, focused world-generation contracts, генерация реального canonical vanilla world, загрузка полученного `.wld` через TerraRuntime и запуск закреплённого официального TerrariaServer 1.4.5.8 с этим миром.
 

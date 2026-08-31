@@ -10,13 +10,21 @@ on:
       - 'tools/ci/probe_tile_protocol.py'
       - 'tools/ci/probe_player_inventory.py'
       - 'tools/ci/probe_tile_authority.py'
-      - 'src/TerraRuntime.Core/VanillaPlayerItemSlotCatalog.cs'
+      - 'tools/ci/probe_tile_mining.py'
+      - 'tools/ci/probe_pickaxe_catalog.py'
+      - 'src/TerraRuntime.Core/Items/VanillaPlayerItemSlotCatalog.cs'
+      - 'src/TerraRuntime.Core/Items/VanillaTileInteractionItemFacts.cs'
       - 'src/TerraRuntime/RuntimeNpcShopPurchaseExecutor.cs'
       - 'tests/TerraRuntime.Tests/VanillaPlayerItemSlotCatalogTests.cs'
-      - 'src/TerraRuntime.Core/VanillaItemDefinitionCatalog.cs'
-      - 'src/TerraRuntime.Core/VanillaPlayerItemUseSemanticResolver.cs'
+      - 'src/TerraRuntime.Core/Items/VanillaItemDefinitionCatalog.cs'
+      - 'src/TerraRuntime.Core/Items/VanillaPlayerItemUseSemanticResolver.cs'
       - 'tests/TerraRuntime.Tests/VanillaItemDefinitionCatalogTests.cs'
       - 'tests/TerraRuntime.Tests/VanillaPlayerItemUseSemanticResolverTests.cs'
+      - 'src/TerraRuntime.World/VanillaSimpleTileKillCatalog.cs'
+      - 'src/TerraRuntime.World/VanillaWorldTileMutationService.cs'
+      - 'tests/TerraRuntime.Tests/ServerRuntimeSimpleTileKillAuthorityTests.cs'
+      - 'docs/en/world-mutation-operations.md'
+      - 'docs/ru/world-mutation-operations.md'
       - 'docs/en/item-definitions.md'
       - 'docs/ru/item-definitions.md'
       - 'docs/en/item-use-capabilities.md'
@@ -114,6 +122,15 @@ jobs:
 
           python3 tools/ci/probe_tile_authority.py \
             --message-buffer artifacts/source-contract/message-buffer.cs \
+            --item artifacts/source-contract/item.cs \
+            --item-id artifacts/source-contract/item-id.cs
+
+          python3 tools/ci/probe_tile_mining.py \
+            --player artifacts/source-contract/player.cs \
+            --world-gen artifacts/source-contract/world-gen.cs \
+            --tile-id artifacts/source-contract/tile-id.cs
+
+          python3 tools/ci/probe_pickaxe_catalog.py \
             --item artifacts/source-contract/item.cs \
             --item-id artifacts/source-contract/item-id.cs
 

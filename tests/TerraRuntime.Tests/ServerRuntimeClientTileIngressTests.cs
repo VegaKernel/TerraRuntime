@@ -136,14 +136,16 @@ public sealed class ServerRuntimeClientTileIngressTests
     }
 
     [Fact]
-    public void Kill_tile_no_item_commits_isolated_canonical_dirt_without_inventory_authority()
+    public void Kill_tile_no_item_is_wire_known_but_not_admitted_without_destruction_authority()
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 907);
         Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
         WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
+        long beforeVersion = fixture.Tiles.GetSectionVersion(section);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
+        WorldTile before = fixture.Tiles.Get(10, 10);
         var request = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.KillTileNoItem,
             TileX: 10,
@@ -154,17 +156,17 @@ public sealed class ServerRuntimeClientTileIngressTests
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
 
         Assert.Equal(1, fixture.State.ClientTileManipulationRequests);
-        Assert.Equal(1, fixture.State.ValidatedClientTileManipulations);
-        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(0, fixture.State.ValidatedClientTileManipulations);
+        Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
-        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
-        Assert.Equal(default, fixture.Tiles.Get(10, 10));
-        Assert.Equal(4, fixture.Tiles.GetSectionVersion(section));
-        Assert.Equal(1, fixture.Tiles.DirtySections.DirtyCount);
+        Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
+        Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
     }
 
     [Fact]
-    public void Kill_tile_no_item_rejects_dirt_with_active_neighbor_without_commit()
+    public void Kill_tile_no_item_is_rejected_before_world_topology_can_change_the_result()
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 908);
@@ -184,10 +186,10 @@ public sealed class ServerRuntimeClientTileIngressTests
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
 
-        Assert.Equal(1, fixture.State.ValidatedClientTileManipulations);
+        Assert.Equal(0, fixture.State.ValidatedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
-        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
-        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(before, fixture.Tiles.Get(10, 10));
         Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
         Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);

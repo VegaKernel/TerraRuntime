@@ -5,7 +5,8 @@ namespace TerraRuntime.World;
 /// <summary>
 /// Semantic authoritative world-mutation operations for the single-tile vanilla subset. Packet/file encodings are
 /// deliberately absent: callers cross into this boundary only after identity, inventory/tool and policy validation.
-/// Frame-important/multi-tile content is rejected until its object-specific placement/break rules are implemented.
+/// Frame-important/multi-tile content and tiles without fully modelled generic removal semantics are rejected until
+/// their object-specific or mining-specific rules are implemented.
 /// </summary>
 public enum WorldTileMutationKind : byte
 {
@@ -59,10 +60,11 @@ public readonly record struct WorldTileMutationResult(
 }
 
 /// <summary>
-/// Runtime-owned single-writer mutation engine for ordinary non-frame-important vanilla tiles and walls.
+/// Runtime-owned single-writer mutation engine for the admitted ordinary single-tile vanilla subset.
 /// The service centralizes type validation, shape semantics, preservation/clearing of independent wire/wall/liquid
-/// state, section dirtiness and canonical simple framing. Complex TileObjectData placement stays out rather than
-/// being approximated by raw frame arithmetic.
+/// state, section dirtiness and canonical simple framing. Complex TileObjectData placement and vanilla removal
+/// families with transform, support, container, progression or world-position rules stay out rather than being
+/// approximated by raw cell clearing.
 /// </summary>
 public sealed class VanillaWorldTileMutationService
 {
@@ -120,6 +122,8 @@ public sealed class VanillaWorldTileMutationService
             return Rejected(WorldTileMutationStatus.InvalidContent, in before);
         if (definition.IsFrameImportant || VanillaMultiTileObjectCatalog.TryGet(before.TileType, out _))
             return Rejected(WorldTileMutationStatus.FrameImportantUnsupported, in before);
+        if (!VanillaSimpleTileKillCatalog.IsSupported(before.TileType))
+            return Rejected(WorldTileMutationStatus.UnsupportedState, in before);
 
         WorldTile after = before;
         after.Type = 0;

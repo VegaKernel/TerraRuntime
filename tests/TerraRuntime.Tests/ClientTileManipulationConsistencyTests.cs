@@ -17,6 +17,19 @@ public sealed class ClientTileManipulationConsistencyTests
         Assert.Equal(ClientTileManipulationConsistencyResult.Consistent, result);
     }
 
+    [Theory]
+    [InlineData(3, 1)]
+    [InlineData(169, 53)]
+    public void Explicit_source_backed_block_items_authorize_only_their_mapped_tile(int itemType, int tileType)
+    {
+        RuntimePlayerInventoryItem item = Item(new ItemTypeId(itemType), stack: 17);
+        TerrariaTileManipulationState request = Place(tileType);
+
+        Assert.Equal(
+            ClientTileManipulationConsistencyResult.Consistent,
+            ClientTileManipulationConsistency.Evaluate(in request, in item));
+    }
+
     [Fact]
     public void Empty_or_wrong_selected_item_cannot_claim_dirt_placement()
     {
@@ -30,6 +43,17 @@ public sealed class ClientTileManipulationConsistencyTests
         Assert.Equal(
             ClientTileManipulationConsistencyResult.Unsupported,
             ClientTileManipulationConsistency.Evaluate(in request, in pickaxe));
+    }
+
+    [Fact]
+    public void Unknown_item_cannot_authorize_an_arbitrary_simple_tile()
+    {
+        RuntimePlayerInventoryItem unknown = Item(new ItemTypeId(1), stack: 1);
+        TerrariaTileManipulationState request = Place(VanillaTileIds.Stone.Value);
+
+        Assert.Equal(
+            ClientTileManipulationConsistencyResult.Unsupported,
+            ClientTileManipulationConsistency.Evaluate(in request, in unknown));
     }
 
     [Fact]
