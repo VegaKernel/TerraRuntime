@@ -1,11 +1,12 @@
+using System.Globalization;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 namespace TerraRuntime;
 
 /// <summary>
-/// Short-lived executable proof for CI: generate one built-in world at the requested dimensions, validate its complete
-/// canonical image through TerraRuntime, publish it atomically, then exit without opening a game listener.
+/// Short-lived executable proof for CI: generate one built-in world at the requested dimensions and seed, validate its
+/// complete canonical image through TerraRuntime, publish it atomically, then exit without opening a game listener.
 /// </summary>
 internal static class WorldGenerationCreateSmoke
 {
@@ -38,7 +39,7 @@ internal static class WorldGenerationCreateSmoke
 
         if (index + 1 >= args.Count || string.IsNullOrWhiteSpace(args[index + 1]))
         {
-            Console.Error.WriteLine($"Usage: TerraRuntime.Server {Option} <path.wld> [generator-id [width height]]");
+            PrintUsage();
             exitCode = 31;
             return true;
         }
@@ -91,8 +92,8 @@ internal static class WorldGenerationCreateSmoke
 
         if (widthSpecified)
         {
-            if (!int.TryParse(args[index + 3], out widthTiles) || widthTiles <= 0 ||
-                !int.TryParse(args[index + 4], out heightTiles) || heightTiles <= 0)
+            if (!int.TryParse(args[index + 3], NumberStyles.None, CultureInfo.InvariantCulture, out widthTiles) || widthTiles <= 0 ||
+                !int.TryParse(args[index + 4], NumberStyles.None, CultureInfo.InvariantCulture, out heightTiles) || heightTiles <= 0)
             {
                 Console.Error.WriteLine("Worldgen smoke width and height must be positive integers.");
                 exitCode = 31;
@@ -100,16 +101,44 @@ internal static class WorldGenerationCreateSmoke
             }
         }
 
+        ulong seed = 1458UL;
+        bool seedSpecified = index + 5 < args.Count && !string.IsNullOrWhiteSpace(args[index + 5]);
+        if (seedSpecified && !widthSpecified)
+        {
+            Console.Error.WriteLine("Worldgen smoke seed requires explicit width and height.");
+            PrintUsage();
+            exitCode = 31;
+            return true;
+        }
+
+        if (seedSpecified &&
+            !ulong.TryParse(args[index + 5], NumberStyles.None, CultureInfo.InvariantCulture, out seed))
+        {
+            Console.Error.WriteLine("Worldgen smoke seed must be an unsigned 64-bit integer.");
+            exitCode = 31;
+            return true;
+        }
+
+        if (index + 6 < args.Count)
+        {
+            Console.Error.WriteLine("Worldgen smoke received unexpected trailing arguments.");
+            PrintUsage();
+            exitCode = 31;
+            return true;
+        }
+
         var request = new WorldGenerationRequest(
             generatorId,
             generatorId == VanillaWorldGenerationProvider1458.GeneratorId
                 ? "TerraRuntimeVanillaSmoke"
                 : "TerraRuntimeGeneratedSmoke",
-            Seed: 1458UL,
+            Seed: seed,
             WidthTiles: widthTiles,
             HeightTiles: heightTiles)
         {
-            SeedText = generatorId == VanillaWorldGenerationProvider1458.GeneratorId ? "1458" : null,
+            SeedText = generatorId == VanillaWorldGenerationProvider1458.GeneratorId
+                ? seed.ToString(CultureInfo.InvariantCulture)
+                : null,
             Options = WorldGenerationOptions.Default
         };
         var generators = new StartupWorldGeneratorSource(host: null);
@@ -146,4 +175,8 @@ internal static class WorldGenerationCreateSmoke
         exitCode = 0;
         return true;
     }
+
+    private static void PrintUsage() =>
+        Console.Error.WriteLine(
+            $"Usage: TerraRuntime.Server {Option} <path.wld> [generator-id [width height [seed]]]");
 }
