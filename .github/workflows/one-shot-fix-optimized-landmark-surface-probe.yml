@@ -23,7 +23,7 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
-      - name: Patch ground-level probes
+      - name: Patch ground probes and sky-lake collision guard
         shell: python
         run: |
           from pathlib import Path
@@ -42,6 +42,12 @@ jobs:
               text = text.replace(old, new)
               print(f"replaced {count} occurrence(s): {old} -> {new}")
 
+          old = """        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);\n        int depth = Math.Clamp(island.Width / 16, 3, 5);\n        int waterCells = 0;"""
+          new = """        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);\n        int depth = Math.Clamp(island.Width / 16, 3, 5);\n        if (HasProtectedContentNearby(workspace, centerX, floorY, halfWidth + 6))\n            return false;\n        int waterCells = 0;"""
+          if text.count(old) != 1:
+              raise SystemExit(f"expected one floating-lake insertion point, found {text.count(old)}")
+          text = text.replace(old, new)
+
           path.write_text(text, encoding="utf-8")
 
       - name: Build
@@ -56,7 +62,7 @@ jobs:
           git config user.name "Xekep"
           git config user.email "Xekep@users.noreply.github.com"
           git add src/TerraRuntime.World/Generation/Optimized/OptimizedLandmarkWorldGenerationProvider.cs .github/workflows/one-shot-fix-optimized-landmark-surface-probe.yml
-          git commit -m "Fix optimized landmark ground surface probing" -m "Ignore the floating-island layer when discovering desert and forest ground candidates so mandatory pyramids and Living Trees cannot be starved by sky terrain above the same X range. Keep the landmark placement fail-closed and prove both deterministic and Crimson optimized-world regressions before pushing."
+          git commit -m "Fix optimized landmark placement collisions" -m "Ignore floating-island terrain while discovering ground-level desert/forest candidates and reject Floating Lake carving near protected chest/frame-important content. Prove the deterministic and Crimson optimized-world regression class before pushing."
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
