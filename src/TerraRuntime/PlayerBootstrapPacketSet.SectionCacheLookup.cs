@@ -77,11 +77,8 @@ public sealed partial class PlayerBootstrapPacketSet
             }
 
             Interlocked.Increment(ref _sectionCacheMisses);
-            if (_sectionCache.ContainsKey(index))
-            {
+            if (InvalidateStaleSectionCacheEntryUnderLock(index, version))
                 Interlocked.Increment(ref _sectionCacheStaleReads);
-                RemoveStaleDynamicSectionCacheEntryUnderLock(index);
-            }
         }
 
         Func<WorldSectionId, SectionRebuildRequestTicket>? requester = Volatile.Read(ref _sectionRebuildRequester);

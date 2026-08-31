@@ -15,7 +15,9 @@ internal readonly record struct SectionPacketCacheSnapshot(
     long MaximumBytes = 0,
     long DynamicBytes = 0,
     long DynamicMaximumBytes = 0,
-    long Evictions = 0);
+    long Evictions = 0,
+    long WaitFailures = 0,
+    long Invalidations = 0);
 
 public sealed partial class PlayerBootstrapPacketSet
 {
@@ -48,7 +50,7 @@ public sealed partial class PlayerBootstrapPacketSet
             }
             else
             {
-                RemoveStaleDynamicSectionCacheEntryUnderLock(index);
+                InvalidateStaleSectionCacheEntryUnderLock(index, revision);
                 if (!TryStoreSectionCacheEntryUnderLock(index, new SectionCacheEntry(frame, [], revision)))
                     return false;
             }
@@ -108,7 +110,9 @@ public sealed partial class PlayerBootstrapPacketSet
                 MaximumBytes: maximumBytes,
                 DynamicBytes: _dynamicSectionCacheBytes,
                 DynamicMaximumBytes: _dynamicSectionCacheByteBudget,
-                Evictions: Interlocked.Read(ref _sectionCacheEvictions));
+                Evictions: Interlocked.Read(ref _sectionCacheEvictions),
+                WaitFailures: Interlocked.Read(ref _sectionCacheWaitFailures),
+                Invalidations: Interlocked.Read(ref _sectionCacheInvalidations));
         }
     }
 }
