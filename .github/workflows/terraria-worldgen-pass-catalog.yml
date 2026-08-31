@@ -64,7 +64,7 @@ jobs:
           find_type() {
             local simple="$1"
             local line
-            line="$(grep -E "(^|[.])${simple}$" artifacts/source-contract/classes.txt | head -n 1 || true)"
+            line="$(grep -Ei "(^|[.])${simple}$" artifacts/source-contract/classes.txt | head -n 1 || true)"
             if [[ -z "$line" ]]; then
               echo "Could not locate pinned support type ${simple}." >&2
               return 1
