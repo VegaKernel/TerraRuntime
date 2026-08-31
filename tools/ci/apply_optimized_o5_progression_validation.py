@@ -13,6 +13,28 @@ def patch(path_name: str, replacements: list[tuple[str, str, str]]) -> None:
 
 
 patch(
+    "src/TerraRuntime.World/Generation/Optimized/OptimizedProgressionValidationWorldGenerationProvider.cs",
+    [
+        (
+            """            OptimizedProgressionValidationReport report =
+                OptimizedProgressionWorldValidator.Validate(
+                    context.Workspace,
+                    metadata,
+                    in context.Request,
+                    context.CancellationToken);""",
+            """            WorldGenerationRequest request = context.Request;
+            OptimizedProgressionValidationReport report =
+                OptimizedProgressionWorldValidator.Validate(
+                    context.Workspace,
+                    metadata,
+                    in request,
+                    context.CancellationToken);""",
+            "request property ref binding",
+        ),
+    ],
+)
+
+patch(
     "src/TerraRuntime/BuiltInWorldGeneratorSource.cs",
     [
         (
@@ -35,7 +57,6 @@ new = "Assert.IsType<OptimizedProgressionValidationWorldGenerationProvider>(prov
 if tests.count(old) != 1:
     raise SystemExit(f"provider type assertion: expected 1 occurrence, found {tests.count(old)}")
 tests = tests.replace(old, new)
-
 old = """        RuntimeWorldGenerationWorkspace world = result.Candidate!;
 
         Assert.Equal(320, result.Metadata.Spawn.X);"""
@@ -93,23 +114,14 @@ patch(
 
 en = Path("docs/en/optimized-world-generation.md")
 text = en.read_text(encoding="utf-8")
-old = (
-    '    LVal["landmark validator"]\n'
-    '    Commit["candidate finalization / commit"]\n\n'
-    '    Base --> Play --> Land --> Meta --> PVal --> LVal --> Commit'
-)
-new = (
-    '    LVal["landmark validator"]\n'
-    '    Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]\n'
-    '    Commit["candidate finalization / commit"]\n\n'
-    '    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit'
-)
+old = ('    LVal["landmark validator"]\n' '    Commit["candidate finalization / commit"]\n\n' '    Base --> Play --> Land --> Meta --> PVal --> LVal --> Commit')
+new = ('    LVal["landmark validator"]\n' '    Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]\n' '    Commit["candidate finalization / commit"]\n\n' '    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit')
 if text.count(old) != 1:
     raise SystemExit("EN diagram insertion point missing")
 text = text.replace(old, new)
 old = "This is deliberately stronger than checking for one representative tile. A half-generated landmark set is rejected.\n"
 new = (
-    "This is deliberately stronger than checking for one representative tile. A half-generated landmark set is rejected.\n\n"
+    old + "\n"
     "A final `OptimizedProgressionValidationWorldGenerationProvider` then scans the post-landmark candidate. It enforces\n"
     "area-scaled minimum quantities for Copper, Iron, Silver, Gold and Hellstone; verifies complete 3x2 Demon/Crimson Altar,\n"
     "Hellforge and Lihzahrd Altar footprints; requires non-trivial connected dungeon, hive and Jungle Temple interiors; and\n"
@@ -118,18 +130,9 @@ new = (
     "while dense Lihzahrd barriers and deep Lava are treated as blocking. This is a structural topology gate, not a claim of\n"
     "pixel-exact Terraria player movement or tool progression.\n"
 )
-if text.count(old) != 1:
-    raise SystemExit("EN validation insertion point missing")
 text = text.replace(old, new)
-text = text.replace(
-    "The large landmark slice closes a substantial visual/content gap, but `terraruntime:optimized` is not yet\nproduction-complete.",
-    "The landmark and final progression-validation slices close substantial visual/content and structural gaps, but\n`terraruntime:optimized` is not yet production-complete.",
-)
-for line in [
-    "- stronger Jungle Temple/hive/dungeon traversal proofs;\n",
-    "- a real reachability graph from spawn to critical entrances;\n",
-    "- minimum quantity gates for ores and progression resources;\n",
-]:
+text = text.replace("The large landmark slice closes a substantial visual/content gap, but `terraruntime:optimized` is not yet\nproduction-complete.", "The landmark and final progression-validation slices close substantial visual/content and structural gaps, but\n`terraruntime:optimized` is not yet production-complete.")
+for line in ["- stronger Jungle Temple/hive/dungeon traversal proofs;\n", "- a real reachability graph from spawn to critical entrances;\n", "- minimum quantity gates for ores and progression resources;\n"]:
     if line not in text:
         raise SystemExit(f"EN remaining-work line missing: {line.strip()}")
     text = text.replace(line, "")
@@ -137,23 +140,14 @@ en.write_text(text, encoding="utf-8")
 
 ru = Path("docs/ru/optimized-world-generation.md")
 text = ru.read_text(encoding="utf-8")
-old = (
-    '    LVal["landmark validator"]\n'
-    '    Commit["candidate finalization / commit"]\n\n'
-    '    Base --> Play --> Land --> Meta --> PVal --> LVal --> Commit'
-)
-new = (
-    '    LVal["landmark validator"]\n'
-    '    Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]\n'
-    '    Commit["candidate finalization / commit"]\n\n'
-    '    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit'
-)
+old = ('    LVal["landmark validator"]\n' '    Commit["candidate finalization / commit"]\n\n' '    Base --> Play --> Land --> Meta --> PVal --> LVal --> Commit')
+new = ('    LVal["landmark validator"]\n' '    Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]\n' '    Commit["candidate finalization / commit"]\n\n' '    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit')
 if text.count(old) != 1:
     raise SystemExit("RU diagram insertion point missing")
 text = text.replace(old, new)
 old = "Это намеренно строже проверки одного representative tile. Наполовину созданный набор landmarks отклоняется.\n"
 new = (
-    "Это намеренно строже проверки одного representative tile. Наполовину созданный набор landmarks отклоняется.\n\n"
+    old + "\n"
     "После него финальный `OptimizedProgressionValidationWorldGenerationProvider` сканирует уже post-landmark candidate. Он\n"
     "требует масштабируемые по площади минимумы Copper, Iron, Silver, Gold и Hellstone; проверяет полные 3x2 footprints\n"
     "Demon/Crimson Altar, Hellforge и Lihzahrd Altar; требует нетривиальные связные interiors dungeon, hive и Jungle Temple;\n"
@@ -162,18 +156,9 @@ new = (
     "прокапывания, а плотные Lihzahrd barriers и глубокая Lava считаются блокирующими. Это structural topology gate, а не\n"
     "заявление о pixel-exact физике движения игрока или точной tool progression Terraria.\n"
 )
-if text.count(old) != 1:
-    raise SystemExit("RU validation insertion point missing")
 text = text.replace(old, new)
-text = text.replace(
-    "Большой landmark slice закрывает заметный визуальный/content gap, но `terraruntime:optimized` ещё не production-complete.",
-    "Landmark и final progression-validation slices закрывают заметные visual/content и structural gaps, но\n`terraruntime:optimized` ещё не production-complete.",
-)
-for line in [
-    "- более строгие traversal proofs для Jungle Temple/hive/dungeon;\n",
-    "- реальный reachability graph от spawn до critical entrances;\n",
-    "- minimum quantity gates для ores и progression resources;\n",
-]:
+text = text.replace("Большой landmark slice закрывает заметный визуальный/content gap, но `terraruntime:optimized` ещё не production-complete.", "Landmark и final progression-validation slices закрывают заметные visual/content и structural gaps, но\n`terraruntime:optimized` ещё не production-complete.")
+for line in ["- более строгие traversal proofs для Jungle Temple/hive/dungeon;\n", "- реальный reachability graph от spawn до critical entrances;\n", "- minimum quantity gates для ores и progression resources;\n"]:
     if line not in text:
         raise SystemExit(f"RU remaining-work line missing: {line.strip()}")
     text = text.replace(line, "")
