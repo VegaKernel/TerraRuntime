@@ -107,6 +107,19 @@ public readonly record struct NpcSimulationState(
     /// <summary>Authoritative damage gate for vanilla transitions such as King Slime teleport disappearance.</summary>
     public bool DontTakeDamage { get; init; }
 
+    /// <summary>
+    /// Optional live defense written by AI when vanilla mutates NPC.defense at runtime. Null means the verified
+    /// definition remains authoritative. Negative values are intentional for source-backed states such as the
+    /// low-life Expert Eye of Cthulhu and must not be clamped away before damage resolution.
+    /// </summary>
+    public int? DefenseOverride { get; init; }
+
+    /// <summary>
+    /// Server-owned vanilla NPC.reflectsProjectiles state for the current committed AI revision. Projectile
+    /// collision/reflection consumes this fact separately; keeping it here prevents AI and combat from racing.
+    /// </summary>
+    public bool ReflectsProjectiles { get; init; }
+
     public static NpcSimulationState Initial => new(
         DirectionX: 0,
         DirectionY: 0,
@@ -130,7 +143,9 @@ public readonly record struct NpcSimulationState(
         SolidCollision = false,
         LocalAi = default,
         Hidden = false,
-        DontTakeDamage = false
+        DontTakeDamage = false,
+        DefenseOverride = null,
+        ReflectsProjectiles = false
     };
 
     public bool IsValid =>
