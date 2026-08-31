@@ -5,9 +5,8 @@ using TerraRuntime.Protocol;
 namespace TerraRuntime.Protocol.Multiplicity;
 
 /// <summary>
-/// Source-verified TerrariaServer 1.4.5.8 packet-17 action identities currently represented by TerraRuntime.
-/// Wire identity and runtime authority are deliberately separate: an enum value may be source-known while the
-/// authoritative runtime still fails it closed until the required held-item/tool and world-state semantics exist.
+/// Source-verified TerrariaServer 1.4.5.8 packet-17 action identities represented by TerraRuntime.
+/// This enum describes wire identity only. Runtime authority is owned by the gameplay/runtime layer.
 /// </summary>
 public enum TerrariaTileManipulationAction : byte
 {
@@ -26,24 +25,22 @@ public readonly record struct TerrariaTileManipulationState(
     byte Style)
 {
     /// <summary>
-    /// Resolves packet-17 actions that are currently admitted to the authoritative runtime path.
-    /// Wall actions remain wire-known but fail closed until TerraRuntime can prove selected wall-item / hammer
-    /// authority and the matching inventory transition. KillTileNoItem likewise remains wire-known but is not
-    /// admitted from an untrusted client until a legitimate source-backed sender path and destruction authority
-    /// are proven; accepting it today would bypass the held-tool and drop checks used by ordinary KillTile.
+    /// Resolves source-known packet-17 wire action identities. A successful result says only that the action byte
+    /// is part of the pinned TerrariaServer 1.4.5.8 protocol contract; it does not grant authority to mutate state.
     /// </summary>
-    public bool TryGetKnownAction(out TerrariaTileManipulationAction action)
+    public bool TryGetWireAction(out TerrariaTileManipulationAction action)
     {
         action = Action switch
         {
             (byte)TerrariaTileManipulationAction.KillTile => TerrariaTileManipulationAction.KillTile,
             (byte)TerrariaTileManipulationAction.PlaceTile => TerrariaTileManipulationAction.PlaceTile,
+            (byte)TerrariaTileManipulationAction.KillWall => TerrariaTileManipulationAction.KillWall,
+            (byte)TerrariaTileManipulationAction.PlaceWall => TerrariaTileManipulationAction.PlaceWall,
+            (byte)TerrariaTileManipulationAction.KillTileNoItem => TerrariaTileManipulationAction.KillTileNoItem,
             _ => default
         };
 
-        return Action is
-            (byte)TerrariaTileManipulationAction.KillTile or
-            (byte)TerrariaTileManipulationAction.PlaceTile;
+        return Action <= (byte)TerrariaTileManipulationAction.KillTileNoItem;
     }
 }
 
