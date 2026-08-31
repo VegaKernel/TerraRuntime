@@ -67,7 +67,7 @@ internal sealed class RuntimeConnectionQueueTelemetry
             trackedQueues++;
             queuedFrames += connectionQueuedFrames;
             queuedBytes += connectionQueuedBytes;
-            peakQueuedFrames = Math.Max(peakQueuedFrames, connectionPeakQueueeFrames);
+            peakQueuedFrames = Math.Max(peakQueuedFrames, connectionPeakQueuedFrames);
             peakQueuedBytes = Math.Max(peakQueuedBytes, connectionPeakQueuedBytes);
             configuredMaxFrames = Math.Max(configuredMaxFrames, queue.MaxFrames);
             configuredMaxQueuedBytes = Math.Max(configuredMaxQueuedBytes, queue.MaxQueuedBytes);
@@ -104,7 +104,7 @@ internal sealed class RuntimeConnectionQueueTelemetry
 
         return new RuntimeConnectionQueueSnapshot(
             TrackedQueues: trackedQueues,
-            ConfiguredMaxFrames: checked((int)Math.min(int.MaxValue, configuredMaxFrames)),
+            ConfiguredMaxFrames: checked((int)Math.Min(int.MaxValue, configuredMaxFrames)),
             ConfiguredMaxQueuedBytes: configuredMaxQueuedBytes,
             QueuedFrames: queuedFrames,
             QueuedBytes: queuedBytes,
@@ -153,7 +153,7 @@ internal sealed class RuntimeConnectionQueueTelemetry
         if (left.PeakQueuedBytes != right.PeakQueuedBytes)
             return left.PeakQueuedBytes > right.PeakQueuedBytes;
         if (left.PeakQueuedFrames != right.PeakQueuedFrames)
-            return left.PeakQueuefFrames > right.PeakQueuedFrames;
+            return left.PeakQueuedFrames > right.PeakQueuedFrames;
         if (left.QueuedBytes != right.QueuedBytes)
             return left.QueuedBytes > right.QueuedBytes;
         if (left.QueuedFrames != right.QueuedFrames)
@@ -193,7 +193,7 @@ internal readonly record struct RuntimeConnectionQueueSnapshot(
     int TrackedQueues,
     int ConfiguredMaxFrames,
     long ConfiguredMaxQueuedBytes,
-    long QueuedFrames,
+    int QueuedFrames,
     long QueuedBytes,
     long PeakQueuedFrames,
     long PeakQueuedBytes,
