@@ -1,0 +1,143 @@
+name: One-shot source-backed dungeon metadata parity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-source-backed-dungeon-metadata.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: terra-runtime-one-shot-source-backed-dungeon-metadata
+  cancel-in-progress: false
+
+jobs:
+  apply-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Rebase onto latest main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout main
+          git pull --rebase origin main
+
+      - name: Apply production, regression and differential fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import base64
+
+          def replace_b64(path: str, old_b64: str, new_b64: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              old = base64.b64decode(old_b64).decode()
+              new = base64.b64decode(new_b64).decode()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one patch anchor, found {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          replace_b64(
+              'src/TerraRuntime.World/Generation/Vanilla/SourceBackedVanillaWorldGenerationProvider1458.cs',
+              'ICAgIHB1YmxpYyB2b2lkIEV4ZWN1dGUoSVdvcmxkR2VuZXJhdGlvbkNvbnRleHQgY29udGV4dCkKICAgIHsKICAgICAgICBmYWxsYmFjay5FeGVjdXRlKGNvbnRleHQpOwoKICAgICAgICBpZiAoc3RhdGUuQm9vdHN0cmFwIGlzIFZhbmlsbGFXb3JsZEdlbmVyYXRpb25Cb290c3RyYXBTdGF0ZTE0NTggYm9vdHN0cmFwICYmCiAgICAgICAgICAgIGNvbnRleHQuV29ya3NwYWNlIGlzIFJ1bnRpbWVXb3JsZEdlbmVyYXRpb25Xb3Jrc3BhY2UgcnVudGltZVdvcmtzcGFjZSkKICAgICAgICB7CiAgICAgICAgICAgIHJ1bnRpbWVXb3Jrc3BhY2UuU2V0VmFuaWxsYUJvb3RzdHJhcFN0YXRlKGJvb3RzdHJhcCk7CiAgICAgICAgfQoKICAgICAgICBpZiAoc3RhdGUuVGVycmFpbkxheWVycyBpcyBub3QgV29ybGRHZW5lcmF0aW9uTGF5ZXJzIGxheWVycykKICAgICAgICAgICAgcmV0dXJuOwoKICAgICAgICBJV29ybGRHZW5lcmF0aW9uTWV0YWRhdGFXb3Jrc3BhY2UgbWV0YWRhdGEgPSBjb250ZXh0Lk1ldGFkYXRhID8/CiAgICAgICAgICAgIHRocm93IG5ldyBJbnZhbGlkT3BlcmF0aW9uRXhjZXB0aW9uKCJWYW5pbGxhIG1ldGFkYXRhIHBhc3MgcmVxdWlyZXMgd29ybGQgbWV0YWRhdGEgc3RvcmFnZS4iKTsKICAgICAgICBpZiAoIW1ldGFkYXRhLlRyeVNldExheWVycyhsYXllcnMuV29ybGRTdXJmYWNlLCBsYXllcnMuUm9ja0xheWVyKSkKICAgICAgICAgICAgdGhyb3cgbmV3IEludmFsaWRPcGVyYXRpb25FeGNlcHRpb24oIkNvdWxkIG5vdCBwcmVzZXJ2ZSBzb3VyY2UtYmFja2VkIFRlcnJhcmlhIHRlcnJhaW4gbGF5ZXJzLiIpOwogICAgfQ==',
+              'ICAgIHB1YmxpYyB2b2lkIEV4ZWN1dGUoSVdvcmxkR2VuZXJhdGlvbkNvbnRleHQgY29udGV4dCkKICAgIHsKICAgICAgICBJV29ybGRHZW5lcmF0aW9uTWV0YWRhdGFXb3Jrc3BhY2UgbWV0YWRhdGEgPSBjb250ZXh0Lk1ldGFkYXRhID8/CiAgICAgICAgICAgIHRocm93IG5ldyBJbnZhbGlkT3BlcmF0aW9uRXhjZXB0aW9uKCJWYW5pbGxhIG1ldGFkYXRhIHBhc3MgcmVxdWlyZXMgd29ybGQgbWV0YWRhdGEgc3RvcmFnZS4iKTsKCiAgICAgICAgV29ybGRHZW5lcmF0aW9uUG9pbnQ/IHNvdXJjZUJhY2tlZER1bmdlb24gPSBudWxsOwogICAgICAgIGlmIChzdGF0ZS5Cb290c3RyYXAgaXMgbm90IG51bGwgJiYgbWV0YWRhdGEuVHJ5R2V0RHVuZ2VvbihvdXQgV29ybGRHZW5lcmF0aW9uUG9pbnQgZHVuZ2VvbikpCiAgICAgICAgICAgIHNvdXJjZUJhY2tlZER1bmdlb24gPSBkdW5nZW9uOwoKICAgICAgICBmYWxsYmFjay5FeGVjdXRlKGNvbnRleHQpOwoKICAgICAgICBpZiAoc3RhdGUuQm9vdHN0cmFwIGlzIFZhbmlsbGFXb3JsZEdlbmVyYXRpb25Cb290c3RyYXBTdGF0ZTE0NTggYm9vdHN0cmFwICYmCiAgICAgICAgICAgIGNvbnRleHQuV29ya3NwYWNlIGlzIFJ1bnRpbWVXb3JsZEdlbmVyYXRpb25Xb3Jrc3BhY2UgcnVudGltZVdvcmtzcGFjZSkKICAgICAgICB7CiAgICAgICAgICAgIHJ1bnRpbWVXb3Jrc3BhY2UuU2V0VmFuaWxsYUJvb3RzdHJhcFN0YXRlKGJvb3RzdHJhcCk7CiAgICAgICAgfQoKICAgICAgICBpZiAoc291cmNlQmFja2VkRHVuZ2VvbiBpcyBXb3JsZEdlbmVyYXRpb25Qb2ludCBwcmVzZXJ2ZWREdW5nZW9uICYmCiAgICAgICAgICAgICFtZXRhZGF0YS5UcnlTZXREdW5nZW9uKHByZXNlcnZlZER1bmdlb24uWCwgcHJlc2VydmVkRHVuZ2Vvbi5ZKSkKICAgICAgICB7CiAgICAgICAgICAgIHRocm93IG5ldyBJbnZhbGlkT3BlcmF0aW9uRXhjZXB0aW9uKCJDb3VsZCBub3QgcHJlc2VydmUgc291cmNlLWJhY2tlZCBUZXJyYXJpYSBkdW5nZW9uIGFuY2hvci4iKTsKICAgICAgICB9CgogICAgICAgIGlmIChzdGF0ZS5UZXJyYWluTGF5ZXJzIGlzIG5vdCBXb3JsZEdlbmVyYXRpb25MYXllcnMgbGF5ZXJzKQogICAgICAgICAgICByZXR1cm47CgogICAgICAgIGlmICghbWV0YWRhdGEuVHJ5U2V0TGF5ZXJzKGxheWVycy5Xb3JsZFN1cmZhY2UsIGxheWVycy5Sb2NrTGF5ZXIpKQogICAgICAgICAgICB0aHJvdyBuZXcgSW52YWxpZE9wZXJhdGlvbkV4Y2VwdGlvbigiQ291bGQgbm90IHByZXNlcnZlIHNvdXJjZS1iYWNrZWQgVGVycmFyaWEgdGVycmFpbiBsYXllcnMuIik7CiAgICB9')
+
+          replace_b64(
+              'tests/TerraRuntime.Tests/VanillaWorldGenerationBootstrapPersistenceTests.cs',
+              'ICAgICAgICB2YXIgcGFzcyA9IG5ldyBWYW5pbGxhTWV0YWRhdGFQYXJpdHlQYXNzMTQ1OChmYWxsYmFjaywgc3RhdGUpOwogICAgICAgIHZhciBjb250ZXh0ID0gbmV3IEdlbmVyYXRpb25Db250ZXh0KHdvcmtzcGFjZSk7CgogICAgICAgIHBhc3MuRXhlY3V0ZShjb250ZXh0KTsKICAgICAgICBGaWxsTWluaW1hbFZhbGlkV29ybGQod29ya3NwYWNlLCBib290c3RyYXApOw==',
+              'ICAgICAgICB2YXIgcGFzcyA9IG5ldyBWYW5pbGxhTWV0YWRhdGFQYXJpdHlQYXNzMTQ1OChmYWxsYmFjaywgc3RhdGUpOwogICAgICAgIHZhciBjb250ZXh0ID0gbmV3IEdlbmVyYXRpb25Db250ZXh0KHdvcmtzcGFjZSk7CiAgICAgICAgQXNzZXJ0LlRydWUod29ya3NwYWNlLlRyeVNldER1bmdlb24oYm9vdHN0cmFwLkR1bmdlb25Mb2NhdGlvbiwgMzMzKSk7CgogICAgICAgIHBhc3MuRXhlY3V0ZShjb250ZXh0KTsKCiAgICAgICAgQXNzZXJ0LlRydWUod29ya3NwYWNlLlRyeUdldER1bmdlb24ob3V0IFdvcmxkR2VuZXJhdGlvblBvaW50IHByZXNlcnZlZER1bmdlb24pKTsKICAgICAgICBBc3NlcnQuRXF1YWwobmV3IFdvcmxkR2VuZXJhdGlvblBvaW50KGJvb3RzdHJhcC5EdW5nZW9uTG9jYXRpb24sIDMzMyksIHByZXNlcnZlZER1bmdlb24pOwogICAgICAgIEZpbGxNaW5pbWFsVmFsaWRXb3JsZCh3b3Jrc3BhY2UsIGJvb3RzdHJhcCk7')
+
+          replace_b64(
+              'tools/TerraRuntime.WorldCompare/Program.cs',
+              'aWYgKGFyZ3MuTGVuZ3RoIGlzIDwgMiBvciA+IDQpCnsKICAgIENvbnNvbGUuRXJyb3IuV3JpdGVMaW5lKAogICAgICAgICJVc2FnZTogVGVycmFSdW50aW1lLldvcmxkQ29tcGFyZSA8cmVmZXJlbmNlLndsZD4gPGNhbmRpZGF0ZS53bGQ+IFstLWpzb24gPHJlcG9ydC5qc29uPl0gWy0tZW5mb3JjZV0iKTsKICAgIHJldHVybiAyOwp9CgpzdHJpbmcgcmVmZXJlbmNlUGF0aCA9IFBhdGguR2V0RnVsbFBhdGgoYXJnc1swXSk7CnN0cmluZyBjYW5kaWRhdGVQYXRoID0gUGF0aC5HZXRGdWxsUGF0aChhcmdzWzFdKTsKc3RyaW5nPyBqc29uUGF0aCA9IG51bGw7CmJvb2wgZW5mb3JjZSA9IGZhbHNlOwpmb3IgKGludCBpID0gMjsgaSA8IGFyZ3MuTGVuZ3RoOyBpKyspCnsKICAgIGlmIChhcmdzW2ldID09ICItLWVuZm9yY2UiKQogICAgewogICAgICAgIGVuZm9yY2UgPSB0cnVlOwogICAgICAgIGNvbnRpbnVlOwogICAgfQoKICAgIGlmIChhcmdzW2ldID09ICItLWpzb24iICYmIGkgKyAxIDwgYXJncy5MZW5ndGgpCiAgICB7CiAgICAgICAganNvblBhdGggPSBQYXRoLkdldEZ1bGxQYXRoKGFyZ3NbKytpXSk7CiAgICAgICAgY29udGludWU7CiAgICB9CgogICAgQ29uc29sZS5FcnJvci5Xcml0ZUxpbmUoJCJVbmtub3duIG9yIGluY29tcGxldGUgYXJndW1lbnQgJ3thcmdzW2ldfScuIik7CiAgICByZXR1cm4gMjsKfQ==',
+              'aWYgKGFyZ3MuTGVuZ3RoIDwgMikKewogICAgQ29uc29sZS5FcnJvci5Xcml0ZUxpbmUoCiAgICAgICAgIlVzYWdlOiBUZXJyYVJ1bnRpbWUuV29ybGRDb21wYXJlIDxyZWZlcmVuY2Uud2xkPiA8Y2FuZGlkYXRlLndsZD4gWy0tanNvbiA8cmVwb3J0Lmpzb24+XSBbLS1lbmZvcmNlXSIpOwogICAgcmV0dXJuIDI7Cn0KCnN0cmluZyByZWZlcmVuY2VQYXRoID0gUGF0aC5HZXRGdWxsUGF0aChhcmdzWzBdKTsKc3RyaW5nIGNhbmRpZGF0ZVBhdGggPSBQYXRoLkdldEZ1bGxQYXRoKGFyZ3NbMV0pOwpzdHJpbmc/IGpzb25QYXRoID0gbnVsbDsKYm9vbCBlbmZvcmNlID0gZmFsc2U7CmZvciAoaW50IGkgPSAyOyBpIDwgYXJncy5MZW5ndGg7IGkrKykKewogICAgaWYgKGFyZ3NbaV0gPT0gIi0tZW5mb3JjZSIpCiAgICB7CiAgICAgICAgaWYgKGVuZm9yY2UpCiAgICAgICAgewogICAgICAgICAgICBDb25zb2xlLkVycm9yLldyaXRlTGluZSgiRHVwbGljYXRlIC0tZW5mb3JjZSBvcHRpb24uIik7CiAgICAgICAgICAgIHJldHVybiAyOwogICAgICAgIH0KCiAgICAgICAgZW5mb3JjZSA9IHRydWU7CiAgICAgICAgY29udGludWU7CiAgICB9CgogICAgaWYgKGFyZ3NbaV0gPT0gIi0tanNvbiIpCiAgICB7CiAgICAgICAgaWYgKGpzb25QYXRoIGlzIG5vdCBudWxsKQogICAgICAgIHsKICAgICAgICAgICAgQ29uc29sZS5FcnJvci5Xcml0ZUxpbmUoIkR1cGxpY2F0ZSAtLWpzb24gb3B0aW9uLiIpOwogICAgICAgICAgICByZXR1cm4gMjsKICAgICAgICB9CgogICAgICAgIGlmIChpICsgMSA+PSBhcmdzLkxlbmd0aCB8fCBhcmdzW2kgKyAxXS5TdGFydHNXaXRoKCItLSIsIFN0cmluZ0NvbXBhcmlzb24uT3JkaW5hbCkpCiAgICAgICAgewogICAgICAgICAgICBDb25zb2xlLkVycm9yLldyaXRlTGluZSgiT3B0aW9uIC0tanNvbiByZXF1aXJlcyBhIHJlcG9ydCBwYXRoLiIpOwogICAgICAgICAgICByZXR1cm4gMjsKICAgICAgICB9CgogICAgICAgIGpzb25QYXRoID0gUGF0aC5HZXRGdWxsUGF0aChhcmdzWysraV0pOwogICAgICAgIGNvbnRpbnVlOwogICAgfQoKICAgIENvbnNvbGUuRXJyb3IuV3JpdGVMaW5lKCQiVW5rbm93biBvciBpbmNvbXBsZXRlIGFyZ3VtZW50ICd7YXJnc1tpXX0nLiIpOwogICAgcmV0dXJuIDI7Cn0=')
+
+          workflow = Path('.github/workflows/vanilla-worldgen-reference-differential.yml')
+          text = workflow.read_text()
+          start_marker = '      - name: Capture structural fingerprint report\n'
+          end_marker = '      - name: Upload differential evidence\n'
+          if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+              raise SystemExit('reference workflow compare-step anchors changed')
+          start = text.index(start_marker)
+          end = text.index(end_marker)
+          combined = '''      - name: Compare structural fingerprints and enforce budgets
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \\
+            --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
+            -c Release \\
+            --no-build \\
+            -- \\
+            "artifacts/reference-differential/official-${SEED}.wld" \\
+            "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
+            --json "artifacts/reference-differential/comparison-${SEED}.json" \\
+            --enforce
+          cat "artifacts/reference-differential/comparison-${SEED}.json"
+
+'''
+          text = text[:start] + combined + text[end:]
+          upload = text.index(end_marker, start)
+          prefix = text[:upload]
+          suffix = text[upload:]
+          expression = '$' + '{{ env.SEED }}'
+          suffix = suffix.replace('${SEED}', expression)
+          workflow.write_text(prefix + suffix)
+          PY
+
+      - name: Run full test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+
+      - name: Build and verify WorldCompare option parser
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet build tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj -c Release
+          set +e
+          dotnet run \
+            --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \
+            -c Release \
+            --no-build \
+            -- missing-reference.wld missing-candidate.wld --json ignored.json --enforce \
+            > parser-smoke.log 2>&1
+          code=$?
+          set -e
+          cat parser-smoke.log
+          test "$code" -eq 3
+          grep -q "World file not found" parser-smoke.log
+
+      - name: Commit directly to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/one-shot-source-backed-dungeon-metadata.yml
+          git config user.name "Xekep"
+          git config user.email "Xekep@users.noreply.github.com"
+          git add \
+            src/TerraRuntime.World/Generation/Vanilla/SourceBackedVanillaWorldGenerationProvider1458.cs \
+            tests/TerraRuntime.Tests/VanillaWorldGenerationBootstrapPersistenceTests.cs \
+            tools/TerraRuntime.WorldCompare/Program.cs \
+            .github/workflows/vanilla-worldgen-reference-differential.yml
+          git commit -m "Preserve source-backed dungeon metadata"
+          git pull --rebase origin main
+          git push origin HEAD:main
