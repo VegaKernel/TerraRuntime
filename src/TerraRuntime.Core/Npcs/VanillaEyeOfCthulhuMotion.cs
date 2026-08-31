@@ -31,9 +31,9 @@ public readonly record struct VanillaEyeOfCthulhuMotionResult(
 
 /// <summary>
 /// Allocation-free state machine for the verified TerrariaServer 1.4.5.8 Eye of Cthulhu aiStyle 4 slice.
-/// Cosmetic rotation/dust/sounds are deliberately absent. Phase-one and Expert transformation Servant spawns are
-/// explicit post-commit intents. Classic motion plus the deterministic Expert transformation/phase-two states are
-/// authoritative; RNG-shaped rapid dashes and getGoodWorld remain fail-closed at their exact source boundaries.
+/// Cosmetic rotation/dust/sounds are deliberately absent. Phase-one and transformation Servant spawns are explicit
+/// post-commit intents. Classic, Expert and getGoodWorld deterministic motion is authoritative; the RNG-shaped
+/// Expert rapid-dash boundaries remain owned by the random-aware Eye behavior decorator.
 /// </summary>
 public static class VanillaEyeOfCthulhuMotion
 {
@@ -105,18 +105,18 @@ public static class VanillaEyeOfCthulhuMotion
             return true;
         }
 
-        if (input.GoodWorld)
-        {
-            result = default;
-            return false;
-        }
-
         if (ai0 == 0f)
         {
             if (ai1 == 0f)
             {
                 float hoverSpeed = input.ExpertMode ? 7f : PhaseOneHoverSpeed;
                 float hoverAcceleration = input.ExpertMode ? 0.15f : PhaseOneHoverAcceleration;
+                if (input.GoodWorld)
+                {
+                    hoverSpeed += 1f;
+                    hoverAcceleration += 0.05f;
+                }
+
                 float hoverTargetY = input.TargetCenterY - PhaseOneHoverOffsetY;
                 float hoverDeltaX = input.TargetCenterX - input.NpcCenterX;
                 float hoverDeltaY = hoverTargetY - input.NpcCenterY;
@@ -148,18 +148,24 @@ public static class VanillaEyeOfCthulhuMotion
                     float servantTicks = input.ExpertMode
                         ? PhaseOneServantTicks * 0.4f
                         : PhaseOneServantTicks;
+                    if (input.GoodWorld)
+                        servantTicks *= 0.8f;
                     if (ai3 >= servantTicks)
                         ai3 = 0f;
                 }
             }
             else if (ai1 == 1f)
             {
+                float dashSpeed = input.ExpertMode ? 7f : PhaseOneDashSpeed;
+                if (input.GoodWorld)
+                    dashSpeed += 1f;
+
                 SetDirectVelocity(
                     input.NpcCenterX,
                     input.NpcCenterY,
                     input.TargetCenterX,
                     input.TargetCenterY,
-                    input.ExpertMode ? 7f : PhaseOneDashSpeed,
+                    dashSpeed,
                     ref velocityX,
                     ref velocityY);
                 ai1 = 2f;
@@ -172,10 +178,14 @@ public static class VanillaEyeOfCthulhuMotion
                     ScaleVelocity(ref velocityX, ref velocityY, PhaseOneDashSlowdown);
                     if (input.ExpertMode)
                         ScaleVelocity(ref velocityX, ref velocityY, 0.985f);
+                    if (input.GoodWorld)
+                        ScaleVelocity(ref velocityX, ref velocityY, 0.99f);
                     StopSmallVelocity(ref velocityX, ref velocityY);
                 }
 
                 float dashTicks = input.ExpertMode ? 100f : PhaseOneDashTicks;
+                if (input.GoodWorld)
+                    dashTicks -= 15f;
                 if (ai2 >= dashTicks)
                 {
                     ai3++;
@@ -255,6 +265,12 @@ public static class VanillaEyeOfCthulhuMotion
         {
             float hoverSpeed = PhaseTwoHoverSpeed;
             float hoverAcceleration = PhaseTwoHoverAcceleration;
+            if (input.GoodWorld)
+            {
+                hoverSpeed += 1f;
+                hoverAcceleration += 0.1f;
+            }
+
             float hoverDeltaX = input.TargetCenterX - input.NpcCenterX;
             float hoverDeltaY = input.TargetCenterY - PhaseTwoHoverOffsetY - input.NpcCenterY;
             float hoverDistance = MathF.Sqrt(hoverDeltaX * hoverDeltaX + hoverDeltaY * hoverDeltaY);
@@ -285,7 +301,19 @@ public static class VanillaEyeOfCthulhuMotion
                 ref velocityY);
 
             ai2++;
-            if (ai2 >= PhaseTwoHoverTicks)
+            float hoverTicks = PhaseTwoHoverTicks;
+            if (input.ExpertMode)
+            {
+                hoverTicks = 180f;
+                float lifeFraction = (float)input.Life / input.LifeMax;
+                if (lifeFraction < 0.9f) hoverTicks -= 10f;
+                if (lifeFraction < 0.8f) hoverTicks -= 10f;
+                if (lifeFraction < 0.7f) hoverTicks -= 10f;
+                if (lifeFraction < 0.6f) hoverTicks -= 10f;
+                if (lifeFraction < 0.5f) hoverTicks -= 10f;
+            }
+
+            if (ai2 >= hoverTicks)
             {
                 ai1 = input.ExpertMode &&
                       (float)input.Life < input.LifeMax * ExpertRapidDashImmediateLifeFraction
@@ -310,6 +338,8 @@ public static class VanillaEyeOfCthulhuMotion
                 dashSpeed *= 1.15f;
             if (input.ExpertMode && ai3 == 2f)
                 dashSpeed *= 1.3f;
+            if (input.GoodWorld)
+                dashSpeed *= 1.2f;
 
             SetDirectVelocity(
                 input.NpcCenterX,
@@ -387,7 +417,7 @@ public static class VanillaEyeOfCthulhuMotion
         }
         else
         {
-            // Expert ai[1] states 3/4 use RNG-shaped predictive rapid dashes and remain fail-closed.
+            // Expert ai[1] states 3/4 use RNG-shaped predictive rapid dashes and remain fail-closed here.
             result = default;
             return false;
         }
