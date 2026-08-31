@@ -24,6 +24,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private const float EyeOfCthulhuClassicPhaseOneHoverTicks = 600f;
     private const float EyeOfCthulhuExpertPhaseOneHoverTicks = 210f;
     private const int EyeOfCthulhuTransformationServantCadenceTicks = 20;
+    private const int EyeOfCthulhuGoodWorldLowLifeTransformationServantCadenceTicks = 10;
     private const float EyeOfCthulhuTransformationServantSpeed = 5f;
     private const float EyeOfCthulhuServantSpawnLeadTicks = 10f;
 
@@ -32,7 +33,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _flyingEye = new VanillaFlyingEyeNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
-    private readonly IVanillaNpcBehaviorStrategy _eyeOfCthulhu;
+    private readonly VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy _eyeOfCthulhu;
     private readonly IVanillaNpcBehaviorStrategy _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy();
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
     private readonly VanillaKingSlimeNpcBehaviorStrategy _kingSlime;
@@ -48,6 +49,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         _random = random ?? new SystemVanillaNpcRandom();
         _eyeOfCthulhu = new VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy(_random);
         _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
+        if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
+            _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
     }
 
     public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity) =>
@@ -59,8 +62,13 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _context.SetPlayerSnapshotLookup(playerSnapshots);
 
-    public void SetKingSlimeEnvironment(IVanillaKingSlimeEnvironment environment) =>
+    public void SetKingSlimeEnvironment(IVanillaKingSlimeEnvironment environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
         _kingSlime.SetEnvironment(environment);
+        if (environment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
+            _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
+    }
 
     public void SetWormEnvironment(IVanillaWormEnvironment environment) =>
         _worm.SetEnvironment(environment);
@@ -251,9 +259,17 @@ public sealed class VanillaNpcTargetingAiStepper :
             source.Ai.Ai1 >= 0f &&
             source.Ai.Ai1 < 100f)
         {
+            int transformationCadence = EyeOfCthulhuTransformationServantCadenceTicks;
+            if (_context.GoodWorld &&
+                source.Simulation.LifeMax > 0 &&
+                source.Simulation.Life < source.Simulation.LifeMax / 3)
+            {
+                transformationCadence = EyeOfCthulhuGoodWorldLowLifeTransformationServantCadenceTicks;
+            }
+
             float nextTick = source.Ai.Ai1 + 1f;
             if (nextTick == MathF.Truncate(nextTick) &&
-                (int)nextTick % EyeOfCthulhuTransformationServantCadenceTicks == 0)
+                (int)nextTick % transformationCadence == 0)
             {
                 return PlanEyeOfCthulhuTransformationServant(in source, destination);
             }
@@ -262,6 +278,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         float cadenceThreshold = _context.ExpertMode
             ? EyeOfCthulhuExpertServantCadenceThreshold
             : EyeOfCthulhuClassicServantCadenceThreshold;
+        if (_context.GoodWorld)
+            cadenceThreshold *= 0.8f;
         float hoverTicks = _context.ExpertMode
             ? EyeOfCthulhuExpertPhaseOneHoverTicks
             : EyeOfCthulhuClassicPhaseOneHoverTicks;
