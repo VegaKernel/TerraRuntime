@@ -2,6 +2,7 @@ from pathlib import Path
 
 path = Path("src/TerraRuntime.World/Generation/Optimized/OptimizedSurfaceDecorationWorldGenerationProvider.cs")
 text = path.read_text(encoding="utf-8")
+
 old = '''            var tile = new WorldGenerationTile(
                 type,
                 current.Wall,
@@ -27,4 +28,17 @@ new = '''            var tile = new WorldGenerationTile(
 count = text.count(old)
 if count != 1:
     raise SystemExit(f"surface-life tile constructor: expected 1 occurrence, found {count}")
-path.write_text(text.replace(old, new), encoding="utf-8")
+text = text.replace(old, new)
+
+old = '''                if (top < 3 || !IsClearRectangle(context.Workspace, x - 2, top - 2, 5, height + 3))
+'''
+new = '''                // Clearance stops one tile above the supporting ground row. Including floor here rejects every
+                // otherwise valid tree because the support tile is necessarily active.
+                if (top < 3 || !IsClearRectangle(context.Workspace, x - 2, top - 2, 5, height + 2))
+'''
+count = text.count(old)
+if count != 1:
+    raise SystemExit(f"surface-life tree clearance: expected 1 occurrence, found {count}")
+text = text.replace(old, new)
+
+path.write_text(text, encoding="utf-8")
