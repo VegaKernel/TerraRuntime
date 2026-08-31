@@ -59,9 +59,9 @@ jobs:
 
       - name: Run worm lifecycle tests
         run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
-          -c Release --no-build
-          --filter FullyQualifiedName~VanillaWormLifecycleParityTests
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          -c Release --no-build --
+          --filter-class TerraRuntime.Tests.VanillaWormLifecycleParityTests
 
       - name: Commit large worm lifecycle block
         shell: bash
