@@ -41,4 +41,19 @@ if count != 1:
     raise SystemExit(f"surface-life tree clearance: expected 1 occurrence, found {count}")
 text = text.replace(old, new)
 
+old = '''            int trees = PlaceTrees(context, layers, spawn, treeTarget);
+            int undergrowth = PlaceUndergrowth(context, layers, spawn, undergrowthTarget);
+            int sunflowers = PlaceSunflowers(context, layers, spawn, sunflowerTarget);
+'''
+new = '''            // Reserve larger footprints first. Trees and one-tile undergrowth otherwise consume the scarce clean
+            // 2x4 grass pads that sunflower objects need, making decoration depend on incidental pass ordering.
+            int sunflowers = PlaceSunflowers(context, layers, spawn, sunflowerTarget);
+            int trees = PlaceTrees(context, layers, spawn, treeTarget);
+            int undergrowth = PlaceUndergrowth(context, layers, spawn, undergrowthTarget);
+'''
+count = text.count(old)
+if count != 1:
+    raise SystemExit(f"surface-life placement order: expected 1 occurrence, found {count}")
+text = text.replace(old, new)
+
 path.write_text(text, encoding="utf-8")
