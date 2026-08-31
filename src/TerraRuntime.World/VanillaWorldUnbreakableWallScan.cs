@@ -5,6 +5,11 @@ public static class VanillaWorldUnbreakableWallScan
     public const int ScanDistance = 250;
     public const ushort UnbreakableWallType = 350;
     public const byte MinimumWallColor = 16;
+    private const int RequiredConsecutiveDirectionCount = 5;
+    private const int DirectionRingSize = 8;
+    private const int RequiredDirectionMask = (1 << RequiredConsecutiveDirectionCount) - 1;
+    private const int DirectionRingMask = (1 << DirectionRingSize) - 1;
+    private const int DirectionRingLastBitShift = DirectionRingSize - 1;
     private static readonly (int Dx, int Dy)[] Directions =
     [
         (1, 0),
@@ -32,9 +37,9 @@ public static class VanillaWorldUnbreakableWallScan
         int mask = hitMask;
         for (int shift = 0; shift < Directions.Length; shift++)
         {
-            if ((mask & 0x1F) == 0)
+            if ((mask & RequiredDirectionMask) == 0)
                 return false;
-            mask = ((mask << 1) & 0xFF) | (mask >> 7);
+            mask = ((mask << 1) & DirectionRingMask) | (mask >> DirectionRingLastBitShift);
         }
         return true;
     }
