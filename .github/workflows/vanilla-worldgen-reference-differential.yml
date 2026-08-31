@@ -4,11 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.World/Vanilla*.cs'
+      - 'src/TerraRuntime.World/Generation/Vanilla/**'
       - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
       - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
       - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
       - 'tools/TerraRuntime.WorldCompare/**'
+      - 'tests/TerraRuntime.Tests/VanillaReferenceDifferentialCheckpoint1458Tests.cs'
       - '.github/workflows/vanilla-worldgen-reference-differential.yml'
   workflow_dispatch:
 
@@ -144,7 +145,7 @@ jobs:
           test -s "$reference"
           cat "$log"
 
-      - name: Compare structural fingerprints
+      - name: Compare structural fingerprints and enforce budgets
         shell: bash
         run: |
           set -euo pipefail
@@ -155,7 +156,8 @@ jobs:
             -- \
             "artifacts/reference-differential/official-${SEED}.wld" \
             "artifacts/reference-differential/terraruntime-${SEED}.wld" \
-            --json "artifacts/reference-differential/comparison-${SEED}.json"
+            --json "artifacts/reference-differential/comparison-${SEED}.json" \
+            --enforce
           cat "artifacts/reference-differential/comparison-${SEED}.json"
 
       - name: Upload differential evidence
