@@ -3,24 +3,40 @@ using TerraRuntime.World;
 namespace TerraRuntime;
 
 /// <summary>
-/// Narrow projection consumed by the currently admitted AI_003 event-sensitive door-pressure slice.
-/// For-the-Worthy deliberately suppresses Blood Moon accumulation for restricted fighters in the official
-/// TerrariaServer 1.4.5.8 AI_003 branch; the world clock's public BloodMoonActive property still reports the
-/// actual world event.
+/// Narrow world-event projection consumed by admitted NPC behavior. Blood Moon is suppressed for restricted
+/// AI_003 fighters in For-the-Worthy, while Slime Rain and the persisted blue-town-slime unlock remain available
+/// to the source-backed King Slime death slice.
 /// </summary>
 internal interface IVanillaNpcWorldEventState
 {
     bool BloodMoonActive { get; }
     bool GetGoodWorld { get; }
+    bool SlimeRainActive { get; }
+    bool SlimeBlueSpawnUnlocked { get; }
+
+    bool TryStopSlimeRain(IKingSlimeDeathRandom random);
+}
+
+/// <summary>Random calls owned by TerrariaServer 1.4.5.8 King Slime death effects.</summary>
+internal interface IKingSlimeDeathRandom
+{
+    int NextInt32(int inclusiveMin, int exclusiveMax);
+    float NextFloatDirection();
+}
+
+internal sealed class SystemKingSlimeDeathRandom : IKingSlimeDeathRandom
+{
+    private readonly Random random = new();
+
+    public int NextInt32(int inclusiveMin, int exclusiveMax) => random.Next(inclusiveMin, exclusiveMax);
+
+    public float NextFloatDirection() => random.NextSingle() * 2f - 1f;
 }
 
 /// <summary>
 /// Authoritative ordinary-world time slice backed by TerrariaServer 1.4.5.8 Main.UpdateTime.
 /// NPCs consume the current state before this clock advances each game tick, matching vanilla's
 /// DoUpdateInWorld ordering where UpdateWorld_NPCs runs before UpdateWorld_Time.
-/// The persisted Blood Moon flag and GetGoodWorld seed fact are carried alongside the clock so the currently
-/// admitted AI_003 door-pressure projection can reproduce the source event/seed gate. Dynamic event-start
-/// selection remains a separate world-event concern.
 /// </summary>
 internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 {
@@ -38,7 +54,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         int dayRate,
         IRuntimeWorldClockObserver? observer = null,
         bool bloodMoonActive = false,
-        bool getGoodWorld = false)
+        bool getGoodWorld = false,
+        bool slimeBlueSpawnUnlocked = false)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -54,6 +71,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         SlimeRainTime = slimeRainTime;
         BloodMoonActive = bloodMoonActive && !dayTime;
         GetGoodWorld = getGoodWorld;
+        SlimeBlueSpawnUnlocked = slimeBlueSpawnUnlocked;
         _dayRate = dayRate;
         _observer = observer;
         PublishCommittedState();
@@ -73,8 +91,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public bool GetGoodWorld { get; }
 
+    public bool SlimeBlueSpawnUnlocked { get; private set; }
+
     bool IVanillaNpcWorldEventState.BloodMoonActive => BloodMoonActive && !GetGoodWorld;
     bool IVanillaNpcWorldEventState.GetGoodWorld => GetGoodWorld;
+    bool IVanillaNpcWorldEventState.SlimeRainActive => SlimeRainActive;
+    bool IVanillaNpcWorldEventState.SlimeBlueSpawnUnlocked => SlimeBlueSpawnUnlocked;
 
     public int DayRate => _dayRate;
 
@@ -99,7 +121,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             dayRate,
             observer,
             metadata.BloodMoon,
-            metadata.GetGoodWorld);
+            metadata.GetGoodWorld,
+            metadata.UnlockedSlimeBlueSpawn);
     }
 
     public void SetDayRate(int dayRate)
@@ -114,12 +137,24 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         BloodMoonActive = active && !DayTime;
     }
 
+    internal void MarkSlimeBlueSpawnUnlocked() => SlimeBlueSpawnUnlocked = true;
+
+    public bool TryStopSlimeRain(IKingSlimeDeathRandom random)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        if (!SlimeRainActive)
+            return false;
+
+        // Main.StopSlimeRain on server: slimeRainTime = -Main.rand.Next(3024, 6048) * 100.
+        SlimeRainTime = -random.NextInt32(3024, 6048) * 100d;
+        PublishCommittedState();
+        return true;
+    }
+
     public void Tick()
     {
         int dayRate = _dayRate;
 
-        // Main.UpdateTime updates the active/cooldown slime-rain counter with the current dayRate
-        // before calling UpdateTimeRate and advancing Main.time.
         if (SlimeRainTime > 0d)
         {
             SlimeRainTime -= dayRate;
@@ -162,5 +197,3 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             SlimeRainTime,
             _dayRate);
 }
-
-
