@@ -7,7 +7,7 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaKingSlimeDifficultyLootTests
 {
     [Fact]
-    public void Committed_player_hit_marks_source_slot_interaction()
+    public void Generation_valid_player_hit_marks_source_slot_interaction()
     {
         var store = new RuntimeNpcStore(capacity: 1);
         NpcSnapshot king = SpawnKing(store);
@@ -25,6 +25,26 @@ public sealed class VanillaKingSlimeDifficultyLootTests
     }
 
     [Fact]
+    public void Invulnerable_generation_valid_player_hit_records_interaction_before_strike_rejection()
+    {
+        var store = new RuntimeNpcStore(capacity: 1);
+        NpcSnapshot king = SpawnKing(store);
+        SetDontTakeDamage(store, king.Handle);
+        var interactions = new RuntimeNpcPlayerInteractionLedger(store);
+        var executor = new RuntimeNpcDamageExecutor(store, interactions: interactions);
+        PlayerHandle player = Player(slot: 7, generation: 3);
+        var request = new NpcDamageRequest(
+            king.Handle,
+            DamageSource.FromPlayerProjectile(player),
+            BaseDamage: 50);
+
+        Assert.False(executor.TryApply(in request, out _));
+        Assert.True(interactions.HasInteraction(king.Handle, player.Slot));
+        Assert.True(store.TryGet(king.Handle, out NpcSnapshot unchanged));
+        Assert.Equal(king.Simulation.Life, unchanged.Simulation.Life);
+    }
+
+    [Fact]
     public void Environment_hit_does_not_create_player_interaction()
     {
         var store = new RuntimeNpcStore(capacity: 1);
@@ -38,6 +58,27 @@ public sealed class VanillaKingSlimeDifficultyLootTests
 
         Assert.True(executor.TryApply(in request, out _));
         Assert.False(interactions.HasInteraction(king.Handle, new PlayerSlotId(0)));
+    }
+
+    [Fact]
+    public void Stale_npc_generation_never_records_interaction()
+    {
+        var store = new RuntimeNpcStore(capacity: 1);
+        NpcSnapshot first = SpawnKing(store);
+        Assert.True(store.TryDespawn(first.Handle));
+        NpcSnapshot replacement = SpawnKing(store);
+        Assert.NotEqual(first.Handle, replacement.Handle);
+
+        var interactions = new RuntimeNpcPlayerInteractionLedger(store);
+        var executor = new RuntimeNpcDamageExecutor(store, interactions: interactions);
+        PlayerHandle player = Player(slot: 5, generation: 1);
+        var request = new NpcDamageRequest(
+            first.Handle,
+            DamageSource.FromPlayerItem(player),
+            BaseDamage: 20);
+
+        Assert.False(executor.TryApply(in request, out _));
+        Assert.False(interactions.HasInteraction(replacement.Handle, player.Slot));
     }
 
     [Fact]
@@ -72,11 +113,11 @@ public sealed class VanillaKingSlimeDifficultyLootTests
         ];
         var rolls = new ScriptedRollSource(
         [
-            0, 1, 100, // bag chance, stack, materialization
-            0, 1, 100, // relic chance, stack, materialization
-            1,         // shared pet stack
-            0, 100,    // player 1 succeeds, materializes immediately
-            3           // player 4 fails
+            0, 1, 100,
+            0, 1, 100,
+            1,
+            0, 100,
+            3
         ]);
         var sink = new RecordingSink();
 
@@ -210,6 +251,22 @@ public sealed class VanillaKingSlimeDifficultyLootTests
             Simulation: NpcSimulationState.Initial);
         Assert.True(store.TrySpawn(0, in update, out NpcSnapshot npc));
         return npc;
+    }
+
+    private static void SetDontTakeDamage(RuntimeNpcStore store, NpcHandle handle)
+    {
+        Assert.True(store.TryGet(handle, out NpcSnapshot current));
+        var update = new NpcStateUpdate(
+            current.Type,
+            current.NetId,
+            current.PositionX,
+            current.PositionY,
+            current.VelocityX,
+            current.VelocityY,
+            current.Target,
+            current.Ai,
+            current.Simulation with { DontTakeDamage = true });
+        Assert.True(store.TryUpdate(handle, in update, out _));
     }
 
     private static void Kill(RuntimeNpcStore store, NpcHandle target)
