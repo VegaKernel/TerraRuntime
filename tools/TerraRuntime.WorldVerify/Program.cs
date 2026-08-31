@@ -275,7 +275,7 @@ static double Median(
 
 static WorldFileLoadLimits CreateLimits() =>
     new(
-        MaxTileCount: 6_000_000,
+        MaxTileCount: 8_400L * 2_400,
         MaxItemsPerChest: 100,
         MaxTotalChestItems: 1_000_000,
         MaxTextBytesPerSign: 64 * 1024,
