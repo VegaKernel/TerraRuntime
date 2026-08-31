@@ -28,6 +28,7 @@ on:
       - 'src/TerraRuntime/RuntimeWorldCreationPersistencePipeline.cs'
       - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
       - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
+      - 'tools/TerraRuntime.WorldVerify/**'
       - '.github/workflows/vanilla-worldgen-canonical-sizes.yml'
   workflow_dispatch:
 
