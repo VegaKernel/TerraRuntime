@@ -59,17 +59,24 @@ public static class VanillaNpcDamageResolver
 /// Lethal damage commits Life=0 but deliberately does not despawn the NPC or run loot/death
 /// side effects; those observable ordering rules belong to the later death pipeline. Runtime-owned
 /// invulnerability and dynamic defense are checked from the same NPC revision as life/AI state so transient boss
-/// phases cannot race separate combat flags.
+/// phases cannot race separate combat flags. When an interaction ledger is supplied, a player slot is recorded only
+/// after its damage transition commits, matching the source meaning of NPC.playerInteraction without crediting a
+/// rejected/stale hit.
 /// </summary>
 public sealed class RuntimeNpcDamageExecutor
 {
     private readonly RuntimeNpcStore _store;
     private readonly bool _expertMode;
+    private readonly RuntimeNpcPlayerInteractionLedger? _interactions;
 
-    public RuntimeNpcDamageExecutor(RuntimeNpcStore store, bool expertMode = false)
+    public RuntimeNpcDamageExecutor(
+        RuntimeNpcStore store,
+        bool expertMode = false,
+        RuntimeNpcPlayerInteractionLedger? interactions = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _expertMode = expertMode;
+        _interactions = interactions;
     }
 
     public bool TryApply(in NpcDamageRequest request, out NpcDamageResult result)
@@ -135,6 +142,9 @@ public sealed class RuntimeNpcDamageExecutor
             result = default;
             return false;
         }
+
+        if (request.Source.Kind is DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)
+            _interactions?.TryMark(committed.Handle, request.Source.Player);
 
         result = new NpcDamageResult(
             committed.Handle,
