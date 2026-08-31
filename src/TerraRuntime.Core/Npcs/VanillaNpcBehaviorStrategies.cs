@@ -389,22 +389,32 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             return true;
         }
 
-        var input = new VanillaServantOfCthulhuMotionInput(
+        var input = new VanillaFlyerAiMotionInput(
+            PositionY: npc.PositionY,
             NpcCenterX: npc.PositionX + hitbox.Width * 0.5f,
             NpcCenterY: npc.PositionY + hitbox.Height * 0.5f,
             VelocityX: npc.VelocityX,
             VelocityY: npc.VelocityY,
             TargetCenterX: candidate.CenterX,
             TargetCenterY: candidate.CenterY,
+            TargetTopY: candidate.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f,
             OldVelocityX: npc.Simulation.OldVelocityX,
             OldVelocityY: npc.Simulation.OldVelocityY,
+            DirectionX: closest.DirectionX,
+            Ai: npc.Ai,
+            Scale: npc.Simulation.Scale,
             CollideX: npc.Simulation.CollideX,
             CollideY: npc.Simulation.CollideY,
-            Wet: npc.Simulation.Wet);
-        if (!VanillaServantOfCthulhuMotion.TryStep(
+            Wet: npc.Simulation.Wet,
+            DayTime: context.DayTime,
+            ExpertMode: context.ExpertMode,
+            WorldSurfacePixels: context.WorldSurfacePixels,
+            TimeLeft: npc.Simulation.TimeLeft);
+        if (!VanillaFlyerAiMotion.TryStep(
+                definition.Type,
                 in input,
                 in profile,
-                out VanillaServantOfCthulhuMotionResult result))
+                out VanillaFlyerAiMotionResult result))
         {
             next = default;
             return false;
@@ -418,13 +428,14 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             result.VelocityX,
             result.VelocityY,
             closest.Target,
-            npc.Ai,
+            result.Ai,
             npc.Simulation with
             {
                 DirectionX = closest.DirectionX,
                 DirectionY = closest.DirectionY,
                 NoGravity = true,
-                NoTileCollide = definition.NoTileCollideAtSpawn
+                NoTileCollide = definition.NoTileCollideAtSpawn,
+                TimeLeft = result.TimeLeft
             });
         return true;
     }

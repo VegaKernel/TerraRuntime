@@ -66,7 +66,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [ ] AI_002 daylight despawn, Pigron line-of-sight phasing state and cosmetic branches;
 - [x] typed definitions and classic pursuit/bounce/water profiles for hostile AI_005 identities;
 - [x] admitted AI_005 size net variants for Eaters, Crimeras and Hornet families;
-- [ ] AI_005 jitter, close homing, daylight flight, surface hugging and stinger projectiles;
+- [x] AI_005 source-ordered jitter, close homing, Bee/SmallBee acceleration ramp, daylight flight/despawn, surface Hornet damping, bounce minima and wet-rise movement;
+- [ ] AI_005 projectile/NPC side effects: Hornet/Moss Hornet stingers, Probe laser, Blood Squid blood shot and Good World Eater spawn branch;
 - [x] typed AI_006 head/body/tail family relationships for Devourer, Giant Worm, Eater of Worlds and Bone Serpent;
 - [x] source-backed worm head burrow/air steering and exact segment-gap follow primitives;
 - [x] frozen-prepass runtime leader lookup and authoritative body/tail follow for admitted ordinary worm segments;
