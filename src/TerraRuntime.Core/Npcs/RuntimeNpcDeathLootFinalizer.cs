@@ -47,7 +47,7 @@ public sealed class RuntimeNpcDeathLootFinalizer
         }
 
         bool evaluated;
-        int dropCount;
+        int dropCount = 0;
         if (type == VanillaNpcIds.KingSlime)
         {
             evaluated = !lootContext.IsExpertMode &&
