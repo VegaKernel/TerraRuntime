@@ -8,13 +8,12 @@ namespace TerraRuntime;
 /// <summary>
 /// Post-AI authoritative movement for the verified ordinary NPC physics families. This layer also owns the
 /// source-backed King Slime terminal transition and its committed world effects: Slime Rain termination, first-kill
-/// blue town-slime unlock/Nerdy spawn intent, and downedSlimeKing progression.
+/// blue town-slime unlock/Nerdy spawn, and downedSlimeKing progression.
 /// </summary>
 internal sealed class VanillaNpcWorldMotionAiStepper :
     INpcAiStateStepper,
     INpcAiStateStepperWrapper,
-    INpcAiStatePostCommitObserver,
-    INpcAiSpawnIntentPlanner
+    INpcAiStatePostCommitEffect
 {
     private const float WaterMovementSpeed = 0.5f;
     private const float LavaMovementSpeed = 0.5f;
@@ -23,7 +22,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     private const float HorizontalVelocityEpsilon = 0.005f;
 
     private readonly INpcAiStateStepper inner;
-    private readonly INpcAiSpawnIntentPlanner? innerSpawnPlanner;
     private readonly WorldTileStore tiles;
     private readonly double worldSurfaceTiles;
     private readonly VanillaNpcTargetingAiStepper? targeting;
@@ -83,7 +81,6 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         progressionMutations.SetSlimeBlueSpawnBaseline(worldEvents?.SlimeBlueSpawnUnlocked == true);
 
         targeting = NpcAiStateStepperComposition.FindCapability<VanillaNpcTargetingAiStepper>(inner);
-        innerSpawnPlanner = NpcAiStateStepperComposition.FindCapability<INpcAiSpawnIntentPlanner>(inner);
         if (targeting is not null)
         {
             targeting.EnableBlueSlimeMotion(worldSurfaceTiles);
@@ -362,47 +359,35 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         return true;
     }
 
-    public int PlanNpcSpawns(
-        in NpcSnapshot source,
-        in NpcStateUpdate proposed,
-        Span<NpcAiSpawnIntent> destination)
+    public void ApplyCommittedEffect(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations)
     {
-        int count = innerSpawnPlanner?.PlanNpcSpawns(in source, in proposed, destination) ?? 0;
-        if ((uint)count > (uint)destination.Length ||
-            !IsCommittedKingSlimeDeathShape(in source, in proposed) ||
-            progressionMutations.IsSlimeBlueSpawnUnlocked)
-        {
-            return count;
-        }
-
-        if (count >= destination.Length ||
-            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
-        {
-            return count;
-        }
-
-        float centerX = source.PositionX + hitbox.Width * 0.5f;
-        float centerY = source.PositionY + hitbox.Height * 0.5f;
-        destination[count++] = new NpcAiSpawnIntent(
-            VanillaNpcIds.TownSlimeBlue,
-            BottomX: (int)centerX - 10,
-            BottomY: (int)centerY,
-            VelocityX: kingSlimeDeathRandom.NextFloatDirection() * 3f,
-            VelocityY: -10f,
-            Target: checked((ushort)VanillaNpcDefinitionCatalog.DefaultTarget));
-        return count;
-    }
-
-    public void NpcAiStateCommitted(in NpcSnapshot before, in NpcSnapshot committed)
-    {
+        ArgumentNullException.ThrowIfNull(mutations);
         if (!IsCommittedKingSlimeDeathShape(in before, in committed))
             return;
 
-        // TerrariaServer 1.4.5.8 case 50 source order: StopSlimeRain -> unlock/spawn Nerdy -> downedSlimeKing.
+        // TerrariaServer 1.4.5.8 case 50 source order:
+        // StopSlimeRain -> set unlock -> NewNPC -> velocity RNG/update -> downedSlimeKing.
         worldEvents?.TryStopSlimeRain(kingSlimeDeathRandom);
-        if (progressionMutations.MarkSlimeBlueSpawnUnlocked())
-            worldEvents?.MarkSlimeBlueSpawnUnlocked();
+
+        if (worldEvents is not null && progressionMutations.MarkSlimeBlueSpawnUnlocked())
+        {
+            worldEvents.MarkSlimeBlueSpawnUnlocked();
+            if (TryCreateNerdySlimeSpawnIntent(in before, out NpcAiSpawnIntent intent))
+            {
+                bool spawned = mutations.TrySpawn(in intent, out NpcSnapshot nerdy);
+                float velocityX = kingSlimeDeathRandom.NextFloatDirection() * 3f;
+                if (spawned &&
+                    !mutations.TryUpdateVelocity(nerdy.Handle, velocityX, -10f, out _))
+                {
+                    throw new InvalidOperationException(
+                        "The committed Nerdy Slime spawn could not receive its source-ordered launch velocity.");
+                }
+            }
+        }
+
         progressionMutations.MarkCompleted(VanillaWorldProgressionId.KingSlime);
     }
 
@@ -431,13 +416,28 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         return true;
     }
 
-    private static bool IsCommittedKingSlimeDeathShape(in NpcSnapshot source, in NpcStateUpdate proposed) =>
-        source.Type == VanillaNpcIds.KingSlime.Value &&
-        source.Simulation.LifeMax > 0 &&
-        source.Simulation.Life == 0 &&
-        proposed.Type == source.Type &&
-        proposed.Simulation.Life == 0 &&
-        proposed.Simulation.TimeLeft == 0;
+    private static bool TryCreateNerdySlimeSpawnIntent(
+        in NpcSnapshot source,
+        out NpcAiSpawnIntent intent)
+    {
+        intent = default;
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            return false;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * 0.5f;
+        float centerY = source.PositionY + hitbox.Height * 0.5f;
+        intent = new NpcAiSpawnIntent(
+            VanillaNpcIds.TownSlimeBlue,
+            BottomX: (int)centerX - 10,
+            BottomY: (int)centerY,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: checked((ushort)VanillaNpcDefinitionCatalog.DefaultTarget));
+        return true;
+    }
 
     private static bool IsCommittedKingSlimeDeathShape(in NpcSnapshot before, in NpcSnapshot committed) =>
         before.Handle == committed.Handle &&
