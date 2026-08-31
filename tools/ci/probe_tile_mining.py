@@ -50,32 +50,35 @@ def extract_method(source: str, signature: str) -> str:
     raise SystemExit(f"Method body did not terminate: {signature}")
 
 
+def dump_required_method(source: str, name: str, prefix: str) -> None:
+    matches = signatures(source, name)
+    if not matches:
+        raise SystemExit(f"Could not locate {name} in pinned source.")
+
+    print(f"{prefix}_signature_count={len(matches)}")
+    for index, signature in enumerate(matches):
+        print(f"{prefix}_signature_{index}={signature}")
+        print(f"{prefix}_method_{index}={compact(extract_method(source, signature))}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Inspect pinned TerrariaServer 1.4.5.8 player tile-mining authority logic."
     )
     parser.add_argument("--player", required=True)
+    parser.add_argument("--world-gen")
     args = parser.parse_args()
 
     player = Path(args.player).read_text(encoding="utf-8")
 
-    pick_tile_signatures = signatures(player, "PickTile")
-    determine_signatures = signatures(player, "PickTile_DetermineDamage")
+    dump_required_method(player, "PickTile", "pick_tile")
+    dump_required_method(player, "PickTile_DetermineDamage", "pick_tile_determine")
+    dump_required_method(player, "GetPickaxeDamage", "get_pickaxe_damage")
+    dump_required_method(player, "DoesPickTargetTransformOnKill", "pick_target_transform")
 
-    if not pick_tile_signatures:
-        raise SystemExit("Could not locate Player.PickTile in pinned source.")
-    if not determine_signatures:
-        raise SystemExit("Could not locate Player.PickTile_DetermineDamage in pinned source.")
-
-    print(f"pick_tile_signature_count={len(pick_tile_signatures)}")
-    for index, signature in enumerate(pick_tile_signatures):
-        print(f"pick_tile_signature_{index}={signature}")
-        print(f"pick_tile_method_{index}={compact(extract_method(player, signature))}")
-
-    print(f"pick_tile_determine_signature_count={len(determine_signatures)}")
-    for index, signature in enumerate(determine_signatures):
-        print(f"pick_tile_determine_signature_{index}={signature}")
-        print(f"pick_tile_determine_method_{index}={compact(extract_method(player, signature))}")
+    if args.world_gen:
+        world_gen = Path(args.world_gen).read_text(encoding="utf-8")
+        dump_required_method(world_gen, "CanKillTile", "worldgen_can_kill_tile")
 
     print("tile_mining_probe=diagnostic")
     return 0
