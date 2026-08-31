@@ -1013,9 +1013,24 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
 
     private static void TryGrass(RuntimeGrid grid, int x, int y)
     {
-        if (IsActiveType(grid.At(x - 1, y), Dirt) && IsActiveType(grid.At(x + 1, y), Dirt) &&
-            IsActiveType(grid.At(x, y - 1), Dirt) && IsActiveType(grid.At(x, y + 1), Dirt))
-            SetType(ref grid.At(x, y), Grass, true);
+        ref WorldTile target = ref grid.At(x, y);
+        if (!IsActiveType(target, Dirt))
+            return;
+
+        bool exposed = false;
+        for (int tx = x - 1; tx <= x + 1 && !exposed; tx++)
+        for (int ty = y - 1; ty <= y + 1; ty++)
+        {
+            ref WorldTile neighbor = ref grid.At(tx, ty);
+            if (!neighbor.IsActive)
+            {
+                exposed = true;
+                break;
+            }
+        }
+
+        if (exposed)
+            SetType(ref target, Grass, true);
     }
 
     private void ApplyJungle(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
