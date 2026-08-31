@@ -13,6 +13,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 ## Subsystem and engineering guides
 
 - [Networking and protocol](networking-protocol.md) — framing, connection policy, Multiplicity boundary, queues, rate accounting, stop reasons and join traffic.
+- [Outbound queue sizing evidence](outbound-queue-sizing-evidence.md) — process-lifetime high-water measurements, structural floor, 75% headroom model and safe sizing recommendations.
 - [Per-message packet telemetry](packet-telemetry.md) — bounded per-ID/direction frame and byte counts, rolling top traffic, malformed/unknown traffic and normalized rejection counters.
 - [World loading and persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state and recovery.
 - [Interrupted-save recovery](interrupted-save-recovery.md) — durable recovery markers, SHA-256 sealing, roll-forward preconditions, conflict quarantine and crash windows.

@@ -40,6 +40,13 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
     public RuntimeNetworkSnapshot CaptureSnapshot()
     {
         RuntimeConnectionQueueSnapshot queues = queueTelemetry.CaptureSnapshot(MaximumQueueDetails);
+        OutboundQueueSizingEvidence queueSizing = OutboundQueueSizingEvidenceCalculator.Calculate(
+            queues.ConfiguredMaxFrames,
+            queues.ConfiguredMaxQueuedBytes,
+            queues.PeakQueuedFrames,
+            queues.PeakQueuedBytes,
+            queues.RejectedFrames,
+            queues.SlowClients);
         RuntimeConnectionRateTelemetrySnapshot rates = rateTelemetry.CaptureSnapshot(MaximumRateDetails);
         RuntimeConnectionStopTelemetrySnapshot stops = stopTelemetry?.CaptureSnapshot() ?? default;
         TerrariaFrameRejectionTelemetrySnapshot rejections = TerrariaFrameRejectionTelemetry.CaptureSnapshot();
@@ -113,6 +120,16 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             MalformedOutboundMessages: messages.MalformedOutboundFrames,
             MessageTrafficWindow: messages.Window,
             MessageTraffic: messages.Messages,
-            TopMessageTraffic: messages.TopMessages);
+            TopMessageTraffic: messages.TopMessages,
+            OutboundStructuralMaxFrames: queueSizing.StructuralMaxFrames,
+            OutboundStructuralMaxQueuedBytes: queueSizing.StructuralMaxQueuedBytes,
+            OutboundFrameUtilizationBasisPoints: queueSizing.FrameUtilizationBasisPoints,
+            OutboundByteUtilizationBasisPoints: queueSizing.ByteUtilizationBasisPoints,
+            OutboundMeasuredFramesWithHeadroom: queueSizing.MeasuredFramesWithHeadroom,
+            OutboundMeasuredBytesWithHeadroom: queueSizing.MeasuredBytesWithHeadroom,
+            OutboundRecommendedMaxFrames: queueSizing.RecommendedMaxFrames,
+            OutboundRecommendedMaxQueuedBytes: queueSizing.RecommendedMaxQueuedBytes,
+            OutboundSizingHasMeasurements: queueSizing.HasMeasurements,
+            OutboundSizingRequiresReview: queueSizing.RequiresReview);
     }
 }

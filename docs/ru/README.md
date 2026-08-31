@@ -13,6 +13,7 @@
 ## Руководства по подсистемам и инженерным правилам
 
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
+- [Evidence для sizing outbound queue](outbound-queue-sizing-evidence.md) — process-lifetime high-water measurements, structural floor, модель 75% headroom и безопасная sizing recommendation.
 - [Телеметрия пакетов по message ID](packet-telemetry.md) — bounded frame/byte counters по ID и direction, rolling top traffic, malformed/unknown traffic и нормализованные rejection counters.
 - [Загрузка мира и persistence](world-persistence.md) — `.wld`, `.runtime-world`, live save shadow, atomic replacement, liquid state и recovery.
 - [Recovery прерванного save](interrupted-save-recovery.md) — durable recovery markers, SHA-256 sealing, preconditions roll-forward, conflict quarantine и crash windows.

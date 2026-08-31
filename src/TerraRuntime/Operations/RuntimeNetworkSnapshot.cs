@@ -70,4 +70,14 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long MalformedOutboundMessages = 0,
     TimeSpan MessageTrafficWindow = default,
     ReadOnlyMemory<TerrariaMessageTrafficDetail> MessageTraffic = default,
-    ReadOnlyMemory<TerrariaMessageTrafficDetail> TopMessageTraffic = default);
+    ReadOnlyMemory<TerrariaMessageTrafficDetail> TopMessageTraffic = default,
+    int OutboundStructuralMaxFrames = 0,
+    long OutboundStructuralMaxQueuedBytes = 0,
+    int OutboundFrameUtilizationBasisPoints = 0,
+    int OutboundByteUtilizationBasisPoints = 0,
+    int OutboundMeasuredFramesWithHeadroom = 0,
+    long OutboundMeasuredBytesWithHeadroom = 0,
+    int OutboundRecommendedMaxFrames = 0,
+    long OutboundRecommendedMaxQueuedBytes = 0,
+    bool OutboundSizingHasMeasurements = false,
+    bool OutboundSizingRequiresReview = false);

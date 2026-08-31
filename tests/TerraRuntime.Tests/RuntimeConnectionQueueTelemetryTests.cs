@@ -29,6 +29,8 @@ public sealed class RuntimeConnectionQueueTelemetryTests
         RuntimeConnectionQueueSnapshot snapshot = telemetry.CaptureSnapshot(maxDetails: 2);
 
         Assert.Equal(2, snapshot.TrackedQueues);
+        Assert.Equal(1, snapshot.ConfiguredMaxFrames);
+        Assert.Equal(32, snapshot.ConfiguredMaxQueuedBytes);
         Assert.Equal(2, snapshot.QueuedFrames);
         Assert.Equal(8, snapshot.QueuedBytes);
         Assert.Equal(1, snapshot.PeakQueuedFrames);
@@ -49,6 +51,8 @@ public sealed class RuntimeConnectionQueueTelemetryTests
         Assert.True(telemetry.TryUnregister(1));
         snapshot = telemetry.CaptureSnapshot(maxDetails: 2);
         Assert.Equal(1, snapshot.TrackedQueues);
+        Assert.Equal(1, snapshot.ConfiguredMaxFrames);
+        Assert.Equal(32, snapshot.ConfiguredMaxQueuedBytes);
         Assert.Equal(1, snapshot.QueuedFrames);
         Assert.Equal(5, snapshot.QueuedBytes);
         Assert.Equal(1, snapshot.PeakQueuedFrames);
@@ -60,7 +64,7 @@ public sealed class RuntimeConnectionQueueTelemetryTests
     }
 
     [Fact]
-    public void Peak_pressure_survives_connection_unregister()
+    public void Peak_and_configured_envelope_survive_connection_unregister()
     {
         var telemetry = new RuntimeConnectionQueueTelemetry();
         var queue = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 16));
@@ -71,6 +75,8 @@ public sealed class RuntimeConnectionQueueTelemetryTests
 
         RuntimeConnectionQueueSnapshot snapshot = telemetry.CaptureSnapshot(maxDetails: 1);
 
+        Assert.Equal(4, snapshot.ConfiguredMaxFrames);
+        Assert.Equal(64, snapshot.ConfiguredMaxQueuedBytes);
         Assert.Equal(2, snapshot.QueuedFrames);
         Assert.Equal(13, snapshot.QueuedBytes);
         Assert.Equal(2, snapshot.PeakQueuedFrames);
@@ -85,6 +91,8 @@ public sealed class RuntimeConnectionQueueTelemetryTests
         snapshot = telemetry.CaptureSnapshot(maxDetails: 1);
 
         Assert.Equal(0, snapshot.TrackedQueues);
+        Assert.Equal(4, snapshot.ConfiguredMaxFrames);
+        Assert.Equal(64, snapshot.ConfiguredMaxQueuedBytes);
         Assert.Equal(0, snapshot.QueuedFrames);
         Assert.Equal(0, snapshot.QueuedBytes);
         Assert.Equal(2, snapshot.PeakQueuedFrames);

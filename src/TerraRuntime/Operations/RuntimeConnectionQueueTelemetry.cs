@@ -9,11 +9,18 @@ internal sealed class RuntimeConnectionQueueTelemetry
     private readonly ConcurrentDictionary<long, TerrariaConnectionOutboundQueue> queues = new();
     private long lifetimePeakQueuedFrames;
     private long lifetimePeakQueuedBytes;
+    private long lifetimeConfiguredMaxFrames;
+    private long lifetimeConfiguredMaxQueuedBytes;
 
     public bool TryRegister(long connectionId, TerrariaConnectionOutboundQueue queue)
     {
         ArgumentNullException.ThrowIfNull(queue);
-        return connectionId > 0 && queues.TryAdd(connectionId, queue);
+        if (connectionId <= 0 || !queues.TryAdd(connectionId, queue))
+            return false;
+
+        UpdateMaximum(ref lifetimeConfiguredMaxFrames, queue.MaxFrames);
+        UpdateMaximum(ref lifetimeConfiguredMaxQueuedBytes, queue.MaxQueuedBytes);
+        return true;
     }
 
     public bool TryUnregister(long connectionId)
@@ -23,6 +30,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
 
         UpdateMaximum(ref lifetimePeakQueuedFrames, queue.PeakQueuedFrames);
         UpdateMaximum(ref lifetimePeakQueuedBytes, queue.PeakQueuedBytes);
+        UpdateMaximum(ref lifetimeConfiguredMaxFrames, queue.MaxFrames);
+        UpdateMaximum(ref lifetimeConfiguredMaxQueuedBytes, queue.MaxQueuedBytes);
         return true;
     }
 
@@ -37,6 +46,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
         long queuedBytes = 0;
         long peakQueuedFrames = Interlocked.Read(ref lifetimePeakQueuedFrames);
         long peakQueuedBytes = Interlocked.Read(ref lifetimePeakQueuedBytes);
+        long configuredMaxFrames = Interlocked.Read(ref lifetimeConfiguredMaxFrames);
+        long configuredMaxQueuedBytes = Interlocked.Read(ref lifetimeConfiguredMaxQueuedBytes);
         long rejectedFrames = 0;
         RuntimeConnectionQueueDetail[] details = maxDetails == 0
             ? []
@@ -56,8 +67,10 @@ internal sealed class RuntimeConnectionQueueTelemetry
             trackedQueues++;
             queuedFrames += connectionQueuedFrames;
             queuedBytes += connectionQueuedBytes;
-            peakQueuedFrames = Math.Max(peakQueuedFrames, connectionPeakQueuedFrames);
+            peakQueuedFrames = Math.Max(peakQueuedFrames, connectionPeakQueueeFrames);
             peakQueuedBytes = Math.Max(peakQueuedBytes, connectionPeakQueuedBytes);
+            configuredMaxFrames = Math.Max(configuredMaxFrames, queue.MaxFrames);
+            configuredMaxQueuedBytes = Math.Max(configuredMaxQueuedBytes, queue.MaxQueuedBytes);
             rejectedFrames += connectionRejectedFrames;
             if (slowClient)
                 slowClients++;
@@ -91,6 +104,8 @@ internal sealed class RuntimeConnectionQueueTelemetry
 
         return new RuntimeConnectionQueueSnapshot(
             TrackedQueues: trackedQueues,
+            ConfiguredMaxFrames: checked((int)Math.min(int.MaxValue, configuredMaxFrames)),
+            ConfiguredMaxQueuedBytes: configuredMaxQueuedBytes,
             QueuedFrames: queuedFrames,
             QueuedBytes: queuedBytes,
             PeakQueuedFrames: peakQueuedFrames,
@@ -138,7 +153,7 @@ internal sealed class RuntimeConnectionQueueTelemetry
         if (left.PeakQueuedBytes != right.PeakQueuedBytes)
             return left.PeakQueuedBytes > right.PeakQueuedBytes;
         if (left.PeakQueuedFrames != right.PeakQueuedFrames)
-            return left.PeakQueuedFrames > right.PeakQueuedFrames;
+            return left.PeakQueuefFrames > right.PeakQueuedFrames;
         if (left.QueuedBytes != right.QueuedBytes)
             return left.QueuedBytes > right.QueuedBytes;
         if (left.QueuedFrames != right.QueuedFrames)
@@ -176,6 +191,8 @@ internal readonly record struct RuntimeConnectionQueueDetail(
 
 internal readonly record struct RuntimeConnectionQueueSnapshot(
     int TrackedQueues,
+    int ConfiguredMaxFrames,
+    long ConfiguredMaxQueuedBytes,
     long QueuedFrames,
     long QueuedBytes,
     long PeakQueuedFrames,
