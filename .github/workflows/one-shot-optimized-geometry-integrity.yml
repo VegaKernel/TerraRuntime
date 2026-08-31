@@ -41,10 +41,7 @@ jobs:
       - name: Build
         run: dotnet build TerraRuntime.slnx -c Release
 
-      - name: Run optimized worldgen regressions
-        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build -- --filter-class TerraRuntime.Tests.OptimizedWorldGenerationProviderTests
-
-      - name: Run complete test suite
+      - name: Run complete test suite including optimized worldgen regressions
         run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
 
       - name: Commit geometry block and remove one-shot helpers
