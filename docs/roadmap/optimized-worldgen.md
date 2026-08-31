@@ -12,6 +12,7 @@ not seed-identical output. The release criterion is a deterministic, official-cl
 ## O0 - Spatial planning and generator identity
 
 - [x] register `terraruntime:optimized` as a separate built-in profile without replacing `terraruntime:vanilla`;
+- [x] keep built-in implementations separated under `TerraRuntime.World/Generation/{Flat,Optimized,Skyblock,Vanilla}`;
 - [x] use a deterministic pass graph with isolated per-pass RNG;
 - [x] allocate major structure regions before terrain mutation;
 - [x] reject layouts where mandatory reserved structures overlap or escape map bounds;
@@ -31,8 +32,8 @@ not seed-identical output. The release criterion is a deterministic, official-cl
 - [x] underground mushroom region;
 - [x] underworld band;
 - [x] deterministic variable-radius cave walkers protected from mandatory structure reservations;
-- [ ] add large caverns, vertical shafts, underground lakes and biome-sensitive cave morphology;
-- [ ] add erosion/transition pass so biome edges do not read as simple material bands;
+- [x] add large caverns, vertical shafts, underground lakes and a connected cave-room layer;
+- [ ] add domain-warped/eroded biome transitions so biome edges do not read as simple material bands;
 - [ ] add measured terrain-quality fixtures for Small/Medium/Large world silhouettes.
 
 ## O2 - Guaranteed structures and map elements
@@ -64,14 +65,17 @@ Presence of terrain alone is not considered playable progression.
 - [x] Hellstone placement;
 - [x] Water, Lava, Honey and Shimmer availability;
 - [x] starting Guide persistence;
-- [ ] Life Crystal distribution with minimum count by world size;
-- [ ] surface/underground/cavern chest budgets;
+- [x] Life Crystal distribution with a fail-closed minimum count scaled by world area;
+- [x] separate surface/underground/cavern persistent chest budgets;
 - [ ] biome chest/loot families needed for ordinary pre-hardmode exploration;
 - [ ] dungeon locked chest/key progression;
 - [ ] Shadow Orb / Crimson Heart progression anchors;
 - [ ] jungle spores/stingers/bee progression resource audit;
 - [ ] hellstone/obsidian/hellforge resource reachability audit;
 - [ ] hardmode-ready world anchors required by later progression mutation logic.
+
+The current optimized cache loot deliberately uses only repository source-backed item identities. It proves non-empty,
+persistent exploration caches but does **not** close the full vanilla/biome loot-family item above.
 
 ## O4 - Organic presentation
 
@@ -85,8 +89,8 @@ because it is fashionable; output quality and cost must be measured.
 - [x] multi-scale value-noise surface;
 - [x] correlated variable-radius caves;
 - [x] SDF/ellipse-like perturbed floating islands;
+- [x] noise-warped large cavern rooms connected to the smaller random-walk cave texture;
 - [ ] domain-warped biome boundaries;
-- [ ] cave-room graph blended with random walkers;
 - [ ] slope-aware beaches and cliffs;
 - [ ] vegetation and decoration passes;
 - [ ] deterministic screenshot/map fixtures for visual regression review;
@@ -104,12 +108,12 @@ A generated candidate is rejected before commit if a mandatory element is absent
 - [x] validate both oceans;
 - [x] validate floating-island mass;
 - [x] validate Demon Altar, Hellforge and Hellstone;
-- [ ] validate spawn safety with a bounded walkable starter area;
+- [x] validate spawn safety with a bounded dry walkable starter area;
 - [ ] validate path/reachability graph from spawn to surface biomes and major structure entrances;
 - [ ] validate minimum ore/resource quantities instead of presence only;
-- [ ] validate chest and Life Crystal budgets;
+- [x] validate persistent chest and Life Crystal budgets;
 - [ ] validate dungeon/temple/hive interior traversal;
-- [ ] validate no required structure was overwritten by a later pass;
+- [ ] validate no required structure was overwritten by a later pass beyond the current material/object checks;
 - [ ] run generated `.wld` through pinned TerrariaServer `1.4.5.8` acceptance and an official-client join smoke.
 
 ## O6 - Production gate
@@ -121,7 +125,7 @@ A generated candidate is rejected before commit if a mandatory element is absent
       supported world size;
 - [ ] progression-critical resources and loot have minimum-count gates;
 - [ ] generated worlds pass TerraRuntime structural validation and pinned official-server acceptance;
-- [ ] deterministic replay is covered for fixed seeds;
+- [x] deterministic replay is covered for fixed seeds, including generated chest side-table content;
 - [ ] generation time and peak memory are measured and bounded;
 - [ ] visual-regression review shows organic terrain, caves and structure placement rather than obvious rectangular
       generation artifacts.

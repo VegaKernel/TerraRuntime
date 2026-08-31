@@ -16,13 +16,13 @@ internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorS
 
     private readonly FlatWorldGenerationProvider flat = new();
     private readonly SourceBackedVanillaWorldGenerationCanonical1458 vanilla = new();
-    private readonly OptimizedWorldGenerationProvider optimized = new();
+    private readonly OptimizedPlayableWorldGenerationProvider optimized = new();
     private readonly SkyblockWorldGenerationProvider skyblock = new();
     private readonly WorldGeneratorId[] ids =
         [
             FlatWorldGenerationProvider.GeneratorId,
             VanillaWorldGenerationProvider1458.GeneratorId,
-            OptimizedWorldGenerationProvider.GeneratorId,
+            OptimizedPlayableWorldGenerationProvider.GeneratorId,
             SkyblockWorldGenerationProvider.GeneratorId
         ];
 

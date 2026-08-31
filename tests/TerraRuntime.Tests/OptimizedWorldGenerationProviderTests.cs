@@ -17,6 +17,7 @@ public sealed class OptimizedWorldGenerationProviderTests
                 OptimizedWorldGenerationProvider.GeneratorId,
                 out IWorldGenerationProvider? provider));
         Assert.NotNull(provider);
+        Assert.IsType<OptimizedPlayableWorldGenerationProvider>(provider);
 
         var request = new WorldGenerationRequest(
             OptimizedWorldGenerationProvider.GeneratorId,
@@ -55,6 +56,13 @@ public sealed class OptimizedWorldGenerationProviderTests
 
         int skyLimit = Math.Max(1, (int)result.Metadata.Layers.WorldSurface - 20);
         Assert.True(CountActiveTilesAbove(world, skyLimit) >= 90, "Floating-island terrain must exist above the normal surface.");
+
+        Assert.True(CountActiveTiles(world, 12) >= 32, "A 640x320 optimized world must contain at least eight complete Life Crystals.");
+        Assert.True(world.GeneratedChestCount >= 7, "The optimized playability overlay must persist surface/underground/cavern cache budgets.");
+        Assert.True(ContainsInteriorWaterBelow(world, (int)result.Metadata.Layers.RockLayer), "Organic cavern generation must include inland underground water.");
+        Assert.Contains(
+            world.CaptureGeneratedChests(),
+            static chest => chest.Items.Any(static item => !item.IsEmpty));
     }
 
     [Fact]
@@ -80,16 +88,21 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.Equal(first.Metadata, second.Metadata);
         Assert.NotNull(first.Candidate);
         Assert.NotNull(second.Candidate);
+        Assert.Equal(first.Candidate!.GeneratedChestCount, second.Candidate!.GeneratedChestCount);
 
         for (int y = 0; y < request.HeightTiles; y += 7)
         {
             for (int x = 0; x < request.WidthTiles; x += 7)
             {
-                Assert.True(first.Candidate!.TryGetTile(x, y, out WorldGenerationTile a));
-                Assert.True(second.Candidate!.TryGetTile(x, y, out WorldGenerationTile b));
+                Assert.True(first.Candidate.TryGetTile(x, y, out WorldGenerationTile a));
+                Assert.True(second.Candidate.TryGetTile(x, y, out WorldGenerationTile b));
                 Assert.Equal(a, b);
             }
         }
+
+        AssertGeneratedChestsEqual(
+            first.Candidate.CaptureGeneratedChests(),
+            second.Candidate.CaptureGeneratedChests());
     }
 
     private static void AssertSpawnHasGround(
@@ -113,8 +126,12 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.True(foundGround, "Spawn must have solid ground within three tiles below.");
     }
 
-    private static bool ContainsActiveTile(RuntimeWorldGenerationWorkspace workspace, ushort type)
+    private static bool ContainsActiveTile(RuntimeWorldGenerationWorkspace workspace, ushort type) =>
+        CountActiveTiles(workspace, type) > 0;
+
+    private static int CountActiveTiles(RuntimeWorldGenerationWorkspace workspace, ushort type)
     {
+        int count = 0;
         for (int y = 0; y < workspace.HeightTiles; y++)
         {
             for (int x = 0; x < workspace.WidthTiles; x++)
@@ -123,12 +140,12 @@ public sealed class OptimizedWorldGenerationProviderTests
                     (tile.Flags & WorldGenerationTileFlags.Active) != 0 &&
                     tile.Type == type)
                 {
-                    return true;
+                    count++;
                 }
             }
         }
 
-        return false;
+        return count;
     }
 
     private static bool ContainsLiquid(
@@ -142,6 +159,27 @@ public sealed class OptimizedWorldGenerationProviderTests
                 if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
                     tile.LiquidAmount > 0 &&
                     tile.LiquidKind == kind)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsInteriorWaterBelow(
+        RuntimeWorldGenerationWorkspace workspace,
+        int minY)
+    {
+        int margin = Math.Clamp(workspace.WidthTiles / 8, 50, 120);
+        for (int y = Math.Clamp(minY, 1, workspace.HeightTiles - 2); y < workspace.HeightTiles * 4 / 5; y++)
+        {
+            for (int x = margin; x < workspace.WidthTiles - margin; x++)
+            {
+                if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
+                    tile.LiquidAmount > 0 &&
+                    tile.LiquidKind == WorldGenerationLiquidKind.Water)
                 {
                     return true;
                 }
@@ -167,5 +205,22 @@ public sealed class OptimizedWorldGenerationProviderTests
         }
 
         return count;
+    }
+
+    private static void AssertGeneratedChestsEqual(WorldChest[] expected, WorldChest[] actual)
+    {
+        Assert.Equal(expected.Length, actual.Length);
+        for (int index = 0; index < expected.Length; index++)
+        {
+            WorldChest a = expected[index];
+            WorldChest b = actual[index];
+            Assert.Equal(a.SlotId, b.SlotId);
+            Assert.Equal(a.X, b.X);
+            Assert.Equal(a.Y, b.Y);
+            Assert.Equal(a.Name, b.Name);
+            Assert.Equal(a.Items.Length, b.Items.Length);
+            for (int slot = 0; slot < a.Items.Length; slot++)
+                Assert.Equal(a.Items[slot], b.Items[slot]);
+        }
     }
 }
