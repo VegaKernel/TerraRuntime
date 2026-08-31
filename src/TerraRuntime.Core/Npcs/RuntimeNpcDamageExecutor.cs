@@ -6,7 +6,8 @@ namespace TerraRuntime.Core;
 /// <summary>
 /// Deterministic vanilla-oriented NPC damage resolver for the verified combat slice.
 /// Source-specific damage scaling/variation is upstream; this stage applies NPC defense,
-/// flat armor penetration and the ordinary critical multiplier.
+/// flat armor penetration and the ordinary critical multiplier. Runtime AI may supply a negative
+/// defense value for source-backed boss phases and that value must remain negative through damage math.
 /// </summary>
 public static class VanillaNpcDamageResolver
 {
@@ -15,6 +16,13 @@ public static class VanillaNpcDamageResolver
 
     public static bool TryResolve(
         in VanillaNpcDefinition definition,
+        in NpcDamageRequest request,
+        out int effectiveDefense,
+        out int resolvedDamage) =>
+        TryResolve(definition.Defense, in request, out effectiveDefense, out resolvedDamage);
+
+    public static bool TryResolve(
+        int defense,
         in NpcDamageRequest request,
         out int effectiveDefense,
         out int resolvedDamage)
@@ -26,8 +34,12 @@ public static class VanillaNpcDamageResolver
             return false;
         }
 
-        int defense = Math.Max(definition.Defense, 0);
-        effectiveDefense = Math.Max(defense - request.ArmorPenetration, 0);
+        // Existing flat armor-penetration semantics are retained for non-negative defense. Vanilla Eye AI can
+        // intentionally write negative defense; checkArmorPenetration treats defense <= 0 as zero penetration,
+        // so the negative value reaches CalculateDamageNPCsTake unchanged and increases incoming damage.
+        effectiveDefense = defense <= 0
+            ? defense
+            : Math.Max(defense - request.ArmorPenetration, 0);
         float damage = Math.Max(
             request.BaseDamage - effectiveDefense * DefenseEffectiveness,
             1f);
@@ -46,8 +58,8 @@ public static class VanillaNpcDamageResolver
 /// Applies one generation-safe NPC damage transition to the authoritative runtime store.
 /// Lethal damage commits Life=0 but deliberately does not despawn the NPC or run loot/death
 /// side effects; those observable ordering rules belong to the later death pipeline. Runtime-owned
-/// invulnerability is checked from the same NPC revision as life/AI state so transient boss phases
-/// cannot race a separate damage flag.
+/// invulnerability and dynamic defense are checked from the same NPC revision as life/AI state so transient boss
+/// phases cannot race separate combat flags.
 /// </summary>
 public sealed class RuntimeNpcDamageExecutor
 {
@@ -70,9 +82,15 @@ public sealed class RuntimeNpcDamageExecutor
             !VanillaNpcDefinitionCatalog.TryGet(
                 current.TypeIdentity,
                 current.NetIdentity,
-                out VanillaNpcDefinition definition) ||
-            !VanillaNpcDamageResolver.TryResolve(
-                in definition,
+                out VanillaNpcDefinition definition))
+        {
+            result = default;
+            return false;
+        }
+
+        int defense = current.Simulation.DefenseOverride ?? definition.Defense;
+        if (!VanillaNpcDamageResolver.TryResolve(
+                defense,
                 in request,
                 out int effectiveDefense,
                 out int damage))
@@ -123,7 +141,7 @@ public sealed class RuntimeNpcDamageExecutor
             committed.Revision,
             request.Source,
             request.BaseDamage,
-            Math.Max(definition.Defense, 0),
+            defense,
             effectiveDefense,
             damage,
             lifeBefore,
