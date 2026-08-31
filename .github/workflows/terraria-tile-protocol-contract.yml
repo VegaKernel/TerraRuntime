@@ -10,6 +10,7 @@ on:
       - 'tools/ci/probe_tile_protocol.py'
       - 'tools/ci/probe_player_inventory.py'
       - 'tools/ci/probe_tile_authority.py'
+      - 'tools/ci/probe_tile_mining.py'
       - 'src/TerraRuntime.Core/VanillaPlayerItemSlotCatalog.cs'
       - 'src/TerraRuntime/RuntimeNpcShopPurchaseExecutor.cs'
       - 'tests/TerraRuntime.Tests/VanillaPlayerItemSlotCatalogTests.cs'
@@ -116,6 +117,9 @@ jobs:
             --message-buffer artifacts/source-contract/message-buffer.cs \
             --item artifacts/source-contract/item.cs \
             --item-id artifacts/source-contract/item-id.cs
+
+          python3 tools/ci/probe_tile_mining.py \
+            --player artifacts/source-contract/player.cs
 
           python3 tools/ci/probe_dirt_placement.py \
             --world-gen artifacts/source-contract/world-gen.cs \
