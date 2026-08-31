@@ -1,13 +1,13 @@
 # Семантика Expert и Master loot King Slime
 
-TerraRuntime теперь владеет source-backed gameplay-семантикой difficulty-only loot rules King Slime из TerrariaServer 1.4.5.8. Этот срез намеренно сохраняет три разных способа доставки вместо того, чтобы сплющивать их в обычные общие world-item drops.
+TerraRuntime владеет source-backed gameplay-семантикой difficulty-only loot rules King Slime из TerrariaServer 1.4.5.8. Три разных способа доставки сохраняются отдельно, а не сплющиваются в обычные общие world-item drops.
 
 ## Учёт взаимодействия игрока
 
 Boss bag и per-player Master rules Terraria используют `NPC.playerInteraction[playerSlot]`. TerraRuntime проецирует это состояние через `RuntimeNpcPlayerInteractionLedger`:
 
 - после принятия точной NPC generation атака предметом/projectile игрока записывает interaction до результата последующего strike, как в исходном порядке packet 28;
-- поэтому generation-valid invulnerable target всё равно может записать interaction игрока, даже если само изменение HP отвергнуто;
+- generation-valid invulnerable target всё равно может записать interaction игрока, даже если само изменение HP отвергнуто;
 - stale NPC generations и некорректные damage requests interaction credit не получают;
 - NPC-сторона привязана к точному generation-safe `NpcHandle`, поэтому переиспользованный NPC slot не наследует старые взаимодействия;
 - исходной идентичностью игрока остаётся Terraria player slot;
@@ -26,9 +26,9 @@ Environment/server/NPC damage не выдаёт игроку interaction credit.
 4. packet 90 отправляется каждому активному взаимодействовавшему игроку;
 5. сервер превращает свою копию в air, но не позволяет переиспользовать этот world-item slot `54000` ticks.
 
-`IKingSlimeDifficultyLootDeliverySink` представляет это как один логический instanced item, упорядоченный список получателей и явный slot lease на `54000` ticks. Gameplay evaluator materialize-ит bag до последующих Master rules, чтобы RNG `Item.NewItem` оставался вплетён в исходный порядок.
+`RuntimeKingSlimeDifficultyLootDeliverySink` теперь реализует эту transport boundary. Предмет materialize-ится тем же source-backed world-item materializer, затем резервируется неопубликованный точный slot, packet 90 кодируется с byte-for-byte payload формата packet 21 и отправляется только указанным playing player slots. `RuntimeWorldItemInstancedLeaseStore` удерживает reservation, поэтому обычный item allocator не может переиспользовать этот slot, пока существует instanced client copy.
 
-Packet-90 encoder и конкретный leased-slot transport adapter **пока не входят** в этот срез. Контракт оставлен явным, чтобы production-код не мог подменить boss bag глобально видимым packet-21 world item и назвать это паритетом.
+Когда lease достигает нуля, `TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease` формирует пятибайтовый packet 151 с освобождённым item slot. Оставшаяся runtime-интеграция — тикать эти leases в авторитетной item-update phase; wire contract и lease semantics уже конкретны.
 
 ## Master relic
 
@@ -55,4 +55,4 @@ TerraRuntime сохраняет этот порядок, включая чере
 
 `RuntimeKingSlimeDifficultyLootFinalizer` принимает только мёртвую generation King Slime в Expert/Master context. Он фиксирует активных взаимодействовавших игроков, выполняет difficulty rules в исходном порядке и despawn-ит точную NPC generation только после успешной доставки. Normal mode остаётся во владении существующей normal-loot transaction.
 
-Этот блок закрывает authoritative gameplay rule semantics и interaction accounting. Открытыми остаются конкретный packet-90/leased-slot adapter и оставшиеся world effects смерти King Slime, включая остановку Slime Rain и first-kill unlock/spawn Nerdy Slime.
+Rule semantics, packet-90/151 wire representation и leased-slot storage теперь явные. Открытой остаётся интеграция с live packet-28/playerInteraction combat/death ingress и авторитетный lease ticking. Остановка Slime Rain и first-kill Nerdy Slime world effects закрываются отдельным committed death-progression срезом.
