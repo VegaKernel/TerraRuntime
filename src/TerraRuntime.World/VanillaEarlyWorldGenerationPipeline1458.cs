@@ -1334,7 +1334,7 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
     private static void SetType(ref WorldTile tile, ushort type, bool active) { tile.Type = type; SetActive(ref tile, active); tile.FrameX = -1; tile.FrameY = -1; }
     private static void ClearTile(ref WorldTile tile) { SetActive(ref tile, false); tile.LiquidAmount = 0; tile.LiquidKind = WorldLiquidKind.Water; tile.FrameX = -1; tile.FrameY = -1; }
 
-    private interface IRandom
+    internal interface IRandom
     {
         int Next();
         int Next(int max);
