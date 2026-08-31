@@ -2,37 +2,24 @@
 
 TerraRuntime завершает смерть King Slime внутри авторитетного NPC state pipeline, а не пытается угадать смерть босса по клиентскому пакету или позднему сканированию переиспользуемых слотов.
 
-## Владение состоянием
+## Зафиксированный source order
 
-```mermaid
-flowchart LR
-    A[Зафиксировано боевое состояние\nLife = 0] --> B[VanillaNpcWorldMotionAiStepper]
-    B --> C[Предложено terminal state\nTimeLeft = 0]
-    C --> D[RuntimeNpcAiStateExecutor]
-    D --> E{generation-safe\nTryUpdate}
-    E -->|отклонено| F[Прогрессия не меняется]
-    E -->|зафиксировано| G[Post-commit observer]
-    G --> H[World-scoped progression journal\nKingSlime complete]
-    H --> I[ServerRuntimeState.DespawnExpired]
-    H --> J[Снимок сохранения на owner thread]
-    J --> K[WorldFileProgressionHeaderPatcher]
-    K --> L[Сохранить downedSlimeKing = true]
-```
+TerrariaServer 1.4.5.8 выполняет death-case King Slime в наблюдаемом порядке:
 
-Post-commit observer получает и снимок NPC до шага, и уже зафиксированную ревизию. Поэтому `downedSlimeKing` не публикуется, если переход был отвергнут из-за устаревшего поколения слота.
+1. если активен Slime Rain, `StopSlimeRain` вызывает `Next(3024, 6048)` и сохраняет отрицательный cooldown `-roll * 100`;
+2. при первом убийстве устанавливается `unlockedSlimeBlueSpawn`;
+3. Nerdy Slime (`NPC 670`) создаётся в `(int)KingSlime.Center.X - 10, (int)KingSlime.Center.Y`;
+4. только после `NewNPC` вызывается `NextFloatDirection()`, X-скорость становится `value * 3`, Y-скорость — `-10`;
+5. последним отмечается `downedSlimeKing`.
 
-## Привязка к миру
+`RuntimeNpcAiStateExecutor` предоставляет узкую post-commit границу `INpcAiStatePostCommitEffect`. Эти эффекты выполняются только после успешной generation-safe фиксации `TimeLeft = 0` для точного поколения мёртвого NPC. Поэтому stale/reused slot не расходует death RNG и не может породить лишний Nerdy Slime. Изменение скорости созданного Nerdy также выполняется через generation-safe mutation sink.
 
-`RuntimeWorldProgressionRegistry` использует конкретный объект `WorldTileStore` как слабый ключ. NPC simulation и persistence получают один и тот же экземпляр `RuntimeWorldProgressionMutations` без process-global переменной текущего мира. Слабая связь также не удерживает выгруженный мир в памяти.
+## Привязка к миру и persistence
 
-Journal хранит семантические биты `VanillaWorldProgressionId`, а не физические offsets формата `.wld`. При сохранении значение journal отделяется на авторитетном owner thread до фоновой сериализации.
+`RuntimeWorldProgressionRegistry` использует конкретный `WorldTileStore` как слабый ключ. Journal хранит milestone King Slime и новый blue-town-slime unlock, отдельно учитывая persisted baseline загруженного мира. Если unlock уже был в `.wld`, повторный Nerdy не создаётся и это состояние не выдаётся за новую save mutation.
 
-## Lossless persistence
+`WorldFileProgressionHeaderPatcher` сохраняет оба флага: `downedSlimeKing` и `UnlockedSlimeBlueSpawn`. До blue-slime flag он проходит настоящий layout Terraria 1.4.5.8, включая variable-length список Angler, массивы BannerSystem, party NPC entries и TreeTops. Патчер меняет только принадлежащие runtime boolean-поля и fail-closed отклоняет неподдерживаемые milestone bits.
 
-`WorldFileProgressionHeaderPatcher` пока владеет одной мутацией persistence: `VanillaWorldProgressionId.KingSlime`. Он проверяет тот же identity/dimension prefix, что и clock patcher, проходит закреплённый fixed header Terraria 1.4.5.8 и меняет только boolean `downedSlimeKing`. Неизвестные mutation bits приводят к fail-closed ошибке, а не к тихой потере состояния.
+## Оставшаяся граница
 
-Уже установленный persisted flag сохраняется. Прогрессия в этом срезе монотонна: journal может завершить milestone, но не очищает посторонние или ранее установленные `SaveWorldFlags`.
-
-## Намеренная граница parity
-
-Изменение закрывает для King Slime авторитетный путь **death lifecycle + сохранение progression**. Полная parity смерти King Slime этим не объявляется. NPC-specific loot, зависящие от difficulty drops, death-time minions/effects и оставшиеся source-ordered side effects остаются открытыми, пока их контракты TerrariaServer 1.4.5.8 не будут подтверждены и подключены через существующие death/loot transaction boundaries.
+Этим закрыт source-backed срез **terminal transition, остановка Slime Rain, first-kill Nerdy unlock/spawn и persistence** King Slime. `FullVanillaAiParity` остаётся false. Для Expert/Master ещё требуется подключить уже реализованный per-player loot finalizer к live combat/death ingress и тикать instanced item-slot leases в авторитетной item phase. Presentation-only death effects и общие boss announcements остаются отдельными задачами.
