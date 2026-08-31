@@ -17,6 +17,7 @@ public sealed class StartupWorldGeneratorSourceTests
             [
                 new WorldGeneratorId("fixture:custom"),
                 new WorldGeneratorId("terraruntime:flat"),
+                new WorldGeneratorId("terraruntime:optimized"),
                 new WorldGeneratorId("terraruntime:skyblock"),
                 new WorldGeneratorId("terraruntime:vanilla")
             ],
@@ -25,6 +26,8 @@ public sealed class StartupWorldGeneratorSourceTests
         Assert.Same(hostProvider, custom);
         Assert.True(source.TryResolveWorldGenerator(new WorldGeneratorId("terraruntime:flat"), out IWorldGenerationProvider? builtIn));
         Assert.NotNull(builtIn);
+        Assert.True(source.TryResolveWorldGenerator(new WorldGeneratorId("terraruntime:optimized"), out IWorldGenerationProvider? optimized));
+        Assert.NotNull(optimized);
         Assert.True(source.TryResolveWorldGenerator(new WorldGeneratorId("terraruntime:skyblock"), out IWorldGenerationProvider? skyblock));
         Assert.NotNull(skyblock);
         Assert.True(source.TryResolveWorldGenerator(new WorldGeneratorId("terraruntime:vanilla"), out IWorldGenerationProvider? vanilla));
@@ -43,6 +46,7 @@ public sealed class StartupWorldGeneratorSourceTests
         Assert.Equal(
             [
                 new WorldGeneratorId("terraruntime:flat"),
+                new WorldGeneratorId("terraruntime:optimized"),
                 new WorldGeneratorId("terraruntime:skyblock"),
                 new WorldGeneratorId("terraruntime:vanilla")
             ],
