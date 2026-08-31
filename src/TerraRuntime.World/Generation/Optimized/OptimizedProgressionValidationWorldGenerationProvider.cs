@@ -75,11 +75,12 @@ public sealed class OptimizedProgressionValidationWorldGenerationProvider : IWor
                 throw new InvalidOperationException(
                     "Optimized progression validation requires semantic world metadata.");
 
+            WorldGenerationRequest request = context.Request;
             OptimizedProgressionValidationReport report =
                 OptimizedProgressionWorldValidator.Validate(
                     context.Workspace,
                     metadata,
-                    in context.Request,
+                    in request,
                     context.CancellationToken);
 
             context.ReportProgress(

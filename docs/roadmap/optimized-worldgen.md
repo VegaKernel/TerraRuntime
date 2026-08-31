@@ -17,7 +17,7 @@ not seed-identical output. The release criterion is a deterministic, official-cl
 - [x] allocate major structure regions before terrain mutation;
 - [x] reject layouts where mandatory reserved structures overlap or escape map bounds;
 - [x] keep a protected central spawn envelope;
-- [x] split optimized generation into base, playability and landmark providers instead of growing one monolith;
+- [x] split optimized generation into base, playability, landmark and final progression-validation providers instead of growing one monolith;
 - [ ] add versioned generator-layout metadata so future algorithm revisions can intentionally reproduce old worlds.
 
 ## O1 - Organic base world
@@ -120,10 +120,10 @@ A generated candidate is rejected before commit if a mandatory element is absent
 - [x] validate spawn safety with a bounded dry walkable starter area;
 - [x] validate landmark budgets, landmark material minima, persistent landmark caches and the readable dungeon opening;
 - [x] validate persistent chest and Life Crystal budgets;
-- [ ] validate path/reachability graph from spawn to surface biomes and major structure entrances;
-- [ ] validate minimum ore/resource quantities instead of presence only;
-- [ ] validate dungeon/temple/hive interior traversal;
-- [ ] validate no required structure was overwritten by a later pass beyond the current material/object checks;
+- [x] validate an excavation-aware path/reachability graph from spawn to surface biomes and major structure entrances;
+- [x] validate area-scaled minimum Copper/Iron/Silver/Gold/Hellstone quantities instead of presence only;
+- [x] validate connected dungeon/temple/hive interior components and explicit Temple/dungeon access openings;
+- [x] validate final post-landmark structure footprints, material minima and complete 3x2 progression objects;
 - [ ] run generated `.wld` through pinned TerrariaServer `1.4.5.8` acceptance and an official-client join smoke.
 
 ## O6 - Production gate

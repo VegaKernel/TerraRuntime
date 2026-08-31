@@ -29,9 +29,10 @@ flowchart TD
     Meta["metadata + base validator"]
     PVal["playability validator"]
     LVal["landmark validator"]
+    Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Commit
+    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit
 ```
 
 All optimized passes use `WorldGenerationRngMode.IsolatedDeterministic`. Adding an unrelated later pass therefore does
@@ -128,6 +129,14 @@ requires:
 
 This is deliberately stronger than checking for one representative tile. A half-generated landmark set is rejected.
 
+A final `OptimizedProgressionValidationWorldGenerationProvider` then scans the post-landmark candidate. It enforces
+area-scaled minimum quantities for Copper, Iron, Silver, Gold and Hellstone; verifies complete 3x2 Demon/Crimson Altar,
+Hellforge and Lihzahrd Altar footprints; requires non-trivial connected dungeon, hive and Jungle Temple interiors; and
+builds a bounded excavation-aware reachability graph from spawn to snow, desert, jungle, world evil, the dungeon
+entrance, hive interior, Jungle Temple entrance and Underworld Hellforge. Ordinary terrain contributes excavation cost,
+while dense Lihzahrd barriers and deep Lava are treated as blocking. This is a structural topology gate, not a claim of
+pixel-exact Terraria player movement or tool progression.
+
 ## Compatibility and non-goals
 
 The same seed is **not** expected to create the Terraria world for that seed. Use `terraruntime:vanilla` for
@@ -138,18 +147,15 @@ Loading an existing vanilla `.wld` remains independent of which generator is use
 
 ## Remaining work
 
-The large landmark slice closes a substantial visual/content gap, but `terraruntime:optimized` is not yet
-production-complete. Important remaining items include:
+The landmark and final progression-validation slices close substantial visual/content and structural gaps, but
+`terraruntime:optimized` is not yet production-complete. Important remaining items include:
 
 - Shadow Orb / Crimson Heart anchors;
 - true source-backed biome and Skyware loot families;
 - dungeon locked chest/key progression and richer dungeon branches/traps;
 - multiple hives and stronger Queen Bee space on larger worlds;
-- stronger Jungle Temple/hive/dungeon traversal proofs;
 - glowing-mushroom and additional decorative micro-biomes;
 - vegetation and surface decoration beyond Living Trees;
-- a real reachability graph from spawn to critical entrances;
-- minimum quantity gates for ores and progression resources;
 - Hardmode-ready mutation anchors;
 - Small/Medium/Large generation-time and peak-memory measurements;
 - deterministic map/screenshot visual-regression fixtures;

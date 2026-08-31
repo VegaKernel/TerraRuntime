@@ -29,9 +29,10 @@ flowchart TD
     Meta["metadata + base validator"]
     PVal["playability validator"]
     LVal["landmark validator"]
+    Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Commit
+    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit
 ```
 
 Все optimized passes используют `WorldGenerationRngMode.IsolatedDeterministic`. Поэтому новый несвязанный pass не
@@ -127,6 +128,14 @@ Generation остаётся fail-closed. Landmark validator запускаетс
 
 Это намеренно строже проверки одного representative tile. Наполовину созданный набор landmarks отклоняется.
 
+После него финальный `OptimizedProgressionValidationWorldGenerationProvider` сканирует уже post-landmark candidate. Он
+требует масштабируемые по площади минимумы Copper, Iron, Silver, Gold и Hellstone; проверяет полные 3x2 footprints
+Demon/Crimson Altar, Hellforge и Lihzahrd Altar; требует нетривиальные связные interiors dungeon, hive и Jungle Temple;
+а также строит ограниченный excavation-aware reachability graph от spawn до snow, desert, jungle, world evil, dungeon
+entrance, hive interior, Jungle Temple entrance и Underworld Hellforge. Обычная порода учитывается как стоимость
+прокапывания, а плотные Lihzahrd barriers и глубокая Lava считаются блокирующими. Это structural topology gate, а не
+заявление о pixel-exact физике движения игрока или точной tool progression Terraria.
+
 ## Совместимость и не-цели
 
 Одинаковый seed **не обязан** создавать тот же мир, что Terraria. Для source/reference parity используется
@@ -137,18 +146,16 @@ contracts. Загрузка существующего vanilla `.wld` не за�
 
 ## Что ещё осталось
 
-Большой landmark slice закрывает заметный визуальный/content gap, но `terraruntime:optimized` ещё не production-complete.
+Landmark и final progression-validation slices закрывают заметные visual/content и structural gaps, но
+`terraruntime:optimized` ещё не production-complete.
 Основные оставшиеся задачи:
 
 - Shadow Orb / Crimson Heart anchors;
 - настоящие source-backed biome и Skyware loot families;
 - dungeon locked chest/key progression и более богатые dungeon branches/traps;
 - несколько hives и более сильная гарантия Queen Bee space на больших мирах;
-- более строгие traversal proofs для Jungle Temple/hive/dungeon;
 - glowing-mushroom и дополнительные decorative micro-biomes;
 - vegetation и surface decoration сверх Living Trees;
-- реальный reachability graph от spawn до critical entrances;
-- minimum quantity gates для ores и progression resources;
 - Hardmode-ready mutation anchors;
 - измерения generation time и peak memory на Small/Medium/Large;
 - deterministic map/screenshot visual-regression fixtures;

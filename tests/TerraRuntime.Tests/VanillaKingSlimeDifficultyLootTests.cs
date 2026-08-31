@@ -35,7 +35,7 @@ public sealed class VanillaKingSlimeDifficultyLootTests
         PlayerHandle player = Player(slot: 7, generation: 3);
         var request = new NpcDamageRequest(
             king.Handle,
-            DamageSource.FromPlayerProjectile(player),
+            DamageSource.FromPlayerProjectile(player, new ProjectileHandle(11, new ProjectileGeneration(1))),
             BaseDamage: 50);
 
         Assert.False(executor.TryApply(in request, out _));

@@ -373,6 +373,16 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
             used[i] = true;
             state.SkyHousesPlaced++;
         }
+        // The parity preference keeps visual variety, but it is not an admission rule. A canonical world may have a
+        // progression object near the preferred center of an even-index island, so retry every still-unused island
+        // before declaring the explicit house budget impossible.
+        for (int i = 0; i < islands.Count && state.SkyHousesPlaced < state.SkyHouseTarget; i++)
+        {
+            if (used[i] || !TryBuildSkyHouse(context, chests, islands[i], state.SkyHousesPlaced))
+                continue;
+            used[i] = true;
+            state.SkyHousesPlaced++;
+        }
         for (int i = 0; i < islands.Count && state.FloatingLakesPlaced < state.FloatingLakeTarget; i++)
         {
             if (used[i] || !TryBuildFloatingLake(context.Workspace, islands[i]))
@@ -429,12 +439,28 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
     private static bool TryBuildSkyHouse(IWorldGenerationContext context, IWorldGenerationChestWorkspace chests, SkyIslandCandidate island, int ordinal)
     {
         const int width = 13;
+        foreach (int centerX in GetSkyPlacementCenters(island, width / 2 + 1))
+        {
+            if (TryBuildSkyHouseAt(context, chests, island, centerX, ordinal))
+                return true;
+        }
+        return false;
+    }
+
+    private static bool TryBuildSkyHouseAt(
+        IWorldGenerationContext context,
+        IWorldGenerationChestWorkspace chests,
+        SkyIslandCandidate island,
+        int centerX,
+        int ordinal)
+    {
+        const int width = 13;
         const int height = 7;
-        int left = island.Center - width / 2;
-        int floorY = FindFirstActiveY(context.Workspace, island.Center, Math.Max(6, island.SurfaceY - 12), Math.Min(context.Workspace.HeightTiles - 6, island.SurfaceY + 18));
+        int left = centerX - width / 2;
+        int floorY = FindFirstActiveY(context.Workspace, centerX, Math.Max(6, island.SurfaceY - 12), Math.Min(context.Workspace.HeightTiles - 6, island.SurfaceY + 18));
         if (floorY < 0 || left < 3 || left + width >= context.Workspace.WidthTiles - 3 || floorY - height < 3)
             return false;
-        if (HasProtectedContentNearby(context.Workspace, island.Center, floorY - height / 2, width))
+        if (HasProtectedContentNearby(context.Workspace, centerX, floorY - height / 2, width))
             return false;
         int top = floorY - height;
         for (int x = left; x < left + width; x++)
@@ -454,16 +480,29 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         WorldGenerationChestItem[] loot = ordinal == 0
             ? [new WorldGenerationChestItem(1, VanillaItemIds.SlimeStaff), new WorldGenerationChestItem(24, VanillaItemIds.Gel), new WorldGenerationChestItem(80, VanillaItemIds.StoneBlock)]
             : [new WorldGenerationChestItem(1, VanillaItemIds.CopperPickaxe), new WorldGenerationChestItem(18, VanillaItemIds.Gel), new WorldGenerationChestItem(70, VanillaItemIds.DirtBlock)];
-        return TryPlaceChest(context.Workspace, chests, island.Center - 1, floorY - 2, 13, $"Sky Cache {ordinal + 1}", loot);
+        return TryPlaceChest(context.Workspace, chests, centerX - 1, floorY - 2, 13, $"Sky Cache {ordinal + 1}", loot);
     }
 
     private static bool TryBuildFloatingLake(IWorldGenerationWorkspace workspace, SkyIslandCandidate island)
     {
-        int centerX = island.Center;
+        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);
+        foreach (int centerX in GetSkyPlacementCenters(island, halfWidth + 1))
+        {
+            if (TryBuildFloatingLakeAt(workspace, island, centerX, halfWidth))
+                return true;
+        }
+        return false;
+    }
+
+    private static bool TryBuildFloatingLakeAt(
+        IWorldGenerationWorkspace workspace,
+        SkyIslandCandidate island,
+        int centerX,
+        int halfWidth)
+    {
         int floorY = FindFirstActiveY(workspace, centerX, Math.Max(5, island.SurfaceY - 8), Math.Min(workspace.HeightTiles - 4, island.SurfaceY + 18));
         if (floorY < 0)
             return false;
-        int halfWidth = Math.Clamp(island.Width / 7, 4, 8);
         int depth = Math.Clamp(island.Width / 16, 3, 5);
         if (HasProtectedContentNearby(workspace, centerX, floorY, halfWidth + 6))
             return false;
@@ -482,6 +521,35 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         return waterCells >= 20;
     }
 
+    private static int[] GetSkyPlacementCenters(SkyIslandCandidate island, int halfFootprint)
+    {
+        int minCenter = island.Left + Math.Max(1, halfFootprint);
+        int maxCenter = island.Right - Math.Max(1, halfFootprint);
+        if (minCenter > maxCenter)
+            return [];
+
+        int center = Math.Clamp(island.Center, minCenter, maxCenter);
+        int step = Math.Max(4, island.Width / 6);
+        int[] raw =
+        [
+            center,
+            center - step,
+            center + step,
+            center - 2 * step,
+            center + 2 * step,
+            minCenter,
+            maxCenter
+        ];
+        var unique = new List<int>(raw.Length);
+        foreach (int value in raw)
+        {
+            int bounded = Math.Clamp(value, minCenter, maxCenter);
+            if (!unique.Contains(bounded))
+                unique.Add(bounded);
+        }
+        return unique.ToArray();
+    }
+
     private static void BuildPyramids(IWorldGenerationContext context, IWorldGenerationChestWorkspace chests, ApproximateLayers layers, LandmarkState state)
     {
         List<HorizontalSpan> spans = FindSurfaceMaterialSpans(context.Workspace, layers, static type => type is Sand or Sandstone or HardenedSand, Math.Max(22, context.Workspace.WidthTiles / 30));
@@ -494,14 +562,20 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
                 break;
             int step = Math.Max(5, span.Width / 8);
             int[] offsets = [0, -step, step, -2 * step, 2 * step];
+            var attemptedCenters = new HashSet<int>();
             foreach (int offset in offsets)
             {
+                if (state.PyramidsPlaced >= state.PyramidTarget)
+                    break;
                 int centerX = Math.Clamp(span.Center + offset, span.Left + 4, span.Right - 4);
+                if (!attemptedCenters.Add(centerX))
+                    continue;
                 int surfaceY = FindFirstActiveY(context.Workspace, centerX, Math.Max(8, layers.Surface - 28), Math.Min(context.Workspace.HeightTiles - 8, layers.RockLayer));
                 if (surfaceY < 0 || !TryBuildPyramid(context, chests, span, centerX, surfaceY, state.PyramidsPlaced))
                     continue;
+                // A canonical desert is one broad material span. Do not cap it to one pyramid: the explicit world-size
+                // budget may require several well-separated structures inside that same span.
                 state.PyramidsPlaced++;
-                break;
             }
         }
         if (state.PyramidsPlaced < state.PyramidTarget)
@@ -639,18 +713,30 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         int left = layers.OceanWidth + 30;
         int right = context.Workspace.WidthTiles - layers.OceanWidth - 30;
         int floorY = Math.Clamp(layers.UnderworldTop + 18, layers.UnderworldTop + 8, context.Workspace.HeightTiles - 14);
+        int retryStep = Math.Clamp((right - left) / Math.Max(1, state.UnderworldHouseTarget * 12), 36, 140);
+        int[] retryOffsets = [0, -retryStep, retryStep, -2 * retryStep, 2 * retryStep];
         for (int ordinal = 0; ordinal < state.UnderworldHouseTarget; ordinal++)
         {
             double fraction = (ordinal + 1d) / (state.UnderworldHouseTarget + 1d);
-            int centerX = left + (int)Math.Round((right - left) * fraction);
-            if (TryBuildUnderworldHouse(context, chests, centerX, floorY, ordinal))
+            int preferredCenter = left + (int)Math.Round((right - left) * fraction);
+            foreach (int offset in retryOffsets)
             {
+                int centerX = Math.Clamp(preferredCenter + offset, left + 9, right - 9);
+                if (centers.Any(existing => Math.Abs(existing - centerX) < 34))
+                    continue;
+                if (!TryBuildUnderworldHouse(context, chests, centerX, floorY, ordinal))
+                    continue;
+                // Canonical Small places the guaranteed Hellforge near the middle settlement slot. Search a bounded
+                // neighborhood instead of treating one protected X coordinate as proof that the whole Underworld
+                // cannot satisfy its explicit settlement budget.
                 centers.Add(centerX);
                 state.UnderworldHousesPlaced++;
+                break;
             }
         }
         if (state.UnderworldHousesPlaced < state.UnderworldHouseTarget)
             throw new InvalidOperationException($"Optimized landmark layer placed only {state.UnderworldHousesPlaced}/{state.UnderworldHouseTarget} required underworld houses.");
+        centers.Sort();
         for (int i = 1; i < centers.Count; i++)
             BuildUnderworldBridge(context.Workspace, centers[i - 1] + 7, centers[i] - 7, floorY);
     }

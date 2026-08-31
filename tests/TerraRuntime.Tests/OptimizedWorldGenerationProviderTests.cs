@@ -17,7 +17,7 @@ public sealed class OptimizedWorldGenerationProviderTests
                 OptimizedWorldGenerationProvider.GeneratorId,
                 out IWorldGenerationProvider? provider));
         Assert.NotNull(provider);
-        Assert.IsType<OptimizedLandmarkWorldGenerationProvider>(provider);
+        Assert.IsType<OptimizedProgressionValidationWorldGenerationProvider>(provider);
 
         var request = new WorldGenerationRequest(
             OptimizedWorldGenerationProvider.GeneratorId,
@@ -36,6 +36,20 @@ public sealed class OptimizedWorldGenerationProviderTests
             $"{result.Status} gen={result.Generation.Status} fin={result.Finalization?.Status} validation={result.Finalization?.Validation} err={result.Generation.Execution?.Error}");
         Assert.NotNull(result.Candidate);
         RuntimeWorldGenerationWorkspace world = result.Candidate!;
+        OptimizedProgressionValidationReport progression = OptimizedProgressionWorldValidator.Validate(
+            world,
+            world,
+            in request,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(8, progression.ReachableTargetCount);
+        Assert.True(progression.CopperTiles > 0);
+        Assert.True(progression.IronTiles > 0);
+        Assert.True(progression.SilverTiles > 0);
+        Assert.True(progression.GoldTiles > 0);
+        Assert.True(progression.HellstoneTiles > 0);
+        Assert.True(progression.DungeonInteriorCells >= 24);
+        Assert.True(progression.HiveInteriorCells >= 18);
+        Assert.True(progression.TempleInteriorCells >= 24);
 
         Assert.Equal(320, result.Metadata.Spawn.X);
         AssertSpawnHasGround(world, result.Metadata.Spawn);
@@ -147,6 +161,34 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.Contains(
             result.Candidate.CaptureGeneratedChests(),
             static chest => chest.Name.StartsWith("Sky Cache ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Optimized_generator_creates_canonical_small_world_without_crashing()
+    {
+        var request = new WorldGenerationRequest(
+            OptimizedWorldGenerationProvider.GeneratorId,
+            "Optimized canonical small",
+            Seed: 0x0F7145EDUL,
+            WidthTiles: 4200,
+            HeightTiles: 1200);
+        var pipeline = new RuntimeWorldCreationPipeline(BuiltInWorldGeneratorSource.Instance);
+
+        RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(
+            in request,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(
+            result.Succeeded,
+            $"{result.Status} gen={result.Generation.Status} fin={result.Finalization?.Status} validation={result.Finalization?.Validation} err={result.Generation.Execution?.Error}");
+        Assert.NotNull(result.Candidate);
+        Assert.Equal(4200, result.Candidate!.WidthTiles);
+        Assert.Equal(1200, result.Candidate.HeightTiles);
+        Assert.Equal(8, OptimizedProgressionWorldValidator.Validate(
+            result.Candidate,
+            result.Candidate,
+            in request,
+            TestContext.Current.CancellationToken).ReachableTargetCount);
     }
 
     private static void AssertSpawnHasGround(
