@@ -1,8 +1,9 @@
-using TerraRuntime.Contracts.Runtime;
+﻿using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
+using TerraRuntime.World;
 
 namespace TerraRuntime;
 
@@ -50,6 +51,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private readonly IPlayerEquipmentIngress? _equipmentIngress;
     private readonly IPlayerMovementIngress? _movementIngress;
     private readonly RuntimeChatRelay? _chatRelay;
+    private readonly PlayerSectionStreamingState? _sectionStreaming;
     private PlayerJoinSession? _session;
     private PlayerHandle? _assignedPlayerHandle;
     private bool _spawnSubmitted;
@@ -72,6 +74,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _equipmentIngress = null;
         _movementIngress = null;
         _chatRelay = null;
+        _sectionStreaming = packets.StreamingDimensions is WorldDimensions dimensions
+            ? new PlayerSectionStreamingState(dimensions)
+            : null;
         _inner = inner;
     }
 
@@ -140,6 +145,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _movementIngress = movementIngress;
         _chatRelay = RuntimeChatRelay.For(slots);
         _chatRelay.Register(source, outbound);
+        _sectionStreaming = packets.StreamingDimensions is WorldDimensions dimensions
+            ? new PlayerSectionStreamingState(dimensions)
+            : null;
         _ = worldItems;
         _inner = inner;
     }
@@ -362,6 +370,10 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (!TryQueue(_packets.EnterWorldFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 
+        _sectionStreaming?.ObserveBootstrap(
+            _packets.BaseStreamingSections,
+            request.TileX,
+            request.TileY);
         _session.ObserveSectionRequest();
         return TerrariaFrameSinkResult.Continue;
     }
@@ -453,7 +465,38 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (!_movementIngress.TryPost(connection, in commit))
             return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
+        PlayerBootstrapStopReason sectionStop = StreamSectionsAroundPlayer(
+            request.PositionX,
+            request.PositionY);
+        if (sectionStop != PlayerBootstrapStopReason.None)
+            return Stop(sectionStop);
+
         return TerrariaFrameSinkResult.Continue;
+    }
+
+    private PlayerBootstrapStopReason StreamSectionsAroundPlayer(float positionX, float positionY)
+    {
+        PlayerSectionStreamingState? streaming = _sectionStreaming;
+        if (streaming is null)
+            return PlayerBootstrapStopReason.None;
+
+        Span<WorldSectionId> sections = stackalloc WorldSectionId[PlayerSectionStreamingState.MaximumWindowSectionCount];
+        int count = streaming.PlanUnsent(positionX, positionY, sections);
+        for (int i = 0; i < count; i++)
+        {
+            WorldSectionId section = sections[i];
+            SectionFrameLookupResult lookup = _packets.ResolveSectionFrame(section, out ReadOnlyMemory<byte> frame);
+            if (lookup == SectionFrameLookupResult.RateLimited)
+                return PlayerBootstrapStopReason.SectionWorkRateLimited;
+            if (lookup != SectionFrameLookupResult.Available)
+                return PlayerBootstrapStopReason.SectionEncodingFailure;
+            if (!TryQueue(frame))
+                return PlayerBootstrapStopReason.OutboundBackpressure;
+
+            streaming.MarkSent(section);
+        }
+
+        return PlayerBootstrapStopReason.None;
     }
 
     private TerrariaFrameSinkResult HandleNetModule(in TerrariaFrame frame)

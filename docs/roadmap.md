@@ -362,6 +362,7 @@ Close exploit classes inherited from client-trusting designs without turning the
 
 Preserve observable results, not inefficient vanilla broadcast mechanics.
 
+- [x] Movement-driven packet-10 tile-section streaming keeps a bounded 5x3 world window around each playing client beyond the initial spawn bootstrap; per-connection sent-section state prevents redundant retransmission.
 - [ ] Section-aware player visibility/interest sets.
 - [ ] Dirty-state-driven NPC/projectile/item synchronization.
 - [ ] Skip updates for clients that cannot observe an entity, with a bounded forced-resync interval so distant entities never freeze forever.
