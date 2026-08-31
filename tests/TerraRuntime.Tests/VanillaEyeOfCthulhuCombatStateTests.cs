@@ -166,9 +166,11 @@ public sealed class VanillaEyeOfCthulhuCombatStateTests
             int targetHeight)
         {
             CanHitCalls++;
-            Assert.Equal(110, sourceWidth);
+            Assert.Equal(100f, sourcePositionX, 5);
+            Assert.Equal(100f, sourcePositionY, 5);
+            Assert.Equal(100, sourceWidth);
             Assert.Equal(110, sourceHeight);
-            Assert.Equal(110, targetWidth);
+            Assert.Equal(100, targetWidth);
             Assert.Equal(110, targetHeight);
             Assert.Equal(790f, targetPositionX, 5);
             Assert.Equal(579f, targetPositionY, 5);
