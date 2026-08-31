@@ -1,4 +1,4 @@
-# Оптимизированная генерация мира
+﻿# Оптимизированная генерация мира
 
 `terraruntime:optimized` — production-oriented собственный генератор TerraRuntime. Он намеренно **не** обещает
 seed-identical генерацию Terraria. Контракт другой: одинаковые версия TerraRuntime и seed должны воспроизводить один и
@@ -29,10 +29,11 @@ flowchart TD
     Meta["metadata + base validator"]
     PVal["playability validator"]
     LVal["landmark validator"]
+    Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>ordinary trees / undergrowth / sunflowers"]
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> PVal --> LVal --> Surf --> Prog --> Commit
 ```
 
 Все optimized passes используют `WorldGenerationRngMode.IsolatedDeterministic`. Поэтому новый несвязанный pass не
@@ -59,7 +60,8 @@ Optimized profile сейчас создаёт и валидирует:
 - ограниченное число Underworld houses, соединённых волнистыми platform bridges;
 - granite, marble и spider/cobweb micro-biomes;
 - явный читаемый вход в dungeon;
-- domain-warped material tongues на границах snow, desert, jungle и world evil.
+- domain-warped material tongues на границах snow, desert, jungle и world evil;
+- детерминированные обычные forest/jungle/snow trees, surface undergrowth и sunflower patches, которые ставятся после landmarks и обходят progression objects/caches.
 
 Landmark layer использует только tile/wall identities, которые уже source-backed текущей работой репозитория с
 TerrariaServer `1.4.5.8`. Loot landmark caches пока намеренно собственный и консервативный, пока полный vanilla
@@ -155,7 +157,6 @@ Landmark и final progression-validation slices закрывают заметн�
 - dungeon locked chest/key progression и более богатые dungeon branches/traps;
 - несколько hives и более сильная гарантия Queen Bee space на больших мирах;
 - glowing-mushroom и дополнительные decorative micro-biomes;
-- vegetation и surface decoration сверх Living Trees;
 - Hardmode-ready mutation anchors;
 - измерения generation time и peak memory на Small/Medium/Large;
 - deterministic map/screenshot visual-regression fixtures;

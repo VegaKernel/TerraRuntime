@@ -1,4 +1,4 @@
-using TerraRuntime.Contracts.Gameplay;
+﻿using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -17,7 +17,7 @@ public sealed class OptimizedWorldGenerationProviderTests
                 OptimizedWorldGenerationProvider.GeneratorId,
                 out IWorldGenerationProvider? provider));
         Assert.NotNull(provider);
-        Assert.IsType<OptimizedProgressionValidationWorldGenerationProvider>(provider);
+        Assert.IsType<OptimizedSurfaceDecorationWorldGenerationProvider>(provider);
 
         var request = new WorldGenerationRequest(
             OptimizedWorldGenerationProvider.GeneratorId,
@@ -83,6 +83,9 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.Granite.Value)) >= 35, "Granite micro-biome budget must exist.");
         Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.Marble.Value)) >= 35, "Marble micro-biome budget must exist.");
         Assert.True(CountWall(world, 62) >= 20, "Spider-grotto wall budget must exist.");
+        Assert.True(CountActiveTiles(world, 5) >= 120, "Ordinary forest/jungle/snow tree trunks must decorate the optimized surface.");
+        Assert.True(CountActiveTiles(world, 3) + CountActiveTiles(world, 61) >= 70, "Surface undergrowth must make optimized worlds visibly inhabited.");
+        Assert.True(CountActiveTiles(world, 27) >= 8, "At least two complete sunflower patches must exist.");
 
         WorldChest[] generated = world.CaptureGeneratedChests();
         Assert.Contains(generated, static chest => chest.Items.Any(static item => !item.IsEmpty));
@@ -189,6 +192,7 @@ public sealed class OptimizedWorldGenerationProviderTests
             result.Candidate,
             in request,
             TestContext.Current.CancellationToken).ReachableTargetCount);
+        Assert.True(CountActiveTiles(result.Candidate, 5) >= 700, "Canonical Small optimized worlds must contain a substantial ordinary-tree population.");
     }
 
     private static void AssertSpawnHasGround(

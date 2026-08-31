@@ -1,15 +1,4 @@
-from pathlib import Path
-
-
-def replace_once(path: Path, old: str, new: str, label: str) -> None:
-    text = path.read_text(encoding="utf-8-sig")
-    count = text.count(old)
-    if count != 1:
-        raise SystemExit(f"{label}: expected 1 occurrence, found {count}")
-    path.write_text(text.replace(old, new), encoding="utf-8-sig")
-
-
-provider = r'''using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.World;
 
@@ -106,9 +95,11 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
             int undergrowthTarget = Math.Clamp(width / 8, 70, 1_200);
             int sunflowerTarget = Math.Clamp(width / 700 + 2, 2, 16);
 
+            // Reserve larger footprints first. Trees and one-tile undergrowth otherwise consume the scarce clean
+            // 2x4 grass pads that sunflower objects need, making decoration depend on incidental pass ordering.
+            int sunflowers = PlaceSunflowers(context, layers, spawn, sunflowerTarget);
             int trees = PlaceTrees(context, layers, spawn, treeTarget);
             int undergrowth = PlaceUndergrowth(context, layers, spawn, undergrowthTarget);
-            int sunflowers = PlaceSunflowers(context, layers, spawn, sunflowerTarget);
 
             if (trees < treeTarget || undergrowth < undergrowthTarget || sunflowers < sunflowerTarget)
             {
@@ -160,7 +151,9 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
                 int height = NextRange(context.Random, ground == JungleGrass ? 14 : 10, ground == JungleGrass ? 24 : 20);
                 int top = floor - height;
-                if (top < 3 || !IsClearRectangle(context.Workspace, x - 2, top - 2, 5, height + 3))
+                // Clearance stops one tile above the supporting ground row. Including floor here rejects every
+                // otherwise valid tree because the support tile is necessarily active.
+                if (top < 3 || !IsClearRectangle(context.Workspace, x - 2, top - 2, 5, height + 2))
                     continue;
                 if (HasFrameImportantNearby(context.Workspace, x, floor, Math.Max(6, height / 2)))
                     continue;
@@ -311,14 +304,16 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
             if (!workspace.TryGetTile(x, y, out WorldGenerationTile current))
                 throw new InvalidOperationException($"Optimized surface decoration could not read tile ({x},{y}).");
             var tile = new WorldGenerationTile(
-                type,
-                current.Wall,
-                current.WallColor,
-                WorldGenerationTileFlags.Active,
-                checked((short)frameX),
-                checked((short)frameY),
-                0,
-                WorldGenerationLiquidKind.Water);
+                Type: type,
+                Wall: current.Wall,
+                FrameX: checked((short)frameX),
+                FrameY: checked((short)frameY),
+                Flags: WorldGenerationTileFlags.Active,
+                LiquidAmount: 0,
+                TileColor: 0,
+                WallColor: current.WallColor,
+                Shape: 0,
+                LiquidKind: WorldGenerationLiquidKind.Water);
             if (!workspace.TrySetTile(x, y, in tile))
                 throw new InvalidOperationException($"Optimized surface decoration could not write tile ({x},{y}).");
         }
@@ -331,70 +326,3 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
         }
     }
 }
-'''
-Path("src/TerraRuntime.World/Generation/Optimized/OptimizedSurfaceDecorationWorldGenerationProvider.cs").write_text(provider, encoding="utf-8")
-
-replace_once(
-    Path("src/TerraRuntime/BuiltInWorldGeneratorSource.cs"),
-    "private readonly OptimizedProgressionValidationWorldGenerationProvider optimized = new();",
-    "private readonly OptimizedSurfaceDecorationWorldGenerationProvider optimized = new();",
-    "optimized provider registry instance")
-replace_once(
-    Path("src/TerraRuntime/BuiltInWorldGeneratorSource.cs"),
-    "OptimizedProgressionValidationWorldGenerationProvider.GeneratorId,",
-    "OptimizedSurfaceDecorationWorldGenerationProvider.GeneratorId,",
-    "optimized provider registry id")
-
-replace_once(
-    Path("tests/TerraRuntime.Tests/OptimizedWorldGenerationProviderTests.cs"),
-    "Assert.IsType<OptimizedProgressionValidationWorldGenerationProvider>(provider);",
-    "Assert.IsType<OptimizedSurfaceDecorationWorldGenerationProvider>(provider);",
-    "optimized provider test type")
-replace_once(
-    Path("tests/TerraRuntime.Tests/OptimizedWorldGenerationProviderTests.cs"),
-    "Assert.True(CountWall(world, 62) >= 20, \"Spider-grotto wall budget must exist.\");",
-    "Assert.True(CountWall(world, 62) >= 20, \"Spider-grotto wall budget must exist.\");\n        Assert.True(CountActiveTiles(world, 5) >= 120, \"Ordinary forest/jungle/snow tree trunks must decorate the optimized surface.\");\n        Assert.True(CountActiveTiles(world, 3) + CountActiveTiles(world, 61) >= 70, \"Surface undergrowth must make optimized worlds visibly inhabited.\");\n        Assert.True(CountActiveTiles(world, 27) >= 8, \"At least two complete sunflower patches must exist.\");",
-    "optimized surface life assertions")
-replace_once(
-    Path("tests/TerraRuntime.Tests/OptimizedWorldGenerationProviderTests.cs"),
-    "Assert.Equal(8, OptimizedProgressionWorldValidator.Validate(\n            result.Candidate,\n            result.Candidate,\n            in request,\n            TestContext.Current.CancellationToken).ReachableTargetCount);",
-    "Assert.Equal(8, OptimizedProgressionWorldValidator.Validate(\n            result.Candidate,\n            result.Candidate,\n            in request,\n            TestContext.Current.CancellationToken).ReachableTargetCount);\n        Assert.True(CountActiveTiles(result.Candidate, 5) >= 700, \"Canonical Small optimized worlds must contain a substantial ordinary-tree population.\");",
-    "canonical small surface life assertion")
-
-replace_once(
-    Path("docs/roadmap/optimized-worldgen.md"),
-    "- [ ] vegetation and surface decoration beyond Living Trees;",
-    "- [x] deterministic ordinary forest/jungle/snow trees plus surface undergrowth and sunflower patches, with explicit density budgets and frame-important-object avoidance;",
-    "optimized roadmap vegetation")
-
-replace_once(
-    Path("docs/en/optimized-world-generation.md"),
-    "    Prog[\"OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate\"]\n    Commit[\"candidate finalization / commit\"]\n\n    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit",
-    "    Surf[\"OptimizedSurfaceDecorationWorldGenerationProvider<br/>ordinary trees / undergrowth / sunflowers\"]\n    Prog[\"OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate\"]\n    Commit[\"candidate finalization / commit\"]\n\n    Base --> Play --> Land --> Meta --> PVal --> LVal --> Surf --> Prog --> Commit",
-    "english optimized flow")
-replace_once(
-    Path("docs/en/optimized-world-generation.md"),
-    "- domain-warped material tongues at snow, desert, jungle and world-evil boundaries.",
-    "- domain-warped material tongues at snow, desert, jungle and world-evil boundaries;\n- deterministic ordinary forest, jungle and snow trees plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected.",
-    "english generated world surface life")
-replace_once(
-    Path("docs/en/optimized-world-generation.md"),
-    "- vegetation and surface decoration beyond Living Trees;\n",
-    "",
-    "english remove remaining vegetation")
-
-replace_once(
-    Path("docs/ru/optimized-world-generation.md"),
-    "    Prog[\"OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate\"]\n    Commit[\"candidate finalization / commit\"]\n\n    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit",
-    "    Surf[\"OptimizedSurfaceDecorationWorldGenerationProvider<br/>ordinary trees / undergrowth / sunflowers\"]\n    Prog[\"OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate\"]\n    Commit[\"candidate finalization / commit\"]\n\n    Base --> Play --> Land --> Meta --> PVal --> LVal --> Surf --> Prog --> Commit",
-    "russian optimized flow")
-replace_once(
-    Path("docs/ru/optimized-world-generation.md"),
-    "- domain-warped material tongues на границах snow, desert, jungle и world evil.",
-    "- domain-warped material tongues на границах snow, desert, jungle и world evil;\n- детерминированные обычные forest/jungle/snow trees, surface undergrowth и sunflower patches, которые ставятся после landmarks и обходят progression objects/caches.",
-    "russian generated world surface life")
-replace_once(
-    Path("docs/ru/optimized-world-generation.md"),
-    "- vegetation и surface decoration сверх Living Trees;\n",
-    "",
-    "russian remove remaining vegetation")

@@ -1,4 +1,4 @@
-# Optimized world-generation roadmap
+﻿# Optimized world-generation roadmap
 
 This roadmap owns the delivery of the built-in `terraruntime:optimized` profile.
 
@@ -101,7 +101,7 @@ because it is fashionable; output quality and cost must be measured.
 - [x] large surface landmarks (pyramids and Living Trees);
 - [x] deep-world landmarks (Underworld settlements and micro-biomes);
 - [ ] slope-aware beaches and cliffs;
-- [ ] vegetation and surface decoration beyond Living Trees;
+- [x] deterministic ordinary forest/jungle/snow trees plus surface undergrowth and sunflower patches, with explicit density budgets and frame-important-object avoidance;
 - [ ] deterministic screenshot/map fixtures for visual regression review;
 - [ ] generation-time and allocation budgets on canonical world sizes.
 

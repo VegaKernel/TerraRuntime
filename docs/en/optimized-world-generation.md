@@ -1,4 +1,4 @@
-# Optimized world generation
+﻿# Optimized world generation
 
 `terraruntime:optimized` is TerraRuntime's production-oriented custom world generator. It intentionally does **not**
 promise seed-identical Terraria world generation. Its contract is different: the same TerraRuntime version and seed
@@ -29,10 +29,11 @@ flowchart TD
     Meta["metadata + base validator"]
     PVal["playability validator"]
     LVal["landmark validator"]
+    Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>ordinary trees / undergrowth / sunflowers"]
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> PVal --> LVal --> Surf --> Prog --> Commit
 ```
 
 All optimized passes use `WorldGenerationRngMode.IsolatedDeterministic`. Adding an unrelated later pass therefore does
@@ -59,7 +60,8 @@ The optimized profile currently produces and validates:
 - bounded Underworld houses connected by undulating platform bridges;
 - granite, marble and spider/cobweb micro-biomes;
 - an explicit readable dungeon opening;
-- domain-warped material tongues at snow, desert, jungle and world-evil boundaries.
+- domain-warped material tongues at snow, desert, jungle and world-evil boundaries;
+- deterministic ordinary forest, jungle and snow trees plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected.
 
 The landmark layer uses only tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
 world-generation work. Landmark cache loot remains deliberately custom and conservative until the full vanilla
@@ -155,7 +157,6 @@ The landmark and final progression-validation slices close substantial visual/co
 - dungeon locked chest/key progression and richer dungeon branches/traps;
 - multiple hives and stronger Queen Bee space on larger worlds;
 - glowing-mushroom and additional decorative micro-biomes;
-- vegetation and surface decoration beyond Living Trees;
 - Hardmode-ready mutation anchors;
 - Small/Medium/Large generation-time and peak-memory measurements;
 - deterministic map/screenshot visual-regression fixtures;

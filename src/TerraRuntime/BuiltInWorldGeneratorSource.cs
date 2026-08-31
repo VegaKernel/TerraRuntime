@@ -1,4 +1,4 @@
-using TerraRuntime.Contracts.Gameplay;
+﻿using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.World;
 
@@ -16,13 +16,13 @@ internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorS
 
     private readonly FlatWorldGenerationProvider flat = new();
     private readonly SourceBackedVanillaWorldGenerationCanonical1458 vanilla = new();
-    private readonly OptimizedProgressionValidationWorldGenerationProvider optimized = new();
+    private readonly OptimizedSurfaceDecorationWorldGenerationProvider optimized = new();
     private readonly SkyblockWorldGenerationProvider skyblock = new();
     private readonly WorldGeneratorId[] ids =
         [
             FlatWorldGenerationProvider.GeneratorId,
             VanillaWorldGenerationProvider1458.GeneratorId,
-            OptimizedProgressionValidationWorldGenerationProvider.GeneratorId,
+            OptimizedSurfaceDecorationWorldGenerationProvider.GeneratorId,
             SkyblockWorldGenerationProvider.GeneratorId
         ];
 
