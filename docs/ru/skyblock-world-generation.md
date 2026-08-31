@@ -11,11 +11,12 @@
 ```mermaid
 flowchart LR
     Layout["layout\nроли + зоны безопасности"] --> Islands["islands\nстартовый + биомные/ресурсные острова"]
-    Islands --> Resources["resources\nWater/Lava/Honey/Shimmer"]
+    Islands --> Ores["ores\nCopper/Iron/Silver/Gold в каменных островах"]
+    Ores --> Resources["resources\nWater/Lava/Honey/Shimmer"]
     Resources --> Structures["structures\nалтари + Hellforge + Hive + Temple + микро-ресурсы"]
     Structures --> Dungeon["dungeon\nнижний dungeon-остров"]
     Dungeon --> Chests["chests\npersistent loot"]
-    Chests --> Metadata["metadata\nspawn + dungeon + layers"]
+    Chests --> Metadata["metadata\nspawn + dungeon + layers + Guide"]
     Metadata --> Compose["каноническая сборка .wld"]
     Compose --> Validate["round-trip WorldFileLoader"]
 ```
@@ -90,7 +91,7 @@ Jungle/Honey-остров получает оболочку `Hive` и фон `Hi
 
 Это ресурсы прогрессии, а не утверждение о точной геометрии vanilla micro-biomes.
 
-## 8. Spawn, слои и dungeon
+## 8. Spawn, слои, dungeon и стартовый NPC
 
 Spawn указывает на воздух прямо над центром стартового острова, а тайл под ним твёрдый. Стартовый сундук смещён от колонки spawn.
 
@@ -106,11 +107,15 @@ $$
 
 Dungeon anchor размещается на крупном нижнем Stone-острове возле одного края примерно на `$0.72H$`. Закрытая комната использует source-pinned unsafe Blue Dungeon wall. Это Skyblock structure, а не source-exact `DungeonPass`.
 
-## 9. Сундуки
+Pass `metadata` также сохраняет стартового Guide (`netId 22`, имя `Andrew`) в точке `spawn * 16` через candidate NPC side table, поэтому свежие Skyblock-миры получают тот же town-NPC bootstrap, что и свежие vanilla-миры, и проходят round-trip `WorldFileFreshComposer326` и загрузку официальным сервером.
+
+## 9. Сундуки и рудные уровни
 
 Skyblock использует `IWorldGenerationChestWorkspace`: генератор запрашивает detached chest state и не пишет сырые `.wld` bytes. До публикации проверяются координаты, дубликаты anchors, stack, prefix и vanilla item range.
 
-Стартовый сундук пока содержит Copper Pickaxe, `$100$` Dirt Block и `$50$` Gel. Обычные caches получают детерминированные Dirt/Gel и существующий редкий tier со Slime Staff. Более богатый loot остаётся отдельной source-backed задачей.
+Стартовый сундук сейчас содержит Copper Pickaxe, `$100$` Dirt Block, `$25$` Stone Block и `$50$` Gel. Обычные caches получают детерминированные Dirt/Stone/Gel и существующий редкий tier со Slime Staff. Более богатый loot остаётся отдельной source-backed задачей.
+
+Отдельный pass `ores` встраивает детерминированные кластеры меди (`7`), железа (`6`), серебра (`9`) и золота (`8`) в каменные острова после построения тел островов и до вырезания жидкостных бассейнов, поэтому руда не перезаписывает reservoirs. Desert/Snow/Jungle и острова-резервуары пропускаются, чтобы сохранить палитры и ячейки бассейнов.
 
 ## 10. Source contracts
 
@@ -125,8 +130,10 @@ Focused-тесты проверяют:
 - Water/Lava/Honey/Shimmer;
 - Altar, Hellforge, Hive и Lihzahrd anchors;
 - Mushroom/Marble/Granite/Spider resources;
+- детерминированные рудные кластеры и персистенцию стартового Guide;
 - детерминированный structure footprint;
-- полный `.wld` round-trip жидкостей, структур, стен, frames и сундуков.
+- полный `.wld` round-trip жидкостей, структур, стен, frames, руды, сундуков и town NPC;
+- репликацию `SkyblockLowTiles` в WorldInfo через `VanillaSkyblockRuntimePolicy1458`.
 
 Отдельный Skyblock acceptance создаёт канонический Small-мир `$4200\times1200$` обычным CLI, повторно загружает его verifier'ом TerraRuntime и запускает закреплённый официальный TerrariaServer 1.4.5.8.
 

@@ -1,4 +1,4 @@
-using TerraRuntime.Contracts.Gameplay;
+﻿using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
@@ -236,7 +236,7 @@ internal sealed class RuntimeChestStore
             return true;
 
         string name;
-        if (submitted.NameLength == global::Multiplicity.Packets.ChestOpen.InvalidNameLength)
+        if (submitted.NameLength == byte.MaxValue)
         {
             if (submitted.ChestName.Length != 0)
                 return false;
@@ -244,7 +244,7 @@ internal sealed class RuntimeChestStore
         }
         else
         {
-            if (submitted.NameLength > global::Multiplicity.Packets.ChestOpen.MaxChestNameLength ||
+            if (submitted.NameLength > 20 ||
                 submitted.NameLength != submitted.ChestName.Length)
             {
                 return false;
@@ -430,3 +430,4 @@ internal sealed class RuntimeChestStore
     private static long GetCoordinateKey(int x, int y) =>
         ((long)(uint)x << 32) | (uint)y;
 }
+

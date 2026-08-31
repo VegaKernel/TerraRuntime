@@ -11,7 +11,8 @@
 ```mermaid
 flowchart LR
     Layout["layout\nreserve roles + safety envelopes"] --> Islands["islands\nbuild starter + biome/resource islands"]
-    Islands --> Resources["resources\nWater/Lava/Honey/Shimmer basins"]
+    Islands --> Ores["ores\nCopper/Iron/Silver/Gold tiers in stone islands"]
+    Ores --> Resources["resources\nWater/Lava/Honey/Shimmer basins"]
     Resources --> Structures["structures\nAltars + Hellforge + Hive + Temple + micro resources"]
     Structures --> Dungeon["dungeon\nlowered dungeon island"]
     Dungeon --> Chests["chests\npersistent loot"]
@@ -90,7 +91,7 @@ The same structure pass creates small deterministic anchors without adding more 
 
 These are progression resources, not claims of source-exact vanilla micro-biome geometry.
 
-## 8. Spawn, layers and dungeon
+## 8. Spawn, layers, dungeon and starting NPC
 
 Spawn points to air immediately above the starter-island center and the tile directly below it is solid. The starter chest is offset from the spawn column.
 
@@ -106,11 +107,15 @@ $$
 
 The dungeon anchor is placed on a large lower Stone island near one side of the world at approximately `$0.72H$`. Its enclosed room uses the source-pinned unsafe Blue Dungeon wall identity. It is a Skyblock progression structure, not source-exact vanilla `DungeonPass` output.
 
-## 9. Generated chests
+The `metadata` pass also persists the starting Guide (`netId 22`, name `Andrew`) at `spawn * 16` through the candidate NPC side table, so fresh Skyblock worlds have the same town-NPC bootstrap as fresh vanilla worlds and survive `WorldFileFreshComposer326` round-trip and official-server reload.
+
+## 9. Generated chests and ore tiers
 
 Skyblock uses `IWorldGenerationChestWorkspace`; generator code requests detached chest state and never writes raw `.wld` bytes. Chest coordinates, duplicate anchors, stacks, prefixes and vanilla item ranges are validated before candidate publication.
 
-The starter chest currently contains a Copper Pickaxe, `$100$` Dirt Blocks and `$50$` Gel. Ordinary caches use deterministic Dirt/Gel quantities and the existing rare Slime Staff tier. Richer loot remains blocked on source-backed item identities and progression design.
+The starter chest currently contains a Copper Pickaxe, `$100$` Dirt Blocks, `$25$` Stone Blocks and `$50$` Gel. Ordinary caches use deterministic Dirt/Stone/Gel quantities and the existing rare Slime Staff tier. Richer loot remains blocked on source-backed item identities and progression design.
+
+The dedicated `ores` pass embeds deterministic Copper (`7`), Iron (`6`), Silver (`9`) and Gold (`8`) clusters into stone-bearing islands after the island bodies are built and before liquid basins are carved, so progression ores do not overwrite liquid reservoirs. Desert/Snow/Jungle and liquid-reservoir islands are excluded to keep biome palettes and basin cells intact.
 
 ## 10. Source contracts
 
@@ -125,8 +130,10 @@ Focused tests verify:
 - Water/Lava/Honey/Shimmer presence;
 - Altar, Hellforge, Hive and Lihzahrd generation anchors;
 - Mushroom/Marble/Granite/Spider resource anchors;
+- deterministic ore clusters and starting Guide persistence;
 - deterministic structure footprints;
-- full `.wld` round-trip of liquids, structures, walls, frames and generated chests.
+- full `.wld` round-trip of liquids, structures, walls, frames, ores, chests and town NPCs;
+- WorldInfo `SkyblockLowTiles` replication via `VanillaSkyblockRuntimePolicy1458`.
 
 The dedicated Skyblock acceptance additionally creates a canonical Small `$4200\times1200$` world through the normal CLI, reloads it with TerraRuntime's verifier and starts the pinned official TerrariaServer 1.4.5.8 against the result.
 

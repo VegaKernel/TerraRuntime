@@ -13,6 +13,7 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
 
     private static readonly WorldGenerationPassId LayoutId = new("terraruntime:skyblock/layout");
     private static readonly WorldGenerationPassId IslandsId = new("terraruntime:skyblock/islands");
+    private static readonly WorldGenerationPassId OresId = new("terraruntime:skyblock/ores");
     private static readonly WorldGenerationPassId ResourcesId = new("terraruntime:skyblock/resources");
     private static readonly WorldGenerationPassId StructuresId = new("terraruntime:skyblock/structures");
     private static readonly WorldGenerationPassId DungeonId = new("terraruntime:skyblock/dungeon");
@@ -35,7 +36,8 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
         var state = new GenerationState();
         Add(builder, LayoutId, new LayoutPass(state));
         Add(builder, IslandsId, new IslandsPass(state), LayoutId);
-        Add(builder, ResourcesId, new ResourcePass(state), IslandsId);
+        Add(builder, OresId, new OresPass(state), IslandsId);
+        Add(builder, ResourcesId, new ResourcePass(state), OresId);
         Add(builder, StructuresId, new StructurePass(state), ResourcesId);
         Add(builder, DungeonId, new DungeonPass(state), StructuresId);
         Add(builder, ChestsId, new ChestPass(state), DungeonId);
@@ -235,6 +237,50 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
         }
     }
 
+    private sealed class OresPass(GenerationState state) : IWorldGenerationPass
+    {
+        public void Execute(IWorldGenerationContext context)
+        {
+            RequireLayout(state);
+            ushort[] oreTypes = [7, 6, 9, 8];
+            int islandIndex = 0;
+            foreach (IslandSpec island in state.Islands)
+            {
+                context.CancellationToken.ThrowIfCancellationRequested();
+                if (island == state.WaterIsland || island == state.AetherIsland ||
+                    island == state.HoneyIsland || island == state.LavaIsland)
+                {
+                    islandIndex++;
+                    continue;
+                }
+
+                if (island.Kind is IslandKind.Desert or IslandKind.Snow or IslandKind.Jungle)
+                {
+                    islandIndex++;
+                    continue;
+                }
+
+                int patches = 2 + context.Random.NextInt32(3);
+                for (int patch = 0; patch < patches; patch++)
+                {
+                    ushort ore = oreTypes[context.Random.NextInt32(oreTypes.Length)];
+                    int offsetX = context.Random.NextInt32(island.RadiusX * 2 + 1) - island.RadiusX;
+                    int offsetY = context.Random.NextInt32(Math.Max(1, island.Depth));
+                    int centerX = island.CenterX + offsetX;
+                    int centerY = island.SurfaceY + 1 + offsetY;
+                    int radius = 1 + context.Random.NextInt32(3);
+                    PlaceOreCluster(context.Workspace, centerX, centerY, radius, ore);
+                }
+
+                islandIndex++;
+                if ((islandIndex & 3) == 0)
+                    context.ReportProgress(Math.Min(0.95d, islandIndex / (double)state.Islands.Count), "Embedding ore tiers into skyblock islands");
+            }
+
+            context.ReportProgress(1d, "Embedding ore tiers into skyblock islands");
+        }
+    }
+
     private sealed class ResourcePass(GenerationState state) : IWorldGenerationPass
     {
         public void Execute(IWorldGenerationContext context)
@@ -388,7 +434,15 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
             if (!metadata.TrySetLayers(worldSurface, rockLayer))
                 throw new InvalidOperationException("Skyblock generator could not set lowered underground/cavern layers.");
 
-            context.ReportProgress(1d, "Finalizing Skyblock spawn, dungeon and vertical layers");
+            if (context.Workspace is RuntimeWorldGenerationWorkspace runtimeWorkspace)
+            {
+                float x = checked(state.SpawnIsland.CenterX * 16f);
+                float y = checked(spawnY * 16f);
+                if (!runtimeWorkspace.TryAddGeneratedTownNpc(22, "Andrew", x, y, homeless: true, homeTileX: state.SpawnIsland.CenterX, homeTileY: spawnY, townNpcVariationIndex: null, homelessDespawn: false))
+                    throw new InvalidOperationException("Skyblock generator could not register the starting Guide for persistence.");
+            }
+
+            context.ReportProgress(1d, "Finalizing Skyblock spawn, dungeon, vertical layers and starting Guide");
         }
     }
 
@@ -646,6 +700,30 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
         }
     }
 
+    private static void PlaceOreCluster(IWorldGenerationWorkspace workspace, int centerX, int centerY, int radius, ushort oreType)
+    {
+        int r = Math.Max(1, radius);
+        for (int dx = -r; dx <= r; dx++)
+        {
+            for (int dy = -r; dy <= r; dy++)
+            {
+                if (dx * dx + dy * dy > r * r + 1)
+                    continue;
+
+                int x = centerX + dx;
+                int y = centerY + dy;
+                if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile))
+                    continue;
+                if ((tile.Flags & WorldGenerationTileFlags.Active) == 0)
+                    continue;
+                if (tile.Type != VanillaTileIds.Stone.Value && tile.Type != VanillaTileIds.Dirt.Value && tile.Type != VanillaTileIds.Mud.Value)
+                    continue;
+
+                SetTile(workspace, x, y, oreType, wall: tile.Wall, WorldGenerationTileFlags.Active);
+            }
+        }
+    }
+
     private static void PlaceFramedObject(
         IWorldGenerationWorkspace workspace,
         int left,
@@ -750,12 +828,14 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
     [
         new(1, VanillaItemIds.CopperPickaxe),
         new(100, VanillaItemIds.DirtBlock),
+        new(25, VanillaItemIds.StoneBlock),
         new(50, VanillaItemIds.Gel)
     ];
 
     private static WorldGenerationChestItem[] BuildTreasureLoot(IWorldGenerationRandom random, int ordinal)
     {
         int dirt = 25 + random.NextInt32(101);
+        int stone = 10 + random.NextInt32(31);
         int gel = 10 + random.NextInt32(51);
         if (ordinal > 0 && ordinal % 7 == 0)
         {
@@ -763,6 +843,17 @@ public sealed class SkyblockWorldGenerationProvider : IWorldGenerationProvider
             [
                 new(1, VanillaItemIds.SlimeStaff),
                 new(dirt, VanillaItemIds.DirtBlock),
+                new(stone, VanillaItemIds.StoneBlock),
+                new(gel, VanillaItemIds.Gel)
+            ];
+        }
+
+        if (ordinal % 3 == 0)
+        {
+            return
+            [
+                new(dirt, VanillaItemIds.DirtBlock),
+                new(stone, VanillaItemIds.StoneBlock),
                 new(gel, VanillaItemIds.Gel)
             ];
         }

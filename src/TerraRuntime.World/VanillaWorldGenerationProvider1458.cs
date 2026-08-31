@@ -313,6 +313,10 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
 
     private static void GenerateSkyblock(IWorldGenerationContext context, IWorldGenerationVanillaRandom random, int width, int height)
     {
+        // Compatibility fallback for the vanilla generator when the seed contains "skyblock".
+        // The rich terraruntime:skyblock profile is the production skyblock path; this fallback ensures the
+        // vanilla compatibility path still produces a valid, non-empty world with deterministic floating islands
+        // instead of a single tiny patch that would leave spawn/dungeon heuristics with degraded inputs.
         int centerX = width / 2;
         int centerY = Math.Clamp(height / 4, 12, height - 24);
         int radiusX = Math.Clamp(width / 22, 6, 18);
@@ -325,6 +329,26 @@ public sealed class VanillaWorldGenerationProvider1458 : IWorldGenerationProvide
             {
                 ushort type = y <= centerY - half + 1 ? (ushort)2 : (ushort)(random.Next(5) == 0 ? 1 : 0);
                 SetSolid(context.Workspace, x, y, type);
+            }
+        }
+
+        // Two additional side islands ensure the compatibility world is not degenerate and
+        // that density checks for skyblock lowTiles remain meaningful even on small synthetic worlds.
+        int sideRadius = Math.Max(4, radiusX - 2);
+        int sideHalf = Math.Max(2, radiusY - 1);
+        int leftX = Math.Clamp(width / 4, sideRadius + 2, width - sideRadius - 2);
+        int rightX = Math.Clamp(width * 3 / 4, sideRadius + 2, width - sideRadius - 2);
+        int sideY = Math.Clamp(centerY + height / 10, 12, height - 24);
+        for (int island = 0; island < 2; island++)
+        {
+            int islandX = island == 0 ? leftX : rightX;
+            ushort stoneType = island == 0 ? (ushort)53 : (ushort)147;
+            for (int x = islandX - sideRadius; x <= islandX + sideRadius; x++)
+            {
+                double nx = (x - islandX) / (double)sideRadius;
+                int half = Math.Max(1, (int)Math.Round(sideHalf * Math.Sqrt(Math.Max(0d, 1d - nx * nx))));
+                for (int y = sideY - half; y <= sideY + half; y++)
+                    SetSolid(context.Workspace, x, y, stoneType);
             }
         }
 

@@ -1,4 +1,4 @@
-using TerraRuntime.Protocol;
+﻿using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
@@ -69,7 +69,11 @@ public sealed partial class PlayerBootstrapPacketSet
     {
         ArgumentNullException.ThrowIfNull(world);
 
-        byte[] worldInfoFrame = PlayerJoinFrameEncoder.EncodeWorldInfo(world, transient);
+        WorldInfoTransientState effectiveTransient = transient with
+        {
+            SkyblockLowTiles = VanillaSkyblockRuntimePolicy1458.Evaluate(world).LowTiles
+        };
+        byte[] worldInfoFrame = PlayerJoinFrameEncoder.EncodeWorldInfo(world, effectiveTransient);
 
         Span<WorldSectionId> plannedSections = stackalloc WorldSectionId[InitialSectionBootstrapPlanner.MaximumBaseSectionCount];
         int sectionCount = InitialSectionBootstrapPlanner.PlanBaseSpawnSections(
@@ -186,6 +190,9 @@ public sealed partial class PlayerBootstrapPacketSet
             if (!IsValidFrame(snapshot.GlobalPostSectionFrames[i]))
                 return false;
         }
+
+        if (!IsWorldInfoLowTilesMatching(world, snapshot.WorldInfoFrame.Span))
+            return false;
 
         WorldSectionId[] baseSections = (WorldSectionId[])snapshot.BaseSections.Clone();
         var baseFrames = (ReadOnlyMemory<byte>[])snapshot.BaseSectionFrames.Clone();
@@ -498,6 +505,23 @@ public sealed partial class PlayerBootstrapPacketSet
         return writer.WrittenSpan.ToArray();
     }
 
+    private static bool IsWorldInfoLowTilesMatching(WorldFileData world, ReadOnlySpan<byte> frame)
+    {
+        bool expected = VanillaSkyblockRuntimePolicy1458.Evaluate(world).LowTiles;
+        WorldInfoTransientState expectedTransient = new() { SkyblockLowTiles = expected };
+        byte[] expectedFrame;
+        try
+        {
+            expectedFrame = PlayerJoinFrameEncoder.EncodeWorldInfo(world, expectedTransient);
+        }
+        catch
+        {
+            return false;
+        }
+
+        return expectedFrame.AsSpan().SequenceEqual(frame);
+    }
+
     private static bool IsValidFrame(ReadOnlyMemory<byte> frame) =>
         frame.Length is >= TerrariaFrameDecoderOptions.MinimumFrameLength and <= ushort.MaxValue;
 
@@ -515,3 +539,4 @@ internal sealed record PlayerBootstrapPacketSnapshot(
     ReadOnlyMemory<byte>[][] BaseSectionPostFrames,
     ReadOnlyMemory<byte>[] GlobalPostSectionFrames,
     ReadOnlyMemory<byte> EnterWorldFrame);
+

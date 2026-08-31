@@ -1,4 +1,4 @@
-using TerraRuntime.Contracts.Gameplay;
+﻿using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -113,10 +113,11 @@ public sealed class VanillaSkyblockRuntimePolicy1458Tests
             MaxTotalChestItems: (long)VanillaWorldFormat326.MaximumChestSlots * WorldGenerationChestRules.VanillaItemSlotCount,
             MaxTextBytesPerSign: 0,
             MaxTotalSignTextBytes: 0,
-            Npcs: new WorldFileNpcDecodeOptions(0, 0, 0, 0, 0, 0),
+            Npcs: new WorldFileNpcDecodeOptions(1, 2, 1, 1, 64, 64),
             MaxTileEntities: 0,
             MaxPressurePlates: 0,
             MaxTownRooms: 0,
             Bestiary: new WorldFileBestiaryLimits(0, 0, 0, 0, 0),
             RuntimeMetadata: new WorldFileRuntimeMetadataLimits(4096, 12288, 0, 0, 0, 0));
 }
+
