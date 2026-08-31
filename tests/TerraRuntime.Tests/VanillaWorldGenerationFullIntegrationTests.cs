@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Core;
 using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.World;
 
@@ -34,12 +35,12 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.NotNull(result.Candidate);
         Assert.NotNull(result.Generation.Execution);
         Assert.Equal(WorldGenerationExecutionStatus.Completed, result.Generation.Execution.Value.Status);
-        Assert.True(result.Candidate!.TryGetSpawn(out int spawnX, out int spawnY));
-        Assert.InRange(spawnX, 0, request.WidthTiles - 1);
-        Assert.InRange(spawnY, 0, request.HeightTiles - 1);
-        Assert.True(result.Candidate.TryGetLayers(out double surface, out double rock));
-        Assert.True(surface > 0d);
-        Assert.True(rock > surface);
+        Assert.True(result.Candidate!.TryGetSpawn(out WorldGenerationPoint spawn));
+        Assert.InRange(spawn.X, 0, request.WidthTiles - 1);
+        Assert.InRange(spawn.Y, 0, request.HeightTiles - 1);
+        Assert.True(result.Candidate.TryGetLayers(out WorldGenerationLayers layers));
+        Assert.True(layers.WorldSurface > 0d);
+        Assert.True(layers.RockLayer > layers.WorldSurface);
     }
 
     [Theory]
@@ -48,7 +49,7 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
     [InlineData(8400, 2400)]
     public void Canonical_dimensions_are_supported(int width, int height)
     {
-        Assert.True(SourceBackedVanillaWorldGenerationCanonical1458.IsCanonicalSize(width, height));
+        Assert.True(VanillaTerrainPass1458.IsCanonicalWorldSize(width, height));
     }
 
     [Theory]
@@ -58,7 +59,7 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
     [InlineData(8400, 2401)]
     public void Noncanonical_dimensions_are_rejected_by_canonical_size_check(int width, int height)
     {
-        Assert.False(SourceBackedVanillaWorldGenerationCanonical1458.IsCanonicalSize(width, height));
+        Assert.False(VanillaTerrainPass1458.IsCanonicalWorldSize(width, height));
     }
 
     [Fact]
@@ -117,40 +118,53 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
 
         Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
         Assert.NotNull(result.Candidate);
-        Assert.True(result.Candidate!.TryGetSpawn(out int spawnX, out int spawnY));
-        Assert.InRange(spawnX, 0, request.WidthTiles - 1);
-        Assert.InRange(spawnY, 0, request.HeightTiles - 1);
-        Assert.True(result.Candidate.TryGetLayers(out double surface, out double rock));
-        Assert.InRange(surface, 0d, request.HeightTiles - 1d);
-        Assert.InRange(rock, surface, request.HeightTiles - 1d);
+        Assert.True(result.Candidate!.TryGetSpawn(out WorldGenerationPoint spawn));
+        Assert.InRange(spawn.X, 0, request.WidthTiles - 1);
+        Assert.InRange(spawn.Y, 0, request.HeightTiles - 1);
+        Assert.True(result.Candidate.TryGetLayers(out WorldGenerationLayers layers));
+        Assert.InRange(layers.WorldSurface, 0d, request.HeightTiles - 1d);
+        Assert.InRange(layers.RockLayer, layers.WorldSurface, request.HeightTiles - 1d);
     }
 
     [Fact]
     public void Persistence_pipeline_enforces_budget_and_atomicity()
     {
         var source = BuiltInWorldGeneratorSource.Instance;
-        // Budget exceeded – request absurdly large world (>32M tiles)
         var huge = new WorldGenerationRequest(VanillaId, "Huge", 1, 8000, 5000)
         {
             SeedText = "1"
         };
         var persistence = new RuntimeWorldCreationPersistencePipeline(source, maxTileCount: 32_000_000);
         string hugePath = Path.Combine(Path.GetTempPath(), $"terraruntime-huge-{Guid.NewGuid():N}.wld");
-        RuntimeWorldCreationPersistenceResult hugeResult = persistence.TryCreateAndPersist(huge, hugePath, Guid.NewGuid(), 1, 0, 0, cancellationToken: TestContext.Current.CancellationToken);
+        RuntimeWorldCreationPersistenceResult hugeResult = persistence.TryCreateAndPersist(
+            huge,
+            hugePath,
+            Guid.NewGuid(),
+            1,
+            0,
+            0,
+            cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(RuntimeWorldCreationPersistenceStatus.GenerationBudgetExceeded, hugeResult.Status);
         Assert.False(File.Exists(hugePath));
 
-        // Invalid dimensions – small
         var tiny = new WorldGenerationRequest(VanillaId, "Tiny", 1, 8, 8) { SeedText = "1" };
         string tinyPath = Path.Combine(Path.GetTempPath(), $"terraruntime-tiny-{Guid.NewGuid():N}.wld");
-        RuntimeWorldCreationPersistenceResult tinyResult = persistence.TryCreateAndPersist(tiny, tinyPath, Guid.NewGuid(), 1, 0, 0, cancellationToken: TestContext.Current.CancellationToken);
-        // Tiny canonical check will fallback to compat but should still either succeed or fail gracefully due to tileCount not exceeding budget
-        // We assert it does not crash and either succeeds or reports GenerationFailed
+        RuntimeWorldCreationPersistenceResult tinyResult = persistence.TryCreateAndPersist(
+            tiny,
+            tinyPath,
+            Guid.NewGuid(),
+            1,
+            0,
+            0,
+            cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(
-            tinyResult.Status is RuntimeWorldCreationPersistenceStatus.Persisted or RuntimeWorldCreationPersistenceStatus.GenerationFailed or RuntimeWorldCreationPersistenceStatus.FinalizationFailed,
+            tinyResult.Status is RuntimeWorldCreationPersistenceStatus.Persisted or
+                RuntimeWorldCreationPersistenceStatus.GenerationFailed or
+                RuntimeWorldCreationPersistenceStatus.FinalizationFailed,
             $"Unexpected status {tinyResult.Status}");
 
-        if (File.Exists(tinyPath)) File.Delete(tinyPath);
+        if (File.Exists(tinyPath))
+            File.Delete(tinyPath);
     }
 
     [Fact]
@@ -164,7 +178,11 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         var provider = Assert.IsType<SourceBackedVanillaWorldGenerationCanonical1458>(resolved);
         using var cts = new CancellationTokenSource();
         cts.Cancel();
-        WorldGenerationExecutionResult execResult = RuntimeWorldGenerationExecutor.Execute(provider, in request, candidate, cancellationToken: cts.Token);
+        WorldGenerationExecutionResult execResult = RuntimeWorldGenerationExecutor.Execute(
+            provider,
+            in request,
+            candidate,
+            cancellationToken: cts.Token);
         Assert.Equal(WorldGenerationExecutionStatus.Cancelled, execResult.Status);
     }
 
@@ -176,7 +194,9 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         var source = BuiltInWorldGeneratorSource.Instance;
         var request = new WorldGenerationRequest(VanillaId, "Compat", 42, w, h) { SeedText = "42" };
         var pipeline = new RuntimeWorldCreationPipeline(source);
-        RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(in request, cancellationToken: TestContext.Current.CancellationToken);
+        RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(
+            in request,
+            cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
         Assert.NotNull(result.Candidate);
         Assert.Equal(w, result.Candidate!.WidthTiles);
