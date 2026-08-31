@@ -34,11 +34,10 @@ public readonly record struct NpcAiStateTickSummary(
 /// changes cannot let stale AI work mutate a replacement NPC in the same slot. Optional NPC and projectile
 /// spawn intents are planned speculatively into executor-owned bounded scratch storage and are applied in order
 /// only after that source-state commit succeeds; spawned entities therefore cannot enter the same pre-pass or escape
-/// from a rejected/stale transition. Decorator chains expose their inner stepper through
-/// INpcAiStateStepperWrapper so optional planners and post-commit observers remain discoverable under production
-/// composition layers.
+/// from a rejected/stale transition. Irreversible effects that require exact source ordering use a post-commit
+/// mutation surface and therefore cannot consume RNG or mutate the world for a rejected source generation.
 /// </summary>
-public sealed class RuntimeNpcAiStateExecutor
+public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
 {
     private const int MaximumProjectileIntentsPerNpcStep = 8;
 
@@ -78,6 +77,8 @@ public sealed class RuntimeNpcAiStateExecutor
             : NpcAiStateStepperComposition.FindCapability<INpcAiProjectileIntentPlanner>(stepper);
         INpcAiStatePostCommitObserver? postCommitObserver =
             NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitObserver>(stepper);
+        INpcAiStatePostCommitEffect? postCommitEffect =
+            NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(stepper);
         INpcAiPeerSnapshotConsumer? peerConsumer =
             NpcAiStateStepperComposition.FindCapability<INpcAiPeerSnapshotConsumer>(stepper);
         peerConsumer?.SetNpcPeers(_snapshotBuffer.AsSpan(0, examined));
@@ -113,6 +114,7 @@ public sealed class RuntimeNpcAiStateExecutor
             {
                 applied++;
                 postCommitObserver?.NpcAiStateCommitted(in npc, in committed);
+                postCommitEffect?.ApplyCommittedEffect(in npc, in committed, this);
                 commitSink?.NpcAiStateCommitted(in committed);
 
                 if (_projectiles is not null)
@@ -166,5 +168,37 @@ public sealed class RuntimeNpcAiStateExecutor
         }
 
         return new NpcAiStateTickSummary(examined, proposed, applied, rejected);
+    }
+
+    bool INpcAiCommittedNpcMutationSink.TrySpawn(
+        in NpcAiSpawnIntent intent,
+        out NpcSnapshot spawned) =>
+        RuntimeNpcSpawnIntentApplier.TryApply(_npcs, in intent, out spawned);
+
+    bool INpcAiCommittedNpcMutationSink.TryUpdateVelocity(
+        NpcHandle npc,
+        float velocityX,
+        float velocityY,
+        out NpcSnapshot committed)
+    {
+        committed = default;
+        if (!float.IsFinite(velocityX) ||
+            !float.IsFinite(velocityY) ||
+            !_npcs.TryGet(npc, out NpcSnapshot current))
+        {
+            return false;
+        }
+
+        var update = new NpcStateUpdate(
+            current.Type,
+            current.NetId,
+            current.PositionX,
+            current.PositionY,
+            velocityX,
+            velocityY,
+            current.Target,
+            current.Ai,
+            current.Simulation);
+        return _npcs.TryUpdate(current.Handle, in update, out committed);
     }
 }
