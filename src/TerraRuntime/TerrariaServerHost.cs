@@ -110,9 +110,9 @@ public static class TerrariaServerHost
         WorldFileLoadLimits worldLoadLimits = CreateServerWorldLoadLimits();
         string runtimeCachePath = RuntimeWorldSnapshotCache.GetCachePath(options.WorldPath);
         long cacheLoadStart = Stopwatch.GetTimestamp();
-        RuntimeWorldSnapshotLoadDiagnostic cacheDiagnostic = RuntimeWorldSnapshotCache.TryLoad(
+        RuntimeWorldSnapshotLoadDiagnostic cacheDiagnostic = RuntimeWorldSnapshotCache.TryLoadValidatedSource(
             runtimeCachePath,
-            sourceStamp,
+            options.WorldPath,
             worldLoadLimits,
             out WorldFileData? world);
         cacheLoadDuration = Stopwatch.GetElapsedTime(cacheLoadStart);

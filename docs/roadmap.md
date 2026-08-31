@@ -255,11 +255,11 @@ Candidate contents:
 
 Cache acceptance requires at least:
 
-- [ ] source `.wld` content hash/fingerprint;
-- [ ] Terraria world format/version;
-- [ ] runtime-image schema version;
-- [ ] critical compiler/layout parameters;
-- [ ] per-section or whole-image integrity checks.
+- [x] source `.wld` content hash/fingerprint;
+- [x] Terraria world format/version;
+- [x] runtime-image schema version;
+- [x] critical compiler/layout parameters;
+- [x] per-section or whole-image integrity checks.
 
 Timestamps alone never decide validity.
 
@@ -275,8 +275,8 @@ flowchart LR
 
 - [x] Cache corruption/staleness is never canonical world corruption.
 - [x] Any validation/load failure falls back automatically to `.wld` and records a machine-readable miss reason.
-- [ ] Saving completes the canonical `.wld` first, then schedules a coalesced runtime-image rebuild.
-- [ ] Shutdown may wait for the final runtime-image rebuild so the next boot gets the newest cache.
+- [x] Saving completes the canonical `.wld` first, then schedules a coalesced runtime-image rebuild.
+- [x] Shutdown may wait for the final runtime-image rebuild so the next boot gets the newest cache.
 
 ### Performance gate
 

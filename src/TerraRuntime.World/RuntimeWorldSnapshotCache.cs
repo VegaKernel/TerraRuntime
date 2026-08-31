@@ -10,6 +10,9 @@ namespace TerraRuntime.World;
 /// </summary>
 public static class RuntimeWorldSnapshotCache
 {
+    public const int CurrentSchemaVersion = 1;
+    public const int CurrentLayoutVersion = 1;
+
     private const int HeaderSize = 128;
     private const int TileRecordSize = 16;
     private const int ShardEntrySize = 24;
@@ -78,13 +81,63 @@ public static class RuntimeWorldSnapshotCache
         RuntimeWorldSourceStamp sourceStamp,
         WorldFileLoadLimits limits,
         out WorldFileData? world) =>
-        TryLoad(cachePath, sourceStamp, limits, RuntimeWorldCacheReadOptions.Default, out world);
+        TryLoad(
+            cachePath,
+            sourceStamp,
+            limits,
+            RuntimeWorldCacheReadOptions.Default,
+            expectedSourceFingerprint: null,
+            out world);
+
+    public static RuntimeWorldSnapshotLoadDiagnostic TryLoadValidatedSource(
+        string cachePath,
+        string worldPath,
+        WorldFileLoadLimits limits,
+        out WorldFileData? world)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(worldPath);
+        limits.Validate();
+        world = null;
+
+        if (!File.Exists(cachePath))
+            return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.NotFound);
+
+        if (!RuntimeWorldSourceFingerprint.TryCapture(worldPath, out RuntimeWorldSourceFingerprint fingerprint))
+        {
+            return new RuntimeWorldSnapshotLoadDiagnostic(
+                RuntimeWorldSnapshotLoadResult.SourceFingerprintUnavailable);
+        }
+
+        return TryLoad(
+            cachePath,
+            new RuntimeWorldSourceStamp(fingerprint.Length, fingerprint.LastWriteTimeUtcTicks),
+            limits,
+            RuntimeWorldCacheReadOptions.Default,
+            fingerprint,
+            out world);
+    }
 
     public static RuntimeWorldSnapshotLoadDiagnostic TryLoad(
         string cachePath,
         RuntimeWorldSourceStamp sourceStamp,
         WorldFileLoadLimits limits,
         RuntimeWorldCacheReadOptions readOptions,
+        out WorldFileData? world) =>
+        TryLoad(
+            cachePath,
+            sourceStamp,
+            limits,
+            readOptions,
+            expectedSourceFingerprint: null,
+            out world);
+
+    private static RuntimeWorldSnapshotLoadDiagnostic TryLoad(
+        string cachePath,
+        RuntimeWorldSourceStamp sourceStamp,
+        WorldFileLoadLimits limits,
+        RuntimeWorldCacheReadOptions readOptions,
+        RuntimeWorldSourceFingerprint? expectedSourceFingerprint,
         out WorldFileData? world)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
@@ -114,8 +167,19 @@ public static class RuntimeWorldSnapshotCache
             if (sourceStamp.Length != header.SourceLength)
                 return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.SourceLengthMismatch);
 
-            if (sourceStamp.LastWriteTimeUtcTicks > header.SourceLastWriteTimeUtcTicks)
+            if (expectedSourceFingerprint is RuntimeWorldSourceFingerprint fingerprint)
+            {
+                if (fingerprint.HashLow != header.SourceFingerprintLow ||
+                    fingerprint.HashHigh != header.SourceFingerprintHigh)
+                {
+                    return new RuntimeWorldSnapshotLoadDiagnostic(
+                        RuntimeWorldSnapshotLoadResult.SourceFingerprintMismatch);
+                }
+            }
+            else if (sourceStamp.LastWriteTimeUtcTicks > header.SourceLastWriteTimeUtcTicks)
+            {
                 return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.SourceNewer);
+            }
 
             if (header.TileCount > limits.MaxTileCount)
                 return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.TileBudgetExceeded);
@@ -287,6 +351,8 @@ public static class RuntimeWorldSnapshotCache
         }
 
         ulong canonicalHash = RuntimeWorldIntegrity.Hash64(sourceWorld);
+        RuntimeWorldSourceFingerprint sourceFingerprint =
+            RuntimeWorldSourceFingerprint.FromBytes(sourceWorld, sourceStamp);
 
         Span<byte> header = stackalloc byte[HeaderSize];
         header.Clear();
@@ -297,6 +363,9 @@ public static class RuntimeWorldSnapshotCache
         BinaryPrimitives.WriteInt64LittleEndian(header[24..], sourceStamp.LastWriteTimeUtcTicks);
         BinaryPrimitives.WriteInt64LittleEndian(header[32..], sourceWorld.Length);
         BinaryPrimitives.WriteUInt64LittleEndian(header[40..], canonicalHash);
+        BinaryPrimitives.WriteInt32LittleEndian(header[48..], CurrentSchemaVersion);
+        BinaryPrimitives.WriteInt32LittleEndian(header[52..], CurrentLayoutVersion);
+        sourceFingerprint.WriteHash(header[56..72]);
         BinaryPrimitives.WriteInt32LittleEndian(header[72..], world.Envelope.FormatVersion);
         BinaryPrimitives.WriteInt32LittleEndian(header[76..], world.Header.Dimensions.WidthTiles);
         BinaryPrimitives.WriteInt32LittleEndian(header[80..], world.Header.Dimensions.HeightTiles);
@@ -528,6 +597,10 @@ public static class RuntimeWorldSnapshotCache
         long sourceLastWriteTimeUtcTicks = BinaryPrimitives.ReadInt64LittleEndian(bytes[24..]);
         long canonicalLength = BinaryPrimitives.ReadInt64LittleEndian(bytes[32..]);
         ulong canonicalHash = BinaryPrimitives.ReadUInt64LittleEndian(bytes[40..]);
+        int schemaVersion = BinaryPrimitives.ReadInt32LittleEndian(bytes[48..]);
+        int layoutVersion = BinaryPrimitives.ReadInt32LittleEndian(bytes[52..]);
+        ulong sourceFingerprintLow = BinaryPrimitives.ReadUInt64LittleEndian(bytes[56..]);
+        ulong sourceFingerprintHigh = BinaryPrimitives.ReadUInt64LittleEndian(bytes[64..]);
         int worldFormatVersion = BinaryPrimitives.ReadInt32LittleEndian(bytes[72..]);
         int width = BinaryPrimitives.ReadInt32LittleEndian(bytes[76..]);
         int height = BinaryPrimitives.ReadInt32LittleEndian(bytes[80..]);
@@ -538,10 +611,23 @@ public static class RuntimeWorldSnapshotCache
         long tilePayloadOffset = BinaryPrimitives.ReadInt64LittleEndian(bytes[112..]);
         long shardTableOffset = BinaryPrimitives.ReadInt64LittleEndian(bytes[120..]);
 
+        if (schemaVersion != CurrentSchemaVersion)
+        {
+            return new RuntimeWorldSnapshotLoadDiagnostic(
+                RuntimeWorldSnapshotLoadResult.SchemaVersionMismatch,
+                schemaVersion);
+        }
+
+        if (layoutVersion != CurrentLayoutVersion)
+        {
+            return new RuntimeWorldSnapshotLoadDiagnostic(
+                RuntimeWorldSnapshotLoadResult.LayoutVersionMismatch,
+                layoutVersion);
+        }
+
         if (BinaryPrimitives.ReadInt32LittleEndian(bytes[8..]) != HeaderSize ||
             BinaryPrimitives.ReadInt32LittleEndian(bytes[12..]) != TileRecordSize ||
             BinaryPrimitives.ReadInt32LittleEndian(bytes[84..]) != ShardEntrySize ||
-            !bytes[48..72].SequenceEqual(stackalloc byte[24]) ||
             reserved != 0 ||
             sourceLength <= 0 ||
             sourceLength != canonicalLength ||
@@ -662,6 +748,8 @@ public static class RuntimeWorldSnapshotCache
             sourceLastWriteTimeUtcTicks,
             canonicalLength,
             canonicalHash,
+            sourceFingerprintLow,
+            sourceFingerprintHigh,
             worldFormatVersion,
             width,
             height,
@@ -973,6 +1061,8 @@ public static class RuntimeWorldSnapshotCache
         long SourceLastWriteTimeUtcTicks,
         long CanonicalLength,
         ulong CanonicalHash,
+        ulong SourceFingerprintLow,
+        ulong SourceFingerprintHigh,
         int WorldFormatVersion,
         int Width,
         int Height,
@@ -1031,7 +1121,11 @@ public enum RuntimeWorldSnapshotLoadResult : byte
     LiquidQueueHashMismatch = 21,
     InvalidLiquidQueue = 22,
     PreparedPayloadHashMismatch = 23,
-    InvalidPreparedWorld = 24
+    InvalidPreparedWorld = 24,
+    SourceFingerprintUnavailable = 25,
+    SourceFingerprintMismatch = 26,
+    SchemaVersionMismatch = 27,
+    LayoutVersionMismatch = 28
 }
 
 public readonly record struct RuntimeWorldSnapshotLoadDiagnostic(
