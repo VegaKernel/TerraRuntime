@@ -203,7 +203,7 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458Tests
         public void Add(WorldGenerationPassDescriptor descriptor, IWorldGenerationPass pass) => Entries.Add(new(descriptor, pass));
     }
 
-    private sealed class RecordingRandom(params int[] values) : IWorldGenerationVanillaRandom
+    private sealed class RecordingRandom(params int[] values) : IWorldGenerationVanillaRandom, VanillaEarlyWorldGenerationPass1458.IRandom
     {
         private int index;
         public int CallCount => index;
