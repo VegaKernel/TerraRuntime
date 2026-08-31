@@ -20,7 +20,7 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
       - name: Decompile official TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
-      - name: Extract AI_005 guards and exact side-effect branches
+      - name: Extract global firing distance helper
         shell: bash
         run: |
           set -euo pipefail
@@ -29,18 +29,19 @@ jobs:
           import sys
           from pathlib import Path
           text=Path(sys.argv[1]).read_text(encoding='utf-8',errors='replace')
-          start=text.find('void AI_005_')
-          end=text.find('\n\tprivate void AI_006_',start)
-          lines=text[start:end].splitlines()
-          print('===== AI005 FLAG/GUARD LINES =====')
-          for i,line in enumerate(lines,1):
-              stripped=line.strip()
-              if ('flag' in stripped or 'targetData' in stripped or 'localAI[0]' in stripped) and not stripped.startswith('//'):
-                  print(f'{i:04d}: {line}')
-          print('===== PROBE =====')
-          for center in [i for i,l in enumerate(lines) if 'type == 139' in l and i>300]:
-              for j in range(max(0,center-10),min(len(lines),center+45)): print(f'{j+1:04d}: {lines[j]}')
-          print('===== BLOOD SQUID =====')
-          for center in [i for i,l in enumerate(lines) if 'type == 619 &&' in l]:
-              for j in range(max(0,center-8),min(len(lines),center+45)): print(f'{j+1:04d}: {lines[j]}')
+          needle='AI_GlobalFiringDistanceCheck'
+          pos=0
+          while True:
+              pos=text.find(needle,pos)
+              if pos<0: break
+              line=text.count('\n',0,pos)+1
+              lo=max(0,text.rfind('\n',0,max(0,pos-1200)))
+              hi=text.find('\n\t}',pos)
+              if hi<0: hi=min(len(text),pos+1800)
+              else: hi+=4
+              chunk=text[lo:hi]
+              if 'bool AI_GlobalFiringDistanceCheck' in chunk:
+                  print(f'===== helper at line {line} =====')
+                  print(chunk)
+              pos+=len(needle)
           PY
