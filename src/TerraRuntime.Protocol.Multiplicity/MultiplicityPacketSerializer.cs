@@ -1,12 +1,11 @@
-using System.Buffers;
 using global::Multiplicity.Packets;
 
 namespace TerraRuntime.Protocol.Multiplicity;
 
 /// <summary>
-/// Bridges Multiplicity's owned packet models to TerraRuntime's <see cref="IBufferWriter{Byte}"/> path without
-/// staging through <see cref="MemoryStream"/>. The helper also verifies that the model's declared payload length
-/// matches the bytes it actually serialized before a frame leaves the protocol boundary.
+/// Serializes Multiplicity-owned packet models directly into their exact final frame array. The packet model's
+/// declared payload length is treated as a contract: under-write and over-write both fail closed before any bytes
+/// are published outside the protocol boundary.
 /// </summary>
 internal static class MultiplicityPacketSerializer
 {
@@ -30,16 +29,19 @@ internal static class MultiplicityPacketSerializer
             return false;
         }
 
-        var writer = new ArrayBufferWriter<byte>(frameLength);
-        using var stream = new ArrayBufferWriterStream(writer);
+        // The array is returned only after ToStream has written exactly every declared byte. If the model
+        // under-writes, the uninitialized tail is discarded; if it over-writes, FixedBufferWriteStream records
+        // overflow without allocating a growable staging buffer and the candidate is discarded as well.
+        byte[] candidate = GC.AllocateUninitializedArray<byte>(frameLength);
+        using var stream = new FixedBufferWriteStream(candidate);
         packet.ToStream(stream);
-        if (writer.WrittenCount != frameLength)
+        if (stream.Overflowed || stream.WrittenCount != frameLength)
         {
             frame = [];
             return false;
         }
 
-        frame = writer.WrittenSpan.ToArray();
+        frame = candidate;
         return true;
     }
 }

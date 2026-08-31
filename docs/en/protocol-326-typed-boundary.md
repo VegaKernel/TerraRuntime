@@ -26,13 +26,19 @@ The remaining manually indexed gameplay packet adapters were migrated to Multipl
 
 Fixed-size fragmented payloads use bounded stack storage. Variable-length fragmented sign payloads rent a buffer from `ArrayPool<byte>` and always return it after decoding. Sign text keeps strict UTF-8 validation at the TerraRuntime protocol boundary.
 
+Multiplicity `PacketViewParser` is span-based in the pinned `2.7.2` baseline and has no `ReadOnlySequence<byte>` overload. Therefore a fragmented fixed-size frame cannot be inspected by a Multiplicity view without first becoming contiguous. TerraRuntime keeps that fallback bounded on the stack for small fixed payloads instead of allocating a temporary array. Single-segment frames continue to go directly to the corresponding Multiplicity view.
+
 ## Serialization path
 
-Owned Multiplicity packets are serialized through `MultiplicityPacketSerializer`, which bridges `TerrariaPacket.ToStream(Stream)` to the existing `ArrayBufferWriterStream` adapter. This removes `MemoryStream` staging from the remaining protocol encoders while retaining Multiplicity as the owner of packet re-serialization.
+Owned Multiplicity packets are serialized through `MultiplicityPacketSerializer`. `TerrariaPacket.GetLength()` determines the exact final frame size, and `FixedBufferWriteStream` lets Multiplicity's `TerrariaPacket.ToStream(Stream)` write directly into that final `byte[]`. The previous `ArrayBufferWriter<byte>` staging allocation and `WrittenSpan.ToArray()` copy are no longer present on the common owned-packet encode path.
 
-The serializer checks that the Multiplicity model reports a non-negative payload length, that the complete frame stays inside Multiplicity's signed `Int16` frame envelope, and that the actual written byte count matches the model's declared frame length.
+The exact-size path is fail-closed. If a Multiplicity model writes fewer bytes than it declared, the candidate array is discarded so an uninitialized tail can never be published. If it writes past the declared length, `FixedBufferWriteStream` records the logical overflow without allocating a larger buffer, and the candidate is discarded. A successful frame is published only when the actual byte count exactly matches the declared frame length.
 
-The same serializer is now used by sign, tile manipulation, door/object placement, world-item bootstrap/live replication, chest synchronization and persisted town-NPC synchronization paths that previously staged through `MemoryStream`.
+`ArrayBufferWriterStream` remains intentionally in the packet-10 compression path because DEFLATE output size is not known before compression. Once `DeflateStream` completes, however, `WorldSectionPacketEncoder` now frames `compressedWriter.WrittenSpan` directly into one exact final array through the span overload of `TerrariaFrameEncoder`. It no longer materializes a separate compressed array and then a second `ArrayBufferWriter`-backed framed copy.
+
+The same exact-size Multiplicity serializer is used by sign, tile manipulation, door/object placement, player lifecycle/appearance/equipment/vitals/movement, NPC/projectile replication, chat, world-item bootstrap/live replication, chest synchronization and persisted town-NPC synchronization paths.
+
+Multiplicity itself still owns `ToStream(Stream)` and may use its own `BinaryWriter` implementation internally. TerraRuntime does not duplicate those packet serializers merely to hide that implementation detail; the runtime-side contract is that no second complete frame buffer is staged around Multiplicity serialization.
 
 ## Vanilla boolean semantics
 
@@ -64,5 +70,8 @@ Protocol changes in this area must preserve all of the following:
 - packet `46` coordinate decode;
 - vanilla non-zero boolean behavior for packet `79`;
 - strict UTF-8 rejection for malformed sign text;
-- segmented fixed-payload decode and pooled segmented sign decode;
+- segmented fixed-payload decode and pooled segmented sign/chat/chest decode where ownership permits it;
+- exact-size serialization that rejects both under-write and over-write before publishing a frame;
+- an allocation guard preventing the common Multiplicity serializer from regaining a second complete frame buffer;
+- packet-10 framing directly from the completed DEFLATE writer into the final frame array;
 - no gameplay dependency on Multiplicity concrete types outside the protocol boundary.

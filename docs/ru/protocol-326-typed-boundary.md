@@ -26,13 +26,19 @@ TerraRuntime ориентирован на Terraria `1.4.5.8`, protocol `326`; M
 
 Fragmented fixed-size payloads собираются в bounded stack storage. Для variable-length fragmented sign payload арендуется buffer из `ArrayPool<byte>` и всегда возвращается после decode. Для sign text сохранена strict UTF-8 validation на protocol boundary TerraRuntime.
 
+В закреплённой версии Multiplicity `2.7.2` `PacketViewParser` работает со span и не имеет overload для `ReadOnlySequence<byte>`. Поэтому fragmented fixed-size frame нельзя передать Multiplicity view без предварительного получения contiguous data. Для маленьких fixed payload TerraRuntime оставляет этот fallback bounded через stack storage, не создавая временный heap array. Single-segment frames по-прежнему передаются напрямую соответствующему Multiplicity view.
+
 ## Serialization path
 
-Owned Multiplicity packets сериализуются через `MultiplicityPacketSerializer`. Он соединяет `TerrariaPacket.ToStream(Stream)` с существующим `ArrayBufferWriterStream`, поэтому оставшиеся protocol encoders больше не используют промежуточный `MemoryStream`, а wire re-serialization по-прежнему принадлежит Multiplicity.
+Owned Multiplicity packets сериализуются через `MultiplicityPacketSerializer`. `TerrariaPacket.GetLength()` задаёт точный размер финального frame, а `FixedBufferWriteStream` позволяет `TerrariaPacket.ToStream(Stream)` из Multiplicity писать непосредственно в этот конечный `byte[]`. Прежние staging allocation через `ArrayBufferWriter<byte>` и последующая копия `WrittenSpan.ToArray()` убраны с общего owned-packet encode path.
 
-Serializer проверяет non-negative payload length, попадание полного frame в signed `Int16` envelope Multiplicity и совпадение фактически записанного числа bytes с declared frame length packet model.
+Exact-size path работает fail-closed. Если Multiplicity model записала меньше bytes, чем объявила, candidate array отбрасывается, поэтому наружу никогда не попадёт неинициализированный хвост. Если model записала больше declared length, `FixedBufferWriteStream` фиксирует logical overflow без выделения растущего второго buffer, после чего candidate также отбрасывается. Frame публикуется только при точном совпадении фактически записанного количества bytes и declared frame length.
 
-Тот же serializer теперь используется для sign, tile manipulation, door/object placement, world-item bootstrap/live replication, chest synchronization и persisted town-NPC synchronization paths, где раньше был `MemoryStream` staging.
+`ArrayBufferWriterStream` намеренно остаётся в compression path packet `10`, потому что размер DEFLATE output заранее неизвестен. Но после завершения `DeflateStream` `WorldSectionPacketEncoder` теперь передаёт `compressedWriter.WrittenSpan` напрямую в один exact final array через span-overload `TerrariaFrameEncoder`. Отдельный `compressed.ToArray()` и второй `ArrayBufferWriter` для уже framed bytes больше не нужны.
+
+Тот же exact-size Multiplicity serializer используется для sign, tile manipulation, door/object placement, player lifecycle/appearance/equipment/vitals/movement, NPC/projectile replication, chat, world-item bootstrap/live replication, chest synchronization и persisted town-NPC synchronization paths.
+
+Сам Multiplicity по-прежнему владеет `ToStream(Stream)` и внутри может использовать собственный `BinaryWriter`. TerraRuntime не дублирует serializers пакетов только ради сокрытия этой детали реализации; runtime-side contract теперь состоит в том, что вокруг Multiplicity serialization не создаётся второй полный frame buffer.
 
 ## Vanilla semantics boolean-поля
 
@@ -64,5 +70,8 @@ Golden vectors в `Protocol326VanillaGoldenWireTests` являются literal b
 - decode координат packet `46`;
 - vanilla non-zero boolean behavior packet `79`;
 - strict UTF-8 rejection для malformed sign text;
-- segmented fixed-payload decode и pooled segmented sign decode;
+- segmented fixed-payload decode и pooled segmented sign/chat/chest decode там, где ownership это допускает;
+- exact-size serialization с rejection как under-write, так и over-write до публикации frame;
+- allocation guard, не позволяющий общему Multiplicity serializer снова получить второй полный frame buffer;
+- packet-10 framing напрямую из завершённого DEFLATE writer в финальный frame array;
 - отсутствие зависимости gameplay от concrete Multiplicity types вне protocol boundary.

@@ -120,9 +120,12 @@ public static class WorldSectionPacketEncoder
     private static WorldSectionPacketEncodeResult TryCompressFrame(byte[] uncompressed, out byte[] frame)
     {
         frame = [];
-        byte[] compressed;
         try
         {
+            // Compression is the one protocol path here whose output size is not known in advance, so keep the
+            // growable IBufferWriter-backed stream for DeflateStream. Once DeflateStream is complete, frame the
+            // written span directly into the exact final array instead of materializing compressed bytes and then
+            // materializing the framed bytes a second time.
             var compressedWriter = new ArrayBufferWriter<byte>(Math.Min(uncompressed.Length, 64 * 1024));
             using var stream = new ArrayBufferWriterStream(compressedWriter);
             using (var deflate = new DeflateStream(
@@ -132,7 +135,26 @@ public static class WorldSectionPacketEncoder
             {
                 deflate.Write(uncompressed);
             }
-            compressed = compressedWriter.WrittenSpan.ToArray();
+
+            if (compressedWriter.WrittenCount >
+                TerrariaFrameDecoderOptions.AbsoluteMaximumFrameLength - TerrariaFrameDecoderOptions.MinimumFrameLength)
+            {
+                return WorldSectionPacketEncodeResult.FrameTooLarge;
+            }
+
+            int frameLength = compressedWriter.WrittenCount + TerrariaFrameDecoderOptions.MinimumFrameLength;
+            byte[] candidate = GC.AllocateUninitializedArray<byte>(frameLength);
+            TerrariaFrameWriteResult frameResult = TerrariaFrameEncoder.TryWrite(
+                candidate.AsSpan(),
+                (byte)PacketTypes.TileSendSection,
+                compressedWriter.WrittenSpan);
+            if (frameResult == TerrariaFrameWriteResult.FrameTooLarge)
+                return WorldSectionPacketEncodeResult.FrameTooLarge;
+            if (frameResult != TerrariaFrameWriteResult.Written)
+                return WorldSectionPacketEncodeResult.CompressionFailure;
+
+            frame = candidate;
+            return WorldSectionPacketEncodeResult.Encoded;
         }
         catch (InvalidDataException)
         {
@@ -142,18 +164,5 @@ public static class WorldSectionPacketEncoder
         {
             return WorldSectionPacketEncodeResult.CompressionFailure;
         }
-
-        var writer = new ArrayBufferWriter<byte>(checked(compressed.Length + TerrariaFrameDecoderOptions.MinimumFrameLength));
-        TerrariaFrameWriteResult frameResult = TerrariaFrameEncoder.TryWrite(
-            writer,
-            (byte)PacketTypes.TileSendSection,
-            compressed);
-        if (frameResult == TerrariaFrameWriteResult.FrameTooLarge)
-            return WorldSectionPacketEncodeResult.FrameTooLarge;
-        if (frameResult != TerrariaFrameWriteResult.Written)
-            return WorldSectionPacketEncodeResult.CompressionFailure;
-
-        frame = writer.WrittenSpan.ToArray();
-        return WorldSectionPacketEncodeResult.Encoded;
     }
 }
