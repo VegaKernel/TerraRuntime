@@ -1,0 +1,56 @@
+name: One-shot WorldCompare CLI fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-worldcompare-cli-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Patch and verify WorldCompare CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          file='tools/TerraRuntime.WorldCompare/Program.cs'
+          grep -Fq 'if (args.Length is < 2 or > 4)' "$file"
+          sed -i 's/if (args.Length is < 2 or > 4)/if (args.Length < 2)/' "$file"
+          dotnet build tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj -c Release
+          set +e
+          dotnet run --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj -c Release --no-build -- --missing-reference.wld --missing-candidate.wld --json /tmp/report.json --enforce
+          rc=$?
+          set -e
+          if [[ "$rc" -ne 3 ]]; then
+            echo "Expected combined --json + --enforce invocation to reach reference loading and return 3; got $rc." >&2
+            exit 1
+          fi
+          git diff --check
+
+      - name: Commit production fix to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/TerraRuntime.WorldCompare/Program.cs
+          git commit -m 'Fix WorldCompare combined CLI options'
+          git pull --rebase origin main
+          git push origin HEAD:main
