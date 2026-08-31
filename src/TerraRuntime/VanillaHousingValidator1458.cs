@@ -57,6 +57,22 @@ internal sealed class VanillaHousingValidator1458
     public VanillaHousingValidator1458(WorldTileStore tiles) =>
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
 
+    internal static bool IsPotentialRoomAnchorType(int type) =>
+        Contains(ChairTypes, type) ||
+        Contains(TableTypes, type) ||
+        Contains(TorchTypes, type) ||
+        Contains(DoorTypes, type);
+
+    private static bool Contains(ReadOnlySpan<int> values, int value)
+    {
+        foreach (int candidate in values)
+        {
+            if (candidate == value)
+                return true;
+        }
+        return false;
+    }
+
     public VanillaHousingPlacement Validate(
         int startX,
         int startY,
