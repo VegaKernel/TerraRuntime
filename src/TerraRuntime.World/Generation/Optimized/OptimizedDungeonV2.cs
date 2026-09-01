@@ -76,7 +76,7 @@ internal static class OptimizedDungeonV2
 
         int trapTarget = Math.Clamp(branchRooms.Count, 2, 10);
         int traps = PlaceDartTraps(context.Workspace, branchRooms, trapTarget);
-        int spikeTarget = Math.Clamp(mainRooms.Count * 4, 16, 72);
+        int spikeTarget = Math.Clamp(mainRooms.Count * 3, 12, 72);
         int spikes = PlaceSpikes(context.Workspace, mainRooms, spikeTarget);
         context.ReportProgress(0.82d, "Wiring dungeon traps and placing spikes");
 
@@ -180,7 +180,7 @@ internal static class OptimizedDungeonV2
             double fraction = (i + 1d) / (roomCount + 1d);
             int centerY = usableTop + (int)Math.Round((usableBottom - usableTop) * fraction);
             int horizontalAmplitude = Math.Clamp(bounds.Width / 7, 2, 12);
-            int direction = i % 3 switch { 0 => -1, 1 => 1, _ => 0 };
+            int direction = (i % 3) switch { 0 => -1, 1 => 1, _ => 0 };
             int jitter = NextRange(context.Random, -2, 3);
             int centerX = Math.Clamp(
                 dungeonAnchor.X + direction * horizontalAmplitude + jitter,
@@ -362,7 +362,7 @@ internal static class OptimizedDungeonV2
             int y = room.Bottom - 1;
             for (int x = room.Left + 2; x <= room.Right - 2 && placed < target; x++)
             {
-                if (Math.Abs(x - room.Center.X) <= 2 || ((x + roomIndex) & 1) != 0)
+                if (Math.Abs(x - room.Center.X) <= 2)
                     continue;
                 if (!IsAir(workspace, x, y))
                     continue;
