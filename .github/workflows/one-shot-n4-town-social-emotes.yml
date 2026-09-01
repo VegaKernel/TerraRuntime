@@ -10,6 +10,7 @@ on:
       - '.github/workflows/one-shot-n4-town-social-emotes.yml'
   workflow_dispatch:
 
+# Final source/build/test integration pass after compile fixes.
 permissions:
   contents: write
 
