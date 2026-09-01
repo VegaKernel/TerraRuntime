@@ -223,8 +223,8 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
                 throw new InvalidOperationException("Optimized landmark validation found no opened dungeon entrance.");
             if (CountActiveTile(context.Workspace, Sunplate) < state.SkyHouseTarget * 30)
                 throw new InvalidOperationException("Optimized landmark validation found too little Sunplate sky-house material.");
-            if (CountActiveTile(context.Workspace, SandstoneBrick) < state.PyramidTarget * 30)
-                throw new InvalidOperationException("Optimized landmark validation found too little pyramid material.");
+            if (CountActiveTile(context.Workspace, SandstoneBrick) < state.PyramidTarget * 120)
+                throw new InvalidOperationException("Optimized landmark validation found too little solid pyramid material.");
             if (CountActiveTile(context.Workspace, LivingWood) < state.LivingTreeTarget * 40)
                 throw new InvalidOperationException("Optimized landmark validation found too little Living Wood.");
             if (CountActiveTile(context.Workspace, Ash) < state.UnderworldHouseTarget * 20)
@@ -595,13 +595,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         {
             int y = topY + row;
             int half = Math.Clamp(2 + row * halfBase / Math.Max(1, height - 1), 2, halfBase);
-            for (int x = centerX - half; x <= centerX + half; x++)
-            {
-                if (Math.Abs(x - centerX) >= half - 1 || row <= 1)
-                    SetBlock(context.Workspace, x, y, SandstoneBrick);
-                else
-                    SetAir(context.Workspace, x, y);
-            }
+            WorldGenerationGeometry.FillSolidHorizontal(context.Workspace, centerX - half, centerX + half, y, SandstoneBrick, wall: 0);
         }
         int chamberHalfWidth = Math.Clamp(halfBase / 2, 6, 10);
         int chamberTop = surfaceY + 4;
@@ -615,7 +609,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
             else
                 SetAir(context.Workspace, x, y);
         }
-        for (int y = topY + 3; y <= chamberTop + 1; y++)
+        for (int y = topY; y <= chamberTop + 1; y++)
         {
             int drift = (int)Math.Round(Math.Sin((y - topY) * 0.28d) * 2d);
             for (int x = centerX + drift - 1; x <= centerX + drift + 1; x++)

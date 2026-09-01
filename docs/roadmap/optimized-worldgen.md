@@ -24,7 +24,7 @@ not seed-identical output. The release criterion is a deterministic, official-cl
 
 - [x] coherent multi-octave terrain heightfield;
 - [x] softened/flattened spawn transition without a hard rectangular platform;
-- [x] bounded left/right oceans and beach floor;
+- [x] bounded left/right oceans with continuous solid basin floors and beach transitions;
 - [x] forest baseline;
 - [x] snow biome;
 - [x] desert biome;
@@ -53,7 +53,7 @@ Every mandatory role must have a reserved region or an explicit count/range budg
 - [x] Floating Island houses with persistent custom sky caches;
 - [ ] replace custom sky caches with source-backed vanilla Skyware loot roles;
 - [x] Floating Lakes as a distinct island variant;
-- [x] pyramids with deterministic count budgets, internal shafts/chambers and persistent caches;
+- [x] solid-mass pyramids with deterministic count budgets, carved surface openings/shafts/chambers and persistent caches;
 - [x] Living Wood trees with hollow trunks, roots, underground rooms and persistent caches;
 - [x] bounded Underworld houses plus platform-bridge variation;
 - [ ] extend Underworld settlements with source-backed furniture/loot/resource families;
@@ -102,6 +102,7 @@ because it is fashionable; output quality and cost must be measured.
 - [x] deep-world landmarks (Underworld settlements and micro-biomes);
 - [ ] slope-aware beaches and cliffs;
 - [x] deterministic ordinary forest/jungle/snow trees plus surface undergrowth and sunflower patches, with explicit density budgets and frame-important-object avoidance;
+- [x] share bounded surface probing, clearance, solid-fill and ocean-column integrity primitives across optimized generation layers;
 - [ ] deterministic screenshot/map fixtures for visual regression review;
 - [ ] generation-time and allocation budgets on canonical world sizes.
 
@@ -114,7 +115,7 @@ A generated candidate is rejected before commit if a mandatory element is absent
 - [x] validate hive;
 - [x] validate Aether/Shimmer;
 - [x] validate snow/desert/jungle/world-evil biome material;
-- [x] validate both oceans;
+- [x] validate both oceans for water coverage plus sampled continuous solid basin floors;
 - [x] validate floating-island mass;
 - [x] validate Demon Altar, Hellforge and Hellstone;
 - [x] validate spawn safety with a bounded dry walkable starter area;

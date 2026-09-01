@@ -44,7 +44,7 @@ not silently shift the random stream of an existing pass.
 The optimized profile currently produces and validates:
 
 - a protected central spawn and starting Guide;
-- both oceans and beaches;
+- both oceans and beaches with validated continuous basin floors;
 - forest, snow, desert, jungle, corruption/crimson and underground mushroom regions;
 - an Underworld band with Lava, Hellstone and a Hellforge;
 - small correlated caves plus large warped caverns, vertical shafts and inland underground lakes;
@@ -94,8 +94,8 @@ remain a separate progression task.
 ### Pyramids
 
 Desert surface spans are detected from generated material rather than hard-coded X coordinates. The generator derives a
-world-width-scaled pyramid budget, builds a sandstone-brick shell, opens an internal shaft and chamber, and persists a
-cache inside the chamber.
+world-width-scaled pyramid budget, builds a solid sandstone-brick mass, then carves a surface opening, internal shaft
+and chamber before persisting a cache inside the chamber.
 
 ### Living trees
 

@@ -44,7 +44,7 @@ flowchart TD
 Optimized profile сейчас создаёт и валидирует:
 
 - защищённую центральную spawn-зону и стартового Guide;
-- оба океана и beaches;
+- оба океана и beaches с проверяемым непрерывным дном basin;
 - forest, snow, desert, jungle, corruption/crimson и underground mushroom regions;
 - Underworld band с Lava, Hellstone и Hellforge;
 - малые correlated caves, крупные warped caverns, vertical shafts и inland underground lakes;
@@ -94,7 +94,8 @@ Sky terrain сканируется как отдельные горизонта�
 ### Pyramids
 
 Desert surface spans определяются по реально сгенерированному материалу, а не по захардкоженным X. Генератор выводит
-budget из ширины мира, строит sandstone-brick shell, внутренний shaft и chamber, после чего сохраняет cache внутри.
+budget из ширины мира, сначала строит сплошную sandstone-brick массу, затем вырезает surface opening, внутренний shaft
+и chamber, после чего сохраняет cache внутри.
 
 ### Living trees
 

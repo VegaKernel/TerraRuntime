@@ -77,7 +77,7 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.True(ContainsInteriorWaterBelow(world, (int)result.Metadata.Layers.RockLayer), "Organic cavern generation must include inland underground water.");
 
         Assert.True(CountActiveTiles(world, 202) >= 30, "At least one Sunplate sky house must exist.");
-        Assert.True(CountActiveTiles(world, 151) >= 30, "At least one sandstone-brick pyramid must exist.");
+        Assert.True(CountActiveTiles(world, 151) >= 120, "Optimized pyramids must contain a substantial solid sandstone-brick mass, not only an outline.");
         Assert.True(CountActiveTiles(world, 191) >= 40, "At least one Living Wood structure must exist.");
         Assert.True(CountActiveTiles(world, 57) >= 40, "Underworld settlement material must exist.");
         Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.Granite.Value)) >= 35, "Granite micro-biome budget must exist.");

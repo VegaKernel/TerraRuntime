@@ -660,21 +660,8 @@ public sealed class OptimizedWorldGenerationProvider : IWorldGenerationProvider
                 waterLine + 2,
                 state.RockLayer - 4);
 
-            for (int y = Math.Max(1, waterLine - 8); y < floor; y++)
-            {
-                SetTile(
-                    workspace,
-                    x,
-                    y,
-                    type: 0,
-                    wall: 0,
-                    flags: WorldGenerationTileFlags.None,
-                    liquidAmount: byte.MaxValue,
-                    liquidKind: WorldGenerationLiquidKind.Water);
-            }
-
-            for (int y = floor; y < Math.Min(height - 1, floor + 10); y++)
-                SetTile(workspace, x, y, sand, 0, WorldGenerationTileFlags.Active);
+            int floorDepth = Math.Clamp(height / 80, 12, 28);
+            WorldGenerationGeometry.BuildOceanColumn(workspace, x, Math.Max(1, waterLine - 8), floor, sand, floorDepth);
         }
     }
 
@@ -1150,13 +1137,21 @@ public sealed class OptimizedWorldGenerationProvider : IWorldGenerationProvider
                 {
                     water++;
                     if (water >= 64)
-                        return;
+                        break;
                 }
             }
         }
 
-        throw new InvalidOperationException(
-            $"Optimized generator validation found insufficient {(left ? "left" : "right")} ocean water.");
+        if (water < 64)
+            throw new InvalidOperationException($"Optimized generator validation found insufficient {(left ? "left" : "right")} ocean water.");
+
+        WorldGenerationGeometry.RequireOceanBasin(
+            workspace,
+            left,
+            state.OceanWidth,
+            Math.Max(1, state.BaseSurface - 12),
+            Math.Min(workspace.HeightTiles - 2, state.RockLayer + 32),
+            minimumSolidDepth: 8);
     }
 
     private static void SetTile(

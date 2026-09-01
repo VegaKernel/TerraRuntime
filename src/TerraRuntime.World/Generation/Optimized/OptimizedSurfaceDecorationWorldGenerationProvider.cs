@@ -249,27 +249,12 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
         {
             int start = Math.Clamp((int)Math.Floor(layers.WorldSurface) - 45, 2, workspace.HeightTiles - 3);
             int end = Math.Clamp((int)Math.Ceiling(layers.WorldSurface) + 100, start + 1, workspace.HeightTiles - 2);
-            for (int y = start; y <= end; y++)
-            {
-                if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
-                    (tile.Flags & WorldGenerationTileFlags.Active) != 0)
-                    return y;
-            }
-            return -1;
+            return WorldGenerationGeometry.FindFirstActiveY(workspace, x, start, end);
         }
 
         private static bool IsClearRectangle(IWorldGenerationWorkspace workspace, int left, int top, int width, int height)
         {
-            if (left < 1 || top < 1 || left + width >= workspace.WidthTiles - 1 || top + height >= workspace.HeightTiles - 1)
-                return false;
-            for (int x = left; x < left + width; x++)
-            for (int y = top; y < top + height; y++)
-            {
-                if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile) ||
-                    (tile.Flags & WorldGenerationTileFlags.Active) != 0 || tile.LiquidAmount != 0)
-                    return false;
-            }
-            return true;
+            return WorldGenerationGeometry.IsClearRectangle(workspace, left, top, width, height);
         }
 
         private static bool HasFrameImportantNearby(IWorldGenerationWorkspace workspace, int centerX, int centerY, int radius)
