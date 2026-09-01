@@ -12,7 +12,7 @@ namespace TerraRuntime;
 /// spawn form so a joining client always resets the slot even when its wrapped byte generation happens
 /// to match. Live commits are broadcast only to connections that completed the player spawn transition.
 /// </summary>
-internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRuntimePlayerEventSink
+internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRuntimePlayerEventSink, IRuntimeTownNpcEmoteSink1458
 {
     private const int MaxNpcSlots = RuntimeNpcStore.MaximumAddressableCapacity;
 
@@ -158,6 +158,17 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         if (TerrariaNpcTalkCodec.TryEncode(in state, out byte[] encoded) != TerrariaNpcTalkEncodeResult.Encoded)
             return false;
         BroadcastExcept(connection.Source, encoded);
+        return true;
+    }
+
+    public bool TryPublishEmoteBubble(in TerrariaEmoteBubbleState state)
+    {
+        if (TerrariaEmoteBubbleCodec.TryEncode(in state, out byte[] encoded) != TerrariaEmoteBubbleEncodeResult.Encoded)
+        {
+            Interlocked.Increment(ref unsupportedCommits);
+            return false;
+        }
+        Broadcast(encoded);
         return true;
     }
 
