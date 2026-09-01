@@ -51,6 +51,9 @@ internal static class RuntimeTownNpcWorldFactsProjection1458
             UnlockedSlimeYellowSpawn: metadata.UnlockedSlimeYellowSpawn,
             UnlockedSlimeCopperSpawn: metadata.UnlockedSlimeCopperSpawn,
             BestiaryCompletionPercent: 0f,
-            PartyGirlRollSucceeded: false);
+            PartyGirlRollSucceeded: false)
+        {
+            UnlockedTruffleSpawn = metadata.UnlockedTruffleSpawn
+        };
     }
 }

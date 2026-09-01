@@ -478,12 +478,12 @@ internal sealed class RuntimeTownCommerceResolver1458
         if (world.RemixWorld || npcType.Value is 37 or 368 or 453 ||
             townNpcs is null || !townNpcs.TryGet(npcSlot, out WorldTownNpc town))
         {
-            return new VanillaTownHappinessResult1458(1f, false);
+            return new VanillaTownHappinessResult1458(1f, false, 0, 0);
         }
         if (!VanillaTownNpcFacts1458.TryGetHousingCategory(npcType, out int category) ||
             category == VanillaTownNpcFacts1458.PetHousingCategory)
         {
-            return new VanillaTownHappinessResult1458(1f, false);
+            return new VanillaTownHappinessResult1458(1f, false, 0, 0);
         }
 
         float vendorCenterX = GetNpcCenterTileX(in vendor, npcType);
@@ -530,24 +530,25 @@ internal sealed class RuntimeTownCommerceResolver1458
         float hy = town.HomeTileY - vendorCenterY;
         float distanceFromHome = MathF.Sqrt(hx * hx + hy * hy);
         var happinessContext = new VanillaTownHappinessContext1458(
-            Forest: scene.ShoppingZoneForest,
-            Ocean: scene.ZoneBeach,
-            Snow: scene.ZoneSnow,
-            Desert: scene.ZoneDesert,
-            Jungle: scene.ZoneJungle,
-            Underground: scene.ShoppingZoneBelowSurface,
-            Hallow: scene.ZoneHallow,
-            Mushroom: scene.ZoneGlowshroom,
-            Corruption: scene.ZoneCorrupt,
-            Crimson: scene.ZoneCrimson,
-            Dungeon: scene.ZoneDungeon,
             RemixWorld: world.RemixWorld,
             LoveStruck: false,
             Homeless: town.Homeless,
             DistanceFromHomeTiles: distanceFromHome,
             NpcsWithinHouse: house,
-            NpcsWithinVillage: village);
-        return VanillaTownHappiness1458.Evaluate(npcType, in happinessContext, nearby.ToArray());
+            NpcsWithinVillage: village,
+            Biomes: new VanillaTownHappinessBiomeState1458(
+                Forest: scene.ShoppingZoneForest,
+                Ocean: scene.ZoneBeach,
+                Snow: scene.ZoneSnow,
+                Desert: scene.ZoneDesert,
+                Jungle: scene.ZoneJungle,
+                Underground: scene.ShoppingZoneBelowSurface,
+                Hallow: scene.ZoneHallow,
+                Mushroom: scene.ZoneGlowshroom,
+                Corruption: scene.ZoneCorrupt,
+                Crimson: scene.ZoneCrimson,
+                Dungeon: scene.ZoneDungeon));
+        return VanillaTownHappiness1458.Resolve(npcType, in happinessContext, nearby.ToArray());
     }
 
     private bool HasEnoughTownNpcsForPylon(int centerX, int centerY)

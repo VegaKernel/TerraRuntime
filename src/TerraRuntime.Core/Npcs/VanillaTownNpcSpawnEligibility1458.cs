@@ -60,6 +60,9 @@ public readonly record struct VanillaTownSpawnWorldFacts1458(
     float BestiaryCompletionPercent,
     bool PartyGirlRollSucceeded)
 {
+    /// <summary>Persisted TerrariaServer 1.4.5.8 NPC.unlockedTruffleSpawn state.</summary>
+    public bool UnlockedTruffleSpawn { get; init; }
+
     public bool IsValid =>
         float.IsFinite(BestiaryCompletionPercent) &&
         BestiaryCompletionPercent is >= 0f and <= 1f;

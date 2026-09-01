@@ -8,7 +8,7 @@ The runtime loads the persistent town roster and room mapping into `RuntimeTownN
 
 Client packet `60` (`UpdateNpcHome`) is decoded as the exact seven-byte Terraria 1.4.5.8 payload. A client may request an assignment (`status = 0`) or kick-out (`status = 1`). `status = 2` remains server-authored state. Requests are accepted only from a playing connection and are committed on the authoritative game thread.
 
-Housing assignment uses a clean-room source-shaped room check with the pinned room flood bounds, minimum/maximum room size, safe-wall continuity, `RoomNeeds` chair/table/torch/door sets, stinkbug restriction, evil-room score, standing-position selection and TownRoomManager housing-category occupancy. Ordinary residents cannot occupy the same room; a town pet/slime may share a room with an ordinary resident, matching the source housing-category rule. Truffle assignment currently fails closed because its complete mushroom-scene/unlock condition is not yet runtime-owned.
+Housing assignment uses a clean-room source-shaped room check with the pinned room flood bounds, minimum/maximum room size, safe-wall continuity, `RoomNeeds` chair/table/torch/door sets, stinkbug restriction, evil-room score, standing-position selection and TownRoomManager housing-category occupancy. Ordinary residents cannot occupy the same room; a town pet/slime may share a room with an ordinary resident, matching the source housing-category rule. Truffle assignment follows the pinned 1.4.5.8 gate: a first move-in requires a functional surface room unless `Main.NoFunctionalSurface`, every accepted room needs at least 100 active mushroom tiles (`70`, `71`, `72`, `528`) inside the source-tested bounds, and the successful unlock is journaled into the lossless `.wld` header patch path.
 
 Home-state commits are replicated as packet `60` to playing peers and retained as reconnect baselines. Save snapshots now detach both `WorldNpcPersistence` and `WorldTownRoom[]`; the lossless world rewriter replaces the NPC and town-room sections together with tiles/chests/signs instead of preserving stale household bytes.
 
@@ -31,3 +31,9 @@ This slice does **not** claim full town AI parity. AI style `7` defaults are adm
 Packet 40 (`SetNpcTalk`) is now decoded on the connection boundary, posted to the authoritative loop and re-encoded with the authenticated player slot before replication. The client-provided player byte is never accepted as authority. NPC slot `-1` closes the conversation; live wire slots are bounded to `0..199`.
 
 The ordinary vendor inventory table is guarded by a pinned TerrariaServer 1.4.5.8 `Chest.SetupShop` source contract in CI. Cases `1..18`, including the Santa and Painter range loops, must keep their exact source item sequence.
+
+### Authoritative talk-to-shop mirror
+
+Packet 40 now mirrors the server side of `Player.SetTalkNPC`: after authenticating the player slot, the authoritative game thread resolves the live NPC, snapshots packet-5 inventory/vitals/team state, scans the pinned `169x124` SceneMetrics window around the player, computes source-shaped housing crowding and numeric happiness, and resolves the ordinary `Chest.SetupShop` catalog or supported special shop into an immutable per-player session. Closing the conversation clears the session, and disconnect cannot leak it across a reused player generation.
+
+The mirror is deliberately honest about still-unowned inputs. `LoveStruck`, live wind/weather, Golfer score, full Bestiary/Fairy Torch state, Artisan Bread and Traveling Merchant `travelShop` data are represented as explicit missing-fact flags rather than fabricated defaults being advertised as parity.

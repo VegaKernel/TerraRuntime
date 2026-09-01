@@ -53,9 +53,12 @@ internal sealed class VanillaHousingValidator1458
     private static ReadOnlySpan<int> IgnoredHouseScoreTypes => [4, 3, 73, 82, 83, 84, 386];
 
     private readonly WorldTileStore tiles;
+    private bool truffleUnlocked;
 
     public VanillaHousingValidator1458(WorldTileStore tiles) =>
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
+
+    internal void SetTruffleUnlocked(bool unlocked) => truffleUnlocked = unlocked;
 
     internal static bool IsPotentialRoomAnchorType(int type) =>
         Contains(ChairTypes, type) ||
@@ -237,16 +240,30 @@ internal sealed class VanillaHousingValidator1458
         int startY,
         int endY)
     {
-        _ = roomY2;
-        _ = startX;
-        _ = endX;
-        _ = startY;
-        _ = endY;
+        if (npcType != VanillaNpcIds.Truffle)
+            return true;
 
-        // TerrariaServer has an additional Truffle-only mushroom-biome/unlock gate. The runtime does not yet own
-        // NPC.unlockedTruffleSpawn/NoFunctionalSurface or the complete SceneMetrics mushroom threshold contract, so
-        // Truffle room moves deliberately fail closed instead of approximating that irreversible assignment rule.
-        return npcType != VanillaNpcIds.Truffle;
+        double worldSurface = tiles.WorldSurfaceTiles ?? Math.Max(1d, tiles.Dimensions.HeightTiles / 3d);
+        if (!truffleUnlocked && roomY2 > worldSurface && worldSurface > 30d)
+            return false;
+
+        int mushroomTiles = 0;
+        for (int x = startX + 1; x < endX; x++)
+        {
+            for (int y = startY + 2; y < endY + 2; y++)
+            {
+                WorldTile tile = tiles.Get(x, y);
+                bool mushroom = tile.Type == 70 || tile.Type == 71 || tile.Type == 72 || tile.Type == 528;
+                if (tile.IsActive && mushroom)
+                {
+                    mushroomTiles++;
+                    if (mushroomTiles >= 100)
+                        return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private int CalculateBaseRoomScore(int startX, int endX, int startY, int endY)
