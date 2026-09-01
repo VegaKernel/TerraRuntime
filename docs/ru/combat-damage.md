@@ -142,3 +142,12 @@ Executor разрешает полную definition по положительн�
 ## 9. Проверка
 
 Фокусные тесты закрепляют валидацию формы источника, расчёт защиты Blue Slime, применение armor penetration до critical multiplier, минимум в один damage, lethal commit в zero Life, rejection stale generation и защиту от integer overflow. Regression-сценарии также закрепляют `justHit`, направление от источника атаки, strong/weak и expert thresholds, gravity-aware vertical velocity, ordered soft caps до critical amplification, boss с нулевой resistance и variant-specific resistance выше `1`. Эти сценарии падают при прежней аппроксимации `(1 - resistance)`/NPC-direction. Ожидаемые переходы прослежены до TerrariaServer 1.4.5.8 `NPC.StrikeNPC_Inner`; для оставшихся правил всё ещё требуется differential evidence до заявления о более широком combat parity.
+
+
+## Live integration packet 28
+
+Production теперь декодирует packet 28 TerrariaServer 1.4.5.8 в существующем bounded gameplay ingress. Authoritative owner отправляет acknowledgement packet 162 до generation resolution, сравнивает wrapped wire generation 1..255 с текущим runtime handle, отмечает player interaction до strike, clamp'ит отрицательный wire damage в zero и применяет существующий resolver defense/critical/knockback.
+
+Для lethal deaths с уже импортированным loot NPC-specific drops materialize до death effects. King Slime normal/Expert/Master использует существующие source-backed loot evaluators и instanced-item transport; после loot выполняются остановка Slime Rain, unlock blue town slime/Nerdy spawn и progression downed King Slime, затем generation NPC despawn'ится. Packet 28 relay идёт после этих server-side effects, а packet 23 следует за ним как death sync; synchronous packet-23 commit store подавляется только для exact generation этого NPC.
+
+Это не заявка на полный Terraria `NPCLoot`: money, hearts, banners, bestiary, generic global drop rules, segmented `realLife` death sync и все boss-specific death events остаются отдельной compatibility работой.

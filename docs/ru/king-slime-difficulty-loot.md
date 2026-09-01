@@ -28,7 +28,7 @@ Environment/server/NPC damage не выдаёт игроку interaction credit.
 
 `RuntimeKingSlimeDifficultyLootDeliverySink` теперь реализует эту transport boundary. Предмет materialize-ится тем же source-backed world-item materializer, затем резервируется неопубликованный точный slot, packet 90 кодируется с byte-for-byte payload формата packet 21 и отправляется только указанным playing player slots. `RuntimeWorldItemInstancedLeaseStore` удерживает reservation, поэтому обычный item allocator не может переиспользовать этот slot, пока существует instanced client copy.
 
-Когда lease достигает нуля, `TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease` формирует пятибайтовый packet 151 с освобождённым item slot. Оставшаяся runtime-интеграция — тикать эти leases в авторитетной item-update phase; wire contract и lease semantics уже конкретны.
+Когда lease достигает нуля, `TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease` формирует пятибайтовый packet 151 с освобождённым item slot. Production теперь продвигает leases один раз за авторитетную item phase после NPC и projectile phases, поэтому Boss Bag, созданный при смерти NPC, расходует первый lease tick в том же world update, как в исходном item loop.
 
 ## Master relic
 
@@ -55,4 +55,4 @@ TerraRuntime сохраняет этот порядок, включая чере
 
 `RuntimeKingSlimeDifficultyLootFinalizer` принимает только мёртвую generation King Slime в Expert/Master context. Он фиксирует активных взаимодействовавших игроков, выполняет difficulty rules в исходном порядке и despawn-ит точную NPC generation только после успешной доставки. Normal mode остаётся во владении существующей normal-loot transaction.
 
-Rule semantics, packet-90/151 wire representation и leased-slot storage теперь явные. Открытой остаётся интеграция с live packet-28/playerInteraction combat/death ingress и авторитетный lease ticking. Остановка Slime Rain и first-kill Nerdy Slime world effects закрываются отдельным committed death-progression срезом.
+Rule semantics, packet-90/151 wire representation, leased-slot storage и live runtime boundary теперь соединены. Packet 28 входит через bounded gameplay ingress, записывает `playerInteraction` до strike resolution, выполняет реализованный Expert/Master loot до death effects King Slime, затем relay-ит strike и death sync в исходном порядке. Остановка Slime Rain, first-kill Nerdy Slime и progression остаются частью той же авторитетной death transaction.

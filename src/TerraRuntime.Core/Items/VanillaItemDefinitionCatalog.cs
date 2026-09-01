@@ -174,6 +174,42 @@ public static class VanillaItemDefinitionCatalog
             NoGravity: false,
             PrefixFamily: VanillaItemPrefixFamily.Summon));
 
+    private static readonly VanillaItemDefinition KingSlimeBossBagDefinition = new(
+        Type: VanillaKingSlimeItemIds.KingSlimeBossBag,
+        RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 24, Height: 24, MaximumStack: CommonMaximumStack),
+        UseTiming: null,
+        Placement: null,
+        PickTool: null,
+        WorldDrop: new VanillaItemWorldDropDefinition(
+            Width: 24,
+            Height: 24,
+            NoGravity: false,
+            PrefixFamily: VanillaItemPrefixFamily.None));
+
+    private static readonly VanillaItemDefinition KingSlimePetItemDefinition = new(
+        Type: VanillaKingSlimeItemIds.KingSlimePetItem,
+        RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 16, Height: 30, MaximumStack: CommonMaximumStack),
+        UseTiming: null,
+        Placement: null,
+        PickTool: null,
+        WorldDrop: new VanillaItemWorldDropDefinition(
+            Width: 16,
+            Height: 30,
+            NoGravity: false,
+            PrefixFamily: VanillaItemPrefixFamily.None));
+
+    private static readonly VanillaItemDefinition KingSlimeMasterTrophyDefinition = new(
+        Type: VanillaKingSlimeItemIds.KingSlimeMasterTrophy,
+        RuntimeDefaults: new VanillaItemRuntimeDefaults(Width: 14, Height: 14, MaximumStack: CommonMaximumStack),
+        UseTiming: null,
+        Placement: null,
+        PickTool: null,
+        WorldDrop: new VanillaItemWorldDropDefinition(
+            Width: 14,
+            Height: 14,
+            NoGravity: false,
+            PrefixFamily: VanillaItemPrefixFamily.None));
+
     public static bool TryGet(ItemTypeId type, out VanillaItemDefinition definition)
     {
         if (type == VanillaItemIds.DirtBlock)
@@ -209,6 +245,24 @@ public static class VanillaItemDefinitionCatalog
         if (type == VanillaItemIds.SlimeStaff)
         {
             definition = SlimeStaffDefinition;
+            return true;
+        }
+
+        if (type == VanillaKingSlimeItemIds.KingSlimeBossBag)
+        {
+            definition = KingSlimeBossBagDefinition;
+            return true;
+        }
+
+        if (type == VanillaKingSlimeItemIds.KingSlimePetItem)
+        {
+            definition = KingSlimePetItemDefinition;
+            return true;
+        }
+
+        if (type == VanillaKingSlimeItemIds.KingSlimeMasterTrophy)
+        {
+            definition = KingSlimeMasterTrophyDefinition;
             return true;
         }
 

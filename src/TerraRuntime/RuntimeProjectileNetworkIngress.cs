@@ -12,6 +12,11 @@ internal interface IProjectileNetworkIngress
     bool TryPostDestroy(ConnectionHandle connection, in TerrariaProjectileDestroyState state);
 }
 
+internal interface INpcDamageNetworkIngress
+{
+    bool TryPostNpcDamage(ConnectionHandle connection, in TerrariaNpcDamageState state);
+}
+
 /// <summary>
 /// Connection-authenticated projectile packet ingress. The production instance also carries packet-17 tile state and
 /// packet-79 object placement through the same bounded authoritative command ingress. Exact entity lookup, inventory
@@ -20,6 +25,7 @@ internal interface IProjectileNetworkIngress
 internal sealed class RuntimeProjectileNetworkIngress :
     RuntimeTileNetworkIngress,
     IProjectileNetworkIngress,
+    INpcDamageNetworkIngress,
     IObjectPlacementNetworkIngress
 {
     public RuntimeProjectileNetworkIngress(IGameCommandIngress<RuntimeCommand> ingress)
@@ -45,6 +51,16 @@ internal sealed class RuntimeProjectileNetworkIngress :
         return Ingress.TryPost(
             connection.Source,
             new ClientProjectileDestroyRuntimeCommand(connection, state));
+    }
+
+    public bool TryPostNpcDamage(ConnectionHandle connection, in TerrariaNpcDamageState state)
+    {
+        if (!connection.IsAssigned || !state.IsStructurallyValid)
+            return false;
+
+        return Ingress.TryPost(
+            connection.Source,
+            new ClientNpcDamageRuntimeCommand(connection, state));
     }
 
     public bool TryPost(ConnectionHandle connection, in TerrariaPlaceObjectState state)

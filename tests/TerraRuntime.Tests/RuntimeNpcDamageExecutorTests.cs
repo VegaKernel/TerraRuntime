@@ -227,6 +227,19 @@ public sealed class RuntimeNpcDamageExecutorTests
     }
 
     [Fact]
+    public void Zero_source_damage_still_resolves_to_vanilla_minimum_one()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot target = SpawnZombie(store);
+        var executor = new RuntimeNpcDamageExecutor(store);
+        var request = new NpcDamageRequest(target.Handle, DamageSource.Server, BaseDamage: 0);
+
+        Assert.True(executor.TryApply(in request, out NpcDamageResult result));
+        Assert.Equal(1, result.ResolvedDamage);
+        Assert.Equal(44, result.LifeAfter);
+    }
+
+    [Fact]
     public void Defense_never_reduces_a_valid_hit_below_one_damage()
     {
         var store = new RuntimeNpcStore(capacity: 4);

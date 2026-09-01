@@ -456,6 +456,7 @@ public static class TerrariaServerHost
             worldItems: worldItems,
             projectileReplication: projectileReplication,
             npcReplication: npcReplication,
+            worldItemReplication: worldItemReplication,
             townNpcs: townNpcStore,
             townSpawnWorldFacts: RuntimeTownNpcWorldFactsProjection1458.FromMetadata(world.RuntimeMetadata),
             townInitialRaining: world.RuntimeMetadata.Raining,
@@ -469,7 +470,8 @@ public static class TerrariaServerHost
             npcArchetypeIdentities: npcArchetypeIdentities,
             expertMode: world.RuntimeMetadata.GameMode is
                 (byte)WorldGenerationGameMode.Expert or
-                (byte)WorldGenerationGameMode.Master);
+                (byte)WorldGenerationGameMode.Master,
+            masterMode: world.RuntimeMetadata.GameMode == (byte)WorldGenerationGameMode.Master);
         using var sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,
             bootstrapPackets,

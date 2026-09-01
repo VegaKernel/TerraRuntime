@@ -26,8 +26,10 @@ public enum TerrariaMessageId : byte
     TileSquare = 20,
     WorldItemDrop = 21,
     WorldItemOwner = 22,
+    NpcUpdate = 23,
     ChatMessage = 25,
     ProjectileNew = 27,
+    NpcDamage = 28,
     ProjectileDestroy = 29,
     RequestChestOpen = 31,
     SyncChestItem = 32,
@@ -44,5 +46,7 @@ public enum TerrariaMessageId : byte
     SyncPlayerChestIndex = 80,
     LoadNetModule = 82,
     FinishedConnectingToServer = 129,
-    SyncChestSize = 155
+    InstancedItemSlotRelease = 151,
+    SyncChestSize = 155,
+    NpcDamageAck = 162
 }

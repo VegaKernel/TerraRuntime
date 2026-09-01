@@ -28,7 +28,7 @@ The pinned King Slime rule is `BossBag(3318)`. On the server it resolves to `Dro
 
 `RuntimeKingSlimeDifficultyLootDeliverySink` now implements that transport boundary. It materializes the item through the same source-backed world-item materializer, reserves an unpublished exact slot, encodes packet 90 with the byte-for-byte packet-21 payload shape, and sends it only to the requested playing player slots. The reservation is represented by `RuntimeWorldItemInstancedLeaseStore`, so ordinary item allocation cannot reuse the slot while the instanced client copy exists.
 
-When a lease reaches zero, `TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease` emits the five-byte packet 151 contract carrying the released item slot. The remaining runtime integration task is to advance these leases from the authoritative item-update phase; the encoder and lease semantics themselves are concrete.
+When a lease reaches zero, `TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease` emits the five-byte packet 151 contract carrying the released item slot. Production advances these leases once per authoritative item phase, after NPC and projectile phases, so a Boss Bag created during NPC death consumes its first lease tick in the same world update just like the source item loop.
 
 ## Master relic
 
@@ -55,4 +55,4 @@ TerraRuntime preserves that ordering, including the interleaving between success
 
 `RuntimeKingSlimeDifficultyLootFinalizer` accepts only dead King Slime generations in Expert/Master contexts. It captures active interacting players, executes the ordered difficulty rules and despawns the exact NPC generation only after delivery succeeds. Normal mode remains owned by the existing normal-loot transaction.
 
-The rule semantics, packet-90/151 wire representation and leased-slot storage are now explicit. The remaining integration boundary is live packet-28/playerInteraction combat/death ingress plus authoritative lease ticking; King Slime's Slime Rain stop and first-kill Nerdy Slime world effects are covered by the separate committed death-progression slice.
+The rule semantics, packet-90/151 wire representation, leased-slot storage and live runtime boundary are now connected. Packet 28 enters the bounded gameplay ingress, records `playerInteraction` before strike resolution, executes the implemented Expert/Master loot before King Slime death effects, then relays the strike and death sync in source order. Slime Rain stop, first-kill Nerdy Slime and progression remain part of the same authoritative death transaction.

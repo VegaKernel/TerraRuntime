@@ -1,0 +1,167 @@
+using System.Buffers;
+using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
+using TerraRuntime.Network;
+using TerraRuntime.Protocol;
+using TerraRuntime.Protocol.Multiplicity;
+
+namespace TerraRuntime.Tests;
+
+public sealed class NpcDamageLifecycleFrameSinkTests
+{
+    [Fact]
+    public void Playing_session_routes_packet_28_with_authenticated_connection_identity()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(9901);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var ingress = new CapturingIngress();
+        var sink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+        var expected = new TerrariaNpcDamageState(17, 9, 123, 4.5f, 0, 1);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(DamageFrame(in expected)));
+
+        Assert.Equal(1, ingress.NpcDamageCount);
+        Assert.Equal(source, ingress.Connection.Source);
+        Assert.Equal(new PlayerSlotId(0), ingress.Connection.Player.Slot);
+        Assert.Equal(expected, ingress.NpcDamage);
+        Assert.Equal(ProjectileLifecycleFrameStopReason.None, sink.StopReason);
+    }
+
+    [Fact]
+    public void Packet_28_before_playing_stops_connection_without_game_command()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(9902);
+        using PlayerBootstrapFrameSink bootstrap = CreateBootstrap(source);
+        var ingress = new CapturingIngress();
+        var sink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+        var state = new TerrariaNpcDamageState(1, 1, 10, 0f, 1, 0);
+
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(DamageFrame(in state)));
+        Assert.Equal(ProjectileLifecycleFrameStopReason.InvalidJoinState, sink.StopReason);
+        Assert.Equal(0, ingress.NpcDamageCount);
+    }
+
+    [Fact]
+    public void Malformed_packet_28_is_protocol_failure_and_never_reaches_authoritative_ingress()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(9903);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var ingress = new CapturingIngress();
+        var sink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+        TerrariaFrame malformed = Frame(TerrariaMessageId.NpcDamage, new byte[9]);
+
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(in malformed));
+        Assert.Equal(ProjectileLifecycleFrameStopReason.MalformedNpcDamage, sink.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.MalformedProtocol, sink.RejectionCategory);
+        Assert.Equal(0, ingress.NpcDamageCount);
+    }
+
+    [Fact]
+    public void Packet_28_backpressure_stops_connection()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(9904);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var sink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), new RejectingIngress());
+        var state = new TerrariaNpcDamageState(1, 1, 10, 0f, 1, 0);
+
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(DamageFrame(in state)));
+        Assert.Equal(ProjectileLifecycleFrameStopReason.GameIngressBackpressure, sink.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.Backpressure, sink.RejectionCategory);
+    }
+
+    private static TerrariaFrame DamageFrame(in TerrariaNpcDamageState state)
+    {
+        Assert.Equal(TerrariaNpcDamageEncodeResult.Encoded, TerrariaNpcDamageCodec.TryEncode(in state, out byte[] encoded));
+        var buffer = new ReadOnlySequence<byte>(encoded);
+        Assert.Equal(TerrariaFrameReadResult.Frame, TerrariaFrameDecoder.TryRead(ref buffer, out TerrariaFrame frame));
+        Assert.True(buffer.IsEmpty);
+        return frame;
+    }
+
+    private static PlayerBootstrapFrameSink CreatePlayingBootstrap(GameCommandSourceId source)
+    {
+        PlayerBootstrapFrameSink bootstrap = CreateBootstrap(source);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Hello()));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(TerrariaMessageId.RequestWorldData, [])));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(TerrariaMessageId.SpawnTileData, new byte[9])));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(PlayerSpawn()));
+        Assert.Equal(PlayerJoinState.Playing, bootstrap.JoinState);
+        return bootstrap;
+    }
+
+    private static PlayerBootstrapFrameSink CreateBootstrap(GameCommandSourceId source) =>
+        new(
+            new PlayerSlotPool(1),
+            new TerrariaConnectionOutboundQueue(
+                new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 8_192, maxFrameBytes: 2_048)),
+            PlayerBootstrapPacketSet.CreateForTesting(
+                new byte[] { 3, 0, (byte)TerrariaMessageId.WorldData },
+                Array.Empty<ReadOnlyMemory<byte>>(),
+                new byte[] { 3, 0, (byte)TerrariaMessageId.PlayerSpawnSelf }),
+            source,
+            new CommittingSpawnIngress());
+
+    private static TerrariaFrame Hello() =>
+        Frame(
+            TerrariaMessageId.Hello,
+            [
+                11,
+                (byte)'T', (byte)'e', (byte)'r', (byte)'r', (byte)'a', (byte)'r', (byte)'i', (byte)'a',
+                (byte)'3', (byte)'2', (byte)'6'
+            ]);
+
+    private static TerrariaFrame PlayerSpawn()
+    {
+        byte[] payload = new byte[TerrariaJoinRequestDecoder.PlayerSpawnPayloadLength];
+        payload[0] = 0;
+        System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(1), 100);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(3), 200);
+        return Frame(TerrariaMessageId.PlayerSpawn, payload);
+    }
+
+    private static TerrariaFrame Frame(TerrariaMessageId id, byte[] payload) =>
+        new(
+            checked((ushort)(TerrariaFrameDecoderOptions.MinimumFrameLength + payload.Length)),
+            (byte)id,
+            ReadOnlySequence<byte>.Empty,
+            new ReadOnlySequence<byte>(payload));
+
+    private sealed class CommittingSpawnIngress : IPlayerSpawnCommitIngress
+    {
+        public bool TryPost(
+            GameCommandSourceId source,
+            PlayerJoinSession session,
+            in PlayerSpawnCommitRequest request) =>
+            session.TryCommitSpawn(request.ClaimedSlot) == PlayerSpawnCommitResult.Committed;
+    }
+
+    private sealed class PassthroughSink : ITerrariaFrameSink
+    {
+        public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame) => TerrariaFrameSinkResult.Continue;
+    }
+
+    private sealed class CapturingIngress : IProjectileNetworkIngress, INpcDamageNetworkIngress
+    {
+        public int NpcDamageCount { get; private set; }
+        public ConnectionHandle Connection { get; private set; }
+        public TerrariaNpcDamageState NpcDamage { get; private set; }
+
+        public bool TryPostUpdate(ConnectionHandle connection, in TerrariaProjectileUpdateState state) => true;
+        public bool TryPostDestroy(ConnectionHandle connection, in TerrariaProjectileDestroyState state) => true;
+
+        public bool TryPostNpcDamage(ConnectionHandle connection, in TerrariaNpcDamageState state)
+        {
+            NpcDamageCount++;
+            Connection = connection;
+            NpcDamage = state;
+            return true;
+        }
+    }
+
+    private sealed class RejectingIngress : IProjectileNetworkIngress, INpcDamageNetworkIngress
+    {
+        public bool TryPostUpdate(ConnectionHandle connection, in TerrariaProjectileUpdateState state) => false;
+        public bool TryPostDestroy(ConnectionHandle connection, in TerrariaProjectileDestroyState state) => false;
+        public bool TryPostNpcDamage(ConnectionHandle connection, in TerrariaNpcDamageState state) => false;
+    }
+}
