@@ -73,50 +73,48 @@ jobs:
                   return default;
               }
 
-              ReadOnlySpan<int> offsets = [12, -12, 22, -22, 34, -34, 46, -46];
-              foreach (int offset in offsets)
+              ReadOnlySpan<int> verticalOffsets = [0, -12, 12, -24, 24, -36, 36];
+              ReadOnlySpan<int> horizontalOffsets = [14, -14, 26, -26, 38, -38, 50, -50];
+              foreach (int verticalOffset in verticalOffsets)
               {
-                  int centerX = forge.X + offset;
-                  int centerY = forge.Y;
-                  if (!CanBuildForgePocket(context.Workspace, forge, centerX, centerY))
-                      continue;
-
-                  const int radiusX = 8;
-                  const int radiusY = 5;
-                  for (int dx = -radiusX; dx <= radiusX; dx++)
-                  for (int dy = -radiusY; dy <= radiusY; dy++)
+                  foreach (int horizontalOffset in horizontalOffsets)
                   {
-                      if (dx * dx / 64d + dy * dy / 25d <= 1d)
-                          SetAir(context.Workspace, centerX + dx, centerY + dy);
-                  }
+                      int centerX = forge.X + horizontalOffset;
+                      int centerY = forge.Y + verticalOffset;
+                      if (!CanBuildForgePocket(context.Workspace, centerX, centerY))
+                          continue;
 
-                  int chamberEdge = centerX > forge.X ? centerX - radiusX : centerX + radiusX;
-                  int forgeEdge = centerX > forge.X ? forge.X + 3 : forge.X - 1;
-                  for (int x = Math.Min(forgeEdge, chamberEdge); x <= Math.Max(forgeEdge, chamberEdge); x++)
-                  for (int y = centerY - 1; y <= centerY + 1; y++)
-                      SetAir(context.Workspace, x, y);
-
-                  int obsidian = 0;
-                  int hellstone = 0;
-                  for (int row = 0; row < 4 && (obsidian < obsidianTarget || hellstone < 8); row++)
-                  {
-                      int y = centerY + radiusY + row;
-                      for (int x = centerX - radiusX + 1; x <= centerX + radiusX - 1; x++)
+                      const int radiusX = 8;
+                      const int radiusY = 5;
+                      for (int dx = -radiusX; dx <= radiusX; dx++)
+                      for (int dy = -radiusY; dy <= radiusY; dy++)
                       {
-                          if (obsidian < obsidianTarget)
+                          if (dx * dx / 64d + dy * dy / 25d <= 1d)
+                              SetAir(context.Workspace, centerX + dx, centerY + dy);
+                      }
+
+                      int obsidian = 0;
+                      int hellstone = 0;
+                      for (int row = 0; row < 4 && (obsidian < obsidianTarget || hellstone < 8); row++)
+                      {
+                          int y = centerY + radiusY + row;
+                          for (int x = centerX - radiusX + 1; x <= centerX + radiusX - 1; x++)
                           {
-                              SetBlock(context.Workspace, x, y, checked((ushort)VanillaTileIds.Obsidian.Value));
-                              obsidian++;
-                          }
-                          else if (hellstone < 8)
-                          {
-                              SetBlock(context.Workspace, x, y, Hellstone);
-                              hellstone++;
+                              if (obsidian < obsidianTarget)
+                              {
+                                  SetBlock(context.Workspace, x, y, checked((ushort)VanillaTileIds.Obsidian.Value));
+                                  obsidian++;
+                              }
+                              else if (hellstone < 8)
+                              {
+                                  SetBlock(context.Workspace, x, y, Hellstone);
+                                  hellstone++;
+                              }
                           }
                       }
-                  }
 
-                  return new ForgePocketResult(obsidian, hellstone);
+                      return new ForgePocketResult(obsidian, hellstone);
+                  }
               }
 
               return default;
@@ -124,7 +122,6 @@ jobs:
 
           private static bool CanBuildForgePocket(
               IWorldGenerationWorkspace workspace,
-              WorldGenerationPoint forge,
               int centerX,
               int centerY)
           {
@@ -136,12 +133,7 @@ jobs:
                   return false;
               }
 
-              int chamberEdge = centerX > forge.X ? centerX - 8 : centerX + 8;
-              int forgeEdge = centerX > forge.X ? forge.X + 3 : forge.X - 1;
-              int scanLeft = Math.Min(centerX - radiusX, Math.Min(forgeEdge, chamberEdge));
-              int scanRight = Math.Max(centerX + radiusX, Math.Max(forgeEdge, chamberEdge));
-
-              for (int x = scanLeft; x <= scanRight; x++)
+              for (int x = centerX - radiusX; x <= centerX + radiusX; x++)
               for (int y = centerY - radiusY; y <= centerY + radiusY; y++)
               {
                   if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile))
@@ -151,7 +143,7 @@ jobs:
                   {
                       return false;
                   }
-                  if ((tile.Flags & WorldGenerationTileFlags.Active) == 0 || tile.Type == VanillaTileIds.Hellforge.Value)
+                  if ((tile.Flags & WorldGenerationTileFlags.Active) == 0)
                       continue;
                   if (VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
                       return false;
