@@ -307,6 +307,22 @@ public static class VanillaWorldGenerationValidator1458
                 return new(VanillaWorldValidationStatus.OceanBoundsViolation, $"Ocean water insufficient left={waterTilesLeft} right={waterTilesRight}.");
             if (sandTilesLeft < 50 || sandTilesRight < 50)
                 return new(VanillaWorldValidationStatus.OceanBoundsViolation, $"Ocean sand insufficient left={sandTilesLeft} right={sandTilesRight}.");
+
+            VanillaOceanIntegrityResult1458 leftIntegrity = VanillaOceanIntegrity1458.Validate(
+                store,
+                leftBeach,
+                left: true,
+                metadata.Layers.WorldSurface);
+            if (!leftIntegrity.IsValid)
+                return new(VanillaWorldValidationStatus.OceanBoundsViolation, leftIntegrity.Detail);
+
+            VanillaOceanIntegrityResult1458 rightIntegrity = VanillaOceanIntegrity1458.Validate(
+                store,
+                rightBeach,
+                left: false,
+                metadata.Layers.WorldSurface);
+            if (!rightIntegrity.IsValid)
+                return new(VanillaWorldValidationStatus.OceanBoundsViolation, rightIntegrity.Detail);
         }
 
         return new(VanillaWorldValidationStatus.Valid, null);

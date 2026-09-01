@@ -17,11 +17,11 @@ For Terraria's canonical world dimensions $4200 \times 1200$, $6400 \times 1800$
 9. `Clean Up Dirt`
 10. `Pyramids`
 
-The production plan now contains 49 runtime entries. That count includes runtime migration identities such as `Reset`, `TerrainLayers`, the isolated ocean residual, and compatibility barriers; it is not a claim that Terraria itself has 49 passes.
+The production plan now contains 49 runtime entries. That count includes runtime migration identities such as `Reset`, `TerrainLayers`, and compatibility barriers; it is not a claim that Terraria itself has 49 passes.
 
 ```mermaid
 graph LR
-    S[Slush] --> B[compat ocean residual]
+    S[Slush] --> B[compat Biomes barrier]
     B --> C[compat Caves barrier]
     C --> O[Shinies-owned Ores barrier]
     O --> D0[Dual Dungeons Dither Snake]
@@ -55,7 +55,7 @@ This is still a clean-room source-shaped implementation, not byte-for-byte `Worl
 
 `Beaches` uses the Reset-owned `LeftBeachEnd` and `RightBeachStart` boundaries instead of inventing new edge widths. It shapes sand and the waterline at both world edges. `Create Ocean Caves` then carves cave entrances from those same beach regions.
 
-The older aggregate `Biomes` implementation remains only as an isolated ocean residual. It cannot advance the shared vanilla RNG stream and cannot repaint interior Jungle, Desert, evil-biome, or Underworld state.
+The older aggregate `Biomes` identity remains only as a no-write compatibility barrier. `Beaches` owns the ocean body at the pinned pass position; the barrier cannot advance shared vanilla RNG or repaint any biome.
 
 ## Gems, gravity, Shimmer, and pyramids
 

@@ -70,7 +70,7 @@ Final cleanup rejects out-of-catalog tile/wall identities and unknown runtime ti
 - `Finalized` is returned only when the structural validator reports `Valid`;
 - any `InvalidTileType`, `InvalidWallType`, `InvalidLiquid`, orphan frame-important object, chest-anchor mismatch, duplicate chest, out-of-bounds object, dungeon/temple absence, ocean-bounds violation or spawn/beam invalidity yields `ValidationFailed` and the candidate is discarded without ever reaching `WorldFileFreshComposer326`.
 
-For canonical ordinary worlds the validator additionally checks biome presence (`$147$` snow, `$59$`/`$60$` jungle, `$53$` desert), active-tile density, and per-beach `$30$` water / `$50$` sand minima derived from `LeftBeachEnd`/`RightBeachStart` and `WorldSurface + 80`.
+For canonical ordinary worlds the validator additionally checks biome presence (`$147$` snow, `$59$`/`$60$` jungle, `$53$` desert), active-tile density, per-beach `$30$` water / `$50$` sand minima, and structural ocean integrity: edge-connected wet columns, sand-floor coverage, bounded adjacent floor steps, and a rising beach transition.
 
 ## Verification boundary
 

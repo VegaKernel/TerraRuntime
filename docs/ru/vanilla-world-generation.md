@@ -70,7 +70,7 @@ Generation работает с неопубликованным `RuntimeWorldGen
 - `Finalized` возвращается только когда структурный валидатор даёт `Valid`;
 - любой `InvalidTileType`, `InvalidWallType`, `InvalidLiquid`, orphan frame-important object, chest-anchor mismatch, дубликат сундука, объект вне границ, отсутствие dungeon/temple, нарушение ocean bounds или невалидный spawn/beam даёт `ValidationFailed`, и candidate отбрасывается, не достигая `WorldFileFreshComposer326`.
 
-Для canonical ordinary миров валидатор дополнительно проверяет presence биомов (`$147$` snow, `$59$`/`$60$` jungle, `$53$` desert), плотность active tiles и per-beach минимумы `$30$` water / `$50$` sand, выведенные из `LeftBeachEnd`/`RightBeachStart` и `WorldSurface + 80`.
+Для canonical ordinary миров валидатор дополнительно проверяет presence биомов (`$147$` snow, `$59$`/`$60$` jungle, `$53$` desert), плотность active tiles, per-beach минимумы `$30$` water / `$50$` sand и структурную целостность океана: связанные с краем мокрые столбцы, покрытие песчаным дном, ограниченные перепады соседних точек дна и подъём к пляжу.
 
 ## Граница проверки
 

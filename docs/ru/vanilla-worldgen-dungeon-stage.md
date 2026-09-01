@@ -17,11 +17,11 @@
 9. `Clean Up Dirt`
 10. `Pyramids`
 
-Production-план теперь содержит 49 runtime entries. В это число входят миграционные runtime-идентичности вроде `Reset`, `TerrainLayers`, изолированного ocean residual и compatibility barriers. Это не утверждение, что сама Terraria имеет 49 проходов.
+Production-план теперь содержит 49 runtime entries. В это число входят миграционные runtime-идентичности вроде `Reset`, `TerrainLayers` и compatibility barriers. Это не утверждение, что сама Terraria имеет 49 проходов.
 
 ```mermaid
 graph LR
-    S[Slush] --> B[compat ocean residual]
+    S[Slush] --> B[compat Biomes barrier]
     B --> C[compat Caves barrier]
     C --> O[Shinies-owned Ores barrier]
     O --> D0[Dual Dungeons Dither Snake]
@@ -55,7 +55,7 @@ Compatibility residual/barrier entries не потребляют общий Terr
 
 `Beaches` использует принадлежащие Reset границы `LeftBeachEnd` и `RightBeachStart`, а не придумывает новые размеры краёв мира. Проход формирует песок и waterline на обеих сторонах. После этого `Create Ocean Caves` режет входы в пещеры из тех же beach regions.
 
-Старый aggregate `Biomes` остаётся только как изолированный ocean residual. Он не может продвигать общий vanilla RNG и не может повторно закрашивать внутренние Jungle, Desert, evil biome или Underworld.
+Старый aggregate `Biomes` остаётся только как ничего не записывающий compatibility barrier. Океанским телом на закреплённой позиции прохода владеет `Beaches`; barrier не может продвигать общий vanilla RNG или повторно закрашивать биомы.
 
 ## Gems, gravity, Shimmer и pyramids
 

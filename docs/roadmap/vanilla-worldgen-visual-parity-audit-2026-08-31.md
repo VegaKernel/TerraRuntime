@@ -6,6 +6,12 @@ These observed defects remain vanilla-specific parity debt and are not papered o
 - [x] surface shaping: the ordinary canonical `Smooth World` pass now owns both source-ordered scans, exact shared-RNG decision points, typed/versioned tile capabilities, all four slope orientations, half-blocks, erosion/gap-fill, sand normalization and orphan-slope correction; focused fixtures, canonical output checks and a pinned-decompile source contract replace the former coordinate heuristic;
 - [x] trees: replace the explicitly source-shaped trunk/branch scaffold with complete 1.4.5.8 framing, crowns and branches; the clean-room `WorldGen.GrowTree` port now owns typed growth capabilities, exact shared-RNG segment ordering, roots and top frames, with focused scripted and canonical generated-world checks;
 - [ ] dungeon: replace/verify the current source-shaped vertical shaft + periodic-room approximation against Terraria dungeon graph geometry;
-- [ ] oceans: prove continuous floors and beach transitions after late `AlignOcean` correction on all canonical sizes.
+- [x] oceans: remove the destructive late `AlignOcean` correction; the source-backed `Beaches` stage now owns the
+  pinned start bounds, shared-RNG coast profile selection, both complete `TuneOceanDepth` tables, water/floor split and
+  column order, while canonical finalization proves edge-connected water, continuous sand floors and rising beach
+  transitions for every size/seed exercised by the Small/Medium/Large workflow.
 
-Remaining observed symptoms are unusual dungeon geometry and ocean regions that can look under-generated despite containing water. The coordinate-driven jagged/half-block-heavy surface writer is closed by the source-backed `Smooth World` block. Segmented ordinary trees without crowns are closed by the source-backed growth/framing block; palm/vanity-tree placement remains outside that claim.
+The remaining observed symptom is unusual dungeon geometry. The under-generated-looking ocean symptom is closed by
+the source-backed `Beaches` block and structural basin validator. The coordinate-driven jagged/half-block-heavy surface
+writer is closed by the source-backed `Smooth World` block. Segmented ordinary trees without crowns are closed by the
+source-backed growth/framing block; palm/vanity-tree placement remains outside that claim.
