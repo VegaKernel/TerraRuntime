@@ -32,6 +32,61 @@ jobs:
       - name: Apply source-backed town block
         run: python3 tools/ci/apply_town_commerce_housing_1458.py
 
+      - name: Align commerce mirror with happiness API
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/TerraRuntime/RuntimeTownCommerce1458.cs')
+          text = p.read_text()
+          text = text.replace(
+              'return new VanillaTownHappinessResult1458(1f, false);',
+              'return new VanillaTownHappinessResult1458(1f, false, 0, 0);')
+          old = '''        var happinessContext = new VanillaTownHappinessContext1458(
+            Forest: scene.ShoppingZoneForest,
+            Ocean: scene.ZoneBeach,
+            Snow: scene.ZoneSnow,
+            Desert: scene.ZoneDesert,
+            Jungle: scene.ZoneJungle,
+            Underground: scene.ShoppingZoneBelowSurface,
+            Hallow: scene.ZoneHallow,
+            Mushroom: scene.ZoneGlowshroom,
+            Corruption: scene.ZoneCorrupt,
+            Crimson: scene.ZoneCrimson,
+            Dungeon: scene.ZoneDungeon,
+            RemixWorld: world.RemixWorld,
+            LoveStruck: false,
+            Homeless: town.Homeless,
+            DistanceFromHomeTiles: distanceFromHome,
+            NpcsWithinHouse: house,
+            NpcsWithinVillage: village);
+        return VanillaTownHappiness1458.Evaluate(npcType, in happinessContext, nearby.ToArray());'''
+          new = '''        var happinessContext = new VanillaTownHappinessContext1458(
+            RemixWorld: world.RemixWorld,
+            LoveStruck: false,
+            Homeless: town.Homeless,
+            DistanceFromHomeTiles: distanceFromHome,
+            NpcsWithinHouse: house,
+            NpcsWithinVillage: village,
+            Biomes: new VanillaTownHappinessBiomeState1458(
+                Forest: scene.ShoppingZoneForest,
+                Ocean: scene.ZoneBeach,
+                Snow: scene.ZoneSnow,
+                Desert: scene.ZoneDesert,
+                Jungle: scene.ZoneJungle,
+                Underground: scene.ShoppingZoneBelowSurface,
+                Hallow: scene.ZoneHallow,
+                Mushroom: scene.ZoneGlowshroom,
+                Corruption: scene.ZoneCorrupt,
+                Crimson: scene.ZoneCrimson,
+                Dungeon: scene.ZoneDungeon));
+        return VanillaTownHappiness1458.Resolve(npcType, in happinessContext, nearby.ToArray());'''
+          if old not in text:
+              raise SystemExit('happiness context anchor drifted')
+          text = text.replace(old, new, 1)
+          p.write_text(text)
+          PY
+
       - name: Validate bilingual documentation
         run: |
           python3 tools/ci/test_check_documentation.py
@@ -51,7 +106,7 @@ jobs:
             tail -n 300 /tmp/town-build.log > town-commerce-ci-diagnostics.txt
             git config user.name Xekep
             git config user.email Xekep@users.noreply.github.com
-            git add town-commerce-ci-diagnostics.txt
+            git add town-commerce-ci-diagnostics.txt src/TerraRuntime/RuntimeTownCommerce1458.cs
             git commit -m 'Capture town commerce build diagnostics'
             git push origin HEAD:work/town-commerce-housing-1458
             exit "$status"
