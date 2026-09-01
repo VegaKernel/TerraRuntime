@@ -307,6 +307,7 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
             state.RockLayer,
             state.UnderworldTop,
             bootstrap.DungeonLocation,
+            bootstrap.DungeonSide,
             context.CancellationToken);
         workspace.SetVanillaDungeonGraph(graph);
         state.DungeonX = graph.Anchor.X;

@@ -66,6 +66,9 @@ Console.WriteLine(
     $"reference_world_compare size={candidateFingerprint.Width}x{candidateFingerprint.Height} " +
     $"tile_l1={comparison.ActiveTileHistogramL1:F6} wall_l1={comparison.WallHistogramL1:F6} " +
     $"active_ratio={comparison.ActiveTileRatio:F6} liquid_ratio={comparison.TotalLiquidRatio:F6} " +
+    $"silhouette_nmae={comparison.TerrainSilhouette.NormalizedMeanAbsoluteError:F6} " +
+    $"silhouette_p95={comparison.TerrainSilhouette.NormalizedPercentile95AbsoluteError:F6} " +
+    $"silhouette_corr={comparison.TerrainSilhouette.Correlation:F6} " +
     $"spawn_delta=({comparison.SpawnDeltaX},{comparison.SpawnDeltaY}) " +
     $"dungeon_delta=({comparison.DungeonDeltaX},{comparison.DungeonDeltaY}) " +
     $"surface_delta={comparison.WorldSurfaceDelta} rock_delta={comparison.RockLayerDelta} " +
@@ -183,6 +186,7 @@ static WorldStructuralFingerprint CaptureFingerprint(WorldFileData world)
         TownNpcCount: world.Npcs.TownNpcs.Length,
         PersistentNpcCount: world.Npcs.PersistentNpcs.Length,
         TileEntityCount: world.TileEntities.Length,
+        TerrainSilhouette: VanillaTerrainSilhouetteAnalyzer1458.Capture(tiles),
         StructuralSha256: Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant());
 }
 
@@ -202,6 +206,9 @@ static WorldStructuralComparison Compare(
         DungeonDeltaY: candidate.DungeonY - reference.DungeonY,
         WorldSurfaceDelta: candidate.WorldSurface - reference.WorldSurface,
         RockLayerDelta: candidate.RockLayer - reference.RockLayer,
+        TerrainSilhouette: VanillaTerrainSilhouetteAnalyzer1458.Compare(
+            reference.TerrainSilhouette,
+            candidate.TerrainSilhouette),
         SameDungeonSide: Math.Sign(candidate.DungeonX - candidate.Width / 2) ==
                          Math.Sign(reference.DungeonX - reference.Width / 2));
 }
@@ -362,6 +369,7 @@ internal sealed record WorldStructuralFingerprint(
     int TownNpcCount,
     int PersistentNpcCount,
     int TileEntityCount,
+    VanillaTerrainSilhouette1458 TerrainSilhouette,
     string StructuralSha256);
 
 internal sealed record WorldStructuralComparison(
@@ -376,6 +384,7 @@ internal sealed record WorldStructuralComparison(
     int DungeonDeltaY,
     int WorldSurfaceDelta,
     int RockLayerDelta,
+    VanillaTerrainSilhouetteComparison1458 TerrainSilhouette,
     bool SameDungeonSide);
 
 internal sealed record WorldReferenceComparisonReport(

@@ -51,6 +51,8 @@ internal static class VanillaDungeonGenerationCatalog1458
     public const int RoomOuterPadding = 5;
     public const int WorldBorder = 50;
     public const int UnderworldClearance = 100;
+    public const double PotentialBoundsMiddlePercent = 0.10000000149011612d;
+    public const double PotentialBoundsEdgePercent = 0.05000000074505806d;
 }
 
 internal enum VanillaDungeonComponentKind1458 : byte
@@ -138,6 +140,7 @@ internal static class VanillaDungeonGraphGenerator1458
         double rockLayer,
         int underworldTop,
         int dungeonLocation,
+        int dungeonSide,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(workspace);
@@ -146,20 +149,22 @@ internal static class VanillaDungeonGraphGenerator1458
             throw new InvalidOperationException("Dungeon generation requires the Dunes-owned dungeon setup profile.");
 
         bool useSkewedEntranceHalls = ConsumeDecorationSetup(sharedRandom);
-        int entranceX = Math.Clamp(dungeonLocation, VanillaDungeonGenerationCatalog1458.WorldBorder,
-            workspace.WidthTiles - VanillaDungeonGenerationCatalog1458.WorldBorder - 1);
+        (int dungeonMinimumX, int dungeonMaximumX) = ResolveHorizontalBounds(workspace.WidthTiles, dungeonSide);
+        int entranceX = Math.Clamp(dungeonLocation, dungeonMinimumX, dungeonMaximumX);
         int entranceSurface = FindSurface(workspace.TileStore, entranceX, (int)worldSurface + 300);
         if (setup.PrecalculatesEntrance)
         {
             int candidateX = dungeonLocation - 100 + sharedRandom.Next(200);
-            candidateX = Math.Clamp(candidateX, VanillaDungeonGenerationCatalog1458.WorldBorder,
-                workspace.WidthTiles - VanillaDungeonGenerationCatalog1458.WorldBorder - 1);
+            candidateX = Math.Clamp(candidateX, dungeonMinimumX, dungeonMaximumX);
             int candidateSurface = FindSurface(workspace.TileStore, candidateX, (int)worldSurface + 300);
             if (candidateSurface - 40 - setup.RoughEntranceHeight > 0)
             {
                 entranceX = candidateX;
                 entranceSurface = candidateSurface;
-                dungeonLocation = candidateX + 25 - sharedRandom.Next(50);
+                dungeonLocation = Math.Clamp(
+                    candidateX + 25 - sharedRandom.Next(50),
+                    dungeonMinimumX,
+                    dungeonMaximumX);
             }
         }
 
@@ -173,12 +178,15 @@ internal static class VanillaDungeonGraphGenerator1458
 
         if (setup.PrecalculatesEntrance)
         {
-            dungeonLocation = entranceX - 10 + sharedRandom.Next(20);
+            dungeonLocation = Math.Clamp(
+                entranceX - 10 + sharedRandom.Next(20),
+                dungeonMinimumX,
+                dungeonMaximumX);
             startY = entranceSurface + 30;
         }
 
         var renderer = new Renderer(workspace.TileStore, setup.Palette.BrickTileType, setup.Palette.BrickWallType,
-            worldSurface, underworldTop, cancellationToken);
+            worldSurface, underworldTop, dungeonMinimumX, dungeonMaximumX, cancellationToken);
         VanillaDungeonPoint1458 cursor = new(dungeonLocation, startY);
         VanillaDungeonPoint1458 lastHall = default;
         var components = new List<VanillaDungeonComponent1458>(steps + 24);
@@ -310,6 +318,22 @@ internal static class VanillaDungeonGraphGenerator1458
         }
     }
 
+    internal static (int MinimumX, int MaximumX) ResolveHorizontalBounds(int worldWidth, int dungeonSide)
+    {
+        if (dungeonSide is not (-1 or 1))
+            throw new ArgumentOutOfRangeException(nameof(dungeonSide), dungeonSide, "Dungeon side must be -1 or 1.");
+
+        double middleHalf = VanillaDungeonGenerationCatalog1458.PotentialBoundsMiddlePercent / 2d;
+        int edge = (int)(worldWidth * VanillaDungeonGenerationCatalog1458.PotentialBoundsEdgePercent);
+        int minimum = dungeonSide < 0
+            ? edge
+            : (int)(worldWidth * (0.5d + middleHalf));
+        int maximumExclusive = dungeonSide < 0
+            ? (int)(worldWidth * (0.5d - middleHalf))
+            : worldWidth - edge;
+        return (minimum, maximumExclusive - 1);
+    }
+
     private static int ResolveStartY(
         WorldTileStore store,
         int x,
@@ -362,6 +386,8 @@ internal static class VanillaDungeonGraphGenerator1458
         private readonly ushort wall;
         private readonly int surfaceFloor;
         private readonly int lowerLimit;
+        private readonly int minimumX;
+        private readonly int maximumX;
         private readonly CancellationToken cancellationToken;
 
         public Renderer(
@@ -370,6 +396,8 @@ internal static class VanillaDungeonGraphGenerator1458
             ushort wall,
             double worldSurface,
             int underworldTop,
+            int minimumX,
+            int maximumX,
             CancellationToken cancellationToken)
         {
             this.store = store;
@@ -377,6 +405,8 @@ internal static class VanillaDungeonGraphGenerator1458
             this.wall = wall;
             surfaceFloor = (int)worldSurface + 80;
             lowerLimit = underworldTop - VanillaDungeonGenerationCatalog1458.UnderworldClearance;
+            this.minimumX = minimumX;
+            this.maximumX = maximumX;
             this.cancellationToken = cancellationToken;
         }
 
@@ -413,7 +443,7 @@ internal static class VanillaDungeonGraphGenerator1458
                 top = Math.Min(top, (int)y - outer);
                 right = Math.Max(right, (int)x + outer);
                 bottom = Math.Max(bottom, (int)y + outer);
-                x += velocityX;
+                x = Math.Clamp(x + velocityX, minimumX, maximumX);
                 y += velocityY;
                 velocityX = Math.Clamp(velocityX + random.Next(-10, 11) * 0.05d, -1d, 1d);
                 velocityY = Math.Clamp(velocityY + random.Next(-10, 11) * 0.05d, -1d, 1d);
@@ -452,7 +482,7 @@ internal static class VanillaDungeonGraphGenerator1458
                 int outerX = strength + random.Next(2, 6);
                 int outerY = strength + random.Next(2, 6);
                 PaintEllipse((int)x, (int)y, outerX, outerY, strength, strength);
-                x += velocityX;
+                x = Math.Clamp(x + velocityX, minimumX, maximumX);
                 y += velocityY;
             }
             VanillaDungeonPoint1458 end = new((int)x, (int)y);
@@ -489,7 +519,7 @@ internal static class VanillaDungeonGraphGenerator1458
             for (int step = 0; step <= steps; step++)
             {
                 PaintEllipse((int)x, (int)y, strength + 4 + random.Next(6), strength + 4 + random.Next(6), strength, strength);
-                x += velocityX;
+                x = Math.Clamp(x + velocityX, minimumX, maximumX);
                 y -= 1d;
             }
             end = new((int)x, (int)y);
@@ -517,7 +547,7 @@ internal static class VanillaDungeonGraphGenerator1458
             for (int step = 0; step < steps; step++)
             {
                 PaintEllipse((int)x, (int)y, strength + 5, strength + 5, strength, strength);
-                x += velocityX;
+                x = Math.Clamp(x + velocityX, minimumX, maximumX);
                 y += velocityY;
             }
             end = new((int)x, (int)y);
@@ -560,8 +590,8 @@ internal static class VanillaDungeonGraphGenerator1458
             {
                 if (direction.X == -lastDirection.X && direction.Y == -lastDirection.Y)
                     continue;
-                if (direction.X < 0 && origin.X < VanillaDungeonGenerationCatalog1458.WorldBorder + 100 ||
-                    direction.X > 0 && origin.X > store.Dimensions.WidthTiles - VanillaDungeonGenerationCatalog1458.WorldBorder - 100 ||
+                if (direction.X < 0 && origin.X < minimumX + 100 ||
+                    direction.X > 0 && origin.X > maximumX - 100 ||
                     direction.Y < 0 && origin.Y < surfaceFloor ||
                     direction.Y > 0 && origin.Y > lowerLimit)
                     continue;
@@ -575,8 +605,8 @@ internal static class VanillaDungeonGraphGenerator1458
         private void PaintEllipse(int centerX, int centerY, int outerX, int outerY, int innerX, int innerY)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            int minX = Math.Max(1, centerX - outerX);
-            int maxX = Math.Min(store.Dimensions.WidthTiles - 2, centerX + outerX);
+            int minX = Math.Max(minimumX, centerX - outerX);
+            int maxX = Math.Min(maximumX, centerX + outerX);
             int minY = Math.Max(1, centerY - outerY);
             int maxY = Math.Min(store.Dimensions.HeightTiles - 2, centerY + outerY);
             for (int y = minY; y <= maxY; y++)

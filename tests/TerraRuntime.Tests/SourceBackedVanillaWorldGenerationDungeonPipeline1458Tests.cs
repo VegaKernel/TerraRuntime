@@ -186,6 +186,27 @@ public sealed class SourceBackedVanillaWorldGenerationDungeonPipeline1458Tests
             rightDungeonCandidates, 1, worldWidth: 4200, dungeonSide: 1, dungeonGenerationX: 3800));
     }
 
+    [Theory]
+    [InlineData(4200, -1, 210, 1888)]
+    [InlineData(4200, 1, 2310, 3989)]
+    [InlineData(6400, -1, 320, 2878)]
+    [InlineData(6400, 1, 3520, 6079)]
+    [InlineData(8400, -1, 420, 3778)]
+    [InlineData(8400, 1, 4620, 7979)]
+    public void Dungeon_potential_bounds_match_pinned_source_float_casts(
+        int worldWidth,
+        int dungeonSide,
+        int expectedMinimum,
+        int expectedMaximum)
+    {
+        (int minimum, int maximum) = VanillaDungeonGraphGenerator1458.ResolveHorizontalBounds(
+            worldWidth,
+            dungeonSide);
+
+        Assert.Equal(expectedMinimum, minimum);
+        Assert.Equal(expectedMaximum, maximum);
+    }
+
     private static CaptureEntry Find(CaptureBuilder builder, string id) =>
         Assert.Single(builder.Entries, entry => entry.Descriptor.Id.Value == id);
 
