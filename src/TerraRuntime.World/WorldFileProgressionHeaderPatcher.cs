@@ -88,9 +88,16 @@ public static class WorldFileProgressionHeaderPatcher
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         int slimeBlueUnlockOffset = -1;
+        int truffleUnlockOffset = -1;
         bool persistedSlimeBlueUnlock = false;
-        if (mutations.UnlockSlimeBlueSpawn &&
-            !TryLocateSlimeBlueSpawnUnlock(ref reader, out slimeBlueUnlockOffset, out persistedSlimeBlueUnlock))
+        bool persistedTruffleUnlock = false;
+        if ((mutations.UnlockSlimeBlueSpawn || mutations.UnlockTruffleSpawn) &&
+            !TryLocateTownSpawnUnlocks(
+                ref reader,
+                out slimeBlueUnlockOffset,
+                out persistedSlimeBlueUnlock,
+                out truffleUnlockOffset,
+                out persistedTruffleUnlock))
         {
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
         }
@@ -100,17 +107,23 @@ public static class WorldFileProgressionHeaderPatcher
             patchedHeader[downedSlimeKingOffset] = 1;
         if (mutations.UnlockSlimeBlueSpawn && !persistedSlimeBlueUnlock)
             patchedHeader[slimeBlueUnlockOffset] = 1;
+        if (mutations.UnlockTruffleSpawn && !persistedTruffleUnlock)
+            patchedHeader[truffleUnlockOffset] = 1;
 
         return WorldFileProgressionHeaderPatchResult.Patched;
     }
 
-    private static bool TryLocateSlimeBlueSpawnUnlock(
+    private static bool TryLocateTownSpawnUnlocks(
         ref HeaderPrefixReader reader,
-        out int offset,
-        out bool persisted)
+        out int slimeBlueOffset,
+        out bool persistedSlimeBlue,
+        out int truffleOffset,
+        out bool persistedTruffle)
     {
-        offset = -1;
-        persisted = false;
+        slimeBlueOffset = -1;
+        persistedSlimeBlue = false;
+        truffleOffset = -1;
+        persistedTruffle = false;
 
         // savedGoblin/Wizard/Mechanic, seven invasion/world booleans after King Slime.
         if (!reader.TrySkipBools(9) ||
@@ -204,8 +217,12 @@ public static class WorldFileProgressionHeaderPatcher
             return false;
         }
 
-        offset = reader.Offset;
-        return reader.TryReadBool(out persisted);
+        slimeBlueOffset = reader.Offset;
+        if (!reader.TryReadBool(out persistedSlimeBlue) || !reader.TrySkipBools(4))
+            return false;
+
+        truffleOffset = reader.Offset;
+        return reader.TryReadBool(out persistedTruffle);
     }
 
     private ref struct HeaderPrefixReader

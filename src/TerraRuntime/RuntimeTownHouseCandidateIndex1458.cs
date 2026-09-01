@@ -41,6 +41,8 @@ internal sealed class RuntimeTownHouseCandidateIndex1458
 
     public int CandidateCount => candidates.Count;
 
+    public void SetTruffleUnlocked(bool unlocked) => validator.SetTruffleUnlocked(unlocked);
+
     public void Scan(int tileBudget)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(tileBudget);

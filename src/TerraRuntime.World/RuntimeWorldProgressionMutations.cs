@@ -10,7 +10,9 @@ public readonly record struct RuntimeWorldProgressionMutationSnapshot(ulong Comp
 {
     public bool UnlockSlimeBlueSpawn { get; init; }
 
-    public bool HasAny => CompletedMask != 0 || UnlockSlimeBlueSpawn;
+    public bool UnlockTruffleSpawn { get; init; }
+
+    public bool HasAny => CompletedMask != 0 || UnlockSlimeBlueSpawn || UnlockTruffleSpawn;
 
     public bool IsCompleted(VanillaWorldProgressionId milestone)
     {
@@ -30,6 +32,8 @@ public sealed class RuntimeWorldProgressionMutations
     private ulong completedMask;
     private bool baselineSlimeBlueSpawnUnlocked;
     private bool unlockSlimeBlueSpawn;
+    private bool baselineTruffleSpawnUnlocked;
+    private bool unlockTruffleSpawn;
 
     public bool MarkCompleted(VanillaWorldProgressionId milestone)
     {
@@ -63,8 +67,29 @@ public sealed class RuntimeWorldProgressionMutations
         return true;
     }
 
+    public void SetTruffleSpawnBaseline(bool unlocked)
+    {
+        if (unlocked)
+            baselineTruffleSpawnUnlocked = true;
+    }
+
+    public bool IsTruffleSpawnUnlocked => baselineTruffleSpawnUnlocked || unlockTruffleSpawn;
+
+    public bool MarkTruffleSpawnUnlocked()
+    {
+        if (IsTruffleSpawnUnlocked)
+            return false;
+
+        unlockTruffleSpawn = true;
+        return true;
+    }
+
     public RuntimeWorldProgressionMutationSnapshot CaptureSnapshot() =>
-        new(completedMask) { UnlockSlimeBlueSpawn = unlockSlimeBlueSpawn };
+        new(completedMask)
+        {
+            UnlockSlimeBlueSpawn = unlockSlimeBlueSpawn,
+            UnlockTruffleSpawn = unlockTruffleSpawn
+        };
 }
 
 /// <summary>

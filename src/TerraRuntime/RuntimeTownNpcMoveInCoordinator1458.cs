@@ -40,6 +40,7 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
     private readonly VanillaTownNpcSpawnCadence1458 cadence = new();
     private readonly VanillaTownSpawnWorldFacts1458 worldFacts;
     private readonly IRuntimeTownNpcArrivalSink1458? arrivals;
+    private readonly RuntimeWorldProgressionMutations? progression;
 
     public RuntimeTownNpcMoveInCoordinator1458(
         RuntimeTownNpcStateStore townNpcs,
@@ -47,7 +48,8 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         RuntimeTownHouseCandidateIndex1458 houses,
         in VanillaTownSpawnWorldFacts1458 worldFacts,
         RuntimeNpcReplicationRegistry? replication = null,
-        IRuntimeTownNpcArrivalSink1458? arrivals = null)
+        IRuntimeTownNpcArrivalSink1458? arrivals = null,
+        RuntimeWorldProgressionMutations? progression = null)
     {
         ArgumentNullException.ThrowIfNull(townNpcs);
         ArgumentNullException.ThrowIfNull(npcs);
@@ -57,9 +59,12 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         this.townNpcs = townNpcs;
         this.npcs = npcs;
         this.houses = houses;
+        houses.SetTruffleUnlocked(worldFacts.UnlockedTruffleSpawn || townNpcs.ContainsNpcType(VanillaNpcIds.Truffle));
         this.worldFacts = worldFacts;
         this.replication = replication;
         this.arrivals = arrivals;
+        this.progression = progression;
+        progression?.SetTruffleSpawnBaseline(worldFacts.UnlockedTruffleSpawn);
     }
 
     public int HouseScanBudgetPerTick { get; init; } = 4096;
@@ -93,6 +98,12 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
 
             if (!townNpcs.TryAddResident(type, in placement, npcs, out NpcSnapshot snapshot, out RuntimeTownNpcHomeCommit home))
                 continue;
+
+            if (type == VanillaNpcIds.Truffle)
+            {
+                houses.SetTruffleUnlocked(true);
+                progression?.MarkTruffleSpawnUnlocked();
+            }
 
             replication?.TryPublishTownHome(in home);
             var arrival = new RuntimeTownNpcArrival1458(
