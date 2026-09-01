@@ -1,0 +1,16 @@
+# Pin NPC.NewNPC bottom-center semantics inside the method body, independent of explicit/int-to-float casts emitted by ILSpy.
+checker = Path('tools/ci/check_town_movein_schedule_source.py')
+text = checker.read_text(encoding='utf-8')
+old = '    require(npc, "nPC.Bottom = new Vector2(X, Y)", "NPC.NewNPC bottom-center materialization")\n'
+new = '''    new_npc = extract_method(npc, "public static int NewNPC(IEntitySource source, int X, int Y, int Type")
+    require_ordered(new_npc, (
+        "nPC.SetDefaults(Type)",
+        "GiveTownUniqueDataToNPCsThatNeedIt(Type, availableNPCSlot)",
+        "nPC.Bottom",
+        "new Vector2(",
+        "nPC.active = true"
+    ), "NPC.NewNPC bottom-center materialization")
+'''
+if text.count(old) != 1:
+    raise SystemExit('NPC.NewNPC bottom marker anchor drifted')
+checker.write_text(text.replace(old, new, 1), encoding='utf-8')
