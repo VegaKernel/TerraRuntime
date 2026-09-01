@@ -11,4 +11,4 @@ text = text.replace(
     'Terraria.Protocol.Multiplicity.TerrariaNpcTalkCodec.MaximumNpcSlots',
     'TerraRuntime.Protocol.Multiplicity.TerrariaNpcTalkCodec.MaximumNpcSlots')
 p.write_text(text)
-print('N4 compatibility fixes applied')
+print('N4 compatibility fixes applied; workflow trigger v2')
