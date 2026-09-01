@@ -32,7 +32,23 @@ jobs:
         run: dotnet restore TerraRuntime.slnx
 
       - name: Build
-        run: dotnet build TerraRuntime.slnx -c Release --no-restore
+        id: build
+        shell: bash
+        run: |
+          set +e
+          dotnet build TerraRuntime.slnx -c Release --no-restore 2>&1 | tee final-npc-combat-build.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload build diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-npc-combat-build-log
+          path: final-npc-combat-build.log
+
+      - name: Enforce build result
+        run: test "${{ steps.build.outputs.status }}" = "0"
 
       - name: Focused NPC combat tests
         run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~NpcDamage|FullyQualifiedName~KingSlime|FullyQualifiedName~ProjectileLifecycleFrameSink"
