@@ -7,6 +7,7 @@
   <Project Path="../src/TerraRuntime.Network/TerraRuntime.Network.csproj" />
   <Project Path="../src/TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />
   <Project Path="../src/TerraRuntime.Protocol.Multiplicity/TerraRuntime.Protocol.Multiplicity.csproj" />
+  <Project Path="../src/TerraRuntime.Schematics/TerraRuntime.Schematics.csproj" />
   <Project Path="../src/TerraRuntime.Transport/TerraRuntime.Transport.csproj" />
   <Project Path="../src/TerraRuntime.World/TerraRuntime.World.csproj" />
   <Project Path="../tests/TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />

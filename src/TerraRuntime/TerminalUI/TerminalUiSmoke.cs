@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts.TerminalUI;
@@ -50,21 +49,12 @@ internal static class TerminalUiSmoke
                     AssertWorkspaceRow(workspace, "Running");
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "Running");
-                    AssertRendered(
-                        app.Driver!,
-                        string.Create(
-                            CultureInfo.CurrentCulture,
-                            $"wall {0.25:F2}/{1.5:F2} ms  cpu {0.2:F2}/{1.2:F2} ms  slow Update {0.15:F2} ms"));
-                    AssertRendered(
-                        app.Driver!,
-                        string.Create(
-                            CultureInfo.CurrentCulture,
-                            $"Process     CPU {12.5:F1}%  heap {32d:F1} MiB  working {64d:F1} MiB  allocated {96d:F1} MiB"));
-                    AssertRendered(
-                        app.Driver!,
-                        string.Create(
-                            CultureInfo.CurrentCulture,
-                            $"Commands    done 2  pending 3  deferred 1  rejected 4  budget 2  oldest {12.5:F1} ms"));
+                    AssertRendered(app.Driver!, "Tick #120");
+                    AssertRendered(app.Driver!, "TPS");
+                    AssertRendered(app.Driver!, "Network");
+                    AssertRendered(app.Driver!, "Chat");
+                    AssertNotRendered(app.Driver!, "CPU");
+                    AssertNotRendered(app.Driver!, "Memory / GC");
 
                     // Exercise the exact production transition that regressed: an external root is visible,
                     // then every built-in Details screen must become visible through the real MenuBar path.
@@ -128,8 +118,9 @@ internal static class TerminalUiSmoke
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "Running");
                     AssertRendered(app.Driver!, "TPS");
-                    AssertRendered(app.Driver!, "Process");
-                    AssertRendered(app.Driver!, "Commands");
+                    AssertRendered(app.Driver!, "Network");
+                    AssertRendered(app.Driver!, "Chat");
+                    AssertNotRendered(app.Driver!, "Memory / GC");
                 }
                 finally
                 {
@@ -138,7 +129,8 @@ internal static class TerminalUiSmoke
             }
 
             Console.WriteLine(
-                "Terminal UI smoke passed: ANSI framebuffer rendered production runtime health at wide and narrow terminal sizes, " +
+                "Terminal UI smoke passed: ANSI framebuffer rendered the operator dashboard at wide and narrow terminal sizes, " +
+                "kept TPS and Network graphs beside a large Chat panel, preserved the accented Console command input, " +
                 "the external-dashboard transition, all Details menu hotkeys, Actions/manual-save path, complete bounded network telemetry, " +
                 "section-cache pipeline/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;
@@ -200,6 +192,27 @@ internal static class TerminalUiSmoke
 
         throw new InvalidOperationException(
             $"ANSI framebuffer did not contain expected text '{expectedText}'.{Environment.NewLine}{screen}");
+    }
+
+    private static void AssertNotRendered(IDriver driver, string unexpectedText)
+    {
+        if (driver.Contents is null)
+            throw new InvalidOperationException("ANSI driver did not expose framebuffer contents.");
+
+        int height = driver.Contents.GetLength(0);
+        int width = driver.Contents.GetLength(1);
+        for (int row = 0; row < height; row++)
+        {
+            var line = new StringBuilder(width);
+            for (int column = 0; column < width; column++)
+                line.Append(driver.Contents[row, column]!.Grapheme);
+
+            if (line.ToString().Contains(unexpectedText, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"ANSI framebuffer unexpectedly contained text '{unexpectedText}'.");
+            }
+        }
     }
 
     private sealed class SmokeDashboardSource : ITerraRuntimeTerminalDashboardSource

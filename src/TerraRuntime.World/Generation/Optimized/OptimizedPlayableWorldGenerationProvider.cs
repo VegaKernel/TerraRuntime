@@ -503,6 +503,10 @@ public sealed class OptimizedPlayableWorldGenerationProvider : IWorldGenerationP
         int placed = 0;
         int width = context.Workspace.WidthTiles;
         int attempts = target * 260;
+        int surfaceScanTop = Math.Max(
+            12,
+            layers.Surface - Math.Clamp(context.Workspace.HeightTiles / 12, 28, 90));
+        int surfaceScanBottom = Math.Min(context.Workspace.HeightTiles - 2, layers.RockLayer);
         for (int attempt = 0; attempt < attempts && placed < target; attempt++)
         {
             if ((attempt & 127) == 0)
@@ -511,7 +515,7 @@ public sealed class OptimizedPlayableWorldGenerationProvider : IWorldGenerationP
             int x = NextRange(context.Random, layers.OceanWidth + 18, width - layers.OceanWidth - 20);
             if (Math.Abs(x - width / 2) < Math.Clamp(width / 24, 24, 90))
                 continue;
-            int floor = FindTwoTileSurface(context.Workspace, x, 12, Math.Min(context.Workspace.HeightTiles - 2, layers.RockLayer));
+            int floor = FindTwoTileSurface(context.Workspace, x, surfaceScanTop, surfaceScanBottom);
             if (floor < 0)
                 continue;
 
@@ -525,7 +529,7 @@ public sealed class OptimizedPlayableWorldGenerationProvider : IWorldGenerationP
         {
             for (int x = layers.OceanWidth + 20; x < width - layers.OceanWidth - 22 && placed < target; x += 11)
             {
-                int floor = FindTwoTileSurface(context.Workspace, x, 12, Math.Min(context.Workspace.HeightTiles - 2, layers.RockLayer));
+                int floor = FindTwoTileSurface(context.Workspace, x, surfaceScanTop, surfaceScanBottom);
                 if (floor < 0)
                     continue;
                 WorldGenerationChestItem[] loot = BuildSurfaceLoot(context.Random, placed);

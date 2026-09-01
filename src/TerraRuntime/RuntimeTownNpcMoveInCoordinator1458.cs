@@ -139,6 +139,8 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         {
             return;
         }
+        if (!townNpcs.TryGetIdentity(home.NpcSlot, out RuntimeTownNpcIdentityCommit identity))
+            throw new InvalidOperationException("Committed Town NPC move-in did not expose its authoritative identity.");
 
         if (type == VanillaNpcIds.Truffle)
         {
@@ -147,7 +149,9 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         }
 
         previousHomeStatuses[home.NpcSlot] = home.Status;
+        replication?.TryPublishTownIdentity(in identity);
         replication?.TryPublishTownHome(in home);
+        replication?.TryPublishTownArrival(type, identity.GivenName);
         var arrival = new RuntimeTownNpcArrival1458(
             checked((short)snapshot.Handle.Slot),
             type,

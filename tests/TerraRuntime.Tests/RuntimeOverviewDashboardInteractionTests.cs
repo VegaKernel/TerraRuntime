@@ -40,6 +40,61 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             Assert.True(host.CanFocus);
             Assert.True(dashboard.DashboardCanFocusForSmoke);
             Assert.True(dashboard.CommandInputHasFocusForSmoke);
+            Assert.True(dashboard.CommandInputFrameUsesAccentForSmoke);
+        }
+        finally
+        {
+            app.End(token);
+        }
+    }
+
+    [Fact]
+    public void Dashboard_layout_matches_operator_mockup()
+    {
+        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        app.Driver!.SetScreenSize(160, 28);
+        using var window = new Window
+        {
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        var dashboard = new RuntimeOverviewDashboard
+        {
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        window.Add(dashboard);
+
+        SessionToken token = app.Begin(window)!;
+        try
+        {
+            dashboard.Refresh(
+                default(RuntimeDashboardSnapshot) with
+                {
+                    TargetTicksPerSecond = 60,
+                    ObservedTicksPerSecond = 60d
+                },
+                default,
+                default,
+                default,
+                default,
+                default,
+                status: null);
+            app.LayoutAndDraw();
+
+            Assert.Equal(5, dashboard.GetVisiblePanelCountForSmoke());
+            Assert.Contains("TPS", dashboard.GetPanelTitleForSmoke("TPS"));
+            Assert.DoesNotContain("CPU", dashboard.GetTpsLegendForSmoke(), StringComparison.OrdinalIgnoreCase);
+
+            var tps = dashboard.GetPanelFrameForSmoke("TPS");
+            var network = dashboard.GetPanelFrameForSmoke("Network");
+            var chat = dashboard.GetPanelFrameForSmoke("Chat");
+
+            Assert.Equal(tps.Y, network.Y);
+            Assert.Equal(tps.Height, network.Height);
+            Assert.Equal(tps.Bottom, chat.Y);
+            Assert.True(chat.Height > tps.Height);
+            Assert.True(dashboard.CommandInputFrameUsesAccentForSmoke);
         }
         finally
         {

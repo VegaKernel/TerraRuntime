@@ -43,11 +43,13 @@ internal sealed class RuntimeTownNpcStateStore
     private readonly Dictionary<int, WorldTownRoom> roomsByNpcType = [];
     private readonly List<int> roomNpcTypeOrder = [];
     private readonly WorldDimensions dimensions;
+    private readonly VanillaTownNpcIdentityResolver1458 identityResolver;
 
     public RuntimeTownNpcStateStore(
         WorldNpcPersistence source,
         IReadOnlyList<WorldTownRoom> rooms,
-        WorldDimensions dimensions)
+        WorldDimensions dimensions,
+        VanillaTownNpcIdentityResolver1458? identityResolver = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(rooms);
@@ -55,6 +57,7 @@ internal sealed class RuntimeTownNpcStateStore
             throw new InvalidDataException($"Town NPC count {source.TownNpcs.Length} exceeds vanilla Main.maxNPCs {MaximumTownNpcs}.");
 
         this.dimensions = dimensions;
+        this.identityResolver = identityResolver ?? new VanillaTownNpcIdentityResolver1458();
         shimmeredTownNpcTypes = new SortedSet<int>(source.ShimmeredTownNpcIndices);
         persistentNpcs = source.PersistentNpcs.ToArray();
         for (short slot = 0; slot < source.TownNpcs.Length; slot++)
@@ -74,6 +77,18 @@ internal sealed class RuntimeTownNpcStateStore
 
     public bool TryGet(short slot, out WorldTownNpc npc) =>
         townNpcsBySlot.TryGetValue(slot, out npc!);
+
+    public bool TryGetIdentity(short slot, out RuntimeTownNpcIdentityCommit commit)
+    {
+        if (!townNpcsBySlot.TryGetValue(slot, out WorldTownNpc? npc))
+        {
+            commit = default;
+            return false;
+        }
+
+        commit = new RuntimeTownNpcIdentityCommit(slot, npc.GivenName, npc.TownNpcVariationIndex ?? 0);
+        return true;
+    }
 
     public bool TryGetRoom(NpcTypeId type, out WorldTownRoom room) =>
         roomsByNpcType.TryGetValue(type.Value, out room);
@@ -264,16 +279,19 @@ internal sealed class RuntimeTownNpcStateStore
             return false;
         }
 
+        VanillaTownNpcSpawnIdentity1458 identity = identityResolver.Resolve(
+            type,
+            shimmeredTownNpcTypes.Contains(type.Value));
         short slot = snapshot.Handle.Slot;
         townNpcsBySlot[slot] = new WorldTownNpc(
             type.Value,
-            string.Empty,
+            identity.GivenName,
             snapshot.PositionX,
             snapshot.PositionY,
             Homeless: false,
             placement.HomeTileX,
             placement.HomeTileY,
-            TownNpcVariationIndex: null,
+            TownNpcVariationIndex: identity.VariationIndex,
             HomelessDespawn: false);
         SetRoom(new WorldTownRoom(type.Value, placement.HomeTileX, placement.HomeTileY));
         homeCommit = new RuntimeTownNpcHomeCommit(
