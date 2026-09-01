@@ -335,7 +335,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
             int bottom = Math.Min(context.Workspace.HeightTiles - 2, surface + localDepth);
             for (int y = surface; y <= bottom; y++)
             {
-                if (!context.Workspace.TryGetTile(x, y, out WorldGenerationTile tile) ||
+                if (!context.Workspace.TryGetTile(tx: x, y: y, tile: out WorldGenerationTile tile) ||
                     (tile.Flags & WorldGenerationTileFlags.Active) == 0 ||
                     !IsNaturalTransitionMaterial(tile.Type))
                     continue;
@@ -486,9 +486,29 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
     private static bool TryBuildFloatingLake(IWorldGenerationWorkspace workspace, SkyIslandCandidate island)
     {
         int halfWidth = Math.Clamp(island.Width / 7, 4, 8);
-        foreach (int centerX in GetSkyPlacementCenters(island, halfWidth + 1))
+        int[] preferredCenters = GetSkyPlacementCenters(island, halfWidth + 1);
+        foreach (int centerX in preferredCenters)
         {
             if (TryBuildFloatingLakeAt(workspace, island, centerX, halfWidth))
+                return true;
+        }
+
+        int minCenter = island.Left + halfWidth + 1;
+        int maxCenter = island.Right - halfWidth - 1;
+        if (minCenter > maxCenter)
+            return false;
+
+        var attempted = new HashSet<int>(preferredCenters);
+        int center = Math.Clamp(island.Center, minCenter, maxCenter);
+        int radius = Math.Max(center - minCenter, maxCenter - center);
+        for (int offset = 1; offset <= radius; offset++)
+        {
+            int left = center - offset;
+            if (left >= minCenter && attempted.Add(left) && TryBuildFloatingLakeAt(workspace, island, left, halfWidth))
+                return true;
+
+            int right = center + offset;
+            if (right <= maxCenter && attempted.Add(right) && TryBuildFloatingLakeAt(workspace, island, right, halfWidth))
                 return true;
         }
         return false;
