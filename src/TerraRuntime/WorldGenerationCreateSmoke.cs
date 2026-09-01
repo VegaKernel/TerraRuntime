@@ -147,23 +147,42 @@ internal static class WorldGenerationCreateSmoke
             TerrariaServerHost.CreateServerWorldLoadLimits().MaxTileCount);
         long timestamp = new DateTime(2026, 8, 29, 12, 0, 0, DateTimeKind.Utc).ToBinary();
 
-        RuntimeWorldCreationPersistenceResult result = pipeline.TryCreateAndPersist(
-            request,
-            outputPath,
-            Guid.Parse("14580000-0000-4000-8000-000000000001"),
-            worldId: 145800001,
-            creationTimeBinary: timestamp,
-            lastPlayedBinary: timestamp);
+        RuntimeWorldCreationPersistenceResult result;
+        try
+        {
+            result = pipeline.TryCreateAndPersist(
+                request,
+                outputPath,
+                Guid.Parse("14580000-0000-4000-8000-000000000001"),
+                worldId: 145800001,
+                creationTimeBinary: timestamp,
+                lastPlayedBinary: timestamp);
+        }
+        catch (Exception exception) when (StartupWorldCreationFailurePolicy.IsRecoverable(exception))
+        {
+            Console.Error.WriteLine(
+                $"Worldgen create smoke threw unexpectedly: {exception.GetType().Name}: {exception.Message}");
+            Console.Error.WriteLine(exception);
+            exitCode = 33;
+            return true;
+        }
+
         if (!result.Succeeded)
         {
             RuntimeWorldGenerationFinalizationResult? finalization = result.Creation?.Finalization;
+            WorldGenerationExecutionResult? execution = result.Creation?.Generation.Execution;
             Console.Error.WriteLine(
                 $"Worldgen create smoke failed: status={result.Status}, " +
                 $"generation={result.Creation?.Generation.Status}, " +
+                $"execution={execution?.Status}, " +
+                $"pass={(execution is { PassId.IsAssigned: true } ? execution.Value.PassId.Value : string.Empty)}, " +
+                $"dependency={(execution is { DependencyId.IsAssigned: true } ? execution.Value.DependencyId.Value : string.Empty)}, " +
                 $"finalization={finalization?.Status}, " +
                 $"validation={finalization?.Validation?.Status}, " +
                 $"validationDetail={finalization?.Validation?.Detail}, " +
                 $"composition={result.Composition?.Result}, publication={result.Publication?.Result}.");
+            if (execution?.Error is { } executionError)
+                Console.Error.WriteLine(executionError);
             exitCode = 32;
             return true;
         }
