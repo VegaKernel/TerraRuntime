@@ -1,0 +1,75 @@
+name: One-shot Town physical spawn 1458
+
+on:
+  push:
+    branches: ['codex/town-physical-spawn-1458-20260901']
+
+permissions:
+  contents: write
+
+jobs:
+  apply-verify-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Apply source-backed physical spawn patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat tools/ci/.town-physical-part-*.txt > /tmp/apply_town_physical_spawn.py
+          python3 /tmp/apply_town_physical_spawn.py
+          rm -f tools/ci/.town-physical-part-*.txt .github/workflows/one-shot-town-physical-spawn.yml
+          git diff --check
+      - name: Focused Town NPC tests
+        run: >-
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+          --filter 'FullyQualifiedName~RuntimeTownNpcPhysicalSpawn1458Tests|FullyQualifiedName~RuntimeTownNpcRoomAwareSelection1458Tests|FullyQualifiedName~RuntimeTownNpcHomelessRelocation1458Tests|FullyQualifiedName~RuntimeTownNpcSittingSchedule1458Tests'
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/source-contract .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+      - name: Install pinned ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+      - name: Verify official-server Town move-in contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected_sha256" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          refs="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/WorldGen.cs
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.NPC "$assembly" > artifacts/source-contract/NPC.cs
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.GameContent.TownRoomManager "$assembly" > artifacts/source-contract/TownRoomManager.cs
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.ID.NPCID "$assembly" > artifacts/source-contract/NPCID.cs
+          python3 tools/ci/check_town_movein_schedule_source.py \
+            --worldgen artifacts/source-contract/WorldGen.cs \
+            --npc artifacts/source-contract/NPC.cs \
+            --town-room-manager artifacts/source-contract/TownRoomManager.cs \
+            --npc-id artifacts/source-contract/NPCID.cs
+      - name: Commit verified functional tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name Xekep
+          git config user.email Xekep@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "Complete source-backed Town NPC physical spawn" \
+            -m "Mirror TerrariaServer 1.4.5.8 SpawnTownNPC physical placement: player safety rectangles, surface-only radius-499 right-before-left fallback, solid floor/clearance semantics, exhausted-search coordinates, NewNPC bottom-center anchoring and facing toward home; wire live player bounds through the runtime and pin the behavior with focused tests and official-server source contracts."
+          git push origin HEAD:codex/town-physical-spawn-1458-20260901
