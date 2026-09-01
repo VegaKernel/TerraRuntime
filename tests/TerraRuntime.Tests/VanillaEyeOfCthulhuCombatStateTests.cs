@@ -37,6 +37,33 @@ public sealed class VanillaEyeOfCthulhuCombatStateTests
     }
 
     [Theory]
+    [InlineData(false, false, 1000, 23, 0)]
+    [InlineData(true, false, 1000, 36, 0)]
+    [InlineData(true, false, 300, 36, -15)]
+    [InlineData(true, false, 100, 40, -30)]
+    [InlineData(true, true, 1000, 54, 0)]
+    [InlineData(true, true, 300, 54, -15)]
+    [InlineData(true, true, 100, 60, -30)]
+    public void Phase_two_commits_source_damage_and_defense_difficulty_projection(
+        bool expertMode,
+        bool masterMode,
+        int life,
+        int expectedDamage,
+        int expectedDefense)
+    {
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(
+            goodWorld: false,
+            expertMode: expertMode,
+            masterMode: masterMode);
+        NpcSnapshot eye = CreateEye(new NpcAiState(3f, 0f, 0f, 0f), life);
+
+        Assert.True(stepper.TryStepState(in eye, out NpcStateUpdate next));
+
+        Assert.Equal(expectedDamage, next.Simulation.DamageOverride);
+        Assert.Equal(expectedDefense, next.Simulation.DefenseOverride);
+    }
+
+    [Theory]
     [InlineData(300, -15)]
     [InlineData(100, -30)]
     public void Expert_phase_two_commits_source_negative_defense_bands(int life, int expectedDefense)
@@ -90,7 +117,9 @@ public sealed class VanillaEyeOfCthulhuCombatStateTests
 
     private static VanillaNpcTargetingAiStepper CreateStepper(
         bool goodWorld,
-        FixedEyeEnvironment? environment = null)
+        FixedEyeEnvironment? environment = null,
+        bool expertMode = true,
+        bool masterMode = false)
     {
         environment ??= new FixedEyeEnvironment(canHit: false);
         var stepper = new VanillaNpcTargetingAiStepper(
@@ -101,7 +130,8 @@ public sealed class VanillaEyeOfCthulhuCombatStateTests
             dayTime: false,
             slimeRainActive: false,
             goodWorld: goodWorld,
-            expertMode: true);
+            expertMode: expertMode,
+            masterMode: masterMode);
         stepper.SetCandidates([
             new VanillaNpcTargetCandidate(
                 Slot: 7,

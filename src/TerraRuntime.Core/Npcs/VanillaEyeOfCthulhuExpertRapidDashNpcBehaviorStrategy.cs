@@ -420,16 +420,22 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
             !candidate.Ghost;
 
         int? defenseOverride = source.Simulation.DefenseOverride;
+        int? damageOverride = source.Simulation.DamageOverride;
         if (hasLivingTarget && source.Ai.Ai0 == 3f)
         {
-            defenseOverride = 0;
-            if (context.ExpertMode && lifeMax > 0)
-            {
-                if ((float)life < lifeMax * LowLifeFraction)
-                    defenseOverride = -15;
-                if ((float)life < lifeMax * CriticalLifeFraction)
-                    defenseOverride = -30;
-            }
+            bool criticalLife = context.ExpertMode &&
+                lifeMax > 0 &&
+                (float)life < lifeMax * CriticalLifeFraction;
+            bool lowLife = context.ExpertMode &&
+                lifeMax > 0 &&
+                (float)life < lifeMax * LowLifeFraction;
+
+            defenseOverride = criticalLife ? -30 : lowLife ? -15 : 0;
+            damageOverride = context.MasterMode
+                ? criticalLife ? 60 : 54
+                : context.ExpertMode
+                    ? criticalLife ? 40 : 36
+                    : 23;
         }
 
         bool reflectsProjectiles =
@@ -442,6 +448,7 @@ internal sealed class VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy : IV
             Simulation = next.Simulation with
             {
                 DefenseOverride = defenseOverride,
+                DamageOverride = damageOverride,
                 ReflectsProjectiles = reflectsProjectiles
             }
         };
