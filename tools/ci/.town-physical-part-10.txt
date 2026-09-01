@@ -1,0 +1,34 @@
+# Keep old AI_007 source checks semantic where ILSpy inserts numeric casts around Vector2/position expressions.
+checker = Path('tools/ci/check_town_movein_schedule_source.py')
+text = checker.read_text(encoding='utf-8')
+old_anchor = '    require(npc, "base.Bottom = new Vector2(homeFloorX * 16 + 8 + 2 * direction, homeFloorY * 16)", "AI_007 forced sitting anchor")\n'
+new_anchor = '''    sitting = extract_method(npc, "private void AI_007_TryForcingSitting(int homeFloorX, int homeFloorY)")
+    require_ordered(sitting, (
+        "ai[0] = 5f",
+        "ai[1] = 900 + Main.rand.Next(10800)",
+        "direction =",
+        "base.Bottom",
+        "new Vector2(",
+        "homeFloorX",
+        "homeFloorY",
+        "velocity = Vector2.Zero",
+        "localAI[3] = 0f"
+    ), "AI_007 forced sitting anchor and reset")
+'''
+if text.count(old_anchor) != 1:
+    raise SystemExit('AI_007 forced sitting anchor marker drifted')
+text = text.replace(old_anchor, new_anchor, 1)
+old_teleport = '    require(npc, "position.Y = (float)(homeFloorY * 16 - height) - 0.1f", "AI_007 home teleport Y")\n'
+new_teleport = '''    teleport_home = extract_method(npc, "private void AI_007_TownEntities_TeleportToHome(int homeFloorX, int homeFloorY)")
+    require_ordered(teleport_home, (
+        "position.X",
+        "homeFloorX",
+        "position.Y",
+        "homeFloorY",
+        "height",
+        "0.1f"
+    ), "AI_007 home teleport bottom anchor")
+'''
+if text.count(old_teleport) != 1:
+    raise SystemExit('AI_007 teleport Y marker drifted')
+checker.write_text(text.replace(old_teleport, new_teleport, 1), encoding='utf-8')
