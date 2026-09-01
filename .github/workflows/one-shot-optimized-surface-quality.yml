@@ -33,6 +33,20 @@ jobs:
       - name: Apply surface quality block
         run: python3 tools/ci/apply_optimized_surface_quality.py
 
+      - name: Reconcile surface layout contract
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/TerraRuntime.World/Generation/Optimized/OptimizedSurfaceDecorationWorldGenerationProvider.cs')
+          text = path.read_text(encoding='utf-8')
+          old = '            int margin = Math.Clamp(layers.OceanWidth / 3, 3, Math.Max(3, width / 5));\n'
+          new = '            int oceanWidth = Math.Clamp(width / 12, 48, 360);\n            int margin = Math.Max(3, oceanWidth / 3);\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one surface-layout marker, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
       - name: Validate bilingual documentation
         run: |
           python3 tools/ci/test_check_documentation.py
