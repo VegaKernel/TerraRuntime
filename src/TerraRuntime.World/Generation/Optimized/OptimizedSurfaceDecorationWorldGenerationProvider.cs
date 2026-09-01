@@ -16,7 +16,7 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
     private static readonly WorldGenerationPassId CavesId = new("terraruntime:optimized/caves");
     private static readonly WorldGenerationPassId TerrainMorphologyId = new("terraruntime:optimized/terrain-morphology-v2");
     private static readonly WorldGenerationPassId UndergroundMorphologyId = new("terraruntime:optimized/underground-morphology-v2");
-    private static readonly WorldGenerationPassId LandmarkValidationId = new("terraruntime:optimized/landmark-validation");
+    private static readonly WorldGenerationPassId ProgressionContentId = OptimizedProgressionContentWorldGenerationProvider.ProgressionContentId;
     private static readonly WorldGenerationPassId SurfaceShapingId = new("terraruntime:optimized/surface-shaping");
     private static readonly WorldGenerationPassId SurfaceLifeId = new("terraruntime:optimized/surface-life");
     private static readonly WorldGenerationPassId ProgressionValidationId = new("terraruntime:optimized/progression-validation");
@@ -76,7 +76,7 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                 new WorldGenerationPassDescriptor(
                     SurfaceShapingId,
                     WorldGenerationRngMode.IsolatedDeterministic,
-                    requiredAfter: [LandmarkValidationId]),
+                    requiredAfter: [ProgressionContentId]),
                 SurfaceShapingPass.Instance);
             builder.Add(
                 new WorldGenerationPassDescriptor(

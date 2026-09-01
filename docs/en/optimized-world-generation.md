@@ -118,6 +118,16 @@ hive, temple, dungeon, chest, Honey or Shimmer content.
 
 These are visual/exploration roles, not claims of exact vanilla placement algorithms.
 
+## Guaranteed progression content
+
+After landmark validation, `terraruntime:optimized` now adds world-size-budgeted 2x2 Shadow Orbs or Crimson Hearts
+using the pinned 1.4.5.8 frame contract (`+36` frame-X for Crimson), dry 3x3 Larva anchors inside the Hive, one persistent
+Jungle Progression Cache containing source-backed Jungle Spores/Stingers/Vines, and a dry Underworld forge pocket with
+reachable Obsidian plus exposed Hellstone. The final topology validator treats all four roles as mandatory route targets.
+
+Larva placement proves the worldgen anchor only. Queen Bee activation/destruction semantics remain owned by gameplay
+runtime work and are not falsely counted as complete here.
+
 ## Validation
 
 Generation remains fail-closed. The landmark validator runs after the existing geography and playability validators and
@@ -154,7 +164,6 @@ Loading an existing vanilla `.wld` remains independent of which generator is use
 The landmark and final progression-validation slices close substantial visual/content and structural gaps, but
 `terraruntime:optimized` is not yet production-complete. Important remaining items include:
 
-- Shadow Orb / Crimson Heart anchors;
 - true source-backed biome and Skyware loot families;
 - dungeon locked chest/key progression and richer dungeon branches/traps;
 - multiple hives and stronger Queen Bee space on larger worlds;

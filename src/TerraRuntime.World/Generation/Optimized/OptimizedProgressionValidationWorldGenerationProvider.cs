@@ -11,12 +11,12 @@ public sealed class OptimizedProgressionValidationWorldGenerationProvider : IWor
 {
     public static readonly WorldGeneratorId GeneratorId = OptimizedWorldGenerationProvider.GeneratorId;
 
-    private static readonly WorldGenerationPassId LandmarkValidationId =
-        new("terraruntime:optimized/landmark-validation");
+    private static readonly WorldGenerationPassId ProgressionContentId =
+        OptimizedProgressionContentWorldGenerationProvider.ProgressionContentId;
     private static readonly WorldGenerationPassId ProgressionValidationId =
         new("terraruntime:optimized/progression-validation");
 
-    private readonly OptimizedLandmarkWorldGenerationProvider baseline = new();
+    private readonly OptimizedProgressionContentWorldGenerationProvider baseline = new();
 
     public WorldGeneratorId Id => GeneratorId;
 
@@ -32,14 +32,14 @@ public sealed class OptimizedProgressionValidationWorldGenerationProvider : IWor
         foreach (CapturedPass entry in capture.Entries)
         {
             builder.Add(entry.Descriptor, entry.Pass);
-            if (entry.Descriptor.Id != LandmarkValidationId)
+            if (entry.Descriptor.Id != ProgressionContentId)
                 continue;
 
             builder.Add(
                 new WorldGenerationPassDescriptor(
                     ProgressionValidationId,
                     WorldGenerationRngMode.IsolatedDeterministic,
-                    requiredAfter: [LandmarkValidationId]),
+                    requiredAfter: [ProgressionContentId]),
                 ProgressionValidationPass.Instance);
             inserted = true;
         }
@@ -47,7 +47,7 @@ public sealed class OptimizedProgressionValidationWorldGenerationProvider : IWor
         if (!inserted)
         {
             throw new InvalidOperationException(
-                "Optimized progression validation could not find the landmark validation boundary.");
+                "Optimized progression validation could not find the progression-content boundary.");
         }
     }
 
@@ -85,7 +85,8 @@ public sealed class OptimizedProgressionValidationWorldGenerationProvider : IWor
 
             context.ReportProgress(
                 1d,
-                $"Validated progression topology: ores={report.TotalOreTiles}, " +
+                $"Validated progression topology: ores={report.TotalOreTiles}, Obsidian={report.ObsidianTiles}, " +
+                $"anchors={report.EvilAnchorObjects + report.LarvaObjects}, " +
                 $"interiors={report.TotalInteriorCells}, routes={report.ReachableTargetCount}");
         }
     }
@@ -101,6 +102,9 @@ public readonly record struct OptimizedProgressionValidationReport(
     int SilverTiles,
     int GoldTiles,
     int HellstoneTiles,
+    int ObsidianTiles,
+    int EvilAnchorObjects,
+    int LarvaObjects,
     int DungeonInteriorCells,
     int HiveInteriorCells,
     int TempleInteriorCells,
@@ -148,7 +152,7 @@ public static class OptimizedProgressionWorldValidator
         if (!metadata.TryGetLayers(out WorldGenerationLayers layers))
             throw new InvalidOperationException("Optimized progression validation found no world-layer metadata.");
 
-        ScanResult scan = Scan(workspace, cancellationToken);
+        ScanResult scan = Scan(workspace, request.Options.Evil, cancellationToken);
         ValidateOreBudgets(workspace, scan);
         ValidateStructureIntegrity(workspace, scan);
 
@@ -202,6 +206,18 @@ public static class OptimizedProgressionWorldValidator
             FindNearestOpenCell(workspace, scan.HellforgeAnchor.X, scan.HellforgeAnchor.Y, radius: 8) ??
             throw new InvalidOperationException(
                 "Optimized progression validation found no open cell around the Hellforge.");
+        WorldGenerationPoint evilAnchorAccess =
+            FindNearestOpenCell(workspace, scan.EvilAnchor.X + 1, scan.EvilAnchor.Y + 1, radius: 7) ??
+            throw new InvalidOperationException("Optimized progression validation found no open Shadow Orb/Crimson Heart chamber.");
+        WorldGenerationPoint larvaAccess =
+            FindNearestOpenCell(workspace, scan.LarvaAnchor.X + 1, scan.LarvaAnchor.Y + 1, radius: 7) ??
+            throw new InvalidOperationException("Optimized progression validation found no dry access around Larva.");
+        WorldGenerationPoint obsidianAccess =
+            FindMaterialAccessNear(workspace, scan.HellforgeAnchor, checked((ushort)VanillaTileIds.Obsidian.Value), radius: 56) ??
+            throw new InvalidOperationException("Optimized progression validation found no reachable Obsidian near the Hellforge route.");
+        WorldGenerationPoint hellstoneAccess =
+            FindMaterialAccessNear(workspace, scan.HellforgeAnchor, Hellstone, radius: 56) ??
+            throw new InvalidOperationException("Optimized progression validation found no reachable Hellstone near the Hellforge route.");
 
         ReachabilityTarget[] targets =
         [
@@ -212,7 +228,11 @@ public static class OptimizedProgressionWorldValidator
             new("dungeon entrance", dungeonEntrance),
             new("hive interior", hiveInterior),
             new("Jungle Temple entrance", templeEntrance),
-            new("Underworld Hellforge", hellforgeAccess)
+            new("Underworld Hellforge", hellforgeAccess),
+            new("Shadow Orb/Crimson Heart chamber", evilAnchorAccess),
+            new("Hive Larva", larvaAccess),
+            new("Obsidian progression pocket", obsidianAccess),
+            new("exposed Hellstone", hellstoneAccess)
         ];
 
         int reachable = ValidateReachability(
@@ -227,6 +247,9 @@ public static class OptimizedProgressionWorldValidator
             scan.SilverTiles,
             scan.GoldTiles,
             scan.HellstoneTiles,
+            scan.ObsidianTiles,
+            scan.EvilAnchorObjects,
+            scan.LarvaObjects,
             scan.Dungeon.InteriorCells,
             scan.Hive.InteriorCells,
             scan.Temple.InteriorCells,
@@ -235,6 +258,7 @@ public static class OptimizedProgressionWorldValidator
 
     private static ScanResult Scan(
         IWorldGenerationWorkspace workspace,
+        WorldGenerationEvil evil,
         CancellationToken cancellationToken)
     {
         var result = new ScanResult();
@@ -272,6 +296,9 @@ public static class OptimizedProgressionWorldValidator
                         case Hellstone:
                             result.HellstoneTiles++;
                             break;
+                        case 56:
+                            result.ObsidianTiles++;
+                            break;
                         case BlueDungeonBrick:
                             result.DungeonMaterial++;
                             break;
@@ -303,6 +330,17 @@ public static class OptimizedProgressionWorldValidator
         result.LihzahrdAltarComplete = HasCompleteThreeByTwoObject(
             workspace,
             checked((ushort)VanillaTileIds.LihzahrdAltar.Value));
+        result.EvilAnchorObjects = CountCompleteTwoByTwoObjects(
+            workspace,
+            checked((ushort)VanillaTileIds.ShadowOrbs.Value),
+            evil == WorldGenerationEvil.Crimson ? (short)36 : (short)0,
+            out WorldGenerationPoint evilAnchor);
+        result.EvilAnchor = evilAnchor;
+        result.LarvaObjects = CountCompleteThreeByThreeObjects(
+            workspace,
+            checked((ushort)VanillaTileIds.Larva.Value),
+            out WorldGenerationPoint larva);
+        result.LarvaAnchor = larva;
 
         return result;
     }
@@ -317,6 +355,7 @@ public static class OptimizedProgressionWorldValidator
         RequireMinimum("Silver", scan.SilverTiles, Math.Max(10, checked((int)(area / 12000L))));
         RequireMinimum("Gold", scan.GoldTiles, Math.Max(8, checked((int)(area / 16000L))));
         RequireMinimum("Hellstone", scan.HellstoneTiles, Math.Max(16, checked((int)(area / 8000L))));
+        RequireMinimum("Obsidian", scan.ObsidianTiles, OptimizedProgressionContentWorldGenerationProvider.ResolveObsidianTarget(workspace.WidthTiles));
     }
 
     private static void ValidateStructureIntegrity(
@@ -329,6 +368,14 @@ public static class OptimizedProgressionWorldValidator
         RequireMinimum("dungeon interior", scan.Dungeon.InteriorCells, MinimumDungeonInterior);
         RequireMinimum("hive interior", scan.Hive.InteriorCells, MinimumHiveInterior);
         RequireMinimum("Jungle Temple interior", scan.Temple.InteriorCells, MinimumTempleInterior);
+        RequireMinimum(
+            "Shadow Orb/Crimson Heart objects",
+            scan.EvilAnchorObjects,
+            OptimizedProgressionContentWorldGenerationProvider.ResolveEvilAnchorTarget(workspace.WidthTiles));
+        RequireMinimum(
+            "Larva objects",
+            scan.LarvaObjects,
+            OptimizedProgressionContentWorldGenerationProvider.ResolveLarvaTarget(workspace.WidthTiles));
         RequireMinimum(
             "connected dungeon interior",
             MeasureLargestInteriorComponent(
@@ -736,6 +783,108 @@ public static class OptimizedProgressionWorldValidator
         return false;
     }
 
+    private static int CountCompleteTwoByTwoObjects(
+        IWorldGenerationWorkspace workspace,
+        ushort type,
+        short styleOffsetX,
+        out WorldGenerationPoint firstAnchor)
+    {
+        int count = 0;
+        firstAnchor = default;
+        for (int y = 0; y <= workspace.HeightTiles - 2; y++)
+        for (int x = 0; x <= workspace.WidthTiles - 2; x++)
+        {
+            if (!workspace.TryGetTile(x, y, out WorldGenerationTile topLeft) ||
+                (topLeft.Flags & WorldGenerationTileFlags.Active) == 0 || topLeft.Type != type ||
+                topLeft.FrameX != styleOffsetX || topLeft.FrameY != 0)
+            {
+                continue;
+            }
+
+            bool complete = true;
+            for (int dx = 0; dx < 2 && complete; dx++)
+            for (int dy = 0; dy < 2; dy++)
+            {
+                if (!workspace.TryGetTile(x + dx, y + dy, out WorldGenerationTile tile) ||
+                    (tile.Flags & WorldGenerationTileFlags.Active) == 0 || tile.Type != type ||
+                    tile.FrameX != styleOffsetX + dx * 18 || tile.FrameY != dy * 18)
+                {
+                    complete = false;
+                    break;
+                }
+            }
+            if (!complete)
+                continue;
+            firstAnchor = count == 0 ? new WorldGenerationPoint(x, y) : firstAnchor;
+            count++;
+        }
+        return count;
+    }
+
+    private static int CountCompleteThreeByThreeObjects(
+        IWorldGenerationWorkspace workspace,
+        ushort type,
+        out WorldGenerationPoint firstAnchor)
+    {
+        int count = 0;
+        firstAnchor = default;
+        for (int y = 0; y <= workspace.HeightTiles - 3; y++)
+        for (int x = 0; x <= workspace.WidthTiles - 3; x++)
+        {
+            if (!workspace.TryGetTile(x, y, out WorldGenerationTile topLeft) ||
+                (topLeft.Flags & WorldGenerationTileFlags.Active) == 0 || topLeft.Type != type ||
+                topLeft.FrameX != 0 || topLeft.FrameY != 0)
+            {
+                continue;
+            }
+
+            bool complete = true;
+            for (int dx = 0; dx < 3 && complete; dx++)
+            for (int dy = 0; dy < 3; dy++)
+            {
+                if (!workspace.TryGetTile(x + dx, y + dy, out WorldGenerationTile tile) ||
+                    (tile.Flags & WorldGenerationTileFlags.Active) == 0 || tile.Type != type ||
+                    tile.FrameX != dx * 18 || tile.FrameY != dy * 18)
+                {
+                    complete = false;
+                    break;
+                }
+            }
+            if (!complete)
+                continue;
+            firstAnchor = count == 0 ? new WorldGenerationPoint(x, y) : firstAnchor;
+            count++;
+        }
+        return count;
+    }
+
+    private static WorldGenerationPoint? FindMaterialAccessNear(
+        IWorldGenerationWorkspace workspace,
+        WorldGenerationPoint center,
+        ushort material,
+        int radius)
+    {
+        int left = Math.Max(1, center.X - radius);
+        int right = Math.Min(workspace.WidthTiles - 2, center.X + radius);
+        int top = Math.Max(1, center.Y - radius);
+        int bottom = Math.Min(workspace.HeightTiles - 2, center.Y + radius);
+        for (int y = top; y <= bottom; y++)
+        for (int x = left; x <= right; x++)
+        {
+            if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile) ||
+                (tile.Flags & WorldGenerationTileFlags.Active) == 0 || tile.Type != material)
+            {
+                continue;
+            }
+
+            if (IsOpen(workspace, x - 1, y)) return new WorldGenerationPoint(x - 1, y);
+            if (IsOpen(workspace, x + 1, y)) return new WorldGenerationPoint(x + 1, y);
+            if (IsOpen(workspace, x, y - 1)) return new WorldGenerationPoint(x, y - 1);
+            if (IsOpen(workspace, x, y + 1)) return new WorldGenerationPoint(x, y + 1);
+        }
+        return null;
+    }
+
     private static bool IsOpen(
         IWorldGenerationWorkspace workspace,
         int x,
@@ -833,6 +982,9 @@ public static class OptimizedProgressionWorldValidator
         public int SilverTiles;
         public int GoldTiles;
         public int HellstoneTiles;
+        public int ObsidianTiles;
+        public int EvilAnchorObjects;
+        public int LarvaObjects;
         public int DungeonMaterial;
         public int HiveMaterial;
         public int TempleMaterial;
@@ -845,5 +997,7 @@ public static class OptimizedProgressionWorldValidator
         public bool HellforgeComplete;
         public bool LihzahrdAltarComplete;
         public WorldGenerationPoint HellforgeAnchor;
+        public WorldGenerationPoint EvilAnchor;
+        public WorldGenerationPoint LarvaAnchor;
     }
 }

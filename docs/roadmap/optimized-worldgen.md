@@ -75,9 +75,9 @@ Presence of terrain alone is not considered playable progression.
 - [x] persistent landmark caches for sky houses, pyramids, Living Trees and Underworld houses;
 - [ ] biome chest/loot families needed for ordinary pre-hardmode exploration;
 - [ ] dungeon locked chest/key progression;
-- [ ] Shadow Orb / Crimson Heart progression anchors;
-- [ ] jungle spores/stingers/bee progression resource audit;
-- [ ] hellstone/obsidian/hellforge resource reachability audit;
+- [x] source-backed 2x2 Shadow Orb / Crimson Heart progression anchors with world-size budgets and correct Crimson +36 frame style;
+- [x] Hive Larva worldgen anchors plus a persistent jungle progression cache with source-backed Jungle Spores/Stingers/Vines; authoritative Queen Bee activation remains gameplay-owned;
+- [x] reachable Hellforge route with an explicit dry Obsidian/exposed-Hellstone resource pocket and final topology targets;
 - [ ] hardmode-ready world anchors required by later progression mutation logic.
 
 Current optimized cache loot deliberately uses only repository source-backed item identities. It proves non-empty,

@@ -1,4 +1,4 @@
-namespace TerraRuntime.Contracts.Gameplay;
+﻿namespace TerraRuntime.Contracts.Gameplay;
 
 /// <summary>
 /// Initial source-verified TerrariaServer 1.4.5.8 NPC content ids used by TerraRuntime gameplay.
@@ -190,6 +190,10 @@ public static class VanillaItemIds
     public static readonly ItemTypeId SandBlock = new(169);
     public static readonly ItemTypeId Gel = new(23);
     public static readonly ItemTypeId Chest = new(48);
+    public static readonly ItemTypeId Obsidian = new(173);
+    public static readonly ItemTypeId Stinger = new(209);
+    public static readonly ItemTypeId Vine = new(210);
+    public static readonly ItemTypeId JungleSpores = new(331);
     public static readonly ItemTypeId SlimeStaff = new(1309);
     public static readonly ItemTypeId CopperPickaxe = new(3509);
 
@@ -280,10 +284,12 @@ public static class VanillaTileIds
     public static readonly TileTypeId CorruptGrass = new(23);
     public static readonly TileTypeId Ebonstone = new(25);
     public static readonly TileTypeId DemonAltar = new(26);
+    public static readonly TileTypeId ShadowOrbs = new(31);
     public static readonly TileTypeId Sunflower = new(27);
     public static readonly TileTypeId Cobweb = new(51);
     public static readonly TileTypeId Sand = new(53);
     public static readonly TileTypeId Signs = new(55);
+    public static readonly TileTypeId Obsidian = new(56);
     public static readonly TileTypeId Mud = new(59);
     public static readonly TileTypeId JungleGrass = new(60);
     public static readonly TileTypeId MushroomGrass = new(70);
@@ -296,6 +302,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId Crimstone = new(203);
     public static readonly TileTypeId Hive = new(225);
     public static readonly TileTypeId LihzahrdBrick = new(226);
+    public static readonly TileTypeId Larva = new(231);
     public static readonly TileTypeId LihzahrdAltar = new(237);
     public static readonly TileTypeId Marble = new(367);
     public static readonly TileTypeId Granite = new(368);

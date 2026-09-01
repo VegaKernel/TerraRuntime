@@ -41,12 +41,15 @@ public sealed class OptimizedWorldGenerationProviderTests
             world,
             in request,
             TestContext.Current.CancellationToken);
-        Assert.Equal(8, progression.ReachableTargetCount);
+        Assert.Equal(12, progression.ReachableTargetCount);
         Assert.True(progression.CopperTiles > 0);
         Assert.True(progression.IronTiles > 0);
         Assert.True(progression.SilverTiles > 0);
         Assert.True(progression.GoldTiles > 0);
         Assert.True(progression.HellstoneTiles > 0);
+        Assert.True(progression.ObsidianTiles >= OptimizedProgressionContentWorldGenerationProvider.ResolveObsidianTarget(request.WidthTiles));
+        Assert.True(progression.EvilAnchorObjects >= OptimizedProgressionContentWorldGenerationProvider.ResolveEvilAnchorTarget(request.WidthTiles));
+        Assert.True(progression.LarvaObjects >= OptimizedProgressionContentWorldGenerationProvider.ResolveLarvaTarget(request.WidthTiles));
         Assert.True(progression.DungeonInteriorCells >= 24);
         Assert.True(progression.HiveInteriorCells >= 18);
         Assert.True(progression.TempleInteriorCells >= 24);
@@ -63,6 +66,9 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.True(ContainsActiveTile(world, checked((ushort)VanillaTileIds.DemonAltar.Value)), "Evil altar must exist.");
         Assert.True(ContainsActiveTile(world, checked((ushort)VanillaTileIds.Hellforge.Value)), "Hellforge must exist.");
         Assert.True(ContainsActiveTile(world, 58), "Hellstone must exist.");
+        Assert.True(ContainsActiveTile(world, checked((ushort)VanillaTileIds.Obsidian.Value)), "Obsidian progression material must exist.");
+        Assert.True(ContainsActiveTile(world, checked((ushort)VanillaTileIds.ShadowOrbs.Value)), "Shadow Orb progression anchors must exist.");
+        Assert.True(ContainsActiveTile(world, checked((ushort)VanillaTileIds.Larva.Value)), "Hive Larva progression anchor must exist.");
         Assert.True(ContainsLiquid(world, WorldGenerationLiquidKind.Water), "Water must exist.");
         Assert.True(ContainsLiquid(world, WorldGenerationLiquidKind.Lava), "Lava must exist.");
         Assert.True(ContainsLiquid(world, WorldGenerationLiquidKind.Honey), "Honey must exist.");
@@ -95,6 +101,11 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.Contains(generated, static chest => chest.Name.StartsWith("Pyramid Cache ", StringComparison.Ordinal));
         Assert.Contains(generated, static chest => chest.Name.StartsWith("Living Tree Cache ", StringComparison.Ordinal));
         Assert.Contains(generated, static chest => chest.Name.StartsWith("Underworld Cache ", StringComparison.Ordinal));
+        WorldChest jungleProgression = Assert.Single(generated, static chest => chest.Name == "Jungle Progression Cache");
+        Assert.Contains(jungleProgression.Items, static item => item.ItemType == VanillaItemIds.JungleSpores.Value && item.Stack >= 30);
+        Assert.Contains(jungleProgression.Items, static item => item.ItemType == VanillaItemIds.Stinger.Value && item.Stack >= 20);
+        Assert.Contains(jungleProgression.Items, static item => item.ItemType == VanillaItemIds.Vine.Value && item.Stack >= 6);
+        Assert.True(HasEvilAnchorStyle(world, crimson: false), "Corruption optimized worlds must use source-backed Shadow Orb frames.");
     }
 
     [Fact]
@@ -160,6 +171,8 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
         Assert.NotNull(result.Candidate);
         Assert.True(CountActiveTiles(result.Candidate!, 203) > 0, "Crimson optimized worlds must retain Crimstone.");
+        Assert.True(HasEvilAnchorStyle(result.Candidate, crimson: true), "Crimson optimized worlds must use the +36 source-backed Crimson Heart frame style.");
+        Assert.True(CountActiveTiles(result.Candidate, checked((ushort)VanillaTileIds.Larva.Value)) >= 9, "Crimson optimized worlds must retain a complete Hive Larva.");
         Assert.Contains(
             result.Candidate!.CaptureGeneratedChests(),
             static chest => chest.Name.StartsWith("Pyramid Cache ", StringComparison.Ordinal));
@@ -189,7 +202,7 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.NotNull(result.Candidate);
         Assert.Equal(4200, result.Candidate!.WidthTiles);
         Assert.Equal(1200, result.Candidate.HeightTiles);
-        Assert.Equal(8, OptimizedProgressionWorldValidator.Validate(
+        Assert.Equal(12, OptimizedProgressionWorldValidator.Validate(
             result.Candidate,
             result.Candidate,
             in request,
@@ -197,6 +210,9 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.True(CountActiveTiles(result.Candidate, 5) >= 700, "Canonical Small optimized worlds must contain a substantial ordinary-tree population.");
         Assert.True(CountTreeFoliageAnchors(result.Candidate) >= 80, "Canonical Small optimized trees must include persistent foliage anchors.");
         Assert.True(CountShapedNaturalSurface(result.Candidate, result.Metadata.Layers) >= 20, "Canonical Small optimized terrain must retain visible shaped surface transitions.");
+        Assert.True(CountActiveTiles(result.Candidate, checked((ushort)VanillaTileIds.ShadowOrbs.Value)) >= 24, "Canonical Small optimized worlds must retain at least six complete evil anchors.");
+        Assert.True(CountActiveTiles(result.Candidate, checked((ushort)VanillaTileIds.Obsidian.Value)) >= OptimizedProgressionContentWorldGenerationProvider.ResolveObsidianTarget(request.WidthTiles), "Canonical Small optimized worlds must retain the Obsidian progression budget.");
+        Assert.True(CountActiveTiles(result.Candidate, checked((ushort)VanillaTileIds.Larva.Value)) >= 9, "Canonical Small optimized worlds must retain Hive Larva progression.");
     }
 
     private static void AssertSpawnHasGround(
@@ -240,6 +256,23 @@ public sealed class OptimizedWorldGenerationProviderTests
         }
 
         return count;
+    }
+
+    private static bool HasEvilAnchorStyle(RuntimeWorldGenerationWorkspace workspace, bool crimson)
+    {
+        short expected = crimson ? (short)36 : (short)0;
+        for (int y = 0; y < workspace.HeightTiles - 1; y++)
+        for (int x = 0; x < workspace.WidthTiles - 1; x++)
+        {
+            if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile) ||
+                (tile.Flags & WorldGenerationTileFlags.Active) == 0 ||
+                tile.Type != VanillaTileIds.ShadowOrbs.Value || tile.FrameX != expected || tile.FrameY != 0)
+            {
+                continue;
+            }
+            return true;
+        }
+        return false;
     }
 
     private static int CountTreeFoliageAnchors(RuntimeWorldGenerationWorkspace workspace)
