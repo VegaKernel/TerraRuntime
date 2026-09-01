@@ -63,6 +63,26 @@ public sealed class RuntimeWorldGenerationCandidateServiceTests
     }
 
     [Fact]
+    public void Generator_source_exception_is_contained_as_provider_failure()
+    {
+        WorldGeneratorId generatorId = new("test:source-failure");
+        var service = new RuntimeWorldGenerationCandidateService(new ThrowingSource());
+        var request = new WorldGenerationRequest(generatorId, "SourceFailure", 1, 16, 16);
+
+        RuntimeWorldGenerationCandidateResult result = service.Generate(
+            in request,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(RuntimeWorldGenerationCandidateStatus.GenerationFailed, result.Status);
+        Assert.False(result.Succeeded);
+        Assert.Null(result.Candidate);
+        Assert.NotNull(result.Execution);
+        Assert.Equal(WorldGenerationExecutionStatus.ProviderFailed, result.Execution.Value.Status);
+        Assert.IsType<InvalidOperationException>(result.Execution.Value.Error);
+        Assert.Equal("resolver exploded", result.Execution.Value.Error?.Message);
+    }
+
+    [Fact]
     public void Failed_pass_discards_partial_candidate()
     {
         WorldGeneratorId generatorId = new("test:failing");
@@ -83,6 +103,18 @@ public sealed class RuntimeWorldGenerationCandidateServiceTests
         Assert.Null(result.Candidate);
         Assert.NotNull(result.Execution);
         Assert.Equal(WorldGenerationExecutionStatus.PassFailed, result.Execution.Value.Status);
+    }
+
+    private sealed class ThrowingSource : ITerraRuntimeWorldGeneratorSource
+    {
+        public ReadOnlyMemory<WorldGeneratorId> CaptureWorldGeneratorIds() =>
+            ReadOnlyMemory<WorldGeneratorId>.Empty;
+
+        public bool TryResolveWorldGenerator(WorldGeneratorId id, out IWorldGenerationProvider? provider)
+        {
+            provider = null;
+            throw new InvalidOperationException("resolver exploded");
+        }
     }
 
     private sealed class TestSource : ITerraRuntimeWorldGeneratorSource

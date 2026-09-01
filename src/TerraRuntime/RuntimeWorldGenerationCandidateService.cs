@@ -45,13 +45,26 @@ public sealed class RuntimeWorldGenerationCandidateService
         IWorldGenerationProgressSink? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (!generators.TryResolveWorldGenerator(request.GeneratorId, out IWorldGenerationProvider? provider) ||
-            provider is null)
+        IWorldGenerationProvider? provider;
+        try
         {
+            if (!generators.TryResolveWorldGenerator(request.GeneratorId, out provider) || provider is null)
+            {
+                return new RuntimeWorldGenerationCandidateResult(
+                    RuntimeWorldGenerationCandidateStatus.GeneratorNotFound,
+                    Candidate: null,
+                    Execution: null);
+            }
+        }
+        catch (Exception exception)
+        {
+            var failed = new WorldGenerationExecutionResult(
+                WorldGenerationExecutionStatus.ProviderFailed,
+                Error: exception);
             return new RuntimeWorldGenerationCandidateResult(
-                RuntimeWorldGenerationCandidateStatus.GeneratorNotFound,
+                RuntimeWorldGenerationCandidateStatus.GenerationFailed,
                 Candidate: null,
-                Execution: null);
+                Execution: failed);
         }
 
         RuntimeWorldGenerationWorkspace candidate;

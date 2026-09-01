@@ -98,46 +98,16 @@ public static class StartupProgram
         }
         else if (!HasWorldArgument(serverArgs))
         {
-            if (!LocalWorldSelector.TrySelectOrCreate(
+            if (!TrySelectOrCreateInteractiveStartupWorld(
                     directories.WorldsDirectory,
-                    out LocalWorldSelection selection))
+                    startupWorldGenerators,
+                    startupTuiEnabled,
+                    out string? worldPath))
             {
                 return 0;
             }
 
-            StartupConsolePresentation.ClearForTransition();
-
-            string? worldPath;
-            if (selection.Kind == LocalWorldSelectionKind.CreateWorld)
-            {
-                if (!InteractiveWorldCreationPrompt.TryPrompt(
-                        directories.WorldsDirectory,
-                        startupWorldGenerators,
-                        out StartupWorldCreationRequest creationRequest))
-                {
-                    return 0;
-                }
-
-                StartupConsolePresentation.ClearForTransition();
-
-                if (!TryCreateStartupWorld(
-                        creationRequest,
-                        startupWorldGenerators,
-                        startupTuiEnabled,
-                        out worldPath))
-                {
-                    return 25;
-                }
-            }
-            else
-            {
-                worldPath = selection.WorldPath;
-            }
-
-            if (string.IsNullOrWhiteSpace(worldPath))
-                return 0;
-
-            serverArgs = [.. serverArgs, "--world", worldPath];
+            serverArgs = [.. serverArgs, "--world", worldPath!];
         }
 
         if (!ServerHostOptions.TryParse(serverArgs, out ServerHostOptions? options, out string? error) || options is null)
@@ -173,33 +143,83 @@ public static class StartupProgram
         }
     }
 
+    private static bool TrySelectOrCreateInteractiveStartupWorld(
+        string worldsDirectory,
+        ITerraRuntimeWorldGeneratorSource generators,
+        bool terminalUiEnabled,
+        out string? worldPath)
+    {
+        worldPath = null;
+        while (true)
+        {
+            if (!LocalWorldSelector.TrySelectOrCreate(worldsDirectory, out LocalWorldSelection selection))
+                return false;
+
+            StartupConsolePresentation.ClearForTransition();
+
+            if (selection.Kind == LocalWorldSelectionKind.ExistingWorld)
+            {
+                worldPath = selection.WorldPath;
+                return !string.IsNullOrWhiteSpace(worldPath);
+            }
+
+            if (!InteractiveWorldCreationPrompt.TryPrompt(
+                    worldsDirectory,
+                    generators,
+                    out StartupWorldCreationRequest creationRequest))
+            {
+                Console.WriteLine("World creation cancelled. Returning to world selection.");
+                continue;
+            }
+
+            StartupConsolePresentation.ClearForTransition();
+
+            if (TryCreateStartupWorld(
+                    creationRequest,
+                    generators,
+                    terminalUiEnabled,
+                    out worldPath))
+            {
+                return true;
+            }
+
+            Console.Error.WriteLine();
+            Console.Error.WriteLine(
+                "World creation did not complete. Returning to world selection; choose N to retry or Q to quit.");
+        }
+    }
+
     private static bool TryCreateStartupWorld(
         StartupWorldCreationRequest request,
         ITerraRuntimeWorldGeneratorSource generators,
         bool terminalUiEnabled,
         out string? worldPath)
     {
-        long maxTileCount = TerrariaServerHost.CreateServerWorldLoadLimits().MaxTileCount;
-        var persistence = new RuntimeWorldCreationPersistencePipeline(generators, maxTileCount);
-        long nowBinary = DateTime.UtcNow.ToBinary();
-        StartupProgressUiHost? progressUi = terminalUiEnabled
-            ? StartupProgressUiHost.StartWorldGeneration(
-                request.Generation.WorldName,
-                static message => Console.Error.WriteLine(message))
-            : null;
-
-        if (progressUi is null)
-        {
-            Console.WriteLine(
-                $"Generating world '{request.Generation.WorldName}' with " +
-                $"'{request.Generation.GeneratorId.Value}' " +
-                $"({request.Generation.WidthTiles}x{request.Generation.HeightTiles}, " +
-                $"seed={request.Generation.Seed}, mode={request.Generation.Options.GameMode}, " +
-                $"evil={request.Generation.Options.Evil})...");
-        }
+        worldPath = null;
+        StartupProgressUiHost? progressUi = null;
+        long maxTileCount = 0;
 
         try
         {
+            maxTileCount = TerrariaServerHost.CreateServerWorldLoadLimits().MaxTileCount;
+            var persistence = new RuntimeWorldCreationPersistencePipeline(generators, maxTileCount);
+            long nowBinary = DateTime.UtcNow.ToBinary();
+            progressUi = terminalUiEnabled
+                ? StartupProgressUiHost.StartWorldGeneration(
+                    request.Generation.WorldName,
+                    static message => Console.Error.WriteLine(message))
+                : null;
+
+            if (progressUi is null)
+            {
+                Console.WriteLine(
+                    $"Generating world '{request.Generation.WorldName}' with " +
+                    $"'{request.Generation.GeneratorId.Value}' " +
+                    $"({request.Generation.WidthTiles}x{request.Generation.HeightTiles}, " +
+                    $"seed={request.Generation.Seed}, mode={request.Generation.Options.GameMode}, " +
+                    $"evil={request.Generation.Options.Evil})...");
+            }
+
             RuntimeWorldCreationPersistenceResult creation = persistence.TryCreateAndPersist(
                 request.Generation,
                 request.OutputPath,
@@ -210,9 +230,8 @@ public static class StartupProgram
                 progressSink: progressUi);
             if (!creation.Succeeded || string.IsNullOrWhiteSpace(creation.WorldPath))
             {
-                progressUi?.FailAndRelease($"World creation failed: {creation.Status}.");
+                TryFailAndRelease(progressUi, $"World creation failed: {creation.Status}.");
                 PrintWorldCreationFailure(request, creation, generators, maxTileCount);
-                worldPath = null;
                 return false;
             }
 
@@ -223,9 +242,50 @@ public static class StartupProgram
                 Console.WriteLine($"World created: '{worldPath}'.");
             return true;
         }
+        catch (Exception exception)
+        {
+            TryFailAndRelease(
+                progressUi,
+                $"World creation aborted: {exception.GetType().Name}: {exception.Message}");
+            Console.Error.WriteLine(
+                $"World creation aborted by an unexpected exception: {exception.GetType().Name}: {exception.Message}");
+            Console.Error.WriteLine(exception);
+            worldPath = null;
+            return false;
+        }
         finally
         {
-            progressUi?.Dispose();
+            TryDisposeProgressUi(progressUi);
+        }
+    }
+
+    private static void TryFailAndRelease(StartupProgressUiHost? progressUi, string detail)
+    {
+        if (progressUi?.OwnsTerminal != true)
+            return;
+
+        try
+        {
+            progressUi.FailAndRelease(detail);
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"Could not render world-generation failure screen: {exception.Message}");
+        }
+    }
+
+    private static void TryDisposeProgressUi(StartupProgressUiHost? progressUi)
+    {
+        if (progressUi is null)
+            return;
+
+        try
+        {
+            progressUi.Dispose();
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"Could not release startup Terminal UI cleanly: {exception.Message}");
         }
     }
 
@@ -264,19 +324,40 @@ public static class StartupProgram
                 break;
 
             case RuntimeWorldCreationPersistenceStatus.GenerationFailed when result.Creation is { } creation:
+                var execution = creation.Generation.Execution;
+                string pass = execution is { PassId.IsAssigned: true }
+                    ? execution.Value.PassId.Value
+                    : "<none>";
                 Console.Error.WriteLine(
-                    $"Generation execution failed: {creation.Generation.Execution?.Status}.");
+                    $"Generation execution failed: status={execution?.Status}, pass={pass}.");
+                PrintExceptionSummary(execution?.Error ?? result.Error);
+                break;
+
+            case RuntimeWorldCreationPersistenceStatus.GenerationFailed:
+            case RuntimeWorldCreationPersistenceStatus.HeaderFailed:
+            case RuntimeWorldCreationPersistenceStatus.UnexpectedFailure:
+                PrintExceptionSummary(result.Error);
                 break;
 
             case RuntimeWorldCreationPersistenceStatus.FinalizationFailed when result.Creation is { } creation:
                 Console.Error.WriteLine(
-                    $"Generation finalization failed: {creation.Finalization?.Status}.");
+                    $"Generation finalization failed: {creation.Finalization?.Status}. " +
+                    $"{creation.Finalization?.Validation?.Detail}");
                 break;
 
             case RuntimeWorldCreationPersistenceStatus.PublishFailed when result.Publication is { } publication:
                 Console.Error.WriteLine($"Atomic world publication failed: {publication.Result}.");
                 break;
         }
+    }
+
+    private static void PrintExceptionSummary(Exception? exception)
+    {
+        if (exception is null)
+            return;
+
+        Console.Error.WriteLine(
+            $"Cause: {exception.GetType().Name}: {exception.Message}");
     }
 
     private static void PrintWorldGenerators(ITerraRuntimeWorldGeneratorSource source)

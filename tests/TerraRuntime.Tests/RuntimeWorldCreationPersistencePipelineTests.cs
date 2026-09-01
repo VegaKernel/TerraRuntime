@@ -64,6 +64,59 @@ public sealed class RuntimeWorldCreationPersistencePipelineTests
     }
 
     [Fact]
+    public void Pipeline_generates_and_persists_optimized_world_through_full_transaction()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "TerraRuntime.Tests", Guid.NewGuid().ToString("N"));
+        string worldPath = Path.Combine(directory, "optimized.wld");
+        var source = new StartupWorldGeneratorSource(host: null);
+        var pipeline = new RuntimeWorldCreationPersistencePipeline(source, maxTileCount: 32_000_000);
+        var request = new WorldGenerationRequest(
+            OptimizedWorldGenerationProvider.GeneratorId,
+            "Optimized Recovery Smoke",
+            Seed: 0x5245434F56455259UL,
+            WidthTiles: 640,
+            HeightTiles: 320)
+        {
+            SeedText = "recovery-smoke",
+            Options = new WorldGenerationOptions(
+                WorldGenerationGameMode.Classic,
+                WorldGenerationEvil.Crimson)
+        };
+        long timestamp = new DateTime(2026, 9, 1, 10, 0, 0, DateTimeKind.Utc).ToBinary();
+
+        try
+        {
+            RuntimeWorldCreationPersistenceResult result = pipeline.TryCreateAndPersist(
+                request,
+                worldPath,
+                Guid.Parse("cf0d9bab-7926-40e2-a7d6-24fbfdca7bed"),
+                worldId: 1458001,
+                creationTimeBinary: timestamp,
+                lastPlayedBinary: timestamp,
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            string diagnostic = result.Error is null
+                ? result.ToString()
+                : $"{result}; {result.Error.GetType().Name}: {result.Error.Message}";
+            Assert.True(result.Succeeded, diagnostic);
+            Assert.NotNull(result.Creation);
+            Assert.True(result.Creation.Value.Succeeded, result.Creation.Value.ToString());
+            Assert.NotNull(result.Composition);
+            Assert.True(result.Composition.Value.Succeeded, result.Composition.Value.ToString());
+            Assert.NotNull(result.Publication);
+            Assert.True(result.Publication.Value.IsPublished, result.Publication.Value.ToString());
+            Assert.Equal(Path.GetFullPath(worldPath), result.WorldPath);
+            Assert.True(File.Exists(worldPath));
+            Assert.True(new FileInfo(worldPath).Length > 1_024);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Pipeline_rejects_existing_destination_before_running_generator()
     {
         string directory = Path.Combine(Path.GetTempPath(), "TerraRuntime.Tests", Guid.NewGuid().ToString("N"));

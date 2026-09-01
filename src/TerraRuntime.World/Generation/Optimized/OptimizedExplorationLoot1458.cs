@@ -261,9 +261,9 @@ internal static class OptimizedExplorationLoot1458
         int startX = Math.Clamp(workspace.WidthTiles / 16, 8, workspace.WidthTiles - 16);
         int endX = workspace.WidthTiles - startX;
 
-        for (int y = startY; y <= endY; y += 2)
+        for (int y = startY; y <= endY; y++)
         {
-            for (int x = startX; x < endX - 1; x += 3)
+            for (int x = startX; x < endX - 1; x++)
             {
                 if ((x & 255) == 0)
                     context.CancellationToken.ThrowIfCancellationRequested();

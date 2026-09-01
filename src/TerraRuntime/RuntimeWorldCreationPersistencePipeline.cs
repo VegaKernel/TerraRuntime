@@ -15,7 +15,8 @@ internal enum RuntimeWorldCreationPersistenceStatus : byte
     CompositionFailed = 5,
     AlreadyExists = 6,
     PublishFailed = 7,
-    GenerationBudgetExceeded = 8
+    GenerationBudgetExceeded = 8,
+    UnexpectedFailure = 9
 }
 
 internal readonly record struct RuntimeWorldCreationPersistenceResult(
@@ -23,7 +24,8 @@ internal readonly record struct RuntimeWorldCreationPersistenceResult(
     RuntimeWorldCreationPipelineResult? Creation = null,
     WorldFileFreshCompose326Diagnostic? Composition = null,
     WorldFileAtomicPublishDiagnostic? Publication = null,
-    string? WorldPath = null)
+    string? WorldPath = null,
+    Exception? Error = null)
 {
     public bool Succeeded => Status == RuntimeWorldCreationPersistenceStatus.Persisted;
 }
@@ -34,6 +36,8 @@ internal readonly record struct RuntimeWorldCreationPersistenceResult(
 /// semantic finalization have succeeded. Gameplay-visible world options and original seed text come exclusively from
 /// the generation request so provider execution and the persisted vanilla header cannot silently disagree.
 /// Generated object and NPC side tables travel with the candidate and are composed atomically with its tile frames.
+/// Unexpected failures are contained at this transaction boundary so a broken generator/finalizer/composer cannot
+/// terminate an interactive server process or leak a partial .wld.
 /// </summary>
 internal sealed class RuntimeWorldCreationPersistencePipeline
 {
@@ -64,13 +68,50 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
 
         try
         {
+            return TryCreateAndPersistCore(
+                in request,
+                outputPath,
+                uniqueId,
+                worldId,
+                creationTimeBinary,
+                lastPlayedBinary,
+                cancellationToken,
+                progressSink);
+        }
+        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
+        {
+            return new RuntimeWorldCreationPersistenceResult(
+                RuntimeWorldCreationPersistenceStatus.GenerationFailed,
+                Error: exception);
+        }
+        catch (Exception exception)
+        {
+            return new RuntimeWorldCreationPersistenceResult(
+                RuntimeWorldCreationPersistenceStatus.UnexpectedFailure,
+                Error: exception);
+        }
+    }
+
+    private RuntimeWorldCreationPersistenceResult TryCreateAndPersistCore(
+        in WorldGenerationRequest request,
+        string outputPath,
+        Guid uniqueId,
+        int worldId,
+        long creationTimeBinary,
+        long lastPlayedBinary,
+        CancellationToken cancellationToken,
+        IWorldGenerationProgressSink? progressSink)
+    {
+        try
+        {
             request.Validate();
         }
         catch (Exception exception) when (
             exception is ArgumentException or ArgumentOutOfRangeException or OverflowException)
         {
             return new RuntimeWorldCreationPersistenceResult(
-                RuntimeWorldCreationPersistenceStatus.GenerationFailed);
+                RuntimeWorldCreationPersistenceStatus.GenerationFailed,
+                Error: exception);
         }
 
         long tileCount;
@@ -78,10 +119,11 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
         {
             tileCount = checked((long)request.WidthTiles * request.HeightTiles);
         }
-        catch (OverflowException)
+        catch (OverflowException exception)
         {
             return new RuntimeWorldCreationPersistenceResult(
-                RuntimeWorldCreationPersistenceStatus.GenerationBudgetExceeded);
+                RuntimeWorldCreationPersistenceStatus.GenerationBudgetExceeded,
+                Error: exception);
         }
 
         if (tileCount <= 0 || tileCount > maxTileCount)
@@ -130,7 +172,8 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
         {
             return new RuntimeWorldCreationPersistenceResult(
                 RuntimeWorldCreationPersistenceStatus.HeaderFailed,
-                Creation: created);
+                Creation: created,
+                Error: exception);
         }
 
         WorldChest[] generatedChests = created.Candidate.CaptureGeneratedChests();
