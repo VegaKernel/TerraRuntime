@@ -1,0 +1,29 @@
+/usr/share/dotnet/sdk/11.0.100-preview.7.26381.103/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.RuntimeIdentifierInference.targets(385,5): message NETSDK1057: You are using a preview version of .NET. See: https://aka.ms/dotnet-support-policy [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj]
+/usr/share/dotnet/sdk/11.0.100-preview.7.26381.103/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.RuntimeIdentifierInference.targets(385,5): message NETSDK1057: You are using a preview version of .NET. See: https://aka.ms/dotnet-support-policy [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Core/TerraRuntime.Core.csproj]
+/usr/share/dotnet/sdk/11.0.100-preview.7.26381.103/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.RuntimeIdentifierInference.targets(385,5): message NETSDK1057: You are using a preview version of .NET. See: https://aka.ms/dotnet-support-policy [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj]
+/usr/share/dotnet/sdk/11.0.100-preview.7.26381.103/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.RuntimeIdentifierInference.targets(385,5): message NETSDK1057: You are using a preview version of .NET. See: https://aka.ms/dotnet-support-policy [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Contracts/TerraRuntime.Contracts.csproj]
+  TerraRuntime.Transport -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Transport/bin/Release/net11.0/TerraRuntime.Transport.dll
+  TerraRuntime.Protocol -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Protocol/bin/Release/net11.0/TerraRuntime.Protocol.dll
+  TerraRuntime.Contracts -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Contracts/bin/Release/net11.0/TerraRuntime.Contracts.dll
+  TerraRuntime.Core -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Core/bin/Release/net11.0/TerraRuntime.Core.dll
+  TerraRuntime.Network -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Network/bin/Release/net11.0/TerraRuntime.Network.dll
+  TerraRuntime.World -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.World/bin/Release/net11.0/TerraRuntime.World.dll
+  TerraRuntime.HostContracts -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.HostContracts/bin/Release/net11.0/TerraRuntime.HostContracts.dll
+  TerraRuntime.HostModuleFixture -> /home/runner/work/TerraRuntime/TerraRuntime/tests/TerraRuntime.HostModuleFixture/bin/Release/net11.0/TerraRuntime.HostModuleFixture.dll
+  TerraRuntime.Protocol.Multiplicity -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Protocol.Multiplicity/bin/Release/net11.0/TerraRuntime.Protocol.Multiplicity.dll
+  TerraRuntime.ProtocolBench -> /home/runner/work/TerraRuntime/TerraRuntime/tools/TerraRuntime.ProtocolBench/bin/Release/net11.0/TerraRuntime.ProtocolBench.dll
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/RuntimeTownCommerce1458.cs(481,24): error CS7036: There is no argument given that corresponds to the required parameter 'AppliedBiomePreferences' of 'VanillaTownHappinessResult1458.VanillaTownHappinessResult1458(float, bool, int, int)' [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/TerraRuntime.csproj]
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/RuntimeTownCommerce1458.cs(486,24): error CS7036: There is no argument given that corresponds to the required parameter 'AppliedBiomePreferences' of 'VanillaTownHappinessResult1458.VanillaTownHappinessResult1458(float, bool, int, int)' [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/TerraRuntime.csproj]
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/RuntimeTownCommerce1458.cs(533,13): error CS1739: The best overload for 'VanillaTownHappinessContext1458' does not have a parameter named 'Forest' [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/TerraRuntime.csproj]
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/RuntimeTownCommerce1458.cs(550,41): error CS0117: 'VanillaTownHappiness1458' does not contain a definition for 'Evaluate' [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/TerraRuntime.csproj]
+
+Build FAILED.
+
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/RuntimeTownCommerce1458.cs(481,24): error CS7036: There is no argument given that corresponds to the required parameter 'AppliedBiomePreferences' of 'VanillaTownHappinessResult1458.VanillaTownHappinessResult1458(float, bool, int, int)' [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/TerraRuntime.csproj]
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/RuntimeTownCommerce1458.cs(486,24): error CS7036: There is no argument given that corresponds to the required parameter 'AppliedBiomePreferences' of 'VanillaTownHappinessResult1458.VanillaTownHappinessResult1458(float, bool, int, int)' [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/TerraRuntime.csproj]
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/RuntimeTownCommerce1458.cs(533,13): error CS1739: The best overload for 'VanillaTownHappinessContext1458' does not have a parameter named 'Forest' [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/TerraRuntime.csproj]
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/RuntimeTownCommerce1458.cs(550,41): error CS0117: 'VanillaTownHappiness1458' does not contain a definition for 'Evaluate' [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime/TerraRuntime.csproj]
+    0 Warning(s)
+    4 Error(s)
+
+Time Elapsed 00:00:34.30
