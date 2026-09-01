@@ -20,7 +20,8 @@ public static class WorldFileProgressionHeaderPatcher
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private const ulong SupportedMutationMask =
         (1UL << (int)VanillaWorldProgressionId.KingSlime) |
-        (1UL << (int)VanillaWorldProgressionId.EvilBoss);
+        (1UL << (int)VanillaWorldProgressionId.EvilBoss) |
+        (1UL << (int)VanillaWorldProgressionId.Skeletron);
 
     public static WorldFileProgressionHeaderPatchResult TryPatch(
         ReadOnlySpan<byte> sourceHeader,
@@ -85,7 +86,10 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out _) || !reader.TryReadBool(out _))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
         int downedBoss2Offset = reader.Offset;
-        if (!reader.TryReadBool(out bool persistedDownedBoss2) || !reader.TrySkipBools(8))
+        if (!reader.TryReadBool(out bool persistedDownedBoss2))
+            return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedBoss3Offset = reader.Offset;
+        if (!reader.TryReadBool(out bool persistedDownedBoss3) || !reader.TrySkipBools(7))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         int downedSlimeKingOffset = reader.Offset;
@@ -103,6 +107,8 @@ public static class WorldFileProgressionHeaderPatcher
         patchedHeader = sourceHeader.ToArray();
         if (mutations.IsCompleted(VanillaWorldProgressionId.EvilBoss) && !persistedDownedBoss2)
             patchedHeader[downedBoss2Offset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.Skeletron) && !persistedDownedBoss3)
+            patchedHeader[downedBoss3Offset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.KingSlime) && !persistedDownedSlimeKing)
             patchedHeader[downedSlimeKingOffset] = 1;
         if (mutations.UnlockSlimeBlueSpawn && !townState.PersistedSlimeBlue)

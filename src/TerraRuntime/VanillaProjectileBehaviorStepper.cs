@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
 
 namespace TerraRuntime;
 
@@ -10,13 +11,15 @@ namespace TerraRuntime;
 internal readonly record struct VanillaProjectileBehaviorContext(
     bool WindPhysics,
     float WindSpeedCurrent,
-    float WindPhysicsStrength);
+    float WindPhysicsStrength,
+    IRuntimePlayerSlotSnapshotLookup? PlayerSnapshots = null);
 
 /// <summary>State produced by one supported vanilla projectile AI-family step before world motion/collision.</summary>
 internal readonly record struct VanillaProjectileBehaviorResult(
     float VelocityX,
     float VelocityY,
-    float Ai0);
+    float Ai0,
+    float? Ai1Override = null);
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile behavior that is independent of tile/world queries.
@@ -72,6 +75,7 @@ internal static class VanillaProjectileBehaviorStepper
         float velocityX = current.VelocityX;
         float velocityY = current.VelocityY;
         float ai0 = current.Ai.Ai0;
+        float? ai1Override = null;
 
         switch (profile.Family)
         {
@@ -104,12 +108,84 @@ internal static class VanillaProjectileBehaviorStepper
                     velocityY = MaximumArrowFallSpeed;
                 break;
 
+            case VanillaProjectileBehaviorFamily.SkeletronSkull:
+                float ai1 = current.Ai.Ai1 + 1f;
+                ai1Override = ai1;
+                float speed = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+                if (ai1 > 30f && ai1 < 110f && speed > 0f &&
+                    TryFindClosestPlayer(in current, in definition, context.PlayerSnapshots, out float targetX, out float targetY))
+                {
+                    float centerX = current.PositionX + definition.Width * 0.5f;
+                    float centerY = current.PositionY + definition.Height * 0.5f;
+                    float dx = targetX - centerX;
+                    float dy = targetY - centerY;
+                    float distance = MathF.Sqrt(dx * dx + dy * dy);
+                    if (distance > 0f)
+                    {
+                        float desiredX = dx / distance * speed;
+                        float desiredY = dy / distance * speed;
+                        velocityX = (velocityX * 24f + desiredX) / 25f;
+                        velocityY = (velocityY * 24f + desiredY) / 25f;
+                        float blendedSpeed = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+                        if (blendedSpeed > 0f)
+                        {
+                            velocityX = velocityX / blendedSpeed * speed;
+                            velocityY = velocityY / blendedSpeed * speed;
+                        }
+                    }
+                }
+
+                if (MathF.Sqrt(velocityX * velocityX + velocityY * velocityY) < 18f)
+                {
+                    velocityX *= 1.02f;
+                    velocityY *= 1.02f;
+                }
+                break;
+
             default:
                 next = default;
                 return false;
         }
 
-        next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0);
+        next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, ai1Override);
         return true;
+    }
+
+    private static bool TryFindClosestPlayer(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition definition,
+        IRuntimePlayerSlotSnapshotLookup? players,
+        out float centerX,
+        out float centerY)
+    {
+        centerX = 0f;
+        centerY = 0f;
+        if (players is null)
+            return false;
+
+        float projectileCenterX = projectile.PositionX + definition.Width * 0.5f;
+        float projectileCenterY = projectile.PositionY + definition.Height * 0.5f;
+        float bestDistanceSquared = float.PositiveInfinity;
+        bool found = false;
+        for (int rawSlot = 0; rawSlot < byte.MaxValue; rawSlot++)
+        {
+            var slot = new PlayerSlotId(checked((byte)rawSlot));
+            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player) || player.IsDead)
+                continue;
+
+            float playerCenterX = player.PositionX + 10f;
+            float playerCenterY = player.PositionY + 21f;
+            float dx = playerCenterX - projectileCenterX;
+            float dy = playerCenterY - projectileCenterY;
+            float distanceSquared = dx * dx + dy * dy;
+            if (distanceSquared >= bestDistanceSquared)
+                continue;
+
+            bestDistanceSquared = distanceSquared;
+            centerX = playerCenterX;
+            centerY = playerCenterY;
+            found = true;
+        }
+        return found;
     }
 }

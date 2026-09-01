@@ -36,6 +36,7 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private readonly RuntimeKingSlimeDifficultyLootDeliverySink? difficultyLoot;
     private readonly RuntimeEaterOfWorldsLootDeliverySink eaterLoot;
     private readonly RuntimeBrainOfCthulhuLootDeliverySink brainLoot;
+    private readonly RuntimeSkeletronLootDeliverySink skeletronLoot;
     private readonly VanillaNpcLootWorldItemMaterializer materializer = VanillaNpcLootWorldItemMaterializer.Instance;
     private readonly SystemNpcCombatRandom random = new();
     private readonly bool expertMode;
@@ -50,6 +51,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         new VanillaEaterOfWorldsLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
     private readonly VanillaBrainOfCthulhuLootPlayer[] activeBrainLootPlayers =
         new VanillaBrainOfCthulhuLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+    private readonly VanillaSkeletronLootPlayer[] activeSkeletronLootPlayers =
+        new VanillaSkeletronLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
     private readonly NpcSnapshot[] npcFamilyBuffer;
 
     public RuntimeNpcNetworkCombatPipeline(
@@ -83,6 +86,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             instancedLeases,
             worldItemReplication);
         brainLoot = new RuntimeBrainOfCthulhuLootDeliverySink(
+            worldItems,
+            instancedLeases,
+            worldItemReplication);
+        skeletronLoot = new RuntimeSkeletronLootDeliverySink(
             worldItems,
             instancedLeases,
             worldItemReplication);
@@ -133,6 +140,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                 connection.Player,
                 npcFamilyBuffer);
         }
+        else if (current.TypeIdentity == VanillaNpcIds.SkeletronHead || current.TypeIdentity == VanillaNpcIds.SkeletronHand)
+        {
+            MarkSkeletronInteraction(connection.Player);
+        }
         else
         {
             interactions.TryMark(current.Handle, connection.Player);
@@ -177,6 +188,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
 
             if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
                 ApplyKingSlimeDeathEffects(in dead);
+            else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
+                ApplySkeletronDeathEffects();
             else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
                 ApplyEvilBossDeathEffects();
 
@@ -236,6 +249,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
 
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
+        else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
+            ApplySkeletronDeathEffects();
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
             ApplyEvilBossDeathEffects();
 
@@ -252,6 +267,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             return TryExecuteEaterOfWorldsLoot(in npc, eaterBoss);
         if (npc.TypeIdentity == VanillaNpcIds.BrainOfCthulhu || npc.TypeIdentity == VanillaNpcIds.BrainCreeper)
             return TryExecuteBrainOfCthulhuLoot(in npc);
+        if (npc.TypeIdentity == VanillaNpcIds.SkeletronHead)
+            return TryExecuteSkeletronLoot(in npc);
 
         if (npc.TypeIdentity == VanillaNpcIds.KingSlime && expertMode)
             return TryExecuteKingSlimeDifficultyLoot(in npc);
@@ -422,6 +439,53 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             out _);
     }
 
+    private bool TryExecuteSkeletronLoot(in NpcSnapshot npc)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SkeletronHead, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+            activeSkeletronLootPlayers[activeCount++] = new VanillaSkeletronLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaSkeletronLootContext(
+            expertMode,
+            masterMode,
+            RedHatAdjustmentsEnabled: false);
+        return VanillaSkeletronLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeSkeletronLootPlayers.AsSpan(0, activeCount),
+            random,
+            skeletronLoot,
+            out _);
+    }
+
+    private void MarkSkeletronInteraction(PlayerHandle player)
+    {
+        int count = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot peer = npcFamilyBuffer[index];
+            if (peer.TypeIdentity == VanillaNpcIds.SkeletronHead || peer.TypeIdentity == VanillaNpcIds.SkeletronHand)
+                interactions.TryMark(peer.Handle, player);
+        }
+    }
+
     private bool TryExecuteKingSlimeDifficultyLoot(in NpcSnapshot npc)
     {
         if (difficultyLoot is null ||
@@ -454,6 +518,14 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             random,
             difficultyLoot,
             out _);
+    }
+
+    private void ApplySkeletronDeathEffects()
+    {
+        if (worldTiles is null)
+            return;
+        RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles)
+            .MarkCompleted(VanillaWorldProgressionId.Skeletron);
     }
 
     private void ApplyEvilBossDeathEffects()

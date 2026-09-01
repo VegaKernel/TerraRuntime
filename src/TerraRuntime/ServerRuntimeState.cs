@@ -144,7 +144,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
         _projectileReflections = new RuntimeNpcProjectileReflectionPass(_npcs, _projectiles, this);
         _projectileStepper = projectileStepper ??
-            (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles));
+            (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles, this));
         _projectileReplication = projectileReplication;
         _npcReplication = npcReplication;
         _townNpcs = townNpcs;

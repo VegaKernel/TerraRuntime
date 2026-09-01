@@ -15,7 +15,14 @@ public readonly record struct NpcAiProjectileIntent(
     float VelocityX,
     float VelocityY,
     int Damage,
-    float KnockBack);
+    float KnockBack)
+{
+    /// <summary>Source-owned initial projectile AI state applied atomically with allocation.</summary>
+    public ProjectileAiState InitialAi { get; init; }
+
+    /// <summary>Positive SetDefaults lifetime override applied atomically with allocation; zero keeps catalog defaults.</summary>
+    public int TimeLeftOverride { get; init; }
+}
 
 /// <summary>
 /// Optional capability exposed by an NPC AI composition. Implementations may inspect the proposed NPC state,
@@ -48,7 +55,11 @@ public static class RuntimeNpcProjectileIntentApplier
             !float.IsFinite(intent.KnockBack) ||
             intent.KnockBack < 0f ||
             intent.Damage < 0 ||
-            intent.Damage > short.MaxValue)
+            intent.Damage > short.MaxValue ||
+            !float.IsFinite(intent.InitialAi.Ai0) ||
+            !float.IsFinite(intent.InitialAi.Ai1) ||
+            !float.IsFinite(intent.InitialAi.Ai2) ||
+            intent.TimeLeftOverride < 0)
         {
             spawned = default;
             return false;
@@ -62,11 +73,11 @@ public static class RuntimeNpcProjectileIntentApplier
             intent.PositionY,
             intent.VelocityX,
             intent.VelocityY,
-            default,
+            intent.InitialAi,
             BannerIdToRespondTo: 0,
             Damage: damage,
             KnockBack: intent.KnockBack,
             OriginalDamage: damage);
-        return projectiles.TrySpawnVanilla(in update, out spawned);
+        return projectiles.TrySpawnVanilla(in update, intent.TimeLeftOverride > 0 ? intent.TimeLeftOverride : null, out spawned);
     }
 }

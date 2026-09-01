@@ -46,6 +46,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly IVanillaNpcRandom _random;
+    private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
 
     public VanillaNpcTargetingAiStepper(
         INpcAiStateStepper inner,
@@ -95,8 +96,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
         _flyingEye.SetEnvironment(environment);
 
-    public void SetProjectileEnvironment(IVanillaNpcProjectileEnvironment environment) =>
+    public void SetProjectileEnvironment(IVanillaNpcProjectileEnvironment environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+        _projectileEnvironment = environment;
         _flyer.SetProjectileEnvironment(environment);
+    }
 
     public void SetWorldConditions(
         bool dayTime,
@@ -201,8 +206,89 @@ public sealed class VanillaNpcTargetingAiStepper :
     public int PlanProjectileSpawns(
         in NpcSnapshot source,
         in NpcStateUpdate proposed,
-        Span<NpcAiProjectileIntent> destination) =>
-        _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
+            return PlanSkeletronSkull(in source, in proposed, destination);
+
+        return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
+    }
+
+    private int PlanSkeletronSkull(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty || !_context.ExpertMode || _projectileEnvironment is null ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SkeletronHead, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            source.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost)
+        {
+            return 0;
+        }
+
+        int handCount = _context.CountNpcPeers(VanillaNpcIds.SkeletronHand);
+        if (handCount >= 2 && source.Simulation.Life >= source.Simulation.LifeMax * 0.75f)
+            return 0;
+
+        float cadence = handCount == 0 ? 40f : 80f;
+        if (_context.GoodWorld)
+            cadence *= 0.8f;
+        if (source.Ai.Ai1 != 0f || source.Ai.Ai2 % cadence != 0f)
+            return 0;
+
+        float centerX = source.PositionX + hitbox.Width * 0.5f;
+        float centerY = source.PositionY + hitbox.Height * 0.5f;
+        float targetX = target.CenterX - VanillaNpcBehaviorContext.BasePlayerWidth * 0.5f;
+        float targetY = target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f;
+        if (!_projectileEnvironment.CanHit(
+                centerX, centerY, 1, 1,
+                targetX, targetY,
+                (int)VanillaNpcBehaviorContext.BasePlayerWidth,
+                (int)VanillaNpcBehaviorContext.BasePlayerHeight))
+        {
+            return 0;
+        }
+
+        float speed = handCount == 0 ? 5f : 3f;
+        float dx = target.CenterX - centerX + _random.NextInt32(-20, 21);
+        float dy = target.CenterY - centerY + _random.NextInt32(-20, 21);
+        NormalizeTo(ref dx, ref dy, speed);
+        dx += _random.NextInt32(-50, 51) * 0.01f;
+        dy += _random.NextInt32(-50, 51) * 0.01f;
+        NormalizeTo(ref dx, ref dy, speed);
+        dx += source.VelocityX;
+        dy += source.VelocityY;
+
+        destination[0] = new NpcAiProjectileIntent(
+            VanillaProjectileIds.SkeletronSkull,
+            centerX + dx * 5f,
+            centerY + dy * 5f,
+            dx,
+            dy,
+            Damage: 17,
+            KnockBack: 0f)
+        {
+            InitialAi = new ProjectileAiState(-1f, 0f, 0f),
+            TimeLeftOverride = 300
+        };
+        return 1;
+    }
+
+    private static void NormalizeTo(ref float x, ref float y, float speed)
+    {
+        float length = MathF.Sqrt(x * x + y * y);
+        if (length <= 0f)
+        {
+            x = 0f;
+            y = speed;
+            return;
+        }
+        x = x / length * speed;
+        y = y / length * speed;
+    }
 
     private int PlanSkeletronHands(
         in NpcSnapshot source,

@@ -244,7 +244,34 @@ public static class VanillaItemDefinitionCatalog
     private static readonly VanillaItemDefinition BrainMasterTrophyDefinition =
         BrainWorldDrop(VanillaBrainOfCthulhuItemIds.BrainOfCthulhuMasterTrophy, 14, 14);
 
+    private static readonly VanillaItemDefinition SkeletronHandDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.SkeletronHand, 30, 10);
+    private static readonly VanillaItemDefinition SkeletronMaskDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.SkeletronMask, 28, 20);
+    private static readonly VanillaItemDefinition BookOfSkullsDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.BookOfSkulls, 24, 28);
+    private static readonly VanillaItemDefinition SkeletronTrophyDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.SkeletronTrophy, 30, 30);
+    private static readonly VanillaItemDefinition SkeletronBossBagDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.SkeletronBossBag, 24, 24);
+    private static readonly VanillaItemDefinition SkeletronPetItemDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.SkeletronPetItem, 16, 30);
+    private static readonly VanillaItemDefinition SkeletronMasterTrophyDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.SkeletronMasterTrophy, 14, 14);
+    private static readonly VanillaItemDefinition ChippysCouchDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.ChippysCouch, 20, 20);
+    private static readonly VanillaItemDefinition ChippysHeadDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.ChippysHead, 18, 14);
+    private static readonly VanillaItemDefinition ChippysBodyDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.ChippysBody, 18, 14);
+    private static readonly VanillaItemDefinition ChippysLegsDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.ChippysLegs, 18, 14);
+    private static readonly VanillaItemDefinition ChippysHeadbandDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.ChippysHeadband, 26, 30);
+    private static readonly VanillaItemDefinition ChippysWingsInactiveDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.ChippysWingsInactive, 24, 8);
+
     private static VanillaItemDefinition BrainWorldDrop(ItemTypeId type, int width, int height) =>
+        new(
+            Type: type,
+            RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
+            UseTiming: null,
+            Placement: null,
+            PickTool: null,
+            WorldDrop: new VanillaItemWorldDropDefinition(
+                width,
+                height,
+                NoGravity: false,
+                PrefixFamily: VanillaItemPrefixFamily.None));
+
+    private static VanillaItemDefinition SkeletronWorldDrop(ItemTypeId type, int width, int height) =>
         new(
             Type: type,
             RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
@@ -407,6 +434,20 @@ public static class VanillaItemDefinitionCatalog
             definition = BrainMasterTrophyDefinition;
             return true;
         }
+
+        if (type == VanillaSkeletronItemIds.SkeletronHand) { definition = SkeletronHandDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.SkeletronMask) { definition = SkeletronMaskDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.BookOfSkulls) { definition = BookOfSkullsDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.SkeletronTrophy) { definition = SkeletronTrophyDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.SkeletronBossBag) { definition = SkeletronBossBagDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.SkeletronPetItem) { definition = SkeletronPetItemDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.SkeletronMasterTrophy) { definition = SkeletronMasterTrophyDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.ChippysCouch) { definition = ChippysCouchDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.ChippysHead) { definition = ChippysHeadDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.ChippysBody) { definition = ChippysBodyDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.ChippysLegs) { definition = ChippysLegsDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.ChippysHeadband) { definition = ChippysHeadbandDefinition; return true; }
+        if (type == VanillaSkeletronItemIds.ChippysWingsInactive) { definition = ChippysWingsInactiveDefinition; return true; }
 
         definition = default;
         return false;

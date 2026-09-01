@@ -12,7 +12,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     None = 0,
     BasicArrow = 1,
     Thrown = 2,
-    Boomerang = 3
+    Boomerang = 3,
+    SkeletronSkull = 4
 }
 
 /// <summary>
@@ -46,6 +47,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned = true
     };
 
+    private static readonly VanillaProjectileBehaviorProfile SkeletronSkullProfile = new(
+        VanillaProjectileBehaviorFamily.SkeletronSkull,
+        VanillaProjectileAiStyles.Arrow,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
     private static readonly VanillaProjectileBehaviorProfile ThrownProfile = new(
         VanillaProjectileBehaviorFamily.Thrown,
         VanillaProjectileAiStyles.Thrown,
@@ -69,6 +78,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.GreenLaser)
         {
             profile = GreenLaserProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SkeletronSkull)
+        {
+            profile = SkeletronSkullProfile;
             return true;
         }
 

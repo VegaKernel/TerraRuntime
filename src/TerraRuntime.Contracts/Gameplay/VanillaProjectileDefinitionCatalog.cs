@@ -104,6 +104,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    private static readonly VanillaProjectileDefinition SkeletronSkullDefinition = new(
+        Width: 26,
+        Height: 26,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 26,
+        CollisionHeight: 26);
+
     private static readonly VanillaProjectileDefinition BoneDefinition = new(
         Width: 16,
         Height: 16,
@@ -305,6 +315,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.GreenLaser)
         {
             definition = GreenLaserDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SkeletronSkull)
+        {
+            definition = SkeletronSkullDefinition;
             return true;
         }
 
