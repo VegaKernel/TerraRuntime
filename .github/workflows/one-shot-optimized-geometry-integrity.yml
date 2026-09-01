@@ -1,5 +1,6 @@
 name: One-shot optimized geometry integrity
 
+# Re-run from the current main after the section-cache fixture/API moved forward.
 on:
   push:
     branches: [main]
