@@ -62,11 +62,25 @@ jobs:
               raise SystemExit('Skeletron NPC source contract changed: ' + ', '.join(missing))
           if not re.search(r'SetEventFlagCleared\(ref (?:NPC\.)?downedBoss3, 15\)', npc):
               raise SystemExit('Skeletron downedBoss3 progression contract changed')
-          if not re.search(r'type == 35 \|\| type == 36[\s\S]{0,900}?playerInteraction\[player\] = true', npc):
-              raise SystemExit('Skeletron shared interaction contract changed')
+
+          interaction_method = -1
+          for signature in ('void PlayerInteraction(int player)', 'void ApplyInteraction(int player)'):
+              interaction_method = npc.find(signature)
+              if interaction_method >= 0:
+                  break
+          if interaction_method >= 0:
+              print('--- SKELETRON INTERACTION SOURCE ---')
+              print(npc[interaction_method:interaction_method + 9000])
+              print('--- END SKELETRON INTERACTION SOURCE ---')
+          else:
+              for needle in ('playerInteraction[player]', 'type == 35', 'type == 36'):
+                  at = npc.find(needle)
+                  if at >= 0:
+                      print(f'--- SOURCE AROUND {needle} ---')
+                      print(npc[max(0, at - 1800):at + 4500])
+
           if not re.search(r'Projectile\.NewProjectile[\s\S]{0,600}?270[\s\S]{0,400}?timeLeft = 300', npc):
               raise SystemExit('Skeletron skull spawn/lifetime contract changed')
-
           if 'case 270:' not in projectile or 'ai[1] += 1f;' not in projectile or 'ai[1] < 110f' not in projectile or 'ai[1] > 30f' not in projectile:
               raise SystemExit('Skeletron skull homing contract changed')
 
@@ -77,7 +91,7 @@ jobs:
           for item_id in (1273, 1281, 1313, 1363, 3323, 4801, 4927, 4993, 5624, 5625, 5626, 5628, 5737):
               if f'case {item_id}:' not in items:
                   raise SystemExit(f'Skeletron item defaults missing for {item_id}')
-          print('skeletron_1458_source_contract=ok')
+          print('skeletron_1458_source_contract=diagnostic-ok')
           PY
       - name: Release build
         run: dotnet build build/TerraRuntime.slnx -c Release --nologo
@@ -86,13 +100,7 @@ jobs:
       - name: Full tests
         run: dotnet test build/TerraRuntime.slnx -c Release --no-build --nologo
       - name: Commit validated feature branch
+        if: ${{ false }}
         shell: bash
         run: |
-          set -euo pipefail
-          git config user.name 'Xekep'
-          git config user.email 'Xekep@users.noreply.github.com'
-          git rm .github/workflows/one-shot-skeletron-skull-death-loot.yml tools/ci/apply_skeletron_skull_death_loot_1458.py
-          git add -A
-          git diff --cached --check
-          git commit -m 'Complete Skeletron skull death loot gameplay vertical' -m 'Add TerrariaServer 1.4.5.8 Expert skull cadence, source-owned 300-tick projectile homing, shared head/hand interaction credit, Classic/Expert/Master/RedHat loot delivery, and persisted downedBoss3 progression with focused and full-suite coverage.'
-          git push origin HEAD:work/skeletron-skull-death-loot-1458
+          echo 'Diagnostic run only; final source contract must be tightened before commit.'
