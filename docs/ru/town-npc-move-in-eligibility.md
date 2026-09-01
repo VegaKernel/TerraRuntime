@@ -22,6 +22,10 @@ Terraria не выбирает жителя простым правилом «п
 
 По source cadence `RuntimeTownNpcMoveInCoordinator1458` оценивает живое authoritative состояние игроков/inventory, применяет этот room-aware source selection, при наличии валидной комнаты выделяет generation-safe NPC slot, записывает жителя в `RuntimeTownNpcStateStore` и публикует packet 23 и packet 60 через существующего владельца NPC replication. Жители, созданные runtime, входят в следующие `.wld` snapshots NPC/TownRoom.
 
+Physical materialization теперь следует финальному поиску `WorldGen.SpawnTownNPC`, а не ставит нового жителя прямо на resting anchor дома. Сначала canonical home floor проверяется по серверному прямоугольнику Terraria `1920x1200`, расширенному на `safeRangeX=62` и `safeRangeY=39`. Если surface-home попадает в прямоугольник активного игрока, поиск расширяется от radius 1 до 499, сначала проверяет колонку справа, затем слева, ограничивает vertical scan значениями tile 10 и `worldSurface`, требует active `Main.tileSolid` floor и свободные три tiles по semantics `Collision.SolidTiles`, после чего повторно проверяет player safety rectangle. Сохранено необычное source-поведение при исчерпании поиска: отсутствие safe point не отменяет `NPC.NewNPC`, materialization происходит на последних просмотренных координатах. Для underground-home fallback search не запускается.
+
+NPC materialize-ится из точного bottom-center anchor `NPC.NewNPC` (`tileX*16`, `tileY*16`) после применения source-backed размеров. Spawn слева от дома разворачивает NPC вправо, справа от дома влево, а при совпадающем X остаётся construction direction 0. Home room при этом остаётся валидированным `bestX/bestY` и не смешивается с physical spawn point.
+
 Mutable roster больше не предполагает, что все Town NPC навсегда занимают слоты `0..N-1`. Новый житель получает первый свободный vanilla NPC slot, поэтому существующий hostile NPC не может быть затёрт заселением.
 
 ## Возврат домой, отдых и кресла
@@ -36,4 +40,4 @@ Mutable roster больше не предполагает, что все Town NP
 
 ## Намеренно оставшиеся gaps
 
-Move-in path пока не заявляет все детали `WorldGen.SpawnTownNPC`: полный physical off-screen/fallback поиск spawn point, exact более широкий WorldGen house-candidate/random fallback, локализованный transport `Announcement.HasArrived` и генерация given name/variation NPC остаются отдельной работой. В AI_007 отдельно остаются pet idle animations, social/emote/combat branches и live ownership изменений weather/eclipse/invasion. Bestiary-driven live updates Zoologist и случайный Party Girl roll также остаются fail-closed до появления mutable runtime-источников этих фактов.
+Move-in path пока не заявляет все детали `WorldGen.SpawnTownNPC`: exact более широкий WorldGen house-candidate/random fallback, локализованный transport `Announcement.HasArrived` и генерация given name/variation NPC остаются отдельной работой. В AI_007 отдельно остаются pet idle animations, social/emote/combat branches и live ownership изменений weather/eclipse/invasion. Bestiary-driven live updates Zoologist и случайный Party Girl roll также остаются fail-closed до появления mutable runtime-источников этих фактов.

@@ -212,8 +212,26 @@ internal sealed class RuntimeTownNpcStateStore
         out NpcSnapshot snapshot,
         out RuntimeTownNpcHomeCommit homeCommit)
     {
+        var physicalSpawn = new RuntimeTownNpcPhysicalSpawn1458(
+            placement.HomeTileX,
+            placement.HomeTileY,
+            DirectionX: 0,
+            SafeFromPlayers: true,
+            UsedFallbackSearch: false);
+        return TryAddResident(type, in placement, in physicalSpawn, npcStore, out snapshot, out homeCommit);
+    }
+
+    public bool TryAddResident(
+        NpcTypeId type,
+        in VanillaHousingPlacement placement,
+        in RuntimeTownNpcPhysicalSpawn1458 physicalSpawn,
+        RuntimeNpcStore npcStore,
+        out NpcSnapshot snapshot,
+        out RuntimeTownNpcHomeCommit homeCommit)
+    {
         ArgumentNullException.ThrowIfNull(npcStore);
         if (!placement.IsValid ||
+            !physicalSpawn.IsValid ||
             Count >= MaximumTownNpcs ||
             ContainsNpcType(type) ||
             !VanillaTownNpcFacts1458.TryGetDefinition(type, out VanillaNpcDefinition definition))
@@ -223,8 +241,13 @@ internal sealed class RuntimeTownNpcStateStore
             return false;
         }
 
-        float positionX = placement.HomeTileX * 16f + 8f - definition.BaseWidth / 2f;
-        float positionY = placement.HomeTileY * 16f - definition.BaseHeight - 0.1f;
+        // NPC.NewNPC receives bottom-center X/Y, then SetDefaults establishes the final hitbox before Bottom is set.
+        float positionX = physicalSpawn.TileX * 16f - definition.BaseWidth / 2f;
+        float positionY = physicalSpawn.TileY * 16f - definition.BaseHeight;
+        NpcSimulationState simulation = NpcSimulationState.Initial with
+        {
+            DirectionX = physicalSpawn.DirectionX
+        };
         var update = new NpcStateUpdate(
             Type: type.Value,
             NetId: checked((short)type.Value),
@@ -234,7 +257,7 @@ internal sealed class RuntimeTownNpcStateStore
             VelocityY: 0f,
             Target: VanillaNpcDefinitionCatalog.DefaultTarget,
             Ai: default,
-            Simulation: NpcSimulationState.Initial);
+            Simulation: simulation);
         if (!npcStore.TrySpawnVanilla(in update, out snapshot))
         {
             homeCommit = default;

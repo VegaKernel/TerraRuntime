@@ -22,6 +22,10 @@ For each tested room candidate, new-resident selection follows `IsThereASpawnabl
 
 On the source cadence, `RuntimeTownNpcMoveInCoordinator1458` evaluates the active authoritative player/inventory state, applies the room-aware source selection above, allocates a generation-safe NPC slot when a valid room exists, commits the resident into `RuntimeTownNpcStateStore`, and publishes packet 23 plus packet 60 through the existing NPC replication owner. Runtime-created residents are included in subsequent `.wld` NPC/TownRoom save snapshots.
 
+Physical materialization now follows the final `WorldGen.SpawnTownNPC` search rather than placing a new resident directly on the home resting anchor. The canonical home floor is first tested against Terraria's `1920x1200` server-screen rectangle expanded by `safeRangeX=62` and `safeRangeY=39`. If a surface home is inside an active player's rectangle, the search expands from radius 1 through 499, checks the right column before the left, clamps vertical scanning to tile 10 and `worldSurface`, requires an active `Main.tileSolid` floor plus a three-tile `Collision.SolidTiles` clearance, and re-applies the player rectangle at the candidate. The source's unusual exhausted-search behavior is preserved: lack of a safe point does not cancel `NPC.NewNPC`; the final scanned coordinates remain the materialization point. Underground homes skip this fallback search.
+
+The NPC is materialized from the exact `NPC.NewNPC` bottom-center anchor (`tileX*16`, `tileY*16`) after its source-backed dimensions are known. A spawn left of home faces right, a spawn right of home faces left, and an equal-X spawn retains the zero construction direction. The home room remains the validated `bestX/bestY`, independent of the physical spawn point.
+
 The mutable roster no longer assumes that all town residents occupied slots `0..N-1` forever. New residents use the first free vanilla NPC slot, so a live hostile NPC cannot be overwritten by a town move-in.
 
 ## Home return, resting, and chairs
@@ -36,4 +40,4 @@ When a resident is outside the resting area, both the current and destination sc
 
 ## Deliberate remaining gaps
 
-The move-in path still does not claim every `WorldGen.SpawnTownNPC` detail. The complete physical off-screen/fallback spawn-point search, exact broader WorldGen house-candidate/random fallback behavior, localized `Announcement.HasArrived` transport, and NPC given-name/variation generation remain separate work. AI_007 still has pet idle animation, social/emote/combat branches, and live weather/eclipse/invasion mutation ownership outside this slice. Bestiary-driven live Zoologist updates and the random Party Girl roll also remain fail-closed until those mutable runtime sources are owned.
+The move-in path still does not claim every `WorldGen.SpawnTownNPC` detail. Exact broader WorldGen house-candidate/random fallback behavior, localized `Announcement.HasArrived` transport, and NPC given-name/variation generation remain separate work. AI_007 still has pet idle animation, social/emote/combat branches, and live weather/eclipse/invasion mutation ownership outside this slice. Bestiary-driven live Zoologist updates and the random Party Girl roll also remain fail-closed until those mutable runtime sources are owned.
