@@ -35,6 +35,20 @@ internal sealed class RuntimeTownNpcRescueService1458
         return TryTransform(in source, in rule, out transformed);
     }
 
+    public bool TryRescuePurificationPowder(NpcHandle handle, out NpcSnapshot transformed)
+    {
+        transformed = default;
+        if (!npcs.TryGet(handle, out NpcSnapshot source) ||
+            !NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType) ||
+            !VanillaTownNpcRescue1458.TryGet(sourceType, out VanillaTownNpcRescueRule1458 rule) ||
+            rule.Trigger != VanillaTownNpcRescueTrigger1458.PurificationPowder)
+        {
+            return false;
+        }
+
+        return TryTransform(in source, in rule, out transformed);
+    }
+
     private bool TryTransform(
         in NpcSnapshot source,
         in VanillaTownNpcRescueRule1458 rule,
