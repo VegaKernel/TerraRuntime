@@ -33,6 +33,21 @@ jobs:
           sed -i 's/if count != 1:/if count < 1:/' tools/ci/fix_live_npc_combat.py
           python3 tools/ci/fix_live_npc_combat.py
           sed -i '/using TerraRuntime.Network;/a using TerraRuntime.Protocol;' src/TerraRuntime/RuntimeNpcReplicationRegistry.cs
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/TerraRuntime/ServerRuntimeState.cs')
+          text = p.read_text(encoding='utf-8')
+          old = '_npcCombat.TryApply(command.Connection, in command.State)'
+          new = '_npcCombat.TryApply(command.Connection, in damageState)'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one packet28 byref expression, got {text.count(old)}')
+          text = text.replace(old, new, 1)
+          needle = '    private void ApplyClientNpcDamage(ClientNpcDamageRuntimeCommand command)\n    {\n'
+          if text.count(needle) != 1:
+              raise SystemExit('ApplyClientNpcDamage method shape changed')
+          text = text.replace(needle, needle + '        TerrariaNpcDamageState damageState = command.State;\n', 1)
+          p.write_text(text, encoding='utf-8')
+          PY
 
       - name: Validate bilingual documentation
         run: python3 tools/ci/check_documentation.py
