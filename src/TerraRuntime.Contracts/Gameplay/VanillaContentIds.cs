@@ -204,14 +204,19 @@ public static class VanillaItemIds
     public static ItemTypeId None => default;
     public static readonly ItemTypeId DirtBlock = new(2);
     public static readonly ItemTypeId StoneBlock = new(3);
-    public static readonly ItemTypeId SandBlock = new(169);
     public static readonly ItemTypeId Gel = new(23);
     public static readonly ItemTypeId Chest = new(48);
+    public static readonly ItemTypeId FlowerOfFire = new(112);
+    public static readonly ItemTypeId SandBlock = new(169);
     public static readonly ItemTypeId Obsidian = new(173);
     public static readonly ItemTypeId Stinger = new(209);
     public static readonly ItemTypeId Vine = new(210);
+    public static readonly ItemTypeId Flamelash = new(218);
+    public static readonly ItemTypeId Sunfury = new(220);
+    public static readonly ItemTypeId DarkLance = new(274);
     public static readonly ItemTypeId JungleSpores = new(331);
     public static readonly ItemTypeId SlimeStaff = new(1309);
+    public static readonly ItemTypeId HellwingBow = new(3019);
     public static readonly ItemTypeId CopperPickaxe = new(3509);
 
     public static bool TryCreate(int rawType, out ItemTypeId type)
@@ -298,6 +303,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId Trees = new(5);
     public static readonly TileTypeId ClosedDoor = new(10);
     public static readonly TileTypeId OpenDoor = new(11);
+    public static readonly TileTypeId Tables = new(14);
     public static readonly TileTypeId Platforms = new(19);
     public static readonly TileTypeId Containers = new(21);
     public static readonly TileTypeId CorruptGrass = new(23);
@@ -312,9 +318,12 @@ public static class VanillaTileIds
     public static readonly TileTypeId Mud = new(59);
     public static readonly TileTypeId JungleGrass = new(60);
     public static readonly TileTypeId MushroomGrass = new(70);
+    public static readonly TileTypeId ObsidianBrick = new(75);
+    public static readonly TileTypeId HellstoneBrick = new(76);
     public static readonly TileTypeId Hellforge = new(77);
     public static readonly TileTypeId Tombstones = new(85);
     public static readonly TileTypeId Dressers = new(88);
+    public static readonly TileTypeId Bookcases = new(101);
     public static readonly TileTypeId SnowBlock = new(147);
     public static readonly TileTypeId IceBlock = new(161);
     public static readonly TileTypeId CrimsonGrass = new(199);
@@ -394,6 +403,8 @@ public static class VanillaWallIds
     public static readonly WallTypeId Stone = new(1);
     public static readonly WallTypeId DirtUnsafe = new(2);
     public static readonly WallTypeId BlueDungeonUnsafe = new(7);
+    public static readonly WallTypeId HellstoneBrickUnsafe = new(13);
+    public static readonly WallTypeId ObsidianBrickUnsafe = new(14);
     public static readonly WallTypeId Dirt = new(16);
     public static readonly WallTypeId BlueDungeon = new(17);
     public static readonly WallTypeId Glass = new(21);

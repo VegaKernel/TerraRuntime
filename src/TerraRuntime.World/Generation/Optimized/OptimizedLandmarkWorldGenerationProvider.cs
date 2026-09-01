@@ -45,6 +45,27 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
     private const ushort DiscWall = 82;
     private const ushort LivingWoodUnsafeWall = 244;
 
+    private static readonly ushort ObsidianBrick = checked((ushort)VanillaTileIds.ObsidianBrick.Value);
+    private static readonly ushort HellstoneBrick = checked((ushort)VanillaTileIds.HellstoneBrick.Value);
+    private static readonly ushort Tables = checked((ushort)VanillaTileIds.Tables.Value);
+    private static readonly ushort Bookcases = checked((ushort)VanillaTileIds.Bookcases.Value);
+    private static readonly ushort HellstoneBrickUnsafeWall = checked((ushort)VanillaWallIds.HellstoneBrickUnsafe.Value);
+    private static readonly ushort ObsidianBrickUnsafeWall = checked((ushort)VanillaWallIds.ObsidianBrickUnsafe.Value);
+
+    // TerrariaServer 1.4.5.8 WorldGen.AddHellHouses uses these lava-safe furniture/chest styles.
+    private const int HellTableStyle1458 = 13;
+    private const int HellBookcaseStyle1458 = 4;
+    private const int ShadowChestStyle1458 = 4;
+
+    private static readonly ItemTypeId[] HellChestPrimaryItems1458 =
+    [
+        VanillaItemIds.DarkLance,
+        VanillaItemIds.Sunfury,
+        VanillaItemIds.FlowerOfFire,
+        VanillaItemIds.Flamelash,
+        VanillaItemIds.HellwingBow
+    ];
+
     private readonly OptimizedPlayableWorldGenerationProvider baseline = new();
 
     public WorldGeneratorId Id => GeneratorId;
@@ -227,8 +248,23 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
                 throw new InvalidOperationException("Optimized landmark validation found too little solid pyramid material.");
             if (CountActiveTile(context.Workspace, LivingWood) < state.LivingTreeTarget * 40)
                 throw new InvalidOperationException("Optimized landmark validation found too little Living Wood.");
-            if (CountActiveTile(context.Workspace, Ash) < state.UnderworldHouseTarget * 20)
-                throw new InvalidOperationException("Optimized landmark validation found too little underworld settlement material.");
+            int obsidianHouseTarget = (state.UnderworldHouseTarget + 1) / 2;
+            int hellstoneHouseTarget = state.UnderworldHouseTarget / 2;
+            if (CountActiveTile(context.Workspace, ObsidianBrick) < obsidianHouseTarget * 36 ||
+                CountActiveTile(context.Workspace, HellstoneBrick) < hellstoneHouseTarget * 36)
+            {
+                throw new InvalidOperationException("Optimized landmark validation found too little source-backed Underworld brick material.");
+            }
+            if (CountWall(context.Workspace, ObsidianBrickUnsafeWall) < obsidianHouseTarget * 90 ||
+                CountWall(context.Workspace, HellstoneBrickUnsafeWall) < hellstoneHouseTarget * 90)
+            {
+                throw new InvalidOperationException("Optimized landmark validation found too little source-backed Underworld unsafe wall.");
+            }
+            if (CountObjectStyleAnchors(context.Workspace, Tables, width: 3, HellTableStyle1458) < state.UnderworldHouseTarget ||
+                CountObjectStyleAnchors(context.Workspace, Bookcases, width: 3, HellBookcaseStyle1458) < state.UnderworldHouseTarget)
+            {
+                throw new InvalidOperationException("Optimized landmark validation found incomplete source-backed Underworld furniture.");
+            }
             if (CountActiveTile(context.Workspace, Granite) < state.GraniteTarget * 35)
                 throw new InvalidOperationException("Optimized landmark validation found too little Granite.");
             if (CountActiveTile(context.Workspace, Marble) < state.MarbleTarget * 35)
@@ -237,15 +273,39 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
                 throw new InvalidOperationException("Optimized landmark validation found too little spider-grotto wall.");
 
             int namedChestCount = 0;
+            int underworldChestCount = 0;
             foreach (WorldChest chest in runtimeWorkspace.CaptureGeneratedChests())
             {
+                bool underworld = chest.Name.StartsWith("Underworld Cache ", StringComparison.Ordinal);
                 if (chest.Name.StartsWith("Sky Cache ", StringComparison.Ordinal) ||
                     chest.Name.StartsWith("Pyramid Cache ", StringComparison.Ordinal) ||
-                    chest.Name.StartsWith("Living Tree Cache ", StringComparison.Ordinal) ||
-                    chest.Name.StartsWith("Underworld Cache ", StringComparison.Ordinal))
+                    chest.Name.StartsWith("Living Tree Cache ", StringComparison.Ordinal) || underworld)
+                {
                     namedChestCount++;
+                }
+
+                if (!underworld)
+                    continue;
+
+                underworldChestCount++;
+                if (!context.Workspace.TryGetTile(chest.X, chest.Y, out WorldGenerationTile anchorTile) ||
+                    (anchorTile.Flags & WorldGenerationTileFlags.Active) == 0 ||
+                    anchorTile.Type != Containers ||
+                    anchorTile.FrameX != ShadowChestStyle1458 * 36 ||
+                    anchorTile.FrameY != 0)
+                {
+                    throw new InvalidOperationException($"Optimized landmark validation found malformed Shadow Chest framing at ({chest.X}, {chest.Y}).");
+                }
+
+                WorldChestItem primary = chest.Items.FirstOrDefault(static item => !item.IsEmpty);
+                if (primary.IsEmpty || !IsHellChestPrimary1458(primary.ItemType))
+                {
+                    throw new InvalidOperationException($"Optimized landmark validation found non-vanilla Underworld cache primary {primary.ItemType}.");
+                }
             }
 
+            if (underworldChestCount != state.UnderworldHouseTarget)
+                throw new InvalidOperationException($"Optimized landmark validation found only {underworldChestCount}/{state.UnderworldHouseTarget} source-backed Shadow Chests.");
             if (namedChestCount < state.ExpectedNamedChests)
                 throw new InvalidOperationException($"Optimized landmark validation found only {namedChestCount}/{state.ExpectedNamedChests} persistent landmark chests.");
 
@@ -782,7 +842,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
             throw new InvalidOperationException($"Optimized landmark layer placed only {state.UnderworldHousesPlaced}/{state.UnderworldHouseTarget} required underworld houses.");
         centers.Sort();
         for (int i = 1; i < centers.Count; i++)
-            BuildUnderworldBridge(context.Workspace, centers[i - 1] + 7, centers[i] - 7, floorY);
+            BuildUnderworldBridge(context.Workspace, centers[i - 1] + 8, centers[i] - 8, floorY);
     }
 
     private static bool TryBuildUnderworldHouse(IWorldGenerationContext context, IWorldGenerationChestWorkspace chests, int centerX, int floorY, int ordinal)
@@ -794,26 +854,52 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         int top = floorY - height;
         if (HasProtectedContentNearby(context.Workspace, centerX, top + height / 2, halfWidth + 5))
             return false;
+
+        // Vanilla 1.4.5.8 AddHellHouses builds HellFort shells from tile 75/76 paired with unsafe wall 14/13.
+        // Optimized generation alternates the two source-backed families so every supported world gets representative
+        // Underworld settlement materials without pretending to reproduce vanilla's seed-identical house schedule.
+        ushort brick = (ordinal & 1) == 0 ? ObsidianBrick : HellstoneBrick;
+        ushort wall = (ordinal & 1) == 0 ? ObsidianBrickUnsafeWall : HellstoneBrickUnsafeWall;
+
         for (int x = left - 1; x <= right + 1; x++)
         for (int y = top - 1; y <= floorY + 2; y++)
             SetAir(context.Workspace, x, y);
         for (int x = left; x <= right; x++)
         {
-            SetBlock(context.Workspace, x, top, Ash);
-            SetBlock(context.Workspace, x, floorY, Ash);
+            SetBlock(context.Workspace, x, top, brick, wall);
+            SetBlock(context.Workspace, x, floorY, brick, wall);
         }
         for (int y = top; y <= floorY; y++)
         {
-            SetBlock(context.Workspace, left, y, Ash);
-            SetBlock(context.Workspace, right, y, Ash);
+            SetBlock(context.Workspace, left, y, brick, wall);
+            SetBlock(context.Workspace, right, y, brick, wall);
         }
         for (int x = left + 1; x < right; x++)
         for (int y = top + 1; y < floorY; y++)
-            SetAir(context.Workspace, x, y);
+            SetAir(context.Workspace, x, y, wall);
         for (int y = floorY - 3; y < floorY; y++)
+        {
+            SetAir(context.Workspace, left, y);
             SetAir(context.Workspace, right, y);
-        WorldGenerationChestItem[] loot = [new WorldGenerationChestItem(1, ordinal == 0 ? VanillaItemIds.SlimeStaff : VanillaItemIds.CopperPickaxe), new WorldGenerationChestItem(80, VanillaItemIds.StoneBlock), new WorldGenerationChestItem(28, VanillaItemIds.Gel)];
-        return TryPlaceChest(context.Workspace, chests, centerX - 2, floorY - 2, 1, $"Underworld Cache {ordinal + 1}", loot);
+        }
+
+        if (!TryPlaceRectangularFurniture(context.Workspace, left + 2, floorY - 2, Tables, wall, width: 3, height: 2, HellTableStyle1458) ||
+            !TryPlaceRectangularFurniture(context.Workspace, right - 4, floorY - 4, Bookcases, wall, width: 3, height: 4, HellBookcaseStyle1458))
+        {
+            return false;
+        }
+
+        ItemTypeId primary = HellChestPrimaryItems1458[ordinal % HellChestPrimaryItems1458.Length];
+        WorldGenerationChestItem[] loot = [new WorldGenerationChestItem(1, primary)];
+        return TryPlaceChest(
+            context.Workspace,
+            chests,
+            centerX - 1,
+            floorY - 2,
+            ShadowChestStyle1458,
+            $"Underworld Cache {ordinal + 1}",
+            loot,
+            wall);
     }
 
     private static void BuildUnderworldBridge(IWorldGenerationWorkspace workspace, int fromX, int toX, int y)
@@ -990,7 +1076,58 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         return -1;
     }
 
-    private static bool TryPlaceChest(IWorldGenerationWorkspace workspace, IWorldGenerationChestWorkspace chests, int left, int top, int style, string name, WorldGenerationChestItem[] loot)
+    private static bool TryPlaceRectangularFurniture(
+        IWorldGenerationWorkspace workspace,
+        int left,
+        int top,
+        ushort type,
+        ushort wall,
+        int width,
+        int height,
+        int style)
+    {
+        for (int dx = 0; dx < width; dx++)
+        for (int dy = 0; dy < height; dy++)
+        {
+            if (!workspace.TryGetTile(left + dx, top + dy, out WorldGenerationTile tile) ||
+                (tile.Flags & WorldGenerationTileFlags.Active) != 0 ||
+                tile.LiquidAmount > 0)
+            {
+                return false;
+            }
+        }
+        for (int dx = 0; dx < width; dx++)
+        {
+            if (!workspace.TryGetTile(left + dx, top + height, out WorldGenerationTile floor) ||
+                (floor.Flags & WorldGenerationTileFlags.Active) == 0)
+            {
+                return false;
+            }
+        }
+
+        // Tables (Style3x2) and Bookcases (Style3x4) are StyleHorizontal objects in 1.4.5.8 TileObjectData.
+        short styleOffsetX = checked((short)(style * width * 18));
+        for (int dx = 0; dx < width; dx++)
+        for (int dy = 0; dy < height; dy++)
+        {
+            var tile = new WorldGenerationTile(
+                type,
+                wall,
+                checked((short)(styleOffsetX + dx * 18)),
+                checked((short)(dy * 18)),
+                WorldGenerationTileFlags.Active,
+                0,
+                0,
+                0,
+                0,
+                WorldGenerationLiquidKind.Water);
+            if (!workspace.TrySetTile(left + dx, top + dy, in tile))
+                throw new InvalidOperationException($"Optimized landmark layer could not place framed furniture {type} at ({left + dx}, {top + dy}).");
+        }
+        return true;
+    }
+
+    private static bool TryPlaceChest(IWorldGenerationWorkspace workspace, IWorldGenerationChestWorkspace chests, int left, int top, int style, string name, WorldGenerationChestItem[] loot, ushort wall = 0)
     {
         for (int dx = 0; dx < 2; dx++)
         for (int dy = 0; dy < 2; dy++)
@@ -1011,7 +1148,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         for (int dx = 0; dx < 2; dx++)
         for (int dy = 0; dy < 2; dy++)
         {
-            var tile = new WorldGenerationTile(Containers, 0, checked((short)(styleOffsetX + dx * 18)), checked((short)(dy * 18)), WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
+            var tile = new WorldGenerationTile(Containers, wall, checked((short)(styleOffsetX + dx * 18)), checked((short)(dy * 18)), WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water);
             if (!workspace.TrySetTile(left + dx, top + dy, in tile))
                 return false;
         }
@@ -1106,6 +1243,32 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
         }
         return count;
     }
+
+    private static int CountObjectStyleAnchors(IWorldGenerationWorkspace workspace, ushort type, int width, int style)
+    {
+        short expectedFrameX = checked((short)(style * width * 18));
+        int count = 0;
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        {
+            if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
+                (tile.Flags & WorldGenerationTileFlags.Active) != 0 &&
+                tile.Type == type &&
+                tile.FrameX == expectedFrameX &&
+                tile.FrameY == 0)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static bool IsHellChestPrimary1458(int itemType) =>
+        itemType == VanillaItemIds.DarkLance.Value ||
+        itemType == VanillaItemIds.Sunfury.Value ||
+        itemType == VanillaItemIds.FlowerOfFire.Value ||
+        itemType == VanillaItemIds.Flamelash.Value ||
+        itemType == VanillaItemIds.HellwingBow.Value;
 
     private static int CountWall(IWorldGenerationWorkspace workspace, ushort wall)
     {

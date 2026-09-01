@@ -56,7 +56,7 @@ Every mandatory role must have a reserved region or an explicit count/range budg
 - [x] solid-mass pyramids with deterministic count budgets, carved surface openings/shafts/chambers and persistent caches;
 - [x] Living Wood trees with hollow trunks, roots, underground rooms and persistent caches;
 - [x] bounded Underworld houses plus platform-bridge variation;
-- [ ] extend Underworld settlements with source-backed furniture/loot/resource families;
+- [x] extend Underworld settlements with source-backed 1.4.5.8 brick/wall families, lava-safe furniture and Shadow Chest primary loot;
 - [x] multiple hives on larger worlds with valid Queen Bee progression space;
 - [x] granite, marble and spider/cobweb micro-biomes;
 - [x] add glowing-mushroom and additional representative micro-biomes;
@@ -83,7 +83,8 @@ Presence of terrain alone is not considered playable progression.
 Optimized exploration loot now uses pinned TerrariaServer `1.4.5.8` primary families for Skyware, ordinary surface and
 underground caches plus dedicated Snow/Ice, Jungle, Underground Desert and both-ocean roles. Placement and deterministic
 scheduling remain TerraRuntime-owned, so this closes source-backed progression roles without claiming seed-identical
-vanilla chest tables. Pyramid, Living Tree and Underworld landmark caches remain separate custom roles.
+vanilla chest tables. Pyramid and Living Tree landmark caches remain separate custom roles. Underworld settlement caches
+use the pinned 1.4.5.8 Shadow Chest style and normal-world hell-chest primary family with an optimized placement schedule.
 
 ## O4 - Organic presentation
 
