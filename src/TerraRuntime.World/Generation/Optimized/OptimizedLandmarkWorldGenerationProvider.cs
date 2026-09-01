@@ -397,16 +397,19 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
     private static List<SkyIslandCandidate> FindSkyIslands(IWorldGenerationWorkspace workspace, ApproximateLayers layers)
     {
         int skyBottom = Math.Max(20, layers.Surface - 18);
+        int probeDepth = Math.Clamp(workspace.HeightTiles / 40, 20, 36);
         var points = new List<(int X, int Y)>();
         for (int x = layers.OceanWidth + 8; x < workspace.WidthTiles - layers.OceanWidth - 8; x++)
         {
             int y = FindFirstActiveY(workspace, x, 8, skyBottom);
-            if (y >= 0)
+            if (y >= 0 && IsDetachedSkyColumn(workspace, layers, x, y, probeDepth))
                 points.Add((x, y));
         }
+
         var result = new List<SkyIslandCandidate>();
         if (points.Count == 0)
             return result;
+
         int start = points[0].X;
         int end = start;
         int surfaceSum = points[0].Y;
@@ -421,19 +424,44 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
                 samples++;
                 continue;
             }
+
             AddSkyCandidate(result, start, end, surfaceSum, samples);
             start = end = x;
             surfaceSum = y;
             samples = 1;
         }
+
         AddSkyCandidate(result, start, end, surfaceSum, samples);
         return result;
     }
 
-    private static void AddSkyCandidate(List<SkyIslandCandidate> result, int left, int right, int surfaceSum, int samples)
+    private static bool IsDetachedSkyColumn(
+        IWorldGenerationWorkspace workspace,
+        ApproximateLayers layers,
+        int x,
+        int top,
+        int probeDepth)
     {
-        if (right - left + 1 >= 18)
-            result.Add(new SkyIslandCandidate(left, right, surfaceSum / Math.Max(1, samples)));
+        // Optimized floating islands are deliberately shallow. A mountain can cross into the sky scan, but its
+        // column remains solid at this depth; a real island has open air underneath. Filtering before horizontal
+        // grouping also separates an island whose X-range overlaps a high mountain silhouette.
+        int probeY = top + probeDepth;
+        if (probeY >= workspace.HeightTiles || probeY >= layers.Surface + 12)
+            return false;
+        return workspace.TryGetTile(x, probeY, out WorldGenerationTile probe) &&
+               (probe.Flags & WorldGenerationTileFlags.Active) == 0;
+    }
+
+    private static void AddSkyCandidate(
+        List<SkyIslandCandidate> result,
+        int left,
+        int right,
+        int surfaceSum,
+        int samples)
+    {
+        if (right - left + 1 < 18)
+            return;
+        result.Add(new SkyIslandCandidate(left, right, surfaceSum / Math.Max(1, samples)));
     }
 
     private static bool TryBuildSkyHouse(IWorldGenerationContext context, IWorldGenerationChestWorkspace chests, SkyIslandCandidate island, int ordinal)
@@ -486,9 +514,29 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
     private static bool TryBuildFloatingLake(IWorldGenerationWorkspace workspace, SkyIslandCandidate island)
     {
         int halfWidth = Math.Clamp(island.Width / 7, 4, 8);
-        foreach (int centerX in GetSkyPlacementCenters(island, halfWidth + 1))
+        int[] preferredCenters = GetSkyPlacementCenters(island, halfWidth + 1);
+        foreach (int centerX in preferredCenters)
         {
             if (TryBuildFloatingLakeAt(workspace, island, centerX, halfWidth))
+                return true;
+        }
+
+        int minCenter = island.Left + halfWidth + 1;
+        int maxCenter = island.Right - halfWidth - 1;
+        if (minCenter > maxCenter)
+            return false;
+
+        var attempted = new HashSet<int>(preferredCenters);
+        int center = Math.Clamp(island.Center, minCenter, maxCenter);
+        int radius = Math.Max(center - minCenter, maxCenter - center);
+        for (int offset = 1; offset <= radius; offset++)
+        {
+            int left = center - offset;
+            if (left >= minCenter && attempted.Add(left) && TryBuildFloatingLakeAt(workspace, island, left, halfWidth))
+                return true;
+
+            int right = center + offset;
+            if (right <= maxCenter && attempted.Add(right) && TryBuildFloatingLakeAt(workspace, island, right, halfWidth))
                 return true;
         }
         return false;
@@ -518,7 +566,9 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
             }
             SetBlock(workspace, centerX + dx, Math.Min(workspace.HeightTiles - 2, floorY - 1 + localDepth), Stone);
         }
-        return waterCells >= 20;
+
+        int minimumWaterCells = checked((halfWidth * 2 + 1) * 2);
+        return waterCells >= minimumWaterCells;
     }
 
     private static int[] GetSkyPlacementCenters(SkyIslandCandidate island, int halfFootprint)

@@ -67,7 +67,7 @@ The optimized profile currently produces and validates:
 - bounded Underworld houses connected by undulating platform bridges;
 - granite, marble, spider/cobweb and distinct glowing-mushroom cave micro-biomes;
 - domain-warped material tongues at snow, desert, jungle and world-evil boundaries;
-- deterministic ordinary forest, jungle and snow trees plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected;
+- deterministic ordinary forest, jungle and snow trees grown through the clean-room TerrariaServer `1.4.5.8` `GrowTree` clearance/branch/root/frame semantics via an optimized-RNG adapter, plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected;
 - a deterministic surface-finishing pass that converts clean one-tile natural height transitions into persisted walkable slopes/half-blocks and publishes vanilla-format tree foliage anchors.
 
 The landmark layer uses tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
@@ -85,7 +85,7 @@ This removes the most obvious straight vertical material boundaries while preser
 
 ## Floating-island roles
 
-Sky terrain is scanned as separate horizontal masses. The landmark pass assigns two distinct roles:
+Sky terrain is scanned as separate horizontal masses. Candidate columns must prove open air below the shallow island body before horizontal grouping, so high mountain silhouettes cannot inflate the sky-landmark budget and a real island overlapping a mountain in X remains independently detectable. The landmark pass assigns two distinct roles:
 
 - **sky house**: Sunplate shell, Disc Wall interior and a persistent sky cache;
 - **Floating Lake**: a carved bounded water basin reinforced inside the existing island mass.
@@ -209,6 +209,6 @@ The optimized profile is not yet production-complete. Important remaining items 
 - richer source-backed Underworld settlement furniture/loot/resource families;
 - Small/Medium/Large generation-time and peak-memory measurements;
 - deterministic map/screenshot visual-regression fixtures;
-- pinned TerrariaServer `1.4.5.8` acceptance plus official-client join smoke.
+- official-client join smoke beyond the permanent canonical-Small pinned TerrariaServer `1.4.5.8` acceptance gate.
 
 See [`../roadmap/optimized-worldgen.md`](../roadmap/optimized-worldgen.md) for the implementation checklist.

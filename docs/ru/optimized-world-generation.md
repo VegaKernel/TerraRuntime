@@ -67,7 +67,7 @@ Optimized profile сейчас создаёт и валидирует:
 - ограниченное число Underworld houses, соединённых волнистыми platform bridges;
 - granite, marble, spider/cobweb и отдельные glowing-mushroom cave micro-biomes;
 - domain-warped material tongues на границах snow, desert, jungle и world evil;
-- детерминированные обычные forest/jungle/snow trees, surface undergrowth и sunflower patches, которые ставятся после landmarks и обходят progression objects/caches;
+- детерминированные обычные forest/jungle/snow trees, выращиваемые через clean-room семантику TerrariaServer `1.4.5.8` `GrowTree` для clearance/branches/roots/frames с адаптером optimized RNG, плюс surface undergrowth и sunflower patches; всё ставится после landmarks и обходит progression objects/caches;
 - deterministic surface-finishing pass, который превращает чистые однотайловые перепады natural terrain в сохраняемые walkable slopes/half-blocks и публикует vanilla-format foliage anchors для обычных деревьев.
 
 Landmark layer использует tile/wall identities, которые уже source-backed текущей работой репозитория с TerrariaServer
@@ -85,7 +85,7 @@ ores, frame-important objects и обязательные structures не рас
 
 ## Роли летающих островов
 
-Sky terrain сканируется как отдельные горизонтальные masses. Landmark pass назначает две distinct роли:
+Sky terrain сканируется как отдельные горизонтальные masses. До горизонтальной группировки каждая candidate-column должна подтвердить открытый воздух под неглубоким телом острова: высокий горный силуэт больше не раздувает sky-landmark budget, а настоящий остров, пересекающий гору по X, остаётся отдельным кандидатом. Landmark pass назначает две distinct роли:
 
 - **sky house**: Sunplate shell, Disc Wall interior и persistent sky cache;
 - **Floating Lake**: ограниченный вырезанный water basin внутри существующей island mass.
@@ -210,6 +210,6 @@ contracts. Загрузка существующего vanilla `.wld` не за�
 - более богатые source-backed furniture/loot/resource families для Underworld settlements;
 - измерения generation time и peak memory на Small/Medium/Large;
 - deterministic map/screenshot visual-regression fixtures;
-- acceptance через pinned TerrariaServer `1.4.5.8` и official-client join smoke.
+- official-client join smoke поверх постоянного canonical-Small acceptance-gate через pinned TerrariaServer `1.4.5.8`.
 
 Список работ находится в [`../roadmap/optimized-worldgen.md`](../roadmap/optimized-worldgen.md).
