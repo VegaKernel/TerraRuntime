@@ -11,14 +11,15 @@ using Terminal.Gui.Views;
 namespace TerraRuntime.TerminalUI;
 
 /// <summary>
-/// Operator-facing terminal workspace. The built-in System Dashboard is always owned by TerraRuntime.
-/// Trusted host modules may contribute independent dashboard roots, never controls inside the system view.
+/// Operator-facing terminal workspace. Runtime-owned detail screens consume bounded snapshots and render their
+/// complete bounded contents into one scrollable/selectable surface instead of truncating them to viewport-sized
+/// label arrays. Filtering is UI-local and never changes runtime capture semantics or authoritative state.
 /// </summary>
 internal sealed class DashboardWorkspaceWindow : Runnable
 {
-    private const int RowCount = 18;
-    private const int TpsHistoryLength = 40;
+    private const int SmokeRowCount = 18;
     private const int MaximumExternalHotkeys = 10;
+    private const int MaximumLogEntries = 256;
 
     private static readonly Key[] ExternalDashboardKeys =
     [
@@ -45,18 +46,22 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private readonly View workspace;
     private readonly View systemRoot;
     private readonly RuntimeOverviewDashboard overviewDashboard;
+    private readonly Label detailHeader;
+    private readonly Label filterLabel;
+    private readonly TextField filterInput;
     private readonly TextView detailText;
-    private readonly Label[] rows = new Label[RowCount];
+    private readonly Label detailFooter;
     private readonly ExternalDashboard[] externalDashboards;
-    private readonly double[] tpsHistory = new double[TpsHistoryLength];
-    private int tpsHistoryCount;
-    private int tpsHistoryNext;
+    private readonly string[] screenFilters = Enumerable.Repeat(string.Empty, 8).ToArray();
+    private readonly string[] smokeRows = new string[SmokeRowCount];
     private WorkspaceScreen screen;
     private int activeExternalDashboard = -1;
     private string? lastAdminAction;
     private string? externalDashboardFailure;
     private string appliedDetailText = string.Empty;
     private string pendingDetailText = string.Empty;
+    private string[] currentDetailLines = [];
+    private string[] visibleDetailLines = [];
 
     public DashboardWorkspaceWindow(
         IRuntimeDashboardOperations dashboardOperations,
@@ -104,12 +109,34 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Visible = false
         };
 
+        detailHeader = new Label
+        {
+            X = 1,
+            Y = 0,
+            Width = Dim.Fill(1),
+            SchemeName = "Accent"
+        };
+        filterLabel = new Label
+        {
+            X = 1,
+            Y = 1,
+            Text = "Filter:",
+            SchemeName = "Base"
+        };
+        filterInput = new TextField
+        {
+            X = 9,
+            Y = 1,
+            Width = Dim.Fill(1),
+            Text = string.Empty,
+            SchemeName = "Base"
+        };
         detailText = new TextView
         {
             X = 0,
-            Y = 0,
+            Y = 2,
             Width = Dim.Fill(),
-            Height = Dim.Fill(),
+            Height = Dim.Fill(1),
             ReadOnly = true,
             WordWrap = false,
             TabKeyAddsTab = false,
@@ -117,22 +144,21 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             ViewportSettings = ViewportSettingsFlags.HasScrollBars,
             SchemeName = "Base"
         };
-
-        Pos y = 0;
-        for (int i = 0; i < rows.Length; i++)
+        detailFooter = new Label
         {
-            rows[i] = new Label
-            {
-                X = 1,
-                Y = y,
-                Width = Dim.Fill(1),
-                Visible = false
-            };
-            systemRoot.Add(rows[i]);
-            y = Pos.Bottom(rows[i]);
-        }
-        systemRoot.Add(detailText);
+            X = 1,
+            Y = Pos.AnchorEnd(1),
+            Width = Dim.Fill(1),
+            SchemeName = "Base"
+        };
 
+        filterInput.Accepting += (_, args) =>
+        {
+            ApplyFilterInput();
+            args.Handled = true;
+        };
+
+        systemRoot.Add(detailHeader, filterLabel, filterInput, detailText, detailFooter);
         workspace.Add(overviewDashboard, systemRoot);
         Add(menu, workspace, status);
 
@@ -141,6 +167,20 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             if (key == Key.F2)
             {
                 ShowSystemDashboard();
+                key.Handled = true;
+                return;
+            }
+
+            if (key == Key.F.WithCtrl)
+            {
+                FocusDetailFilter();
+                key.Handled = true;
+                return;
+            }
+
+            if (key == Key.L.WithCtrl)
+            {
+                ClearDetailFilter();
                 key.Handled = true;
                 return;
             }
@@ -192,9 +232,6 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                 RefreshSystemDashboard();
                 break;
         }
-
-        if (screen != WorkspaceScreen.Dashboard)
-            SyncSelectableDetailText();
     }
 
     internal void ShowSystemDashboard() => SelectSystemScreen(WorkspaceScreen.Dashboard, "TerraRuntime - System Dashboard");
@@ -215,15 +252,30 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     internal string GetRowTextForSmoke(int index)
     {
-        if ((uint)index >= (uint)rows.Length)
+        if ((uint)index >= SmokeRowCount)
             throw new ArgumentOutOfRangeException(nameof(index));
 
-        return rows[index].Text?.ToString() ?? string.Empty;
+        return smokeRows[index];
     }
 
     internal bool DetailTextSupportsSelectionForSmoke => detailText.ReadOnly && detailText.CanFocus;
 
     internal void ShowExternalDashboardForSmoke(int index) => ShowExternalDashboard(index);
+
+    internal void SetFilterForSmoke(string filter)
+    {
+        if (screen == WorkspaceScreen.Dashboard)
+            return;
+
+        filterInput.Text = filter ?? string.Empty;
+        ApplyFilterInput(focusDetail: false);
+    }
+
+    internal string GetDetailTextForSmoke() => appliedDetailText;
+
+    internal int GetVisibleDetailRowCountForSmoke() => visibleDetailLines.Length;
+
+    internal string GetDetailFooterForSmoke() => detailFooter.Text?.ToString() ?? string.Empty;
 
     internal void SetInterestManagementEnabled(bool enabled)
     {
@@ -287,6 +339,12 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                         new MenuItem("_Logs", "Recent runtime log events", ShowLogs)
                     ]),
                 new MenuBarItem(
+                    "_View",
+                    [
+                        new MenuItem("_Filter current details", "Ctrl+F - focus the local detail filter", FocusDetailFilter),
+                        new MenuItem("_Clear detail filter", "Ctrl+L - show the complete bounded snapshot", ClearDetailFilter)
+                    ]),
+                new MenuBarItem(
                     "_Actions",
                     [
                         new MenuItem(
@@ -317,6 +375,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     {
         StatusBar status = new();
         status.Add(new Shortcut(Key.F2, "System", ShowSystemDashboard));
+        status.Add(new Shortcut(Key.F.WithCtrl, "Filter", FocusDetailFilter));
+        status.Add(new Shortcut(Key.L.WithCtrl, "Clear filter", ClearDetailFilter));
         if (externalDashboards.Length > 0)
             status.Add(new Shortcut(Key.F3, "Host dashboard", () => ShowExternalDashboard(0)));
         status.Add(new Shortcut(
@@ -334,12 +394,50 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         bool overview = next == WorkspaceScreen.Dashboard;
         overviewDashboard.Visible = overview;
         systemRoot.Visible = !overview;
-        if (!overview)
-            detailText.IsSelecting = false;
         Title = title;
         externalDashboardFailure = null;
+
+        if (!overview)
+        {
+            detailText.IsSelecting = false;
+            filterInput.Text = screenFilters[(int)next];
+        }
+
         RefreshSnapshot();
         InvalidateSystemRoot(layout: true);
+    }
+
+    private void FocusDetailFilter()
+    {
+        if (activeExternalDashboard >= 0 || screen == WorkspaceScreen.Dashboard)
+            return;
+
+        filterInput.SetFocus();
+    }
+
+    private void ClearDetailFilter()
+    {
+        if (activeExternalDashboard >= 0 || screen == WorkspaceScreen.Dashboard)
+            return;
+
+        if (screenFilters[(int)screen].Length == 0 && filterInput.Text.Trim().Length == 0)
+            return;
+
+        filterInput.Text = string.Empty;
+        screenFilters[(int)screen] = string.Empty;
+        RefreshSnapshot();
+        detailText.SetFocus();
+    }
+
+    private void ApplyFilterInput(bool focusDetail = true)
+    {
+        if (activeExternalDashboard >= 0 || screen == WorkspaceScreen.Dashboard)
+            return;
+
+        screenFilters[(int)screen] = filterInput.Text.Trim();
+        RefreshSnapshot();
+        if (focusDetail)
+            detailText.SetFocus();
     }
 
     private void ShowExternalDashboard(int index)
@@ -448,138 +546,70 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     private void RefreshSystemDashboard()
     {
-        ClearRows();
+        Array.Fill(smokeRows, string.Empty);
 
         RuntimeDashboardSnapshot runtime = dashboardOperations.CaptureSnapshot();
         RuntimeNetworkSnapshot network = networkOperations.CaptureSnapshot();
         RuntimeWorldSnapshot world = worldOperations.CaptureSnapshot();
-        RuntimePlayersSnapshot playerSnapshot = playerOperations.CaptureSnapshot();
-        ReadOnlySpan<RuntimePlayerSnapshot> players = playerSnapshot.Players.Span;
-
-        AppendTps(runtime.ObservedTicksPerSecond);
-
-        rows[0].Text =
-            $"{runtime.Lifecycle} | world {SanitizeText(runtime.WorldName, 26)} | players {players.Length}/{runtime.MaxPlayers} | " +
-            $"port {runtime.Port} | interest {(runtime.InterestManagementEnabled ? "ON" : "OFF")}";
-        rows[1].Text =
-            $"TPS {runtime.ObservedTicksPerSecond,5:F1}/{runtime.TargetTicksPerSecond,-3} {RenderTpsGraph(runtime.TargetTicksPerSecond)}";
-        string tickCpu = runtime.CpuTimeAvailable
-            ? $"{runtime.LastTickCpuMilliseconds:F2}/{runtime.WorstTickCpuMilliseconds:F2} ms"
-            : "n/a";
-        rows[2].Text =
-            $"Tick #{runtime.Tick:N0}  wall {runtime.LastTickMilliseconds:F2}/{runtime.WorstTickMilliseconds:F2} ms  cpu {tickCpu}  " +
-            $"slow {SanitizeText(runtime.SlowestPhase, 18)} {runtime.SlowestPhaseMilliseconds:F2} ms  missed {runtime.MissedTickDeadlines:N0}";
-        rows[3].Text =
-            $"Process     CPU {runtime.ProcessCpuPercent:F1}%  heap {FormatMebibytes(runtime.ManagedHeapBytes)}  working {FormatMebibytes(runtime.WorkingSetBytes)}  " +
-            $"allocated {FormatMebibytes(runtime.TotalAllocatedBytes)}  GC {runtime.Gen0Collections:N0}/{runtime.Gen1Collections:N0}/{runtime.Gen2Collections:N0} pause {runtime.GcPauseTimePercentage:F2}%";
-        rows[4].Text =
-            $"Commands    done {runtime.CommandsProcessed:N0}  pending {runtime.PendingCommands:N0}  deferred {runtime.DeferredCommands:N0}  " +
-            $"rejected {runtime.RejectedCommands:N0}  budget {runtime.CommandBudgetExhaustions:N0}  oldest {runtime.OldestPendingCommandAgeMilliseconds:F1} ms  " +
-            $"connections {runtime.ActiveConnections} accepted {runtime.AcceptedConnections:N0} rejected {runtime.RejectedConnections:N0} slow {network.SlowClients}";
-
-        rows[5].Text = "WORLDS";
-        rows[6].Text =
-            $"* {SanitizeText(world.Name, 28),-28} {(world.Ready ? "ready" : "loading"),-7} {world.WidthTiles}x{world.HeightTiles}  " +
-            $"players {players.Length}/{runtime.MaxPlayers}  cache {(world.RuntimeCacheHit ? "hit" : "miss")}";
-
-        rows[7].Text = "PLAYERS";
-        int playerRows = Math.Min(players.Length, 3);
-        for (int i = 0; i < playerRows; i++)
-        {
-            RuntimePlayerSnapshot player = players[i];
-            rows[8 + i].Text =
-                $"#{player.Slot,-3} {SanitizeName(player.Name),-20} team {player.Team}  " +
-                $"HP {(player.HasHealth ? $"{player.Life}/{player.MaxLife}" : "n/a"),-9}  " +
-                $"pos {player.PositionX / 16f:F1},{player.PositionY / 16f:F1}t  conn {player.ConnectionId}";
-        }
-        if (playerRows == 0)
-            rows[8].Text = "<no players>";
-        else if (players.Length > playerRows)
-            rows[10].Text += $"   ... +{players.Length - playerRows}";
-
-        rows[11].Text = "CHAT";
+        RuntimePlayersSnapshot players = playerOperations.CaptureSnapshot();
         RuntimeLogSnapshot chat = logOperations.CaptureSnapshot(RuntimeLogLevel.Debug, "Chat", 8);
-        FillLogRows(chat.Entries.Span, startRow: 12, rowCount: 2, emptyText: "<no chat yet>");
-
-        rows[14].Text = "LOG";
         RuntimeLogSnapshot logs = logOperations.CaptureSnapshot(RuntimeLogLevel.Information, 12);
-        FillLogRows(logs.Entries.Span, startRow: 15, rowCount: 2, emptyText: "<no runtime log entries>");
 
-        string? status = externalDashboardFailure
-            ?? lastAdminAction;
-        rows[17].Text = status
-            ?? $"F2 System | F3-F12 host dashboards | menu: Dashboards/Details | snapshot {runtime.CapturedAtUtc:HH:mm:ss.fff} UTC";
+        smokeRows[0] =
+            $"{runtime.Lifecycle} | world {SanitizeText(runtime.WorldName, 26)} | players {players.Players.Length}/{runtime.MaxPlayers} | " +
+            $"port {runtime.Port} | interest {(runtime.InterestManagementEnabled ? "ON" : "OFF")}";
 
-        overviewDashboard.Refresh(
-            runtime,
-            network,
-            world,
-            playerSnapshot,
-            logs,
-            chat,
-            status);
+        string? status = externalDashboardFailure ?? lastAdminAction;
+        overviewDashboard.Refresh(runtime, network, world, players, logs, chat, status);
     }
 
     private void RefreshPlayers()
     {
-        ClearRows();
         RuntimePlayersSnapshot snapshot = playerOperations.CaptureSnapshot();
         ReadOnlySpan<RuntimePlayerSnapshot> players = snapshot.Players.Span;
-        rows[0].Text = $"PLAYERS  {players.Length} playing";
-
-        int visible = Math.Min(players.Length, rows.Length - 2);
-        for (int i = 0; i < visible; i++)
+        var lines = new string[players.Length];
+        for (int i = 0; i < players.Length; i++)
         {
             RuntimePlayerSnapshot player = players[i];
             string health = player.HasHealth ? $"{player.Life}/{player.MaxLife}" : "n/a";
             string mana = player.HasMana ? $"{player.Mana}/{player.MaxMana}" : "n/a";
             string mount = player.MountType == 0 ? "none" : player.MountType.ToString(CultureInfo.InvariantCulture);
-            rows[i + 1].Text =
+            lines[i] =
                 $"#{player.Slot,3} g{player.Generation,-4} c{player.ConnectionId,-5} {SanitizeName(player.Name),-20} " +
                 $"team {player.Team} pos {player.PositionX / 16f:F1},{player.PositionY / 16f:F1}t " +
                 $"vel {player.VelocityX:F1},{player.VelocityY:F1} item-slot {player.SelectedItem} mount {mount} HP {health} MP {mana}";
         }
 
-        rows[rows.Length - 1].Text =
-            players.Length > visible
-                ? $"... {players.Length - visible} more | F2 returns to System Dashboard"
-                : "F2 returns to System Dashboard";
+        SetDetailContent($"PLAYERS  {players.Length} playing", lines);
     }
 
     private void RefreshNpcs()
     {
-        ClearRows();
         RuntimeNpcsSnapshot snapshot = npcOperations.CaptureSnapshot();
         ReadOnlySpan<RuntimeNpcSnapshot> npcs = snapshot.Npcs.Span;
-        rows[0].Text =
-            $"NPCS  {npcs.Length} live | commits spawn {snapshot.CommittedSpawns:N0} update {snapshot.CommittedUpdates:N0} despawn {snapshot.CommittedDespawns:N0}";
-
-        int visible = Math.Min(npcs.Length, rows.Length - 2);
-        for (int i = 0; i < visible; i++)
+        var lines = new string[npcs.Length];
+        for (int i = 0; i < npcs.Length; i++)
         {
             RuntimeNpcSnapshot npc = npcs[i];
             string collision = $"{(npc.CollideX ? 'X' : '-')}{(npc.CollideY ? 'Y' : '-')}";
             string flags =
                 $"{collision}/{(npc.Wet ? "wet" : "dry")}/{(npc.NoGravity ? "ng" : "g")}/{(npc.NoTileCollide ? "ntc" : "tc")}";
-            rows[i + 1].Text =
+            lines[i] =
                 $"#{npc.Slot,3} g{npc.Generation,-4} r{npc.Revision,-5} type {npc.Type}/{npc.NetId} " +
                 $"pos {npc.PositionX / 16f:F1},{npc.PositionY / 16f:F1}t vel {npc.VelocityX:F1},{npc.VelocityY:F1} " +
                 $"target {npc.Target} ai {npc.Ai0:F1}/{npc.Ai1:F1}/{npc.Ai2:F1}/{npc.Ai3:F1} dir {npc.DirectionX},{npc.DirectionY} {flags}";
         }
 
-        rows[rows.Length - 1].Text =
-            npcs.Length > visible
-                ? $"... {npcs.Length - visible} more | F2 returns to System Dashboard"
-                : "F2 returns to System Dashboard";
+        SetDetailContent(
+            $"NPCS  {npcs.Length} live | commits spawn {snapshot.CommittedSpawns:N0} update {snapshot.CommittedUpdates:N0} despawn {snapshot.CommittedDespawns:N0}",
+            lines);
     }
 
     private void RefreshProjectiles()
     {
-        ClearRows();
         if (projectileOperations is null)
         {
-            rows[0].Text = "PROJECTILES  <telemetry unavailable>";
-            rows[17].Text = "F2 returns to System Dashboard";
+            SetDetailContent("PROJECTILES  <telemetry unavailable>", []);
             return;
         }
 
@@ -587,154 +617,144 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         RuntimePlayersSnapshot playersSnapshot = playerOperations.CaptureSnapshot();
         ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
         ReadOnlySpan<RuntimeProjectileGroupSnapshot> groups = snapshot.Groups.Span;
-        rows[0].Text =
-            $"PROJECTILES  {snapshot.ActiveProjectiles} live in {groups.Length} spawner/type groups | " +
-            $"commits {snapshot.CommittedSpawns:N0}/{snapshot.CommittedUpdates:N0}/{snapshot.CommittedDespawns:N0}";
-
-        int visible = Math.Min(groups.Length, rows.Length - 2);
-        for (int i = 0; i < visible; i++)
+        var lines = new string[groups.Length];
+        for (int i = 0; i < groups.Length; i++)
         {
             RuntimeProjectileGroupSnapshot group = groups[i];
             string type = ProjectileDisplayFormatter.FormatType(group.Type);
             string owner = ProjectileDisplayFormatter.FormatOwner(group.Spawner, players);
-            rows[i + 1].Text =
+            lines[i] =
                 $"x{group.Count,-4} {type,-28} {owner,-28} " +
                 $"pos~ {group.AveragePositionX / 16f:F1},{group.AveragePositionY / 16f:F1}t " +
                 $"vel~ {group.AverageVelocityX:F1},{group.AverageVelocityY:F1} dmg<={group.MaxDamage} orig<={group.MaxOriginalDamage} kb<={group.MaxKnockBack:F1}";
         }
 
-        rows[rows.Length - 1].Text =
-            groups.Length > visible
-                ? $"... {groups.Length - visible} more groups | F2 returns to System Dashboard"
-                : "F2 returns to System Dashboard";
+        SetDetailContent(
+            $"PROJECTILES  {snapshot.ActiveProjectiles} live in {groups.Length} spawner/type groups | commits {snapshot.CommittedSpawns:N0}/{snapshot.CommittedUpdates:N0}/{snapshot.CommittedDespawns:N0}",
+            lines);
     }
 
     private void RefreshItems()
     {
-        ClearRows();
         if (worldItemOperations is null)
         {
-            rows[0].Text = "ITEMS  <telemetry unavailable>";
-            rows[17].Text = "F2 returns to System Dashboard";
+            SetDetailContent("ITEMS  <telemetry unavailable>", []);
             return;
         }
 
         RuntimeWorldItemsSnapshot snapshot = worldItemOperations.CaptureSnapshot();
         ReadOnlySpan<RuntimeWorldItemGroupSnapshot> groups = snapshot.Groups.Span;
-        rows[0].Text = $"ITEMS  {snapshot.ActiveItems} live in {groups.Length} item-type groups";
-
-        int visible = Math.Min(groups.Length, rows.Length - 2);
-        for (int i = 0; i < visible; i++)
+        var lines = new string[groups.Length];
+        for (int i = 0; i < groups.Length; i++)
         {
             RuntimeWorldItemGroupSnapshot group = groups[i];
-            rows[i + 1].Text =
+            lines[i] =
                 $"x{group.DropCount,-4} type #{group.ItemNetId,-6} stack total {group.TotalStack,-8:N0} max {group.MaxStack,-5} " +
                 $"reserved {group.ReservedDrops,-4} shimmer {group.ShimmeredDrops,-4} " +
                 $"pos~ {group.AveragePositionX / 16f:F1},{group.AveragePositionY / 16f:F1}t";
         }
 
-        rows[rows.Length - 1].Text =
-            groups.Length > visible
-                ? $"... {groups.Length - visible} more groups | F2 returns to System Dashboard"
-                : "F2 returns to System Dashboard";
+        SetDetailContent($"ITEMS  {snapshot.ActiveItems} live in {groups.Length} item-type groups", lines);
     }
 
     private void RefreshNetwork()
     {
-        ClearRows();
         RuntimeNetworkSnapshot snapshot = networkOperations.CaptureSnapshot();
-        rows[0].Text = $"NETWORK  active {snapshot.ActiveConnections}  registered {snapshot.RegisteredConnections}";
-        rows[1].Text =
-            $"Admission   accepted {snapshot.AcceptedConnections:N0}  rejected {snapshot.RejectedConnections:N0}  " +
-            $"capacity {snapshot.AdmissionCapacityRejectedConnections:N0}  rate {snapshot.AdmissionRateRejectedConnections:N0}";
-        rows[2].Text =
-            $"Inbound 1s  {snapshot.InboundWindowFrames:N0} frames  {FormatKibibytes(snapshot.InboundWindowBytes)}  rejected {snapshot.RejectedInboundFrames:N0}  " +
-            $"total {snapshot.InboundTotalFrames:N0}/{FormatKibibytes(snapshot.InboundTotalBytes)}";
-        rows[3].Text =
-            $"Outbound    queues {snapshot.TrackedOutboundQueues}  frames {snapshot.QueuedOutboundFrames:N0}  {FormatKibibytes(snapshot.QueuedOutboundBytes)}  " +
-            $"peak {snapshot.PeakQueuedOutboundFrames:N0}/{FormatKibibytes(snapshot.PeakQueuedOutboundBytes)}  rejected {snapshot.RejectedOutboundFrames:N0}  slow {snapshot.SlowClients}";
-        rows[4].Text =
-            $"Movement    relay {snapshot.RelayedMovementFrames:N0}  AOI resync {snapshot.MovementResyncFrames:N0}  " +
-            $"player active {snapshot.PlayerActiveBaselineFrames:N0}  deactivated {snapshot.PlayerDeactivationFrames:N0}";
-        rows[5].Text = $"Appearance  relay {snapshot.RelayedAppearanceFrames:N0}  baseline {snapshot.AppearanceBaselineFrames:N0}";
-        rows[6].Text = $"Equipment   relay {snapshot.RelayedEquipmentFrames:N0}  baseline {snapshot.EquipmentBaselineFrames:N0}  dropped {snapshot.DroppedEquipmentSnapshotUpdates:N0}";
-        rows[7].Text =
-            $"NPC         relay {snapshot.NpcRelayedFrames:N0}  baseline {snapshot.NpcBaselineFrames:N0}  rejected {snapshot.NpcRejectedFrames:N0}  " +
-            $"unsupported {snapshot.NpcUnsupportedCommits:N0}";
-        rows[8].Text =
-            $"Projectile  relay {snapshot.ProjectileRelayedFrames:N0}  baseline {snapshot.ProjectileBaselineFrames:N0}  rejected {snapshot.ProjectileRejectedFrames:N0}  " +
-            $"unsupported {snapshot.ProjectileUnsupportedCommits:N0}";
-        rows[9].Text =
-            $"Items       relay {snapshot.WorldItemRelayedFrames:N0}  rejected {snapshot.WorldItemRejectedFrames:N0}  unsupported {snapshot.WorldItemUnsupportedCommits:N0}";
-        rows[10].Text =
-            $"Stops       protocol {snapshot.StopProtocolFailures:N0}  rate {snapshot.StopRateLimited:N0}  " +
-            $"handshake {snapshot.StopInvalidHandshake:N0}  unsupported {snapshot.StopUnsupportedProtocol:N0}  slow {snapshot.StopSlowClient:N0}  " +
-            $"frame-rejected {snapshot.StopFrameRejected:N0}";
+        var lines = new List<string>(20)
+        {
+            $"Admission   accepted {snapshot.AcceptedConnections:N0}  rejected {snapshot.RejectedConnections:N0}  capacity {snapshot.AdmissionCapacityRejectedConnections:N0}  rate {snapshot.AdmissionRateRejectedConnections:N0}",
+            $"Inbound 1s  {snapshot.InboundWindowFrames:N0} frames  {FormatKibibytes(snapshot.InboundWindowBytes)}  rejected {snapshot.RejectedInboundFrames:N0}  total {snapshot.InboundTotalFrames:N0}/{FormatKibibytes(snapshot.InboundTotalBytes)}",
+            $"Outbound    queues {snapshot.TrackedOutboundQueues}  frames {snapshot.QueuedOutboundFrames:N0}  {FormatKibibytes(snapshot.QueuedOutboundBytes)}  peak {snapshot.PeakQueuedOutboundFrames:N0}/{FormatKibibytes(snapshot.PeakQueuedOutboundBytes)}  rejected {snapshot.RejectedOutboundFrames:N0}  slow {snapshot.SlowClients}",
+            $"Movement    relay {snapshot.RelayedMovementFrames:N0}  AOI resync {snapshot.MovementResyncFrames:N0}  player active {snapshot.PlayerActiveBaselineFrames:N0}  deactivated {snapshot.PlayerDeactivationFrames:N0}",
+            $"Appearance  relay {snapshot.RelayedAppearanceFrames:N0}  baseline {snapshot.AppearanceBaselineFrames:N0}",
+            $"Equipment   relay {snapshot.RelayedEquipmentFrames:N0}  baseline {snapshot.EquipmentBaselineFrames:N0}  dropped {snapshot.DroppedEquipmentSnapshotUpdates:N0}",
+            $"NPC         relay {snapshot.NpcRelayedFrames:N0}  baseline {snapshot.NpcBaselineFrames:N0}  rejected {snapshot.NpcRejectedFrames:N0}  unsupported {snapshot.NpcUnsupportedCommits:N0}",
+            $"Projectile  relay {snapshot.ProjectileRelayedFrames:N0}  baseline {snapshot.ProjectileBaselineFrames:N0}  rejected {snapshot.ProjectileRejectedFrames:N0}  unsupported {snapshot.ProjectileUnsupportedCommits:N0}",
+            $"Items       relay {snapshot.WorldItemRelayedFrames:N0}  rejected {snapshot.WorldItemRejectedFrames:N0}  unsupported {snapshot.WorldItemUnsupportedCommits:N0}",
+            $"Stops       protocol {snapshot.StopProtocolFailures:N0}  rate {snapshot.StopRateLimited:N0}  handshake {snapshot.StopInvalidHandshake:N0}  unsupported {snapshot.StopUnsupportedProtocol:N0}  slow {snapshot.StopSlowClient:N0}  frame-rejected {snapshot.StopFrameRejected:N0}"
+        };
 
         ReadOnlySpan<RuntimeConnectionRateDetail> rates = snapshot.TopInboundRates.Span;
-        for (int i = 0; i < Math.Min(rates.Length, 2); i++)
-        {
-            RuntimeConnectionRateDetail rate = rates[i];
-            rows[11 + i].Text =
-                $"IN  #{rate.ConnectionId,-5} {rate.WindowFrames,6:N0} f/s  {FormatKibibytes(rate.WindowBytes),10}/s  total {rate.TotalFrames:N0}";
-        }
         if (rates.Length == 0)
-            rows[11].Text = "IN  <no active inbound traffic>";
+        {
+            lines.Add("IN  <no active inbound traffic>");
+        }
+        else
+        {
+            for (int i = 0; i < rates.Length; i++)
+            {
+                RuntimeConnectionRateDetail rate = rates[i];
+                lines.Add($"IN  #{rate.ConnectionId,-5} {rate.WindowFrames,6:N0} f/s  {FormatKibibytes(rate.WindowBytes),10}/s  total {rate.TotalFrames:N0}");
+            }
+        }
 
-        rows[13].Text =
-            $"Frame reject malformed {snapshot.RejectedMalformedProtocol:N0}  rate {snapshot.RejectedRateLimited:N0}  " +
-            $"state {snapshot.RejectedInvalidState:N0}  gameplay {snapshot.RejectedGameplay:N0}  backpressure {snapshot.RejectedBackpressure:N0}";
+        lines.Add(
+            $"Frame reject malformed {snapshot.RejectedMalformedProtocol:N0}  rate {snapshot.RejectedRateLimited:N0}  state {snapshot.RejectedInvalidState:N0}  gameplay {snapshot.RejectedGameplay:N0}  backpressure {snapshot.RejectedBackpressure:N0}");
 
         ReadOnlySpan<RuntimeConnectionQueueDetail> queues = snapshot.TopOutboundQueues.Span;
-        for (int i = 0; i < Math.Min(queues.Length, 2); i++)
-        {
-            RuntimeConnectionQueueDetail queue = queues[i];
-            rows[14 + i].Text =
-                $"OUT #{queue.ConnectionId,-5} {queue.QueuedFrames:N0}/{queue.MaxFrames:N0} frames  " +
-                $"{FormatKibibytes(queue.QueuedBytes)}/{FormatKibibytes(queue.MaxQueuedBytes)}  " +
-                $"peak {queue.PeakQueuedFrames:N0}/{FormatKibibytes(queue.PeakQueuedBytes)}  rejected {queue.RejectedFrames:N0}  {(queue.SlowClient ? "SLOW" : "ok")}";
-        }
         if (queues.Length == 0)
-            rows[14].Text = "OUT <no queued/rejected/slow clients>";
+        {
+            lines.Add("OUT <no queued/rejected/slow clients>");
+        }
+        else
+        {
+            for (int i = 0; i < queues.Length; i++)
+            {
+                RuntimeConnectionQueueDetail queue = queues[i];
+                lines.Add(
+                    $"OUT #{queue.ConnectionId,-5} {queue.QueuedFrames:N0}/{queue.MaxFrames:N0} frames  " +
+                    $"{FormatKibibytes(queue.QueuedBytes)}/{FormatKibibytes(queue.MaxQueuedBytes)}  " +
+                    $"peak {queue.PeakQueuedFrames:N0}/{FormatKibibytes(queue.PeakQueuedBytes)}  rejected {queue.RejectedFrames:N0}  {(queue.SlowClient ? "SLOW" : "ok")}");
+            }
+        }
 
-        rows[16].Text =
-            $"Timeouts    handshake {snapshot.StopHandshakeTimeout:N0}  join {snapshot.StopJoinTimeout:N0}  idle {snapshot.StopIdleTimeout:N0}  " +
-            $"application-stop {snapshot.StopApplicationStopped:N0}";
-        rows[17].Text = "F2 returns to System Dashboard";
+        lines.Add(
+            $"Timeouts    handshake {snapshot.StopHandshakeTimeout:N0}  join {snapshot.StopJoinTimeout:N0}  idle {snapshot.StopIdleTimeout:N0}  application-stop {snapshot.StopApplicationStopped:N0}");
+
+        SetDetailContent(
+            $"NETWORK  active {snapshot.ActiveConnections}  registered {snapshot.RegisteredConnections}",
+            lines);
     }
 
     private void RefreshWorld()
     {
-        ClearRows();
         RuntimeWorldSnapshot snapshot = worldOperations.CaptureSnapshot();
-        rows[0].Text = $"WORLD  {(snapshot.Ready ? "ready" : "not ready")}  {SanitizeText(snapshot.Name, 36)}  id {snapshot.WorldId}";
-        rows[1].Text = $"Identity    {snapshot.UniqueId:D}";
-        rows[2].Text = $"Format      {snapshot.FormatVersion}  worldgen {snapshot.WorldGeneratorVersion}";
-        rows[3].Text = $"Dimensions  {snapshot.WidthTiles}x{snapshot.HeightTiles}  tiles {snapshot.TileCount:N0}";
-        rows[4].Text = $"Objects     chests {snapshot.ChestCount:N0}  signs {snapshot.SignCount:N0}  tile entities {snapshot.TileEntityCount:N0}";
-        rows[5].Text = $"NPC state   town {snapshot.TownNpcCount:N0}  persistent {snapshot.PersistentNpcCount:N0}  rooms {snapshot.TownRoomCount:N0}";
-        rows[6].Text = $"Cache       {(snapshot.RuntimeCacheHit ? "hit" : "miss")}  reason {snapshot.InitialCacheResult}/{snapshot.InitialCacheDetailCode}  readers {snapshot.CacheParallelReads}";
-        rows[7].Text = $"Load        file {snapshot.FileReadMilliseconds:F2} ms  cache {snapshot.CacheLoadMilliseconds:F2} ms  canonical {snapshot.CanonicalWorldLoadMilliseconds:F2} ms  build {snapshot.CacheWriteMilliseconds:F2} ms";
-        rows[8].Text = $"Ready       world {snapshot.WorldReadyMilliseconds:F2} ms  network {snapshot.NetworkReadyMilliseconds:F2} ms";
-        if (snapshot.RuntimeClockAvailable)
+        var lines = new List<string>(20)
         {
-            rows[10].Text = $"Clock       {(snapshot.RuntimeDayTime ? "day" : "night")}  time {snapshot.RuntimeTime:N0}  rate {snapshot.RuntimeDayRate}  moon {snapshot.RuntimeMoonPhase}";
-            rows[11].Text = $"Slime rain  {snapshot.RuntimeSlimeRainTime:N0}";
-        }
+            $"Identity    {snapshot.UniqueId:D}",
+            $"Format      {snapshot.FormatVersion}  worldgen {snapshot.WorldGeneratorVersion}",
+            $"Dimensions  {snapshot.WidthTiles}x{snapshot.HeightTiles}  tiles {snapshot.TileCount:N0}",
+            $"Objects     chests {snapshot.ChestCount:N0}  signs {snapshot.SignCount:N0}  tile entities {snapshot.TileEntityCount:N0}",
+            $"NPC state   town {snapshot.TownNpcCount:N0}  persistent {snapshot.PersistentNpcCount:N0}  rooms {snapshot.TownRoomCount:N0}",
+            $"Cache       {(snapshot.RuntimeCacheHit ? "hit" : "miss")}  reason {snapshot.InitialCacheResult}/{snapshot.InitialCacheDetailCode}  readers {snapshot.CacheParallelReads}",
+            $"Load        file {snapshot.FileReadMilliseconds:F2} ms  cache {snapshot.CacheLoadMilliseconds:F2} ms  canonical {snapshot.CanonicalWorldLoadMilliseconds:F2} ms  build {snapshot.CacheWriteMilliseconds:F2} ms",
+            $"Ready       world {snapshot.WorldReadyMilliseconds:F2} ms  network {snapshot.NetworkReadyMilliseconds:F2} ms"
+        };
+
         if (snapshot.SectionCacheAvailable)
         {
-            rows[9].Text =
+            lines.Add(
                 $"Pipeline    in-flight {snapshot.SectionCacheInFlight:N0}  submitted {snapshot.SectionCacheSubmitted:N0}  rejected {snapshot.SectionCacheRejected:N0}  " +
-                $"stale {snapshot.SectionCacheStaleResults:N0}  encode-fail {snapshot.SectionCacheEncodeFailures:N0}  publish-reject {snapshot.SectionCachePublishRejections:N0}  " +
-                $"encode {snapshot.SectionCacheTotalEncodeMilliseconds:F1} ms";
-            rows[12].Text =
+                $"stale {snapshot.SectionCacheStaleResults:N0}  encode-fail {snapshot.SectionCacheEncodeFailures:N0}  publish-reject {snapshot.SectionCachePublishRejections:N0}  encode {snapshot.SectionCacheTotalEncodeMilliseconds:F1} ms");
+        }
+
+        if (snapshot.RuntimeClockAvailable)
+        {
+            lines.Add($"Clock       {(snapshot.RuntimeDayTime ? "day" : "night")}  time {snapshot.RuntimeTime:N0}  rate {snapshot.RuntimeDayRate}  moon {snapshot.RuntimeMoonPhase}");
+            lines.Add($"Slime rain  {snapshot.RuntimeSlimeRainTime:N0}");
+        }
+
+        if (snapshot.SectionCacheAvailable)
+        {
+            lines.Add(
                 $"On-demand   request {snapshot.SectionCacheOnDemandRequests:N0}  unique {snapshot.SectionCacheOnDemandUniqueRequests:N0}  " +
                 $"dedup {snapshot.SectionCacheOnDemandDeduplicatedRequests:N0}  pending {snapshot.SectionCacheOnDemandPendingRequests:N0}/{snapshot.SectionCacheOnDemandCapacity:N0}  " +
-                $"rejected {snapshot.SectionCacheOnDemandRejectedRequests:N0}  waits done/timeout {snapshot.SectionCacheWaitCompletions:N0}/{snapshot.SectionCacheWaitTimeouts:N0}";
-            rows[13].Text = $"Sections    {snapshot.SectionCacheEntries:N0}/{snapshot.SectionCacheMaximumEntries:N0}  {FormatMebibytes(snapshot.SectionCacheBytes)}  dirty {snapshot.SectionCacheDirtyBacklog:N0}";
-            rows[14].Text = $"Lookups     hit {snapshot.SectionCacheHits:N0}  miss {snapshot.SectionCacheMisses:N0}  stale {snapshot.SectionCacheStaleReads:N0}  waits {snapshot.SectionCacheWaits:N0}";
-            rows[15].Text = $"Rebuild     queued {snapshot.SectionCachePendingWork:N0}  active {snapshot.SectionCacheActiveWorkers:N0}  published {snapshot.SectionCachePublished:N0}";
+                $"rejected {snapshot.SectionCacheOnDemandRejectedRequests:N0}  waits done/timeout {snapshot.SectionCacheWaitCompletions:N0}/{snapshot.SectionCacheWaitTimeouts:N0}");
+            lines.Add($"Sections    {snapshot.SectionCacheEntries:N0}/{snapshot.SectionCacheMaximumEntries:N0}  {FormatMebibytes(snapshot.SectionCacheBytes)}  dirty {snapshot.SectionCacheDirtyBacklog:N0}");
+            lines.Add($"Lookups     hit {snapshot.SectionCacheHits:N0}  miss {snapshot.SectionCacheMisses:N0}  stale {snapshot.SectionCacheStaleReads:N0}  waits {snapshot.SectionCacheWaits:N0}");
+            lines.Add($"Rebuild     queued {snapshot.SectionCachePendingWork:N0}  active {snapshot.SectionCacheActiveWorkers:N0}  published {snapshot.SectionCachePublished:N0}");
         }
+
         if (snapshot.Persistence is RuntimeWorldPersistenceSnapshot persistence)
         {
             string shadow = persistence.TileShadowReady
@@ -744,41 +764,73 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             string write = persistence.WriteActive
                 ? "active"
                 : persistence.PendingWrite ? "pending" : "idle";
-            rows[16].Text =
+            lines.Add(
                 $"Save        shadow {shadow} dirty {persistence.PendingDirtyTileSections:N0} request {request} write {write} " +
                 $"done {persistence.CompletedWrites:N0}/{persistence.StartedWrites:N0} accepted {persistence.AcceptedSnapshots:N0} " +
                 $"coalesced {persistence.CoalescedSnapshots:N0} failed {persistence.FailedWrites:N0}  " +
-                $"last-ms snap/ser/write {persistence.LastSnapshotCaptureMilliseconds:F2}/" +
-                $"{persistence.LastSerializationMilliseconds:F2}/{persistence.LastWriteMilliseconds:F2}";
+                $"last-ms snap/ser/write {persistence.LastSnapshotCaptureMilliseconds:F2}/{persistence.LastSerializationMilliseconds:F2}/{persistence.LastWriteMilliseconds:F2}");
         }
-        rows[17].Text = lastAdminAction ?? "F2 returns to System Dashboard";
+
+        SetDetailContent(
+            $"WORLD  {(snapshot.Ready ? "ready" : "not ready")}  {SanitizeText(snapshot.Name, 36)}  id {snapshot.WorldId}",
+            lines,
+            lastAdminAction);
     }
 
     private void RefreshLogs()
     {
-        ClearRows();
-        RuntimeLogSnapshot snapshot = logOperations.CaptureSnapshot(RuntimeLogLevel.Debug, rows.Length - 2);
-        rows[0].Text = $"LOG  published {snapshot.PublishedEntries:N0}  overwritten {snapshot.OverwrittenEntries:N0}";
+        RuntimeLogSnapshot snapshot = logOperations.CaptureSnapshot(RuntimeLogLevel.Debug, MaximumLogEntries);
         ReadOnlySpan<RuntimeLogEntry> entries = snapshot.Entries.Span;
-        int visible = Math.Min(entries.Length, rows.Length - 2);
-        if (visible == 0)
-        {
-            rows[1].Text = "<no runtime log entries>";
-        }
-        else
-        {
-            int sourceStart = Math.Max(0, entries.Length - visible);
-            for (int i = 0; i < visible; i++)
-                rows[i + 1].Text = FormatLogEntry(entries[sourceStart + i]);
-        }
-        rows[17].Text = "F2 returns to System Dashboard";
+        var lines = new string[entries.Length];
+        for (int i = 0; i < entries.Length; i++)
+            lines[i] = FormatLogEntry(entries[i]);
+
+        SetDetailContent(
+            $"LOG  published {snapshot.PublishedEntries:N0}  overwritten {snapshot.OverwrittenEntries:N0}",
+            lines);
     }
 
-    private void SyncSelectableDetailText()
+    private void SetDetailContent(string title, IReadOnlyList<string> lines, string? administrativeFooter = null)
     {
-        string text = string.Join(
-            Environment.NewLine,
-            rows.Select(static row => row.Text?.ToString() ?? string.Empty));
+        currentDetailLines = lines.Count == 0 ? [] : lines.ToArray();
+        string query = screenFilters[(int)screen];
+        visibleDetailLines = query.Length == 0
+            ? currentDetailLines
+            : currentDetailLines
+                .Where(line => line.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+        detailHeader.Text = query.Length == 0
+            ? title
+            : $"{title}  |  filter '{SanitizeText(query, 48)}' => {visibleDetailLines.Length}/{currentDetailLines.Length}";
+
+        string text = visibleDetailLines.Length == 0
+            ? (query.Length == 0 ? "<no entries>" : "<no matching entries>")
+            : string.Join(Environment.NewLine, visibleDetailLines);
+        SetSelectableDetailText(text);
+
+        string filterStatus = query.Length == 0
+            ? $"{currentDetailLines.Length} rows"
+            : $"{visibleDetailLines.Length}/{currentDetailLines.Length} rows";
+        string shortcuts = "Ctrl+F filter · Ctrl+L clear · F2 system";
+        detailFooter.Text = string.IsNullOrWhiteSpace(administrativeFooter)
+            ? $"{filterStatus} · {shortcuts}"
+            : $"{SanitizeText(administrativeFooter, 72)} · {filterStatus} · {shortcuts}";
+
+        Array.Fill(smokeRows, string.Empty);
+        smokeRows[0] = title;
+        int copy = Math.Min(visibleDetailLines.Length, SmokeRowCount - 2);
+        for (int i = 0; i < copy; i++)
+            smokeRows[i + 1] = visibleDetailLines[i];
+        smokeRows[SmokeRowCount - 1] = detailFooter.Text?.ToString() ?? string.Empty;
+
+        detailHeader.SetNeedsDraw();
+        detailFooter.SetNeedsDraw();
+        systemRoot.SetNeedsDraw();
+    }
+
+    private void SetSelectableDetailText(string text)
+    {
         if (string.Equals(appliedDetailText, text, StringComparison.Ordinal))
         {
             pendingDetailText = string.Empty;
@@ -793,58 +845,6 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         appliedDetailText = pendingDetailText;
         pendingDetailText = string.Empty;
         detailText.SetNeedsDraw();
-    }
-
-    private void AppendTps(double value)
-    {
-        tpsHistory[tpsHistoryNext] = double.IsFinite(value) && value >= 0d ? value : 0d;
-        tpsHistoryNext = (tpsHistoryNext + 1) % tpsHistory.Length;
-        if (tpsHistoryCount < tpsHistory.Length)
-            tpsHistoryCount++;
-    }
-
-    private string RenderTpsGraph(int targetTicksPerSecond)
-    {
-        if (tpsHistoryCount == 0)
-            return string.Empty;
-
-        const string levels = "._-~=*#@";
-        double target = Math.Max(1d, targetTicksPerSecond);
-        char[] graph = new char[tpsHistoryCount];
-        int oldest = (tpsHistoryNext - tpsHistoryCount + tpsHistory.Length) % tpsHistory.Length;
-        for (int i = 0; i < graph.Length; i++)
-        {
-            double sample = tpsHistory[(oldest + i) % tpsHistory.Length];
-            double ratio = Math.Clamp(sample / target, 0d, 1d);
-            int level = (int)Math.Round(ratio * (levels.Length - 1));
-            graph[i] = levels[level];
-        }
-
-        return new string(graph);
-    }
-
-    private void FillLogRows(
-        ReadOnlySpan<RuntimeLogEntry> entries,
-        int startRow,
-        int rowCount,
-        string emptyText)
-    {
-        if (entries.Length == 0)
-        {
-            rows[startRow].Text = emptyText;
-            return;
-        }
-
-        int visible = Math.Min(entries.Length, rowCount);
-        int sourceStart = entries.Length - visible;
-        for (int i = 0; i < visible; i++)
-            rows[startRow + i].Text = FormatLogEntry(entries[sourceStart + i]);
-    }
-
-    private void ClearRows()
-    {
-        foreach (Label row in rows)
-            row.Text = string.Empty;
     }
 
     private static ExternalDashboard[] CaptureExternalDashboards(
@@ -912,7 +912,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         MessageBox.Query(
             App!,
             "TerraRuntime",
-            "F2 opens the tiled TerraRuntime System Dashboard. Double-click a tile to maximize/restore it. F3-F12 open independent dashboards registered by trusted host modules. Details exposes selectable runtime-owned read models only.",
+            "F2 opens the tiled TerraRuntime System Dashboard. Details use complete bounded scrollable snapshots; Ctrl+F filters the current detail view and Ctrl+L clears it. Double-click an overview tile to maximize/restore it. F3-F12 open independent dashboards registered by trusted host modules.",
             "OK");
 
     private sealed class ExternalDashboard(ITerraRuntimeTerminalDashboardProvider provider)
