@@ -246,7 +246,7 @@ public sealed class WorldRuntime : IDisposable
     public SandboxWorldSource Source { get; }
     public WorldPersistenceMode PersistenceMode { get; }
     public WorldRuntimeOptions Options { get; }
-    public WorldFileData World { get; }
+    internal WorldFileData World { get; }
     public WorldRuntimeLifecycle Lifecycle
     {
         get

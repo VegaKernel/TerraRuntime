@@ -156,6 +156,7 @@ Goal: the primary world and Level 1 sandbox worlds are the same runtime type. â€
 - [x] Let the process own a collection/registry of `WorldRuntime` instances.
 - [x] Do not introduce a generic `WorldRuntimeManager` facade if a concrete collection/registry/host owns the lifecycle directly.
 - [x] Preserve the invariant that each world has one authoritative writer.
+- [x] Keep mutable `WorldFileData` storage internal to application/runtime composition; public `WorldRuntime` callers use snapshots and typed operations rather than writable tile/storage access.
 - [x] Make current single-world startup one ordinary `WorldRuntime` selected as primary by host/Vega policy.
 - [ ] Use the same `WorldRuntime` implementation inside a Level 2 sandbox worker.
 
