@@ -69,7 +69,7 @@ public sealed class RuntimeTownNpcQuickFindHome1458Tests
         VanillaHousingPlacement quick = validator.ValidateQuickFindHome(25, 25, VanillaNpcIds.Guide);
 
         Assert.True(VanillaHousingValidator1458.IsStartRoomCheckFailure(normal.Result));
-        Assert.True(quick.IsValid);
+        Assert.True(quick.IsValid, $"QuickFind placement failed with {quick.Result}.");
     }
 
     [Fact]

@@ -10,6 +10,7 @@ public sealed class RuntimeArchitectureBoundaryTests
         "TerraRuntime.Extensible.Server",
         "TerraRuntime.Contracts",
         "TerraRuntime.Core",
+        "TerraRuntime.Gameplay",
         "TerraRuntime.HostContracts",
         "TerraRuntime.Network",
         "TerraRuntime.Protocol",
@@ -29,7 +30,8 @@ public sealed class RuntimeArchitectureBoundaryTests
         new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
         {
             ["TerraRuntime.Contracts"] = [],
-            ["TerraRuntime.Core"] = ["TerraRuntime.Contracts"],
+            ["TerraRuntime.Gameplay"] = ["TerraRuntime.Contracts"],
+            ["TerraRuntime.Core"] = ["TerraRuntime.Contracts", "TerraRuntime.Gameplay"],
             ["TerraRuntime.HostContracts"] = ["TerraRuntime.Contracts"],
             ["TerraRuntime.Protocol"] = [],
             ["TerraRuntime.World"] = ["TerraRuntime.Contracts"],

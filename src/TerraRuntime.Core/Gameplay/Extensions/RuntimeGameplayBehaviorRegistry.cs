@@ -111,20 +111,11 @@ public sealed class RuntimeGameplayBehaviorRegistry<TTarget, TBehavior>
     private readonly HashSet<GameplayExtensionId> retiringIds = [];
     private RuntimeGameplayBehaviorSnapshot<TTarget, TBehavior> published = CreateEmptySnapshot();
     private ulong nextRevision;
-    private bool dirty;
+    private volatile bool dirty;
 
     public RuntimeGameplayBehaviorSnapshot<TTarget, TBehavior> Snapshot => Volatile.Read(ref published);
 
-    public bool HasPendingChanges
-    {
-        get
-        {
-            lock (gate)
-            {
-                return dirty;
-            }
-        }
-    }
+    public bool HasPendingChanges => dirty;
 
     public GameplayBehaviorRegistrationResult TryRegister(
         GameplayExtensionId id,
@@ -182,6 +173,12 @@ public sealed class RuntimeGameplayBehaviorRegistry<TTarget, TBehavior>
     /// </summary>
     public RuntimeGameplayBehaviorSnapshot<TTarget, TBehavior> CommitPending()
     {
+        // The authoritative loop calls this every tick. Avoid entering a monitor when no cold-path registration or
+        // retirement has been staged; besides being unnecessary, repeated Monitor acquisition regressed the empty
+        // server tick allocation gate on .NET 11 preview builds.
+        if (!dirty)
+            return Snapshot;
+
         lock (gate)
         {
             if (!dirty)

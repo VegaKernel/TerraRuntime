@@ -74,7 +74,7 @@ public sealed class RuntimeNpcBehaviorHostBoundaryTests
             behaviorId,
             VanillaNpcIds.Zombie,
             NpcBehaviorStage.Replacement,
-            order: 0,
+            Order: 0,
             provider,
             behaviorCompletion));
         NpcBehaviorRegistrationResult registration = await behaviorCompletion.Task;
