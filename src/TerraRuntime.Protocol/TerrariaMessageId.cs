@@ -47,6 +47,7 @@ public enum TerrariaMessageId : byte
     PlaceObject = 79,
     SyncPlayerChestIndex = 80,
     LoadNetModule = 82,
+    EmoteBubble = 91,
     FinishedConnectingToServer = 129,
     InstancedItemSlotRelease = 151,
     SyncChestSize = 155,
