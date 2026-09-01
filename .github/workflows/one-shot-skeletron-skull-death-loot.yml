@@ -28,6 +28,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/ci/apply_skeletron_skull_death_loot_1458.py')
+          text = path.read_text(encoding='utf-8')
+          old = '        "            9 +\\n",\n        "            11 +\\n",\n        "coverage-test-count",'
+          new = '        "        int expected = 9 +\\n",\n        "        int expected = 11 +\\n",\n        "coverage-test-count",'
+          if old not in text:
+              raise SystemExit('coverage test script anchor changed')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
           python3 tools/ci/apply_skeletron_skull_death_loot_1458.py
           git diff --check
       - name: Verify TerrariaServer 1.4.5.8 source contract
