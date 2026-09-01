@@ -37,6 +37,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tools/ci/apply_queen_bee_vertical_1458.py')
+          text = p.read_text(encoding='utf-8')
+          old = """        if (VanillaFlyerNpcCatalog.TryGetDefinition(type, out definition))
+            return true;
+
+        if (type == VanillaNpcIds.BrainOfCthulhu)"""
+          old2 = """        if (VanillaFlyerNpcCatalog.TryGetDefinition(type, out definition))
+            return true;
+
+        if (type == VanillaNpcIds.QueenBee)"""
+          new = """        if (VanillaNpcAi17_20_21Catalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (type == VanillaNpcIds.BrainOfCthulhu)"""
+          new2 = """        if (VanillaNpcAi17_20_21Catalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (type == VanillaNpcIds.QueenBee)"""
+          if old not in text or old2 not in text:
+              raise SystemExit('Queen Bee definition helper anchor drifted')
+          text = text.replace(old, new, 1).replace(old2, new2, 1)
+          p.write_text(text, encoding='utf-8')
+          PY
           python3 tools/ci/apply_queen_bee_vertical_1458.py
           git diff --check
       - name: Verify TerrariaServer 1.4.5.8 Queen Bee source contract
@@ -51,7 +76,6 @@ jobs:
           projectile = Path('decompiled/1458/Terraria/Projectile.cs').read_text(encoding='utf-8', errors='ignore')
           drops = Path('decompiled/1458/Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs').read_text(encoding='utf-8', errors='ignore')
           items = Path('decompiled/1458/Terraria/Item.cs').read_text(encoding='utf-8', errors='ignore')
-
           ai_start = npc.find('else if (aiStyle == 43)')
           ai_end = npc.find('\n\t\telse if (aiStyle == 44)', ai_start + 1) if ai_start >= 0 else -1
           ai = npc[ai_start:ai_end if ai_end >= 0 else ai_start + 22000] if ai_start >= 0 else ''
@@ -60,7 +84,6 @@ jobs:
           loot = drops[loot_start:loot_end if loot_end >= 0 else loot_start + 4000] if loot_start >= 0 else ''
           proj_start = projectile.find('else if (type == 719)')
           proj = projectile[proj_start:proj_start + 300] if proj_start >= 0 else ''
-
           checks = {
               'defaults': bool(re.search(r'else if \(type == 222\)[\s\S]{0,900}?width = 66;[\s\S]{0,400}?height = 66;[\s\S]{0,400}?aiStyle = 43;[\s\S]{0,500}?damage = 30;[\s\S]{0,300}?defense = 8;[\s\S]{0,300}?lifeMax = 3400;', npc)),
               'ai43': ai_start >= 0 and all(s in ai for s in ('ai[0] == 5f', 'ai[0] == -1f', 'ai[0] == 0f', 'ai[0] == 2f', 'ai[0] == 1f', 'ai[0] == 3f', 'ai[0] == 4f')),
@@ -69,18 +92,11 @@ jobs:
               'stinger_spawn': all(s in ai for s in ('int num701 = 719;', 'int num700 = 11;', 'Main.projectile[num702].timeLeft = 300;')),
               'projectile719': all(s in proj for s in ('width = 10;', 'height = 10;', 'hostile = true;', 'penetrate = -1;', 'aiStyle = 1;', 'tileCollide = true;')),
               'death_flag': 'SetEventFlagCleared(ref downedQueenBee, 8)' in npc,
-              'loot': all(s in loot for s in (
-                  'BossBag(3322)', 'MasterModeCommonDrop(4928)', 'MasterModeDropOnAllPlayers(4802, _masterModeDropRng)',
-                  'ByCondition(condition, 2108, 7)', 'OneFromOptionsNotScalingWithLuck(1, 1121, 1123, 2888)',
-                  'ByCondition(condition, 1132, 3)', 'ByCondition(condition, 1170, 15)', 'ByCondition(condition, 2502, 20)',
-                  'ByCondition(condition, 5483, 15)', 'ByCondition(condition, 1129, 3)',
-                  'OneFromOptionsNotScalingWithLuck(2, 842, 843, 844)', 'ByCondition(condition, 1130, 4, 10, 30, 3)',
-                  'ByCondition(condition, 2431, 1, 17, 30)')),
+              'loot': all(s in loot for s in ('BossBag(3322)', 'MasterModeCommonDrop(4928)', 'MasterModeDropOnAllPlayers(4802, _masterModeDropRng)', 'ByCondition(condition, 2108, 7)', 'OneFromOptionsNotScalingWithLuck(1, 1121, 1123, 2888)', 'ByCondition(condition, 1132, 3)', 'ByCondition(condition, 1170, 15)', 'ByCondition(condition, 2502, 20)', 'ByCondition(condition, 5483, 15)', 'ByCondition(condition, 1129, 3)', 'OneFromOptionsNotScalingWithLuck(2, 842, 843, 844)', 'ByCondition(condition, 1130, 4, 10, 30, 3)', 'ByCondition(condition, 2431, 1, 17, 30)')),
               'items': all(f'case {i}:' in items for i in (842,843,844,1121,1123,1129,1130,1132,1170,1364,2108,2431,2502,2888,3322,5483)),
           }
           for name, ok in checks.items(): print(f'source_check:{name}={ok}')
-          if not all(checks.values()):
-              raise SystemExit('Queen Bee source baseline changed: ' + ', '.join(k for k,v in checks.items() if not v))
+          if not all(checks.values()): raise SystemExit('Queen Bee source baseline changed: ' + ', '.join(k for k,v in checks.items() if not v))
           print('queen_bee_1458_source_contract=ok')
           PY
       - name: Release build
