@@ -26,15 +26,17 @@ flowchart TD
     Base["OptimizedWorldGenerationProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
     Play["OptimizedPlayableWorldGenerationProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
     Land["OptimizedLandmarkWorldGenerationProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
-    Meta["metadata + base validator"]
-    PVal["playability validator"]
+    Meta["metadata"]
+    Dungeon["optimized dungeon v2<br/>rooms / branches / locked loot / traps"]
+    PVal["base + playability validators"]
     LVal["landmark validator"]
+    Content["progression content<br/>evil anchors / Larva / forge pocket"]
     Shape["surface shaping<br/>natural top slopes / half-block transitions"]
     Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>trees с foliage anchors / undergrowth / sunflowers"]
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Shape --> Surf --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> Dungeon --> PVal --> LVal --> Content --> Shape --> Surf --> Prog --> Commit
 ```
 
 Все optimized passes используют `WorldGenerationRngMode.IsolatedDeterministic`. Поэтому новый несвязанный pass не
@@ -50,7 +52,8 @@ Optimized profile сейчас создаёт и валидирует:
 - Underworld band с Lava, Hellstone и Hellforge;
 - малые correlated caves, крупные warped caverns, vertical shafts и inland underground lakes;
 - несколько floating islands;
-- dungeon, jungle hive, Jungle Temple и Aether/Shimmer pocket;
+- связный dungeon graph с main rooms/branches, читаемым входом, locked dungeon loot, Golden Keys, spikes и wired dart traps;
+- jungle hive, Jungle Temple и Aether/Shimmer pocket;
 - pre-Hardmode ore tiers;
 - масштабируемый по площади мира бюджет Life Crystals;
 - persistent surface, underground и cavern exploration caches;
@@ -60,10 +63,9 @@ Optimized profile сейчас создаёт и валидирует:
 - полые Living Wood trees с roots, underground room и persistent cache;
 - ограниченное число Underworld houses, соединённых волнистыми platform bridges;
 - granite, marble и spider/cobweb micro-biomes;
-- явный читаемый вход в dungeon;
 - domain-warped material tongues на границах snow, desert, jungle и world evil;
-- детерминированные обычные forest/jungle/snow trees, surface undergrowth и sunflower patches, которые ставятся после landmarks и обходят progression objects/caches.
-- отдельный deterministic surface-finishing pass превращает чистые однотайловые перепады natural terrain в сохраняемые walkable slopes/half-blocks; верхушки обычных optimized trees получают vanilla-format foliage anchors вместо голого последнего trunk tile.
+- детерминированные обычные forest/jungle/snow trees, surface undergrowth и sunflower patches, которые ставятся после landmarks и обходят progression objects/caches;
+- deterministic surface-finishing pass, который превращает чистые однотайловые перепады natural terrain в сохраняемые walkable slopes/half-blocks и публикует vanilla-format foliage anchors для обычных деревьев.
 
 Landmark layer использует только tile/wall identities, которые уже source-backed текущей работой репозитория с
 TerrariaServer `1.4.5.8`. Loot landmark caches пока намеренно собственный и консервативный, пока полный vanilla
@@ -80,7 +82,7 @@ ores, frame-important objects и обязательные structures не рас
 
 ## Роли летающих островов
 
-Sky terrain сканируется как отдельные горизонтальные masses. Landmark pass назначает две роли:
+Sky terrain сканируется как отдельные горизонтальные masses. Landmark pass назначает две distinct роли:
 
 - **sky house**: Sunplate shell, Disc Wall interior и persistent custom sky cache;
 - **Floating Lake**: ограниченный вырезанный water basin внутри существующей island mass.
@@ -90,6 +92,19 @@ Sky terrain сканируется как отдельные горизонта�
 
 Текущий sky cache не выдаётся за точное vanilla Skyware loot. Source-backed роли Starfury/Horseshoe/Balloon остаются
 отдельной progression-задачей.
+
+## Dungeon v2
+
+Финальный optimized profile перестраивает только заранее зарезервированный Blue Dungeon footprint. Pass формирует
+детерминированную цепочку проходимых main rooms, чередующиеся боковые branches и связанный с поверхностью вход, при этом
+сохраняя footprint уже существующих persistent chests, если они попали внутрь reservation. Затем создаётся открытый
+entrance cache с количеством Golden Keys не меньше числа generated locked chests, source-backed dungeon primary loot,
+ограниченные поля Spike и пары pressure plate / dart trap, соединённые red wire.
+
+Алгоритм намеренно собственный и не заявляет seed-identical parity с Terraria. Для locked chest style/framing, Golden
+Keys, Muramasa, Cobalt Shield, Aqua Scepter, Blue Moon, Magic Missile, Valor, Handgun, pressure plates и dart traps
+используются source-backed контракты TerrariaServer 1.4.5.8. Generation завершается ошибкой, если не выполнены контракты
+связности комнат, количества locked chests, баланса ключей, budgets traps/spikes, framing сундуков или читаемости входа.
 
 ## Наземные и подземные landmarks
 
@@ -120,36 +135,23 @@ frame-important, hive, temple, dungeon, chest, Honey и Shimmer content.
 
 ## Гарантированный progression-контент
 
-После landmark validation `terraruntime:optimized` теперь добавляет 2x2 Shadow Orb или Crimson Heart с budget по размеру
-мира и закреплённым контрактом framing 1.4.5.8 (`+36` frame-X для Crimson), сухие 3x3 Larva anchors внутри Hive, один
-persistent `Jungle Progression Cache` с source-backed Jungle Spores/Stingers/Vines и сухой Underworld forge pocket с
-доступными Obsidian и открытым Hellstone. Финальный topology validator считает все четыре роли обязательными route targets.
+После landmark validation `terraruntime:optimized` добавляет 2x2 Shadow Orb или Crimson Heart с budget по размеру мира и
+закреплённым контрактом framing 1.4.5.8 (`+36` frame-X для Crimson), сухие 3x3 Larva anchors внутри Hive, один persistent
+`Jungle Progression Cache` с source-backed Jungle Spores/Stingers/Vines и сухой Underworld forge pocket с доступными
+Obsidian и открытым Hellstone. Финальный topology validator считает все четыре роли обязательными route targets.
 
 Размещение Larva доказывает только worldgen anchor. Семантика разрушения Larva/активации Queen Bee принадлежит gameplay
 runtime и здесь намеренно не объявляется завершённой.
 
 ## Validation
 
-Generation остаётся fail-closed. Landmark validator запускается после существующих geography/playability validators и
-требует:
-
-- точные бюджеты sky houses и Floating Lakes;
-- точные бюджеты pyramids, Living Trees и Underworld houses;
-- точные бюджеты granite, marble и spider grottoes;
-- нетривиальное число warped biome-transition cells;
-- persistent side-table entries для landmark chests;
-- минимальные количества material/wall для каждого landmark family;
-- успешно открытый dungeon entrance.
-
-Это намеренно строже проверки одного representative tile. Наполовину созданный набор landmarks отклоняется.
-
-После него финальный `OptimizedProgressionValidationWorldGenerationProvider` сканирует уже post-landmark candidate. Он
-требует масштабируемые по площади минимумы Copper, Iron, Silver, Gold и Hellstone; проверяет полные 3x2 footprints
-Demon/Crimson Altar, Hellforge и Lihzahrd Altar; требует нетривиальные связные interiors dungeon, hive и Jungle Temple;
-а также строит ограниченный excavation-aware reachability graph от spawn до snow, desert, jungle, world evil, dungeon
-entrance, hive interior, Jungle Temple entrance и Underworld Hellforge. Обычная порода учитывается как стоимость
-прокапывания, а плотные Lihzahrd barriers и глубокая Lava считаются блокирующими. Это structural topology gate, а не
-заявление о pixel-exact физике движения игрока или точной tool progression Terraria.
+Generation остаётся fail-closed. Validators требуют точные landmark budgets, persistent chest side-table entries,
+минимальные material/wall counts, читаемый dungeon entrance, Dungeon v2 room/loot/trap contracts и финальную progression
+topology. Финальный `OptimizedProgressionValidationWorldGenerationProvider` требует масштабируемые по площади минимумы
+Copper, Iron, Silver, Gold и Hellstone; проверяет полные footprints progression objects; требует нетривиальные связные
+interiors dungeon, hive и Jungle Temple; а также строит bounded excavation-aware reachability graph от spawn до
+обязательных surface/deep-world targets. Это structural topology gate, а не заявление о pixel-exact физике движения
+игрока или точной tool progression Terraria.
 
 ## Совместимость и не-цели
 
@@ -161,12 +163,9 @@ contracts. Загрузка существующего vanilla `.wld` не за�
 
 ## Что ещё осталось
 
-Landmark и final progression-validation slices закрывают заметные visual/content и structural gaps, но
-`terraruntime:optimized` ещё не production-complete.
-Основные оставшиеся задачи:
+`terraruntime:optimized` ещё не production-complete. Основные оставшиеся задачи:
 
 - настоящие source-backed biome и Skyware loot families;
-- dungeon locked chest/key progression и более богатые dungeon branches/traps;
 - несколько hives и более сильная гарантия Queen Bee space на больших мирах;
 - glowing-mushroom и дополнительные decorative micro-biomes;
 - Hardmode-ready mutation anchors;

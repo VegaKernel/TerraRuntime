@@ -49,7 +49,7 @@ Every mandatory role must have a reserved region or an explicit count/range budg
 - [x] Aether pocket plus Shimmer;
 - [x] world-evil Demon Altar;
 - [x] Underworld Hellforge;
-- [ ] richer dungeon graph with branches, rooms, spikes/traps, locked chests and biome-safe placement;
+- [x] richer dungeon graph with branches, rooms, spikes/traps, locked chests and biome-safe placement;
 - [x] Floating Island houses with persistent custom sky caches;
 - [ ] replace custom sky caches with source-backed vanilla Skyware loot roles;
 - [x] Floating Lakes as a distinct island variant;
@@ -74,7 +74,7 @@ Presence of terrain alone is not considered playable progression.
 - [x] separate surface/underground/cavern persistent chest budgets;
 - [x] persistent landmark caches for sky houses, pyramids, Living Trees and Underworld houses;
 - [ ] biome chest/loot families needed for ordinary pre-hardmode exploration;
-- [ ] dungeon locked chest/key progression;
+- [x] dungeon locked chest/key progression;
 - [x] source-backed 2x2 Shadow Orb / Crimson Heart progression anchors with world-size budgets and correct Crimson +36 frame style;
 - [x] Hive Larva worldgen anchors plus a persistent jungle progression cache with source-backed Jungle Spores/Stingers/Vines; authoritative Queen Bee activation remains gameplay-owned;
 - [x] reachable Hellforge route with an explicit dry Obsidian/exposed-Hellstone resource pocket and final topology targets;
