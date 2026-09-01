@@ -67,7 +67,8 @@ Exit criteria: the intended dependency direction is documented and new code has 
 Goal: Core becomes execution mechanics rather than a convenient warehouse.
 
 - [x] Move source-backed item definitions, object-placement mappings and prefix gameplay from `Core/Items` into `TerraRuntime.Gameplay.Items`.
-- [ ] Re-evaluate packet normalization and item-use request semantics that remain in `Core/Items`; move only protocol-neutral gameplay that does not require authoritative runtime ownership.
+- [x] Move the source-backed player item-slot catalog plus protocol-neutral item-use request/capability semantics from `Core/Items` into `TerraRuntime.Gameplay.Items`.
+- [ ] Re-evaluate packet-5 net-id normalization that remains in `Core/Items`; keep wire/ingress canonicalization out of Gameplay unless its ownership boundary is redesigned.
 - [ ] Re-evaluate `Core/Npcs`: move protocol-neutral definitions/catalogs/rules to Gameplay; retain stores, execution ownership and runtime mutation mechanics in Core.
 - [ ] Re-evaluate player gameplay code with the same rule: gameplay semantics in Gameplay, authoritative mutable stores/command application in Core/application runtime.
 - [ ] Re-evaluate projectile gameplay definitions versus runtime stores/executors.

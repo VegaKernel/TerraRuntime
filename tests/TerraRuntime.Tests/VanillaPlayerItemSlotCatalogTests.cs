@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Core;
 
 namespace TerraRuntime.Tests;

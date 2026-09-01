@@ -1,8 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Gameplay.Items;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Items;
 
 /// <summary>
 /// Protocol-neutral authoritative selection of the exact inventory item a player intends to use.

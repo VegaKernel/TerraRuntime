@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Items;
 using System.Diagnostics.CodeAnalysis;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;

@@ -77,6 +77,12 @@ Resolver также отвергает unassigned connection, пустой вы�
 
 Это результаты runtime/gameplay boundary, а не ошибки protocol decoder.
 
+## Владение
+
+`VanillaPlayerItemSlotCatalog`, `PlayerItemUseRequest`, `PlayerItemUseResolveResult`, а также source-backed placement/pick capability intents и resolver находятся в `TerraRuntime.Gameplay.Items`. Это detached protocol-neutral gameplay semantics, которые не владеют изменяемым inventory state.
+
+`RuntimePlayerItemUseBoundary` остаётся в application composition, потому что читает авторитетный mutable inventory и фиксирует detached request для точного `ConnectionHandle`. Legacy net-id normalization packet 5 остаётся в Core: это canonicalization equipment ingress, а не protocol-neutral item gameplay.
+
 ## Что остаётся
 
 Этот срез создаёт semantic boundary D2, но намеренно не выдумывает отсутствующую vanilla item metadata. Semantic intents Dirt Block и Copper Pickaxe уже содержат source-backed use timing; следующим этапам всё ещё нужны broader definitions/defaults и behavior executors для melee/ranged weapons, tools, placeables, consumables и special-use items. Такие executors должны принимать `PlayerItemUseRequest`, а не возвращаться к packet offsets или raw item IDs.

@@ -1,4 +1,4 @@
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Items;
 
 /// <summary>
 /// TerrariaServer 1.4.5.8 <c>Terraria.ID.PlayerItemSlotID</c> layout.

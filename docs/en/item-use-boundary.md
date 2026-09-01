@@ -77,6 +77,12 @@ The resolver also rejects an unassigned connection, an empty selected slot, or a
 
 These are runtime/gameplay boundary results, not protocol decoder errors.
 
+## Ownership
+
+`VanillaPlayerItemSlotCatalog`, `PlayerItemUseRequest`, `PlayerItemUseResolveResult`, and the source-backed placement/pick capability intents and resolver live in `TerraRuntime.Gameplay.Items`. They are detached, protocol-neutral gameplay semantics and do not own mutable inventory state.
+
+`RuntimePlayerItemUseBoundary` remains in application composition because it reads the authoritative mutable inventory and captures the detached request for one exact `ConnectionHandle`. Packet-5 legacy net-id normalization remains in Core because it belongs to equipment-ingress canonicalization rather than protocol-neutral item gameplay.
+
 ## What remains
 
 This slice creates the D2 semantic boundary but intentionally does not invent missing vanilla item metadata. Dirt Block and Copper Pickaxe semantic intents already include source-backed use timing; follow-up work still needs broader definitions/defaults and behavior executors for categories such as melee/ranged weapons, tools, placeables, consumables and special-use items. Those executors should consume `PlayerItemUseRequest` rather than returning to packet offsets or raw item IDs.

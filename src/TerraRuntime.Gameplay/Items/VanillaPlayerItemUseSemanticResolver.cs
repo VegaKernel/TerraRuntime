@@ -1,7 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
-using TerraRuntime.Gameplay.Items;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Items;
 
 /// <summary>
 /// Generation-safe semantic use of a source-verified placeable item. The original detached item-use request is
