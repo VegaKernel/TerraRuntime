@@ -52,16 +52,19 @@ Callback не должен блокировать поток, выполнять
 
 Для NPC без активного actor-control lease часть tick, связанная с поведением, концептуально выглядит так:
 
-```text
-presentation Pre decorators
-    -> archetype BehaviorId replacement, если он есть
-       иначе presentation replacement, если он есть
-       иначе vanilla/default AI
-    -> presentation Post decorators
-    -> runtime-owned actor intent override, если активен actor lease
-    -> runtime-owned world motion/collision и остальные AI capabilities
-    -> authoritative store commit
-    -> replication
+```mermaid
+flowchart TD
+    Pre["presentation Pre decorators"] --> Choice{"replacement выбран?"}
+    Choice -->|archetype BehaviorId| Archetype["archetype replacement"]
+    Choice -->|presentation replacement| Presentation["presentation replacement"]
+    Choice -->|нет| Vanilla["vanilla/default AI"]
+    Archetype --> Post["presentation Post decorators"]
+    Presentation --> Post
+    Vanilla --> Post
+    Post --> Intent["runtime-owned actor intent override, если активен lease"]
+    Intent --> Motion["runtime-owned world motion/collision + остальные AI capabilities"]
+    Motion --> Commit["authoritative store commit"]
+    Commit --> Replication["replication"]
 ```
 
 Behavior dispatcher входит в production AI chain `ServerRuntimeState`. Это не тестовый registry, существующий отдельно от сервера. Composition через `INpcAiStateStepperWrapper` сохраняется, поэтому вложенные vanilla capabilities, включая targeting, spawn planners, projectile planners и post-commit hooks, остаются доступными через wrapper chain.
