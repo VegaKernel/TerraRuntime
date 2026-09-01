@@ -26,7 +26,7 @@ public sealed class VanillaSpecialTownShopCatalog1458Tests
             BloodMoon: true,
             DayTime: false,
             DownedMechBossAny: true,
-            MoonPhase: 3,
+            MoonPhase: VanillaMoonPhase.QuarterAtLeft,
             WorldTime: 40,
             AteArtisanBread: false);
 
@@ -77,7 +77,7 @@ public sealed class VanillaSpecialTownShopCatalog1458Tests
         var context = new VanillaTownShopContext(
             GolferScore: 1500,
             DownedBoss3: true,
-            MoonPhase: 4,
+            MoonPhase: VanillaMoonPhase.Empty,
             HasEnoughTownNpcsForPylon: true,
             ShoppingZoneBelowSurface: false);
 
@@ -106,7 +106,7 @@ public sealed class VanillaSpecialTownShopCatalog1458Tests
             InfectedSeed: false,
             FairyTorchAvailable: true,
             BestiaryCompletion: 1f,
-            MoonPhase: 7);
+            MoonPhase: VanillaMoonPhase.ThreeQuartersAtRight);
 
         Assert.True(VanillaSpecialTownShopCatalog1458.TryResolve(
             VanillaTownShopId1458.Zoologist, context, [], [], out var entries));
@@ -137,7 +137,7 @@ public sealed class VanillaSpecialTownShopCatalog1458Tests
             DownedQueenSlime: true,
             DownedPirates: true,
             DownedMoonLord: true,
-            MoonPhase: 2);
+            MoonPhase: VanillaMoonPhase.HalfAtLeft);
 
         Assert.True(VanillaSpecialTownShopCatalog1458.TryResolve(
             VanillaTownShopId1458.Princess, context, [], [], out var entries));
@@ -162,7 +162,7 @@ public sealed class VanillaSpecialTownShopCatalog1458Tests
             ZoneCorrupt: true,
             Storming: true,
             HasEnoughTownNpcsForPylon: true,
-            MoonPhase: 0);
+            MoonPhase: VanillaMoonPhase.Full);
 
         Assert.True(VanillaSpecialTownShopCatalog1458.TryResolve(
             VanillaTownShopId1458.PainterDecor, context, [], [], out var entries));

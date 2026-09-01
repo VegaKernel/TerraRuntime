@@ -14,6 +14,8 @@ Runtime загружает постоянный список town NPC и соо�
 
 ## Срез инвентаря магазинов
 
+Независимые от протокола каталоги магазинов, расчёт счастья, проверка условий появления городских NPC и связанные source-backed предикаты предметов находятся в `TerraRuntime.Gameplay.Npcs`. Изменяемый счётчик периодичности появления остаётся в Core, потому что это authoritative-состояние конкретного мира. Входные данные магазина используют общую типизированную идентичность `VanillaMoonPhase` из Contracts; значения enum вне допустимого диапазона отклоняются до расчёта ассортимента.
+
 `VanillaTownShopCatalog1458` содержит проверенную по `Chest.SetupShop` логику состава товаров для всех обычных веток продавцов `1..18`, от Merchant до Stylist: Merchant, Arms Dealer, Dryad, Demolitionist, Clothier, Goblin Tinkerer, Wizard, Mechanic, Santa Claus, Truffle, Steampunker, Dye Trader, Party Girl, Cyborg, Painter, Witch Doctor, Pirate и Stylist.
 
 Resolver сохраняет порядок исходника и реализованные условия прогресса: Hardmode, боссы/события, Blood Moon/Eclipse/день/ночь, biome/graveyard/sky/beach, secret-seed флаги, выбранную мировую руду, наличие других town NPC, golfer score, life/mana/team/монеты игрока и разблокировки от предметов. Каждый результат ограничен vanilla-ёмкостью магазина в 40 слотов.

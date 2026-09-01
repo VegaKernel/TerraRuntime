@@ -67,7 +67,11 @@ public sealed class VanillaTownShopCatalog1458Tests
     [Fact]
     public void Dryad_crimson_bloodmoon_and_moon_phase_branch_match_source_shape()
     {
-        var context = new VanillaTownShopContext(BloodMoon: true, Crimson: true, HardMode: true, MoonPhase: 4);
+        var context = new VanillaTownShopContext(
+            BloodMoon: true,
+            Crimson: true,
+            HardMode: true,
+            MoonPhase: VanillaMoonPhase.Empty);
 
         Assert.True(VanillaTownShopCatalog1458.TryResolve(VanillaNpcIds.Dryad, context, [], out ItemTypeId[] items));
         int[] raw = Raw(items);
@@ -119,7 +123,7 @@ public sealed class VanillaTownShopCatalog1458Tests
     {
         Assert.True(VanillaTownShopCatalog1458.TryResolve(
             npcType,
-            new VanillaTownShopContext(DayTime: true, MoonPhase: 0),
+            new VanillaTownShopContext(DayTime: true, MoonPhase: VanillaMoonPhase.Full),
             [],
             out ItemTypeId[] items));
 
@@ -143,7 +147,7 @@ public sealed class VanillaTownShopCatalog1458Tests
             DownedFrost: true,
             HasTaxCollector: true,
             GolferScore: 2500,
-            MoonPhase: 6);
+            MoonPhase: VanillaMoonPhase.HalfAtRight);
 
         Assert.True(VanillaTownShopCatalog1458.TryResolve(VanillaNpcIds.Clothier, context, [], out ItemTypeId[] items));
         int[] raw = Raw(items);
@@ -177,7 +181,7 @@ public sealed class VanillaTownShopCatalog1458Tests
             DownedBoss3: true,
             DownedGolemBoss: true,
             DownedMoonLord: true,
-            MoonPhase: 6);
+            MoonPhase: VanillaMoonPhase.HalfAtRight);
 
         Assert.True(VanillaTownShopCatalog1458.TryResolve(VanillaNpcIds.Steampunker, context, [], out ItemTypeId[] items));
         int[] raw = Raw(items);
@@ -213,7 +217,7 @@ public sealed class VanillaTownShopCatalog1458Tests
             PlayerCoinValueCopper: 1_000_000,
             PlayerTeam: 1,
             MultiplayerClient: true,
-            MoonPhase: 1);
+            MoonPhase: VanillaMoonPhase.ThreeQuartersAtLeft);
 
         Assert.True(VanillaTownShopCatalog1458.TryResolve(VanillaNpcIds.Stylist, context, [], out ItemTypeId[] items));
         Assert.Equal([1990, 1979, 1977, 1978, 1980, 1981, 1982, 1983, 1984, 1985, 1986, 2863, 3259, 5104, 5577], Raw(items));
@@ -253,6 +257,22 @@ public sealed class VanillaTownShopCatalog1458Tests
     {
         Assert.False(VanillaTownShopCatalog1458.TryResolve(VanillaNpcIds.Nurse, new VanillaTownShopContext(), [], out ItemTypeId[] items));
         Assert.Empty(items);
+    }
+
+    [Fact]
+    public void Invalid_moon_phase_is_rejected_at_the_gameplay_boundary()
+    {
+        var context = new VanillaTownShopContext(MoonPhase: (VanillaMoonPhase)byte.MaxValue);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            VanillaTownShopCatalog1458.TryResolve(VanillaNpcIds.Merchant, in context, [], out _));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            VanillaSpecialTownShopCatalog1458.TryResolve(
+                VanillaTownShopId1458.SkeletonMerchant,
+                in context,
+                [],
+                [],
+                out _));
     }
 
     private static int[] Raw(ItemTypeId[] items) => items.Select(static item => item.Value).ToArray();

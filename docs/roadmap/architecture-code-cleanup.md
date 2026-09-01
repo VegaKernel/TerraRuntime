@@ -71,6 +71,7 @@ Goal: Core becomes execution mechanics rather than a convenient warehouse.
 - [ ] Re-evaluate packet-5 net-id normalization that remains in `Core/Items`; keep wire/ingress canonicalization out of Gameplay unless its ownership boundary is redesigned.
 - [x] Move the immutable vanilla NPC definition/net-variant and definition-family catalogs from `Core/Npcs` into `TerraRuntime.Gameplay.Npcs`.
 - [x] Split NPC catchability facts from captured-world-item materialization: `VanillaNpcCatchCatalog1458` lives in Gameplay while `VanillaNpcCatchWorldItem1458` remains Core runtime mechanics.
+- [x] Move source-backed town shop, happiness and spawn-eligibility rules into `TerraRuntime.Gameplay.Npcs`; keep the mutable per-world town-spawn cadence in Core and the shared typed moon-phase identity in Contracts.
 - [ ] Re-evaluate remaining protocol-neutral NPC mechanics and mixed catalog/runtime files in `Core/Npcs`; retain stores, execution ownership, state steppers, transactions and runtime mutation mechanics in Core.
 - [ ] Re-evaluate player gameplay code with the same rule: gameplay semantics in Gameplay, authoritative mutable stores/command application in Core/application runtime.
 - [ ] Re-evaluate projectile gameplay definitions versus runtime stores/executors.

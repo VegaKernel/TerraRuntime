@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Npcs;
 
 public enum VanillaTownShopId1458
 {
@@ -40,6 +40,7 @@ public static class VanillaSpecialTownShopCatalog1458
         ReadOnlySpan<ItemTypeId> travelingInventory,
         out VanillaTownShopEntry1458[] entries)
     {
+        VanillaTownShopCatalog1458.ValidateContext(in context);
         var result = new List<VanillaTownShopEntry1458>(VanillaTownShopCatalog1458.MaximumVanillaShopSlots);
         switch (shop)
         {
@@ -111,20 +112,26 @@ public static class VanillaSpecialTownShopCatalog1458
         List<VanillaTownShopEntry1458> result)
     {
         int slot = 0;
-        int phase = Math.Clamp(context.MoonPhase, 0, 7);
+        VanillaMoonPhase phase = context.MoonPhase;
         Add(result, ref slot, phase switch
         {
-            0 => 284, 1 => 946, 2 => context.RemixWorld ? 517 : 3069, 3 => 4341,
-            4 => 285, 5 => 953, 6 => 3068, _ => 3084
+            VanillaMoonPhase.Full => 284,
+            VanillaMoonPhase.ThreeQuartersAtLeft => 946,
+            VanillaMoonPhase.HalfAtLeft => context.RemixWorld ? 517 : 3069,
+            VanillaMoonPhase.QuarterAtLeft => 4341,
+            VanillaMoonPhase.Empty => 285,
+            VanillaMoonPhase.QuarterAtRight => 953,
+            VanillaMoonPhase.HalfAtRight => 3068,
+            _ => 3084
         });
-        if ((phase & 1) == 0) Add(result, ref slot, 3001);
+        if (!VanillaTownShopCatalog1458.IsOddMoonPhase(phase)) Add(result, ref slot, 3001);
         else
         {
             Add(result, ref slot, 28);
             if (context.HardMode) Add(result, ref slot, 188);
         }
 
-        if (context.IsNight || phase == 0)
+        if (context.IsNight || phase == VanillaMoonPhase.Full)
         {
             Add(result, ref slot, 3002);
             if (Contains(inventory, 930)) Add(result, ref slot, 5377);
@@ -132,11 +139,12 @@ public static class VanillaSpecialTownShopCatalog1458
         else Add(result, ref slot, 282);
 
         Add(result, ref slot, context.WorldTime % 60d * 60d * 6d <= 10800d ? 3004 : 8);
-        Add(result, ref slot, phase is 0 or 1 or 4 or 5 ? 3003 : 40);
-        Add(result, ref slot, (phase % 4) switch { 0 => 3310, 1 => 3313, 2 => 3312, _ => 3311 });
-        if (phase is 1 or 2) Add(result, ref slot, 5640);
-        else if (phase is 3 or 5) Add(result, ref slot, 5641);
-        else if (phase is 6 or 7) Add(result, ref slot, 5642);
+        Add(result, ref slot, phase is VanillaMoonPhase.Full or VanillaMoonPhase.ThreeQuartersAtLeft or
+            VanillaMoonPhase.Empty or VanillaMoonPhase.QuarterAtRight ? 3003 : 40);
+        Add(result, ref slot, ((int)phase % 4) switch { 0 => 3310, 1 => 3313, 2 => 3312, _ => 3311 });
+        if (phase is VanillaMoonPhase.ThreeQuartersAtLeft or VanillaMoonPhase.HalfAtLeft) Add(result, ref slot, 5640);
+        else if (phase is VanillaMoonPhase.QuarterAtLeft or VanillaMoonPhase.QuarterAtRight) Add(result, ref slot, 5641);
+        else if (phase is VanillaMoonPhase.HalfAtRight or VanillaMoonPhase.ThreeQuartersAtRight) Add(result, ref slot, 5642);
         Add(result, ref slot, 166);
         Add(result, ref slot, 965);
         if (context.HardMode)
@@ -146,8 +154,10 @@ public static class VanillaSpecialTownShopCatalog1458
             if (context.DownedMechBossAny) Add(result, ref slot, 5540);
             if (context.BloodMoon) Add(result, ref slot, 3258);
         }
-        if (phase == 0 && context.IsNight) Add(result, ref slot, 3043);
-        if (!context.AteArtisanBread && phase is >= 3 and <= 5) Add(result, ref slot, 5326);
+        if (phase == VanillaMoonPhase.Full && context.IsNight) Add(result, ref slot, 3043);
+        if (!context.AteArtisanBread && phase is
+            VanillaMoonPhase.QuarterAtLeft or VanillaMoonPhase.Empty or VanillaMoonPhase.QuarterAtRight)
+            Add(result, ref slot, 5326);
     }
 
     private static void ResolveTavernkeep(in VanillaTownShopContext context, List<VanillaTownShopEntry1458> result)
@@ -197,7 +207,13 @@ public static class VanillaSpecialTownShopCatalog1458
         if (context.GolferScore >= 2000)
         {
             Add(result, ref slot, 4601);
-            Add(result, ref slot, context.MoonPhase switch { 0 or 1 => 4658, 2 or 3 => 4659, 4 or 5 => 4660, _ => 4661 });
+            Add(result, ref slot, context.MoonPhase switch
+            {
+                VanillaMoonPhase.Full or VanillaMoonPhase.ThreeQuartersAtLeft => 4658,
+                VanillaMoonPhase.HalfAtLeft or VanillaMoonPhase.QuarterAtLeft => 4659,
+                VanillaMoonPhase.Empty or VanillaMoonPhase.QuarterAtRight => 4660,
+                _ => 4661
+            });
         }
     }
 
@@ -207,7 +223,7 @@ public static class VanillaSpecialTownShopCatalog1458
         float progress = Math.Clamp(context.BestiaryCompletion, 0f, 1f);
         if (context.FairyTorchAvailable) Add(result, ref slot, 4776);
         Add(result, ref slot, 4767);
-        if (context.MoonPhase == 0 && context.IsNight) Add(result, ref slot, 5253);
+        if (context.MoonPhase == VanillaMoonPhase.Full && context.IsNight) Add(result, ref slot, 5253);
         if (progress >= .45f) Add(result, ref slot, 5635);
         if (progress >= .10f) Add(result, ref slot, 4759);
         if (progress >= .03f) Add(result, ref slot, 4672);
@@ -229,8 +245,20 @@ public static class VanillaSpecialTownShopCatalog1458
         if (progress >= .70f) Add(result, ref slot, 4735);
         if (progress >= 1f) Add(result, ref slot, 4951);
         if (context.PartyIsUp) Add(result, ref slot, 5466);
-        Add(result, ref slot, context.MoonPhase switch { 0 or 1 => 4768, 2 or 3 => 4770, 4 or 5 => 4772, _ => 4560 });
-        Add(result, ref slot, context.MoonPhase switch { 0 or 1 => 4769, 2 or 3 => 4771, 4 or 5 => 4773, _ => 4775 });
+        Add(result, ref slot, context.MoonPhase switch
+        {
+            VanillaMoonPhase.Full or VanillaMoonPhase.ThreeQuartersAtLeft => 4768,
+            VanillaMoonPhase.HalfAtLeft or VanillaMoonPhase.QuarterAtLeft => 4770,
+            VanillaMoonPhase.Empty or VanillaMoonPhase.QuarterAtRight => 4772,
+            _ => 4560
+        });
+        Add(result, ref slot, context.MoonPhase switch
+        {
+            VanillaMoonPhase.Full or VanillaMoonPhase.ThreeQuartersAtLeft => 4769,
+            VanillaMoonPhase.HalfAtLeft or VanillaMoonPhase.QuarterAtLeft => 4771,
+            VanillaMoonPhase.Empty or VanillaMoonPhase.QuarterAtRight => 4773,
+            _ => 4775
+        });
         if (context.VampireSeed && !context.InfectedSeed) Add(result, ref slot, 8);
     }
 
@@ -246,7 +274,13 @@ public static class VanillaSpecialTownShopCatalog1458
             if (context.ZoneDesert) Add(result, ref slot, 857);
             if (context.BloodMoon) Add(result, ref slot, 4144);
             if (context.HardMode && context.DownedPirates)
-                Add(result, ref slot, context.MoonPhase switch { 0 or 1 => 2584, 2 or 3 => 854, 4 or 5 => 855, _ => 905 });
+                Add(result, ref slot, context.MoonPhase switch
+                {
+                    VanillaMoonPhase.Full or VanillaMoonPhase.ThreeQuartersAtLeft => 2584,
+                    VanillaMoonPhase.HalfAtLeft or VanillaMoonPhase.QuarterAtLeft => 854,
+                    VanillaMoonPhase.Empty or VanillaMoonPhase.QuarterAtRight => 855,
+                    _ => 905
+                });
         }
         Add(result, ref slot, 5088);
     }
@@ -261,7 +295,13 @@ public static class VanillaSpecialTownShopCatalog1458
         if (!context.ZoneGraveyard)
         {
             Add(result, ref slot, 1490);
-            Add(result, ref slot, context.MoonPhase <= 1 ? 1481 : context.MoonPhase <= 3 ? 1482 : context.MoonPhase <= 5 ? 1483 : 1484);
+            Add(result, ref slot, context.MoonPhase switch
+            {
+                VanillaMoonPhase.Full or VanillaMoonPhase.ThreeQuartersAtLeft => 1481,
+                VanillaMoonPhase.HalfAtLeft or VanillaMoonPhase.QuarterAtLeft => 1482,
+                VanillaMoonPhase.Empty or VanillaMoonPhase.QuarterAtRight => 1483,
+                _ => 1484
+            });
         }
         if (context.ShoppingZoneForest) Add(result, ref slot, 5245);
         if (context.ZoneCrimson) Add(result, ref slot, 1492);

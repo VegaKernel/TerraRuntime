@@ -7,6 +7,7 @@ on:
     paths:
       - 'src/TerraRuntime/**'
       - 'src/TerraRuntime.Core/**'
+      - 'src/TerraRuntime.Gameplay/**'
       - 'src/TerraRuntime.Contracts/Gameplay/**'
       - 'tests/TerraRuntime.Tests/*Projectile*.cs'
       - 'tests/TerraRuntime.Tests/*Npc*.cs'

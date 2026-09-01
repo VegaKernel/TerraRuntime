@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>
 /// Runtime-owned inputs consumed by the source-pinned TerrariaServer 1.4.5.8 Chest.SetupShop branches.
@@ -70,7 +70,7 @@ public readonly record struct VanillaTownShopContext(
     int PlayerManaMax = 20,
     long PlayerCoinValueCopper = 0,
     int PlayerTeam = 0,
-    int MoonPhase = 0,
+    VanillaMoonPhase MoonPhase = VanillaMoonPhase.Full,
     int SavedSilverOreType = 0,
     double WorldTime = 0d,
     float BestiaryCompletion = 0f,
@@ -100,6 +100,7 @@ public static class VanillaTownShopCatalog1458
         ReadOnlySpan<ItemTypeId> playerInventory,
         out ItemTypeId[] items)
     {
+        ValidateContext(in context);
         var result = new List<ItemTypeId>(MaximumVanillaShopSlots);
         if (npcType == VanillaNpcIds.Merchant)
             ResolveMerchant(in context, playerInventory, result);
@@ -257,12 +258,14 @@ public static class VanillaTownShopCatalog1458
         Add(items, 3215, 3216, 3219, context.Crimson ? 3218 : 3217, 3220, 3221, 3222,
             4047, 4045, 4044, 4043, 4042, 4046, 4041, 4241, 4048);
 
-        int phase = Math.Clamp(context.MoonPhase, 0, 7) / 2;
-        int[] moonItems = phase switch
+        int[] moonItems = context.MoonPhase switch
         {
-            0 => context.HardMode ? [4430, 4431, 4432] : [4430, 4431],
-            1 => context.HardMode ? [4433, 4434, 4435] : [4433, 4434],
-            2 => context.HardMode ? [4436, 4437, 4438] : [4436, 4437],
+            VanillaMoonPhase.Full or VanillaMoonPhase.ThreeQuartersAtLeft =>
+                context.HardMode ? [4430, 4431, 4432] : [4430, 4431],
+            VanillaMoonPhase.HalfAtLeft or VanillaMoonPhase.QuarterAtLeft =>
+                context.HardMode ? [4433, 4434, 4435] : [4433, 4434],
+            VanillaMoonPhase.Empty or VanillaMoonPhase.QuarterAtRight =>
+                context.HardMode ? [4436, 4437, 4438] : [4436, 4437],
             _ => context.HardMode ? [4439, 4440, 4441] : [4439, 4440]
         };
         Add(items, moonItems);
@@ -298,12 +301,12 @@ public static class VanillaTownShopCatalog1458
     {
         Add(items, 254, 981);
         if (context.DayTime) Add(items, 242);
-        if (context.MoonPhase == 0)
+        if (context.MoonPhase == VanillaMoonPhase.Full)
         {
             Add(items, 245, 246);
             if (context.IsNight) Add(items, 1288, 1289);
         }
-        else if (context.MoonPhase == 1)
+        else if (context.MoonPhase == VanillaMoonPhase.ThreeQuartersAtLeft)
         {
             Add(items, 325, 326);
         }
@@ -323,14 +326,14 @@ public static class VanillaTownShopCatalog1458
         if (context.Halloween) Add(items, 1740);
         if (context.HardMode)
         {
-            switch (Math.Clamp(context.MoonPhase, 0, 7))
+            switch (context.MoonPhase)
             {
-                case 2: Add(items, 869); break;
-                case 3: Add(items, 4994, 4997); break;
-                case 4: Add(items, 864, 865); break;
-                case 5: Add(items, 4995, 4998); break;
-                case 6: Add(items, 873, 874, 875); break;
-                case 7: Add(items, 4996, 4999); break;
+                case VanillaMoonPhase.HalfAtLeft: Add(items, 869); break;
+                case VanillaMoonPhase.QuarterAtLeft: Add(items, 4994, 4997); break;
+                case VanillaMoonPhase.Empty: Add(items, 864, 865); break;
+                case VanillaMoonPhase.QuarterAtRight: Add(items, 4995, 4998); break;
+                case VanillaMoonPhase.HalfAtRight: Add(items, 873, 874, 875); break;
+                case VanillaMoonPhase.ThreeQuartersAtRight: Add(items, 4996, 4999); break;
             }
         }
         if (context.DownedFrost) Add(items, context.DayTime ? 1275 : 1276);
@@ -356,7 +359,7 @@ public static class VanillaTownShopCatalog1458
         Add(items, 509, 850, 851, 3612, 510, 530, 513, 538, 529, 541, 542, 543, 852, 853,
             4261, 3707, 2739, 849, 1263, 3616, 3725, 2799, 3619, 3627, 3629, 585, 584, 583, 4484, 4485);
         if (context.ZoneGraveyard) Add(items, 4409);
-        if (context.HasAngler && (Math.Clamp(context.MoonPhase, 0, 7) & 1) != 0) Add(items, 2295);
+        if (context.HasAngler && IsOddMoonPhase(context.MoonPhase)) Add(items, 2295);
     }
 
     private static void ResolveSantaClaus(List<ItemTypeId> items)
@@ -378,7 +381,9 @@ public static class VanillaTownShopCatalog1458
     {
         bool normalSolutionWorld = !context.RemixWorld || (context.TenthAnniversaryWorld && !context.GoodWorld);
         if (normalSolutionWorld) Add(items, 779);
-        if (context.MoonPhase >= 4 && context.HardMode) Add(items, 748);
+        if (context.HardMode && context.MoonPhase is
+            VanillaMoonPhase.Empty or VanillaMoonPhase.QuarterAtRight or
+            VanillaMoonPhase.HalfAtRight or VanillaMoonPhase.ThreeQuartersAtRight) Add(items, 748);
         else Add(items, 839, 840, 841);
         if (context.DownedGolemBoss) Add(items, 948);
         if (context.HardMode) Add(items, 3623);
@@ -408,7 +413,7 @@ public static class VanillaTownShopCatalog1458
         if (context.Halloween) Add(items, 3248, 1741);
         Add(items, 1037, 2874);
         if (context.MultiplayerClient) Add(items, 1969);
-        if (context.MoonPhase == 0) Add(items, 2871, 2872);
+        if (context.MoonPhase == VanillaMoonPhase.Full) Add(items, 2871, 2872);
         if (context.IsNight && context.BloodMoon) Add(items, 4663);
         if (context.ZoneGraveyard) Add(items, 4662);
     }
@@ -507,8 +512,8 @@ public static class VanillaTownShopCatalog1458
         if (context.PlayerLifeMax >= 400) Add(items, 1977);
         if (context.PlayerManaMax >= 200) Add(items, 1978);
         if (Math.Clamp(context.PlayerCoinValueCopper, 0L, 9_999_999_999L) >= 1_000_000L) Add(items, 1980);
-        int moonPhase = Math.Clamp(context.MoonPhase, 0, 7);
-        if (((moonPhase & 1) == 0 && context.DayTime) || ((moonPhase & 1) != 0 && context.IsNight)) Add(items, 1981);
+        bool oddMoonPhase = IsOddMoonPhase(context.MoonPhase);
+        if ((!oddMoonPhase && context.DayTime) || (oddMoonPhase && context.IsNight)) Add(items, 1981);
         if (context.PlayerTeam != 0 && context.MultiplayerClient) Add(items, 1982);
         if (context.HardMode) Add(items, 1983);
         if (context.HasPartyGirl) Add(items, 1984);
@@ -528,6 +533,18 @@ public static class VanillaTownShopCatalog1458
         }
         return false;
     }
+
+    internal static void ValidateContext(in VanillaTownShopContext context)
+    {
+        if (!Enum.IsDefined(context.MoonPhase))
+            throw new ArgumentOutOfRangeException(nameof(context), "Moon phase is outside the TerrariaServer 1.4.5.8 range.");
+    }
+
+    internal static bool IsOddMoonPhase(VanillaMoonPhase phase) => phase is
+        VanillaMoonPhase.ThreeQuartersAtLeft or
+        VanillaMoonPhase.QuarterAtLeft or
+        VanillaMoonPhase.QuarterAtRight or
+        VanillaMoonPhase.ThreeQuartersAtRight;
 
     internal static void AppendPylons(in VanillaTownShopContext context, List<ItemTypeId> items)
     {

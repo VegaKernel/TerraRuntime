@@ -14,7 +14,7 @@ def replace_between(path, start, end, replacement):
     if i < 0 or j < 0: raise SystemExit(f'{path}: missing block anchor')
     p.write_text(text[:i] + replacement + text[j:])
 
-replace_once('src/TerraRuntime.Core/Npcs/VanillaTownNpcSpawnEligibility1458.cs',
+replace_once('src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcSpawnEligibility1458.cs',
 '''    bool PartyGirlRollSucceeded)\n{\n    public bool IsValid =>''',
 '''    bool PartyGirlRollSucceeded)\n{\n    /// <summary>Persisted NPC.unlockedTruffleSpawn bit from the pinned world metadata.</summary>\n    public bool UnlockedTruffleSpawn { get; init; }\n\n    public bool IsValid =>''')
 
@@ -191,7 +191,7 @@ on:
       - 'src/TerraRuntime/VanillaHousingValidator1458.cs'
       - 'src/TerraRuntime/RuntimeTownHouseCandidateIndex1458.cs'
       - 'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs'
-      - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcSpawnEligibility1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcSpawnEligibility1458.cs'
       - 'src/TerraRuntime/RuntimeTownNpcWorldFactsProjection1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs'
       - 'tools/ci/check_truffle_housing_source.py'

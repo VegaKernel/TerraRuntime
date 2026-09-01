@@ -349,7 +349,8 @@ internal sealed class RuntimeTownCommerceResolver1458
         VanillaTownSceneMetrics1458 scene = sceneScanner.Scan(playerTileX, playerTileY);
         bool dayTime = clock?.DayTime ?? world.InitialDayTime;
         bool bloodMoon = clock?.BloodMoonActive ?? world.InitialBloodMoon;
-        int moonPhase = clock is null ? world.InitialMoonPhase : (int)clock.MoonPhase;
+        VanillaMoonPhase moonPhase = clock?.MoonPhase ??
+            (VanillaMoonPhase)Math.Clamp((int)world.InitialMoonPhase, 0, VanillaMoonPhases.Count - 1);
         double time = clock?.Time ?? world.InitialWorldTime;
 
         var context = new VanillaTownShopContext(

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """High-signal guard against raw Terraria domain literals leaking into gameplay code.
 
-The audit deliberately scans gameplay-owned runtime/core C# rather than protocol/persistence codecs,
+The audit deliberately scans Gameplay plus gameplay-owned runtime/core C# rather than protocol/persistence codecs,
 where raw wire/file representation is legitimate. Catalog files remain the version-pinned source of
 numeric identity. A rare intentional gameplay literal may be suppressed on the same source line with:
 
@@ -20,6 +20,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GAMEPLAY_ROOTS = (
+    REPO_ROOT / "src" / "TerraRuntime.Gameplay",
     REPO_ROOT / "src" / "TerraRuntime.Core",
     REPO_ROOT / "src" / "TerraRuntime",
     REPO_ROOT / "src" / "TerraRuntime.World",

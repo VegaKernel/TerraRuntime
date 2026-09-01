@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcSpawnEligibility1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcSpawnEligibility1458.cs'
+      - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcSpawnCadence1458.cs'
       - 'src/TerraRuntime.World/WorldFileRuntimeMetadata.cs'
       - 'src/TerraRuntime.World/WorldFileRuntimeMetadataParser.cs'
       - 'src/TerraRuntime.World/RuntimeWorldPreparedStateCodec.cs'

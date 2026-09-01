@@ -64,7 +64,7 @@ jobs:
           git config user.name "Xekep"
           git config user.email "Xekep@users.noreply.github.com"
           git rm tools/ci/apply_town_housing_truffle.py .github/workflows/one-shot-town-housing-truffle.yml
-          git add src/TerraRuntime.Core/Npcs/VanillaTownNpcSpawnEligibility1458.cs \
+          git add src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcSpawnEligibility1458.cs \
                   src/TerraRuntime/RuntimeTownNpcWorldFactsProjection1458.cs \
                   src/TerraRuntime/VanillaHousingValidator1458.cs \
                   src/TerraRuntime/RuntimeTownHouseCandidateIndex1458.cs \

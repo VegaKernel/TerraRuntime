@@ -1,4 +1,5 @@
 using System.Reflection;
+using TerraRuntime.Core;
 
 namespace TerraRuntime.Tests;
 
@@ -113,6 +114,29 @@ public sealed class RuntimeArchitectureBoundaryTests
                     "Update the architecture deliberately before changing this allow-set.");
             }
         }
+    }
+
+    [Fact]
+    public void Town_content_rules_live_in_gameplay_while_mutable_spawn_cadence_remains_in_core()
+    {
+        Type[] gameplayTypes =
+        [
+            typeof(VanillaTownShopCatalog1458),
+            typeof(VanillaSpecialTownShopCatalog1458),
+            typeof(VanillaTownHappiness1458),
+            typeof(VanillaTownNpcSpawnEligibility1458),
+            typeof(VanillaTownNpcSpawnItemFacts1458)
+        ];
+
+        foreach (Type gameplayType in gameplayTypes)
+        {
+            Assert.Equal("TerraRuntime.Gameplay", gameplayType.Assembly.GetName().Name);
+            Assert.Equal("TerraRuntime.Gameplay.Npcs", gameplayType.Namespace);
+        }
+
+        Assert.Equal("TerraRuntime.Contracts", typeof(VanillaMoonPhase).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Contracts.Gameplay", typeof(VanillaMoonPhase).Namespace);
+        Assert.Equal("TerraRuntime.Core", typeof(VanillaTownNpcSpawnCadence1458).Assembly.GetName().Name);
     }
 
     [Fact]

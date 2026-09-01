@@ -4,7 +4,7 @@
 
 TerraRuntime считает числовую Terraria identity данными границы/версии, а не обычной деталью gameplay. `tools/ci/audit_gameplay_domain_literals.py` является высокосигнальным CI-гейтом этого правила.
 
-Гейт сканирует gameplay-owned C# в `src/TerraRuntime.Core`, `src/TerraRuntime` и `src/TerraRuntime.World`. Protocol, persistence, snapshot и world-generation adapters, чьи имена явно обозначают boundary ownership, исключены: на этих границах raw representation допустим.
+Гейт сканирует `src/TerraRuntime.Gameplay`, а также gameplay-owned C# в `src/TerraRuntime.Core`, `src/TerraRuntime` и `src/TerraRuntime.World`. Protocol, persistence, snapshot и world-generation adapters, чьи имена явно обозначают boundary ownership, исключены: на этих границах raw representation допустим.
 
 Вне таких границ аудит запрещает:
 

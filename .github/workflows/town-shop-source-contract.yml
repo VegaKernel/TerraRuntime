@@ -6,7 +6,9 @@ on:
     paths:
       - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
       - 'src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcFacts1458.cs'
-      - 'src/TerraRuntime.Core/Npcs/VanillaTownShopCatalog1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaTownShopCatalog1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaSpecialTownShopCatalog1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaTownHappiness1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaTownShopCatalog1458Tests.cs'
       - 'tools/ci/probe_town_shops.py'
       - '.github/workflows/town-shop-source-contract.yml'

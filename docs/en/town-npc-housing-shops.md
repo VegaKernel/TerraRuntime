@@ -14,6 +14,8 @@ Home-state commits are replicated as packet `60` to playing peers and retained a
 
 ## Shop inventory slice
 
+The protocol-neutral shop catalogs, happiness calculation, town-spawn eligibility evaluator and its source-backed item predicates live in `TerraRuntime.Gameplay.Npcs`. The mutable per-world town-spawn cadence remains in Core because it is authoritative runtime state. Shop inputs use the shared `VanillaMoonPhase` identity from Contracts; out-of-range enum values fail before inventory resolution.
+
 `VanillaTownShopCatalog1458` owns source-pinned `Chest.SetupShop` inventory membership for all ordinary vendor branches `1..18`, from Merchant through Stylist: Merchant, Arms Dealer, Dryad, Demolitionist, Clothier, Goblin Tinkerer, Wizard, Mechanic, Santa Claus, Truffle, Steampunker, Dye Trader, Party Girl, Cyborg, Painter, Witch Doctor, Pirate and Stylist.
 
 The resolver preserves source order and the implemented progression inputs, including Hardmode, boss/event progression, Blood Moon/Eclipse/day/night, biome/graveyard/sky/beach state, secret-seed flags, world ore choice, live-town-NPC presence, golfer score, player life/mana/team/coin state and player-owned-item unlocks. Every resolved inventory is bounded to the vanilla 40-slot shop capacity.
