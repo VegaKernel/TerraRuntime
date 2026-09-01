@@ -8,6 +8,7 @@ Level 1 и Level 2 используют **одинаковую модель ис
 
 Baseline должен поддерживать как минимум:
 
+<!-- docs-style: literal-text -->
 ```text
 WorldFile      -> существующий .wld
 Generated      -> generator id + seed + size + generation options

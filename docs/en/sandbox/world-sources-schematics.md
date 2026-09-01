@@ -8,6 +8,7 @@ Level 1 and Level 2 use the **same world-source model**. Isolation determines wh
 
 The baseline should support at least:
 
+<!-- docs-style: literal-text -->
 ```text
 WorldFile      -> existing .wld
 Generated      -> generator id + seed + size + generation options
