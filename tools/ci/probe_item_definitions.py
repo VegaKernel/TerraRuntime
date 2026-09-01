@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Verify source-backed defaults in TerraRuntime's sparse TerrariaServer 1.4.5.8 item catalog."""
-
 from __future__ import annotations
 
 import argparse
@@ -12,51 +11,46 @@ def compact(text: str) -> str:
     return " ".join(text.split())
 
 
+def require(source: str, needle: str, description: str) -> None:
+    if needle not in compact(source):
+        raise SystemExit(f"Pinned TerrariaServer 1.4.5.8 contract changed: {description}.")
+
+
 def find_id(source: str, name: str) -> int:
-    for pattern in (
-        rf"\b{name}\s*=\s*(-?\d+)\s*;",
-        rf"\b{name}\s*=\s*unchecked\(\(short\)(-?\d+)\)\s*;",
-    ):
-        match = re.search(pattern, source)
-        if match is not None:
-            return int(match.group(1))
-    raise SystemExit(f"Could not locate ItemID.{name} in pinned source.")
-
-
-def isolate_method(source: str, name: str, next_name: str) -> str:
-    match = re.search(rf"\b{name}\(int type\).*?(?=\b{next_name}\(int type\))", source, re.DOTALL)
+    match = re.search(rf"\b{name}\s*=\s*(?:unchecked\(\(short\))?(-?\d+)(?:\))?\s*;", source)
     if match is None:
-        raise SystemExit(f"Could not isolate Item.{name}.")
-    return match.group(0)
+        raise SystemExit(f"Could not locate ItemID.{name} in pinned source.")
+    return int(match.group(1))
 
 
-def isolate_case(source: str, value: int, next_value: int) -> str:
-    match = re.search(rf"case\s+{value}\s*:(?P<body>.*?)case\s+{next_value}\s*:", source, re.DOTALL)
-    if match is None:
-        raise SystemExit(f"Could not isolate Item defaults case {value}.")
-    return match.group("body")
-
-
-def isolate_required_pattern(source: str, pattern: str, description: str) -> str:
+def regex_body(source: str, pattern: str, description: str) -> str:
     match = re.search(pattern, source, re.DOTALL)
     if match is None:
         raise SystemExit(f"Could not isolate {description}.")
     return match.group("body") if "body" in match.groupdict() else match.group(0)
 
 
-def require(fragment: str, needle: str, description: str) -> None:
-    if needle not in compact(fragment):
-        raise SystemExit(f"Pinned TerrariaServer 1.4.5.8 contract changed: {description}.")
+def braced_member(source: str, signature: str) -> str:
+    start = source.find(signature)
+    if start < 0:
+        raise SystemExit(f"Could not locate {signature}.")
+    opening = source.find("{", start + len(signature))
+    if opening < 0:
+        raise SystemExit(f"Could not locate opening brace for {signature}.")
+    depth = 0
+    for index in range(opening, len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[start:index + 1]
+    raise SystemExit(f"Could not locate closing brace for {signature}.")
 
 
-def require_no_override(fragment: str, item_name: str) -> None:
+def no_max_stack_override(fragment: str, name: str) -> None:
     if "maxStack =" in compact(fragment):
-        raise SystemExit(f"Pinned TerrariaServer 1.4.5.8 contract changed: {item_name} overrides CommonMaxStack.")
-
-
-def require_no_assignment(fragment: str, field: str, item_name: str) -> None:
-    if re.search(rf"\b{re.escape(field)}\s*=", compact(fragment)) is not None:
-        raise SystemExit(f"Pinned TerrariaServer 1.4.5.8 contract changed: {item_name} overrides {field}.")
+        raise SystemExit(f"Pinned TerrariaServer 1.4.5.8 contract changed: {name} overrides CommonMaxStack.")
 
 
 def main() -> int:
@@ -64,15 +58,8 @@ def main() -> int:
     parser.add_argument("--item", required=True, type=Path)
     parser.add_argument("--item-id", required=True, type=Path)
     args = parser.parse_args()
-
     item = args.item.read_text(encoding="utf-8")
-    item_ids = args.item_id.read_text(encoding="utf-8")
-    defaults1 = isolate_method(item, "SetDefaults1", "SetDefaults2")
-    defaults2 = isolate_method(item, "SetDefaults2", "SetDefaults3")
-    reset_match = re.search(r"\bResetStats\(int Type\).*?(?=\bpublic static Color GetPhaseColor)", item, re.DOTALL)
-    if reset_match is None:
-        raise SystemExit("Could not isolate Item.ResetStats.")
-    reset_stats = reset_match.group(0)
+    item_id = args.item_id.read_text(encoding="utf-8")
 
     expected_ids = {
         "DirtBlock": 2,
@@ -84,103 +71,63 @@ def main() -> int:
         "KingSlimeMasterTrophy": 4929,
     }
     for name, expected in expected_ids.items():
-        actual = find_id(item_ids, name)
+        actual = find_id(item_id, name)
         if actual != expected:
             raise SystemExit(f"Expected ItemID.{name}={expected}, got {actual}.")
 
+    reset = regex_body(item, r"\bResetStats\(int Type\)(?P<body>.*?)(?=\bpublic static Color GetPhaseColor)", "Item.ResetStats")
+    defaults1 = regex_body(item, r"\bSetDefaults1\(int type\)(?P<body>.*?)(?=\bSetDefaults2\(int type\))", "Item.SetDefaults1")
+    defaults2 = regex_body(item, r"\bSetDefaults2\(int type\)(?P<body>.*?)(?=\bSetDefaults3\(int type\))", "Item.SetDefaults2")
+    dirt = regex_body(defaults1, r"case\s+2\s*:(?P<body>.*?)case\s+3\s*:", "Dirt Block defaults")
+    gel = regex_body(defaults1, r"case\s+23\s*:(?P<body>.*?)case\s+24\s*:", "Gel defaults")
+    slime_staff = regex_body(defaults2, r"case\s+1309\s*:(?P<body>.*?)case\s+1310\s*:", "Slime Staff defaults")
+    base_tool = regex_body(defaults1, r"case\s+1\s*:(?P<body>.*?)case\s+2\s*:", "base tool defaults")
+    copper = regex_body(item, r"case 3509:\s*(?P<body>.*?)(?:return;|case 3508:)", "Copper Pickaxe defaults")
+    bag = regex_body(item, r"case\s+3318\s*:\s*case\s+3319\s*:.*?case\s+3332\s*:\s*(?P<body>.*?return;)", "King Slime Boss Bag defaults")
+    pet = regex_body(item, r"case\s+4797\s*:\s*case\s+4798\s*:.*?case\s+4817\s*:\s*(?P<body>.*?break;)", "King Slime pet defaults")
+    trophy = regex_body(item, r"case\s+4924\s*:\s*case\s+4925\s*:.*?case\s+4950\s*:\s*(?P<body>.*?break;)", "King Slime trophy defaults")
+    vanity = braced_member(item, "public void DefaultToVanitypet(int projId, int buffID)")
+    placeable = braced_member(item, "public void DefaultToPlaceableTile(ushort tileIDToPlace, int tileStyleToPlace = 0)")
+
     require(item, "public static int CommonMaxStack = 9999;", "Item.CommonMaxStack is no longer 9999")
-    require(reset_stats, "maxStack = CommonMaxStack;", "Item.ResetStats no longer applies CommonMaxStack")
-    require(reset_stats, "useTurn = false;", "Item.ResetStats no longer clears useTurn")
+    require(reset, "maxStack = CommonMaxStack;", "Item.ResetStats no longer applies CommonMaxStack")
+    require(reset, "useTurn = false;", "Item.ResetStats no longer clears useTurn")
 
-    base_tool = isolate_case(defaults1, 1, 2)
-    dirt = isolate_case(defaults1, 2, 3)
-    gel = isolate_case(defaults1, 23, 24)
-    slime_staff = isolate_case(defaults2, 1309, 1310)
-    copper_match = re.search(r"case 3509:\s*(?P<body>.*?)(?:return;|case 3508:)", item, re.DOTALL)
-    if copper_match is None:
-        raise SystemExit("Could not isolate Copper Pickaxe defaults.")
-    copper = copper_match.group("body")
-
-    king_slime_bag = isolate_required_pattern(
-        item,
-        r"case\s+3318\s*:\s*case\s+3319\s*:.*?case\s+3332\s*:\s*(?P<body>.*?return;)",
-        "King Slime Boss Bag defaults group",
-    )
-    king_slime_pet = isolate_required_pattern(
-        item,
-        r"case\s+4797\s*:\s*case\s+4798\s*:.*?case\s+4817\s*:\s*(?P<body>.*?break;)",
-        "King Slime pet defaults group",
-    )
-    king_slime_trophy = isolate_required_pattern(
-        item,
-        r"case\s+4924\s*:\s*case\s+4925\s*:.*?case\s+4950\s*:\s*(?P<body>.*?break;)",
-        "King Slime Master trophy defaults group",
-    )
-    vanity_pet_defaults = isolate_required_pattern(
-        item,
-        r"public void DefaultToVanitypet\(int projId, int buffID\)\s*\{(?P<body>.*?)(?=\n\})",
-        "Item.DefaultToVanitypet",
-    )
-    placeable_tile_defaults = isolate_required_pattern(
-        item,
-        r"public void DefaultToPlaceableTile\(ushort tileIDToPlace, int tileStyleToPlace = 0\)\s*\{(?P<body>.*?)(?=\n\})",
-        "Item.DefaultToPlaceableTile(ushort, int)",
-    )
-
-    for needle, description in (
-        ("width = 12;", "Dirt Block width is no longer 12"),
-        ("height = 12;", "Dirt Block height is no longer 12"),
-        ("useStyle = 1;", "Dirt Block use style is no longer swing"),
-        ("useAnimation = 15;", "Dirt Block animation is no longer 15 ticks"),
-        ("useTime = 10;", "Dirt Block use time is no longer 10 ticks"),
-        ("autoReuse = true;", "Dirt Block no longer auto-reuses"),
-        ("useTurn = true;", "Dirt Block no longer turns during use"),
+    for needle, desc in (
+        ("width = 12;", "Dirt Block width"), ("height = 12;", "Dirt Block height"),
+        ("useStyle = 1;", "Dirt Block use style"), ("useAnimation = 15;", "Dirt Block animation"),
+        ("useTime = 10;", "Dirt Block use time"), ("autoReuse = true;", "Dirt Block auto reuse"),
+        ("useTurn = true;", "Dirt Block use turn"),
     ):
-        require(dirt, needle, description)
-
-    require(gel, "width = 10;", "Gel width is no longer 10")
-    require(gel, "height = 12;", "Gel height is no longer 12")
-    require(slime_staff, "width = 26;", "Slime Staff width is no longer 26")
-    require(slime_staff, "height = 28;", "Slime Staff height is no longer 28")
-    require(slime_staff, "useStyle = 1;", "Slime Staff use style is no longer swing")
-    require(slime_staff, "useAnimation = 28;", "Slime Staff animation is no longer 28 ticks")
-    require(slime_staff, "useTime = 28;", "Slime Staff use time is no longer 28 ticks")
-    require(slime_staff, "autoReuse = true;", "Slime Staff no longer auto-reuses")
-    require_no_assignment(slime_staff, "useTurn", "Slime Staff")
-
-    require(copper, "SetDefaults1(1);", "Copper Pickaxe no longer inherits item 1 defaults")
-    require(base_tool, "width = 24;", "Copper Pickaxe inherited width changed")
-    require(base_tool, "height = 28;", "Copper Pickaxe inherited height changed")
-    require(base_tool, "useStyle = 1;", "Copper Pickaxe inherited use style changed")
-    require(base_tool, "autoReuse = true;", "Copper Pickaxe inherited auto-reuse changed")
-    require(base_tool, "useTurn = true;", "Copper Pickaxe inherited use-turn behavior changed")
-    require(copper, "useAnimation = 23;", "Copper Pickaxe animation is no longer 23 ticks")
-    require(copper, "useTime = 15;", "Copper Pickaxe use time is no longer 15 ticks")
-
-    require(king_slime_bag, "consumable = true;", "King Slime Boss Bag is no longer consumable")
-    require(king_slime_bag, "width = 24;", "King Slime Boss Bag width is no longer 24")
-    require(king_slime_bag, "height = 24;", "King Slime Boss Bag height is no longer 24")
-    require(king_slime_bag, "expert = true;", "King Slime Boss Bag is no longer an Expert bag")
-    require(king_slime_pet, "DefaultToVanitypet(881 + type - 4797, 284 + type - 4797);", "King Slime pet no longer uses the vanity-pet defaults")
-    require(vanity_pet_defaults, "width = 16;", "vanity-pet default width is no longer 16")
-    require(vanity_pet_defaults, "height = 30;", "vanity-pet default height is no longer 30")
-    require(king_slime_trophy, "DefaultToPlaceableTile((ushort)617, type - 4924);", "King Slime Master trophy no longer uses the trophy tile defaults")
-    require(placeable_tile_defaults, "width = 14;", "placeable-tile default width is no longer 14")
-    require(placeable_tile_defaults, "height = 14;", "placeable-tile default height is no longer 14")
-
-    for fragment, name in (
-        (dirt, "Dirt Block"),
-        (gel, "Gel"),
-        (slime_staff, "Slime Staff"),
-        (base_tool, "Copper Pickaxe base"),
-        (copper, "Copper Pickaxe"),
-        (king_slime_bag, "King Slime Boss Bag"),
-        (king_slime_pet, "King Slime pet"),
-        (king_slime_trophy, "King Slime Master trophy"),
-        (vanity_pet_defaults, "vanity-pet defaults"),
-        (placeable_tile_defaults, "placeable-tile defaults"),
+        require(dirt, needle, desc)
+    require(gel, "width = 10;", "Gel width")
+    require(gel, "height = 12;", "Gel height")
+    for needle, desc in (
+        ("width = 26;", "Slime Staff width"), ("height = 28;", "Slime Staff height"),
+        ("useStyle = 1;", "Slime Staff use style"), ("useAnimation = 28;", "Slime Staff animation"),
+        ("useTime = 28;", "Slime Staff use time"), ("autoReuse = true;", "Slime Staff auto reuse"),
     ):
-        require_no_override(fragment, name)
+        require(slime_staff, needle, desc)
+    if re.search(r"\buseTurn\s*=", compact(slime_staff)):
+        raise SystemExit("Pinned TerrariaServer 1.4.5.8 contract changed: Slime Staff overrides useTurn.")
+
+    require(copper, "SetDefaults1(1);", "Copper Pickaxe inheritance")
+    for needle, desc in (("width = 24;", "Copper Pickaxe width"), ("height = 28;", "Copper Pickaxe height"), ("useStyle = 1;", "Copper Pickaxe use style"), ("autoReuse = true;", "Copper Pickaxe auto reuse"), ("useTurn = true;", "Copper Pickaxe use turn")):
+        require(base_tool, needle, desc)
+    require(copper, "useAnimation = 23;", "Copper Pickaxe animation")
+    require(copper, "useTime = 15;", "Copper Pickaxe use time")
+
+    for needle, desc in (("consumable = true;", "King Slime bag consumable"), ("width = 24;", "King Slime bag width"), ("height = 24;", "King Slime bag height"), ("expert = true;", "King Slime bag expert flag")):
+        require(bag, needle, desc)
+    require(pet, "DefaultToVanitypet(881 + type - 4797, 284 + type - 4797);", "King Slime pet defaults call")
+    require(vanity, "width = 16;", "vanity pet width")
+    require(vanity, "height = 30;", "vanity pet height")
+    require(trophy, "DefaultToPlaceableTile((ushort)617, type - 4924);", "King Slime trophy defaults call")
+    require(placeable, "width = 14;", "placeable tile width")
+    require(placeable, "height = 14;", "placeable tile height")
+
+    for fragment, name in ((dirt, "Dirt Block"), (gel, "Gel"), (slime_staff, "Slime Staff"), (base_tool, "Copper Pickaxe base"), (copper, "Copper Pickaxe"), (bag, "King Slime Boss Bag"), (pet, "King Slime pet"), (trophy, "King Slime trophy"), (vanity, "vanity-pet defaults"), (placeable, "placeable-tile defaults")):
+        no_max_stack_override(fragment, name)
 
     print("item_common_max_stack=9999")
     print("dirt_block=12x12,swing,animation15,use10,autoReuse,useTurn")
