@@ -5,6 +5,7 @@ on:
     branches: [work/n4-rescue-catchability-1458]
     paths:
       - 'tools/ci/apply_n4_rescue_catchability_1458.py'
+      - 'tools/ci/fix_n4_rescue_catchability_1458.py'
       - '.github/workflows/one-shot-n4-rescue-catchability-1458.yml'
   workflow_dispatch:
 
@@ -29,6 +30,8 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
       - name: Apply N4 rescue catchability block
         run: python3 tools/ci/apply_n4_rescue_catchability_1458.py
+      - name: Apply N4 compatibility fixes
+        run: python3 tools/ci/fix_n4_rescue_catchability_1458.py
       - name: Validate bilingual documentation
         run: |
           python3 tools/ci/test_check_documentation.py
