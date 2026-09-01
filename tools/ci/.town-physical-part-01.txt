@@ -1,0 +1,110 @@
+                        }
+                    }
+
+                    if (safeFromPlayers)
+                        break;
+                }
+
+                if (safeFromPlayers)
+                    break;
+            }
+        }
+
+        int directionX = spawnTileX < homeTileX ? 1 : spawnTileX > homeTileX ? -1 : 0;
+        return new RuntimeTownNpcPhysicalSpawn1458(
+            spawnTileX,
+            spawnTileY,
+            directionX,
+            safeFromPlayers,
+            usedFallbackSearch);
+    }
+
+    internal bool IsSafeSpawnTile(
+        int tileX,
+        int tileY,
+        ReadOnlySpan<RuntimeTownPlayerBounds1458> players)
+    {
+        int left = tileX * 16 + 8 - ScreenWidth1458 / 2 - SafeRangeX1458;
+        int top = tileY * 16 + 8 - ScreenHeight1458 / 2 - SafeRangeY1458;
+        int width = ScreenWidth1458 + SafeRangeX1458 * 2;
+        int height = ScreenHeight1458 + SafeRangeY1458 * 2;
+        int right = left + width;
+        int bottom = top + height;
+
+        foreach (RuntimeTownPlayerBounds1458 player in players)
+        {
+            if (!float.IsFinite(player.X) ||
+                !float.IsFinite(player.Y) ||
+                !float.IsFinite(player.Width) ||
+                !float.IsFinite(player.Height) ||
+                player.Width <= 0f ||
+                player.Height <= 0f)
+            {
+                return false;
+            }
+
+            int playerLeft = (int)player.X;
+            int playerTop = (int)player.Y;
+            int playerRight = playerLeft + (int)player.Width;
+            int playerBottom = playerTop + (int)player.Height;
+            if (playerLeft < right && playerRight > left && playerTop < bottom && playerBottom > top)
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool IsActiveSolidFloor(int x, int y)
+    {
+        WorldTile tile = tiles.Get(x, y);
+        return tile.IsActive &&
+               !tile.IsActuated &&
+               VanillaTileCollisionCatalog.IsSolid(tile.TileType);
+    }
+
+    private bool HasSolidTiles(int startX, int endX, int startY, int endY)
+    {
+        WorldDimensions dimensions = tiles.Dimensions;
+        if (startX < 0 || endX >= dimensions.WidthTiles || startY < 0 || endY >= dimensions.HeightTiles - 40)
+            return true;
+
+        for (int x = startX; x <= endX; x++)
+        {
+            for (int y = startY; y <= endY; y++)
+            {
+                WorldTile tile = tiles.Get(x, y);
+                if (tile.IsActive &&
+                    !tile.IsActuated &&
+                    VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+                    !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+}
+'''
+Path('src/TerraRuntime/RuntimeTownNpcPhysicalSpawn1458.cs').write_text(physical_spawn, encoding='utf-8')
+
+replace_once(
+    'src/TerraRuntime/RuntimeTownHouseCandidateIndex1458.cs',
+    '    internal VanillaHousingValidator1458 Validator => validator;\n',
+    '    internal VanillaHousingValidator1458 Validator => validator;\n\n    internal WorldTileStore Tiles => tiles;\n')
+
+replace_once(
+    'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs',
+    '''    public void Tick(\n        in RuntimeTownNpcMoveInConditions1458 conditions,\n        ReadOnlySpan<VanillaTownSpawnPlayerFacts1458> players)\n    {\n''',
+    '''    public void Tick(\n        in RuntimeTownNpcMoveInConditions1458 conditions,\n        ReadOnlySpan<VanillaTownSpawnPlayerFacts1458> players) =>\n        Tick(in conditions, players, default);\n\n    public void Tick(\n        in RuntimeTownNpcMoveInConditions1458 conditions,\n        ReadOnlySpan<VanillaTownSpawnPlayerFacts1458> players,\n        ReadOnlySpan<RuntimeTownPlayerBounds1458> playerBounds)\n    {\n''')
+
+replace_once(
+    'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs',
+    '''        if (!townNpcs.TryAddResident(type, in placement, npcs, out NpcSnapshot snapshot, out RuntimeTownNpcHomeCommit home))\n            return;\n''',
+    '''        RuntimeTownNpcPhysicalSpawn1458 physicalSpawn =\n            new RuntimeTownNpcPhysicalSpawnResolver1458(houses.Tiles).Resolve(\n                placement.HomeTileX,\n                placement.HomeTileY,\n                playerBounds);\n        if (!townNpcs.TryAddResident(\n                type,\n                in placement,\n                in physicalSpawn,\n                npcs,\n                out NpcSnapshot snapshot,\n                out RuntimeTownNpcHomeCommit home))\n        {\n            return;\n        }\n''')
+
+regex_replace_once(
+    'src/TerraRuntime/RuntimeTownNpcStateStore.cs',
+    r'''    public bool TryAddResident\(\n        NpcTypeId type,\n        in VanillaHousingPlacement placement,\n        RuntimeNpcStore npcStore,\n        out NpcSnapshot snapshot,\n        out RuntimeTownNpcHomeCommit homeCommit\)\n    \{.*?\n    \}\n\n    public bool CanAdoptRescuedResident''',
+    '''    public bool TryAddResident(\n        NpcTypeId type,\n        in VanillaHousingPlacement placement,\n        RuntimeNpcStore npcStore,\n        out NpcSnapshot snapshot,\n        out RuntimeTownNpcHomeCommit homeCommit)\n    {\n        var physicalSpawn = new RuntimeTownNpcPhysicalSpawn1458(\n            placement.HomeTileX,\n            placement.HomeTileY,\n            DirectionX: 0,\n            SafeFromPlayers: true,\n            UsedFallbackSearch: false);\n        return TryAddResident(type, in placement, in physicalSpawn, npcStore, out snapshot, out homeCommit);\n    }\n\n    public bool TryAddResident(\n        NpcTypeId type,\n        in VanillaHousingPlacement placement,\n        in RuntimeTownNpcPhysicalSpawn1458 physicalSpawn,\n        RuntimeNpcStore npcStore,\n        out NpcSnapshot snapshot,\n        out RuntimeTownNpcHomeCommit homeCommit)\n    {\n        ArgumentNullException.ThrowIfNull(npcStore);\n        if (!placement.IsValid ||\n            !physicalSpawn.IsValid ||\n            Count >= MaximumTownNpcs ||\n            ContainsNpcType(type) ||\n            !VanillaTownNpcFacts1458.TryGetDefinition(type, out VanillaNpcDefinition definition))\n        {\n            snapshot = default;\n            homeCommit = default;\n            return false;\n        }\n\n        // NPC.NewNPC receives bottom-center X/Y, then SetDefaults establishes the final hitbox before Bottom is set.\n        float positionX = physicalSpawn.TileX * 16f - definition.BaseWidth / 2f;\n        float positionY = physicalSpawn.TileY * 16f - definition.BaseHeight;\n        NpcSimulationState simulation = NpcSimulationState.Initial with\n        {\n            DirectionX = physicalSpawn.DirectionX\n        };\n        var update = new NpcStateUpdate(\n            Type: type.Value,\n            NetId: checked((short)type.Value),\n            PositionX: positionX,\n            PositionY: positionY,\n            VelocityX: 0f,\n            VelocityY: 0f,\n            Target: VanillaNpcDefinitionCatalog.DefaultTarget,\n            Ai: default,\n            Simulation: simulation);\n        if (!npcStore.TrySpawnVanilla(in update, out snapshot))\n        {\n            homeCommit = default;\n            return false;\n        }\n\n        short slot = snapshot.Handle.Slot;\n        townNpcsBySlot[slot] = new WorldTownNpc(\n            type.Value,\n            string.Empty,\n            snapshot.PositionX,\n            snapshot.PositionY,\n            Homeless: false,\n            placement.HomeTileX,\n            placement.HomeTileY,\n            TownNpcVariationIndex: null,\n            HomelessDespawn: false);\n        SetRoom(new WorldTownRoom(type.Value, placement.HomeTileX, placement.HomeTileY));\n        homeCommit = new RuntimeTownNpcHomeCommit(\n            slot, type, placement.HomeTileX, placement.HomeTileY, TerrariaNpcHomeStatus.HasRoom);\n        return true;\n    }\n\n    public bool CanAdoptRescuedResident''')
