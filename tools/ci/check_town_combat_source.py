@@ -53,7 +53,9 @@ def main() -> int:
     require(ai7, r"localAI\[1\] > 0f.*?localAI\[1\]--;.*?flag31 = false;", "local attack cooldown gate")
     require(ai7, r"AttackAverageChance\[type\] \* num3", "source attack chance scaling")
     require(ai7, r"AttackType\[type\] == 0.*?ai\[0\] = 10f", "attack type zero enters state 10")
-    require(ai7, r"AttackType\[type\] == 1.*?vector8\.Y <= 0\.5f.*?vector8\.Y >= -0\.5f.*?ai\[0\] = 12f", "attack type one angle gate/state 12")
+    require(ai7, r"AttackType\[type\] == 1", "attack type one branch")
+    require(ai7, r"if \(\s*(\w+)\.Y <= 0\.5f\s*&&\s*\1\.Y >= -0\.5f\s*\)", "attack type one vertical angle gate")
+    require(ai7, r"AttackType\[type\] == 1.*?ai\[0\] = 12f", "attack type one enters state 12")
 
     require(state10, r"type == 17.*?num42 = 48;.*?num44 = 9f;.*?num43 = 12;.*?num45 = 10;.*?num46 = 60;.*?maxValue = 60;.*?num47 = 16f;.*?knockBack = 1\.5f;", "Merchant throwing knife profile")
     require(state10, r"type == 18.*?num42 = 583;.*?num44 = 8f;.*?num43 = 8;.*?num45 = 1;.*?num46 = 15;.*?maxValue = 10;.*?knockBack = 2f;.*?num47 = 10f;", "Nurse hostile syringe profile")
