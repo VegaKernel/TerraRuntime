@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
@@ -146,6 +147,18 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         if (TerrariaTownNpcIdentityCodec.TryEncode(in state, out byte[] encoded) != TerrariaTownNpcIdentityEncodeResult.Encoded)
             return false;
         Volatile.Write(ref townIdentityBaselineFrames[identity.NpcSlot], encoded);
+        Broadcast(encoded);
+        return true;
+    }
+
+    public bool TryPublishTownArrival(NpcTypeId npcType, string givenName)
+    {
+        ArgumentNullException.ThrowIfNull(givenName);
+        if (!TerrariaTownNpcArrivalCodec1458.TryEncode(npcType.Value, givenName, out byte[] encoded))
+        {
+            Interlocked.Increment(ref unsupportedCommits);
+            return false;
+        }
         Broadcast(encoded);
         return true;
     }
