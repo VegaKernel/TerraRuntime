@@ -58,3 +58,5 @@ jobs:
           git add -A
           git commit -m "Sync N4 rescue and catchability with current main"
           git push origin HEAD:work/n4-rescue-catchability-1458
+
+# retry after resolving NpcSimulationState union
