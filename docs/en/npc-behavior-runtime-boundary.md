@@ -52,16 +52,19 @@ Callbacks must not block, sleep, perform I/O, wait on tasks or start a second si
 
 For an uncontrolled NPC, the runtime behavior portion of the tick is conceptually:
 
-```text
-presentation Pre decorators
-    -> archetype BehaviorId replacement, if present
-       otherwise presentation replacement, if present
-       otherwise vanilla/default AI
-    -> presentation Post decorators
-    -> runtime-owned actor intent override, if an actor lease is active
-    -> runtime-owned world motion/collision and remaining AI capabilities
-    -> authoritative store commit
-    -> replication
+```mermaid
+flowchart TD
+    Pre["presentation Pre decorators"] --> Choice{"replacement selected?"}
+    Choice -->|archetype BehaviorId| Archetype["archetype replacement"]
+    Choice -->|presentation replacement| Presentation["presentation replacement"]
+    Choice -->|none| Vanilla["vanilla/default AI"]
+    Archetype --> Post["presentation Post decorators"]
+    Presentation --> Post
+    Vanilla --> Post
+    Post --> Intent["runtime-owned actor intent override, if leased"]
+    Intent --> Motion["runtime-owned world motion/collision + remaining AI capabilities"]
+    Motion --> Commit["authoritative store commit"]
+    Commit --> Replication["replication"]
 ```
 
 The behavior dispatcher is part of the production `ServerRuntimeState` AI chain. It is not a test-only registry. `INpcAiStateStepperWrapper` composition is preserved so nested vanilla capabilities such as targeting, spawn planners, projectile planners and post-commit hooks remain discoverable through the wrapper chain.
