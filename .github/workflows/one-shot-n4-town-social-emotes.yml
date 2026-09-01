@@ -5,6 +5,7 @@ on:
     branches: [work/n4-town-social-emotes-1458]
     paths:
       - 'tools/ci/apply_n4_town_social_emotes.py'
+      - 'tools/ci/apply_n4_town_social_contract_fix.py'
       - '.github/workflows/one-shot-n4-town-social-emotes.yml'
   workflow_dispatch:
 
@@ -24,7 +25,9 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
       - name: Apply Town NPC social/emote block
-        run: python3 tools/ci/apply_n4_town_social_emotes.py
+        run: |
+          python3 tools/ci/apply_n4_town_social_emotes.py
+          python3 tools/ci/apply_n4_town_social_contract_fix.py
       - name: Decompile pinned TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
       - name: Verify Town social/emote source contract
@@ -43,6 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           rm tools/ci/apply_n4_town_social_emotes.py
+          rm tools/ci/apply_n4_town_social_contract_fix.py
           rm .github/workflows/one-shot-n4-town-social-emotes.yml
           rm -rf decompiled/1458
           git config user.name Xekep
@@ -50,5 +54,3 @@ jobs:
           git add -A
           git commit -m "Complete source-backed Town NPC social emotes"
           git push origin HEAD:work/n4-town-social-emotes-1458
-
-# trigger after workflow registration
