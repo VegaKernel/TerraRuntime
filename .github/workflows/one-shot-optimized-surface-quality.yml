@@ -1,0 +1,70 @@
+name: One-shot optimized surface quality
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/ci/apply_optimized_surface_quality.py'
+      - '.github/workflows/one-shot-optimized-surface-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-optimized-surface-quality
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Apply surface quality block
+        run: python3 tools/ci/apply_optimized_surface_quality.py
+
+      - name: Validate bilingual documentation
+        run: |
+          python3 tools/ci/test_check_documentation.py
+          python3 tools/ci/check_documentation.py
+
+      - name: Build
+        run: dotnet build TerraRuntime.slnx -c Release
+
+      - name: Run complete test suite
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+
+      - name: Commit surface quality block and remove one-shot helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Xekep"
+          git config user.email "Xekep@users.noreply.github.com"
+          git rm tools/ci/apply_optimized_surface_quality.py \
+                 .github/workflows/one-shot-optimized-surface-quality.yml
+          git add src/TerraRuntime.World/Generation/Common/WorldGenerationGeometry.cs \
+                  src/TerraRuntime.World/Generation/Optimized/OptimizedSurfaceDecorationWorldGenerationProvider.cs \
+                  tests/TerraRuntime.Tests/OptimizedWorldGenerationProviderTests.cs \
+                  docs/roadmap/optimized-worldgen.md \
+                  docs/en/optimized-world-generation.md \
+                  docs/ru/optimized-world-generation.md
+          git commit -m "Improve optimized surface quality"
+          for attempt in 1 2 3 4; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort || true
+            sleep 2
+          done
+          echo "Unable to rebase optimized surface-quality block onto current main." >&2
+          exit 1
