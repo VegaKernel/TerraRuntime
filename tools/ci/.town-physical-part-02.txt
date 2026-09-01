@@ -1,0 +1,110 @@
+
+replace_once(
+    'src/TerraRuntime/ServerRuntimeState.cs',
+    '            _townMoveIn.Tick(in moveInConditions, _townSpawnPlayers.AsSpan(0, spawnPlayerCount));\n',
+    '''            _townMoveIn.Tick(\n                in moveInConditions,\n                _townSpawnPlayers.AsSpan(0, spawnPlayerCount),\n                _townPlayerBounds.AsSpan(0, boundsCount));\n''')
+
+# Expand source contract with the physical search and NewNPC bottom-anchor contract.
+checker = Path('tools/ci/check_town_movein_schedule_source.py')
+text = checker.read_text(encoding='utf-8')
+needle = '''    require(worldgen, "TownManager.CanNPCsLiveWithEachOther(npcTypeToSpawn, nPC)", "housing-category sharing gate")\n\n    selector = extract_method(worldgen, "public static int IsThereASpawnablePrioritizedTownNPC(int x, int y)")\n'''
+insert = '''    require(worldgen, "TownManager.CanNPCsLiveWithEachOther(npcTypeToSpawn, nPC)", "housing-category sharing gate")\n\n    spawn_town = extract_method(worldgen, "public static TownNPCSpawnResult SpawnTownNPC(int x, int y, bool canSpawnNewTownNPC = true)")\n    require_ordered(spawn_town, (\n        "int num5 = bestX",\n        "int num6 = bestY",\n        "new Rectangle(num5 * 16 + 8 - NPC.sWidth / 2 - NPC.safeRangeX, num6 * 16 + 8 - NPC.sHeight / 2 - NPC.safeRangeY",\n        "Main.player[i].active",\n        "Intersects(value)",\n        "if (!flag2 && !((double)num6 > Main.worldSurface))",\n        "for (int j = 1; j < 500; j++)",\n        "num5 = ((k != 0) ? (bestX - j) : (bestX + j))",\n        "num5 > 10 && num5 < Main.maxTilesX - 10",\n        "int num7 = bestY - j",\n        "double num8 = bestY + j",\n        "num7 = 10",\n        "num8 = Main.worldSurface",\n        "Main.tile[num5, num6].nactive()",\n        "Main.tileSolid[Main.tile[num5, num6].type]",\n        "Collision.SolidTiles(num5 - 1, num5 + 1, num6 - 3, num6 - 1)",\n        "new Rectangle(num5 * 16 + 8 - NPC.sWidth / 2 - NPC.safeRangeX, num6 * 16 + 8 - NPC.sHeight / 2 - NPC.safeRangeY",\n        "Main.player[m].active",\n        "Intersects(value2)",\n        "NPC.NewNPC(NPC.GetSpawnSourceForTownSpawn(), num5 * 16, num6 * 16, num, 1)",\n        "if (num5 < bestX)",\n        "Main.npc[num9].direction = 1",\n        "else if (num5 > bestX)",\n        "Main.npc[num9].direction = -1"\n    ), "SpawnTownNPC physical spawn search and facing")\n\n    selector = extract_method(worldgen, "public static int IsThereASpawnablePrioritizedTownNPC(int x, int y)")\n'''
+if text.count(needle) != 1:
+    raise SystemExit('source checker physical insertion anchor drifted')
+text = text.replace(needle, insert, 1)
+needle2 = '''    require(npc, "public static readonly int KickOutLookForHomeTimeout = 3600", "NPC kick-out look-for-home timeout constant")\n\n    require(npc, "bool flag = Main.raining", "AI_007 rain return-home flag")\n'''
+insert2 = '''    require(npc, "public static readonly int KickOutLookForHomeTimeout = 3600", "NPC kick-out look-for-home timeout constant")\n    require(npc, "public static int safeRangeX = (int)((double)(sWidth / 16) * 0.52)", "NPC safeRangeX formula")\n    require(npc, "public static int safeRangeY = (int)((double)(sHeight / 16) * 0.52)", "NPC safeRangeY formula")\n    require(npc, "public static int sWidth => 1920", "NPC server screen width")\n    require(npc, "public static int sHeight => 1200", "NPC server screen height")\n    require(npc, "nPC.Bottom = new Vector2(X, Y)", "NPC.NewNPC bottom-center materialization")\n\n    require(npc, "bool flag = Main.raining", "AI_007 rain return-home flag")\n'''
+if text.count(needle2) != 1:
+    raise SystemExit('source checker NPC insertion anchor drifted')
+checker.write_text(text.replace(needle2, insert2, 1), encoding='utf-8')
+
+# Add focused test to the durable source-contract workflow.
+replace_once(
+    '.github/workflows/town-movein-schedule-source-contract.yml',
+    "      - 'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs'\n",
+    "      - 'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs'\n      - 'src/TerraRuntime/RuntimeTownNpcPhysicalSpawn1458.cs'\n")
+replace_once(
+    '.github/workflows/town-movein-schedule-source-contract.yml',
+    "      - 'tests/TerraRuntime.Tests/RuntimeTownNpcRoomAwareSelection1458Tests.cs'\n",
+    "      - 'tests/TerraRuntime.Tests/RuntimeTownNpcRoomAwareSelection1458Tests.cs'\n      - 'tests/TerraRuntime.Tests/RuntimeTownNpcPhysicalSpawn1458Tests.cs'\n")
+replace_once(
+    '.github/workflows/town-movein-schedule-source-contract.yml',
+    "FullyQualifiedName~RuntimeTownNpcRoomAwareSelection1458Tests'\n",
+    "FullyQualifiedName~RuntimeTownNpcRoomAwareSelection1458Tests|FullyQualifiedName~RuntimeTownNpcPhysicalSpawn1458Tests'\n")
+
+physical_tests = r'''using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
+using TerraRuntime.World;
+
+namespace TerraRuntime.Tests;
+
+public sealed class RuntimeTownNpcPhysicalSpawn1458Tests
+{
+    [Fact]
+    public void Safe_home_tile_is_used_without_fallback_search()
+    {
+        WorldTileStore tiles = CreateSurfaceWorld();
+        var resolver = new RuntimeTownNpcPhysicalSpawnResolver1458(tiles);
+
+        RuntimeTownNpcPhysicalSpawn1458 spawn = resolver.Resolve(600, 60, []);
+
+        Assert.Equal((600, 60), (spawn.TileX, spawn.TileY));
+        Assert.Equal(0, spawn.DirectionX);
+        Assert.True(spawn.SafeFromPlayers);
+        Assert.False(spawn.UsedFallbackSearch);
+    }
+
+    [Fact]
+    public void Unsafe_surface_home_searches_right_before_left_and_faces_home()
+    {
+        WorldTileStore tiles = CreateSurfaceWorld();
+        PlaceSolid(tiles, 602, 58);
+        PlaceSolid(tiles, 598, 58);
+        var resolver = new RuntimeTownNpcPhysicalSpawnResolver1458(tiles);
+        RuntimeTownPlayerBounds1458 blocker = BlockHomeFromLeftEdge(600, 60);
+
+        RuntimeTownNpcPhysicalSpawn1458 spawn = resolver.Resolve(600, 60, [blocker]);
+
+        Assert.Equal((602, 58), (spawn.TileX, spawn.TileY));
+        Assert.Equal(-1, spawn.DirectionX);
+        Assert.True(spawn.SafeFromPlayers);
+        Assert.True(spawn.UsedFallbackSearch);
+    }
+
+    [Fact]
+    public void First_solid_floor_with_blocked_clearance_ends_that_column_scan()
+    {
+        WorldTileStore tiles = CreateSurfaceWorld();
+        PlaceSolid(tiles, 602, 58);
+        PlaceSolid(tiles, 602, 57); // Collision.SolidTiles blocker above the first right-side floor.
+        PlaceSolid(tiles, 602, 60); // Would be usable only if vanilla incorrectly continued down this column.
+        PlaceSolid(tiles, 598, 58);
+        var resolver = new RuntimeTownNpcPhysicalSpawnResolver1458(tiles);
+        RuntimeTownPlayerBounds1458 blocker = BlockHomeFromLeftEdge(600, 60);
+
+        RuntimeTownNpcPhysicalSpawn1458 spawn = resolver.Resolve(600, 60, [blocker]);
+
+        Assert.Equal((598, 58), (spawn.TileX, spawn.TileY));
+        Assert.Equal(1, spawn.DirectionX);
+        Assert.True(spawn.SafeFromPlayers);
+    }
+
+    [Fact]
+    public void Unsafe_underground_home_does_not_run_surface_fallback_search()
+    {
+        WorldTileStore tiles = CreateSurfaceWorld();
+        var resolver = new RuntimeTownNpcPhysicalSpawnResolver1458(tiles);
+        RuntimeTownPlayerBounds1458 blocker = BlockHomeFromLeftEdge(600, 120);
+
+        RuntimeTownNpcPhysicalSpawn1458 spawn = resolver.Resolve(600, 120, [blocker]);
+
+        Assert.Equal((600, 120), (spawn.TileX, spawn.TileY));
+        Assert.False(spawn.SafeFromPlayers);
+        Assert.False(spawn.UsedFallbackSearch);
+        Assert.Equal(0, spawn.DirectionX);
+    }
+
+    [Fact]
+    public void Exhausted_surface_search_preserves_vanilla_final_scanned_fallback_coordinates()
+    {
