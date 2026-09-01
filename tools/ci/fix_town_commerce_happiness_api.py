@@ -65,16 +65,14 @@ new = '''                WorldTile tile = tiles.Get(x, y);
 if old not in text:
     raise SystemExit('truffle mushroom predicate anchor drifted')
 text = text.replace(old, new, 1)
-old_tail = '''        return false;
-    }
-
-    private int CalculateBaseRoomScore'''
-new_tail = '''        throw new InvalidOperationException($"Truffle mushroom debug count={mushroomTiles}; bounds={startX},{endX},{startY},{endY}; roomY2={roomY2}; surface={worldSurface}");
-    }
-
-    private int CalculateBaseRoomScore'''
-if old_tail not in text:
-    raise SystemExit('truffle diagnostic tail anchor drifted')
-text = text.replace(old_tail, new_tail, 1)
 p.write_text(text)
-print('town commerce happiness API aligned; Truffle mushroom scan instrumented')
+
+p = Path('tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs')
+text = p.read_text()
+old = '''Place(tiles, x, y, (ushort)(written % 4 switch { 0 => 70, 1 => 71, 2 => 72, _ => 528 }));'''
+new = '''Place(tiles, x, y, (ushort)((written % 4) switch { 0 => 70, 1 => 71, 2 => 72, _ => 528 }));'''
+if old not in text:
+    raise SystemExit('truffle fixture switch anchor drifted')
+text = text.replace(old, new, 1)
+p.write_text(text)
+print('town commerce happiness API and Truffle housing fixture aligned')
