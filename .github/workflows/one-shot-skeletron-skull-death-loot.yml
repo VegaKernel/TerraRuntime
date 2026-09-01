@@ -1,0 +1,87 @@
+name: One-shot Skeletron skull death loot
+
+on:
+  push:
+    branches: [work/skeletron-skull-death-loot-1458]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: terra-runtime-skeletron-skull-death-loot
+  cancel-in-progress: false
+
+jobs:
+  integrate-test-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: work/skeletron-skull-death-loot-1458
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Apply cohesive integration patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/ci/apply_skeletron_skull_death_loot_1458.py
+          git diff --check
+      - name: Verify TerrariaServer 1.4.5.8 source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/decompile-reference.sh 1458
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          npc = Path('decompiled/1458/Terraria/NPC.cs').read_text(encoding='utf-8', errors='ignore')
+          projectile = Path('decompiled/1458/Terraria/Projectile.cs').read_text(encoding='utf-8', errors='ignore')
+          drops = Path('decompiled/1458/Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs').read_text(encoding='utf-8', errors='ignore')
+          items = Path('decompiled/1458/Terraria/Item.cs').read_text(encoding='utf-8', errors='ignore')
+
+          required_npc = [
+              'else if (type == 35)', 'aiStyle = 11;', 'else if (type == 36)', 'aiStyle = 12;',
+              'GetAttackDamage_ForProjectiles(17f, 17f)', 'timeLeft = 300;',
+              'SetEventFlagCleared(ref NPC.downedBoss3, 15)'
+          ]
+          missing = [s for s in required_npc if s not in npc]
+          if missing:
+              raise SystemExit('Skeletron NPC source contract changed: ' + ', '.join(missing))
+          if not re.search(r'type == 35 \|\| type == 36[\s\S]{0,900}?playerInteraction\[player\] = true', npc):
+              raise SystemExit('Skeletron shared interaction contract changed')
+          if not re.search(r'Projectile\.NewProjectile[\s\S]{0,600}?270[\s\S]{0,400}?timeLeft = 300', npc):
+              raise SystemExit('Skeletron skull spawn/lifetime contract changed')
+
+          if 'case 270:' not in projectile or 'ai[1] += 1f;' not in projectile or 'ai[1] < 110f' not in projectile or 'ai[1] > 30f' not in projectile:
+              raise SystemExit('Skeletron skull homing contract changed')
+
+          required_drops = ['BossBag(3323)', 'MasterModeCommonDrop(4927)', 'MasterModeDropOnAllPlayers(4801', 'CommonDrop(4993, 7)', 'RegisterToNPC(35, new CommonDrop(1363, 10))']
+          missing = [s for s in required_drops if s not in drops]
+          if missing:
+              raise SystemExit('Skeletron loot source contract changed: ' + ', '.join(missing))
+          for item_id in (1273, 1281, 1313, 1363, 3323, 4801, 4927, 4993, 5624, 5625, 5626, 5628, 5737):
+              if f'case {item_id}:' not in items:
+                  raise SystemExit(f'Skeletron item defaults missing for {item_id}')
+          print('skeletron_1458_source_contract=ok')
+          PY
+      - name: Release build
+        run: dotnet build build/TerraRuntime.slnx -c Release --nologo
+      - name: Focused Skeletron tests
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --filter FullyQualifiedName~Skeletron --nologo
+      - name: Full tests
+        run: dotnet test build/TerraRuntime.slnx -c Release --no-build --nologo
+      - name: Commit validated feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Xekep'
+          git config user.email 'Xekep@users.noreply.github.com'
+          git rm .github/workflows/one-shot-skeletron-skull-death-loot.yml tools/ci/apply_skeletron_skull_death_loot_1458.py
+          git add -A
+          git diff --cached --check
+          git commit -m 'Complete Skeletron skull death loot gameplay vertical' -m 'Add TerrariaServer 1.4.5.8 Expert skull cadence, source-owned 300-tick projectile homing, shared head/hand interaction credit, Classic/Expert/Master/RedHat loot delivery, and persisted downedBoss3 progression with focused and full-suite coverage.'
+          git push origin HEAD:work/skeletron-skull-death-loot-1458
