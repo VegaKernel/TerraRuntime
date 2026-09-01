@@ -213,7 +213,7 @@ internal static class SchematicValidator
     }
 }
 
-public sealed class SchematicFormatException : InvalidDataException
+public sealed class SchematicFormatException : FormatException
 {
     public SchematicFormatException(string message) : base(message) { }
     public SchematicFormatException(string message, Exception innerException) : base(message, innerException) { }
