@@ -109,6 +109,7 @@ internal static class LocalWorldSelector
             if (string.Equals(input, "r", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(input, "refresh", StringComparison.OrdinalIgnoreCase))
             {
+                StartupConsolePresentation.ClearForTransition();
                 continue;
             }
 
@@ -157,7 +158,7 @@ internal static class LocalWorldSelector
         bool allowCreation)
     {
         Console.WriteLine();
-        Console.WriteLine("TerraRuntime local world selection");
+        Console.WriteLine(RuntimeProductInfo.BuildTitle("local world selection"));
         Console.WriteLine($"Worlds directory: {worldsDirectory}");
         Console.WriteLine();
 
