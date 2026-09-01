@@ -6,6 +6,7 @@ on:
     paths:
       - 'tools/ci/apply_n4_town_social_emotes.py'
       - 'tools/ci/apply_n4_town_social_contract_fix.py'
+      - 'tools/ci/apply_n4_town_social_compile_fix.py'
       - '.github/workflows/one-shot-n4-town-social-emotes.yml'
   workflow_dispatch:
 
@@ -28,6 +29,7 @@ jobs:
         run: |
           python3 tools/ci/apply_n4_town_social_emotes.py
           python3 tools/ci/apply_n4_town_social_contract_fix.py
+          python3 tools/ci/apply_n4_town_social_compile_fix.py
       - name: Decompile pinned TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
       - name: Verify Town social/emote source contract
@@ -47,7 +49,9 @@ jobs:
           set -euo pipefail
           rm tools/ci/apply_n4_town_social_emotes.py
           rm tools/ci/apply_n4_town_social_contract_fix.py
+          rm tools/ci/apply_n4_town_social_compile_fix.py
           rm .github/workflows/one-shot-n4-town-social-emotes.yml
+          rm .github/workflows/one-shot-n4-town-social-fast.yml
           rm -rf decompiled/1458
           git config user.name Xekep
           git config user.email Xekep@users.noreply.github.com
