@@ -17,6 +17,10 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
     public const string MerchantArchetypeId = "fixture:merchant";
     public const string MerchantControllerId = "fixture:merchant-controller";
     public const string DisabledWorldName = "Fixture Disabled World";
+    public const string FaultStartMarker = "fixture-host-module.fail-start";
+    public const string FaultAttachMarker = "fixture-host-module.fail-attach";
+    public const string FaultDetachMarker = "fixture-host-module.fail-detach";
+    public const string FaultStopMarker = "fixture-host-module.fail-stop";
 
     private string? dataDirectory;
     private ITerraRuntimeTerminalDashboardRegistry? terminalDashboards;
@@ -38,6 +42,7 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
     {
         ArgumentNullException.ThrowIfNull(environment);
         dataDirectory = environment.DataDirectory;
+        ThrowIfFaultRequested(FaultStartMarker, "start");
         terminalDashboards = environment.TerminalDashboards;
         if (!terminalDashboards.TryRegister(new FixtureDashboardProvider()))
             throw new InvalidOperationException("The fixture terminal dashboard could not be registered.");
@@ -64,6 +69,7 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
         ArgumentNullException.ThrowIfNull(runtime);
         if (dataDirectory is null)
             throw new InvalidOperationException("The fixture host module has not been started.");
+        ThrowIfFaultRequested(FaultAttachMarker, "attach");
 
         float botX = Math.Clamp(runtime.Info.WidthTiles * 8f, 16f, runtime.Info.WidthTiles * 16f - 36f);
         float botY = Math.Clamp(runtime.Info.HeightTiles * 5f, 16f, runtime.Info.HeightTiles * 16f - 58f);
@@ -155,6 +161,7 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
 
     public async ValueTask DetachRuntimeAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfFaultRequested(FaultDetachMarker, "detach");
         if (botSpawned && serverPlayers is not null)
         {
             var botId = new ServerPlayerId(BotId);
@@ -192,6 +199,7 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
 
     public async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfFaultRequested(FaultStopMarker, "stop");
         terminalDashboards?.TryUnregister(DashboardId);
         terminalDashboards = null;
 
@@ -202,6 +210,12 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
             Path.Combine(dataDirectory, "fixture-host-module.stopped"),
             "stopped",
             cancellationToken).ConfigureAwait(false);
+    }
+
+    private void ThrowIfFaultRequested(string markerFileName, string operation)
+    {
+        if (dataDirectory is not null && File.Exists(Path.Combine(dataDirectory, markerFileName)))
+            throw new InvalidOperationException($"Fixture requested {operation} failure.");
     }
 
     private static ServerPlayerAppearanceState CreateBotAppearance() =>

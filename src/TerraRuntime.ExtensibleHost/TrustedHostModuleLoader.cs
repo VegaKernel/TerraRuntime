@@ -13,6 +13,8 @@ internal sealed class TrustedHostModuleLoader :
     ITerraRuntimeWorldGeneratorSource,
     IAsyncDisposable
 {
+    private const int MaximumRetainedFaults = 128;
+
     private static readonly HashSet<string> AllowedTerraRuntimeReferences = new(StringComparer.Ordinal)
     {
         "TerraRuntime.HostContracts",
@@ -20,27 +22,59 @@ internal sealed class TrustedHostModuleLoader :
     };
 
     private readonly string directory;
+    private readonly TrustedHostModuleLoadPolicy policy;
+    private readonly TextWriter diagnostics;
     private readonly List<LoadedHostModule> loaded = [];
+    private readonly List<TrustedHostModuleFault> faults = [];
+    private readonly object faultGate = new();
     private readonly TerminalDashboardRegistry terminalDashboards = new();
     private readonly HostWorldGeneratorRegistry worldGenerators = new();
+    private readonly TrustedHostModuleHealthDashboardProvider healthDashboard;
     private bool started;
     private bool runtimeAttached;
     private bool disposed;
 
     public TrustedHostModuleLoader(string directory)
+        : this(directory, TrustedHostModuleLoadPolicy.Strict, Console.Error)
+    {
+    }
+
+    internal TrustedHostModuleLoader(
+        string directory,
+        TrustedHostModuleLoadPolicy policy,
+        TextWriter? diagnostics = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         this.directory = Path.GetFullPath(directory);
+        this.policy = policy ?? throw new ArgumentNullException(nameof(policy));
+        this.diagnostics = diagnostics ?? TextWriter.Null;
+        healthDashboard = new TrustedHostModuleHealthDashboardProvider(CaptureFaults);
     }
 
     internal ITerraRuntimeTerminalDashboardRegistry TerminalDashboards => terminalDashboards;
     internal ITerraRuntimeWorldGeneratorRegistry WorldGenerators => worldGenerators;
 
-    public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards() =>
-        terminalDashboards.CaptureDashboards();
+    public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards()
+    {
+        ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> moduleDashboards =
+            terminalDashboards.CaptureDashboards();
+        if (CaptureFaults().IsEmpty)
+            return moduleDashboards;
+
+        var result = new ITerraRuntimeTerminalDashboardProvider[moduleDashboards.Length + 1];
+        moduleDashboards.Span.CopyTo(result);
+        result[^1] = healthDashboard;
+        return result;
+    }
 
     public ReadOnlyMemory<WorldGeneratorId> CaptureWorldGeneratorIds() =>
         worldGenerators.CaptureWorldGeneratorIds();
+
+    public ReadOnlyMemory<TrustedHostModuleFault> CaptureFaults()
+    {
+        lock (faultGate)
+            return faults.ToArray();
+    }
 
     public bool TryResolveWorldGenerator(
         WorldGeneratorId id,
@@ -66,7 +100,25 @@ internal sealed class TrustedHostModuleLoader :
                          .Order(StringComparer.OrdinalIgnoreCase))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await TryLoadAndStartAsync(path, environment, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await TryLoadAndStartAsync(path, environment, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    bool required = policy.IsRequired(path);
+                    ReportFault(path, null, TrustedHostModuleFaultPhase.Startup, required, exception);
+                    if (required)
+                    {
+                        throw new InvalidOperationException(
+                            $"Required trusted host module '{Path.GetFileName(path)}' failed to start.",
+                            exception);
+                    }
+                }
             }
 
             started = true;
@@ -91,13 +143,11 @@ internal sealed class TrustedHostModuleLoader :
         if (runtimeAttached)
             throw new InvalidOperationException("A TerraRuntime world is already attached to the trusted host modules.");
 
-        int processedCount = 0;
         try
         {
-            foreach (LoadedHostModule loadedModule in loaded)
+            foreach (LoadedHostModule loadedModule in loaded.ToArray())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                processedCount++;
                 if (loadedModule.Module is ITerraRuntimeHostModuleWorldActivation activation &&
                     !activation.IsEnabledForWorld(runtime.Info))
                 {
@@ -111,39 +161,60 @@ internal sealed class TrustedHostModuleLoader :
                     await loadedModule.Module
                         .AttachRuntimeAsync(runtimeScope, cancellationToken)
                         .ConfigureAwait(false);
+                    loadedModule.RuntimeAttached = true;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    await RetireRuntimeScopeAfterFailedAttachAsync(loadedModule, runtimeScope)
+                        .ConfigureAwait(false);
+                    throw;
                 }
                 catch (Exception attachmentFailure)
                 {
-                    Exception? retirementFailure = null;
-                    try
+                    Exception fault = await RetireRuntimeScopeAfterFailedAttachAsync(
+                            loadedModule,
+                            runtimeScope,
+                            attachmentFailure)
+                        .ConfigureAwait(false);
+                    bool required = policy.IsRequired(loadedModule.Path);
+                    ReportFault(
+                        loadedModule.Path,
+                        loadedModule.Module.Name,
+                        TrustedHostModuleFaultPhase.RuntimeAttach,
+                        required,
+                        fault);
+
+                    if (required)
                     {
-                        await runtimeScope.RetireAsync().ConfigureAwait(false);
-                    }
-                    catch (Exception exception)
-                    {
-                        retirementFailure = exception;
+                        throw new InvalidOperationException(
+                            $"Required trusted host module '{loadedModule.Module.Name}' failed to attach to the runtime.",
+                            fault);
                     }
 
-                    loadedModule.RuntimeScope = null;
-                    if (retirementFailure is not null)
-                    {
-                        throw new AggregateException(
-                            "Trusted host runtime attachment and scope retirement both failed.",
-                            attachmentFailure,
-                            retirementFailure);
-                    }
-
-                    throw;
+                    await RetireLoadedModuleAsync(
+                            loadedModule,
+                            attemptModuleDetach: true,
+                            CancellationToken.None)
+                        .ConfigureAwait(false);
                 }
-
-                loadedModule.RuntimeAttached = true;
             }
 
             runtimeAttached = true;
         }
-        catch
+        catch (Exception attachmentFailure)
         {
-            await DetachPrefixAsync(processedCount, CancellationToken.None).ConfigureAwait(false);
+            try
+            {
+                await DetachAttachedModulesAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception detachFailure)
+            {
+                throw new AggregateException(
+                    "Trusted host runtime attachment failed and rollback also reported failures.",
+                    attachmentFailure,
+                    detachFailure);
+            }
+
             throw;
         }
     }
@@ -153,8 +224,14 @@ internal sealed class TrustedHostModuleLoader :
         if (!runtimeAttached)
             return;
 
-        await DetachPrefixAsync(loaded.Count, cancellationToken).ConfigureAwait(false);
-        runtimeAttached = false;
+        try
+        {
+            await DetachAttachedModulesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            runtimeAttached = false;
+        }
     }
 
     public async ValueTask<int> ReloadAllAsync(
@@ -190,7 +267,24 @@ internal sealed class TrustedHostModuleLoader :
 
         disposed = true;
         if (runtimeAttached)
-            await DetachRuntimeAsync(CancellationToken.None).ConfigureAwait(false);
+        {
+            try
+            {
+                await DetachRuntimeAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                // Shutdown is already in progress. Keep unwinding and preserve the full failure in diagnostics
+                // instead of letting a trusted extension turn normal process teardown into an unhandled exception.
+                ReportFault(
+                    directory,
+                    null,
+                    TrustedHostModuleFaultPhase.RuntimeDetach,
+                    required: true,
+                    exception);
+            }
+        }
+
         await StopLoadedModulesAsync(CancellationToken.None).ConfigureAwait(false);
     }
 
@@ -216,6 +310,7 @@ internal sealed class TrustedHostModuleLoader :
             throw;
         }
 
+        TerminalDashboardRegistry.Scope? dashboardScope = null;
         HostWorldGeneratorRegistry.Scope? generatorScope = null;
         try
         {
@@ -256,41 +351,97 @@ internal sealed class TrustedHostModuleLoader :
                 throw new InvalidOperationException($"A trusted host module named '{module.Name}' is already loaded.");
             }
 
+            dashboardScope = terminalDashboards.CreateScope();
             generatorScope = worldGenerators.CreateScope();
-            var moduleEnvironment = new ScopedHostEnvironment(environment, generatorScope);
+            var moduleEnvironment = new ScopedHostEnvironment(environment, dashboardScope, generatorScope);
             await module.StartAsync(moduleEnvironment, cancellationToken).ConfigureAwait(false);
-            loaded.Add(new LoadedHostModule(path, module, loadContext, generatorScope));
+            loaded.Add(new LoadedHostModule(
+                path,
+                module,
+                loadContext,
+                dashboardScope,
+                generatorScope));
+            dashboardScope = null;
             generatorScope = null;
             Console.WriteLine($"Trusted host module loaded: {module.Name} ({Path.GetFileName(path)}).");
         }
         catch
         {
+            dashboardScope?.Dispose();
             generatorScope?.Dispose();
             loadContext.Unload();
             throw;
         }
     }
 
-    private async ValueTask DetachPrefixAsync(int count, CancellationToken cancellationToken)
+    private async ValueTask<Exception> RetireRuntimeScopeAfterFailedAttachAsync(
+        LoadedHostModule loadedModule,
+        ScopedHostRuntime runtimeScope,
+        Exception? attachmentFailure = null)
     {
-        List<Exception>? failures = null;
-        for (int index = count - 1; index >= 0; index--)
+        Exception? retirementFailure = null;
+        try
         {
-            LoadedHostModule loadedModule = loaded[index];
-            try
+            await runtimeScope.RetireAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            retirementFailure = exception;
+            ReportFault(
+                loadedModule.Path,
+                loadedModule.Module.Name,
+                TrustedHostModuleFaultPhase.ScopeRetirement,
+                policy.IsRequired(loadedModule.Path),
+                exception);
+        }
+        finally
+        {
+            loadedModule.RuntimeScope = null;
+            loadedModule.RuntimeAttached = false;
+        }
+
+        if (attachmentFailure is null)
+            return retirementFailure ?? new OperationCanceledException("Trusted host module runtime attachment was cancelled.");
+        if (retirementFailure is null)
+            return attachmentFailure;
+
+        return new AggregateException(
+            "Trusted host runtime attachment and scope retirement both failed.",
+            attachmentFailure,
+            retirementFailure);
+    }
+
+    private async ValueTask DetachAttachedModulesAsync(CancellationToken cancellationToken)
+    {
+        List<Exception>? requiredFailures = null;
+        LoadedHostModule[] snapshot = loaded.ToArray();
+        for (int index = snapshot.Length - 1; index >= 0; index--)
+        {
+            LoadedHostModule loadedModule = snapshot[index];
+            bool required = policy.IsRequired(loadedModule.Path);
+            bool moduleDetachFailed = false;
+            if (loadedModule.RuntimeAttached)
             {
-                if (loadedModule.RuntimeAttached)
+                try
                 {
                     await loadedModule.Module
                         .DetachRuntimeAsync(cancellationToken)
                         .ConfigureAwait(false);
                 }
+                catch (Exception exception)
+                {
+                    moduleDetachFailed = true;
+                    ReportFault(
+                        loadedModule.Path,
+                        loadedModule.Module.Name,
+                        TrustedHostModuleFaultPhase.RuntimeDetach,
+                        required,
+                        exception);
+                    if (required)
+                        (requiredFailures ??= []).Add(exception);
+                }
             }
-            catch (Exception exception)
-            {
-                failures ??= [];
-                failures.Add(exception);
-            }
+
             try
             {
                 if (loadedModule.RuntimeScope is not null)
@@ -298,47 +449,167 @@ internal sealed class TrustedHostModuleLoader :
             }
             catch (Exception exception)
             {
-                failures ??= [];
-                failures.Add(exception);
+                ReportFault(
+                    loadedModule.Path,
+                    loadedModule.Module.Name,
+                    TrustedHostModuleFaultPhase.ScopeRetirement,
+                    required,
+                    exception);
+                if (required)
+                    (requiredFailures ??= []).Add(exception);
+                else
+                    moduleDetachFailed = true;
             }
             finally
             {
                 loadedModule.RuntimeScope = null;
                 loadedModule.RuntimeAttached = false;
             }
+
+            if (moduleDetachFailed && !required)
+            {
+                // A module that could not cleanly detach is no longer trusted for the next world/session.
+                // Retire only that optional module after its runtime scope has been revoked.
+                await RetireLoadedModuleAsync(
+                        loadedModule,
+                        attemptModuleDetach: false,
+                        CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
         }
 
-        if (failures is { Count: > 0 })
-            throw new AggregateException("One or more trusted host modules failed to detach from TerraRuntime.", failures);
+        if (requiredFailures is { Count: > 0 })
+        {
+            throw new AggregateException(
+                "One or more required trusted host modules failed to detach from TerraRuntime.",
+                requiredFailures);
+        }
+    }
+
+    private async ValueTask RetireLoadedModuleAsync(
+        LoadedHostModule loadedModule,
+        bool attemptModuleDetach,
+        CancellationToken cancellationToken)
+    {
+        loaded.Remove(loadedModule);
+        bool required = policy.IsRequired(loadedModule.Path);
+
+        if (attemptModuleDetach)
+        {
+            try
+            {
+                await loadedModule.Module.DetachRuntimeAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                ReportFault(
+                    loadedModule.Path,
+                    loadedModule.Module.Name,
+                    TrustedHostModuleFaultPhase.RuntimeDetach,
+                    required,
+                    exception);
+            }
+        }
+
+        try
+        {
+            if (loadedModule.RuntimeScope is not null)
+                await loadedModule.RuntimeScope.RetireAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            ReportFault(
+                loadedModule.Path,
+                loadedModule.Module.Name,
+                TrustedHostModuleFaultPhase.ScopeRetirement,
+                required,
+                exception);
+        }
+        finally
+        {
+            loadedModule.RuntimeScope = null;
+            loadedModule.RuntimeAttached = false;
+        }
+
+        try
+        {
+            await loadedModule.Module.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            ReportFault(
+                loadedModule.Path,
+                loadedModule.Module.Name,
+                TrustedHostModuleFaultPhase.Stop,
+                required,
+                exception);
+        }
+        finally
+        {
+            // Registries are loader-owned so a broken StopAsync cannot leave module objects rooted through
+            // dashboard or world-generator registrations after the collectible context is asked to unload.
+            loadedModule.DashboardScope.Dispose();
+            loadedModule.WorldGeneratorScope.Dispose();
+            loadedModule.LoadContext.Unload();
+        }
     }
 
     private async ValueTask StopLoadedModulesAsync(CancellationToken cancellationToken)
     {
-        terminalDashboards.Clear();
-
-        for (int index = loaded.Count - 1; index >= 0; index--)
+        LoadedHostModule[] snapshot = loaded.ToArray();
+        for (int index = snapshot.Length - 1; index >= 0; index--)
         {
-            LoadedHostModule loadedModule = loaded[index];
-            try
-            {
-                await loadedModule.Module.StopAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception exception)
-            {
-                Console.Error.WriteLine(
-                    $"Trusted host module '{loadedModule.Module.Name}' failed during shutdown: {exception.Message}");
-            }
-            finally
-            {
-                // Retire every provider while its collectible AssemblyLoadContext is still alive. This prevents a
-                // stale provider instance from keeping an unloaded module rooted through the generation registry.
-                loadedModule.WorldGeneratorScope.Dispose();
-                loadedModule.LoadContext.Unload();
-            }
+            await RetireLoadedModuleAsync(
+                    snapshot[index],
+                    attemptModuleDetach: snapshot[index].RuntimeAttached,
+                    cancellationToken)
+                .ConfigureAwait(false);
         }
 
         loaded.Clear();
+        terminalDashboards.Clear();
         started = false;
+        runtimeAttached = false;
+    }
+
+    private void ReportFault(
+        string path,
+        string? moduleName,
+        TrustedHostModuleFaultPhase phase,
+        bool required,
+        Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        var fault = new TrustedHostModuleFault(
+            Path.GetFileName(path),
+            moduleName,
+            phase,
+            required,
+            DateTimeOffset.UtcNow,
+            exception.GetType().FullName ?? exception.GetType().Name,
+            exception.Message,
+            exception.ToString());
+
+        lock (faultGate)
+        {
+            if (faults.Count >= MaximumRetainedFaults)
+                faults.RemoveAt(0);
+            faults.Add(fault);
+        }
+
+        try
+        {
+            diagnostics.WriteLine(
+                $"Trusted host module fault: file='{fault.FileName}' module='{fault.ModuleName ?? "unknown"}' " +
+                $"phase={fault.Phase} required={fault.Required}.");
+            diagnostics.WriteLine(fault.Detail);
+            diagnostics.Flush();
+        }
+        catch
+        {
+            // Diagnostics are best effort. A broken output stream must never turn an already-contained module
+            // failure into a second host failure.
+        }
     }
 
     private static void ValidateRuntimeBoundary(Assembly assembly, string path)
@@ -369,9 +640,11 @@ internal sealed class TrustedHostModuleLoader :
 
         public ScopedHostEnvironment(
             ITerraRuntimeHostEnvironment source,
+            ITerraRuntimeTerminalDashboardRegistry terminalDashboards,
             ITerraRuntimeWorldGeneratorRegistry worldGenerators)
         {
             this.source = source;
+            TerminalDashboards = terminalDashboards;
             WorldGenerators = worldGenerators;
         }
 
@@ -382,7 +655,7 @@ internal sealed class TrustedHostModuleLoader :
         public string ConfigDirectory => source.ConfigDirectory;
         public string DataDirectory => source.DataDirectory;
         public string LogsDirectory => source.LogsDirectory;
-        public ITerraRuntimeTerminalDashboardRegistry TerminalDashboards => source.TerminalDashboards;
+        public ITerraRuntimeTerminalDashboardRegistry TerminalDashboards { get; }
         public ITerraRuntimeWorldGeneratorRegistry WorldGenerators { get; }
     }
 
@@ -392,17 +665,20 @@ internal sealed class TrustedHostModuleLoader :
             string path,
             ITerraRuntimeHostModule module,
             HostModuleLoadContext loadContext,
+            IDisposable dashboardScope,
             IDisposable worldGeneratorScope)
         {
             Path = path;
             Module = module;
             LoadContext = loadContext;
+            DashboardScope = dashboardScope;
             WorldGeneratorScope = worldGeneratorScope;
         }
 
         public string Path { get; }
         public ITerraRuntimeHostModule Module { get; }
         public HostModuleLoadContext LoadContext { get; }
+        public IDisposable DashboardScope { get; }
         public IDisposable WorldGeneratorScope { get; }
         public ScopedHostRuntime? RuntimeScope { get; set; }
         public bool RuntimeAttached { get; set; }

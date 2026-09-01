@@ -57,6 +57,8 @@ internal sealed class TerminalDashboardRegistry :
         }
     }
 
+    public Scope CreateScope() => new(this);
+
     internal void Clear()
     {
         lock (gate)
@@ -82,5 +84,61 @@ internal sealed class TerminalDashboardRegistry :
         }
 
         return normalized;
+    }
+
+    internal sealed class Scope : ITerraRuntimeTerminalDashboardRegistry, IDisposable
+    {
+        private readonly TerminalDashboardRegistry owner;
+        private readonly object gate = new();
+        private readonly List<string> registrations = [];
+        private bool disposed;
+
+        public Scope(TerminalDashboardRegistry owner) => this.owner = owner;
+
+        public bool TryRegister(ITerraRuntimeTerminalDashboardProvider provider)
+        {
+            ArgumentNullException.ThrowIfNull(provider);
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(disposed, this);
+                if (!owner.TryRegister(provider))
+                    return false;
+
+                registrations.Add(NormalizeId(provider.Id));
+                return true;
+            }
+        }
+
+        public bool TryUnregister(string id)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(id);
+            string normalized = NormalizeId(id);
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(disposed, this);
+                bool removed = owner.TryUnregister(normalized);
+                if (removed)
+                    registrations.RemoveAll(candidate =>
+                        string.Equals(candidate, normalized, StringComparison.OrdinalIgnoreCase));
+                return removed;
+            }
+        }
+
+        public void Dispose()
+        {
+            string[] snapshot;
+            lock (gate)
+            {
+                if (disposed)
+                    return;
+
+                disposed = true;
+                snapshot = registrations.ToArray();
+                registrations.Clear();
+            }
+
+            for (int index = snapshot.Length - 1; index >= 0; index--)
+                owner.TryUnregister(snapshot[index]);
+        }
     }
 }

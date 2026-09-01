@@ -40,12 +40,14 @@ The goal is not `catch (Exception) { continue; }`. Recoverable extension/subsyst
 
 ### TerraRuntime trusted-host boundary
 
-- `TrustedHostModuleLoader` already rolls back failed runtime attachment scopes and unloads failed load contexts;
-- shutdown collects/continues across module stop failures;
-- a host-module startup exception currently aborts extensible-host startup and the top-level message only prints `Exception.Message`;
-- there is no explicit required/optional host-module fault policy;
-- there is no common structured host-module callback guard/circuit breaker for future long-lived callbacks;
-- trusted world-generator provider failures must be transactionally contained before publication and reported as provider failures, not process crashes.
+- `TrustedHostModuleLoader` rolls back failed runtime attachment scopes and unloads failed load contexts;
+- host modules are optional/degradable by default, while `TERRARUNTIME_REQUIRED_HOST_MODULES` can require selected DLLs or all modules through `*`;
+- optional startup, attach, detach and stop failures are attributed to the owning module and contained without exposing partial loader-owned registrations;
+- required startup/attach/detach failures remain fail-closed and preserve full `Exception.ToString()` diagnostics;
+- dashboard and world-generator registrations are loader-owned scopes, so one retiring module cannot unregister another module's resources and failed cleanup cannot keep registrations published;
+- contained host-module faults are retained in a bounded fault history and surfaced through the `Host Module Health` terminal dashboard;
+- the permanent `Runtime Crash Containment` CI gate runs deliberate load/start/attach/detach/stop fault injection alongside the existing host loader/world-generation integration suites;
+- trusted world-generator provider failures still belong to C5 transactional subsystem containment before publication.
 
 ### TerraRuntime core/subsystems
 
@@ -96,14 +98,14 @@ The goal is not `catch (Exception) { continue; }`. Recoverable extension/subsyst
 
 ## C4 — TerraRuntime trusted host-module containment
 
-- [ ] replace message-only startup failure output with structured/full exception logging;
-- [ ] introduce explicit host-module policy: required module versus optional/degradable module;
-- [ ] on optional module startup failure, unload only that module and continue without exposing partial registrations;
-- [ ] on required module startup failure, perform controlled shutdown with distinct exit code and complete diagnostics;
-- [ ] guard runtime attach/detach and future host callbacks with per-module attribution while retaining current rollback semantics;
-- [ ] ensure one optional host module cannot unregister/retire another module's scoped resources;
-- [ ] expose host-module health in TUI/operations telemetry;
-- [ ] test a deliberately throwing host-module fixture during load, start, attach, detach and stop.
+- [x] replace message-only startup failure output with structured/full exception logging;
+- [x] introduce explicit host-module policy: required module versus optional/degradable module;
+- [x] on optional module startup failure, unload only that module and continue without exposing partial registrations;
+- [x] on required module startup failure, perform controlled shutdown with distinct exit code and complete diagnostics;
+- [x] guard runtime attach/detach and future host callbacks with per-module attribution while retaining current rollback semantics;
+- [x] ensure one optional host module cannot unregister/retire another module's scoped resources;
+- [x] expose host-module health in TUI/operations telemetry;
+- [x] test a deliberately throwing host-module fixture during load, start, attach, detach and stop.
 
 ## C5 — TerraRuntime subsystem containment
 
