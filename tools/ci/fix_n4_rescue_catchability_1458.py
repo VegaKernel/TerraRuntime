@@ -11,4 +11,19 @@ text = text.replace(
     'Terraria.Protocol.Multiplicity.TerrariaNpcTalkCodec.MaximumNpcSlots',
     'TerraRuntime.Protocol.Multiplicity.TerrariaNpcTalkCodec.MaximumNpcSlots')
 p.write_text(text)
-print('N4 compatibility fixes applied; workflow trigger v2')
+
+p = Path('src/TerraRuntime/RuntimeNpcCatchCommands.cs')
+text = p.read_text()
+text = text.replace(
+    'using TerraRuntime.Core;\nusing TerraRuntime.Protocol.Multiplicity;',
+    'using TerraRuntime.Contracts.Runtime;\nusing TerraRuntime.Protocol.Multiplicity;')
+p.write_text(text)
+
+p = Path('src/TerraRuntime/RuntimeNpcCatchNetworkIngress.cs')
+text = p.read_text()
+if 'using TerraRuntime.Contracts.Runtime;' not in text:
+    text = text.replace(
+        'using TerraRuntime.Core;\n',
+        'using TerraRuntime.Contracts.Runtime;\nusing TerraRuntime.Core;\n')
+p.write_text(text)
+print('N4 compatibility fixes applied; workflow trigger v3')
