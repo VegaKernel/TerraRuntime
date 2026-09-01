@@ -10,23 +10,19 @@ Built-in System Dashboard TerraRuntime использует interaction model, �
 
 ```mermaid
 flowchart LR
-    Console["Console\nвыделяемый tail логов\naccented command line"]
+    Console["Console\nнастраиваемый Logs + Chat feed\ncommand line"]
     subgraph Right["Правая колонка"]
         Server["Server"]
-        subgraph GraphRow["Строка графиков"]
-            TPS["TPS graph"]
-            Network["IN / OUT graph"]
+        subgraph Graphs["одна строка графиков"]
+            TPS["TPS"]
+            Network["Network"]
         end
-        Chat["Chat\nвсё оставшееся место по высоте"]
+        Worlds["дерево Worlds / Players"]
     end
     Console --- Server
-    Server --> GraphRow
-    GraphRow --> Chat
 ```
 
-Console занимает левую часть. Справа сверху остаётся компактная плитка Server, под ней TPS и Network располагаются рядом в одной строке, а Chat получает всё оставшееся вертикальное пространство. CPU и Memory/GC намеренно не являются overview-плитками: System Dashboard оставляет постоянное место только для операторских сигналов, которые нужны на экране всё время.
-
-Layout намеренно асимметричный: Console получает примерно половину workspace, а строка графиков состоит из двух одинаковых компактных плиток. Фиксированная небольшая высота Server и graph row позволяет Chat автоматически расти при увеличении высоты terminal.
+Console занимает левую часть. Справа остаётся компактный Server, TPS и Network находятся в одной строке, а всё оставшееся место получает дерево Worlds / Players. CPU и Memory/GC намеренно отсутствуют на обзорном dashboard: подробная системная диагностика остаётся в Details и не конкурирует с действительно операторскими данными.
 
 ## Maximize и focus
 
@@ -34,28 +30,57 @@ Double-click по title плитки обрабатывается через tit
 
 Keyboard или mouse focus включает Accent scheme и добавляет к активному title префикс `▶`, поэтому focus остаётся заметным даже в terminal, который урезает настроенную палитру.
 
+## Настраиваемый Console feed
+
+Console теперь является одним хронологическим bounded-потоком вместо отдельных Log и Chat окон. Три элемента управления наверху меняют только UI-проекцию:
+
+- `Logs ON/OFF` включает или исключает structured runtime logs;
+- `Chat ON/OFF` включает или исключает public chat;
+- `Level DEBUG+/INFO+/WARN+/ERROR+` задаёт минимальный уровень structured logs. Chat от log threshold не зависит.
+
+При включённых Logs и Chat записи объединяются по timestamp и отображаются одним потоком. UI хранит только последние 64 спроецированные записи. Это presentation state: authoritative recent-log и chat stores остаются отдельными bounded-буферами своих operations backends.
+
+Detached TUI cache заранее захватывает bounded Debug-level overview superset, поэтому смена фильтра не вызывает синхронное чтение logging state из Terminal.Gui thread. Ручная прокрутка и активное выделение текста сохраняются во время refresh.
+
+Те же настройки доступны из command line:
+
+```text
+feed
+feed all
+feed logs on|off
+feed chat on|off
+feed level debug|info|warn|error
+```
+
 ## Графики
 
-TPS использует настоящий Terminal.Gui `GraphView`:
+TPS использует Terminal.Gui `GraphView` с history текущего TPS и reference line целевого TPS. Network имеет отдельный `GraphView` с inbound/outbound packet-rate histories. Legend также показывает текущий packet rate и throughput в `KiB/s`.
 
-- bounded history текущего TPS;
-- reference line целевого TPS;
-- scale, привязанный к настроенному target TPS.
+Rate вычисляется по разнице subsystem-owned process-lifetime counters между последовательными detached network snapshots. Интервал берётся из snapshot capture timestamps. При откате counters или некорректном/слишком длинном sampling interval локальный rate sample сбрасывается вместо искусственного spike.
 
-CPU history на overview-графике не отображается.
+Histories и предыдущий counter sample являются bounded presentation state самого UI. Они не становятся authoritative telemetry и не добавляют counters в packet hot paths.
 
-Network имеет отдельный `GraphView` с раздельными histories входящих и исходящих packet rate. Компактный legend показывает текущие packet rates и throughput. Rate вычисляется по разнице subsystem-owned process-lifetime counters входящих/исходящих Terraria messages между двумя последовательными detached network snapshots. Интервал берётся из snapshot capture timestamps, поэтому график показывает traffic за фактический UI sampling interval, а не ошибочно делит lifetime totals на длину telemetry rolling window. При откате counters или некорректном/слишком длинном sampling interval локальный rate sample сбрасывается вместо искусственного spike.
+## Дерево Worlds / Players
 
-Histories и предыдущий counter sample являются bounded presentation state самого UI. Они не становятся authoritative telemetry и не добавляют новые counters в packet hot paths.
+Overview теперь резервирует большую нижнюю правую плитку под runtime roster. В текущем single-world runtime активный мир отображается как primary root, а игроки как дочерние строки:
+
+```text
+▼ Main  [primary]
+  ├─ #0 Alice
+  └─ #1 Bob
+```
+
+Такая форма специально совпадает с sandbox roadmap, где одновременно будут видны несколько live `WorldRuntime`, а игроков можно будет переносить между runtime sessions.
+
+Реальный drag-and-drop transfer пока не объявляется реализованным. Authoritative multi-world registry и client-transfer ingress всё ещё относятся к S1/S2 sandbox. TUI обязан вызывать будущую bounded transfer operation и не имеет права напрямую менять ownership игрока/мира только потому, что оба объекта находятся в одном process.
 
 ## Строка команд Console
 
-Внизу плитки Console находится отдельная bordered command area с Accent scheme. Поле ввода визуально отделено от log output и больше не выглядит как ещё одна строка лога. `Ctrl+P` переводит focus на него.
-
-Текущие runtime-owned команды:
+Внизу Console находится постоянно видимая Accent-рамка input `>`. `Ctrl+P` переводит focus на неё. Текущие runtime-owned команды:
 
 ```text
 help
+feed ...
 save
 interest on
 interest off
@@ -71,19 +96,15 @@ logs
 
 `save` и `interest on|off` делегируются в существующий bounded operations ingress. Navigation commands только переключают текущий workspace screen. Неизвестный input показывается локально и никогда не трактуется как arbitrary runtime mutation.
 
-## Tail логов и чата
-
-Console и Chat показывают bounded tail detached snapshots. Overview форматирует не более 64 последних записей на поверхность, а underlying runtime log/chat stores ограничены независимо. Обе поверхности автоматически следуют за новыми сообщениями, пока оператор уже находится внизу. Ручная прокрутка истории вверх отключает принудительный follow-tail до возвращения пользователя к концу.
-
 ## Выделение текста
 
-Console, Server и Chat используют read-only selectable text surfaces. Поддерживаются selection мышью/клавиатурой и `Ctrl+C`. Snapshot refresh не заменяет отображаемый текст при активном непустом selection, поэтому обычное обновление telemetry не уничтожает выделение в момент копирования.
+Console, Server и Worlds / Players используют read-only selectable text surfaces. Поддерживаются selection мышью/клавиатурой и `Ctrl+C`. Snapshot refresh не заменяет отображаемый текст при активном непустом selection, поэтому обычное обновление telemetry не уничтожает выделение во время копирования.
 
-Все встроенные Details screens (Players, NPCs, Projectiles, Items, Network, World и Logs) используют ту же read-only selectable проекцию. Существующий bounded `rows[]` render model остаётся внутренним форматом для formatting и smoke assertions, а оператору эти строки показывает один scrollable `TextView`. Automatic refresh сохраняет активное selection; явный переход на другой Details screen сначала сбрасывает selection предыдущего экрана и только потом показывает новые данные.
+Все встроенные Details screens (Players, NPCs, Projectiles, Items, Network, World и Logs) используют ту же read-only selectable проекцию. Bounded `rows[]` render model остаётся внутренним форматом для formatting и smoke assertions, а оператору строки показывает один scrollable `TextView`.
 
 ## Отзывчивость
 
-Authoritative operations capture остаётся вне Terminal.Gui thread. UI читает последний atomically published cache snapshot, поэтому input processing, selection, menu navigation и interaction с окнами не ждут world/network snapshot acquisition.
+Authoritative operations capture остаётся вне Terminal.Gui thread. UI читает последний atomically published cache snapshot, поэтому input processing, selection, menu navigation и interaction с окнами не ждут world/network/log snapshot acquisition.
 
 Runtime snapshots имеют целевой период примерно
 

@@ -49,7 +49,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Dashboard_layout_matches_operator_mockup()
+    public void Dashboard_layout_replaces_chat_tile_with_world_player_tree()
     {
         using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(160, 28);
@@ -71,6 +71,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             dashboard.Refresh(
                 default(RuntimeDashboardSnapshot) with
                 {
+                    WorldName = "Primary",
                     TargetTicksPerSecond = 60,
                     ObservedTicksPerSecond = 60d
                 },
@@ -84,16 +85,20 @@ public sealed class RuntimeOverviewDashboardInteractionTests
 
             Assert.Equal(5, dashboard.GetVisiblePanelCountForSmoke());
             Assert.Contains("TPS", dashboard.GetPanelTitleForSmoke("TPS"));
+            Assert.Contains("Worlds / Players", dashboard.GetPanelTitleForSmoke("Worlds"));
             Assert.DoesNotContain("CPU", dashboard.GetTpsLegendForSmoke(), StringComparison.OrdinalIgnoreCase);
 
             var tps = dashboard.GetPanelFrameForSmoke("TPS");
             var network = dashboard.GetPanelFrameForSmoke("Network");
-            var chat = dashboard.GetPanelFrameForSmoke("Chat");
+            var worlds = dashboard.GetPanelFrameForSmoke("Worlds");
 
             Assert.Equal(tps.Y, network.Y);
             Assert.Equal(tps.Height, network.Height);
-            Assert.Equal(tps.Bottom, chat.Y);
-            Assert.True(chat.Height > tps.Height);
+            Assert.Equal(tps.Bottom, worlds.Y);
+            Assert.True(worlds.Height > tps.Height);
+            Assert.Contains("Logs ON", dashboard.GetFeedControlsForSmoke());
+            Assert.Contains("Chat ON", dashboard.GetFeedControlsForSmoke());
+            Assert.Contains("Level INFO+", dashboard.GetFeedControlsForSmoke());
             Assert.True(dashboard.CommandInputFrameUsesAccentForSmoke);
         }
         finally
@@ -103,7 +108,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Console_and_chat_follow_tail_but_preserve_manual_history_scroll()
+    public void Console_feed_follows_tail_but_preserves_manual_history_scroll()
     {
         using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(80, 20);
@@ -122,23 +127,22 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         SessionToken token = app.Begin(window)!;
         try
         {
-            RuntimeLogSnapshot logs = CreateLogs(32, "Runtime");
-            RuntimeLogSnapshot chat = CreateLogs(24, "Chat");
+            RuntimeLogSnapshot logs = CreateLogs(48, "Runtime", RuntimeLogLevel.Information);
+            RuntimeLogSnapshot chat = CreateLogs(32, "Chat", RuntimeLogLevel.Information);
             RuntimeDashboardSnapshot first = default(RuntimeDashboardSnapshot) with
             {
                 Tick = 100,
+                WorldName = "Primary",
+                MaxPlayers = 8,
                 TargetTicksPerSecond = 60,
-                ObservedTicksPerSecond = 60d,
-                SlowestPhase = "Update"
+                ObservedTicksPerSecond = 60d
             };
 
             dashboard.Refresh(first, default, default, default, logs, chat, status: null);
             app.LayoutAndDraw();
 
             Assert.True(dashboard.ConsoleLinesForSmoke > 1);
-            Assert.True(dashboard.ChatLinesForSmoke > 1);
             Assert.True(dashboard.ConsoleViewportYForSmoke > 0);
-            Assert.True(dashboard.ChatViewportYForSmoke > 0);
 
             dashboard.ScrollConsoleToTopForSmoke();
             Assert.Equal(0, dashboard.ConsoleViewportYForSmoke);
@@ -155,23 +159,112 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         }
     }
 
-    private static RuntimeLogSnapshot CreateLogs(int count, string source)
+    [Fact]
+    public void Feed_visibility_and_log_level_are_ui_local_filters()
+    {
+        using var dashboard = new RuntimeOverviewDashboard();
+        DateTimeOffset startedAt = new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
+        RuntimeLogSnapshot logs = CreateSnapshot(
+        [
+            new RuntimeLogEntry(1, startedAt.AddSeconds(1), RuntimeLogLevel.Debug, "Runtime", "debug-entry"),
+            new RuntimeLogEntry(2, startedAt.AddSeconds(2), RuntimeLogLevel.Information, "Runtime", "info-entry"),
+            new RuntimeLogEntry(3, startedAt.AddSeconds(3), RuntimeLogLevel.Warning, "Network", "warn-entry"),
+            new RuntimeLogEntry(4, startedAt.AddSeconds(4), RuntimeLogLevel.Error, "World", "error-entry")
+        ]);
+        RuntimeLogSnapshot chat = CreateSnapshot(
+        [
+            new RuntimeLogEntry(1, startedAt.AddSeconds(2.5), RuntimeLogLevel.Information, "Chat", "#3: hello-chat")
+        ]);
+
+        dashboard.Refresh(
+            default(RuntimeDashboardSnapshot) with { WorldName = "Primary", MaxPlayers = 8 },
+            default,
+            default,
+            default,
+            logs,
+            chat,
+            status: null);
+
+        dashboard.SetFeedForSmoke(logs: false, chat: true, RuntimeLogLevel.Debug);
+        string chatOnly = dashboard.GetConsoleTextForSmoke();
+        Assert.Contains("CHAT #3: hello-chat", chatOnly);
+        Assert.DoesNotContain("warn-entry", chatOnly);
+
+        dashboard.SetFeedForSmoke(logs: true, chat: false, RuntimeLogLevel.Warning);
+        string warnings = dashboard.GetConsoleTextForSmoke();
+        Assert.Contains("WARN Network warn-entry", warnings);
+        Assert.Contains("ERR  World error-entry", warnings);
+        Assert.DoesNotContain("info-entry", warnings);
+        Assert.DoesNotContain("hello-chat", warnings);
+    }
+
+    [Fact]
+    public void World_tree_projects_current_world_and_players()
+    {
+        using var dashboard = new RuntimeOverviewDashboard();
+        RuntimePlayerSnapshot[] players =
+        [
+            CreatePlayer(0, 11, "Alice"),
+            CreatePlayer(1, 12, "Bob")
+        ];
+
+        dashboard.Refresh(
+            default(RuntimeDashboardSnapshot) with { WorldName = "Main", MaxPlayers = 8 },
+            default,
+            default,
+            new RuntimePlayersSnapshot(players.AsMemory(), DateTimeOffset.UtcNow),
+            default,
+            default,
+            status: null);
+
+        string tree = dashboard.GetWorldsTextForSmoke();
+        Assert.Contains("▼ Main  [primary]", tree);
+        Assert.Contains("#0 Alice", tree);
+        Assert.Contains("#1 Bob", tree);
+    }
+
+    private static RuntimePlayerSnapshot CreatePlayer(byte slot, long connectionId, string name) =>
+        new(
+            connectionId,
+            slot,
+            Generation: 1,
+            name,
+            Team: 0,
+            PositionX: 0,
+            PositionY: 0,
+            VelocityX: 0,
+            VelocityY: 0,
+            SelectedItem: 0,
+            MountType: 0,
+            HasHealth: true,
+            Life: 100,
+            MaxLife: 100,
+            HasMana: true,
+            Mana: 20,
+            MaxMana: 20);
+
+    private static RuntimeLogSnapshot CreateLogs(int count, string source, RuntimeLogLevel level)
     {
         DateTimeOffset startedAt = new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
         RuntimeLogEntry[] entries = Enumerable.Range(1, count)
             .Select(index => new RuntimeLogEntry(
                 index,
                 startedAt.AddSeconds(index),
-                RuntimeLogLevel.Information,
+                level,
                 source,
                 $"message-{index:D3}"))
             .ToArray();
+        return CreateSnapshot(entries);
+    }
 
+    private static RuntimeLogSnapshot CreateSnapshot(RuntimeLogEntry[] entries)
+    {
+        DateTimeOffset capturedAt = entries.Length == 0 ? DateTimeOffset.UtcNow : entries[^1].TimestampUtc;
         return new RuntimeLogSnapshot(
             entries.AsMemory(),
-            PublishedEntries: count,
+            PublishedEntries: entries.Length,
             OverwrittenEntries: 0,
-            MinimumLevel: RuntimeLogLevel.Information,
-            CapturedAtUtc: startedAt.AddSeconds(count));
+            MinimumLevel: RuntimeLogLevel.Debug,
+            CapturedAtUtc: capturedAt);
     }
 }

@@ -22,11 +22,19 @@ internal sealed class TerminalUiOperationsCache :
     private const int DemandWorldItems = 1 << 2;
     private const int DemandDetailLogs = 1 << 3;
     private const int MaximumCachedLogSources = 64;
+    private const int OverviewFeedEntries = 64;
     private const int DetailLogEntries = 256;
 
+    // The overview captures a richer bounded superset so Logs/Chat visibility and the log threshold can be changed
+    // instantly on the UI thread without recapturing runtime state. Legacy request shapes remain recognized below
+    // because DashboardWorkspaceWindow intentionally stays presentation-agnostic.
     private static readonly RuntimeLogQuery OverviewLogQuery =
+        new(RuntimeLogLevel.Debug, OverviewFeedEntries);
+    private static readonly RuntimeLogQuery LegacyOverviewLogQuery =
         new(RuntimeLogLevel.Information, 12);
     private static readonly RuntimeLogQuery ChatLogQuery =
+        new(RuntimeLogLevel.Debug, OverviewFeedEntries, "Chat");
+    private static readonly RuntimeLogQuery LegacyChatLogQuery =
         new(RuntimeLogLevel.Debug, 8, "Chat");
     private static readonly RuntimeLogQuery DetailLogQuery =
         new(RuntimeLogLevel.Debug, DetailLogEntries);
@@ -152,9 +160,9 @@ internal sealed class TerminalUiOperationsCache :
     RuntimeLogSnapshot ILogOperations.CaptureSnapshot(RuntimeLogQuery query)
     {
         SnapshotState snapshot = Volatile.Read(ref state);
-        if (query == OverviewLogQuery)
+        if (query == OverviewLogQuery || query == LegacyOverviewLogQuery)
             return snapshot.OverviewLogs;
-        if (query == ChatLogQuery)
+        if (query == ChatLogQuery || query == LegacyChatLogQuery)
             return snapshot.ChatLogs;
         if (query == DetailLogQuery)
         {
@@ -162,8 +170,8 @@ internal sealed class TerminalUiOperationsCache :
             return snapshot.DetailLogs;
         }
 
-        // The built-in TUI uses the three pinned queries above. Preserve interface completeness for trusted
-        // future callers rather than silently returning a snapshot with different filtering semantics.
+        // The built-in TUI uses the pinned queries above. Preserve interface completeness for trusted future callers
+        // rather than silently returning a snapshot with unrelated filtering semantics.
         return logSource.CaptureSnapshot(query);
     }
 
