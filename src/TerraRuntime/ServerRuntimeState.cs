@@ -82,10 +82,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly RuntimeWorldClock? _worldClock;
     private readonly bool _expertMode;
     private readonly bool _masterMode;
-    private const int MaxTileEditsPerTickPerPlayer = 8;
-    private readonly int[] _tileEditCounts = new int[MaxPlayerSlots];
-    private long _tileEditBudgetTick;
-    private bool _tileEditBudgetUsed;
+    private readonly PlayerTileEditBudget _tileEditBudget = new(MaxPlayerSlots);
     private int lastWorkerResult;
     private int lastSpawnCommitResult = -1;
 
@@ -597,16 +594,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
 
     public void Tick()
     {
-        if (Updates != _tileEditBudgetTick)
-        {
-            if (_tileEditBudgetUsed)
-            {
-                Array.Clear(_tileEditCounts, 0, _tileEditCounts.Length);
-                _tileEditBudgetUsed = false;
-            }
-
-            _tileEditBudgetTick = Updates;
-        }
+        _tileEditBudget.AdvanceTo(Updates);
 
         _npcArchetypes.CommitPending();
         _npcShops.CommitPending();
@@ -1156,15 +1144,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             return;
         }
 
-        byte slot = command.Connection.Player.Slot.Value;
-        if (_tileEditCounts[slot] >= MaxTileEditsPerTickPerPlayer)
+        if (!_tileEditBudget.TryConsume(command.Connection.Player.Slot))
         {
             RejectedClientTileManipulations++;
             return;
         }
 
-        _tileEditCounts[slot]++;
-        _tileEditBudgetUsed = true;
         ValidatedClientTileManipulations++;
         var tileState = command.State;
 

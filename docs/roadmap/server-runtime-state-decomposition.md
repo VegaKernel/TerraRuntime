@@ -90,6 +90,7 @@ Candidate responsibilities include:
 
 Requirements:
 
+- [x] per-player packet-17 tile-edit admission counters/ceiling live in `PlayerTileEditBudget`; `ServerRuntimeState` only advances and consumes that world-owned policy on the authoritative thread;
 - [ ] player state remains owned by the same `WorldRuntime` authoritative thread;
 - [ ] connection/network code receives typed operations/snapshots, not mutable player dictionaries;
 - [ ] moving a player between sandbox sessions does not require reaching into another runtime's player store directly;
