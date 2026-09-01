@@ -41,6 +41,7 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.True(result.Candidate.TryGetLayers(out WorldGenerationLayers layers));
         Assert.True(layers.WorldSurface > 0d);
         Assert.True(layers.RockLayer > layers.WorldSurface);
+        AssertSourceShapedTerrain(result.Candidate);
         AssertSourceFramedTrees(result.Candidate);
     }
 
@@ -292,5 +293,23 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
 
         static void Add(HashSet<(short X, short Y)> target, VanillaTreeFrame1458 frame) =>
             target.Add((frame.X, frame.Y));
+    }
+
+    private static void AssertSourceShapedTerrain(RuntimeWorldGenerationWorkspace workspace)
+    {
+        var counts = new int[6];
+        for (int x = 20; x < workspace.WidthTiles - 20; x++)
+            for (int y = 20; y < workspace.HeightTiles - 20; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                if (tile.IsActive && tile.Shape < counts.Length)
+                    counts[tile.Shape]++;
+            }
+
+        Assert.True(counts[(byte)VanillaTileShape1458.HalfBrick] > 0, "Smooth World must produce half-bricks.");
+        Assert.True(counts[(byte)VanillaTileShape1458.SlopeDownRight] > 0, "Smooth World must produce slope 1.");
+        Assert.True(counts[(byte)VanillaTileShape1458.SlopeDownLeft] > 0, "Smooth World must produce slope 2.");
+        Assert.True(counts[(byte)VanillaTileShape1458.SlopeUpRight] > 0, "Smooth World must produce slope 3.");
+        Assert.True(counts[(byte)VanillaTileShape1458.SlopeUpLeft] > 0, "Smooth World must produce slope 4.");
     }
 }

@@ -55,6 +55,16 @@ Source-backed Terrain сохраняет рассчитанные `worldSurface`
 
 Этот persistence bridge нужен следующим проходам: Jungle, desert, ocean, structures и decoration смогут использовать один и тот же результат Reset во время генерации, а сохранённый мир после restart не откатит эти исходные выборы обратно к compatibility defaults.
 
+## Формирование поверхности в Smooth World
+
+Обычный канонический путь теперь выполняет clean-room реализацию `Smooth World` из TerrariaServer 1.4.5.8 вместо прежней эвристики, зависевшей от координат. Pass сохраняет два source-ordered сканирования внутри границы $20\,\text{тайлов}$, точки расхода общего RNG, эрозию открытых краёв и заполнение диагональных разрывов, все четыре направления slope, half-bricks, нормализацию семейства песка через `SmoothSlope` и исправление slope без опоры.
+
+Представление формы сделано явным: `VanillaTileShape1458` владеет runtime-отображением полного блока, half-brick и четырёх vanilla slope. Отдельный `VanillaWorldSmoothingCatalog1458` владеет закреплёнными для версии tile capabilities: очисткой при генерации, запретом slope, исключениями hammer/pound, защитой опор под объектами, семейством песка и временной solidity треснувших кирпичей. Поэтому topology-код не содержит анонимных цепочек tile identity или чисел формата хранения.
+
+Focused fixtures проверяют точный порядок вызовов RNG и каждое семейство мутаций, включая верхние и нижние направления slope. Каноническая Small integration-проверка требует наличия всех пяти неполных форм в собранном мире. `tools/ci/probe_worldgen_smooth_world.py` независимо сравнивает runtime capability sets и decision routes с закреплённым decompile; `.github/workflows/terraria-worldgen-smooth-world.yml` заново получает это доказательство из официального бинарника с закреплённым SHA-256.
+
+Этим закрыт аудит обычного shape writer `Smooth World`. Это не означает byte-identical vanilla world: силуэт terrain, точная upstream-геометрия проходов, dungeon, ocean alignment и shaping специальных сидов остаются отдельными границами parity.
+
 ## Проверка результата
 
 `.github/workflows/terraria-vanilla-generated-world-acceptance.yml` для малого канонического мира:

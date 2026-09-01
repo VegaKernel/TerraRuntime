@@ -211,7 +211,7 @@ internal sealed class VanillaPostSettleWorldGenerationPass1458 : IWorldGeneratio
                 ApplyShellPiles(context, grid, random);
                 break;
             case VanillaPostSettleWorldGenerationStage1458.SmoothWorld:
-                ApplySmoothWorld(context, grid);
+                ApplySmoothWorld(context, workspace);
                 break;
             case VanillaPostSettleWorldGenerationStage1458.Waterfalls:
                 ApplyWaterfalls(context, grid, random);
@@ -372,45 +372,18 @@ internal sealed class VanillaPostSettleWorldGenerationPass1458 : IWorldGeneratio
         context.ReportProgress(1d, $"Placing ocean shell piles ({placed}/{target})");
     }
 
-    private static void ApplySmoothWorld(IWorldGenerationContext context, RuntimeGrid grid)
+    private static void ApplySmoothWorld(IWorldGenerationContext context, RuntimeWorldGenerationWorkspace workspace)
     {
-        long shaped = 0;
-        int top = 2;
-        int bottom = grid.Height - 2;
-        for (int x = 2; x < grid.Width - 2; x++)
-        {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            for (int y = top; y < bottom; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || !IsSmoothable(tile.Type) || tile.Shape != 0)
-                    continue;
-                if (grid.At(x, y - 1).IsActive)
-                    continue;
-
-                bool leftOpen = !grid.At(x - 1, y).IsActive;
-                bool rightOpen = !grid.At(x + 1, y).IsActive;
-                bool leftHigh = grid.At(x - 1, y - 1).IsActive;
-                bool rightHigh = grid.At(x + 1, y - 1).IsActive;
-
-                byte newShape = 0;
-                if (leftOpen && !rightOpen && rightHigh)
-                    newShape = 2;
-                else if (rightOpen && !leftOpen && leftHigh)
-                    newShape = 3;
-                else if (!leftOpen && !rightOpen && !leftHigh && !rightHigh && (x + y) % 17 == 0)
-                    newShape = 1;
-
-                if (newShape == 0)
-                    continue;
-                tile.Shape = newShape;
-                shaped++;
-            }
-        }
-
-        context.ReportProgress(1d, $"Smoothing exposed natural terrain ({shaped} shaped tiles)");
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Smooth World requires shared UnifiedRandom semantics.");
+        VanillaWorldSmoothingResult1458 result = VanillaWorldSmoother1458.Apply(
+            workspace,
+            random,
+            context.CancellationToken);
+        context.ReportProgress(
+            1d,
+            $"Smoothing terrain (slopes={result.SlopedTiles}, half={result.HalfBricks}, " +
+            $"removed={result.RemovedTiles}, filled={result.FilledTiles})");
     }
 
     private void ApplyWaterfalls(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
@@ -638,12 +611,12 @@ internal sealed class VanillaPostSettleWorldGenerationPass1458 : IWorldGeneratio
             return false;
 
         for (int x = left; x < left + width; x++)
-        for (int y = top; y < top + height; y++)
-        {
-            WorldTile tile = grid.At(x, y);
-            if (tile.IsActive || tile.LiquidAmount > 0)
-                return false;
-        }
+            for (int y = top; y < top + height; y++)
+            {
+                WorldTile tile = grid.At(x, y);
+                if (tile.IsActive || tile.LiquidAmount > 0)
+                    return false;
+            }
 
         if (!requireFloor)
             return true;
@@ -667,13 +640,13 @@ internal sealed class VanillaPostSettleWorldGenerationPass1458 : IWorldGeneratio
     {
         int styleStrideX = width * 18;
         for (int dx = 0; dx < width; dx++)
-        for (int dy = 0; dy < height; dy++)
-        {
-            ref WorldTile tile = ref grid.At(left + dx, top + dy);
-            SetType(ref tile, type);
-            tile.FrameX = checked((short)(style * styleStrideX + dx * 18));
-            tile.FrameY = checked((short)(dy * 18));
-        }
+            for (int dy = 0; dy < height; dy++)
+            {
+                ref WorldTile tile = ref grid.At(left + dx, top + dy);
+                SetType(ref tile, type);
+                tile.FrameX = checked((short)(style * styleStrideX + dx * 18));
+                tile.FrameY = checked((short)(dy * 18));
+            }
     }
 
     private static void CarveEllipse(RuntimeGrid grid, int centerX, int centerY, int radiusX, int radiusY)
@@ -732,9 +705,6 @@ internal sealed class VanillaPostSettleWorldGenerationPass1458 : IWorldGeneratio
     }
 
     private static bool IsSandFamily(ushort type) => type is Sand or HardenedSand or Sandstone;
-
-    private static bool IsSmoothable(ushort type) =>
-        type is Dirt or Stone or Grass or Sand or Mud or JungleGrass or Silt or Snow or Ice or HardenedSand or Sandstone;
 
     private static bool IsNaturalCaveWall(ushort wall) =>
         wall is DirtUnsafeWall or RockyDirtUnsafeWall or OldStoneUnsafeWall or CaveDirtUnsafeWall or RoughDirtUnsafeWall or
@@ -812,14 +782,14 @@ internal sealed class VanillaPostSettleWorldGenerationPass1458 : IWorldGeneratio
             int top = Math.Max(0, centerY - radiusY);
             int bottom = Math.Min(Height - 1, centerY + radiusY);
             for (int x = left; x <= right; x++)
-            for (int y = top; y <= bottom; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (!tile.IsActive)
-                    continue;
-                if (VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
-                    return true;
-            }
+                for (int y = top; y <= bottom; y++)
+                {
+                    WorldTile tile = At(x, y);
+                    if (!tile.IsActive)
+                        continue;
+                    if (VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
+                        return true;
+                }
             return false;
         }
     }
