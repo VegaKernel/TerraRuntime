@@ -40,7 +40,7 @@ jobs:
           PY
           python3 tools/ci/apply_skeletron_skull_death_loot_1458.py
           git diff --check
-      - name: Verify TerrariaServer 1.4.5.8 source contract
+      - name: Diagnose TerrariaServer 1.4.5.8 source contract
         shell: bash
         run: |
           set -euo pipefail
@@ -53,45 +53,31 @@ jobs:
           drops = Path('decompiled/1458/Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs').read_text(encoding='utf-8', errors='ignore')
           items = Path('decompiled/1458/Terraria/Item.cs').read_text(encoding='utf-8', errors='ignore')
 
-          required_npc = [
-              'else if (type == 35)', 'aiStyle = 11;', 'else if (type == 36)', 'aiStyle = 12;',
-              'GetAttackDamage_ForProjectiles(17f, 17f)', 'timeLeft = 300;'
-          ]
-          missing = [s for s in required_npc if s not in npc]
-          if missing:
-              raise SystemExit('Skeletron NPC source contract changed: ' + ', '.join(missing))
-          if not re.search(r'SetEventFlagCleared\(ref (?:NPC\.)?downedBoss3, 15\)', npc):
-              raise SystemExit('Skeletron downedBoss3 progression contract changed')
+          checks = {
+              'head_defaults': all(s in npc for s in ('else if (type == 35)', 'aiStyle = 11;')),
+              'hand_defaults': all(s in npc for s in ('else if (type == 36)', 'aiStyle = 12;')),
+              'skull_damage': 'GetAttackDamage_ForProjectiles(17f, 17f)' in npc,
+              'downedBoss3': bool(re.search(r'SetEventFlagCleared\(ref (?:NPC\.)?downedBoss3, 15\)', npc)),
+              'shared_interaction': bool(re.search(r'if \(type == 35 \|\| type == 36\)[\s\S]{0,1000}?Main\.npc\[[A-Za-z0-9_]+\]\.ApplyInteraction_Inner\(player, localOnly\)', npc)),
+              'skull_homing': all(s in projectile for s in ('case 270:', 'ai[1] += 1f;', 'ai[1] < 110f', 'ai[1] > 30f')),
+              'loot': all(s in drops for s in ('BossBag(3323)', 'MasterModeCommonDrop(4927)', 'MasterModeDropOnAllPlayers(4801', 'CommonDrop(4993, 7)', 'RegisterToNPC(35, new CommonDrop(1363, 10))')),
+              'items': all(f'case {i}:' in items for i in (1273, 1281, 1313, 1363, 3323, 4801, 4927, 4993, 5624, 5625, 5626, 5628, 5737)),
+          }
+          for name, ok in checks.items():
+              print(f'source_check:{name}={ok}')
 
-          interaction_method = -1
-          for signature in ('void PlayerInteraction(int player)', 'void ApplyInteraction(int player)'):
-              interaction_method = npc.find(signature)
-              if interaction_method >= 0:
-                  break
-          if interaction_method >= 0:
-              print('--- SKELETRON INTERACTION SOURCE ---')
-              print(npc[interaction_method:interaction_method + 9000])
-              print('--- END SKELETRON INTERACTION SOURCE ---')
-          else:
-              for needle in ('playerInteraction[player]', 'type == 35', 'type == 36'):
-                  at = npc.find(needle)
-                  if at >= 0:
-                      print(f'--- SOURCE AROUND {needle} ---')
-                      print(npc[max(0, at - 1800):at + 4500])
-
-          if not re.search(r'Projectile\.NewProjectile[\s\S]{0,600}?270[\s\S]{0,400}?timeLeft = 300', npc):
-              raise SystemExit('Skeletron skull spawn/lifetime contract changed')
-          if 'case 270:' not in projectile or 'ai[1] += 1f;' not in projectile or 'ai[1] < 110f' not in projectile or 'ai[1] > 30f' not in projectile:
-              raise SystemExit('Skeletron skull homing contract changed')
-
-          required_drops = ['BossBag(3323)', 'MasterModeCommonDrop(4927)', 'MasterModeDropOnAllPlayers(4801', 'CommonDrop(4993, 7)', 'RegisterToNPC(35, new CommonDrop(1363, 10))']
-          missing = [s for s in required_drops if s not in drops]
-          if missing:
-              raise SystemExit('Skeletron loot source contract changed: ' + ', '.join(missing))
-          for item_id in (1273, 1281, 1313, 1363, 3323, 4801, 4927, 4993, 5624, 5625, 5626, 5628, 5737):
-              if f'case {item_id}:' not in items:
-                  raise SystemExit(f'Skeletron item defaults missing for {item_id}')
-          print('skeletron_1458_source_contract=diagnostic-ok')
+          for needle in ('GetAttackDamage_ForProjectiles(17f, 17f)', '270,', 'timeLeft = 300'):
+              start = 0
+              found = 0
+              while found < 4:
+                  at = npc.find(needle, start)
+                  if at < 0:
+                      break
+                  print(f'--- NPC SOURCE AROUND {needle} #{found + 1} ---')
+                  print(npc[max(0, at - 1800):at + 3500])
+                  start = at + len(needle)
+                  found += 1
+          print('skeletron_1458_source_contract=diagnosed')
           PY
       - name: Release build
         run: dotnet build build/TerraRuntime.slnx -c Release --nologo
@@ -102,5 +88,4 @@ jobs:
       - name: Commit validated feature branch
         if: ${{ false }}
         shell: bash
-        run: |
-          echo 'Diagnostic run only; final source contract must be tightened before commit.'
+        run: echo 'Diagnostic run only; tighten source contract before final commit.'
