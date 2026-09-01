@@ -33,8 +33,38 @@ jobs:
       - name: Decompile pinned TerrariaServer 1.4.5.8
         run: bash tools/decompile-reference.sh 1458
 
+      - name: Reconcile current documentation headings
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tools/ci/apply_optimized_progression_content.py')
+          t = p.read_text(encoding='utf-8')
+          old = "        marker = '## Progression validation\\n'\n"
+          if old not in t:
+              raise SystemExit('English documentation marker statement not found')
+          t = t.replace(old, "        marker = '## Validation\\n'\n", 1)
+          old = "        marker = '## Проверка progression\\n' if '## Проверка progression\\n' in text else '## Progression validation\\n'\n"
+          if old not in t:
+              raise SystemExit('Russian documentation marker statement not found')
+          t = t.replace(old, "        marker = '## Validation\\n'\n", 1)
+          p.write_text(t, encoding='utf-8')
+          PY
+
       - name: Apply optimized progression content
         run: python3 tools/ci/apply_optimized_progression_content.py
+
+      - name: Reconcile optimized documentation summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for lang in ('en', 'ru'):
+              p = Path(f'docs/{lang}/optimized-world-generation.md')
+              t = p.read_text(encoding='utf-8-sig')
+              t = t.replace('- Shadow Orb / Crimson Heart anchors;\n', '')
+              p.write_text(t, encoding='utf-8-sig')
+          PY
 
       - name: Validate bilingual documentation
         run: |
