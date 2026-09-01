@@ -49,7 +49,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Dashboard_layout_replaces_chat_tile_with_world_player_tree()
+    public void Dashboard_layout_uses_wide_console_graph_row_and_world_player_tree_without_server_tile()
     {
         using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(160, 28);
@@ -72,6 +72,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 default(RuntimeDashboardSnapshot) with
                 {
                     WorldName = "Primary",
+                    Port = 7777,
                     TargetTicksPerSecond = 60,
                     ObservedTicksPerSecond = 60d
                 },
@@ -83,23 +84,73 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 status: null);
             app.LayoutAndDraw();
 
-            Assert.Equal(5, dashboard.GetVisiblePanelCountForSmoke());
+            Assert.Equal(4, dashboard.GetVisiblePanelCountForSmoke());
             Assert.Contains("TPS", dashboard.GetPanelTitleForSmoke("TPS"));
             Assert.Contains("Worlds / Players", dashboard.GetPanelTitleForSmoke("Worlds"));
             Assert.DoesNotContain("CPU", dashboard.GetTpsLegendForSmoke(), StringComparison.OrdinalIgnoreCase);
 
+            var console = dashboard.GetPanelFrameForSmoke("Console");
             var tps = dashboard.GetPanelFrameForSmoke("TPS");
             var network = dashboard.GetPanelFrameForSmoke("Network");
             var worlds = dashboard.GetPanelFrameForSmoke("Worlds");
 
+            Assert.True(console.Width > worlds.Width);
+            Assert.Equal(0, tps.Y);
             Assert.Equal(tps.Y, network.Y);
             Assert.Equal(tps.Height, network.Height);
             Assert.Equal(tps.Bottom, worlds.Y);
             Assert.True(worlds.Height > tps.Height);
-            Assert.Contains("Logs ON", dashboard.GetFeedControlsForSmoke());
+            Assert.Contains("Logs INFO+", dashboard.GetFeedControlsForSmoke());
             Assert.Contains("Chat ON", dashboard.GetFeedControlsForSmoke());
-            Assert.Contains("Level INFO+", dashboard.GetFeedControlsForSmoke());
+            Assert.DoesNotContain("Level", dashboard.GetFeedControlsForSmoke(), StringComparison.OrdinalIgnoreCase);
             Assert.True(dashboard.CommandInputFrameUsesAccentForSmoke);
+        }
+        finally
+        {
+            app.End(token);
+        }
+    }
+
+    [Fact]
+    public void Maximized_graph_scales_history_across_wide_viewport()
+    {
+        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        app.Driver!.SetScreenSize(160, 28);
+        using var window = new Window
+        {
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        var dashboard = new RuntimeOverviewDashboard
+        {
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        window.Add(dashboard);
+
+        SessionToken token = app.Begin(window)!;
+        try
+        {
+            RuntimeDashboardSnapshot runtime = default(RuntimeDashboardSnapshot) with
+            {
+                WorldName = "Primary",
+                TargetTicksPerSecond = 60,
+                ObservedTicksPerSecond = 60d
+            };
+
+            for (int i = 0; i < 60; i++)
+                dashboard.Refresh(runtime with { Tick = i + 1 }, default, default, default, default, default, status: null);
+
+            app.LayoutAndDraw();
+            Assert.True(dashboard.GetGraphCellSizeForSmoke("TPS").X >= 1f);
+
+            dashboard.TogglePanelForSmoke("TPS");
+            app.LayoutAndDraw();
+            dashboard.Refresh(runtime with { Tick = 61 }, default, default, default, default, default, status: null);
+            app.LayoutAndDraw();
+
+            Assert.Equal(1, dashboard.GetVisiblePanelCountForSmoke());
+            Assert.True(dashboard.GetGraphCellSizeForSmoke("TPS").X < 1f);
         }
         finally
         {
@@ -160,7 +211,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Feed_visibility_and_log_level_are_ui_local_filters()
+    public void Feed_log_mode_and_chat_visibility_are_ui_local_filters()
     {
         using var dashboard = new RuntimeOverviewDashboard();
         DateTimeOffset startedAt = new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
@@ -189,6 +240,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         string chatOnly = dashboard.GetConsoleTextForSmoke();
         Assert.Contains("CHAT #3: hello-chat", chatOnly);
         Assert.DoesNotContain("warn-entry", chatOnly);
+        Assert.Contains("Logs OFF", dashboard.GetFeedControlsForSmoke());
 
         dashboard.SetFeedForSmoke(logs: true, chat: false, RuntimeLogLevel.Warning);
         string warnings = dashboard.GetConsoleTextForSmoke();
@@ -196,6 +248,8 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.Contains("ERR  World error-entry", warnings);
         Assert.DoesNotContain("info-entry", warnings);
         Assert.DoesNotContain("hello-chat", warnings);
+        Assert.Contains("Logs WARN+", dashboard.GetFeedControlsForSmoke());
+        Assert.Contains("Chat OFF", dashboard.GetFeedControlsForSmoke());
     }
 
     [Fact]
