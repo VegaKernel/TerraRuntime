@@ -32,6 +32,7 @@ jobs:
           python3 tools/ci/apply_live_npc_combat.py
           sed -i 's/if count != 1:/if count < 1:/' tools/ci/fix_live_npc_combat.py
           python3 tools/ci/fix_live_npc_combat.py
+          sed -i '/using TerraRuntime.Network;/a using TerraRuntime.Protocol;' src/TerraRuntime/RuntimeNpcReplicationRegistry.cs
 
       - name: Validate bilingual documentation
         run: python3 tools/ci/check_documentation.py
