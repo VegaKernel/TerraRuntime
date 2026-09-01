@@ -6,6 +6,7 @@ on:
       - work/npc-boss-ai-live-combat
     paths:
       - tools/ci/apply_live_npc_combat.py
+      - tools/ci/fix_live_npc_combat.py
       - .github/workflows/apply-live-npc-combat.yml
 
 permissions:
@@ -27,7 +28,9 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
 
       - name: Apply prepared combat patch
-        run: python3 tools/ci/apply_live_npc_combat.py
+        run: |
+          python3 tools/ci/apply_live_npc_combat.py
+          python3 tools/ci/fix_live_npc_combat.py
 
       - name: Validate bilingual documentation
         run: python3 tools/ci/check_documentation.py
