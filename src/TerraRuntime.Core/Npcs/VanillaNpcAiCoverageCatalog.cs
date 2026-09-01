@@ -32,7 +32,11 @@ public enum VanillaNpcAiCapability : uint
     BossExpertPhaseTwoDeterministicSlice = 1u << 23,
     BossExpertRapidDashSlice = 1u << 24,
     FlyingEyeLifecycleStateSlice = 1u << 25,
-    FlyerProjectileSideEffectSlice = 1u << 26
+    FlyerProjectileSideEffectSlice = 1u << 26,
+    BrainTeleportStateSlice = 1u << 27,
+    BrainCreeperLifecycleSlice = 1u << 28,
+    BrainBossStateSlice = 1u << 29,
+    BrainCreeperStateSlice = 1u << 30
 }
 
 /// <summary>
@@ -87,7 +91,7 @@ public static class VanillaNpcAiCoverageCatalog
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         var entries = new VanillaNpcAiCoverage[
-            7 +
+            9 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -132,8 +136,19 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAiCapability.ChildSpawnSlice |
             VanillaNpcAiCapability.TeleportEnvironmentSlice |
             VanillaNpcAiCapability.KingSlimeDifficultySeedSlice);
+        entries[7] = Partial(
+            VanillaNpcIds.BrainOfCthulhu,
+            VanillaNpcAiCapability.BrainBossStateSlice |
+            OrdinaryCore |
+            VanillaNpcAiCapability.ChildSpawnSlice |
+            VanillaNpcAiCapability.TeleportEnvironmentSlice |
+            VanillaNpcAiCapability.BrainTeleportStateSlice);
+        entries[8] = Partial(
+            VanillaNpcIds.BrainCreeper,
+            VanillaNpcAiCapability.BrainCreeperStateSlice |
+            OrdinaryCore | VanillaNpcAiCapability.BrainCreeperLifecycleSlice);
 
-        int index = 7;
+        int index = 9;
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {
             VanillaNpcAiCapability capabilities =

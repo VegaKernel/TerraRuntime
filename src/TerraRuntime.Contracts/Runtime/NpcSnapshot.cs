@@ -107,6 +107,9 @@ public readonly record struct NpcSimulationState(
     /// <summary>Authoritative damage gate for vanilla transitions such as King Slime teleport disappearance.</summary>
     public bool DontTakeDamage { get; init; }
 
+    /// <summary>Vanilla NPC.alpha. AI_054 consumes this presentation value as an authoritative teleport timer.</summary>
+    public int Alpha { get; init; }
+
     /// <summary>
     /// Optional live defense written by AI when vanilla mutates NPC.defense at runtime. Null means the verified
     /// definition remains authoritative. Negative values are intentional for source-backed states such as the
@@ -154,6 +157,7 @@ public readonly record struct NpcSimulationState(
         LocalAi = default,
         Hidden = false,
         DontTakeDamage = false,
+        Alpha = 0,
         DefenseOverride = null,
         DamageOverride = null,
         ReflectsProjectiles = false,
@@ -171,6 +175,7 @@ public readonly record struct NpcSimulationState(
         float.IsFinite(Scale) &&
         Scale > 0f &&
         LocalAi.IsFinite &&
+        Alpha is >= 0 and <= 255 &&
         ((LifeMax == 0 && Life == 0) ||
          (LifeMax > 0 && Life >= 0 && Life <= LifeMax)) &&
         TimeLeft >= -1 &&

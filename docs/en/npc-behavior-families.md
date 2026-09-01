@@ -96,6 +96,8 @@ All D4 checkboxes describe decomposition/ownership for admitted slices. They do 
 
 ## Verification
 
+Brain of Cthulhu and Brain Creeper are now explicit fail-closed families. The Brain owns the source 20/40 Creeper bootstrap, phase-one invulnerability, both teleport state machines and Good World pursuit speed; Creepers own Brain-relative orbit/charge and Expert/Good World pursuit. Their packet-28 death path includes Creeper difficulty materials plus Brain normal/Expert/Master loot and `downedBoss2`. The player `ZoneCrimson` escape gate and presentation-only effects remain open, so full parity remains false.
+
 `VanillaNpcBehaviorFamilyDispatchTests` pins the fail-closed dispatch contract: disabled families fall back, unknown catalog types do not inherit a behavior, and FlyingEye target refresh occurs in the family strategy before delegation. `VanillaEyeOfCthulhuExpertRapidDashTests` pins source RNG consumption, live-player-velocity prediction, low-life seeding and rapid-state cadence. `VanillaNpcAiCoverageCatalogTests` prevents those slices from being mislabeled as full parity.
 
 ## AI_002 lifecycle world state

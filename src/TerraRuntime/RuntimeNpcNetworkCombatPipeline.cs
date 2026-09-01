@@ -35,6 +35,7 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
     private readonly IRuntimePlayerSlotSnapshotLookup players;
     private readonly RuntimeKingSlimeDifficultyLootDeliverySink? difficultyLoot;
     private readonly RuntimeEaterOfWorldsLootDeliverySink eaterLoot;
+    private readonly RuntimeBrainOfCthulhuLootDeliverySink brainLoot;
     private readonly VanillaNpcLootWorldItemMaterializer materializer = VanillaNpcLootWorldItemMaterializer.Instance;
     private readonly SystemNpcCombatRandom random = new();
     private readonly bool expertMode;
@@ -47,6 +48,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
         new VanillaKingSlimeLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
     private readonly VanillaEaterOfWorldsLootPlayer[] activeEaterLootPlayers =
         new VanillaEaterOfWorldsLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+    private readonly VanillaBrainOfCthulhuLootPlayer[] activeBrainLootPlayers =
+        new VanillaBrainOfCthulhuLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
     private readonly NpcSnapshot[] npcFamilyBuffer;
 
     public RuntimeNpcNetworkCombatPipeline(
@@ -76,6 +79,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
         damage = new RuntimeNpcDamageExecutor(npcs, expertMode, interactions);
         npcFamilyBuffer = new NpcSnapshot[npcs.Capacity];
         eaterLoot = new RuntimeEaterOfWorldsLootDeliverySink(
+            worldItems,
+            instancedLeases,
+            worldItemReplication);
+        brainLoot = new RuntimeBrainOfCthulhuLootDeliverySink(
             worldItems,
             instancedLeases,
             worldItemReplication);
@@ -170,8 +177,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
 
             if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
                 ApplyKingSlimeDeathEffects(in dead);
-            else if (eaterBoss)
-                ApplyEaterOfWorldsDeathEffects();
+            else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
+                ApplyEvilBossDeathEffects();
 
             if (!npcs.TryDespawn(dead.Handle))
                 throw new InvalidOperationException("A lethal packet-28 NPC could not be despawned after death effects.");
@@ -195,6 +202,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
     {
         if (VanillaEaterOfWorldsLifecycle.IsSegment(npc.TypeIdentity))
             return TryExecuteEaterOfWorldsLoot(in npc, eaterBoss);
+        if (npc.TypeIdentity == VanillaNpcIds.BrainOfCthulhu || npc.TypeIdentity == VanillaNpcIds.BrainCreeper)
+            return TryExecuteBrainOfCthulhuLoot(in npc);
 
         if (npc.TypeIdentity == VanillaNpcIds.KingSlime && expertMode)
             return TryExecuteKingSlimeDifficultyLoot(in npc);
@@ -329,6 +338,42 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
             out _);
     }
 
+    private bool TryExecuteBrainOfCthulhuLoot(in NpcSnapshot npc)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition))
+            return false;
+
+        int activeCount = 0;
+        if (npc.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
+        {
+            if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount))
+                return false;
+
+            for (int index = 0; index < interactionCount; index++)
+            {
+                PlayerSlotId slot = interactionSlots[index];
+                if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+                    continue;
+                activeBrainLootPlayers[activeCount++] = new VanillaBrainOfCthulhuLootPlayer(
+                    slot,
+                    player.PositionX + VanillaPlayerWidth * 0.5f,
+                    player.PositionY + VanillaPlayerHeight * 0.5f);
+            }
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaBrainOfCthulhuLootContext(expertMode, masterMode, npc.TypeIdentity);
+        return VanillaBrainOfCthulhuLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeBrainLootPlayers.AsSpan(0, activeCount),
+            random,
+            brainLoot,
+            out _);
+    }
+
     private bool TryExecuteKingSlimeDifficultyLoot(in NpcSnapshot npc)
     {
         if (difficultyLoot is null ||
@@ -363,7 +408,7 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
             out _);
     }
 
-    private void ApplyEaterOfWorldsDeathEffects()
+    private void ApplyEvilBossDeathEffects()
     {
         if (worldTiles is null)
             return;

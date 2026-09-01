@@ -227,6 +227,36 @@ public static class VanillaItemDefinitionCatalog
     private static readonly VanillaItemDefinition EaterMasterTrophyDefinition =
         EaterWorldDrop(VanillaEaterOfWorldsItemIds.EaterOfWorldsMasterTrophy, 14, 14);
 
+    private static readonly VanillaItemDefinition BrainCrimtaneOreDefinition =
+        BrainWorldDrop(VanillaBrainOfCthulhuItemIds.CrimtaneOre, 12, 12);
+    private static readonly VanillaItemDefinition BrainTissueSampleDefinition =
+        BrainWorldDrop(VanillaBrainOfCthulhuItemIds.TissueSample, 14, 18);
+    private static readonly VanillaItemDefinition BrainTrophyDefinition =
+        BrainWorldDrop(VanillaBrainOfCthulhuItemIds.BrainOfCthulhuTrophy, 30, 30);
+    private static readonly VanillaItemDefinition BrainMaskDefinition =
+        BrainWorldDrop(VanillaBrainOfCthulhuItemIds.BrainMask, 28, 20);
+    private static readonly VanillaItemDefinition BrainBoneRattleDefinition =
+        BrainWorldDrop(VanillaBrainOfCthulhuItemIds.BoneRattle, 16, 30);
+    private static readonly VanillaItemDefinition BrainBossBagDefinition =
+        BrainWorldDrop(VanillaBrainOfCthulhuItemIds.BrainOfCthulhuBossBag, 24, 24);
+    private static readonly VanillaItemDefinition BrainPetItemDefinition =
+        BrainWorldDrop(VanillaBrainOfCthulhuItemIds.BrainOfCthulhuPetItem, 16, 30);
+    private static readonly VanillaItemDefinition BrainMasterTrophyDefinition =
+        BrainWorldDrop(VanillaBrainOfCthulhuItemIds.BrainOfCthulhuMasterTrophy, 14, 14);
+
+    private static VanillaItemDefinition BrainWorldDrop(ItemTypeId type, int width, int height) =>
+        new(
+            Type: type,
+            RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
+            UseTiming: null,
+            Placement: null,
+            PickTool: null,
+            WorldDrop: new VanillaItemWorldDropDefinition(
+                width,
+                height,
+                NoGravity: false,
+                PrefixFamily: VanillaItemPrefixFamily.None));
+
     private static VanillaItemDefinition EaterWorldDrop(ItemTypeId type, int width, int height) =>
         new(
             Type: type,
@@ -334,6 +364,47 @@ public static class VanillaItemDefinitionCatalog
         if (type == VanillaEaterOfWorldsItemIds.EaterOfWorldsMasterTrophy)
         {
             definition = EaterMasterTrophyDefinition;
+            return true;
+        }
+
+        if (type == VanillaBrainOfCthulhuItemIds.CrimtaneOre)
+        {
+            definition = BrainCrimtaneOreDefinition;
+            return true;
+        }
+        if (type == VanillaBrainOfCthulhuItemIds.TissueSample)
+        {
+            definition = BrainTissueSampleDefinition;
+            return true;
+        }
+        if (type == VanillaBrainOfCthulhuItemIds.BrainOfCthulhuTrophy)
+        {
+            definition = BrainTrophyDefinition;
+            return true;
+        }
+        if (type == VanillaBrainOfCthulhuItemIds.BrainMask)
+        {
+            definition = BrainMaskDefinition;
+            return true;
+        }
+        if (type == VanillaBrainOfCthulhuItemIds.BoneRattle)
+        {
+            definition = BrainBoneRattleDefinition;
+            return true;
+        }
+        if (type == VanillaBrainOfCthulhuItemIds.BrainOfCthulhuBossBag)
+        {
+            definition = BrainBossBagDefinition;
+            return true;
+        }
+        if (type == VanillaBrainOfCthulhuItemIds.BrainOfCthulhuPetItem)
+        {
+            definition = BrainPetItemDefinition;
+            return true;
+        }
+        if (type == VanillaBrainOfCthulhuItemIds.BrainOfCthulhuMasterTrophy)
+        {
+            definition = BrainMasterTrophyDefinition;
             return true;
         }
 

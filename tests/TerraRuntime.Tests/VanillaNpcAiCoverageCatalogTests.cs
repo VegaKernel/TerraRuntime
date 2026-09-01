@@ -8,7 +8,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Every_coverage_entry_has_an_explicit_definition_and_behavior_family()
     {
-        int expected = 7 +
+        int expected = 9 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -36,6 +36,19 @@ public sealed class VanillaNpcAiCoverageCatalogTests
         Assert.True(kingSlime.Has(VanillaNpcAiCapability.TeleportEnvironmentSlice));
         Assert.True(kingSlime.Has(VanillaNpcAiCapability.KingSlimeDifficultySeedSlice));
         Assert.False(kingSlime.FullVanillaAiParity);
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.BrainOfCthulhu,
+            out VanillaNpcAiCoverage brain));
+        Assert.True(brain.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+        Assert.True(brain.Has(VanillaNpcAiCapability.BrainBossStateSlice));
+        Assert.False(brain.FullVanillaAiParity);
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.BrainCreeper,
+            out VanillaNpcAiCoverage creeper));
+        Assert.True(creeper.Has(VanillaNpcAiCapability.BrainCreeperStateSlice));
+        Assert.False(creeper.FullVanillaAiParity);
 
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
             VanillaNpcIds.EyeOfCthulhu,

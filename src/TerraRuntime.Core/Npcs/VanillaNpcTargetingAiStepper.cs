@@ -38,6 +38,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaServantOfCthulhuNpcBehaviorStrategy _flyer;
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
     private readonly VanillaKingSlimeNpcBehaviorStrategy _kingSlime;
+    private readonly VanillaBrainOfCthulhuNpcBehaviorStrategy _brainOfCthulhu;
+    private readonly VanillaBrainCreeperNpcBehaviorStrategy _brainCreeper;
     private readonly IVanillaNpcRandom _random;
 
     public VanillaNpcTargetingAiStepper(
@@ -51,8 +53,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy(_random);
         _eyeOfCthulhu = new VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy(_random);
         _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
+        _brainOfCthulhu = new VanillaBrainOfCthulhuNpcBehaviorStrategy(_random);
+        _brainCreeper = new VanillaBrainCreeperNpcBehaviorStrategy(_random);
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
+        if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
+            _brainOfCthulhu.SetEnvironment(brainEnvironment);
     }
 
     public void EnableBlueSlimeMotion(double worldSurfaceTiles = double.PositiveInfinity) =>
@@ -70,7 +76,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         _kingSlime.SetEnvironment(environment);
         if (environment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
+        if (environment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
+            _brainOfCthulhu.SetEnvironment(brainEnvironment);
     }
+
+    public void SetBrainOfCthulhuEnvironment(IVanillaBrainOfCthulhuEnvironment environment) =>
+        _brainOfCthulhu.SetEnvironment(environment);
 
     public void SetWormEnvironment(IVanillaWormEnvironment environment) =>
         _worm.SetEnvironment(environment);
@@ -125,6 +136,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Flyer => _flyer,
             VanillaNpcBehaviorFamily.Worm => _worm,
             VanillaNpcBehaviorFamily.KingSlime => _kingSlime,
+            VanillaNpcBehaviorFamily.BrainOfCthulhu => _brainOfCthulhu,
+            VanillaNpcBehaviorFamily.BrainCreeper => _brainCreeper,
             _ => null
         };
 
@@ -151,6 +164,12 @@ public sealed class VanillaNpcTargetingAiStepper :
             proposed.Type == VanillaNpcIds.KingSlime.Value)
         {
             return PlanKingSlimeMinions(in source, in proposed, destination);
+        }
+
+        if (source.Type == VanillaNpcIds.BrainOfCthulhu.Value &&
+            proposed.Type == VanillaNpcIds.BrainOfCthulhu.Value)
+        {
+            return PlanBrainOfCthulhuCreepers(in source, in proposed, destination);
         }
 
         if (NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType) &&
@@ -259,6 +278,41 @@ public sealed class VanillaNpcTargetingAiStepper :
             LinkSourceFollowerSlot = true
         };
         return 1;
+    }
+
+    private int PlanBrainOfCthulhuCreepers(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiSpawnIntent> destination)
+    {
+        if (source.Simulation.LocalAi.Ai0 != 0f ||
+            proposed.Simulation.LocalAi.Ai0 != 1f ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BrainOfCthulhu, out VanillaNpcDefinition brain) ||
+            !brain.TryResolveHitbox(proposed.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            return 0;
+        }
+
+        int requested = _context.GoodWorld ? 40 : 20;
+        int count = Math.Min(requested, destination.Length);
+        float centerX = proposed.PositionX + hitbox.Width * 0.5f;
+        float centerY = proposed.PositionY + hitbox.Height * 0.5f;
+        for (int index = 0; index < count; index++)
+        {
+            int bottomX = (int)(centerX + _random.NextInt32(-hitbox.Width, hitbox.Width));
+            int bottomY = (int)(centerY + _random.NextInt32(-hitbox.Height, hitbox.Height));
+            float velocityX = _random.NextInt32(-30, 31) * 0.1f;
+            float velocityY = _random.NextInt32(-30, 31) * 0.1f;
+            destination[index] = new NpcAiSpawnIntent(
+                VanillaNpcIds.BrainCreeper,
+                bottomX,
+                bottomY,
+                velocityX,
+                velocityY,
+                VanillaNpcDefinitionCatalog.DefaultTarget);
+        }
+
+        return count;
     }
 
     private int PlanEyeOfCthulhuServant(

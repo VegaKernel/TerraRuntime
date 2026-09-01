@@ -12,7 +12,8 @@ namespace TerraRuntime;
 /// </summary>
 internal sealed class VanillaKingSlimeWorldEnvironment :
     IVanillaKingSlimeEnvironment,
-    IVanillaEyeOfCthulhuEnvironment
+    IVanillaEyeOfCthulhuEnvironment,
+    IVanillaBrainOfCthulhuEnvironment
 {
     private const int TileSize = 16;
     private const float BasePlayerHeight = 42f;
@@ -34,6 +35,17 @@ internal sealed class VanillaKingSlimeWorldEnvironment :
     public float WorldPixelWidth => checked(_tiles.Dimensions.WidthTiles * (float)TileSize);
 
     public float WorldPixelHeight => checked(_tiles.Dimensions.HeightTiles * (float)TileSize);
+
+    public bool IsSolidTile(int tileX, int tileY)
+    {
+        if ((uint)tileX >= (uint)_tiles.Dimensions.WidthTiles ||
+            (uint)tileY >= (uint)_tiles.Dimensions.HeightTiles)
+        {
+            return true;
+        }
+
+        return IsFullSolid(_tiles.Get(tileX, tileY));
+    }
 
     public bool CanHitLine(float fromX, float fromY, float toX, float toY) =>
         VanillaWorldLineOfSight.CanHitLine(_tiles, fromX, fromY, toX, toY);

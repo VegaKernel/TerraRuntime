@@ -96,6 +96,8 @@ D4-пункт `AI family/behavior decomposition` описывает ownership и
 
 ## Проверка
 
+Brain of Cthulhu и Brain Creeper теперь являются отдельными fail-closed family. Brain владеет source-backed созданием 20/40 Creeper, invulnerability первой фазы, обеими teleport state machine и Good World скоростью преследования; Creeper владеет orbit/charge относительно Brain и Expert/Good World pursuit. Packet-28 death path включает difficulty material loot Creeper, normal/Expert/Master loot Brain и `downedBoss2`. Player `ZoneCrimson` escape gate и presentation-only эффекты пока остаются открытыми, поэтому full parity остаётся false.
+
 `VanillaNpcBehaviorFamilyDispatchTests` закрепляет fail-closed контракт dispatch: отключённые families уходят в fallback, неизвестные catalog types не наследуют поведение, а FlyingEye target refresh выполняется внутри family strategy до делегирования. `VanillaEyeOfCthulhuExpertRapidDashTests` закрепляет source RNG consumption, prediction по live velocity игрока, low-life seeding и cadence rapid states. `VanillaNpcAiCoverageCatalogTests` не позволяет назвать эти slices полным parity.
 
 ## Состояние мира для жизненного цикла AI_002
