@@ -57,9 +57,9 @@ Every mandatory role must have a reserved region or an explicit count/range budg
 - [x] Living Wood trees with hollow trunks, roots, underground rooms and persistent caches;
 - [x] bounded Underworld houses plus platform-bridge variation;
 - [ ] extend Underworld settlements with source-backed furniture/loot/resource families;
-- [ ] multiple hives on larger worlds with valid Queen Bee progression space;
+- [x] multiple hives on larger worlds with valid Queen Bee progression space;
 - [x] granite, marble and spider/cobweb micro-biomes;
-- [ ] add glowing-mushroom and additional representative micro-biomes;
+- [x] add glowing-mushroom and additional representative micro-biomes;
 - [x] current optional landmarks have explicit world-size/density budgets rather than unbounded random placement.
 
 ## O3 - Progression resources and loot
@@ -70,13 +70,13 @@ Presence of terrain alone is not considered playable progression.
 - [x] Hellstone placement;
 - [x] Water, Lava, Honey and Shimmer availability;
 - [x] starting Guide persistence;
-- [x] Life Crystal distribution with a fail-closed minimum count scaled by world area;
+- [x] Life Crystal distribution with a fail-closed minimum count scaled by world area, including complete-footprint repair before playability validation;
 - [x] separate surface/underground/cavern persistent chest budgets;
 - [x] persistent landmark caches for sky houses, pyramids, Living Trees and Underworld houses;
 - [x] biome chest/loot families needed for ordinary pre-hardmode exploration;
 - [x] dungeon locked chest/key progression;
 - [x] source-backed 2x2 Shadow Orb / Crimson Heart progression anchors with world-size budgets and correct Crimson +36 frame style;
-- [x] Hive Larva worldgen anchors plus a persistent jungle progression cache with source-backed Jungle Spores/Stingers/Vines; authoritative Queen Bee activation remains gameplay-owned;
+- [x] Hive Larva worldgen anchors distributed across isolated hive components plus a persistent jungle progression cache with source-backed Jungle Spores/Stingers/Vines; authoritative Queen Bee activation remains gameplay-owned;
 - [x] reachable Hellforge route with an explicit dry Obsidian/exposed-Hellstone resource pocket and final topology targets;
 - [ ] hardmode-ready world anchors required by later progression mutation logic.
 

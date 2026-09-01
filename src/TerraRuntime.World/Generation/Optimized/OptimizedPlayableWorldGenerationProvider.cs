@@ -374,12 +374,16 @@ public sealed class OptimizedPlayableWorldGenerationProvider : IWorldGenerationP
             if (context.Metadata is null || !context.Metadata.TryGetSpawn(out WorldGenerationPoint spawn))
                 throw new InvalidOperationException("Optimized playability validation requires finalized spawn metadata.");
 
+            RepairLifeCrystalBudget(context, state);
+            int completeLifeCrystals = CountCompleteLifeCrystals(context.Workspace);
             int lifeCrystalTiles = CountActiveTile(context.Workspace, LifeCrystal);
             int requiredLifeCrystalTiles = checked(state.LifeCrystalTarget * 4);
-            if (lifeCrystalTiles < requiredLifeCrystalTiles || state.LifeCrystalsPlaced != state.LifeCrystalTarget)
+            if (completeLifeCrystals < state.LifeCrystalTarget || lifeCrystalTiles < requiredLifeCrystalTiles ||
+                state.LifeCrystalsPlaced < state.LifeCrystalTarget)
             {
                 throw new InvalidOperationException(
-                    $"Optimized playability validation found {lifeCrystalTiles}/{requiredLifeCrystalTiles} required Life Crystal tiles.");
+                    $"Optimized playability validation found {completeLifeCrystals}/{state.LifeCrystalTarget} complete Life Crystals " +
+                    $"and {lifeCrystalTiles}/{requiredLifeCrystalTiles} Life Crystal tiles.");
             }
 
             if (runtimeWorkspace.GeneratedChestCount < state.ChestTarget || state.ChestsPlaced != state.ChestTarget)
@@ -415,6 +419,80 @@ public sealed class OptimizedPlayableWorldGenerationProvider : IWorldGenerationP
                 $"Validated starter safety, {state.LifeCrystalsPlaced} Life Crystals, {state.ChestsPlaced} caches and organic cave landmarks");
         }
     }
+
+    private static void RepairLifeCrystalBudget(IWorldGenerationContext context, FeatureState state)
+    {
+        RemoveIncompleteLifeCrystalFragments(context.Workspace);
+        int complete = CountCompleteLifeCrystals(context.Workspace);
+        state.LifeCrystalsPlaced = complete;
+        if (complete >= state.LifeCrystalTarget)
+            return;
+
+        ApproximateLayers layers = CalculateApproximateLayers(context.Workspace);
+        int minY = Math.Clamp(layers.Surface + 38, 8, layers.UnderworldTop - 35);
+        int maxY = Math.Max(minY + 1, layers.UnderworldTop - 24);
+        PlaceLifeCrystalFallbacks(context, state, layers, minY, maxY);
+    }
+
+    private static void RemoveIncompleteLifeCrystalFragments(IWorldGenerationWorkspace workspace)
+    {
+        var remove = new List<WorldGenerationPoint>();
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        {
+            if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile) ||
+                (tile.Flags & WorldGenerationTileFlags.Active) == 0 || tile.Type != LifeCrystal)
+                continue;
+
+            int dx = tile.FrameX switch { 0 => 0, 18 => 1, _ => -1 };
+            int dy = tile.FrameY switch { 0 => 0, 18 => 1, _ => -1 };
+            if (dx < 0 || dy < 0 || !IsCompleteLifeCrystalAt(workspace, x - dx, y - dy))
+                remove.Add(new WorldGenerationPoint(x, y));
+        }
+
+        foreach (WorldGenerationPoint point in remove)
+        {
+            if (!workspace.TryGetTile(point.X, point.Y, out WorldGenerationTile tile))
+                continue;
+            SetAir(workspace, point.X, point.Y, tile.Wall, tile.WallColor);
+        }
+    }
+
+    private static int CountCompleteLifeCrystals(IWorldGenerationWorkspace workspace)
+    {
+        int count = 0;
+        for (int y = 0; y < workspace.HeightTiles - 1; y++)
+        for (int x = 0; x < workspace.WidthTiles - 1; x++)
+        {
+            if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
+                (tile.Flags & WorldGenerationTileFlags.Active) != 0 && tile.Type == LifeCrystal &&
+                tile.FrameX == 0 && tile.FrameY == 0 && IsCompleteLifeCrystalAt(workspace, x, y))
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static bool IsCompleteLifeCrystalAt(IWorldGenerationWorkspace workspace, int left, int top)
+    {
+        if (left < 0 || top < 0 || left + 1 >= workspace.WidthTiles || top + 1 >= workspace.HeightTiles)
+            return false;
+        return IsLifeCrystalFrame(workspace, left, top, 0, 0) &&
+               IsLifeCrystalFrame(workspace, left + 1, top, 18, 0) &&
+               IsLifeCrystalFrame(workspace, left, top + 1, 0, 18) &&
+               IsLifeCrystalFrame(workspace, left + 1, top + 1, 18, 18);
+    }
+
+    private static bool IsLifeCrystalFrame(
+        IWorldGenerationWorkspace workspace,
+        int x,
+        int y,
+        short frameX,
+        short frameY) =>
+        workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
+        (tile.Flags & WorldGenerationTileFlags.Active) != 0 &&
+        tile.Type == LifeCrystal && tile.FrameX == frameX && tile.FrameY == frameY;
 
     private static int PlaceSurfaceChests(
         IWorldGenerationContext context,

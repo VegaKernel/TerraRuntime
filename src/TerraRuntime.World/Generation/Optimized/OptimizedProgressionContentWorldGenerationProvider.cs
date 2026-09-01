@@ -203,43 +203,84 @@ public sealed class OptimizedProgressionContentWorldGenerationProvider : IWorldG
 
         private static int PlaceLarva(IWorldGenerationContext context, int target)
         {
-            ushort hiveWall = checked((ushort)VanillaWallIds.HiveUnsafe.Value);
-            if (!TryFindWallBounds(context.Workspace, hiveWall, out Bounds bounds))
+            HiveComponentPlacement[] components = OptimizedJungleEcologyV2.CaptureHiveComponents(context.Workspace)
+                .Select(static component => new HiveComponentPlacement(component, 0))
+                .ToArray();
+            if (components.Length == 0)
                 return 0;
 
             int placed = 0;
-            for (int y = bounds.Top + 3; y <= bounds.Bottom - 5 && placed < target; y += 3)
+            // First pass guarantees spatial distribution: at most one Larva per connected hive component.
+            for (int i = 0; i < components.Length && placed < target; i++)
             {
-                for (int x = bounds.Left + 3; x <= bounds.Right - 5 && placed < target; x += 3)
-                {
-                    if (!CanCarveLarvaNiche(context.Workspace, x, y, hiveWall))
-                        continue;
+                int count = PlaceLarvaInComponent(context.Workspace, components[i].Component, maximum: 1);
+                components[i] = components[i] with { Placed = count };
+                placed += count;
+            }
 
-                    for (int nx = x - 1; nx <= x + 3; nx++)
-                    for (int ny = y - 1; ny <= y + 3; ny++)
-                    {
-                        if (!context.Workspace.TryGetTile(nx, ny, out WorldGenerationTile tile))
-                            continue;
-                        if ((tile.Flags & WorldGenerationTileFlags.Active) == 0)
-                            SetAir(context.Workspace, nx, ny, hiveWall);
-                    }
-
-                    PlaceFramedObject(
-                        context.Workspace,
-                        x,
-                        y,
-                        3,
-                        3,
-                        checked((ushort)VanillaTileIds.Larva.Value),
-                        styleOffsetX: 0,
-                        frameBaseY: 0,
-                        forcedWall: hiveWall);
-                    placed++;
-                }
+            // Compatibility fallback for direct use of the progression-content provider without the final ecology
+            // overlay: an older one-hive candidate may still request two or three Larva.
+            for (int i = 0; i < components.Length && placed < target; i++)
+            {
+                int remaining = target - placed;
+                int additional = PlaceLarvaInComponent(
+                    context.Workspace,
+                    components[i].Component,
+                    maximum: remaining,
+                    skipExisting: true);
+                placed += additional;
             }
 
             return placed;
         }
+
+        private static int PlaceLarvaInComponent(
+            IWorldGenerationWorkspace workspace,
+            OptimizedJungleEcologyV2.HiveComponent component,
+            int maximum,
+            bool skipExisting = false)
+        {
+            int placed = 0;
+            for (int y = component.Top + 2; y <= component.Bottom - 5 && placed < maximum; y += 2)
+            for (int x = component.Left + 2; x <= component.Right - 5 && placed < maximum; x += 2)
+            {
+                if (!OptimizedJungleEcologyV2.CanHostLarva(workspace, x, y))
+                    continue;
+
+                if (skipExisting && HasLarvaNearby(workspace, x, y, radius: 6))
+                    continue;
+
+                PlaceFramedObject(
+                    workspace,
+                    x,
+                    y,
+                    3,
+                    3,
+                    checked((ushort)VanillaTileIds.Larva.Value),
+                    styleOffsetX: 0,
+                    frameBaseY: 0,
+                    forcedWall: HiveUnsafeWall);
+                placed++;
+            }
+            return placed;
+        }
+
+        private static bool HasLarvaNearby(IWorldGenerationWorkspace workspace, int centerX, int centerY, int radius)
+        {
+            ushort larva = checked((ushort)VanillaTileIds.Larva.Value);
+            for (int y = Math.Max(0, centerY - radius); y <= Math.Min(workspace.HeightTiles - 1, centerY + radius); y++)
+            for (int x = Math.Max(0, centerX - radius); x <= Math.Min(workspace.WidthTiles - 1, centerX + radius); x++)
+            {
+                if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
+                    (tile.Flags & WorldGenerationTileFlags.Active) != 0 && tile.Type == larva)
+                    return true;
+            }
+            return false;
+        }
+
+        private readonly record struct HiveComponentPlacement(
+            OptimizedJungleEcologyV2.HiveComponent Component,
+            int Placed);
 
         private static bool CanCarveLarvaNiche(IWorldGenerationWorkspace workspace, int left, int top, ushort hiveWall)
         {
