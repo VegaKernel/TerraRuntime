@@ -658,7 +658,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 Eclipse: _townInitialEclipse,
                 InvasionActive: _townInitialInvasionActive,
                 WorldUpdateRate: 1);
-            _townMoveIn.Tick(in moveInConditions, _townSpawnPlayers.AsSpan(0, spawnPlayerCount));
+            _townMoveIn.Tick(
+                in moveInConditions,
+                _townSpawnPlayers.AsSpan(0, spawnPlayerCount),
+                _townPlayerBounds.AsSpan(0, boundsCount));
         }
 
         if (_townSchedule is not null)

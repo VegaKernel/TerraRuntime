@@ -81,7 +81,13 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
 
     public void Tick(
         in RuntimeTownNpcMoveInConditions1458 conditions,
-        ReadOnlySpan<VanillaTownSpawnPlayerFacts1458> players)
+        ReadOnlySpan<VanillaTownSpawnPlayerFacts1458> players) =>
+        Tick(in conditions, players, default);
+
+    public void Tick(
+        in RuntimeTownNpcMoveInConditions1458 conditions,
+        ReadOnlySpan<VanillaTownSpawnPlayerFacts1458> players,
+        ReadOnlySpan<RuntimeTownPlayerBounds1458> playerBounds)
     {
         AdvanceLookForHomeTimeoutsAndObserveKickOuts();
         houses.Scan(HouseScanBudgetPerTick);
@@ -118,8 +124,21 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
             return;
         }
 
-        if (!townNpcs.TryAddResident(type, in placement, npcs, out NpcSnapshot snapshot, out RuntimeTownNpcHomeCommit home))
+        RuntimeTownNpcPhysicalSpawn1458 physicalSpawn =
+            new RuntimeTownNpcPhysicalSpawnResolver1458(houses.Tiles).Resolve(
+                placement.HomeTileX,
+                placement.HomeTileY,
+                playerBounds);
+        if (!townNpcs.TryAddResident(
+                type,
+                in placement,
+                in physicalSpawn,
+                npcs,
+                out NpcSnapshot snapshot,
+                out RuntimeTownNpcHomeCommit home))
+        {
             return;
+        }
 
         if (type == VanillaNpcIds.Truffle)
         {
