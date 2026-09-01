@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Buffs;
 
 /// <summary>Verified BuffID.Sets traits currently needed to classify vanilla 1.4.5.8 buff state.</summary>
 public readonly record struct VanillaBuffDefinition(

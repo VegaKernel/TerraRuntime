@@ -3,6 +3,7 @@
   <Project Path="../src/TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
   <Project Path="../src/TerraRuntime.Core/TerraRuntime.Core.csproj" />
   <Project Path="../src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj" />
+  <Project Path="../src/TerraRuntime.Gameplay/TerraRuntime.Gameplay.csproj" />
   <Project Path="../src/TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
   <Project Path="../src/TerraRuntime.Network/TerraRuntime.Network.csproj" />
   <Project Path="../src/TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />

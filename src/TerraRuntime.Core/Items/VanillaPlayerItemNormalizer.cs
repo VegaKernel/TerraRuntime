@@ -48,12 +48,6 @@ public static class VanillaPlayerItemNormalizer
         };
     }
 
-    /// <summary>Compatibility wrapper for callers that still require the canonical protocol primitive.</summary>
-    public static short NormalizeNetId(short itemNetId) =>
-        TryNormalizeNetId(itemNetId, out ItemTypeId itemType)
-            ? checked((short)itemType.Value)
-            : (short)0;
-
     /// <summary>
     /// Crosses the signed packet-5 net-id representation into validated Terraria 1.4.5.8 item identity.
     /// </summary>

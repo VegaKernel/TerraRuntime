@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <RootNamespace>TerraRuntime.Gameplay</RootNamespace>
+    <AssemblyName>TerraRuntime.Gameplay</AssemblyName>
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
+  </ItemGroup>
+</Project>
