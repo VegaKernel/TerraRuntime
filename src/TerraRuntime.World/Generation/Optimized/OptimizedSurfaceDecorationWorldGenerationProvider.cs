@@ -22,6 +22,7 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
     private static readonly WorldGenerationPassId ProgressionContentId = OptimizedProgressionContentWorldGenerationProvider.ProgressionContentId;
     private static readonly WorldGenerationPassId SurfaceShapingId = new("terraruntime:optimized/surface-shaping");
     private static readonly WorldGenerationPassId SurfaceLifeId = new("terraruntime:optimized/surface-life");
+    private static readonly WorldGenerationPassId ExplorationLootId = new("terraruntime:optimized/exploration-loot-v2");
     private static readonly WorldGenerationPassId ProgressionValidationId = new("terraruntime:optimized/progression-validation");
 
     private readonly OptimizedProgressionValidationWorldGenerationProvider baseline = new();
@@ -41,6 +42,7 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
         bool insertedDungeonV2 = false;
         bool rewiredValidation = false;
         bool insertedSurfaceLife = false;
+        bool insertedExplorationLoot = false;
 
         foreach (CapturedPass entry in capture.Entries)
         {
@@ -109,12 +111,19 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                     WorldGenerationRngMode.IsolatedDeterministic,
                     requiredAfter: [SurfaceShapingId]),
                 SurfaceLifePass.Instance);
-            builder.Add(CloneDescriptor(entry.Descriptor, [SurfaceLifeId]), entry.Pass);
+            builder.Add(
+                new WorldGenerationPassDescriptor(
+                    ExplorationLootId,
+                    WorldGenerationRngMode.IsolatedDeterministic,
+                    requiredAfter: [SurfaceLifeId]),
+                ExplorationLootPass.Instance);
+            builder.Add(CloneDescriptor(entry.Descriptor, [ExplorationLootId]), entry.Pass);
             insertedSurfaceLife = true;
+            insertedExplorationLoot = true;
         }
 
         if (!insertedMorphology || !insertedUndergroundMorphology || !rewiredCaves ||
-            !insertedDungeonV2 || !rewiredValidation || !insertedSurfaceLife)
+            !insertedDungeonV2 || !rewiredValidation || !insertedSurfaceLife || !insertedExplorationLoot)
         {
             throw new InvalidOperationException(
                 "Optimized quality overlay could not find the morphology/dungeon/progression boundaries required by the final profile.");
@@ -176,6 +185,14 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
         public void Execute(IWorldGenerationContext context) =>
             _ = OptimizedDungeonV2.Apply(context);
+    }
+
+    private sealed class ExplorationLootPass : IWorldGenerationPass
+    {
+        public static ExplorationLootPass Instance { get; } = new();
+
+        public void Execute(IWorldGenerationContext context) =>
+            _ = OptimizedExplorationLoot1458.Apply(context);
     }
 
     private sealed class SurfaceShapingPass : IWorldGenerationPass
