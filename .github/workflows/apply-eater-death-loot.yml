@@ -25,7 +25,7 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
 
       - name: Fix staging test slot type
-        run: sed -i 's/private static NpcStateUpdate Eater(ushort slot/private static NpcStateUpdate Eater(byte slot/' tools/ci/apply_eater_death_loot.py
+        run: sed -i 's/Spawn(RuntimeNpcStore store, ushort slot/Spawn(RuntimeNpcStore store, byte slot/' tools/ci/apply_eater_death_loot.py
 
       - name: Apply production block
         run: python3 tools/ci/apply_eater_death_loot.py
