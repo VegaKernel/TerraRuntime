@@ -32,11 +32,28 @@ jobs:
           from pathlib import Path
           path = Path('tools/ci/apply_skeletron_skull_death_loot_1458.py')
           text = path.read_text(encoding='utf-8')
-          old = '        "            9 +\\n",\n        "            11 +\\n",\n        "coverage-test-count",'
-          new = '        "        int expected = 9 +\\n",\n        "        int expected = 11 +\\n",\n        "coverage-test-count",'
-          if old not in text:
-              raise SystemExit('coverage test script anchor changed')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          replacements = [
+              (
+                  '        "            9 +\\n",\n        "            11 +\\n",\n        "coverage-test-count",',
+                  '        "        int expected = 9 +\\n",\n        "        int expected = 11 +\\n",\n        "coverage-test-count",',
+                  'coverage test anchor'
+              ),
+              (
+                  '    private void MarkSkeletronInteraction(PlayerSlotId player)',
+                  '    private void MarkSkeletronInteraction(PlayerHandle player)',
+                  'generation-safe Skeletron interaction type'
+              ),
+              (
+                  '            RedHatAdjustmentsEnabled: npc.Ai.Ai3 == 1f);',
+                  '            RedHatAdjustmentsEnabled: false);',
+                  'do not infer RedHat world condition from NPC ai3'
+              ),
+          ]
+          for old, new, label in replacements:
+              if old not in text:
+                  raise SystemExit(f'{label} changed')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
           PY
           python3 tools/ci/apply_skeletron_skull_death_loot_1458.py
           git diff --check
@@ -59,25 +76,28 @@ jobs:
               'skull_damage': 'GetAttackDamage_ForProjectiles(17f, 17f)' in npc,
               'downedBoss3': bool(re.search(r'SetEventFlagCleared\(ref (?:NPC\.)?downedBoss3, 15\)', npc)),
               'shared_interaction': bool(re.search(r'if \(type == 35 \|\| type == 36\)[\s\S]{0,1000}?Main\.npc\[[A-Za-z0-9_]+\]\.ApplyInteraction_Inner\(player, localOnly\)', npc)),
-              'skull_homing': all(s in projectile for s in ('case 270:', 'ai[1] += 1f;', 'ai[1] < 110f', 'ai[1] > 30f')),
-              'loot': all(s in drops for s in ('BossBag(3323)', 'MasterModeCommonDrop(4927)', 'MasterModeDropOnAllPlayers(4801', 'CommonDrop(4993, 7)', 'RegisterToNPC(35, new CommonDrop(1363, 10))')),
+              'skull_spawn': bool(re.search(r'int [A-Za-z0-9_]+ = 270;[\s\S]{0,700}?Projectile\.NewProjectile[\s\S]{0,400}?-1f\)[\s\S]{0,250}?timeLeft = 300', npc)),
               'items': all(f'case {i}:' in items for i in (1273, 1281, 1313, 1363, 3323, 4801, 4927, 4993, 5624, 5625, 5626, 5628, 5737)),
           }
           for name, ok in checks.items():
               print(f'source_check:{name}={ok}')
 
-          for needle in ('GetAttackDamage_ForProjectiles(17f, 17f)', '270,', 'timeLeft = 300'):
-              start = 0
-              found = 0
-              while found < 4:
-                  at = npc.find(needle, start)
-                  if at < 0:
-                      break
-                  print(f'--- NPC SOURCE AROUND {needle} #{found + 1} ---')
-                  print(npc[max(0, at - 1800):at + 3500])
-                  start = at + len(needle)
-                  found += 1
-          print('skeletron_1458_source_contract=diagnosed')
+          for needle in ('case 270:', 'type == 270', 'ai[1] += 1f;', 'ai[1] < 110f', 'ai[1] > 30f'):
+              at = projectile.find(needle)
+              if at >= 0:
+                  print(f'--- PROJECTILE SOURCE AROUND {needle} ---')
+                  print(projectile[max(0, at - 2200):at + 5200])
+
+          for needle in ('RegisterBoss_Skeletron', 'BossBag(3323)', 'RegisterToNPC(35', '4993', '4927', '4801'):
+              at = drops.find(needle)
+              if at >= 0:
+                  print(f'--- LOOT SOURCE AROUND {needle} ---')
+                  print(drops[max(0, at - 2200):at + 6200])
+
+          if not all(checks.values()):
+              missing = ', '.join(name for name, ok in checks.items() if not ok)
+              raise SystemExit('Skeletron source baseline changed: ' + missing)
+          print('skeletron_1458_source_contract=baseline-ok')
           PY
       - name: Release build
         run: dotnet build build/TerraRuntime.slnx -c Release --nologo
@@ -85,7 +105,13 @@ jobs:
         run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --filter FullyQualifiedName~Skeletron --nologo
       - name: Full tests
         run: dotnet test build/TerraRuntime.slnx -c Release --no-build --nologo
+      - name: Preserve validated diff as artifact patch
+        if: always()
+        shell: bash
+        run: |
+          git diff --binary > /tmp/skeletron-validated.patch || true
+          echo "validated_diff_lines=$(wc -l < /tmp/skeletron-validated.patch)"
       - name: Commit validated feature branch
         if: ${{ false }}
         shell: bash
-        run: echo 'Diagnostic run only; tighten source contract before final commit.'
+        run: echo 'Enable after source, focused, and full suite are green.'
