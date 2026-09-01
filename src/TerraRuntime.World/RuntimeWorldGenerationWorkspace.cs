@@ -177,6 +177,60 @@ public sealed class RuntimeWorldGenerationWorkspace :
     }
 
     /// <summary>
+    /// Replaces only the detached item side-table for an already registered generated chest. Geometry, dense slot
+    /// identity, coordinates and name remain unchanged; the same vanilla item/prefix validation used by TryAddChest
+    /// is applied before the replacement becomes visible to later generation passes.
+    /// </summary>
+    internal bool TryReplaceGeneratedChestItems(
+        int x,
+        int y,
+        ReadOnlySpan<WorldGenerationChestItem> items)
+    {
+        if (items.Length > WorldGenerationChestRules.VanillaItemSlotCount)
+            return false;
+
+        int chestIndex = -1;
+        for (int i = 0; i < generatedChests.Count; i++)
+        {
+            WorldChest chest = generatedChests[i];
+            if (chest.X == x && chest.Y == y)
+            {
+                chestIndex = i;
+                break;
+            }
+        }
+        if (chestIndex < 0)
+            return false;
+
+        var persistedItems = new WorldChestItem[WorldGenerationChestRules.VanillaItemSlotCount];
+        for (int index = 0; index < items.Length; index++)
+        {
+            WorldGenerationChestItem item = items[index];
+            if (item.Stack < 0 || item.Stack > short.MaxValue || item.Prefix.Value > byte.MaxValue)
+                return false;
+
+            if (item.Stack == 0)
+            {
+                if (!item.ItemType.IsNone || item.Prefix.Value != 0)
+                    return false;
+                continue;
+            }
+
+            if (!VanillaItemIds.TryCreate(item.ItemType.Value, out ItemTypeId validated) || validated.IsNone)
+                return false;
+
+            persistedItems[index] = new WorldChestItem(
+                item.Stack,
+                item.ItemType.Value,
+                checked((byte)item.Prefix.Value));
+        }
+
+        WorldChest current = generatedChests[chestIndex];
+        generatedChests[chestIndex] = current with { Items = persistedItems };
+        return true;
+    }
+
+    /// <summary>
     /// Registers one generated town NPC in the candidate-world side table. Coordinates are persisted in Terraria's
     /// pixel coordinate space while home coordinates remain tile coordinates. Duplicate net identities are rejected
     /// for generation-owned starting NPCs so retries cannot silently create duplicate Guide-like records.

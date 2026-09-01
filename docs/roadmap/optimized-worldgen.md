@@ -51,7 +51,7 @@ Every mandatory role must have a reserved region or an explicit count/range budg
 - [x] Underworld Hellforge;
 - [x] richer dungeon graph with branches, rooms, spikes/traps, locked chests and biome-safe placement;
 - [x] Floating Island houses with persistent custom sky caches;
-- [ ] replace custom sky caches with source-backed vanilla Skyware loot roles;
+- [x] replace custom sky caches with source-backed vanilla Skyware loot roles;
 - [x] Floating Lakes as a distinct island variant;
 - [x] solid-mass pyramids with deterministic count budgets, carved surface openings/shafts/chambers and persistent caches;
 - [x] Living Wood trees with hollow trunks, roots, underground rooms and persistent caches;
@@ -73,15 +73,17 @@ Presence of terrain alone is not considered playable progression.
 - [x] Life Crystal distribution with a fail-closed minimum count scaled by world area;
 - [x] separate surface/underground/cavern persistent chest budgets;
 - [x] persistent landmark caches for sky houses, pyramids, Living Trees and Underworld houses;
-- [ ] biome chest/loot families needed for ordinary pre-hardmode exploration;
+- [x] biome chest/loot families needed for ordinary pre-hardmode exploration;
 - [x] dungeon locked chest/key progression;
 - [x] source-backed 2x2 Shadow Orb / Crimson Heart progression anchors with world-size budgets and correct Crimson +36 frame style;
 - [x] Hive Larva worldgen anchors plus a persistent jungle progression cache with source-backed Jungle Spores/Stingers/Vines; authoritative Queen Bee activation remains gameplay-owned;
 - [x] reachable Hellforge route with an explicit dry Obsidian/exposed-Hellstone resource pocket and final topology targets;
 - [ ] hardmode-ready world anchors required by later progression mutation logic.
 
-Current optimized cache loot deliberately uses only repository source-backed item identities. It proves non-empty,
-persistent exploration loot but does **not** close the full vanilla/biome loot-family items above.
+Optimized exploration loot now uses pinned TerrariaServer `1.4.5.8` primary families for Skyware, ordinary surface and
+underground caches plus dedicated Snow/Ice, Jungle, Underground Desert and both-ocean roles. Placement and deterministic
+scheduling remain TerraRuntime-owned, so this closes source-backed progression roles without claiming seed-identical
+vanilla chest tables. Pyramid, Living Tree and Underworld landmark caches remain separate custom roles.
 
 ## O4 - Organic presentation
 

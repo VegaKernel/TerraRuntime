@@ -33,10 +33,11 @@ flowchart TD
     Content["progression content<br/>evil anchors / Larva / forge pocket"]
     Shape["surface shaping<br/>natural top slopes / half-block transitions"]
     Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>foliage-anchored trees / undergrowth / sunflowers"]
+    Loot["exploration loot v2<br/>Skyware / generic / biome / ocean families"]
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> Dungeon --> PVal --> LVal --> Content --> Shape --> Surf --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> Dungeon --> PVal --> LVal --> Content --> Shape --> Surf --> Loot --> Prog --> Commit
 ```
 
 All optimized passes use `WorldGenerationRngMode.IsolatedDeterministic`. Adding an unrelated later pass therefore does
@@ -56,8 +57,9 @@ The optimized profile currently produces and validates:
 - a jungle hive, Jungle Temple and Aether/Shimmer pocket;
 - pre-Hardmode ore tiers;
 - a world-area-scaled Life Crystal budget;
-- persistent surface, underground and cavern exploration caches;
-- persistent sky houses on a subset of floating islands;
+- persistent surface, underground and cavern exploration caches with source-backed primary loot families;
+- persistent sky houses whose caches are normalized to source-backed Skyware primary roles;
+- dedicated source-backed Snow/Ice, Jungle, Underground Desert and left/right Ocean exploration caches;
 - explicit Floating Lakes on other islands;
 - deterministic desert pyramids with internal chambers and persistent caches;
 - hollow Living Wood trees with roots, underground rooms and persistent caches;
@@ -67,9 +69,9 @@ The optimized profile currently produces and validates:
 - deterministic ordinary forest, jungle and snow trees plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected;
 - a deterministic surface-finishing pass that converts clean one-tile natural height transitions into persisted walkable slopes/half-blocks and publishes vanilla-format tree foliage anchors.
 
-The landmark layer uses only tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
-world-generation work. Landmark cache loot remains deliberately custom and conservative until the full vanilla
-biome-loot catalog is source-backed.
+The landmark layer uses tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
+world-generation work. Exploration loot now uses pinned source primary families, while pyramid, Living Tree and
+Underworld landmark-cache contents remain intentionally custom roles rather than claims of exact vanilla chest tables.
 
 ## Organic transitions
 
@@ -84,14 +86,33 @@ This removes the most obvious straight vertical material boundaries while preser
 
 Sky terrain is scanned as separate horizontal masses. The landmark pass assigns two distinct roles:
 
-- **sky house**: Sunplate shell, Disc Wall interior and a persistent custom sky cache;
+- **sky house**: Sunplate shell, Disc Wall interior and a persistent sky cache;
 - **Floating Lake**: a carved bounded water basin reinforced inside the existing island mass.
 
 Both roles have explicit minimum budgets. A pass that cannot place the requested house/lake counts fails generation
 rather than silently returning a visually incomplete world.
 
-The current sky cache is not claimed to reproduce vanilla Skyware loot. Source-backed Starfury/Horseshoe/Balloon roles
-remain a separate progression task.
+The final exploration-loot pass replaces each sky-cache side table with a deterministic primary from the pinned
+TerrariaServer `1.4.5.8` Skyware family: Shiny Red Balloon, Starfury, Lucky Horseshoe or Celestial Magnet. The optimized
+placement schedule remains custom and deterministic; this is source-backed role coverage, not seed-identical Skyware
+chest generation.
+
+## Exploration loot v2
+
+The final quality overlay runs `terraruntime:optimized/exploration-loot-v2` after surface decoration and before final
+progression validation. It updates only runtime-owned generated chest side tables for existing generic/sky caches, so
+coordinates, dense chest slot identity, names and tile geometry remain unchanged. Replacement items pass through the
+same vanilla item/prefix validation used when generated chests are first registered.
+
+Primary families are pinned to TerrariaServer `1.4.5.8` world-generation branches: Skyware, ordinary Surface,
+Underground, Ice/Snow, Jungle, Underground Desert and Underwater/Ocean. Generic caches are localized to Ice, Jungle or
+Desert families when nearby material proves that role; explicit Snow, Jungle and Desert caches plus one cache in each
+ocean guarantee those exploration families even when generic placement misses a biome. Utility filler is restricted to
+source-backed chest items such as Rope, Recall Potions, Torches and a bounded potion family.
+
+Desert caches use the source-backed `Containers2` family. The world validator therefore accepts a complete chest
+footprint when all four cells consistently use either vanilla container tile `21` or `467`; mixed or malformed
+footprints still fail closed.
 
 ## Dungeon v2
 
@@ -146,12 +167,13 @@ runtime work and are not falsely counted as complete here.
 ## Validation
 
 Generation remains fail-closed. The validators require exact landmark budgets, persistent chest side-table entries,
-minimum generated material/wall counts, a readable dungeon entrance, the Dungeon v2 room/loot/trap contracts, and final
-progression topology. The final `OptimizedProgressionValidationWorldGenerationProvider` enforces area-scaled minimum
-quantities for Copper, Iron, Silver, Gold and Hellstone; verifies complete progression-object footprints; requires
-non-trivial connected dungeon, hive and Jungle Temple interiors; and builds a bounded excavation-aware reachability graph
-from spawn to required surface/deep-world targets. This is a structural topology gate, not a claim of pixel-exact
-Terraria player movement or tool progression.
+source-backed exploration-loot family budgets, minimum generated material/wall counts, a readable dungeon entrance, the
+Dungeon v2 room/loot/trap contracts, and final progression topology. The final
+`OptimizedProgressionValidationWorldGenerationProvider` enforces area-scaled minimum quantities for Copper, Iron,
+Silver, Gold and Hellstone; verifies complete progression-object footprints; requires non-trivial connected dungeon,
+hive and Jungle Temple interiors; and builds a bounded excavation-aware reachability graph from spawn to required
+surface/deep-world targets. This is a structural topology gate, not a claim of pixel-exact Terraria player movement or
+tool progression.
 
 ## Compatibility and non-goals
 
@@ -165,10 +187,10 @@ Loading an existing vanilla `.wld` remains independent of which generator is use
 
 The optimized profile is not yet production-complete. Important remaining items include:
 
-- true source-backed biome and Skyware loot families;
 - multiple hives and stronger Queen Bee space on larger worlds;
 - glowing-mushroom and additional decorative micro-biomes;
 - Hardmode-ready mutation anchors;
+- richer source-backed Underworld settlement furniture/loot/resource families;
 - Small/Medium/Large generation-time and peak-memory measurements;
 - deterministic map/screenshot visual-regression fixtures;
 - pinned TerrariaServer `1.4.5.8` acceptance plus official-client join smoke.

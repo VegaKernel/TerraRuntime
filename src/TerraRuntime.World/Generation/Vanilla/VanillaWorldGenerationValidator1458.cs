@@ -322,7 +322,9 @@ public static class VanillaWorldGenerationValidator1458
         WorldTile d = store.Get(left + 1, top + 1);
         if (!a.IsActive || !b.IsActive || !c.IsActive || !d.IsActive)
             return false;
-        if (a.Type != 21 || b.Type != 21 || c.Type != 21 || d.Type != 21)
+        ushort containerType = a.Type;
+        if (containerType is not (21 or 467) ||
+            b.Type != containerType || c.Type != containerType || d.Type != containerType)
             return false;
         // Chest style is encoded in base frame offset (multiples of 36). Validate modulo 36.
         if (a.FrameX % 36 != 0 || a.FrameY % 36 != 0) return false;
