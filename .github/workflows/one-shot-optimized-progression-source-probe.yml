@@ -1,0 +1,54 @@
+name: One-shot optimized progression source probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-optimized-progression-source-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Decompile pinned TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+      - name: Print progression contracts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('decompiled/1458')
+          needles = ['ShadowOrbs', 'JungleSpores', 'Stinger', 'Obsidian', 'Larva']
+          for needle in needles:
+              print(f'===== {needle} =====')
+              shown = 0
+              for p in root.rglob('*.cs'):
+                  try:
+                      lines = p.read_text(encoding='utf-8', errors='ignore').splitlines()
+                  except Exception:
+                      continue
+                  for i, line in enumerate(lines):
+                      if needle not in line:
+                          continue
+                      print(f'--- {p}:{i+1} ---')
+                      for row in lines[max(0,i-5):min(len(lines),i+8)]:
+                          print(row)
+                      shown += 1
+                      if shown >= 12:
+                          break
+                  if shown >= 12:
+                      break
+              if shown == 0:
+                  print('NO MATCH')
+          PY
