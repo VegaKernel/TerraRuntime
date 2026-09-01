@@ -55,6 +55,7 @@ internal static class OptimizedDungeonV2
 
         DungeonBounds bounds = RecoverDungeonBounds(context.Workspace, dungeonAnchor);
         ValidateBounds(context.Workspace, bounds, dungeonAnchor);
+        RejectPreexistingDungeonChests(runtimeWorkspace, bounds);
 
         context.CancellationToken.ThrowIfCancellationRequested();
         ResetDungeonMass(context.Workspace, bounds);
@@ -76,7 +77,7 @@ internal static class OptimizedDungeonV2
 
         int trapTarget = Math.Clamp(branchRooms.Count, 2, 10);
         int traps = PlaceDartTraps(context.Workspace, branchRooms, trapTarget);
-        int spikeTarget = Math.Clamp(mainRooms.Count * 3, 12, 72);
+        int spikeTarget = Math.Clamp(mainRooms.Count * 3, 16, 72);
         int spikes = PlaceSpikes(context.Workspace, mainRooms, spikeTarget);
         context.ReportProgress(0.82d, "Wiring dungeon traps and placing spikes");
 
@@ -115,20 +116,15 @@ internal static class OptimizedDungeonV2
         int maxY = int.MinValue;
 
         for (int y = scanTop; y < workspace.HeightTiles - 1; y++)
+        for (int x = scanLeft; x <= scanRight; x++)
         {
-            for (int x = scanLeft; x <= scanRight; x++)
-            {
-                if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile) ||
-                    tile.Wall != BlueDungeonUnsafeWall)
-                {
-                    continue;
-                }
+            if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile) || tile.Wall != BlueDungeonUnsafeWall)
+                continue;
 
-                minX = Math.Min(minX, x);
-                minY = Math.Min(minY, y);
-                maxX = Math.Max(maxX, x);
-                maxY = Math.Max(maxY, y);
-            }
+            minX = Math.Min(minX, x);
+            minY = Math.Min(minY, y);
+            maxX = Math.Max(maxX, x);
+            maxY = Math.Max(maxY, y);
         }
 
         if (minX == int.MaxValue)
@@ -153,13 +149,26 @@ internal static class OptimizedDungeonV2
         }
     }
 
+    private static void RejectPreexistingDungeonChests(
+        RuntimeWorldGenerationWorkspace workspace,
+        DungeonBounds bounds)
+    {
+        foreach (WorldChest chest in workspace.CaptureGeneratedChests())
+        {
+            if (bounds.Contains(chest.X, chest.Y) ||
+                bounds.Contains(chest.X + 1, chest.Y + 1))
+            {
+                throw new InvalidOperationException(
+                    $"Optimized dungeon v2 reservation contains pre-existing chest '{chest.Name}' at ({chest.X},{chest.Y}).");
+            }
+        }
+    }
+
     private static void ResetDungeonMass(IWorldGenerationWorkspace workspace, DungeonBounds bounds)
     {
         for (int y = bounds.Top; y <= bounds.Bottom; y++)
-        {
-            for (int x = bounds.Left; x <= bounds.Right; x++)
-                SetSolid(workspace, x, y, BlueDungeonBrick, BlueDungeonUnsafeWall);
-        }
+        for (int x = bounds.Left; x <= bounds.Right; x++)
+            SetSolid(workspace, x, y, BlueDungeonBrick, BlueDungeonUnsafeWall);
     }
 
     private static List<DungeonRoom> BuildMainGraph(
@@ -217,14 +226,15 @@ internal static class OptimizedDungeonV2
 
         for (int i = 0; i < target; i++)
         {
-            DungeonRoom parent = mainRooms[Math.Min(mainRooms.Count - 1, 1 + i * Math.Max(1, (mainRooms.Count - 1) / target))];
+            DungeonRoom parent = mainRooms[Math.Min(
+                mainRooms.Count - 1,
+                1 + i * Math.Max(1, (mainRooms.Count - 1) / target))];
             bool left = (i & 1) == 0;
             int centerX = left
                 ? bounds.Left + halfWidth + 2
                 : bounds.Right - halfWidth - 2;
-            int verticalJitter = NextRange(context.Random, -4, 5);
             int centerY = Math.Clamp(
-                parent.Center.Y + verticalJitter,
+                parent.Center.Y + NextRange(context.Random, -4, 5),
                 bounds.Top + halfHeight + 3,
                 bounds.Bottom - halfHeight - 3);
             var room = new DungeonRoom(
@@ -251,11 +261,14 @@ internal static class OptimizedDungeonV2
         int centerX = Math.Clamp(dungeonAnchor.X, bounds.Left + 3, bounds.Right - 3);
         int targetY = Math.Max(bounds.Top + 4, firstRoom.Top + 2);
         for (int y = Math.Max(1, dungeonAnchor.Y); y <= targetY; y++)
-        {
-            for (int x = centerX - 2; x <= centerX + 2; x++)
-                SetAir(workspace, x, y, y >= bounds.Top ? BlueDungeonUnsafeWall : (ushort)0);
-        }
-        CarveDoglegCorridor(workspace, new WorldGenerationPoint(centerX, targetY), firstRoom.Center, corridorRadius: 2);
+        for (int x = centerX - 2; x <= centerX + 2; x++)
+            SetAir(workspace, x, y, y >= bounds.Top ? BlueDungeonUnsafeWall : (ushort)0);
+
+        CarveDoglegCorridor(
+            workspace,
+            new WorldGenerationPoint(centerX, targetY),
+            firstRoom.Center,
+            corridorRadius: 2);
     }
 
     private static void PlaceKeyCache(
@@ -264,14 +277,12 @@ internal static class OptimizedDungeonV2
         DungeonRoom room,
         int lockedChestTarget)
     {
-        int left = Math.Clamp(room.Center.X - 1, room.Left + 2, room.Right - 3);
-        int top = room.Bottom - 2;
-        WorldGenerationChestItem[] loot =
-        [
-            new WorldGenerationChestItem(lockedChestTarget, GoldenKey)
-        ];
-        if (!TryPlaceDungeonChest(workspace, chests, left, top, style: 0, "Dungeon Key Cache", loot))
-            throw new InvalidOperationException("Optimized dungeon v2 could not place the entrance Golden Key cache.");
+        WorldGenerationChestItem[] loot = [new WorldGenerationChestItem(lockedChestTarget, GoldenKey)];
+        if (!TryPlaceRoomChest(workspace, chests, room, style: 0, "Dungeon Key Cache", loot))
+        {
+            throw new InvalidOperationException(
+                "Optimized dungeon v2 could not find a supported 2x2 floor position for the entrance Golden Key cache.");
+        }
     }
 
     private static int PlaceLockedChests(
@@ -283,19 +294,12 @@ internal static class OptimizedDungeonV2
         int placed = 0;
         for (int i = 1; i < mainRooms.Count && placed < target; i++)
         {
-            DungeonRoom room = mainRooms[i];
-            int left = Math.Clamp(room.Center.X - 1, room.Left + 2, room.Right - 3);
-            int top = room.Bottom - 2;
             ItemTypeId primary = LockedChestMainLoot[placed % LockedChestMainLoot.Length];
-            WorldGenerationChestItem[] loot =
-            [
-                new WorldGenerationChestItem(1, primary)
-            ];
-            if (!TryPlaceDungeonChest(
+            WorldGenerationChestItem[] loot = [new WorldGenerationChestItem(1, primary)];
+            if (!TryPlaceRoomChest(
                     workspace,
                     chests,
-                    left,
-                    top,
+                    mainRooms[i],
                     style: 2,
                     $"Locked Dungeon Cache {placed + 1}",
                     loot))
@@ -308,6 +312,82 @@ internal static class OptimizedDungeonV2
         if (placed != target)
             throw new InvalidOperationException($"Optimized dungeon v2 placed only {placed}/{target} locked dungeon chests.");
         return placed;
+    }
+
+    private static bool TryPlaceRoomChest(
+        IWorldGenerationWorkspace workspace,
+        IWorldGenerationChestWorkspace chests,
+        DungeonRoom room,
+        int style,
+        string name,
+        WorldGenerationChestItem[] loot)
+    {
+        int minLeft = room.Left + 2;
+        int maxLeft = room.Right - 3;
+        int top = room.Bottom - 2;
+        int count = Math.Max(0, maxLeft - minLeft + 1);
+
+        // Main corridors are carved through room centers and can cut the center floor. Probe from the room edges
+        // inward so dungeon loot occupies intact floor without repairing or blocking the traversable corridor.
+        for (int probe = 0; probe < count; probe++)
+        {
+            int offset = probe / 2;
+            int left = (probe & 1) == 0 ? minLeft + offset : maxLeft - offset;
+            if (left < minLeft || left > maxLeft)
+                continue;
+            if (TryPlaceDungeonChest(workspace, chests, left, top, style, name, loot))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryPlaceDungeonChest(
+        IWorldGenerationWorkspace workspace,
+        IWorldGenerationChestWorkspace chests,
+        int left,
+        int top,
+        int style,
+        string name,
+        WorldGenerationChestItem[] loot)
+    {
+        if (left < 1 || top < 1 || left + 1 >= workspace.WidthTiles - 1 || top + 2 >= workspace.HeightTiles - 1)
+            return false;
+
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            if (!IsAir(workspace, left + dx, top + dy))
+                return false;
+        }
+
+        for (int dx = 0; dx < 2; dx++)
+        {
+            if (!workspace.TryGetTile(left + dx, top + 2, out WorldGenerationTile floor) ||
+                (floor.Flags & WorldGenerationTileFlags.Active) == 0 ||
+                VanillaWorldFrameImportance326.IsFrameImportant(floor.Type))
+            {
+                return false;
+            }
+        }
+
+        WorldGenerationTile a = Read(workspace, left, top);
+        WorldGenerationTile b = Read(workspace, left + 1, top);
+        WorldGenerationTile c = Read(workspace, left, top + 1);
+        WorldGenerationTile d = Read(workspace, left + 1, top + 1);
+        int baseFrameX = checked(style * 36);
+        SetObject(workspace, left, top, Containers, BlueDungeonUnsafeWall, checked((short)baseFrameX), 0);
+        SetObject(workspace, left + 1, top, Containers, BlueDungeonUnsafeWall, checked((short)(baseFrameX + 18)), 0);
+        SetObject(workspace, left, top + 1, Containers, BlueDungeonUnsafeWall, checked((short)baseFrameX), 18);
+        SetObject(workspace, left + 1, top + 1, Containers, BlueDungeonUnsafeWall, checked((short)(baseFrameX + 18)), 18);
+        if (chests.TryAddChest(left, top, name, loot))
+            return true;
+
+        Write(workspace, left, top, in a);
+        Write(workspace, left + 1, top, in b);
+        Write(workspace, left, top + 1, in c);
+        Write(workspace, left + 1, top + 1, in d);
+        return false;
     }
 
     private static int PlaceDartTraps(
@@ -325,9 +405,7 @@ internal static class OptimizedDungeonV2
             int trapX = trapOnLeft ? room.Left : room.Right;
             int trapY = Math.Clamp(plateY - 1, room.Top + 1, room.Bottom - 2);
 
-            if (!IsAir(workspace, plateX, plateY))
-                continue;
-            if (!workspace.TryGetTile(trapX, trapY, out _))
+            if (!IsAir(workspace, plateX, plateY) || !workspace.TryGetTile(trapX, trapY, out _))
                 continue;
 
             // TerrariaServer 1.4.5.8 WorldGen.placeTrap(type 0): wall-backed pressure plate style 2,
@@ -362,9 +440,7 @@ internal static class OptimizedDungeonV2
             int y = room.Bottom - 1;
             for (int x = room.Left + 2; x <= room.Right - 2 && placed < target; x++)
             {
-                if (Math.Abs(x - room.Center.X) <= 2)
-                    continue;
-                if (!IsAir(workspace, x, y))
+                if (Math.Abs(x - room.Center.X) <= 2 || !IsAir(workspace, x, y))
                     continue;
                 SetObject(workspace, x, y, Spike, BlueDungeonUnsafeWall, 0, 0);
                 placed++;
@@ -390,8 +466,11 @@ internal static class OptimizedDungeonV2
         int spikesPlaced,
         int connectedInterior)
     {
-        if (mainRooms < 4 || branchRooms < 2 || lockedPlaced != lockedTarget || trapsPlaced != trapTarget || spikesPlaced != spikeTarget)
+        if (mainRooms < 4 || branchRooms < 2 || lockedPlaced != lockedTarget ||
+            trapsPlaced != trapTarget || spikesPlaced != spikeTarget)
+        {
             throw new InvalidOperationException("Optimized dungeon v2 feature budgets were not satisfied.");
+        }
         if (connectedInterior < Math.Max(80, (mainRooms + branchRooms) * 24))
         {
             throw new InvalidOperationException(
@@ -460,49 +539,6 @@ internal static class OptimizedDungeonV2
             bounds.Bottom);
     }
 
-    private static bool TryPlaceDungeonChest(
-        IWorldGenerationWorkspace workspace,
-        IWorldGenerationChestWorkspace chests,
-        int left,
-        int top,
-        int style,
-        string name,
-        WorldGenerationChestItem[] loot)
-    {
-        if (left < 1 || top < 1 || left + 1 >= workspace.WidthTiles - 1 || top + 2 >= workspace.HeightTiles - 1)
-            return false;
-        for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            if (!IsAir(workspace, left + dx, top + dy))
-                return false;
-        }
-        for (int dx = 0; dx < 2; dx++)
-        {
-            if (!workspace.TryGetTile(left + dx, top + 2, out WorldGenerationTile floor) ||
-                (floor.Flags & WorldGenerationTileFlags.Active) == 0)
-                return false;
-        }
-
-        WorldGenerationTile a = Read(workspace, left, top);
-        WorldGenerationTile b = Read(workspace, left + 1, top);
-        WorldGenerationTile c = Read(workspace, left, top + 1);
-        WorldGenerationTile d = Read(workspace, left + 1, top + 1);
-        int baseFrameX = checked(style * 36);
-        SetObject(workspace, left, top, Containers, BlueDungeonUnsafeWall, checked((short)baseFrameX), 0);
-        SetObject(workspace, left + 1, top, Containers, BlueDungeonUnsafeWall, checked((short)(baseFrameX + 18)), 0);
-        SetObject(workspace, left, top + 1, Containers, BlueDungeonUnsafeWall, checked((short)baseFrameX), 18);
-        SetObject(workspace, left + 1, top + 1, Containers, BlueDungeonUnsafeWall, checked((short)(baseFrameX + 18)), 18);
-        if (chests.TryAddChest(left, top, name, loot))
-            return true;
-
-        Write(workspace, left, top, in a);
-        Write(workspace, left + 1, top, in b);
-        Write(workspace, left, top + 1, in c);
-        Write(workspace, left + 1, top + 1, in d);
-        return false;
-    }
-
     private static void CarveRoom(IWorldGenerationWorkspace workspace, DungeonRoom room)
     {
         for (int y = room.Top + 1; y < room.Bottom; y++)
@@ -562,6 +598,7 @@ internal static class OptimizedDungeonV2
             else if (x > toX)
                 x--;
             SetRedWire(workspace, x, y);
+
             if (y < toY)
                 y++;
             else if (y > toY)
@@ -640,7 +677,9 @@ internal static class OptimizedDungeonV2
             {
                 if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
                     (tile.Flags & WorldGenerationTileFlags.Active) == 0 && tile.LiquidAmount == 0)
+                {
                     open++;
+                }
             }
             if (open < 3)
                 return false;
@@ -656,7 +695,9 @@ internal static class OptimizedDungeonV2
         {
             if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
                 (tile.Flags & WorldGenerationTileFlags.Active) != 0 && tile.Type == type)
+            {
                 count++;
+            }
         }
         return count;
     }
