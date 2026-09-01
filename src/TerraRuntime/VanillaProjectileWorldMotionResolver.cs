@@ -146,7 +146,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
             positionY,
             collidedVelocityX,
             collidedVelocityY,
-            new ProjectileAiState(behavior.Ai0, current.Ai.Ai1, current.Ai.Ai2),
+            new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
             current.BannerIdToRespondTo,
             current.Damage,
             current.KnockBack,

@@ -39,7 +39,11 @@ public enum VanillaNpcAiCapability : ulong
     BrainCreeperStateSlice = 1u << 30,
     VultureMotionSlice = 1ul << 31,
     SpikeBallMotionSlice = 1ul << 32,
-    BlazingWheelMotionSlice = 1ul << 33
+    BlazingWheelMotionSlice = 1ul << 33,
+    SkeletronHeadStateSlice = 1ul << 34,
+    SkeletronHandStateSlice = 1ul << 35,
+    SkeletronSkullProjectileSlice = 1ul << 36,
+    BossDeathLootProgressionSlice = 1ul << 37
 }
 
 /// <summary>
@@ -94,7 +98,7 @@ public static class VanillaNpcAiCoverageCatalog
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         var entries = new VanillaNpcAiCoverage[
-            9 +
+            11 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -151,8 +155,19 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcIds.BrainCreeper,
             VanillaNpcAiCapability.BrainCreeperStateSlice |
             OrdinaryCore | VanillaNpcAiCapability.BrainCreeperLifecycleSlice);
+        entries[9] = Partial(
+            VanillaNpcIds.SkeletronHead,
+            OrdinaryCore |
+            VanillaNpcAiCapability.ChildSpawnSlice |
+            VanillaNpcAiCapability.SkeletronHeadStateSlice |
+            VanillaNpcAiCapability.SkeletronSkullProjectileSlice |
+            VanillaNpcAiCapability.BossDeathLootProgressionSlice);
+        entries[10] = Partial(
+            VanillaNpcIds.SkeletronHand,
+            OrdinaryCore |
+            VanillaNpcAiCapability.SkeletronHandStateSlice);
 
-        int index = 9;
+        int index = 11;
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {
             VanillaNpcAiCapability capabilities =

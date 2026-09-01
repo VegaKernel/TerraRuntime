@@ -121,11 +121,31 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
     /// eligible projectile in place and emits only a Spawn commit for the new generation; vanilla does not
     /// Kill the displaced projectile or emit packet 29 before reusing that physical slot.
     /// </summary>
-    public bool TrySpawnVanilla(in ProjectileStateUpdate update, out ProjectileSnapshot snapshot)
+    public bool TrySpawnVanilla(in ProjectileStateUpdate update, out ProjectileSnapshot snapshot) =>
+        TrySpawnVanilla(in update, timeLeftOverride: null, out snapshot);
+
+    /// <summary>
+    /// Applies NewProjectileSetup allocation while allowing a source-owned positive lifetime override to be
+    /// committed with the spawn generation. This avoids inventing a second Update commit merely to reproduce
+    /// NPC code that assigns projectile.timeLeft immediately after NewProjectile.
+    /// </summary>
+    public bool TrySpawnVanilla(
+        in ProjectileStateUpdate update,
+        int? timeLeftOverride,
+        out ProjectileSnapshot snapshot)
     {
-        if (!IsValidState(in update) ||
-            !TryCreateLifecycle(update.Type, out ProjectileLifecycleState lifecycle) ||
-            !TrySelectVanillaAllocationSlot(out ushort slot))
+        if (timeLeftOverride is <= 0 ||
+            !IsValidState(in update) ||
+            !TryCreateLifecycle(update.Type, out ProjectileLifecycleState lifecycle))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        if (timeLeftOverride is int sourceTimeLeft)
+            lifecycle = lifecycle with { TimeLeft = sourceTimeLeft };
+
+        if (!TrySelectVanillaAllocationSlot(out ushort slot))
         {
             snapshot = default;
             return false;

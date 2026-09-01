@@ -8,7 +8,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Every_coverage_entry_has_an_explicit_definition_and_behavior_family()
     {
-        int expected = 9 +
+        int expected = 11 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +

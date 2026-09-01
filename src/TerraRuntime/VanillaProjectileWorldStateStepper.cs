@@ -14,14 +14,18 @@ namespace TerraRuntime;
 internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepper
 {
     private readonly VanillaProjectileWorldMotionResolver worldMotion;
+    private readonly IRuntimePlayerSlotSnapshotLookup? playerSnapshots;
     private bool windPhysics;
     private float windSpeedCurrent;
     private float windPhysicsStrength;
 
-    public VanillaProjectileWorldStateStepper(WorldTileStore tiles)
+    public VanillaProjectileWorldStateStepper(
+        WorldTileStore tiles,
+        IRuntimePlayerSlotSnapshotLookup? playerSnapshots = null)
     {
         worldMotion = new VanillaProjectileWorldMotionResolver(
             tiles ?? throw new ArgumentNullException(nameof(tiles)));
+        this.playerSnapshots = playerSnapshots;
     }
 
     /// <summary>
@@ -81,7 +85,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         var behaviorContext = new VanillaProjectileBehaviorContext(
             windPhysics,
             windSpeedCurrent,
-            windPhysicsStrength);
+            windPhysicsStrength,
+            playerSnapshots);
         if (!VanillaProjectileBehaviorStepper.TryStep(
                 in current,
                 in definition,
