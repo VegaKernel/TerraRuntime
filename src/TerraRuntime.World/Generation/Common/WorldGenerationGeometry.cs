@@ -35,6 +35,31 @@ internal static class WorldGenerationGeometry
         return true;
     }
 
+    public static bool TrySetShape(IWorldGenerationWorkspace workspace, int x, int y, byte shape)
+    {
+        ArgumentNullException.ThrowIfNull(workspace);
+        if (shape > 5 || (uint)x >= (uint)workspace.WidthTiles || (uint)y >= (uint)workspace.HeightTiles)
+            return false;
+        if (!workspace.TryGetTile(x, y, out WorldGenerationTile current) ||
+            (current.Flags & WorldGenerationTileFlags.Active) == 0)
+        {
+            return false;
+        }
+
+        var shaped = new WorldGenerationTile(
+            Type: current.Type,
+            Wall: current.Wall,
+            FrameX: current.FrameX,
+            FrameY: current.FrameY,
+            Flags: current.Flags,
+            LiquidAmount: current.LiquidAmount,
+            TileColor: current.TileColor,
+            WallColor: current.WallColor,
+            Shape: shape,
+            LiquidKind: current.LiquidKind);
+        return workspace.TrySetTile(x, y, in shaped);
+    }
+
     public static void FillSolidHorizontal(IWorldGenerationWorkspace workspace, int left, int right, int y, ushort type, ushort? wall = null)
     {
         ArgumentNullException.ThrowIfNull(workspace);

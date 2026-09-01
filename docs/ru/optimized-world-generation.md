@@ -29,11 +29,12 @@ flowchart TD
     Meta["metadata + base validator"]
     PVal["playability validator"]
     LVal["landmark validator"]
-    Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>ordinary trees / undergrowth / sunflowers"]
+    Shape["surface shaping<br/>natural top slopes / half-block transitions"]
+    Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>trees с foliage anchors / undergrowth / sunflowers"]
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Surf --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> PVal --> LVal --> Shape --> Surf --> Prog --> Commit
 ```
 
 Все optimized passes используют `WorldGenerationRngMode.IsolatedDeterministic`. Поэтому новый несвязанный pass не
@@ -62,6 +63,7 @@ Optimized profile сейчас создаёт и валидирует:
 - явный читаемый вход в dungeon;
 - domain-warped material tongues на границах snow, desert, jungle и world evil;
 - детерминированные обычные forest/jungle/snow trees, surface undergrowth и sunflower patches, которые ставятся после landmarks и обходят progression objects/caches.
+- отдельный deterministic surface-finishing pass превращает чистые однотайловые перепады natural terrain в сохраняемые walkable slopes/half-blocks; верхушки обычных optimized trees получают vanilla-format foliage anchors вместо голого последнего trunk tile.
 
 Landmark layer использует только tile/wall identities, которые уже source-backed текущей работой репозитория с
 TerrariaServer `1.4.5.8`. Loot landmark caches пока намеренно собственный и консервативный, пока полный vanilla

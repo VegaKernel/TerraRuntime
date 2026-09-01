@@ -3,16 +3,17 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.World;
 
 /// <summary>
-/// Final visual surface-life overlay for <c>terraruntime:optimized</c>. It runs after landmark construction but before
-/// the final progression validator, so decoration sees the complete structure/chest layout and the candidate is still
-/// structurally revalidated before publication. The algorithms are custom/deterministic; tree and plant tile identities
-/// and the conservative tree framing scaffold are reused from the repository's source-backed 1.4.5.8 vegetation work.
+/// Final surface-quality overlay for <c>terraruntime:optimized</c>. It runs after landmark construction but before
+/// the final progression validator. A deterministic finishing pass shapes one-step natural surface transitions, then
+/// surface-life decoration places trees/plants while preserving progression structures. Ordinary tree crowns use the
+/// vanilla tree foliage-anchor frame contract; placement remains custom and is not claimed to be seed-identical.
 /// </summary>
 public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGenerationProvider
 {
     public static readonly WorldGeneratorId GeneratorId = OptimizedWorldGenerationProvider.GeneratorId;
 
     private static readonly WorldGenerationPassId LandmarkValidationId = new("terraruntime:optimized/landmark-validation");
+    private static readonly WorldGenerationPassId SurfaceShapingId = new("terraruntime:optimized/surface-shaping");
     private static readonly WorldGenerationPassId SurfaceLifeId = new("terraruntime:optimized/surface-life");
     private static readonly WorldGenerationPassId ProgressionValidationId = new("terraruntime:optimized/progression-validation");
 
@@ -39,9 +40,15 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
             builder.Add(
                 new WorldGenerationPassDescriptor(
-                    SurfaceLifeId,
+                    SurfaceShapingId,
                     WorldGenerationRngMode.IsolatedDeterministic,
                     requiredAfter: [LandmarkValidationId]),
+                SurfaceShapingPass.Instance);
+            builder.Add(
+                new WorldGenerationPassDescriptor(
+                    SurfaceLifeId,
+                    WorldGenerationRngMode.IsolatedDeterministic,
+                    requiredAfter: [SurfaceShapingId]),
                 SurfaceLifePass.Instance);
             builder.Add(CloneDescriptor(entry.Descriptor, [SurfaceLifeId]), entry.Pass);
             inserted = true;
@@ -68,6 +75,78 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
         private readonly List<CapturedPass> entries = [];
         public IReadOnlyList<CapturedPass> Entries => entries;
         public void Add(WorldGenerationPassDescriptor descriptor, IWorldGenerationPass pass) => entries.Add(new(descriptor, pass));
+    }
+
+    private sealed class SurfaceShapingPass : IWorldGenerationPass
+    {
+        private const ushort Dirt = 0;
+        private const ushort Grass = 2;
+        private const ushort Sand = 53;
+        private const ushort Mud = 59;
+        private const ushort JungleGrass = 60;
+        private const ushort SnowBlock = 147;
+
+        public static SurfaceShapingPass Instance { get; } = new();
+
+        public void Execute(IWorldGenerationContext context)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+            IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
+                throw new InvalidOperationException("Optimized surface shaping requires semantic world metadata.");
+            if (!metadata.TryGetLayers(out WorldGenerationLayers layers) || !metadata.TryGetSpawn(out WorldGenerationPoint spawn))
+                throw new InvalidOperationException("Optimized surface shaping requires layer and spawn metadata.");
+
+            int width = context.Workspace.WidthTiles;
+            int startY = Math.Clamp((int)Math.Floor(layers.WorldSurface) - 55, 2, context.Workspace.HeightTiles - 3);
+            int endY = Math.Clamp((int)Math.Ceiling(layers.WorldSurface) + 120, startY + 1, context.Workspace.HeightTiles - 2);
+            int oceanWidth = Math.Clamp(width / 12, 48, 360);
+            int margin = Math.Max(3, oceanWidth / 3);
+            int shaped = 0;
+
+            for (int x = Math.Max(2, margin); x < width - Math.Max(2, margin); x++)
+            {
+                if ((x & 127) == 0)
+                    context.CancellationToken.ThrowIfCancellationRequested();
+                if (Math.Abs(x - spawn.X) < 22)
+                    continue;
+
+                int y = WorldGenerationGeometry.FindFirstActiveY(context.Workspace, x, startY, endY);
+                int leftY = WorldGenerationGeometry.FindFirstActiveY(context.Workspace, x - 1, startY, endY);
+                int rightY = WorldGenerationGeometry.FindFirstActiveY(context.Workspace, x + 1, startY, endY);
+                if (y < 0 || leftY < 0 || rightY < 0)
+                    continue;
+                if (!context.Workspace.TryGetTile(x, y, out WorldGenerationTile tile) || !IsNaturalSurface(tile.Type))
+                    continue;
+                if (tile.LiquidAmount != 0 || tile.Shape != 0)
+                    continue;
+                if (context.Workspace.TryGetTile(x, y - 1, out WorldGenerationTile above) &&
+                    ((above.Flags & WorldGenerationTileFlags.Active) != 0 || above.LiquidAmount != 0))
+                {
+                    continue;
+                }
+
+                byte shape = 0;
+                // WorldTile shape 2/3 map to the two walkable top slopes. Use them only for a clean one-tile
+                // height transition; isolated one-block peaks become half blocks rather than square teeth.
+                if (rightY == y + 1 && leftY <= y)
+                    shape = 2;
+                else if (leftY == y + 1 && rightY <= y)
+                    shape = 3;
+                else if (leftY == y + 1 && rightY == y + 1)
+                    shape = 1;
+
+                if (shape != 0 && WorldGenerationGeometry.TrySetShape(context.Workspace, x, y, shape))
+                    shaped++;
+            }
+
+            if (shaped == 0)
+                throw new InvalidOperationException("Optimized surface shaping found no eligible natural surface transitions.");
+
+            context.ReportProgress(1d, $"Shaped {shaped} optimized natural surface transitions");
+        }
+
+        private static bool IsNaturalSurface(ushort type) =>
+            type is Dirt or Grass or Sand or Mud or JungleGrass or SnowBlock;
     }
 
     private sealed class SurfaceLifePass : IWorldGenerationPass
@@ -139,6 +218,8 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                     continue;
 
                 ushort ground = ReadType(context.Workspace, x, floor);
+                if (!IsFlatSupport(context.Workspace, x, floor))
+                    continue;
                 int style = ground switch
                 {
                     Grass => 0,
@@ -160,6 +241,10 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
                 for (int y = floor - 1; y >= top; y--)
                     SetPlant(context.Workspace, x, y, Trees, style * 22, 0);
+
+                // Terraria treats tree cells with frameY >= 198 and frameX >= 22 as foliage anchors. Keep the
+                // custom optimized placement, but publish a valid crown marker instead of a bare trunk tip.
+                SetPlant(context.Workspace, x, top, Trees, Math.Max(22, style * 22), 198);
 
                 if (height >= 13)
                 {
@@ -196,7 +281,7 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                 if (Math.Abs(x - spawn.X) < 10)
                     continue;
                 int floor = FindSurfaceFloor(context.Workspace, x, layers);
-                if (floor <= 2 || !IsAir(context.Workspace, x, floor - 1))
+                if (floor <= 2 || !IsAir(context.Workspace, x, floor - 1) || !IsFlatSupport(context.Workspace, x, floor))
                     continue;
 
                 ushort ground = ReadType(context.Workspace, x, floor);
@@ -230,7 +315,8 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                 if (Math.Abs(left - spawn.X) < 24)
                     continue;
                 int floor = FindSurfaceFloor(context.Workspace, left, layers);
-                if (floor < 6 || ReadType(context.Workspace, left, floor) != Grass || ReadType(context.Workspace, left + 1, floor) != Grass)
+                if (floor < 6 || ReadType(context.Workspace, left, floor) != Grass || ReadType(context.Workspace, left + 1, floor) != Grass ||
+                    !IsFlatSupport(context.Workspace, left, floor) || !IsFlatSupport(context.Workspace, left + 1, floor))
                     continue;
                 if (!IsClearRectangle(context.Workspace, left, floor - 4, 2, 4))
                     continue;
@@ -274,6 +360,10 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
             }
             return false;
         }
+
+        private static bool IsFlatSupport(IWorldGenerationWorkspace workspace, int x, int y) =>
+            workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
+            (tile.Flags & WorldGenerationTileFlags.Active) != 0 && tile.Shape == 0;
 
         private static bool IsAir(IWorldGenerationWorkspace workspace, int x, int y) =>
             workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&

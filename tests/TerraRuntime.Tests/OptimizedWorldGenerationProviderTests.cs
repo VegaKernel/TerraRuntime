@@ -84,6 +84,8 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.Marble.Value)) >= 35, "Marble micro-biome budget must exist.");
         Assert.True(CountWall(world, 62) >= 20, "Spider-grotto wall budget must exist.");
         Assert.True(CountActiveTiles(world, 5) >= 120, "Ordinary forest/jungle/snow tree trunks must decorate the optimized surface.");
+        Assert.True(CountTreeFoliageAnchors(world) >= 10, "Optimized ordinary trees must publish foliage anchors instead of bare trunk tips.");
+        Assert.True(CountShapedNaturalSurface(world, result.Metadata.Layers) >= 4, "Optimized surface finishing must create non-square natural transitions.");
         Assert.True(CountActiveTiles(world, 3) + CountActiveTiles(world, 61) >= 70, "Surface undergrowth must make optimized worlds visibly inhabited.");
         Assert.True(CountActiveTiles(world, 27) >= 8, "At least two complete sunflower patches must exist.");
 
@@ -193,6 +195,8 @@ public sealed class OptimizedWorldGenerationProviderTests
             in request,
             TestContext.Current.CancellationToken).ReachableTargetCount);
         Assert.True(CountActiveTiles(result.Candidate, 5) >= 700, "Canonical Small optimized worlds must contain a substantial ordinary-tree population.");
+        Assert.True(CountTreeFoliageAnchors(result.Candidate) >= 80, "Canonical Small optimized trees must include persistent foliage anchors.");
+        Assert.True(CountShapedNaturalSurface(result.Candidate, result.Metadata.Layers) >= 20, "Canonical Small optimized terrain must retain visible shaped surface transitions.");
     }
 
     private static void AssertSpawnHasGround(
@@ -235,6 +239,41 @@ public sealed class OptimizedWorldGenerationProviderTests
             }
         }
 
+        return count;
+    }
+
+    private static int CountTreeFoliageAnchors(RuntimeWorldGenerationWorkspace workspace)
+    {
+        int count = 0;
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        {
+            if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
+                (tile.Flags & WorldGenerationTileFlags.Active) != 0 &&
+                tile.Type == 5 && tile.FrameX >= 22 && tile.FrameY >= 198)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static int CountShapedNaturalSurface(RuntimeWorldGenerationWorkspace workspace, WorldGenerationLayers layers)
+    {
+        int start = Math.Clamp((int)Math.Floor(layers.WorldSurface) - 60, 0, workspace.HeightTiles - 1);
+        int end = Math.Clamp((int)Math.Ceiling(layers.WorldSurface) + 120, start, workspace.HeightTiles - 1);
+        int count = 0;
+        for (int y = start; y <= end; y++)
+        for (int x = 1; x < workspace.WidthTiles - 1; x++)
+        {
+            if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile) || tile.Shape == 0 ||
+                (tile.Flags & WorldGenerationTileFlags.Active) == 0)
+            {
+                continue;
+            }
+            if (tile.Type is 0 or 2 or 53 or 59 or 60 or 147)
+                count++;
+        }
         return count;
     }
 

@@ -29,11 +29,12 @@ flowchart TD
     Meta["metadata + base validator"]
     PVal["playability validator"]
     LVal["landmark validator"]
-    Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>ordinary trees / undergrowth / sunflowers"]
+    Shape["surface shaping<br/>natural top slopes / half-block transitions"]
+    Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>foliage-anchored trees / undergrowth / sunflowers"]
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Surf --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> PVal --> LVal --> Shape --> Surf --> Prog --> Commit
 ```
 
 All optimized passes use `WorldGenerationRngMode.IsolatedDeterministic`. Adding an unrelated later pass therefore does
@@ -62,6 +63,7 @@ The optimized profile currently produces and validates:
 - an explicit readable dungeon opening;
 - domain-warped material tongues at snow, desert, jungle and world-evil boundaries;
 - deterministic ordinary forest, jungle and snow trees plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected.
+- a deterministic surface-finishing pass converts clean one-tile natural height transitions into persisted walkable slopes/half-blocks; ordinary optimized trees mark their crown cells with the vanilla tree foliage-frame contract instead of ending as bare trunk tiles.
 
 The landmark layer uses only tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
 world-generation work. Landmark cache loot remains deliberately custom and conservative until the full vanilla

@@ -100,8 +100,9 @@ because it is fashionable; output quality and cost must be measured.
 - [x] visibly distinct sky-house/Floating-Lake island roles;
 - [x] large surface landmarks (pyramids and Living Trees);
 - [x] deep-world landmarks (Underworld settlements and micro-biomes);
-- [ ] slope-aware beaches and cliffs;
+- [x] slope-aware one-tile natural surface transitions with persisted top slopes/half-blocks;
 - [x] deterministic ordinary forest/jungle/snow trees plus surface undergrowth and sunflower patches, with explicit density budgets and frame-important-object avoidance;
+- [x] ordinary optimized trees publish persistent vanilla-format foliage anchors and executable crown-count regressions;
 - [x] share bounded surface probing, clearance, solid-fill and ocean-column integrity primitives across optimized generation layers;
 - [ ] deterministic screenshot/map fixtures for visual regression review;
 - [ ] generation-time and allocation budgets on canonical world sizes.
