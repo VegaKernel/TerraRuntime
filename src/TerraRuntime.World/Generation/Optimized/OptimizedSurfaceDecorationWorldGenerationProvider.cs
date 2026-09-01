@@ -293,7 +293,6 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
     {
         private const ushort Grass = 2;
         private const ushort Plants = 3;
-        private const ushort Trees = 5;
         private const ushort Sunflower = 27;
         private const ushort JungleGrass = 60;
         private const ushort JunglePlants = 61;
@@ -336,63 +335,61 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
             WorldGenerationPoint spawn,
             int target)
         {
+            if (context.Workspace is not RuntimeWorldGenerationWorkspace runtimeWorkspace)
+            {
+                throw new InvalidOperationException(
+                    "Optimized source-backed tree growth requires RuntimeWorldGenerationWorkspace.");
+            }
+
             int placed = 0;
             int minX = 12;
             int maxX = context.Workspace.WidthTiles - 12;
-            int attempts = target * 180;
-            int lastX = int.MinValue / 2;
+            int attempts = target * 320;
+            var centers = new List<int>(target);
+            var treeRandom = new OptimizedTreeRandomAdapter1458(context.Random);
+
+            bool TryGrowAt(int x)
+            {
+                if (Math.Abs(x - spawn.X) < 30 || centers.Any(existing => Math.Abs(existing - x) < 5))
+                    return false;
+
+                int floor = FindSurfaceFloor(context.Workspace, x, layers);
+                if (floor < 0 || !IsFlatSupport(context.Workspace, x, floor))
+                    return false;
+
+                ushort ground = ReadType(context.Workspace, x, floor);
+                if (ground is not Grass and not JungleGrass and not SnowBlock)
+                    return false;
+
+                if (!VanillaTreeGrower1458.TryGrow(runtimeWorkspace.TileStore, x, floor, treeRandom))
+                    return false;
+
+                centers.Add(x);
+                placed++;
+                return true;
+            }
 
             for (int attempt = 0; attempt < attempts && placed < target; attempt++)
             {
                 if ((attempt & 127) == 0)
                     context.CancellationToken.ThrowIfCancellationRequested();
+                _ = TryGrowAt(NextRange(context.Random, minX, maxX));
+            }
 
-                int x = NextRange(context.Random, minX, maxX);
-                if (Math.Abs(x - spawn.X) < 30 || Math.Abs(x - lastX) < 5)
-                    continue;
-
-                int floor = FindSurfaceFloor(context.Workspace, x, layers);
-                if (floor < 0)
-                    continue;
-
-                ushort ground = ReadType(context.Workspace, x, floor);
-                if (!IsFlatSupport(context.Workspace, x, floor))
-                    continue;
-                int style = ground switch
+            // Random probing keeps the optimized distribution organic. A deterministic bounded sweep then makes the
+            // density budget independent from a streak of unlucky probes while still delegating every actual tree's
+            // clearance, height, branch/root choices and frames to TerrariaServer 1.4.5.8 GrowTree semantics.
+            if (placed < target)
+            {
+                int phase = target == 0 ? 0 : context.Random.NextInt32(Math.Max(1, maxX - minX));
+                int span = Math.Max(1, maxX - minX);
+                for (int offset = 0; offset < span && placed < target; offset++)
                 {
-                    Grass => 0,
-                    JungleGrass => 2,
-                    SnowBlock => 4,
-                    _ => -1
-                };
-                if (style < 0)
-                    continue;
-
-                int height = NextRange(context.Random, ground == JungleGrass ? 14 : 10, ground == JungleGrass ? 24 : 20);
-                int top = floor - height;
-                if (top < 3 || !IsClearRectangle(context.Workspace, x - 2, top - 2, 5, height + 2))
-                    continue;
-                if (HasFrameImportantNearby(context.Workspace, x, floor, Math.Max(6, height / 2)))
-                    continue;
-
-                for (int y = floor - 1; y >= top; y--)
-                    SetPlant(context.Workspace, x, y, Trees, style * 22, 0);
-
-                SetPlant(context.Workspace, x, top, Trees, Math.Max(22, style * 22), 198);
-
-                if (height >= 13)
-                {
-                    SetPlant(context.Workspace, x - 1, top + 3, Trees, style * 22, 0);
-                    SetPlant(context.Workspace, x + 1, top + 5, Trees, style * 22, 0);
+                    if ((offset & 255) == 0)
+                        context.CancellationToken.ThrowIfCancellationRequested();
+                    int x = minX + ((phase + offset) % span);
+                    _ = TryGrowAt(x);
                 }
-                if (height >= 17)
-                {
-                    SetPlant(context.Workspace, x - 1, top + 7, Trees, style * 22, 0);
-                    SetPlant(context.Workspace, x + 1, top + 2, Trees, style * 22, 0);
-                }
-
-                lastX = x;
-                placed++;
             }
 
             return placed;
