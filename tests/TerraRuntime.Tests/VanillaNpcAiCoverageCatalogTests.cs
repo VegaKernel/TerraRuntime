@@ -12,7 +12,8 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
-            VanillaWormNpcCatalog.Count;
+            VanillaWormNpcCatalog.Count +
+            VanillaNpcAi17_20_21Catalog1458.DefinitionCount;
         Assert.Equal(expected, VanillaNpcAiCoverageCatalog.Count);
 
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
@@ -72,6 +73,13 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaNpcIds.Zombie,
             out VanillaNpcAiCoverage zombie));
         Assert.True(zombie.Has(VanillaNpcAiCapability.GroundFighterDoorPressureSlice));
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.Vulture, out VanillaNpcAiCoverage vulture));
+        Assert.True(vulture.Has(VanillaNpcAiCapability.VultureMotionSlice));
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.SpikeBall, out VanillaNpcAiCoverage spikeBall));
+        Assert.True(spikeBall.Has(VanillaNpcAiCapability.SpikeBallMotionSlice));
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.BlazingWheel, out VanillaNpcAiCoverage wheel));
+        Assert.True(wheel.Has(VanillaNpcAiCapability.BlazingWheelMotionSlice));
     }
 
     [Fact]

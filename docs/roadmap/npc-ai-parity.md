@@ -85,6 +85,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] Eater of Worlds packet-28 shared playerInteraction, per-segment material loot, last-segment boss promotion, Expert/Master/normal boss loot and persistent `downedBoss2` progression;
 - [ ] Eater of Worlds remaining death-event parity: meteor scheduling, Skyblock low-tile `shadowOrbSmashed`, healing-heart/presentation effects and remaining `realLife` nuances;
 - [x] remaining AI_006 worm family definitions and profiles;
+- [x] source-backed AI_017 Vulture/Raven activation, collision rebound, steering and wet escape;
+- [x] source-backed AI_020 Spike Ball and AI_021 Blazing Wheel authoritative motion state machines;
 - [ ] bats, fish, casters, mimics, critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.
 

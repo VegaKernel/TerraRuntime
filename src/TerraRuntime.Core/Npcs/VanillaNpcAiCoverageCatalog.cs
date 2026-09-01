@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.Core;
 
 [Flags]
-public enum VanillaNpcAiCapability : uint
+public enum VanillaNpcAiCapability : ulong
 {
     None = 0,
     DefinitionDefaults = 1 << 0,
@@ -36,7 +36,10 @@ public enum VanillaNpcAiCapability : uint
     BrainTeleportStateSlice = 1u << 27,
     BrainCreeperLifecycleSlice = 1u << 28,
     BrainBossStateSlice = 1u << 29,
-    BrainCreeperStateSlice = 1u << 30
+    BrainCreeperStateSlice = 1u << 30,
+    VultureMotionSlice = 1ul << 31,
+    SpikeBallMotionSlice = 1ul << 32,
+    BlazingWheelMotionSlice = 1ul << 33
 }
 
 /// <summary>
@@ -95,7 +98,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
-            VanillaWormNpcCatalog.Count];
+            VanillaWormNpcCatalog.Count +
+            VanillaNpcAi17_20_21Catalog1458.DefinitionCount];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -217,6 +221,21 @@ public static class VanillaNpcAiCoverageCatalog
 
             entries[index++] = Partial(worm.Definition.Type, capabilities);
         }
+
+        foreach (VanillaNpcDefinition definition in VanillaNpcAi17_20_21Catalog1458.AllDefinitions)
+        {
+            VanillaNpcAiCapability slice = definition.BehaviorFamily switch
+            {
+                VanillaNpcBehaviorFamily.Vulture => VanillaNpcAiCapability.VultureMotionSlice,
+                VanillaNpcBehaviorFamily.SpikeBall => VanillaNpcAiCapability.SpikeBallMotionSlice,
+                VanillaNpcBehaviorFamily.BlazingWheel => VanillaNpcAiCapability.BlazingWheelMotionSlice,
+                _ => throw new InvalidOperationException("Unexpected AI_017/020/021 behavior family.")
+            };
+            entries[index++] = Partial(definition.Type, OrdinaryCore | slice);
+        }
+
+        if (index != entries.Length)
+            throw new InvalidOperationException("Vanilla NPC coverage catalog count drifted.");
 
         return entries;
     }
