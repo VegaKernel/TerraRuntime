@@ -40,6 +40,39 @@ jobs:
       - name: Apply production block
         run: python3 tools/ci/apply_eye_good_world_combat.py
 
+      - name: Align reflection with Projectile.Update source order
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              if text.count(old) != 1:
+                  raise SystemExit(f'{path}: expected one match, got {text.count(old)}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_once(
+              'src/TerraRuntime.Core/Projectiles/RuntimeProjectileStore.cs',
+              '''        state.Update = update;\n        state.Lifecycle = lifecycle with\n        {\n            OldVelocityX = update.VelocityX,\n            OldVelocityY = update.VelocityY\n        };\n''',
+              '''        state.Update = update;\n        state.Lifecycle = lifecycle;\n''')
+
+          replace_once(
+              'src/TerraRuntime/ServerRuntimeState.cs',
+              '''        if (_projectileStepper is not null)\n            LastProjectileTick = _projectileExecutor.Tick(_projectileStepper);\n        AppliedProjectileReflections += _projectileReflections.Tick();\n        TickInstancedItemLeases();\n''',
+              '''        if (_projectileStepper is not null)\n        {\n            LastProjectileTick = _projectileExecutor.Tick(_projectileStepper);\n            AppliedProjectileReflections += _projectileReflections.Tick();\n        }\n        TickInstancedItemLeases();\n''')
+
+          replace_once(
+              'tests/TerraRuntime.Tests/RuntimeNpcProjectileReflectionPassTests.cs',
+              '''        Assert.True(store.TrySpawn(0, in update, out ProjectileSnapshot arrow));\n        return arrow;\n''',
+              '''        Assert.True(store.TrySpawn(0, in update, out ProjectileSnapshot arrow));\n        Assert.True(store.TryGetLifecycle(arrow.Handle, out ProjectileLifecycleState lifecycle));\n        Assert.True(store.TryCommitSimulationStep(\n            arrow.Handle,\n            in update,\n            lifecycle.TimeLeft,\n            out arrow,\n            out bool expired));\n        Assert.False(expired);\n        return arrow;\n''')
+
+          replace_once(
+              'tests/TerraRuntime.Tests/RuntimeProjectileReflectionStoreTests.cs',
+              '''        Assert.True(store.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState initial));\n        Assert.Equal(3f, initial.OldVelocityX);\n        Assert.Equal(4f, initial.OldVelocityY);\n\n        Assert.True(store.TryReflect(projectile.Handle, -5f, 0f, 5, out ProjectileSnapshot reflected));\n''',
+              '''        Assert.True(store.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState initial));\n        Assert.Equal(0f, initial.OldVelocityX);\n        Assert.Equal(0f, initial.OldVelocityY);\n        Assert.True(store.TryCommitSimulationStep(\n            projectile.Handle,\n            in update,\n            initial.TimeLeft,\n            out projectile,\n            out bool expired));\n        Assert.False(expired);\n        Assert.True(store.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState stepped));\n        Assert.Equal(3f, stepped.OldVelocityX);\n        Assert.Equal(4f, stepped.OldVelocityY);\n\n        Assert.True(store.TryReflect(projectile.Handle, -5f, 0f, 5, out ProjectileSnapshot reflected));\n''')
+          PY
+
       - name: Restore
         run: dotnet restore TerraRuntime.slnx
 
