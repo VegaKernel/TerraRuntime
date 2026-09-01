@@ -1,4 +1,4 @@
-﻿using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -85,7 +85,12 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.True(CountActiveTiles(world, 202) >= 30, "At least one Sunplate sky house must exist.");
         Assert.True(CountActiveTiles(world, 151) >= 120, "Optimized pyramids must contain a substantial solid sandstone-brick mass, not only an outline.");
         Assert.True(CountActiveTiles(world, 191) >= 40, "At least one Living Wood structure must exist.");
-        Assert.True(CountActiveTiles(world, 57) >= 40, "Underworld settlement material must exist.");
+        Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.ObsidianBrick.Value)) >= 36, "At least one source-backed Obsidian Brick Underworld house must exist.");
+        Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.HellstoneBrick.Value)) >= 36, "At least one source-backed Hellstone Brick Underworld house must exist.");
+        Assert.True(CountWall(world, checked((ushort)VanillaWallIds.ObsidianBrickUnsafe.Value)) >= 90, "Obsidian Brick houses must retain the source-backed unsafe wall family.");
+        Assert.True(CountWall(world, checked((ushort)VanillaWallIds.HellstoneBrickUnsafe.Value)) >= 90, "Hellstone Brick houses must retain the source-backed unsafe wall family.");
+        Assert.True(CountObjectStyleAnchors(world, checked((ushort)VanillaTileIds.Tables.Value), width: 3, style: 13) >= 2, "Underworld houses must contain source-backed Hell tables.");
+        Assert.True(CountObjectStyleAnchors(world, checked((ushort)VanillaTileIds.Bookcases.Value), width: 3, style: 4) >= 2, "Underworld houses must contain source-backed Hell bookcases.");
         Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.Granite.Value)) >= 35, "Granite micro-biome budget must exist.");
         Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.Marble.Value)) >= 35, "Marble micro-biome budget must exist.");
         Assert.True(CountWall(world, 62) >= 20, "Spider-grotto wall budget must exist.");
@@ -100,7 +105,18 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.Contains(generated, static chest => chest.Name.StartsWith("Sky Cache ", StringComparison.Ordinal));
         Assert.Contains(generated, static chest => chest.Name.StartsWith("Pyramid Cache ", StringComparison.Ordinal));
         Assert.Contains(generated, static chest => chest.Name.StartsWith("Living Tree Cache ", StringComparison.Ordinal));
-        Assert.Contains(generated, static chest => chest.Name.StartsWith("Underworld Cache ", StringComparison.Ordinal));
+        WorldChest[] underworldCaches = generated
+            .Where(static chest => chest.Name.StartsWith("Underworld Cache ", StringComparison.Ordinal))
+            .ToArray();
+        Assert.Equal(2, underworldCaches.Length);
+        foreach (WorldChest chest in underworldCaches)
+        {
+            Assert.True(world.TryGetTile(chest.X, chest.Y, out WorldGenerationTile anchor));
+            Assert.Equal(VanillaTileIds.Containers.Value, anchor.Type);
+            Assert.Equal((short)(4 * 36), anchor.FrameX);
+            Assert.Equal((short)0, anchor.FrameY);
+            Assert.Contains(chest.Items, static item => !item.IsEmpty && IsHellChestPrimary1458(item.ItemType));
+        }
         WorldChest jungleProgression = Assert.Single(generated, static chest => chest.Name == "Jungle Progression Cache");
         Assert.Contains(jungleProgression.Items, static item => item.ItemType == VanillaItemIds.JungleSpores.Value && item.Stack >= 30);
         Assert.Contains(jungleProgression.Items, static item => item.ItemType == VanillaItemIds.Stinger.Value && item.Stack >= 20);
@@ -309,6 +325,32 @@ public sealed class OptimizedWorldGenerationProviderTests
         }
         return count;
     }
+
+    private static int CountObjectStyleAnchors(RuntimeWorldGenerationWorkspace workspace, ushort type, int width, int style)
+    {
+        short expectedFrameX = checked((short)(style * width * 18));
+        int count = 0;
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        {
+            if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
+                (tile.Flags & WorldGenerationTileFlags.Active) != 0 &&
+                tile.Type == type &&
+                tile.FrameX == expectedFrameX &&
+                tile.FrameY == 0)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static bool IsHellChestPrimary1458(int itemType) =>
+        itemType == VanillaItemIds.DarkLance.Value ||
+        itemType == VanillaItemIds.Sunfury.Value ||
+        itemType == VanillaItemIds.FlowerOfFire.Value ||
+        itemType == VanillaItemIds.Flamelash.Value ||
+        itemType == VanillaItemIds.HellwingBow.Value;
 
     private static int CountWall(RuntimeWorldGenerationWorkspace workspace, ushort wall)
     {

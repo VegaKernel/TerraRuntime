@@ -1,4 +1,4 @@
-﻿# Optimized world generation
+# Optimized world generation
 
 `terraruntime:optimized` is TerraRuntime's production-oriented custom world generator. It intentionally does **not**
 promise seed-identical Terraria world generation. Its contract is different: the same TerraRuntime version and seed
@@ -64,7 +64,7 @@ The optimized profile currently produces and validates:
 - explicit Floating Lakes on other islands;
 - deterministic desert pyramids with internal chambers and persistent caches;
 - hollow Living Wood trees with roots, underground rooms and persistent caches;
-- bounded Underworld houses connected by undulating platform bridges;
+- bounded Underworld houses using source-backed Hell brick/wall families, lava-safe furniture and Shadow Chests, connected by undulating platform bridges;
 - granite, marble, spider/cobweb and distinct glowing-mushroom cave micro-biomes;
 - domain-warped material tongues at snow, desert, jungle and world-evil boundaries;
 - deterministic ordinary forest, jungle and snow trees grown through the clean-room TerrariaServer `1.4.5.8` `GrowTree` clearance/branch/root/frame semantics via an optimized-RNG adapter, plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected;
@@ -72,7 +72,7 @@ The optimized profile currently produces and validates:
 
 The landmark layer uses tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
 world-generation work. Exploration loot now uses pinned source primary families, while pyramid, Living Tree and
-Underworld landmark-cache contents remain intentionally custom roles rather than claims of exact vanilla chest tables.
+Pyramid and Living Tree landmark-cache contents remain intentionally custom roles rather than claims of exact vanilla chest tables. Underworld caches now use the pinned TerrariaServer `1.4.5.8` Shadow Chest style and primary family, while their placement schedule remains optimized-profile-owned.
 
 ## Organic transitions
 
@@ -143,9 +143,9 @@ trunk, Leaf Block crown, roots, a hollow vertical core, a Living Wood undergroun
 
 ### Underworld settlements
 
-The Underworld receives a bounded number of Ash houses. Open doorways and platform bridges keep the structures usable
-without requiring guessed furniture/door frame metadata. Later work can replace the conservative shell with richer
-vanilla-inspired furniture sets after those content contracts are source-backed.
+The Underworld receives a bounded number of settlements built from the source-backed TerrariaServer `1.4.5.8` HellFort material pairs: Obsidian Brick with unsafe Obsidian Brick Wall and Hellstone Brick with unsafe Hellstone Brick Wall. The optimized schedule alternates those families deliberately so every supported world receives representative settlement materials; this is a bounded optimized contract, not vanilla seed parity.
+
+Each house includes the source-backed lava-safe table style `13` and bookcase style `4`. Its persistent cache is framed as a vanilla Shadow Chest (container style `4`) and receives one deterministic primary from the pinned normal-world hell-chest family: Dark Lance, Sunfury, Flower of Fire, Flamelash or Hellwing Bow. Landmark validation fails closed if brick/wall budgets, furniture framing, Shadow Chest framing, chest count or primary-family membership are incomplete. Open doorways and platform bridges remain TerraRuntime-owned layout choices.
 
 ## Micro-biomes
 
@@ -206,7 +206,6 @@ Loading an existing vanilla `.wld` remains independent of which generator is use
 The optimized profile is not yet production-complete. Important remaining items include:
 
 - Hardmode-ready mutation anchors;
-- richer source-backed Underworld settlement furniture/loot/resource families;
 - Small/Medium/Large generation-time and peak-memory measurements;
 - deterministic map/screenshot visual-regression fixtures;
 - official-client join smoke beyond the permanent canonical-Small pinned TerrariaServer `1.4.5.8` acceptance gate.

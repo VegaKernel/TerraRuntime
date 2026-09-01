@@ -1,4 +1,4 @@
-﻿# Оптимизированная генерация мира
+# Оптимизированная генерация мира
 
 `terraruntime:optimized` — production-oriented собственный генератор TerraRuntime. Он намеренно **не** обещает
 seed-identical генерацию Terraria. Контракт другой: одинаковые версия TerraRuntime и seed должны воспроизводить один и
@@ -64,7 +64,7 @@ Optimized profile сейчас создаёт и валидирует:
 - отдельные Floating Lakes на других островах;
 - детерминированные desert pyramids с внутренней chamber и persistent cache;
 - полые Living Wood trees с roots, underground room и persistent cache;
-- ограниченное число Underworld houses, соединённых волнистыми platform bridges;
+- ограниченное число Underworld houses с source-backed Hell brick/wall families, lava-safe мебелью и Shadow Chests, соединённых волнистыми platform bridges;
 - granite, marble, spider/cobweb и отдельные glowing-mushroom cave micro-biomes;
 - domain-warped material tongues на границах snow, desert, jungle и world evil;
 - детерминированные обычные forest/jungle/snow trees, выращиваемые через clean-room семантику TerrariaServer `1.4.5.8` `GrowTree` для clearance/branches/roots/frames с адаптером optimized RNG, плюс surface undergrowth и sunflower patches; всё ставится после landmarks и обходит progression objects/caches;
@@ -72,7 +72,7 @@ Optimized profile сейчас создаёт и валидирует:
 
 Landmark layer использует tile/wall identities, которые уже source-backed текущей работой репозитория с TerrariaServer
 `1.4.5.8`. Exploration loot теперь использует pinned source primary families, а содержимое pyramid, Living Tree и
-Underworld landmark caches остаётся намеренно собственными ролями, а не заявлением о точных vanilla chest tables.
+Pyramid и Living Tree landmark caches остаются намеренно собственными ролями, а не заявлением о точных vanilla chest tables. Underworld caches теперь используют закреплённый TerrariaServer `1.4.5.8` стиль Shadow Chest и primary family, при этом их placement schedule остаётся собственной логикой optimized profile.
 
 ## Органичные переходы
 
@@ -143,9 +143,9 @@ roots, полое вертикальное ядро, underground room из Livin
 
 ### Underworld settlements
 
-Underworld получает ограниченное число Ash houses. Открытые проходы и platform bridges делают structures
-используемыми без угадывания furniture/door frame metadata. Более богатые vanilla-inspired наборы мебели можно добавить
-после source-backed подтверждения соответствующих content contracts.
+Underworld получает ограниченное число settlements из source-backed пар материалов TerrariaServer `1.4.5.8` HellFort: Obsidian Brick с unsafe Obsidian Brick Wall и Hellstone Brick с unsafe Hellstone Brick Wall. Optimized schedule намеренно чередует эти families, чтобы каждый поддерживаемый размер мира содержал репрезентативные settlement materials; это bounded optimized contract, а не vanilla seed parity.
+
+В каждом доме ставятся source-backed lava-safe table style `13` и bookcase style `4`. Persistent cache имеет framing vanilla Shadow Chest (container style `4`) и получает один детерминированный primary из закреплённой normal-world hell-chest family: Dark Lance, Sunfury, Flower of Fire, Flamelash или Hellwing Bow. Landmark validation fail-closed проверяет brick/wall budgets, furniture framing, Shadow Chest framing, число сундуков и принадлежность primary к family. Открытые проходы и platform bridges остаются собственными layout-решениями TerraRuntime.
 
 ## Micro-biomes
 
@@ -207,7 +207,6 @@ contracts. Загрузка существующего vanilla `.wld` не за�
 `terraruntime:optimized` ещё не production-complete. Основные оставшиеся задачи:
 
 - Hardmode-ready mutation anchors;
-- более богатые source-backed furniture/loot/resource families для Underworld settlements;
 - измерения generation time и peak memory на Small/Medium/Large;
 - deterministic map/screenshot visual-regression fixtures;
 - official-client join smoke поверх постоянного canonical-Small acceptance-gate через pinned TerrariaServer `1.4.5.8`.
