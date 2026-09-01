@@ -1,0 +1,42 @@
+name: Town NPC Social Emotes Source Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/RuntimeTownNpcSocial1458.cs'
+      - 'src/TerraRuntime/RuntimeNpcReplicationRegistry.cs'
+      - 'src/TerraRuntime.Protocol/TerrariaMessageId.cs'
+      - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaEmoteBubbleCodec.cs'
+      - 'tools/ci/check_town_social_emotes_source.py'
+      - 'tools/decompile-reference.sh'
+      - '.github/workflows/town-social-emotes-source-contract.yml'
+  pull_request:
+    paths:
+      - 'src/TerraRuntime/RuntimeTownNpcSocial1458.cs'
+      - 'src/TerraRuntime/RuntimeNpcReplicationRegistry.cs'
+      - 'src/TerraRuntime.Protocol/TerrariaMessageId.cs'
+      - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaEmoteBubbleCodec.cs'
+      - 'tools/ci/check_town_social_emotes_source.py'
+      - 'tools/decompile-reference.sh'
+      - '.github/workflows/town-social-emotes-source-contract.yml'
+  workflow_dispatch:
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Decompile pinned TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+      - name: Verify Town social/emote source contract
+        run: |
+          python3 tools/ci/check_town_social_emotes_source.py \
+            --npc decompiled/1458/Terraria/NPC.cs \
+            --netmessage decompiled/1458/Terraria/NetMessage.cs \
+            --messagebuffer decompiled/1458/Terraria/MessageBuffer.cs \
+            --emotebubble decompiled/1458/Terraria.GameContent.UI/EmoteBubble.cs
