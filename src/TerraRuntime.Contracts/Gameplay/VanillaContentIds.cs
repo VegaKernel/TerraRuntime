@@ -29,8 +29,11 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Guide = new(22);
     public static readonly NpcTypeId Demolitionist = new(38);
     public static readonly NpcTypeId Clothier = new(54);
+    public static readonly NpcTypeId BoundGoblin = new(105);
+    public static readonly NpcTypeId BoundWizard = new(106);
     public static readonly NpcTypeId GoblinTinkerer = new(107);
     public static readonly NpcTypeId Wizard = new(108);
+    public static readonly NpcTypeId BoundMechanic = new(123);
     public static readonly NpcTypeId Mechanic = new(124);
     public static readonly NpcTypeId SantaClaus = new(142);
     public static readonly NpcTypeId Truffle = new(160);
@@ -42,10 +45,15 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId WitchDoctor = new(228);
     public static readonly NpcTypeId Pirate = new(229);
     public static readonly NpcTypeId Stylist = new(353);
+    public static readonly NpcTypeId WebbedStylist = new(354);
     public static readonly NpcTypeId Angler = new(369);
+    public static readonly NpcTypeId SleepingAngler = new(376);
     public static readonly NpcTypeId TaxCollector = new(441);
+    public static readonly NpcTypeId DemonTaxCollector = new(534);
     public static readonly NpcTypeId Tavernkeep = new(550);
+    public static readonly NpcTypeId BartenderUnconscious = new(579);
     public static readonly NpcTypeId Golfer = new(588);
+    public static readonly NpcTypeId GolferRescue = new(589);
     public static readonly NpcTypeId Zoologist = new(633);
     public static readonly NpcTypeId TownCat = new(637);
     public static readonly NpcTypeId TownDog = new(638);

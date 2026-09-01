@@ -53,6 +53,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly RuntimeNpcNetworkCombatPipeline _npcCombat;
     private readonly short[] _expiredInstancedItemSlots = new short[RuntimeWorldItemStore.VanillaCapacity];
     private readonly RuntimeTownNpcStateStore? _townNpcs;
+    private readonly RuntimeWorldProgressionMutations? _worldProgression;
+    private readonly RuntimeTownNpcRescueService1458? _townRescue;
     private readonly RuntimeTownCommerceResolver1458? _townCommerce;
     private readonly VanillaHousingValidator1458? _housingValidator;
     private readonly RuntimeTownNpcMoveInCoordinator1458? _townMoveIn;
@@ -141,6 +143,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _projectileReplication = projectileReplication;
         _npcReplication = npcReplication;
         _townNpcs = townNpcs;
+        _worldProgression = worldTiles is null ? null : RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
+        _townRescue = townNpcs is not null && _worldProgression is not null
+            ? new RuntimeTownNpcRescueService1458(_npcs, townNpcs, _worldProgression)
+            : null;
         _townCommerce = worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 commerceFacts
             ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, _npcs, in commerceFacts)
             : null;
@@ -156,8 +162,18 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             if (townSpawnWorldFacts is VanillaTownSpawnWorldFacts1458 facts)
             {
                 var houseIndex = new RuntimeTownHouseCandidateIndex1458(worldTiles, _housingValidator);
-                RuntimeWorldProgressionMutations progression = RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
+                RuntimeWorldProgressionMutations progression = _worldProgression ?? RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
                 progression.SetTruffleSpawnBaseline(facts.UnlockedTruffleSpawn);
+                RuntimeTownRescueFacts1458 rescuedBaseline = RuntimeTownRescueFacts1458.None;
+                if (facts.SavedGoblin) rescuedBaseline |= RuntimeTownRescueFacts1458.Goblin;
+                if (facts.SavedWizard) rescuedBaseline |= RuntimeTownRescueFacts1458.Wizard;
+                if (facts.SavedMechanic) rescuedBaseline |= RuntimeTownRescueFacts1458.Mechanic;
+                if (facts.SavedStylist) rescuedBaseline |= RuntimeTownRescueFacts1458.Stylist;
+                if (facts.SavedAngler) rescuedBaseline |= RuntimeTownRescueFacts1458.Angler;
+                if (facts.SavedBartender) rescuedBaseline |= RuntimeTownRescueFacts1458.Bartender;
+                if (facts.SavedGolfer) rescuedBaseline |= RuntimeTownRescueFacts1458.Golfer;
+                if (facts.SavedTaxCollector) rescuedBaseline |= RuntimeTownRescueFacts1458.TaxCollector;
+                progression.SetTownRescueBaseline(rescuedBaseline);
                 _townMoveIn = new RuntimeTownNpcMoveInCoordinator1458(
                     townNpcs, _npcs, houseIndex, in facts, npcReplication, progression: progression);
             }
@@ -480,6 +496,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 break;
             case ClientNpcTalkRuntimeCommand talk:
                 ApplyClientNpcTalk(talk);
+                break;
+            case ClientNpcCatchRuntimeCommand npcCatch:
+                ApplyClientNpcCatch(npcCatch);
                 break;
             case WorldItemAllocateRuntimeCommand allocate:
                 ApplyWorldItemAllocate(allocate);
@@ -1368,6 +1387,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         }
 
         byte playerSlot = command.Connection.Player.Slot.Value;
+        if (command.State.NpcSlot != TerrariaNpcTalkCodec.NoNpc)
+            _townRescue?.TryRescueTalk(command.State.NpcSlot, out _);
         _playerTalkNpcSlots[playerSlot] = command.State.NpcSlot;
         _townShopSessions[playerSlot] = null;
         if (command.State.NpcSlot != TerrariaNpcTalkCodec.NoNpc &&
@@ -1393,6 +1414,57 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         }
 
         _npcReplication?.TryPublishNpcTalk(command.Connection, command.State.NpcSlot);
+    }
+
+    private void ApplyClientNpcCatch(ClientNpcCatchRuntimeCommand command)
+    {
+        if (!IsCurrentPlayerConnection(command.Connection) ||
+            !TerrariaNpcCatchCodec.IsValidNpcSlot(command.State.NpcSlot) ||
+            !_players.TryGetValue(command.Connection.Player.Slot.Value, out RuntimePlayerState? player) ||
+            !_npcs.TryGetActive(checked((byte)command.State.NpcSlot), out NpcSnapshot npc) ||
+            !NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
+            !VanillaNpcCatchCatalog1458.TryGetCatchItem(npcType, out ItemTypeId catchItem))
+        {
+            return;
+        }
+
+        // Terraria 1.4.5.8 Mystic Frog (687) teleports instead of becoming an item. That special transform is
+        // deliberately left to its own N4 special-NPC slice; packet 70 must not incorrectly despawn it here.
+        if (VanillaNpcCatchCatalog1458.IsMysticFrog(npcType))
+            return;
+
+        if (npc.Simulation.SpawnedFromStatue)
+        {
+            _npcs.TryDespawn(npc.Handle);
+            return;
+        }
+
+        float playerCenterX = player.PositionX + VanillaBasePlayerWidth / 2f;
+        float playerCenterY = player.PositionY + VanillaBasePlayerHeight / 2f;
+        WorldItemDropStateUpdate drop = VanillaNpcCatchWorldItem1458.Create(
+            playerCenterX,
+            playerCenterY,
+            catchItem,
+            _worldItemSpawnRandom);
+        if (!_worldItems.TryReserveDrop(in drop, out WorldItemDropReservation reservation))
+            return;
+        if (!_npcs.TryDespawn(npc.Handle))
+        {
+            _worldItems.TryReleaseDropReservation(in reservation);
+            return;
+        }
+        if (!_worldItems.TryCommitReservedDrop(in reservation, out WorldItemSnapshot item))
+            throw new InvalidOperationException("Reserved NPC catch item failed after authoritative NPC despawn.");
+
+        var owner = new WorldItemOwnerStateUpdate(
+            OwnerPlayerId: command.Connection.Player.Slot.Value,
+            TimeToKeepReservation: VanillaNpcCatchWorldItem1458.ReservationTicks,
+            GrabDelayPlayer: byte.MaxValue,
+            GrabDelayTime: 0,
+            PositionX: item.PositionX,
+            PositionY: item.PositionY);
+        if (!_worldItems.TryApplyOwner(item.Handle.Slot, in owner, out _))
+            throw new InvalidOperationException("Caught NPC item could not be reserved for the authenticated player.");
     }
 
     internal bool TryGetPlayerTalkNpc(PlayerHandle player, out short npcSlot)

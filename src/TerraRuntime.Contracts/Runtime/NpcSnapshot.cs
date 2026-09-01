@@ -127,6 +127,9 @@ public readonly record struct NpcSimulationState(
     /// </summary>
     public bool ReflectsProjectiles { get; init; }
 
+    /// <summary>Vanilla NPC.SpawnedFromStatue; CatchNPC consumes this server-only lifecycle fact.</summary>
+    public bool SpawnedFromStatue { get; init; }
+
     public static NpcSimulationState Initial => new(
         DirectionX: 0,
         DirectionY: 0,
@@ -153,7 +156,8 @@ public readonly record struct NpcSimulationState(
         DontTakeDamage = false,
         DefenseOverride = null,
         DamageOverride = null,
-        ReflectsProjectiles = false
+        ReflectsProjectiles = false,
+        SpawnedFromStatue = false
     };
 
     public bool IsValid =>

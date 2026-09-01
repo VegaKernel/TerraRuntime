@@ -1,0 +1,73 @@
+name: N4 Rescue Catchability Source Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcRescue1458.cs'
+      - 'src/TerraRuntime.Core/Npcs/VanillaNpcCatchCatalog1458.cs'
+      - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaNpcCatchCodec.cs'
+      - 'src/TerraRuntime/NpcCatchFrameSink.cs'
+      - 'src/TerraRuntime/RuntimeTownNpcRescueService1458.cs'
+      - 'src/TerraRuntime.World/WorldFileProgressionHeaderPatcher.cs'
+      - 'tools/ci/check_n4_rescue_catchability_source.py'
+      - '.github/workflows/n4-rescue-catchability-source-contract.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcRescue1458.cs'
+      - 'src/TerraRuntime.Core/Npcs/VanillaNpcCatchCatalog1458.cs'
+      - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaNpcCatchCodec.cs'
+      - 'src/TerraRuntime/NpcCatchFrameSink.cs'
+      - 'src/TerraRuntime/RuntimeTownNpcRescueService1458.cs'
+      - 'src/TerraRuntime.World/WorldFileProgressionHeaderPatcher.cs'
+      - 'tools/ci/check_n4_rescue_catchability_source.py'
+      - '.github/workflows/n4-rescue-catchability-source-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 artifacts/n4-source .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+      - name: Install pinned ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+      - name: Verify N4 source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha256='d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e'
+          assembly=''
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected_sha256" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          refs="$(dirname "$assembly")"
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.NPC "$assembly" > artifacts/n4-source/NPC.cs
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.MessageBuffer "$assembly" > artifacts/n4-source/MessageBuffer.cs
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.ID.NPCID "$assembly" > artifacts/n4-source/NPCID.cs
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.Item "$assembly" > artifacts/n4-source/Item.cs
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.Projectile "$assembly" > artifacts/n4-source/Projectile.cs
+          python3 tools/ci/check_n4_rescue_catchability_source.py \
+            --npc artifacts/n4-source/NPC.cs \
+            --message-buffer artifacts/n4-source/MessageBuffer.cs \
+            --npcid artifacts/n4-source/NPCID.cs \
+            --item artifacts/n4-source/Item.cs \
+            --projectile artifacts/n4-source/Projectile.cs

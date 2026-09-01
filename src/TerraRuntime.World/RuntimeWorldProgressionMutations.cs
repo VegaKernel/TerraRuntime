@@ -2,6 +2,21 @@ using System.Runtime.CompilerServices;
 
 namespace TerraRuntime.World;
 
+[Flags]
+public enum RuntimeTownRescueFacts1458 : ushort
+{
+    None = 0,
+    Goblin = 1 << 0,
+    Wizard = 1 << 1,
+    Mechanic = 1 << 2,
+    Stylist = 1 << 3,
+    Angler = 1 << 4,
+    Bartender = 1 << 5,
+    Golfer = 1 << 6,
+    TaxCollector = 1 << 7,
+    All = Goblin | Wizard | Mechanic | Stylist | Angler | Bartender | Golfer | TaxCollector
+}
+
 /// <summary>
 /// Immutable owner-thread save image of progression milestones and source-backed world unlocks produced after the
 /// canonical .wld was loaded. Milestone bits remain independent from the physical SaveWorldFlags byte order.
@@ -12,7 +27,9 @@ public readonly record struct RuntimeWorldProgressionMutationSnapshot(ulong Comp
 
     public bool UnlockTruffleSpawn { get; init; }
 
-    public bool HasAny => CompletedMask != 0 || UnlockSlimeBlueSpawn || UnlockTruffleSpawn;
+    public RuntimeTownRescueFacts1458 RescuedTownNpcs { get; init; }
+
+    public bool HasAny => CompletedMask != 0 || UnlockSlimeBlueSpawn || UnlockTruffleSpawn || RescuedTownNpcs != RuntimeTownRescueFacts1458.None;
 
     public bool IsCompleted(VanillaWorldProgressionId milestone)
     {
@@ -34,6 +51,8 @@ public sealed class RuntimeWorldProgressionMutations
     private bool unlockSlimeBlueSpawn;
     private bool baselineTruffleSpawnUnlocked;
     private bool unlockTruffleSpawn;
+    private RuntimeTownRescueFacts1458 baselineRescuedTownNpcs;
+    private RuntimeTownRescueFacts1458 rescuedTownNpcs;
 
     public bool MarkCompleted(VanillaWorldProgressionId milestone)
     {
@@ -84,11 +103,30 @@ public sealed class RuntimeWorldProgressionMutations
         return true;
     }
 
+    public void SetTownRescueBaseline(RuntimeTownRescueFacts1458 facts)
+    {
+        if ((facts & ~RuntimeTownRescueFacts1458.All) != 0)
+            throw new ArgumentOutOfRangeException(nameof(facts));
+        baselineRescuedTownNpcs |= facts;
+    }
+
+    public bool MarkTownNpcRescued(RuntimeTownRescueFacts1458 fact)
+    {
+        ushort raw = (ushort)fact;
+        if (raw == 0 || (raw & (raw - 1)) != 0 || (fact & ~RuntimeTownRescueFacts1458.All) != 0)
+            throw new ArgumentOutOfRangeException(nameof(fact));
+        if (((baselineRescuedTownNpcs | rescuedTownNpcs) & fact) != 0)
+            return false;
+        rescuedTownNpcs |= fact;
+        return true;
+    }
+
     public RuntimeWorldProgressionMutationSnapshot CaptureSnapshot() =>
         new(completedMask)
         {
             UnlockSlimeBlueSpawn = unlockSlimeBlueSpawn,
-            UnlockTruffleSpawn = unlockTruffleSpawn
+            UnlockTruffleSpawn = unlockTruffleSpawn,
+            RescuedTownNpcs = rescuedTownNpcs
         };
 }
 

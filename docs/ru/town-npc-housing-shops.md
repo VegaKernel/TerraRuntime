@@ -40,3 +40,9 @@ Truffle housing 1.4.5.8: до первого вселения нужна surface
 Packet 40 теперь повторяет серверную часть `Player.SetTalkNPC`: после проверки authenticated player slot authoritative game thread разрешает live NPC, снимает packet-5 inventory/vitals/team state, сканирует pinned `169x124` SceneMetrics вокруг игрока, считает source-shaped housing crowding и числовой happiness, затем собирает обычный `Chest.SetupShop` или поддержанный special shop в immutable per-player session. Закрытие разговора очищает session, disconnect не даёт ей протечь в переиспользованный player generation.
 
 Не принадлежащие runtime факты не подменяются выдумками: `LoveStruck`, live wind/weather, Golfer score, полный Bestiary/Fairy Torch state, Artisan Bread и Traveling Merchant `travelShop` отмечаются явными missing-fact flags.
+
+### Rescue и жизненный цикл critter
+
+Talk-rescue из TerrariaServer 1.4.5.8 теперь authoritative для Golfer Rescue, Bound Goblin, Bound Wizard, Bound Mechanic, Webbed Stylist, Sleeping Angler и лежащего без сознания Tavernkeep. Transform сохраняет NPC slot/generation, переносит позицию от старой нижней границы как `NPC.Transform`, превращает слот в persistent homeless resident и журналирует соответствующий `saved*` флаг для lossless-патча `.wld`.
+
+Packet 70 (`CatchNPC`) декодируется как точный signed `Int16` NPC slot и применяется только game-loop owner. Runtime отдельно закрепляет полный `NPCID.Sets.CountsAsCritter` и все проверенные `catchItem` mapping: до despawn резервируется world-item slot, затем у authoritative player center создаётся 12x12 captured-critter item с vanilla spawn velocity и резервируется за authenticated player. Statue-spawned critter удаляется без предмета. Mystic Frog здесь fail-closed, потому что vanilla телепортирует его вместо обычного catch; Demon Tax Collector остаётся отдельным transform-путём от Purification Powder projectile 10.
