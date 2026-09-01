@@ -229,6 +229,41 @@ internal sealed class RuntimeTownNpcStateStore
         return true;
     }
 
+    public bool CanAdoptRescuedResident(short slot, NpcTypeId type) =>
+        slot >= 0 &&
+        !townNpcsBySlot.ContainsKey(slot) &&
+        !ContainsNpcType(type) &&
+        VanillaTownNpcFacts1458.IsHousingEligible(type);
+
+    public bool TryAdoptRescuedResident(short slot, NpcTypeId type, in NpcSnapshot snapshot)
+    {
+        if (!CanAdoptRescuedResident(slot, type) ||
+            snapshot.Handle.Slot != slot ||
+            snapshot.Type != type.Value ||
+            !VanillaTownNpcFacts1458.TryGetDefinition(type, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        int homeTileX = (int)(snapshot.PositionX + definition.Width / 2f) / 16;
+        int homeTileY = (int)(snapshot.PositionY + definition.Height) / 16;
+        if (!IsInWorld(homeTileX, homeTileY))
+            return false;
+
+        townNpcsBySlot.Add(slot, new WorldTownNpc(
+            type.Value,
+            string.Empty,
+            snapshot.PositionX,
+            snapshot.PositionY,
+            Homeless: true,
+            homeTileX,
+            homeTileY,
+            TownNpcVariationIndex: null,
+            HomelessDespawn: false));
+        roomsByNpcType.Remove(type.Value);
+        return true;
+    }
+
     public bool TryUpdatePosition(short slot, in NpcSnapshot snapshot)
     {
         if (!townNpcsBySlot.TryGetValue(slot, out WorldTownNpc? npc))

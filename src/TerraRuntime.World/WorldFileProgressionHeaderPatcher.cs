@@ -87,46 +87,77 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out bool persistedDownedSlimeKing))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
-        int slimeBlueUnlockOffset = -1;
-        int truffleUnlockOffset = -1;
-        bool persistedSlimeBlueUnlock = false;
-        bool persistedTruffleUnlock = false;
-        if ((mutations.UnlockSlimeBlueSpawn || mutations.UnlockTruffleSpawn) &&
-            !TryLocateTownSpawnUnlocks(
-                ref reader,
-                out slimeBlueUnlockOffset,
-                out persistedSlimeBlueUnlock,
-                out truffleUnlockOffset,
-                out persistedTruffleUnlock))
-        {
+        TownStateOffsets1458 townState = default;
+        bool needsTownState = mutations.UnlockSlimeBlueSpawn ||
+            mutations.UnlockTruffleSpawn ||
+            mutations.RescuedTownNpcs != RuntimeTownRescueFacts1458.None;
+        if (needsTownState && !TryLocateTownState(ref reader, out townState))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
-        }
 
         patchedHeader = sourceHeader.ToArray();
         if (mutations.IsCompleted(VanillaWorldProgressionId.KingSlime) && !persistedDownedSlimeKing)
             patchedHeader[downedSlimeKingOffset] = 1;
-        if (mutations.UnlockSlimeBlueSpawn && !persistedSlimeBlueUnlock)
-            patchedHeader[slimeBlueUnlockOffset] = 1;
-        if (mutations.UnlockTruffleSpawn && !persistedTruffleUnlock)
-            patchedHeader[truffleUnlockOffset] = 1;
+        if (mutations.UnlockSlimeBlueSpawn && !townState.PersistedSlimeBlue)
+            patchedHeader[townState.SlimeBlueOffset] = 1;
+        if (mutations.UnlockTruffleSpawn && !townState.PersistedTruffle)
+            patchedHeader[townState.TruffleOffset] = 1;
+        PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Goblin, townState.SavedGoblinOffset, townState.PersistedSavedGoblin);
+        PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Wizard, townState.SavedWizardOffset, townState.PersistedSavedWizard);
+        PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Mechanic, townState.SavedMechanicOffset, townState.PersistedSavedMechanic);
+        PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Angler, townState.SavedAnglerOffset, townState.PersistedSavedAngler);
+        PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Stylist, townState.SavedStylistOffset, townState.PersistedSavedStylist);
+        PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.TaxCollector, townState.SavedTaxCollectorOffset, townState.PersistedSavedTaxCollector);
+        PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Golfer, townState.SavedGolferOffset, townState.PersistedSavedGolfer);
+        PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Bartender, townState.SavedBartenderOffset, townState.PersistedSavedBartender);
 
         return WorldFileProgressionHeaderPatchResult.Patched;
     }
 
-    private static bool TryLocateTownSpawnUnlocks(
-        ref HeaderPrefixReader reader,
-        out int slimeBlueOffset,
-        out bool persistedSlimeBlue,
-        out int truffleOffset,
-        out bool persistedTruffle)
-    {
-        slimeBlueOffset = -1;
-        persistedSlimeBlue = false;
-        truffleOffset = -1;
-        persistedTruffle = false;
+    private readonly record struct TownStateOffsets1458(
+        int SavedGoblinOffset,
+        bool PersistedSavedGoblin,
+        int SavedWizardOffset,
+        bool PersistedSavedWizard,
+        int SavedMechanicOffset,
+        bool PersistedSavedMechanic,
+        int SavedAnglerOffset,
+        bool PersistedSavedAngler,
+        int SavedStylistOffset,
+        bool PersistedSavedStylist,
+        int SavedTaxCollectorOffset,
+        bool PersistedSavedTaxCollector,
+        int SavedGolferOffset,
+        bool PersistedSavedGolfer,
+        int SavedBartenderOffset,
+        bool PersistedSavedBartender,
+        int SlimeBlueOffset,
+        bool PersistedSlimeBlue,
+        int TruffleOffset,
+        bool PersistedTruffle);
 
-        // savedGoblin/Wizard/Mechanic, seven invasion/world booleans after King Slime.
-        if (!reader.TrySkipBools(9) ||
+    private static void PatchTownRescueFact(
+        byte[] header,
+        RuntimeTownRescueFacts1458 mutations,
+        RuntimeTownRescueFacts1458 fact,
+        int offset,
+        bool persisted)
+    {
+        if ((mutations & fact) != 0 && !persisted)
+            header[offset] = 1;
+    }
+
+    private static bool TryLocateTownState(ref HeaderPrefixReader reader, out TownStateOffsets1458 state)
+    {
+        state = default;
+
+        int savedGoblinOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool savedGoblin)) return false;
+        int savedWizardOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool savedWizard)) return false;
+        int savedMechanicOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool savedMechanic)) return false;
+
+        if (!reader.TrySkipBools(6) ||
             !reader.TryReadByte(out _) ||
             !reader.TryReadInt32(out _) ||
             !reader.TrySkipBools(2) ||
@@ -143,86 +174,76 @@ public static class WorldFileProgressionHeaderPatcher
             !reader.TrySkip(8) ||
             !reader.TryReadInt32(out _) ||
             !reader.TryReadInt16(out _) ||
+            !reader.TryReadSingle(out _) ||
+            !reader.TryReadInt32(out int anglerCount) || anglerCount < 0 || anglerCount > 255)
+        {
+            return false;
+        }
+        for (int i = 0; i < anglerCount; i++)
+        {
+            if (!reader.TryReadString(out _)) return false;
+        }
+
+        int savedAnglerOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool savedAngler) || !reader.TryReadInt32(out _)) return false;
+        int savedStylistOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool savedStylist)) return false;
+        int savedTaxCollectorOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool savedTaxCollector)) return false;
+        int savedGolferOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool savedGolfer) || !reader.TryReadInt32(out _) || !reader.TryReadInt32(out _)) return false;
+
+        if (!reader.TryReadInt16(out short killCount) || killCount < 0 ||
+            !reader.TrySkip(checked(killCount * sizeof(int))) ||
+            !reader.TryReadInt16(out short claimableCount) || claimableCount < 0 ||
+            !reader.TrySkip(checked(claimableCount * sizeof(ushort))) ||
+            !reader.TryReadBool(out _) ||
+            !reader.TrySkipBools(18) ||
+            !reader.TrySkipBools(2) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadInt32(out int partyCount) || partyCount < 0 || partyCount > 255 ||
+            !reader.TrySkip(checked(partyCount * sizeof(int))) ||
+            !reader.TryReadBool(out _) ||
+            !reader.TryReadInt32(out _) ||
+            !reader.TryReadSingle(out _) ||
             !reader.TryReadSingle(out _))
         {
             return false;
         }
 
-        if (!reader.TryReadInt32(out int anglerCount) || anglerCount < 0 || anglerCount > 255)
-            return false;
-        for (int i = 0; i < anglerCount; i++)
-        {
-            if (!reader.TryReadString(out _))
-                return false;
-        }
-
-        if (!reader.TryReadBool(out _) ||
-            !reader.TryReadInt32(out _) ||
-            !reader.TrySkipBools(3) ||
-            !reader.TryReadInt32(out _) ||
-            !reader.TryReadInt32(out _))
-        {
-            return false;
-        }
-
-        // BannerSystem.Save: Int16 killCount length + Int32 entries, then Int16 claimable length + UInt16 entries.
-        if (!reader.TryReadInt16(out short killCount) || killCount < 0 ||
-            !reader.TrySkip(checked(killCount * sizeof(int))) ||
-            !reader.TryReadInt16(out short claimableCount) || claimableCount < 0 ||
-            !reader.TrySkip(checked(claimableCount * sizeof(ushort))))
-        {
-            return false;
-        }
-
-        // fastForwardTimeToDawn; 18 boss/event/tower booleans; party state and celebrating-NPC list.
-        if (!reader.TryReadBool(out _) ||
-            !reader.TrySkipBools(18) ||
-            !reader.TrySkipBools(2) ||
-            !reader.TryReadInt32(out _) ||
-            !reader.TryReadInt32(out int partyCount) ||
-            partyCount < 0 || partyCount > 255 ||
-            !reader.TrySkip(checked(partyCount * sizeof(int))))
-        {
-            return false;
-        }
-
-        // sandstorm; bartender; DD2 T1/T2/T3; five background bytes; combat book.
-        if (!reader.TryReadBool(out _) ||
-            !reader.TryReadInt32(out _) ||
-            !reader.TryReadSingle(out _) ||
-            !reader.TryReadSingle(out _) ||
-            !reader.TryReadBool(out _) ||
+        int savedBartenderOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool savedBartender) ||
             !reader.TrySkipBools(3) ||
             !reader.TrySkip(5) ||
             !reader.TryReadBool(out _) ||
             !reader.TryReadInt32(out _) ||
-            !reader.TrySkipBools(3))
-        {
-            return false;
-        }
-
-        // TreeTopsInfo.Save: Int32 variation count + Int32 entries.
-        if (!reader.TryReadInt32(out int treeTopCount) ||
-            treeTopCount < 0 || treeTopCount > 64 ||
-            !reader.TrySkip(checked(treeTopCount * sizeof(int))))
-        {
-            return false;
-        }
-
-        // force Halloween/XMas today; four pre-Hardmode ore tiers; pets bought; Empress/Queen Slime/Deerclops.
-        if (!reader.TrySkipBools(2) ||
+            !reader.TrySkipBools(3) ||
+            !reader.TryReadInt32(out int treeTopCount) || treeTopCount < 0 || treeTopCount > 64 ||
+            !reader.TrySkip(checked(treeTopCount * sizeof(int))) ||
+            !reader.TrySkipBools(2) ||
             !reader.TrySkip(sizeof(int) * 4) ||
             !reader.TrySkipBools(6))
         {
             return false;
         }
 
-        slimeBlueOffset = reader.Offset;
-        if (!reader.TryReadBool(out persistedSlimeBlue) || !reader.TrySkipBools(4))
-            return false;
+        int slimeBlueOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool slimeBlue) || !reader.TrySkipBools(4)) return false;
+        int truffleOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool truffle)) return false;
 
-        truffleOffset = reader.Offset;
-        return reader.TryReadBool(out persistedTruffle);
+        state = new TownStateOffsets1458(
+            savedGoblinOffset, savedGoblin,
+            savedWizardOffset, savedWizard,
+            savedMechanicOffset, savedMechanic,
+            savedAnglerOffset, savedAngler,
+            savedStylistOffset, savedStylist,
+            savedTaxCollectorOffset, savedTaxCollector,
+            savedGolferOffset, savedGolfer,
+            savedBartenderOffset, savedBartender,
+            slimeBlueOffset, slimeBlue,
+            truffleOffset, truffle);
+        return true;
     }
 
     private ref struct HeaderPrefixReader
