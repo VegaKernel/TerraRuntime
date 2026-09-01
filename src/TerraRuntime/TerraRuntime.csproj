@@ -29,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
     <ProjectReference Include="../TerraRuntime.Core/TerraRuntime.Core.csproj" />
+    <ProjectReference Include="../TerraRuntime.Gameplay/TerraRuntime.Gameplay.csproj" />
     <ProjectReference Include="../TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
     <ProjectReference Include="../TerraRuntime.Network/TerraRuntime.Network.csproj" />
     <ProjectReference Include="../TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />

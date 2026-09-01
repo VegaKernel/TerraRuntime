@@ -38,14 +38,13 @@ public sealed class VanillaNpcLootRuleTests
     }
 
     [Fact]
-    public void Unsupported_npc_has_no_table_instead_of_being_aliased_to_empty_verified_rules()
+    public void Unsupported_npc_has_no_table()
     {
         Assert.False(VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(
             VanillaNpcIds.DemonEye,
             out VanillaNpcLootTable table));
         Assert.False(table.IsValid);
         Assert.Equal(0, table.RuleCount);
-        Assert.True(VanillaNpcLootRuleCatalog.GetNpcSpecificRules(VanillaNpcIds.DemonEye).IsEmpty);
     }
 
     [Fact]

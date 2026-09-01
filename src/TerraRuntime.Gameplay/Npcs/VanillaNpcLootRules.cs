@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>Vanilla rule shapes currently source-verified for the initial NPC-loot slice.</summary>
 public enum VanillaNpcLootRuleKind : byte
@@ -153,15 +153,6 @@ public static class VanillaNpcLootRuleCatalog
         table = default;
         return false;
     }
-
-    /// <summary>
-    /// Compatibility view returning only the ordered rules. New authoritative code should prefer
-    /// <see cref="TryGetNpcSpecificTable"/> so support and an empty verified table remain distinguishable.
-    /// </summary>
-    public static ReadOnlySpan<VanillaNpcLootRule> GetNpcSpecificRules(NpcTypeId npcType) =>
-        TryGetNpcSpecificTable(npcType, out VanillaNpcLootTable table)
-            ? table.Rules
-            : ReadOnlySpan<VanillaNpcLootRule>.Empty;
 }
 
 /// <summary>
