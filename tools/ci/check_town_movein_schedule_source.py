@@ -27,9 +27,17 @@ def main() -> None:
         "SpawnHomelessNPC day/eclipse/invasion gate")
     require(worldgen, "homelessSpawnTimeout = 54000", "SpawnHomelessNPC timeout")
     require(worldgen, "FindNPCLookingForHomeThatCanMoveIn(num)", "existing homeless resident relocation")
+    require(worldgen, "Main.npc[i].homeless && Main.npc[i].townNPC && Main.npc[i].lookForHomeTimeout == 0", "homeless resident priority eligibility")
+    require(worldgen, "Main.npc[n].lookForHomeTimeout = NPC.KickOutLookForHomeTimeout", "manual kick-out look-for-home timeout")
+    require(worldgen, "Main.npc[num2].homeless = false", "homeless resident relocation clears homeless")
+    require(worldgen, "Main.npc[num2].homelessDespawn = false", "homeless resident relocation clears despawn flag")
     require(worldgen, "TownManager.HasRoom(num, out roomPosition)", "town pet assigned-room lookup")
+    require(worldgen, "TownManager.HasRoom(num, out var roomPosition2) && !currentlyTryingToUseAlternateHousingSpot", "assigned-room priority before fallback housing")
+    require(worldgen, "SpawnTownNPC(roomPosition2.X, roomPosition2.Y - 2)", "assigned-room recursive seed offset")
     require(worldgen, "IsRoomConsideredAlreadyOccupied(num5, num6, npcTypeToSpawn)", "room occupancy gate")
     require(worldgen, "TownManager.CanNPCsLiveWithEachOther(npcTypeToSpawn, nPC)", "housing-category sharing gate")
+
+    require(npc, "public static readonly int KickOutLookForHomeTimeout = 3600", "NPC kick-out look-for-home timeout constant")
 
     require(npc, "bool flag = Main.raining", "AI_007 rain return-home flag")
     require(npc, "if (!Main.dayTime) { flag = true; }", "AI_007 night return-home flag")

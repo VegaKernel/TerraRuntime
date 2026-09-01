@@ -43,6 +43,8 @@ internal sealed class RuntimeTownHouseCandidateIndex1458
 
     public void SetTruffleUnlocked(bool unlocked) => validator.SetTruffleUnlocked(unlocked);
 
+    internal VanillaHousingValidator1458 Validator => validator;
+
     public void Scan(int tileBudget)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(tileBudget);
@@ -83,9 +85,39 @@ internal sealed class RuntimeTownHouseCandidateIndex1458
         }
     }
 
+    /// <summary>
+    /// Terraria 1.4.5.8 SpawnTownNPC gives a TownManager-assigned room one recursive attempt before the room that
+    /// happened to trigger the current housing scan. TownManager stores the canonical home floor tile; WorldGen
+    /// restarts its room check two tiles above that point.
+    /// </summary>
+    public bool TryValidateAssignedRoom(
+        NpcTypeId npcType,
+        in WorldTownRoom room,
+        ReadOnlySpan<VanillaHousingOccupant> occupants,
+        out VanillaHousingPlacement placement)
+    {
+        int seedY = room.Y - 2;
+        if ((uint)room.X >= (uint)tiles.Dimensions.WidthTiles ||
+            (uint)seedY >= (uint)tiles.Dimensions.HeightTiles)
+        {
+            placement = default;
+            return false;
+        }
+
+        placement = validator.Validate(room.X, seedY, npcType, occupants);
+        return placement.IsValid && placement.HomeTileX == room.X && placement.HomeTileY == room.Y;
+    }
+
     public bool TryFindRoom(
         NpcTypeId npcType,
         ReadOnlySpan<VanillaHousingOccupant> occupants,
+        out VanillaHousingPlacement placement) =>
+        TryFindRoom(npcType, occupants, out _, out placement);
+
+    public bool TryFindRoom(
+        NpcTypeId npcType,
+        ReadOnlySpan<VanillaHousingOccupant> occupants,
+        out RuntimeTownHouseCandidate1458 selectedCandidate,
         out VanillaHousingPlacement placement)
     {
         for (int i = 0; i < candidates.Count; i++)
@@ -98,6 +130,7 @@ internal sealed class RuntimeTownHouseCandidateIndex1458
                 occupants);
             if (current.IsValid)
             {
+                selectedCandidate = candidate;
                 placement = current;
                 return true;
             }
@@ -113,6 +146,7 @@ internal sealed class RuntimeTownHouseCandidateIndex1458
             }
         }
 
+        selectedCandidate = default;
         placement = default;
         return false;
     }
