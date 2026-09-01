@@ -26,7 +26,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
 
             simulation = simulation with { Scale = definition.Scale };
 
-            if (definition.Type == VanillaNpcIds.BrainOfCthulhu)
+            if (definition.DontTakeDamageAtSpawn)
                 simulation = simulation with { DontTakeDamage = true };
 
             if (definition.NoGravityAtSpawn || definition.NoTileCollideAtSpawn)
