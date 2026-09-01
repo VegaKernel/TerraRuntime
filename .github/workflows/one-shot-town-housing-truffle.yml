@@ -35,9 +35,9 @@ jobs:
           p = Path('tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs')
           text = p.read_text()
           old = '''        for (int x = 40; x < 60 && written < mushroomTiles; x++)
-          for (int y = Math.Max(6, top - 10); y < Math.Min(114, top + 30) && written < mushroomTiles; y++)'''
+        for (int y = Math.Max(6, top - 10); y < Math.Min(114, top + 30) && written < mushroomTiles; y++)'''
           new = '''        for (int x = 10; x < 20 && written < mushroomTiles; x++)
-          for (int y = top; y < top + 10 && written < mushroomTiles; y++)'''
+        for (int y = top; y < top + 10 && written < mushroomTiles; y++)'''
           if old not in text:
               raise SystemExit('Truffle fixture anchor drifted')
           p.write_text(text.replace(old, new))
