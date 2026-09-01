@@ -11,16 +11,16 @@ namespace TerraRuntime.TerminalUI;
 /// </summary>
 internal static class TerminalUiTheme
 {
-    private const string Background = "#020604";
-    private const string Panel = "#07120A";
-    private const string FocusedPanel = "#123B1D";
-    private const string MenuBackground = "#0A2112";
-    private const string Primary = "#78FF98";
-    private const string Bright = "#B8FFC5";
-    private const string Accent = "#2DFF70";
-    private const string Muted = "#428A54";
-    private const string Disabled = "#24472E";
-    private const string Danger = "#FF5C57";
+    private const string Background = "#020806";
+    private const string Panel = "#06120D";
+    private const string FocusedPanel = "#0D2A19";
+    private const string MenuBackground = "#071C11";
+    private const string Primary = "#B7EFC8";
+    private const string Bright = "#E2F9EA";
+    private const string Accent = "#52E584";
+    private const string Muted = "#6FA781";
+    private const string Disabled = "#36523F";
+    private const string Danger = "#FF6B6B";
 
     internal static void Apply()
     {

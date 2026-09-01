@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Diagnostics;
 using TerraRuntime.Diagnostics;
 using TerraRuntime.Operations;
+using TerraRuntime.TerminalUI;
 using StructuredLogLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel;
 using OperationsLogLevel = TerraRuntime.Operations.RuntimeLogLevel;
 
@@ -123,9 +124,9 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
 
     public bool IsTerminalUiActive => Volatile.Read(ref terminalUiActive) != 0;
 
-    // Plain-console routing is the complement of terminal-UI routing. Keeping this derived query avoids
-    // parallel mutable state and lets logging/chat projection share one terminal-ownership contract.
-    public bool IsPlainConsoleActive => !IsTerminalUiActive;
+    // Plain-console routing is disabled while either the runtime dashboard or the startup framebuffer owns the tty.
+    // This keeps structured output and public-chat projection from tearing a double-buffered Terminal.Gui frame.
+    public bool IsPlainConsoleActive => !IsTerminalUiActive && !StartupProgressTelemetry.IsTerminalOwned;
 
     internal RuntimeLogPipelineMetrics CapturePipelineMetrics() => pipeline.CaptureMetrics();
 
@@ -152,13 +153,15 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         bool useStandardError = false,
         bool bufferedOnly = false)
     {
-        RuntimeLogDelivery delivery = bufferedOnly || IsTerminalUiActive
+        bool startupUiActive = StartupProgressTelemetry.IsTerminalOwned;
+        RuntimeLogDelivery delivery = bufferedOnly || IsTerminalUiActive || startupUiActive
             ? RuntimeLogDelivery.Buffered
             : useStandardError
                 ? RuntimeLogDelivery.StandardError
                 : RuntimeLogDelivery.StandardOutput;
 
         TryPublish(level, source, message, eventId, category, MergeContext(context), delivery);
+        StartupProgressTelemetry.Observe(eventId, message);
     }
 
     public async ValueTask DisposeAsync()
