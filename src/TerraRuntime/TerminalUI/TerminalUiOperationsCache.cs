@@ -22,7 +22,7 @@ internal sealed class TerminalUiOperationsCache :
     private const int DemandWorldItems = 1 << 2;
     private const int DemandDetailLogs = 1 << 3;
     private const int MaximumCachedLogSources = 64;
-    private const int DetailLogEntries = 16;
+    private const int DetailLogEntries = 256;
 
     private static readonly RuntimeLogQuery OverviewLogQuery =
         new(RuntimeLogLevel.Information, 12);
