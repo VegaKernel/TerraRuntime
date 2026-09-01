@@ -84,6 +84,7 @@ public static class StartupProgram
                     creationRequest,
                     startupWorldGenerators,
                     startupTuiEnabled,
+                    directories.LogsDirectory,
                     out string? createdPath))
             {
                 return 25;
@@ -98,44 +99,54 @@ public static class StartupProgram
         }
         else if (!HasWorldArgument(serverArgs))
         {
-            if (!LocalWorldSelector.TrySelectOrCreate(
-                    directories.WorldsDirectory,
-                    out LocalWorldSelection selection))
+            string? worldPath = null;
+            while (string.IsNullOrWhiteSpace(worldPath))
             {
-                return 0;
-            }
-
-            StartupConsolePresentation.ClearForTransition();
-
-            string? worldPath;
-            if (selection.Kind == LocalWorldSelectionKind.CreateWorld)
-            {
-                if (!InteractiveWorldCreationPrompt.TryPrompt(
+                if (!LocalWorldSelector.TrySelectOrCreate(
                         directories.WorldsDirectory,
-                        startupWorldGenerators,
-                        out StartupWorldCreationRequest creationRequest))
+                        out LocalWorldSelection selection))
                 {
                     return 0;
                 }
 
                 StartupConsolePresentation.ClearForTransition();
 
-                if (!TryCreateStartupWorld(
-                        creationRequest,
-                        startupWorldGenerators,
-                        startupTuiEnabled,
-                        out worldPath))
+                if (selection.Kind == LocalWorldSelectionKind.CreateWorld)
                 {
-                    return 25;
+                    if (!InteractiveWorldCreationPrompt.TryPrompt(
+                            directories.WorldsDirectory,
+                            startupWorldGenerators,
+                            out StartupWorldCreationRequest creationRequest))
+                    {
+                        // Cancelling the creation form means "back" during interactive startup, not "kill the process".
+                        StartupConsolePresentation.ClearForTransition();
+                        continue;
+                    }
+
+                    StartupConsolePresentation.ClearForTransition();
+
+                    if (!TryCreateStartupWorld(
+                            creationRequest,
+                            startupWorldGenerators,
+                            startupTuiEnabled,
+                            directories.LogsDirectory,
+                            out worldPath))
+                    {
+                        if (Console.IsInputRedirected ||
+                            !StartupWorldCreationFailurePolicy.PromptReturnToWorldSelection(Console.In, Console.Out))
+                        {
+                            return 0;
+                        }
+
+                        StartupConsolePresentation.ClearForTransition();
+                        continue;
+                    }
+                }
+                else
+                {
+                    worldPath = selection.WorldPath;
                 }
             }
-            else
-            {
-                worldPath = selection.WorldPath;
-            }
-
-            if (string.IsNullOrWhiteSpace(worldPath))
-                return 0;
 
             serverArgs = [.. serverArgs, "--world", worldPath];
         }
@@ -177,6 +188,7 @@ public static class StartupProgram
         StartupWorldCreationRequest request,
         ITerraRuntimeWorldGeneratorSource generators,
         bool terminalUiEnabled,
+        string logsDirectory,
         out string? worldPath)
     {
         long maxTileCount = TerrariaServerHost.CreateServerWorldLoadLimits().MaxTileCount;
@@ -200,18 +212,48 @@ public static class StartupProgram
 
         try
         {
-            RuntimeWorldCreationPersistenceResult creation = persistence.TryCreateAndPersist(
-                request.Generation,
-                request.OutputPath,
-                Guid.NewGuid(),
-                worldId: RandomNumberGenerator.GetInt32(1, int.MaxValue),
-                creationTimeBinary: nowBinary,
-                lastPlayedBinary: nowBinary,
-                progressSink: progressUi);
+            RuntimeWorldCreationPersistenceResult creation;
+            try
+            {
+                creation = persistence.TryCreateAndPersist(
+                    request.Generation,
+                    request.OutputPath,
+                    Guid.NewGuid(),
+                    worldId: RandomNumberGenerator.GetInt32(1, int.MaxValue),
+                    creationTimeBinary: nowBinary,
+                    lastPlayedBinary: nowBinary,
+                    progressSink: progressUi);
+            }
+            catch (Exception exception) when (StartupWorldCreationFailurePolicy.IsRecoverable(exception))
+            {
+                progressUi?.FailAndRelease(
+                    $"World creation failed: {exception.GetType().Name}. Returning control to startup.");
+                string? logPath = StartupWorldCreationFailurePolicy.TryWriteDiagnostic(
+                    logsDirectory,
+                    in request,
+                    status: null,
+                    exception: exception);
+                Console.Error.WriteLine(
+                    $"World creation failed unexpectedly: {exception.GetType().Name}: {exception.Message}");
+                PrintFailureLogPath(logPath);
+                worldPath = null;
+                return false;
+            }
+
             if (!creation.Succeeded || string.IsNullOrWhiteSpace(creation.WorldPath))
             {
-                progressUi?.FailAndRelease($"World creation failed: {creation.Status}.");
+                Exception? failure = StartupWorldCreationFailurePolicy.ExtractException(in creation);
+                progressUi?.FailAndRelease(
+                    failure is null
+                        ? $"World creation failed: {creation.Status}. Returning control to startup."
+                        : $"World creation failed: {creation.Status} ({failure.GetType().Name}). Returning control to startup.");
                 PrintWorldCreationFailure(request, creation, generators, maxTileCount);
+                string? logPath = StartupWorldCreationFailurePolicy.TryWriteDiagnostic(
+                    logsDirectory,
+                    in request,
+                    creation.Status,
+                    failure);
+                PrintFailureLogPath(logPath);
                 worldPath = null;
                 return false;
             }
@@ -264,8 +306,20 @@ public static class StartupProgram
                 break;
 
             case RuntimeWorldCreationPersistenceStatus.GenerationFailed when result.Creation is { } creation:
-                Console.Error.WriteLine(
-                    $"Generation execution failed: {creation.Generation.Execution?.Status}.");
+                if (creation.Generation.Execution is { } execution)
+                {
+                    string pass = execution.PassId.IsAssigned ? $", pass={execution.PassId.Value}" : string.Empty;
+                    Console.Error.WriteLine($"Generation execution failed: {execution.Status}{pass}.");
+                    if (execution.Error is { } generationError)
+                    {
+                        Console.Error.WriteLine(
+                            $"{generationError.GetType().Name}: {generationError.Message}");
+                    }
+                }
+                else
+                {
+                    Console.Error.WriteLine("Generation execution failed before an execution diagnostic was produced.");
+                }
                 break;
 
             case RuntimeWorldCreationPersistenceStatus.FinalizationFailed when result.Creation is { } creation:
@@ -277,6 +331,17 @@ public static class StartupProgram
                 Console.Error.WriteLine($"Atomic world publication failed: {publication.Result}.");
                 break;
         }
+    }
+
+    private static void PrintFailureLogPath(string? logPath)
+    {
+        if (string.IsNullOrWhiteSpace(logPath))
+        {
+            Console.Error.WriteLine("Could not write the world-generation diagnostic log.");
+            return;
+        }
+
+        Console.Error.WriteLine($"Full diagnostic appended to '{logPath}'.");
     }
 
     private static void PrintWorldGenerators(ITerraRuntimeWorldGeneratorSource source)
@@ -333,7 +398,7 @@ public static class StartupProgram
 
     private static void PrintUsage()
     {
-        Console.WriteLine($"{RuntimeProductInfo.DisplayName} · .NET 11 server runtime.");
+        Console.WriteLine("TerraRuntime .NET 11 server runtime.");
         Console.WriteLine();
         Console.WriteLine("Interactive startup:");
         Console.WriteLine("  TerraRuntime.Server");
