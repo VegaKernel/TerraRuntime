@@ -159,6 +159,10 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId BloodEelHead = new(621);
     public static readonly NpcTypeId BloodEelBody = new(622);
     public static readonly NpcTypeId BloodEelTail = new(623);
+    public static readonly NpcTypeId Vulture = new(61);
+    public static readonly NpcTypeId SpikeBall = new(70);
+    public static readonly NpcTypeId BlazingWheel = new(72);
+    public static readonly NpcTypeId Raven = new(301);
 }
 
 /// <summary>
@@ -175,6 +179,9 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Worm = new(6);
     public static readonly NpcAiStyleId Town = new(7);
     public static readonly NpcAiStyleId KingSlime = new(15);
+    public static readonly NpcAiStyleId Vulture = new(17);
+    public static readonly NpcAiStyleId SpikeBall = new(20);
+    public static readonly NpcAiStyleId BlazingWheel = new(21);
     public static readonly NpcAiStyleId BrainOfCthulhu = new(54);
     public static readonly NpcAiStyleId BrainCreeper = new(55);
 }

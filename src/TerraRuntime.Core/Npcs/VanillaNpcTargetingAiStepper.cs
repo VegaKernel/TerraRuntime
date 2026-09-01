@@ -40,6 +40,9 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaKingSlimeNpcBehaviorStrategy _kingSlime;
     private readonly VanillaBrainOfCthulhuNpcBehaviorStrategy _brainOfCthulhu;
     private readonly VanillaBrainCreeperNpcBehaviorStrategy _brainCreeper;
+    private readonly IVanillaNpcBehaviorStrategy _vulture = new VanillaVultureNpcBehaviorStrategy();
+    private readonly VanillaSpikeBallNpcBehaviorStrategy _spikeBall;
+    private readonly IVanillaNpcBehaviorStrategy _blazingWheel = new VanillaBlazingWheelNpcBehaviorStrategy();
     private readonly IVanillaNpcRandom _random;
 
     public VanillaNpcTargetingAiStepper(
@@ -55,6 +58,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
         _brainOfCthulhu = new VanillaBrainOfCthulhuNpcBehaviorStrategy(_random);
         _brainCreeper = new VanillaBrainCreeperNpcBehaviorStrategy(_random);
+        _spikeBall = new VanillaSpikeBallNpcBehaviorStrategy(_random);
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
@@ -138,6 +142,9 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.KingSlime => _kingSlime,
             VanillaNpcBehaviorFamily.BrainOfCthulhu => _brainOfCthulhu,
             VanillaNpcBehaviorFamily.BrainCreeper => _brainCreeper,
+            VanillaNpcBehaviorFamily.Vulture => _vulture,
+            VanillaNpcBehaviorFamily.SpikeBall => _spikeBall,
+            VanillaNpcBehaviorFamily.BlazingWheel => _blazingWheel,
             _ => null
         };
 

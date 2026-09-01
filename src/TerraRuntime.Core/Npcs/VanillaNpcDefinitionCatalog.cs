@@ -19,7 +19,10 @@ public enum VanillaNpcBehaviorFamily : byte
     KingSlime = 6,
     Worm = 7,
     BrainOfCthulhu = 8,
-    BrainCreeper = 9
+    BrainCreeper = 9,
+    Vulture = 10,
+    SpikeBall = 11,
+    BlazingWheel = 12
 }
 
 /// <summary>
@@ -33,7 +36,10 @@ public enum VanillaNpcPhysicsFamily : byte
     SlimeGround = 1,
     FlyingEye = 2,
     GroundFighter = 3,
-    NoClipFlight = 4
+    NoClipFlight = 4,
+    Vulture = 5,
+    SpikeBall = 6,
+    BlazingWheel = 7
 }
 
 /// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>
@@ -77,6 +83,9 @@ public readonly record struct VanillaNpcDefinition(
     bool NoTileCollideAtSpawn,
     VanillaNpcSyncAnchor SyncAnchor)
 {
+    /// <summary>SetDefaults-owned invulnerability that must exist before the first AI tick.</summary>
+    public bool DontTakeDamageAtSpawn { get; init; }
+
     public bool IsBoss => Role == NpcArchetypeRole.Boss;
 
     public int Width => TryResolveHitbox(Scale, out VanillaNpcHitboxSize hitbox) ? hitbox.Width : BaseWidth;
@@ -258,6 +267,9 @@ public static class VanillaNpcDefinitionCatalog
         if (VanillaWormNpcCatalog.TryGetDefinition(type, out definition))
             return true;
 
+        if (VanillaNpcAi17_20_21Catalog1458.TryGetDefinition(type, out definition))
+            return true;
+
         if (type == VanillaNpcIds.BrainOfCthulhu)
         {
             definition = new VanillaNpcDefinition(
@@ -275,7 +287,10 @@ public static class VanillaNpcDefinitionCatalog
                 Scale: 1f,
                 NoGravityAtSpawn: true,
                 NoTileCollideAtSpawn: true,
-                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft)
+            {
+                DontTakeDamageAtSpawn = true
+            };
             return true;
         }
 
