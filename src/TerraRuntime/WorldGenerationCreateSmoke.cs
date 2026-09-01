@@ -1,5 +1,6 @@
 using System.Globalization;
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Core;
 using TerraRuntime.World;
 
 namespace TerraRuntime;
@@ -171,12 +172,14 @@ internal static class WorldGenerationCreateSmoke
         {
             RuntimeWorldGenerationFinalizationResult? finalization = result.Creation?.Finalization;
             WorldGenerationExecutionResult? execution = result.Creation?.Generation.Execution;
+            string passId = execution is { } e && e.PassId.IsAssigned ? e.PassId.Value : string.Empty;
+            string dependencyId = execution is { } dependencyExecution && dependencyExecution.DependencyId.IsAssigned
+                ? dependencyExecution.DependencyId.Value
+                : string.Empty;
             Console.Error.WriteLine(
                 $"Worldgen create smoke failed: status={result.Status}, " +
                 $"generation={result.Creation?.Generation.Status}, " +
-                $"execution={execution?.Status}, " +
-                $"pass={(execution is { PassId.IsAssigned: true } ? execution.Value.PassId.Value : string.Empty)}, " +
-                $"dependency={(execution is { DependencyId.IsAssigned: true } ? execution.Value.DependencyId.Value : string.Empty)}, " +
+                $"execution={execution?.Status}, pass={passId}, dependency={dependencyId}, " +
                 $"finalization={finalization?.Status}, " +
                 $"validation={finalization?.Validation?.Status}, " +
                 $"validationDetail={finalization?.Validation?.Detail}, " +
