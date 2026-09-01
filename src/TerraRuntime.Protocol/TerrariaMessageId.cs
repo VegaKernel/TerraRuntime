@@ -44,6 +44,7 @@ public enum TerrariaMessageId : byte
     UpdateNpcHome = 60,
     ChestName = 69,
     CatchNpc = 70,
+    TravelShop = 72,
     PlaceObject = 79,
     SyncPlayerChestIndex = 80,
     LoadNetModule = 82,
