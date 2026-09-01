@@ -18,6 +18,7 @@ The executable truth is `VanillaNpcAiCoverageCatalog`. `FullVanillaAiParity` rem
 | Brain of Cthulhu | yes | partial | partial | 20/40 Creeper spawn, invulnerability gate, phase teleports/pursuit, death/progression and difficulty loot | no |
 | Brain Creeper | yes | partial | partial | Brain-relative orbit/charge, Expert/Good World pursuit and difficulty material loot | no |
 | Skeletron | yes | partial | partial | head/hand ownership, Expert skull homing/lifetime, death/progression and source-ordered loot | no |
+| Queen Bee | yes | partial | partial | AI_043 attack cycle, Jungle/surface/Good World enrage, Bee/SmallBee ownership, stinger 719, death/progression and source-ordered loot | no |
 | 23 additional hostile AI_001 types | yes | partial | partial | typed timer bonus/jump-window profiles | no |
 | 12 additional hostile AI_002 types | yes | partial | partial | typed normal/special/enraged steering profiles | no |
 | 17 additional hostile AI_005 types | yes | partial | partial | typed pursuit/bounce/water profiles | no |
@@ -107,6 +108,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] add Brain of Cthulhu/Creeper gameplay vertical: source defaults, 20/40 child spawn, invulnerability gate, both teleport/pursuit phases, Creeper charge/pursuit, packet-28 loot and `downedBoss2`;
 - [ ] Brain of Cthulhu remaining parity: player `ZoneCrimson` escape gate plus presentation-only sound/dust/gore and client alpha rendering;
 - [x] add Skeletron gameplay vertical: source-backed head/hand ownership, Expert skull cadence/homing/lifetime, shared head/hand interaction credit, Classic/Expert/Master loot, isolated RedHat-condition evaluator coverage and persisted `downedBoss3` progression;
+- [x] add Queen Bee gameplay vertical: AI_043 attack cycle, source-shaped Jungle/surface/Good World enrage, Bee/SmallBee spawn ownership with localAI seed, stinger 719 lifetime, Classic/Expert/Master loot and persisted `downedQueenBee`;
 - [ ] add remaining pre-Hardmode bosses with complete child/projectile ownership;
 - [ ] add Hardmode, event and endgame bosses;
 - [ ] boss bars, announcements, progression transitions and multiplayer targeting parity.

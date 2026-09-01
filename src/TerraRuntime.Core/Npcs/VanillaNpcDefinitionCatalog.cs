@@ -24,7 +24,8 @@ public enum VanillaNpcBehaviorFamily : byte
     SpikeBall = 11,
     BlazingWheel = 12,
     SkeletronHead = 13,
-    SkeletronHand = 14
+    SkeletronHand = 14,
+    QueenBee = 15
 }
 
 /// <summary>
@@ -271,6 +272,27 @@ public static class VanillaNpcDefinitionCatalog
 
         if (VanillaNpcAi17_20_21Catalog1458.TryGetDefinition(type, out definition))
             return true;
+
+        if (type == VanillaNpcIds.QueenBee)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.QueenBee,
+                AiStyle: VanillaNpcAiStyles.QueenBee,
+                BehaviorFamily: VanillaNpcBehaviorFamily.QueenBee,
+                PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Boss,
+                BaseWidth: 66,
+                BaseHeight: 66,
+                Damage: 30,
+                Defense: 8,
+                LifeMax: 3400,
+                KnockBackResist: 0f,
+                Scale: 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
 
         if (type == VanillaNpcIds.BrainOfCthulhu)
         {

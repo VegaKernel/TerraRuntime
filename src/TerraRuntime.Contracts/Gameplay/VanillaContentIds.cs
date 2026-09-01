@@ -149,6 +149,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Moth = new(205);
     public static readonly NpcTypeId Bee = new(210);
     public static readonly NpcTypeId SmallBee = new(211);
+    public static readonly NpcTypeId QueenBee = new(222);
     public static readonly NpcTypeId FattyHornet = new(231);
     public static readonly NpcTypeId HoneyHornet = new(232);
     public static readonly NpcTypeId LeafyHornet = new(233);
@@ -186,6 +187,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Vulture = new(17);
     public static readonly NpcAiStyleId SpikeBall = new(20);
     public static readonly NpcAiStyleId BlazingWheel = new(21);
+    public static readonly NpcAiStyleId QueenBee = new(43);
     public static readonly NpcAiStyleId BrainOfCthulhu = new(54);
     public static readonly NpcAiStyleId BrainCreeper = new(55);
 }
@@ -251,6 +253,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId ProbePinkLaser = new(84);
     public static readonly ProjectileTypeId ConfettiGun = new(178);
     public static readonly ProjectileTypeId SkeletronSkull = new(270);
+    public static readonly ProjectileTypeId QueenBeeStinger = new(719);
     public static readonly ProjectileTypeId BloodShot = new(811);
     public static readonly ProjectileTypeId ConfettiMelee = new(289);
     public static readonly ProjectileTypeId RottenEgg = new(318);

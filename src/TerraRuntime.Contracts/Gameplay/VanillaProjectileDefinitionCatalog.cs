@@ -114,6 +114,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 26,
         CollisionHeight: 26);
 
+    private static readonly VanillaProjectileDefinition QueenBeeStingerDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     private static readonly VanillaProjectileDefinition BoneDefinition = new(
         Width: 16,
         Height: 16,
@@ -321,6 +331,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.SkeletronSkull)
         {
             definition = SkeletronSkullDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.QueenBeeStinger)
+        {
+            definition = QueenBeeStingerDefinition;
             return true;
         }
 
