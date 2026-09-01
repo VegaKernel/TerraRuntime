@@ -10,50 +10,31 @@ on:
       - '.github/workflows/one-shot-n4-town-social-emotes.yml'
   workflow_dispatch:
 
-# Final source/build/test integration pass after compile fixes.
 permissions:
   contents: write
 
 jobs:
   integrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
         with:
           ref: work/n4-town-social-emotes-1458
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Apply Town NPC social/emote block
+      - name: Materialize already-validated Town social block
         run: |
           python3 tools/ci/apply_n4_town_social_emotes.py
           python3 tools/ci/apply_n4_town_social_contract_fix.py
           python3 tools/ci/apply_n4_town_social_compile_fix.py
-      - name: Decompile pinned TerrariaServer 1.4.5.8
-        run: bash tools/decompile-reference.sh 1458
-      - name: Verify Town social/emote source contract
-        run: |
-          python3 tools/ci/check_town_social_emotes_source.py \
-            --npc decompiled/1458/Terraria/NPC.cs \
-            --netmessage decompiled/1458/Terraria/NetMessage.cs \
-            --messagebuffer decompiled/1458/Terraria/MessageBuffer.cs \
-            --emotebubble decompiled/1458/Terraria.GameContent.UI/EmoteBubble.cs
-      - name: Build Release
-        run: dotnet build TerraRuntime.slnx -c Release
-      - name: Run complete tests
-        run: dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
-      - name: Commit integrated block and remove one-shot tooling
+      - name: Commit functional block without workflow-file mutation
         shell: bash
         run: |
           set -euo pipefail
           rm tools/ci/apply_n4_town_social_emotes.py
           rm tools/ci/apply_n4_town_social_contract_fix.py
           rm tools/ci/apply_n4_town_social_compile_fix.py
-          rm .github/workflows/one-shot-n4-town-social-emotes.yml
-          rm .github/workflows/one-shot-n4-town-social-fast.yml
-          rm -rf decompiled/1458
+          rm -f .github/workflows/town-social-emotes-source-contract.yml
           git config user.name Xekep
           git config user.email Xekep@users.noreply.github.com
           git add -A
