@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcRescue1458.cs'
-      - 'src/TerraRuntime.Core/Npcs/VanillaNpcCatchCatalog1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaNpcCatchCatalog1458.cs'
+      - 'src/TerraRuntime.Core/Npcs/VanillaNpcCatchWorldItem1458.cs'
       - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaNpcCatchCodec.cs'
       - 'src/TerraRuntime/NpcCatchFrameSink.cs'
       - 'src/TerraRuntime/RuntimeTownNpcRescueService1458.cs'
@@ -16,7 +17,8 @@ on:
     branches: [main]
     paths:
       - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcRescue1458.cs'
-      - 'src/TerraRuntime.Core/Npcs/VanillaNpcCatchCatalog1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaNpcCatchCatalog1458.cs'
+      - 'src/TerraRuntime.Core/Npcs/VanillaNpcCatchWorldItem1458.cs'
       - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaNpcCatchCodec.cs'
       - 'src/TerraRuntime/NpcCatchFrameSink.cs'
       - 'src/TerraRuntime/RuntimeTownNpcRescueService1458.cs'
