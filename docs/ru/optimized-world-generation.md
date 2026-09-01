@@ -30,14 +30,15 @@ flowchart TD
     Dungeon["optimized dungeon v2<br/>rooms / branches / locked loot / traps"]
     PVal["base + playability validators"]
     LVal["landmark validator"]
-    Content["progression content<br/>evil anchors / Larva / forge pocket"]
+    Ecology["jungle ecology v2<br/>isolated hives / Queen Bee arenas / glowing mushroom pockets"]
+    Content["progression content<br/>evil anchors / distributed Larva / forge pocket"]
     Shape["surface shaping<br/>natural top slopes / half-block transitions"]
     Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>trees с foliage anchors / undergrowth / sunflowers"]
     Loot["exploration loot v2<br/>Skyware / generic / biome / ocean families"]
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> Dungeon --> PVal --> LVal --> Content --> Shape --> Surf --> Loot --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> Dungeon --> PVal --> LVal --> Ecology --> Content --> Shape --> Surf --> Loot --> Prog --> Commit
 ```
 
 Все optimized passes используют `WorldGenerationRngMode.IsolatedDeterministic`. Поэтому новый несвязанный pass не
@@ -54,7 +55,7 @@ Optimized profile сейчас создаёт и валидирует:
 - малые correlated caves, крупные warped caverns, vertical shafts и inland underground lakes;
 - несколько floating islands;
 - связный dungeon graph с main rooms/branches, читаемым входом, locked dungeon loot, Golden Keys, spikes и wired dart traps;
-- jungle hive, Jungle Temple и Aether/Shimmer pocket;
+- масштабируемые по ширине изолированные jungle hives с сухими Queen Bee arenas и Honey basins, а также Jungle Temple и Aether/Shimmer pocket;
 - pre-Hardmode ore tiers;
 - масштабируемый по площади мира бюджет Life Crystals;
 - persistent surface, underground и cavern exploration caches с source-backed primary loot families;
@@ -64,7 +65,7 @@ Optimized profile сейчас создаёт и валидирует:
 - детерминированные desert pyramids с внутренней chamber и persistent cache;
 - полые Living Wood trees с roots, underground room и persistent cache;
 - ограниченное число Underworld houses, соединённых волнистыми platform bridges;
-- granite, marble и spider/cobweb micro-biomes;
+- granite, marble, spider/cobweb и отдельные glowing-mushroom cave micro-biomes;
 - domain-warped material tongues на границах snow, desert, jungle и world evil;
 - детерминированные обычные forest/jungle/snow trees, surface undergrowth и sunflower patches, которые ставятся после landmarks и обходят progression objects/caches;
 - deterministic surface-finishing pass, который превращает чистые однотайловые перепады natural terrain в сохраняемые walkable slopes/half-blocks и публикует vanilla-format foliage anchors для обычных деревьев.
@@ -154,10 +155,28 @@ frame-important, hive, temple, dungeon, chest, Honey и Shimmer content.
 
 Это визуальные/exploration роли, а не заявление о повторении точных vanilla placement algorithms.
 
+## Jungle ecology v2
+
+После landmark validation pass `terraruntime:optimized/jungle-ecology-v2` считает фактические connected components стены
+`HiveUnsafe` авторитетными границами ульев. Финальный profile требует один изолированный hive на Small, два на Medium
+и три на более крупных мирах. Каждый component нормализуется так, чтобы сохранить сухую combat arena, нижний Honey
+basin и как минимум одно сухое место 3x3 для Larva. Недостающие hives размещаются только в подтверждённой материалом
+jungle-зоне; full-cell проверки запрещают затрагивать frame-important objects, dungeon/Temple content, Shimmer и уже
+существующие hives.
+
+Progression-content затем ставит не более одной Larva в каждый отдельный hive до compatibility fallback, поэтому
+финальный budget 1/2/3 распределён по разным компонентам, а не скучен в одном улье. Семантика активации/разрушения
+Larva и Queen Bee остаётся gameplay-owned; worldgen доказывает контракт арены и anchor.
+
+Тот же ecology pass добавляет детерминированные underground glowing-mushroom pockets с budget 1/2/3/4 по ширине мира.
+Pockets не сливаются друг с другом или с baseline mushroom region и обходят frame-important, hive, Temple, dungeon,
+Honey и Shimmer content. Placement остаётся собственной детерминированной логикой TerraRuntime, без заявления о
+seed-identical размещении micro-biomes Terraria.
+
 ## Гарантированный progression-контент
 
 После landmark validation `terraruntime:optimized` добавляет 2x2 Shadow Orb или Crimson Heart с budget по размеру мира и
-закреплённым контрактом framing 1.4.5.8 (`+36` frame-X для Crimson), сухие 3x3 Larva anchors внутри Hive, один persistent
+закреплённым контрактом framing 1.4.5.8 (`+36` frame-X для Crimson), сухие 3x3 Larva anchors, распределённые по изолированным hive components, один persistent
 `Jungle Progression Cache` с source-backed Jungle Spores/Stingers/Vines и сухой Underworld forge pocket с доступными
 Obsidian и открытым Hellstone. Финальный topology validator считает все четыре роли обязательными route targets.
 
@@ -166,7 +185,7 @@ runtime и здесь намеренно не объявляется завер�
 
 ## Validation
 
-Generation остаётся fail-closed. Validators требуют точные landmark budgets, persistent chest side-table entries,
+Generation остаётся fail-closed. Перед playability validation неполные фрагменты Life Crystal удаляются, полные 2x2 frame footprints пересчитываются, а недостающие объекты детерминированно восстанавливаются до исходного area-scaled target без снижения минимума. После этого validators требуют точные landmark budgets, persistent chest side-table entries,
 source-backed exploration-loot family budgets, минимальные material/wall counts, читаемый dungeon entrance, Dungeon v2
 room/loot/trap contracts и финальную progression topology. Финальный
 `OptimizedProgressionValidationWorldGenerationProvider` требует масштабируемые по площади минимумы Copper, Iron,
@@ -187,8 +206,6 @@ contracts. Загрузка существующего vanilla `.wld` не за�
 
 `terraruntime:optimized` ещё не production-complete. Основные оставшиеся задачи:
 
-- несколько hives и более сильная гарантия Queen Bee space на больших мирах;
-- glowing-mushroom и дополнительные decorative micro-biomes;
 - Hardmode-ready mutation anchors;
 - более богатые source-backed furniture/loot/resource families для Underworld settlements;
 - измерения generation time и peak memory на Small/Medium/Large;

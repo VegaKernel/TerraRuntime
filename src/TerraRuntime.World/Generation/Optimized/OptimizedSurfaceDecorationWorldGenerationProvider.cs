@@ -20,6 +20,7 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
     private static readonly WorldGenerationPassId UndergroundMorphologyId = new("terraruntime:optimized/underground-morphology-v2");
     private static readonly WorldGenerationPassId DungeonV2Id = new("terraruntime:optimized/dungeon-v2");
     private static readonly WorldGenerationPassId ProgressionContentId = OptimizedProgressionContentWorldGenerationProvider.ProgressionContentId;
+    private static readonly WorldGenerationPassId JungleEcologyId = new("terraruntime:optimized/jungle-ecology-v2");
     private static readonly WorldGenerationPassId SurfaceShapingId = new("terraruntime:optimized/surface-shaping");
     private static readonly WorldGenerationPassId SurfaceLifeId = new("terraruntime:optimized/surface-life");
     private static readonly WorldGenerationPassId ExplorationLootId = new("terraruntime:optimized/exploration-loot-v2");
@@ -41,6 +42,7 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
         bool rewiredCaves = false;
         bool insertedDungeonV2 = false;
         bool rewiredValidation = false;
+        bool insertedJungleEcology = false;
         bool insertedSurfaceLife = false;
         bool insertedExplorationLoot = false;
 
@@ -93,6 +95,19 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                 continue;
             }
 
+            if (entry.Descriptor.Id == ProgressionContentId)
+            {
+                builder.Add(
+                    new WorldGenerationPassDescriptor(
+                        JungleEcologyId,
+                        WorldGenerationRngMode.IsolatedDeterministic,
+                        requiredAfter: entry.Descriptor.RequiredAfter.ToArray()),
+                    JungleEcologyPass.Instance);
+                builder.Add(CloneDescriptor(entry.Descriptor, [JungleEcologyId]), entry.Pass);
+                insertedJungleEcology = true;
+                continue;
+            }
+
             if (entry.Descriptor.Id != ProgressionValidationId)
             {
                 builder.Add(entry.Descriptor, entry.Pass);
@@ -123,7 +138,8 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
         }
 
         if (!insertedMorphology || !insertedUndergroundMorphology || !rewiredCaves ||
-            !insertedDungeonV2 || !rewiredValidation || !insertedSurfaceLife || !insertedExplorationLoot)
+            !insertedDungeonV2 || !rewiredValidation || !insertedJungleEcology ||
+            !insertedSurfaceLife || !insertedExplorationLoot)
         {
             throw new InvalidOperationException(
                 "Optimized quality overlay could not find the morphology/dungeon/progression boundaries required by the final profile.");
@@ -185,6 +201,14 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
         public void Execute(IWorldGenerationContext context) =>
             _ = OptimizedDungeonV2.Apply(context);
+    }
+
+    private sealed class JungleEcologyPass : IWorldGenerationPass
+    {
+        public static JungleEcologyPass Instance { get; } = new();
+
+        public void Execute(IWorldGenerationContext context) =>
+            _ = OptimizedJungleEcologyV2.Apply(context);
     }
 
     private sealed class ExplorationLootPass : IWorldGenerationPass
