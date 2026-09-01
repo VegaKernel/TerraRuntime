@@ -7,8 +7,11 @@ on:
       - 'src/TerraRuntime.ExtensibleHost/**'
       - 'src/TerraRuntime.HostContracts/**'
       - 'src/TerraRuntime.Contracts/**'
+      - 'src/TerraRuntime/RuntimeWorld*.cs'
+      - 'src/TerraRuntime.World/**'
       - 'tests/TerraRuntime.HostModuleFixture/**'
       - 'tests/TerraRuntime.Tests/TrustedHostModule*.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeWorldGenerationContainmentTests.cs'
       - '.github/workflows/runtime-crash-containment.yml'
   pull_request:
     branches: [main]
@@ -16,8 +19,11 @@ on:
       - 'src/TerraRuntime.ExtensibleHost/**'
       - 'src/TerraRuntime.HostContracts/**'
       - 'src/TerraRuntime.Contracts/**'
+      - 'src/TerraRuntime/RuntimeWorld*.cs'
+      - 'src/TerraRuntime.World/**'
       - 'tests/TerraRuntime.HostModuleFixture/**'
       - 'tests/TerraRuntime.Tests/TrustedHostModule*.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeWorldGenerationContainmentTests.cs'
       - '.github/workflows/runtime-crash-containment.yml'
 
 permissions:
@@ -28,7 +34,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  trusted-host-modules:
+  runtime-boundaries:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -51,3 +57,7 @@ jobs:
           dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll -class TerraRuntime.Tests.TrustedHostModuleFaultContainmentTests
           dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll -class TerraRuntime.Tests.TrustedHostModuleLoaderTests
           dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll -class TerraRuntime.Tests.TrustedHostWorldGenerationIntegrationTests
+
+      - name: Run world-generation containment matrix
+        run: |
+          dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll -class TerraRuntime.Tests.RuntimeWorldGenerationContainmentTests

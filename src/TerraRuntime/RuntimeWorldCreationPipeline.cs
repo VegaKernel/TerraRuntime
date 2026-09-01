@@ -59,12 +59,13 @@ public sealed class RuntimeWorldCreationPipeline
                 Finalization: null);
         }
 
+        RuntimeWorldGenerationValidationMode validationMode = ResolveValidationMode(request.GeneratorId);
         RuntimeWorldGenerationFinalizationResult finalized =
-            RuntimeWorldGenerationFinalizer.Finalize(generated.Candidate);
+            RuntimeWorldGenerationFinalizer.Finalize(generated.Candidate, validationMode);
         if (!finalized.Succeeded)
         {
             // The workspace is intentionally dropped here. A caller cannot accidentally persist a candidate whose
-            // generator completed all passes but omitted required semantic anchors.
+            // generator completed all passes but omitted required semantic anchors or failed its selected validator.
             return new RuntimeWorldCreationPipelineResult(
                 RuntimeWorldCreationPipelineStatus.FinalizationFailed,
                 Candidate: null,
@@ -80,6 +81,19 @@ public sealed class RuntimeWorldCreationPipeline
             finalized.Metadata,
             generated,
             finalized);
+    }
+
+    internal static RuntimeWorldGenerationValidationMode ResolveValidationMode(WorldGeneratorId generatorId)
+    {
+        if (generatorId == VanillaWorldGenerationProvider1458.GeneratorId ||
+            generatorId == OptimizedSurfaceDecorationWorldGenerationProvider.GeneratorId)
+        {
+            return RuntimeWorldGenerationValidationMode.VanillaComplete;
+        }
+
+        // Flat, skyblock and trusted-host/custom generators still receive structural validation, but canonical
+        // Terraria dimensions alone must never imply that they promise the complete vanilla biome/content contract.
+        return RuntimeWorldGenerationValidationMode.GenericStructural;
     }
 
     private static RuntimeWorldGenerationFinalizationResult ApplyBuiltInWorldSemantics(

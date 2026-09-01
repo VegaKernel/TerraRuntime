@@ -12,6 +12,19 @@ public enum RuntimeWorldGenerationFinalizationStatus : byte
 }
 
 /// <summary>
+/// Selects the semantic validation contract applied after a generator has completed all passes but before its
+/// workspace can cross the persistence/publication boundary. Automatic preserves the historical direct-finalizer
+/// behavior; runtime-owned startup selection must choose an explicit profile so custom generators are not mistaken
+/// for vanilla merely because they use a canonical Terraria world size.
+/// </summary>
+public enum RuntimeWorldGenerationValidationMode : byte
+{
+    Automatic = 0,
+    GenericStructural = 1,
+    VanillaComplete = 2
+}
+
+/// <summary>
 /// Immutable semantic metadata captured only after a generated candidate has supplied every world anchor required by
 /// the persistence/runtime publication path. Raw .wld header fields deliberately do not cross this boundary.
 /// </summary>
@@ -42,7 +55,9 @@ public readonly record struct RuntimeWorldGenerationFinalizationResult(
 /// </summary>
 public static class RuntimeWorldGenerationFinalizer
 {
-    public static RuntimeWorldGenerationFinalizationResult Finalize(RuntimeWorldGenerationWorkspace candidate)
+    public static RuntimeWorldGenerationFinalizationResult Finalize(
+        RuntimeWorldGenerationWorkspace candidate,
+        RuntimeWorldGenerationValidationMode validationMode = RuntimeWorldGenerationValidationMode.Automatic)
     {
         ArgumentNullException.ThrowIfNull(candidate);
 
@@ -73,12 +88,22 @@ public static class RuntimeWorldGenerationFinalizer
             VanillaBootstrapState = candidate.VanillaBootstrapState
         };
 
-        VanillaWorldValidationResult validation = VanillaWorldGenerationValidator1458.Validate(candidate, metadata);
+        VanillaWorldValidationResult validation = validationMode switch
+        {
+            RuntimeWorldGenerationValidationMode.GenericStructural =>
+                RuntimeWorldGenerationStructuralValidator.Validate(candidate, metadata),
+            RuntimeWorldGenerationValidationMode.Automatic or
+            RuntimeWorldGenerationValidationMode.VanillaComplete =>
+                VanillaWorldGenerationValidator1458.Validate(candidate, metadata),
+            _ => throw new ArgumentOutOfRangeException(nameof(validationMode), validationMode, "Unknown world-generation validation mode.")
+        };
         if (!validation.IsValid)
+        {
             return new RuntimeWorldGenerationFinalizationResult(
                 RuntimeWorldGenerationFinalizationStatus.ValidationFailed,
                 metadata,
                 validation);
+        }
 
         return new RuntimeWorldGenerationFinalizationResult(
             RuntimeWorldGenerationFinalizationStatus.Finalized,
