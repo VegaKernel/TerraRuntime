@@ -38,10 +38,10 @@ for (int y = margin; y < tiles.Dimensions.HeightTiles - margin; y++)
             }
         }
 
-        if (!inactiveRing || !VanillaDirtPlacement.TryPlaceOnEmpty(tiles, x, y))
+        if (!inactiveRing || !VanillaDirtRules1458.TryPlaceOnEmpty(tiles, x, y))
             continue;
 
-        if (!VanillaDirtPlacement.TryKillIsolatedWithoutDrop(tiles, x, y))
+        if (!VanillaDirtRules1458.TryKillIsolatedWithoutDrop(tiles, x, y))
         {
             Console.Error.WriteLine(
                 $"Dirt locator invariant failed after placing an isolated canonical Dirt tile at ({x},{y}).");

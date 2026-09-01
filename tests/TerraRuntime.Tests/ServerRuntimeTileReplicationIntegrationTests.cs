@@ -73,7 +73,7 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(905);
         ConnectionHandle peer = fixture.SpawnPlayer(906);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
         WorldTile before = fixture.Tiles.Get(10, 10);
         var request = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.KillTileNoItem,
@@ -101,8 +101,8 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(907);
         ConnectionHandle peer = fixture.SpawnPlayer(908);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 11, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 11, 10));
         WorldTile before = fixture.Tiles.Get(10, 10);
         var request = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.KillTileNoItem,

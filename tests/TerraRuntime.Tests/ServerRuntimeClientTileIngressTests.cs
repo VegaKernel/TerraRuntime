@@ -140,7 +140,7 @@ public sealed class ServerRuntimeClientTileIngressTests
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 907);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
         WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
         long beforeVersion = fixture.Tiles.GetSectionVersion(section);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
@@ -170,8 +170,8 @@ public sealed class ServerRuntimeClientTileIngressTests
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 908);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 11, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 11, 10));
         WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
         long beforeVersion = fixture.Tiles.GetSectionVersion(section);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
@@ -200,7 +200,7 @@ public sealed class ServerRuntimeClientTileIngressTests
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 909);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
         WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
         long beforeVersion = fixture.Tiles.GetSectionVersion(section);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];

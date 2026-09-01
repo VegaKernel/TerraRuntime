@@ -30,7 +30,7 @@ on:
       - 'src/TerraRuntime.Core/*PlayerItem*.cs'
       - 'src/TerraRuntime.Core/*PlayerMovement*.cs'
       - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
-      - 'src/TerraRuntime.World/VanillaDirtPlacement.cs'
+      - 'src/TerraRuntime.World/VanillaDirtRules1458.cs'
       - 'src/TerraRuntime.World/WorldTile*.cs'
       - 'src/TerraRuntime.World/WorldFileLoader.cs'
       - 'src/TerraRuntime.World/WorldFileTileDecoder.cs'

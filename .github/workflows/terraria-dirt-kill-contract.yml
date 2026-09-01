@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.World/VanillaDirtPlacement.cs'
+      - 'src/TerraRuntime.World/VanillaDirtRules1458.cs'
       - 'src/TerraRuntime.World/VanillaWorldTileMutationService.cs'
       - 'src/TerraRuntime/ServerRuntimeState.cs'
-      - 'tests/TerraRuntime.Tests/VanillaDirtPlacementTests.cs'
+      - 'tests/TerraRuntime.Tests/VanillaDirtRules1458Tests.cs'
       - 'tests/TerraRuntime.Tests/VanillaWorldTileMutationServiceTests.cs'
       - 'tests/TerraRuntime.Tests/ServerRuntimeDirtKillDropTests.cs'
       - 'tools/ci/probe_dirt_kill.py'

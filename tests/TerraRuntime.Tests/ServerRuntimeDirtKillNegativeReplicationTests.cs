@@ -17,7 +17,7 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9501);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9502);
         fixture.SetSelectedCopperPickaxe(origin);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
         WorldTile before = fixture.Tiles.Get(10, 10);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 0)));
@@ -38,7 +38,7 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9511);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9512);
         fixture.SetSelectedCopperPickaxe(origin);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
         WorldTile before = fixture.Tiles.Get(10, 10);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 1)));
@@ -65,7 +65,7 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9513);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9514);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
         WorldTile before = fixture.Tiles.Get(10, 10);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 1)));
@@ -86,8 +86,8 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9521);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9522);
         fixture.SetSelectedCopperPickaxe(origin);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 11, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 11, 10));
         WorldTile before = fixture.Tiles.Get(10, 10);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 0)));

@@ -1225,7 +1225,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         {
             WorldTile before = _worldTiles.Get(tileState.TileX, tileState.TileY);
             bool isDirt = before.TileType == VanillaTileIds.Dirt;
-            if (isDirt && !VanillaDirtPlacement.CanKillIsolated(_worldTiles, tileState.TileX, tileState.TileY))
+            if (isDirt && !VanillaDirtRules1458.CanKillIsolated(_worldTiles, tileState.TileX, tileState.TileY))
             {
                 RejectedClientTileManipulations++;
                 return;
@@ -1276,7 +1276,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             WorldTile beforeKill = _worldTiles.Get(tileState.TileX, tileState.TileY);
             TileTypeId beforeType = beforeKill.TileType;
             bool isDirtKill = beforeType == VanillaTileIds.Dirt;
-            if (isDirtKill && !VanillaDirtPlacement.CanKillIsolated(_worldTiles, tileState.TileX, tileState.TileY))
+            if (isDirtKill && !VanillaDirtRules1458.CanKillIsolated(_worldTiles, tileState.TileX, tileState.TileY))
             {
                 RejectedClientTileManipulations++;
                 return;
@@ -1374,7 +1374,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 }
 
                 if (requestedTile == VanillaTileIds.Dirt &&
-                    !VanillaDirtPlacement.CanPlaceOnEmpty(_worldTiles, tileState.TileX, tileState.TileY))
+                    !VanillaDirtRules1458.CanPlaceOnEmpty(_worldTiles, tileState.TileX, tileState.TileY))
                 {
                     RejectedClientTileManipulations++;
                     return;

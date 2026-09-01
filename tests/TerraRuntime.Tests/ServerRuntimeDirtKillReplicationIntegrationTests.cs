@@ -19,7 +19,7 @@ public sealed class ServerRuntimeDirtKillReplicationIntegrationTests
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9401);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9402);
         fixture.SetSelectedCopperPickaxe(origin);
-        Assert.True(VanillaDirtPlacement.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
 
         var request = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.KillTile,

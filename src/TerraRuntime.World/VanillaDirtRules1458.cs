@@ -7,7 +7,7 @@ namespace TerraRuntime.World;
 /// rules remain here because they are packet/gameplay proof, while the actual storage mutation is delegated to the
 /// shared semantic <see cref="VanillaWorldTileMutationService"/> boundary used by future tile/wall operations.
 /// </summary>
-public static class VanillaDirtPlacement
+public static class VanillaDirtRules1458
 {
     public static bool TryPlaceOnEmpty(WorldTileStore tiles, int x, int y)
     {
