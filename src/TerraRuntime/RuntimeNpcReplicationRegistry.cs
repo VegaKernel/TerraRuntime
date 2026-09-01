@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
+using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime;
@@ -22,6 +23,7 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     private long baselineFrameCount;
     private long rejectedFrames;
     private long unsupportedCommits;
+    private NpcHandle suppressedClientDamageNpc;
 
     public long RelayedFrames => Interlocked.Read(ref relayedFrames);
 
@@ -41,6 +43,71 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     }
 
     public bool TryUnregister(GameCommandSourceId source) => endpoints.TryRemove(source, out _);
+
+    public bool TryBeginClientDamage(NpcHandle npc)
+    {
+        if (!npc.IsAssigned || suppressedClientDamageNpc.IsAssigned)
+            return false;
+        suppressedClientDamageNpc = npc;
+        return true;
+    }
+
+    public void CompleteClientDamage(NpcHandle npc)
+    {
+        if (suppressedClientDamageNpc != npc)
+            throw new InvalidOperationException("Packet-28 replication scope does not match the completing NPC generation.");
+        suppressedClientDamageNpc = default;
+    }
+
+    public void AbortClientDamage(NpcHandle npc)
+    {
+        if (suppressedClientDamageNpc == npc)
+            suppressedClientDamageNpc = default;
+    }
+
+    public bool TryAcknowledgeDamage(GameCommandSourceId source)
+    {
+        if (!endpoints.TryGetValue(source, out Endpoint? endpoint) || !endpoint.IsPlaying ||
+            TerrariaNpcDamageCodec.TryEncodeAck(out byte[] encoded) != TerrariaNpcDamageEncodeResult.Encoded)
+        {
+            return false;
+        }
+
+        if (endpoint.Outbound.TryEnqueue(new OutboundFrame(encoded)) == OutboundEnqueueResult.Enqueued)
+        {
+            Interlocked.Increment(ref relayedFrames);
+            return true;
+        }
+
+        Interlocked.Increment(ref rejectedFrames);
+        return false;
+    }
+
+    public bool TryPublishDamage(GameCommandSourceId excludedSource, in TerrariaNpcDamageState state)
+    {
+        if (TerrariaNpcDamageCodec.TryEncode(in state, out byte[] encoded) != TerrariaNpcDamageEncodeResult.Encoded)
+        {
+            Interlocked.Increment(ref unsupportedCommits);
+            return false;
+        }
+
+        BroadcastExcept(excludedSource, encoded);
+        return true;
+    }
+
+    public bool TryPublishDeath(in NpcSnapshot snapshot)
+    {
+        if (!RuntimeNpcPacketProjection.TryCreate(in snapshot, RuntimeNpcSyncKind.Despawn, out TerrariaNpcUpdateState state) ||
+            !TerrariaNpcUpdateEncoder.TryEncode(in state, out byte[] encoded))
+        {
+            Interlocked.Increment(ref unsupportedCommits);
+            return false;
+        }
+
+        Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
+        Broadcast(encoded);
+        return true;
+    }
 
     public void ConfigureTownHomeBaselines(ReadOnlySpan<RuntimeTownNpcHomeCommit> homes)
     {
@@ -96,9 +163,11 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             return;
         }
 
+        bool suppressBroadcast = suppressedClientDamageNpc.IsAssigned && snapshot.Handle == suppressedClientDamageNpc;
         if (kind == NpcStateCommitKind.Despawn)
         {
-            Broadcast(encoded);
+            if (!suppressBroadcast)
+                Broadcast(encoded);
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
             return;
         }
@@ -114,7 +183,8 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], baseline);
         }
 
-        Broadcast(encoded);
+        if (!suppressBroadcast)
+            Broadcast(encoded);
     }
 
     public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)

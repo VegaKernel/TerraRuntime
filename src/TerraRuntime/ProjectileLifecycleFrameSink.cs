@@ -13,7 +13,8 @@ public enum ProjectileLifecycleFrameStopReason : byte
     InvalidJoinState = 1,
     MalformedUpdate = 2,
     MalformedDestroy = 3,
-    GameIngressBackpressure = 4
+    GameIngressBackpressure = 4,
+    MalformedNpcDamage = 5
 }
 
 /// <summary>
@@ -31,6 +32,7 @@ public sealed class ProjectileLifecycleFrameSink :
     private readonly PlayerBootstrapFrameSink bootstrap;
     private readonly ITerrariaFrameSink inner;
     private readonly IProjectileNetworkIngress ingress;
+    private readonly INpcDamageNetworkIngress? npcDamageIngress;
     private readonly TileManipulationFrameSink? tileManipulation;
     private readonly ObjectPlacementFrameSink? objectPlacement;
     private long droppedAuthorityUpdates;
@@ -51,6 +53,7 @@ public sealed class ProjectileLifecycleFrameSink :
         this.bootstrap = bootstrap;
         this.inner = inner;
         this.ingress = ingress;
+        npcDamageIngress = ingress as INpcDamageNetworkIngress;
         tileManipulation = ingress is ITileNetworkIngress tileIngress
             ? new TileManipulationFrameSink(source, bootstrap, inner, tileIngress)
             : null;
@@ -83,7 +86,9 @@ public sealed class ProjectileLifecycleFrameSink :
             TerrariaFrameRejectionCategory own = StopReason switch
             {
                 ProjectileLifecycleFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
-                ProjectileLifecycleFrameStopReason.MalformedUpdate or ProjectileLifecycleFrameStopReason.MalformedDestroy => TerrariaFrameRejectionCategory.MalformedProtocol,
+                ProjectileLifecycleFrameStopReason.MalformedUpdate or
+                ProjectileLifecycleFrameStopReason.MalformedDestroy or
+                ProjectileLifecycleFrameStopReason.MalformedNpcDamage => TerrariaFrameRejectionCategory.MalformedProtocol,
                 ProjectileLifecycleFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
                 _ => TerrariaFrameRejectionCategory.None
             };
@@ -122,6 +127,7 @@ public sealed class ProjectileLifecycleFrameSink :
         return (TerrariaMessageId)frame.MessageId switch
         {
             TerrariaMessageId.ProjectileNew => HandleUpdate(in frame),
+            TerrariaMessageId.NpcDamage when npcDamageIngress is not null => HandleNpcDamage(in frame),
             TerrariaMessageId.ProjectileDestroy => HandleDestroy(in frame),
             _ => objectPlacement?.OnFrame(in frame) ??
                  tileManipulation?.OnFrame(in frame) ??
@@ -150,6 +156,22 @@ public sealed class ProjectileLifecycleFrameSink :
         }
 
         return ingress.TryPostUpdate(connection, in state)
+            ? TerrariaFrameSinkResult.Continue
+            : Stop(ProjectileLifecycleFrameStopReason.GameIngressBackpressure);
+    }
+
+    private TerrariaFrameSinkResult HandleNpcDamage(in TerrariaFrame frame)
+    {
+        if (!TryGetPlayingConnection(out ConnectionHandle connection))
+            return Stop(ProjectileLifecycleFrameStopReason.InvalidJoinState);
+
+        TerrariaNpcDamageDecodeResult decode = TerrariaNpcDamageCodec.TryDecode(
+            in frame,
+            out TerrariaNpcDamageState state);
+        if (decode != TerrariaNpcDamageDecodeResult.Decoded)
+            return Stop(ProjectileLifecycleFrameStopReason.MalformedNpcDamage);
+
+        return npcDamageIngress!.TryPostNpcDamage(connection, in state)
             ? TerrariaFrameSinkResult.Continue
             : Stop(ProjectileLifecycleFrameStopReason.GameIngressBackpressure);
     }

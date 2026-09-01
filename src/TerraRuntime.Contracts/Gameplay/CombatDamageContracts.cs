@@ -83,7 +83,7 @@ public readonly record struct NpcDamageRequest(
     public bool IsValid =>
         Target.IsAssigned &&
         Source.IsValid &&
-        BaseDamage > 0 &&
+        BaseDamage >= 0 &&
         ArmorPenetration >= 0 &&
         float.IsFinite(KnockBack) &&
         KnockBack >= 0f &&

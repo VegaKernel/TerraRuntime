@@ -46,6 +46,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly IProjectileStateStepper? _projectileStepper;
     private readonly RuntimeProjectileReplicationRegistry? _projectileReplication;
     private readonly RuntimeNpcReplicationRegistry? _npcReplication;
+    private readonly RuntimeWorldItemReplicationRegistry? _worldItemReplication;
+    private readonly RuntimeWorldItemInstancedLeaseStore _instancedItemLeases;
+    private readonly RuntimeNpcNetworkCombatPipeline _npcCombat;
+    private readonly short[] _expiredInstancedItemSlots = new short[RuntimeWorldItemStore.VanillaCapacity];
     private readonly RuntimeTownNpcStateStore? _townNpcs;
     private readonly VanillaHousingValidator1458? _housingValidator;
     private readonly RuntimeTownNpcMoveInCoordinator1458? _townMoveIn;
@@ -81,6 +85,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         RuntimeWorldItemStore? worldItems = null,
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
         RuntimeNpcReplicationRegistry? npcReplication = null,
+        RuntimeWorldItemReplicationRegistry? worldItemReplication = null,
         RuntimeTownNpcStateStore? townNpcs = null,
         VanillaTownSpawnWorldFacts1458? townSpawnWorldFacts = null,
         bool townInitialRaining = false,
@@ -93,7 +98,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         RuntimeNpcShopCatalogRegistry? npcShops = null,
         RuntimeNpcArchetypeRegistry? npcArchetypes = null,
         RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities = null,
-        bool expertMode = false)
+        bool expertMode = false,
+        bool masterMode = false)
     {
         Array.Fill(_playerTalkNpcSlots, TerrariaNpcTalkCodec.NoNpc);
         _playerEvents = playerEvents;
@@ -101,6 +107,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _tileMutations = worldTiles is null ? null : new VanillaWorldTileMutationService(worldTiles);
         _worldClock = worldClock;
         _expertMode = expertMode;
+        if (masterMode && !expertMode)
+            throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
         _npcs = npcs ?? new RuntimeNpcStore();
         _projectiles = projectiles ?? new RuntimeProjectileStore();
         _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs, _projectiles);
@@ -154,6 +162,19 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 tileManipulationReplication);
         }
         _worldItems = worldItems ?? new RuntimeWorldItemStore();
+        _worldItemReplication = worldItemReplication;
+        _instancedItemLeases = new RuntimeWorldItemInstancedLeaseStore(_worldItems);
+        _npcCombat = new RuntimeNpcNetworkCombatPipeline(
+            _npcs,
+            _worldItems,
+            this,
+            _npcReplication,
+            _instancedItemLeases,
+            _worldItemReplication,
+            _worldTiles,
+            _worldClock,
+            expertMode,
+            masterMode);
 
         if (npcAiStepper is null)
         {
@@ -248,6 +269,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     public long RejectedClientProjectileUpdates { get; private set; }
 
     public long RejectedClientProjectileDestroys { get; private set; }
+
+    public long AppliedClientNpcDamage { get; private set; }
+
+    public long RejectedClientNpcDamage { get; private set; }
 
     public long RelayedUnknownProjectileDestroys { get; private set; }
 
@@ -415,6 +440,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             case ClientProjectileDestroyRuntimeCommand destroy:
                 ApplyClientProjectileDestroy(destroy);
                 break;
+            case ClientNpcDamageRuntimeCommand npcDamage:
+                ApplyClientNpcDamage(npcDamage);
+                break;
             case ClientTileManipulationRuntimeCommand tile:
                 ApplyClientTileManipulation(tile);
                 break;
@@ -502,6 +530,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         AppliedNpcDespawns += _npcs.DespawnExpired();
         if (_projectileStepper is not null)
             LastProjectileTick = _projectileExecutor.Tick(_projectileStepper);
+        TickInstancedItemLeases();
 
         _worldClock?.Tick();
         Updates++;
@@ -860,6 +889,31 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         }
 
         RejectedProjectileDespawns++;
+    }
+
+    private void ApplyClientNpcDamage(ClientNpcDamageRuntimeCommand command)
+    {
+        TerrariaNpcDamageState damageState = command.State;
+        if (!IsCurrentPlayerConnection(command.Connection))
+        {
+            RejectedClientNpcDamage++;
+            return;
+        }
+
+        RuntimeNpcNetworkDamageResult result = _npcCombat.TryApply(command.Connection, in damageState);
+        if (result == RuntimeNpcNetworkDamageResult.Rejected)
+            RejectedClientNpcDamage++;
+        else
+            AppliedClientNpcDamage++;
+    }
+
+    private void TickInstancedItemLeases()
+    {
+        int expired = _instancedItemLeases.Tick(_expiredInstancedItemSlots);
+        if (_worldItemReplication is null)
+            return;
+        for (int index = 0; index < expired; index++)
+            _worldItemReplication.TryBroadcastInstancedSlotRelease(_expiredInstancedItemSlots[index]);
     }
 
     private void ApplyClientProjectileUpdate(ClientProjectileUpdateRuntimeCommand command)
