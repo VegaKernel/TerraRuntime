@@ -43,6 +43,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _vulture = new VanillaVultureNpcBehaviorStrategy();
     private readonly VanillaSpikeBallNpcBehaviorStrategy _spikeBall;
     private readonly IVanillaNpcBehaviorStrategy _blazingWheel = new VanillaBlazingWheelNpcBehaviorStrategy();
+    private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
+    private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly IVanillaNpcRandom _random;
 
     public VanillaNpcTargetingAiStepper(
@@ -145,6 +147,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Vulture => _vulture,
             VanillaNpcBehaviorFamily.SpikeBall => _spikeBall,
             VanillaNpcBehaviorFamily.BlazingWheel => _blazingWheel,
+            VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
+            VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             _ => null
         };
 
@@ -179,6 +183,12 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanBrainOfCthulhuCreepers(in source, in proposed, destination);
         }
 
+        if (source.Type == VanillaNpcIds.SkeletronHead.Value &&
+            proposed.Type == VanillaNpcIds.SkeletronHead.Value)
+        {
+            return PlanSkeletronHands(in source, in proposed, destination);
+        }
+
         if (NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType) &&
             VanillaWormNpcCatalog.TryGet(sourceType, out _))
         {
@@ -193,6 +203,46 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileIntent> destination) =>
         _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
+
+    private int PlanSkeletronHands(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiSpawnIntent> destination)
+    {
+        if (destination.Length < 2 ||
+            source.Ai.Ai0 != 0f ||
+            proposed.Ai.Ai0 != 1f ||
+            proposed.Type != source.Type ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SkeletronHead, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            return 0;
+        }
+
+        int spawnX = (int)(source.PositionX + hitbox.Width * 0.5f);
+        int spawnY = (int)(source.PositionY + hitbox.Height * 0.5f);
+        destination[0] = new NpcAiSpawnIntent(
+            VanillaNpcIds.SkeletronHand,
+            spawnX,
+            spawnY,
+            0f,
+            0f,
+            proposed.Target)
+        {
+            InitialAi = new NpcAiState(-1f, source.Handle.Slot, 0f, 0f)
+        };
+        destination[1] = new NpcAiSpawnIntent(
+            VanillaNpcIds.SkeletronHand,
+            spawnX,
+            spawnY,
+            0f,
+            0f,
+            proposed.Target)
+        {
+            InitialAi = new NpcAiState(1f, source.Handle.Slot, 0f, 150f)
+        };
+        return 2;
+    }
 
     private int PlanWormFollower(
         in NpcSnapshot source,
