@@ -1,0 +1,33 @@
+# ILSpy may split the field declaration from its static-constructor assignment. Find the actual IsTownPet initializer occurrence.
+checker = Path('tools/ci/check_town_movein_schedule_source.py')
+text = checker.read_text(encoding='utf-8')
+old = '''    town_pet_start = npc_id.find("IsTownPet")
+    if town_pet_start < 0:
+        raise SystemExit("missing pinned town source contract: NPCID town-pet membership set")
+    town_pet_initializer = npc_id[town_pet_start:town_pet_start + 500]
+    require(town_pet_initializer, "CreateBoolSet", "NPCID town-pet bool-set initializer")
+    require_ordered(town_pet_initializer,
+        ("637", "638", "656", "670", "678", "679", "680", "681", "682", "683", "684"),
+        "NPCID town-pet membership used by room-aware selector")
+'''
+new = '''    town_pet_members = ("637", "638", "656", "670", "678", "679", "680", "681", "682", "683", "684")
+    town_pet_initializer = ""
+    search_from = 0
+    while True:
+        town_pet_start = npc_id.find("IsTownPet", search_from)
+        if town_pet_start < 0:
+            break
+        candidate = npc_id[town_pet_start:town_pet_start + 1000]
+        if "CreateBoolSet" in candidate and all(member in candidate for member in town_pet_members):
+            town_pet_initializer = candidate
+            break
+        search_from = town_pet_start + len("IsTownPet")
+    if not town_pet_initializer:
+        raise SystemExit("missing pinned town source contract: NPCID town-pet bool-set initializer")
+    require_ordered(town_pet_initializer,
+        town_pet_members,
+        "NPCID town-pet membership used by room-aware selector")
+'''
+if text.count(old) != 1:
+    raise SystemExit('NPCID IsTownPet semantic marker anchor drifted')
+checker.write_text(text.replace(old, new, 1), encoding='utf-8')
