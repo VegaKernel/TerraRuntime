@@ -25,6 +25,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
     private readonly RuntimeNpcActorControlRegistry _npcActorControls;
     private readonly RuntimeNpcActorControlCommandService _npcActorCommands;
+    private readonly RuntimeGameplayBehaviorRegistry<NpcTypeId, INpcAiStateStepper> _npcPresentationBehaviors;
+    private readonly RuntimeArchetypeBehaviorRegistry<INpcAiStateStepper> _npcArchetypeBehaviors;
+    private readonly RuntimeNpcBehaviorQueries _npcBehaviorQueries;
     private readonly RuntimeNpcArchetypeRegistry _npcArchetypes;
     private readonly RuntimeNpcArchetypeIdentityStore _npcArchetypeIdentities;
     private readonly RuntimeNpcArchetypeSpawner _npcArchetypeSpawner;
@@ -136,9 +139,19 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             ? new VanillaServerPlayerDryPhysicsStepper(worldTiles)
             : null;
         _npcActorControls = new RuntimeNpcActorControlRegistry(_npcs);
-        _npcActorCommands = new RuntimeNpcActorControlCommandService(_npcs, _npcActorControls);
         _npcArchetypes = npcArchetypes ?? new RuntimeNpcArchetypeRegistry();
         _npcArchetypeIdentities = npcArchetypeIdentities ?? new RuntimeNpcArchetypeIdentityStore(_npcs.Capacity);
+        _npcPresentationBehaviors = new RuntimeGameplayBehaviorRegistry<NpcTypeId, INpcAiStateStepper>();
+        _npcArchetypeBehaviors = new RuntimeArchetypeBehaviorRegistry<INpcAiStateStepper>();
+        _npcBehaviorQueries = new RuntimeNpcBehaviorQueries(this, _npcs, _worldTiles);
+        _npcActorCommands = new RuntimeNpcActorControlCommandService(
+            _npcs,
+            _npcActorControls,
+            _npcPresentationBehaviors,
+            _npcArchetypeBehaviors,
+            _npcBehaviorQueries,
+            _npcArchetypes,
+            _npcArchetypeIdentities);
         _npcArchetypeSpawner = new RuntimeNpcArchetypeSpawner(_npcs, _npcArchetypes, _npcArchetypeIdentities);
         _npcShops = npcShops ?? new RuntimeNpcShopCatalogRegistry();
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
@@ -229,8 +242,14 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         if (npcAiStepper is null)
         {
             _vanillaNpcTargetingAiStepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
-            var actorIntent = new RuntimeNpcActorIntentStateStepper(
+            var behaviorDispatch = new RuntimeNpcBehaviorStateStepper(
                 _vanillaNpcTargetingAiStepper,
+                _npcPresentationBehaviors,
+                archetypeBehaviors: _npcArchetypeBehaviors,
+                archetypes: _npcArchetypes,
+                identities: _npcArchetypeIdentities);
+            var actorIntent = new RuntimeNpcActorIntentStateStepper(
+                behaviorDispatch,
                 _npcActorControls,
                 this);
             if (worldTiles is null)
@@ -260,7 +279,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         }
         else
         {
-            _npcAiStepper = npcAiStepper;
+            _npcAiStepper = new RuntimeNpcBehaviorStateStepper(
+                npcAiStepper,
+                _npcPresentationBehaviors,
+                archetypeBehaviors: _npcArchetypeBehaviors,
+                archetypes: _npcArchetypes,
+                identities: _npcArchetypeIdentities);
         }
     }
 
@@ -1997,5 +2021,3 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             };
     }
 }
-
-
