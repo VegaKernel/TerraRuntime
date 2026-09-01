@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>Type-specific AI_001 timer parameters from TerrariaServer 1.4.5.8.</summary>
 public readonly record struct VanillaSlimeMotionProfile(float TimerBonus, float JumpTimerBand)

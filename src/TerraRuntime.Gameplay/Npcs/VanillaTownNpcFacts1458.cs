@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>
 /// Source-pinned TerrariaServer 1.4.5.8 facts for persistent town residents and assignable town pets/slimes.

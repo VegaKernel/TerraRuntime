@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>
 /// TerrariaServer 1.4.5.8 NPCID.Sets.ShimmerTownTransform membership for persistent town residents.

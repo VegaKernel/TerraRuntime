@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>Deterministic movement parameters used by the AI_005 pursuit core.</summary>
 public readonly record struct VanillaFlyerMotionProfile(

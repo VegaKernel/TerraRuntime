@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcShimmerCatalog1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcShimmerCatalog1458.cs'
       - 'src/TerraRuntime.World/VanillaWorldShimmerLanding1458.cs'
       - 'src/TerraRuntime/RuntimeTownNpcShimmerService1458.cs'
       - 'src/TerraRuntime/RuntimeTownNpcStateStore.cs'
@@ -15,7 +15,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcShimmerCatalog1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcShimmerCatalog1458.cs'
       - 'src/TerraRuntime.World/VanillaWorldShimmerLanding1458.cs'
       - 'src/TerraRuntime/RuntimeTownNpcShimmerService1458.cs'
       - 'src/TerraRuntime/RuntimeTownNpcStateStore.cs'

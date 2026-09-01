@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Npcs;
 namespace TerraRuntime.Core;
 
 /// <summary>

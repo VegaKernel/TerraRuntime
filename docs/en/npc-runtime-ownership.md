@@ -4,6 +4,8 @@
 
 TerraRuntime keeps NPC storage, spawn/default materialization, AI, physics, combat and loot as separate ownership layers. The point is not directory decoration. Each layer must be able to evolve without teaching the slot store about vanilla combat rules or teaching physics about concrete NPC content IDs.
 
+`TerraRuntime.Gameplay.Npcs` owns the immutable source-backed vanilla definition layer: `VanillaNpcDefinition`, behavior/physics family metadata, net variants, and the admitted slime/flying-eye/flyer/worm/AI17-20-21/town definition catalogs. Core consumes those facts but does not own them. Mutable NPC slots, authoritative state transitions, AI execution, combat and world-item transactions remain in Core/application runtime.
+
 ```mermaid
 flowchart LR
     Spawn["Spawn/update request"] --> Policy["RuntimeNpcStateOwnershipPolicy\nlocal defaults + preservation"]

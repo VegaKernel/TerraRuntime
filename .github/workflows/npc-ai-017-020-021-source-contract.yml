@@ -5,12 +5,12 @@ on:
     branches: [main]
     paths:
       - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
-      - 'src/TerraRuntime.Core/Npcs/VanillaNpcAi17_20_21Catalog1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaNpcAi17_20_21Catalog1458.cs'
       - 'src/TerraRuntime.Core/Npcs/VanillaVultureMotion1458.cs'
       - 'src/TerraRuntime.Core/Npcs/VanillaSpikeBallMotion1458.cs'
       - 'src/TerraRuntime.Core/Npcs/VanillaBlazingWheelMotion1458.cs'
       - 'src/TerraRuntime.Core/Npcs/VanillaNpcAi17_20_21BehaviorStrategies.cs'
-      - 'src/TerraRuntime.Core/Npcs/VanillaNpcDefinitionCatalog.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaNpcDefinitionCatalog.cs'
       - 'src/TerraRuntime.Core/Npcs/RuntimeNpcStateOwnershipPolicy.cs'
       - 'src/TerraRuntime.Core/Npcs/VanillaNpcAiCoverageCatalog.cs'
       - 'src/TerraRuntime.Core/Npcs/VanillaNpcTargetingAiStepper.cs'

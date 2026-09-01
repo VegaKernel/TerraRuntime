@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>
 /// Source-pinned TerrariaServer 1.4.5.8 defaults for the Muse-audited AI_017/020/021 slice.

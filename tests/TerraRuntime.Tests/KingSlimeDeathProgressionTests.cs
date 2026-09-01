@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Npcs;
 using System.Reflection;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;

@@ -32,7 +32,7 @@ def patch_content_ids() -> None:
 
 
 def patch_definitions() -> None:
-    path = Path("src/TerraRuntime.Core/Npcs/VanillaNpcDefinitionCatalog.cs")
+    path = Path("src/TerraRuntime.Gameplay/Npcs/VanillaNpcDefinitionCatalog.cs")
     text = path.read_text(encoding="utf-8")
     text = replace_once(
         text,

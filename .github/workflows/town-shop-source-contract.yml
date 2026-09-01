@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
-      - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcFacts1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcFacts1458.cs'
       - 'src/TerraRuntime.Core/Npcs/VanillaTownShopCatalog1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaTownShopCatalog1458Tests.cs'
       - 'tools/ci/probe_town_shops.py'
