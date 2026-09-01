@@ -5,6 +5,8 @@ public static class SchematicFile
 {
     public const string Extension = ".trschem";
 
+    private const int IoBufferSize = 64 * 1024;
+
     public static SchematicDocument Load(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -15,7 +17,13 @@ public static class SchematicFile
         if (info.Length > SchematicLimits.MaxFileBytes)
             throw new SchematicFormatException("Schematic file exceeds the file-size ceiling.");
 
-        using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.SequentialScan);
+        using var stream = new FileStream(
+            fullPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            IoBufferSize,
+            FileOptions.SequentialScan);
         return SchematicBinary.Read(stream);
     }
 
@@ -34,7 +42,7 @@ public static class SchematicFile
             FileMode.Open,
             FileAccess.Read,
             FileShare.Read,
-            64 * 1024,
+            IoBufferSize,
             FileOptions.Asynchronous | FileOptions.SequentialScan);
         return await SchematicBinary.ReadAsync(stream, cancellationToken).ConfigureAwait(false);
     }

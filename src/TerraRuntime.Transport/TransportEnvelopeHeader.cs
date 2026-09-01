@@ -19,6 +19,15 @@ public readonly record struct TransportEnvelopeHeader(
     public const int Size = 32;
     public const int DefaultMaxPayloadLength = 4 * 1024 * 1024;
 
+    private const int MagicOffset = 0;
+    private const int VersionOffset = 4;
+    private const int KindOffset = 6;
+    private const int FlagsOffset = 7;
+    private const int PayloadLengthOffset = 8;
+    private const int MessageTypeOffset = 12;
+    private const int CorrelationIdOffset = 16;
+    private const int CorrelationIdSize = 16;
+
     public bool TryWrite(Span<byte> destination)
     {
         if (destination.Length < Size || PayloadLength < 0)
@@ -26,13 +35,13 @@ public readonly record struct TransportEnvelopeHeader(
             return false;
         }
 
-        BinaryPrimitives.WriteUInt32LittleEndian(destination, Magic);
-        BinaryPrimitives.WriteUInt16LittleEndian(destination[4..], Version);
-        destination[6] = (byte)Kind;
-        destination[7] = Flags;
-        BinaryPrimitives.WriteInt32LittleEndian(destination[8..], PayloadLength);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination[12..], MessageType);
-        return CorrelationId.TryWriteBytes(destination[16..32]);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination[MagicOffset..], Magic);
+        BinaryPrimitives.WriteUInt16LittleEndian(destination[VersionOffset..], Version);
+        destination[KindOffset] = (byte)Kind;
+        destination[FlagsOffset] = Flags;
+        BinaryPrimitives.WriteInt32LittleEndian(destination[PayloadLengthOffset..], PayloadLength);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination[MessageTypeOffset..], MessageType);
+        return CorrelationId.TryWriteBytes(destination.Slice(CorrelationIdOffset, CorrelationIdSize));
     }
 
     public static bool TryRead(
@@ -46,24 +55,24 @@ public readonly record struct TransportEnvelopeHeader(
             return false;
         }
 
-        if (BinaryPrimitives.ReadUInt32LittleEndian(source) != Magic)
+        if (BinaryPrimitives.ReadUInt32LittleEndian(source[MagicOffset..]) != Magic)
         {
             return false;
         }
 
-        ushort version = BinaryPrimitives.ReadUInt16LittleEndian(source[4..]);
+        ushort version = BinaryPrimitives.ReadUInt16LittleEndian(source[VersionOffset..]);
         if (version == 0 || version > CurrentVersion)
         {
             return false;
         }
 
-        byte rawKind = source[6];
+        byte rawKind = source[KindOffset];
         if (!Enum.IsDefined((TransportMessageKind)rawKind))
         {
             return false;
         }
 
-        int payloadLength = BinaryPrimitives.ReadInt32LittleEndian(source[8..]);
+        int payloadLength = BinaryPrimitives.ReadInt32LittleEndian(source[PayloadLengthOffset..]);
         if ((uint)payloadLength > (uint)maxPayloadLength)
         {
             return false;
@@ -72,10 +81,10 @@ public readonly record struct TransportEnvelopeHeader(
         header = new TransportEnvelopeHeader(
             version,
             (TransportMessageKind)rawKind,
-            source[7],
+            source[FlagsOffset],
             payloadLength,
-            BinaryPrimitives.ReadUInt32LittleEndian(source[12..]),
-            new Guid(source[16..32]));
+            BinaryPrimitives.ReadUInt32LittleEndian(source[MessageTypeOffset..]),
+            new Guid(source.Slice(CorrelationIdOffset, CorrelationIdSize)));
         return true;
     }
 }
