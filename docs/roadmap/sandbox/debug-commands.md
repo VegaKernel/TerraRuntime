@@ -22,6 +22,7 @@ Initial command set:
 /sandbox create <name> l2 schem <relative-schematic-path> [mode <game-mode>]
 
 /sandbox move <player> <sandbox|primary>
+/sandbox respawn <player> <sandbox|primary>
 /sandbox regen <sandbox> [seed <number|random>]
 /sandbox destroy <sandbox>
 
@@ -110,9 +111,42 @@ The same accepted TCP connection remains in the main process.
 
 The move command uses the normal Level 2 transfer path: bounded semantic player-state transfer over `TerraRuntime.Transport`, then OS socket handoff to the worker. Moving back to `primary` performs the reverse handoff. The debug command is not allowed to invent a proxy-only shortcut that would bypass the production transfer contract.
 
+## Respawning a player into a runtime
+
+`/sandbox respawn <player> <sandbox|primary>` is the force-spawn form of runtime transfer. It is intentionally a `/sandbox` subcommand rather than a separate global respawn command.
+
+The destination is always explicit. The operation guarantees that the player ends in the requested live `WorldSessionId`, receives the destination world's bootstrap as required, and is spawned at the destination runtime's selected spawn point. It does not preserve the player's old world-space position.
+
+The distinction from `move` is operational:
+
+- `move` performs the normal semantic runtime transfer and lets the destination transfer policy decide the spawn/placement details;
+- `respawn` forces destination bootstrap + spawn and resets world-bound spatial/death state appropriate to a fresh spawn;
+- `respawn` may target the player's current runtime, in which case it performs an authoritative respawn there without changing runtime membership;
+- neither command is allowed to fake a world transfer through ad-hoc packet emission.
+
+```mermaid
+sequenceDiagram
+    participant A as Admin
+    participant H as Sandbox host
+    participant S as Source WorldRuntime
+    participant D as Destination WorldRuntime
+    participant C as Client connection
+
+    A->>H: /sandbox respawn player arena
+    alt source runtime differs from destination
+        H->>S: retire source membership at safe point
+        H->>D: attach transferable player identity/state
+        H->>C: switch runtime/session ownership
+    end
+    D->>C: fresh destination bootstrap
+    D->>C: authoritative spawn at destination spawn
+```
+
+For Level 1, the TCP connection remains in the main process. For Level 2, crossing the process boundary uses the exact same semantic state-transfer and OS socket-handoff contract as `move`; after the handoff the worker sends the bootstrap and spawn. If the player is already owned by the target Level 2 worker, respawning does not hand the socket back to main merely to hand it to the same worker again.
+
 ## Background regeneration and atomic runtime replacement
 
-`/sandbox regen <sandbox>` rebuilds a sandbox without disconnecting its players.
+`/sandbox regen <sandbox>` rebuilds a sandbox without disconnecting its players. `regen` remains a sandbox subcommand; there is no separate top-level regeneration command.
 
 For a generated sandbox, the default is to rerun its recorded `Generated` source descriptor. `seed <number>` replaces the seed for the new activation; `seed random` requests a newly chosen seed that is recorded in job/result metadata.
 
@@ -225,6 +259,7 @@ The TUI currently owns local presentation commands; sandbox commands should not 
 - [ ] implement `create ... l1 gen` with asynchronous generation and job status;
 - [ ] implement `create ... l1 schem`;
 - [ ] implement `move <player> <sandbox|primary>` for Level 1;
+- [ ] implement `respawn <player> <sandbox|primary>` for Level 1, including same-runtime forced respawn;
 - [ ] implement `destroy` for Level 1;
 - [ ] expose the same operations through the TUI as `sandbox ...` without duplicating lifecycle logic.
 
@@ -234,7 +269,8 @@ The TUI currently owns local presentation commands; sandbox commands should not 
 - [ ] implement `create ... l2 gen` with generation/materialization inside the worker where practical;
 - [ ] implement `create ... l2 schem`;
 - [ ] implement `move` to Level 2 using semantic state transfer + OS socket handoff;
-- [ ] implement move back to `primary` using reverse socket handoff;
+- [ ] implement `respawn` to Level 2 using the same transfer/handoff contract and destination bootstrap/spawn;
+- [ ] implement move/respawn back to `primary` using reverse socket handoff when crossing process ownership;
 - [ ] implement `destroy` with graceful worker shutdown and forced-kill fallback.
 
 ### Regeneration
@@ -260,4 +296,4 @@ The TUI currently owns local presentation commands; sandbox commands should not 
 
 ## Completion criteria
 
-This debug/admin surface is complete when an operator can create L1 and L2 sandboxes from file, generated and schematic sources; observe asynchronous jobs; move a player in and out; regenerate a generated sandbox while players remain connected and respawn in the replacement world; and destroy the sandbox without leaving runtime, plugin, worker, transport or socket ownership behind.
+This debug/admin surface is complete when an operator can create L1 and L2 sandboxes from file, generated and schematic sources; observe asynchronous jobs; move or force-respawn a player into a selected sandbox/primary runtime; regenerate a generated sandbox while players remain connected and respawn in the replacement world; and destroy the sandbox without leaving runtime, plugin, worker, transport or socket ownership behind.
