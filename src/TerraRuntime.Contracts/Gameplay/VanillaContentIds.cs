@@ -1,4 +1,4 @@
-﻿namespace TerraRuntime.Contracts.Gameplay;
+namespace TerraRuntime.Contracts.Gameplay;
 
 /// <summary>
 /// Initial source-verified TerrariaServer 1.4.5.8 NPC content ids used by TerraRuntime gameplay.
@@ -153,6 +153,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SpikeyHornet = new(234);
     public static readonly NpcTypeId StingyHornet = new(235);
     public static readonly NpcTypeId Parrot = new(252);
+    public static readonly NpcTypeId BrainOfCthulhu = new(266);
+    public static readonly NpcTypeId BrainCreeper = new(267);
     public static readonly NpcTypeId BloodSquid = new(619);
     public static readonly NpcTypeId BloodEelHead = new(621);
     public static readonly NpcTypeId BloodEelBody = new(622);
@@ -173,6 +175,8 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Worm = new(6);
     public static readonly NpcAiStyleId Town = new(7);
     public static readonly NpcAiStyleId KingSlime = new(15);
+    public static readonly NpcAiStyleId BrainOfCthulhu = new(54);
+    public static readonly NpcAiStyleId BrainCreeper = new(55);
 }
 
 /// <summary>

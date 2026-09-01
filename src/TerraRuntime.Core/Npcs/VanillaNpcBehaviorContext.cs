@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
@@ -102,6 +103,34 @@ internal sealed class VanillaNpcBehaviorContext
 
         peers.CopyTo(_npcPeers);
         _npcPeerCount = peers.Length;
+    }
+
+    public int CountNpcPeers(NpcTypeId type)
+    {
+        int count = 0;
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (candidate.IsActive && candidate.TypeIdentity == type)
+                count++;
+        }
+        return count;
+    }
+
+    public bool TryFindFirstNpcPeer(NpcTypeId type, out NpcSnapshot peer)
+    {
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (candidate.IsActive && candidate.TypeIdentity == type)
+            {
+                peer = candidate;
+                return true;
+            }
+        }
+
+        peer = default;
+        return false;
     }
 
     public bool TryFindNpcPeer(byte slot, out NpcSnapshot peer)

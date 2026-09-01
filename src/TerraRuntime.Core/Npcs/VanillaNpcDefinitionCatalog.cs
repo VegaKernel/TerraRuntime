@@ -17,7 +17,9 @@ public enum VanillaNpcBehaviorFamily : byte
     EyeOfCthulhu = 4,
     Flyer = 5,
     KingSlime = 6,
-    Worm = 7
+    Worm = 7,
+    BrainOfCthulhu = 8,
+    BrainCreeper = 9
 }
 
 /// <summary>
@@ -255,6 +257,48 @@ public static class VanillaNpcDefinitionCatalog
 
         if (VanillaWormNpcCatalog.TryGetDefinition(type, out definition))
             return true;
+
+        if (type == VanillaNpcIds.BrainOfCthulhu)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.BrainOfCthulhu,
+                AiStyle: VanillaNpcAiStyles.BrainOfCthulhu,
+                BehaviorFamily: VanillaNpcBehaviorFamily.BrainOfCthulhu,
+                PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Boss,
+                BaseWidth: 160,
+                BaseHeight: 110,
+                Damage: 30,
+                Defense: 14,
+                LifeMax: 1250,
+                KnockBackResist: 0.45f,
+                Scale: 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.BrainCreeper)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.BrainCreeper,
+                AiStyle: VanillaNpcAiStyles.BrainCreeper,
+                BehaviorFamily: VanillaNpcBehaviorFamily.BrainCreeper,
+                PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary,
+                BaseWidth: 30,
+                BaseHeight: 30,
+                Damage: 20,
+                Defense: 10,
+                LifeMax: 100,
+                KnockBackResist: 0.8f,
+                Scale: 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
 
         if (type == VanillaNpcIds.Skeleton)
         {
