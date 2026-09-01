@@ -210,6 +210,36 @@ public static class VanillaItemDefinitionCatalog
             NoGravity: false,
             PrefixFamily: VanillaItemPrefixFamily.None));
 
+    private static readonly VanillaItemDefinition EaterDemoniteOreDefinition =
+        EaterWorldDrop(VanillaEaterOfWorldsItemIds.DemoniteOre, 12, 12);
+    private static readonly VanillaItemDefinition EaterShadowScaleDefinition =
+        EaterWorldDrop(VanillaEaterOfWorldsItemIds.ShadowScale, 14, 18);
+    private static readonly VanillaItemDefinition EatersBoneDefinition =
+        EaterWorldDrop(VanillaEaterOfWorldsItemIds.EatersBone, 16, 30);
+    private static readonly VanillaItemDefinition EaterTrophyDefinition =
+        EaterWorldDrop(VanillaEaterOfWorldsItemIds.EaterOfWorldsTrophy, 30, 30);
+    private static readonly VanillaItemDefinition EaterMaskDefinition =
+        EaterWorldDrop(VanillaEaterOfWorldsItemIds.EaterMask, 28, 20);
+    private static readonly VanillaItemDefinition EaterBossBagDefinition =
+        EaterWorldDrop(VanillaEaterOfWorldsItemIds.EaterOfWorldsBossBag, 24, 24);
+    private static readonly VanillaItemDefinition EaterPetItemDefinition =
+        EaterWorldDrop(VanillaEaterOfWorldsItemIds.EaterOfWorldsPetItem, 16, 30);
+    private static readonly VanillaItemDefinition EaterMasterTrophyDefinition =
+        EaterWorldDrop(VanillaEaterOfWorldsItemIds.EaterOfWorldsMasterTrophy, 14, 14);
+
+    private static VanillaItemDefinition EaterWorldDrop(ItemTypeId type, int width, int height) =>
+        new(
+            Type: type,
+            RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
+            UseTiming: null,
+            Placement: null,
+            PickTool: null,
+            WorldDrop: new VanillaItemWorldDropDefinition(
+                width,
+                height,
+                NoGravity: false,
+                PrefixFamily: VanillaItemPrefixFamily.None));
+
     public static bool TryGet(ItemTypeId type, out VanillaItemDefinition definition)
     {
         if (type == VanillaItemIds.DirtBlock)
@@ -263,6 +293,47 @@ public static class VanillaItemDefinitionCatalog
         if (type == VanillaKingSlimeItemIds.KingSlimeMasterTrophy)
         {
             definition = KingSlimeMasterTrophyDefinition;
+            return true;
+        }
+
+        if (type == VanillaEaterOfWorldsItemIds.DemoniteOre)
+        {
+            definition = EaterDemoniteOreDefinition;
+            return true;
+        }
+        if (type == VanillaEaterOfWorldsItemIds.ShadowScale)
+        {
+            definition = EaterShadowScaleDefinition;
+            return true;
+        }
+        if (type == VanillaEaterOfWorldsItemIds.EatersBone)
+        {
+            definition = EatersBoneDefinition;
+            return true;
+        }
+        if (type == VanillaEaterOfWorldsItemIds.EaterOfWorldsTrophy)
+        {
+            definition = EaterTrophyDefinition;
+            return true;
+        }
+        if (type == VanillaEaterOfWorldsItemIds.EaterMask)
+        {
+            definition = EaterMaskDefinition;
+            return true;
+        }
+        if (type == VanillaEaterOfWorldsItemIds.EaterOfWorldsBossBag)
+        {
+            definition = EaterBossBagDefinition;
+            return true;
+        }
+        if (type == VanillaEaterOfWorldsItemIds.EaterOfWorldsPetItem)
+        {
+            definition = EaterPetItemDefinition;
+            return true;
+        }
+        if (type == VanillaEaterOfWorldsItemIds.EaterOfWorldsMasterTrophy)
+        {
+            definition = EaterMasterTrophyDefinition;
             return true;
         }
 

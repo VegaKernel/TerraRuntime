@@ -17,8 +17,9 @@ internal enum RuntimeNpcNetworkDamageResult : byte
 
 /// <summary>
 /// Authoritative packet-28 bridge. It resolves wrapped wire generations against the live slot, preserves the
-/// TerrariaServer ordering PlayerInteraction -> StrikeNPC -> imported loot -> King Slime death effects -> despawn ->
-/// packet 28 -> packet 23, and never lets a socket thread touch runtime entity state.
+/// TerrariaServer ordering PlayerInteraction -> StrikeNPC -> imported loot -> boss death effects -> despawn -> packet 28
+/// -> packet 23, including shared Eater-of-Worlds interaction credit and last-segment boss promotion. Socket threads never
+/// mutate runtime entity state directly.
 /// </summary>
 internal sealed class RuntimeNpcNetworkCombatPipeline
 {
@@ -33,6 +34,7 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
     private readonly IRuntimePlayerSlotSnapshotLookup players;
     private readonly RuntimeKingSlimeDifficultyLootDeliverySink? difficultyLoot;
+    private readonly RuntimeEaterOfWorldsLootDeliverySink eaterLoot;
     private readonly VanillaNpcLootWorldItemMaterializer materializer = VanillaNpcLootWorldItemMaterializer.Instance;
     private readonly SystemNpcCombatRandom random = new();
     private readonly bool expertMode;
@@ -43,6 +45,9 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
         new PlayerSlotId[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
     private readonly VanillaKingSlimeLootPlayer[] activeLootPlayers =
         new VanillaKingSlimeLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+    private readonly VanillaEaterOfWorldsLootPlayer[] activeEaterLootPlayers =
+        new VanillaEaterOfWorldsLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+    private readonly NpcSnapshot[] npcFamilyBuffer;
 
     public RuntimeNpcNetworkCombatPipeline(
         RuntimeNpcStore npcs,
@@ -69,6 +74,11 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
 
         interactions = new RuntimeNpcPlayerInteractionLedger(npcs);
         damage = new RuntimeNpcDamageExecutor(npcs, expertMode, interactions);
+        npcFamilyBuffer = new NpcSnapshot[npcs.Capacity];
+        eaterLoot = new RuntimeEaterOfWorldsLootDeliverySink(
+            worldItems,
+            instancedLeases,
+            worldItemReplication);
         if (worldItemReplication is not null)
         {
             difficultyLoot = new RuntimeKingSlimeDifficultyLootDeliverySink(
@@ -108,7 +118,18 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
 
         // PlayerInteraction occurs before StrikeNPC in MessageBuffer case 28. Keep credit even when the strike itself
         // is rejected by invulnerability or another authoritative combat guard.
-        interactions.TryMark(current.Handle, connection.Player);
+        if (VanillaEaterOfWorldsLifecycle.IsSegment(current.TypeIdentity))
+        {
+            VanillaEaterOfWorldsLifecycle.MarkPlayerInteractionAcrossActiveSegments(
+                npcs,
+                interactions,
+                connection.Player,
+                npcFamilyBuffer);
+        }
+        else
+        {
+            interactions.TryMark(current.Handle, connection.Player);
+        }
 
         var request = new NpcDamageRequest(
             current.Handle,
@@ -140,11 +161,17 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
             if (!npcs.TryGet(current.Handle, out NpcSnapshot dead))
                 throw new InvalidOperationException("A lethal packet-28 commit disappeared before death finalization.");
 
-            if (!TryExecuteImportedLoot(in dead))
+            bool eaterBoss =
+                VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
+                VanillaEaterOfWorldsLifecycle.IsLastActiveSegment(npcs, in dead, npcFamilyBuffer);
+
+            if (!TryExecuteImportedLoot(in dead, eaterBoss))
                 throw new InvalidOperationException("Imported NPC loot could not be finalized after a lethal packet-28 commit.");
 
             if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
                 ApplyKingSlimeDeathEffects(in dead);
+            else if (eaterBoss)
+                ApplyEaterOfWorldsDeathEffects();
 
             if (!npcs.TryDespawn(dead.Handle))
                 throw new InvalidOperationException("A lethal packet-28 NPC could not be despawned after death effects.");
@@ -164,8 +191,11 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
         }
     }
 
-    private bool TryExecuteImportedLoot(in NpcSnapshot npc)
+    private bool TryExecuteImportedLoot(in NpcSnapshot npc, bool eaterBoss)
     {
+        if (VanillaEaterOfWorldsLifecycle.IsSegment(npc.TypeIdentity))
+            return TryExecuteEaterOfWorldsLoot(in npc, eaterBoss);
+
         if (npc.TypeIdentity == VanillaNpcIds.KingSlime && expertMode)
             return TryExecuteKingSlimeDifficultyLoot(in npc);
 
@@ -266,6 +296,39 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
         return true;
     }
 
+    private bool TryExecuteEaterOfWorldsLoot(in NpcSnapshot npc, bool isBoss)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+            activeEaterLootPlayers[activeCount++] = new VanillaEaterOfWorldsLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaEaterOfWorldsLootContext(expertMode, masterMode, isBoss);
+        return VanillaEaterOfWorldsLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeEaterLootPlayers.AsSpan(0, activeCount),
+            random,
+            eaterLoot,
+            out _);
+    }
+
     private bool TryExecuteKingSlimeDifficultyLoot(in NpcSnapshot npc)
     {
         if (difficultyLoot is null ||
@@ -298,6 +361,14 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
             random,
             difficultyLoot,
             out _);
+    }
+
+    private void ApplyEaterOfWorldsDeathEffects()
+    {
+        if (worldTiles is null)
+            return;
+        RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles)
+            .MarkCompleted(VanillaWorldProgressionId.EvilBoss);
     }
 
     private void ApplyKingSlimeDeathEffects(in NpcSnapshot kingSlime)
