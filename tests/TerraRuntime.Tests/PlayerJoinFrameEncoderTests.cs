@@ -16,6 +16,16 @@ public sealed class PlayerJoinFrameEncoderTests
     }
 
     [Fact]
+    public void Continue_connecting_preserves_slot_and_server_flag_payload()
+    {
+        byte[] frame = PlayerJoinFrameEncoder.EncodeContinueConnecting(
+            new PlayerSlotId(17),
+            serverSpecialFlag2: true);
+
+        Assert.Equal(new byte[] { 5, 0, (byte)TerrariaMessageId.PlayerInfo, 17, 1 }, frame);
+    }
+
+    [Fact]
     public void Status_is_encoded_as_a_complete_packet_9_frame()
     {
         byte[] frame = PlayerJoinFrameEncoder.EncodeStatus(sectionCount: 42);

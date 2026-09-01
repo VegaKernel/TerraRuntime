@@ -16,15 +16,23 @@ public static class PlayerJoinFrameEncoder
 
     public static byte[] EncodeContinueConnecting(
         PlayerSlotId slot,
-        bool serverSpecialFlag2 = false) =>
-        MultiplicityPacketSerializer.Serialize(PlayerJoinPacketFactory.CreateContinueConnecting(slot, serverSpecialFlag2));
+        bool serverSpecialFlag2 = false)
+    {
+        var packet = new ContinueConnecting
+        {
+            PlayerId = slot.Value,
+            ServerSpecialFlag2 = serverSpecialFlag2
+        };
+
+        return MultiplicityPacketSerializer.Serialize(packet);
+    }
 
     public static byte[] EncodeWorldInfo(
         WorldFileData world,
         WorldInfoTransientState transient = default)
     {
         ArgumentNullException.ThrowIfNull(world);
-        return MultiplicityPacketSerializer.Serialize(PlayerJoinPacketFactory.CreateWorldInfo(world, transient));
+        return MultiplicityPacketSerializer.Serialize(WorldInfoPacketMapper.Create(world, transient));
     }
 
     public static byte[] EncodeStatus(int sectionCount)
