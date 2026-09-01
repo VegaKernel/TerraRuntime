@@ -20,6 +20,14 @@ internal readonly record struct RuntimeTownNpcHomeCommit(
         (byte)Status);
 }
 
+internal readonly record struct RuntimeTownNpcIdentityCommit(
+    short NpcSlot,
+    string GivenName,
+    int VariationIndex)
+{
+    public TerrariaTownNpcIdentityState ToWireState() => new(NpcSlot, GivenName, VariationIndex);
+}
+
 /// <summary>
 /// Authoritative owner for persisted town-NPC home state and the v326 TownRoomManager mapping. The store keeps the
 /// original NPC/persistent metadata detached from the loaded WorldFileData, supports generation-safe runtime slot
@@ -29,7 +37,7 @@ internal sealed class RuntimeTownNpcStateStore
 {
     public const int MaximumTownNpcs = 200;
 
-    private readonly int[] shimmeredTownNpcIndices;
+    private readonly SortedSet<int> shimmeredTownNpcTypes;
     private readonly WorldPersistentNpc[] persistentNpcs;
     private readonly SortedDictionary<short, WorldTownNpc> townNpcsBySlot = [];
     private readonly Dictionary<int, WorldTownRoom> roomsByNpcType = [];
@@ -46,7 +54,7 @@ internal sealed class RuntimeTownNpcStateStore
             throw new InvalidDataException($"Town NPC count {source.TownNpcs.Length} exceeds vanilla Main.maxNPCs {MaximumTownNpcs}.");
 
         this.dimensions = dimensions;
-        shimmeredTownNpcIndices = source.ShimmeredTownNpcIndices.ToArray();
+        shimmeredTownNpcTypes = new SortedSet<int>(source.ShimmeredTownNpcIndices);
         persistentNpcs = source.PersistentNpcs.ToArray();
         for (short slot = 0; slot < source.TownNpcs.Length; slot++)
             townNpcsBySlot.Add(slot, source.TownNpcs[slot]);
@@ -272,8 +280,41 @@ internal sealed class RuntimeTownNpcStateStore
         return true;
     }
 
+    public bool TryToggleShimmerVariation(
+        short slot,
+        NpcTypeId type,
+        in NpcSnapshot snapshot,
+        out RuntimeTownNpcIdentityCommit commit)
+    {
+        if (!townNpcsBySlot.TryGetValue(slot, out WorldTownNpc? npc) ||
+            npc.NetId != type.Value ||
+            snapshot.Handle.Slot != slot ||
+            snapshot.Type != type.Value ||
+            !VanillaTownNpcShimmerCatalog1458.CanTogglePersistentTownVariant(type))
+        {
+            commit = default;
+            return false;
+        }
+
+        int current = npc.TownNpcVariationIndex ?? 0;
+        int next = current == 1 ? 0 : 1;
+        townNpcsBySlot[slot] = npc with
+        {
+            X = snapshot.PositionX,
+            Y = snapshot.PositionY,
+            TownNpcVariationIndex = next
+        };
+        if (next == 1)
+            shimmeredTownNpcTypes.Add(type.Value);
+        else
+            shimmeredTownNpcTypes.Remove(type.Value);
+
+        commit = new RuntimeTownNpcIdentityCommit(slot, npc.GivenName, next);
+        return true;
+    }
+
     public WorldNpcPersistence CaptureNpcPersistence() => new(
-        shimmeredTownNpcIndices.ToArray(),
+        shimmeredTownNpcTypes.ToArray(),
         townNpcsBySlot.Values.ToArray(),
         persistentNpcs.ToArray());
 
@@ -308,6 +349,15 @@ internal sealed class RuntimeTownNpcStateStore
         var result = new RuntimeTownNpcHomeCommit[townNpcsBySlot.Count];
         int count = CopyHomeBaselines(result);
         return count == result.Length ? result : result.AsSpan(0, count).ToArray();
+    }
+
+    public RuntimeTownNpcIdentityCommit[] CaptureIdentityBaselines()
+    {
+        var result = new RuntimeTownNpcIdentityCommit[townNpcsBySlot.Count];
+        int index = 0;
+        foreach ((short slot, WorldTownNpc npc) in townNpcsBySlot)
+            result[index++] = new RuntimeTownNpcIdentityCommit(slot, npc.GivenName, npc.TownNpcVariationIndex ?? 0);
+        return result;
     }
 
     private VanillaHousingOccupant[] CaptureOccupantsExcept(short ignoredSlot)

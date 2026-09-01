@@ -394,6 +394,7 @@ public static class TerrariaServerHost
         if (!townNpcStore.TryReserveRuntimeSlots(npcStore))
             throw new InvalidDataException("Failed to reserve authoritative runtime slots for persisted town NPCs.");
         npcReplication.ConfigureTownHomeBaselines(townNpcStore.CaptureHomeBaselines());
+        npcReplication.ConfigureTownIdentityBaselines(townNpcStore.CaptureIdentityBaselines());
         var npcArchetypes = new RuntimeNpcArchetypeRegistry();
         var projectileReplication = new RuntimeProjectileReplicationRegistry();
         RuntimeProjectileOperationsTelemetry? projectileOperations = options.TerminalUiEnabled
