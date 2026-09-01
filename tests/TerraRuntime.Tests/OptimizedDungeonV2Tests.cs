@@ -60,8 +60,8 @@ public sealed class OptimizedDungeonV2Tests
             Assert.Equal((short)0, anchor.FrameY);
             Assert.Equal((ushort)7, anchor.Wall);
 
-            int primary = Assert.Single(
-                chest.Items.Where(static item => !item.IsEmpty)).ItemType;
+            WorldChestItem primaryItem = Assert.Single(chest.Items, static item => !item.IsEmpty);
+            int primary = primaryItem.ItemType;
             Assert.Contains(primary, SourceBackedDungeonLoot);
             distinctPrimaryLoot.Add(primary);
         }
@@ -95,7 +95,7 @@ public sealed class OptimizedDungeonV2Tests
                     dartTraps++;
                     if ((tile.Flags & WorldGenerationTileFlags.WireRed) != 0)
                         wiredDartTraps++;
-                    Assert.Contains(tile.FrameX, [(short)0, (short)18]);
+                    Assert.True(tile.FrameX is 0 or 18, $"Unexpected dungeon dart-trap frameX {tile.FrameX}.");
                     Assert.Equal((ushort)7, tile.Wall);
                     break;
             }
