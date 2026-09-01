@@ -1,0 +1,70 @@
+name: One-shot optimized loot source probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-optimized-loot-source-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Decompile pinned TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+      - name: Print optimized loot source contracts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('decompiled/1458')
+          item = root / 'Terraria.ID/ItemID.cs'
+          worldgen = root / 'Terraria/WorldGen.cs'
+          item_lines = item.read_text(encoding='utf-8', errors='ignore').splitlines()
+          wg = worldgen.read_text(encoding='utf-8', errors='ignore').splitlines()
+          names = [
+              'Starfury','LuckyHorseshoe','ShinyRedBalloon','FledglingWings',
+              'Spear','Blowpipe','WoodenBoomerang','Aglet','ClimbingClaws','Umbrella',
+              'BandofRegeneration','MagicMirror','CloudinaBottle','HermesBoots','Mace','ShoeSpikes','FlareGun','Extractinator',
+              'FeralClaws','AnkletoftheWind','StaffofRegrowth','Boomstick','FiberglassFishingPole','FlowerBoots',
+              'Trident','Flipper','BreathingReed','WaterWalkingBoots',
+              'FlyingCarpet','SandstorminaBottle','PharaohsMask','PharaohsRobe',
+              'LivingWoodWand','LeafWand','FinchStaff',
+              'DarkLance','Sunfury','Flamelash','FlowerofFire','HellwingBow'
+          ]
+          print('===== ITEM IDS =====')
+          for name in names:
+              matches = [(i+1,line.strip()) for i,line in enumerate(item_lines) if f' {name} =' in line]
+              if matches:
+                  print(name, *matches)
+              else:
+                  print(name, 'NO_MATCH')
+          print('===== WORLDGEN NAMED CONTEXTS =====')
+          needles = ['Starfury','LuckyHorseshoe','ShinyRedBalloon','FledglingWings','FlyingCarpet','SandstorminaBottle','LivingWoodWand','FinchStaff','DarkLance','Sunfury','Flamelash','FlowerofFire','HellwingBow']
+          for needle in needles:
+              print(f'--- {needle} ---')
+              hits = [i for i,line in enumerate(wg) if needle in line]
+              for i in hits[:8]:
+                  print(f'@{i+1}')
+                  for row in wg[max(0,i-8):min(len(wg),i+14)]:
+                      print(row)
+              if not hits:
+                  print('NO_MATCH')
+          print('===== CHEST LOOT METHODS / CONTAIN SWITCHES =====')
+          for needle in ['AddBuriedChest(', 'contain ==', 'contain =', 'case 159:', 'case 65:', 'case 158:', 'case 49:']:
+              print(f'--- {needle} ---')
+              hits = [i for i,line in enumerate(wg) if needle in line]
+              for i in hits[:10]:
+                  print(f'@{i+1}')
+                  for row in wg[max(0,i-7):min(len(wg),i+18)]:
+                      print(row)
+          PY
