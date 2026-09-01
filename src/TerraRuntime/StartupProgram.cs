@@ -29,6 +29,8 @@ public static class StartupProgram
         if (ContainsStandaloneMode(args))
             return Program.Main(args);
 
+        RuntimeProductInfo.TryApplyConsoleTitle();
+
         var startupWorldGenerators = new StartupWorldGeneratorSource(worldGenerators);
 
         if (args.Any(static arg =>
@@ -103,6 +105,8 @@ public static class StartupProgram
                 return 0;
             }
 
+            StartupConsolePresentation.ClearForTransition();
+
             string? worldPath;
             if (selection.Kind == LocalWorldSelectionKind.CreateWorld)
             {
@@ -113,6 +117,8 @@ public static class StartupProgram
                 {
                     return 0;
                 }
+
+                StartupConsolePresentation.ClearForTransition();
 
                 if (!TryCreateStartupWorld(
                         creationRequest,
@@ -327,7 +333,7 @@ public static class StartupProgram
 
     private static void PrintUsage()
     {
-        Console.WriteLine("TerraRuntime .NET 11 server runtime.");
+        Console.WriteLine($"{RuntimeProductInfo.DisplayName} · .NET 11 server runtime.");
         Console.WriteLine();
         Console.WriteLine("Interactive startup:");
         Console.WriteLine("  TerraRuntime.Server");
