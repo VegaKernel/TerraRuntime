@@ -15,9 +15,9 @@ internal readonly record struct RuntimeWorldSaveTemplateLoadResult(
     string? Error);
 
 /// <summary>
-/// Loads the small opaque source template required by tile/chest persistence without retaining or rereading the
-/// canonical tile/chest payloads. Warm startup prefers the world image already embedded in the runtime cache and
-/// falls back to sparse reads from the canonical .wld only when the cache template cannot be trusted.
+/// Loads the compact source template required by runtime persistence without retaining or rereading canonical tile/chest
+/// payloads. The opaque header remains byte-preserved, while decoded static side-table sections are normalized through
+/// the version-pinned semantic encoders before the mutable world is allowed to use the template.
 /// </summary>
 internal static class RuntimeWorldSaveTemplateLoader
 {
@@ -41,11 +41,11 @@ internal static class RuntimeWorldSaveTemplateLoader
                 out preserved);
         if (cacheDiagnostic.IsLoaded && preserved is not null)
         {
-            return new RuntimeWorldSaveTemplateLoadResult(
-                Success: true,
+            return NormalizeTemplate(
                 RuntimeWorldSaveTemplateLoadSource.RuntimeCache,
                 cacheDiagnostic.Result,
-                Error: null);
+                world,
+                ref preserved);
         }
 
         preserved = null;
@@ -68,11 +68,11 @@ internal static class RuntimeWorldSaveTemplateLoader
                     "Canonical world does not contain a valid preserved save template.");
             }
 
-            return new RuntimeWorldSaveTemplateLoadResult(
-                Success: true,
+            return NormalizeTemplate(
                 RuntimeWorldSaveTemplateLoadSource.CanonicalWorld,
                 cacheDiagnostic.Result,
-                Error: null);
+                world,
+                ref preserved);
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or NotSupportedException or ObjectDisposedException)
@@ -84,5 +84,33 @@ internal static class RuntimeWorldSaveTemplateLoader
                 cacheDiagnostic.Result,
                 exception.Message);
         }
+    }
+
+    private static RuntimeWorldSaveTemplateLoadResult NormalizeTemplate(
+        RuntimeWorldSaveTemplateLoadSource source,
+        RuntimeWorldPreservedSectionsLoadResult cacheResult,
+        WorldFileData world,
+        ref WorldFilePreservedSections? preserved)
+    {
+        WorldFilePreservedSections template = preserved
+            ?? throw new InvalidOperationException("Save-template normalization requires captured preserved sections.");
+        WorldFilePreservedSectionNormalizationDiagnostic normalization =
+            template.TryNormalizeSemanticSections(world, out WorldFilePreservedSections? normalized);
+        if (!normalization.IsNormalized || normalized is null)
+        {
+            preserved = null;
+            return new RuntimeWorldSaveTemplateLoadResult(
+                Success: false,
+                source,
+                cacheResult,
+                $"Semantic save-template normalization failed: result={normalization.Result}, code={normalization.StageResultCode}.");
+        }
+
+        preserved = normalized;
+        return new RuntimeWorldSaveTemplateLoadResult(
+            Success: true,
+            source,
+            cacheResult,
+            Error: null);
     }
 }
