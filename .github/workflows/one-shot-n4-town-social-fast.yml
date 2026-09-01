@@ -10,6 +10,7 @@ on:
       - '.github/workflows/one-shot-n4-town-social-fast.yml'
   workflow_dispatch:
 
+# Explicit rerun marker: social-compile-fix-2
 jobs:
   build-test:
     runs-on: ubuntu-latest
