@@ -3,10 +3,10 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.World;
 
 /// <summary>
-/// Final surface-quality overlay for <c>terraruntime:optimized</c>. It inserts deterministic macro-morphology after
-/// biome painting and before cave carving, then runs the post-landmark surface shaping/life passes before the final
-/// progression validator. Ordinary tree crowns use the vanilla tree foliage-anchor frame contract; placement remains
-/// custom and is not claimed to be seed-identical.
+/// Final quality overlay for <c>terraruntime:optimized</c>. It inserts deterministic surface macro-morphology and a
+/// multi-family underground morphology layer before the legacy cave walkers, then runs post-landmark surface shaping
+/// and surface-life passes before the final progression validator. Placement remains custom and deterministic rather
+/// than seed-identical to vanilla Terraria.
 /// </summary>
 public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGenerationProvider
 {
@@ -15,6 +15,7 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
     private static readonly WorldGenerationPassId BiomesId = new("terraruntime:optimized/biomes");
     private static readonly WorldGenerationPassId CavesId = new("terraruntime:optimized/caves");
     private static readonly WorldGenerationPassId TerrainMorphologyId = new("terraruntime:optimized/terrain-morphology-v2");
+    private static readonly WorldGenerationPassId UndergroundMorphologyId = new("terraruntime:optimized/underground-morphology-v2");
     private static readonly WorldGenerationPassId LandmarkValidationId = new("terraruntime:optimized/landmark-validation");
     private static readonly WorldGenerationPassId SurfaceShapingId = new("terraruntime:optimized/surface-shaping");
     private static readonly WorldGenerationPassId SurfaceLifeId = new("terraruntime:optimized/surface-life");
@@ -32,6 +33,7 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
         var capture = new CapturePlanBuilder();
         baseline.BuildPlan(in request, capture);
         bool insertedMorphology = false;
+        bool insertedUndergroundMorphology = false;
         bool rewiredCaves = false;
         bool insertedSurfaceLife = false;
 
@@ -52,7 +54,14 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
             if (entry.Descriptor.Id == CavesId)
             {
-                builder.Add(CloneDescriptor(entry.Descriptor, [TerrainMorphologyId]), entry.Pass);
+                builder.Add(
+                    new WorldGenerationPassDescriptor(
+                        UndergroundMorphologyId,
+                        WorldGenerationRngMode.IsolatedDeterministic,
+                        requiredAfter: [TerrainMorphologyId]),
+                    UndergroundMorphologyPass.Instance);
+                builder.Add(CloneDescriptor(entry.Descriptor, [UndergroundMorphologyId]), entry.Pass);
+                insertedUndergroundMorphology = true;
                 rewiredCaves = true;
                 continue;
             }
@@ -79,10 +88,10 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
             insertedSurfaceLife = true;
         }
 
-        if (!insertedMorphology || !rewiredCaves || !insertedSurfaceLife)
+        if (!insertedMorphology || !insertedUndergroundMorphology || !rewiredCaves || !insertedSurfaceLife)
         {
             throw new InvalidOperationException(
-                "Optimized surface overlay could not find the biome/cave/progression boundaries required by terrain morphology v2.");
+                "Optimized quality overlay could not find the biome/cave/progression boundaries required by morphology v2.");
         }
     }
 
@@ -111,6 +120,14 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
         public void Execute(IWorldGenerationContext context) =>
             OptimizedTerrainMorphology.Apply(context);
+    }
+
+    private sealed class UndergroundMorphologyPass : IWorldGenerationPass
+    {
+        public static UndergroundMorphologyPass Instance { get; } = new();
+
+        public void Execute(IWorldGenerationContext context) =>
+            _ = OptimizedUndergroundMorphology.Apply(context);
     }
 
     private sealed class SurfaceShapingPass : IWorldGenerationPass
