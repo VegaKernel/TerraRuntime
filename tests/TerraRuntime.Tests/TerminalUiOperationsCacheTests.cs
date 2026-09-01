@@ -53,6 +53,18 @@ public sealed class TerminalUiOperationsCacheTests
     }
 
     [Fact]
+    public void Text_selection_uses_a_distinct_high_contrast_background()
+    {
+        var baseScheme = TerminalUiTheme.CreateBaseScheme();
+        var accentScheme = TerminalUiTheme.CreateAccentScheme();
+
+        Assert.NotEqual(baseScheme.Active.Background, baseScheme.ReadOnly.Background);
+        Assert.NotEqual(baseScheme.Active.Background, baseScheme.Normal.Background);
+        Assert.NotEqual(baseScheme.Active.Foreground, baseScheme.Active.Background);
+        Assert.Equal(baseScheme.Active, accentScheme.Active);
+    }
+
+    [Fact]
     public void Overview_console_is_selectable_and_exposes_command_input()
     {
         using var dashboard = new RuntimeOverviewDashboard();
