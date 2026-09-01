@@ -136,4 +136,17 @@ provider = replace_once(
     "exploration loot pass class")
 provider_path.write_text(provider, encoding="utf-8")
 
+validator_path = Path("src/TerraRuntime.World/Generation/Vanilla/VanillaWorldGenerationValidator1458.cs")
+validator = validator_path.read_text(encoding="utf-8")
+validator = replace_once(
+    validator,
+    '''        if (a.Type != 21 || b.Type != 21 || c.Type != 21 || d.Type != 21)
+            return false;''',
+    '''        ushort containerType = a.Type;
+        if (containerType is not (21 or 467) ||
+            b.Type != containerType || c.Type != containerType || d.Type != containerType)
+            return false;''',
+    "Containers2 footprint validation")
+validator_path.write_text(validator, encoding="utf-8")
+
 print("Applied optimized source-backed exploration loot integration.")
