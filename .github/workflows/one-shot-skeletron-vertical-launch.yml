@@ -33,7 +33,7 @@ jobs:
           git config user.name 'Xekep'
           git config user.email 'Xekep@users.noreply.github.com'
           git fetch origin --prune
-          git switch -C work/skeletron-vertical-1458-main origin/main
+          git switch -C work/skeletron-vertical-1458 origin/main
           git diff 6f87a8a747c226f32035999b33ca432fd001274b ce9c7434c004e95c3edad8ac2a8ac0ba5edad2aa -- \
             src/TerraRuntime.Core/Npcs/VanillaSkeletronBehavior.cs \
             tests/TerraRuntime.Tests/VanillaSkeletronBehaviorTests.cs > /tmp/skeletron-clean.patch
@@ -83,4 +83,4 @@ jobs:
           set -euo pipefail
           git add -A
           git commit -m 'Add source-backed Skeletron head and hand AI vertical' -m 'Fresh-port TerrariaServer 1.4.5.8 Skeletron head/hand defaults and AI onto current main. Preserve exact two-hand parent ownership, hover/spin and hand attack cycles, daytime enrage/flee and Expert live-hand defense, with focused regressions and full-suite validation.'
-          git push --force origin HEAD:work/skeletron-vertical-1458-main
+          git push --force origin HEAD:work/skeletron-vertical-1458
