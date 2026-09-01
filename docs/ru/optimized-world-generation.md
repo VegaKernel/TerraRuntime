@@ -26,7 +26,9 @@ flowchart TD
     Base["OptimizedWorldGenerationProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
     Play["OptimizedPlayableWorldGenerationProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
     Land["OptimizedLandmarkWorldGenerationProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
-    Meta["metadata + base validator"]
+    Meta["metadata"]
+    Dng["Dungeon v2<br/>rooms / branches / keys / locked chests / traps"]
+    BVal["base validator"]
     PVal["playability validator"]
     LVal["landmark validator"]
     Shape["surface shaping<br/>natural top slopes / half-block transitions"]
@@ -34,7 +36,7 @@ flowchart TD
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Shape --> Surf --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> Dng --> BVal --> PVal --> LVal --> Shape --> Surf --> Prog --> Commit
 ```
 
 Все optimized passes используют `WorldGenerationRngMode.IsolatedDeterministic`. Поэтому новый несвязанный pass не
@@ -50,7 +52,8 @@ Optimized profile сейчас создаёт и валидирует:
 - Underworld band с Lava, Hellstone и Hellforge;
 - малые correlated caves, крупные warped caverns, vertical shafts и inland underground lakes;
 - несколько floating islands;
-- dungeon, jungle hive, Jungle Temple и Aether/Shimmer pocket;
+- связный многоуровневый dungeon с боковыми branches, locked Gold Chests, Golden Keys, spikes и wired dart traps;
+- jungle hive, Jungle Temple и Aether/Shimmer pocket;
 - pre-Hardmode ore tiers;
 - масштабируемый по площади мира бюджет Life Crystals;
 - persistent surface, underground и cavern exploration caches;
@@ -62,8 +65,8 @@ Optimized profile сейчас создаёт и валидирует:
 - granite, marble и spider/cobweb micro-biomes;
 - явный читаемый вход в dungeon;
 - domain-warped material tongues на границах snow, desert, jungle и world evil;
-- детерминированные обычные forest/jungle/snow trees, surface undergrowth и sunflower patches, которые ставятся после landmarks и обходят progression objects/caches.
-- отдельный deterministic surface-finishing pass превращает чистые однотайловые перепады natural terrain в сохраняемые walkable slopes/half-blocks; верхушки обычных optimized trees получают vanilla-format foliage anchors вместо голого последнего trunk tile.
+- детерминированные обычные forest/jungle/snow trees, surface undergrowth и sunflower patches, которые ставятся после landmarks и обходят progression objects/caches;
+- отдельный deterministic surface-finishing pass, превращающий чистые однотайловые перепады natural terrain в сохраняемые walkable slopes/half-blocks; верхушки обычных optimized trees получают vanilla-format foliage anchors вместо голого последнего trunk tile.
 
 Landmark layer использует только tile/wall identities, которые уже source-backed текущей работой репозитория с
 TerrariaServer `1.4.5.8`. Loot landmark caches пока намеренно собственный и консервативный, пока полный vanilla
@@ -90,6 +93,27 @@ Sky terrain сканируется как отдельные горизонта�
 
 Текущий sky cache не выдаётся за точное vanilla Skyware loot. Source-backed роли Starfury/Horseshoe/Balloon остаются
 отдельной progression-задачей.
+
+## Dungeon v2
+
+Optimized dungeon сохраняет заранее выделенную base generator область Blue Dungeon и metadata anchor, но после
+появления metadata перестраивает только этот ограниченный footprint. Pass создаёт детерминированную цепочку main rooms
+с чередующимися side branches и dogleg corridors, после чего заново открывает surface entrance. За пределы соседних
+biome и landmark reservations он не расширяется.
+
+Размещение внутреннего наполнения учитывает topology и не зависит от случайно оставшегося ровного пола после carving.
+Для key cache и locked chests создаются детерминированные боковые furnishing pads вне трёхтайлового центрального
+прохода. Уже зарегистрированные exploration caches, попавшие внутрь восстановленного reservation, сохраняются вместе с
+их tile/support footprints, поэтому side-table entries не превращаются в осиротевшие записи.
+
+Во входной комнате находится открытый Golden Key cache с количеством ключей не меньше числа locked chests. Более
+глубокие main rooms получают style-2 locked Gold Chests с различными source-backed primary roles: Muramasa, Cobalt
+Shield, Aqua Scepter, Blue Moon, Magic Missile, Valor и Handgun. Side branches получают source-backed dart-trap роли на
+pressure-plate tile `135`, dart-trap tile `137` и red wire, а ограниченный бюджет spikes оставляет свободным центральный
+маршрут.
+
+Generation завершается ошибкой, если не выполнены бюджеты main/branch rooms, баланс locked chests/keys, chest framing,
+количество wired traps и spikes, размер связного dungeon interior или читаемость surface entrance.
 
 ## Наземные и подземные landmarks
 
@@ -151,13 +175,11 @@ contracts. Загрузка существующего vanilla `.wld` не за�
 
 ## Что ещё осталось
 
-Landmark и final progression-validation slices закрывают заметные visual/content и structural gaps, но
-`terraruntime:optimized` ещё не production-complete.
-Основные оставшиеся задачи:
+Landmark, dungeon-v2 и final progression-validation slices закрывают заметные visual/content и structural gaps, но
+`terraruntime:optimized` ещё не production-complete. Основные оставшиеся задачи:
 
 - Shadow Orb / Crimson Heart anchors;
 - настоящие source-backed biome и Skyware loot families;
-- dungeon locked chest/key progression и более богатые dungeon branches/traps;
 - несколько hives и более сильная гарантия Queen Bee space на больших мирах;
 - glowing-mushroom и дополнительные decorative micro-biomes;
 - Hardmode-ready mutation anchors;
