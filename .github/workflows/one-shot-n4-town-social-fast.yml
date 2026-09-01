@@ -6,6 +6,7 @@ on:
     paths:
       - 'tools/ci/apply_n4_town_social_emotes.py'
       - 'tools/ci/apply_n4_town_social_contract_fix.py'
+      - 'tools/ci/apply_n4_town_social_compile_fix.py'
       - '.github/workflows/one-shot-n4-town-social-fast.yml'
   workflow_dispatch:
 
@@ -24,6 +25,7 @@ jobs:
         run: |
           python3 tools/ci/apply_n4_town_social_emotes.py
           python3 tools/ci/apply_n4_town_social_contract_fix.py
+          python3 tools/ci/apply_n4_town_social_compile_fix.py
       - name: Build Release
         run: dotnet build TerraRuntime.slnx -c Release
       - name: Run complete tests
