@@ -26,4 +26,13 @@ if 'using TerraRuntime.Contracts.Runtime;' not in text:
         'using TerraRuntime.Core;\n',
         'using TerraRuntime.Contracts.Runtime;\nusing TerraRuntime.Core;\n')
 p.write_text(text)
-print('N4 compatibility fixes applied; workflow trigger v3')
+
+p = Path('tests/TerraRuntime.Tests/TerrariaNpcCatchCodecTests.cs')
+text = p.read_text()
+old = '''        var frame = new TerrariaFrame((byte)TerrariaMessageId.CatchNpc, new ReadOnlySequence<byte>(new byte[] { 1 }));'''
+new = '''        var payload = new ReadOnlySequence<byte>(new byte[] { 1 });\n        var frame = new TerrariaFrame(4, (byte)TerrariaMessageId.CatchNpc, payload, payload);'''
+if old not in text:
+    raise SystemExit('packet 70 negative-frame fixture anchor drifted')
+text = text.replace(old, new, 1)
+p.write_text(text)
+print('N4 compatibility fixes applied; workflow trigger v4')
