@@ -1,0 +1,52 @@
+name: One-shot optimized exploration loot integration
+
+on:
+  push:
+    branches: [optimized-source-backed-loot-20260901]
+    paths:
+      - 'tools/ci/apply_optimized_exploration_loot.py'
+      - '.github/workflows/one-shot-optimized-exploration-loot.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: optimized-exploration-loot-integration
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Apply source-backed exploration loot overlay
+        run: python3 tools/ci/apply_optimized_exploration_loot.py
+      - name: Build
+        run: dotnet build TerraRuntime.slnx -c Release
+      - name: Run exploration loot and optimized worldgen tests
+        run: >-
+          dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+          -class TerraRuntime.Tests.OptimizedExplorationLoot1458Tests
+          -class TerraRuntime.Tests.OptimizedWorldGenerationProviderTests
+          -class TerraRuntime.Tests.OptimizedDungeonV2Tests
+      - name: Commit integrated block and remove one-shot helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Xekep"
+          git config user.email "Xekep@users.noreply.github.com"
+          git rm tools/ci/apply_optimized_exploration_loot.py .github/workflows/one-shot-optimized-exploration-loot.yml
+          git add src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs \
+                  src/TerraRuntime.World/Generation/Optimized/OptimizedSurfaceDecorationWorldGenerationProvider.cs \
+                  src/TerraRuntime.World/Generation/Optimized/OptimizedExplorationLoot1458.cs \
+                  tests/TerraRuntime.Tests/OptimizedExplorationLoot1458Tests.cs
+          git commit -m "Add source-backed optimized exploration loot"
+          git push origin HEAD:optimized-source-backed-loot-20260901
