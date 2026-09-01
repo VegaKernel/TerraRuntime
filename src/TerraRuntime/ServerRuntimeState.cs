@@ -61,6 +61,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly VanillaHousingValidator1458? _housingValidator;
     private readonly RuntimeTownNpcMoveInCoordinator1458? _townMoveIn;
     private readonly RuntimeTownNpcSchedule1458? _townSchedule;
+    private readonly RuntimeTownNpcShimmerService1458? _townShimmer;
     private readonly VanillaTownSpawnPlayerFacts1458[] _townSpawnPlayers = new VanillaTownSpawnPlayerFacts1458[MaxPlayerSlots];
     private readonly RuntimeTownPlayerBounds1458[] _townPlayerBounds = new RuntimeTownPlayerBounds1458[MaxPlayerSlots];
     private readonly bool _townInitialRaining;
@@ -168,6 +169,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         if (worldTiles is not null && townNpcs is not null && _housingValidator is not null)
         {
             _townSchedule = new RuntimeTownNpcSchedule1458(townNpcs, _npcs, worldTiles);
+            _townShimmer = new RuntimeTownNpcShimmerService1458(_npcs, townNpcs, worldTiles, npcReplication);
             if (townSpawnWorldFacts is VanillaTownSpawnWorldFacts1458 facts)
             {
                 var houseIndex = new RuntimeTownHouseCandidateIndex1458(worldTiles, _housingValidator);
@@ -585,6 +587,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         }
 
         LastNpcAiTick = _npcAiExecutor.Tick(_npcAiStepper);
+        _townShimmer?.Tick();
         TickTownNpcLifecycle();
         AppliedNpcDespawns += _npcs.DespawnExpired();
         if (_projectileStepper is not null)

@@ -4,8 +4,7 @@ namespace TerraRuntime.Core;
 
 /// <summary>
 /// TerrariaServer 1.4.5.8 NPCID.Sets.ShimmerTownTransform membership for persistent town residents.
-/// Transient Old Man / Traveling Merchant / Skeleton Merchant identities are deliberately excluded here because
-/// <see cref="RuntimeTownNpcStateStore"/> owns the persistent .wld town roster rather than transient NPC lifecycle.
+/// Transient Old Man / Traveling Merchant / Skeleton Merchant identities are deliberately excluded here; the runtime persistent-town roster owns the .wld lifecycle instead.
 /// </summary>
 public static class VanillaTownNpcShimmerCatalog1458
 {

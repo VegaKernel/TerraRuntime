@@ -19,6 +19,7 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private readonly byte[]?[] baselineFrames = new byte[MaxNpcSlots][];
     private readonly byte[]?[] townHomeBaselineFrames = new byte[RuntimeTownNpcStateStore.MaximumTownNpcs][];
+    private readonly byte[]?[] townIdentityBaselineFrames = new byte[RuntimeTownNpcStateStore.MaximumTownNpcs][];
     private long relayedFrames;
     private long baselineFrameCount;
     private long rejectedFrames;
@@ -123,6 +124,32 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         }
     }
 
+    public void ConfigureTownIdentityBaselines(ReadOnlySpan<RuntimeTownNpcIdentityCommit> identities)
+    {
+        Array.Clear(townIdentityBaselineFrames, 0, townIdentityBaselineFrames.Length);
+        foreach (RuntimeTownNpcIdentityCommit identity in identities)
+        {
+            if ((uint)identity.NpcSlot >= (uint)townIdentityBaselineFrames.Length)
+                continue;
+            TerrariaTownNpcIdentityState state = identity.ToWireState();
+            if (TerrariaTownNpcIdentityCodec.TryEncode(in state, out byte[] encoded) != TerrariaTownNpcIdentityEncodeResult.Encoded)
+                continue;
+            Volatile.Write(ref townIdentityBaselineFrames[identity.NpcSlot], encoded);
+        }
+    }
+
+    public bool TryPublishTownIdentity(in RuntimeTownNpcIdentityCommit identity)
+    {
+        if ((uint)identity.NpcSlot >= (uint)townIdentityBaselineFrames.Length)
+            return false;
+        TerrariaTownNpcIdentityState state = identity.ToWireState();
+        if (TerrariaTownNpcIdentityCodec.TryEncode(in state, out byte[] encoded) != TerrariaTownNpcIdentityEncodeResult.Encoded)
+            return false;
+        Volatile.Write(ref townIdentityBaselineFrames[identity.NpcSlot], encoded);
+        Broadcast(encoded);
+        return true;
+    }
+
     public bool TryPublishNpcTalk(ConnectionHandle connection, short npcSlot)
     {
         if (!connection.IsAssigned || !TerrariaNpcTalkCodec.IsValidNpcSlot(npcSlot))
@@ -199,6 +226,18 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         for (int slot = 0; slot < baselineFrames.Length; slot++)
         {
             byte[]? encoded = Volatile.Read(ref baselineFrames[slot]);
+            if (encoded is null)
+                continue;
+
+            if (endpoint.Outbound.TryEnqueue(new OutboundFrame(encoded)) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref baselineFrameCount);
+            else
+                Interlocked.Increment(ref rejectedFrames);
+        }
+
+        for (int slot = 0; slot < townIdentityBaselineFrames.Length; slot++)
+        {
+            byte[]? encoded = Volatile.Read(ref townIdentityBaselineFrames[slot]);
             if (encoded is null)
                 continue;
 
