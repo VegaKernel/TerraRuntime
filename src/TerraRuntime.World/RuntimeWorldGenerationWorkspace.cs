@@ -37,6 +37,8 @@ public sealed class RuntimeWorldGenerationWorkspace :
     private VanillaWorldSeedProfile1458 vanillaSeedProfile;
     private VanillaWorldGenerationBootstrapState1458? vanillaBootstrapState;
     private VanillaTerrainGenerationState1458? vanillaTerrainState;
+    private VanillaDungeonSetupProfile1458? vanillaDungeonSetupProfile;
+    private VanillaDungeonGraph1458? vanillaDungeonGraph;
     private readonly List<VanillaPyramidCandidate1458> vanillaPyramidCandidates = [];
 
     public RuntimeWorldGenerationWorkspace(int widthTiles, int heightTiles)
@@ -55,12 +57,18 @@ public sealed class RuntimeWorldGenerationWorkspace :
     internal VanillaWorldSeedProfile1458 VanillaSeedProfile => vanillaSeedProfile;
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
     internal VanillaTerrainGenerationState1458? VanillaTerrainState => vanillaTerrainState;
+    internal VanillaDungeonSetupProfile1458? VanillaDungeonSetupProfile => vanillaDungeonSetupProfile;
+    internal VanillaDungeonGraph1458? VanillaDungeonGraph => vanillaDungeonGraph;
 
     internal void SetVanillaSeedProfile(VanillaWorldSeedProfile1458 value) => vanillaSeedProfile = value;
     internal void SetVanillaBootstrapState(VanillaWorldGenerationBootstrapState1458 value) =>
         vanillaBootstrapState = value ?? throw new ArgumentNullException(nameof(value));
     internal void SetVanillaTerrainState(VanillaTerrainGenerationState1458 value) =>
         vanillaTerrainState = value;
+    internal void SetVanillaDungeonSetupProfile(VanillaDungeonSetupProfile1458 value) =>
+        vanillaDungeonSetupProfile = value;
+    internal void SetVanillaDungeonGraph(VanillaDungeonGraph1458 value) =>
+        vanillaDungeonGraph = value ?? throw new ArgumentNullException(nameof(value));
 
     internal void ResetVanillaPyramidCandidates() => vanillaPyramidCandidates.Clear();
 

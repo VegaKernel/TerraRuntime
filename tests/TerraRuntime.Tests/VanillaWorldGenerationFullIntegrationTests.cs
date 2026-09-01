@@ -43,6 +43,15 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.True(layers.RockLayer > layers.WorldSurface);
         AssertSourceShapedTerrain(result.Candidate);
         AssertSourceFramedTrees(result.Candidate);
+        VanillaDungeonGraph1458 graph = Assert.IsType<VanillaDungeonGraph1458>(result.Candidate.VanillaDungeonGraph);
+        Assert.InRange(graph.RoomCount, 3, 40);
+        Assert.InRange(graph.HallCount, 45, 120);
+        Assert.True(graph.HorizontalHallCount > 0);
+        Assert.True(graph.VerticalHallCount > 0);
+        Assert.True(graph.Bounds.Width >= 120, $"Dungeon graph width was only {graph.Bounds.Width} tiles.");
+        Assert.True(graph.Bounds.Height >= 120, $"Dungeon graph height was only {graph.Bounds.Height} tiles.");
+        Assert.Contains(graph.Components, static component => component.Kind == VanillaDungeonComponentKind1458.EntranceHall);
+        Assert.Contains(graph.Components, static component => component.Kind == VanillaDungeonComponentKind1458.Entrance);
     }
 
     [Theory]

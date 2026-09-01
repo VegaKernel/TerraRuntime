@@ -29,7 +29,8 @@ public enum VanillaWorldValidationStatus : byte
     TempleMissing = 16,
     DungeonMissing = 17,
     OceanBoundsViolation = 18,
-    BiomeMissing = 19
+    BiomeMissing = 19,
+    InvalidDungeonGraph = 20
 }
 
 public readonly record struct VanillaWorldValidationResult(
@@ -73,6 +74,13 @@ public static class VanillaWorldGenerationValidator1458
         if (metadata.Layers.WorldSurface <= 0 || metadata.Layers.WorldSurface >= height ||
             metadata.Layers.RockLayer <= metadata.Layers.WorldSurface || metadata.Layers.RockLayer >= height)
             return new(VanillaWorldValidationStatus.InvalidLayers, $"Layers surface={metadata.Layers.WorldSurface} rock={metadata.Layers.RockLayer} invalid for height {height}.");
+
+        if (workspace.VanillaDungeonGraph is VanillaDungeonGraph1458 dungeonGraph)
+        {
+            VanillaWorldValidationResult graphValidation = ValidateDungeonGraph(dungeonGraph, width, height);
+            if (!graphValidation.IsValid)
+                return graphValidation;
+        }
 
         // Bootstrap ocean bounds when available
         if (metadata.VanillaBootstrapState is VanillaWorldGenerationBootstrapState1458 bootstrap)
@@ -326,6 +334,31 @@ public static class VanillaWorldGenerationValidator1458
         }
 
         return new(VanillaWorldValidationStatus.Valid, null);
+    }
+
+    internal static VanillaWorldValidationResult ValidateDungeonGraph(
+        VanillaDungeonGraph1458 graph,
+        int worldWidth,
+        int worldHeight)
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        if (graph.RoomCount < 3 || graph.HallCount < worldWidth / 100)
+            return new(VanillaWorldValidationStatus.InvalidDungeonGraph,
+                $"Dungeon graph is sparse: rooms={graph.RoomCount}, halls={graph.HallCount}.");
+        if (graph.HorizontalHallCount == 0 || graph.VerticalHallCount == 0)
+            return new(VanillaWorldValidationStatus.InvalidDungeonGraph,
+                $"Dungeon graph is axis-degenerate: horizontal={graph.HorizontalHallCount}, vertical={graph.VerticalHallCount}.");
+        VanillaDungeonBounds1458 bounds = graph.Bounds;
+        if (bounds.Width < 120 || bounds.Height < 120)
+            return new(VanillaWorldValidationStatus.InvalidDungeonGraph,
+                $"Dungeon graph span {bounds.Width}x{bounds.Height} is still shaft-shaped.");
+        if ((uint)graph.Anchor.X >= (uint)worldWidth || (uint)graph.Anchor.Y >= (uint)worldHeight)
+            return new(VanillaWorldValidationStatus.InvalidDungeonGraph,
+                $"Dungeon graph anchor {graph.Anchor} is outside {worldWidth}x{worldHeight}.");
+        if (!graph.Components.Any(static component => component.Kind == VanillaDungeonComponentKind1458.EntranceHall) ||
+            !graph.Components.Any(static component => component.Kind == VanillaDungeonComponentKind1458.Entrance))
+            return new(VanillaWorldValidationStatus.InvalidDungeonGraph, "Dungeon graph is not connected to a surface entrance.");
+        return new(VanillaWorldValidationStatus.Valid);
     }
 
     private static bool IsValidChestFootprint(WorldTileStore store, int left, int top, int width, int height)

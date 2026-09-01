@@ -21,11 +21,18 @@ internal static class Program
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine(
-                $"Could not initialize the extensible TerraRuntime host under '{layout.RootDirectory}': {exception.Message}");
+                $"Could not initialize the extensible TerraRuntime host under '{layout.RootDirectory}'.");
+            Console.Error.WriteLine(exception);
             return 30;
         }
 
-        await using var loader = new TrustedHostModuleLoader(layout.HostModulesDirectory);
+        // Host modules are optional by default. Operators may mark selected files (or '*') as required through
+        // TERRARUNTIME_REQUIRED_HOST_MODULES without widening the host-module contract surface.
+        TrustedHostModuleLoadPolicy modulePolicy = TrustedHostModuleLoadPolicy.FromEnvironment();
+        await using var loader = new TrustedHostModuleLoader(
+            layout.HostModulesDirectory,
+            modulePolicy,
+            Console.Error);
         var environment = new TerraRuntimeHostEnvironment(
             layout,
             loader.TerminalDashboards,
@@ -33,11 +40,15 @@ internal static class Program
         try
         {
             int loadedCount = await loader.StartAllAsync(environment).ConfigureAwait(false);
-            Console.WriteLine($"Trusted host modules active: {loadedCount}.");
+            int faultCount = loader.CaptureFaults().Length;
+            Console.WriteLine(
+                $"Trusted host modules active: {loadedCount}; contained faults: {faultCount}; " +
+                $"required-policy={(modulePolicy.RequireAllModules ? "all" : "selected/optional")}.");
         }
         catch (Exception exception)
         {
-            Console.Error.WriteLine($"Trusted host module startup failed: {exception.Message}");
+            Console.Error.WriteLine("Required trusted host module startup failed.");
+            Console.Error.WriteLine(exception);
             return 31;
         }
 

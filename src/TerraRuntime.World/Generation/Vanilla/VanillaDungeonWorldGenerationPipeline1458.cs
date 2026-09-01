@@ -205,9 +205,6 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
 {
     private const ushort Dirt = 0;
     private const ushort Stone = 1;
-    private const ushort BlueDungeonBrick = 41;
-    private const ushort GreenDungeonBrick = 43;
-    private const ushort PinkDungeonBrick = 44;
     private const ushort Sand = 53;
     private const ushort Ash = 57;
     private const ushort Mud = 59;
@@ -229,10 +226,6 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
     private const ushort Granite = 368;
     private const ushort Sandstone = 396;
     private const ushort HardenedSand = 397;
-    private const ushort BlueDungeonUnsafeWall = 7;
-
-    private static readonly ushort[] DungeonBricks =
-        [BlueDungeonBrick, GreenDungeonBrick, PinkDungeonBrick];
 
     private static readonly ushort[] GemTypes =
         [Sapphire, Ruby, Emerald, Topaz, Amethyst, Diamond];
@@ -267,7 +260,7 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
                 ApplyDualDungeonsDitherSnake(context);
                 break;
             case VanillaDungeonWorldGenerationStage1458.Dungeon:
-                ApplyDungeon(context, grid, random);
+                ApplyDungeon(context, workspace);
                 break;
             case VanillaDungeonWorldGenerationStage1458.MountainCaves:
                 ApplyMountainCaves(context, grid, random);
@@ -303,153 +296,32 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
         context.ReportProgress(1d, "Ordinary world bypasses dual-dungeon dither snake");
     }
 
-    private void ApplyDungeon(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyDungeon(IWorldGenerationContext context, RuntimeWorldGenerationWorkspace workspace)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int centerX = Math.Clamp(bootstrap.DungeonLocation, 24, grid.Width - 25);
-        int surface = grid.FindFirstActiveY(
-            centerX,
-            20,
-            Math.Min(grid.Height, Math.Max((int)state.WorldSurface + 120, (int)state.RockLayer)));
-        if (surface >= grid.Height)
-            surface = Math.Clamp((int)state.WorldSurface, 30, grid.Height - 200);
-
-        ushort brick = DungeonBricks[random.Next(DungeonBricks.Length)];
-        state.DungeonX = centerX;
-        state.DungeonY = Math.Max(1, surface - 1);
-        state.DungeonBrick = brick;
-
-        int top = Math.Max(8, surface - random.Next(12, 20));
-        int bottom = Math.Min(state.UnderworldTop - 70, surface + Math.Max(240, grid.Height / 3));
-        int shaftX = centerX;
-        int corridorHalfWidth = random.Next(5, 8);
-        int roomCountdown = random.Next(28, 43);
-        int bendCountdown = random.Next(16, 27);
-
-        for (int y = top; y < bottom; y++)
-        {
-            if ((y & 31) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            bendCountdown--;
-            if (y > surface && bendCountdown <= 0)
-            {
-                shaftX = Math.Clamp(
-                    shaftX + random.Next(-5, 6),
-                    Math.Max(20, centerX - 90),
-                    Math.Min(grid.Width - 21, centerX + 90));
-                corridorHalfWidth = random.Next(5, 9);
-                bendCountdown = random.Next(16, 27);
-            }
-
-            BuildDungeonRow(grid, shaftX, y, corridorHalfWidth, brick);
-
-            roomCountdown--;
-            if (roomCountdown <= 0 && y > surface + 35)
-            {
-                int roomX = Math.Clamp(
-                    shaftX + random.Next(-22, 23),
-                    corridorHalfWidth + 8,
-                    grid.Width - corridorHalfWidth - 9);
-                int roomHalfWidth = random.Next(9, 16);
-                int roomHalfHeight = random.Next(5, 9);
-                BuildDungeonRoom(grid, roomX, y, roomHalfWidth, roomHalfHeight, brick);
-                roomCountdown = random.Next(30, 52);
-            }
-        }
-
-        state.DungeonGenerationX = shaftX;
-        BuildDungeonEntrance(grid, centerX, surface, brick);
-        if (context.Metadata is not null && !context.Metadata.TrySetDungeon(centerX, state.DungeonY))
+        VanillaDungeonGraph1458 graph = VanillaDungeonGraphGenerator1458.Generate(
+            workspace,
+            context.VanillaRandom ?? throw new InvalidOperationException(
+                "Source-backed Dungeon requires shared UnifiedRandom semantics."),
+            state.WorldSurface,
+            state.RockLayer,
+            state.UnderworldTop,
+            bootstrap.DungeonLocation,
+            bootstrap.DungeonSide,
+            context.CancellationToken);
+        workspace.SetVanillaDungeonGraph(graph);
+        state.DungeonX = graph.Anchor.X;
+        state.DungeonY = graph.Anchor.Y;
+        state.DungeonBrick = graph.BrickTileType;
+        VanillaDungeonComponent1458 finalHall = graph.Components.Last(static component =>
+            component.Kind == VanillaDungeonComponentKind1458.Hall);
+        state.DungeonGenerationX = finalHall.End.X;
+        if (context.Metadata is not null && !context.Metadata.TrySetDungeon(graph.Anchor.X, graph.Anchor.Y))
             throw new InvalidOperationException("Source-backed Dungeon produced an invalid dungeon anchor.");
 
-        context.ReportProgress(1d, $"Generating source-shaped Terraria dungeon at x={centerX}");
-    }
-
-    private static void BuildDungeonRow(
-        RuntimeGrid grid,
-        int centerX,
-        int y,
-        int corridorHalfWidth,
-        ushort brick)
-    {
-        int outer = corridorHalfWidth + 2;
-        for (int x = centerX - outer; x <= centerX + outer; x++)
-        {
-            if (!grid.Contains(x, y))
-                continue;
-
-            ref WorldTile tile = ref grid.At(x, y);
-            int distance = Math.Abs(x - centerX);
-            if (distance >= corridorHalfWidth)
-            {
-                SetType(ref tile, brick);
-                tile.Wall = BlueDungeonUnsafeWall;
-            }
-            else
-            {
-                ClearActive(ref tile);
-                tile.Wall = BlueDungeonUnsafeWall;
-            }
-        }
-    }
-
-    private static void BuildDungeonRoom(
-        RuntimeGrid grid,
-        int centerX,
-        int centerY,
-        int halfWidth,
-        int halfHeight,
-        ushort brick)
-    {
-        for (int x = centerX - halfWidth; x <= centerX + halfWidth; x++)
-        {
-            for (int y = centerY - halfHeight; y <= centerY + halfHeight; y++)
-            {
-                if (!grid.Contains(x, y))
-                    continue;
-
-                bool shell =
-                    x <= centerX - halfWidth + 1 ||
-                    x >= centerX + halfWidth - 1 ||
-                    y <= centerY - halfHeight + 1 ||
-                    y >= centerY + halfHeight - 1;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (shell)
-                    SetType(ref tile, brick);
-                else
-                    ClearActive(ref tile);
-                tile.Wall = BlueDungeonUnsafeWall;
-            }
-        }
-    }
-
-    private static void BuildDungeonEntrance(
-        RuntimeGrid grid,
-        int centerX,
-        int surface,
-        ushort brick)
-    {
-        int top = Math.Max(4, surface - 20);
-        for (int x = centerX - 8; x <= centerX + 8; x++)
-        {
-            for (int y = top; y <= surface + 8; y++)
-            {
-                if (!grid.Contains(x, y))
-                    continue;
-
-                bool shell =
-                    x <= centerX - 6 ||
-                    x >= centerX + 6 ||
-                    y <= top + 2;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (shell)
-                    SetType(ref tile, brick);
-                else
-                    ClearActive(ref tile);
-                tile.Wall = BlueDungeonUnsafeWall;
-            }
-        }
+        context.ReportProgress(
+            1d,
+            $"Generating Terraria dungeon graph: {graph.RoomCount} rooms, {graph.HallCount} halls");
     }
 
     private void ApplyMountainCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)

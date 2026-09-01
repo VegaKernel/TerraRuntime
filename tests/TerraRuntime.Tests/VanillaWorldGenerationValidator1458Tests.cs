@@ -7,6 +7,39 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaWorldGenerationValidator1458Tests
 {
     [Fact]
+    public void Dungeon_graph_validator_rejects_the_retired_single_room_shaft_shape()
+    {
+        VanillaDungeonComponent1458[] components =
+        [
+            new(
+                VanillaDungeonComponentKind1458.StartingRoom,
+                new VanillaDungeonPoint1458(100, 200),
+                new VanillaDungeonPoint1458(100, 220),
+                new VanillaDungeonBounds1458(85, 185, 115, 235),
+                1),
+            new(
+                VanillaDungeonComponentKind1458.EntranceHall,
+                new VanillaDungeonPoint1458(100, 200),
+                new VanillaDungeonPoint1458(100, 100),
+                new VanillaDungeonBounds1458(90, 90, 110, 210),
+                2),
+            new(
+                VanillaDungeonComponentKind1458.Entrance,
+                new VanillaDungeonPoint1458(100, 80),
+                new VanillaDungeonPoint1458(100, 100),
+                new VanillaDungeonBounds1458(90, 80, 110, 110),
+                3),
+        ];
+        var graph = new VanillaDungeonGraph1458(components, new(100, 100), brickTileType: 41, wallType: 7);
+
+        VanillaWorldValidationResult result =
+            VanillaWorldGenerationValidator1458.ValidateDungeonGraph(graph, worldWidth: 4200, worldHeight: 1200);
+
+        Assert.Equal(VanillaWorldValidationStatus.InvalidDungeonGraph, result.Status);
+        Assert.Contains("sparse", result.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Validator_accepts_canonical_generated_world()
     {
         var provider = new SourceBackedVanillaWorldGenerationFinal1458();

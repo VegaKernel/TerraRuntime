@@ -46,6 +46,8 @@ internal sealed class RuntimeTownHouseCandidateIndex1458
 
     internal VanillaHousingValidator1458 Validator => validator;
 
+    internal WorldTileStore Tiles => tiles;
+
     public void Scan(int tileBudget)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(tileBudget);

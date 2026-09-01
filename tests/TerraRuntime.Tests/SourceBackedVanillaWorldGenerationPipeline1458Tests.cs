@@ -175,6 +175,20 @@ public sealed class SourceBackedVanillaWorldGenerationPipeline1458Tests
     }
 
     [Fact]
+    public void Dungeon_setup_consumes_palette_both_entrance_rolls_and_component_seed_in_source_order()
+    {
+        var random = new RecordingRandom(2, 0, 0, 123456);
+
+        VanillaDungeonSetupProfile1458 profile =
+            VanillaEarlyWorldGenerationPass1458.SetupDungeonProfile(random, isRemix: false, crimson: false);
+
+        Assert.Equal(4, random.CallCount);
+        Assert.Equal((ushort)44, profile.Palette.BrickTileType);
+        Assert.Equal(VanillaDungeonEntranceKind1458.Tower, profile.EntranceKind);
+        Assert.Equal(123456, profile.EntranceRandomSeed);
+    }
+
+    [Fact]
     public void Remix_liquid_lines_consume_both_rolls_but_replace_lava_with_the_source_formula()
     {
         var random = new RecordingRandom(10, 20);
