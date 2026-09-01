@@ -47,13 +47,14 @@ The goal is not `catch (Exception) { continue; }`. Recoverable extension/subsyst
 - dashboard and world-generator registrations are loader-owned scopes, so one retiring module cannot unregister another module's resources and failed cleanup cannot keep registrations published;
 - contained host-module faults are retained in a bounded fault history and surfaced through the `Host Module Health` terminal dashboard;
 - the permanent `Runtime Crash Containment` CI gate runs deliberate load/start/attach/detach/stop fault injection alongside the existing host loader/world-generation integration suites;
-- trusted world-generator provider failures still belong to C5 transactional subsystem containment before publication.
+- trusted/custom world-generator execution now uses the C5 transactional publication boundary and generic structural validation instead of inheriting vanilla-completeness requirements from canonical dimensions.
 
 ### TerraRuntime core/subsystems
 
 - bounded worker jobs already convert thrown exceptions into failed completions rather than killing the worker loop;
 - several TUI/console paths already catch local failures, but the policy is not yet expressed as a unified optional-subsystem health model;
-- network, save, world generation and authoritative game-loop boundaries need explicit fault-disposition tests so future code cannot accidentally broaden a local failure into process termination;
+- network, save and authoritative game-loop boundaries need explicit fault-disposition tests so future code cannot accidentally broaden a local failure into process termination;
+- world generation now proves that provider/pass exception or cancellation after partial workspace mutation discards the candidate and publishes no partial `.wld` or temporary file;
 - top-level fatal logging must preserve `Exception.ToString()`/structured exception data, including type, stack trace and inner exceptions;
 - no catch-all may resume the authoritative loop after a failure that may have partially mutated world state.
 
@@ -111,7 +112,7 @@ The goal is not `catch (Exception) { continue; }`. Recoverable extension/subsyst
 
 - [ ] network: prove decoder/connection exceptions terminate only the owning connection and release all per-connection resources;
 - [ ] worker pool/cache: prove thrown work is surfaced as failed completion, unpublished data is discarded and worker capacity is recovered;
-- [ ] world generation: make provider execution a transaction with cleanup on exception/cancellation and no partial `.wld` publication;
+- [x] world generation: provider execution is isolated in a candidate transaction; exception/cancellation after partial mutation discards the candidate, leaves no partial `.wld`/temporary publication, custom canonical-size generators use generic structural validation, and process-level acceptance proves the published world loads in TerraRuntime and TerrariaServer 1.4.5.8;
 - [ ] save/recovery: preserve last known-good file/backup on encoder, fsync, rename or validation failure;
 - [ ] TUI: contain render/provider failures and allow headless/plain-console server operation to continue;
 - [ ] telemetry/log sinks: prevent a broken optional sink from blocking the game loop; retain a minimal stderr fallback;
@@ -140,6 +141,6 @@ The goal is not `catch (Exception) { continue; }`. Recoverable extension/subsyst
 - [ ] authoritative invariant fault stops instead of continuing corrupt state;
 - [ ] soak test combines plugin exceptions, reconnects, slow clients, saves and hot reload while checking memory/thread/registration leaks.
 
-## First implementation slice
+## Current implementation order
 
-Work starts in Vega C1 because ordinary plugins are the widest and least-trusted same-process callback surface. The first slice must centralize exception isolation in `HotModuleRegistrationScope` and prove containment for command, player lifecycle and scheduled/apply callbacks before adding automatic disable policy. TerraRuntime C4 follows after the PluginSdk boundary is deterministic, so the outer host barrier remains a second line of defense rather than a substitute for Vega ownership.
+TerraRuntime is completed first. C4 is closed and C5 proceeds subsystem by subsystem: world generation, network, worker/cache jobs, save/recovery, TUI/telemetry and background-service ownership. C6 then defines the authoritative fail-closed path and C7 provides process-level fault acceptance. Vega C1-C3 remain documented but are intentionally deferred until the runtime containment layers are complete.

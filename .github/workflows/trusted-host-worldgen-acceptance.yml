@@ -6,6 +6,20 @@ on:
     paths:
       - 'tests/TerraRuntime.HostModuleFixture/**'
       - 'tests/TerraRuntime.Tests/TrustedHostWorldGenerationIntegrationTests.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeWorldGenerationContainmentTests.cs'
+      - 'src/TerraRuntime.ExtensibleHost/**'
+      - 'src/TerraRuntime/**'
+      - 'src/TerraRuntime.HostContracts/**'
+      - 'src/TerraRuntime.Contracts/**'
+      - 'src/TerraRuntime.Core/**'
+      - 'src/TerraRuntime.World/**'
+      - '.github/workflows/trusted-host-worldgen-acceptance.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/TerraRuntime.HostModuleFixture/**'
+      - 'tests/TerraRuntime.Tests/TrustedHostWorldGenerationIntegrationTests.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeWorldGenerationContainmentTests.cs'
       - 'src/TerraRuntime.ExtensibleHost/**'
       - 'src/TerraRuntime/**'
       - 'src/TerraRuntime.HostContracts/**'
