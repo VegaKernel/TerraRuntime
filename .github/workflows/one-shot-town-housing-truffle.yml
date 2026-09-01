@@ -29,18 +29,9 @@ jobs:
       - name: Apply Truffle housing parity block
         run: python3 tools/ci/apply_town_housing_truffle.py
       - name: Keep threshold fixture inside source-tested room bounds
-        shell: python
+        shell: bash
         run: |
-          from pathlib import Path
-          p = Path('tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs')
-          text = p.read_text()
-          old = '''        for (int x = 40; x < 60 && written < mushroomTiles; x++)
-        for (int y = Math.Max(6, top - 10); y < Math.Min(114, top + 30) && written < mushroomTiles; y++)'''
-          new = '''        for (int x = 10; x < 20 && written < mushroomTiles; x++)
-        for (int y = top; y < top + 10 && written < mushroomTiles; y++)'''
-          if old not in text:
-              raise SystemExit('Truffle fixture anchor drifted')
-          p.write_text(text.replace(old, new))
+          python3 -c "from pathlib import Path; p=Path('tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs'); t=p.read_text(); old='        for (int x = 40; x < 60 && written < mushroomTiles; x++)\\n        for (int y = Math.Max(6, top - 10); y < Math.Min(114, top + 30) && written < mushroomTiles; y++)'; new='        for (int x = 10; x < 20 && written < mushroomTiles; x++)\\n        for (int y = top; y < top + 10 && written < mushroomTiles; y++)'; assert old in t, 'Truffle fixture anchor drifted'; p.write_text(t.replace(old,new))"
       - name: Validate generated source probe syntax
         run: python3 -m py_compile tools/ci/check_truffle_housing_source.py
       - name: Validate bilingual documentation
@@ -53,8 +44,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build \
-            --logger "console;verbosity=normal" 2>&1 | tee /tmp/full-tests.log
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --logger "console;verbosity=normal" 2>&1 | tee /tmp/full-tests.log
           status=${PIPESTATUS[0]}
           set -e
           if [[ $status -ne 0 ]]; then
