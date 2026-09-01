@@ -9,7 +9,7 @@ namespace TerraRuntime.Core;
 /// presentation ID, while an optional server-archetype BehaviorId can select a distinct replacement for one exact
 /// generation even when multiple custom archetypes share that same presentation.
 /// </summary>
-public sealed class RuntimeNpcBehaviorStateStepper : INpcAiStateStepper
+public sealed class RuntimeNpcBehaviorStateStepper : INpcAiStateStepper, INpcAiStateStepperWrapper
 {
     private readonly INpcAiStateStepper vanilla;
     private readonly RuntimeGameplayBehaviorRegistry<NpcTypeId, INpcAiStateStepper> behaviors;
@@ -35,6 +35,12 @@ public sealed class RuntimeNpcBehaviorStateStepper : INpcAiStateStepper
         this.archetypes = archetypes;
         this.identities = identities;
     }
+
+    /// <summary>
+    /// Preserves capability discovery through the extension-dispatch decorator so spawn/projectile planners,
+    /// peer snapshots and post-commit hooks owned by the verified vanilla chain remain visible to the executor.
+    /// </summary>
+    public INpcAiStateStepper InnerStepper => vanilla;
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {

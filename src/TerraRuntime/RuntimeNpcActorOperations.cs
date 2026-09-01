@@ -29,24 +29,58 @@ internal sealed record NpcActorSpawnRuntimeCommand(
     NpcActorSpawnRequest Request,
     TaskCompletionSource<NpcActorSpawnResult> Completion) : RuntimeCommand;
 
+internal sealed record NpcBehaviorRegisterRuntimeCommand(
+    GameplayExtensionId Id,
+    INpcBehaviorProvider Provider,
+    TaskCompletionSource<NpcBehaviorRegistrationResult> Completion) : RuntimeCommand;
+
+internal sealed record NpcPresentationBehaviorRegisterRuntimeCommand(
+    GameplayExtensionId Id,
+    NpcTypeId PresentationType,
+    NpcBehaviorStage Stage,
+    int Order,
+    INpcBehaviorProvider Provider,
+    TaskCompletionSource<NpcBehaviorRegistrationResult> Completion) : RuntimeCommand;
+
 /// <summary>
-/// Authoritative-thread owner of actor leases. Host calls never touch the registry directly: commands arrive through
-/// ServerRuntimeState, mutate this service on the game-loop thread, and become visible to simulation at CommitPending.
+/// Authoritative-thread owner of actor leases and host behavior registrations. Host calls never touch live behavior
+/// snapshots directly: commands arrive through ServerRuntimeState, stage registry changes on the game-loop thread,
+/// and CommitPending publishes immutable dispatch plans immediately before the authoritative NPC tick.
 /// </summary>
 internal sealed class RuntimeNpcActorControlCommandService
 {
     private readonly RuntimeNpcStore npcs;
     private readonly RuntimeNpcActorControlRegistry controls;
+    private readonly RuntimeGameplayBehaviorRegistry<NpcTypeId, INpcAiStateStepper> presentationBehaviors;
+    private readonly RuntimeArchetypeBehaviorRegistry<INpcAiStateStepper> archetypeBehaviors;
+    private readonly INpcBehaviorQueries behaviorQueries;
+    private readonly RuntimeNpcArchetypeRegistry archetypes;
+    private readonly RuntimeNpcArchetypeIdentityStore identities;
     private readonly NpcActorControlLease?[] leases;
 
     public RuntimeNpcActorControlCommandService(
         RuntimeNpcStore npcs,
-        RuntimeNpcActorControlRegistry controls)
+        RuntimeNpcActorControlRegistry controls,
+        RuntimeGameplayBehaviorRegistry<NpcTypeId, INpcAiStateStepper> presentationBehaviors,
+        RuntimeArchetypeBehaviorRegistry<INpcAiStateStepper> archetypeBehaviors,
+        INpcBehaviorQueries behaviorQueries,
+        RuntimeNpcArchetypeRegistry archetypes,
+        RuntimeNpcArchetypeIdentityStore identities)
     {
         ArgumentNullException.ThrowIfNull(npcs);
         ArgumentNullException.ThrowIfNull(controls);
+        ArgumentNullException.ThrowIfNull(presentationBehaviors);
+        ArgumentNullException.ThrowIfNull(archetypeBehaviors);
+        ArgumentNullException.ThrowIfNull(behaviorQueries);
+        ArgumentNullException.ThrowIfNull(archetypes);
+        ArgumentNullException.ThrowIfNull(identities);
         this.npcs = npcs;
         this.controls = controls;
+        this.presentationBehaviors = presentationBehaviors;
+        this.archetypeBehaviors = archetypeBehaviors;
+        this.behaviorQueries = behaviorQueries;
+        this.archetypes = archetypes;
+        this.identities = identities;
         leases = new NpcActorControlLease?[npcs.Capacity];
     }
 
@@ -70,6 +104,19 @@ internal sealed class RuntimeNpcActorControlCommandService
 
             case NpcActorReleaseControllerRuntimeCommand releaseController:
                 releaseController.Completion.TrySetResult(ReleaseController(releaseController.ControllerId));
+                return true;
+
+            case NpcBehaviorRegisterRuntimeCommand behavior:
+                behavior.Completion.TrySetResult(RegisterBehavior(behavior.Id, behavior.Provider));
+                return true;
+
+            case NpcPresentationBehaviorRegisterRuntimeCommand behavior:
+                behavior.Completion.TrySetResult(RegisterPresentationBehavior(
+                    behavior.Id,
+                    behavior.PresentationType,
+                    behavior.Stage,
+                    behavior.Order,
+                    behavior.Provider));
                 return true;
 
             default:
@@ -173,11 +220,89 @@ internal sealed class RuntimeNpcActorControlCommandService
             lease.Dispose();
         }
 
+        presentationBehaviors.CommitPending();
+        archetypeBehaviors.CommitPending();
         controls.CommitPending();
+    }
+
+    private NpcBehaviorRegistrationResult RegisterBehavior(
+        GameplayExtensionId id,
+        INpcBehaviorProvider? provider)
+    {
+        if (!id.IsAssigned)
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.InvalidId, null);
+        if (provider is null)
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.InvalidProvider, null);
+
+        var stepper = new RuntimeHostNpcBehaviorStepper(id, provider, behaviorQueries, archetypes, identities);
+        GameplayBehaviorRegistrationResult result = archetypeBehaviors.TryRegister(
+            id,
+            stepper,
+            out IGameplayBehaviorRegistrationLease? lease);
+        return ToHostRegistrationResult(result, lease);
+    }
+
+    private NpcBehaviorRegistrationResult RegisterPresentationBehavior(
+        GameplayExtensionId id,
+        NpcTypeId presentationType,
+        NpcBehaviorStage stage,
+        int order,
+        INpcBehaviorProvider? provider)
+    {
+        if (!id.IsAssigned)
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.InvalidId, null);
+        if (!presentationType.IsAssigned || !VanillaNpcDefinitionCatalog.TryGet(presentationType, out _))
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.InvalidTarget, null);
+        if (!Enum.IsDefined(stage))
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.InvalidStage, null);
+        if (provider is null)
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.InvalidProvider, null);
+
+        GameplayBehaviorStage runtimeStage = stage switch
+        {
+            NpcBehaviorStage.Pre => GameplayBehaviorStage.Pre,
+            NpcBehaviorStage.Replacement => GameplayBehaviorStage.Replacement,
+            NpcBehaviorStage.Post => GameplayBehaviorStage.Post,
+            _ => throw new InvalidOperationException("Validated NPC behavior stage was not mapped.")
+        };
+        var stepper = new RuntimeHostNpcBehaviorStepper(id, provider, behaviorQueries, archetypes, identities);
+        GameplayBehaviorRegistrationResult result = presentationBehaviors.TryRegister(
+            id,
+            presentationType,
+            runtimeStage,
+            order,
+            stepper,
+            out IGameplayBehaviorRegistrationLease? lease);
+        return ToHostRegistrationResult(result, lease);
+    }
+
+    private static NpcBehaviorRegistrationResult ToHostRegistrationResult(
+        GameplayBehaviorRegistrationResult result,
+        IGameplayBehaviorRegistrationLease? lease)
+    {
+        NpcBehaviorRegistrationStatus status = result switch
+        {
+            GameplayBehaviorRegistrationResult.Registered => NpcBehaviorRegistrationStatus.Registered,
+            GameplayBehaviorRegistrationResult.InvalidId => NpcBehaviorRegistrationStatus.InvalidId,
+            GameplayBehaviorRegistrationResult.InvalidStage => NpcBehaviorRegistrationStatus.InvalidStage,
+            GameplayBehaviorRegistrationResult.DuplicateId => NpcBehaviorRegistrationStatus.DuplicateId,
+            GameplayBehaviorRegistrationResult.ReplacementConflict => NpcBehaviorRegistrationStatus.ReplacementConflict,
+            _ => throw new InvalidOperationException($"Unknown NPC behavior registration result '{result}'.")
+        };
+        INpcBehaviorRegistration? registration = lease is null ? null : new BehaviorRegistration(lease);
+        return new NpcBehaviorRegistrationResult(status, registration);
+    }
+
+    private sealed class BehaviorRegistration(IGameplayBehaviorRegistrationLease lease) : INpcBehaviorRegistration
+    {
+        public GameplayExtensionId Id => lease.Id;
+        public bool IsRetirementPending => lease.IsRetirementPending;
+        public bool IsRetired => lease.IsRetired;
+        public void Dispose() => lease.Dispose();
     }
 }
 
-/// <summary>Trusted-host facade that serializes actor control through the authoritative command queue.</summary>
+/// <summary>Trusted-host facade that serializes actor control and behavior registration through the command queue.</summary>
 internal sealed class RuntimeNpcActorOperations : INpcActorOperations
 {
     private readonly IGameCommandIngress<RuntimeCommand> ingress;
@@ -206,6 +331,48 @@ internal sealed class RuntimeNpcActorOperations : INpcActorOperations
             GameplayArchetypeRegistrationResult.DuplicateId => NpcArchetypeRegistrationStatus.DuplicateId,
             _ => throw new InvalidOperationException($"Unknown NPC archetype registration result '{result}'.")
         };
+    }
+
+    public async ValueTask<NpcBehaviorRegistrationResult> RegisterBehaviorAsync(
+        GameplayExtensionId id,
+        INpcBehaviorProvider provider,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (provider is null)
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.InvalidProvider, null);
+
+        var completion = NewCompletion<NpcBehaviorRegistrationResult>();
+        if (!ingress.TryPost(GameCommandSourceId.System, new NpcBehaviorRegisterRuntimeCommand(id, provider, completion)))
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.QueueRejected, null);
+
+        return await completion.Task.ConfigureAwait(false);
+    }
+
+    public async ValueTask<NpcBehaviorRegistrationResult> RegisterPresentationBehaviorAsync(
+        GameplayExtensionId id,
+        NpcTypeId presentationType,
+        NpcBehaviorStage stage,
+        int order,
+        INpcBehaviorProvider provider,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (provider is null)
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.InvalidProvider, null);
+
+        var completion = NewCompletion<NpcBehaviorRegistrationResult>();
+        var command = new NpcPresentationBehaviorRegisterRuntimeCommand(
+            id,
+            presentationType,
+            stage,
+            order,
+            provider,
+            completion);
+        if (!ingress.TryPost(GameCommandSourceId.System, command))
+            return new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.QueueRejected, null);
+
+        return await completion.Task.ConfigureAwait(false);
     }
 
     public async ValueTask<NpcActorSpawnResult> SpawnAsync(

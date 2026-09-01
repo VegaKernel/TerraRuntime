@@ -59,6 +59,7 @@ internal sealed class ScopedHostRuntime : ITerraRuntimeHostRuntime
         private readonly object gate = new();
         private readonly HashSet<ActorControllerId> controllers = [];
         private readonly HashSet<NpcHandle> spawnedActors = [];
+        private readonly List<INpcBehaviorRegistration> behaviorRegistrations = [];
         private readonly List<INpcArchetypeRegistration> archetypeRegistrations = [];
         private bool retired;
 
@@ -79,6 +80,57 @@ internal sealed class ScopedHostRuntime : ITerraRuntimeHostRuntime
                     archetypeRegistrations.Add(registration);
                 return result;
             }
+        }
+
+        public async ValueTask<NpcBehaviorRegistrationResult> RegisterBehaviorAsync(
+            GameplayExtensionId id,
+            INpcBehaviorProvider provider,
+            CancellationToken cancellationToken = default)
+        {
+            lock (gate)
+            {
+                if (retired)
+                {
+                    return new NpcBehaviorRegistrationResult(
+                        NpcBehaviorRegistrationStatus.RuntimeDetached,
+                        null);
+                }
+            }
+
+            NpcBehaviorRegistrationResult result = await source
+                .RegisterBehaviorAsync(id, provider, cancellationToken)
+                .ConfigureAwait(false);
+            return CaptureBehaviorRegistration(in result);
+        }
+
+        public async ValueTask<NpcBehaviorRegistrationResult> RegisterPresentationBehaviorAsync(
+            GameplayExtensionId id,
+            NpcTypeId presentationType,
+            NpcBehaviorStage stage,
+            int order,
+            INpcBehaviorProvider provider,
+            CancellationToken cancellationToken = default)
+        {
+            lock (gate)
+            {
+                if (retired)
+                {
+                    return new NpcBehaviorRegistrationResult(
+                        NpcBehaviorRegistrationStatus.RuntimeDetached,
+                        null);
+                }
+            }
+
+            NpcBehaviorRegistrationResult result = await source
+                .RegisterPresentationBehaviorAsync(
+                    id,
+                    presentationType,
+                    stage,
+                    order,
+                    provider,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return CaptureBehaviorRegistration(in result);
         }
 
         public async ValueTask<NpcActorSpawnResult> SpawnAsync(
@@ -191,6 +243,7 @@ internal sealed class ScopedHostRuntime : ITerraRuntimeHostRuntime
         {
             ActorControllerId[] capturedControllers;
             NpcHandle[] capturedActors;
+            INpcBehaviorRegistration[] capturedBehaviors;
             INpcArchetypeRegistration[] capturedArchetypes;
             lock (gate)
             {
@@ -200,9 +253,11 @@ internal sealed class ScopedHostRuntime : ITerraRuntimeHostRuntime
                 retired = true;
                 capturedControllers = controllers.ToArray();
                 capturedActors = spawnedActors.ToArray();
+                capturedBehaviors = behaviorRegistrations.ToArray();
                 capturedArchetypes = archetypeRegistrations.ToArray();
                 controllers.Clear();
                 spawnedActors.Clear();
+                behaviorRegistrations.Clear();
                 archetypeRegistrations.Clear();
             }
 
@@ -235,6 +290,19 @@ internal sealed class ScopedHostRuntime : ITerraRuntimeHostRuntime
                 }
             }
 
+            foreach (INpcBehaviorRegistration registration in capturedBehaviors)
+            {
+                try
+                {
+                    registration.Dispose();
+                }
+                catch (Exception exception)
+                {
+                    failures ??= [];
+                    failures.Add(exception);
+                }
+            }
+
             foreach (INpcArchetypeRegistration registration in capturedArchetypes)
             {
                 try
@@ -250,6 +318,27 @@ internal sealed class ScopedHostRuntime : ITerraRuntimeHostRuntime
 
             if (failures is { Count: > 0 })
                 throw new AggregateException("NPC actor-controller retirement failed.", failures);
+        }
+
+        private NpcBehaviorRegistrationResult CaptureBehaviorRegistration(
+            in NpcBehaviorRegistrationResult result)
+        {
+            if (!result.IsRegistered || result.Registration is null)
+                return result;
+
+            lock (gate)
+            {
+                if (!retired)
+                {
+                    behaviorRegistrations.Add(result.Registration);
+                    return result;
+                }
+            }
+
+            result.Registration.Dispose();
+            return new NpcBehaviorRegistrationResult(
+                NpcBehaviorRegistrationStatus.RuntimeDetached,
+                null);
         }
 
         private bool IsRetired

@@ -52,14 +52,42 @@ public readonly record struct NpcActorSpawnResult(NpcActorSpawnStatus Status, Np
 }
 
 /// <summary>
-/// Trusted-host control surface for runtime-owned NPC actors. Every operation is serialized through the authoritative
-/// game loop. Controllers express intent only; final motion, gravity and world collision remain TerraRuntime-owned.
+/// Trusted-host control surface for runtime-owned NPC actors. Every mutable operation is serialized through the
+/// authoritative game loop. Controllers express intent only; behavior providers propose state transitions only;
+/// final validation, motion, collision, lifecycle and replication remain TerraRuntime-owned.
 /// </summary>
 public interface INpcActorOperations
 {
     NpcArchetypeRegistrationStatus TryRegisterArchetype(
         NpcArchetypeDescriptor descriptor,
         out INpcArchetypeRegistration? registration);
+
+    /// <summary>
+    /// Registers one stable behavior ID used by NpcArchetypeDescriptor.BehaviorId. This is the archetype-specific
+    /// exclusive replacement lane: multiple custom archetypes may share one vanilla presentation while selecting
+    /// different behavior IDs.
+    /// </summary>
+    ValueTask<NpcBehaviorRegistrationResult> RegisterBehaviorAsync(
+        GameplayExtensionId id,
+        INpcBehaviorProvider provider,
+        CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult(
+            new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.RuntimeDetached, null));
+
+    /// <summary>
+    /// Registers a behavior stage against one source-backed vanilla presentation type. Pre and Post decorate the
+    /// normal/archetype replacement lane; Replacement replaces vanilla behavior when no archetype-specific behavior
+    /// is selected for the live NPC generation.
+    /// </summary>
+    ValueTask<NpcBehaviorRegistrationResult> RegisterPresentationBehaviorAsync(
+        GameplayExtensionId id,
+        NpcTypeId presentationType,
+        NpcBehaviorStage stage,
+        int order,
+        INpcBehaviorProvider provider,
+        CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult(
+            new NpcBehaviorRegistrationResult(NpcBehaviorRegistrationStatus.RuntimeDetached, null));
 
     ValueTask<NpcActorSpawnResult> SpawnAsync(
         NpcActorSpawnRequest request,
