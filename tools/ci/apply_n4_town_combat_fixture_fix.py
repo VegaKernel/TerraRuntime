@@ -3,9 +3,19 @@ from pathlib import Path
 
 p = Path('tests/TerraRuntime.Tests/RuntimeTownNpcCombat1458Tests.cs')
 text = p.read_text(encoding='utf-8-sig')
-old = '                480f,\n                160f,'
-new = '                400f,\n                160f,'
-if text.count(old) != 1:
-    raise SystemExit('Town combat hostile-position fixture anchor missing or ambiguous')
-p.write_text(text.replace(old, new, 1), encoding='utf-8')
-print('Town combat hostile fixture moved inside the strict source danger range')
+replacements = [
+    (
+        '                480f,\n                160f,',
+        '                400f,\n                160f,',
+        'Town combat hostile-position fixture anchor'),
+    (
+        '        for (int i = 0; i < 9; i++)\n            f.Combat.Tick();',
+        '        for (int i = 0; i < 10; i++)\n            f.Combat.Tick();',
+        'Merchant attack-tick fixture anchor'),
+]
+for old, new, label in replacements:
+    if text.count(old) != 1:
+        raise SystemExit(f'{label} missing or ambiguous')
+    text = text.replace(old, new, 1)
+p.write_text(text, encoding='utf-8')
+print('Town combat fixtures aligned with strict source range and state-10 tick cadence')
