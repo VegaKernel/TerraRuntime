@@ -1,0 +1,69 @@
+name: Optimized Underworld Source Contract
+
+on:
+  pull_request:
+    paths:
+      - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
+      - 'src/TerraRuntime.World/Generation/Optimized/OptimizedLandmarkWorldGenerationProvider.cs'
+      - 'tests/TerraRuntime.Tests/OptimizedWorldGenerationProviderTests.cs'
+      - 'tools/ci/check_optimized_underworld_source_1458.py'
+      - '.github/workflows/optimized-underworld-source-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs'
+      - 'src/TerraRuntime.World/Generation/Optimized/OptimizedLandmarkWorldGenerationProvider.cs'
+      - 'tests/TerraRuntime.Tests/OptimizedWorldGenerationProviderTests.cs'
+      - 'tools/ci/check_optimized_underworld_source_1458.py'
+      - '.github/workflows/optimized-underworld-source-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-optimized-underworld-source-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Download pinned TerrariaServer 1.4.5.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458/extracted .tools decompiled
+          curl -fL \
+            https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip \
+            -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          expected="d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+          assembly=""
+          while IFS= read -r -d '' candidate; do
+            if [[ "$(sha256sum "$candidate" | awk '{print $1}')" == "$expected" ]]; then
+              assembly="$candidate"
+              break
+            fi
+          done < <(find .cache/terraria-1458/extracted -type f -name 'TerrariaServer.exe' -print0)
+          test -n "$assembly"
+          echo "TERRARIA_SERVER_ASSEMBLY=$assembly" >> "$GITHUB_ENV"
+
+      - name: Decompile source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+          .tools/ilspycmd --disable-updatecheck -p -o decompiled/1458 "$TERRARIA_SERVER_ASSEMBLY"
+
+      - name: Verify optimized Underworld contracts
+        run: python3 tools/ci/check_optimized_underworld_source_1458.py --root decompiled/1458
