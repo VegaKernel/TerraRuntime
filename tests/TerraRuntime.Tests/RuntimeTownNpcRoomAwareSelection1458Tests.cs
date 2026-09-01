@@ -118,6 +118,69 @@ public sealed class RuntimeTownNpcRoomAwareSelection1458Tests
     }
 
     [Fact]
+    public void Assigned_room_recursive_attempt_reselects_against_assigned_room_before_outer_fallback()
+    {
+        WorldTileStore tiles = CreateWorldWithRooms();
+        var validator = new VanillaHousingValidator1458(tiles);
+        var houses = new RuntimeTownHouseCandidateIndex1458(tiles, validator);
+        houses.Scan(tiles.Dimensions.WidthTiles * tiles.Dimensions.HeightTiles);
+        VanillaHousingPlacement assignedRoom = validator.Validate(65, 25, VanillaNpcIds.Merchant);
+        Assert.True(assignedRoom.IsValid);
+
+        var town = new RuntimeTownNpcStateStore(
+            new WorldNpcPersistence([], [], []),
+            [
+                new WorldTownRoom(VanillaNpcIds.TownCat.Value, assignedRoom.HomeTileX, assignedRoom.HomeTileY),
+                new WorldTownRoom(VanillaNpcIds.Merchant.Value, assignedRoom.HomeTileX, assignedRoom.HomeTileY)
+            ],
+            tiles.Dimensions);
+        VanillaTownSpawnWorldFacts1458 facts = WorldFacts() with
+        {
+            BoughtCat = true,
+            UnlockedMerchantSpawn = true
+        };
+        var coordinator = new RuntimeTownNpcMoveInCoordinator1458(
+            town,
+            new RuntimeNpcStore(),
+            houses,
+            in facts);
+        VanillaTownSpawnEligibility1458 eligibility = VanillaTownNpcSpawnEligibility1458.Evaluate(in facts, [], []);
+
+        Assert.Equal(VanillaNpcIds.Guide, eligibility.PrioritizedType);
+        Assert.True(coordinator.TrySelectNewResident(
+            eligibility,
+            [],
+            [],
+            out NpcTypeId selected,
+            out VanillaHousingPlacement placement));
+        Assert.Equal(VanillaNpcIds.TownCat, selected);
+        Assert.Equal((assignedRoom.HomeTileX, assignedRoom.HomeTileY), (placement.HomeTileX, placement.HomeTileY));
+    }
+
+    [Fact]
+    public void Final_spawn_occupancy_gate_uses_global_prioritized_housing_category_and_exact_home_tile()
+    {
+        var normalOccupant = new VanillaHousingOccupant(VanillaNpcIds.Merchant, 65, 29);
+        var petOccupant = new VanillaHousingOccupant(VanillaNpcIds.TownCat, 65, 29);
+
+        Assert.True(RuntimeTownNpcMoveInCoordinator1458.IsRoomConsideredAlreadyOccupied(
+            65,
+            29,
+            VanillaNpcIds.Guide,
+            [normalOccupant]));
+        Assert.False(RuntimeTownNpcMoveInCoordinator1458.IsRoomConsideredAlreadyOccupied(
+            65,
+            29,
+            VanillaNpcIds.Guide,
+            [petOccupant]));
+        Assert.False(RuntimeTownNpcMoveInCoordinator1458.IsRoomConsideredAlreadyOccupied(
+            66,
+            29,
+            VanillaNpcIds.Guide,
+            [normalOccupant]));
+    }
+
+    [Fact]
     public void Town_pet_precedes_global_priority_in_numeric_npcid_scan()
     {
         WorldTileStore tiles = CreateWorldWithRooms();

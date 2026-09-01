@@ -40,32 +40,23 @@ public sealed class VanillaPlayerItemNormalizerTests
     [Theory]
     [InlineData(0, 0)]
     [InlineData(6195, 6195)]
-    [InlineData(6196, 0)]
     [InlineData(-1, 3521)]
     [InlineData(-18, 3504)]
     [InlineData(-19, 3764)]
     [InlineData(-24, 3769)]
     [InlineData(-25, 3503)]
     [InlineData(-48, 3480)]
-    [InlineData(-49, 0)]
-    public void Net_ids_match_vanilla_net_defaults(short input, short expected) =>
-        Assert.Equal(expected, VanillaPlayerItemNormalizer.NormalizeNetId(input));
-
-    [Theory]
-    [InlineData(6195, 6195)]
-    [InlineData(-19, 3764)]
-    public void Valid_net_ids_cross_into_typed_item_identity(short input, int expected)
+    public void Valid_net_ids_match_vanilla_net_defaults(short input, int expected)
     {
         Assert.True(VanillaPlayerItemNormalizer.TryNormalizeNetId(input, out ItemTypeId itemType));
         Assert.Equal(expected, itemType.Value);
     }
 
-    [Fact]
-    public void Invalid_net_id_does_not_cross_the_gameplay_boundary()
-    {
-        Assert.False(VanillaPlayerItemNormalizer.TryNormalizeNetId(6196, out _));
-        Assert.False(VanillaPlayerItemNormalizer.TryNormalizeNetId(-49, out _));
-    }
+    [Theory]
+    [InlineData(6196)]
+    [InlineData(-49)]
+    public void Invalid_net_id_does_not_cross_the_gameplay_boundary(short input) =>
+        Assert.False(VanillaPlayerItemNormalizer.TryNormalizeNetId(input, out _));
 
     [Fact]
     public void Empty_or_invalid_items_become_canonical_air()

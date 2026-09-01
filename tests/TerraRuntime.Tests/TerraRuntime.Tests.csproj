@@ -19,6 +19,7 @@
     <ProjectReference Include="../../src/TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Core/TerraRuntime.Core.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj" />
+    <ProjectReference Include="../../src/TerraRuntime.Gameplay/TerraRuntime.Gameplay.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Network/TerraRuntime.Network.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />
