@@ -14,7 +14,7 @@ flowchart LR
     WorldDrop --> Prefixes["VanillaItemPrefixCatalog"]
 ```
 
-`VanillaItemIds` владеет content identity. `VanillaItemDefinitionCatalog` владеет неизменяемыми проверенными item-фактами. Runtime inventory/world-item stores владеют mutable stack, prefix, slot, generation и revision.
+`VanillaItemIds` владеет content identity. `TerraRuntime.Gameplay.Items.VanillaItemDefinitionCatalog` владеет неизменяемыми проверенными item-фактами, а связанные object-placement/prefix catalogs находятся в том же gameplay-слое. Runtime inventory/world-item stores в Core/application-коде владеют mutable stack, prefix, slot, generation и revision.
 
 ## Проверенные capabilities
 
@@ -34,7 +34,7 @@ flowchart LR
 
 Gameplay запрашивает их через `TryGetPlacement`, `TryGetPickTool`, `TryGetUseTiming` и `TryGetWorldDrop`. Отсутствующая capability завершается fail-closed. Placement/tool semantic intents теперь несут verified timing snapshot, поэтому будущему executor не нужно восстанавливать `useStyle`, animation или reuse behavior по item ID.
 
-## Core defaults и проверка stack
+## Source-backed defaults и проверка stack
 
 В TerrariaServer 1.4.5.8 `Item.ResetStats` инициализирует `maxStack` значением `Item.CommonMaxStack`, равным `9999`; ни одно из четырёх импортированных определений не переопределяет его. `TryGetRuntimeDefaults` выдаёт проверенные размеры и maximum.
 

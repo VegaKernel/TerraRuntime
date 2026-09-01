@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Items;
 
 /// <summary>
 /// Source-backed placement facts for one vanilla item. This is intentionally sparse: absence of a placement

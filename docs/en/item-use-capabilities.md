@@ -73,9 +73,9 @@ The resolver never infers behavior from numeric ids, neighboring definitions, st
 
 ## Production placement consistency
 
-`ClientTileManipulationConsistency` now reads placement facts directly from `VanillaItemDefinitionCatalog`. The old `VanillaTileInteractionItemFacts` facade remains only for compatibility with gameplay paths that have not yet migrated.
+`ClientTileManipulationConsistency` and authoritative tile-mining validation now read placement/tool facts directly from `TerraRuntime.Gameplay.Items.VanillaItemDefinitionCatalog`. The transparent `VanillaTileInteractionItemFacts` compatibility facade has been removed.
 
-This keeps the packet-17 consistency policy unchanged while removing one feature-local item-definition dependency.
+This keeps the packet-17 consistency policy unchanged while leaving one source-backed item capability owner instead of a second forwarding API.
 
 ## Verification
 

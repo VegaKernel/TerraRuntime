@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Items;
 
 /// <summary>
 /// One source-pinned authorization mapping from a held vanilla item to an object-placement identity. This is

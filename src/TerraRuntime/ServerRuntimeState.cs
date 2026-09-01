@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.HostContracts;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
@@ -1259,7 +1260,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                     out RuntimePlayerInventoryItem toolItem) ||
                 toolItem.IsEmpty ||
                 toolItem.ItemType != VanillaItemIds.CopperPickaxe ||
-                !VanillaTileInteractionItemFacts.TryGetPickPower(toolItem.ItemType, out _, out _))
+                !VanillaItemDefinitionCatalog.TryGetPickTool(toolItem.ItemType, out _))
             {
                 RejectedClientTileManipulations++;
                 return;

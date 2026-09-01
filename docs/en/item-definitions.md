@@ -14,7 +14,7 @@ flowchart LR
     WorldDrop --> Prefixes["VanillaItemPrefixCatalog"]
 ```
 
-`VanillaItemIds` owns content identity. `VanillaItemDefinitionCatalog` owns immutable verified item facts. Runtime inventory/world-item stores own mutable stack, prefix, slot, generation and revision state.
+`VanillaItemIds` owns content identity. `TerraRuntime.Gameplay.Items.VanillaItemDefinitionCatalog` owns immutable verified item facts, and the related object-placement/prefix catalogs live in the same gameplay layer. Runtime inventory/world-item stores in Core/application code own mutable stack, prefix, slot, generation and revision state.
 
 ## Verified capabilities
 
@@ -34,7 +34,7 @@ Every imported definition contains valid `VanillaItemRuntimeDefaults`. Optional 
 
 Code consumes them through `TryGetPlacement`, `TryGetPickTool`, `TryGetUseTiming` and `TryGetWorldDrop`. An absent record fails closed. Placement/tool semantic intents now carry the verified timing snapshot, so later executors do not need to recover `useStyle`, animation or reuse behavior from the item ID.
 
-## Core defaults and stack validation
+## Source-backed defaults and stack validation
 
 TerrariaServer 1.4.5.8 `Item.ResetStats` initializes `maxStack` from `Item.CommonMaxStack`, which is `9999`; none of the four imported definitions overrides it. `TryGetRuntimeDefaults` exposes the verified dimensions and maximum.
 

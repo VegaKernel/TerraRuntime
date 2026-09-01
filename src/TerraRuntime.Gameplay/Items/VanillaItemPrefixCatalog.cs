@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Gameplay.Npcs;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Items;
 
 /// <summary>Source-backed vanilla prefix families currently needed by authoritative gameplay.</summary>
 public enum VanillaItemPrefixFamily : byte

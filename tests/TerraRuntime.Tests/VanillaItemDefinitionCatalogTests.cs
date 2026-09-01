@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Items;
 
 namespace TerraRuntime.Tests;
 
@@ -128,20 +129,18 @@ public sealed class VanillaItemDefinitionCatalogTests
     }
 
     [Fact]
-    public void Tile_interaction_compatibility_facade_reads_the_definition_catalog()
+    public void Tile_interaction_capabilities_are_read_directly_from_the_definition_catalog()
     {
-        Assert.True(VanillaTileInteractionItemFacts.TryGetPlacementTile(
+        Assert.True(VanillaItemDefinitionCatalog.TryGetPlacement(
             VanillaItemIds.DirtBlock,
-            out TileTypeId tileType,
-            out bool consumable));
-        Assert.Equal(VanillaTileIds.Dirt, tileType);
-        Assert.True(consumable);
+            out VanillaItemPlacementDefinition placement));
+        Assert.Equal(VanillaTileIds.Dirt, placement.TileType);
+        Assert.True(placement.Consumable);
 
-        Assert.True(VanillaTileInteractionItemFacts.TryGetPickPower(
+        Assert.True(VanillaItemDefinitionCatalog.TryGetPickTool(
             VanillaItemIds.CopperPickaxe,
-            out short pickPower,
-            out int tileBoost));
-        Assert.Equal(VanillaItemDefinitionCatalog.CopperPickaxePickPower, pickPower);
-        Assert.Equal(VanillaItemDefinitionCatalog.CopperPickaxeTileBoost, tileBoost);
+            out VanillaItemPickToolDefinition pickTool));
+        Assert.Equal(VanillaItemDefinitionCatalog.CopperPickaxePickPower, pickTool.PickPower);
+        Assert.Equal(VanillaItemDefinitionCatalog.CopperPickaxeTileBoost, pickTool.TileBoost);
     }
 }

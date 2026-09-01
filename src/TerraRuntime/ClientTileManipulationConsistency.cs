@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime;

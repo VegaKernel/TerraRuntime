@@ -66,7 +66,8 @@ Exit criteria: the intended dependency direction is documented and new code has 
 
 Goal: Core becomes execution mechanics rather than a convenient warehouse.
 
-- [ ] Move item definitions, normalization and item-use gameplay from `Core/Items` into `TerraRuntime.Gameplay.Items` where they do not require authoritative runtime ownership.
+- [x] Move source-backed item definitions, object-placement mappings and prefix gameplay from `Core/Items` into `TerraRuntime.Gameplay.Items`.
+- [ ] Re-evaluate packet normalization and item-use request semantics that remain in `Core/Items`; move only protocol-neutral gameplay that does not require authoritative runtime ownership.
 - [ ] Re-evaluate `Core/Npcs`: move protocol-neutral definitions/catalogs/rules to Gameplay; retain stores, execution ownership and runtime mutation mechanics in Core.
 - [ ] Re-evaluate player gameplay code with the same rule: gameplay semantics in Gameplay, authoritative mutable stores/command application in Core/application runtime.
 - [ ] Re-evaluate projectile gameplay definitions versus runtime stores/executors.
@@ -82,7 +83,7 @@ A type survives only if it owns at least one real concern: invariant, lifecycle,
 
 - [x] Remove the unused `VanillaPlayerItemNormalizer.NormalizeNetId` compatibility wrapper and retain the typed `TryNormalizeNetId` boundary.
 - [x] Remove `VanillaNpcLootRuleCatalog.GetNpcSpecificRules`; typed table lookup is the single support boundary.
-- [ ] Remove `VanillaTileInteractionItemFacts` after the remaining callers use `VanillaItemDefinitionCatalog` directly.
+- [x] Remove `VanillaTileInteractionItemFacts` after migrating remaining callers to `VanillaItemDefinitionCatalog` directly.
 - [ ] Search production code for proxy-only `*Facts`, `*Helper`, `*Provider`, `*Manager`, `*Service`, `*Factory` and compatibility wrappers.
 - [ ] Delete wrappers that merely rename or forward one existing operation.
 - [ ] Collapse duplicate catalogs when they own the same source-backed facts.
@@ -132,7 +133,7 @@ These are review triggers, not CI limits.
 Checklist:
 
 - [ ] Decompose `ServerRuntimeState` by real world-owned responsibilities while preserving one authoritative writer.
-- [x] Decompose `TerrariaServerHost` so process lifecycle/network acceptance are separate from one-world composition.
+- [ ] Finish decomposing `TerrariaServerHost`: `WorldRuntime` now owns one-world simulation, but startup/load/bootstrap, process lifecycle and network acceptance still share the large host method.
 - [ ] Extract coherent player, NPC, projectile, item, town/housing and world-lifecycle collaborators only where they own state/behavior; do not produce one class per method.
 - [ ] Keep source-order-sensitive boss/AI logic cohesive when decomposition would obscure verified vanilla ordering.
 - [ ] Keep large source-backed catalogs cohesive when their size is data, not mixed responsibility.

@@ -73,9 +73,9 @@ Resolver не выводит поведение из числового id, со
 
 ## Production placement consistency
 
-`ClientTileManipulationConsistency` теперь читает placement-факты напрямую из `VanillaItemDefinitionCatalog`. Старый `VanillaTileInteractionItemFacts` остаётся только compatibility facade для gameplay-paths, которые ещё не мигрировали.
+`ClientTileManipulationConsistency` и authoritative-проверка добычи tiles теперь читают placement/tool-факты напрямую из `TerraRuntime.Gameplay.Items.VanillaItemDefinitionCatalog`. Прозрачный compatibility facade `VanillaTileInteractionItemFacts` удалён.
 
-Так сохраняется существующая packet-17 consistency policy, но исчезает одна feature-local зависимость от отдельной item-definition таблицы.
+Так сохраняется существующая packet-17 consistency policy и остаётся один source-backed владелец item capabilities вместо второго forwarding API.
 
 ## Проверка
 

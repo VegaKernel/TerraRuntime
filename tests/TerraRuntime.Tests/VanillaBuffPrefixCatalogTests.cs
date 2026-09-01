@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Buffs;
+using TerraRuntime.Gameplay.Items;
 
 namespace TerraRuntime.Tests;
 
