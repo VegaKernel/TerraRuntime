@@ -26,15 +26,17 @@ flowchart TD
     Base["OptimizedWorldGenerationProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
     Play["OptimizedPlayableWorldGenerationProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
     Land["OptimizedLandmarkWorldGenerationProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
-    Meta["metadata + base validator"]
-    PVal["playability validator"]
+    Meta["metadata"]
+    Dungeon["optimized dungeon v2<br/>rooms / branches / locked loot / traps"]
+    PVal["base + playability validators"]
     LVal["landmark validator"]
+    Content["progression content<br/>evil anchors / Larva / forge pocket"]
     Shape["surface shaping<br/>natural top slopes / half-block transitions"]
     Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>foliage-anchored trees / undergrowth / sunflowers"]
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Shape --> Surf --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> Dungeon --> PVal --> LVal --> Content --> Shape --> Surf --> Prog --> Commit
 ```
 
 All optimized passes use `WorldGenerationRngMode.IsolatedDeterministic`. Adding an unrelated later pass therefore does
@@ -50,7 +52,8 @@ The optimized profile currently produces and validates:
 - an Underworld band with Lava, Hellstone and a Hellforge;
 - small correlated caves plus large warped caverns, vertical shafts and inland underground lakes;
 - multiple floating islands;
-- a dungeon, jungle hive, Jungle Temple and Aether/Shimmer pocket;
+- a connected dungeon room/branch graph with a readable entrance, locked dungeon loot, Golden Keys, spikes and wired dart traps;
+- a jungle hive, Jungle Temple and Aether/Shimmer pocket;
 - pre-Hardmode ore tiers;
 - a world-area-scaled Life Crystal budget;
 - persistent surface, underground and cavern exploration caches;
@@ -60,10 +63,9 @@ The optimized profile currently produces and validates:
 - hollow Living Wood trees with roots, underground rooms and persistent caches;
 - bounded Underworld houses connected by undulating platform bridges;
 - granite, marble and spider/cobweb micro-biomes;
-- an explicit readable dungeon opening;
 - domain-warped material tongues at snow, desert, jungle and world-evil boundaries;
-- deterministic ordinary forest, jungle and snow trees plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected.
-- a deterministic surface-finishing pass converts clean one-tile natural height transitions into persisted walkable slopes/half-blocks; ordinary optimized trees mark their crown cells with the vanilla tree foliage-frame contract instead of ending as bare trunk tiles.
+- deterministic ordinary forest, jungle and snow trees plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected;
+- a deterministic surface-finishing pass that converts clean one-tile natural height transitions into persisted walkable slopes/half-blocks and publishes vanilla-format tree foliage anchors.
 
 The landmark layer uses only tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
 world-generation work. Landmark cache loot remains deliberately custom and conservative until the full vanilla
@@ -90,6 +92,19 @@ rather than silently returning a visually incomplete world.
 
 The current sky cache is not claimed to reproduce vanilla Skyware loot. Source-backed Starfury/Horseshoe/Balloon roles
 remain a separate progression task.
+
+## Dungeon v2
+
+The final optimized profile rebuilds only the already-reserved Blue Dungeon footprint. It creates a deterministic chain
+of traversable main rooms, alternating side branches and a surface-connected entrance while preserving any pre-existing
+persistent chest footprints that happen to overlap the reservation. The pass then places an unlocked entrance cache with
+enough Golden Keys for the generated locked chests, source-backed dungeon primary loot, bounded spike fields and paired
+pressure-plate/dart-trap mechanisms connected by red wire.
+
+The implementation is intentionally custom rather than seed-identical to Terraria. Source-backed 1.4.5.8 identities are
+used for locked chest style/framing, Golden Keys, Muramasa, Cobalt Shield, Aqua Scepter, Blue Moon, Magic Missile, Valor,
+Handgun, pressure plates and dart traps. Generation fails closed if room connectivity, locked-chest counts, key balance,
+trap budgets, spike budgets, chest framing or the readable entrance contract are incomplete.
 
 ## Surface and underground landmarks
 
@@ -130,26 +145,13 @@ runtime work and are not falsely counted as complete here.
 
 ## Validation
 
-Generation remains fail-closed. The landmark validator runs after the existing geography and playability validators and
-requires:
-
-- the exact sky-house and Floating-Lake budgets;
-- the exact pyramid, Living Tree and Underworld-house budgets;
-- the exact granite, marble and spider-grotto budgets;
-- a non-trivial number of warped biome-transition cells;
-- persistent landmark chest side-table entries;
-- minimum generated material/wall counts for each landmark family;
-- a successfully opened dungeon entrance.
-
-This is deliberately stronger than checking for one representative tile. A half-generated landmark set is rejected.
-
-A final `OptimizedProgressionValidationWorldGenerationProvider` then scans the post-landmark candidate. It enforces
-area-scaled minimum quantities for Copper, Iron, Silver, Gold and Hellstone; verifies complete 3x2 Demon/Crimson Altar,
-Hellforge and Lihzahrd Altar footprints; requires non-trivial connected dungeon, hive and Jungle Temple interiors; and
-builds a bounded excavation-aware reachability graph from spawn to snow, desert, jungle, world evil, the dungeon
-entrance, hive interior, Jungle Temple entrance and Underworld Hellforge. Ordinary terrain contributes excavation cost,
-while dense Lihzahrd barriers and deep Lava are treated as blocking. This is a structural topology gate, not a claim of
-pixel-exact Terraria player movement or tool progression.
+Generation remains fail-closed. The validators require exact landmark budgets, persistent chest side-table entries,
+minimum generated material/wall counts, a readable dungeon entrance, the Dungeon v2 room/loot/trap contracts, and final
+progression topology. The final `OptimizedProgressionValidationWorldGenerationProvider` enforces area-scaled minimum
+quantities for Copper, Iron, Silver, Gold and Hellstone; verifies complete progression-object footprints; requires
+non-trivial connected dungeon, hive and Jungle Temple interiors; and builds a bounded excavation-aware reachability graph
+from spawn to required surface/deep-world targets. This is a structural topology gate, not a claim of pixel-exact
+Terraria player movement or tool progression.
 
 ## Compatibility and non-goals
 
@@ -161,11 +163,9 @@ Loading an existing vanilla `.wld` remains independent of which generator is use
 
 ## Remaining work
 
-The landmark and final progression-validation slices close substantial visual/content and structural gaps, but
-`terraruntime:optimized` is not yet production-complete. Important remaining items include:
+The optimized profile is not yet production-complete. Important remaining items include:
 
 - true source-backed biome and Skyware loot families;
-- dungeon locked chest/key progression and richer dungeon branches/traps;
 - multiple hives and stronger Queen Bee space on larger worlds;
 - glowing-mushroom and additional decorative micro-biomes;
 - Hardmode-ready mutation anchors;
