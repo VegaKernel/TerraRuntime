@@ -4,9 +4,9 @@ namespace TerraRuntime.World;
 
 /// <summary>
 /// Final quality overlay for <c>terraruntime:optimized</c>. It inserts deterministic surface macro-morphology and a
-/// multi-family underground morphology layer before the legacy cave walkers, then runs post-landmark surface shaping
-/// and surface-life passes before the final progression validator. Placement remains custom and deterministic rather
-/// than seed-identical to vanilla Terraria.
+/// multi-family underground morphology layer before the legacy cave walkers, rebuilds the reserved dungeon into a
+/// richer source-backed progression graph after metadata is available, then runs progression content followed by
+/// post-landmark surface shaping/life before the final progression validator. Placement remains custom and deterministic.
 /// </summary>
 public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGenerationProvider
 {
@@ -14,8 +14,11 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
     private static readonly WorldGenerationPassId BiomesId = new("terraruntime:optimized/biomes");
     private static readonly WorldGenerationPassId CavesId = new("terraruntime:optimized/caves");
+    private static readonly WorldGenerationPassId MetadataId = new("terraruntime:optimized/metadata");
+    private static readonly WorldGenerationPassId ValidationId = new("terraruntime:optimized/validation");
     private static readonly WorldGenerationPassId TerrainMorphologyId = new("terraruntime:optimized/terrain-morphology-v2");
     private static readonly WorldGenerationPassId UndergroundMorphologyId = new("terraruntime:optimized/underground-morphology-v2");
+    private static readonly WorldGenerationPassId DungeonV2Id = new("terraruntime:optimized/dungeon-v2");
     private static readonly WorldGenerationPassId ProgressionContentId = OptimizedProgressionContentWorldGenerationProvider.ProgressionContentId;
     private static readonly WorldGenerationPassId SurfaceShapingId = new("terraruntime:optimized/surface-shaping");
     private static readonly WorldGenerationPassId SurfaceLifeId = new("terraruntime:optimized/surface-life");
@@ -35,6 +38,8 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
         bool insertedMorphology = false;
         bool insertedUndergroundMorphology = false;
         bool rewiredCaves = false;
+        bool insertedDungeonV2 = false;
+        bool rewiredValidation = false;
         bool insertedSurfaceLife = false;
 
         foreach (CapturedPass entry in capture.Entries)
@@ -66,6 +71,26 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                 continue;
             }
 
+            if (entry.Descriptor.Id == MetadataId)
+            {
+                builder.Add(entry.Descriptor, entry.Pass);
+                builder.Add(
+                    new WorldGenerationPassDescriptor(
+                        DungeonV2Id,
+                        WorldGenerationRngMode.IsolatedDeterministic,
+                        requiredAfter: [MetadataId]),
+                    DungeonV2Pass.Instance);
+                insertedDungeonV2 = true;
+                continue;
+            }
+
+            if (entry.Descriptor.Id == ValidationId)
+            {
+                builder.Add(AppendRequiredAfter(entry.Descriptor, DungeonV2Id), entry.Pass);
+                rewiredValidation = true;
+                continue;
+            }
+
             if (entry.Descriptor.Id != ProgressionValidationId)
             {
                 builder.Add(entry.Descriptor, entry.Pass);
@@ -88,10 +113,11 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
             insertedSurfaceLife = true;
         }
 
-        if (!insertedMorphology || !insertedUndergroundMorphology || !rewiredCaves || !insertedSurfaceLife)
+        if (!insertedMorphology || !insertedUndergroundMorphology || !rewiredCaves ||
+            !insertedDungeonV2 || !rewiredValidation || !insertedSurfaceLife)
         {
             throw new InvalidOperationException(
-                "Optimized quality overlay could not find the biome/cave/progression boundaries required by morphology v2.");
+                "Optimized quality overlay could not find the morphology/dungeon/progression boundaries required by the final profile.");
         }
     }
 
@@ -104,6 +130,20 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
             requiredAfter,
             source.OptionalAfter.ToArray(),
             source.OptionalBefore.ToArray());
+
+    private static WorldGenerationPassDescriptor AppendRequiredAfter(
+        WorldGenerationPassDescriptor source,
+        WorldGenerationPassId requiredAfter)
+    {
+        WorldGenerationPassId[] required = source.RequiredAfter.ToArray();
+        if (!required.Contains(requiredAfter))
+        {
+            int oldLength = required.Length;
+            Array.Resize(ref required, oldLength + 1);
+            required[oldLength] = requiredAfter;
+        }
+        return CloneDescriptor(source, required);
+    }
 
     private readonly record struct CapturedPass(WorldGenerationPassDescriptor Descriptor, IWorldGenerationPass Pass);
 
@@ -128,6 +168,14 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
         public void Execute(IWorldGenerationContext context) =>
             _ = OptimizedUndergroundMorphology.Apply(context);
+    }
+
+    private sealed class DungeonV2Pass : IWorldGenerationPass
+    {
+        public static DungeonV2Pass Instance { get; } = new();
+
+        public void Execute(IWorldGenerationContext context) =>
+            _ = OptimizedDungeonV2.Apply(context);
     }
 
     private sealed class SurfaceShapingPass : IWorldGenerationPass
@@ -179,8 +227,6 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                 }
 
                 byte shape = 0;
-                // WorldTile shape 2/3 map to the two walkable top slopes. Use them only for a clean one-tile
-                // height transition; isolated one-block peaks become half blocks rather than square teeth.
                 if (rightY == y + 1 && leftY <= y)
                     shape = 2;
                 else if (leftY == y + 1 && rightY <= y)
@@ -227,8 +273,6 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
             int undergrowthTarget = Math.Clamp(width / 8, 70, 1_200);
             int sunflowerTarget = Math.Clamp(width / 700 + 2, 2, 16);
 
-            // Reserve larger footprints first. Trees and one-tile undergrowth otherwise consume the scarce clean
-            // 2x4 grass pads that sunflower objects need, making decoration depend on incidental pass ordering.
             int sunflowers = PlaceSunflowers(context, layers, spawn, sunflowerTarget);
             int trees = PlaceTrees(context, layers, spawn, treeTarget);
             int undergrowth = PlaceUndergrowth(context, layers, spawn, undergrowthTarget);
@@ -285,8 +329,6 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
                 int height = NextRange(context.Random, ground == JungleGrass ? 14 : 10, ground == JungleGrass ? 24 : 20);
                 int top = floor - height;
-                // Clearance stops one tile above the supporting ground row. Including floor here rejects every
-                // otherwise valid tree because the support tile is necessarily active.
                 if (top < 3 || !IsClearRectangle(context.Workspace, x - 2, top - 2, 5, height + 2))
                     continue;
                 if (HasFrameImportantNearby(context.Workspace, x, floor, Math.Max(6, height / 2)))
@@ -295,8 +337,6 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                 for (int y = floor - 1; y >= top; y--)
                     SetPlant(context.Workspace, x, y, Trees, style * 22, 0);
 
-                // Terraria treats tree cells with frameY >= 198 and frameX >= 22 as foliage anchors. Keep the
-                // custom optimized placement, but publish a valid crown marker instead of a bare trunk tip.
                 SetPlant(context.Workspace, x, top, Trees, Math.Max(22, style * 22), 198);
 
                 if (height >= 13)
