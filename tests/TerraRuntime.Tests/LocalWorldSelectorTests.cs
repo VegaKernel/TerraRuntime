@@ -27,4 +27,14 @@ public sealed class LocalWorldSelectorTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [Fact]
+    public void Product_title_contains_runtime_name_version_and_section()
+    {
+        Assert.StartsWith("TerraRuntime v", RuntimeProductInfo.DisplayName, StringComparison.Ordinal);
+        Assert.Equal(
+            $"{RuntimeProductInfo.DisplayName} · local world selection",
+            RuntimeProductInfo.BuildTitle("local world selection"));
+        Assert.DoesNotContain("  ", RuntimeProductInfo.DisplayName, StringComparison.Ordinal);
+    }
 }
