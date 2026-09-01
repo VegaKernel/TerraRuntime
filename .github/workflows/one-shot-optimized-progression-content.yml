@@ -54,6 +54,124 @@ jobs:
       - name: Apply optimized progression content
         run: python3 tools/ci/apply_optimized_progression_content.py
 
+      - name: Expand bounded forge-pocket search
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/TerraRuntime.World/Generation/Optimized/OptimizedProgressionContentWorldGenerationProvider.cs')
+          t = p.read_text(encoding='utf-8')
+          start = t.index('        private static ForgePocketResult PlaceForgeResourcePocket(')
+          end = t.index('        private static bool TryFindCompleteThreeByTwoObject(', start)
+          replacement = r'''        private static ForgePocketResult PlaceForgeResourcePocket(IWorldGenerationContext context, int obsidianTarget)
+          {
+              if (!TryFindCompleteThreeByTwoObject(
+                      context.Workspace,
+                      checked((ushort)VanillaTileIds.Hellforge.Value),
+                      out WorldGenerationPoint forge))
+              {
+                  return default;
+              }
+
+              ReadOnlySpan<int> offsets = [12, -12, 22, -22, 34, -34, 46, -46];
+              foreach (int offset in offsets)
+              {
+                  int centerX = forge.X + offset;
+                  int centerY = forge.Y;
+                  if (!CanBuildForgePocket(context.Workspace, forge, centerX, centerY))
+                      continue;
+
+                  const int radiusX = 8;
+                  const int radiusY = 5;
+                  for (int dx = -radiusX; dx <= radiusX; dx++)
+                  for (int dy = -radiusY; dy <= radiusY; dy++)
+                  {
+                      if (dx * dx / 64d + dy * dy / 25d <= 1d)
+                          SetAir(context.Workspace, centerX + dx, centerY + dy);
+                  }
+
+                  int chamberEdge = centerX > forge.X ? centerX - radiusX : centerX + radiusX;
+                  int forgeEdge = centerX > forge.X ? forge.X + 3 : forge.X - 1;
+                  for (int x = Math.Min(forgeEdge, chamberEdge); x <= Math.Max(forgeEdge, chamberEdge); x++)
+                  for (int y = centerY - 1; y <= centerY + 1; y++)
+                      SetAir(context.Workspace, x, y);
+
+                  int obsidian = 0;
+                  int hellstone = 0;
+                  for (int row = 0; row < 4 && (obsidian < obsidianTarget || hellstone < 8); row++)
+                  {
+                      int y = centerY + radiusY + row;
+                      for (int x = centerX - radiusX + 1; x <= centerX + radiusX - 1; x++)
+                      {
+                          if (obsidian < obsidianTarget)
+                          {
+                              SetBlock(context.Workspace, x, y, checked((ushort)VanillaTileIds.Obsidian.Value));
+                              obsidian++;
+                          }
+                          else if (hellstone < 8)
+                          {
+                              SetBlock(context.Workspace, x, y, Hellstone);
+                              hellstone++;
+                          }
+                      }
+                  }
+
+                  return new ForgePocketResult(obsidian, hellstone);
+              }
+
+              return default;
+          }
+
+          private static bool CanBuildForgePocket(
+              IWorldGenerationWorkspace workspace,
+              WorldGenerationPoint forge,
+              int centerX,
+              int centerY)
+          {
+              const int radiusX = 9;
+              const int radiusY = 8;
+              if (centerX - radiusX < 2 || centerX + radiusX >= workspace.WidthTiles - 2 ||
+                  centerY - radiusY < 2 || centerY + radiusY >= workspace.HeightTiles - 2)
+              {
+                  return false;
+              }
+
+              int chamberEdge = centerX > forge.X ? centerX - 8 : centerX + 8;
+              int forgeEdge = centerX > forge.X ? forge.X + 3 : forge.X - 1;
+              int scanLeft = Math.Min(centerX - radiusX, Math.Min(forgeEdge, chamberEdge));
+              int scanRight = Math.Max(centerX + radiusX, Math.Max(forgeEdge, chamberEdge));
+
+              for (int x = scanLeft; x <= scanRight; x++)
+              for (int y = centerY - radiusY; y <= centerY + radiusY; y++)
+              {
+                  if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile))
+                      return false;
+                  if (tile.LiquidAmount > 0 &&
+                      tile.LiquidKind is WorldGenerationLiquidKind.Honey or WorldGenerationLiquidKind.Shimmer)
+                  {
+                      return false;
+                  }
+                  if ((tile.Flags & WorldGenerationTileFlags.Active) == 0 || tile.Type == VanillaTileIds.Hellforge.Value)
+                      continue;
+                  if (VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
+                      return false;
+              }
+
+              return true;
+          }
+
+'''
+          t = t[:start] + replacement + t[end:]
+          p.write_text(t, encoding='utf-8')
+
+          v = Path('src/TerraRuntime.World/Generation/Optimized/OptimizedProgressionValidationWorldGenerationProvider.cs')
+          s = v.read_text(encoding='utf-8')
+          if s.count('radius: 28') != 2:
+              raise SystemExit(f'expected two forge material access radii, found {s.count("radius: 28")}')
+          s = s.replace('radius: 28', 'radius: 56')
+          v.write_text(s, encoding='utf-8')
+          PY
+
       - name: Reconcile optimized documentation summary
         shell: bash
         run: |
