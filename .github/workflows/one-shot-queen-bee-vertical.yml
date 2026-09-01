@@ -41,26 +41,13 @@ jobs:
           from pathlib import Path
           p = Path('tools/ci/apply_queen_bee_vertical_1458.py')
           text = p.read_text(encoding='utf-8')
-          old = """        if (VanillaFlyerNpcCatalog.TryGetDefinition(type, out definition))
-            return true;
-
-        if (type == VanillaNpcIds.BrainOfCthulhu)"""
-          old2 = """        if (VanillaFlyerNpcCatalog.TryGetDefinition(type, out definition))
-            return true;
-
-        if (type == VanillaNpcIds.QueenBee)"""
-          new = """        if (VanillaNpcAi17_20_21Catalog1458.TryGetDefinition(type, out definition))
-            return true;
-
-        if (type == VanillaNpcIds.BrainOfCthulhu)"""
-          new2 = """        if (VanillaNpcAi17_20_21Catalog1458.TryGetDefinition(type, out definition))
-            return true;
-
-        if (type == VanillaNpcIds.QueenBee)"""
+          old = '        if (VanillaFlyerNpcCatalog.TryGetDefinition(type, out definition))\n            return true;\n\n        if (type == VanillaNpcIds.BrainOfCthulhu)'
+          old2 = '        if (VanillaFlyerNpcCatalog.TryGetDefinition(type, out definition))\n            return true;\n\n        if (type == VanillaNpcIds.QueenBee)'
+          new = '        if (VanillaNpcAi17_20_21Catalog1458.TryGetDefinition(type, out definition))\n            return true;\n\n        if (type == VanillaNpcIds.BrainOfCthulhu)'
+          new2 = '        if (VanillaNpcAi17_20_21Catalog1458.TryGetDefinition(type, out definition))\n            return true;\n\n        if (type == VanillaNpcIds.QueenBee)'
           if old not in text or old2 not in text:
               raise SystemExit('Queen Bee definition helper anchor drifted')
-          text = text.replace(old, new, 1).replace(old2, new2, 1)
-          p.write_text(text, encoding='utf-8')
+          p.write_text(text.replace(old, new, 1).replace(old2, new2, 1), encoding='utf-8')
           PY
           python3 tools/ci/apply_queen_bee_vertical_1458.py
           git diff --check
