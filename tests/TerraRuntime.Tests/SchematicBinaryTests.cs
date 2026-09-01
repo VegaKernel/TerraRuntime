@@ -92,10 +92,11 @@ public sealed class SchematicBinaryTests
     {
         SchematicDocument expected = CreateRepresentativeDocument();
         await using var stream = new MemoryStream();
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
-        await SchematicBinary.WriteAsync(stream, expected);
+        await SchematicBinary.WriteAsync(stream, expected, cancellationToken);
         stream.Position = 0;
-        SchematicDocument actual = await SchematicBinary.ReadAsync(stream);
+        SchematicDocument actual = await SchematicBinary.ReadAsync(stream, cancellationToken);
 
         Assert.Equal(SchematicBinary.Serialize(expected), SchematicBinary.Serialize(actual));
     }
