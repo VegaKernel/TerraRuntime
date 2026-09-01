@@ -16,7 +16,11 @@ Terraria не выбирает жителя простым правилом «п
 
 Уже существующий homeless resident обрабатывается раньше materialization нового NPC, как в `WorldGen.UpdatePrioritizedTownNPC`. После kick-out запускается pinned 3600-tick look-for-home timeout. Когда переселение снова разрешено, валидная заранее назначенная `TownManager` комната получает первую попытку, а discovered-room index используется как fallback.
 
-По source cadence `RuntimeTownNpcMoveInCoordinator1458` оценивает живое authoritative состояние игроков/inventory, потребляет source-prioritized порядок кандидатов, при наличии валидной комнаты выделяет generation-safe NPC slot, записывает жителя в `RuntimeTownNpcStateStore` и публикует packet 23 и packet 60 через существующего владельца NPC replication. Жители, созданные runtime, входят в следующие `.wld` snapshots NPC/TownRoom.
+`RuntimeTownNpcStateStore` теперь сохраняет gameplay-visible порядок пар `TownRoomManager`, а не сортирует комнаты по NPC type. Загруженные пары остаются в порядке `.wld`, semantics `SetRoom` удаляет старую пару и добавляет новую в конец, а kick-out удаляет пару. Этот же ordered view используется для source-поведения `AddOccupantsToList`.
+
+Для каждой проверяемой комнаты выбор нового жителя следует `IsThereASpawnablePrioritizedTownNPC`: сначала идут eligible occupants, уже назначенные именно в эту комнату, в порядке TownRoomManager; затем numeric scan по NPC ID предпочитает eligible type с любой назначенной комнатой, затем town pet и только потом оставляет `prioritizedTownNPCType` как fallback. Если у выбранного type есть собственная назначенная комната, она получает source recursive first attempt до текущего кандидата.
+
+По source cadence `RuntimeTownNpcMoveInCoordinator1458` оценивает живое authoritative состояние игроков/inventory, применяет этот room-aware source selection, при наличии валидной комнаты выделяет generation-safe NPC slot, записывает жителя в `RuntimeTownNpcStateStore` и публикует packet 23 и packet 60 через существующего владельца NPC replication. Жители, созданные runtime, входят в следующие `.wld` snapshots NPC/TownRoom.
 
 Mutable roster больше не предполагает, что все Town NPC навсегда занимают слоты `0..N-1`. Новый житель получает первый свободный vanilla NPC slot, поэтому существующий hostile NPC не может быть затёрт заселением.
 
@@ -32,4 +36,4 @@ Mutable roster больше не предполагает, что все Town NP
 
 ## Намеренно оставшиеся gaps
 
-Move-in path пока не заявляет все детали `WorldGen.SpawnTownNPC`: exact current-room occupant ordering из `TownManager.AddOccupantsToList`, полный physical off-screen/fallback поиск spawn point, локализованный transport `Announcement.HasArrived` и генерация given name NPC остаются отдельной работой. В AI_007 отдельно остаются pet idle animations, social/emote/combat branches и live ownership изменений weather/eclipse/invasion. Bestiary-driven live updates Zoologist и случайный Party Girl roll также остаются fail-closed до появления mutable runtime-источников этих фактов.
+Move-in path пока не заявляет все детали `WorldGen.SpawnTownNPC`: полный physical off-screen/fallback поиск spawn point, exact более широкий WorldGen house-candidate/random fallback, локализованный transport `Announcement.HasArrived` и генерация given name/variation NPC остаются отдельной работой. В AI_007 отдельно остаются pet idle animations, social/emote/combat branches и live ownership изменений weather/eclipse/invasion. Bestiary-driven live updates Zoologist и случайный Party Girl roll также остаются fail-closed до появления mutable runtime-источников этих фактов.

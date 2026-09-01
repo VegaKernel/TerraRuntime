@@ -16,7 +16,11 @@ The 1.4.5.8 priority chain is source-pinned, including the seed-specific Dryad/Z
 
 Existing homeless residents are processed before a new resident is materialized, matching the `WorldGen.UpdatePrioritizedTownNPC` relocation priority. A player kick-out starts the pinned 3600-tick look-for-home timeout. When relocation is allowed, a valid `TownManager`-assigned room gets the first attempt and the discovered-room index is the fallback.
 
-On the source cadence, `RuntimeTownNpcMoveInCoordinator1458` evaluates the active authoritative player/inventory state, consumes the source-prioritized candidate ordering, allocates a generation-safe NPC slot when a valid room exists, commits the resident into `RuntimeTownNpcStateStore`, and publishes packet 23 plus packet 60 through the existing NPC replication owner. Runtime-created residents are included in subsequent `.wld` NPC/TownRoom save snapshots.
+`RuntimeTownNpcStateStore` now preserves the gameplay-visible `TownRoomManager` pair order instead of sorting rooms by NPC type. Loaded pairs stay in `.wld` order, `SetRoom` semantics remove the previous pair and append its replacement, and kick-out removes the pair. The same ordered view feeds the source `AddOccupantsToList` behavior.
+
+For each tested room candidate, new-resident selection follows `IsThereASpawnablePrioritizedTownNPC`: eligible occupants already assigned to that exact room are considered first in TownRoomManager order; the numeric NPC-ID scan then prefers an eligible type that has any assigned room, then a town pet, and only then retains `prioritizedTownNPCType` as the fallback. If the selected type has its own assigned room, that room receives the source recursive first attempt before the currently tested candidate.
+
+On the source cadence, `RuntimeTownNpcMoveInCoordinator1458` evaluates the active authoritative player/inventory state, applies the room-aware source selection above, allocates a generation-safe NPC slot when a valid room exists, commits the resident into `RuntimeTownNpcStateStore`, and publishes packet 23 plus packet 60 through the existing NPC replication owner. Runtime-created residents are included in subsequent `.wld` NPC/TownRoom save snapshots.
 
 The mutable roster no longer assumes that all town residents occupied slots `0..N-1` forever. New residents use the first free vanilla NPC slot, so a live hostile NPC cannot be overwritten by a town move-in.
 
@@ -32,4 +36,4 @@ When a resident is outside the resting area, both the current and destination sc
 
 ## Deliberate remaining gaps
 
-The move-in path still does not claim every `WorldGen.SpawnTownNPC` detail. Exact current-room occupant ordering from `TownManager.AddOccupantsToList`, the complete physical off-screen/fallback spawn-point search, localized `Announcement.HasArrived` transport, and NPC given-name generation remain separate work. AI_007 still has pet idle animation, social/emote/combat branches, and live weather/eclipse/invasion mutation ownership outside this slice. Bestiary-driven live Zoologist updates and the random Party Girl roll also remain fail-closed until those mutable runtime sources are owned.
+The move-in path still does not claim every `WorldGen.SpawnTownNPC` detail. The complete physical off-screen/fallback spawn-point search, exact broader WorldGen house-candidate/random fallback behavior, localized `Announcement.HasArrived` transport, and NPC given-name/variation generation remain separate work. AI_007 still has pet idle animation, social/emote/combat branches, and live weather/eclipse/invasion mutation ownership outside this slice. Bestiary-driven live Zoologist updates and the random Party Girl roll also remain fail-closed until those mutable runtime sources are owned.

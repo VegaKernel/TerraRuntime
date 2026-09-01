@@ -27,11 +27,10 @@ internal interface IRuntimeTownNpcArrivalSink1458
 }
 
 /// <summary>
-/// Authoritative bridge from the source-backed UpdateTime_SpawnTownNPCs candidate pass to room-aware runtime
-/// materialization. Existing homeless residents have the same priority as WorldGen.UpdatePrioritizedTownNPC:
-/// they are relocated before a new resident may materialize. TownManager-assigned rooms get the pinned first attempt,
-/// then the bounded discovered-room index is used as fallback. Physical off-screen spawn fallback and localized
-/// arrival text remain separate work.
+/// Authoritative bridge from UpdateTime_SpawnTownNPCs into room-aware materialization. Existing homeless residents
+/// retain first priority. New residents are selected with the source-shaped IsThereASpawnablePrioritizedTownNPC order:
+/// occupants assigned to the tested room first, then eligible types with any TownManager room, then town pets, then
+/// the global prioritized type. A selected type gets its own assigned-room attempt before the tested candidate room.
 /// </summary>
 internal sealed class RuntimeTownNpcMoveInCoordinator1458
 {
@@ -108,41 +107,162 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
             in worldFacts,
             players,
             activeTypes);
-        if (eligibility.EligibleTypes.Length == 0)
-            return;
-
-        foreach (NpcTypeId type in eligibility.EligibleTypes)
+        if (eligibility.EligibleTypes.Length == 0 ||
+            !TrySelectNewResident(
+                eligibility,
+                activeTypes,
+                occupants,
+                out NpcTypeId type,
+                out VanillaHousingPlacement placement))
         {
-            if (townNpcs.ContainsNpcType(type) ||
-                !TryFindRoomForNewResident(type, occupants, out VanillaHousingPlacement placement))
-            {
-                continue;
-            }
-
-            if (!townNpcs.TryAddResident(type, in placement, npcs, out NpcSnapshot snapshot, out RuntimeTownNpcHomeCommit home))
-                continue;
-
-            if (type == VanillaNpcIds.Truffle)
-            {
-                houses.SetTruffleUnlocked(true);
-                progression?.MarkTruffleSpawnUnlocked();
-            }
-
-            previousHomeStatuses[home.NpcSlot] = home.Status;
-            replication?.TryPublishTownHome(in home);
-            var arrival = new RuntimeTownNpcArrival1458(
-                checked((short)snapshot.Handle.Slot),
-                type,
-                placement.HomeTileX,
-                placement.HomeTileY);
-            arrivals?.TownNpcArrived(in arrival);
-            SuccessfulMoveIns++;
             return;
         }
+
+        if (!townNpcs.TryAddResident(type, in placement, npcs, out NpcSnapshot snapshot, out RuntimeTownNpcHomeCommit home))
+            return;
+
+        if (type == VanillaNpcIds.Truffle)
+        {
+            houses.SetTruffleUnlocked(true);
+            progression?.MarkTruffleSpawnUnlocked();
+        }
+
+        previousHomeStatuses[home.NpcSlot] = home.Status;
+        replication?.TryPublishTownHome(in home);
+        var arrival = new RuntimeTownNpcArrival1458(
+            checked((short)snapshot.Handle.Slot),
+            type,
+            placement.HomeTileX,
+            placement.HomeTileY);
+        arrivals?.TownNpcArrived(in arrival);
+        SuccessfulMoveIns++;
     }
 
     internal int GetLookForHomeTimeout(short slot) =>
         lookForHomeTimeouts.TryGetValue(slot, out int timeout) ? timeout : 0;
+
+    internal bool TrySelectNewResident(
+        VanillaTownSpawnEligibility1458 eligibility,
+        ReadOnlySpan<NpcTypeId> activeTypes,
+        ReadOnlySpan<VanillaHousingOccupant> occupants,
+        out NpcTypeId selectedType,
+        out VanillaHousingPlacement selectedPlacement)
+    {
+        ArgumentNullException.ThrowIfNull(eligibility);
+        foreach (RuntimeTownHouseCandidate1458 candidate in houses.CaptureCandidates())
+        {
+            if (!TrySelectTypeForCandidate(
+                    in candidate,
+                    eligibility,
+                    activeTypes,
+                    occupants,
+                    out NpcTypeId type))
+            {
+                continue;
+            }
+
+            if (townNpcs.TryGetRoom(type, out WorldTownRoom assigned) &&
+                houses.TryValidateAssignedRoom(type, in assigned, occupants, out selectedPlacement))
+            {
+                selectedType = type;
+                return true;
+            }
+
+            if (houses.TryValidateCandidate(in candidate, type, occupants, out selectedPlacement))
+            {
+                selectedType = type;
+                return true;
+            }
+        }
+
+        selectedType = default;
+        selectedPlacement = default;
+        return false;
+    }
+
+    private bool TrySelectTypeForCandidate(
+        in RuntimeTownHouseCandidate1458 candidate,
+        VanillaTownSpawnEligibility1458 eligibility,
+        ReadOnlySpan<NpcTypeId> activeTypes,
+        ReadOnlySpan<VanillaHousingOccupant> occupants,
+        out NpcTypeId selectedType)
+    {
+        foreach (NpcTypeId occupantType in townNpcs.CaptureRoomOccupantsInManagerOrder(
+                     candidate.HomeTileX,
+                     candidate.HomeTileY))
+        {
+            if (CanSpawnIntoCandidate(occupantType, in candidate, eligibility, activeTypes, occupants))
+            {
+                selectedType = occupantType;
+                return true;
+            }
+        }
+
+        NpcTypeId prioritizedFallback = default;
+        NpcTypeId[] eligibleById = eligibility.EligibleTypes.OrderBy(static type => type.Value).ToArray();
+        foreach (NpcTypeId type in eligibleById)
+        {
+            if (!CanSpawnIntoCandidate(type, in candidate, eligibility, activeTypes, occupants))
+                continue;
+
+            if (townNpcs.TryGetRoom(type, out _))
+            {
+                selectedType = type;
+                return true;
+            }
+
+            if (IsTownPet(type))
+            {
+                selectedType = type;
+                return true;
+            }
+
+            if (type == eligibility.PrioritizedType)
+                prioritizedFallback = type;
+        }
+
+        selectedType = prioritizedFallback;
+        return selectedType.IsAssigned;
+    }
+
+    private bool CanSpawnIntoCandidate(
+        NpcTypeId type,
+        in RuntimeTownHouseCandidate1458 candidate,
+        VanillaTownSpawnEligibility1458 eligibility,
+        ReadOnlySpan<NpcTypeId> activeTypes,
+        ReadOnlySpan<VanillaHousingOccupant> occupants)
+    {
+        if (!eligibility.CanSpawn(type) || Contains(activeTypes, type))
+            return false;
+
+        // CheckSpecialTownNPCSpawningConditions is unconditional for every supported type except Truffle.
+        // For Truffle the existing source-shaped validator owns the surface/mushroom gate, so fail closed here.
+        return type != VanillaNpcIds.Truffle ||
+               houses.TryValidateCandidate(in candidate, type, occupants, out _);
+    }
+
+    private static bool IsTownPet(NpcTypeId type) =>
+        type == VanillaNpcIds.TownCat ||
+        type == VanillaNpcIds.TownDog ||
+        type == VanillaNpcIds.TownBunny ||
+        type == VanillaNpcIds.TownSlimeBlue ||
+        type == VanillaNpcIds.TownSlimeGreen ||
+        type == VanillaNpcIds.TownSlimeOld ||
+        type == VanillaNpcIds.TownSlimePurple ||
+        type == VanillaNpcIds.TownSlimeRainbow ||
+        type == VanillaNpcIds.TownSlimeRed ||
+        type == VanillaNpcIds.TownSlimeYellow ||
+        type == VanillaNpcIds.TownSlimeCopper;
+
+    private static bool Contains(ReadOnlySpan<NpcTypeId> values, NpcTypeId type)
+    {
+        foreach (NpcTypeId value in values)
+        {
+            if (value == type)
+                return true;
+        }
+        return false;
+    }
 
     private void CaptureInitialHomeStatuses()
     {
@@ -234,7 +354,7 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         ReadOnlySpan<VanillaHousingOccupant> occupants,
         out RuntimeTownNpcHomeCommit relocated)
     {
-        if (TryGetAssignedRoom(homeless.NpcType, out WorldTownRoom assigned) &&
+        if (townNpcs.TryGetRoom(homeless.NpcType, out WorldTownRoom assigned) &&
             houses.TryValidateAssignedRoom(homeless.NpcType, in assigned, occupants, out _) &&
             townNpcs.TryAssignRoom(
                 homeless.NpcSlot,
@@ -264,35 +384,6 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         }
 
         relocated = default;
-        return false;
-    }
-
-    private bool TryFindRoomForNewResident(
-        NpcTypeId type,
-        ReadOnlySpan<VanillaHousingOccupant> occupants,
-        out VanillaHousingPlacement placement)
-    {
-        if (TryGetAssignedRoom(type, out WorldTownRoom assigned) &&
-            houses.TryValidateAssignedRoom(type, in assigned, occupants, out placement))
-        {
-            return true;
-        }
-
-        return houses.TryFindRoom(type, occupants, out placement);
-    }
-
-    private bool TryGetAssignedRoom(NpcTypeId type, out WorldTownRoom room)
-    {
-        foreach (WorldTownRoom candidate in townNpcs.CaptureTownRooms())
-        {
-            if (candidate.NpcType == type.Value)
-            {
-                room = candidate;
-                return true;
-            }
-        }
-
-        room = default;
         return false;
     }
 }

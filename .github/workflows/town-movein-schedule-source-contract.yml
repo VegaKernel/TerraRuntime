@@ -11,6 +11,7 @@ on:
       - 'tests/TerraRuntime.Tests/RuntimeTownNpcMoveInSchedule1458Tests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeTownNpcSittingSchedule1458Tests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeTownNpcHomelessRelocation1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeTownNpcRoomAwareSelection1458Tests.cs'
       - 'tools/ci/check_town_movein_schedule_source.py'
       - '.github/workflows/town-movein-schedule-source-contract.yml'
   workflow_dispatch:
@@ -28,7 +29,7 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
       - name: Focused town housing and schedule tests
-        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --filter 'FullyQualifiedName~RuntimeTownNpcSittingSchedule1458Tests|FullyQualifiedName~RuntimeTownNpcHomelessRelocation1458Tests'
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --filter 'FullyQualifiedName~RuntimeTownNpcSittingSchedule1458Tests|FullyQualifiedName~RuntimeTownNpcHomelessRelocation1458Tests|FullyQualifiedName~RuntimeTownNpcRoomAwareSelection1458Tests'
       - name: Download pinned TerrariaServer 1.4.5.8
         shell: bash
         run: |
@@ -54,6 +55,10 @@ jobs:
           refs="$(dirname "$assembly")"
           .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/WorldGen.cs
           .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.NPC "$assembly" > artifacts/source-contract/NPC.cs
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.GameContent.TownRoomManager "$assembly" > artifacts/source-contract/TownRoomManager.cs
+          .tools/ilspycmd --disable-updatecheck -r "$refs" -t Terraria.ID.NPCID "$assembly" > artifacts/source-contract/NPCID.cs
           python3 tools/ci/check_town_movein_schedule_source.py \
             --worldgen artifacts/source-contract/WorldGen.cs \
-            --npc artifacts/source-contract/NPC.cs
+            --npc artifacts/source-contract/NPC.cs \
+            --town-room-manager artifacts/source-contract/TownRoomManager.cs \
+            --npc-id artifacts/source-contract/NPCID.cs

@@ -29,9 +29,9 @@ internal readonly record struct RuntimeTownNpcIdentityCommit(
 }
 
 /// <summary>
-/// Authoritative owner for persisted town-NPC home state and the v326 TownRoomManager mapping. The store keeps the
-/// original NPC/persistent metadata detached from the loaded WorldFileData, supports generation-safe runtime slot
-/// reservation for the persisted town roster, and captures immutable save snapshots on the game-loop owner.
+/// Authoritative owner for persisted town-NPC home state and the v326 TownRoomManager mapping. Besides fast lookup by
+/// NPC type, room pairs retain Terraria's insertion order: Load appends in file order, SetRoom removes the old pair and
+/// appends the replacement, and KickOut removes it. This order is gameplay-visible through AddOccupantsToList.
 /// </summary>
 internal sealed class RuntimeTownNpcStateStore
 {
@@ -41,6 +41,7 @@ internal sealed class RuntimeTownNpcStateStore
     private readonly WorldPersistentNpc[] persistentNpcs;
     private readonly SortedDictionary<short, WorldTownNpc> townNpcsBySlot = [];
     private readonly Dictionary<int, WorldTownRoom> roomsByNpcType = [];
+    private readonly List<int> roomNpcTypeOrder = [];
     private readonly WorldDimensions dimensions;
 
     public RuntimeTownNpcStateStore(
@@ -65,6 +66,7 @@ internal sealed class RuntimeTownNpcStateStore
                 throw new InvalidDataException("Loaded town-room state is outside the current world/catalog bounds.");
             if (!roomsByNpcType.TryAdd(room.NpcType, room))
                 throw new InvalidDataException($"Loaded town-room state contains duplicate NPC type {room.NpcType}.");
+            roomNpcTypeOrder.Add(room.NpcType);
         }
     }
 
@@ -72,6 +74,9 @@ internal sealed class RuntimeTownNpcStateStore
 
     public bool TryGet(short slot, out WorldTownNpc npc) =>
         townNpcsBySlot.TryGetValue(slot, out npc!);
+
+    public bool TryGetRoom(NpcTypeId type, out WorldTownRoom room) =>
+        roomsByNpcType.TryGetValue(type.Value, out room);
 
     public bool ContainsNpcType(NpcTypeId type) =>
         townNpcsBySlot.Values.Any(npc => npc.NetId == type.Value);
@@ -83,6 +88,22 @@ internal sealed class RuntimeTownNpcStateStore
         {
             if (NpcTypeId.TryCreate(npc.NetId, out NpcTypeId type))
                 result.Add(type);
+        }
+        return result.ToArray();
+    }
+
+    public NpcTypeId[] CaptureRoomOccupantsInManagerOrder(int homeTileX, int homeTileY)
+    {
+        var result = new List<NpcTypeId>();
+        foreach (int npcType in roomNpcTypeOrder)
+        {
+            if (!roomsByNpcType.TryGetValue(npcType, out WorldTownRoom room) ||
+                room.X != homeTileX || room.Y != homeTileY ||
+                !NpcTypeId.TryCreate(npcType, out NpcTypeId type))
+            {
+                continue;
+            }
+            result.Add(type);
         }
         return result.ToArray();
     }
@@ -126,7 +147,7 @@ internal sealed class RuntimeTownNpcStateStore
             return false;
         }
 
-        roomsByNpcType.Remove(type.Value);
+        RemoveRoom(type.Value);
         townNpcsBySlot[slot] = npc with { Homeless = true };
         commit = new RuntimeTownNpcHomeCommit(
             slot,
@@ -167,7 +188,7 @@ internal sealed class RuntimeTownNpcStateStore
 
         int homeTileX = placement.HomeTileX;
         int homeTileY = placement.HomeTileY;
-        roomsByNpcType[type.Value] = new WorldTownRoom(type.Value, homeTileX, homeTileY);
+        SetRoom(new WorldTownRoom(type.Value, homeTileX, homeTileY));
         townNpcsBySlot[slot] = npc with
         {
             Homeless = false,
@@ -231,7 +252,7 @@ internal sealed class RuntimeTownNpcStateStore
             placement.HomeTileY,
             TownNpcVariationIndex: null,
             HomelessDespawn: false);
-        roomsByNpcType[type.Value] = new WorldTownRoom(type.Value, placement.HomeTileX, placement.HomeTileY);
+        SetRoom(new WorldTownRoom(type.Value, placement.HomeTileX, placement.HomeTileY));
         homeCommit = new RuntimeTownNpcHomeCommit(
             slot, type, placement.HomeTileX, placement.HomeTileY, TerrariaNpcHomeStatus.HasRoom);
         return true;
@@ -268,7 +289,7 @@ internal sealed class RuntimeTownNpcStateStore
             homeTileY,
             TownNpcVariationIndex: null,
             HomelessDespawn: false));
-        roomsByNpcType.Remove(type.Value);
+        RemoveRoom(type.Value);
         return true;
     }
 
@@ -318,10 +339,17 @@ internal sealed class RuntimeTownNpcStateStore
         townNpcsBySlot.Values.ToArray(),
         persistentNpcs.ToArray());
 
-    public WorldTownRoom[] CaptureTownRooms() =>
-        roomsByNpcType.Values
-            .OrderBy(static room => room.NpcType)
-            .ToArray();
+    public WorldTownRoom[] CaptureTownRooms()
+    {
+        var result = new WorldTownRoom[roomNpcTypeOrder.Count];
+        int written = 0;
+        foreach (int npcType in roomNpcTypeOrder)
+        {
+            if (roomsByNpcType.TryGetValue(npcType, out WorldTownRoom room))
+                result[written++] = room;
+        }
+        return written == result.Length ? result : result.AsSpan(0, written).ToArray();
+    }
 
     public int CopyHomeBaselines(Span<RuntimeTownNpcHomeCommit> destination)
     {
@@ -378,6 +406,19 @@ internal sealed class RuntimeTownNpcStateStore
         }
 
         return occupants.ToArray();
+    }
+
+    private void SetRoom(in WorldTownRoom room)
+    {
+        RemoveRoom(room.NpcType);
+        roomsByNpcType.Add(room.NpcType, room);
+        roomNpcTypeOrder.Add(room.NpcType);
+    }
+
+    private void RemoveRoom(int npcType)
+    {
+        roomsByNpcType.Remove(npcType);
+        roomNpcTypeOrder.Remove(npcType);
     }
 
     private bool TryGetEligible(short slot, out WorldTownNpc npc, out NpcTypeId type)

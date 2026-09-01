@@ -14,6 +14,7 @@ internal readonly record struct RuntimeTownHouseCandidate1458(
 /// Bounded authoritative house-discovery index. Scanning is intentionally cheap: only furniture identities that
 /// participate in the pinned RoomNeeds sets invoke the full source-shaped housing validator. Every candidate is
 /// revalidated against the requested NPC type and live occupants before use, so stale tile edits fail closed.
+/// Candidate order is stable discovery order and can be consumed by the room-aware SpawnTownNPC selector.
 /// </summary>
 internal sealed class RuntimeTownHouseCandidateIndex1458
 {
@@ -85,6 +86,8 @@ internal sealed class RuntimeTownHouseCandidateIndex1458
         }
     }
 
+    public RuntimeTownHouseCandidate1458[] CaptureCandidates() => candidates.ToArray();
+
     /// <summary>
     /// Terraria 1.4.5.8 SpawnTownNPC gives a TownManager-assigned room one recursive attempt before the room that
     /// happened to trigger the current housing scan. TownManager stores the canonical home floor tile; WorldGen
@@ -106,6 +109,16 @@ internal sealed class RuntimeTownHouseCandidateIndex1458
 
         placement = validator.Validate(room.X, seedY, npcType, occupants);
         return placement.IsValid && placement.HomeTileX == room.X && placement.HomeTileY == room.Y;
+    }
+
+    public bool TryValidateCandidate(
+        in RuntimeTownHouseCandidate1458 candidate,
+        NpcTypeId npcType,
+        ReadOnlySpan<VanillaHousingOccupant> occupants,
+        out VanillaHousingPlacement placement)
+    {
+        placement = validator.Validate(candidate.SeedTileX, candidate.SeedTileY, npcType, occupants);
+        return placement.IsValid;
     }
 
     public bool TryFindRoom(
