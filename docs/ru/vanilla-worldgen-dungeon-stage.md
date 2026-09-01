@@ -40,16 +40,26 @@ graph LR
 
 Compatibility residual/barrier entries не потребляют общий Terraria `UnifiedRandom`. Десять новых source-order проходов используют `VanillaSharedRng`, кроме операций, которые детерминированы и поэтому не должны вытягивать случайные значения.
 
-## Владение Dungeon
+## Граф Dungeon и владение RNG
 
 На канонических ordinary worlds source-backed dungeon stage больше не вызывает старый aggregate compatibility dungeon generator. Размещение подземелья начинается с уже сохранённого состояния `WorldGen.Reset` в `VanillaWorldGenerationBootstrapState1458`:
 
 - `DungeonSide` задаёт сторону, выбранную Reset;
 - `DungeonLocation` задаёт горизонтальный anchor;
 - созданное подземелье публикует anchor в world metadata;
-- варианты dungeon bricks используют проверенные vanilla tile IDs 41, 43 и 44.
+- палитры dungeon brick/wall/cracked brick выбираются в `Dunes`, где Terraria инициализирует dungeon generation;
+- проход `Dungeon` расходует закреплённые выборы уникальных shelf/lantern styles, режим entrance halls,
+  корректировку стартовой глубины, размеры входа и масштабированное по ширине число layout steps;
+- topology `LegacyDungeonLayoutProvider` представлена типизированными компонентами starting room, room, hall,
+  entrance hall и entrance вместо coordinate-driven вертикальной шахты;
+- общий `UnifiedRandom` владеет решениями графа и seeds компонентов, включая безусловный source-roll `Next(3)` из-за
+  побитового `&`; каждая room и hall строит геометрию из изолированного `UnifiedRandom(RandomSeed)`;
+- варианты dungeon bricks используют проверенные vanilla tile IDs 41, 43 и 44 и соответствующие unsafe walls.
 
-Это всё ещё clean-room source-shaped реализация, а не побайтовый паритет с `WorldGen.Dungeon`. Точная топология комнат, мебель, locked chests, biome keys, traps и варианты dungeon walls остаются дальнейшей работой по parity.
+Этим удалена прежняя аппроксимация shaft + periodic rooms. Реализация остаётся clean-room структурным портом графа,
+а не claim byte-for-byte equality dungeon. Точные collision/protection interactions перекрывающихся rooms,
+распределение cracked bricks, doors/platforms, furniture, locked и biome chests, traps, paintings, banners и все global
+dungeon features остаются дальнейшей parity-работой.
 
 ## Beaches и ocean caves
 
@@ -79,6 +89,12 @@ Compatibility residual/barrier entries не потребляют общий Terr
 Vanilla acceptance workflow собирает TerraRuntime, запускает только focused world-generation contract classes, генерирует канонический small world через `terraruntime:vanilla`, проверяет его `TerraRuntime.WorldVerify`, а затем запускает закреплённый TerrariaServer 1.4.5.8 с полученным `.wld`.
 
 Зелёный official-server acceptance доказывает, что созданный файл мира структурно принимается закреплённым сервером. Это не заявление о reference-seed identity или полной готовности vanilla worldgen.
+
+Canonical generated-world contract дополнительно требует минимум три rooms, масштабируемое по ширине число halls,
+горизонтальные и вертикальные halls, не-шахтный span графа и связанный surface entrance. Fail-closed finalizer повторяет
+эти проверки перед acceptance candidate. `tools/ci/probe_worldgen_dungeon_graph.py` независимо сверяет layout decisions,
+передачу component seeds, диапазоны strength/steps rooms и halls и создание изолированного RNG с закреплённым decompile
+1.4.5.8.
 
 ## Следующая source boundary
 

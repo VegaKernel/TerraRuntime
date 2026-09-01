@@ -399,7 +399,12 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         workspace.ResetVanillaPyramidCandidates();
         WorldGenerationRequest request = context.Request;
         VanillaWorldSeedProfile1458 profile = VanillaWorldSeedResolver1458.Resolve(in request);
-        state.DungeonPalette = SetupDungeonPalette(random, profile.Special == VanillaSpecialWorldSeed1458.Remix, b.EffectiveCrimson);
+        VanillaDungeonSetupProfile1458 dungeonSetup = SetupDungeonProfile(
+            random,
+            profile.Special == VanillaSpecialWorldSeed1458.Remix,
+            b.EffectiveCrimson);
+        state.DungeonPalette = dungeonSetup.Palette;
+        workspace.SetVanillaDungeonSetupProfile(dungeonSetup);
 
         (int minimum, int maximum) = GetDuneCountRange(grid.Width);
         int count = random.Next(minimum, maximum + 1);
@@ -432,6 +437,21 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
             1 => new VanillaDungeonPalette1458(1, 43, 8, 482, 92, 94, 9, 1385),
             _ => new VanillaDungeonPalette1458(2, 44, 9, 483, 90, 98, 7, 1384)
         };
+    }
+
+    internal static VanillaDungeonSetupProfile1458 SetupDungeonProfile(
+        IRandom random,
+        bool isRemix,
+        bool crimson)
+    {
+        VanillaDungeonPalette1458 palette = SetupDungeonPalette(random, isRemix, crimson);
+        VanillaDungeonEntranceKind1458 entrance = VanillaDungeonEntranceKind1458.Legacy;
+        if (random.Next(3) == 0)
+            entrance = VanillaDungeonEntranceKind1458.Dome;
+        if (random.Next(3) == 0)
+            entrance = VanillaDungeonEntranceKind1458.Tower;
+
+        return new VanillaDungeonSetupProfile1458(palette, entrance, random.Next());
     }
 
     internal static (int Minimum, int Maximum) GetDuneCountRange(int width)

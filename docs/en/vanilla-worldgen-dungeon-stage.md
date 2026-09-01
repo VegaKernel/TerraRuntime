@@ -40,16 +40,27 @@ graph LR
 
 The compatibility residual/barrier entries do not consume Terraria's shared `UnifiedRandom` stream. The ten newly registered source-order passes do use `VanillaSharedRng`, except where the corresponding operation is deterministic and therefore consumes no values.
 
-## Dungeon ownership
+## Dungeon graph and RNG ownership
 
 The source-backed dungeon stage no longer invokes the old aggregate compatibility dungeon generator for canonical ordinary worlds. Dungeon placement starts from `WorldGen.Reset` state already captured in `VanillaWorldGenerationBootstrapState1458`:
 
 - `DungeonSide` determines the side chosen during Reset;
 - `DungeonLocation` supplies the horizontal anchor;
 - the generated dungeon publishes that anchor into world metadata;
-- dungeon brick variants use the verified vanilla tile identities 41, 43, and 44.
+- dungeon brick/wall/cracked-brick palettes are selected during `Dunes`, where Terraria initializes dungeon generation;
+- the `Dungeon` pass consumes the pinned unique shelf/lantern selections, entrance-hall mode, start-depth adjustment,
+  entrance strengths and width-scaled layout-step count;
+- `LegacyDungeonLayoutProvider` topology is represented as typed starting-room, room, hall, entrance-hall and entrance
+  components instead of a coordinate-driven vertical shaft;
+- the shared `UnifiedRandom` owns graph decisions and component seeds, including the source's unconditional
+  `Next(3)` room roll caused by its bitwise `&`; every room and hall owns an isolated
+  `UnifiedRandom(RandomSeed)` stream for its geometry;
+- dungeon brick variants use the verified vanilla tile identities 41, 43, and 44 and their matching unsafe walls.
 
-This is still a clean-room source-shaped implementation, not byte-for-byte `WorldGen.Dungeon` parity. Room topology, furniture, locked chests, biome keys, traps, and dungeon wall-family variation remain future parity work.
+This closes the former shaft/periodic-room approximation. It is still a clean-room structural graph port, not a claim
+of byte-for-byte dungeon equality. Exact collision/protection interactions between overlapping rooms, cracked-brick
+distribution, doors/platforms, furniture, locked and biome chests, traps, paintings, banners, and every global dungeon
+feature remain future parity work.
 
 ## Beaches and ocean caves
 
@@ -79,6 +90,12 @@ Two old aggregates are now explicitly prevented from corrupting parity:
 The vanilla acceptance workflow builds TerraRuntime, runs only the focused world-generation contract classes, generates a canonical small `terraruntime:vanilla` world, validates it with `TerraRuntime.WorldVerify`, and boots pinned TerrariaServer 1.4.5.8 against the resulting `.wld`.
 
 A green official-server acceptance proves that the generated world file is structurally loadable by the pinned server. It does not claim reference-seed terrain identity or complete vanilla world-generation parity.
+
+The canonical generated-world contract additionally requires at least three rooms, a width-scaled hall count,
+horizontal and vertical halls, a non-shaft graph span, and a connected surface entrance. The fail-closed finalizer
+repeats those checks before accepting a candidate. `tools/ci/probe_worldgen_dungeon_graph.py` independently verifies
+the layout decisions, component seed handoff, room/hall strength and step ranges, and isolated RNG construction against
+the pinned 1.4.5.8 decompile.
 
 ## Next source boundary
 
