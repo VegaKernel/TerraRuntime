@@ -538,7 +538,9 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
             }
             SetBlock(workspace, centerX + dx, Math.Min(workspace.HeightTiles - 2, floorY - 1 + localDepth), Stone);
         }
-        return waterCells >= 20;
+
+        int minimumWaterCells = checked((halfWidth * 2 + 1) * 2);
+        return waterCells >= minimumWaterCells;
     }
 
     private static int[] GetSkyPlacementCenters(SkyIslandCandidate island, int halfFootprint)
