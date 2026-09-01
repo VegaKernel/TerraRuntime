@@ -1,91 +1,94 @@
-392-  Passed TerraRuntime.Tests.VanillaEyeOfCthulhuExpertRapidDashTests.Critical_rapid_launch_consumes_ten_rng_rolls_and_preserves_twenty_pixel_base_speed [1 ms]
-393-  Passed TerraRuntime.Tests.VanillaEyeOfCthulhuExpertRapidDashTests.Rapid_state_four_holds_at_slowdown_boundary_while_player_top_left_is_within_two_hundred_pixels [1 ms]
-394-  Passed TerraRuntime.Tests.VanillaEyeOfCthulhuExpertRapidDashTests.Fifth_rapid_dash_cycle_returns_to_phase_two_hover [< 1 ms]
-395-  Passed TerraRuntime.Tests.VanillaEyeOfCthulhuExpertRapidDashTests.Rapid_launch_uses_live_player_velocity_and_exact_four_noncritical_rng_rolls [< 1 ms]
-396-  Passed TerraRuntime.Tests.VanillaEyeOfCthulhuExpertRapidDashTests.Low_life_fourth_rapid_seed_above_player_resets_to_hover_without_rng [< 1 ms]
-397-  Passed TerraRuntime.Tests.WorldFileHeaderPrefixEncoderTests.Encode_rejects_strings_larger_than_parser_budget [5 ms]
-398-  Passed TerraRuntime.Tests.WorldFileHeaderPrefixEncoderTests.Encode_matches_binarywriter_header_prefix_contract [4 ms]
-399-  Passed TerraRuntime.Tests.WorldFileHeaderPrefixEncoderTests.Encode_rejects_invalid_utf16_without_writing [< 1 ms]
-400-  Passed TerraRuntime.Tests.RuntimeProjectileClientCommitRoutingTests.Vanilla_physical_allocation_range_is_distinct_from_protocol_key_range [< 1 ms]
-401-  Passed TerraRuntime.Tests.RuntimeProjectileClientCommitRoutingTests.Client_commit_key_spawner_must_match_authoritative_snapshot_spawner [3 ms]
-402-  Passed TerraRuntime.Tests.RuntimeProjectileClientCommitRoutingTests.Packet29_final_position_despawn_is_atomic_and_emits_no_update_commit [1 ms]
-403-  Passed TerraRuntime.Tests.RuntimeProjectileClientCommitRoutingTests.Client_spawn_update_and_despawn_preserve_exact_key_and_never_echo_to_source [8 ms]
-404-  Passed TerraRuntime.Tests.RuntimeProjectileClientCommitRoutingTests.Unknown_destroy_is_relayed_to_playing_peers_but_not_sender [< 1 ms]
-405-  Passed TerraRuntime.Tests.RuntimeProjectileClientCommitRoutingTests.Packet29_final_position_rejects_nonfinite_or_stale_handles_without_mutation [< 1 ms]
-406-  Passed TerraRuntime.Tests.RuntimeServerPlayerSlotRegistryTests.Stable_server_identity_reserves_shared_wire_slot_against_connections [4 ms]
-407-  Passed TerraRuntime.Tests.RuntimeServerPlayerSlotRegistryTests.Recreating_identity_after_release_gets_new_generation_and_stale_handle_does_not_resolve [7 ms]
-408-  Passed TerraRuntime.Tests.RuntimeServerPlayerSlotRegistryTests.Unassigned_stable_identity_is_rejected_without_consuming_slot [< 1 ms]
-409-  Passed TerraRuntime.Tests.RuntimeServerPlayerSlotRegistryTests.Exhausted_shared_pool_reports_no_slot_without_partial_registration [< 1 ms]
-410-  Passed TerraRuntime.Tests.RuntimeServerPlayerSlotRegistryTests.Server_player_id_is_bounded_and_has_no_ambiguous_whitespace [< 1 ms]
-411-  Passed TerraRuntime.Tests.RuntimeServerPlayerSlotRegistryTests.Duplicate_stable_identity_does_not_consume_another_slot [< 1 ms]
-412:  Failed TerraRuntime.Tests.VanillaTruffleHousing1458Tests.Source_mushroom_threshold_is_required_for_truffle_room [11 ms]
-413:  Error Message:
-414-   Assert.NotEqual() Failure: Values are equal
-415-Expected: Not SpecialNpcConditionFailed
-416-Actual:       SpecialNpcConditionFailed
-417:  Stack Trace:
-418-     at TerraRuntime.Tests.VanillaTruffleHousing1458Tests.Source_mushroom_threshold_is_required_for_truffle_room() in /_/tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs:line 14
-419-   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
-420-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
-421-  Passed TerraRuntime.Tests.VanillaTruffleHousing1458Tests.World_projection_and_progression_journal_keep_truffle_unlock_explicit [2 ms]
-422:  Failed TerraRuntime.Tests.VanillaTruffleHousing1458Tests.No_functional_surface_matches_source_exception [4 ms]
-423:  Error Message:
-424-   Assert.NotEqual() Failure: Values are equal
-425-Expected: Not SpecialNpcConditionFailed
-426-Actual:       SpecialNpcConditionFailed
-427:  Stack Trace:
-428-     at TerraRuntime.Tests.VanillaTruffleHousing1458Tests.No_functional_surface_matches_source_exception() in /_/tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs:line 42
-429-   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
-430-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
-431:  Failed TerraRuntime.Tests.VanillaTruffleHousing1458Tests.Persisted_unlock_allows_below_surface_room_but_keeps_mushroom_gate [3 ms]
-432:  Error Message:
-433-   Assert.NotEqual() Failure: Values are equal
-434-Expected: Not SpecialNpcConditionFailed
-435-Actual:       SpecialNpcConditionFailed
-436:  Stack Trace:
-437-     at TerraRuntime.Tests.VanillaTruffleHousing1458Tests.Persisted_unlock_allows_below_surface_room_but_keeps_mushroom_gate() in /_/tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs:line 33
-438-   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
-439-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
-440-  Passed TerraRuntime.Tests.RuntimeProjectileTerminationSemanticsTests.Positive_lifetime_with_termination_reason_does_not_mutate_authoritative_state [< 1 ms]
-441-  Passed TerraRuntime.Tests.RuntimeProjectileTerminationSemanticsTests.Executor_normalizes_legacy_zero_lifetime_to_lifetime_expired_and_reports_after_commit [1 ms]
-442-  Passed TerraRuntime.Tests.RuntimeProjectileTerminationSemanticsTests.Post_behavior_can_observe_tile_collision_and_revive_projectile_before_commit [8 ms]
-443-  Passed TerraRuntime.Tests.WorldFileTownRoomDecoderTests.Rejects_invalid_npc_type_and_room_budget [1 ms]
-444-  Passed TerraRuntime.Tests.WorldFileTownRoomDecoderTests.Decodes_current_town_rooms [1 ms]
-445-  Passed TerraRuntime.Tests.TerrariaWorldItemFrameEncoderTests.Live_owner_round_trips_packet22_state [13 ms]
-446-  Passed TerraRuntime.Tests.TerrariaWorldItemFrameEncoderTests.Server_live_encoder_rejects_wire_allocate_sentinel_and_invalid_remove_slot [< 1 ms]
-447-  Passed TerraRuntime.Tests.TerrariaWorldItemFrameEncoderTests.Live_drop_round_trips_packet21_optional_state [< 1 ms]
-448-  Passed TerraRuntime.Tests.TerrariaWorldItemFrameEncoderTests.Removal_encodes_canonical_zero_stack_packet21 [< 1 ms]
-449-  Passed TerraRuntime.Tests.TerrariaNpcDamageCodecTests.Ack_is_empty_packet_162_frame [5 ms]
-450-  Passed TerraRuntime.Tests.TerrariaConnectionJoinTimeoutTests.Ready_connection_is_not_subject_to_join_timeout [263 ms]
-451-  Passed TerraRuntime.Tests.TerrariaNpcDamageCodecTests.Packet_28_matches_official_1458_golden_bytes [23 ms]
-452-  Passed TerraRuntime.Tests.TerrariaNpcDamageCodecTests.Packet_28_round_trips_source_wire_shape [< 1 ms]
-453-  Passed TerraRuntime.Tests.PlayerBootstrapFrameBudgetTests.Global_town_npc_bootstrap_rejects_frames_beyond_vanilla_npc_capacity [< 1 ms]
-454-  Passed TerraRuntime.Tests.ServerRuntimeServerPlayerHorizontalControlTests.Invalid_intent_command_is_rejected_without_changing_default_stop_state [20 ms]
-455-  Passed TerraRuntime.Tests.PlayerBootstrapFrameBudgetTests.Dynamic_entity_bootstrap_rejects_more_than_vanilla_world_item_slots [2 ms]
-456-  Passed TerraRuntime.Tests.PlayerBootstrapFrameBudgetTests.Current_pre_enter_world_maximum_stays_below_live_probe_and_connection_queue_capacity [< 1 ms]
+741-  Passed TerraRuntime.Tests.VanillaPlayerMovementNormalizerTests.Rejects_invalid_selected_item_or_present_optional_state(selectedItem: 0, movementFlags: 0, miscFlags1: 0, miscFlags2: 32) [< 1 ms]
+742-  Passed TerraRuntime.Tests.VanillaPlayerMovementNormalizerTests.Rejects_invalid_selected_item_or_present_optional_state(selectedItem: 0, movementFlags: 4, miscFlags1: 0, miscFlags2: 0) [< 1 ms]
+743-  Passed TerraRuntime.Tests.VanillaPlayerMovementNormalizerTests.Rejects_invalid_selected_item_or_present_optional_state(selectedItem: 59, movementFlags: 0, miscFlags1: 0, miscFlags2: 0) [< 1 ms]
+744-  Passed TerraRuntime.Tests.VanillaPlayerMovementNormalizerTests.Rejects_invalid_selected_item_or_present_optional_state(selectedItem: 0, movementFlags: 0, miscFlags1: 64, miscFlags2: 0) [< 1 ms]
+745-  Passed TerraRuntime.Tests.VanillaPlayerMovementNormalizerTests.Named_presence_flags_enable_their_exact_optional_payloads [< 1 ms]
+746-  Passed TerraRuntime.Tests.RuntimeEntityBootstrapFrameSourceTests.Empty_store_captures_no_frames [11 ms]
+747-  Passed TerraRuntime.Tests.RuntimeEntityBootstrapFrameSourceTests.Captures_current_item_state_each_time_in_packet21_22_order [2 ms]
+748-  Passed TerraRuntime.Tests.RuntimeEntityBootstrapFrameSourceTests.Rejects_reader_that_reports_more_entries_than_capacity [< 1 ms]
+749-  Passed TerraRuntime.Tests.TerrariaPlayerMovementEncoderTests.Encodes_authoritative_slot_and_optional_movement_fields_through_multiplicity [2 ms]
+750-  Passed TerraRuntime.Tests.GameplayArchetypeIdTests.Stable_id_is_opaque_and_ordinal [< 1 ms]
+751-  Passed TerraRuntime.Tests.GameplayArchetypeIdTests.Invalid_ids_are_rejected(value: "bad id") [< 1 ms]
+752-  Passed TerraRuntime.Tests.GameplayArchetypeIdTests.Invalid_ids_are_rejected(value: "") [< 1 ms]
+753-  Passed TerraRuntime.Tests.GameplayArchetypeIdTests.Invalid_ids_are_rejected(value: "bad\nid") [< 1 ms]
+754-  Passed TerraRuntime.Tests.GameplayArchetypeIdTests.Invalid_ids_are_rejected(value: "bad\tid") [< 1 ms]
+755-  Passed TerraRuntime.Tests.GameplayArchetypeIdTests.Invalid_ids_are_rejected(value: "   ") [< 1 ms]
+756-  Passed TerraRuntime.Tests.GameplayArchetypeIdTests.Default_id_is_unassigned [< 1 ms]
+757-  Passed TerraRuntime.Tests.GameplayArchetypeIdTests.Oversized_id_is_rejected [3 ms]
+758-  Passed TerraRuntime.Tests.NpcSimulationStateLocalAiTests.Finite_server_local_ai_is_committed_with_npc_revision [< 1 ms]
+759-  Passed TerraRuntime.Tests.NpcSimulationStateLocalAiTests.Non_finite_server_local_ai_is_rejected_without_occupying_slot [< 1 ms]
+760-  Passed TerraRuntime.Tests.VanillaGroundFighterBehaviorProfileTests.Admitted_ground_fighters_have_complete_valid_profiles [< 1 ms]
+761:  Failed TerraRuntime.Tests.VanillaTruffleHousing1458Tests.Source_mushroom_threshold_is_required_for_truffle_room [6 ms]
+762:  Error Message:
+763-   Assert.NotEqual() Failure: Values are equal
+764-Expected: Not SpecialNpcConditionFailed
+765-Actual:       SpecialNpcConditionFailed
+766:  Stack Trace:
+767-     at TerraRuntime.Tests.VanillaTruffleHousing1458Tests.Source_mushroom_threshold_is_required_for_truffle_room() in /_/tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs:line 14
+768-   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+769-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+770-  Passed TerraRuntime.Tests.VanillaGroundFighterBehaviorProfileTests.Fighter_motion_consumes_configured_acceleration [6 ms]
+771-  Passed TerraRuntime.Tests.VanillaGroundFighterBehaviorProfileTests.Obstacle_motion_consumes_configured_jump_profile [< 1 ms]
+772-  Passed TerraRuntime.Tests.VanillaGroundFighterBehaviorProfileTests.Fighter_motion_consumes_configured_stuck_threshold_and_despawn_window [< 1 ms]
+773-  Passed TerraRuntime.Tests.VanillaTruffleHousing1458Tests.World_projection_and_progression_journal_keep_truffle_unlock_explicit [6 ms]
+774:  Failed TerraRuntime.Tests.VanillaTruffleHousing1458Tests.No_functional_surface_matches_source_exception [1 ms]
+775:  Error Message:
+776-   Assert.NotEqual() Failure: Values are equal
+777-Expected: Not SpecialNpcConditionFailed
+778-Actual:       SpecialNpcConditionFailed
+779:  Stack Trace:
+780-     at TerraRuntime.Tests.VanillaTruffleHousing1458Tests.No_functional_surface_matches_source_exception() in /_/tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs:line 42
+781-   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+782-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+783:  Failed TerraRuntime.Tests.VanillaTruffleHousing1458Tests.Persisted_unlock_allows_below_surface_room_but_keeps_mushroom_gate [1 ms]
+784:  Error Message:
+785-   Assert.NotEqual() Failure: Values are equal
+786-Expected: Not SpecialNpcConditionFailed
+787-Actual:       SpecialNpcConditionFailed
+788:  Stack Trace:
+789-     at TerraRuntime.Tests.VanillaTruffleHousing1458Tests.Persisted_unlock_allows_below_surface_room_but_keeps_mushroom_gate() in /_/tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs:line 33
+790-   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+791-   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+792-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Source_verified_hostile_types_are_rejected_by_client_authority_fact(rawType: 1005) [< 1 ms]
+793-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Source_verified_hostile_types_are_rejected_by_client_authority_fact(rawType: 727) [< 1 ms]
+794-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Source_verified_hostile_types_are_rejected_by_client_authority_fact(rawType: 1092) [< 1 ms]
+795-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Source_verified_hostile_types_are_rejected_by_client_authority_fact(rawType: 31) [< 1 ms]
+796-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Source_verified_hostile_types_are_rejected_by_client_authority_fact(rawType: 38) [< 1 ms]
+797-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.SetDefaults_fallthrough_ids_are_not_live_projectile_types(rawType: 457) [< 1 ms]
+798-  Passed TerraRuntime.Tests.VanillaGroundFighterBehaviorProfileTests.Coverage_catalog_marks_configured_ground_fighter_traversal [9 ms]
+799-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.SetDefaults_fallthrough_ids_are_not_live_projectile_types(rawType: 924) [< 1 ms]
+800-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.SetDefaults_fallthrough_ids_are_not_live_projectile_types(rawType: 832) [< 1 ms]
+801-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.SetDefaults_fallthrough_ids_are_not_live_projectile_types(rawType: 458) [< 1 ms]
+802-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.SetDefaults_fallthrough_ids_are_not_live_projectile_types(rawType: 925) [< 1 ms]
+803-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Lifecycle_defaults_match_representative_SetDefaults_paths(rawType: 1135, expectedTimeLeft: 600, expectedNetImportant: False) [< 1 ms]
+804-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Lifecycle_defaults_match_representative_SetDefaults_paths(rawType: 1122, expectedTimeLeft: 1, expectedNetImportant: False) [< 1 ms]
+805-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Lifecycle_defaults_match_representative_SetDefaults_paths(rawType: 820, expectedTimeLeft: 86400, expectedNetImportant: True) [< 1 ms]
+806-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Lifecycle_defaults_match_representative_SetDefaults_paths(rawType: 360, expectedTimeLeft: 3600, expectedNetImportant: True) [< 1 ms]
+807-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Lifecycle_defaults_match_representative_SetDefaults_paths(rawType: 410, expectedTimeLeft: 100, expectedNetImportant: False) [< 1 ms]
+808-  Passed TerraRuntime.Tests.VanillaProjectileFactsTests.Lifecycle_defaults_match_representative_SetDefaults_paths(rawType: 13, expectedTimeLeft: 36000, expectedNetImportant: True) [< 1 ms]
 --
-2378-  Passed TerraRuntime.Tests.VanillaServerPlayerHorizontalControlTests.Constants_pin_official_terraria_server_1458_horizontal_baseline [< 1 ms]
-2379-  Passed TerraRuntime.Tests.VanillaServerPlayerHorizontalControlTests.Reversing_leftward_motion_right_is_symmetric [< 1 ms]
-2380-  Passed TerraRuntime.Tests.VanillaServerPlayerHorizontalControlTests.Reversing_rightward_motion_left_applies_slowdown_then_acceleration [< 1 ms]
-2381-  Passed TerraRuntime.Tests.VanillaServerPlayerHorizontalControlTests.Same_direction_input_at_or_above_max_speed_falls_through_to_ground_slowdown [< 1 ms]
-2382-  Passed TerraRuntime.Tests.VanillaServerPlayerHorizontalControlTests.Grounded_stop_uses_full_vanilla_run_slowdown [< 1 ms]
-2383-  Passed TerraRuntime.Tests.TerrariaPlayerEquipmentCodecTests.Round_trips_packet5_through_multiplicity [6 ms]
-2384-  Passed TerraRuntime.Tests.TerrariaPlayerEquipmentCodecTests.Rejects_wrong_packet5_payload_length [< 1 ms]
-2385-  Passed TerraRuntime.Tests.SkyblockWorldGenerationPersistenceTests.Skyblock_persists_and_reloads_progression_liquids_structures_and_chests [44 ms]
-2386-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_accepts_canonical_generated_world [10 s]
-2387-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_rejects_invalid_tile_type [4 ms]
-2388-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_rejects_duplicate_chest [< 1 ms]
-2389-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_rejects_spawn_outside_world [< 1 ms]
-2390-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_rejects_orphan_chest_anchor [< 1 ms]
-2391-  Passed TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_builds_landmarks_for_crimson_worlds [351 ms]
-2392-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_detects_ocean_bounds_violation_for_canonical [548 ms]
-2393-  Passed TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_creates_canonical_small_world_without_crashing [3 s]
-2394-  Passed TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_is_registered_and_builds_required_progression_geography [114 ms]
-2395-  Passed TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_replays_deterministically_for_same_seed [123 ms]
+2378-  Passed TerraRuntime.Tests.VanillaNpcDefinitionCatalogTests.Verified_initial_definitions_match_official_1458_defaults(type: 21, aiStyle: 3, baseWidth: 18, baseHeight: 40, damage: 20, defense: 8, lifeMax: 60, knockBackResist: 0.5, scale: 1, noGravityAtSpawn: False, noTileCollideAtSpawn: False) [< 1 ms]
+2379-  Passed TerraRuntime.Tests.VanillaNpcDefinitionCatalogTests.Named_npc_ids_address_the_same_verified_catalog [6 ms]
+2380-  Passed TerraRuntime.Tests.VanillaNpcDefinitionCatalogTests.Runtime_families_are_distinct_from_source_ai_style [< 1 ms]
+2381-  Passed TerraRuntime.Tests.VanillaNpcDefinitionCatalogTests.Vanilla_initial_lifecycle_defaults_are_explicit [< 1 ms]
+2382-  Passed TerraRuntime.Tests.VanillaNpcDefinitionCatalogTests.Vanilla_role_metadata_distinguishes_boss_from_ordinary_npcs [< 1 ms]
+2383-  Passed TerraRuntime.Tests.VanillaNpcDefinitionCatalogTests.King_slime_initial_hitbox_applies_source_scale_with_vanilla_flooring [< 1 ms]
+2384-  Passed TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_creates_canonical_small_world_without_crashing [10 s]
+2385-  Passed TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_is_registered_and_builds_required_progression_geography [587 ms]
+2386-  Passed TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_small_generation_produces_valid_metadata_and_terrain [10 s]
+2387-  Passed TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Built_in_source_resolves_vanilla_provider [< 1 ms]
+2388-  Passed TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Same_request_produces_deterministic_workspace_hash [28 ms]
+2389-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_accepts_canonical_generated_world [10 s]
+2390-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_rejects_invalid_tile_type [3 ms]
+2391-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_rejects_duplicate_chest [< 1 ms]
+2392-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_rejects_spawn_outside_world [< 1 ms]
+2393-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_rejects_orphan_chest_anchor [< 1 ms]
+2394-  Passed TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_detects_ocean_bounds_violation_for_canonical [161 ms]
+2395-  Passed TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_replays_deterministically_for_same_seed [451 ms]
 2396-Finished test session.
 2397-
 2398:Test Run Failed.
 2399-Total tests: 2367
 2400-     Passed: 2364
 2401:     Failed: 3
-2402- Total time: 16.2681 Seconds
+2402- Total time: 18.1397 Seconds
