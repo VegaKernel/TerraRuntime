@@ -9,7 +9,7 @@ namespace TerraRuntime.TerminalUI;
 internal sealed class TerminalUiHost : IDisposable
 {
     private static readonly long RefreshIntervalTicks = Math.Max(1L, Stopwatch.Frequency / 2);
-    private static readonly TimeSpan UiPumpInterval = TimeSpan.FromMilliseconds(25);
+    private static readonly TimeSpan UiPumpInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly IRuntimeDashboardOperations dashboardOperations;
     private readonly IPlayerOperations playerOperations;
@@ -87,6 +87,8 @@ internal sealed class TerminalUiHost : IDisposable
 
     internal static string? ResolveProductionDriverName(bool isWindows) =>
         isWindows ? DriverRegistry.Names.DOTNET : null;
+
+    internal static TimeSpan UiPumpIntervalForTests => UiPumpInterval;
 
     public void Dispose()
     {
