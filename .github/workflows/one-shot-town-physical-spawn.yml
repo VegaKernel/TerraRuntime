@@ -62,10 +62,13 @@ jobs:
         run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
           --filter 'FullyQualifiedName~RuntimeTownNpcPhysicalSpawn1458Tests|FullyQualifiedName~RuntimeTownNpcRoomAwareSelection1458Tests|FullyQualifiedName~RuntimeTownNpcHomelessRelocation1458Tests|FullyQualifiedName~RuntimeTownNpcSittingSchedule1458Tests'
-      - name: Commit verified functional tree
+      - name: Commit verified non-workflow functional tree
         shell: bash
         run: |
           set -euo pipefail
+          git restore .github/workflows/one-shot-town-physical-spawn.yml
+          git restore .github/workflows/town-movein-schedule-source-contract.yml
+          git restore tools/ci/.town-physical-part-*.txt
           git config user.name Xekep
           git config user.email Xekep@users.noreply.github.com
           git add -A
