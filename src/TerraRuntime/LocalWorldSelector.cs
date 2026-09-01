@@ -133,7 +133,7 @@ internal static class LocalWorldSelector
                     return true;
                 }
 
-                Console.Error.WriteLine("That path is not an existing .wld file.");
+                ClearAndReportRetry("That path is not an existing .wld file.");
                 continue;
             }
 
@@ -145,11 +145,17 @@ internal static class LocalWorldSelector
                 return true;
             }
 
-            Console.Error.WriteLine(
+            ClearAndReportRetry(
                 allowCreation
                     ? "Select a world number, N to create, P for an explicit path, R to refresh, or Q to quit."
                     : "Select a world number, P for an explicit path, R to refresh, or Q to quit.");
         }
+    }
+
+    private static void ClearAndReportRetry(string message)
+    {
+        StartupConsolePresentation.ClearForTransition();
+        Console.Error.WriteLine(message);
     }
 
     private static void PrintMenu(
