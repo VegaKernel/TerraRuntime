@@ -1,0 +1,54 @@
+name: Apply live NPC combat block
+
+on:
+  push:
+    branches:
+      - work/npc-boss-ai-live-combat
+    paths:
+      - tools/ci/apply_live_npc_combat.py
+      - .github/workflows/apply-live-npc-combat.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: work/npc-boss-ai-live-combat
+          fetch-depth: 0
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Apply prepared combat patch
+        run: python3 tools/ci/apply_live_npc_combat.py
+
+      - name: Validate bilingual documentation
+        run: python3 tools/ci/check_documentation.py
+
+      - name: Restore
+        run: dotnet restore TerraRuntime.slnx
+
+      - name: Build
+        run: dotnet build TerraRuntime.slnx -c Release --no-restore
+
+      - name: Focused NPC combat tests
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~NpcDamage|FullyQualifiedName~KingSlime|FullyQualifiedName~ProjectileLifecycleFrameSink"
+
+      - name: Full tests
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+
+      - name: Commit applied block
+        run: |
+          git config user.name "Xekep"
+          git config user.email "Xekep@users.noreply.github.com"
+          git add src tests docs
+          git diff --cached --quiet && { echo "No applied changes"; exit 1; }
+          git commit -m "Wire live NPC combat and King Slime difficulty loot"
+          git push origin HEAD:work/npc-boss-ai-live-combat
