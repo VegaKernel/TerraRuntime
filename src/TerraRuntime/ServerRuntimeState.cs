@@ -55,6 +55,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly RuntimeTownNpcStateStore? _townNpcs;
     private readonly RuntimeWorldProgressionMutations? _worldProgression;
     private readonly RuntimeTownNpcRescueService1458? _townRescue;
+    private readonly RuntimePurificationPowderNpcInteraction1458? _purificationPowderNpcInteractions;
+    private readonly RuntimeMysticFrogCatchService1458? _mysticFrogCatch;
     private readonly RuntimeTownCommerceResolver1458? _townCommerce;
     private readonly VanillaHousingValidator1458? _housingValidator;
     private readonly RuntimeTownNpcMoveInCoordinator1458? _townMoveIn;
@@ -147,6 +149,13 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _townRescue = townNpcs is not null && _worldProgression is not null
             ? new RuntimeTownNpcRescueService1458(_npcs, townNpcs, _worldProgression)
             : null;
+        _mysticFrogCatch = worldTiles is not null
+            ? new RuntimeMysticFrogCatchService1458(_npcs, worldTiles, this)
+            : null;
+        _purificationPowderNpcInteractions = townNpcs is not null && _worldProgression is not null && _townRescue is not null
+            ? new RuntimePurificationPowderNpcInteraction1458(
+                _npcs, _projectiles, townNpcs, _townRescue, _worldProgression, townSpawnWorldFacts?.InfectedSeed ?? false)
+            : null;
         _townCommerce = worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 commerceFacts
             ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, _npcs, in commerceFacts)
             : null;
@@ -164,6 +173,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 var houseIndex = new RuntimeTownHouseCandidateIndex1458(worldTiles, _housingValidator);
                 RuntimeWorldProgressionMutations progression = _worldProgression ?? RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
                 progression.SetTruffleSpawnBaseline(facts.UnlockedTruffleSpawn);
+                progression.SetSlimeYellowSpawnBaseline(facts.UnlockedSlimeYellowSpawn);
                 RuntimeTownRescueFacts1458 rescuedBaseline = RuntimeTownRescueFacts1458.None;
                 if (facts.SavedGoblin) rescuedBaseline |= RuntimeTownRescueFacts1458.Goblin;
                 if (facts.SavedWizard) rescuedBaseline |= RuntimeTownRescueFacts1458.Wizard;
@@ -580,6 +590,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         if (_projectileStepper is not null)
         {
             LastProjectileTick = _projectileExecutor.Tick(_projectileStepper);
+            _purificationPowderNpcInteractions?.Tick();
             AppliedProjectileReflections += _projectileReflections.Tick();
         }
         TickInstancedItemLeases();
@@ -1428,10 +1439,11 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             return;
         }
 
-        // Terraria 1.4.5.8 Mystic Frog (687) teleports instead of becoming an item. That special transform is
-        // deliberately left to its own N4 special-NPC slice; packet 70 must not incorrectly despawn it here.
         if (VanillaNpcCatchCatalog1458.IsMysticFrog(npcType))
+        {
+            _mysticFrogCatch?.TryApply(npc.Handle, out _);
             return;
+        }
 
         if (npc.Simulation.SpawnedFromStatue)
         {

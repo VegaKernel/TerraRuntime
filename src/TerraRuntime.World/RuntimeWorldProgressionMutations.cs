@@ -27,9 +27,16 @@ public readonly record struct RuntimeWorldProgressionMutationSnapshot(ulong Comp
 
     public bool UnlockTruffleSpawn { get; init; }
 
+    public bool UnlockSlimeYellowSpawn { get; init; }
+
     public RuntimeTownRescueFacts1458 RescuedTownNpcs { get; init; }
 
-    public bool HasAny => CompletedMask != 0 || UnlockSlimeBlueSpawn || UnlockTruffleSpawn || RescuedTownNpcs != RuntimeTownRescueFacts1458.None;
+    public bool HasAny =>
+        CompletedMask != 0 ||
+        UnlockSlimeBlueSpawn ||
+        UnlockTruffleSpawn ||
+        UnlockSlimeYellowSpawn ||
+        RescuedTownNpcs != RuntimeTownRescueFacts1458.None;
 
     public bool IsCompleted(VanillaWorldProgressionId milestone)
     {
@@ -51,6 +58,8 @@ public sealed class RuntimeWorldProgressionMutations
     private bool unlockSlimeBlueSpawn;
     private bool baselineTruffleSpawnUnlocked;
     private bool unlockTruffleSpawn;
+    private bool baselineSlimeYellowSpawnUnlocked;
+    private bool unlockSlimeYellowSpawn;
     private RuntimeTownRescueFacts1458 baselineRescuedTownNpcs;
     private RuntimeTownRescueFacts1458 rescuedTownNpcs;
 
@@ -103,6 +112,23 @@ public sealed class RuntimeWorldProgressionMutations
         return true;
     }
 
+    public void SetSlimeYellowSpawnBaseline(bool unlocked)
+    {
+        if (unlocked)
+            baselineSlimeYellowSpawnUnlocked = true;
+    }
+
+    public bool IsSlimeYellowSpawnUnlocked => baselineSlimeYellowSpawnUnlocked || unlockSlimeYellowSpawn;
+
+    public bool MarkSlimeYellowSpawnUnlocked()
+    {
+        if (IsSlimeYellowSpawnUnlocked)
+            return false;
+
+        unlockSlimeYellowSpawn = true;
+        return true;
+    }
+
     public void SetTownRescueBaseline(RuntimeTownRescueFacts1458 facts)
     {
         if ((facts & ~RuntimeTownRescueFacts1458.All) != 0)
@@ -126,6 +152,7 @@ public sealed class RuntimeWorldProgressionMutations
         {
             UnlockSlimeBlueSpawn = unlockSlimeBlueSpawn,
             UnlockTruffleSpawn = unlockTruffleSpawn,
+            UnlockSlimeYellowSpawn = unlockSlimeYellowSpawn,
             RescuedTownNpcs = rescuedTownNpcs
         };
 }

@@ -95,6 +95,7 @@ public static class WorldFileProgressionHeaderPatcher
         TownStateOffsets1458 townState = default;
         bool needsTownState = mutations.UnlockSlimeBlueSpawn ||
             mutations.UnlockTruffleSpawn ||
+            mutations.UnlockSlimeYellowSpawn ||
             mutations.RescuedTownNpcs != RuntimeTownRescueFacts1458.None;
         if (needsTownState && !TryLocateTownState(ref reader, out townState))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
@@ -108,6 +109,8 @@ public static class WorldFileProgressionHeaderPatcher
             patchedHeader[townState.SlimeBlueOffset] = 1;
         if (mutations.UnlockTruffleSpawn && !townState.PersistedTruffle)
             patchedHeader[townState.TruffleOffset] = 1;
+        if (mutations.UnlockSlimeYellowSpawn && !townState.PersistedSlimeYellow)
+            patchedHeader[townState.SlimeYellowOffset] = 1;
         PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Goblin, townState.SavedGoblinOffset, townState.PersistedSavedGoblin);
         PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Wizard, townState.SavedWizardOffset, townState.PersistedSavedWizard);
         PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Mechanic, townState.SavedMechanicOffset, townState.PersistedSavedMechanic);
@@ -140,7 +143,9 @@ public static class WorldFileProgressionHeaderPatcher
         int SlimeBlueOffset,
         bool PersistedSlimeBlue,
         int TruffleOffset,
-        bool PersistedTruffle);
+        bool PersistedTruffle,
+        int SlimeYellowOffset,
+        bool PersistedSlimeYellow);
 
     private static void PatchTownRescueFact(
         byte[] header,
@@ -238,6 +243,10 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out bool slimeBlue) || !reader.TrySkipBools(4)) return false;
         int truffleOffset = reader.Offset;
         if (!reader.TryReadBool(out bool truffle)) return false;
+        // arms dealer, nurse, princess, combat book II, peddler satchel, green/old/purple/rainbow/red slimes.
+        if (!reader.TrySkipBools(10)) return false;
+        int slimeYellowOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool slimeYellow)) return false;
 
         state = new TownStateOffsets1458(
             savedGoblinOffset, savedGoblin,
@@ -249,7 +258,8 @@ public static class WorldFileProgressionHeaderPatcher
             savedGolferOffset, savedGolfer,
             savedBartenderOffset, savedBartender,
             slimeBlueOffset, slimeBlue,
-            truffleOffset, truffle);
+            truffleOffset, truffle,
+            slimeYellowOffset, slimeYellow);
         return true;
     }
 

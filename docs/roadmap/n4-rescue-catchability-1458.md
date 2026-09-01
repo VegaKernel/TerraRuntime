@@ -6,6 +6,8 @@ Packet 70 (`CatchNPC`) is owned by the authoritative game loop. The runtime vali
 
 `NPCID.Sets.CountsAsCritter` is represented independently from `catchItem`, because the source contains critters that cannot be caught and catchable entities that are not classified as critters.
 
-## Explicit next boundary
+## Projectile-special NPC interactions
 
-This slice does not claim the Purification Powder projectile side effects. Demon Tax Collector (`534 -> 441`) and Mystic Frog powder transformation remain in the projectile-special-interaction slice. Packet-70 Mystic Frog capture is fail-closed here because Terraria teleports the frog instead of producing the ordinary caught item.
+The follow-up slice now owns Purification Powder (`projectile 10`) NPC side effects: Demon Tax Collector `534 -> 441` reuses the generation-safe rescue transaction and journals `savedTaxCollector`; Mystic Frog `687 -> 683` becomes the Yellow Town Slime and journals `unlockedSlimeYellowSpawn`. The powder hitbox is source-pinned at 64x64, expanding to 106x106 in infected-seed worlds.
+
+Packet 70 now owns the Mystic Frog special path too. It searches the source-shaped 15-tile teleport range with an 8-tile player telefrag exclusion and preserves the NPC generation on a successful teleport; if no legal tile is found after the vanilla 100 attempts, the frog is authoritatively despawned without producing a captured item. Teleport/smoke visuals remain presentation-only and do not alter the authoritative gameplay transaction.
