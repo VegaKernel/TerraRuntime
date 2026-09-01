@@ -1,0 +1,48 @@
+name: Town QuickFindHome Source Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/VanillaHousingValidator1458.cs'
+      - 'src/TerraRuntime/RuntimeTownNpcStateStore.cs'
+      - 'src/TerraRuntime/RuntimeTownNpcQuickFindHome1458.cs'
+      - 'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeTownNpcQuickFindHome1458Tests.cs'
+      - 'tools/ci/check_town_quick_find_home_source.py'
+      - 'tools/decompile-reference.sh'
+      - '.github/workflows/town-quick-find-home-source-contract.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime/VanillaHousingValidator1458.cs'
+      - 'src/TerraRuntime/RuntimeTownNpcStateStore.cs'
+      - 'src/TerraRuntime/RuntimeTownNpcQuickFindHome1458.cs'
+      - 'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeTownNpcQuickFindHome1458Tests.cs'
+      - 'tools/ci/check_town_quick_find_home_source.py'
+      - 'tools/decompile-reference.sh'
+      - '.github/workflows/town-quick-find-home-source-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Decompile pinned TerrariaServer 1.4.5.8
+        run: bash tools/decompile-reference.sh 1458
+      - name: Verify Town QuickFindHome source contract
+        shell: bash
+        run: |
+          python3 tools/ci/check_town_quick_find_home_source.py \
+            --worldgen decompiled/1458/Terraria/WorldGen.cs \
+            --main decompiled/1458/Terraria/Main.cs \
+            --npc decompiled/1458/Terraria/NPC.cs

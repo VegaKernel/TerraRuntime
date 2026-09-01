@@ -43,13 +43,11 @@ internal sealed class RuntimeTownNpcStateStore
     private readonly Dictionary<int, WorldTownRoom> roomsByNpcType = [];
     private readonly List<int> roomNpcTypeOrder = [];
     private readonly WorldDimensions dimensions;
-    private readonly VanillaTownNpcIdentityResolver1458 identityResolver;
 
     public RuntimeTownNpcStateStore(
         WorldNpcPersistence source,
         IReadOnlyList<WorldTownRoom> rooms,
-        WorldDimensions dimensions,
-        VanillaTownNpcIdentityResolver1458? identityResolver = null)
+        WorldDimensions dimensions)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(rooms);
@@ -57,7 +55,6 @@ internal sealed class RuntimeTownNpcStateStore
             throw new InvalidDataException($"Town NPC count {source.TownNpcs.Length} exceeds vanilla Main.maxNPCs {MaximumTownNpcs}.");
 
         this.dimensions = dimensions;
-        this.identityResolver = identityResolver ?? new VanillaTownNpcIdentityResolver1458();
         shimmeredTownNpcTypes = new SortedSet<int>(source.ShimmeredTownNpcIndices);
         persistentNpcs = source.PersistentNpcs.ToArray();
         for (short slot = 0; slot < source.TownNpcs.Length; slot++)
@@ -77,18 +74,6 @@ internal sealed class RuntimeTownNpcStateStore
 
     public bool TryGet(short slot, out WorldTownNpc npc) =>
         townNpcsBySlot.TryGetValue(slot, out npc!);
-
-    public bool TryGetIdentity(short slot, out RuntimeTownNpcIdentityCommit commit)
-    {
-        if (!townNpcsBySlot.TryGetValue(slot, out WorldTownNpc? npc))
-        {
-            commit = default;
-            return false;
-        }
-
-        commit = new RuntimeTownNpcIdentityCommit(slot, npc.GivenName, npc.TownNpcVariationIndex ?? 0);
-        return true;
-    }
 
     public bool TryGetRoom(NpcTypeId type, out WorldTownRoom room) =>
         roomsByNpcType.TryGetValue(type.Value, out room);
@@ -163,6 +148,64 @@ internal sealed class RuntimeTownNpcStateStore
         }
 
         RemoveRoom(type.Value);
+        townNpcsBySlot[slot] = npc with { Homeless = true };
+        commit = new RuntimeTownNpcHomeCommit(
+            slot,
+            type,
+            npc.HomeTileX,
+            npc.HomeTileY,
+            TerrariaNpcHomeStatus.Homeless);
+        return true;
+    }
+
+    /// <summary>
+    /// Applies WorldGen.QuickFindHome's successful NPC-local home coordinates without rewriting TownRoomManager.
+    /// Vanilla QuickFindHome mutates NPC.homeTileX/Y/homeless/homelessDespawn only; it deliberately does not call
+    /// TownManager.SetRoom, so the persisted manager assignment remains an independent source of future preference.
+    /// </summary>
+    public bool TryApplyQuickFindHome(
+        short slot,
+        in VanillaHousingPlacement placement,
+        out RuntimeTownNpcHomeCommit commit)
+    {
+        if (!placement.IsValid ||
+            !TryGetEligible(slot, out WorldTownNpc npc, out NpcTypeId type) ||
+            !IsInWorld(placement.HomeTileX, placement.HomeTileY) ||
+            placement.HomeTileX > short.MaxValue ||
+            placement.HomeTileY > short.MaxValue)
+        {
+            commit = default;
+            return false;
+        }
+
+        townNpcsBySlot[slot] = npc with
+        {
+            Homeless = false,
+            HomeTileX = placement.HomeTileX,
+            HomeTileY = placement.HomeTileY,
+            HomelessDespawn = false
+        };
+        commit = new RuntimeTownNpcHomeCommit(
+            slot,
+            type,
+            placement.HomeTileX,
+            placement.HomeTileY,
+            TerrariaNpcHomeStatus.HasRoom);
+        return true;
+    }
+
+    /// <summary>
+    /// Applies QuickFindHome failure without kicking the NPC from TownRoomManager. Vanilla sets only NPC.homeless here;
+    /// manual kickOut is the separate operation that removes the manager room and arms lookForHomeTimeout.
+    /// </summary>
+    public bool TryMarkQuickFindHomeless(short slot, out RuntimeTownNpcHomeCommit commit)
+    {
+        if (!TryGetEligible(slot, out WorldTownNpc npc, out NpcTypeId type))
+        {
+            commit = default;
+            return false;
+        }
+
         townNpcsBySlot[slot] = npc with { Homeless = true };
         commit = new RuntimeTownNpcHomeCommit(
             slot,
@@ -279,19 +322,16 @@ internal sealed class RuntimeTownNpcStateStore
             return false;
         }
 
-        VanillaTownNpcSpawnIdentity1458 identity = identityResolver.Resolve(
-            type,
-            shimmeredTownNpcTypes.Contains(type.Value));
         short slot = snapshot.Handle.Slot;
         townNpcsBySlot[slot] = new WorldTownNpc(
             type.Value,
-            identity.GivenName,
+            string.Empty,
             snapshot.PositionX,
             snapshot.PositionY,
             Homeless: false,
             placement.HomeTileX,
             placement.HomeTileY,
-            TownNpcVariationIndex: identity.VariationIndex,
+            TownNpcVariationIndex: null,
             HomelessDespawn: false);
         SetRoom(new WorldTownRoom(type.Value, placement.HomeTileX, placement.HomeTileY));
         homeCommit = new RuntimeTownNpcHomeCommit(

@@ -27,11 +27,12 @@ internal interface IRuntimeTownNpcArrivalSink1458
 }
 
 /// <summary>
-/// Authoritative bridge from UpdateTime_SpawnTownNPCs into room-aware materialization. Existing homeless residents
-/// retain first priority. New residents preserve the source SpawnTownNPC pre-materialization shape: the tested room is
-/// scored for the global prioritized type, IsThereASpawnablePrioritizedTownNPC selects against that room's scored home,
-/// and a selected type with a TownManager room gets one guarded recursive attempt that can itself select a different
-/// resident. A failed alternate-room attempt falls back to the original tested room before physical spawn.
+/// Authoritative bridge from UpdateTime_SpawnTownNPCs into room-aware materialization. Existing housed residents are
+/// first revalidated through source-shaped QuickFindHome on the same 7200/worldUpdateRate cadence. Existing homeless
+/// residents then retain first move-in priority. New residents preserve the source SpawnTownNPC pre-materialization
+/// shape: the tested room is scored for the global prioritized type, IsThereASpawnablePrioritizedTownNPC selects
+/// against that room's scored home, and a selected type with a TownManager room gets one guarded recursive attempt
+/// that can itself select a different resident. A failed alternate-room attempt falls back to the original tested room.
 /// </summary>
 internal sealed class RuntimeTownNpcMoveInCoordinator1458
 {
@@ -41,6 +42,7 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
     private readonly RuntimeNpcStore npcs;
     private readonly RuntimeNpcReplicationRegistry? replication;
     private readonly RuntimeTownHouseCandidateIndex1458 houses;
+    private readonly RuntimeTownNpcQuickFindHome1458 quickFindHome;
     private readonly VanillaTownNpcSpawnCadence1458 cadence = new();
     private readonly VanillaTownSpawnWorldFacts1458 worldFacts;
     private readonly IRuntimeTownNpcArrivalSink1458? arrivals;
@@ -66,6 +68,7 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         this.npcs = npcs;
         this.houses = houses;
         houses.SetTruffleUnlocked(worldFacts.UnlockedTruffleSpawn || townNpcs.ContainsNpcType(VanillaNpcIds.Truffle));
+        quickFindHome = new RuntimeTownNpcQuickFindHome1458(townNpcs, npcs, houses.Validator, houses.Tiles);
         this.worldFacts = worldFacts;
         this.replication = replication;
         this.arrivals = arrivals;
@@ -80,6 +83,10 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
 
     public long SuccessfulRelocations { get; private set; }
 
+    public long SuccessfulHomeRevalidations { get; private set; }
+
+    public long InvalidatedHomes { get; private set; }
+
     public void Tick(
         in RuntimeTownNpcMoveInConditions1458 conditions,
         ReadOnlySpan<VanillaTownSpawnPlayerFacts1458> players) =>
@@ -92,7 +99,15 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
     {
         AdvanceLookForHomeTimeoutsAndObserveKickOuts();
         houses.Scan(HouseScanBudgetPerTick);
-        if (!conditions.AllowsMoveIn || !cadence.Advance(conditions.WorldUpdateRate))
+
+        // Main.UpdateTime_SpawnTownNPCs advances checkForSpawns whenever worldUpdateRate > 0. QuickFindHome runs on
+        // that cadence before daytime/invasion spawn eligibility is consumed, so existing homes are revalidated at
+        // night and during blocked move-in windows too.
+        if (!cadence.Advance(conditions.WorldUpdateRate))
+            return;
+
+        RefreshExistingHomes();
+        if (!conditions.AllowsMoveIn)
             return;
 
         VanillaHousingOccupant[] occupants = townNpcs.CaptureHousingOccupants();
@@ -198,6 +213,36 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         selectedType = default;
         selectedPlacement = default;
         return false;
+    }
+
+    private void RefreshExistingHomes()
+    {
+        Span<RuntimeTownNpcHomeCommit> homes = stackalloc RuntimeTownNpcHomeCommit[RuntimeTownNpcStateStore.MaximumTownNpcs];
+        int count = townNpcs.CopyHomeBaselines(homes);
+        for (int i = 0; i < count; i++)
+        {
+            RuntimeTownNpcHomeCommit current = homes[i];
+            if (current.Status == TerrariaNpcHomeStatus.Homeless)
+                continue;
+
+            RuntimeTownNpcQuickFindHomeResult1458 result = quickFindHome.Refresh(
+                current.NpcSlot,
+                out RuntimeTownNpcHomeCommit commit);
+            if (result is not RuntimeTownNpcQuickFindHomeResult1458.Reassigned and
+                not RuntimeTownNpcQuickFindHomeResult1458.BecameHomeless)
+            {
+                continue;
+            }
+
+            // QuickFindHome homelessness is not a manual kickout and must not arm the 3600-tick timeout on the next
+            // observation pass. Update the shadow immediately so AdvanceLookForHomeTimeouts sees the source transition.
+            previousHomeStatuses[current.NpcSlot] = commit.Status;
+            replication?.TryPublishTownHome(in commit);
+            if (result == RuntimeTownNpcQuickFindHomeResult1458.Reassigned)
+                SuccessfulHomeRevalidations++;
+            else
+                InvalidatedHomes++;
+        }
     }
 
     private bool TryResolveSpawnCandidate(

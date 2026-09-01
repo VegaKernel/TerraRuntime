@@ -34,9 +34,10 @@ internal readonly record struct VanillaHousingOccupant(
     int HomeTileY);
 
 /// <summary>
-/// Source-shaped clean-room implementation of the TerrariaServer 1.4.5.8 MoveTownNPC room check. It imports the
-/// pinned StartRoomCheck flood bounds, house-wall continuity, RoomNeeds sets, stinkbug gate, evil-room score and
-/// ScoreRoom standing-spot selection and housing-category occupancy compatibility.
+/// Source-shaped clean-room implementation of the TerrariaServer 1.4.5.8 MoveTownNPC/QuickFindHome room checks. It
+/// imports the pinned StartRoomCheck flood bounds, house-wall continuity, RoomNeeds sets, stinkbug gate, evil-room
+/// score, ScoreRoom standing-spot selection and housing-category occupancy compatibility. QuickFindHome temporarily
+/// treats tile 379 as solid exactly like vanilla without mutating the global collision catalog.
 /// </summary>
 internal sealed class VanillaHousingValidator1458
 {
@@ -66,6 +67,13 @@ internal sealed class VanillaHousingValidator1458
         Contains(TorchTypes, type) ||
         Contains(DoorTypes, type);
 
+    internal static bool IsStartRoomCheckFailure(VanillaHousingValidationResult result) =>
+        result is VanillaHousingValidationResult.TooCloseToWorldEdge or
+            VanillaHousingValidationResult.StartedInSolidTile or
+            VanillaHousingValidationResult.RoomTooBig or
+            VanillaHousingValidationResult.RoomTooSmall or
+            VanillaHousingValidationResult.MissingOrUnsafeWall;
+
     private static bool Contains(ReadOnlySpan<int> values, int value)
     {
         foreach (int candidate in values)
@@ -80,7 +88,22 @@ internal sealed class VanillaHousingValidator1458
         int startX,
         int startY,
         NpcTypeId npcType,
-        ReadOnlySpan<VanillaHousingOccupant> occupants = default)
+        ReadOnlySpan<VanillaHousingOccupant> occupants = default) =>
+        ValidateCore(startX, startY, npcType, occupants, treatTile379AsSolid: false);
+
+    internal VanillaHousingPlacement ValidateQuickFindHome(
+        int startX,
+        int startY,
+        NpcTypeId npcType,
+        ReadOnlySpan<VanillaHousingOccupant> occupants = default) =>
+        ValidateCore(startX, startY, npcType, occupants, treatTile379AsSolid: true);
+
+    private VanillaHousingPlacement ValidateCore(
+        int startX,
+        int startY,
+        NpcTypeId npcType,
+        ReadOnlySpan<VanillaHousingOccupant> occupants,
+        bool treatTile379AsSolid)
     {
         if (!VanillaTownNpcFacts1458.TryGetHousingCategory(npcType, out int housingCategory))
             return new VanillaHousingPlacement(0, 0, VanillaHousingValidationResult.SpecialNpcConditionFailed);
@@ -88,7 +111,7 @@ internal sealed class VanillaHousingValidator1458
         WorldDimensions dimensions = tiles.Dimensions;
         if (!IsInsideRoomCheckBounds(startX, startY, dimensions))
             return new VanillaHousingPlacement(0, 0, VanillaHousingValidationResult.TooCloseToWorldEdge);
-        if (IsBlockingSolid(tiles.Get(startX, startY)))
+        if (IsBlockingSolid(tiles.Get(startX, startY), treatTile379AsSolid))
             return new VanillaHousingPlacement(0, 0, VanillaHousingValidationResult.StartedInSolidTile);
 
         var visited = new HashSet<int>();
@@ -133,12 +156,15 @@ internal sealed class VanillaHousingValidator1458
                     presentTypes[tile.Type] = true;
                 roomHasStinkbug |= tile.Type == 630;
                 roomHasEchoStinkbug |= tile.Type == 631;
-                if (IsBlockingRoomBoundary(in tile))
+                if (IsBlockingRoomBoundary(in tile, treatTile379AsSolid))
                     continue;
             }
 
-            if (!HasHorizontalHousingBoundary(x, y) || !HasVerticalHousingBoundary(x, y))
+            if (!HasHorizontalHousingBoundary(x, y, treatTile379AsSolid) ||
+                !HasVerticalHousingBoundary(x, y, treatTile379AsSolid))
+            {
                 return new VanillaHousingPlacement(0, 0, VanillaHousingValidationResult.MissingOrUnsafeWall);
+            }
 
             for (int dx = -1; dx <= 1; dx++)
             {
@@ -198,10 +224,10 @@ internal sealed class VanillaHousingValidator1458
         {
             for (int y = roomY1 + 2; y < roomY2 + 2; y++)
             {
-                if (!IsValidStandingFloor(x, y, roomTiles, dimensions))
+                if (!IsValidStandingFloor(x, y, roomTiles, dimensions, treatTile379AsSolid))
                     continue;
 
-                int score = ScoreStandingSpot(x, y, baseScore, sharedRoomX);
+                int score = ScoreStandingSpot(x, y, baseScore, sharedRoomX, treatTile379AsSolid);
                 if (score > 0)
                     hasStandingSpace = true;
                 if (score <= bestScore)
@@ -277,7 +303,8 @@ internal sealed class VanillaHousingValidator1458
             for (int y = startY; y <= endY; y++)
             {
                 WorldTile tile = tiles.Get(x, y);
-                if (!IsNActive(in tile))
+                // WorldGen.CountTileTypesInArea uses Tile.active(), not nactive(): actuated evil/good tiles still score.
+                if (!tile.IsActive)
                     continue;
 
                 switch (tile.Type)
@@ -304,7 +331,12 @@ internal sealed class VanillaHousingValidator1458
         return 50 - evilExcess;
     }
 
-    private int ScoreStandingSpot(int x, int y, int baseScore, int sharedRoomX)
+    private int ScoreStandingSpot(
+        int x,
+        int y,
+        int baseScore,
+        int sharedRoomX,
+        bool treatTile379AsSolid)
     {
         int score = baseScore;
         int centerColumnObjects = 0;
@@ -332,7 +364,7 @@ internal sealed class VanillaHousingValidator1458
                 {
                     score -= 20;
                 }
-                else if (!VanillaTileCollisionCatalog.IsSolid(tile.Type))
+                else if (!IsSolidType(tile.Type, treatTile379AsSolid))
                 {
                     score += 5;
                 }
@@ -352,76 +384,89 @@ internal sealed class VanillaHousingValidator1458
         return score;
     }
 
-    private bool IsValidStandingFloor(int x, int y, HashSet<int> roomTiles, WorldDimensions dimensions)
+    private bool IsValidStandingFloor(
+        int x,
+        int y,
+        HashSet<int> roomTiles,
+        WorldDimensions dimensions,
+        bool treatTile379AsSolid)
     {
         if (x <= 0 || x >= dimensions.WidthTiles - 1 || y < 3 || y >= dimensions.HeightTiles)
             return false;
         WorldTile floor = tiles.Get(x, y);
-        if (!IsNActive(in floor) || floor.Type == 379 || !VanillaTileCollisionCatalog.IsSolid(floor.Type))
+        if (!IsNActive(in floor) || floor.Type == 379 || !IsSolidType(floor.Type, treatTile379AsSolid))
             return false;
-        if (HasSolidTile(x - 1, x + 1, y - 3, y - 1))
+        if (HasSolidTile(x - 1, x + 1, y - 3, y - 1, treatTile379AsSolid))
             return false;
         WorldTile left = tiles.Get(x - 1, y);
         WorldTile right = tiles.Get(x + 1, y);
-        if (!IsNActive(in left) || !VanillaTileCollisionCatalog.IsSolid(left.Type) ||
-            !IsNActive(in right) || !VanillaTileCollisionCatalog.IsSolid(right.Type))
+        if (!IsNActive(in left) || !IsSolidType(left.Type, treatTile379AsSolid) ||
+            !IsNActive(in right) || !IsSolidType(right.Type, treatTile379AsSolid))
         {
             return false;
         }
         return IsRoomTile(roomTiles, dimensions, x, y);
     }
 
-    private bool HasSolidTile(int startX, int endX, int startY, int endY)
+    private bool HasSolidTile(
+        int startX,
+        int endX,
+        int startY,
+        int endY,
+        bool treatTile379AsSolid)
     {
         for (int x = startX; x <= endX; x++)
         {
             for (int y = startY; y <= endY; y++)
             {
                 WorldTile tile = tiles.Get(x, y);
-                if (IsNActive(in tile) && VanillaTileCollisionCatalog.IsSolid(tile.Type))
+                if (IsNActive(in tile) && IsSolidType(tile.Type, treatTile379AsSolid))
                     return true;
             }
         }
         return false;
     }
 
-    private bool HasHorizontalHousingBoundary(int x, int y)
+    private bool HasHorizontalHousingBoundary(int x, int y, bool treatTile379AsSolid)
     {
         for (int offset = -2; offset <= 2; offset++)
         {
-            if (IsHousingBoundary(tiles.Get(x + offset, y)))
+            if (IsHousingBoundary(tiles.Get(x + offset, y), treatTile379AsSolid))
                 return true;
         }
         return false;
     }
 
-    private bool HasVerticalHousingBoundary(int x, int y)
+    private bool HasVerticalHousingBoundary(int x, int y, bool treatTile379AsSolid)
     {
         for (int offset = -2; offset <= 2; offset++)
         {
-            if (IsHousingBoundary(tiles.Get(x, y + offset)))
+            if (IsHousingBoundary(tiles.Get(x, y + offset), treatTile379AsSolid))
                 return true;
         }
         return false;
     }
 
-    private static bool IsHousingBoundary(in WorldTile tile)
+    private static bool IsHousingBoundary(in WorldTile tile, bool treatTile379AsSolid)
     {
         if (VanillaWallDefinitionCatalog.TryGet(tile.WallType, out VanillaWallDefinition wall) && wall.IsHousingWall)
             return true;
         return IsNActive(in tile) &&
-            (VanillaTileCollisionCatalog.IsSolid(tile.Type) || tile.Type is 11 or 389 or 386);
+            (IsSolidType(tile.Type, treatTile379AsSolid) || tile.Type is 11 or 389 or 386);
     }
 
-    private static bool IsBlockingRoomBoundary(in WorldTile tile) =>
-        IsBlockingSolid(in tile) ||
+    private static bool IsBlockingRoomBoundary(in WorldTile tile, bool treatTile379AsSolid) =>
+        IsBlockingSolid(in tile, treatTile379AsSolid) ||
         (IsNActive(in tile) &&
          (tile.Type == 11 && tile.FrameX is 0 or 54 or 72 or 126 ||
           tile.Type == 389 ||
           tile.Type == 386 && ((tile.FrameX < 36 && tile.FrameY == 18) || (tile.FrameX >= 36 && tile.FrameY == 0))));
 
-    private static bool IsBlockingSolid(in WorldTile tile) =>
-        IsNActive(in tile) && VanillaTileCollisionCatalog.IsSolid(tile.Type);
+    private static bool IsBlockingSolid(in WorldTile tile, bool treatTile379AsSolid) =>
+        IsNActive(in tile) && IsSolidType(tile.Type, treatTile379AsSolid);
+
+    private static bool IsSolidType(int type, bool treatTile379AsSolid) =>
+        (treatTile379AsSolid && type == 379) || VanillaTileCollisionCatalog.IsSolid(new TileTypeId(type));
 
     private static bool IsNActive(in WorldTile tile) => tile.IsActive && !tile.IsActuated;
 
