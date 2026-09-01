@@ -168,6 +168,81 @@ internal static class VanillaTownNpcProjectileAttackCatalog1458
     }
 }
 
+internal readonly record struct VanillaTownNpcMeleeAttackProfile1458(
+    NpcTypeId NpcType,
+    int DangerDetectRange,
+    int AttackTime,
+    int AttackAverageChance,
+    int BaseDamage,
+    int HitboxWidth,
+    int HitboxHeight,
+    float KnockBack,
+    int RecoveryBase,
+    int RecoveryRandom);
+
+/// <summary>
+/// TerrariaServer 1.4.5.8 AI_007 AttackType=3 town melee profiles. The current source assigns this start path only
+/// to Dye Trader, Tax Collector and Stylist. IsTownPet still has a defensive state-15 body in the source, but all
+/// current town-pet identities have AttackType=-1/AttackTime=-1, so TerraRuntime intentionally does not invent a
+/// natural pet melee entry that vanilla 1.4.5.8 cannot take.
+/// </summary>
+internal static class VanillaTownNpcMeleeAttackCatalog1458
+{
+    private static readonly VanillaTownNpcMeleeAttackProfile1458 DyeTrader = new(
+        new NpcTypeId(207), 60, 15, 1, 11, 32, 32, 4.25f, 12, 6);
+    private static readonly VanillaTownNpcMeleeAttackProfile1458 TaxCollector = new(
+        new NpcTypeId(441), 50, 15, 1, 9, 28, 28, 3.5f, 9, 3);
+    private static readonly VanillaTownNpcMeleeAttackProfile1458 Stylist = new(
+        new NpcTypeId(353), 60, 12, 1, 10, 32, 32, 5f, 15, 8);
+
+    public static bool TryGet(NpcTypeId type, out VanillaTownNpcMeleeAttackProfile1458 profile)
+    {
+        if (type.Value == 207)
+        {
+            profile = DyeTrader;
+            return true;
+        }
+        if (type.Value == 441)
+        {
+            profile = TaxCollector;
+            return true;
+        }
+        if (type.Value == 353)
+        {
+            profile = Stylist;
+            return true;
+        }
+        profile = default;
+        return false;
+    }
+
+    public static bool IsSourceTownPet(NpcTypeId type) => type.Value is
+        637 or 638 or 656 or 670 or 678 or 679 or 680 or 681 or 682 or 683 or 684;
+}
+
+internal enum RuntimeTownNpcMeleeDamageResult1458 : byte
+{
+    Rejected = 0,
+    Committed = 1,
+    Killed = 2
+}
+
+internal interface IRuntimeTownNpcMeleeDamageSink1458
+{
+    RuntimeTownNpcMeleeDamageResult1458 TryStrike(
+        NpcHandle attacker,
+        NpcHandle target,
+        int baseDamage,
+        float knockBack,
+        int hitDirection);
+}
+
+internal readonly record struct VanillaTownNpcSwingRectangle1458(int X, int Y, int Width, int Height)
+{
+    public bool Intersects(float x, float y, float width, float height) =>
+        x < X + Width && x + width > X && y < Y + Height && y + height > Y;
+}
+
 internal readonly record struct RuntimeTownNpcCombatWorldFacts1458(
     VanillaWorldProgressionState BaselineProgression,
     bool CombatBookWasUsed,
@@ -208,6 +283,7 @@ internal readonly record struct RuntimeTownNpcCombatTickSummary1458(
     int AttacksStarted,
     int AttackStatesAdvanced,
     int ProjectilesSpawned,
+    int MeleeHits,
     int RejectedCommits,
     int UnsupportedTargets);
 
@@ -230,6 +306,9 @@ internal sealed class RuntimeTownNpcCombat1458
     private readonly bool masterMode;
     private readonly IRuntimeTownNpcCombatRandom1458 random;
     private readonly NpcSnapshot[] peers;
+    private readonly ulong[] meleeImmuneGenerations;
+    private readonly int[] meleeImmuneTicks;
+    private IRuntimeTownNpcMeleeDamageSink1458? meleeDamage;
 
     public RuntimeTownNpcCombat1458(
         RuntimeTownNpcStateStore townNpcs,
@@ -254,15 +333,22 @@ internal sealed class RuntimeTownNpcCombat1458
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
         this.random = random ?? SharedRuntimeTownNpcCombatRandom1458.Instance;
         peers = new NpcSnapshot[npcs.Capacity];
+        meleeImmuneGenerations = new ulong[npcs.Capacity];
+        meleeImmuneTicks = new int[npcs.Capacity];
     }
+
+    public void SetMeleeDamageSink(IRuntimeTownNpcMeleeDamageSink1458 sink) =>
+        meleeDamage = sink ?? throw new ArgumentNullException(nameof(sink));
 
     public RuntimeTownNpcCombatTickSummary1458 Tick()
     {
+        AdvanceMeleeImmunity();
         int peerCount = npcs.CopyActive(peers);
         int visited = 0;
         int started = 0;
         int advanced = 0;
         int spawned = 0;
+        int meleeHits = 0;
         int rejected = 0;
         int unsupportedTargets = 0;
 
@@ -273,11 +359,17 @@ internal sealed class RuntimeTownNpcCombat1458
             RuntimeTownNpcHomeCommit resident = roster[index];
             if ((uint)resident.NpcSlot > byte.MaxValue ||
                 !npcs.TryGetActive(checked((byte)resident.NpcSlot), out NpcSnapshot source) ||
-                !NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType) ||
-                !VanillaTownNpcProjectileAttackCatalog1458.TryGet(sourceType, out VanillaTownNpcProjectileAttackProfile1458 profile))
+                !NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType))
             {
                 continue;
             }
+
+            bool projectileAttack = VanillaTownNpcProjectileAttackCatalog1458.TryGet(
+                sourceType, out VanillaTownNpcProjectileAttackProfile1458 projectileProfile);
+            bool meleeAttack = VanillaTownNpcMeleeAttackCatalog1458.TryGet(
+                sourceType, out VanillaTownNpcMeleeAttackProfile1458 meleeProfile);
+            if (!projectileAttack && !meleeAttack)
+                continue;
 
             visited++;
             NpcSimulationState simulation = source.Simulation;
@@ -285,16 +377,24 @@ internal sealed class RuntimeTownNpcCombat1458
             if (localAi.Ai1 > 0f)
                 localAi = localAi with { Ai1 = localAi.Ai1 - 1f };
 
-            bool hasTarget = TrySelectTarget(in source, in profile, peers.AsSpan(0, peerCount), out NpcSnapshot target, out int direction);
+            int dangerDetectRange = projectileAttack
+                ? projectileProfile.DangerDetectRange
+                : meleeProfile.DangerDetectRange;
+            bool hasTarget = TrySelectTarget(
+                in source,
+                dangerDetectRange,
+                peers.AsSpan(0, peerCount),
+                out NpcSnapshot target,
+                out int direction);
             if (!hasTarget)
                 unsupportedTargets++;
 
-            if (source.Ai.Ai0 == profile.AttackState)
+            if (projectileAttack && source.Ai.Ai0 == projectileProfile.AttackState)
             {
                 if (!TryAdvanceAttack(
                         in source,
                         sourceType,
-                        in profile,
+                        in projectileProfile,
                         hasTarget ? target : default,
                         hasTarget,
                         direction,
@@ -308,6 +408,26 @@ internal sealed class RuntimeTownNpcCombat1458
                     advanced++;
                     if (projectileSpawned)
                         spawned++;
+                }
+                continue;
+            }
+
+            if (meleeAttack && source.Ai.Ai0 == 15f)
+            {
+                if (!TryAdvanceMeleeAttack(
+                        in source,
+                        sourceType,
+                        in meleeProfile,
+                        peers.AsSpan(0, peerCount),
+                        localAi,
+                        out int committedHits))
+                {
+                    rejected++;
+                }
+                else
+                {
+                    advanced++;
+                    meleeHits += committedHits;
                 }
                 continue;
             }
@@ -332,20 +452,26 @@ internal sealed class RuntimeTownNpcCombat1458
                 continue;
             }
 
-            if (profile.Kind == VanillaTownNpcProjectileAttackKind1458.Straight &&
+            if (projectileAttack &&
+                projectileProfile.Kind == VanillaTownNpcProjectileAttackKind1458.Straight &&
                 !HasStraightAttackAngle(in source, in target))
             {
                 continue;
             }
 
-            int chance = GetAttackChance(profile.AttackAverageChance);
+            int averageChance = projectileAttack
+                ? projectileProfile.AttackAverageChance
+                : meleeProfile.AttackAverageChance;
+            int chance = GetAttackChance(averageChance);
             if (random.Next(chance) != 0)
                 continue;
 
+            float attackState = projectileAttack ? projectileProfile.AttackState : 15f;
+            int attackTime = projectileAttack ? projectileProfile.AttackTime : meleeProfile.AttackTime;
             NpcAiState attackAi = source.Ai with
             {
-                Ai0 = profile.AttackState,
-                Ai1 = profile.AttackTime,
+                Ai0 = attackState,
+                Ai1 = attackTime,
                 Ai2 = 0f
             };
             NpcSimulationState attackSimulation = source.Simulation with
@@ -375,6 +501,7 @@ internal sealed class RuntimeTownNpcCombat1458
             started,
             advanced,
             spawned,
+            meleeHits,
             rejected,
             unsupportedTargets);
     }
@@ -508,6 +635,231 @@ internal sealed class RuntimeTownNpcCombat1458
         return true;
     }
 
+    private bool TryAdvanceMeleeAttack(
+        in NpcSnapshot source,
+        NpcTypeId sourceType,
+        in VanillaTownNpcMeleeAttackProfile1458 profile,
+        ReadOnlySpan<NpcSnapshot> candidates,
+        NpcAiState localAi,
+        out int committedHits)
+    {
+        committedHits = 0;
+        int direction = source.Simulation.SpriteDirection is -1 or 1
+            ? source.Simulation.SpriteDirection
+            : source.Simulation.DirectionX is -1 or 1 ? source.Simulation.DirectionX : 1;
+        float nextAi1 = source.Ai.Ai1 - 1f;
+        NpcAiState nextAi = source.Ai with { Ai1 = nextAi1 };
+        NpcSimulationState nextSimulation = source.Simulation with
+        {
+            DirectionX = direction,
+            SpriteDirection = direction,
+            LocalAi = localAi
+        };
+
+        if (nextAi1 <= 0f)
+        {
+            int nextDelay = profile.RecoveryBase + random.Next(profile.RecoveryRandom);
+            int localDelay = profile.RecoveryBase / 2 + random.Next(profile.RecoveryRandom);
+            float returnState = localAi.Ai2 == 8f ? 8f : 0f;
+            nextAi = nextAi with { Ai0 = returnState, Ai1 = nextDelay, Ai2 = 0f };
+            nextSimulation = nextSimulation with
+            {
+                LocalAi = localAi with { Ai1 = localDelay, Ai3 = localDelay }
+            };
+        }
+
+        var update = SnapshotUpdate(
+            in source,
+            nextAi,
+            nextSimulation,
+            source.VelocityX * 0.8f,
+            source.VelocityY);
+        if (!npcs.TryUpdate(source.Handle, in update, out NpcSnapshot committedSource))
+            return false;
+
+        if (meleeDamage is null ||
+            !TryGetSwingRectangle(
+                in committedSource,
+                profile.AttackTime * 2,
+                checked((int)nextAi1),
+                direction,
+                profile.HitboxWidth,
+                profile.HitboxHeight,
+                out VanillaTownNpcSwingRectangle1458 swing))
+        {
+            return true;
+        }
+
+        int baseDamage = profile.BaseDamage;
+        float knockBack = profile.KnockBack;
+        if (sourceType.Value == 441 &&
+            townNpcs.TryGet(checked((short)source.Handle.Slot), out WorldTownNpc persisted) &&
+            string.Equals(persisted.GivenName, "Andrew", StringComparison.Ordinal))
+        {
+            baseDamage *= 2;
+            knockBack *= 2f;
+        }
+        int damage = GetAttackDamage(baseDamage);
+
+        foreach (NpcSnapshot candidate in candidates)
+        {
+            if (!IsEligibleMeleeTarget(in committedSource, in candidate, in swing) || IsMeleeImmune(in candidate))
+                continue;
+
+            RuntimeTownNpcMeleeDamageResult1458 result = meleeDamage.TryStrike(
+                committedSource.Handle,
+                candidate.Handle,
+                damage,
+                knockBack,
+                direction);
+            if (result == RuntimeTownNpcMeleeDamageResult1458.Rejected)
+                continue;
+
+            int immunity = Math.Max(1, checked((int)nextAi1 + 2));
+            SetMeleeImmunity(in candidate, immunity);
+            committedHits++;
+        }
+        return true;
+    }
+
+    private bool IsEligibleMeleeTarget(
+        in NpcSnapshot source,
+        in NpcSnapshot candidate,
+        in VanillaTownNpcSwingRectangle1458 swing)
+    {
+        if (!candidate.IsActive || candidate.Handle == source.Handle ||
+            !NpcTypeId.TryCreate(candidate.Type, out NpcTypeId candidateType) ||
+            VanillaTownNpcFacts1458.IsHousingEligible(candidateType) ||
+            !VanillaNpcDefinitionCatalog.TryGet(candidateType, candidate.NetIdentity, out VanillaNpcDefinition definition) ||
+            definition.Damage <= 0 || candidate.Simulation.DontTakeDamage ||
+            !definition.TryResolveHitbox(candidate.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !swing.Intersects(candidate.PositionX, candidate.PositionY, hitbox.Width, hitbox.Height))
+        {
+            return false;
+        }
+
+        if (candidate.Simulation.NoTileCollide)
+            return true;
+        return VanillaWorldLineOfSight.CanHitLine(
+            tiles,
+            source.PositionX,
+            source.PositionY,
+            candidate.PositionX,
+            candidate.PositionY);
+    }
+
+    internal static bool TryGetSwingRectangle(
+        in NpcSnapshot source,
+        int swingMax,
+        int swingCurrent,
+        int aimDir,
+        int itemWidth,
+        int itemHeight,
+        out VanillaTownNpcSwingRectangle1458 rectangle)
+    {
+        if (swingMax <= 0 || aimDir is not (-1 or 1) || itemWidth <= 0 || itemHeight <= 0 ||
+            !VanillaTownNpcDefinitionCatalogBridge.TryGetHitbox(in source, out VanillaNpcHitboxSize hitbox))
+        {
+            rectangle = default;
+            return false;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * 0.5f;
+        float zeroX;
+        float zeroY;
+        if ((double)swingCurrent < swingMax * 0.333)
+        {
+            float offset = itemWidth > 32 ? 14f : 10f;
+            if (itemWidth >= 52) offset = 24f;
+            if (itemWidth >= 64) offset = 28f;
+            if (itemWidth >= 92) offset = 38f;
+            zeroX = centerX + (itemWidth * 0.5f - offset) * aimDir;
+            zeroY = source.PositionY + 24f;
+        }
+        else if ((double)swingCurrent < swingMax * 0.666)
+        {
+            float offset = itemWidth > 32 ? 18f : 10f;
+            if (itemWidth >= 52) offset = 24f;
+            if (itemWidth >= 64) offset = 28f;
+            if (itemWidth >= 92) offset = 38f;
+            zeroX = centerX + (itemWidth * 0.5f - offset) * aimDir;
+            float yOffset = itemHeight > 32 ? 8f : 10f;
+            if (itemHeight > 52) yOffset = 12f;
+            if (itemHeight > 64) yOffset = 14f;
+            zeroY = source.PositionY + yOffset;
+        }
+        else
+        {
+            float offset = itemWidth > 32 ? 14f : 6f;
+            if (itemWidth >= 48) offset = 18f;
+            if (itemWidth >= 52) offset = 24f;
+            if (itemWidth >= 64) offset = 28f;
+            if (itemWidth >= 92) offset = 38f;
+            zeroX = centerX - (itemWidth * 0.5f - offset) * aimDir;
+            float yOffset = 10f;
+            if (itemHeight > 52) yOffset = 12f;
+            if (itemHeight > 64) yOffset = 14f;
+            zeroY = source.PositionY + yOffset;
+        }
+
+        int x = (int)zeroX;
+        int y = (int)zeroY;
+        int width = itemWidth;
+        int height = itemHeight;
+        if (aimDir == -1)
+            x -= itemWidth;
+        y -= itemHeight;
+
+        if ((double)swingCurrent < swingMax * 0.333)
+        {
+            if (aimDir == -1)
+                x -= (int)(width * 1.4 - width);
+            width = (int)(width * 1.4);
+            y += (int)(height * 0.5);
+            height = (int)(height * 1.1);
+        }
+        else if (!((double)swingCurrent < swingMax * 0.666))
+        {
+            if (aimDir == 1)
+                x -= (int)(width * 1.2);
+            width *= 2;
+            y -= (int)(height * 1.4 - height);
+            height = (int)(height * 1.4);
+        }
+
+        rectangle = new VanillaTownNpcSwingRectangle1458(x, y, width, height);
+        return true;
+    }
+
+    private void AdvanceMeleeImmunity()
+    {
+        for (int slot = 0; slot < meleeImmuneTicks.Length; slot++)
+        {
+            if (meleeImmuneTicks[slot] > 0)
+                meleeImmuneTicks[slot]--;
+        }
+    }
+
+    private bool IsMeleeImmune(in NpcSnapshot target)
+    {
+        int slot = target.Handle.Slot;
+        ulong generation = target.Handle.Generation.Value;
+        if (meleeImmuneGenerations[slot] != generation)
+        {
+            meleeImmuneGenerations[slot] = generation;
+            meleeImmuneTicks[slot] = 0;
+            return false;
+        }
+        return meleeImmuneTicks[slot] > 0;
+    }
+
+    private void SetMeleeImmunity(in NpcSnapshot target, int ticks)
+    {
+        int slot = target.Handle.Slot;
+        meleeImmuneGenerations[slot] = target.Handle.Generation.Value;
+        meleeImmuneTicks[slot] = ticks;
+    }
+
     private bool TryBuildProjectileIntent(
         in NpcSnapshot source,
         NpcTypeId sourceType,
@@ -613,7 +965,7 @@ internal sealed class RuntimeTownNpcCombat1458
 
     private bool TrySelectTarget(
         in NpcSnapshot source,
-        in VanillaTownNpcProjectileAttackProfile1458 profile,
+        int dangerDetectRange,
         ReadOnlySpan<NpcSnapshot> candidates,
         out NpcSnapshot target,
         out int direction)
@@ -653,7 +1005,7 @@ internal sealed class RuntimeTownNpcCombat1458
             float dx = candidateCenterX - sourceCenterX;
             float dy = candidateCenterY - sourceCenterY;
             float distance = MathF.Sqrt(dx * dx + dy * dy);
-            if (!float.IsFinite(distance) || distance >= profile.DangerDetectRange)
+            if (!float.IsFinite(distance) || distance >= dangerDetectRange)
                 continue;
             if (!candidate.Simulation.NoTileCollide &&
                 !VanillaWorldLineOfSight.CanHitLine(tiles, sourceCenterX, sourceCenterY, candidateCenterX, candidateCenterY))
@@ -706,14 +1058,23 @@ internal sealed class RuntimeTownNpcCombat1458
 
     private static class VanillaTownNpcDefinitionCatalogBridge
     {
+        public static bool TryGetHitbox(in NpcSnapshot snapshot, out VanillaNpcHitboxSize hitbox)
+        {
+            if (!NpcTypeId.TryCreate(snapshot.Type, out NpcTypeId type) ||
+                !VanillaNpcDefinitionCatalog.TryGet(type, snapshot.NetIdentity, out VanillaNpcDefinition definition))
+            {
+                hitbox = default;
+                return false;
+            }
+            return definition.TryResolveHitbox(snapshot.Simulation.Scale, out hitbox);
+        }
+
         public static bool TryGetCenter(
             in NpcSnapshot snapshot,
             out float centerX,
             out float centerY)
         {
-            if (!NpcTypeId.TryCreate(snapshot.Type, out NpcTypeId type) ||
-                !VanillaNpcDefinitionCatalog.TryGet(type, snapshot.NetIdentity, out VanillaNpcDefinition definition) ||
-                !definition.TryResolveHitbox(snapshot.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            if (!TryGetHitbox(in snapshot, out VanillaNpcHitboxSize hitbox))
             {
                 centerX = 0f;
                 centerY = 0f;
