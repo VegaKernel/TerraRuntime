@@ -56,7 +56,7 @@ old = '''                WorldTile tile = tiles.Get(x, y);
                     return true;'''
 new = '''                WorldTile tile = tiles.Get(x, y);
                 bool mushroom = tile.Type == 70 || tile.Type == 71 || tile.Type == 72 || tile.Type == 528;
-                if (tile.IsActive && !tile.IsActuated && mushroom)
+                if (tile.IsActive && mushroom)
                 {
                     mushroomTiles++;
                     if (mushroomTiles >= 100)
@@ -65,5 +65,16 @@ new = '''                WorldTile tile = tiles.Get(x, y);
 if old not in text:
     raise SystemExit('truffle mushroom predicate anchor drifted')
 text = text.replace(old, new, 1)
+old_tail = '''        return false;
+    }
+
+    private int CalculateBaseRoomScore'''
+new_tail = '''        throw new InvalidOperationException($"Truffle mushroom debug count={mushroomTiles}; bounds={startX},{endX},{startY},{endY}; roomY2={roomY2}; surface={worldSurface}");
+    }
+
+    private int CalculateBaseRoomScore'''
+if old_tail not in text:
+    raise SystemExit('truffle diagnostic tail anchor drifted')
+text = text.replace(old_tail, new_tail, 1)
 p.write_text(text)
-print('town commerce happiness API and Truffle mushroom predicate aligned')
+print('town commerce happiness API aligned; Truffle mushroom scan instrumented')
