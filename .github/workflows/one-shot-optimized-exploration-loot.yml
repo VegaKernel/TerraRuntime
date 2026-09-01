@@ -2,7 +2,7 @@ name: One-shot optimized exploration loot integration
 
 on:
   push:
-    branches: [main]
+    branches: [optimized-source-backed-loot-final-20260901]
     paths:
       - 'tools/ci/apply_optimized_exploration_loot.py'
       - '.github/workflows/one-shot-optimized-exploration-loot.yml'
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: optimized-exploration-loot-integration
+  group: optimized-exploration-loot-integration-final
   cancel-in-progress: false
 
 jobs:
@@ -47,8 +47,9 @@ jobs:
           git add src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs \
                   src/TerraRuntime.World/Generation/Optimized/OptimizedSurfaceDecorationWorldGenerationProvider.cs \
                   src/TerraRuntime.World/Generation/Optimized/OptimizedExplorationLoot1458.cs \
+                  src/TerraRuntime.World/Generation/Vanilla/VanillaWorldGenerationValidator1458.cs \
                   tests/TerraRuntime.Tests/OptimizedExplorationLoot1458Tests.cs
           git commit -m "Add source-backed optimized exploration loot"
           git fetch origin main
           git rebase origin/main
-          git push origin HEAD:main
+          git push origin HEAD:optimized-source-backed-loot-final-20260901
