@@ -50,3 +50,5 @@ jobs:
           git add -A
           git commit -m "Complete source-backed Town NPC social emotes"
           git push origin HEAD:work/n4-town-social-emotes-1458
+
+# trigger after workflow registration
