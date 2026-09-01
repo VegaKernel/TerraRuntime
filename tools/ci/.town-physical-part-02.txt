@@ -81,7 +81,7 @@ public sealed class RuntimeTownNpcPhysicalSpawn1458Tests
         PlaceSolid(tiles, 602, 60); // Would be usable only if vanilla incorrectly continued down this column.
         PlaceSolid(tiles, 598, 58);
         var resolver = new RuntimeTownNpcPhysicalSpawnResolver1458(tiles);
-        RuntimeTownPlayerBounds1458 blocker = BlockHomeFromLeftEdge(600, 60);
+        RuntimeTownPlayerBounds1458 blocker = BlockHomeFromRightEdge(600, 60);
 
         RuntimeTownNpcPhysicalSpawn1458 spawn = resolver.Resolve(600, 60, [blocker]);
 

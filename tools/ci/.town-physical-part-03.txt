@@ -70,6 +70,17 @@
         return new RuntimeTownPlayerBounds1458(left, top + 100, 20, 42);
     }
 
+    private static RuntimeTownPlayerBounds1458 BlockHomeFromRightEdge(int homeTileX, int homeTileY)
+    {
+        int left = homeTileX * 16 + 8 - RuntimeTownNpcPhysicalSpawnResolver1458.ScreenWidth1458 / 2 -
+            RuntimeTownNpcPhysicalSpawnResolver1458.SafeRangeX1458;
+        int top = homeTileY * 16 + 8 - RuntimeTownNpcPhysicalSpawnResolver1458.ScreenHeight1458 / 2 -
+            RuntimeTownNpcPhysicalSpawnResolver1458.SafeRangeY1458;
+        int width = RuntimeTownNpcPhysicalSpawnResolver1458.ScreenWidth1458 +
+            RuntimeTownNpcPhysicalSpawnResolver1458.SafeRangeX1458 * 2;
+        return new RuntimeTownPlayerBounds1458(left + width - 20, top + 100, 20, 42);
+    }
+
     private static void PlaceSolid(WorldTileStore tiles, int x, int y) =>
         tiles.Set(x, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
 }
