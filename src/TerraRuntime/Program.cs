@@ -51,7 +51,7 @@ internal static class Program
 
             string worldPath = args[saveWldIndex + 1];
             string cachePath = RuntimeWorldSnapshotCache.GetCachePath(worldPath);
-            RuntimeWorldCheckpointSaveDiagnostic save = RuntimeWorldSnapshotCache.TrySaveCanonicalCheckpointAtomic(
+            RuntimeWorldCheckpointSaveDiagnostic save = RuntimeWorldCheckpointExportService.TryExport(
                 cachePath,
                 worldPath,
                 TerrariaServerHost.CreateServerWorldLoadLimits());
