@@ -115,6 +115,13 @@ public readonly record struct NpcSimulationState(
     public int? DefenseOverride { get; init; }
 
     /// <summary>
+    /// Optional live contact damage written by AI when vanilla mutates NPC.damage at runtime. Null means the
+    /// version-pinned definition damage remains authoritative. This is server-owned simulation state, not a
+    /// packet field, and is committed atomically with the AI revision that changed it.
+    /// </summary>
+    public int? DamageOverride { get; init; }
+
+    /// <summary>
     /// Server-owned vanilla NPC.reflectsProjectiles state for the current committed AI revision. Projectile
     /// collision/reflection consumes this fact separately; keeping it here prevents AI and combat from racing.
     /// </summary>
@@ -145,6 +152,7 @@ public readonly record struct NpcSimulationState(
         Hidden = false,
         DontTakeDamage = false,
         DefenseOverride = null,
+        DamageOverride = null,
         ReflectsProjectiles = false
     };
 

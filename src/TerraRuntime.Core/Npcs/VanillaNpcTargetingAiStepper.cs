@@ -85,8 +85,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         bool dayTime,
         bool slimeRainActive,
         bool goodWorld = false,
-        bool expertMode = false) =>
-        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode);
+        bool expertMode = false,
+        bool masterMode = false) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode);
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
         _context.SetCandidates(candidates);

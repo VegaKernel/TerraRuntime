@@ -43,6 +43,17 @@ public readonly record struct ProjectileLifecycleState(
     ProjectileLiquidState Liquid = default)
 {
     public bool IsInitialized => TimeLeft > 0;
+
+    /// <summary>Projectile.oldVelocity captured at the source-equivalent update boundary.</summary>
+    public float OldVelocityX { get; init; }
+
+    public float OldVelocityY { get; init; }
+
+    /// <summary>Vanilla Projectile.reflected. A reflected generation cannot be reflected again.</summary>
+    public bool Reflected { get; init; }
+
+    /// <summary>Runtime-only authoritative penetrate override written by NPC.ReflectProjectile.</summary>
+    public int? PenetrateOverride { get; init; }
 }
 
 /// <summary>
@@ -263,7 +274,9 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         lifecycle = lifecycle with
         {
             TimeLeft = timeLeft,
-            Liquid = liquidState ?? lifecycle.Liquid
+            Liquid = liquidState ?? lifecycle.Liquid,
+            OldVelocityX = state.Update.VelocityX,
+            OldVelocityY = state.Update.VelocityY
         };
         if (!TryAdvance(ref state.Revision))
         {
@@ -380,6 +393,53 @@ public sealed class RuntimeProjectileStore : IProjectileSnapshotReader
         }
 
         lifecycle = state.Lifecycle;
+        return true;
+    }
+
+    /// <summary>
+    /// Atomically applies the source-backed NPC.ReflectProjectile mutation to one exact projectile generation.
+    /// Owner/spawner and original damage remain generation identity; reflection only changes current velocity,
+    /// current damage and runtime-only reflected/penetration state.
+    /// </summary>
+    public bool TryReflect(
+        ProjectileHandle handle,
+        float velocityX,
+        float velocityY,
+        short damage,
+        out ProjectileSnapshot snapshot)
+    {
+        if (!IsCurrentHandleCandidate(handle) ||
+            !float.IsFinite(velocityX) ||
+            !float.IsFinite(velocityY) ||
+            damage < 0)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        ref SlotState state = ref _slots[handle.Slot];
+        if (!state.Active ||
+            state.Generation != handle.Generation.Value ||
+            state.Lifecycle.Reflected ||
+            !TryAdvance(ref state.Revision))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        state.Update = state.Update with
+        {
+            VelocityX = velocityX,
+            VelocityY = velocityY,
+            Damage = damage
+        };
+        state.Lifecycle = state.Lifecycle with
+        {
+            Reflected = true,
+            PenetrateOverride = 1
+        };
+        snapshot = Capture(handle.Slot, in state);
+        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
         return true;
     }
 

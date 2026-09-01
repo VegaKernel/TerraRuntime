@@ -45,6 +45,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly RuntimeProjectileStore _projectiles;
     private readonly RuntimeProjectileStateExecutor _projectileExecutor;
     private readonly IProjectileStateStepper? _projectileStepper;
+    private readonly RuntimeNpcProjectileReflectionPass _projectileReflections;
     private readonly RuntimeProjectileReplicationRegistry? _projectileReplication;
     private readonly RuntimeNpcReplicationRegistry? _npcReplication;
     private readonly RuntimeWorldItemReplicationRegistry? _worldItemReplication;
@@ -69,6 +70,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly VanillaWorldTileMutationService? _tileMutations;
     private readonly RuntimeWorldClock? _worldClock;
     private readonly bool _expertMode;
+    private readonly bool _masterMode;
     private const int MaxTileEditsPerTickPerPlayer = 8;
     private readonly int[] _tileEditCounts = new int[MaxPlayerSlots];
     private long _tileEditBudgetTick;
@@ -110,6 +112,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _tileMutations = worldTiles is null ? null : new VanillaWorldTileMutationService(worldTiles);
         _worldClock = worldClock;
         _expertMode = expertMode;
+        _masterMode = masterMode;
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
         _npcs = npcs ?? new RuntimeNpcStore();
@@ -132,6 +135,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _npcArchetypeSpawner = new RuntimeNpcArchetypeSpawner(_npcs, _npcArchetypes, _npcArchetypeIdentities);
         _npcShops = npcShops ?? new RuntimeNpcShopCatalogRegistry();
         _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
+        _projectileReflections = new RuntimeNpcProjectileReflectionPass(_npcs, _projectiles, this);
         _projectileStepper = projectileStepper ??
             (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles));
         _projectileReplication = projectileReplication;
@@ -288,6 +292,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     public long AppliedProjectileDespawns { get; private set; }
 
     public long RejectedProjectileDespawns { get; private set; }
+
+    public long AppliedProjectileReflections { get; private set; }
 
     public long RejectedClientProjectileUpdates { get; private set; }
 
@@ -544,7 +550,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                     _worldClock.DayTime,
                     _worldClock.SlimeRainActive,
                     _worldClock.GetGoodWorld,
-                    _expertMode);
+                    _expertMode,
+                    _masterMode);
             }
         }
 
@@ -552,7 +559,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         TickTownNpcLifecycle();
         AppliedNpcDespawns += _npcs.DespawnExpired();
         if (_projectileStepper is not null)
+        {
             LastProjectileTick = _projectileExecutor.Tick(_projectileStepper);
+            AppliedProjectileReflections += _projectileReflections.Tick();
+        }
         TickInstancedItemLeases();
 
         _worldClock?.Tick();
