@@ -55,12 +55,13 @@ jobs:
 
           required_npc = [
               'else if (type == 35)', 'aiStyle = 11;', 'else if (type == 36)', 'aiStyle = 12;',
-              'GetAttackDamage_ForProjectiles(17f, 17f)', 'timeLeft = 300;',
-              'SetEventFlagCleared(ref NPC.downedBoss3, 15)'
+              'GetAttackDamage_ForProjectiles(17f, 17f)', 'timeLeft = 300;'
           ]
           missing = [s for s in required_npc if s not in npc]
           if missing:
               raise SystemExit('Skeletron NPC source contract changed: ' + ', '.join(missing))
+          if not re.search(r'SetEventFlagCleared\(ref (?:NPC\.)?downedBoss3, 15\)', npc):
+              raise SystemExit('Skeletron downedBoss3 progression contract changed')
           if not re.search(r'type == 35 \|\| type == 36[\s\S]{0,900}?playerInteraction\[player\] = true', npc):
               raise SystemExit('Skeletron shared interaction contract changed')
           if not re.search(r'Projectile\.NewProjectile[\s\S]{0,600}?270[\s\S]{0,400}?timeLeft = 300', npc):
