@@ -15,19 +15,43 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  apply-test-push:
+  fresh-port-test-push:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: work/skeletron-vertical-1458
+          ref: main
           fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
-      - name: Apply Skeletron patch
-        run: python3 tools/ci/apply_skeletron_vertical_1458.py
+      - name: Port Skeletron vertical onto current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Xekep'
+          git config user.email 'Xekep@users.noreply.github.com'
+          git fetch origin --prune
+          git switch -C work/skeletron-vertical-1458-main origin/main
+          git diff 6f87a8a747c226f32035999b33ca432fd001274b ce9c7434c004e95c3edad8ac2a8ac0ba5edad2aa -- \
+            src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
+            src/TerraRuntime.Core/Npcs/VanillaNpcDefinitionCatalog.cs \
+            src/TerraRuntime.Core/Npcs/VanillaNpcTargetingAiStepper.cs \
+            src/TerraRuntime.Core/Npcs/VanillaSkeletronBehavior.cs \
+            tests/TerraRuntime.Tests/VanillaSkeletronBehaviorTests.cs > /tmp/skeletron.patch
+          git apply --3way --index /tmp/skeletron.patch
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/TerraRuntime.Core/Npcs/VanillaSkeletronBehavior.cs')
+          text = path.read_text(encoding='utf-8')
+          old = '            refresh.HasTarget &&\n            context.TryFindCandidate(refresh.Target, out target) &&'
+          new = '            refresh.HasTarget &&\n            refresh.Target < byte.MaxValue &&\n            context.TryFindCandidate((byte)refresh.Target, out target) &&'
+          if old not in text:
+              raise SystemExit('Skeletron target-slot narrowing anchor changed.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          git add -A
       - name: Verify pinned TerrariaServer 1.4.5.8 contract
         shell: bash
         run: |
@@ -63,9 +87,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -f tools/ci/apply_skeletron_vertical_1458.py .github/workflows/apply-skeletron-vertical-1458.yml
-          git config user.name 'Xekep'
-          git config user.email 'Xekep@users.noreply.github.com'
           git add -A
-          git commit -m 'Add source-backed Skeletron head and hand AI vertical' -m 'Import TerrariaServer 1.4.5.8 head/hand defaults, exact two-hand parent ownership, hover/spin and hand attack cycles, daytime enrage/flee, Expert live-hand defense and LOS-gated skull projectile intents. Pin source evidence, focused regressions, and the N3 roadmap slice.'
-          git push origin HEAD:work/skeletron-vertical-1458
+          git commit -m 'Add source-backed Skeletron head and hand AI vertical' -m 'Fresh-port TerrariaServer 1.4.5.8 Skeletron head/hand defaults and AI onto current main. Preserve exact two-hand parent ownership, hover/spin and hand attack cycles, daytime enrage/flee and Expert live-hand defense, with focused regressions and full-suite validation.'
+          git push --force origin HEAD:work/skeletron-vertical-1458-main
