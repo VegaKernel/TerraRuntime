@@ -37,6 +37,13 @@ def isolate_case(source: str, value: int, next_value: int) -> str:
     return match.group("body")
 
 
+def isolate_required_pattern(source: str, pattern: str, description: str) -> str:
+    match = re.search(pattern, source, re.DOTALL)
+    if match is None:
+        raise SystemExit(f"Could not isolate {description}.")
+    return match.group("body") if "body" in match.groupdict() else match.group(0)
+
+
 def require(fragment: str, needle: str, description: str) -> None:
     if needle not in compact(fragment):
         raise SystemExit(f"Pinned TerrariaServer 1.4.5.8 contract changed: {description}.")
@@ -72,6 +79,9 @@ def main() -> int:
         "Gel": 23,
         "SlimeStaff": 1309,
         "CopperPickaxe": 3509,
+        "KingSlimeBossBag": 3318,
+        "KingSlimePetItem": 4797,
+        "KingSlimeMasterTrophy": 4929,
     }
     for name, expected in expected_ids.items():
         actual = find_id(item_ids, name)
@@ -90,6 +100,32 @@ def main() -> int:
     if copper_match is None:
         raise SystemExit("Could not isolate Copper Pickaxe defaults.")
     copper = copper_match.group("body")
+
+    king_slime_bag = isolate_required_pattern(
+        item,
+        r"case\s+3318\s*:\s*case\s+3319\s*:.*?case\s+3332\s*:\s*(?P<body>.*?return;)",
+        "King Slime Boss Bag defaults group",
+    )
+    king_slime_pet = isolate_required_pattern(
+        item,
+        r"case\s+4797\s*:\s*case\s+4798\s*:.*?case\s+4817\s*:\s*(?P<body>.*?break;)",
+        "King Slime pet defaults group",
+    )
+    king_slime_trophy = isolate_required_pattern(
+        item,
+        r"case\s+4924\s*:\s*case\s+4925\s*:.*?case\s+4950\s*:\s*(?P<body>.*?break;)",
+        "King Slime Master trophy defaults group",
+    )
+    vanity_pet_defaults = isolate_required_pattern(
+        item,
+        r"public void DefaultToVanitypet\(int projId, int buffID\)\s*\{(?P<body>.*?)(?=\n\})",
+        "Item.DefaultToVanitypet",
+    )
+    placeable_tile_defaults = isolate_required_pattern(
+        item,
+        r"public void DefaultToPlaceableTile\(ushort tileIDToPlace, int tileStyleToPlace = 0\)\s*\{(?P<body>.*?)(?=\n\})",
+        "Item.DefaultToPlaceableTile(ushort, int)",
+    )
 
     for needle, description in (
         ("width = 12;", "Dirt Block width is no longer 12"),
@@ -121,7 +157,29 @@ def main() -> int:
     require(copper, "useAnimation = 23;", "Copper Pickaxe animation is no longer 23 ticks")
     require(copper, "useTime = 15;", "Copper Pickaxe use time is no longer 15 ticks")
 
-    for fragment, name in ((dirt, "Dirt Block"), (gel, "Gel"), (slime_staff, "Slime Staff"), (base_tool, "Copper Pickaxe base"), (copper, "Copper Pickaxe")):
+    require(king_slime_bag, "consumable = true;", "King Slime Boss Bag is no longer consumable")
+    require(king_slime_bag, "width = 24;", "King Slime Boss Bag width is no longer 24")
+    require(king_slime_bag, "height = 24;", "King Slime Boss Bag height is no longer 24")
+    require(king_slime_bag, "expert = true;", "King Slime Boss Bag is no longer an Expert bag")
+    require(king_slime_pet, "DefaultToVanitypet(881 + type - 4797, 284 + type - 4797);", "King Slime pet no longer uses the vanity-pet defaults")
+    require(vanity_pet_defaults, "width = 16;", "vanity-pet default width is no longer 16")
+    require(vanity_pet_defaults, "height = 30;", "vanity-pet default height is no longer 30")
+    require(king_slime_trophy, "DefaultToPlaceableTile((ushort)617, type - 4924);", "King Slime Master trophy no longer uses the trophy tile defaults")
+    require(placeable_tile_defaults, "width = 14;", "placeable-tile default width is no longer 14")
+    require(placeable_tile_defaults, "height = 14;", "placeable-tile default height is no longer 14")
+
+    for fragment, name in (
+        (dirt, "Dirt Block"),
+        (gel, "Gel"),
+        (slime_staff, "Slime Staff"),
+        (base_tool, "Copper Pickaxe base"),
+        (copper, "Copper Pickaxe"),
+        (king_slime_bag, "King Slime Boss Bag"),
+        (king_slime_pet, "King Slime pet"),
+        (king_slime_trophy, "King Slime Master trophy"),
+        (vanity_pet_defaults, "vanity-pet defaults"),
+        (placeable_tile_defaults, "placeable-tile defaults"),
+    ):
         require_no_override(fragment, name)
 
     print("item_common_max_stack=9999")
@@ -129,6 +187,9 @@ def main() -> int:
     print("gel=10x12")
     print("slime_staff=26x28,swing,animation28,use28,autoReuse")
     print("copper_pickaxe=24x28,swing,animation23,use15,autoReuse,useTurn")
+    print("king_slime_boss_bag=3318,24x24,commonMaxStack")
+    print("king_slime_pet=4797,16x30,commonMaxStack")
+    print("king_slime_master_trophy=4929,14x14,commonMaxStack")
     return 0
 
 
