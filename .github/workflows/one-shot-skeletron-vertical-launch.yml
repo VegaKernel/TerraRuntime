@@ -55,14 +55,20 @@ jobs:
               'else if (type == 36)', 'width = 52;', 'height = 52;', 'aiStyle = 12;',
               'damage = 20;', 'defense = 14;', 'lifeMax = 600;',
               'if (aiStyle == 11)', 'ai[2] >= 800f', 'ai[2] >= 400f',
-              'defense += num173 * 25;', 'int num180 = 270;',
+              'GetAttackDamage_ForProjectiles(17f, 17f)', 'timeLeft = 300;',
               'if (aiStyle == 12)', 'ai[3] >= 300f', 'ai[2] = 5f;'
           ]
           missing = [needle for needle in required if needle not in npc]
           if missing:
               raise SystemExit('Pinned Skeletron source contract changed: ' + ', '.join(missing))
-          if not re.search(r'NewNPC\([^\n]+, 36, whoAmI\);[\s\S]{0,500}?ai\[0\] = -1f;[\s\S]{0,700}?NewNPC\([^\n]+, 36, whoAmI\);[\s\S]{0,500}?ai\[0\] = 1f;[\s\S]{0,300}?ai\[3\] = 150f;', npc):
-              raise SystemExit('Pinned two-hand creation order changed.')
+          structural = {
+              'expert live-hand defense': r'defense\s*\+=\s*[A-Za-z_][A-Za-z0-9_]*\s*\*\s*25\s*;',
+              'expert skull projectile 270': r'GetAttackDamage_ForProjectiles\(17f,\s*17f\)[\s\S]{0,350}?=\s*270\s*;[\s\S]{0,450}?Projectile\.NewProjectile',
+              'two-hand creation order': r'NewNPC\([^\n]+, 36, whoAmI\);[\s\S]{0,500}?ai\[0\] = -1f;[\s\S]{0,700}?NewNPC\([^\n]+, 36, whoAmI\);[\s\S]{0,500}?ai\[0\] = 1f;[\s\S]{0,300}?ai\[3\] = 150f;'
+          }
+          failed = [name for name, pattern in structural.items() if not re.search(pattern, npc)]
+          if failed:
+              raise SystemExit('Pinned Skeletron structural contract changed: ' + ', '.join(failed))
           print('skeletron_1458_source_contract=ok')
           PY
       - name: Build
