@@ -10,18 +10,23 @@ The built-in TerraRuntime System Dashboard follows the interaction model proven 
 
 ```mermaid
 flowchart LR
-    Console["Console\nselectable text + command line"]
+    Console["Console\nselectable log tail\naccented command line"]
     subgraph Right["Right column"]
         Server["Server"]
-        Perf["TPS / CPU graph"]
-        Network["IN / OUT packet graph"]
-        Memory["Memory / GC"]
-        Chat["Chat"]
+        subgraph GraphRow["Graph row"]
+            TPS["TPS graph"]
+            Network["IN / OUT graph"]
+        end
+        Chat["Chat\nremaining vertical space"]
     end
     Console --- Server
+    Server --> GraphRow
+    GraphRow --> Chat
 ```
 
-Console occupies the left side. Server, TPS/CPU, Network, Memory/GC and Chat are stacked on the right.
+Console occupies the left side. The right side keeps the compact Server tile at the top, places TPS and Network side by side on one row, and gives Chat all remaining vertical space. CPU and Memory/GC are intentionally not overview tiles; the System Dashboard is reserved for the operator signals that need permanent screen space.
+
+The layout is deliberately asymmetric: Console receives about half the workspace, while the graph row uses two equal compact tiles. Fixed compact heights for Server and the graph row allow Chat to grow automatically as terminal height increases.
 
 ## Maximize and focus
 
@@ -31,19 +36,23 @@ Keyboard or mouse focus applies the Accent scheme and prefixes the active title 
 
 ## Graphs
 
-TPS/CPU uses Terminal.Gui `GraphView`, matching the Vega dashboard model:
+TPS uses Terminal.Gui `GraphView` with:
 
-- current TPS history;
-- process CPU history;
-- target TPS reference line.
+- bounded current TPS history;
+- a target TPS reference line;
+- a scale derived from the configured target TPS.
 
-Network has its own `GraphView` with separate inbound and outbound packet-rate histories. The legend also shows current packet rate and throughput in `KiB/s`. Rates are calculated from deltas of the subsystem-owned process-lifetime inbound/outbound Terraria message counters across consecutive detached network snapshots. The elapsed time comes from the snapshot capture timestamps, so the graph reflects the traffic observed during the UI sampling interval instead of incorrectly dividing lifetime totals by the telemetry rolling-window length. Counter rollback or an invalid/long sampling interval resets the local rate sample rather than emitting a spike.
+CPU history is not plotted on the overview graph.
+
+Network has its own `GraphView` with separate inbound and outbound packet-rate histories. Its compact legend shows current packet rates and throughput. Rates are calculated from deltas of the subsystem-owned process-lifetime inbound/outbound Terraria message counters across consecutive detached network snapshots. The elapsed time comes from the snapshot capture timestamps, so the graph reflects traffic observed during the UI sampling interval instead of incorrectly dividing lifetime totals by the telemetry rolling-window length. Counter rollback or an invalid/long sampling interval resets the local rate sample rather than emitting a spike.
 
 The histories and previous-counter sample are UI-local bounded presentation state. They do not become authoritative telemetry and they do not add counters to packet hot paths.
 
 ## Console command line
 
-The Console tile contains an always-visible `>` input line. `Ctrl+P` focuses it. Current runtime-owned commands are:
+The Console tile ends with a dedicated bordered command area using the Accent scheme. The input remains visually distinct from log output instead of looking like another log line. `Ctrl+P` focuses it.
+
+Current runtime-owned commands are:
 
 ```text
 help
@@ -62,9 +71,13 @@ logs
 
 `save` and `interest on|off` delegate to the existing bounded operations ingress. Navigation commands only switch the current workspace screen. Unknown input is reported locally and is never interpreted as arbitrary runtime mutation.
 
+## Log and chat tails
+
+Console and Chat render bounded tails of their detached snapshots. The overview keeps at most 64 formatted entries per surface, while the underlying runtime log/chat stores remain independently bounded. Both surfaces follow the newest entry while the operator is already at the tail. Manual history scrolling disables forced tail-follow until the operator returns to the bottom.
+
 ## Text selection
 
-Console, Server, Memory/GC and Chat use read-only selectable text surfaces. Mouse or keyboard selection and `Ctrl+C` are supported. Snapshot refresh does not replace the displayed text while an active non-empty selection exists, preventing the normal telemetry refresh from destroying a selection while the operator is copying it.
+Console, Server and Chat use read-only selectable text surfaces. Mouse or keyboard selection and `Ctrl+C` are supported. Snapshot refresh does not replace displayed text while an active non-empty selection exists, preventing normal telemetry refresh from destroying a selection while the operator is copying it.
 
 All built-in Details screens (Players, NPCs, Projectiles, Items, Network, World and Logs) use the same read-only selectable projection. Their existing bounded `rows[]` render model remains internal for formatting and smoke assertions, while one scrollable `TextView` presents those rows to the operator. Automatic refresh preserves an active selection; explicit navigation to another Details screen clears the previous selection before rendering the new screen.
 
