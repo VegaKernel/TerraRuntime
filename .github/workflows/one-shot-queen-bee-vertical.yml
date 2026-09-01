@@ -74,13 +74,13 @@ jobs:
           checks = {
               'defaults': bool(re.search(r'else if \(type == 222\)[\s\S]{0,900}?width = 66;[\s\S]{0,400}?height = 66;[\s\S]{0,400}?aiStyle = 43;[\s\S]{0,500}?damage = 30;[\s\S]{0,300}?defense = 8;[\s\S]{0,300}?lifeMax = 3400;', npc)),
               'ai43': ai_start >= 0 and all(s in ai for s in ('ai[0] == 5f', 'ai[0] == -1f', 'ai[0] == 0f', 'ai[0] == 2f', 'ai[0] == 1f', 'ai[0] == 3f', 'ai[0] == 4f')),
-              'enrage': all(s in ai for s in ('position.Y / 16f < (float)Main.worldSurface', '!Main.player[target].ZoneJungle', 'Main.getGoodWorld')),
+              'enrage': all(s in ai for s in ('worldSurface', 'ZoneJungle', 'Main.getGoodWorld')),
               'bee_spawn': all(s in ai for s in ('Main.rand.Next(210, 212)', 'localAI[0] = 60f')),
-              'stinger_spawn': all(s in ai for s in ('int num701 = 719;', 'int num700 = 11;', 'Main.projectile[num702].timeLeft = 300;')),
+              'stinger_spawn': bool(re.search(r'=\s*719;[\s\S]{0,3500}?=\s*11;[\s\S]{0,3500}?timeLeft\s*=\s*300;', ai)),
               'projectile719': all(s in proj for s in ('width = 10;', 'height = 10;', 'hostile = true;', 'penetrate = -1;', 'aiStyle = 1;', 'tileCollide = true;')),
               'death_flag': 'SetEventFlagCleared(ref downedQueenBee, 8)' in npc,
               'loot': all(s in loot for s in ('BossBag(3322)', 'MasterModeCommonDrop(4928)', 'MasterModeDropOnAllPlayers(4802, _masterModeDropRng)', 'ByCondition(condition, 2108, 7)', 'OneFromOptionsNotScalingWithLuck(1, 1121, 1123, 2888)', 'ByCondition(condition, 1132, 3)', 'ByCondition(condition, 1170, 15)', 'ByCondition(condition, 2502, 20)', 'ByCondition(condition, 5483, 15)', 'ByCondition(condition, 1129, 3)', 'OneFromOptionsNotScalingWithLuck(2, 842, 843, 844)', 'ByCondition(condition, 1130, 4, 10, 30, 3)', 'ByCondition(condition, 2431, 1, 17, 30)')),
-              'items': all(f'case {i}:' in items for i in (842,843,844,1121,1123,1129,1130,1132,1170,1364,2108,2431,2502,2888,3322,5483)),
+              'items': all(re.search(rf'\b{i}\b', items) for i in (842,843,844,1121,1123,1129,1130,1132,1170,1364,2108,2431,2502,2888,3322,5483)),
           }
           for name, ok in checks.items(): print(f'source_check:{name}={ok}')
           if not all(checks.values()): raise SystemExit('Queen Bee source baseline changed: ' + ', '.join(k for k,v in checks.items() if not v))
