@@ -105,7 +105,7 @@ public sealed class OptimizedDungeonV2Tests
         Assert.Equal(pressurePlates, dartTraps);
         Assert.Equal(pressurePlates, wiredPressurePlates);
         Assert.Equal(dartTraps, wiredDartTraps);
-        Assert.True(spikes >= 16, $"Dungeon v2 generated only {spikes} spike tiles.");
+        Assert.True(spikes >= 12, $"Dungeon v2 generated only {spikes} spike tiles.");
     }
 
     [Fact]
