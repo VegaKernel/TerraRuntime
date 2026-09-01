@@ -1,9 +1,27 @@
 namespace TerraRuntime.World;
 
+public enum WorldFilePreservedSectionNormalizationResult : byte
+{
+    Normalized = 0,
+    UnsupportedVersion = 1,
+    TileEntityEncodeFailed = 2,
+    PressurePlateEncodeFailed = 3,
+    BestiaryEncodeFailed = 4,
+    CreativePowersEncodeFailed = 5
+}
+
+public readonly record struct WorldFilePreservedSectionNormalizationDiagnostic(
+    WorldFilePreservedSectionNormalizationResult Result,
+    int StageResultCode = 0)
+{
+    public bool IsNormalized => Result == WorldFilePreservedSectionNormalizationResult.Normalized;
+}
+
 /// <summary>
-/// Detached byte-for-byte template for .wld sections that are not yet mutated by the authoritative runtime save slice.
+/// Detached template for .wld sections that are not yet mutated by the authoritative runtime save slice.
 /// Tiles and chests are intentionally excluded because they are rebuilt from live state. The complete header section is
 /// preserved opaquely so save does not synthesize or discard vanilla fields that the runtime metadata model does not yet retain.
+/// Decoded side-table sections can be normalized through their version-pinned semantic encoders before this template is used.
 /// </summary>
 public sealed class WorldFilePreservedSections
 {
@@ -45,6 +63,95 @@ public sealed class WorldFilePreservedSections
         TownRooms.Length +
         Bestiary.Length +
         CreativePowers.Length;
+
+    /// <summary>
+    /// Re-encodes validated static side-table state through the current semantic codecs while retaining opaque header,
+    /// sign, NPC and town-room bytes. Production runtime stores mutate/re-encode the latter three at save time; the header
+    /// remains byte-preserved apart from explicitly supported field patchers.
+    /// </summary>
+    public WorldFilePreservedSectionNormalizationDiagnostic TryNormalizeSemanticSections(
+        WorldFileData world,
+        out WorldFilePreservedSections? normalized)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        normalized = null;
+
+        if (world.Envelope.FormatVersion != WorldFileFormatPolicy.CurrentVersion)
+        {
+            return new WorldFilePreservedSectionNormalizationDiagnostic(
+                WorldFilePreservedSectionNormalizationResult.UnsupportedVersion);
+        }
+
+        using var tileEntityStream = new MemoryStream();
+        WorldFileTileEntityEncodeResult tileEntityResult = WorldFileTileEntityEncoder.TryEncode(
+            world.TileEntities,
+            world.Header.Dimensions,
+            world.TileEntities.Length,
+            tileEntityStream,
+            out _);
+        if (tileEntityResult != WorldFileTileEntityEncodeResult.Encoded)
+        {
+            return new WorldFilePreservedSectionNormalizationDiagnostic(
+                WorldFilePreservedSectionNormalizationResult.TileEntityEncodeFailed,
+                (int)tileEntityResult);
+        }
+
+        using var pressurePlateStream = new MemoryStream();
+        WorldFilePressurePlateEncodeResult pressurePlateResult = WorldFilePressurePlateEncoder.TryEncode(
+            world.PressurePlates,
+            world.Header.Dimensions,
+            pressurePlateStream,
+            out _);
+        if (pressurePlateResult != WorldFilePressurePlateEncodeResult.Encoded)
+        {
+            return new WorldFilePreservedSectionNormalizationDiagnostic(
+                WorldFilePreservedSectionNormalizationResult.PressurePlateEncodeFailed,
+                (int)pressurePlateResult);
+        }
+
+        var bestiaryLimits = new WorldFileBestiaryLimits(
+            MaxKillEntries: world.Bestiary.Kills?.Length ?? 0,
+            MaxSightEntries: world.Bestiary.Sightings?.Length ?? 0,
+            MaxChatEntries: world.Bestiary.Chats?.Length ?? 0,
+            MaxPersistentIdBytes: int.MaxValue,
+            MaxTotalPersistentIdBytes: long.MaxValue);
+        using var bestiaryStream = new MemoryStream();
+        WorldFileBestiaryEncodeResult bestiaryResult = WorldFileBestiaryEncoder.TryEncode(
+            world.Bestiary,
+            bestiaryLimits,
+            bestiaryStream,
+            out _);
+        if (bestiaryResult != WorldFileBestiaryEncodeResult.Encoded)
+        {
+            return new WorldFilePreservedSectionNormalizationDiagnostic(
+                WorldFilePreservedSectionNormalizationResult.BestiaryEncodeFailed,
+                (int)bestiaryResult);
+        }
+
+        using var creativePowersStream = new MemoryStream();
+        WorldFileCreativePowersEncodeResult creativePowersResult = WorldFileCreativePowersEncoder.TryEncode(
+            world.CreativePowers,
+            creativePowersStream,
+            out _);
+        if (creativePowersResult != WorldFileCreativePowersEncodeResult.Encoded)
+        {
+            return new WorldFilePreservedSectionNormalizationDiagnostic(
+                WorldFilePreservedSectionNormalizationResult.CreativePowersEncodeFailed,
+                (int)creativePowersResult);
+        }
+
+        normalized = new WorldFilePreservedSections(
+            Header.ToArray(),
+            Signs.ToArray(),
+            Npcs.ToArray(),
+            tileEntityStream.ToArray(),
+            pressurePlateStream.ToArray(),
+            TownRooms.ToArray(),
+            bestiaryStream.ToArray(),
+            creativePowersStream.ToArray());
+        return new WorldFilePreservedSectionNormalizationDiagnostic(
+            WorldFilePreservedSectionNormalizationResult.Normalized);
+    }
 
     public static bool TryCapture(
         ReadOnlySpan<byte> file,
