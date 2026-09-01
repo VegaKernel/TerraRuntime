@@ -3,15 +3,18 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.World;
 
 /// <summary>
-/// Final surface-quality overlay for <c>terraruntime:optimized</c>. It runs after landmark construction but before
-/// the final progression validator. A deterministic finishing pass shapes one-step natural surface transitions, then
-/// surface-life decoration places trees/plants while preserving progression structures. Ordinary tree crowns use the
-/// vanilla tree foliage-anchor frame contract; placement remains custom and is not claimed to be seed-identical.
+/// Final surface-quality overlay for <c>terraruntime:optimized</c>. It inserts deterministic macro-morphology after
+/// biome painting and before cave carving, then runs the post-landmark surface shaping/life passes before the final
+/// progression validator. Ordinary tree crowns use the vanilla tree foliage-anchor frame contract; placement remains
+/// custom and is not claimed to be seed-identical.
 /// </summary>
 public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGenerationProvider
 {
     public static readonly WorldGeneratorId GeneratorId = OptimizedWorldGenerationProvider.GeneratorId;
 
+    private static readonly WorldGenerationPassId BiomesId = new("terraruntime:optimized/biomes");
+    private static readonly WorldGenerationPassId CavesId = new("terraruntime:optimized/caves");
+    private static readonly WorldGenerationPassId TerrainMorphologyId = new("terraruntime:optimized/terrain-morphology-v2");
     private static readonly WorldGenerationPassId LandmarkValidationId = new("terraruntime:optimized/landmark-validation");
     private static readonly WorldGenerationPassId SurfaceShapingId = new("terraruntime:optimized/surface-shaping");
     private static readonly WorldGenerationPassId SurfaceLifeId = new("terraruntime:optimized/surface-life");
@@ -28,10 +31,32 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
 
         var capture = new CapturePlanBuilder();
         baseline.BuildPlan(in request, capture);
-        bool inserted = false;
+        bool insertedMorphology = false;
+        bool rewiredCaves = false;
+        bool insertedSurfaceLife = false;
 
         foreach (CapturedPass entry in capture.Entries)
         {
+            if (entry.Descriptor.Id == BiomesId)
+            {
+                builder.Add(entry.Descriptor, entry.Pass);
+                builder.Add(
+                    new WorldGenerationPassDescriptor(
+                        TerrainMorphologyId,
+                        WorldGenerationRngMode.IsolatedDeterministic,
+                        requiredAfter: [BiomesId]),
+                    TerrainMorphologyPass.Instance);
+                insertedMorphology = true;
+                continue;
+            }
+
+            if (entry.Descriptor.Id == CavesId)
+            {
+                builder.Add(CloneDescriptor(entry.Descriptor, [TerrainMorphologyId]), entry.Pass);
+                rewiredCaves = true;
+                continue;
+            }
+
             if (entry.Descriptor.Id != ProgressionValidationId)
             {
                 builder.Add(entry.Descriptor, entry.Pass);
@@ -51,11 +76,14 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
                     requiredAfter: [SurfaceShapingId]),
                 SurfaceLifePass.Instance);
             builder.Add(CloneDescriptor(entry.Descriptor, [SurfaceLifeId]), entry.Pass);
-            inserted = true;
+            insertedSurfaceLife = true;
         }
 
-        if (!inserted)
-            throw new InvalidOperationException("Optimized surface-life overlay could not find the final progression-validation boundary.");
+        if (!insertedMorphology || !rewiredCaves || !insertedSurfaceLife)
+        {
+            throw new InvalidOperationException(
+                "Optimized surface overlay could not find the biome/cave/progression boundaries required by terrain morphology v2.");
+        }
     }
 
     private static WorldGenerationPassDescriptor CloneDescriptor(
@@ -75,6 +103,14 @@ public sealed class OptimizedSurfaceDecorationWorldGenerationProvider : IWorldGe
         private readonly List<CapturedPass> entries = [];
         public IReadOnlyList<CapturedPass> Entries => entries;
         public void Add(WorldGenerationPassDescriptor descriptor, IWorldGenerationPass pass) => entries.Add(new(descriptor, pass));
+    }
+
+    private sealed class TerrainMorphologyPass : IWorldGenerationPass
+    {
+        public static TerrainMorphologyPass Instance { get; } = new();
+
+        public void Execute(IWorldGenerationContext context) =>
+            OptimizedTerrainMorphology.Apply(context);
     }
 
     private sealed class SurfaceShapingPass : IWorldGenerationPass
