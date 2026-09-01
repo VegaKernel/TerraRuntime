@@ -1,0 +1,8 @@
+# Apply the same ILSpy-format tolerance to TownRoomManager.Load while keeping method-local ordering pinned.
+checker = Path('tools/ci/check_town_movein_schedule_source.py')
+text = checker.read_text(encoding='utf-8')
+old = '        "_roomLocationPairs.Add(Tuple.Create(num2, item))",\n'
+new = '        "_roomLocationPairs.Add(",\n'
+if text.count(old) != 1:
+    raise SystemExit('TownRoomManager Load marker anchor drifted')
+checker.write_text(text.replace(old, new, 1), encoding='utf-8')
