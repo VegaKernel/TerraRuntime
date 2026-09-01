@@ -11,6 +11,8 @@ Initial command set:
 ```text
 /sandbox list
 /sandbox status <sandbox>
+/sandbox jobs
+/sandbox job <operation-id>
 
 /sb1 <name> file <relative-world-path>
 /sb2 <name> file <relative-world-path>
@@ -29,6 +31,8 @@ Initial command set:
 ```
 
 `sb1` creates an `InProcess` request and `sb2` creates a `DedicatedProcess` request. These are intentionally thin debug aliases; Vega uses the typed sandbox API directly and may provide the full source/generation descriptor without being constrained by the console grammar. For generated debug sandboxes, omitted `size` (or explicit `size primary`) uses the current primary world's tile dimensions rather than a hard-coded Terraria world size.
+
+The local TUI/plain-console surface also accepts `sb` as a compact Level 1 alias: `sb <name> gen|file ...` creates an in-process sandbox, while `sb list|status|jobs|job|move|regen|destroy|cancel ...` maps to the canonical lifecycle tree. This is presentation grammar only; it produces the same typed operations as the canonical roots.
 
 The baseline deliberately does not accept an arbitrary `Modules = [...]` list. Level 1 uses already-loaded Vega code and creates only the selected sandbox/game-mode state. Level 2 receives the selected sandbox-side game-mode/plugin package through the normal worker descriptor defined by the Level 2 roadmap.
 
@@ -78,6 +82,8 @@ Normative rules:
 - one admin cannot create unbounded concurrent generation work;
 - `.wld` and `.trschem` loading may use the same detached job pipeline when their materialization cost justifies it;
 - command completion reports job acceptance immediately rather than waiting synchronously for generation.
+- generator IDs are resolved before acceptance, so an unknown ID is returned to the caller immediately and never creates a phantom queued job;
+- every accepted job publishes one terminal `Completed`, `Failed`, or `Canceled` snapshot to operator observability; TUI feedback and the plain-console structured log consume that snapshot without participating in lifecycle commit.
 
 Suggested job states are `Queued`, `Materializing`, `Validating`, `Starting`, `Ready`, `Swapping`, `Completed`, `Failed`, and `Canceled`. Do not create a generic workflow framework solely for these states; they belong to sandbox lifecycle jobs.
 
@@ -252,13 +258,15 @@ The TUI currently owns local presentation commands; sandbox commands should not 
 
 - [x] define one typed sandbox debug/admin operation model shared by TUI and authenticated admin command front ends;
 - [x] implement `list` and `status`;
+- [x] implement retained `jobs` and `job <operation-id>` status inspection;
 - [x] implement `sb1 ... file`;
 - [x] implement `sb1 ... gen` with asynchronous generation, primary-world dimension defaults and explicit seed/size/mode/evil debug options;
 - [ ] implement `sb1 ... schem`;
 - [x] implement `sandbox move <player> <sandbox|primary>` for Level 1;
 - [x] implement top-level `respawn <player> <sandbox|primary>` for Level 1, including same-runtime forced respawn;
 - [x] implement `destroy` for Level 1;
-- [x] expose the same typed operations through TUI/plain-console roots `sandbox`, `sb1`, `sb2` and `respawn` without duplicating lifecycle logic.
+- [x] implement cancellation and terminal success/failure/cancel notifications for accepted Level 1 jobs;
+- [x] expose the same typed operations through TUI/plain-console roots `sandbox`, compact Level 1 `sb`, `sb1`, `sb2` and `respawn` without duplicating lifecycle logic.
 
 ### Level 2 command coverage
 

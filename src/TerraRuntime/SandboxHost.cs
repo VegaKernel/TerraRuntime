@@ -62,6 +62,7 @@ public sealed class SandboxHost : IDisposable
 
     private readonly object gate = new();
     private readonly WorldRegistry runtimes;
+    private readonly ITerraRuntimeWorldGeneratorSource generators;
     private readonly SandboxWorldMaterializer materializer;
     private readonly BlockingCollection<Job> queue;
     private readonly ConcurrentDictionary<long, Job> jobs = new();
@@ -93,6 +94,7 @@ public sealed class SandboxHost : IDisposable
         ArgumentOutOfRangeException.ThrowIfLessThan(maxPlayersPerRuntime, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(maxPlayersPerRuntime, byte.MaxValue);
 
+        this.generators = generators;
         materializer = new SandboxWorldMaterializer(generators, loadLimits);
         this.maxPlayersPerRuntime = maxPlayersPerRuntime;
         this.retainedJobCapacity = retainedJobCapacity;
@@ -110,6 +112,12 @@ public sealed class SandboxHost : IDisposable
             workers[i].Start();
         }
     }
+
+    /// <summary>
+    /// Publishes a detached terminal snapshot exactly once after a sandbox job reaches a terminal state. Subscribers
+    /// are observers only: lifecycle completion never depends on an operator/UI notification consumer.
+    /// </summary>
+    public event Action<SandboxJobSnapshot>? JobFinished;
 
     public bool TryCreate(
         in SandboxCreateRequest request,
@@ -129,10 +137,33 @@ public sealed class SandboxHost : IDisposable
             error = "Only Level 1 in-process sandbox admission is implemented.";
             return false;
         }
+        if (request.Source is null)
+        {
+            jobId = default;
+            error = "Sandbox world source is required.";
+            return false;
+        }
         if (request.Source is not SandboxWorldSource.Generated and not SandboxWorldSource.WorldFile)
         {
             jobId = default;
             error = $"Source '{request.Source.GetType().Name}' is not materialized by Level 1 yet.";
+            return false;
+        }
+
+        lock (gate)
+        {
+            if (sandboxes.ContainsKey(request.Name))
+            {
+                jobId = default;
+                error = $"Sandbox '{request.Name}' already exists or has a pending mutation.";
+                return false;
+            }
+        }
+        if (request.Source is SandboxWorldSource.Generated generated &&
+            !generators.TryResolveWorldGenerator(generated.GeneratorId, out _))
+        {
+            jobId = default;
+            error = $"World generator '{generated.GeneratorId}' is not registered.";
             return false;
         }
 
@@ -202,6 +233,12 @@ public sealed class SandboxHost : IDisposable
 
             runtime = found;
             generated = replacementSeed is ulong seed ? source with { Seed = seed, SeedText = null } : source;
+            if (!generators.TryResolveWorldGenerator(generated.GeneratorId, out _))
+            {
+                jobId = default;
+                error = $"World generator '{generated.GeneratorId}' is not registered.";
+                return false;
+            }
             var job = NewJob(name, SandboxJobKind.Regenerate, generated, runtime);
             sandboxes[name] = entry with { PendingJob = job.Id };
             if (!TryQueue(job, out error))
@@ -233,6 +270,12 @@ public sealed class SandboxHost : IDisposable
             {
                 jobId = default;
                 error = $"Sandbox '{name}' already has a pending mutation.";
+                return false;
+            }
+            if (runtime.RuntimeConnections.Count != 0)
+            {
+                jobId = default;
+                error = "Move connected players to another runtime before destroying this sandbox.";
                 return false;
             }
 
@@ -523,6 +566,7 @@ public sealed class SandboxHost : IDisposable
             }
 
             job.Complete(runtime.Identity);
+            PublishFinished(job);
             if (job.Previous is not null)
             {
                 _ = job.Previous.StopAsync(TimeSpan.FromSeconds(5), captureFinalSave: false)
@@ -554,18 +598,45 @@ public sealed class SandboxHost : IDisposable
         _ = previous.StopAsync(TimeSpan.FromSeconds(5), captureFinalSave: false).GetAwaiter().GetResult();
         previous.Dispose();
         job.Complete(previous.Identity);
+        PublishFinished(job);
     }
 
     private void Cancel(Job job)
     {
+        if (job.IsTerminal)
+            return;
         job.CancelComplete();
         ReleaseMutation(job);
+        PublishFinished(job);
     }
 
     private void Fail(Job job, string error)
     {
+        if (job.IsTerminal)
+            return;
         job.Fail(error);
         ReleaseMutation(job);
+        PublishFinished(job);
+    }
+
+    private void PublishFinished(Job job)
+    {
+        Action<SandboxJobSnapshot>? subscribers = JobFinished;
+        if (subscribers is null)
+            return;
+
+        SandboxJobSnapshot snapshot = job.Capture();
+        foreach (Action<SandboxJobSnapshot> subscriber in subscribers.GetInvocationList().Cast<Action<SandboxJobSnapshot>>())
+        {
+            try
+            {
+                subscriber(snapshot);
+            }
+            catch (Exception)
+            {
+                // Operator notification failures cannot roll back or fault a committed lifecycle transition.
+            }
+        }
     }
 
     private void ReleaseMutation(Job job)

@@ -173,6 +173,7 @@ The invariant is strict: **exactly one process performs application-level reads/
 - [ ] prove deterministic RNG streams do not leak between runtimes;
 - [x] prove entity IDs/registries and replication baselines are runtime-local;
 - [x] add bounded process-wide admission for live worlds/resources;
+- [x] expose a detached process topology snapshot containing primary, pending/live Level 1 sandboxes and current connection membership;
 - [ ] evolve trusted-host attachment from one global `runtimeAttached` state to scopes keyed by `WorldRuntimeIdentity`.
 
 ### S2 - Level 1 sandbox and Vega compatibility
@@ -189,6 +190,8 @@ The invariant is strict: **exactly one process performs application-level reads/
 - [ ] no other mutable gameplay service becomes shared merely because runtimes are in one process;
 - [ ] deterministic teardown retires registrations, timers, extension/game-mode state and world-owned resources;
 - [x] transfer one client between two in-process runtime sessions without packet-emulation hacks, retaining the accepted socket in the process and switching one connection route between runtime-local bindings;
+- [x] show primary and all pending/live Level 1 sandboxes with their routed players in the operator TUI, and map player drag/drop to the same typed semantic transfer operation;
+- [x] publish background sandbox job failures to both TUI feedback and plain-console structured logging without making observers part of lifecycle ownership;
 - [x] default single-world behavior remains unchanged when sandbox support is unused.
 
 ### Source/materialization track

@@ -11,6 +11,8 @@ public abstract record SandboxOperation
 
     public sealed record List : SandboxOperation;
     public sealed record Status(SandboxName Name) : SandboxOperation;
+    public sealed record Jobs : SandboxOperation;
+    public sealed record Job(SandboxJobId Id) : SandboxOperation;
     public sealed record Create(SandboxCreateRequest Request) : SandboxOperation;
     public sealed record Move(string PlayerSelector, SandboxName? Sandbox) : SandboxOperation;
     public sealed record Respawn(string PlayerSelector, SandboxName? Sandbox) : SandboxOperation;
@@ -43,6 +45,7 @@ public sealed class SandboxCommandParser
         string root = input.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ElementAtOrDefault(0)?.TrimStart('/') ?? string.Empty;
         return root.Equals("sandbox", StringComparison.OrdinalIgnoreCase) ||
+               root.Equals("sb", StringComparison.OrdinalIgnoreCase) ||
                root.Equals("sb1", StringComparison.OrdinalIgnoreCase) ||
                root.Equals("sb2", StringComparison.OrdinalIgnoreCase) ||
                root.Equals("respawn", StringComparison.OrdinalIgnoreCase);
@@ -61,6 +64,7 @@ public sealed class SandboxCommandParser
             return root switch
             {
                 "sandbox" => TryParseSandbox(parts, out operation, out error),
+                "sb" => TryParseSb(parts, out operation, out error),
                 "sb1" => TryParseCreate(parts, WorldIsolationLevel.InProcess, out operation, out error),
                 "sb2" => TryParseCreate(parts, WorldIsolationLevel.DedicatedProcess, out operation, out error),
                 "respawn" => TryParseTransfer(parts, forceRespawn: true, out operation, out error),
@@ -73,10 +77,27 @@ public sealed class SandboxCommandParser
         }
     }
 
+    private bool TryParseSb(string[] parts, out SandboxOperation? operation, out string? error)
+    {
+        if (parts.Length < 2 || parts[1].Equals("list", StringComparison.OrdinalIgnoreCase) ||
+            parts[1].Equals("status", StringComparison.OrdinalIgnoreCase) ||
+            parts[1].Equals("jobs", StringComparison.OrdinalIgnoreCase) ||
+            parts[1].Equals("job", StringComparison.OrdinalIgnoreCase) ||
+            parts[1].Equals("move", StringComparison.OrdinalIgnoreCase) ||
+            parts[1].Equals("regen", StringComparison.OrdinalIgnoreCase) ||
+            parts[1].Equals("destroy", StringComparison.OrdinalIgnoreCase) ||
+            parts[1].Equals("cancel", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryParseSandbox(parts, out operation, out error);
+        }
+
+        return TryParseCreate(parts, WorldIsolationLevel.InProcess, out operation, out error);
+    }
+
     private bool TryParseSandbox(string[] parts, out SandboxOperation? operation, out string? error)
     {
         if (parts.Length < 2)
-            return Fail("usage: sandbox list|status|move|regen|destroy|cancel", out operation, out error);
+            return Fail("usage: sandbox list|status|jobs|job|move|regen|destroy|cancel", out operation, out error);
 
         switch (parts[1].ToLowerInvariant())
         {
@@ -84,6 +105,10 @@ public sealed class SandboxCommandParser
                 operation = new SandboxOperation.List(); error = null; return true;
             case "status" when parts.Length == 3:
                 operation = new SandboxOperation.Status(new SandboxName(parts[2])); error = null; return true;
+            case "jobs" when parts.Length == 2:
+                operation = new SandboxOperation.Jobs(); error = null; return true;
+            case "job" when parts.Length == 3 && TryOperationId(parts[2], out SandboxJobId jobId):
+                operation = new SandboxOperation.Job(jobId); error = null; return true;
             case "move":
                 return TryParseTransfer(parts[1..], forceRespawn: false, out operation, out error);
             case "cancel" when parts.Length == 3 && TryOperationId(parts[2], out SandboxJobId id):
@@ -93,7 +118,7 @@ public sealed class SandboxCommandParser
             case "regen":
                 return TryParseRegenerate(parts, out operation, out error);
             default:
-                return Fail("usage: sandbox list|status|move|regen|destroy|cancel", out operation, out error);
+                return Fail("usage: sandbox list|status|jobs|job|move|regen|destroy|cancel", out operation, out error);
         }
     }
 
@@ -103,7 +128,7 @@ public sealed class SandboxCommandParser
         out SandboxOperation? operation,
         out string? error)
     {
-        string root = isolation == WorldIsolationLevel.InProcess ? "sb1" : "sb2";
+        string root = parts[0].TrimStart('/').ToLowerInvariant();
         if (parts.Length < 4)
             return Fail($"usage: {root} <name> gen|file ...", out operation, out error);
 
@@ -292,7 +317,7 @@ public sealed class SandboxCommandParser
     }
 
     private const string Usage =
-        "usage: sandbox list|status|move|regen|destroy|cancel | sb1 <name> gen|file ... | sb2 <name> gen|file ... | respawn <player> <sandbox|primary>";
+        "usage: sandbox list|status|jobs|job|move|regen|destroy|cancel | sb1 <name> gen|file ... | sb2 <name> gen|file ... | respawn <player> <sandbox|primary>";
 
     private static bool Fail<T>(string message, out T? operation, out string? error)
     {
@@ -336,6 +361,10 @@ public sealed class SandboxOperations
             SandboxOperation.Status status => host.TryGetSandbox(status.Name, out SandboxSnapshot snapshot)
                 ? FormatSandbox(snapshot)
                 : $"sandbox: '{status.Name}' not found",
+            SandboxOperation.Jobs => FormatJobs(host.CaptureJobs()),
+            SandboxOperation.Job job => host.TryGetJob(job.Id, out SandboxJobSnapshot snapshot)
+                ? FormatJob(snapshot)
+                : $"sandbox: operation {job.Id} not found",
             SandboxOperation.Create create => host.TryCreate(create.Request, out SandboxJobId id, out string? error)
                 ? $"sandbox: create accepted as operation {id}"
                 : $"sandbox: {error}",
@@ -352,6 +381,19 @@ public sealed class SandboxOperations
                 : $"sandbox: operation {cancel.Id} is missing or already complete",
             _ => "sandbox: unsupported operation"
         };
+    }
+
+    internal SandboxTreeSnapshot CaptureTreeSnapshot() =>
+        transfers?.CaptureTreeSnapshot() ?? default;
+
+    internal static string FormatJob(in SandboxJobSnapshot job)
+    {
+        string result = $"sandbox: operation {job.Id} {job.Kind.ToString().ToLowerInvariant()} '{job.Sandbox}' {job.Status.ToString().ToLowerInvariant()}";
+        if (!string.IsNullOrWhiteSpace(job.Error))
+            result += $": {job.Error}";
+        else if (job.RuntimeIdentity is WorldRuntimeIdentity identity)
+            result += $" runtime={identity.RuntimeId} session={identity.SessionId}";
+        return result;
     }
 
     private string ExecuteTransfer(string player, SandboxName? sandbox, bool forceRespawn)
@@ -373,6 +415,13 @@ public sealed class SandboxOperations
             return "sandbox: no live sandboxes";
         return string.Join(" | ", sandboxes.Select(static sandbox =>
             $"{sandbox.Name} {sandbox.Runtime.Lifecycle} tick={sandbox.Runtime.Tick} session={sandbox.Runtime.Identity.SessionId}"));
+    }
+
+    private static string FormatJobs(SandboxJobSnapshot[] jobs)
+    {
+        if (jobs.Length == 0)
+            return "sandbox: no retained operations";
+        return string.Join(" | ", jobs.Select(static job => FormatJob(job)["sandbox: ".Length..]));
     }
 
     private static string FormatSandbox(in SandboxSnapshot sandbox) =>

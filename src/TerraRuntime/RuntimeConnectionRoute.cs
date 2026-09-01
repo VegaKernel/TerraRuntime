@@ -60,6 +60,19 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         get { lock (gate) return active.Bootstrap.JoinState; }
     }
 
+    internal RuntimeConnectionRouteSnapshot CaptureSnapshot()
+    {
+        lock (gate)
+        {
+            return new RuntimeConnectionRouteSnapshot(
+                source,
+                active.Runtime.Identity,
+                active.Player,
+                active.PlayerName,
+                active.Bootstrap.JoinState);
+        }
+    }
+
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
         lock (gate)
@@ -353,6 +366,13 @@ internal sealed class RuntimeConnectionDirectory
     public bool TryUnregister(GameCommandSourceId source, out RuntimeConnectionRoute? route) =>
         routes.TryRemove(source, out route);
 
+    public RuntimeConnectionRouteSnapshot[] Capture() =>
+        routes.Values
+            .Select(static route => route.CaptureSnapshot())
+            .OrderBy(static route => route.Player?.Slot.Value ?? byte.MaxValue)
+            .ThenBy(static route => route.Source.Value)
+            .ToArray();
+
     public bool TryResolve(string selector, out RuntimeConnectionRoute? route, out string? error)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(selector);
@@ -395,3 +415,10 @@ internal sealed class RuntimeConnectionDirectory
         return named is not null;
     }
 }
+
+internal readonly record struct RuntimeConnectionRouteSnapshot(
+    GameCommandSourceId Source,
+    WorldRuntimeIdentity Runtime,
+    PlayerHandle? Player,
+    string? PlayerName,
+    TerraRuntime.Core.PlayerJoinState? JoinState);

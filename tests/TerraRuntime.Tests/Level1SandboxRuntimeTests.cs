@@ -105,6 +105,9 @@ public sealed class Level1SandboxRuntimeTests
             registry,
             generators,
             TerrariaServerHost.CreateServerWorldLoadLimits());
+        var notification = new TaskCompletionSource<SandboxJobSnapshot>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        sandboxes.JobFinished += snapshot => notification.TrySetResult(snapshot);
         var source = new SandboxWorldSource.Generated(
             ThrowingGenerator.GeneratorId,
             "Broken",
@@ -123,8 +126,53 @@ public sealed class Level1SandboxRuntimeTests
             TestContext.Current.CancellationToken);
 
         Assert.Equal(SandboxJobStatus.Failed, failed.Status);
+        SandboxJobSnapshot published = await notification.Task.WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+        Assert.Equal(failed.Id, published.Id);
+        Assert.Equal(SandboxJobStatus.Failed, published.Status);
+        Assert.False(string.IsNullOrWhiteSpace(published.Error));
         Assert.Equal(1, registry.Count);
         Assert.Empty(sandboxes.CaptureSandboxes());
+    }
+
+    [Fact]
+    public void Unknown_generator_is_rejected_before_a_background_job_is_accepted()
+    {
+        WorldRuntime primary = CreateRuntime("Primary", seed: 41);
+        using var registry = new WorldRegistry(capacity: 3);
+        Assert.True(registry.TryAdmit(primary, primary: true));
+        using var sandboxes = new SandboxHost(
+            registry,
+            BuiltInWorldGeneratorSource.Instance,
+            TerrariaServerHost.CreateServerWorldLoadLimits());
+        var source = new SandboxWorldSource.Generated(
+            new WorldGeneratorId("missing:generator"),
+            "Missing",
+            Seed: 1,
+            WidthTiles: 32,
+            HeightTiles: 24,
+            WorldGenerationOptions.Default);
+
+        Assert.False(sandboxes.TryCreate(
+            new SandboxCreateRequest(new SandboxName("missing"), WorldIsolationLevel.InProcess, source),
+            out SandboxJobId jobId,
+            out string? error));
+
+        Assert.False(jobId.IsAssigned);
+        Assert.Contains("not registered", error, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(sandboxes.CaptureJobs());
+        Assert.Equal(1, registry.Count);
+
+        var operations = new SandboxOperations(
+            sandboxes,
+            Path.GetTempPath(),
+            defaultWidthTiles: 32,
+            defaultHeightTiles: 24);
+        string feedback = operations.Execute("sb command_error gen missing:generator");
+        Assert.Contains("missing:generator", feedback, StringComparison.Ordinal);
+        Assert.Contains("not registered", feedback, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("accepted", feedback, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -364,7 +412,10 @@ public sealed class Level1SandboxRuntimeTests
         Assert.Equal(8400, primarySize.WidthTiles);
         Assert.Equal(2400, primarySize.HeightTiles);
 
-        Assert.False(parser.TryParse("sandbox jobs", out _, out _));
+        Assert.True(parser.TryParse("sandbox jobs", out SandboxOperation? jobs, out string? jobsError), jobsError);
+        Assert.IsType<SandboxOperation.Jobs>(jobs);
+        Assert.True(parser.TryParse("sb job 42", out SandboxOperation? job, out string? jobError), jobError);
+        Assert.Equal(new SandboxJobId(42), Assert.IsType<SandboxOperation.Job>(job).Id);
         Assert.False(parser.TryParse("sandbox create old l1 gen flat", out _, out _));
         Assert.True(parser.TryParse("respawn Alice primary", out SandboxOperation? respawn, out string? respawnError), respawnError);
         Assert.IsType<SandboxOperation.Respawn>(respawn);

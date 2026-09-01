@@ -47,6 +47,7 @@ internal sealed class TerminalUiOperationsCache :
     private readonly INetworkOperations networkSource;
     private readonly IWorldOperations worldSource;
     private readonly ILogOperations logSource;
+    private readonly SandboxOperations? sandboxSource;
     private SnapshotState state;
     private int demandMask;
     private long version;
@@ -59,7 +60,8 @@ internal sealed class TerminalUiOperationsCache :
         IWorldOperations worldSource,
         ILogOperations logSource,
         IProjectileOperations? projectileSource = null,
-        IWorldItemOperations? worldItemSource = null)
+        IWorldItemOperations? worldItemSource = null,
+        SandboxOperations? sandboxSource = null)
     {
         this.dashboardSource = dashboardSource ?? throw new ArgumentNullException(nameof(dashboardSource));
         this.playerSource = playerSource ?? throw new ArgumentNullException(nameof(playerSource));
@@ -69,6 +71,7 @@ internal sealed class TerminalUiOperationsCache :
         this.networkSource = networkSource ?? throw new ArgumentNullException(nameof(networkSource));
         this.worldSource = worldSource ?? throw new ArgumentNullException(nameof(worldSource));
         this.logSource = logSource ?? throw new ArgumentNullException(nameof(logSource));
+        this.sandboxSource = sandboxSource;
 
         state = CaptureInitialState();
     }
@@ -108,7 +111,8 @@ internal sealed class TerminalUiOperationsCache :
             logSource.CaptureSnapshot(OverviewLogQuery),
             logSource.CaptureSnapshot(ChatLogQuery),
             detailLogs,
-            logSource.CaptureSources(MaximumCachedLogSources));
+            logSource.CaptureSources(MaximumCachedLogSources),
+            sandboxSource?.CaptureTreeSnapshot() ?? default);
 
         Volatile.Write(ref state, next);
         Interlocked.Increment(ref version);
@@ -184,6 +188,9 @@ internal sealed class TerminalUiOperationsCache :
         return sources[..Math.Min(maxSources, sources.Length)];
     }
 
+    internal SandboxTreeSnapshot CaptureSandboxTreeSnapshot() =>
+        Volatile.Read(ref state).SandboxTree;
+
     private SnapshotState CaptureInitialState() => new(
         dashboardSource.CaptureSnapshot(),
         playerSource.CaptureSnapshot(),
@@ -195,7 +202,8 @@ internal sealed class TerminalUiOperationsCache :
         logSource.CaptureSnapshot(OverviewLogQuery),
         logSource.CaptureSnapshot(ChatLogQuery),
         logSource.CaptureSnapshot(DetailLogQuery),
-        logSource.CaptureSources(MaximumCachedLogSources));
+        logSource.CaptureSources(MaximumCachedLogSources),
+        sandboxSource?.CaptureTreeSnapshot() ?? default);
 
     private void MarkDemand(int demand) => Interlocked.Or(ref demandMask, demand);
 
@@ -210,5 +218,6 @@ internal sealed class TerminalUiOperationsCache :
         RuntimeLogSnapshot OverviewLogs,
         RuntimeLogSnapshot ChatLogs,
         RuntimeLogSnapshot DetailLogs,
-        ReadOnlyMemory<string> LogSources);
+        ReadOnlyMemory<string> LogSources,
+        SandboxTreeSnapshot SandboxTree);
 }

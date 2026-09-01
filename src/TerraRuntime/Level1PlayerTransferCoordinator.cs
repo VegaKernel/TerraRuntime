@@ -2,6 +2,25 @@ using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime;
 
+internal readonly record struct SandboxTreePlayerSnapshot(
+    string Selector,
+    byte Slot,
+    string Name,
+    bool IsPlaying);
+
+internal readonly record struct SandboxTreeWorldSnapshot(
+    SandboxName? Sandbox,
+    string DisplayName,
+    bool IsPrimary,
+    WorldRuntimeSnapshot? Runtime,
+    SandboxJobSnapshot? PendingJob,
+    ReadOnlyMemory<SandboxTreePlayerSnapshot> Players);
+
+internal readonly record struct SandboxTreeSnapshot(
+    ReadOnlyMemory<SandboxTreeWorldSnapshot> Worlds,
+    ReadOnlyMemory<SandboxJobSnapshot> Jobs,
+    DateTimeOffset CapturedAtUtc);
+
 /// <summary>
 /// Resolves operator player/runtime selectors and executes the process-local WorldRuntime transfer transaction.
 /// Socket ownership remains in the server process; this policy layer never emits ad-hoc Terraria packets itself.
@@ -50,5 +69,91 @@ internal sealed class Level1PlayerTransferCoordinator
         }
 
         return route.TryTransfer(destination, forceRespawn, out error);
+    }
+
+    public SandboxTreeSnapshot CaptureTreeSnapshot()
+    {
+        WorldRuntimeSnapshot? primary = runtimes.TryGetPrimary(out WorldRuntime? primaryRuntime) && primaryRuntime is not null
+            ? primaryRuntime.CaptureSnapshot()
+            : null;
+        SandboxSnapshot[] sandboxSnapshots = sandboxes.CaptureSandboxes();
+        SandboxJobSnapshot[] jobs = sandboxes.CaptureJobs();
+        RuntimeConnectionRouteSnapshot[] routes = connections.Capture();
+
+        var worlds = new List<SandboxTreeWorldSnapshot>(1 + sandboxSnapshots.Length);
+        if (primary is WorldRuntimeSnapshot primarySnapshot)
+        {
+            worlds.Add(new SandboxTreeWorldSnapshot(
+                Sandbox: null,
+                primarySnapshot.WorldName,
+                IsPrimary: true,
+                primarySnapshot,
+                PendingJob: null,
+                CapturePlayers(primarySnapshot.Identity, routes)));
+        }
+
+        foreach (SandboxSnapshot sandbox in sandboxSnapshots)
+        {
+            SandboxJobSnapshot? pending = null;
+            if (sandbox.PendingJob is SandboxJobId pendingId)
+            {
+                int pendingIndex = Array.FindIndex(jobs, job => job.Id == pendingId);
+                if (pendingIndex >= 0)
+                    pending = jobs[pendingIndex];
+            }
+            worlds.Add(new SandboxTreeWorldSnapshot(
+                sandbox.Name,
+                sandbox.Name.Value,
+                IsPrimary: false,
+                sandbox.Runtime,
+                pending,
+                CapturePlayers(sandbox.Runtime.Identity, routes)));
+        }
+
+        foreach (SandboxJobSnapshot pendingCreate in jobs)
+        {
+            if (pendingCreate.Kind != SandboxJobKind.Create ||
+                pendingCreate.Status is SandboxJobStatus.Completed or SandboxJobStatus.Failed or SandboxJobStatus.Canceled ||
+                worlds.Any(world => world.Sandbox == pendingCreate.Sandbox))
+            {
+                continue;
+            }
+
+            worlds.Add(new SandboxTreeWorldSnapshot(
+                pendingCreate.Sandbox,
+                pendingCreate.Sandbox.Value,
+                IsPrimary: false,
+                Runtime: null,
+                pendingCreate,
+                ReadOnlyMemory<SandboxTreePlayerSnapshot>.Empty));
+        }
+
+        int sandboxStart = primary is null ? 0 : 1;
+        if (worlds.Count - sandboxStart > 1)
+        {
+            worlds.Sort(sandboxStart, worlds.Count - sandboxStart, Comparer<SandboxTreeWorldSnapshot>.Create(
+                static (left, right) => string.Compare(left.DisplayName, right.DisplayName, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        return new SandboxTreeSnapshot(worlds.ToArray(), jobs, DateTimeOffset.UtcNow);
+    }
+
+    private static ReadOnlyMemory<SandboxTreePlayerSnapshot> CapturePlayers(
+        WorldRuntimeIdentity runtime,
+        ReadOnlySpan<RuntimeConnectionRouteSnapshot> routes)
+    {
+        var players = new List<SandboxTreePlayerSnapshot>();
+        foreach (RuntimeConnectionRouteSnapshot route in routes)
+        {
+            if (route.Runtime != runtime || route.Player is not PlayerHandle player)
+                continue;
+            string name = string.IsNullOrWhiteSpace(route.PlayerName) ? $"player-{player.Slot.Value}" : route.PlayerName;
+            players.Add(new SandboxTreePlayerSnapshot(
+                $"#{player.Slot.Value}",
+                player.Slot.Value,
+                name,
+                route.JoinState == TerraRuntime.Core.PlayerJoinState.Playing));
+        }
+        return players.ToArray();
     }
 }

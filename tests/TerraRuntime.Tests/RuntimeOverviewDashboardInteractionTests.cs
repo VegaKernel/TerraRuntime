@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Operations;
 using TerraRuntime.TerminalUI;
 using Terminal.Gui.App;
@@ -275,6 +276,87 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.Contains("▼ Main  [primary]", tree);
         Assert.Contains("#0 Alice", tree);
         Assert.Contains("#1 Bob", tree);
+    }
+
+    [Fact]
+    public void World_tree_projects_primary_sandboxes_and_route_membership()
+    {
+        WorldRuntimeIdentity primaryIdentity = new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
+        WorldRuntimeIdentity arenaIdentity = new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
+        SandboxTreeWorldSnapshot[] worlds =
+        [
+            new(
+                Sandbox: null,
+                DisplayName: "Main",
+                IsPrimary: true,
+                Runtime: default(WorldRuntimeSnapshot) with
+                {
+                    Identity = primaryIdentity,
+                    WorldName = "Main",
+                    Lifecycle = WorldRuntimeLifecycle.Running
+                },
+                PendingJob: null,
+                Players: new SandboxTreePlayerSnapshot[]
+                {
+                    new("#0", 0, "Alice", IsPlaying: true)
+                }),
+            new(
+                new SandboxName("arena"),
+                "arena",
+                IsPrimary: false,
+                Runtime: default(WorldRuntimeSnapshot) with
+                {
+                    Identity = arenaIdentity,
+                    WorldName = "Arena World",
+                    Lifecycle = WorldRuntimeLifecycle.Running
+                },
+                PendingJob: null,
+                Players: new SandboxTreePlayerSnapshot[]
+                {
+                    new("#1", 1, "Bob", IsPlaying: true)
+                })
+        ];
+        var tree = new SandboxTreeSnapshot(worlds, ReadOnlyMemory<SandboxJobSnapshot>.Empty, DateTimeOffset.UtcNow);
+        using var dashboard = new RuntimeOverviewDashboard(sandboxTreeSource: () => tree);
+
+        dashboard.Refresh(
+            default(RuntimeDashboardSnapshot) with { WorldName = "Main", MaxPlayers = 8 },
+            default,
+            default,
+            default,
+            default,
+            default,
+            status: null);
+
+        string rendered = dashboard.GetWorldsTextForSmoke();
+        Assert.Contains("Main  [primary]", rendered);
+        Assert.Contains("#0 Alice", rendered);
+        Assert.Contains("arena  [sandbox · running]", rendered);
+        Assert.Contains("#1 Bob", rendered);
+    }
+
+    [Fact]
+    public void World_tree_drag_maps_player_row_to_destination_semantic_target()
+    {
+        using var tree = new SandboxWorldTreeView();
+        var destination = new SandboxName("arena");
+        string? player = null;
+        SandboxName? target = null;
+        tree.TransferRequested += (selector, sandbox) =>
+        {
+            player = selector;
+            target = sandbox;
+        };
+        tree.SetRows(
+        [
+            new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null),
+            new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#0"),
+            new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, destination, PlayerSelector: null)
+        ]);
+
+        Assert.True(tree.TryTransferRows(sourceRow: 1, targetRow: 2));
+        Assert.Equal("#0", player);
+        Assert.Equal(destination, target);
     }
 
     private static RuntimePlayerSnapshot CreatePlayer(byte slot, long connectionId, string name) =>

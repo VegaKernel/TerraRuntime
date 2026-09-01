@@ -8,7 +8,10 @@ namespace TerraRuntime.TerminalUI;
 
 internal sealed class TerminalUiHost : IDisposable
 {
-    private static readonly long RefreshIntervalTicks = Math.Max(1L, Stopwatch.Frequency / 2);
+    private static readonly TimeSpan SnapshotRefreshInterval = TimeSpan.FromMilliseconds(100);
+    private static readonly long RefreshIntervalTicks = Math.Max(
+        1L,
+        (long)(Stopwatch.Frequency * SnapshotRefreshInterval.TotalSeconds));
     private static readonly TimeSpan UiPumpInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly IRuntimeDashboardOperations dashboardOperations;
@@ -94,6 +97,7 @@ internal sealed class TerminalUiHost : IDisposable
         isWindows ? DriverRegistry.Names.DOTNET : null;
 
     internal static TimeSpan UiPumpIntervalForTests => UiPumpInterval;
+    internal static TimeSpan SnapshotRefreshIntervalForTests => SnapshotRefreshInterval;
 
     public void Dispose()
     {
@@ -144,7 +148,8 @@ internal sealed class TerminalUiHost : IDisposable
                 worldOperations,
                 logOperations,
                 projectileOperations,
-                worldItemOperations);
+                worldItemOperations,
+                sandboxOperations);
             IProjectileOperations? cachedProjectileOperations = projectileOperations is null ? null : snapshotCache;
             IWorldItemOperations? cachedWorldItemOperations = worldItemOperations is null ? null : snapshotCache;
 
@@ -160,7 +165,8 @@ internal sealed class TerminalUiHost : IDisposable
                 terminalDashboards,
                 cachedProjectileOperations,
                 cachedWorldItemOperations,
-                sandboxOperations);
+                sandboxOperations,
+                snapshotCache.CaptureSandboxTreeSnapshot);
 
             Task? backgroundRefresh = null;
             long nextRefresh = Stopwatch.GetTimestamp() + RefreshIntervalTicks;

@@ -11,6 +11,85 @@ namespace TerraRuntime.Tests;
 public sealed class Level1PlayerTransferTests
 {
     [Fact]
+    public async Task Process_world_tree_tracks_route_membership_across_semantic_transfer()
+    {
+        WorldRuntime primary = CreateRuntime("Primary", seed: 90);
+        using var registry = new WorldRegistry(capacity: 3);
+        Assert.True(registry.TryAdmit(primary, primary: true));
+        using var sandboxes = new SandboxHost(
+            registry,
+            BuiltInWorldGeneratorSource.Instance,
+            TerrariaServerHost.CreateServerWorldLoadLimits());
+        var sandboxName = new SandboxName("arena");
+        var sandboxSource = new SandboxWorldSource.Generated(
+            FlatWorldGenerationProvider.GeneratorId,
+            "Arena",
+            Seed: 91,
+            WidthTiles: 32,
+            HeightTiles: 24,
+            WorldGenerationOptions.Default);
+        Assert.True(sandboxes.TryCreate(
+            new SandboxCreateRequest(sandboxName, WorldIsolationLevel.InProcess, sandboxSource),
+            out SandboxJobId createId,
+            out string? createError), createError);
+        Assert.Equal(
+            SandboxJobStatus.Completed,
+            (await sandboxes.WaitForJobAsync(
+                createId,
+                TimeSpan.FromSeconds(10),
+                TestContext.Current.CancellationToken)).Status);
+
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(39);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(
+            primary,
+            source,
+            outbound,
+            new PlayerSlotId(0),
+            "TreePlayer",
+            out RuntimeConnectionWorldBinding? binding));
+        Assert.NotNull(binding);
+        Assert.True(binding!.TryRegister());
+        using var route = new RuntimeConnectionRoute(source, outbound, binding);
+        PlayerHandle player = AssertPlayer(route.ActivePlayer);
+        await AttachInitialPlayerAsync(primary, source, player, "TreePlayer", x: 96f, y: 128f, life: 70, maxLife: 100);
+
+        var directory = new RuntimeConnectionDirectory();
+        Assert.True(directory.TryRegister(source, route));
+        var transfers = new Level1PlayerTransferCoordinator(directory, registry, sandboxes);
+
+        SandboxTreeSnapshot before = transfers.CaptureTreeSnapshot();
+        Assert.Equal(2, before.Worlds.Length);
+        Assert.Contains(before.Worlds.ToArray(), world => world.IsPrimary &&
+            world.Players.ToArray().Any(candidate => candidate.Name == "TreePlayer"));
+
+        Assert.True(transfers.TryMove("#0", sandboxName, forceRespawn: false, out string? moveError), moveError);
+        SandboxTreeSnapshot after = transfers.CaptureTreeSnapshot();
+        SandboxTreeWorldSnapshot arena = Assert.Single(
+            after.Worlds.ToArray(),
+            world => world.Sandbox == sandboxName);
+        Assert.Contains(arena.Players.ToArray(), candidate => candidate.Name == "TreePlayer");
+        Assert.DoesNotContain(
+            Assert.Single(after.Worlds.ToArray(), world => world.IsPrimary).Players.ToArray(),
+            candidate => candidate.Name == "TreePlayer");
+
+        Assert.False(sandboxes.TryDestroy(sandboxName, out _, out string? occupiedError));
+        Assert.Contains("Move connected players", occupiedError, StringComparison.Ordinal);
+        Assert.True(transfers.TryMove("#0", sandbox: null, forceRespawn: false, out string? returnError), returnError);
+        Assert.True(sandboxes.TryDestroy(sandboxName, out SandboxJobId destroyId, out string? destroyError), destroyError);
+        Assert.Equal(
+            SandboxJobStatus.Completed,
+            (await sandboxes.WaitForJobAsync(
+                destroyId,
+                TimeSpan.FromSeconds(10),
+                TestContext.Current.CancellationToken)).Status);
+
+        Assert.True(directory.TryUnregister(source, out RuntimeConnectionRoute? removed));
+        Assert.Same(route, removed);
+    }
+
+    [Fact]
     public async Task Route_moves_player_primary_to_sandbox_and_back_without_changing_wire_slot()
     {
         using WorldRuntime primary = CreateRuntime("Primary", seed: 101);

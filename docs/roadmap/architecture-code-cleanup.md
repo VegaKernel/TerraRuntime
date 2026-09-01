@@ -159,6 +159,8 @@ Goal: the primary world and Level 1 sandbox worlds are the same runtime type. â€
 - [x] Preserve the invariant that each world has one authoritative writer.
 - [x] Keep mutable `WorldFileData` storage internal to application/runtime composition; public `WorldRuntime` callers use snapshots and typed operations rather than writable tile/storage access.
 - [x] Make current single-world startup one ordinary `WorldRuntime` selected as primary by host/Vega policy.
+- [x] Project multi-world/player topology through detached snapshots rather than exposing mutable runtime or connection-route collections to the TUI.
+- [x] Keep operator UI transfer invocation on the typed runtime-transfer boundary and keep its blocking barrier off the Terminal.Gui input thread.
 - [ ] Use the same `WorldRuntime` implementation inside a Level 2 sandbox worker.
 
 Exit criteria: two independent in-process worlds can run without singleton current-world assumptions, and the primary world is not architecturally privileged inside simulation code.

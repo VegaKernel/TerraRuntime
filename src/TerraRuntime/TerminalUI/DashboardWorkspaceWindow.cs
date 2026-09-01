@@ -73,7 +73,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         ITerraRuntimeTerminalDashboardSource? terminalDashboards,
         IProjectileOperations? projectileOperations = null,
         IWorldItemOperations? worldItemOperations = null,
-        SandboxOperations? sandboxOperations = null)
+        SandboxOperations? sandboxOperations = null,
+        Func<SandboxTreeSnapshot>? sandboxTreeSource = null)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
@@ -97,7 +98,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Height = Dim.Fill(status)
         };
 
-        overviewDashboard = new RuntimeOverviewDashboard(sandboxOperations)
+        overviewDashboard = new RuntimeOverviewDashboard(sandboxOperations, sandboxTreeSource)
         {
             Width = Dim.Fill(),
             Height = Dim.Fill()
@@ -362,8 +363,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                             RequestWorldSaveCheckpoint),
                         new MenuItem(
                             "_Move player between worlds",
-                            "Requires the future multi-world supervisor and authoritative transfer operation",
-                            ShowWorldTransferUnavailable)
+                            "Drag a player in the Worlds / Players tree onto the destination world",
+                            FocusWorldTree)
                     ]),
                 new MenuBarItem(
                     "_Help",
@@ -902,12 +903,11 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private static string FormatKibibytes(long bytes) =>
         (bytes / 1024d).ToString("F1", CultureInfo.InvariantCulture) + " KiB";
 
-    private void ShowWorldTransferUnavailable() =>
-        MessageBox.Query(
-            App!,
-            "World transfer",
-            "This process currently owns one runtime world. Player drag/drop will be enabled only after a multi-world supervisor exposes an authoritative transfer operation.",
-            "OK");
+    private void FocusWorldTree()
+    {
+        ShowSystemDashboard();
+        overviewDashboard.FocusWorldTree();
+    }
 
     private void ShowAbout() =>
         MessageBox.Query(

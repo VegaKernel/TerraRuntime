@@ -22,6 +22,8 @@ internal sealed class RuntimeOverviewDashboard : View
     private const int HistoryLength = 60;
     private const int MaximumFeedEntries = 64;
     private const int GraphRowHeight = 8;
+    // One second beyond RuntimeConnectionRoute's transfer barrier keeps sandbox ownership alive while a TUI closes.
+    private static readonly TimeSpan OperatorCommandShutdownTimeout = TimeSpan.FromSeconds(4);
     private const string ActiveTitlePrefix = "▶ ";
     private const string BaseSchemeName = "Base";
     private const string AccentSchemeName = "Accent";
@@ -32,7 +34,7 @@ internal sealed class RuntimeOverviewDashboard : View
     private readonly FrameView worldsFrame;
     private readonly FrameView commandFrame;
     private readonly TextView consoleText;
-    private readonly TextView worldsText;
+    private readonly SandboxWorldTreeView worldsText;
     private readonly Label tpsLegend;
     private readonly Label networkLegend;
     private readonly Label commandFeedback;
@@ -43,6 +45,8 @@ internal sealed class RuntimeOverviewDashboard : View
     private readonly GraphView tpsGraph;
     private readonly GraphView networkGraph;
     private readonly SandboxOperations? sandboxOperations;
+    private readonly Func<SandboxTreeSnapshot>? sandboxTreeSource;
+    private readonly HashSet<long> observedTerminalSandboxJobs = [];
     private readonly PathAnnotation tpsTargetPath = new()
     {
         LineColor = new TuiAttribute(TuiColor.Gray, TuiColor.Black)
@@ -67,6 +71,7 @@ internal sealed class RuntimeOverviewDashboard : View
     private string pendingConsoleText = string.Empty;
     private string appliedWorldsText = string.Empty;
     private string pendingWorldsText = string.Empty;
+    private string? appliedWorkspaceStatus;
     private RuntimeLogLevel? minimumLogLevel = RuntimeLogLevel.Information;
     private bool showChat = true;
     private RuntimeDashboardSnapshot latestRuntime;
@@ -75,21 +80,29 @@ internal sealed class RuntimeOverviewDashboard : View
     private int latestPlayerCount;
     private bool hasFeedSnapshot;
     private bool hasNetworkCounterSample;
+    private Task<string>? pendingSandboxCommand;
     private DateTimeOffset lastNetworkCapturedAtUtc;
     private long lastMessageInboundFrames;
     private long lastMessageInboundBytes;
     private long lastMessageOutboundFrames;
     private long lastMessageOutboundBytes;
 
-    public RuntimeOverviewDashboard(SandboxOperations? sandboxOperations = null)
+    public RuntimeOverviewDashboard(
+        SandboxOperations? sandboxOperations = null,
+        Func<SandboxTreeSnapshot>? sandboxTreeSource = null)
     {
         this.sandboxOperations = sandboxOperations;
+        this.sandboxTreeSource = sandboxTreeSource;
         Width = Dim.Fill();
         Height = Dim.Fill();
         CanFocus = true;
 
         consoleText = CreateSelectableTextSurface(scrollBars: true);
-        worldsText = CreateSelectableTextSurface(scrollBars: true);
+        worldsText = new SandboxWorldTreeView
+        {
+            ViewportSettings = ViewportSettingsFlags.HasScrollBars,
+            SchemeName = BaseSchemeName
+        };
         tpsGraph = CreateGraph();
         networkGraph = CreateGraph();
         tpsLegend = CreateLegend();
@@ -131,7 +144,7 @@ internal sealed class RuntimeOverviewDashboard : View
             X = 1,
             Y = Pos.AnchorEnd(1),
             Width = Dim.Fill(1),
-            Text = "single runtime · drag transfer waits for multi-world ingress",
+            Text = "drag a player onto a destination world",
             SchemeName = BaseSchemeName
         };
 
@@ -179,6 +192,8 @@ internal sealed class RuntimeOverviewDashboard : View
         worldsText.Width = Dim.Fill();
         worldsText.Height = Dim.Fill(1);
         worldsFrame.Add(worldsText, worldsHint);
+        worldsText.TransferRequested += (player, sandbox) =>
+            ExecuteSandboxOperationAsync(new SandboxOperation.Move(player, sandbox));
 
         AttachMaximize(consoleFrame);
         AttachMaximize(tpsFrame);
@@ -240,11 +255,17 @@ internal sealed class RuntimeOverviewDashboard : View
         hasFeedSnapshot = true;
 
         RefreshFeedProjection();
+        SandboxTreeSnapshot sandboxTree = sandboxTreeSource?.Invoke() ?? default;
+        (string worldTreeText, SandboxWorldTreeRow[] worldTreeRows) = RenderWorldTree(
+            runtime,
+            players,
+            sandboxTree.Worlds.Span);
         SetSelectableText(
             worldsText,
-            RenderWorldTree(runtime, players),
+            worldTreeText,
             ref appliedWorldsText,
             ref pendingWorldsText);
+        worldsText.SetRows(worldTreeRows);
 
         tpsLegend.Text = string.Create(
             CultureInfo.InvariantCulture,
@@ -261,14 +282,39 @@ internal sealed class RuntimeOverviewDashboard : View
                 : $"{RuntimeProductInfo.DisplayName} - System Dashboard";
         }
 
-        if (!string.IsNullOrWhiteSpace(status))
+        if (!string.IsNullOrWhiteSpace(status) &&
+            !string.Equals(status, appliedWorkspaceStatus, StringComparison.Ordinal))
+        {
             SetCommandFeedback(status);
+            appliedWorkspaceStatus = status;
+        }
+
+        PublishSandboxCommandCompletion();
+        ObserveSandboxJobs(sandboxTree.Jobs.Span);
 
         UpdateGraphs(runtime.TargetTicksPerSecond);
         SetNeedsDraw();
     }
 
     internal void FocusCommandInput() => commandInput.SetFocus();
+
+    internal void FocusWorldTree() => worldsText.SetFocus();
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && pendingSandboxCommand is { IsCompleted: false } command)
+        {
+            try
+            {
+                _ = command.Wait(OperatorCommandShutdownTimeout);
+            }
+            catch (AggregateException)
+            {
+                // Command failures are already projected into operator feedback while the view is alive.
+            }
+        }
+        base.Dispose(disposing);
+    }
 
     internal void TogglePanelForSmoke(string panelTitle) => ToggleMaximize(GetFrame(panelTitle));
 
@@ -344,7 +390,7 @@ internal sealed class RuntimeOverviewDashboard : View
         {
             case "help":
             case "?":
-                SetCommandFeedback("help | feed | save | interest | sandbox list|status|move|regen|destroy|cancel | sb1 | sb2 | respawn | system | players | npcs | projectiles | items | network | world | logs");
+                SetCommandFeedback("help | feed | save | interest | sandbox list|status|jobs|job|move|regen|destroy|cancel | sb1 | sb2 | respawn | system | players | npcs | projectiles | items | network | world | logs");
                 return;
             case "clear":
                 SetCommandFeedback(string.Empty);
@@ -376,10 +422,11 @@ internal sealed class RuntimeOverviewDashboard : View
                 SetCommandFeedback($"console: interest {(enabled ? "on" : "off")} requested");
                 return;
             case "sandbox":
+            case "sb":
             case "sb1":
             case "sb2":
             case "respawn":
-                SetCommandFeedback(sandboxOperations?.Execute(input) ?? "sandbox: operations unavailable");
+                ExecuteSandboxCommandAsync(input);
                 return;
             case "system":
             case "overview":
@@ -410,6 +457,83 @@ internal sealed class RuntimeOverviewDashboard : View
                 SetCommandFeedback($"unknown runtime console command '{Sanitize(input, 64)}'; type help");
                 return;
         }
+    }
+
+    private void ExecuteSandboxCommandAsync(string command)
+    {
+        if (sandboxOperations is null)
+        {
+            SetCommandFeedback("sandbox: operations unavailable");
+            return;
+        }
+        if (pendingSandboxCommand is { IsCompleted: false })
+        {
+            SetCommandFeedback("sandbox: another operator command is still running");
+            return;
+        }
+
+        SetCommandFeedback("sandbox: processing command");
+        pendingSandboxCommand = Task.Run(() => sandboxOperations.Execute(command));
+    }
+
+    private void ExecuteSandboxOperationAsync(SandboxOperation operation)
+    {
+        if (sandboxOperations is null)
+        {
+            SetCommandFeedback("sandbox: player transfer operations are unavailable");
+            return;
+        }
+        if (pendingSandboxCommand is { IsCompleted: false })
+        {
+            SetCommandFeedback("sandbox: another operator command is still running");
+            return;
+        }
+
+        SetCommandFeedback(operation is SandboxOperation.Move move
+            ? $"sandbox: moving {move.PlayerSelector} to {move.Sandbox?.ToString() ?? "primary"}"
+            : "sandbox: processing operation");
+        pendingSandboxCommand = Task.Run(() => sandboxOperations.Execute(operation));
+    }
+
+    private void PublishSandboxCommandCompletion()
+    {
+        if (pendingSandboxCommand is not { IsCompleted: true } completed)
+            return;
+
+        pendingSandboxCommand = null;
+        try
+        {
+            SetCommandFeedback(completed.GetAwaiter().GetResult());
+        }
+        catch (Exception exception)
+        {
+            SetCommandFeedback($"sandbox: command failed: {exception.Message}");
+        }
+    }
+
+    private void ObserveSandboxJobs(ReadOnlySpan<SandboxJobSnapshot> jobs)
+    {
+        if (jobs.Length == 0)
+            return;
+
+        string? latest = null;
+        long latestId = 0;
+        var retained = new HashSet<long>();
+        foreach (SandboxJobSnapshot job in jobs)
+        {
+            if (job.Status is not (SandboxJobStatus.Completed or SandboxJobStatus.Failed or SandboxJobStatus.Canceled))
+                continue;
+
+            retained.Add(job.Id.Value);
+            if (!observedTerminalSandboxJobs.Add(job.Id.Value) || job.Id.Value <= latestId)
+                continue;
+            latestId = job.Id.Value;
+            latest = SandboxOperations.FormatJob(job);
+        }
+
+        observedTerminalSandboxJobs.IntersectWith(retained);
+        if (latest is not null)
+            SetCommandFeedback(latest);
     }
 
     private void ExecuteFeedCommand(string[] parts)
@@ -1042,28 +1166,85 @@ internal sealed class RuntimeOverviewDashboard : View
         return text.ToString();
     }
 
-    private static string RenderWorldTree(
+    private static (string Text, SandboxWorldTreeRow[] Rows) RenderWorldTree(
         RuntimeDashboardSnapshot runtime,
+        ReadOnlySpan<RuntimePlayerSnapshot> primaryPlayers,
+        ReadOnlySpan<SandboxTreeWorldSnapshot> worlds)
+    {
+        var text = new StringBuilder(Math.Max(96, (primaryPlayers.Length + worlds.Length) * 40));
+        var rows = new List<SandboxWorldTreeRow>(Math.Max(2, primaryPlayers.Length + worlds.Length * 2));
+
+        if (worlds.Length == 0)
+        {
+            text.Append("▼ ").Append(Sanitize(runtime.WorldName, 28)).Append("  [primary]");
+            rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null));
+            AppendPrimaryPlayers(text, rows, primaryPlayers);
+            return (text.ToString(), rows.ToArray());
+        }
+
+        for (int worldIndex = 0; worldIndex < worlds.Length; worldIndex++)
+        {
+            if (worldIndex != 0)
+                text.AppendLine();
+
+            SandboxTreeWorldSnapshot world = worlds[worldIndex];
+            text.Append("▼ ").Append(Sanitize(world.DisplayName, 24));
+            if (world.IsPrimary)
+                text.Append("  [primary]");
+            else if (world.Runtime is WorldRuntimeSnapshot live)
+                text.Append("  [sandbox · ").Append(live.Lifecycle.ToString().ToLowerInvariant()).Append(']');
+            else if (world.PendingJob is SandboxJobSnapshot pending)
+                text.Append("  [sandbox · ").Append(pending.Status.ToString().ToLowerInvariant()).Append(']');
+            else
+                text.Append("  [sandbox]");
+            rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, world.Sandbox, PlayerSelector: null));
+
+            ReadOnlySpan<SandboxTreePlayerSnapshot> players = world.Players.Span;
+            if (players.Length == 0)
+            {
+                text.AppendLine().Append("  └─ <no players>");
+                rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Placeholder, world.Sandbox, PlayerSelector: null));
+                continue;
+            }
+
+            for (int playerIndex = 0; playerIndex < players.Length; playerIndex++)
+            {
+                SandboxTreePlayerSnapshot player = players[playerIndex];
+                text.AppendLine().Append(playerIndex == players.Length - 1 ? "  └─ " : "  ├─ ")
+                    .Append('#').Append(player.Slot).Append(' ')
+                    .Append(Sanitize(player.Name, 28));
+                if (!player.IsPlaying)
+                    text.Append("  [joining]");
+                rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, world.Sandbox, player.Selector));
+            }
+        }
+
+        return (text.ToString(), rows.ToArray());
+    }
+
+    private static void AppendPrimaryPlayers(
+        StringBuilder text,
+        List<SandboxWorldTreeRow> rows,
         ReadOnlySpan<RuntimePlayerSnapshot> players)
     {
-        var text = new StringBuilder(Math.Max(96, players.Length * 40));
-        text.Append("▼ ").Append(Sanitize(runtime.WorldName, 28)).Append("  [primary]").AppendLine();
         if (players.Length == 0)
         {
-            text.Append("  └─ <no players>");
-            return text.ToString();
+            text.AppendLine().Append("  └─ <no players>");
+            rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Placeholder, Target: null, PlayerSelector: null));
+            return;
         }
 
         for (int i = 0; i < players.Length; i++)
         {
             RuntimePlayerSnapshot player = players[i];
-            text.Append(i == players.Length - 1 ? "  └─ " : "  ├─ ")
+            text.AppendLine().Append(i == players.Length - 1 ? "  └─ " : "  ├─ ")
                 .Append('#').Append(player.Slot).Append(' ')
                 .Append(Sanitize(player.Name, 28));
-            if (i != players.Length - 1)
-                text.AppendLine();
+            rows.Add(new SandboxWorldTreeRow(
+                SandboxWorldTreeRowKind.Player,
+                Target: null,
+                PlayerSelector: $"#{player.Slot}"));
         }
-        return text.ToString();
     }
 
     private static double SanitizeSample(double value) =>

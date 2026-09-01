@@ -12,6 +12,7 @@ public sealed class StartupProgressUiTests
     public void Runtime_and_startup_ui_pumps_fit_inside_one_60hz_frame()
     {
         Assert.True(TerminalUiHost.UiPumpIntervalForTests <= TimeSpan.FromMilliseconds(16));
+        Assert.True(TerminalUiHost.SnapshotRefreshIntervalForTests <= TimeSpan.FromMilliseconds(100));
         Assert.True(StartupProgressUiHost.PumpIntervalForTests <= TimeSpan.FromMilliseconds(16));
     }
 

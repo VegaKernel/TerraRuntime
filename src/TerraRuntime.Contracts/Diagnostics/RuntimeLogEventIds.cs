@@ -71,4 +71,6 @@ public static class RuntimeLogEventIds
     // Stable event IDs are never recycled for unrelated semantics.
     public static readonly RuntimeLogEventId OperationsTerminalUiFailed = new(OperationsBase + 3);
     public static readonly RuntimeLogEventId OperationsReadModelMessage = new(OperationsBase + 4);
+    public static readonly RuntimeLogEventId OperationsSandboxJobCompleted = new(OperationsBase + 5);
+    public static readonly RuntimeLogEventId OperationsSandboxJobFailed = new(OperationsBase + 6);
 }

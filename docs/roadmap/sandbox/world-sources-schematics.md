@@ -312,6 +312,8 @@ Remote workers are deferred and may need a content-transfer/cache protocol later
 
 ### WS5 - sandbox source parity
 
+- [x] Level 1 `.wld` and `Generated` sources share the same bounded detached materialization/admission path;
+- [x] reject unknown generated-source IDs before job acceptance and expose any later materialization failure as a structured terminal job result;
 - [ ] Level 1 can launch the same arena from `.wld`, Generated and `.trschem` sources;
 - [ ] Level 2 can launch the same arena from `.wld`, Generated and `.trschem` sources;
 - [ ] changing `InProcess` <-> `DedicatedProcess` does not require changing map asset format;

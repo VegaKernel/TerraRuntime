@@ -381,6 +381,19 @@ public static class TerrariaServerHost
             worldLoadLimits,
             materializationConcurrency: options.SandboxMaterializationConcurrency,
             maxPlayersPerRuntime: options.MaxPlayers);
+        sandboxHost.JobFinished += job =>
+        {
+            bool failed = job.Status is SandboxJobStatus.Failed or SandboxJobStatus.Canceled;
+            hostLog.Log(
+                failed ? RuntimeLogLevel.Error : RuntimeLogLevel.Information,
+                failed
+                    ? StructuredLogEventIds.OperationsSandboxJobFailed
+                    : StructuredLogEventIds.OperationsSandboxJobCompleted,
+                StructuredLogCategory.Operations,
+                "Sandbox",
+                SandboxOperations.FormatJob(job),
+                useStandardError: failed);
+        };
 
         ServerRuntimeState state = primaryRuntime.State;
         AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> gameLoop = primaryRuntime.GameLoop;
