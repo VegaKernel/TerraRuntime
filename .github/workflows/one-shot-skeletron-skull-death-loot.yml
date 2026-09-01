@@ -136,7 +136,8 @@ jobs:
           set -euo pipefail
           git config user.name 'Xekep'
           git config user.email 'Xekep@users.noreply.github.com'
-          git rm .github/workflows/one-shot-skeletron-skull-death-loot.yml tools/ci/apply_skeletron_skull_death_loot_1458.py
+          git rm .github/workflows/one-shot-skeletron-skull-death-loot.yml
+          git rm -f tools/ci/apply_skeletron_skull_death_loot_1458.py
           git add -A
           git diff --cached --check
           git commit -m 'Complete Skeletron skull death loot gameplay vertical' -m 'Add TerrariaServer 1.4.5.8 Expert skull cadence and homing, generation-safe shared head/hand interaction credit, Classic/Expert/Master loot delivery with isolated RedHat-condition evaluation, and persisted downedBoss3 progression.'
