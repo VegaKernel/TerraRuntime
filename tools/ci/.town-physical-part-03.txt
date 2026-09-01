@@ -1,0 +1,105 @@
+        WorldTileStore tiles = CreateSurfaceWorld();
+        var resolver = new RuntimeTownNpcPhysicalSpawnResolver1458(tiles);
+        RuntimeTownPlayerBounds1458 blocker = BlockHomeFromLeftEdge(600, 60);
+
+        RuntimeTownNpcPhysicalSpawn1458 spawn = resolver.Resolve(600, 60, [blocker]);
+
+        Assert.Equal((101, 99), (spawn.TileX, spawn.TileY));
+        Assert.Equal(1, spawn.DirectionX);
+        Assert.False(spawn.SafeFromPlayers);
+        Assert.True(spawn.UsedFallbackSearch);
+    }
+
+    [Fact]
+    public void Safety_rectangle_uses_xna_strict_edge_intersection()
+    {
+        WorldTileStore tiles = CreateSurfaceWorld();
+        var resolver = new RuntimeTownNpcPhysicalSpawnResolver1458(tiles);
+        int left = 600 * 16 + 8 - RuntimeTownNpcPhysicalSpawnResolver1458.ScreenWidth1458 / 2 -
+            RuntimeTownNpcPhysicalSpawnResolver1458.SafeRangeX1458;
+        int top = 60 * 16 + 8 - RuntimeTownNpcPhysicalSpawnResolver1458.ScreenHeight1458 / 2 -
+            RuntimeTownNpcPhysicalSpawnResolver1458.SafeRangeY1458;
+
+        var touchingEdge = new RuntimeTownPlayerBounds1458(left - 20, top + 100, 20, 42);
+        var overlappingOnePixel = new RuntimeTownPlayerBounds1458(left - 19, top + 100, 20, 42);
+
+        Assert.True(resolver.IsSafeSpawnTile(600, 60, [touchingEdge]));
+        Assert.False(resolver.IsSafeSpawnTile(600, 60, [overlappingOnePixel]));
+    }
+
+    [Fact]
+    public void Resident_materialization_uses_newnpc_bottom_anchor_and_spawn_facing()
+    {
+        WorldTileStore tiles = CreateSurfaceWorld();
+        var town = new RuntimeTownNpcStateStore(new WorldNpcPersistence([], [], []), [], tiles.Dimensions);
+        var npcs = new RuntimeNpcStore();
+        var placement = new VanillaHousingPlacement(600, 60, VanillaHousingValidationResult.Valid);
+        var physical = new RuntimeTownNpcPhysicalSpawn1458(602, 58, -1, true, true);
+
+        Assert.True(town.TryAddResident(
+            VanillaNpcIds.Merchant,
+            in placement,
+            in physical,
+            npcs,
+            out NpcSnapshot snapshot,
+            out RuntimeTownNpcHomeCommit home));
+        Assert.True(VanillaTownNpcFacts1458.TryGetDefinition(VanillaNpcIds.Merchant, out VanillaNpcDefinition definition));
+
+        Assert.Equal(602 * 16f, snapshot.PositionX + definition.BaseWidth / 2f);
+        Assert.Equal(58 * 16f, snapshot.PositionY + definition.BaseHeight);
+        Assert.Equal(-1, snapshot.Simulation.DirectionX);
+        Assert.Equal((600, 60), (home.HomeTileX, home.HomeTileY));
+        WorldTownNpc persisted = Assert.Single(town.CaptureNpcPersistence().TownNpcs);
+        Assert.Equal(snapshot.PositionX, persisted.X);
+        Assert.Equal(snapshot.PositionY, persisted.Y);
+    }
+
+    private static WorldTileStore CreateSurfaceWorld()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(1200, 300));
+        Assert.True(tiles.TryAttachWorldSurface(100d));
+        return tiles;
+    }
+
+    private static RuntimeTownPlayerBounds1458 BlockHomeFromLeftEdge(int homeTileX, int homeTileY)
+    {
+        int left = homeTileX * 16 + 8 - RuntimeTownNpcPhysicalSpawnResolver1458.ScreenWidth1458 / 2 -
+            RuntimeTownNpcPhysicalSpawnResolver1458.SafeRangeX1458;
+        int top = homeTileY * 16 + 8 - RuntimeTownNpcPhysicalSpawnResolver1458.ScreenHeight1458 / 2 -
+            RuntimeTownNpcPhysicalSpawnResolver1458.SafeRangeY1458;
+        return new RuntimeTownPlayerBounds1458(left, top + 100, 20, 42);
+    }
+
+    private static void PlaceSolid(WorldTileStore tiles, int x, int y) =>
+        tiles.Set(x, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+}
+'''
+Path('tests/TerraRuntime.Tests/RuntimeTownNpcPhysicalSpawn1458Tests.cs').write_text(physical_tests, encoding='utf-8')
+
+# Documentation: make the materialization contract explicit and remove physical placement from remaining gaps.
+for path, english in [
+    ('docs/en/town-npc-move-in-eligibility.md', True),
+    ('docs/ru/town-npc-move-in-eligibility.md', False),
+]:
+    p = Path(path)
+    text = p.read_text(encoding='utf-8')
+    if english:
+        anchor = '''On the source cadence, `RuntimeTownNpcMoveInCoordinator1458` evaluates the active authoritative player/inventory state, applies the room-aware source selection above, allocates a generation-safe NPC slot when a valid room exists, commits the resident into `RuntimeTownNpcStateStore`, and publishes packet 23 plus packet 60 through the existing NPC replication owner. Runtime-created residents are included in subsequent `.wld` NPC/TownRoom save snapshots.\n'''
+        replacement = anchor + '''\nPhysical materialization now follows the final `WorldGen.SpawnTownNPC` search rather than placing a new resident directly on the home resting anchor. The canonical home floor is first tested against Terraria's `1920x1200` server-screen rectangle expanded by `safeRangeX=62` and `safeRangeY=39`. If a surface home is inside an active player's rectangle, the search expands from radius 1 through 499, checks the right column before the left, clamps vertical scanning to tile 10 and `worldSurface`, requires an active `Main.tileSolid` floor plus a three-tile `Collision.SolidTiles` clearance, and re-applies the player rectangle at the candidate. The source's unusual exhausted-search behavior is preserved: lack of a safe point does not cancel `NPC.NewNPC`; the final scanned coordinates remain the materialization point. Underground homes skip this fallback search.\n\nThe NPC is materialized from the exact `NPC.NewNPC` bottom-center anchor (`tileX*16`, `tileY*16`) after its source-backed dimensions are known. A spawn left of home faces right, a spawn right of home faces left, and an equal-X spawn retains the zero construction direction. The home room remains the validated `bestX/bestY`, independent of the physical spawn point.\n'''
+        old_gap = 'The move-in path still does not claim every `WorldGen.SpawnTownNPC` detail. The complete physical off-screen/fallback spawn-point search, exact broader WorldGen house-candidate/random fallback behavior, localized `Announcement.HasArrived` transport, and NPC given-name/variation generation remain separate work.'
+        new_gap = 'The move-in path still does not claim every `WorldGen.SpawnTownNPC` detail. Exact broader WorldGen house-candidate/random fallback behavior, localized `Announcement.HasArrived` transport, and NPC given-name/variation generation remain separate work.'
+    else:
+        anchor = '''По source cadence `RuntimeTownNpcMoveInCoordinator1458` оценивает живое authoritative состояние игроков/inventory, применяет этот room-aware source selection, при наличии валидной комнаты выделяет generation-safe NPC slot, записывает жителя в `RuntimeTownNpcStateStore` и публикует packet 23 и packet 60 через существующего владельца NPC replication. Жители, созданные runtime, входят в следующие `.wld` snapshots NPC/TownRoom.\n'''
+        replacement = anchor + '''\nPhysical materialization теперь следует финальному поиску `WorldGen.SpawnTownNPC`, а не ставит нового жителя прямо на resting anchor дома. Сначала canonical home floor проверяется по серверному прямоугольнику Terraria `1920x1200`, расширенному на `safeRangeX=62` и `safeRangeY=39`. Если surface-home попадает в прямоугольник активного игрока, поиск расширяется от radius 1 до 499, сначала проверяет колонку справа, затем слева, ограничивает vertical scan значениями tile 10 и `worldSurface`, требует active `Main.tileSolid` floor и свободные три tiles по semantics `Collision.SolidTiles`, после чего повторно проверяет player safety rectangle. Сохранено необычное source-поведение при исчерпании поиска: отсутствие safe point не отменяет `NPC.NewNPC`, materialization происходит на последних просмотренных координатах. Для underground-home fallback search не запускается.\n\nNPC materialize-ится из точного bottom-center anchor `NPC.NewNPC` (`tileX*16`, `tileY*16`) после применения source-backed размеров. Spawn слева от дома разворачивает NPC вправо, справа от дома влево, а при совпадающем X остаётся construction direction 0. Home room при этом остаётся валидированным `bestX/bestY` и не смешивается с physical spawn point.\n'''
+        old_gap = 'Move-in path пока не заявляет все детали `WorldGen.SpawnTownNPC`: полный physical off-screen/fallback поиск spawn point, exact более широкий WorldGen house-candidate/random fallback, локализованный transport `Announcement.HasArrived` и генерация given name/variation NPC остаются отдельной работой.'
+        new_gap = 'Move-in path пока не заявляет все детали `WorldGen.SpawnTownNPC`: exact более широкий WorldGen house-candidate/random fallback, локализованный transport `Announcement.HasArrived` и генерация given name/variation NPC остаются отдельной работой.'
+    if text.count(anchor) != 1:
+        raise SystemExit(f'{path}: documentation materialization anchor drifted')
+    text = text.replace(anchor, replacement, 1)
+    if text.count(old_gap) != 1:
+        raise SystemExit(f'{path}: documentation gap anchor drifted')
+    p.write_text(text.replace(old_gap, new_gap, 1), encoding='utf-8')
+
+# Remove temporary staging files so the functional branch diff is clean relative to main.
+Path('tools/ci/apply_town_physical_spawn.py').unlink(missing_ok=True)
+Path('.github/workflows/one-shot-town-physical-spawn.yml').unlink(missing_ok=True)
