@@ -219,26 +219,26 @@ Do not introduce `WorldRuntimeSchedulerManager`, generic task orchestration or w
 
 ### RS0 - ownership foundation
 
-- [ ] move simulation clock ownership from process-global assumptions into `WorldRuntime`;
-- [ ] give every runtime an independent authoritative loop execution owner;
-- [ ] prohibit process-global `foreach (world) world.Tick()` as the Level 1 execution model;
-- [ ] prove two active runtimes can tick concurrently without mutable-state sharing;
-- [ ] deterministic start/stop/dispose for each runtime loop.
+- [x] move simulation clock ownership from process-global assumptions into `WorldRuntime`;
+- [x] give every runtime an independent authoritative loop execution owner;
+- [x] prohibit process-global `foreach (world) world.Tick()` as the Level 1 execution model;
+- [x] prove two active runtimes can tick concurrently without mutable-state sharing;
+- [x] deterministic start/stop/dispose for each runtime loop.
 
 ### RS1 - per-runtime 60 TPS baseline
 
 - [ ] runtime-local target/observed TPS;
-- [ ] ordinary Terraria simulation defaults to 60 TPS;
-- [ ] runtime-local overrun/lag metrics;
-- [ ] bounded overrun/catch-up behavior;
-- [ ] existing single-world startup retains its current timing behavior.
+- [x] ordinary Terraria simulation defaults to 60 TPS;
+- [x] runtime-local overrun/lag metrics;
+- [x] bounded overrun/catch-up behavior;
+- [x] existing single-world startup retains its current timing behavior.
 
 ### RS2 - Level 1 isolation under load
 
 - [ ] slow synthetic work in sandbox A does not directly stall sandbox B or primary runtime;
-- [ ] command ingress remains bounded independently per runtime;
+- [x] command ingress remains bounded independently per runtime;
 - [ ] replication/output pressure for one runtime cannot seize another runtime's simulation owner;
-- [ ] generation/materialization remains background work outside live loops.
+- [x] generation/materialization remains background work outside live loops.
 
 ### RS3 - idle policy
 

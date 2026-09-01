@@ -159,7 +159,8 @@ public static class StartupProgram
         {
             int exitCode = TerrariaServerHost.RunAsync(
                     options,
-                    hostLifecycle: hostLifecycle)
+                    hostLifecycle: hostLifecycle,
+                    worldGenerators: startupWorldGenerators)
                 .GetAwaiter()
                 .GetResult();
             if (exitCode != 0 && startupUi?.OwnsTerminal == true)
@@ -340,7 +341,7 @@ public static class StartupProgram
         Console.WriteLine("    Scans the runtime Worlds folder and lets you load or create a .wld world.");
         Console.WriteLine();
         Console.WriteLine("Server startup:");
-        Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--no-tui]");
+        Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--max-world-runtimes 8] [--sandbox-materialization-concurrency 1] [--interest-management] [--no-tui]");
         Console.WriteLine();
         Console.WriteLine("World generators:");
         Console.WriteLine("  TerraRuntime.Server --list-world-generators");
@@ -348,6 +349,10 @@ public static class StartupProgram
         Console.WriteLine("  TerraRuntime.Server --create-world <name> --world-generator <id> --world-seed <uint64> --world-width <tiles> --world-height <tiles> [--world-game-mode <classic|expert|master|journey>] [--world-evil <corruption|crimson>] [--world-output <path.wld>] [server options]");
         Console.WriteLine("    Creates a validated Terraria 1.4.5.8 .wld without overwriting an existing world, then starts it.");
         Console.WriteLine("    Game mode defaults to Classic; world evil defaults to Corruption.");
+        Console.WriteLine();
+        Console.WriteLine("Level 1 sandbox worlds:");
+        Console.WriteLine("  Use `sandbox help` in the terminal UI or plain console after startup.");
+        Console.WriteLine("  Generated and .wld sources are materialized by a bounded background worker queue.");
         Console.WriteLine();
         Console.WriteLine("Terminal UI is enabled by default. Use --no-tui to disable it.");
         Console.WriteLine("Smoke modes: --loop-smoke, --protocol-smoke, --network-smoke, --world-smoke, --tui-smoke.");

@@ -19,6 +19,7 @@ internal sealed class TerminalUiHost : IDisposable
     private readonly INetworkOperations networkOperations;
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
+    private readonly SandboxOperations? sandboxOperations;
     private readonly Action<bool> activityChanged;
     private readonly Action<string> failureSink;
     private readonly CancellationTokenSource stopUi;
@@ -36,7 +37,8 @@ internal sealed class TerminalUiHost : IDisposable
         Action<string> failureSink,
         CancellationToken serverCancellation,
         IProjectileOperations? projectileOperations,
-        IWorldItemOperations? worldItemOperations)
+        IWorldItemOperations? worldItemOperations,
+        SandboxOperations? sandboxOperations)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
@@ -46,6 +48,7 @@ internal sealed class TerminalUiHost : IDisposable
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
+        this.sandboxOperations = sandboxOperations;
         this.activityChanged = activityChanged ?? throw new ArgumentNullException(nameof(activityChanged));
         this.failureSink = failureSink ?? throw new ArgumentNullException(nameof(failureSink));
         stopUi = CancellationTokenSource.CreateLinkedTokenSource(serverCancellation);
@@ -67,7 +70,8 @@ internal sealed class TerminalUiHost : IDisposable
         Action<string> failureSink,
         CancellationToken serverCancellation,
         IProjectileOperations? projectileOperations = null,
-        IWorldItemOperations? worldItemOperations = null)
+        IWorldItemOperations? worldItemOperations = null,
+        SandboxOperations? sandboxOperations = null)
     {
         var host = new TerminalUiHost(
             dashboardOperations,
@@ -80,7 +84,8 @@ internal sealed class TerminalUiHost : IDisposable
             failureSink,
             serverCancellation,
             projectileOperations,
-            worldItemOperations);
+            worldItemOperations,
+            sandboxOperations);
         host.thread.Start();
         return host;
     }
@@ -154,7 +159,8 @@ internal sealed class TerminalUiHost : IDisposable
                 snapshotCache,
                 terminalDashboards,
                 cachedProjectileOperations,
-                cachedWorldItemOperations);
+                cachedWorldItemOperations,
+                sandboxOperations);
 
             Task? backgroundRefresh = null;
             long nextRefresh = Stopwatch.GetTimestamp() + RefreshIntervalTicks;
@@ -257,6 +263,13 @@ internal sealed class TerminalUiHost : IDisposable
             if (command.Length == 0)
                 continue;
 
+            if (command.StartsWith("sandbox", StringComparison.OrdinalIgnoreCase) &&
+                (command.Length == "sandbox".Length || char.IsWhiteSpace(command["sandbox".Length])))
+            {
+                Console.WriteLine(sandboxOperations?.Execute(command) ?? "sandbox: operations unavailable");
+                continue;
+            }
+
             switch (command.ToLowerInvariant())
             {
                 case "tui":
@@ -266,6 +279,7 @@ internal sealed class TerminalUiHost : IDisposable
 
                 case "help":
                     Console.WriteLine("tui | ui | dashboard  Reopen the TerraRuntime dashboard");
+                    Console.WriteLine("sandbox ...           Manage Level 1 sandbox runtimes");
                     Console.WriteLine("clear                 Clear the plain console");
                     Console.WriteLine("help                  Show these console commands");
                     break;

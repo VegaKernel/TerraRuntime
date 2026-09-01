@@ -254,14 +254,14 @@ The TUI currently owns local presentation commands; sandbox commands should not 
 ### Command contract
 
 - [ ] define one typed sandbox debug/admin operation model shared by TUI and authenticated admin command front ends;
-- [ ] implement `list` and `status`;
-- [ ] implement `create ... l1 file`;
-- [ ] implement `create ... l1 gen` with asynchronous generation and job status;
+- [x] implement `list` and `status`;
+- [x] implement `create ... l1 file`;
+- [x] implement `create ... l1 gen` with asynchronous generation and job status;
 - [ ] implement `create ... l1 schem`;
 - [ ] implement `move <player> <sandbox|primary>` for Level 1;
 - [ ] implement `respawn <player> <sandbox|primary>` for Level 1, including same-runtime forced respawn;
-- [ ] implement `destroy` for Level 1;
-- [ ] expose the same operations through the TUI as `sandbox ...` without duplicating lifecycle logic.
+- [x] implement `destroy` for Level 1;
+- [x] expose the same operations through the TUI as `sandbox ...` without duplicating lifecycle logic.
 
 ### Level 2 command coverage
 
@@ -275,24 +275,24 @@ The TUI currently owns local presentation commands; sandbox commands should not 
 
 ### Regeneration
 
-- [ ] persist enough source metadata on a generated sandbox to rerun its generator deterministically when a seed is retained;
-- [ ] implement bounded background regeneration without mutating the live runtime candidate-in-place;
-- [ ] preserve `WorldRuntimeId` and rotate `WorldSessionId` on successful replacement;
-- [ ] keep the old runtime serving players until the replacement candidate is validated and ready;
+- [x] persist enough source metadata on a generated sandbox to rerun its generator deterministically when a seed is retained;
+- [x] implement bounded background regeneration without mutating the live runtime candidate-in-place;
+- [x] preserve `WorldRuntimeId` and rotate `WorldSessionId` on successful replacement;
+- [x] keep the old runtime serving players until the replacement candidate is validated and ready;
 - [ ] transfer all connected players without disconnecting them;
 - [ ] send fresh world bootstrap and respawn players after the swap;
-- [ ] ensure failed/canceled regeneration leaves the old runtime intact;
+- [x] ensure failed/canceled regeneration leaves the old runtime intact;
 - [ ] Level 2 regeneration keeps the existing worker and client socket ownership when the worker itself is healthy;
 - [ ] test repeated regeneration for leaked hooks, timers, entities, background jobs and retired runtime references.
 
 ### Job control and safety
 
-- [ ] bounded process-wide generation/materialization concurrency;
-- [ ] per-sandbox mutation-job exclusion;
-- [ ] cancellation and structured failure reporting;
-- [ ] restricted world/schematic asset roots and path traversal rejection;
+- [x] bounded process-wide generation/materialization concurrency;
+- [x] per-sandbox mutation-job exclusion;
+- [x] cancellation and structured failure reporting;
+- [x] restricted world/schematic asset roots and path traversal rejection;
 - [ ] admin authorization before any lifecycle operation;
-- [ ] tests proving command parsing cannot select arbitrary DLL/executable/filesystem paths.
+- [x] tests proving command parsing cannot select arbitrary DLL/executable/filesystem paths.
 
 ## Completion criteria
 

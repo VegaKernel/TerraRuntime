@@ -272,11 +272,11 @@ Remote workers are deferred and may need a content-transfer/cache protocol later
 
 ### WS0 - contracts and file specification
 
-- [ ] define `SandboxWorldSource` source families without coupling them to isolation level;
-- [ ] define `.trschem` v1 magic/version/section directory semantics;
-- [ ] define hard bounds and corruption/failure behavior;
-- [ ] create shared `TerraRuntime.Schematics` model/codec boundary;
-- [ ] keep the library NativeAOT-safe and free of Vega/WorldEdit/runtime-core dependencies.
+- [x] define `SandboxWorldSource` source families without coupling them to isolation level;
+- [x] define `.trschem` v1 magic/version/section directory semantics;
+- [x] define hard bounds and corruption/failure behavior;
+- [x] create shared `TerraRuntime.Schematics` model/codec boundary;
+- [x] keep the library NativeAOT-safe and free of Vega/WorldEdit/runtime-core dependencies.
 
 ### WS1 - tile scene round trip
 

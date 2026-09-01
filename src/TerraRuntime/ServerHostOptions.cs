@@ -9,6 +9,12 @@ public sealed record ServerHostOptions(
 {
     public const int DefaultPort = 7777;
     public const int DefaultMaxPlayers = 8;
+    public const int DefaultMaxWorldRuntimes = 8;
+    public const int DefaultSandboxMaterializationConcurrency = 1;
+
+    public int MaxWorldRuntimes { get; init; } = DefaultMaxWorldRuntimes;
+
+    public int SandboxMaterializationConcurrency { get; init; } = DefaultSandboxMaterializationConcurrency;
 
     public static bool TryParse(string[] args, out ServerHostOptions? options, out string? error)
     {
@@ -19,6 +25,8 @@ public sealed record ServerHostOptions(
         int maxPlayers = DefaultMaxPlayers;
         bool interestManagementEnabled = false;
         bool terminalUiEnabled = true;
+        int maxWorldRuntimes = DefaultMaxWorldRuntimes;
+        int sandboxMaterializationConcurrency = DefaultSandboxMaterializationConcurrency;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -63,6 +71,24 @@ public sealed record ServerHostOptions(
                 case "--no-tui":
                     terminalUiEnabled = false;
                     break;
+
+                case "--max-world-runtimes":
+                    if (!TryReadInt(args, ref i, 2, 64, out maxWorldRuntimes))
+                    {
+                        options = null;
+                        error = "--max-world-runtimes requires an integer from 2 to 64.";
+                        return false;
+                    }
+                    break;
+
+                case "--sandbox-materialization-concurrency":
+                    if (!TryReadInt(args, ref i, 1, 4, out sandboxMaterializationConcurrency))
+                    {
+                        options = null;
+                        error = "--sandbox-materialization-concurrency requires an integer from 1 to 4.";
+                        return false;
+                    }
+                    break;
             }
         }
 
@@ -78,7 +104,11 @@ public sealed record ServerHostOptions(
             port,
             maxPlayers,
             interestManagementEnabled,
-            terminalUiEnabled);
+            terminalUiEnabled)
+        {
+            MaxWorldRuntimes = maxWorldRuntimes,
+            SandboxMaterializationConcurrency = sandboxMaterializationConcurrency
+        };
         error = null;
         return true;
     }

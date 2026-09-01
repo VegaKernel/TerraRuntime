@@ -10,7 +10,7 @@ public interface IWorldItemSpawnRandom
 }
 
 /// <summary>
-/// Default process-local random stream for vanilla world-item spawns. Terraria's Main.rand sequence is not treated
+/// Default runtime-local random stream for vanilla world-item spawns. Terraria's Main.rand sequence is not treated
 /// as a persistence or protocol identity; source contracts pin the requested ranges and ordering instead.
 /// </summary>
 public sealed class SystemWorldItemSpawnRandom : IWorldItemSpawnRandom

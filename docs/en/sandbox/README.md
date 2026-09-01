@@ -30,6 +30,28 @@ flowchart TD
 
 Vega requests sandbox semantics. TerraRuntime owns authoritative world state and process/socket lifecycle. `TerraRuntime.Transport` remains the common control/server boundary, while local Level 2 gameplay flows directly client-to-worker after socket handoff.
 
+## Current Level 1 baseline
+
+The server now admits its normal persistent world as an ordinary primary `WorldRuntime` and can run bounded additional Level 1 runtimes in the same process. Every admitted runtime owns a dedicated authoritative loop plus its own world, entity, player-membership, replication, cache and persistence state.
+
+The terminal UI and its plain-console fallback expose these implemented commands:
+
+```text
+sandbox list
+sandbox status <name>
+sandbox create <name> l1 gen <generator-id> [seed <number|random>] [size <width>x<height>]
+sandbox create <name> l1 file <relative-world-path>
+sandbox regen <name> [seed <number|random>]
+sandbox destroy <name>
+sandbox jobs
+sandbox job <id>
+sandbox cancel <id>
+```
+
+Generated and `.wld` sources are materialized and validated on a bounded dedicated background queue before runtime admission. `--max-world-runtimes` controls live-world admission (default `8`), and `--sandbox-materialization-concurrency` controls materialization workers (default `1`). File commands accept only relative `.wld` paths below the primary world's directory.
+
+Player `move`/`respawn`, `.trschem` live materialization, per-sandbox game-mode scope, and regeneration with attached players remain later slices. Until the transfer/bootstrap slice lands, `regen` fails safely when players are attached and leaves the active session unchanged.
+
 ## Documents
 
 - [Level 1: in-process sandbox](level-1.md) — complete independent `WorldRuntime` in the shared process, plugin compatibility and shared chat.

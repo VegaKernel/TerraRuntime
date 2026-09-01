@@ -42,6 +42,7 @@ internal sealed class RuntimeOverviewDashboard : View
     private readonly TextField commandInput;
     private readonly GraphView tpsGraph;
     private readonly GraphView networkGraph;
+    private readonly SandboxOperations? sandboxOperations;
     private readonly PathAnnotation tpsTargetPath = new()
     {
         LineColor = new TuiAttribute(TuiColor.Gray, TuiColor.Black)
@@ -80,8 +81,9 @@ internal sealed class RuntimeOverviewDashboard : View
     private long lastMessageOutboundFrames;
     private long lastMessageOutboundBytes;
 
-    public RuntimeOverviewDashboard()
+    public RuntimeOverviewDashboard(SandboxOperations? sandboxOperations = null)
     {
+        this.sandboxOperations = sandboxOperations;
         Width = Dim.Fill();
         Height = Dim.Fill();
         CanFocus = true;
@@ -342,7 +344,7 @@ internal sealed class RuntimeOverviewDashboard : View
         {
             case "help":
             case "?":
-                SetCommandFeedback("help | feed logs off|debug|info|warn|error | feed chat on|off | save | interest on|off | system | players | npcs | projectiles | items | network | world | logs");
+                SetCommandFeedback("help | feed | save | interest | sandbox list|status|create|regen|destroy|jobs|job|cancel | system | players | npcs | projectiles | items | network | world | logs");
                 return;
             case "clear":
                 SetCommandFeedback(string.Empty);
@@ -372,6 +374,9 @@ internal sealed class RuntimeOverviewDashboard : View
                 }
                 workspace.SetInterestManagementEnabled(enabled);
                 SetCommandFeedback($"console: interest {(enabled ? "on" : "off")} requested");
+                return;
+            case "sandbox":
+                SetCommandFeedback(sandboxOperations?.Execute(input) ?? "sandbox: operations unavailable");
                 return;
             case "system":
             case "overview":

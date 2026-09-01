@@ -132,11 +132,11 @@ These are review triggers, not CI limits.
 Checklist:
 
 - [ ] Decompose `ServerRuntimeState` by real world-owned responsibilities while preserving one authoritative writer.
-- [ ] Decompose `TerrariaServerHost` so process lifecycle/network acceptance are separate from one-world composition.
+- [x] Decompose `TerrariaServerHost` so process lifecycle/network acceptance are separate from one-world composition.
 - [ ] Extract coherent player, NPC, projectile, item, town/housing and world-lifecycle collaborators only where they own state/behavior; do not produce one class per method.
 - [ ] Keep source-order-sensitive boss/AI logic cohesive when decomposition would obscure verified vanilla ordering.
 - [ ] Keep large source-backed catalogs cohesive when their size is data, not mixed responsibility.
-- [ ] Remove nested conditional/constructor composition tangles when a concrete composition object can own them.
+- [x] Remove nested conditional/constructor composition tangles when a concrete composition object can own them.
 - [ ] Prefer private methods/records for local complexity before inventing a public subsystem.
 
 Exit criteria: large handwritten runtime units have clear ownership boundaries, and no decomposition exists solely to lower line counts.
@@ -145,14 +145,14 @@ Exit criteria: large handwritten runtime units have clear ownership boundaries, 
 
 Goal: the primary world and Level 1 sandbox worlds are the same runtime type. “Primary” is host policy, not a subclass or special simulation implementation.
 
-- [ ] Introduce concrete `WorldRuntime` as the lifecycle owner of one live world.
-- [ ] Move per-world mutable simulation state behind `WorldRuntime`.
-- [ ] Move the authoritative loop/owner, world-scoped save/cache lifecycle and world-scoped ingress capabilities behind that owner.
-- [ ] Keep public TCP listener/acceptance, OS signals and process shutdown in process/application composition.
-- [ ] Let the process own a collection/registry of `WorldRuntime` instances.
-- [ ] Do not introduce a generic `WorldRuntimeManager` facade if a concrete collection/registry/host owns the lifecycle directly.
-- [ ] Preserve the invariant that each world has one authoritative writer.
-- [ ] Make current single-world startup one ordinary `WorldRuntime` selected as primary by host/Vega policy.
+- [x] Introduce concrete `WorldRuntime` as the lifecycle owner of one live world.
+- [x] Move per-world mutable simulation state behind `WorldRuntime`.
+- [x] Move the authoritative loop/owner, world-scoped save/cache lifecycle and world-scoped ingress capabilities behind that owner.
+- [x] Keep public TCP listener/acceptance, OS signals and process shutdown in process/application composition.
+- [x] Let the process own a collection/registry of `WorldRuntime` instances.
+- [x] Do not introduce a generic `WorldRuntimeManager` facade if a concrete collection/registry/host owns the lifecycle directly.
+- [x] Preserve the invariant that each world has one authoritative writer.
+- [x] Make current single-world startup one ordinary `WorldRuntime` selected as primary by host/Vega policy.
 - [ ] Use the same `WorldRuntime` implementation inside a Level 2 sandbox worker.
 
 Exit criteria: two independent in-process worlds can run without singleton current-world assumptions, and the primary world is not architecturally privileged inside simulation code.

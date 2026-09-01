@@ -7,6 +7,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
+using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.Network;
 using TerraRuntime.Operations;
 using TerraRuntime.Protocol;
@@ -20,12 +21,6 @@ namespace TerraRuntime;
 
 public static class TerrariaServerHost
 {
-    // Correctness-first ceiling until section rebuild throughput is measured on representative worlds.
-    // One worker plus one queued item bounds live rebuild snapshots to at most two network sections.
-    private const int SectionCacheWorkerCount = 1;
-    private const int SectionCacheWorkCapacity = 1;
-    private const int SectionCacheCompletionCapacity = 1;
-
     /// <summary>
     /// Runs one Terraria world. The optional interest-management control is the only supported
     /// external switch for runtime visibility optimization; spatial policy remains owned by TerraRuntime.
@@ -33,7 +28,8 @@ public static class TerrariaServerHost
     public static async Task<int> RunAsync(
         ServerHostOptions options,
         IInterestManagementControl? interestManagement = null,
-        ITerraRuntimeHostLifecycle? hostLifecycle = null)
+        ITerraRuntimeHostLifecycle? hostLifecycle = null,
+        ITerraRuntimeWorldGeneratorSource? worldGenerators = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         var runtimeLogs = new RuntimeLogBuffer();
@@ -234,7 +230,7 @@ public static class TerrariaServerHost
                     "World",
                     $"Canonical world recovered from validated checkpoint backup: {RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath)}.");
                 await hostLog.DisposeAsync().ConfigureAwait(false);
-                return await RunAsync(options, runtimeInterestManagement, hostLifecycle).ConfigureAwait(false);
+                return await RunAsync(options, runtimeInterestManagement, hostLifecycle, worldGenerators).ConfigureAwait(false);
             }
 
             hostLog.SetWorldId(world.Header.WorldId.ToString());
@@ -363,155 +359,61 @@ public static class TerrariaServerHost
             }
         }
 
-        var worldItemReplication = new RuntimeWorldItemReplicationRegistry();
-        var worldItems = new RuntimeWorldItemStore(worldItemReplication);
-        LocalRuntimeWorldItemOperations? worldItemOperations = options.TerminalUiEnabled
-            ? new LocalRuntimeWorldItemOperations(worldItems)
-            : null;
-        RuntimeWorldClockOperationsTelemetry? worldClockTelemetry = options.TerminalUiEnabled
-            ? new RuntimeWorldClockOperationsTelemetry()
-            : null;
-        var worldClock = RuntimeWorldClock.FromWorld(
-            world.RuntimeMetadata,
-            world.CreativePowers,
-            worldClockTelemetry);
-        var runtimeConnections = new RuntimeConnectionRegistry(
-            runtimeInterestManagement,
-            world.Header.Dimensions);
-        var npcReplication = new RuntimeNpcReplicationRegistry();
-        RuntimeNpcOperationsTelemetry? npcOperations = options.TerminalUiEnabled
-            ? new RuntimeNpcOperationsTelemetry()
-            : null;
-        INpcStateCommitSink observableNpcCommitSink = npcOperations is null
-            ? npcReplication
-            : new RuntimeNpcStateCommitFanout(npcReplication, npcOperations);
-        var npcArchetypeIdentities = new RuntimeNpcArchetypeIdentityStore(RuntimeNpcStore.MaximumAddressableCapacity);
-        INpcStateCommitSink npcCommitSink = new RuntimeNpcStateCommitFanout(
-            observableNpcCommitSink,
-            npcArchetypeIdentities);
-        var npcStore = new RuntimeNpcStore(commitSink: npcCommitSink);
-        var townNpcStore = new RuntimeTownNpcStateStore(world.Npcs, world.TownRooms, world.Header.Dimensions);
-        if (!townNpcStore.TryReserveRuntimeSlots(npcStore))
-            throw new InvalidDataException("Failed to reserve authoritative runtime slots for persisted town NPCs.");
-        npcReplication.ConfigureTownHomeBaselines(townNpcStore.CaptureHomeBaselines());
-        npcReplication.ConfigureTownIdentityBaselines(townNpcStore.CaptureIdentityBaselines());
-        var npcArchetypes = new RuntimeNpcArchetypeRegistry();
-        var projectileReplication = new RuntimeProjectileReplicationRegistry();
-        RuntimeProjectileOperationsTelemetry? projectileOperations = options.TerminalUiEnabled
-            ? new RuntimeProjectileOperationsTelemetry()
-            : null;
-        IProjectileStateCommitSink projectileCommitSink = projectileOperations is null
-            ? projectileReplication
-            : new RuntimeProjectileStateCommitFanout(projectileReplication, projectileOperations);
-        var projectileStore = new RuntimeProjectileStore(commitSink: projectileCommitSink);
-        var tileManipulationReplication = new RuntimeTileManipulationReplicationRegistry();
-        var chestReplication = new RuntimeChestReplicationRegistry();
-        var chestStore = new RuntimeChestStore(world.Chests);
-        var chestCommands = new RuntimeChestCommandProcessor(chestStore, chestReplication);
-        var signReplication = new RuntimeSignReplicationRegistry();
-        var signStore = new RuntimeSignStore(world.Signs, world.Tiles);
-        var signCommands = new RuntimeSignCommandProcessor(signStore, signReplication);
-        var worldSaveService = new RuntimeWorldTileChestSaveService(
-            options.WorldPath,
-            world.Envelope,
-            world.Header,
-            worldSaveTemplate,
-            world.Tiles,
-            chestStore,
-            worldClock: worldClock,
-            signStore: signStore,
-            townNpcStore: townNpcStore,
-            checkpointValidationLimits: worldLoadLimits);
-        var worldAutosave = new VanillaWorldAutosaveScheduler();
-        var vitalsReplication = new RuntimePlayerVitalsReplicator();
-        var playerOperations = new RuntimePlayerOperationsTelemetry();
-        var playerNetworkEvents = new RuntimePlayerEventDispatcher(
-            runtimeConnections,
-            vitalsReplication,
-            playerOperations);
-        var projectileAndItemReplicationEvents = new RuntimePlayerEventFanout(
-            projectileReplication,
-            worldItemReplication);
-        var entityReplicationEvents = new RuntimePlayerEventFanout(
-            npcReplication,
-            projectileAndItemReplicationEvents);
-        var tileAndEntityReplicationEvents = new RuntimePlayerEventFanout(
-            tileManipulationReplication,
-            entityReplicationEvents);
-        var chestAndEntityReplicationEvents = new RuntimePlayerEventFanout(
-            chestReplication,
-            tileAndEntityReplicationEvents);
-        var signAndEntityReplicationEvents = new RuntimePlayerEventFanout(
-            signReplication,
-            chestAndEntityReplicationEvents);
-        var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, signAndEntityReplicationEvents);
-        var slots = new PlayerSlotPool(options.MaxPlayers);
-        var serverPlayerIdentities = new RuntimeServerPlayerSlotRegistry(slots);
-        var serverPlayerStates = new RuntimeServerPlayerStateStore(serverPlayerIdentities, slots.Capacity);
-        var state = new ServerRuntimeState(
-            playerEvents,
-            npcs: npcStore,
-            worldTiles: world.Tiles,
-            worldClock: worldClock,
-            projectiles: projectileStore,
-            worldItems: worldItems,
-            projectileReplication: projectileReplication,
-            npcReplication: npcReplication,
-            worldItemReplication: worldItemReplication,
-            townNpcs: townNpcStore,
-            townSpawnWorldFacts: RuntimeTownNpcWorldFactsProjection1458.FromMetadata(world.RuntimeMetadata),
-            townCommerceWorldFacts: RuntimeTownCommerceWorldFacts1458.FromMetadata(world.RuntimeMetadata),
-            townCombatWorldFacts: RuntimeTownNpcCombatWorldFacts1458.FromMetadata(world.RuntimeMetadata),
-            townInitialRaining: world.RuntimeMetadata.Raining,
-            townInitialEclipse: world.RuntimeMetadata.Eclipse,
-            townInitialInvasionActive: world.RuntimeMetadata.InvasionType > 0,
-            tileManipulationReplication: tileManipulationReplication,
-            serverPlayerStates: serverPlayerStates,
-            serverPlayerIdentities: serverPlayerIdentities,
-            serverPlayerEvents: runtimeConnections,
-            npcArchetypes: npcArchetypes,
-            npcArchetypeIdentities: npcArchetypeIdentities,
-            expertMode: world.RuntimeMetadata.GameMode is
-                (byte)WorldGenerationGameMode.Expert or
-                (byte)WorldGenerationGameMode.Master,
-            masterMode: world.RuntimeMetadata.GameMode == (byte)WorldGenerationGameMode.Master);
-        using var sectionCacheRebuild = new SectionCacheRebuildPipeline(
+        var primaryIdentity = new WorldRuntimeIdentity(
+            WorldRuntimeId.CreateNew(),
+            WorldSessionId.CreateNew());
+        using var primaryRuntime = new WorldRuntime(
+            primaryIdentity,
+            new SandboxWorldSource.WorldFile(options.WorldPath),
             world,
             bootstrapPackets,
-            workerCount: SectionCacheWorkerCount,
-            workCapacity: SectionCacheWorkCapacity,
-            completionCapacity: SectionCacheCompletionCapacity);
-        using var gameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
-            state,
-            (runtime, command) =>
+            runtimeInterestManagement,
+            new WorldRuntimeOptions
             {
-                if (!signCommands.TryApply(command) && !chestCommands.TryApply(command))
-                    runtime.Apply(command);
+                MaxPlayers = options.MaxPlayers,
+                CaptureOperationsTelemetry = options.TerminalUiEnabled
             },
-            runtime =>
-            {
-                runtime.Tick();
-                sectionCacheRebuild.Tick();
-                if (worldAutosave.Tick())
-                    worldSaveService.RequestSave();
-                worldSaveService.Tick();
-            });
-        var commandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(gameLoop);
-        var playerStateSnapshots = new RuntimePlayerStateSnapshotReader(commandIngress);
-        var spawnIngress = new RuntimePlayerSpawnCommitIngress(commandIngress);
-        var appearanceIngress = new RuntimePlayerAppearanceIngress(commandIngress);
-        var equipmentIngress = new RuntimePlayerEquipmentIngress(commandIngress);
-        var healthIngress = new RuntimePlayerHealthIngress(commandIngress);
-        var manaIngress = new RuntimePlayerManaIngress(commandIngress);
-        var movementIngress = new RuntimePlayerMovementIngress(commandIngress);
-        var worldItemIngress = new RuntimeWorldItemIngress(commandIngress, worldItems);
-        var projectileIngress = new RuntimeProjectileNetworkIngress(commandIngress);
-        var chestIngress = new RuntimeChestNetworkIngress(commandIngress);
-        var signIngress = new RuntimeSignNetworkIngress(commandIngress);
-        var townNpcHomeIngress = new RuntimeTownNpcHomeNetworkIngress(commandIngress);
-        var npcTalkIngress = new RuntimeNpcTalkNetworkIngress(commandIngress);
-        var npcCatchIngress = new RuntimeNpcCatchNetworkIngress(commandIngress);
-        var disconnectIngress = new RuntimePlayerDisconnectIngress(commandIngress);
+            new WorldRuntimePersistence(options.WorldPath, worldSaveTemplate, worldLoadLimits));
+        using var runtimeRegistry = new WorldRegistry(options.MaxWorldRuntimes);
+        using var sandboxHost = new SandboxHost(
+            runtimeRegistry,
+            new StartupWorldGeneratorSource(worldGenerators),
+            worldLoadLimits,
+            materializationConcurrency: options.SandboxMaterializationConcurrency,
+            maxPlayersPerRuntime: options.MaxPlayers);
+
+        ServerRuntimeState state = primaryRuntime.State;
+        AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> gameLoop = primaryRuntime.GameLoop;
+        RuntimePlayerStateSnapshotReader playerStateSnapshots = primaryRuntime.PlayerStateSnapshots;
+        PlayerSlotPool slots = primaryRuntime.Slots;
+        RuntimeConnectionRegistry runtimeConnections = primaryRuntime.RuntimeConnections;
+        RuntimeNpcReplicationRegistry npcReplication = primaryRuntime.NpcReplication;
+        RuntimeProjectileReplicationRegistry projectileReplication = primaryRuntime.ProjectileReplication;
+        RuntimeWorldItemReplicationRegistry worldItemReplication = primaryRuntime.WorldItemReplication;
+        RuntimeTileManipulationReplicationRegistry tileManipulationReplication = primaryRuntime.TileManipulationReplication;
+        RuntimeChestReplicationRegistry chestReplication = primaryRuntime.ChestReplication;
+        RuntimeSignReplicationRegistry signReplication = primaryRuntime.SignReplication;
+        RuntimePlayerVitalsReplicator vitalsReplication = primaryRuntime.VitalsReplication;
+        RuntimeWorldItemStore worldItems = primaryRuntime.WorldItems;
+        RuntimePlayerSpawnCommitIngress spawnIngress = primaryRuntime.SpawnIngress;
+        RuntimePlayerAppearanceIngress appearanceIngress = primaryRuntime.AppearanceIngress;
+        RuntimePlayerEquipmentIngress equipmentIngress = primaryRuntime.EquipmentIngress;
+        RuntimePlayerHealthIngress healthIngress = primaryRuntime.HealthIngress;
+        RuntimePlayerManaIngress manaIngress = primaryRuntime.ManaIngress;
+        RuntimePlayerMovementIngress movementIngress = primaryRuntime.MovementIngress;
+        RuntimeWorldItemIngress worldItemIngress = primaryRuntime.WorldItemIngress;
+        RuntimeProjectileNetworkIngress projectileIngress = primaryRuntime.ProjectileIngress;
+        RuntimeChestNetworkIngress chestIngress = primaryRuntime.ChestIngress;
+        RuntimeSignNetworkIngress signIngress = primaryRuntime.SignIngress;
+        RuntimeTownNpcHomeNetworkIngress townNpcHomeIngress = primaryRuntime.TownNpcHomeIngress;
+        RuntimeNpcTalkNetworkIngress npcTalkIngress = primaryRuntime.NpcTalkIngress;
+        RuntimeNpcCatchNetworkIngress npcCatchIngress = primaryRuntime.NpcCatchIngress;
+        RuntimePlayerDisconnectIngress disconnectIngress = primaryRuntime.DisconnectIngress;
+        RuntimePlayerOperationsTelemetry playerOperations = primaryRuntime.PlayerOperations;
+        RuntimeNpcOperationsTelemetry? npcOperations = primaryRuntime.NpcOperations;
+        RuntimeProjectileOperationsTelemetry? projectileOperations = primaryRuntime.ProjectileOperations;
+        LocalRuntimeWorldItemOperations? worldItemOperations = primaryRuntime.WorldItemOperations;
+        RuntimeWorldClockOperationsTelemetry? worldClockTelemetry = primaryRuntime.WorldClockTelemetry;
         var admission = new TerrariaConnectionAdmissionGate(options.MaxPlayers);
         var queueTelemetry = new RuntimeConnectionQueueTelemetry();
         var rateTelemetry = new RuntimeConnectionRateTelemetry();
@@ -554,8 +456,8 @@ public static class TerrariaServerHost
         {
             listener.Bind(new IPEndPoint(IPAddress.Any, options.Port));
             listener.Listen(backlog: Math.Max(32, options.MaxPlayers * 2));
-            sectionCacheRebuild.Start();
-            gameLoop.Start();
+            if (!runtimeRegistry.TryAdmit(primaryRuntime, primary: true))
+                throw new InvalidOperationException("Primary WorldRuntime admission failed.");
 
             if (hostLifecycle is not null)
             {
@@ -566,7 +468,12 @@ public static class TerrariaServerHost
                         world.Header.Dimensions.WidthTiles,
                         world.Header.Dimensions.HeightTiles,
                         options.Port,
-                        options.MaxPlayers),
+                        options.MaxPlayers)
+                    {
+                        RuntimeIdentity = primaryRuntime.Identity,
+                        IsolationLevel = WorldIsolationLevel.InProcess,
+                        PersistenceMode = primaryRuntime.PersistenceMode
+                    },
                     runtimeInterestManagement,
                     playerStateSnapshots,
                     state.NpcShops,
@@ -619,6 +526,8 @@ public static class TerrariaServerHost
             {
                 try
                 {
+                    string worldAssetRoot = Path.GetDirectoryName(options.WorldPath) ?? Directory.GetCurrentDirectory();
+                    var sandboxOperations = new SandboxOperations(sandboxHost, worldAssetRoot);
                     var dashboardOperations = new LocalRuntimeDashboardOperations(
                         gameLoop,
                         admission,
@@ -660,9 +569,9 @@ public static class TerrariaServerHost
                             NetworkReadyMilliseconds: networkReadyDuration.TotalMilliseconds,
                             CapturedAtUtc: DateTimeOffset.UtcNow),
                         worldClockTelemetry,
-                        () => sectionCacheRebuild.Snapshot,
-                        worldSaveService.CaptureStatus,
-                        worldSaveService.TryRequestSave);
+                        () => primaryRuntime.SectionCacheSnapshot,
+                        () => primaryRuntime.CaptureSaveStatus() ?? default,
+                        primaryRuntime.TryRequestSave);
                     terminalUi = TerminalUiHost.Start(
                         dashboardOperations,
                         playerOperations,
@@ -680,7 +589,8 @@ public static class TerrariaServerHost
                             useStandardError: true),
                         shutdown.Token,
                         projectileOperations,
-                        worldItemOperations);
+                        worldItemOperations,
+                        sandboxOperations);
                 }
                 catch (Exception exception)
                 {
@@ -730,31 +640,7 @@ public static class TerrariaServerHost
                     connectionId,
                     socket,
                     admissionLease,
-                    slots,
-                    bootstrapPackets,
-                    spawnIngress,
-                    appearanceIngress,
-                    equipmentIngress,
-                    healthIngress,
-                    manaIngress,
-                    movementIngress,
-                    worldItemIngress,
-                    projectileIngress,
-                    chestIngress,
-                    signIngress,
-                    townNpcHomeIngress,
-                    npcTalkIngress,
-                    npcCatchIngress,
-                    disconnectIngress,
-                    runtimeConnections,
-                    npcReplication,
-                    projectileReplication,
-                    worldItemReplication,
-                    tileManipulationReplication,
-                    chestReplication,
-                    signReplication,
-                    vitalsReplication,
-                    worldItems,
+                    primaryRuntime,
                     queueTelemetry,
                     rateTelemetry,
                     stopTelemetry,
@@ -825,40 +711,25 @@ public static class TerrariaServerHost
                 }
             }
 
-            bool commandsDrained = await WaitForGameLoopCommandDrainAsync(
-                gameLoop,
-                TimeSpan.FromSeconds(5)).ConfigureAwait(false);
-            if (!commandsDrained)
+            try
             {
-                const string message =
-                    "Accepted authoritative commands did not drain before shutdown; the canonical world checkpoint will not be replaced.";
-                hostLog.Log(
-                    RuntimeLogLevel.Error,
-                    StructuredLogEventIds.ShutdownCommandDrainTimedOut,
-                    StructuredLogCategory.Lifecycle,
-                    "Runtime",
-                    message,
-                    useStandardError: true);
-            }
-
-            bool gameLoopStopped = gameLoop.Stop(TimeSpan.FromSeconds(5));
-            if (!gameLoopStopped)
-            {
-                const string message = "Authoritative game loop did not stop within the shutdown deadline.";
-                hostLog.Log(
-                    RuntimeLogLevel.Error,
-                    StructuredLogEventIds.GameLoopStopTimedOut,
-                    StructuredLogCategory.Lifecycle,
-                    "Runtime",
-                    message,
-                    useStandardError: true);
-            }
-            else if (commandsDrained && gameLoop.Fault is null)
-            {
-                try
+                bool stopped = await primaryRuntime.StopAsync(
+                    TimeSpan.FromSeconds(5),
+                    captureFinalSave: true).ConfigureAwait(false);
+                if (!stopped)
                 {
-                    worldSaveService.CaptureFinalSaveAfterOwnerStopped();
-                    await worldSaveService.CompleteAsync(CancellationToken.None).ConfigureAwait(false);
+                    const string message =
+                        "Authoritative commands did not drain or the world loop did not stop within the shutdown deadline; the canonical checkpoint was not replaced.";
+                    hostLog.Log(
+                        RuntimeLogLevel.Error,
+                        StructuredLogEventIds.ShutdownCommandDrainTimedOut,
+                        StructuredLogCategory.Lifecycle,
+                        "Runtime",
+                        message,
+                        useStandardError: true);
+                }
+                else if (gameLoop.Fault is null)
+                {
                     InvalidateRuntimeCache(runtimeBootstrapCachePath, hostLog);
                     hostLog.Log(
                         RuntimeLogLevel.Information,
@@ -867,19 +738,20 @@ public static class TerrariaServerHost
                         "WorldSave",
                         $"Canonical tile/chest/clock world checkpoint committed: '{options.WorldPath}'.");
                 }
-                catch (Exception exception) when (
-                    exception is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
-                {
-                    hostLog.Log(
-                        RuntimeLogLevel.Error,
-                        StructuredLogEventIds.PersistenceWorldCheckpointSaveFailed,
-                        StructuredLogCategory.Persistence,
-                        "WorldSave",
-                        $"Canonical world save failed; the previous checkpoint remains authoritative: {exception.Message}",
-                        useStandardError: true);
-                }
             }
-            else if (gameLoop.Fault is Exception gameLoopFault)
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
+            {
+                hostLog.Log(
+                    RuntimeLogLevel.Error,
+                    StructuredLogEventIds.PersistenceWorldCheckpointSaveFailed,
+                    StructuredLogCategory.Persistence,
+                    "WorldSave",
+                    $"Canonical world save failed; the previous checkpoint remains authoritative: {exception.Message}",
+                    useStandardError: true);
+            }
+
+            if (gameLoop.Fault is Exception gameLoopFault)
             {
                 hostLog.Log(
                     RuntimeLogLevel.Error,
@@ -898,37 +770,23 @@ public static class TerrariaServerHost
         long connectionId,
         Socket socket,
         TerrariaConnectionAdmissionGate.Lease admissionLease,
-        PlayerSlotPool slots,
-        PlayerBootstrapPacketSet bootstrapPackets,
-        IPlayerSpawnCommitIngress spawnIngress,
-        IPlayerAppearanceIngress appearanceIngress,
-        IPlayerEquipmentIngress equipmentIngress,
-        IPlayerHealthIngress healthIngress,
-        IPlayerManaIngress manaIngress,
-        IPlayerMovementIngress movementIngress,
-        IWorldItemIngress worldItemIngress,
-        IProjectileNetworkIngress projectileIngress,
-        IChestNetworkIngress chestIngress,
-        ISignNetworkIngress signIngress,
-        ITownNpcHomeNetworkIngress townNpcHomeIngress,
-        INpcTalkNetworkIngress npcTalkIngress,
-        INpcCatchNetworkIngress npcCatchIngress,
-        RuntimePlayerDisconnectIngress disconnectIngress,
-        RuntimeConnectionRegistry runtimeConnections,
-        RuntimeNpcReplicationRegistry npcReplication,
-        RuntimeProjectileReplicationRegistry projectileReplication,
-        RuntimeWorldItemReplicationRegistry worldItemReplication,
-        RuntimeTileManipulationReplicationRegistry tileManipulationReplication,
-        RuntimeChestReplicationRegistry chestReplication,
-        RuntimeSignReplicationRegistry signReplication,
-        RuntimePlayerVitalsReplicator vitalsReplication,
-        RuntimeWorldItemStore worldItems,
+        WorldRuntime runtime,
         RuntimeConnectionQueueTelemetry queueTelemetry,
         RuntimeConnectionRateTelemetry rateTelemetry,
         RuntimeConnectionStopTelemetry stopTelemetry,
         RuntimeHostLog hostLog,
         CancellationToken cancellationToken)
     {
+        PlayerSlotPool slots = runtime.Slots;
+        PlayerBootstrapPacketSet bootstrapPackets = runtime.BootstrapPackets;
+        RuntimeConnectionRegistry runtimeConnections = runtime.RuntimeConnections;
+        RuntimeNpcReplicationRegistry npcReplication = runtime.NpcReplication;
+        RuntimeProjectileReplicationRegistry projectileReplication = runtime.ProjectileReplication;
+        RuntimeWorldItemReplicationRegistry worldItemReplication = runtime.WorldItemReplication;
+        RuntimeTileManipulationReplicationRegistry tileManipulationReplication = runtime.TileManipulationReplication;
+        RuntimeChestReplicationRegistry chestReplication = runtime.ChestReplication;
+        RuntimeSignReplicationRegistry signReplication = runtime.SignReplication;
+        RuntimePlayerVitalsReplicator vitalsReplication = runtime.VitalsReplication;
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
         GameCommandSourceId source = GameCommandSourceId.FromConnection(connectionId);
         var connectionContext = new StructuredLogContext(
@@ -1058,52 +916,52 @@ public static class TerrariaServerHost
                 outbound,
                 bootstrapPackets,
                 source,
-                spawnIngress,
-                appearanceIngress,
-                equipmentIngress,
-                movementIngress,
+                runtime.SpawnIngress,
+                runtime.AppearanceIngress,
+                runtime.EquipmentIngress,
+                runtime.MovementIngress,
                 inner: null,
-                worldItems: worldItems);
+                worldItems: runtime.WorldItems);
             var vitalsSink = new PlayerVitalsFrameSink(
                 source,
                 bootstrapSink,
-                healthIngress,
-                manaIngress);
+                runtime.HealthIngress,
+                runtime.ManaIngress);
             var itemSink = new WorldItemFrameSink(
                 source,
                 bootstrapSink,
                 vitalsSink,
-                worldItemIngress);
+                runtime.WorldItemIngress);
             var projectileSink = new ProjectileLifecycleFrameSink(
                 source,
                 bootstrapSink,
                 itemSink,
-                projectileIngress);
+                runtime.ProjectileIngress);
             var chestSink = new ChestInteractionFrameSink(
                 source,
                 bootstrapSink,
                 projectileSink,
-                chestIngress);
+                runtime.ChestIngress);
             var signSink = new SignInteractionFrameSink(
                 source,
                 bootstrapSink,
                 chestSink,
-                signIngress);
+                runtime.SignIngress);
             var townNpcHomeSink = new NpcHomeFrameSink(
                 source,
                 bootstrapSink,
                 signSink,
-                townNpcHomeIngress);
+                runtime.TownNpcHomeIngress);
             var npcTalkSink = new NpcTalkFrameSink(
                 source,
                 bootstrapSink,
                 townNpcHomeSink,
-                npcTalkIngress);
+                runtime.NpcTalkIngress);
             var npcCatchSink = new NpcCatchFrameSink(
                 source,
                 bootstrapSink,
                 npcTalkSink,
-                npcCatchIngress);
+                runtime.NpcCatchIngress);
 
             try
             {
@@ -1166,7 +1024,7 @@ public static class TerrariaServerHost
                     playingPlayer is PlayerHandle player)
                 {
                     bool posted = bootstrapSink.AssignedPlayerHandle == player &&
-                        disconnectIngress.TryPost(new ConnectionHandle(source, player));
+                        runtime.DisconnectIngress.TryPost(new ConnectionHandle(source, player));
                     if (!posted && !cancellationToken.IsCancellationRequested)
                     {
                         string message =
@@ -1183,29 +1041,6 @@ public static class TerrariaServerHost
                 }
             }
         }
-    }
-
-    private static async Task<bool> WaitForGameLoopCommandDrainAsync(
-        AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> gameLoop,
-        TimeSpan timeout)
-    {
-        ArgumentNullException.ThrowIfNull(gameLoop);
-        ArgumentOutOfRangeException.ThrowIfLessThan(timeout, TimeSpan.Zero);
-
-        long started = Stopwatch.GetTimestamp();
-        while (gameLoop.Snapshot.PendingCommands != 0)
-        {
-            if (!gameLoop.IsRunning ||
-                gameLoop.Fault is not null ||
-                Stopwatch.GetElapsedTime(started) >= timeout)
-            {
-                return false;
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(10)).ConfigureAwait(false);
-        }
-
-        return true;
     }
 
     private static void InvalidateRuntimeCache(string path, RuntimeHostLog hostLog)

@@ -72,7 +72,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         ILogOperations logOperations,
         ITerraRuntimeTerminalDashboardSource? terminalDashboards,
         IProjectileOperations? projectileOperations = null,
-        IWorldItemOperations? worldItemOperations = null)
+        IWorldItemOperations? worldItemOperations = null,
+        SandboxOperations? sandboxOperations = null)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
@@ -96,7 +97,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Height = Dim.Fill(status)
         };
 
-        overviewDashboard = new RuntimeOverviewDashboard
+        overviewDashboard = new RuntimeOverviewDashboard(sandboxOperations)
         {
             Width = Dim.Fill(),
             Height = Dim.Fill()

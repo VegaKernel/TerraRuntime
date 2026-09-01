@@ -163,24 +163,24 @@ The invariant is strict: **exactly one process performs application-level reads/
 
 ### S1 - common multi-world runtime container
 
-- [ ] extract one world composition root into a concrete `WorldRuntime` lifecycle owner;
-- [ ] primary and Level 1 sandbox worlds use the exact same `WorldRuntime` implementation;
-- [ ] keep primary designation outside `WorldRuntime` as host/Vega selection policy rather than a simulation kind;
-- [ ] introduce a bounded host/registry for multiple live runtimes without a generic manager/facade layer;
-- [ ] run at least two independent live runtimes concurrently;
-- [ ] isolate players, NPCs, town NPCs, bosses/AI, projectiles, items, tiles, chests/signs/tile entities, liquids, wiring, world events, weather/time, progression, spawn state, RNG, replication and persistence state;
-- [ ] prove boss/event progression in one runtime cannot mutate another runtime;
+- [x] extract one world composition root into a concrete `WorldRuntime` lifecycle owner;
+- [x] primary and Level 1 sandbox worlds use the exact same `WorldRuntime` implementation;
+- [x] keep primary designation outside `WorldRuntime` as host/Vega selection policy rather than a simulation kind;
+- [x] introduce a bounded host/registry for multiple live runtimes without a generic manager/facade layer;
+- [x] run at least two independent live runtimes concurrently;
+- [x] isolate players, NPCs, town NPCs, bosses/AI, projectiles, items, tiles, chests/signs/tile entities, liquids, wiring, world events, weather/time, progression, spawn state, RNG, replication and persistence state;
+- [x] prove boss/event progression in one runtime cannot mutate another runtime;
 - [ ] prove deterministic RNG streams do not leak between runtimes;
-- [ ] prove entity IDs/registries and replication baselines are runtime-local;
-- [ ] add bounded process-wide admission for live worlds/resources;
+- [x] prove entity IDs/registries and replication baselines are runtime-local;
+- [x] add bounded process-wide admission for live worlds/resources;
 - [ ] evolve trusted-host attachment from one global `runtimeAttached` state to scopes keyed by `WorldRuntimeIdentity`.
 
 ### S2 - Level 1 sandbox and Vega compatibility
 
 - [ ] create an ephemeral runtime from `.wld`, `Generated`, `.trschem` or snapshot-clone source through the shared source/materialization path;
 - [ ] `.trschem` materialization restores supported tiles, chests, signs, tile entities, NPC placements, world items and markers into isolated candidate state before runtime admission;
-- [ ] all existing Vega plugin assemblies remain loaded once; sandbox creation does not reload the full plugin set;
-- [ ] legacy/single-world plugins receive world-scoped callbacks only for the host-selected primary runtime;
+- [x] all existing Vega plugin assemblies remain loaded once; sandbox creation does not reload the full plugin set;
+- [x] legacy/single-world plugins receive world-scoped callbacks only for the host-selected primary runtime;
 - [ ] sandbox/multi-world-aware logic explicitly receives a per-runtime `SandboxContext`;
 - [ ] baseline creation selects one sandbox game-mode/owner logic rather than an arbitrary module dependency graph;
 - [ ] one loaded game-mode plugin can create multiple independent per-sandbox instances without shared mutable match state;
@@ -189,7 +189,7 @@ The invariant is strict: **exactly one process performs application-level reads/
 - [ ] no other mutable gameplay service becomes shared merely because runtimes are in one process;
 - [ ] deterministic teardown retires registrations, timers, extension/game-mode state and world-owned resources;
 - [ ] transfer one client between two in-process runtime sessions without packet-emulation hacks;
-- [ ] default single-world behavior remains unchanged when sandbox support is unused.
+- [x] default single-world behavior remains unchanged when sandbox support is unused.
 
 ### Source/materialization track
 

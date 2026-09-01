@@ -74,7 +74,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly RuntimeTileManipulationReplicationRegistry? _tileManipulationReplication;
     private readonly RuntimeObjectPlacementCommandProcessor? _objectPlacementProcessor;
     private readonly RuntimeWorldItemStore _worldItems;
-    private readonly IWorldItemSpawnRandom _worldItemSpawnRandom = new SystemWorldItemSpawnRandom();
+    private readonly IWorldItemSpawnRandom _worldItemSpawnRandom;
     private readonly WorldTileStore? _worldTiles;
     private readonly VanillaWorldTileMutationService? _tileMutations;
     private readonly RuntimeWorldClock? _worldClock;
@@ -113,6 +113,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         RuntimeNpcShopCatalogRegistry? npcShops = null,
         RuntimeNpcArchetypeRegistry? npcArchetypes = null,
         RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities = null,
+        IWorldItemSpawnRandom? worldItemSpawnRandom = null,
         bool expertMode = false,
         bool masterMode = false)
     {
@@ -123,6 +124,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _worldClock = worldClock;
         _expertMode = expertMode;
         _masterMode = masterMode;
+        _worldItemSpawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom();
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
         _npcs = npcs ?? new RuntimeNpcStore();
@@ -308,6 +310,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     }
 
     internal RuntimeNpcArchetypeRegistry NpcArchetypes => _npcArchetypes;
+
+    internal IWorldItemSpawnRandom WorldItemSpawnRandom => _worldItemSpawnRandom;
 
     public long Updates { get; private set; }
 
