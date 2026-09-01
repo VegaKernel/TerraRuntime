@@ -1,4 +1,4 @@
-﻿# Optimized world-generation roadmap
+# Optimized world-generation roadmap
 
 This roadmap owns the delivery of the built-in `terraruntime:optimized` profile.
 
@@ -128,7 +128,8 @@ A generated candidate is rejected before commit if a mandatory element is absent
 - [x] validate area-scaled minimum Copper/Iron/Silver/Gold/Hellstone quantities instead of presence only;
 - [x] validate connected dungeon/temple/hive interior components and explicit Temple/dungeon access openings;
 - [x] validate final post-landmark structure footprints, material minima and complete 3x2 progression objects;
-- [ ] run generated `.wld` through pinned TerrariaServer `1.4.5.8` acceptance and an official-client join smoke.
+- [x] run canonical Small generated `.wld` through pinned TerrariaServer `1.4.5.8` acceptance in permanent CI;
+- [ ] add an official-client join smoke for generated optimized worlds.
 
 ## O6 - Production gate
 
@@ -138,7 +139,7 @@ A generated candidate is rejected before commit if a mandatory element is absent
 - [ ] required biome, dungeon, hive, temple, floating-island, Aether and Underworld roles are guaranteed for every
       supported world size;
 - [ ] progression-critical resources and loot have minimum-count gates;
-- [ ] generated worlds pass TerraRuntime structural validation and pinned official-server acceptance;
+- [ ] generated worlds pass TerraRuntime structural validation and pinned official-server acceptance across the supported size matrix; canonical Small is permanently gated;
 - [x] deterministic replay is covered for fixed seeds, including generated chest side-table content;
 - [ ] generation time and peak memory are measured and bounded;
 - [ ] visual-regression review shows organic terrain, caves and structure placement rather than obvious rectangular
