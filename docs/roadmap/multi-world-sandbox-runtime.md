@@ -5,6 +5,7 @@ The sandbox roadmap has moved to the dedicated [`sandbox/`](sandbox/README.md) d
 Detailed delivery tracks:
 
 - [`sandbox/debug-commands.md`](sandbox/debug-commands.md) - debug/admin `/sandbox` lifecycle commands, asynchronous generation, player transfer and live regeneration;
+- [`sandbox/runtime-scheduling.md`](sandbox/runtime-scheduling.md) - independent per-`WorldRuntime` authoritative loops, runtime-local clocks/TPS, idle throttling and future scheduler policy;
 - [`sandbox/world-sources-schematics.md`](sandbox/world-sources-schematics.md) - shared `.wld`, generated, `.trschem` and snapshot source/materialization path.
 
 The canonical architecture guides are:
