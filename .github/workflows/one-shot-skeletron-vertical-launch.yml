@@ -35,7 +35,6 @@ jobs:
           git fetch origin --prune
           git switch -C work/skeletron-vertical-1458-main origin/main
           git diff 6f87a8a747c226f32035999b33ca432fd001274b ce9c7434c004e95c3edad8ac2a8ac0ba5edad2aa -- \
-            src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs \
             src/TerraRuntime.Core/Npcs/VanillaSkeletronBehavior.cs \
             tests/TerraRuntime.Tests/VanillaSkeletronBehaviorTests.cs > /tmp/skeletron-clean.patch
           git apply --index /tmp/skeletron-clean.patch
