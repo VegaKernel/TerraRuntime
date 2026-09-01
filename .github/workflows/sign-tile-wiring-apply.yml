@@ -28,9 +28,9 @@ jobs:
       - name: Apply sign tile host wiring
         run: python3 .github/scripts/apply_sign_tile_wiring.py
       - name: Restore
-        run: dotnet restore TerraRuntime.slnx
+        run: dotnet restore build/TerraRuntime.slnx
       - name: Test current main plus sign tile wiring
-        run: dotnet test TerraRuntime.slnx -c Release --no-restore
+        run: dotnet test build/TerraRuntime.slnx -c Release --no-restore
       - name: Commit tested host wiring to main
         shell: bash
         run: |

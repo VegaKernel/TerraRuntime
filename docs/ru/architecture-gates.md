@@ -52,7 +52,7 @@
 Основной workflow выполняет:
 
 ```text
-dotnet build TerraRuntime.slnx -c Release --no-restore
+dotnet build build/TerraRuntime.slnx -c Release --no-restore
 dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
 ```
 

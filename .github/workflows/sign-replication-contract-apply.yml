@@ -28,9 +28,9 @@ jobs:
       - name: Apply vanilla sign replication contract
         run: python3 .github/scripts/apply_sign_replication_contract.py
       - name: Restore
-        run: dotnet restore TerraRuntime.slnx
+        run: dotnet restore build/TerraRuntime.slnx
       - name: Test current main plus sign contract
-        run: dotnet test TerraRuntime.slnx -c Release --no-restore
+        run: dotnet test build/TerraRuntime.slnx -c Release --no-restore
       - name: Commit tested sign contract to main
         shell: bash
         run: |

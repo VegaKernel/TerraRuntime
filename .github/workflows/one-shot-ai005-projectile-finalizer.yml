@@ -37,8 +37,8 @@ jobs:
 
       - name: Restore and build full solution
         run: |
-          dotnet restore TerraRuntime.slnx
-          dotnet build TerraRuntime.slnx -c Release --no-restore
+          dotnet restore build/TerraRuntime.slnx
+          dotnet build build/TerraRuntime.slnx -c Release --no-restore
 
       - name: Run section cache pipeline regressions
         run: dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build -- -class TerraRuntime.Tests.SectionCacheRebuildPipelineTests

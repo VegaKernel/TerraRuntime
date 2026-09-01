@@ -72,11 +72,11 @@ jobs:
           print('skeletron_1458_source_contract=ok')
           PY
       - name: Build
-        run: dotnet build TerraRuntime.slnx -c Release --nologo
+        run: dotnet build build/TerraRuntime.slnx -c Release --nologo
       - name: Focused tests
         run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --filter FullyQualifiedName~VanillaSkeletronBehaviorTests --nologo
       - name: Full tests
-        run: dotnet test TerraRuntime.slnx -c Release --no-build --nologo
+        run: dotnet test build/TerraRuntime.slnx -c Release --no-build --nologo
       - name: Commit validated feature branch
         shell: bash
         run: |

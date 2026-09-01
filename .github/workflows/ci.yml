@@ -33,10 +33,10 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
 
       - name: Restore
-        run: dotnet restore TerraRuntime.slnx
+        run: dotnet restore build/TerraRuntime.slnx
 
       - name: Build
-        run: dotnet build TerraRuntime.slnx -c Release --no-restore
+        run: dotnet build build/TerraRuntime.slnx -c Release --no-restore
 
       - name: Test
         run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
@@ -69,15 +69,8 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
 
       - name: Publish extensible CoreCLR linux-x64
-        run: >-
-          dotnet publish src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj
-          -c Release
-          -r linux-x64
-          -p:PublishAot=false
-          -p:PublishSingleFile=true
-          -p:SelfContained=true
-          -p:PublishReadyToRun=true
-          -o artifacts/coreclr/linux-x64
+        shell: pwsh
+        run: ./build/publish.ps1 -RuntimeIdentifier linux-x64 -Profile coreclr
 
       - name: Verify runnable extensible artifact layout
         shell: bash
@@ -122,6 +115,14 @@ jobs:
       - name: CoreCLR drop-in host module smoke
         run: ./artifacts/coreclr/linux-x64/TerraRuntime.Extensible.Server --host-module-smoke
 
+      - name: Upload CoreCLR linux-x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraruntime-coreclr-linux-x64-${{ github.sha }}
+          path: artifacts/coreclr/linux-x64
+          if-no-files-found: error
+          retention-days: 14
+
   coreclr-extensible-windows:
     runs-on: windows-latest
 
@@ -135,15 +136,8 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
 
       - name: Publish extensible CoreCLR win-x64
-        run: >-
-          dotnet publish src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj
-          -c Release
-          -r win-x64
-          -p:PublishAot=false
-          -p:PublishSingleFile=true
-          -p:SelfContained=true
-          -p:PublishReadyToRun=true
-          -o artifacts/coreclr/win-x64
+        shell: pwsh
+        run: ./build/publish.ps1 -RuntimeIdentifier win-x64 -Profile coreclr
 
       - name: Verify runnable extensible artifact layout
         shell: pwsh
@@ -179,6 +173,14 @@ jobs:
         shell: pwsh
         run: .\artifacts\coreclr\win-x64\TerraRuntime.Extensible.Server.exe --host-module-smoke
 
+      - name: Upload CoreCLR win-x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraruntime-coreclr-win-x64-${{ github.sha }}
+          path: artifacts/coreclr/win-x64
+          if-no-files-found: error
+          retention-days: 14
+
   native-aot-linux:
     runs-on: ubuntu-latest
 
@@ -192,13 +194,8 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
 
       - name: Publish NativeAOT linux-x64
-        run: >-
-          dotnet publish src/TerraRuntime/TerraRuntime.csproj
-          -c Release
-          -r linux-x64
-          -p:PublishAot=true
-          -p:IlcTreatWarningsAsErrors=true
-          -o artifacts/native-aot/linux-x64
+        shell: pwsh
+        run: ./build/publish.ps1 -RuntimeIdentifier linux-x64 -Profile native-aot
 
       - name: Verify runnable NativeAOT artifact layout
         shell: bash
@@ -242,6 +239,14 @@ jobs:
       - name: NativeAOT Terminal UI smoke
         run: ./artifacts/native-aot/linux-x64/TerraRuntime.Server --tui-smoke
 
+      - name: Upload NativeAOT linux-x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraruntime-native-aot-linux-x64-${{ github.sha }}
+          path: artifacts/native-aot/linux-x64
+          if-no-files-found: error
+          retention-days: 14
+
   native-aot-windows:
     runs-on: windows-latest
 
@@ -255,13 +260,8 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
 
       - name: Publish NativeAOT win-x64
-        run: >-
-          dotnet publish src/TerraRuntime/TerraRuntime.csproj
-          -c Release
-          -r win-x64
-          -p:PublishAot=true
-          -p:IlcTreatWarningsAsErrors=true
-          -o artifacts/native-aot/win-x64
+        shell: pwsh
+        run: ./build/publish.ps1 -RuntimeIdentifier win-x64 -Profile native-aot
 
       - name: Verify runnable NativeAOT artifact layout
         shell: pwsh
@@ -303,3 +303,11 @@ jobs:
       - name: NativeAOT Terminal UI smoke
         shell: pwsh
         run: .\artifacts\native-aot\win-x64\TerraRuntime.Server.exe --tui-smoke
+
+      - name: Upload NativeAOT win-x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraruntime-native-aot-win-x64-${{ github.sha }}
+          path: artifacts/native-aot/win-x64
+          if-no-files-found: error
+          retention-days: 14

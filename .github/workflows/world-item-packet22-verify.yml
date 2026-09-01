@@ -21,8 +21,8 @@ jobs:
 
       - name: Restore and build
         run: |
-          dotnet restore TerraRuntime.slnx
-          dotnet build TerraRuntime.slnx -c Release --no-restore
+          dotnet restore build/TerraRuntime.slnx
+          dotnet build build/TerraRuntime.slnx -c Release --no-restore
 
       - name: Create isolated packet-22 verifier
         shell: bash

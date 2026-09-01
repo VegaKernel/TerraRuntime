@@ -39,7 +39,7 @@ jobs:
           python3 tools/ci/test_check_documentation.py
           python3 tools/ci/check_documentation.py
       - name: Build
-        run: dotnet build TerraRuntime.slnx -c Release
+        run: dotnet build build/TerraRuntime.slnx -c Release
       - name: Test
         shell: bash
         run: |

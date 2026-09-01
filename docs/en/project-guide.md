@@ -34,6 +34,7 @@ Ordinary plugins do not receive TerraRuntime implementation objects.
 
 | Path | Responsibility |
 |---|---|
+| `build/` | solution and shipping publish entry point |
 | `src/TerraRuntime` | standalone composition root, startup, gameplay/network/world composition, TUI |
 | `src/TerraRuntime.ExtensibleHost` | CoreCLR host and trusted host-module loading |
 | `src/TerraRuntime.HostContracts` | narrow privileged host-module contracts |
@@ -50,13 +51,23 @@ Ordinary plugins do not receive TerraRuntime implementation objects.
 
 ## 4. Build
 
-The SDK is pinned by `global.json`; the main solution is `TerraRuntime.slnx`.
+The SDK is pinned by `global.json`; the main solution is `build/TerraRuntime.slnx`.
+
+Run normal restore/build/test commands from the repository root:
 
 ```bash
-dotnet restore TerraRuntime.slnx
-dotnet build TerraRuntime.slnx -c Release
-dotnet test TerraRuntime.slnx -c Release --no-build
+dotnet restore build/TerraRuntime.slnx
+dotnet build build/TerraRuntime.slnx -c Release
+dotnet test build/TerraRuntime.slnx -c Release --no-build
 ```
+
+To produce both shipping deployments for the current host OS in the repository `artifacts/` tree, use:
+
+```powershell
+pwsh build/publish.ps1
+```
+
+Use `-Profile native-aot` or `-Profile coreclr` to publish only one profile. `-RuntimeIdentifier` may be used to state the host RID explicitly; shipping NativeAOT/ReadyToRun publication is intentionally rejected when the requested RID does not match the current OS.
 
 A normal build is not a complete shipping proof. Runtime-core work must preserve exercised Linux/Windows NativeAOT publication paths.
 

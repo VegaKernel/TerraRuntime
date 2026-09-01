@@ -39,6 +39,6 @@ jobs:
       - name: Verify source contract
         run: python3 tools/ci/check_npc_ai_017_020_021_source.py
       - name: Build Release
-        run: dotnet build TerraRuntime.slnx -c Release
+        run: dotnet build build/TerraRuntime.slnx -c Release
       - name: Focused regression tests
         run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~VanillaNpcAi17_20_21Tests|FullyQualifiedName~VanillaNpcAiCoverageCatalogTests'

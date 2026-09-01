@@ -52,7 +52,7 @@ The test walks exported types, bases/interfaces and public constructor, method, 
 The main workflow runs:
 
 ```text
-dotnet build TerraRuntime.slnx -c Release --no-restore
+dotnet build build/TerraRuntime.slnx -c Release --no-restore
 dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
 ```
 

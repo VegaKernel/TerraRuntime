@@ -51,10 +51,10 @@ jobs:
           dotnet-version: 11.0.100-preview.7.26381.103
 
       - name: Restore
-        run: dotnet restore TerraRuntime.slnx
+        run: dotnet restore build/TerraRuntime.slnx
 
       - name: Build
-        run: dotnet build TerraRuntime.slnx -c Release --no-restore
+        run: dotnet build build/TerraRuntime.slnx -c Release --no-restore
 
       - name: Gameplay decomposition tests
         run: >-
