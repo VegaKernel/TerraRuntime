@@ -26,7 +26,9 @@ flowchart TD
     Base["OptimizedWorldGenerationProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
     Play["OptimizedPlayableWorldGenerationProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
     Land["OptimizedLandmarkWorldGenerationProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
-    Meta["metadata + base validator"]
+    Meta["metadata"]
+    Dng["Dungeon v2<br/>rooms / branches / keys / locked chests / traps"]
+    BVal["base validator"]
     PVal["playability validator"]
     LVal["landmark validator"]
     Shape["surface shaping<br/>natural top slopes / half-block transitions"]
@@ -34,7 +36,7 @@ flowchart TD
     Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
-    Base --> Play --> Land --> Meta --> PVal --> LVal --> Shape --> Surf --> Prog --> Commit
+    Base --> Play --> Land --> Meta --> Dng --> BVal --> PVal --> LVal --> Shape --> Surf --> Prog --> Commit
 ```
 
 All optimized passes use `WorldGenerationRngMode.IsolatedDeterministic`. Adding an unrelated later pass therefore does
@@ -50,7 +52,8 @@ The optimized profile currently produces and validates:
 - an Underworld band with Lava, Hellstone and a Hellforge;
 - small correlated caves plus large warped caverns, vertical shafts and inland underground lakes;
 - multiple floating islands;
-- a dungeon, jungle hive, Jungle Temple and Aether/Shimmer pocket;
+- a connected multi-room dungeon with side branches, locked Gold Chests, Golden Keys, spikes and wired dart traps;
+- a jungle hive, Jungle Temple and Aether/Shimmer pocket;
 - pre-Hardmode ore tiers;
 - a world-area-scaled Life Crystal budget;
 - persistent surface, underground and cavern exploration caches;
@@ -62,8 +65,8 @@ The optimized profile currently produces and validates:
 - granite, marble and spider/cobweb micro-biomes;
 - an explicit readable dungeon opening;
 - domain-warped material tongues at snow, desert, jungle and world-evil boundaries;
-- deterministic ordinary forest, jungle and snow trees plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected.
-- a deterministic surface-finishing pass converts clean one-tile natural height transitions into persisted walkable slopes/half-blocks; ordinary optimized trees mark their crown cells with the vanilla tree foliage-frame contract instead of ending as bare trunk tiles.
+- deterministic ordinary forest, jungle and snow trees plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected;
+- a deterministic surface-finishing pass that converts clean one-tile natural height transitions into persisted walkable slopes/half-blocks; ordinary optimized trees mark their crown cells with the vanilla tree foliage-frame contract instead of ending as bare trunk tiles.
 
 The landmark layer uses only tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
 world-generation work. Landmark cache loot remains deliberately custom and conservative until the full vanilla
@@ -90,6 +93,26 @@ rather than silently returning a visually incomplete world.
 
 The current sky cache is not claimed to reproduce vanilla Skyware loot. Source-backed Starfury/Horseshoe/Balloon roles
 remain a separate progression task.
+
+## Dungeon v2
+
+The optimized dungeon keeps the base generator's preallocated Blue Dungeon reservation and metadata anchor, but rebuilds
+that bounded footprint after metadata is available. It creates a deterministic chain of main rooms with alternating side
+branches and dogleg corridors, then reopens the surface entrance. The pass does not expand into neighboring biome or
+landmark reservations.
+
+Dungeon furnishing is topology-aware rather than relying on incidental flat floor left by corridor carving. Key and
+locked-chest rooms receive deterministic side furnishing pads outside the three-tile central travel lane. Existing
+exploration caches that were already registered inside the recovered reservation are preserved with their tile/support
+footprints instead of becoming orphaned side-table entries.
+
+The entrance receives an unlocked Golden Key cache containing at least one key per generated locked chest. Deeper main
+rooms receive style-2 locked Gold Chests with distinct source-backed primary roles drawn from Muramasa, Cobalt Shield,
+Aqua Scepter, Blue Moon, Magic Missile, Valor and Handgun. Side branches receive source-backed dart-trap roles using
+pressure-plate tile `135`, dart-trap tile `137` and red wire, while a bounded spike budget leaves a central travel lane.
+
+Generation fails closed if room/branch counts, locked-chest/key balance, chest framing, wired trap counts, spike budget,
+connected dungeon interior or the readable entrance falls below its required budget.
 
 ## Surface and underground landmarks
 
@@ -151,12 +174,11 @@ Loading an existing vanilla `.wld` remains independent of which generator is use
 
 ## Remaining work
 
-The landmark and final progression-validation slices close substantial visual/content and structural gaps, but
-`terraruntime:optimized` is not yet production-complete. Important remaining items include:
+The landmark, dungeon-v2 and final progression-validation slices close substantial visual/content and structural gaps,
+but `terraruntime:optimized` is not yet production-complete. Important remaining items include:
 
 - Shadow Orb / Crimson Heart anchors;
 - true source-backed biome and Skyware loot families;
-- dungeon locked chest/key progression and richer dungeon branches/traps;
 - multiple hives and stronger Queen Bee space on larger worlds;
 - glowing-mushroom and additional decorative micro-biomes;
 - Hardmode-ready mutation anchors;
