@@ -18,6 +18,7 @@ internal static class TerminalUiTheme
     private const string Primary = "#B7EFC8";
     private const string Bright = "#E2F9EA";
     private const string Accent = "#52E584";
+    private const string SelectionBackground = "#B8FF6A";
     private const string Muted = "#6FA781";
     private const string Disabled = "#36523F";
     private const string Danger = "#FF6B6B";
@@ -37,7 +38,9 @@ internal static class TerminalUiTheme
         Focus = new TgAttribute(Background, Accent, TextStyle.Bold),
         HotNormal = new TgAttribute(Bright, Background, TextStyle.Bold | TextStyle.Underline),
         HotFocus = new TgAttribute(Background, Bright, TextStyle.Bold | TextStyle.Underline),
-        Active = new TgAttribute(Bright, Panel, TextStyle.Bold),
+        // Terminal.Gui TextView 2.4.17 renders selected text with VisualRole.Active.
+        // Keep that state intentionally loud so mouse/keyboard selections remain obvious on dark terminals.
+        Active = new TgAttribute(Background, SelectionBackground, TextStyle.Bold),
         HotActive = new TgAttribute(Accent, Panel, TextStyle.Bold | TextStyle.Underline),
         Highlight = new TgAttribute(Background, Accent, TextStyle.Bold),
         Editable = new TgAttribute(Bright, Panel),
@@ -76,7 +79,7 @@ internal static class TerminalUiTheme
         Focus = new TgAttribute(Background, Accent, TextStyle.Bold),
         HotNormal = new TgAttribute(Accent, FocusedPanel, TextStyle.Bold | TextStyle.Underline),
         HotFocus = new TgAttribute(Background, Bright, TextStyle.Bold | TextStyle.Underline),
-        Active = new TgAttribute(Bright, FocusedPanel, TextStyle.Bold),
+        Active = new TgAttribute(Background, SelectionBackground, TextStyle.Bold),
         HotActive = new TgAttribute(Accent, FocusedPanel, TextStyle.Bold | TextStyle.Underline),
         Highlight = new TgAttribute(Background, Accent, TextStyle.Bold),
         Editable = new TgAttribute(Bright, FocusedPanel),
