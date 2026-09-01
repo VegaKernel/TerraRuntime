@@ -104,7 +104,7 @@ public sealed class RuntimeWorldCheckpointExportServiceTests
                 },
                 cancellationToken);
 
-            await entered.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await entered.Task.WaitAsync(cancellationToken);
 
             RuntimeWorldCheckpointSaveDiagnostic save = RuntimeWorldCheckpointExportService.TryExport(
                 cachePath,
@@ -114,7 +114,7 @@ public sealed class RuntimeWorldCheckpointExportServiceTests
             Assert.Equal(RuntimeWorldCheckpointSaveResult.IoError, save.Result);
 
             release.TrySetResult(true);
-            await liveWrite.ConfigureAwait(false);
+            await liveWrite;
         }
         finally
         {
