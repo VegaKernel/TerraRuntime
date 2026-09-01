@@ -335,7 +335,7 @@ public sealed class OptimizedLandmarkWorldGenerationProvider : IWorldGenerationP
             int bottom = Math.Min(context.Workspace.HeightTiles - 2, surface + localDepth);
             for (int y = surface; y <= bottom; y++)
             {
-                if (!context.Workspace.TryGetTile(tx: x, y: y, tile: out WorldGenerationTile tile) ||
+                if (!context.Workspace.TryGetTile(x, y, out WorldGenerationTile tile) ||
                     (tile.Flags & WorldGenerationTileFlags.Active) == 0 ||
                     !IsNaturalTransitionMaterial(tile.Type))
                     continue;
