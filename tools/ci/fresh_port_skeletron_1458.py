@@ -7,6 +7,30 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     return text.replace(old, new, 1)
 
 
+def patch_content_ids() -> None:
+    path = Path("src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs")
+    text = path.read_text(encoding="utf-8")
+    text = replace_once(
+        text,
+        "    public static readonly NpcTypeId Guide = new(22);\n    public static readonly NpcTypeId Demolitionist = new(38);",
+        "    public static readonly NpcTypeId Guide = new(22);\n    public static readonly NpcTypeId SkeletronHead = new(35);\n    public static readonly NpcTypeId SkeletronHand = new(36);\n    public static readonly NpcTypeId Demolitionist = new(38);",
+        "skeletron-npc-ids",
+    )
+    text = replace_once(
+        text,
+        "    public static readonly NpcAiStyleId Town = new(7);\n    public static readonly NpcAiStyleId KingSlime = new(15);",
+        "    public static readonly NpcAiStyleId Town = new(7);\n    public static readonly NpcAiStyleId SkeletronHead = new(11);\n    public static readonly NpcAiStyleId SkeletronHand = new(12);\n    public static readonly NpcAiStyleId KingSlime = new(15);",
+        "skeletron-ai-style-ids",
+    )
+    text = replace_once(
+        text,
+        "    public static readonly ProjectileTypeId ConfettiGun = new(178);\n    public static readonly ProjectileTypeId BloodShot = new(811);",
+        "    public static readonly ProjectileTypeId ConfettiGun = new(178);\n    public static readonly ProjectileTypeId SkeletronSkull = new(270);\n    public static readonly ProjectileTypeId BloodShot = new(811);",
+        "skeletron-projectile-id",
+    )
+    path.write_text(text, encoding="utf-8")
+
+
 def patch_definitions() -> None:
     path = Path("src/TerraRuntime.Core/Npcs/VanillaNpcDefinitionCatalog.cs")
     text = path.read_text(encoding="utf-8")
@@ -161,6 +185,7 @@ def patch_target_slot() -> None:
 
 
 def main() -> None:
+    patch_content_ids()
     patch_definitions()
     patch_stepper()
     patch_target_slot()
