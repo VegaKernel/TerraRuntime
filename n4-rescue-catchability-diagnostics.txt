@@ -1,0 +1,22 @@
+/usr/share/dotnet/sdk/11.0.100-preview.7.26381.103/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.RuntimeIdentifierInference.targets(385,5): message NETSDK1057: You are using a preview version of .NET. See: https://aka.ms/dotnet-support-policy [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj]
+/usr/share/dotnet/sdk/11.0.100-preview.7.26381.103/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.RuntimeIdentifierInference.targets(385,5): message NETSDK1057: You are using a preview version of .NET. See: https://aka.ms/dotnet-support-policy [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Core/TerraRuntime.Core.csproj]
+/usr/share/dotnet/sdk/11.0.100-preview.7.26381.103/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.RuntimeIdentifierInference.targets(385,5): message NETSDK1057: You are using a preview version of .NET. See: https://aka.ms/dotnet-support-policy [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj]
+/usr/share/dotnet/sdk/11.0.100-preview.7.26381.103/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.RuntimeIdentifierInference.targets(385,5): message NETSDK1057: You are using a preview version of .NET. See: https://aka.ms/dotnet-support-policy [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Contracts/TerraRuntime.Contracts.csproj]
+  TerraRuntime.Transport -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Transport/bin/Release/net11.0/TerraRuntime.Transport.dll
+  TerraRuntime.Protocol -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Protocol/bin/Release/net11.0/TerraRuntime.Protocol.dll
+  TerraRuntime.Contracts -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Contracts/bin/Release/net11.0/TerraRuntime.Contracts.dll
+  TerraRuntime.HostContracts -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.HostContracts/bin/Release/net11.0/TerraRuntime.HostContracts.dll
+  TerraRuntime.World -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.World/bin/Release/net11.0/TerraRuntime.World.dll
+  TerraRuntime.Network -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Network/bin/Release/net11.0/TerraRuntime.Network.dll
+  TerraRuntime.HostModuleFixture -> /home/runner/work/TerraRuntime/TerraRuntime/tests/TerraRuntime.HostModuleFixture/bin/Release/net11.0/TerraRuntime.HostModuleFixture.dll
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Core/Npcs/VanillaNpcCatchCatalog1458.cs(126,23): error CS1061: 'ItemTypeId' does not contain a definition for 'IsAssigned' and no accessible extension method 'IsAssigned' accepting a first argument of type 'ItemTypeId' could be found (are you missing a using directive or an assembly reference?) [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Core/TerraRuntime.Core.csproj]
+  TerraRuntime.Protocol.Multiplicity -> /home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Protocol.Multiplicity/bin/Release/net11.0/TerraRuntime.Protocol.Multiplicity.dll
+  TerraRuntime.ProtocolBench -> /home/runner/work/TerraRuntime/TerraRuntime/tools/TerraRuntime.ProtocolBench/bin/Release/net11.0/TerraRuntime.ProtocolBench.dll
+
+Build FAILED.
+
+/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Core/Npcs/VanillaNpcCatchCatalog1458.cs(126,23): error CS1061: 'ItemTypeId' does not contain a definition for 'IsAssigned' and no accessible extension method 'IsAssigned' accepting a first argument of type 'ItemTypeId' could be found (are you missing a using directive or an assembly reference?) [/home/runner/work/TerraRuntime/TerraRuntime/src/TerraRuntime.Core/TerraRuntime.Core.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:28.09
