@@ -160,7 +160,7 @@ jobs:
               return true;
           }
 
-'''
+          '''
           t = t[:start] + replacement + t[end:]
           p.write_text(t, encoding='utf-8')
 
