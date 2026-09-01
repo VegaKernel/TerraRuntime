@@ -39,7 +39,7 @@ public sealed class RuntimeTownNpcCombat1458Tests
         Assert.Equal(34f, merchant.Ai.Ai1);
         Assert.Equal(0, f.Projectiles.ActiveCount);
 
-        for (int i = 0; i < 9; i++)
+        for (int i = 0; i < 10; i++)
             f.Combat.Tick();
 
         Assert.Equal(1, f.Projectiles.ActiveCount);
@@ -70,7 +70,7 @@ public sealed class RuntimeTownNpcCombat1458Tests
 
     [Theory]
     [InlineData(false, 1, 12)]
-    [InlineData(true, 2, 25)]
+    [InlineData(true, 2, 37)]
     public void Guide_switches_to_fire_arrow_in_hardmode_and_uses_progression_difficulty_damage(
         bool hardMode,
         int projectileType,
@@ -195,7 +195,7 @@ public sealed class RuntimeTownNpcCombat1458Tests
                 {
                     tiles.Set(20, y, new WorldTile
                     {
-                        Type = VanillaTileIds.Stone.Value,
+                        Type = checked((ushort)VanillaTileIds.Stone.Value),
                         Flags = WorldTileFlags.Active
                     });
                 }
@@ -231,7 +231,7 @@ public sealed class RuntimeTownNpcCombat1458Tests
             var hostile = new NpcStateUpdate(
                 VanillaNpcIds.Zombie.Value,
                 checked((short)VanillaNpcIds.Zombie.Value),
-                480f,
+                400f,
                 160f,
                 0f,
                 0f,

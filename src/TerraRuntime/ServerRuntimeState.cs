@@ -61,6 +61,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly VanillaHousingValidator1458? _housingValidator;
     private readonly RuntimeTownNpcMoveInCoordinator1458? _townMoveIn;
     private readonly RuntimeTownNpcSchedule1458? _townSchedule;
+    private readonly RuntimeTownNpcCombat1458? _townCombat;
     private readonly RuntimeTownNpcShimmerService1458? _townShimmer;
     private readonly VanillaTownSpawnPlayerFacts1458[] _townSpawnPlayers = new VanillaTownSpawnPlayerFacts1458[MaxPlayerSlots];
     private readonly RuntimeTownPlayerBounds1458[] _townPlayerBounds = new RuntimeTownPlayerBounds1458[MaxPlayerSlots];
@@ -98,6 +99,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         RuntimeTownNpcStateStore? townNpcs = null,
         VanillaTownSpawnWorldFacts1458? townSpawnWorldFacts = null,
         RuntimeTownCommerceWorldFacts1458? townCommerceWorldFacts = null,
+        RuntimeTownNpcCombatWorldFacts1458? townCombatWorldFacts = null,
         bool townInitialRaining = false,
         bool townInitialEclipse = false,
         bool townInitialInvasionActive = false,
@@ -160,6 +162,13 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _townCommerce = worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 commerceFacts
             ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, _npcs, in commerceFacts)
             : null;
+        _townCombat = worldTiles is not null &&
+            townNpcs is not null &&
+            _worldProgression is not null &&
+            townCombatWorldFacts is RuntimeTownNpcCombatWorldFacts1458 combatFacts
+                ? new RuntimeTownNpcCombat1458(
+                    townNpcs, _npcs, _projectiles, worldTiles, in combatFacts, _worldProgression, expertMode, masterMode)
+                : null;
         _housingValidator = worldTiles is not null && townNpcs is not null
             ? new VanillaHousingValidator1458(worldTiles)
             : null;
@@ -604,7 +613,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
 
     private void TickTownNpcLifecycle()
     {
-        if (_townMoveIn is null && _townSchedule is null)
+        if (_townMoveIn is null && _townSchedule is null && _townCombat is null)
             return;
 
         int spawnPlayerCount = 0;
@@ -661,6 +670,8 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 StormingAboveSurface: false);
             _townSchedule.Tick(in scheduleConditions, _townPlayerBounds.AsSpan(0, boundsCount));
         }
+
+        _townCombat?.Tick();
     }
 
     private void TickServerPlayerPhysics()

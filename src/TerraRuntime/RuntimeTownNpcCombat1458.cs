@@ -332,6 +332,12 @@ internal sealed class RuntimeTownNpcCombat1458
                 continue;
             }
 
+            if (profile.Kind == VanillaTownNpcProjectileAttackKind1458.Straight &&
+                !HasStraightAttackAngle(in source, in target))
+            {
+                continue;
+            }
+
             int chance = GetAttackChance(profile.AttackAverageChance);
             if (random.Next(chance) != 0)
                 continue;
@@ -588,6 +594,23 @@ internal sealed class RuntimeTownNpcCombat1458
         return true;
     }
 
+    private static bool HasStraightAttackAngle(in NpcSnapshot source, in NpcSnapshot target)
+    {
+        if (!VanillaTownNpcDefinitionCatalogBridge.TryGetCenter(in source, out float sourceX, out float sourceY) ||
+            !VanillaTownNpcDefinitionCatalogBridge.TryGetCenter(in target, out float targetX, out float targetY))
+        {
+            return false;
+        }
+
+        float dx = targetX - sourceX;
+        float dy = targetY - sourceY;
+        float length = MathF.Sqrt(dx * dx + dy * dy);
+        if (!float.IsFinite(length) || length <= float.Epsilon)
+            return false;
+        float normalizedY = dy / length;
+        return normalizedY is >= -0.5f and <= 0.5f;
+    }
+
     private bool TrySelectTarget(
         in NpcSnapshot source,
         in VanillaTownNpcProjectileAttackProfile1458 profile,
@@ -679,6 +702,28 @@ internal sealed class RuntimeTownNpcCombat1458
             target = left;
         }
         return true;
+    }
+
+    private static class VanillaTownNpcDefinitionCatalogBridge
+    {
+        public static bool TryGetCenter(
+            in NpcSnapshot snapshot,
+            out float centerX,
+            out float centerY)
+        {
+            if (!NpcTypeId.TryCreate(snapshot.Type, out NpcTypeId type) ||
+                !VanillaNpcDefinitionCatalog.TryGet(type, snapshot.NetIdentity, out VanillaNpcDefinition definition) ||
+                !definition.TryResolveHitbox(snapshot.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            {
+                centerX = 0f;
+                centerY = 0f;
+                return false;
+            }
+
+            centerX = snapshot.PositionX + hitbox.Width * 0.5f;
+            centerY = snapshot.PositionY + hitbox.Height * 0.5f;
+            return true;
+        }
     }
 
     private bool IsComplete(VanillaWorldProgressionId milestone) =>
