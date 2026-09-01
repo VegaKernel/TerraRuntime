@@ -12,26 +12,23 @@ Initial command set:
 /sandbox list
 /sandbox status <sandbox>
 
-/sandbox create <name> l1 file <relative-world-path> [mode <game-mode>]
-/sandbox create <name> l2 file <relative-world-path> [mode <game-mode>]
+/sb1 <name> file <relative-world-path>
+/sb2 <name> file <relative-world-path>
 
-/sandbox create <name> l1 gen <generator-id> [seed <number|random>] [size <width>x<height>] [mode <game-mode>]
-/sandbox create <name> l2 gen <generator-id> [seed <number|random>] [size <width>x<height>] [mode <game-mode>]
+/sb1 <name> gen <generator-id> [seed <number|random>] [size <primary|width>x<height>] [mode <classic|expert|master|journey>] [evil <corruption|crimson>]
+/sb2 <name> gen <generator-id> [seed <number|random>] [size <primary|width>x<height>] [mode <classic|expert|master|journey>] [evil <corruption|crimson>]
 
-/sandbox create <name> l1 schem <relative-schematic-path> [mode <game-mode>]
-/sandbox create <name> l2 schem <relative-schematic-path> [mode <game-mode>]
+/sb1 <name> schem <relative-schematic-path>
+/sb2 <name> schem <relative-schematic-path>
 
 /sandbox move <player> <sandbox|primary>
-/sandbox respawn <player> <sandbox|primary>
+/respawn <player> <sandbox|primary>
 /sandbox regen <sandbox> [seed <number|random>]
 /sandbox destroy <sandbox>
-
-/sandbox jobs
-/sandbox job <job-id>
-/sandbox cancel <job-id>
+/sandbox cancel <operation-id>
 ```
 
-`l1` means `WorldIsolationLevel.InProcess`; `l2` means `WorldIsolationLevel.DedicatedProcess`.
+`sb1` creates an `InProcess` request and `sb2` creates a `DedicatedProcess` request. These are intentionally thin debug aliases; Vega uses the typed sandbox API directly and may provide the full source/generation descriptor without being constrained by the console grammar. For generated debug sandboxes, omitted `size` (or explicit `size primary`) uses the current primary world's tile dimensions rather than a hard-coded Terraria world size.
 
 The baseline deliberately does not accept an arbitrary `Modules = [...]` list. Level 1 uses already-loaded Vega code and creates only the selected sandbox/game-mode state. Level 2 receives the selected sandbox-side game-mode/plugin package through the normal worker descriptor defined by the Level 2 roadmap.
 
@@ -60,7 +57,7 @@ sequenceDiagram
     participant H as Sandbox host
     participant W as WorldRuntime
 
-    A->>C: /sandbox create arena l1 gen terraruntime:optimized
+    A->>C: /sb1 arena gen terraruntime:optimized
     C->>J: queue typed create request
     C-->>A: accepted + job id
     J->>G: build detached candidate
@@ -113,7 +110,7 @@ The move command uses the normal Level 2 transfer path: bounded semantic player-
 
 ## Respawning a player into a runtime
 
-`/sandbox respawn <player> <sandbox|primary>` is the force-spawn form of runtime transfer. It is intentionally a `/sandbox` subcommand rather than a separate global respawn command.
+`/respawn <player> <sandbox|primary>` is the force-spawn form of runtime transfer. It is intentionally separate from the sandbox lifecycle command tree because it is a direct player operation, while still using the exact same typed transfer primitive as `sandbox move`.
 
 The destination is always explicit. The operation guarantees that the player ends in the requested live `WorldSessionId`, receives the destination world's bootstrap as required, and is spawned at the destination runtime's selected spawn point. It does not preserve the player's old world-space position.
 
@@ -132,7 +129,7 @@ sequenceDiagram
     participant D as Destination WorldRuntime
     participant C as Client connection
 
-    A->>H: /sandbox respawn player arena
+    A->>H: /respawn player arena
     alt source runtime differs from destination
         H->>S: retire source membership at safe point
         H->>D: attach transferable player identity/state
@@ -232,7 +229,7 @@ Only replacing/crashing/restarting the worker process itself requires the separa
 - destroy while regeneration is pending cancels the job first and then retires the current runtime;
 - a failed regeneration never destroys the current healthy runtime;
 - swap failure fails closed: either the old session remains authoritative or the new session becomes authoritative, never both;
-- job errors are structured and visible through `/sandbox job <id>` and runtime logs;
+- lifecycle operations return their operation ID at acceptance; pending operation IDs are visible through `sandbox status`, and structured failures remain observable through runtime logs;
 - Level 2 worker failure during regeneration follows normal supervisor fault handling rather than pretending the swap succeeded.
 
 ## Debug command implementation boundary
@@ -253,21 +250,21 @@ The TUI currently owns local presentation commands; sandbox commands should not 
 
 ### Command contract
 
-- [ ] define one typed sandbox debug/admin operation model shared by TUI and authenticated admin command front ends;
+- [x] define one typed sandbox debug/admin operation model shared by TUI and authenticated admin command front ends;
 - [x] implement `list` and `status`;
-- [x] implement `create ... l1 file`;
-- [x] implement `create ... l1 gen` with asynchronous generation and job status;
-- [ ] implement `create ... l1 schem`;
-- [ ] implement `move <player> <sandbox|primary>` for Level 1;
-- [ ] implement `respawn <player> <sandbox|primary>` for Level 1, including same-runtime forced respawn;
+- [x] implement `sb1 ... file`;
+- [x] implement `sb1 ... gen` with asynchronous generation, primary-world dimension defaults and explicit seed/size/mode/evil debug options;
+- [ ] implement `sb1 ... schem`;
+- [x] implement `sandbox move <player> <sandbox|primary>` for Level 1;
+- [x] implement top-level `respawn <player> <sandbox|primary>` for Level 1, including same-runtime forced respawn;
 - [x] implement `destroy` for Level 1;
-- [x] expose the same operations through the TUI as `sandbox ...` without duplicating lifecycle logic.
+- [x] expose the same typed operations through TUI/plain-console roots `sandbox`, `sb1`, `sb2` and `respawn` without duplicating lifecycle logic.
 
 ### Level 2 command coverage
 
-- [ ] implement `create ... l2 file` through `SandboxSupervisor`;
-- [ ] implement `create ... l2 gen` with generation/materialization inside the worker where practical;
-- [ ] implement `create ... l2 schem`;
+- [ ] implement `sb2 ... file` through `SandboxSupervisor`;
+- [ ] implement `sb2 ... gen` with generation/materialization inside the worker where practical;
+- [ ] implement `sb2 ... schem`;
 - [ ] implement `move` to Level 2 using semantic state transfer + OS socket handoff;
 - [ ] implement `respawn` to Level 2 using the same transfer/handoff contract and destination bootstrap/spawn;
 - [ ] implement move/respawn back to `primary` using reverse socket handoff when crossing process ownership;
@@ -296,4 +293,4 @@ The TUI currently owns local presentation commands; sandbox commands should not 
 
 ## Completion criteria
 
-This debug/admin surface is complete when an operator can create L1 and L2 sandboxes from file, generated and schematic sources; observe asynchronous jobs; move or force-respawn a player into a selected sandbox/primary runtime; regenerate a generated sandbox while players remain connected and respawn in the replacement world; and destroy the sandbox without leaving runtime, plugin, worker, transport or socket ownership behind.
+This debug/admin surface is complete when an operator can create L1 and L2 sandboxes from file, generated and schematic sources; observe accepted/pending operations and structured failures; move or force-respawn a player into a selected sandbox/primary runtime; regenerate a generated sandbox while players remain connected and respawn in the replacement world; and destroy the sandbox without leaving runtime, plugin, worker, transport or socket ownership behind.

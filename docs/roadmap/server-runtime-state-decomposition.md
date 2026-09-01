@@ -94,7 +94,7 @@ Requirements:
 - [ ] player state remains owned by the same `WorldRuntime` authoritative thread;
 - [ ] connection/network code receives typed operations/snapshots, not mutable player dictionaries;
 - [ ] moving a player between sandbox sessions does not require reaching into another runtime's player store directly;
-- [ ] player extraction supports later `/sandbox move` and `/sandbox respawn` semantic transfer.
+- [ ] player extraction supports later `sandbox move` and top-level `respawn` semantic transfer.
 
 Do not create a generic `PlayerManager`. Use the existing stores/command services where possible and add only a precise world-player aggregate/operations object if a real missing ownership boundary remains.
 

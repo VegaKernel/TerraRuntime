@@ -294,6 +294,33 @@ public sealed class SandboxHost : IDisposable
         return result.ToArray();
     }
 
+    internal bool TryGetLiveRuntime(SandboxName name, out WorldRuntime? runtime, out string? error)
+    {
+        lock (gate)
+        {
+            if (!sandboxes.TryGetValue(name, out Entry entry) || entry.RuntimeId is not WorldRuntimeId id)
+            {
+                runtime = null;
+                error = $"Sandbox '{name}' is not live.";
+                return false;
+            }
+            if (entry.PendingJob is not null)
+            {
+                runtime = null;
+                error = $"Sandbox '{name}' has a pending lifecycle mutation.";
+                return false;
+            }
+            if (!runtimes.TryGet(id, out runtime) || runtime is null || runtime.Lifecycle != WorldRuntimeLifecycle.Running)
+            {
+                runtime = null;
+                error = $"Sandbox '{name}' runtime is not running.";
+                return false;
+            }
+            error = null;
+            return true;
+        }
+    }
+
     public bool TryGetSandbox(SandboxName name, out SandboxSnapshot snapshot)
     {
         lock (gate)

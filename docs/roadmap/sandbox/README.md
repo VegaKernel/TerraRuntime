@@ -188,7 +188,7 @@ The invariant is strict: **exactly one process performs application-level reads/
 - [ ] shared Vega chat router may span Level 1 runtimes, but messages carry `WorldRuntimeIdentity` and visibility policy remains explicit;
 - [ ] no other mutable gameplay service becomes shared merely because runtimes are in one process;
 - [ ] deterministic teardown retires registrations, timers, extension/game-mode state and world-owned resources;
-- [ ] transfer one client between two in-process runtime sessions without packet-emulation hacks;
+- [x] transfer one client between two in-process runtime sessions without packet-emulation hacks, retaining the accepted socket in the process and switching one connection route between runtime-local bindings;
 - [x] default single-world behavior remains unchanged when sandbox support is unused.
 
 ### Source/materialization track

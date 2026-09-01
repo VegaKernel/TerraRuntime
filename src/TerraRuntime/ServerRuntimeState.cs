@@ -20,6 +20,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly short[] _playerTalkNpcSlots = new short[MaxPlayerSlots];
     private readonly RuntimeTownShopSession1458?[] _townShopSessions = new RuntimeTownShopSession1458?[MaxPlayerSlots];
     private readonly RuntimePlayerInventoryStore _playerInventory = new();
+    private readonly RuntimePlayerTransferProfileStore _playerTransferProfiles = new();
     private readonly VanillaNpcTargetCandidate[] _npcTargetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly IRuntimePlayerEventSink? _playerEvents;
@@ -588,6 +589,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 break;
             case PlayerStateSnapshotRuntimeCommand snapshot:
                 CompletePlayerSnapshot(snapshot);
+                break;
+            case PlayerTransferDetachRuntimeCommand detach:
+                ApplyPlayerTransferDetach(detach);
+                break;
+            case PlayerTransferAttachRuntimeCommand attach:
+                ApplyPlayerTransferAttach(attach);
                 break;
         }
     }
@@ -1663,6 +1670,12 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             return;
         }
 
+        if (!_playerTransferProfiles.TrySetAppearance(appearance.Connection, in request))
+        {
+            RejectedPlayerAppearances++;
+            return;
+        }
+
         AppliedPlayerAppearances++;
         _playerEvents?.PlayerAppearanceUpdated(appearance.Connection, in request);
     }
@@ -1704,6 +1717,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             RejectedPlayerEquipmentUpdates++;
             return;
         }
+
+        if (!inventorySlot && VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId))
+            _playerTransferProfiles.TrySetEquipment(equipment.Connection, in request);
 
         AppliedPlayerEquipmentUpdates++;
         _playerEvents?.PlayerEquipmentUpdated(equipment.Connection, in request);
@@ -1908,6 +1924,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             _pendingVitals[connection.Player.Slot.Value] = null;
 
         _playerInventory.Clear(connection);
+        _playerTransferProfiles.Clear(connection);
 
         if (!_players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) ||
             player.Connection != disconnect.Connection)
@@ -1920,6 +1937,198 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _players.Remove(connection.Player.Slot.Value);
         DisconnectedPlayers++;
         _playerEvents?.PlayerDisconnected(connection);
+    }
+
+    private void ApplyPlayerTransferDetach(PlayerTransferDetachRuntimeCommand command)
+    {
+        ConnectionHandle connection = command.Connection;
+        if (!_players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) ||
+            player.Connection != connection)
+        {
+            command.Completion.TrySetResult(null);
+            return;
+        }
+
+        var inventory = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        if (!_playerInventory.TryCopyInventory(connection, inventory))
+        {
+            command.Completion.TrySetResult(null);
+            return;
+        }
+
+        _playerTransferProfiles.TryCapture(
+            connection,
+            out PlayerAppearanceCommitRequest? appearance,
+            out PlayerEquipmentCommitRequest[] equipment);
+        var transfer = new RuntimePlayerTransferState(
+            player.CaptureSnapshot(),
+            inventory,
+            appearance,
+            equipment);
+
+        _pendingVitals[connection.Player.Slot.Value] = null;
+        _playerInventory.Clear(connection);
+        _playerTransferProfiles.Clear(connection);
+        _playerTalkNpcSlots[connection.Player.Slot.Value] = TerrariaNpcTalkCodec.NoNpc;
+        _townShopSessions[connection.Player.Slot.Value] = null;
+        _players.Remove(connection.Player.Slot.Value);
+        _playerEvents?.PlayerDisconnected(connection);
+        command.Completion.TrySetResult(transfer);
+    }
+
+    private void ApplyPlayerTransferAttach(PlayerTransferAttachRuntimeCommand command)
+    {
+        ConnectionHandle connection = command.Connection;
+        RuntimePlayerTransferState transfer = command.Transfer;
+        int slot = connection.Player.Slot.Value;
+        if (!connection.IsAssigned ||
+            transfer.Slot != connection.Player.Slot ||
+            _players.ContainsKey(checked((byte)slot)) ||
+            transfer.Inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
+            !_playerInventory.TryAttach(connection))
+        {
+            command.Completion.TrySetResult(false);
+            return;
+        }
+
+        var inventoryMutations = new RuntimePlayerInventoryMutation[VanillaPlayerItemSlotCatalog.InventoryCount];
+        for (short inventorySlot = 0; inventorySlot < inventoryMutations.Length; inventorySlot++)
+            inventoryMutations[inventorySlot] = new RuntimePlayerInventoryMutation(inventorySlot, transfer.Inventory[inventorySlot]);
+        if (!_playerInventory.TryApplyAtomic(connection, inventoryMutations))
+        {
+            _playerInventory.Clear(connection);
+            command.Completion.TrySetResult(false);
+            return;
+        }
+
+        PlayerStateSnapshot previous = transfer.Player;
+        float spawnPositionX = command.SpawnX * 16f;
+        float spawnPositionY = command.SpawnY * 16f;
+        bool preservePosition = command.PreserveWorldPosition && IsTransferPositionValid(previous.PositionX, previous.PositionY);
+        float positionX = preservePosition ? previous.PositionX : spawnPositionX;
+        float positionY = preservePosition ? previous.PositionY : spawnPositionY;
+        short life = previous.Life;
+        bool dead = previous.IsDead;
+        if (command.ForceRespawn)
+        {
+            dead = false;
+            if (previous.HasHealth && previous.MaxLife > 0)
+                life = previous.MaxLife;
+        }
+
+        var state = new RuntimePlayerState
+        {
+            Connection = connection,
+            Revision = 1,
+            Slot = connection.Player.Slot,
+            Team = previous.Team,
+            HasHealth = previous.HasHealth,
+            Life = life,
+            MaxLife = previous.MaxLife,
+            IsDead = dead,
+            HasMana = previous.HasMana,
+            Mana = previous.Mana,
+            MaxMana = previous.MaxMana,
+            ControlFlags = preservePosition ? previous.ControlFlags : (byte)0,
+            MovementFlags = preservePosition ? previous.MovementFlags : (byte)0,
+            MiscFlags1 = preservePosition ? previous.MiscFlags1 : (byte)0,
+            MiscFlags2 = preservePosition ? previous.MiscFlags2 : (byte)0,
+            SelectedItem = previous.SelectedItem,
+            PositionX = positionX,
+            PositionY = positionY,
+            VelocityX = preservePosition ? previous.VelocityX : 0f,
+            VelocityY = preservePosition ? previous.VelocityY : 0f,
+            MountType = preservePosition ? previous.MountType : (ushort)0,
+            PotionOfReturnOriginalPositionX = preservePosition ? previous.PotionOfReturnOriginalPositionX : 0f,
+            PotionOfReturnOriginalPositionY = preservePosition ? previous.PotionOfReturnOriginalPositionY : 0f,
+            PotionOfReturnHomePositionX = preservePosition ? previous.PotionOfReturnHomePositionX : 0f,
+            PotionOfReturnHomePositionY = preservePosition ? previous.PotionOfReturnHomePositionY : 0f,
+            CameraTargetX = preservePosition ? previous.CameraTargetX : 0f,
+            CameraTargetY = preservePosition ? previous.CameraTargetY : 0f
+        };
+        _players[checked((byte)slot)] = state;
+        _playerTransferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment);
+
+        short eventSpawnX = checked((short)Math.Clamp((int)(positionX / 16f), short.MinValue, short.MaxValue));
+        short eventSpawnY = checked((short)Math.Clamp((int)(positionY / 16f), short.MinValue, short.MaxValue));
+        var spawn = new PlayerSpawnCommitRequest(
+            connection.Player.Slot,
+            eventSpawnX,
+            eventSpawnY,
+            RespawnTimer: 0,
+            DeathsPve: 0,
+            DeathsPvp: 0,
+            Team: state.Team,
+            SpawnContext: 0);
+        _playerEvents?.PlayerSpawned(connection, in spawn);
+
+        if (transfer.Appearance is PlayerAppearanceCommitRequest appearance)
+        {
+            PlayerAppearanceCommitRequest normalizedAppearance = appearance with { PlayerSlot = connection.Player.Slot };
+            _playerEvents?.PlayerAppearanceUpdated(connection, in normalizedAppearance);
+        }
+
+        for (short inventorySlot = 0; inventorySlot < transfer.Inventory.Length; inventorySlot++)
+        {
+            RuntimePlayerInventoryItem item = transfer.Inventory[inventorySlot];
+            if (item.IsEmpty)
+                continue;
+            PlayerEquipmentCommitRequest request = item.ToCommitRequest(connection.Player.Slot, inventorySlot);
+            _playerEvents?.PlayerEquipmentUpdated(connection, in request);
+        }
+        for (int i = 0; i < transfer.Equipment.Length; i++)
+        {
+            PlayerEquipmentCommitRequest request = transfer.Equipment[i] with { PlayerSlot = connection.Player.Slot };
+            _playerEvents?.PlayerEquipmentUpdated(connection, in request);
+        }
+
+        if (state.HasHealth)
+        {
+            var health = new PlayerHealthCommitRequest(connection.Player.Slot, state.Life, state.MaxLife);
+            _playerEvents?.PlayerHealthUpdated(connection, in health);
+        }
+        if (state.HasMana)
+        {
+            var mana = new PlayerManaCommitRequest(connection.Player.Slot, state.Mana, state.MaxMana);
+            _playerEvents?.PlayerManaUpdated(connection, in mana);
+        }
+
+        var movement = new PlayerMovementCommitRequest(
+            connection.Player.Slot,
+            state.ControlFlags,
+            state.MovementFlags,
+            state.MiscFlags1,
+            state.MiscFlags2,
+            state.SelectedItem,
+            state.PositionX,
+            state.PositionY,
+            HasVelocity: state.VelocityX != 0f || state.VelocityY != 0f,
+            state.VelocityX,
+            state.VelocityY,
+            HasMount: state.MountType != 0,
+            state.MountType,
+            HasPotionOfReturnPositions: preservePosition &&
+                (state.PotionOfReturnOriginalPositionX != 0f || state.PotionOfReturnOriginalPositionY != 0f ||
+                 state.PotionOfReturnHomePositionX != 0f || state.PotionOfReturnHomePositionY != 0f),
+            state.PotionOfReturnOriginalPositionX,
+            state.PotionOfReturnOriginalPositionY,
+            state.PotionOfReturnHomePositionX,
+            state.PotionOfReturnHomePositionY,
+            HasCameraTarget: preservePosition && (state.CameraTargetX != 0f || state.CameraTargetY != 0f),
+            state.CameraTargetX,
+            state.CameraTargetY);
+        _playerEvents?.PlayerMoved(connection, in movement);
+        command.Completion.TrySetResult(true);
+    }
+
+    private bool IsTransferPositionValid(float positionX, float positionY)
+    {
+        if (_worldTiles is null || !float.IsFinite(positionX) || !float.IsFinite(positionY))
+            return false;
+
+        float maximumX = _worldTiles.Dimensions.WidthTiles * 16f - VanillaBasePlayerWidth;
+        float maximumY = _worldTiles.Dimensions.HeightTiles * 16f - VanillaBasePlayerHeight;
+        return positionX >= 0f && positionY >= 0f && positionX <= maximumX && positionY <= maximumY;
     }
 
     private void CompletePlayerSnapshot(PlayerStateSnapshotRuntimeCommand command)

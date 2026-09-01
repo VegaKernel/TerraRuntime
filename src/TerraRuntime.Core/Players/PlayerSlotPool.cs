@@ -76,8 +76,47 @@ public sealed class PlayerSlotPool
     public bool TryAcquireConnection(out PlayerSlotLease? lease) =>
         TryAcquire(PlayerSlotLeaseKind.Connection, out lease);
 
+    /// <summary>
+    /// Reserves the exact wire slot already owned by a connection in another WorldRuntime.
+    /// Cross-runtime transfer must preserve the client-visible player id while each runtime keeps an independent
+    /// generation space. The reservation fails rather than silently remapping the client.
+    /// </summary>
+    public bool TryAcquireConnection(PlayerSlotId slot, out PlayerSlotLease? lease) =>
+        TryAcquire(slot, PlayerSlotLeaseKind.Connection, out lease);
+
     public bool TryAcquireServerOwned(out PlayerSlotLease? lease) =>
         TryAcquire(PlayerSlotLeaseKind.ServerOwned, out lease);
+
+    private bool TryAcquire(PlayerSlotId slot, PlayerSlotLeaseKind kind, out PlayerSlotLease? lease)
+    {
+        if (kind is not PlayerSlotLeaseKind.Connection and not PlayerSlotLeaseKind.ServerOwned)
+            throw new ArgumentOutOfRangeException(nameof(kind));
+
+        int index = slot.Value;
+        lock (_gate)
+        {
+            if ((uint)index >= (uint)_leased.Length || _leased[index] || _generations[index] == ulong.MaxValue)
+            {
+                lease = null;
+                return false;
+            }
+
+            ulong generation = _generations[index] + 1;
+            _leased[index] = true;
+            _leaseKinds[index] = kind;
+            _leasedCount++;
+            if (kind == PlayerSlotLeaseKind.Connection)
+                _connectionLeasedCount++;
+            else
+                _serverOwnedLeasedCount++;
+            _generations[index] = generation;
+            lease = new PlayerSlotLease(
+                this,
+                new PlayerHandle(slot, new PlayerSessionGeneration(generation)),
+                kind);
+            return true;
+        }
+    }
 
     private bool TryAcquire(PlayerSlotLeaseKind kind, out PlayerSlotLease? lease)
     {

@@ -226,6 +226,7 @@ public sealed class WorldRuntime : IDisposable
 
         CommandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(GameLoop);
         PlayerStateSnapshots = new RuntimePlayerStateSnapshotReader(CommandIngress);
+        TransferIngress = new RuntimePlayerTransferIngress(CommandIngress);
         SpawnIngress = new RuntimePlayerSpawnCommitIngress(CommandIngress);
         AppearanceIngress = new RuntimePlayerAppearanceIngress(CommandIngress);
         EquipmentIngress = new RuntimePlayerEquipmentIngress(CommandIngress);
@@ -286,6 +287,7 @@ public sealed class WorldRuntime : IDisposable
     internal AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> GameLoop { get; }
     internal AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand> CommandIngress { get; }
     internal RuntimePlayerStateSnapshotReader PlayerStateSnapshots { get; }
+    internal RuntimePlayerTransferIngress TransferIngress { get; }
     internal RuntimePlayerSpawnCommitIngress SpawnIngress { get; }
     internal RuntimePlayerAppearanceIngress AppearanceIngress { get; }
     internal RuntimePlayerEquipmentIngress EquipmentIngress { get; }

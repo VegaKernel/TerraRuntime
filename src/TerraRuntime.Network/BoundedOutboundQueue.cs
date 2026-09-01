@@ -12,6 +12,7 @@ public sealed class BoundedOutboundQueue
     private long _peakQueuedFrames;
     private long _peakQueuedBytes;
     private long _rejectedFrames;
+    private readonly object _writeGate = new();
 
     public BoundedOutboundQueue(OutboundQueueOptions options)
     {
@@ -42,6 +43,80 @@ public sealed class BoundedOutboundQueue
     public long RejectedFrames => Interlocked.Read(ref _rejectedFrames);
 
     public OutboundEnqueueResult TryEnqueue(OutboundFrame frame)
+    {
+        lock (_writeGate)
+            return TryEnqueueLocked(frame);
+    }
+
+    /// <summary>
+    /// Atomically admits a bounded frame batch. Either every frame is published in order or none is.
+    /// Runtime world transfer uses this so a client cannot observe half of a replacement-world bootstrap.
+    /// </summary>
+    public OutboundEnqueueResult TryEnqueueBatch(ReadOnlySpan<OutboundFrame> frames)
+    {
+        if (frames.Length == 0)
+            return OutboundEnqueueResult.Enqueued;
+
+        lock (_writeGate)
+        {
+            if (IsCompleted)
+            {
+                RejectBatch(frames.Length);
+                return OutboundEnqueueResult.Closed;
+            }
+
+            long addedBytes = 0;
+            for (int i = 0; i < frames.Length; i++)
+            {
+                int length = frames[i].Length;
+                if (length <= 0 || length > _options.MaxFrameBytes)
+                {
+                    RejectBatch(frames.Length);
+                    return OutboundEnqueueResult.FrameTooLarge;
+                }
+                addedBytes = checked(addedBytes + length);
+            }
+
+            int currentFrames = Volatile.Read(ref _queuedFrames);
+            long currentBytes = Interlocked.Read(ref _queuedBytes);
+            if ((long)currentFrames + frames.Length > _options.MaxFrames)
+            {
+                RejectBatch(frames.Length);
+                return OutboundEnqueueResult.FrameBudgetExceeded;
+            }
+            if (currentBytes + addedBytes > _options.MaxQueuedBytes)
+            {
+                RejectBatch(frames.Length);
+                return OutboundEnqueueResult.ByteBudgetExceeded;
+            }
+
+            int reservedFrames = Interlocked.Add(ref _queuedFrames, frames.Length);
+            long reservedBytes = Interlocked.Add(ref _queuedBytes, addedBytes);
+            int written = 0;
+            for (; written < frames.Length; written++)
+            {
+                if (_channel.Writer.TryWrite(frames[written]))
+                    continue;
+
+                // Complete() shares the write gate, so failure here can only be a channel invariant violation.
+                // Undo counters for the unpublished suffix and fail closed. Already-published prefix cannot be
+                // recalled, therefore throw instead of pretending the batch was rejected cleanly.
+                int remaining = frames.Length - written;
+                long remainingBytes = 0;
+                for (int i = written; i < frames.Length; i++)
+                    remainingBytes += frames[i].Length;
+                Interlocked.Add(ref _queuedFrames, -remaining);
+                Interlocked.Add(ref _queuedBytes, -remainingBytes);
+                throw new InvalidOperationException("Outbound channel rejected an already-reserved frame batch.");
+            }
+
+            UpdateMaximum(ref _peakQueuedFrames, reservedFrames);
+            UpdateMaximum(ref _peakQueuedBytes, reservedBytes);
+            return OutboundEnqueueResult.Enqueued;
+        }
+    }
+
+    private OutboundEnqueueResult TryEnqueueLocked(OutboundFrame frame)
     {
         if (IsCompleted)
         {
@@ -110,12 +185,13 @@ public sealed class BoundedOutboundQueue
 
     public bool Complete(Exception? error = null)
     {
-        if (Interlocked.Exchange(ref _completed, 1) != 0)
+        lock (_writeGate)
         {
-            return false;
-        }
+            if (Interlocked.Exchange(ref _completed, 1) != 0)
+                return false;
 
-        return _channel.Writer.TryComplete(error);
+            return _channel.Writer.TryComplete(error);
+        }
     }
 
     private void Release(OutboundFrame frame)
@@ -125,6 +201,8 @@ public sealed class BoundedOutboundQueue
     }
 
     private void Reject() => Interlocked.Increment(ref _rejectedFrames);
+
+    private void RejectBatch(int count) => Interlocked.Add(ref _rejectedFrames, count);
 
     private static void UpdateMaximum(ref long target, long candidate)
     {

@@ -51,6 +51,18 @@ public sealed class TerrariaConnectionOutboundQueue
         return result;
     }
 
+    public OutboundEnqueueResult TryEnqueueBatch(ReadOnlySpan<OutboundFrame> frames)
+    {
+        OutboundEnqueueResult result = _queue.TryEnqueueBatch(frames);
+        if (_slowClientPolicy == SlowClientPolicy.DisconnectOnQueueOverflow &&
+            result is OutboundEnqueueResult.FrameBudgetExceeded or OutboundEnqueueResult.ByteBudgetExceeded)
+        {
+            SignalSlowClient();
+        }
+
+        return result;
+    }
+
     public bool Complete(Exception? error = null) => _queue.Complete(error);
 
     private void SignalSlowClient()

@@ -39,18 +39,20 @@ Vega запрашивает sandbox-семантику. TerraRuntime владе�
 ```text
 sandbox list
 sandbox status <name>
-sandbox create <name> l1 gen <generator-id> [seed <number|random>] [size <width>x<height>]
-sandbox create <name> l1 file <relative-world-path>
+sb1 <name> gen <generator-id> [seed <number|random>] [size <primary|width>x<height>] [mode <classic|expert|master|journey>] [evil <corruption|crimson>]
+sb1 <name> file <relative-world-path>
+sb2 <name> gen <generator-id> [seed <number|random>] [size <primary|width>x<height>] [mode <classic|expert|master|journey>] [evil <corruption|crimson>]
+sb2 <name> file <relative-world-path>
+sandbox move <player> <sandbox|primary>
+respawn <player> <sandbox|primary>
 sandbox regen <name> [seed <number|random>]
 sandbox destroy <name>
-sandbox jobs
-sandbox job <id>
-sandbox cancel <id>
+sandbox cancel <operation-id>
 ```
 
-Источники Generated и `.wld` материализуются и проверяются в ограниченной выделенной фоновой очереди до admission runtime. `--max-world-runtimes` задаёт лимит одновременно работающих миров (по умолчанию `8`), а `--sandbox-materialization-concurrency` — число materialization workers (по умолчанию `1`). File-команды принимают только относительные пути к `.wld` внутри каталога primary world.
+Источники Generated и `.wld` материализуются и проверяются в ограниченной выделенной фоновой очереди до admission runtime. `--max-world-runtimes` задаёт лимит одновременно работающих миров (по умолчанию `8`), а `--sandbox-materialization-concurrency` — число materialization workers (по умолчанию `1`). File-команды принимают только относительные пути к `.wld` внутри каталога primary world. Для generated debug-команд по умолчанию используется размер primary world; `size primary` задаёт это явно. `sb1`/`sb2` являются только debug-фронтендом: Vega передаёт typed source descriptor напрямую и не ограничен этой консольной грамматикой.
 
-Перенос/respawn игроков, live materialization `.trschem`, отдельный game-mode scope и regeneration с подключёнными игроками остаются следующими срезами. До появления transfer/bootstrap среза `regen` безопасно отклоняется при наличии игроков и не меняет активную session.
+Level 1 transfer игрока и forced respawn в текущем runtime используют один semantic transfer path: authoritative capture/detach в source, переключение process-local connection route, bootstrap destination и затем authoritative attach/spawn. Live materialization `.trschem`, отдельный game-mode scope, Level 2 worker admission и regeneration с подключёнными игроками остаются следующими срезами. До реализации regeneration swap `regen` по-прежнему безопасно отклоняется при наличии игроков и не меняет активную session.
 
 ## Документы
 

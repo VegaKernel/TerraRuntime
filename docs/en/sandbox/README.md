@@ -39,18 +39,20 @@ The terminal UI and its plain-console fallback expose these implemented commands
 ```text
 sandbox list
 sandbox status <name>
-sandbox create <name> l1 gen <generator-id> [seed <number|random>] [size <width>x<height>]
-sandbox create <name> l1 file <relative-world-path>
+sb1 <name> gen <generator-id> [seed <number|random>] [size <primary|width>x<height>] [mode <classic|expert|master|journey>] [evil <corruption|crimson>]
+sb1 <name> file <relative-world-path>
+sb2 <name> gen <generator-id> [seed <number|random>] [size <primary|width>x<height>] [mode <classic|expert|master|journey>] [evil <corruption|crimson>]
+sb2 <name> file <relative-world-path>
+sandbox move <player> <sandbox|primary>
+respawn <player> <sandbox|primary>
 sandbox regen <name> [seed <number|random>]
 sandbox destroy <name>
-sandbox jobs
-sandbox job <id>
-sandbox cancel <id>
+sandbox cancel <operation-id>
 ```
 
-Generated and `.wld` sources are materialized and validated on a bounded dedicated background queue before runtime admission. `--max-world-runtimes` controls live-world admission (default `8`), and `--sandbox-materialization-concurrency` controls materialization workers (default `1`). File commands accept only relative `.wld` paths below the primary world's directory.
+Generated and `.wld` sources are materialized and validated on a bounded dedicated background queue before runtime admission. `--max-world-runtimes` controls live-world admission (default `8`), and `--sandbox-materialization-concurrency` controls materialization workers (default `1`). File commands accept only relative `.wld` paths below the primary world's directory. Generated debug commands default to the primary world's dimensions; `size primary` makes that choice explicit. `sb1`/`sb2` are debug front ends only: Vega submits typed source descriptors directly and is not limited to this console grammar.
 
-Player `move`/`respawn`, `.trschem` live materialization, per-sandbox game-mode scope, and regeneration with attached players remain later slices. Until the transfer/bootstrap slice lands, `regen` fails safely when players are attached and leaves the active session unchanged.
+Level 1 player transfer and same-runtime forced respawn use one semantic transfer path: authoritative source capture/detach, process-local connection-route switch, destination bootstrap, then authoritative attach/spawn. `.trschem` live materialization, per-sandbox game-mode scope, Level 2 worker admission and regeneration with attached players remain later slices. Until the regeneration swap slice lands, `regen` still fails safely when players are attached and leaves the active session unchanged.
 
 ## Documents
 

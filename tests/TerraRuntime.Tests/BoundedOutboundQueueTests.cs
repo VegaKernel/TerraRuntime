@@ -78,4 +78,41 @@ public sealed class BoundedOutboundQueueTests
         Assert.Equal(0, queue.QueuedBytes);
         Assert.Equal(1, queue.RejectedFrames);
     }
+    [Fact]
+    public async Task Batch_admission_is_all_or_nothing_and_preserves_frame_order()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        var queue = new BoundedOutboundQueue(new OutboundQueueOptions(4, 32, 16));
+        OutboundFrame[] frames =
+        [
+            new OutboundFrame(new byte[] { 1, 2, 3 }),
+            new OutboundFrame(new byte[] { 4, 5 }),
+            new OutboundFrame(new byte[] { 6 })
+        ];
+
+        Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueueBatch(frames));
+        Assert.Equal(3, queue.QueuedFrames);
+        Assert.Equal(6, queue.QueuedBytes);
+        Assert.Equal(new byte[] { 1, 2, 3 }, (await queue.ReadAsync(cancellationToken)).Bytes.ToArray());
+        Assert.Equal(new byte[] { 4, 5 }, (await queue.ReadAsync(cancellationToken)).Bytes.ToArray());
+        Assert.Equal(new byte[] { 6 }, (await queue.ReadAsync(cancellationToken)).Bytes.ToArray());
+    }
+
+    [Fact]
+    public void Rejected_batch_does_not_publish_a_prefix_or_consume_budget()
+    {
+        var queue = new BoundedOutboundQueue(new OutboundQueueOptions(2, 8, 8));
+        Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(new OutboundFrame(new byte[] { 9 })));
+        OutboundFrame[] frames =
+        [
+            new OutboundFrame(new byte[] { 1, 2, 3 }),
+            new OutboundFrame(new byte[] { 4, 5, 6 })
+        ];
+
+        Assert.Equal(OutboundEnqueueResult.FrameBudgetExceeded, queue.TryEnqueueBatch(frames));
+        Assert.Equal(1, queue.QueuedFrames);
+        Assert.Equal(1, queue.QueuedBytes);
+        Assert.Equal(2, queue.RejectedFrames);
+    }
+
 }

@@ -329,32 +329,74 @@ public sealed class Level1SandboxRuntimeTests
     }
 
     [Fact]
+    public void Sandbox_command_parser_uses_primary_dimensions_and_accepts_debug_generation_options()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "TerraRuntimeSandboxAssets");
+        var parser = new SandboxCommandParser(root, defaultWidthTiles: 8400, defaultHeightTiles: 2400);
+
+        Assert.True(parser.TryParse("sb1 arena gen flat", out SandboxOperation? defaultOperation, out string? defaultError), defaultError);
+        SandboxOperation.Create defaultCreate = Assert.IsType<SandboxOperation.Create>(defaultOperation);
+        SandboxWorldSource.Generated defaultSource = Assert.IsType<SandboxWorldSource.Generated>(defaultCreate.Request.Source);
+        Assert.Equal(WorldIsolationLevel.InProcess, defaultCreate.Request.IsolationLevel);
+        Assert.Equal("arena", defaultSource.WorldName);
+        Assert.Equal(8400, defaultSource.WidthTiles);
+        Assert.Equal(2400, defaultSource.HeightTiles);
+
+        Assert.True(parser.TryParse(
+            "sb2 bossrush gen flat seed 42 size 4200x1200 mode master evil crimson",
+            out SandboxOperation? configuredOperation,
+            out string? configuredError), configuredError);
+        SandboxOperation.Create configuredCreate = Assert.IsType<SandboxOperation.Create>(configuredOperation);
+        SandboxWorldSource.Generated configuredSource = Assert.IsType<SandboxWorldSource.Generated>(configuredCreate.Request.Source);
+        Assert.Equal(WorldIsolationLevel.DedicatedProcess, configuredCreate.Request.IsolationLevel);
+        Assert.Equal((ulong)42, configuredSource.Seed);
+        Assert.Equal(4200, configuredSource.WidthTiles);
+        Assert.Equal(1200, configuredSource.HeightTiles);
+        Assert.Equal(WorldGenerationGameMode.Master, configuredSource.Options.GameMode);
+        Assert.Equal(WorldGenerationEvil.Crimson, configuredSource.Options.Evil);
+
+        Assert.True(parser.TryParse(
+            "sb1 mirror gen flat size primary",
+            out SandboxOperation? primarySizeOperation,
+            out string? primarySizeError), primarySizeError);
+        SandboxWorldSource.Generated primarySize = Assert.IsType<SandboxWorldSource.Generated>(
+            Assert.IsType<SandboxOperation.Create>(primarySizeOperation).Request.Source);
+        Assert.Equal(8400, primarySize.WidthTiles);
+        Assert.Equal(2400, primarySize.HeightTiles);
+
+        Assert.False(parser.TryParse("sandbox jobs", out _, out _));
+        Assert.False(parser.TryParse("sandbox create old l1 gen flat", out _, out _));
+        Assert.True(parser.TryParse("respawn Alice primary", out SandboxOperation? respawn, out string? respawnError), respawnError);
+        Assert.IsType<SandboxOperation.Respawn>(respawn);
+    }
+
+    [Fact]
     public void Sandbox_command_parser_rejects_absolute_and_parent_world_paths()
     {
         string root = Path.Combine(Path.GetTempPath(), "TerraRuntimeSandboxAssets");
-        var parser = new SandboxCommandParser(root);
+        var parser = new SandboxCommandParser(root, defaultWidthTiles: 8400, defaultHeightTiles: 2400);
 
         Assert.False(parser.TryParse(
-            "sandbox create arena l1 file ../outside.wld",
+            "sb1 arena file ../outside.wld",
             out _,
             out string? traversalError));
         Assert.Contains("escapes", traversalError, StringComparison.OrdinalIgnoreCase);
 
         string absolute = Path.Combine(Path.GetPathRoot(root)!, "outside.wld");
         Assert.False(parser.TryParse(
-            $"sandbox create arena l1 file {absolute}",
+            $"sb1 arena file {absolute}",
             out _,
             out string? absoluteError));
         Assert.Contains("relative", absoluteError, StringComparison.OrdinalIgnoreCase);
 
         Assert.False(parser.TryParse(
-            "sandbox create arena l1 file plugin.dll",
+            "sb1 arena file plugin.dll",
             out _,
             out string? libraryError));
         Assert.Contains(".wld", libraryError, StringComparison.OrdinalIgnoreCase);
 
         Assert.False(parser.TryParse(
-            "sandbox create arena l1 file tool.exe",
+            "sb1 arena file tool.exe",
             out _,
             out string? executableError));
         Assert.Contains(".wld", executableError, StringComparison.OrdinalIgnoreCase);

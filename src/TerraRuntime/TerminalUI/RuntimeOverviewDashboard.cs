@@ -344,7 +344,7 @@ internal sealed class RuntimeOverviewDashboard : View
         {
             case "help":
             case "?":
-                SetCommandFeedback("help | feed | save | interest | sandbox list|status|create|regen|destroy|jobs|job|cancel | system | players | npcs | projectiles | items | network | world | logs");
+                SetCommandFeedback("help | feed | save | interest | sandbox list|status|move|regen|destroy|cancel | sb1 | sb2 | respawn | system | players | npcs | projectiles | items | network | world | logs");
                 return;
             case "clear":
                 SetCommandFeedback(string.Empty);
@@ -376,6 +376,9 @@ internal sealed class RuntimeOverviewDashboard : View
                 SetCommandFeedback($"console: interest {(enabled ? "on" : "off")} requested");
                 return;
             case "sandbox":
+            case "sb1":
+            case "sb2":
+            case "respawn":
                 SetCommandFeedback(sandboxOperations?.Execute(input) ?? "sandbox: operations unavailable");
                 return;
             case "system":

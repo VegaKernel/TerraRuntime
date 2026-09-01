@@ -263,8 +263,7 @@ internal sealed class TerminalUiHost : IDisposable
             if (command.Length == 0)
                 continue;
 
-            if (command.StartsWith("sandbox", StringComparison.OrdinalIgnoreCase) &&
-                (command.Length == "sandbox".Length || char.IsWhiteSpace(command["sandbox".Length])))
+            if (SandboxCommandParser.IsCommandRoot(command))
             {
                 Console.WriteLine(sandboxOperations?.Execute(command) ?? "sandbox: operations unavailable");
                 continue;
@@ -279,7 +278,8 @@ internal sealed class TerminalUiHost : IDisposable
 
                 case "help":
                     Console.WriteLine("tui | ui | dashboard  Reopen the TerraRuntime dashboard");
-                    Console.WriteLine("sandbox ...           Manage Level 1 sandbox runtimes");
+                    Console.WriteLine("sandbox | sb1 | sb2   Manage sandbox runtimes");
+                    Console.WriteLine("respawn ...           Force-spawn a player into a runtime");
                     Console.WriteLine("clear                 Clear the plain console");
                     Console.WriteLine("help                  Show these console commands");
                     break;

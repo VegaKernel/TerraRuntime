@@ -54,6 +54,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private readonly PlayerSectionStreamingState? _sectionStreaming;
     private PlayerJoinSession? _session;
     private PlayerHandle? _assignedPlayerHandle;
+    private string? _playerName;
+    private bool _chatRegistered;
     private bool _spawnSubmitted;
 
     public PlayerBootstrapFrameSink(
@@ -145,6 +147,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         _movementIngress = movementIngress;
         _chatRelay = RuntimeChatRelay.For(slots);
         _chatRelay.Register(source, outbound);
+        _chatRegistered = true;
         _sectionStreaming = packets.StreamingDimensions is WorldDimensions dimensions
             ? new PlayerSectionStreamingState(dimensions)
             : null;
@@ -158,6 +161,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         ? null
         : _session.Slot.Value;
     public PlayerHandle? AssignedPlayerHandle => _assignedPlayerHandle;
+    internal string? PlayerName => _playerName;
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
@@ -200,9 +204,49 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     public void Dispose()
     {
-        _chatRelay?.Unregister(_source);
+        SetRuntimeParticipation(active: false);
         _session?.Dispose();
         _session = null;
+    }
+
+    internal void AdoptPlayingSession(PlayerJoinSession session, string? playerName)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (_session is not null)
+            throw new InvalidOperationException("Bootstrap sink already owns a player session.");
+        if (session.State != PlayerJoinState.Playing)
+            throw new ArgumentException("Transferred connection session must already be in Playing state.", nameof(session));
+
+        _session = session;
+        _assignedPlayerHandle = session.Handle;
+        _playerName = playerName;
+        _spawnSubmitted = true;
+    }
+
+    internal void SetTransferredPlayerName(string? playerName) => _playerName = playerName;
+
+    internal void SetRuntimeParticipation(bool active)
+    {
+        if (_chatRelay is null || _source.IsSystem)
+            return;
+
+        if (!active)
+        {
+            if (_chatRegistered)
+            {
+                _chatRelay.Unregister(_source);
+                _chatRegistered = false;
+            }
+            return;
+        }
+
+        if (!_chatRegistered)
+        {
+            _chatRelay.Register(_source, _outbound);
+            _chatRegistered = true;
+        }
+        if (_assignedPlayerHandle is PlayerHandle player && _session?.State == PlayerJoinState.Playing)
+            _chatRelay.MarkPlaying(_source, player);
     }
 
     private TerrariaFrameSinkResult HandleHandshake(in TerrariaFrame frame)
@@ -234,6 +278,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             out TerrariaPlayerAppearanceState appearance);
         if (decode != TerrariaPlayerAppearanceDecodeResult.Decoded)
             return Stop(PlayerBootstrapStopReason.MalformedPlayerAppearance);
+
+        _playerName = appearance.Name;
 
         if (_appearanceIngress is null)
             return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;

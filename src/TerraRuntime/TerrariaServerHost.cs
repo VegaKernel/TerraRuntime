@@ -428,6 +428,7 @@ public static class TerrariaServerHost
             worldItemReplication,
             stopTelemetry);
         var connectionTasks = new ConcurrentDictionary<long, Task>();
+        var connectionDirectory = new RuntimeConnectionDirectory();
         long nextConnectionId = 0;
 
         using var shutdown = new CancellationTokenSource();
@@ -527,7 +528,16 @@ public static class TerrariaServerHost
                 try
                 {
                     string worldAssetRoot = Path.GetDirectoryName(options.WorldPath) ?? Directory.GetCurrentDirectory();
-                    var sandboxOperations = new SandboxOperations(sandboxHost, worldAssetRoot);
+                    var transferCoordinator = new Level1PlayerTransferCoordinator(
+                        connectionDirectory,
+                        runtimeRegistry,
+                        sandboxHost);
+                    var sandboxOperations = new SandboxOperations(
+                        sandboxHost,
+                        worldAssetRoot,
+                        primaryRuntime.World.Header.Dimensions.WidthTiles,
+                        primaryRuntime.World.Header.Dimensions.HeightTiles,
+                        transferCoordinator);
                     var dashboardOperations = new LocalRuntimeDashboardOperations(
                         gameLoop,
                         admission,
@@ -641,6 +651,7 @@ public static class TerrariaServerHost
                     socket,
                     admissionLease,
                     primaryRuntime,
+                    connectionDirectory,
                     queueTelemetry,
                     rateTelemetry,
                     stopTelemetry,
@@ -770,23 +781,14 @@ public static class TerrariaServerHost
         long connectionId,
         Socket socket,
         TerrariaConnectionAdmissionGate.Lease admissionLease,
-        WorldRuntime runtime,
+        WorldRuntime primaryRuntime,
+        RuntimeConnectionDirectory connectionDirectory,
         RuntimeConnectionQueueTelemetry queueTelemetry,
         RuntimeConnectionRateTelemetry rateTelemetry,
         RuntimeConnectionStopTelemetry stopTelemetry,
         RuntimeHostLog hostLog,
         CancellationToken cancellationToken)
     {
-        PlayerSlotPool slots = runtime.Slots;
-        PlayerBootstrapPacketSet bootstrapPackets = runtime.BootstrapPackets;
-        RuntimeConnectionRegistry runtimeConnections = runtime.RuntimeConnections;
-        RuntimeNpcReplicationRegistry npcReplication = runtime.NpcReplication;
-        RuntimeProjectileReplicationRegistry projectileReplication = runtime.ProjectileReplication;
-        RuntimeWorldItemReplicationRegistry worldItemReplication = runtime.WorldItemReplication;
-        RuntimeTileManipulationReplicationRegistry tileManipulationReplication = runtime.TileManipulationReplication;
-        RuntimeChestReplicationRegistry chestReplication = runtime.ChestReplication;
-        RuntimeSignReplicationRegistry signReplication = runtime.SignReplication;
-        RuntimePlayerVitalsReplicator vitalsReplication = runtime.VitalsReplication;
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
         GameCommandSourceId source = GameCommandSourceId.FromConnection(connectionId);
         var connectionContext = new StructuredLogContext(
@@ -803,165 +805,42 @@ public static class TerrariaServerHost
 
         using (admissionLease)
         {
-            var outbound = new TerrariaConnectionOutboundQueue(ConnectionOutboundQueueSizing.Create(slots.Capacity));
+            var outbound = new TerrariaConnectionOutboundQueue(
+                ConnectionOutboundQueueSizing.Create(primaryRuntime.Slots.Capacity));
             TerrariaConnectionPolicyOptions policyOptions = TerrariaConnectionPolicyOptions.Default;
             var rateAccountant = new TerrariaConnectionRateAccountant(policyOptions.RateBudget);
-            if (!runtimeConnections.TryRegister(source, outbound))
+
+            if (!RuntimeConnectionWorldBinding.TryCreateInitial(
+                    primaryRuntime,
+                    source,
+                    outbound,
+                    out RuntimeConnectionWorldBinding? primaryBinding) ||
+                primaryBinding is null)
             {
                 socket.Dispose();
                 return;
             }
 
-            if (!npcReplication.TryRegister(source, outbound))
+            using var route = new RuntimeConnectionRoute(source, outbound, primaryBinding);
+            if (!connectionDirectory.TryRegister(source, route))
             {
-                runtimeConnections.TryUnregister(source, out _);
-                socket.Dispose();
-                return;
-            }
-
-            if (!projectileReplication.TryRegister(source, outbound))
-            {
-                npcReplication.TryUnregister(source);
-                runtimeConnections.TryUnregister(source, out _);
-                socket.Dispose();
-                return;
-            }
-
-            if (!worldItemReplication.TryRegister(source, outbound))
-            {
-                projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source);
-                runtimeConnections.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
             }
 
             if (!queueTelemetry.TryRegister(connectionId, outbound))
             {
-                worldItemReplication.TryUnregister(source);
-                projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source);
-                runtimeConnections.TryUnregister(source, out _);
+                connectionDirectory.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
             }
-
             if (!rateTelemetry.TryRegister(connectionId, rateAccountant))
             {
                 queueTelemetry.TryUnregister(connectionId);
-                worldItemReplication.TryUnregister(source);
-                projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source);
-                runtimeConnections.TryUnregister(source, out _);
+                connectionDirectory.TryUnregister(source, out _);
                 socket.Dispose();
                 return;
             }
-
-            if (!vitalsReplication.TryRegister(source, outbound))
-            {
-                rateTelemetry.TryUnregister(connectionId);
-                queueTelemetry.TryUnregister(connectionId);
-                worldItemReplication.TryUnregister(source);
-                projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source);
-                runtimeConnections.TryUnregister(source, out _);
-                socket.Dispose();
-                return;
-            }
-
-            if (!chestReplication.TryRegister(source, outbound))
-            {
-                vitalsReplication.TryUnregister(source);
-                rateTelemetry.TryUnregister(connectionId);
-                queueTelemetry.TryUnregister(connectionId);
-                worldItemReplication.TryUnregister(source);
-                projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source);
-                runtimeConnections.TryUnregister(source, out _);
-                socket.Dispose();
-                return;
-            }
-
-            if (!tileManipulationReplication.TryRegister(source, outbound))
-            {
-                chestReplication.TryUnregister(source);
-                vitalsReplication.TryUnregister(source);
-                rateTelemetry.TryUnregister(connectionId);
-                queueTelemetry.TryUnregister(connectionId);
-                worldItemReplication.TryUnregister(source);
-                projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source);
-                runtimeConnections.TryUnregister(source, out _);
-                socket.Dispose();
-                return;
-            }
-
-            if (!signReplication.TryRegister(source, outbound))
-            {
-                tileManipulationReplication.TryUnregister(source);
-                chestReplication.TryUnregister(source);
-                vitalsReplication.TryUnregister(source);
-                rateTelemetry.TryUnregister(connectionId);
-                queueTelemetry.TryUnregister(connectionId);
-                worldItemReplication.TryUnregister(source);
-                projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source);
-                runtimeConnections.TryUnregister(source, out _);
-                socket.Dispose();
-                return;
-            }
-
-            using var bootstrapSink = new PlayerBootstrapFrameSink(
-                slots,
-                outbound,
-                bootstrapPackets,
-                source,
-                runtime.SpawnIngress,
-                runtime.AppearanceIngress,
-                runtime.EquipmentIngress,
-                runtime.MovementIngress,
-                inner: null,
-                worldItems: runtime.WorldItems);
-            var vitalsSink = new PlayerVitalsFrameSink(
-                source,
-                bootstrapSink,
-                runtime.HealthIngress,
-                runtime.ManaIngress);
-            var itemSink = new WorldItemFrameSink(
-                source,
-                bootstrapSink,
-                vitalsSink,
-                runtime.WorldItemIngress);
-            var projectileSink = new ProjectileLifecycleFrameSink(
-                source,
-                bootstrapSink,
-                itemSink,
-                runtime.ProjectileIngress);
-            var chestSink = new ChestInteractionFrameSink(
-                source,
-                bootstrapSink,
-                projectileSink,
-                runtime.ChestIngress);
-            var signSink = new SignInteractionFrameSink(
-                source,
-                bootstrapSink,
-                chestSink,
-                runtime.SignIngress);
-            var townNpcHomeSink = new NpcHomeFrameSink(
-                source,
-                bootstrapSink,
-                signSink,
-                runtime.TownNpcHomeIngress);
-            var npcTalkSink = new NpcTalkFrameSink(
-                source,
-                bootstrapSink,
-                townNpcHomeSink,
-                runtime.NpcTalkIngress);
-            var npcCatchSink = new NpcCatchFrameSink(
-                source,
-                bootstrapSink,
-                npcTalkSink,
-                runtime.NpcCatchIngress);
 
             try
             {
@@ -969,16 +848,17 @@ public static class TerrariaServerHost
                 {
                     TerrariaSocketRunResult result = await TerrariaSocketConnection.RunAsync(
                         socket,
-                        npcCatchSink,
+                        route,
                         outbound,
                         TerrariaFrameDecoderOptions.Default,
                         policyOptions,
                         rateAccountant,
                         cancellationToken).ConfigureAwait(false);
                     stopTelemetry.Record(result.StopReason);
+                    WorldRuntime activeRuntime = route.ActiveRuntime;
                     string message =
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
-                        $"bootstrap={bootstrapSink.StopReason}, vitals={vitalsSink.StopReason}, items={itemSink.StopReason}, projectiles={projectileSink.StopReason}, chests={chestSink.StopReason}, signs={signSink.StopReason}, housing={townNpcHomeSink.StopReason}, talk={npcTalkSink.StopReason}, catchNpc={npcCatchSink.StopReason}, tiles={projectileSink.TileStopReason}, state={bootstrapSink.JoinState}; " +
+                        $"runtime={activeRuntime.Identity}, bootstrap={route.ActiveBootstrapStopReason}, state={route.ActiveJoinState}; " +
                         $"inbound={result.Inbound}; rate={result.Rate}; outbound={result.Outbound.Reason}.";
                     hostLog.Log(
                         RuntimeLogLevel.Information,
@@ -992,13 +872,12 @@ public static class TerrariaServerHost
                 {
                     if (!cancellationToken.IsCancellationRequested)
                     {
-                        string message = $"Connection {connectionId} ({remote}) failed: {exception.Message}";
                         hostLog.Log(
                             RuntimeLogLevel.Warning,
                             StructuredLogEventIds.NetworkConnectionFailed,
                             StructuredLogCategory.Network,
                             "Network",
-                            message,
+                            $"Connection {connectionId} ({remote}) failed: {exception.Message}",
                             connectionContext,
                             useStandardError: true);
                     }
@@ -1013,29 +892,22 @@ public static class TerrariaServerHost
             {
                 rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
-                signReplication.TryUnregister(source);
-                tileManipulationReplication.TryUnregister(source);
-                chestReplication.TryUnregister(source);
-                vitalsReplication.TryUnregister(source);
-                worldItemReplication.TryUnregister(source);
-                projectileReplication.TryUnregister(source);
-                npcReplication.TryUnregister(source);
-                if (runtimeConnections.TryUnregister(source, out PlayerHandle? playingPlayer) &&
-                    playingPlayer is PlayerHandle player)
+                connectionDirectory.TryUnregister(source, out _);
+                try
                 {
-                    bool posted = bootstrapSink.AssignedPlayerHandle == player &&
-                        runtime.DisconnectIngress.TryPost(new ConnectionHandle(source, player));
-                    if (!posted && !cancellationToken.IsCancellationRequested)
+                    route.DisconnectActive();
+                }
+                catch (Exception exception) when (exception is InvalidOperationException or OperationCanceledException)
+                {
+                    if (!cancellationToken.IsCancellationRequested)
                     {
-                        string message =
-                            $"Connection {connectionId} ({remote}) could not enqueue authoritative disconnect for {player}.";
                         hostLog.Log(
                             RuntimeLogLevel.Warning,
                             StructuredLogEventIds.NetworkDisconnectEnqueueFailed,
                             StructuredLogCategory.Network,
                             "Network",
-                            message,
-                            connectionContext with { PlayerHandle = player.ToString() },
+                            $"Connection {connectionId} ({remote}) could not complete authoritative route detach: {exception.Message}",
+                            connectionContext,
                             useStandardError: true);
                     }
                 }
