@@ -26,10 +26,6 @@ jobs:
           python3 /tmp/apply_town_physical_spawn.py
           rm -f tools/ci/.town-physical-part-*.txt .github/workflows/one-shot-town-physical-spawn.yml
           git diff --check
-      - name: Focused Town NPC tests
-        run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
-          --filter 'FullyQualifiedName~RuntimeTownNpcPhysicalSpawn1458Tests|FullyQualifiedName~RuntimeTownNpcRoomAwareSelection1458Tests|FullyQualifiedName~RuntimeTownNpcHomelessRelocation1458Tests|FullyQualifiedName~RuntimeTownNpcSittingSchedule1458Tests'
       - name: Download pinned TerrariaServer 1.4.5.8
         shell: bash
         run: |
@@ -62,6 +58,10 @@ jobs:
             --npc artifacts/source-contract/NPC.cs \
             --town-room-manager artifacts/source-contract/TownRoomManager.cs \
             --npc-id artifacts/source-contract/NPCID.cs
+      - name: Focused Town NPC tests
+        run: >-
+          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release
+          --filter 'FullyQualifiedName~RuntimeTownNpcPhysicalSpawn1458Tests|FullyQualifiedName~RuntimeTownNpcRoomAwareSelection1458Tests|FullyQualifiedName~RuntimeTownNpcHomelessRelocation1458Tests|FullyQualifiedName~RuntimeTownNpcSittingSchedule1458Tests'
       - name: Commit verified functional tree
         shell: bash
         run: |
