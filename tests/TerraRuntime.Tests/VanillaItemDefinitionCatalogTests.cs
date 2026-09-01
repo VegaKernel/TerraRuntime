@@ -60,6 +60,9 @@ public sealed class VanillaItemDefinitionCatalogTests
     [Theory]
     [InlineData(23, 10, 12, VanillaItemPrefixFamily.None)]
     [InlineData(1309, 26, 28, VanillaItemPrefixFamily.Summon)]
+    [InlineData(3318, 24, 24, VanillaItemPrefixFamily.None)]
+    [InlineData(4797, 16, 30, VanillaItemPrefixFamily.None)]
+    [InlineData(4929, 14, 14, VanillaItemPrefixFamily.None)]
     public void Loot_items_expose_source_backed_world_drop_defaults(
         int rawType,
         int width,
