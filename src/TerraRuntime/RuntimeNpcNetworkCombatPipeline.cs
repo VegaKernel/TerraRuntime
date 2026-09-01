@@ -21,7 +21,7 @@ internal enum RuntimeNpcNetworkDamageResult : byte
 /// -> packet 23, including shared Eater-of-Worlds interaction credit and last-segment boss promotion. Socket threads never
 /// mutate runtime entity state directly.
 /// </summary>
-internal sealed class RuntimeNpcNetworkCombatPipeline
+internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDamageSink1458
 {
     private const int MaxOrdinaryDrops = 16;
     private const float VanillaPlayerWidth = 20f;
@@ -196,6 +196,54 @@ internal sealed class RuntimeNpcNetworkCombatPipeline
                 npcReplication!.AbortClientDamage(current.Handle);
             throw;
         }
+    }
+
+
+    public RuntimeTownNpcMeleeDamageResult1458 TryStrike(
+        NpcHandle attacker,
+        NpcHandle target,
+        int baseDamage,
+        float knockBack,
+        int hitDirection)
+    {
+        if (!attacker.IsAssigned || !target.IsAssigned || baseDamage < 0 ||
+            !float.IsFinite(knockBack) || knockBack < 0f || hitDirection is not (-1 or 1) ||
+            !npcs.TryGet(attacker, out NpcSnapshot liveAttacker) || !liveAttacker.IsActive ||
+            !npcs.TryGet(target, out NpcSnapshot liveTarget) || !liveTarget.IsActive)
+        {
+            return RuntimeTownNpcMeleeDamageResult1458.Rejected;
+        }
+
+        var request = new NpcDamageRequest(
+            liveTarget.Handle,
+            DamageSource.FromNpcContact(liveAttacker.Handle),
+            baseDamage,
+            KnockBack: knockBack,
+            HitDirection: hitDirection);
+        if (!damage.TryApply(in request, out NpcDamageResult result))
+            return RuntimeTownNpcMeleeDamageResult1458.Rejected;
+        if (!result.Lethal)
+            return RuntimeTownNpcMeleeDamageResult1458.Committed;
+
+        if (!npcs.TryGet(liveTarget.Handle, out NpcSnapshot dead))
+            throw new InvalidOperationException("A lethal Town NPC melee commit disappeared before death finalization.");
+
+        bool eaterBoss =
+            VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
+            VanillaEaterOfWorldsLifecycle.IsLastActiveSegment(npcs, in dead, npcFamilyBuffer);
+        if (!TryExecuteImportedLoot(in dead, eaterBoss))
+            throw new InvalidOperationException("Imported NPC loot could not be finalized after Town NPC melee.");
+
+        if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
+            ApplyKingSlimeDeathEffects(in dead);
+        else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
+            ApplyEvilBossDeathEffects();
+
+        if (!npcs.TryDespawn(dead.Handle))
+            throw new InvalidOperationException("A Town NPC melee kill could not despawn the exact NPC generation.");
+        interactions.Forget(dead.Handle);
+        npcReplication?.TryPublishDeath(in dead);
+        return RuntimeTownNpcMeleeDamageResult1458.Killed;
     }
 
     private bool TryExecuteImportedLoot(in NpcSnapshot npc, bool eaterBoss)

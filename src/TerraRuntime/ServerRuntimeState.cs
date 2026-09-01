@@ -224,6 +224,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             _worldClock,
             expertMode,
             masterMode);
+        _townCombat?.SetMeleeDamageSink(_npcCombat);
 
         if (npcAiStepper is null)
         {
