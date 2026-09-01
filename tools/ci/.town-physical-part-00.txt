@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+
+def replace_once(path: str, old: str, new: str) -> None:
+    p = Path(path)
+    text = p.read_text(encoding='utf-8')
+    if text.count(old) != 1:
+        raise SystemExit(f'{path}: expected exactly one occurrence, found {text.count(old)}')
+    p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+
+def regex_replace_once(path: str, pattern: str, replacement: str) -> None:
+    p = Path(path)
+    text = p.read_text(encoding='utf-8')
+    updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+    if count != 1:
+        raise SystemExit(f'{path}: regex patch expected one match, found {count}')
+    p.write_text(updated, encoding='utf-8')
+
+
+physical_spawn = r'''using TerraRuntime.World;
+
+namespace TerraRuntime;
+
+/// <summary>
+/// Final TerrariaServer 1.4.5.8 SpawnTownNPC physical bottom-tile choice. Vanilla always materializes the NPC after
+/// this search even when no player-safe point was found, so SafeFromPlayers is diagnostic rather than a spawn gate.
+/// </summary>
+internal readonly record struct RuntimeTownNpcPhysicalSpawn1458(
+    int TileX,
+    int TileY,
+    int DirectionX,
+    bool SafeFromPlayers,
+    bool UsedFallbackSearch)
+{
+    public bool IsValid => DirectionX is >= -1 and <= 1;
+}
+
+/// <summary>
+/// Clean-room port of the physical placement slice in TerrariaServer 1.4.5.8 WorldGen.SpawnTownNPC. The home tile is
+/// tried first against the pinned screen-sized player safety rectangle. Surface homes that are unsafe then search up
+/// to 499 tiles, right before left, top-to-bottom inside each column, using Main.tileSolid floor and Collision.SolidTiles
+/// three-tile clearance semantics. If the search exhausts, vanilla still spawns at the final scanned coordinates.
+/// </summary>
+internal sealed class RuntimeTownNpcPhysicalSpawnResolver1458
+{
+    internal const int ScreenWidth1458 = 1920;
+    internal const int ScreenHeight1458 = 1200;
+    internal const int SafeRangeX1458 = 62;
+    internal const int SafeRangeY1458 = 39;
+    internal const int MaximumSearchRadius1458 = 499;
+    internal const int WorldEdgeMargin1458 = 10;
+
+    private readonly WorldTileStore tiles;
+
+    public RuntimeTownNpcPhysicalSpawnResolver1458(WorldTileStore tiles) =>
+        this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
+
+    public RuntimeTownNpcPhysicalSpawn1458 Resolve(
+        int homeTileX,
+        int homeTileY,
+        ReadOnlySpan<RuntimeTownPlayerBounds1458> players)
+    {
+        WorldDimensions dimensions = tiles.Dimensions;
+        if ((uint)homeTileX >= (uint)dimensions.WidthTiles ||
+            (uint)homeTileY >= (uint)dimensions.HeightTiles)
+        {
+            throw new ArgumentOutOfRangeException(nameof(homeTileX), "Town NPC home tile is outside the current world.");
+        }
+
+        int spawnTileX = homeTileX;
+        int spawnTileY = homeTileY;
+        bool safeFromPlayers = IsSafeSpawnTile(spawnTileX, spawnTileY, players);
+        bool usedFallbackSearch = false;
+        double worldSurface = tiles.WorldSurfaceTiles ?? Math.Max(1d, dimensions.HeightTiles / 3d);
+
+        if (!safeFromPlayers && !((double)spawnTileY > worldSurface))
+        {
+            usedFallbackSearch = true;
+            for (int radius = 1; radius < 500; radius++)
+            {
+                for (int side = 0; side < 2; side++)
+                {
+                    spawnTileX = side != 0 ? homeTileX - radius : homeTileX + radius;
+                    if (spawnTileX > WorldEdgeMargin1458 && spawnTileX < dimensions.WidthTiles - WorldEdgeMargin1458)
+                    {
+                        int startY = homeTileY - radius;
+                        double endY = homeTileY + radius;
+                        if (startY < WorldEdgeMargin1458)
+                            startY = WorldEdgeMargin1458;
+                        if (endY > worldSurface)
+                            endY = worldSurface;
+
+                        for (int y = startY; (double)y < endY; y++)
+                        {
+                            spawnTileY = y;
+                            if (!IsActiveSolidFloor(spawnTileX, spawnTileY))
+                                continue;
+
+                            if (HasSolidTiles(spawnTileX - 1, spawnTileX + 1, spawnTileY - 3, spawnTileY - 1))
+                                break;
+
+                            safeFromPlayers = true;
+                            if (!IsSafeSpawnTile(spawnTileX, spawnTileY, players))
+                                safeFromPlayers = false;
+                            break;
