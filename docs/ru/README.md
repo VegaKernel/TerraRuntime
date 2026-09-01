@@ -9,6 +9,7 @@
 - [Руководство по проекту](project-guide.md) — назначение TerraRuntime, структура репозитория, сборка, запуск, жизненный цикл, сетевой и игровой поток, миры, сохранение и эксплуатация.
 - [Архитектура](architecture.md) — границы подсистем, владение состоянием, потоки данных, threading model, NativeAOT/CoreCLR profiles, persistence и extension boundaries.
 - [Интерфейсы host-интеграции](host-interfaces.md) — публичные контракты `TerraRuntime.HostContracts`, порядок жизни trusted host module и правила безопасного взаимодействия с runtime.
+- [Sandbox runtime](sandbox/README.md) — Level 1 in-process worlds, Level 2 worker processes, socket handoff, Transport control plane и интеграция Vega/plugins.
 
 ## Руководства по подсистемам и инженерным правилам
 
@@ -34,6 +35,7 @@
 ## Нормативные документы проекта
 
 - [Основная дорожная карта](../roadmap.md) — текущее состояние реализации и обязательные следующие этапы.
+- [Roadmap sandbox](../roadmap/sandbox/README.md) — порядок реализации multi-world sandbox и нормативная схема Level 2 с передачей TCP socket.
 - [Roadmap документации](../roadmap/documentation.md) — постоянное правило ведения RU/EN документации и coverage plan.
 - [NativeAOT baseline](../native-aot-baseline.md) — требования к NativeAOT-совместимости и shipping gate.
 - [Reference policy](../reference-policy.md) — иерархия источников при восстановлении vanilla-поведения.

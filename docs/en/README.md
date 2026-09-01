@@ -9,6 +9,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Project guide](project-guide.md) — TerraRuntime purpose, repository map, build, startup, lifecycle, networking/gameplay flow, worlds, persistence, and operations.
 - [Architecture](architecture.md) — subsystem boundaries, state ownership, data flow, threading model, NativeAOT/CoreCLR profiles, persistence, and extension boundaries.
 - [Host integration interfaces](host-interfaces.md) — public `TerraRuntime.HostContracts`, trusted host module lifecycle, and safe runtime interaction rules.
+- [Sandbox runtime](sandbox/README.md) — Level 1 in-process worlds, Level 2 worker processes, socket handoff, Transport control plane and Vega/plugin integration.
 
 ## Subsystem and engineering guides
 
@@ -34,6 +35,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 ## Normative project references
 
 - [Main roadmap](../roadmap.md) — current implementation state and mandatory next work.
+- [Sandbox roadmap](../roadmap/sandbox/README.md) — multi-world sandbox delivery order and normative Level 2 TCP socket-handoff design.
 - [Documentation roadmap](../roadmap/documentation.md) — permanent bilingual documentation discipline and coverage plan.
 - [NativeAOT baseline](../native-aot-baseline.md) — NativeAOT compatibility and shipping gates.
 - [Reference policy](../reference-policy.md) — source hierarchy used to reconstruct vanilla behavior.
