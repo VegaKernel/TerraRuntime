@@ -489,9 +489,18 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
     private void ApplyBeaches(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int seaLevel = Math.Clamp((int)Math.Round(state.WorldSurface - 14d), 30, grid.Height - 60);
-        ShapeBeach(context, grid, random, left: true, bootstrap.LeftBeachEnd, seaLevel);
-        ShapeBeach(context, grid, random, left: false, grid.Width - bootstrap.RightBeachStart, seaLevel);
+        bool floridaStyleLeft = false;
+        bool floridaStyleRight = false;
+        if (random.Next(4) == 0)
+        {
+            if (random.Next(2) == 0)
+                floridaStyleLeft = true;
+            else
+                floridaStyleRight = true;
+        }
+
+        ShapeBeach(context, grid, random, left: true, bootstrap, floridaStyleLeft);
+        ShapeBeach(context, grid, random, left: false, bootstrap, floridaStyleRight);
         context.ReportProgress(1d, "Shaping Terraria beaches and ocean waterline");
     }
 
@@ -500,57 +509,91 @@ internal sealed class VanillaDungeonWorldGenerationPass1458 : IWorldGenerationPa
         RuntimeGrid grid,
         IRandom random,
         bool left,
-        int beachWidth,
-        int seaLevel)
+        VanillaWorldGenerationBootstrapState1458 bootstrap,
+        bool floridaStyle)
     {
-        beachWidth = Math.Clamp(beachWidth + 64, 180, Math.Max(181, grid.Width / 3));
-        for (int offset = 0; offset < beachWidth; offset++)
+        int start = left
+            ? random.Next(
+                VanillaOceanGenerationCatalog1458.WaterStartRandomMin,
+                VanillaOceanGenerationCatalog1458.WaterStartRandomMax)
+            : grid.Width - random.Next(
+                VanillaOceanGenerationCatalog1458.WaterStartRandomMin,
+                VanillaOceanGenerationCatalog1458.WaterStartRandomMax);
+
+        if (left && bootstrap.DungeonSide > 0)
+            start = VanillaOceanGenerationCatalog1458.ForcedJungleOceanLength;
+        else if (!left && bootstrap.DungeonSide < 0)
+            start = grid.Width - VanillaOceanGenerationCatalog1458.ForcedJungleOceanLength;
+
+        int beachLimit = left
+            ? bootstrap.LeftBeachEnd - VanillaOceanGenerationCatalog1458.BeachBoundaryPadding
+            : bootstrap.RightBeachStart + VanillaOceanGenerationCatalog1458.BeachBoundaryPadding;
+        start = left ? Math.Min(start, beachLimit) : Math.Max(start, beachLimit);
+
+        int anchorX = left ? start - 1 : start;
+        int surface = grid.FindFirstActiveY(anchorX, 0, grid.Height);
+        if (surface >= grid.Height)
+            throw new InvalidOperationException($"Terraria Beaches found no solid {(left ? "left" : "right")} ocean anchor at x={anchorX}.");
+        surface += random.Next(
+            VanillaOceanGenerationCatalog1458.SurfaceOffsetRandomMin,
+            VanillaOceanGenerationCatalog1458.SurfaceOffsetRandomMax);
+
+        double depth = VanillaOceanGenerationCatalog1458.InitialDepth;
+        int inlandColumnCount = 0;
+        int firstX = left ? start - 1 : start;
+        int lastExclusive = left ? -1 : grid.Width;
+        int step = left ? -1 : 1;
+        for (int x = firstX; x != lastExclusive; x += step)
         {
-            if ((offset & 63) == 0)
+            if ((Math.Abs(x - firstX) & 63) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
 
-            int x = left ? offset : grid.Width - 1 - offset;
-            double inland = offset / (double)Math.Max(1, beachWidth - 1);
-            int targetSurface = seaLevel + (int)Math.Round((1d - inland) * 34d);
-            targetSurface += random.Next(-1, 2);
-
-            int existing = grid.FindFirstActiveY(x, 10, Math.Min(grid.Height, targetSurface + 80));
-            if (existing >= grid.Height)
-                existing = targetSurface;
-
-            int start = Math.Min(existing, targetSurface);
-            for (int y = start; y < targetSurface; y++)
+            bool outsideMapEdgeRamp = left
+                ? x > VanillaOceanGenerationCatalog1458.MapEdgeRampWidth
+                : x < grid.Width - VanillaOceanGenerationCatalog1458.MapEdgeRampWidth;
+            if (outsideMapEdgeRamp)
             {
-                if (!grid.Contains(x, y))
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                ClearActive(ref tile);
-                if (y >= seaLevel)
-                {
-                    tile.LiquidAmount = byte.MaxValue;
-                    tile.LiquidKind = WorldLiquidKind.Water;
-                }
+                inlandColumnCount++;
+                double scale = VanillaOceanGenerationCatalog1458.GetDepthIncrementScale(inlandColumnCount, floridaStyle);
+                if (scale > 0d)
+                    depth += random.Next(
+                        VanillaOceanGenerationCatalog1458.DepthRollMin,
+                        VanillaOceanGenerationCatalog1458.DepthRollMax) * scale;
             }
+            else
+                depth++;
 
-            int sandBottom = Math.Min(grid.Height - 2, targetSurface + 34 + random.Next(0, 8));
-            for (int y = targetSurface; y <= sandBottom; y++)
+            int floorPadding = random.Next(
+                VanillaOceanGenerationCatalog1458.FloorPaddingRandomMin,
+                VanillaOceanGenerationCatalog1458.FloorPaddingRandomMax);
+            double columnBottom = surface + depth + floorPadding;
+            double waterBottom = surface + depth * VanillaOceanGenerationCatalog1458.WaterToFloorRatio -
+                VanillaOceanGenerationCatalog1458.WaterToFloorOffset;
+            int yLimit = Math.Min(grid.Height, (int)Math.Ceiling(columnBottom));
+            for (int y = 0; y < yLimit; y++)
             {
                 ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || IsNaturalReplaceable(tile.Type))
-                    SetType(ref tile, Sand);
-            }
-
-            if (targetSurface > seaLevel)
-            {
-                for (int y = seaLevel; y < targetSurface; y++)
+                if (y < waterBottom)
                 {
-                    ref WorldTile tile = ref grid.At(x, y);
-                    if (!tile.IsActive)
+                    ClearActive(ref tile);
+                    if (y > surface)
                     {
                         tile.LiquidAmount = byte.MaxValue;
                         tile.LiquidKind = WorldLiquidKind.Water;
                     }
+                    else if (y == surface)
+                    {
+                        tile.LiquidAmount = VanillaOceanGenerationCatalog1458.HalfLiquidAmount;
+                        tile.LiquidKind = WorldLiquidKind.Water;
+                    }
                 }
+                else if (y > surface)
+                {
+                    tile.Type = VanillaOceanGenerationCatalog1458.SandTileType;
+                    tile.Flags |= WorldTileFlags.Active;
+                }
+
+                tile.Wall = 0;
             }
         }
     }
