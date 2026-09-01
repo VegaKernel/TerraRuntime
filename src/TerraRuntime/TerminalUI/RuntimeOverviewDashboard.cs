@@ -20,25 +20,26 @@ namespace TerraRuntime.TerminalUI;
 internal sealed class RuntimeOverviewDashboard : View
 {
     private const int HistoryLength = 60;
+    private const int ServerPanelHeight = 5;
+    private const int GraphRowHeight = 7;
     private const string ActiveTitlePrefix = "▶ ";
     private const string BaseSchemeName = "Base";
     private const string AccentSchemeName = "Accent";
 
     private readonly FrameView consoleFrame;
     private readonly FrameView serverFrame;
-    private readonly FrameView performanceFrame;
+    private readonly FrameView tpsFrame;
     private readonly FrameView networkFrame;
-    private readonly FrameView memoryFrame;
     private readonly FrameView chatFrame;
+    private readonly FrameView commandFrame;
     private readonly TextView consoleText;
     private readonly TextView serverText;
-    private readonly TextView memoryText;
     private readonly TextView chatText;
-    private readonly Label performanceLegend;
+    private readonly Label tpsLegend;
     private readonly Label networkLegend;
     private readonly Label commandFeedback;
     private readonly TextField commandInput;
-    private readonly GraphView performanceGraph;
+    private readonly GraphView tpsGraph;
     private readonly GraphView networkGraph;
     private readonly PathAnnotation tpsTargetPath = new()
     {
@@ -47,10 +48,6 @@ internal sealed class RuntimeOverviewDashboard : View
     private readonly PathAnnotation tpsPath = new()
     {
         LineColor = new TuiAttribute(TuiColor.BrightGreen, TuiColor.Black)
-    };
-    private readonly PathAnnotation cpuPath = new()
-    {
-        LineColor = new TuiAttribute(TuiColor.BrightCyan, TuiColor.Black)
     };
     private readonly PathAnnotation inboundPath = new()
     {
@@ -68,8 +65,6 @@ internal sealed class RuntimeOverviewDashboard : View
     private string pendingConsoleText = string.Empty;
     private string appliedServerText = string.Empty;
     private string pendingServerText = string.Empty;
-    private string appliedMemoryText = string.Empty;
-    private string pendingMemoryText = string.Empty;
     private string appliedChatText = string.Empty;
     private string pendingChatText = string.Empty;
     private bool hasNetworkCounterSample;
@@ -87,49 +82,57 @@ internal sealed class RuntimeOverviewDashboard : View
 
         consoleText = CreateSelectableTextSurface(scrollBars: true);
         serverText = CreateSelectableTextSurface(scrollBars: false);
-        memoryText = CreateSelectableTextSurface(scrollBars: false);
         chatText = CreateSelectableTextSurface(scrollBars: true);
-        performanceGraph = CreateGraph();
+        tpsGraph = CreateGraph();
         networkGraph = CreateGraph();
-        performanceLegend = CreateLegend();
+        tpsLegend = CreateLegend();
         networkLegend = CreateLegend();
         commandFeedback = new Label
         {
             X = 0,
-            Y = Pos.AnchorEnd(2),
+            Y = Pos.AnchorEnd(4),
             Width = Dim.Fill(),
-            Text = "console: help | save | interest on|off | players/npcs/projectiles/items/network/world/logs",
+            Text = string.Empty,
             SchemeName = BaseSchemeName
         };
         commandInput = new TextField
         {
             X = 2,
-            Y = Pos.AnchorEnd(1),
+            Y = 0,
             Width = Dim.Fill(1),
             Text = string.Empty,
-            SchemeName = BaseSchemeName,
+            SchemeName = AccentSchemeName,
             CanFocus = true
         };
         var commandPrompt = new Label
         {
             X = 0,
-            Y = Pos.AnchorEnd(1),
+            Y = 0,
             Text = ">",
-            SchemeName = BaseSchemeName
+            SchemeName = AccentSchemeName
         };
 
         consoleFrame = CreateFrame("Console", consoleText, commandInput);
         serverFrame = CreateFrame("Server", serverText);
-        performanceFrame = CreateFrame("TPS / CPU", performanceGraph);
+        tpsFrame = CreateFrame("TPS", tpsGraph);
         networkFrame = CreateFrame("Network", networkGraph);
-        memoryFrame = CreateFrame("Memory / GC", memoryText);
         chatFrame = CreateFrame("Chat", chatText);
+        commandFrame = new FrameView
+        {
+            X = 0,
+            Y = Pos.AnchorEnd(3),
+            Width = Dim.Fill(),
+            Height = 3,
+            CanFocus = true,
+            SchemeName = AccentSchemeName
+        };
 
         consoleText.X = 0;
         consoleText.Y = 0;
         consoleText.Width = Dim.Fill();
-        consoleText.Height = Dim.Fill(2);
-        consoleFrame.Add(consoleText, commandFeedback, commandPrompt, commandInput);
+        consoleText.Height = Dim.Fill(4);
+        commandFrame.Add(commandPrompt, commandInput);
+        consoleFrame.Add(consoleText, commandFeedback, commandFrame);
 
         serverText.X = 0;
         serverText.Y = 0;
@@ -137,14 +140,14 @@ internal sealed class RuntimeOverviewDashboard : View
         serverText.Height = Dim.Fill();
         serverFrame.Add(serverText);
 
-        performanceLegend.X = 1;
-        performanceLegend.Y = 0;
-        performanceLegend.Width = Dim.Fill(1);
-        performanceGraph.X = 0;
-        performanceGraph.Y = 1;
-        performanceGraph.Width = Dim.Fill();
-        performanceGraph.Height = Dim.Fill();
-        performanceFrame.Add(performanceLegend, performanceGraph);
+        tpsLegend.X = 1;
+        tpsLegend.Y = 0;
+        tpsLegend.Width = Dim.Fill(1);
+        tpsGraph.X = 0;
+        tpsGraph.Y = 1;
+        tpsGraph.Width = Dim.Fill();
+        tpsGraph.Height = Dim.Fill();
+        tpsFrame.Add(tpsLegend, tpsGraph);
 
         networkLegend.X = 1;
         networkLegend.Y = 0;
@@ -155,12 +158,6 @@ internal sealed class RuntimeOverviewDashboard : View
         networkGraph.Height = Dim.Fill();
         networkFrame.Add(networkLegend, networkGraph);
 
-        memoryText.X = 0;
-        memoryText.Y = 0;
-        memoryText.Width = Dim.Fill();
-        memoryText.Height = Dim.Fill();
-        memoryFrame.Add(memoryText);
-
         chatText.X = 0;
         chatText.Y = 0;
         chatText.Width = Dim.Fill();
@@ -169,12 +166,11 @@ internal sealed class RuntimeOverviewDashboard : View
 
         AttachMaximize(consoleFrame);
         AttachMaximize(serverFrame);
-        AttachMaximize(performanceFrame);
+        AttachMaximize(tpsFrame);
         AttachMaximize(networkFrame);
-        AttachMaximize(memoryFrame);
         AttachMaximize(chatFrame);
 
-        ConfigurePerformanceGraph();
+        ConfigureTpsGraph();
         ConfigureNetworkGraph();
 
         commandInput.Accepting += (_, args) =>
@@ -195,7 +191,7 @@ internal sealed class RuntimeOverviewDashboard : View
             }
         };
 
-        Add(consoleFrame, serverFrame, performanceFrame, networkFrame, memoryFrame, chatFrame);
+        Add(consoleFrame, serverFrame, tpsFrame, networkFrame, chatFrame);
         ApplyTiledLayout();
 
         Initialized += (_, _) =>
@@ -227,30 +223,25 @@ internal sealed class RuntimeOverviewDashboard : View
             ref appliedServerText,
             ref pendingServerText);
         SetSelectableText(
-            memoryText,
-            RenderMemory(runtime),
-            ref appliedMemoryText,
-            ref pendingMemoryText);
-        SetSelectableText(
             consoleText,
-            RenderConsole(runtime, logs.Entries.Span),
+            RenderConsole(runtime, players.Length, logs.Entries.Span),
             ref appliedConsoleText,
             ref pendingConsoleText,
             followTail: true);
         SetSelectableText(
             chatText,
-            RenderLogs(chat.Entries.Span, maximumEntries: 16, emptyText: "<no chat yet>", includeLevelAndSource: false),
+            RenderLogs(chat.Entries.Span, maximumEntries: 64, emptyText: "<no chat yet>", includeLevelAndSource: false),
             ref appliedChatText,
             ref pendingChatText,
             followTail: true);
 
-        performanceLegend.Text = string.Create(
+        tpsLegend.Text = string.Create(
             CultureInfo.InvariantCulture,
-            $"TPS {runtime.ObservedTicksPerSecond:F1}/{runtime.TargetTicksPerSecond}  ·  CPU {runtime.ProcessCpuPercent:F1}%");
+            $"TPS {runtime.ObservedTicksPerSecond:F1} / {runtime.TargetTicksPerSecond}");
         networkLegend.Text = string.Create(
             CultureInfo.InvariantCulture,
-            $"IN {networkRates.InboundPacketsPerSecond:F1} pkt/s {networkRates.InboundKiBPerSecond:F1} KiB/s  ·  " +
-            $"OUT {networkRates.OutboundPacketsPerSecond:F1} pkt/s {networkRates.OutboundKiBPerSecond:F1} KiB/s");
+            $"IN {networkRates.InboundPacketsPerSecond:F1}p/s {networkRates.InboundKiBPerSecond:F1}K  " +
+            $"OUT {networkRates.OutboundPacketsPerSecond:F1}p/s {networkRates.OutboundKiBPerSecond:F1}K");
 
         if (!string.IsNullOrWhiteSpace(status))
             SetCommandFeedback(status);
@@ -271,6 +262,11 @@ internal sealed class RuntimeOverviewDashboard : View
     internal string? GetPanelSchemeForSmoke(string panelTitle) =>
         GetFrame(panelTitle).SchemeName;
 
+    internal Rectangle GetPanelFrameForSmoke(string panelTitle) => GetFrame(panelTitle).Frame;
+
+    internal bool CommandInputFrameUsesAccentForSmoke =>
+        string.Equals(commandFrame.SchemeName, AccentSchemeName, StringComparison.Ordinal);
+
     internal bool HasTitleDoubleClickBindingForSmoke(string panelTitle)
     {
         FrameView frame = GetFrame(panelTitle);
@@ -279,6 +275,8 @@ internal sealed class RuntimeOverviewDashboard : View
                    .GetCommands(MouseFlags.LeftButtonDoubleClicked)
                    .Contains(Command.Accept);
     }
+
+    internal string GetTpsLegendForSmoke() => tpsLegend.Text?.ToString() ?? string.Empty;
 
     internal string GetNetworkLegendForSmoke() => networkLegend.Text?.ToString() ?? string.Empty;
 
@@ -506,31 +504,26 @@ internal sealed class RuntimeOverviewDashboard : View
 
         consoleFrame.X = 0;
         consoleFrame.Y = 0;
-        consoleFrame.Width = Dim.Percent(58);
+        consoleFrame.Width = Dim.Percent(52);
         consoleFrame.Height = Dim.Fill();
 
         serverFrame.X = Pos.Right(consoleFrame);
         serverFrame.Y = 0;
         serverFrame.Width = Dim.Fill();
-        serverFrame.Height = Dim.Percent(20);
+        serverFrame.Height = ServerPanelHeight;
 
-        performanceFrame.X = Pos.Right(consoleFrame);
-        performanceFrame.Y = Pos.Bottom(serverFrame);
-        performanceFrame.Width = Dim.Fill();
-        performanceFrame.Height = Dim.Percent(25);
+        tpsFrame.X = Pos.Right(consoleFrame);
+        tpsFrame.Y = Pos.Bottom(serverFrame);
+        tpsFrame.Width = Dim.Percent(24);
+        tpsFrame.Height = GraphRowHeight;
 
-        networkFrame.X = Pos.Right(consoleFrame);
-        networkFrame.Y = Pos.Bottom(performanceFrame);
+        networkFrame.X = Pos.Right(tpsFrame);
+        networkFrame.Y = Pos.Bottom(serverFrame);
         networkFrame.Width = Dim.Fill();
-        networkFrame.Height = Dim.Percent(25);
-
-        memoryFrame.X = Pos.Right(consoleFrame);
-        memoryFrame.Y = Pos.Bottom(networkFrame);
-        memoryFrame.Width = Dim.Fill();
-        memoryFrame.Height = Dim.Percent(15);
+        networkFrame.Height = GraphRowHeight;
 
         chatFrame.X = Pos.Right(consoleFrame);
-        chatFrame.Y = Pos.Bottom(memoryFrame);
+        chatFrame.Y = Pos.Bottom(tpsFrame);
         chatFrame.Width = Dim.Fill();
         chatFrame.Height = Dim.Fill();
 
@@ -544,9 +537,8 @@ internal sealed class RuntimeOverviewDashboard : View
     {
         "Console" => consoleFrame,
         "Server" => serverFrame,
-        "TPS / CPU" => performanceFrame,
+        "TPS" => tpsFrame,
         "Network" => networkFrame,
-        "Memory / GC" => memoryFrame,
         "Chat" => chatFrame,
         _ => throw new ArgumentOutOfRangeException(nameof(panelTitle))
     };
@@ -555,24 +547,22 @@ internal sealed class RuntimeOverviewDashboard : View
     {
         yield return consoleFrame;
         yield return serverFrame;
-        yield return performanceFrame;
+        yield return tpsFrame;
         yield return networkFrame;
-        yield return memoryFrame;
         yield return chatFrame;
     }
 
-    private void ConfigurePerformanceGraph()
+    private void ConfigureTpsGraph()
     {
-        performanceGraph.Annotations.Add(tpsTargetPath);
-        performanceGraph.Annotations.Add(tpsPath);
-        performanceGraph.Annotations.Add(cpuPath);
-        performanceGraph.AxisX.Visible = false;
-        performanceGraph.AxisY.Minimum = 0;
-        performanceGraph.AxisY.Increment = 20;
-        performanceGraph.AxisY.ShowLabelsEvery = 1;
-        performanceGraph.AxisY.LabelGetter = value => value.Value.ToString("N0", CultureInfo.InvariantCulture);
-        performanceGraph.MarginLeft = 4;
-        performanceGraph.MarginBottom = 0;
+        tpsGraph.Annotations.Add(tpsTargetPath);
+        tpsGraph.Annotations.Add(tpsPath);
+        tpsGraph.AxisX.Visible = false;
+        tpsGraph.AxisY.Minimum = 0;
+        tpsGraph.AxisY.Increment = 30;
+        tpsGraph.AxisY.ShowLabelsEvery = 1;
+        tpsGraph.AxisY.LabelGetter = value => value.Value.ToString("N0", CultureInfo.InvariantCulture);
+        tpsGraph.MarginLeft = 4;
+        tpsGraph.MarginBottom = 0;
     }
 
     private void ConfigureNetworkGraph()
@@ -596,8 +586,9 @@ internal sealed class RuntimeOverviewDashboard : View
 
         tpsTargetPath.Points = samples.Select((_, index) => new PointF(index, targetTicksPerSecond)).ToList();
         tpsPath.Points = Points(samples, static sample => (float)sample.TicksPerSecond);
-        cpuPath.Points = Points(samples, static sample => (float)sample.CpuPercent);
-        FitGraph(performanceGraph, samples.Length, 100f);
+        float tpsMaximum = Math.Max(1f, targetTicksPerSecond * 1.05f);
+        tpsGraph.AxisY.Increment = Math.Max(1f, targetTicksPerSecond / 2f);
+        FitGraph(tpsGraph, samples.Length, tpsMaximum);
 
         inboundPath.Points = Points(samples, static sample => (float)sample.InboundPacketsPerSecond);
         outboundPath.Points = Points(samples, static sample => (float)sample.OutboundPacketsPerSecond);
@@ -612,7 +603,6 @@ internal sealed class RuntimeOverviewDashboard : View
     {
         history[historyNext] = new MetricSample(
             SanitizeSample(runtime.ObservedTicksPerSecond),
-            SanitizeSample(runtime.ProcessCpuPercent),
             SanitizeSample(network.InboundPacketsPerSecond),
             SanitizeSample(network.OutboundPacketsPerSecond));
         historyNext = (historyNext + 1) % history.Length;
@@ -750,24 +740,16 @@ internal sealed class RuntimeOverviewDashboard : View
     private static void ScrollToTail(TextView view) =>
         view.ScrollTo(new Point(0, Math.Max(0, view.Lines - 1)));
 
-    private static string RenderConsole(RuntimeDashboardSnapshot runtime, ReadOnlySpan<RuntimeLogEntry> entries)
+    private static string RenderConsole(
+        RuntimeDashboardSnapshot runtime,
+        int playerCount,
+        ReadOnlySpan<RuntimeLogEntry> entries)
     {
-        string tickCpu = runtime.CpuTimeAvailable
-            ? $"{runtime.LastTickCpuMilliseconds:F2}/{runtime.WorstTickCpuMilliseconds:F2} ms"
-            : "n/a";
         string summary = string.Create(
             CultureInfo.CurrentCulture,
-            $"Tick #{runtime.Tick:N0}  wall {runtime.LastTickMilliseconds:F2}/{runtime.WorstTickMilliseconds:F2} ms  cpu {tickCpu}  slow {Sanitize(runtime.SlowestPhase, 18)} {runtime.SlowestPhaseMilliseconds:F2} ms  missed {runtime.MissedTickDeadlines:N0}\n" +
-            $"Process     CPU {runtime.ProcessCpuPercent:F1}%  heap {FormatMebibytes(runtime.ManagedHeapBytes)}  working {FormatMebibytes(runtime.WorkingSetBytes)}  allocated {FormatMebibytes(runtime.TotalAllocatedBytes)}  GC {runtime.Gen0Collections:N0}/{runtime.Gen1Collections:N0}/{runtime.Gen2Collections:N0} pause {runtime.GcPauseTimePercentage:F2}%\n" +
-            $"Commands    done {runtime.CommandsProcessed:N0}  pending {runtime.PendingCommands:N0}  deferred {runtime.DeferredCommands:N0}  rejected {runtime.RejectedCommands:N0}  budget {runtime.CommandBudgetExhaustions:N0}  oldest {runtime.OldestPendingCommandAgeMilliseconds:F1} ms\n\n");
-        return summary + RenderLogs(entries, maximumEntries: 14, emptyText: "<no runtime log entries>");
+            $"Tick #{runtime.Tick:N0}  |  {runtime.Lifecycle}  |  World {Sanitize(runtime.WorldName, 24)}  |  Players {playerCount}/{runtime.MaxPlayers}\n\n");
+        return summary + RenderLogs(entries, maximumEntries: 64, emptyText: "<no runtime log entries>");
     }
-
-    private static string RenderMemory(RuntimeDashboardSnapshot runtime) => string.Create(
-        CultureInfo.InvariantCulture,
-        $"heap {FormatMebibytes(runtime.ManagedHeapBytes)}  working {FormatMebibytes(runtime.WorkingSetBytes)}\n" +
-        $"alloc {FormatMebibytes(runtime.TotalAllocatedBytes)}  GC {runtime.Gen0Collections:N0}/{runtime.Gen1Collections:N0}/{runtime.Gen2Collections:N0}\n" +
-        $"pause {runtime.GcPauseTimePercentage:F2}%");
 
     private static string RenderServer(
         RuntimeDashboardSnapshot runtime,
@@ -842,12 +824,8 @@ internal sealed class RuntimeOverviewDashboard : View
         _ => "?   "
     };
 
-    private static string FormatMebibytes(long bytes) =>
-        (bytes / (1024d * 1024d)).ToString("F1", CultureInfo.CurrentCulture) + " MiB";
-
     private readonly record struct MetricSample(
         double TicksPerSecond,
-        double CpuPercent,
         double InboundPacketsPerSecond,
         double OutboundPacketsPerSecond);
 

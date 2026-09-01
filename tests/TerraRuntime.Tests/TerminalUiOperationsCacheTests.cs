@@ -71,7 +71,8 @@ public sealed class TerminalUiOperationsCacheTests
 
         Assert.True(dashboard.ConsoleSupportsSelectionForSmoke);
         Assert.True(dashboard.CommandInputVisibleForSmoke);
-        Assert.Contains("TPS / CPU", dashboard.GetPanelTitleForSmoke("TPS / CPU"));
+        Assert.True(dashboard.CommandInputFrameUsesAccentForSmoke);
+        Assert.Contains("TPS", dashboard.GetPanelTitleForSmoke("TPS"));
         Assert.Contains("Network", dashboard.GetPanelTitleForSmoke("Network"));
     }
 
@@ -112,9 +113,9 @@ public sealed class TerminalUiOperationsCacheTests
         try
         {
             app.LayoutAndDraw();
-            Assert.Equal(6, dashboard.GetVisiblePanelCountForSmoke());
+            Assert.Equal(5, dashboard.GetVisiblePanelCountForSmoke());
             Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("Console"));
-            Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("TPS / CPU"));
+            Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("TPS"));
             Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("Network"));
 
             dashboard.TogglePanelForSmoke("Network");
@@ -123,7 +124,7 @@ public sealed class TerminalUiOperationsCacheTests
 
             dashboard.TogglePanelForSmoke("Network");
             app.LayoutAndDraw();
-            Assert.Equal(6, dashboard.GetVisiblePanelCountForSmoke());
+            Assert.Equal(5, dashboard.GetVisiblePanelCountForSmoke());
         }
         finally
         {
@@ -157,8 +158,8 @@ public sealed class TerminalUiOperationsCacheTests
         dashboard.Refresh(default, second, default, default, default, default, status: null);
 
         string legend = dashboard.GetNetworkLegendForSmoke();
-        Assert.Contains("IN 10.0 pkt/s 1.0 KiB/s", legend);
-        Assert.Contains("OUT 20.0 pkt/s 2.0 KiB/s", legend);
+        Assert.Contains("IN 10.0p/s 1.0K", legend);
+        Assert.Contains("OUT 20.0p/s 2.0K", legend);
     }
 
     private sealed class BlockingOperations :
