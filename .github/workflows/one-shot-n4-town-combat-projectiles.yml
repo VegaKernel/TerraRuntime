@@ -1,0 +1,44 @@
+name: One-shot N4 Town NPC combat integration
+
+on:
+  push:
+    branches: [work/n4-town-combat-projectiles-1458]
+    paths:
+      - 'src/TerraRuntime/RuntimeTownNpcCombat1458.cs'
+      - 'tests/TerraRuntime.Tests/RuntimeTownNpcCombat1458Tests.cs'
+      - 'tools/ci/apply_n4_town_combat_projectiles.py'
+      - '.github/workflows/one-shot-n4-town-combat-projectiles.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: work/n4-town-combat-projectiles-1458
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Apply production integration
+        run: python3 tools/ci/apply_n4_town_combat_projectiles.py
+      - name: Build Release
+        run: dotnet build TerraRuntime.slnx -c Release
+      - name: Run complete tests
+        run: dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+      - name: Commit integrated block and remove one-shot tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm tools/ci/apply_n4_town_combat_projectiles.py
+          rm .github/workflows/one-shot-n4-town-combat-projectiles.yml
+          git config user.name Xekep
+          git config user.email Xekep@users.noreply.github.com
+          git add -A
+          git commit -m "Complete source-backed Town NPC projectile combat"
+          git push origin HEAD:work/n4-town-combat-projectiles-1458
