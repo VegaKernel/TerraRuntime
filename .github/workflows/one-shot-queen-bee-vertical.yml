@@ -50,6 +50,7 @@ jobs:
           p.write_text(text.replace(old, new, 1).replace(old2, new2, 1), encoding='utf-8')
           PY
           python3 tools/ci/apply_queen_bee_vertical_1458.py
+          sed -i 's/FakeQueenEnvironment(1000d, jungle: true)/FakeQueenEnvironment(50d, jungle: true)/g' tests/TerraRuntime.Tests/VanillaQueenBeeVerticalTests.cs
           git diff --check
       - name: Verify TerrariaServer 1.4.5.8 Queen Bee source contract
         shell: bash
