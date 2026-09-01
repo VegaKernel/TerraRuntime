@@ -33,6 +33,8 @@ internal sealed class VanillaNpcBehaviorContext
 
     public bool ExpertMode { get; private set; }
 
+    public bool MasterMode { get; private set; }
+
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
 
@@ -54,12 +56,17 @@ internal sealed class VanillaNpcBehaviorContext
         bool dayTime,
         bool slimeRainActive,
         bool goodWorld = false,
-        bool expertMode = false)
+        bool expertMode = false,
+        bool masterMode = false)
     {
+        if (masterMode && !expertMode)
+            throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
+
         DayTime = dayTime;
         SlimeRainActive = slimeRainActive;
         GoodWorld = goodWorld;
         ExpertMode = expertMode;
+        MasterMode = masterMode;
     }
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates)

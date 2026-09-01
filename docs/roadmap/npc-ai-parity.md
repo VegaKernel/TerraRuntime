@@ -80,7 +80,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] Wyvern, Crawltipede and Cultist Dragon patterned chains plus Truffle/Stardust singleton worm profiles;
 - [x] Eater of Worlds classic/expert chain length and missing-link head/tail split repair;
 - [x] pin AI_006 link lifecycle to official TerrariaServer 1.4.5.8 evidence: active-only Eater structural death gates, `aiStyle`-sensitive body split gates, source ordering and `ai[3]` root propagation;
-- [ ] Eater of Worlds death/loot/progression and complete synchronized lifecycle;
+- [x] Eater of Worlds packet-28 shared playerInteraction, per-segment material loot, last-segment boss promotion, Expert/Master/normal boss loot and persistent `downedBoss2` progression;
+- [ ] Eater of Worlds remaining death-event parity: meteor scheduling, Skyblock low-tile `shadowOrbSmashed`, healing-heart/presentation effects and remaining `realLife` nuances;
 - [x] remaining AI_006 worm family definitions and profiles;
 - [ ] bats, fish, casters, mimics, critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.
@@ -91,7 +92,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] import Expert transformation timing and the source-ordered random Servant spawn every 20 ticks, including the tick-100 stage transition spawn;
 - [x] import deterministic Expert phase-two hover/dash behavior: long-range `400/600/800` acceleration bands, `1.15/1.30` later-dash speed multipliers, `50/90` slowdown/duration and low-life state `5` movement up to its RNG transition;
 - [x] finish Eye of Cthulhu Expert RNG-shaped rapid-dash states `ai[1]=3/4`: live player-velocity prediction, `Next(1,4)`/`Next(-3,1)` state seeding, direction/velocity perturbation, critical-life renormalization and source `20/10 + 13` cadence;
-- [ ] finish Eye of Cthulhu Good World reflection/re-entry, damage/defense difficulty projection and remaining irreversible/cosmetic effects;
+- [x] finish Eye of Cthulhu Good World gameplay reflection/re-entry and Classic/Expert/Master phase-two damage/defense projection;
+- [ ] finish Eye of Cthulhu remaining presentation-only sound/dust/gore effects and unsupported projectile-style reflection identities;
 - [x] finish King Slime `AI_015` difficulty/seed branches and despawn: Good World scale/air-speed behavior plus source-ordered Expert `1/4` Spiked Slime minion selection are authoritative; the pinned method has no separate Master AI branch;
 - [x] finish King Slime authoritative death lifecycle and `downedSlimeKing` progression persistence;
 - [x] import King Slime normal-mode NPC-specific loot plus Expert/Master source-ordered gameplay rule semantics, packet-28-timed `playerInteraction` accounting, active-recipient filtering, Master relic delivery and per-player Master pet placement;
@@ -101,7 +103,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [ ] add Hardmode, event and endgame bosses;
 - [ ] boss bars, announcements, progression transitions and multiplayer targeting parity.
 
-Eye of Cthulhu still intentionally reports `FullVanillaAiParity = false`. Expert rapid dashes now consume the source RNG sequence through the injected authoritative NPC random stream and read live target velocity through the player-slot snapshot boundary. Good World reflection/re-entry and combat-stat difficulty projection remain separate open work, so the coverage catalog advertises `BossExpertRapidDashSlice` rather than full parity.
+Eye of Cthulhu still intentionally reports `FullVanillaAiParity = false`. Expert rapid dashes consume the source RNG sequence through the injected authoritative NPC random stream and read live target velocity through the player-slot snapshot boundary. Good World re-entry, transformation projectile reflection and phase-two Classic/Expert/Master damage/defense projection are now authoritative gameplay state. Reflection is bounded to currently admitted aiStyle 1/2 player projectile identities; source-special 728/955 and presentation-only sound/dust/gore remain open, so the coverage catalog still advertises bounded boss slices rather than full parity.
 
 King Slime still intentionally reports `FullVanillaAiParity = false`. Normal-mode loot owns its ordered world-item transaction. Expert/Master rule evaluation preserves the pinned raw-RNG order for Boss Bag, Master relic and per-active-interacting-player pet drops. Packet 90 now reuses the exact packet-21 payload, packet 151 releases an expired instanced slot, and the server-side lease store keeps that unpublished slot unavailable for `54000` ticks. The committed death slice also follows source order for `StopSlimeRain`, the first-kill blue town-slime unlock/Nerdy spawn and `downedSlimeKing`, with both persistent flags patched back into the canonical `.wld`. Live packet-28 combat/death ingress now records source-ordered player interaction, executes the implemented King Slime difficulty loot before death effects, and advances instanced-item leases from the authoritative item phase; packet 151 is emitted when an exact lease expires.
 

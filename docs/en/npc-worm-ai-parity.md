@@ -1,6 +1,6 @@
 # Vanilla AI_006 worm lifecycle parity
 
-This guide records the source-backed chain-lifecycle slice implemented for TerrariaServer 1.4.5.8 worm AI. It is deliberately narrower than full NPC parity: movement families, chain construction and the link lifecycle described here are admitted, while complete death/loot/progression and every AI_006 side effect remain separate work.
+This guide records the source-backed chain-lifecycle slice implemented for TerrariaServer 1.4.5.8 worm AI. It is deliberately narrower than full NPC parity: movement families, chain construction, link repair and the Eater of Worlds server-side death/loot/progression vertical described here are admitted, while remaining AI_006 side effects stay separate work.
 
 ## Chain state
 
@@ -41,6 +41,10 @@ flowchart TD
 
 `VanillaWormLifecycleParityTests` separately pins TerraRuntime behavior for reused non-worm slots, missing structural links and Eater root-slot propagation.
 
+## Eater of Worlds death and shared combat state
+
+Packet-28 player interaction now follows `NPC.PlayerInteraction` for types 13/14/15: a hit credits every currently active Eater segment, so later splits and segment deaths do not lose the player list used by per-player boss loot. On lethal damage the runtime performs the same `DropEoWLoot` family scan: every segment evaluates the two small Shadow Scale/Demonite rules, but only the final active segment is promoted to boss for the Expert bag, Master relic/per-player pet, normal-only finishing drops and trophy. The final segment also marks `VanillaWorldProgressionId.EvilBoss`, and `WorldFileProgressionHeaderPatcher` now persists that mutation to the 1.4.5.8 `downedBoss2` header byte.
+
 ## Still incomplete
 
-This evidence does not make `FullVanillaAiParity` true. Complete Eater of Worlds synchronized lifecycle, damage/death consequences, loot/progression, every `realLife` interaction, remaining AI_006 special branches and broad differential gameplay scenarios remain open in the NPC parity roadmap.
+This evidence does not make `FullVanillaAiParity` true. Eater meteor scheduling, the Skyblock low-tile `shadowOrbSmashed` death side effect, healing-heart/presentation effects, unowned `realLife` nuances and broad differential gameplay scenarios remain open in the NPC parity roadmap.
