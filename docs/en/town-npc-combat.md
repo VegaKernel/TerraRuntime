@@ -14,3 +14,8 @@ This does **not** claim complete AI_007 combat. Other town attackers remain fail
 The same runtime owner now admits the source `AttackType == 3` branch for Dye Trader (207), Tax Collector (441), and Stylist (353). It preserves the pinned danger ranges, attack times/chances, state-15 entry, three-phase `GetSwingStats`/`TweakSwingStats` rectangle geometry, source-shaped per-target server immunity, recovery cadence, progression/Combat Book/difficulty damage scaling, and the Tax Collector `GivenName == "Andrew"` double damage/knockback easter egg. Hits cross a generation-safe NPC-contact damage sink; lethal hits continue through the existing imported-loot/progression/despawn/death-replication pipeline rather than leaving `Life == 0` occupants in the NPC table.
 
 TerrariaServer 1.4.5.8 still contains an `IsTownPet[type]` case inside state 15, but every current town-pet identity in the pinned `NPCID.Sets` has `AttackType = -1` and `AttackTime = -1`. TerraRuntime keeps that fact explicit and does not manufacture a natural pet melee entry.
+
+
+## AI_007 social/emote vertical
+
+Town social state is now server-owned alongside combat. The runtime covers ordinary conversation pairs (3/4), RPS pairs (16/17), passive idle states (2/11), player-facing states (6/7/18/19), and source-shaped Town Pet idle states (20..23). RPS bubbles are emitted as protocol-326 packet 91 with vanilla NPC anchor tag 0 and the source frame cadence 40/100/160. Chair state 5 remains owned by the schedule service. NPC-picked free-form conversation bubbles still depend on Terraria's broader `PickNPCEmote` content graph and are not claimed by this slice.

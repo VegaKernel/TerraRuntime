@@ -116,7 +116,7 @@ King Slime still intentionally reports `FullVanillaAiParity = false`. Normal-mod
 ## N4 — Town, friendly and special NPCs
 
 - [ ] town AI, housing and schedules;
-  - source-backed AI_007 shelter/home/chair scheduling, shimmer state 25, projectile combat for Merchant/Nurse/Arms Dealer/Guide, and melee state 15 for Dye Trader/Tax Collector/Stylist are authoritative; social/emote and remaining special town branches remain open;
+  - source-backed AI_007 shelter/home/chair scheduling, shimmer state 25, projectile combat for Merchant/Nurse/Arms Dealer/Guide, melee state 15 for Dye Trader/Tax Collector/Stylist, and social/emote states 2/3/4/6/7/11/16/17/18/19/20..23 are authoritative; support/magic projectile and remaining special town branches remain open;
 - [ ] shops, happiness and progression-dependent inventory;
 - [ ] rescue/transform states, pets, critters and catchability;
 - [ ] shimmer, statue and special-seed behavior;

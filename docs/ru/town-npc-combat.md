@@ -14,3 +14,8 @@ TerraRuntime теперь владеет ограниченным, подтве�
 Тот же runtime-владелец теперь поддерживает исходную ветку `AttackType == 3` для Красильщика (207), Сборщика налогов (441) и Стилиста (353). Сохраняются закреплённые дальности обнаружения, времена/шансы атаки, переход в state 15, трёхфазная геометрия прямоугольника `GetSwingStats`/`TweakSwingStats`, серверный immunity на конкретное поколение цели, recovery cadence, масштабирование урона progression/Combat Book/difficulty и пасхалка Сборщика налогов `GivenName == "Andrew"` с двойным уроном/отбрасыванием. Удары проходят через generation-safe NPC-contact damage sink; смертельный удар продолжает существующий pipeline loot/progression/despawn/death replication, а не оставляет NPC с `Life == 0` висеть в таблице.
 
 В TerrariaServer 1.4.5.8 внутри state 15 всё ещё есть ветка `IsTownPet[type]`, но у всех текущих town-pet идентичностей в закреплённом `NPCID.Sets` стоят `AttackType = -1` и `AttackTime = -1`. TerraRuntime это не додумывает и не создаёт для питомцев несуществующий естественный вход в melee-атаку.
+
+
+## Social/emote-вертикаль AI_007
+
+Социальное состояние Town NPC теперь также принадлежит серверу. Runtime поддерживает обычные разговорные пары (3/4), RPS-пары (16/17), пассивные idle-состояния (2/11), реакции на игрока (6/7/18/19) и source-shaped idle-состояния Town Pet (20..23). RPS-пузыри отправляются настоящим packet 91 protocol-326 с vanilla NPC anchor 0 и исходным cadence на кадрах 40/100/160. Chair state 5 остаётся во владении schedule-сервиса. Свободные NPC-picked реплики через полный граф `PickNPCEmote` этим блоком пока не заявляются.

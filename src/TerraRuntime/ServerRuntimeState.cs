@@ -61,6 +61,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly VanillaHousingValidator1458? _housingValidator;
     private readonly RuntimeTownNpcMoveInCoordinator1458? _townMoveIn;
     private readonly RuntimeTownNpcSchedule1458? _townSchedule;
+    private readonly RuntimeTownNpcSocial1458? _townSocial;
     private readonly RuntimeTownNpcCombat1458? _townCombat;
     private readonly RuntimeTownNpcShimmerService1458? _townShimmer;
     private readonly VanillaTownSpawnPlayerFacts1458[] _townSpawnPlayers = new VanillaTownSpawnPlayerFacts1458[MaxPlayerSlots];
@@ -178,6 +179,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         if (worldTiles is not null && townNpcs is not null && _housingValidator is not null)
         {
             _townSchedule = new RuntimeTownNpcSchedule1458(townNpcs, _npcs, worldTiles);
+            _townSocial = new RuntimeTownNpcSocial1458(townNpcs, _npcs, worldTiles, this, npcReplication, _townSchedule);
             _townShimmer = new RuntimeTownNpcShimmerService1458(_npcs, townNpcs, worldTiles, npcReplication);
             if (townSpawnWorldFacts is VanillaTownSpawnWorldFacts1458 facts)
             {
@@ -614,7 +616,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
 
     private void TickTownNpcLifecycle()
     {
-        if (_townMoveIn is null && _townSchedule is null && _townCombat is null)
+        if (_townMoveIn is null && _townSchedule is null && _townSocial is null && _townCombat is null)
             return;
 
         int spawnPlayerCount = 0;
@@ -672,6 +674,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             _townSchedule.Tick(in scheduleConditions, _townPlayerBounds.AsSpan(0, boundsCount));
         }
 
+        _townSocial?.Tick();
         _townCombat?.Tick();
     }
 
