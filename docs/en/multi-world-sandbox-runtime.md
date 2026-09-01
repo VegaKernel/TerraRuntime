@@ -16,6 +16,8 @@ A `.wld` file is not the identity of a live runtime.
 
 `WorldRuntimeIdentity` combines both values for boundaries that must identify an exact live world.
 
+`TerraRuntimeHostRuntimeInfo` now exposes `RuntimeIdentity`, `IsolationLevel` and `PersistenceMode`. Existing single-world startup automatically receives a fresh assigned identity and reports `InProcess` + `Persistent`; future multi-world composition may retain a logical `WorldRuntimeId` while rotating `WorldSessionId` when that runtime restarts.
+
 The current implementation provides these identity contracts as foundation. It does not yet run multiple worlds concurrently.
 
 ## Isolation levels
@@ -94,6 +96,7 @@ Implemented foundation:
 - `WorldRuntimeIdentity`;
 - `WorldIsolationLevel`;
 - `WorldPersistenceMode`;
+- host-visible runtime identity/isolation/persistence through `TerraRuntimeHostRuntimeInfo`;
 - retained bounded/versioned `TerraRuntime.Transport` envelope and handshake.
 
 Not implemented yet:

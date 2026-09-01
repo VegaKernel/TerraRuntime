@@ -16,6 +16,8 @@ TerraRuntime проектируется так, чтобы один сервер
 
 `WorldRuntimeIdentity` объединяет оба значения для границ, которым нужно однозначно определить конкретный живой мир.
 
+`TerraRuntimeHostRuntimeInfo` теперь публикует `RuntimeIdentity`, `IsolationLevel` и `PersistenceMode`. Существующий single-world startup автоматически получает новую assigned identity и сообщает `InProcess` + `Persistent`; будущая multi-world composition сможет сохранять логический `WorldRuntimeId`, меняя `WorldSessionId` при повторном запуске этого runtime.
+
 Сейчас эти identity contracts добавлены как foundation. Одновременный запуск нескольких миров пока не реализован.
 
 ## Уровни изоляции
@@ -94,6 +96,7 @@ Transport предоставляет механику framing, versioning, corre
 - `WorldRuntimeIdentity`;
 - `WorldIsolationLevel`;
 - `WorldPersistenceMode`;
+- host-visible runtime identity/isolation/persistence через `TerraRuntimeHostRuntimeInfo`;
 - сохранённый bounded/versioned envelope и handshake `TerraRuntime.Transport`.
 
 Пока не реализованы:
