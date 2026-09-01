@@ -15,16 +15,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Pack source snapshot
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Restore local-validation dependencies
+        shell: bash
+        run: dotnet restore TerraRuntime.slnx
+
+      - name: Pack source and NuGet cache
         shell: bash
         run: |
           set -euo pipefail
           tar --exclude=.git -czf "$RUNNER_TEMP/terraruntime-source.tar.gz" .
+          tar -C "$HOME/.nuget" -czf "$RUNNER_TEMP/terraruntime-nuget-packages.tar.gz" packages
 
-      - name: Upload source snapshot
+      - name: Upload local-validation snapshot
         uses: actions/upload-artifact@v4
         with:
-          name: terraruntime-source-${{ github.sha }}
-          path: ${{ runner.temp }}/terraruntime-source.tar.gz
+          name: terraruntime-local-validation-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/terraruntime-source.tar.gz
+            ${{ runner.temp }}/terraruntime-nuget-packages.tar.gz
           retention-days: 1
           if-no-files-found: error
