@@ -1,10 +1,8 @@
 name: One-shot N4 powder and Mystic Frog integration
 
 on:
-  push:
-    branches: [work/n4-powder-mystic-frog-1458]
-    paths:
-      - '.github/workflows/one-shot-n4-powder-mystic-frog.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -16,11 +14,13 @@ concurrency:
 
 jobs:
   integrate:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - name: Setup .NET 11
