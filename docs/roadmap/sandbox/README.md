@@ -2,6 +2,8 @@
 
 This directory is the normative delivery roadmap for TerraRuntime sandbox worlds. User-facing architecture is documented in [`../../en/sandbox/README.md`](../../en/sandbox/README.md) and [`../../ru/sandbox/README.md`](../../ru/sandbox/README.md).
 
+Detailed source/materialization and `.trschem` delivery is tracked in [`world-sources-schematics.md`](world-sources-schematics.md). That page is normative for the shared `SandboxWorldSource` model and the TerraRuntime Schematic format used directly by TerraRuntime, Vega and WorldEdit.
+
 Sandbox runtime is **not** a Dimensions replacement. It provides two isolation levels over the same `WorldRuntime` model:
 
 ```mermaid
@@ -17,6 +19,27 @@ flowchart TD
 ```
 
 The same logical world/runtime concepts are used at both levels. Level 2 changes placement and fault boundary, not gameplay semantics.
+
+## Normative world-source decision
+
+Level 1 and Level 2 accept the same source families:
+
+```mermaid
+flowchart LR
+    Source{"SandboxWorldSource"}
+    Source --> Wld[".wld"]
+    Source --> Gen["Generated"]
+    Source --> Schem[".trschem"]
+    Source --> Clone["SnapshotClone"]
+    Wld --> Candidate["validated candidate"]
+    Gen --> Candidate
+    Schem --> Candidate
+    Clone --> Candidate
+```
+
+Isolation must not determine the map format. The same `.wld`, generation request or `.trschem` arena can be materialized as Level 1 or Level 2.
+
+`.trschem` is the native TerraRuntime schematic format. WorldEdit and Vega use it directly through the shared format/model boundary; TerraRuntime does not carry a WorldEdit compatibility adapter in the baseline. The v1 schematic includes tiles/walls/liquids/wiring, chests/items, signs, typed tile entities, NPC placements, world items and named markers/regions. Runtime IDs, connection state and raw transient AI state are never schematic identity.
 
 ## Normative Level 1 decision
 
@@ -112,7 +135,7 @@ sequenceDiagram
 
     C->>M: existing TCP connection
     M->>T: create/configure sandbox
-    T->>W: world + selected sandbox logic + limits
+    T->>W: world source + selected sandbox logic + limits
     W-->>T: RuntimeReady
     M->>T: transferable player state
     M->>W: OS socket ownership handoff
@@ -154,7 +177,8 @@ The invariant is strict: **exactly one process performs application-level reads/
 
 ### S2 - Level 1 sandbox and Vega compatibility
 
-- [ ] create an ephemeral runtime from `.wld`, validated generated state or snapshot-clone source;
+- [ ] create an ephemeral runtime from `.wld`, `Generated`, `.trschem` or snapshot-clone source through the shared source/materialization path;
+- [ ] `.trschem` materialization restores supported tiles, chests, signs, tile entities, NPC placements, world items and markers into isolated candidate state before runtime admission;
 - [ ] all existing Vega plugin assemblies remain loaded once; sandbox creation does not reload the full plugin set;
 - [ ] legacy/single-world plugins receive world-scoped callbacks only for the host-selected primary runtime;
 - [ ] sandbox/multi-world-aware logic explicitly receives a per-runtime `SandboxContext`;
@@ -166,6 +190,10 @@ The invariant is strict: **exactly one process performs application-level reads/
 - [ ] deterministic teardown retires registrations, timers, extension/game-mode state and world-owned resources;
 - [ ] transfer one client between two in-process runtime sessions without packet-emulation hacks;
 - [ ] default single-world behavior remains unchanged when sandbox support is unused.
+
+### Source/materialization track
+
+The detailed WS0-WS6 checklist is maintained in [`world-sources-schematics.md`](world-sources-schematics.md). In particular, sandbox implementation is not complete until both Level 1 and Level 2 can launch the same asset from `.wld`, `Generated` and `.trschem` sources.
 
 ### S3 - Transport server-control plane
 
@@ -180,8 +208,9 @@ The invariant is strict: **exactly one process performs application-level reads/
 
 - [ ] introduce `SandboxSupervisor` in the TerraRuntime host layer;
 - [ ] first implementation uses one sandbox world per worker process;
-- [ ] creation descriptor supplies world source, selected sandbox-side game mode/plugin package, configuration and resource limits;
-- [ ] worker reports `RuntimeReady` only after world and selected local logic are attached;
+- [ ] creation descriptor accepts the same `.wld` / `Generated` / `.trschem` / snapshot source model as Level 1, plus selected sandbox-side game mode/plugin package, configuration and resource limits;
+- [ ] `Generated` may execute and validate inside the worker; `.wld`/`.trschem` source references are integrity checked before materialization;
+- [ ] worker reports `RuntimeReady` only after world source materialization and selected local logic are attached;
 - [ ] heartbeat/liveness and bounded control queues;
 - [ ] graceful stop plus forced-kill fallback;
 - [ ] worker crash cannot terminate the main server process;
@@ -228,6 +257,8 @@ Only after measurements justify them:
 - no global mutable gameplay event bus shared by unrelated world runtimes;
 - no automatic legacy-plugin attachment to every Level 1 runtime;
 - no Level 1 arbitrary module/dependency graph in the baseline;
+- no TerraRuntime dependency on WorldEdit or legacy WorldEdit schematic adapter in the baseline;
+- no `.trschem` dump of runtime IDs, connection state or raw transient NPC AI arrays;
 - no requirement that every plugin understand Transport internals;
 - no socket serialization into ordinary Transport payload bytes;
 - no COW/process pooling before measurement;
