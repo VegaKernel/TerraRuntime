@@ -68,7 +68,6 @@ public readonly record struct VanillaTownSpawnWorldFacts1458(
         BestiaryCompletionPercent is >= 0f and <= 1f;
 }
 
-
 /// <summary>
 /// Exact Main.UpdateTime_SpawnTownNPCs cadence gate from TerrariaServer 1.4.5.8.
 /// The source increments checkForSpawns and evaluates after 7200 / WorldGen.GetWorldUpdateRate() updates.
@@ -96,16 +95,21 @@ public sealed class VanillaTownNpcSpawnCadence1458
     public void Reset() => _checkForSpawns = 0;
 }
 
-/// <summary>One source-shaped 1.4.5.8 eligibility pass. EligibleTypes mirrors Main.townNPCCanSpawn.</summary>
-public sealed record VanillaTownSpawnEligibility1458(NpcTypeId[] EligibleTypes)
+/// <summary>
+/// One source-shaped 1.4.5.8 eligibility pass. EligibleTypes mirrors the set of true Main.townNPCCanSpawn flags.
+/// PrioritizedType mirrors WorldGen.prioritizedTownNPCType. When non-zero it is placed first in EligibleTypes so the
+/// existing room-aware runtime coordinator consumes the source priority before considering non-prioritized fallbacks.
+/// </summary>
+public sealed record VanillaTownSpawnEligibility1458(
+    NpcTypeId[] EligibleTypes,
+    NpcTypeId PrioritizedType)
 {
     public bool CanSpawn(NpcTypeId type) => Array.IndexOf(EligibleTypes, type) >= 0;
 }
 
 /// <summary>
-/// Clean-room projection of TerrariaServer 1.4.5.8 Main.UpdateTime_SpawnTownNPCs eligibility.
-/// Housing search, room-aware priority and physical placement remain separate WorldGen concerns; this class owns only
-/// the source-defined townNPCCanSpawn candidate flags.
+/// Clean-room projection of TerrariaServer 1.4.5.8 Main.UpdateTime_SpawnTownNPCs eligibility and its independent
+/// WorldGen.prioritizedTownNPCType chain. Physical placement remains a separate WorldGen concern.
 /// </summary>
 public static class VanillaTownNpcSpawnEligibility1458
 {
@@ -211,7 +215,93 @@ public static class VanillaTownNpcSpawnEligibility1458
             princessPopulationComplete;
         AddIfMissing(princessAllowed, VanillaNpcIds.Princess);
 
-        return new VanillaTownSpawnEligibility1458(eligible.ToArray());
+        NpcTypeId prioritized = ResolvePrioritizedType(
+            in world,
+            merchantAllowed,
+            armsDealerAllowed,
+            nurseAllowed,
+            dyeTraderAllowed,
+            demolitionistAllowed,
+            partyGirlAllowed,
+            greenSlimeAllowed,
+            princessAllowed,
+            totalTownNpcCount,
+            counts);
+
+        if (prioritized.Value != 0)
+        {
+            int priorityIndex = eligible.IndexOf(prioritized);
+            if (priorityIndex > 0)
+            {
+                eligible.RemoveAt(priorityIndex);
+                eligible.Insert(0, prioritized);
+            }
+        }
+
+        return new VanillaTownSpawnEligibility1458(eligible.ToArray(), prioritized);
+    }
+
+    private static NpcTypeId ResolvePrioritizedType(
+        in VanillaTownSpawnWorldFacts1458 world,
+        bool merchantAllowed,
+        bool armsDealerAllowed,
+        bool nurseAllowed,
+        bool dyeTraderAllowed,
+        bool demolitionistAllowed,
+        bool partyGirlAllowed,
+        bool greenSlimeAllowed,
+        bool princessAllowed,
+        int totalTownNpcCount,
+        int[] counts)
+    {
+        NpcTypeId prioritized = default;
+        int Count(NpcTypeId type) => (uint)type.Value < NpcTypeCount1458 ? counts[type.Value] : 0;
+        void Take(bool condition, NpcTypeId type)
+        {
+            if (prioritized.Value == 0 && condition && Count(type) == 0)
+                prioritized = type;
+        }
+
+        Take(world.InfectedSeed, VanillaNpcIds.Dryad);
+        Take(world.VampireSeed && !world.InfectedSeed, VanillaNpcIds.Zoologist);
+        Take(true, VanillaNpcIds.Guide);
+        Take(merchantAllowed, VanillaNpcIds.Merchant);
+        Take(nurseAllowed && Count(VanillaNpcIds.Merchant) > 0, VanillaNpcIds.Nurse);
+        Take(armsDealerAllowed, VanillaNpcIds.ArmsDealer);
+        Take(world.SavedGoblin, VanillaNpcIds.GoblinTinkerer);
+        Take(world.SavedWizard, VanillaNpcIds.Wizard);
+        Take(world.DownedBoss1 || world.DownedBoss2 || world.DownedBoss3, VanillaNpcIds.Dryad);
+        Take(demolitionistAllowed && Count(VanillaNpcIds.Merchant) > 0, VanillaNpcIds.Demolitionist);
+        Take(world.DownedQueenBee, VanillaNpcIds.WitchDoctor);
+        Take(world.DownedMechBossAny, VanillaNpcIds.Steampunker);
+        Take(world.SavedMechanic, VanillaNpcIds.Mechanic);
+        Take(world.SavedAngler, VanillaNpcIds.Angler);
+        Take(world.HardMode && world.DownedPlantBoss, VanillaNpcIds.Cyborg);
+        Take(world.DownedPirates, VanillaNpcIds.Pirate);
+        Take(world.DownedBoss3, VanillaNpcIds.Clothier);
+        Take(world.SavedStylist, VanillaNpcIds.Stylist);
+        Take(totalTownNpcCount >= 4 && dyeTraderAllowed, VanillaNpcIds.DyeTrader);
+        Take(totalTownNpcCount >= 8, VanillaNpcIds.Painter);
+        Take(partyGirlAllowed, VanillaNpcIds.PartyGirl);
+        Take(world.DownedFrost && world.Christmas, VanillaNpcIds.SantaClaus);
+        Take(world.SavedBartender, VanillaNpcIds.Tavernkeep);
+        Take(world.SavedGolfer, VanillaNpcIds.Golfer);
+        Take(world.SavedTaxCollector, VanillaNpcIds.TaxCollector);
+        Take(world.HardMode, VanillaNpcIds.Truffle);
+        Take(world.BestiaryCompletionPercent >= 0.1f, VanillaNpcIds.Zoologist);
+        Take(princessAllowed, VanillaNpcIds.Princess);
+        Take(world.UnlockedSlimeCopperSpawn, VanillaNpcIds.TownSlimeCopper);
+        Take(world.UnlockedSlimeBlueSpawn, VanillaNpcIds.TownSlimeBlue);
+        Take(greenSlimeAllowed, VanillaNpcIds.TownSlimeGreen);
+        Take(world.UnlockedSlimeOldSpawn, VanillaNpcIds.TownSlimeOld);
+        Take(world.UnlockedSlimePurpleSpawn, VanillaNpcIds.TownSlimePurple);
+        Take(world.UnlockedSlimeRedSpawn, VanillaNpcIds.TownSlimeRed);
+        Take(world.UnlockedSlimeYellowSpawn, VanillaNpcIds.TownSlimeYellow);
+        Take(world.UnlockedSlimeRainbowSpawn, VanillaNpcIds.TownSlimeRainbow);
+        Take(world.BoughtBunny, VanillaNpcIds.TownBunny);
+        Take(world.BoughtCat, VanillaNpcIds.TownCat);
+        Take(world.BoughtDog, VanillaNpcIds.TownDog);
+        return prioritized;
     }
 
     private static bool HasPrincessPopulation(int[] counts)

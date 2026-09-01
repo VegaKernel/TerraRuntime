@@ -9,6 +9,7 @@ on:
       - 'src/TerraRuntime.World/WorldFileRuntimeMetadataParser.cs'
       - 'src/TerraRuntime.World/RuntimeWorldPreparedStateCodec.cs'
       - 'tests/TerraRuntime.Tests/VanillaTownNpcSpawnEligibility1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/VanillaTownNpcSpawnPriority1458Tests.cs'
       - 'tools/ci/check_town_spawn_source.py'
       - '.github/workflows/town-spawn-source-contract.yml'
   workflow_dispatch:
@@ -29,6 +30,8 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Focused town spawn and priority tests
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --filter 'FullyQualifiedName~VanillaTownNpcSpawnEligibility1458Tests|FullyQualifiedName~VanillaTownNpcSpawnPriority1458Tests'
       - name: Download pinned TerrariaServer 1.4.5.8
         shell: bash
         run: |
