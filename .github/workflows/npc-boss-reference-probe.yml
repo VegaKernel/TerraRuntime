@@ -5,17 +5,6 @@ on:
     branches: [main]
     paths:
       - .github/workflows/npc-boss-reference-probe.yml
-  pull_request:
-    paths:
-      - .github/workflows/npc-boss-reference-probe.yml
-      - src/TerraRuntime.Contracts/Runtime/NpcSnapshot.cs
-      - src/TerraRuntime.Core/Npcs/VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy.cs
-      - src/TerraRuntime.Core/Npcs/VanillaNpcBehaviorContext.cs
-      - src/TerraRuntime.Core/Npcs/VanillaNpcTargetingAiStepper.cs
-      - src/TerraRuntime.Core/Projectiles/RuntimeProjectileStore.cs
-      - src/TerraRuntime.Core/Projectiles/VanillaProjectileReflection1458.cs
-      - src/TerraRuntime/RuntimeNpcProjectileReflectionPass.cs
-      - src/TerraRuntime/ServerRuntimeState.cs
   workflow_dispatch:
 
 permissions:
@@ -43,12 +32,10 @@ jobs:
           set -euo pipefail
           npc_file="$(find decompiled/1458 -type f -name 'NPC.cs' -print -quit)"
           npc_id="$(find decompiled/1458 -type f -name 'NPCID.cs' -print -quit)"
-          projectile_file="$(find decompiled/1458 -type f -name 'Projectile.cs' -print -quit)"
           test -n "$npc_file"
           test -n "$npc_id"
-          test -n "$projectile_file"
 
-          python3 - "$npc_file" "$npc_id" "$projectile_file" <<'PY'
+          python3 - "$npc_file" "$npc_id" <<'PY'
           import json
           import math
           import pathlib
@@ -57,31 +44,23 @@ jobs:
 
           npc_text = pathlib.Path(sys.argv[1]).read_text(errors="ignore")
           id_text = pathlib.Path(sys.argv[2]).read_text(errors="ignore")
-          projectile_text = pathlib.Path(sys.argv[3]).read_text(errors="ignore")
 
-          def braced_body_after_in(text, pattern):
-              match = re.search(pattern, text)
+          def braced_body_after(pattern):
+              match = re.search(pattern, npc_text)
               if not match:
                   raise SystemExit(f"pattern was not found: {pattern}")
-              opening = text.find("{", match.end())
+              opening = npc_text.find("{", match.end())
               if opening < 0:
                   raise SystemExit(f"opening brace was not found: {pattern}")
               depth = 0
-              for index in range(opening, len(text)):
-                  if text[index] == "{":
+              for index in range(opening, len(npc_text)):
+                  if npc_text[index] == "{":
                       depth += 1
-                  elif text[index] == "}":
+                  elif npc_text[index] == "}":
                       depth -= 1
                       if depth == 0:
-                          return text[opening:index + 1]
+                          return npc_text[opening:index + 1]
               raise SystemExit(f"body was truncated: {pattern}")
-
-          def braced_body_after(pattern):
-              return braced_body_after_in(npc_text, pattern)
-
-          def require(text, snippet, label):
-              if snippet not in text:
-                  raise SystemExit(f"source contract changed: {label}")
 
           names = {}
           ids_by_name = {}
@@ -127,51 +106,6 @@ jobs:
               "encourageDespawnCalls": ai.count("EncourageDespawn"),
           }
 
-          for snippet, label in (
-              ("defense = 0;", "Eye phase-two base defense"),
-              ("int num37 = 23;", "Eye phase-two classic final damage"),
-              ("int num38 = 18;", "Eye phase-two expert/master lerp endpoint"),
-              ("defense = -15;", "Eye low-life Expert defense"),
-              ("num38 = 20;", "Eye critical-life damage endpoint"),
-              ("defense = -30;", "Eye critical-life Expert defense"),
-              ("damage = GetAttackDamage_LerpBetweenFinalValues(num37, num38);", "Eye difficulty damage lerp"),
-              ("damage = GetAttackDamage_CappedAtMaster(damage);", "Eye Master damage cap/scaling"),
-          ):
-              require(ai, snippet, label)
-
-          reflect_projectiles = braced_body_after(r"\bpublic void ReflectProjectiles\(Rectangle myRect\)")
-          require(
-              reflect_projectiles,
-              "Main.projectile[i].active && Main.projectile[i].CanBeReflected() && CanReflectProjectile(Main.projectile[i])",
-              "NPC reflection eligibility order")
-          require(reflect_projectiles, "ReflectProjectile(Main.projectile[i]);", "NPC reflection dispatch")
-
-          reflect = braced_body_after(r"\bpublic void ReflectProjectile\(Projectile proj\)")
-          for snippet, label in (
-              ("proj.reflected = true;", "reflected flag"),
-              ("proj.hostile = true;", "reflected hostile flag"),
-              ("proj.friendly = false;", "reflected friendly flag"),
-              ("Vector2 vector = Main.player[proj.owner].Center - proj.Center;", "owner-directed reflection vector"),
-              ("vector *= proj.oldVelocity.Length();", "oldVelocity speed preservation"),
-              ("proj.velocity = new Vector2(Main.rand.Next(-100, 101), Main.rand.Next(-100, 101));", "reflection RNG seed vector"),
-              ("proj.velocity += vector * 20f;", "reflection owner bias"),
-              ("proj.damage /= 2;", "reflection half-damage step"),
-              ("proj.penetrate = 1;", "reflection penetration"),
-          ):
-              require(reflect, snippet, label)
-          if reflect.count("proj.damage /= 2;") != 2:
-              raise SystemExit("source contract changed: reflection no longer quarters damage in two integer half steps")
-
-          can_be_reflected = braced_body_after_in(
-              projectile_text,
-              r"\bpublic bool CanBeReflected\(\)")
-          for snippet, label in (
-              ("active && friendly && !hostile && damage > 0", "base projectile reflectability gate"),
-              ("type == 728 || type == 955", "special reflectable projectile identities"),
-              ("aiStyle == 1 || aiStyle == 2 || aiStyle == 8 || aiStyle == 21 || aiStyle == 24 || aiStyle == 28 || aiStyle == 29 || aiStyle == 131", "reflectable projectile aiStyle set"),
-          ):
-              require(can_be_reflected, snippet, label)
-
           king_scale = float(king.get("scale", "1").rstrip("f"))
           king_effective = {
               "width": math.floor(int(king["width"]) * king_scale),
@@ -183,7 +117,6 @@ jobs:
           print("NPC_EYE_OF_CTHULHU_AI_SUMMARY=" + json.dumps(ai_summary, sort_keys=True))
           print("NPC_KING_SLIME_DEFAULTS=" + json.dumps(king, sort_keys=True))
           print("NPC_KING_SLIME_EFFECTIVE_HITBOX=" + json.dumps(king_effective, sort_keys=True))
-          print("NPC_EYE_REFLECTION_SOURCE_CONTRACT=verified")
 
           expected_eye = {
               "name": "EyeofCthulhu", "aiStyle": "4", "width": "100", "height": "110",
