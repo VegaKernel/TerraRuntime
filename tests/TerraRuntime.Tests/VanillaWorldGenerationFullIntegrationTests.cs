@@ -41,6 +41,7 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.True(result.Candidate.TryGetLayers(out WorldGenerationLayers layers));
         Assert.True(layers.WorldSurface > 0d);
         Assert.True(layers.RockLayer > layers.WorldSurface);
+        AssertSourceFramedTrees(result.Candidate);
     }
 
     [Theory]
@@ -247,5 +248,49 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
                 hash *= prime;
             }
         }
+    }
+
+    private static void AssertSourceFramedTrees(RuntimeWorldGenerationWorkspace workspace)
+    {
+        var topFrames = new HashSet<(short X, short Y)>();
+        var branchFrames = new HashSet<(short X, short Y)>();
+        var rootFrames = new HashSet<(short X, short Y)>();
+        for (int variant = 0; variant < 3; variant++)
+        {
+            Add(topFrames, VanillaTreeFrameCatalog1458.Top(leafy: true, variant));
+            Add(topFrames, VanillaTreeFrameCatalog1458.Top(leafy: false, variant));
+            Add(branchFrames, VanillaTreeFrameCatalog1458.LeftBranch(leafy: true, variant));
+            Add(branchFrames, VanillaTreeFrameCatalog1458.LeftBranch(leafy: false, variant));
+            Add(branchFrames, VanillaTreeFrameCatalog1458.RightBranch(leafy: true, variant));
+            Add(branchFrames, VanillaTreeFrameCatalog1458.RightBranch(leafy: false, variant));
+            Add(rootFrames, VanillaTreeFrameCatalog1458.LeftRoot(variant));
+            Add(rootFrames, VanillaTreeFrameCatalog1458.RightRoot(variant));
+        }
+
+        int treeCells = 0;
+        int tops = 0;
+        int branches = 0;
+        int roots = 0;
+        for (int x = 0; x < workspace.WidthTiles; x++)
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                if (!tile.IsActive || tile.TileType != VanillaTileIds.Trees)
+                    continue;
+
+                treeCells++;
+                var frame = (tile.FrameX, tile.FrameY);
+                tops += topFrames.Contains(frame) ? 1 : 0;
+                branches += branchFrames.Contains(frame) ? 1 : 0;
+                roots += rootFrames.Contains(frame) ? 1 : 0;
+            }
+
+        Assert.True(treeCells > 0, "Canonical generation must contain ordinary tree cells.");
+        Assert.True(tops > 0, "Canonical trees must contain source-framed crowns.");
+        Assert.True(branches > 0, "Canonical trees must contain source-framed branches.");
+        Assert.True(roots > 0, "Canonical trees must contain source-framed roots.");
+
+        static void Add(HashSet<(short X, short Y)> target, VanillaTreeFrame1458 frame) =>
+            target.Add((frame.X, frame.Y));
     }
 }

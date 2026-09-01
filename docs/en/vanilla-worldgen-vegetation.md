@@ -32,12 +32,14 @@ All eleven passes use the single shared Terraria-compatible `UnifiedRandom` stre
 
 Late vegetation must coexist with chests, doors, pots, traps, altars, fallen logs, the floating-island house and other framed objects already generated earlier. Placement therefore requires empty target cells and avoids nearby frame-important objects where larger structures such as trees need clearance.
 
-Some complex vanilla vegetation framing, especially complete tree branch/top framing and tall Jungle decoration framing, is still source-shaped rather than byte-identical. The pass owns the correct content family and placement domain without claiming exact reference-world frames or exact RNG consumption for helpers that have not yet been clean-room ported.
+Ordinary tile-`5` tree growth now uses a clean-room port of TerrariaServer 1.4.5.8 `WorldGen.GrowTree`. Version-pinned capability catalogs own the complete tree-ground, common-sapling, replaceable-growth and plant-growth-wall sets. The grower owns the source height and clearance gates, shared-RNG ordering, trunk variants, non-repeating branch rule, root normalization, paint/coating propagation and complete top framing. Raw content IDs and sprite-atlas coordinates do not leak into the growth algorithm: typed catalogs and the dedicated tree-frame catalog own them.
+
+The `Planting Trees` pass still uses TerraRuntime's conservative candidate count and surface-column selection rather than claiming byte-identical `WorldGen.AddTrees` placement density or complete palm/vanity-tree branches. Tall Jungle decoration framing also remains source-shaped. These are placement/content-family limitations, not a remaining segmented-trunk or missing-crown limitation for the ordinary trees that the pass grows.
 
 ## Pass behavior
 
 - `Sunflowers` places framed 2x4 sunflower objects on contiguous surface grass.
-- `Planting Trees` grows conservative forest, Jungle and snow tree structures in valid open surface columns.
+- `Planting Trees` selects conservative forest, Jungle and snow candidates, then applies source-backed `WorldGen.GrowTree` growth gates and complete trunk/branch/root/top frames.
 - `Herbs` selects herb families from compatible soil/biome types.
 - `Dye Plants` places sparse biome-aware dye plants with local spacing.
 - `Webs And Honey` adds cavern cobwebs and Jungle-biased honey pockets.
@@ -50,7 +52,7 @@ Some complex vanilla vegetation framing, especially complete tree branch/top fra
 
 ## Validation
 
-Focused contracts pin the 100-entry graph, the exact pass segment after `Guide`, `VanillaSharedRng` ownership, the next source boundary (`Gems In Ice Biome`), canonical-size gating and special-seed fallback. The full generated-world workflow then composes a real `.wld`, reloads it through TerraRuntime, and boots the pinned official TerrariaServer 1.4.5.8 with that file.
+Focused contracts pin the 100-entry graph, the exact pass segment after `Guide`, `VanillaSharedRng` ownership, the next source boundary (`Gems In Ice Biome`), canonical-size gating and special-seed fallback. Tree tests additionally pin exact scripted frames and RNG consumption, consecutive-branch rerolls, growth rejection gates, replaceable vegetation and all four source capability-set counts. The canonical generated-world test requires real crown, branch and root frames in the composed workspace. `tools/ci/probe_worldgen_tree_growth.py` independently checks the runtime catalogs and framing routes against the pinned 1.4.5.8 decompile. The full generated-world workflow then composes a real `.wld`, reloads it through TerraRuntime, and boots the pinned official server with that file.
 
 ## Next boundary
 

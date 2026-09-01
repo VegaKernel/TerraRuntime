@@ -158,7 +158,6 @@ internal sealed class VanillaVegetationWorldGenerationPass1458 : IWorldGeneratio
 {
     private const ushort Grass = 2;
     private const ushort Plants = 3;
-    private const ushort Trees = 5;
     private const ushort Sunflower = 27;
     private const ushort Cobweb = 51;
     private const ushort Vines = 52;
@@ -267,18 +266,18 @@ internal sealed class VanillaVegetationWorldGenerationPass1458 : IWorldGeneratio
                 continue;
 
             for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 4; dy++)
-            {
-                ref WorldTile tile = ref grid.At(left + dx, top + dy);
-                SetPlant(ref tile, Sunflower, dx * 18, dy * 18);
-            }
+                for (int dy = 0; dy < 4; dy++)
+                {
+                    ref WorldTile tile = ref grid.At(left + dx, top + dy);
+                    SetPlant(ref tile, Sunflower, dx * 18, dy * 18);
+                }
             placed++;
         }
 
         context.ReportProgress(1d, $"Planting sunflowers ({placed}/{target})");
     }
 
-    private void ApplyPlantingTrees(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyPlantingTrees(IWorldGenerationContext context, RuntimeGrid grid, VanillaRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         int target = grid.Width switch
@@ -303,40 +302,16 @@ internal sealed class VanillaVegetationWorldGenerationPass1458 : IWorldGeneratio
                 continue;
 
             ushort ground = grid.At(x, floor).Type;
-            int style = ground switch
-            {
-                Grass => 0,
-                JungleGrass => 2,
-                SnowBlock => 4,
-                _ => -1
-            };
-            if (style < 0)
-                continue;
-
-            int height = ground == JungleGrass ? random.Next(14, 24) : random.Next(10, 20);
-            if (!grid.IsEmptyRectangle(x - 2, floor - height - 2, 5, height + 2))
+            if (ground is not (Grass or JungleGrass or SnowBlock))
                 continue;
             if (grid.HasFrameImportantNearby(x, floor, 5, 3))
                 continue;
 
-            for (int y = floor - 1; y >= floor - height; y--)
-            {
-                ref WorldTile trunk = ref grid.At(x, y);
-                SetPlant(ref trunk, Trees, style * 22, 0);
-            }
-
-            // Terraria tree framing is richer than this source-shaped scaffold. Branch cells are kept sparse and the
-            // exact 1.4.5.8 framing RNG remains a later parity target rather than consuming invented random calls here.
-            if (height >= 14)
-            {
-                int branchY = floor - height + 4;
-                SetPlant(ref grid.At(x - 1, branchY), Trees, style * 22, 0);
-                SetPlant(ref grid.At(x + 1, branchY + 2), Trees, style * 22, 0);
-            }
-            placed++;
+            if (VanillaTreeGrower1458.TryGrow(grid.Store, x, floor, random.Source))
+                placed++;
         }
 
-        context.ReportProgress(1d, $"Planting source-shaped surface trees ({placed}/{target})");
+        context.ReportProgress(1d, $"Planting framed surface trees ({placed}/{target})");
     }
 
     private void ApplyHerbs(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
@@ -439,17 +414,17 @@ internal sealed class VanillaVegetationWorldGenerationPass1458 : IWorldGeneratio
             int rx = random.Next(3, 7);
             int ry = random.Next(2, 5);
             for (int x = cx - rx; x <= cx + rx; x++)
-            for (int y = cy - ry; y <= cy + ry; y++)
-            {
-                if (!grid.Contains(x, y) || (x - cx) * (x - cx) * ry * ry + (y - cy) * (y - cy) * rx * rx > rx * rx * ry * ry)
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive || tile.LiquidAmount != 0)
-                    continue;
-                tile.LiquidAmount = 255;
-                tile.LiquidKind = WorldLiquidKind.Honey;
-                honeyCells++;
-            }
+                for (int y = cy - ry; y <= cy + ry; y++)
+                {
+                    if (!grid.Contains(x, y) || (x - cx) * (x - cx) * ry * ry + (y - cy) * (y - cy) * rx * rx > rx * rx * ry * ry)
+                        continue;
+                    ref WorldTile tile = ref grid.At(x, y);
+                    if (tile.IsActive || tile.LiquidAmount != 0)
+                        continue;
+                    tile.LiquidAmount = 255;
+                    tile.LiquidKind = WorldLiquidKind.Honey;
+                    honeyCells++;
+                }
         }
 
         context.ReportProgress(1d, $"Adding webs and honey ({webs} webs, {honeyCells} honey cells)");
@@ -724,6 +699,7 @@ internal sealed class VanillaVegetationWorldGenerationPass1458 : IWorldGeneratio
 
     private sealed class VanillaRandom(IWorldGenerationVanillaRandom inner) : IRandom
     {
+        public IWorldGenerationVanillaRandom Source => inner;
         public int Next() => inner.Next();
         public int Next(int max) => inner.Next(max);
         public int Next(int min, int max) => inner.Next(min, max);
@@ -738,6 +714,7 @@ internal sealed class VanillaVegetationWorldGenerationPass1458 : IWorldGeneratio
 
         public int Width => store.Dimensions.WidthTiles;
         public int Height => store.Dimensions.HeightTiles;
+        public WorldTileStore Store => store;
 
         public bool Contains(int x, int y) => (uint)x < (uint)Width && (uint)y < (uint)Height;
         public ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
@@ -769,12 +746,12 @@ internal sealed class VanillaVegetationWorldGenerationPass1458 : IWorldGeneratio
             if (left < 1 || top < 1 || left + width >= Width - 1 || top + height >= Height - 1)
                 return false;
             for (int x = left; x < left + width; x++)
-            for (int y = top; y < top + height; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (tile.IsActive || tile.LiquidAmount != 0)
-                    return false;
-            }
+                for (int y = top; y < top + height; y++)
+                {
+                    WorldTile tile = At(x, y);
+                    if (tile.IsActive || tile.LiquidAmount != 0)
+                        return false;
+                }
             return true;
         }
 
@@ -785,12 +762,12 @@ internal sealed class VanillaVegetationWorldGenerationPass1458 : IWorldGeneratio
             int top = Math.Max(1, centerY - radiusY);
             int bottom = Math.Min(Height - 2, centerY + radiusY);
             for (int x = left; x <= right; x++)
-            for (int y = top; y <= bottom; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (tile.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
-                    return true;
-            }
+                for (int y = top; y <= bottom; y++)
+                {
+                    WorldTile tile = At(x, y);
+                    if (tile.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
+                        return true;
+                }
             return false;
         }
 
@@ -804,12 +781,12 @@ internal sealed class VanillaVegetationWorldGenerationPass1458 : IWorldGeneratio
             int top = Math.Max(1, centerY - radiusY);
             int bottom = Math.Min(Height - 2, centerY + radiusY);
             for (int x = left; x <= right; x++)
-            for (int y = top; y <= bottom; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (tile.IsActive && tile.Type == type)
-                    return true;
-            }
+                for (int y = top; y <= bottom; y++)
+                {
+                    WorldTile tile = At(x, y);
+                    if (tile.IsActive && tile.Type == type)
+                        return true;
+                }
             return false;
         }
     }

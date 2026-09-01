@@ -264,6 +264,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId Dirt = new(0);
     public static readonly TileTypeId Stone = new(1);
     public static readonly TileTypeId Grass = new(2);
+    public static readonly TileTypeId Trees = new(5);
     public static readonly TileTypeId ClosedDoor = new(10);
     public static readonly TileTypeId OpenDoor = new(11);
     public static readonly TileTypeId Platforms = new(19);
