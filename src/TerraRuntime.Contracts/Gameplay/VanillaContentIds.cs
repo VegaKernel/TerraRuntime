@@ -27,6 +27,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ArmsDealer = new(19);
     public static readonly NpcTypeId Dryad = new(20);
     public static readonly NpcTypeId Guide = new(22);
+    public static readonly NpcTypeId SkeletronHead = new(35);
+    public static readonly NpcTypeId SkeletronHand = new(36);
     public static readonly NpcTypeId Demolitionist = new(38);
     public static readonly NpcTypeId Clothier = new(54);
     public static readonly NpcTypeId BoundGoblin = new(105);
@@ -174,6 +176,8 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Flyer = new(5);
     public static readonly NpcAiStyleId Worm = new(6);
     public static readonly NpcAiStyleId Town = new(7);
+    public static readonly NpcAiStyleId SkeletronHead = new(11);
+    public static readonly NpcAiStyleId SkeletronHand = new(12);
     public static readonly NpcAiStyleId KingSlime = new(15);
     public static readonly NpcAiStyleId BrainOfCthulhu = new(54);
     public static readonly NpcAiStyleId BrainCreeper = new(55);
@@ -239,6 +243,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
     public static readonly ProjectileTypeId ProbePinkLaser = new(84);
     public static readonly ProjectileTypeId ConfettiGun = new(178);
+    public static readonly ProjectileTypeId SkeletronSkull = new(270);
     public static readonly ProjectileTypeId BloodShot = new(811);
     public static readonly ProjectileTypeId ConfettiMelee = new(289);
     public static readonly ProjectileTypeId RottenEgg = new(318);

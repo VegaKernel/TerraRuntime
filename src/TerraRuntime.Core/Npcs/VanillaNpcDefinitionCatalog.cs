@@ -19,7 +19,9 @@ public enum VanillaNpcBehaviorFamily : byte
     KingSlime = 6,
     Worm = 7,
     BrainOfCthulhu = 8,
-    BrainCreeper = 9
+    BrainCreeper = 9,
+    SkeletronHead = 10,
+    SkeletronHand = 11
 }
 
 /// <summary>
@@ -293,6 +295,48 @@ public static class VanillaNpcDefinitionCatalog
                 Defense: 10,
                 LifeMax: 100,
                 KnockBackResist: 0.8f,
+                Scale: 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.SkeletronHead)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.SkeletronHead,
+                AiStyle: VanillaNpcAiStyles.SkeletronHead,
+                BehaviorFamily: VanillaNpcBehaviorFamily.SkeletronHead,
+                PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Boss,
+                BaseWidth: 80,
+                BaseHeight: 102,
+                Damage: 32,
+                Defense: 10,
+                LifeMax: 4400,
+                KnockBackResist: 0f,
+                Scale: 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.SkeletronHand)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.SkeletronHand,
+                AiStyle: VanillaNpcAiStyles.SkeletronHand,
+                BehaviorFamily: VanillaNpcBehaviorFamily.SkeletronHand,
+                PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary,
+                BaseWidth: 52,
+                BaseHeight: 52,
+                Damage: 20,
+                Defense: 14,
+                LifeMax: 600,
+                KnockBackResist: 0f,
                 Scale: 1f,
                 NoGravityAtSpawn: true,
                 NoTileCollideAtSpawn: true,
