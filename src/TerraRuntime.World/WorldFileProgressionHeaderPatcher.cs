@@ -21,7 +21,8 @@ public static class WorldFileProgressionHeaderPatcher
     private const ulong SupportedMutationMask =
         (1UL << (int)VanillaWorldProgressionId.KingSlime) |
         (1UL << (int)VanillaWorldProgressionId.EvilBoss) |
-        (1UL << (int)VanillaWorldProgressionId.Skeletron);
+        (1UL << (int)VanillaWorldProgressionId.Skeletron) |
+        (1UL << (int)VanillaWorldProgressionId.QueenBee);
 
     public static WorldFileProgressionHeaderPatchResult TryPatch(
         ReadOnlySpan<byte> sourceHeader,
@@ -89,7 +90,10 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out bool persistedDownedBoss2))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
         int downedBoss3Offset = reader.Offset;
-        if (!reader.TryReadBool(out bool persistedDownedBoss3) || !reader.TrySkipBools(7))
+        if (!reader.TryReadBool(out bool persistedDownedBoss3))
+            return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedQueenBeeOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool persistedDownedQueenBee) || !reader.TrySkipBools(6))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         int downedSlimeKingOffset = reader.Offset;
@@ -109,6 +113,8 @@ public static class WorldFileProgressionHeaderPatcher
             patchedHeader[downedBoss2Offset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.Skeletron) && !persistedDownedBoss3)
             patchedHeader[downedBoss3Offset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.QueenBee) && !persistedDownedQueenBee)
+            patchedHeader[downedQueenBeeOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.KingSlime) && !persistedDownedSlimeKing)
             patchedHeader[downedSlimeKingOffset] = 1;
         if (mutations.UnlockSlimeBlueSpawn && !townState.PersistedSlimeBlue)

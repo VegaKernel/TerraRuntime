@@ -244,6 +244,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
                 _vanillaNpcTargetingAiStepper.EnableBlueSlimeMotion(worldSurfaceTiles);
                 _vanillaNpcTargetingAiStepper.EnableZombieMotion(worldSurfaceTiles);
                 _vanillaNpcTargetingAiStepper.SetFlyingEyeEnvironment(new VanillaFlyingEyeWorldEnvironment(worldTiles));
+                _vanillaNpcTargetingAiStepper.SetQueenBeeEnvironment(new VanillaQueenBeeWorldEnvironment(
+                    worldTiles,
+                    worldSurfaceTiles,
+                    townCommerceWorldFacts?.RemixWorld ?? false));
                 _vanillaNpcTargetingAiStepper.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(worldTiles));
                 var worldMotion = new VanillaNpcWorldMotionAiStepper(
                     actorIntent,

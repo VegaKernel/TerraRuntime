@@ -117,6 +117,7 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         type == VanillaProjectileIds.Bullet ||
         type == VanillaProjectileIds.Seed ||
         type == VanillaProjectileIds.ConfettiGun ||
+        type == VanillaProjectileIds.QueenBeeStinger ||
         type == VanillaProjectileIds.ConfettiMelee ||
         type == VanillaProjectileIds.BoneArrowFromMerchant ||
         type == VanillaProjectileIds.SoundGun ||

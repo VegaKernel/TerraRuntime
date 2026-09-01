@@ -117,6 +117,26 @@ internal sealed class VanillaNpcBehaviorContext
         return count;
     }
 
+    public int CountActivePlayersWithin(float centerX, float centerY, float radius)
+    {
+        if (!float.IsFinite(centerX) || !float.IsFinite(centerY) || !float.IsFinite(radius) || radius < 0f)
+            return 0;
+
+        float radiusSquared = radius * radius;
+        int count = 0;
+        for (int index = 0; index < _candidateCount; index++)
+        {
+            VanillaNpcTargetCandidate candidate = _candidates[index];
+            if (!candidate.Active || candidate.Dead || candidate.Ghost)
+                continue;
+            float dx = candidate.CenterX - centerX;
+            float dy = candidate.CenterY - centerY;
+            if (dx * dx + dy * dy < radiusSquared)
+                count++;
+        }
+        return count;
+    }
+
     public bool TryFindFirstNpcPeer(NpcTypeId type, out NpcSnapshot peer)
     {
         for (int index = 0; index < _npcPeerCount; index++)

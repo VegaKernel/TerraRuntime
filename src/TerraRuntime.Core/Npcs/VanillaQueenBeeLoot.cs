@@ -67,7 +67,7 @@ public static class VanillaQueenBeeLootEvaluator
 
         if (context.IsMasterMode)
         {
-            DropGuaranteed(VanillaQueenBeeItemIds.QueenBeeMasterTrophy, in npcOrigin, rolls, sink, ref worldItems);
+            Roll(VanillaQueenBeeItemIds.QueenBeeMasterTrophy, 1, 1, 1, 1, in npcOrigin, rolls, sink, ref worldItems);
             short petStack = checked((short)rolls.NextInt32(1, 2));
             foreach (VanillaQueenBeeLootPlayer player in activeInteractingPlayers)
             {

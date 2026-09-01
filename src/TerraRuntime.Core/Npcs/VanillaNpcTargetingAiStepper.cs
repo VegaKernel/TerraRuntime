@@ -45,8 +45,10 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _blazingWheel = new VanillaBlazingWheelNpcBehaviorStrategy();
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
+    private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
     private readonly IVanillaNpcRandom _random;
     private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
+    private IVanillaQueenBeeEnvironment? _queenBeeEnvironment;
 
     public VanillaNpcTargetingAiStepper(
         INpcAiStateStepper inner,
@@ -62,6 +64,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _brainOfCthulhu = new VanillaBrainOfCthulhuNpcBehaviorStrategy(_random);
         _brainCreeper = new VanillaBrainCreeperNpcBehaviorStrategy(_random);
         _spikeBall = new VanillaSpikeBallNpcBehaviorStrategy(_random);
+        _queenBee = new VanillaQueenBeeNpcBehaviorStrategy(_random);
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
@@ -90,6 +93,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetBrainOfCthulhuEnvironment(IVanillaBrainOfCthulhuEnvironment environment) =>
         _brainOfCthulhu.SetEnvironment(environment);
 
+    public void SetQueenBeeEnvironment(IVanillaQueenBeeEnvironment environment)
+    {
+        _queenBeeEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
+        _queenBee.SetEnvironment(environment);
+    }
+
     public void SetWormEnvironment(IVanillaWormEnvironment environment) =>
         _worm.SetEnvironment(environment);
 
@@ -101,6 +110,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         ArgumentNullException.ThrowIfNull(environment);
         _projectileEnvironment = environment;
         _flyer.SetProjectileEnvironment(environment);
+        _queenBee.SetProjectileEnvironment(environment);
     }
 
     public void SetWorldConditions(
@@ -154,6 +164,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.BlazingWheel => _blazingWheel,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
+            VanillaNpcBehaviorFamily.QueenBee => _queenBee,
             _ => null
         };
 
@@ -194,6 +205,9 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanSkeletronHands(in source, in proposed, destination);
         }
 
+        if (source.Type == VanillaNpcIds.QueenBee.Value && proposed.Type == source.Type)
+            return PlanQueenBeeMinion(in source, in proposed, destination);
+
         if (NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType) &&
             VanillaWormNpcCatalog.TryGet(sourceType, out _))
         {
@@ -210,6 +224,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
             return PlanSkeletronSkull(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.QueenBee.Value && proposed.Type == source.Type)
+            return PlanQueenBeeStinger(in source, in proposed, destination);
 
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
     }
@@ -276,6 +292,118 @@ public sealed class VanillaNpcTargetingAiStepper :
         };
         return 1;
     }
+
+    private int PlanQueenBeeMinion(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiSpawnIntent> destination)
+    {
+        if (destination.IsEmpty || source.Ai.Ai0 != 1f || proposed.Type != source.Type ||
+            proposed.Ai.Ai2 <= source.Ai.Ai2 || _queenBeeEnvironment is null || _projectileEnvironment is null ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.QueenBee, out VanillaNpcDefinition definition))
+        {
+            return 0;
+        }
+
+        ushort targetSlot = proposed.Target;
+        if (targetSlot >= byte.MaxValue || !_context.TryFindCandidate((byte)targetSlot, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost)
+            return 0;
+
+        float centerX = source.PositionX + definition.Width * 0.5f;
+        float centerY = source.PositionY + definition.Height * 0.5f;
+        int direction = target.CenterX < centerX ? -1 : 1;
+        float spawnX = source.PositionX + definition.Width * 0.5f + _random.NextInt32(0, 20) * direction;
+        float spawnY = source.PositionY + definition.Height * 0.8f;
+        if (!_projectileEnvironment.CanHit(
+                spawnX, spawnY, 1, 1,
+                target.CenterX - VanillaNpcBehaviorContext.BasePlayerWidth * 0.5f,
+                target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f,
+                (int)VanillaNpcBehaviorContext.BasePlayerWidth,
+                (int)VanillaNpcBehaviorContext.BasePlayerHeight))
+            return 0;
+
+        NpcTypeId child = _random.NextInt32(VanillaNpcIds.Bee.Value, VanillaNpcIds.SmallBee.Value + 1) == VanillaNpcIds.Bee.Value
+            ? VanillaNpcIds.Bee
+            : VanillaNpcIds.SmallBee;
+        float vx = target.CenterX - centerX;
+        float vy = target.CenterY - centerY;
+        NormalizeTo(ref vx, ref vy, 5f);
+        destination[0] = new NpcAiSpawnIntent(
+            child,
+            BottomX: (int)spawnX,
+            BottomY: (int)spawnY,
+            VelocityX: vx,
+            VelocityY: vy,
+            Target: proposed.Target)
+        {
+            InitialLocalAi = new NpcAiState(60f, 0f, 0f, 0f)
+        };
+        return 1;
+    }
+
+    private int PlanQueenBeeStinger(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty || source.Ai.Ai0 != 3f || proposed.Type != source.Type ||
+            _queenBeeEnvironment is null || _projectileEnvironment is null ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.QueenBee, out VanillaNpcDefinition definition) ||
+            proposed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost)
+            return 0;
+
+        float enrage = VanillaQueenBeeNpcBehaviorStrategy.ComputeEnrage(in source, in target, _context, _queenBeeEnvironment);
+        int cadence = VanillaQueenBeeNpcBehaviorStrategy.GetStingerCadence(in source, _context.ExpertMode, enrage);
+        int timer = (int)(source.Ai.Ai1 + 1f);
+        if (timer % cadence != cadence - 1)
+            return 0;
+
+        float targetTop = target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f;
+        if (source.PositionY + definition.Height >= targetTop)
+            return 0;
+
+        float centerX = source.PositionX + definition.Width * 0.5f;
+        int direction = target.CenterX < centerX ? -1 : 1;
+        float spawnX = source.PositionX + definition.Width * 0.5f + _random.NextInt32(0, 20) * direction;
+        float spawnY = source.PositionY + definition.Height * 0.8f;
+        if (!_projectileEnvironment.CanHit(
+                spawnX, spawnY, 1, 1,
+                target.CenterX - VanillaNpcBehaviorContext.BasePlayerWidth * 0.5f,
+                targetTop,
+                (int)VanillaNpcBehaviorContext.BasePlayerWidth,
+                (int)VanillaNpcBehaviorContext.BasePlayerHeight))
+            return 0;
+
+        float speed = 8f;
+        if (_context.ExpertMode)
+        {
+            speed += 2f;
+            if (source.Simulation.LifeMax > 0 && (double)source.Simulation.Life < source.Simulation.LifeMax * 0.1)
+                speed += 3f;
+        }
+        speed += 7f * enrage;
+        int jitterX = Math.Max(1, (int)(80f - 39f * enrage));
+        int jitterY = Math.Max(1, (int)(40f - 19f * enrage));
+        float vx = target.CenterX - spawnX + _random.NextInt32(-jitterX, jitterX + 1);
+        float vy = target.CenterY - spawnY + _random.NextInt32(-jitterY, jitterY + 1);
+        NormalizeTo(ref vx, ref vy, speed);
+        destination[0] = new NpcAiProjectileIntent(
+            VanillaProjectileIds.QueenBeeStinger,
+            spawnX,
+            spawnY,
+            vx,
+            vy,
+            Damage: 11,
+            KnockBack: 0f)
+        {
+            TimeLeftOverride = 300
+        };
+        return 1;
+    }
+
 
     private static void NormalizeTo(ref float x, ref float y, float speed)
     {

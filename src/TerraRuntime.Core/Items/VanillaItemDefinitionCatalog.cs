@@ -258,6 +258,25 @@ public static class VanillaItemDefinitionCatalog
     private static readonly VanillaItemDefinition ChippysHeadbandDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.ChippysHeadband, 26, 30);
     private static readonly VanillaItemDefinition ChippysWingsInactiveDefinition = SkeletronWorldDrop(VanillaSkeletronItemIds.ChippysWingsInactive, 24, 8);
 
+    private static readonly VanillaItemDefinition QueenBeeHatDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeHat, 28, 20);
+    private static readonly VanillaItemDefinition QueenBeeShirtDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeShirt, 18, 14);
+    private static readonly VanillaItemDefinition QueenBeePantsDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeePants, 18, 14);
+    private static readonly VanillaItemDefinition BeeGunDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeGun, 50, 18);
+    private static readonly VanillaItemDefinition BeeKeeperDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeKeeper, 40, 40);
+    private static readonly VanillaItemDefinition HiveWandDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.HiveWand, 8, 10);
+    private static readonly VanillaItemDefinition BeenadeDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.Beenade, 10, 10);
+    private static readonly VanillaItemDefinition HoneyCombDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.HoneyComb, 22, 22);
+    private static readonly VanillaItemDefinition NectarDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.Nectar, 16, 30);
+    private static readonly VanillaItemDefinition QueenBeeTrophyDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenBeeTrophy, 30, 30);
+    private static readonly VanillaItemDefinition BeeMaskDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeMask, 28, 20);
+    private static readonly VanillaItemDefinition BeeWaxDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeWax, 18, 16);
+    private static readonly VanillaItemDefinition HoneyedGogglesDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.HoneyedGoggles, 16, 30);
+    private static readonly VanillaItemDefinition BeesKneesDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeesKnees, 12, 28);
+    private static readonly VanillaItemDefinition QueenBeeBossBagDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenBeeBossBag, 24, 24);
+    private static readonly VanillaItemDefinition QueenBeePetItemDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenBeePetItem, 16, 30);
+    private static readonly VanillaItemDefinition QueenBeeMasterTrophyDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenBeeMasterTrophy, 14, 14);
+    private static readonly VanillaItemDefinition QueenOfBeesDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenOfBees, 30, 30);
+
     private static VanillaItemDefinition BrainWorldDrop(ItemTypeId type, int width, int height) =>
         new(
             Type: type,
@@ -272,6 +291,19 @@ public static class VanillaItemDefinitionCatalog
                 PrefixFamily: VanillaItemPrefixFamily.None));
 
     private static VanillaItemDefinition SkeletronWorldDrop(ItemTypeId type, int width, int height) =>
+        new(
+            Type: type,
+            RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
+            UseTiming: null,
+            Placement: null,
+            PickTool: null,
+            WorldDrop: new VanillaItemWorldDropDefinition(
+                width,
+                height,
+                NoGravity: false,
+                PrefixFamily: VanillaItemPrefixFamily.None));
+
+    private static VanillaItemDefinition QueenBeeWorldDrop(ItemTypeId type, int width, int height) =>
         new(
             Type: type,
             RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
@@ -448,6 +480,25 @@ public static class VanillaItemDefinitionCatalog
         if (type == VanillaSkeletronItemIds.ChippysLegs) { definition = ChippysLegsDefinition; return true; }
         if (type == VanillaSkeletronItemIds.ChippysHeadband) { definition = ChippysHeadbandDefinition; return true; }
         if (type == VanillaSkeletronItemIds.ChippysWingsInactive) { definition = ChippysWingsInactiveDefinition; return true; }
+
+        if (type == VanillaQueenBeeItemIds.BeeHat) { definition = QueenBeeHatDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.BeeShirt) { definition = QueenBeeShirtDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.BeePants) { definition = QueenBeePantsDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.BeeGun) { definition = BeeGunDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.BeeKeeper) { definition = BeeKeeperDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.HiveWand) { definition = HiveWandDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.Beenade) { definition = BeenadeDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.HoneyComb) { definition = HoneyCombDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.Nectar) { definition = NectarDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.QueenBeeTrophy) { definition = QueenBeeTrophyDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.BeeMask) { definition = BeeMaskDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.BeeWax) { definition = BeeWaxDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.HoneyedGoggles) { definition = HoneyedGogglesDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.BeesKnees) { definition = BeesKneesDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.QueenBeeBossBag) { definition = QueenBeeBossBagDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.QueenBeePetItem) { definition = QueenBeePetItemDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.QueenBeeMasterTrophy) { definition = QueenBeeMasterTrophyDefinition; return true; }
+        if (type == VanillaQueenBeeItemIds.QueenOfBees) { definition = QueenOfBeesDefinition; return true; }
 
         definition = default;
         return false;

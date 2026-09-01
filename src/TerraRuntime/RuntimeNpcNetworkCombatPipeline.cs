@@ -37,6 +37,7 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private readonly RuntimeEaterOfWorldsLootDeliverySink eaterLoot;
     private readonly RuntimeBrainOfCthulhuLootDeliverySink brainLoot;
     private readonly RuntimeSkeletronLootDeliverySink skeletronLoot;
+    private readonly RuntimeQueenBeeLootDeliverySink queenBeeLoot;
     private readonly VanillaNpcLootWorldItemMaterializer materializer = VanillaNpcLootWorldItemMaterializer.Instance;
     private readonly SystemNpcCombatRandom random = new();
     private readonly bool expertMode;
@@ -53,6 +54,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         new VanillaBrainOfCthulhuLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
     private readonly VanillaSkeletronLootPlayer[] activeSkeletronLootPlayers =
         new VanillaSkeletronLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+    private readonly VanillaQueenBeeLootPlayer[] activeQueenBeeLootPlayers =
+        new VanillaQueenBeeLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
     private readonly NpcSnapshot[] npcFamilyBuffer;
 
     public RuntimeNpcNetworkCombatPipeline(
@@ -90,6 +93,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             instancedLeases,
             worldItemReplication);
         skeletronLoot = new RuntimeSkeletronLootDeliverySink(
+            worldItems,
+            instancedLeases,
+            worldItemReplication);
+        queenBeeLoot = new RuntimeQueenBeeLootDeliverySink(
             worldItems,
             instancedLeases,
             worldItemReplication);
@@ -190,6 +197,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                 ApplyKingSlimeDeathEffects(in dead);
             else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
                 ApplySkeletronDeathEffects();
+            else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
+                ApplyQueenBeeDeathEffects();
             else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
                 ApplyEvilBossDeathEffects();
 
@@ -251,6 +260,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             ApplyKingSlimeDeathEffects(in dead);
         else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
             ApplySkeletronDeathEffects();
+        else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
+            ApplyQueenBeeDeathEffects();
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
             ApplyEvilBossDeathEffects();
 
@@ -269,6 +280,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             return TryExecuteBrainOfCthulhuLoot(in npc);
         if (npc.TypeIdentity == VanillaNpcIds.SkeletronHead)
             return TryExecuteSkeletronLoot(in npc);
+        if (npc.TypeIdentity == VanillaNpcIds.QueenBee)
+            return TryExecuteQueenBeeLoot(in npc);
 
         if (npc.TypeIdentity == VanillaNpcIds.KingSlime && expertMode)
             return TryExecuteKingSlimeDifficultyLoot(in npc);
@@ -475,6 +488,37 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             out _);
     }
 
+    private bool TryExecuteQueenBeeLoot(in NpcSnapshot npc)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.QueenBee, out VanillaNpcDefinition definition))
+            return false;
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+            activeQueenBeeLootPlayers[activeCount++] = new VanillaQueenBeeLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaQueenBeeLootContext(expertMode, masterMode);
+        return VanillaQueenBeeLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeQueenBeeLootPlayers.AsSpan(0, activeCount),
+            random,
+            queenBeeLoot,
+            out _);
+    }
+
     private void MarkSkeletronInteraction(PlayerHandle player)
     {
         int count = npcs.CopyActive(npcFamilyBuffer);
@@ -526,6 +570,14 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             return;
         RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles)
             .MarkCompleted(VanillaWorldProgressionId.Skeletron);
+    }
+
+    private void ApplyQueenBeeDeathEffects()
+    {
+        if (worldTiles is null)
+            return;
+        RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles)
+            .MarkCompleted(VanillaWorldProgressionId.QueenBee);
     }
 
     private void ApplyEvilBossDeathEffects()
@@ -594,7 +646,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         if (!VanillaNpcDefinitionCatalog.TryGet(intent.Type, out VanillaNpcDefinition definition) ||
             !float.IsFinite(intent.VelocityX) ||
             !float.IsFinite(intent.VelocityY) ||
-            !intent.InitialAi.IsFinite)
+            !intent.InitialAi.IsFinite ||
+            !intent.InitialLocalAi.IsFinite)
         {
             spawned = default;
             return false;
@@ -611,7 +664,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             Ai: intent.InitialAi,
             Simulation: NpcSimulationState.Initial with
             {
-                TimeLeft = VanillaNpcSpawnFacts.NewNpcTimeLeft
+                TimeLeft = VanillaNpcSpawnFacts.NewNpcTimeLeft,
+                LocalAi = intent.InitialLocalAi
             });
         return npcs.TrySpawnVanilla(in update, out spawned);
     }

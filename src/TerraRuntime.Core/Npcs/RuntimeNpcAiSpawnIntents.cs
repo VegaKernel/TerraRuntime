@@ -18,6 +18,9 @@ public readonly record struct NpcAiSpawnIntent(
 {
     public NpcAiState InitialAi { get; init; }
 
+    /// <summary>Source-owned initial localAI state applied atomically with allocation.</summary>
+    public NpcAiState InitialLocalAi { get; init; }
+
     /// <summary>
     /// After the child slot is allocated, write that slot into the committed source's ai[0].
     /// Used by vanilla linked chains whose follower identity cannot be known speculatively.
@@ -61,7 +64,8 @@ internal static class RuntimeNpcSpawnIntentApplier
         if (!VanillaNpcDefinitionCatalog.TryGet(intent.Type, out VanillaNpcDefinition definition) ||
             !float.IsFinite(intent.VelocityX) ||
             !float.IsFinite(intent.VelocityY) ||
-            !intent.InitialAi.IsFinite)
+            !intent.InitialAi.IsFinite ||
+            !intent.InitialLocalAi.IsFinite)
         {
             spawned = default;
             return false;
@@ -78,7 +82,8 @@ internal static class RuntimeNpcSpawnIntentApplier
             Ai: intent.InitialAi,
             Simulation: NpcSimulationState.Initial with
             {
-                TimeLeft = VanillaNpcSpawnFacts.NewNpcTimeLeft
+                TimeLeft = VanillaNpcSpawnFacts.NewNpcTimeLeft,
+                LocalAi = intent.InitialLocalAi
             });
 
         return npcs.TrySpawnVanilla(in update, out spawned);

@@ -43,7 +43,10 @@ public enum VanillaNpcAiCapability : ulong
     SkeletronHeadStateSlice = 1ul << 34,
     SkeletronHandStateSlice = 1ul << 35,
     SkeletronSkullProjectileSlice = 1ul << 36,
-    BossDeathLootProgressionSlice = 1ul << 37
+    BossDeathLootProgressionSlice = 1ul << 37,
+    QueenBeeStateSlice = 1ul << 38,
+    QueenBeeMinionSpawnSlice = 1ul << 39,
+    QueenBeeStingerProjectileSlice = 1ul << 40
 }
 
 /// <summary>
@@ -98,7 +101,7 @@ public static class VanillaNpcAiCoverageCatalog
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         var entries = new VanillaNpcAiCoverage[
-            11 +
+            12 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -166,8 +169,16 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcIds.SkeletronHand,
             OrdinaryCore |
             VanillaNpcAiCapability.SkeletronHandStateSlice);
+        entries[11] = Partial(
+            VanillaNpcIds.QueenBee,
+            OrdinaryCore |
+            VanillaNpcAiCapability.ChildSpawnSlice |
+            VanillaNpcAiCapability.QueenBeeStateSlice |
+            VanillaNpcAiCapability.QueenBeeMinionSpawnSlice |
+            VanillaNpcAiCapability.QueenBeeStingerProjectileSlice |
+            VanillaNpcAiCapability.BossDeathLootProgressionSlice);
 
-        int index = 11;
+        int index = 12;
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {
             VanillaNpcAiCapability capabilities =
