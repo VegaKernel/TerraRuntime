@@ -1,25 +1,40 @@
 # TerraRuntime.Core layout and naming rules
 
-These rules supplement the repository-root `AGENTS.md` for work under `src/TerraRuntime.Core/`.
+These rules supplement repository-root `AGENTS.md` and `src/AGENTS.md` for work under `src/TerraRuntime.Core/`.
 
-## Ownership layout
+## Ownership
 
-`TerraRuntime.Core` is the authoritative runtime/core project, not a catch-all directory. Keep loop, scheduling, ownership and cross-subsystem composition infrastructure at the project root. Put subsystem-owned implementation in subject folders as the codebase grows, following the roadmap boundaries such as `Items/`, `Npcs/`, `Projectiles/` and `Worlds/`.
+`TerraRuntime.Core` is the authoritative execution-mechanics project, not a catch-all Terraria implementation project.
 
-A physical folder move does not require a public namespace break. Preserve an established public namespace when moving existing public types unless a namespace migration is an explicit, reviewed compatibility change. New internal implementation should converge folder and namespace ownership rather than adding more flat root types.
+Keep here:
 
-Do not move `WorldItem` entity storage into `Items/` merely because both names contain "Item". Inventory/item definitions and world-item entity ownership are separate runtime concerns.
+- authoritative single-writer ownership primitives;
+- scheduling/game-loop mechanics;
+- typed command ingress/application boundaries;
+- bounded worker/lifecycle mechanics;
+- mutable runtime stores/executors whose semantics are specifically about authoritative runtime ownership;
+- genuinely cross-subsystem runtime mechanics that cannot live lower without creating the wrong dependency direction.
+
+Move protocol-neutral gameplay semantics, item/NPC/buff definitions and source-backed gameplay catalogs to `TerraRuntime.Gameplay` when they do not require Core ownership mechanics.
+
+Do not move `WorldItem` runtime entity storage into `Gameplay.Items` merely because both names contain “Item”. Inventory/content semantics and live world-item entity ownership are separate concerns.
+
+Do not put `.wld` parsing/persistence here; that belongs to `TerraRuntime.World`. Do not put Vega/plugin/module policy here.
+
+This repository has no backwards-compatibility commitment yet. When a type moves to a better owner, migrate its namespace and callers directly. Do not add Core compatibility facades for moved gameplay types.
 
 ## Naming
 
-Use `Vanilla` when the name communicates a real boundary that would otherwise be ambiguous: vanilla content/ID identity, a source- or version-pinned Terraria contract, or a deliberate vanilla-versus-extension implementation choice.
+Follow `src/AGENTS.md` and use the shortest unambiguous domain name after namespace ownership is correct.
 
-Do not add `Vanilla` merely to restate that TerraRuntime implements Terraria behavior. Inside an already-scoped Terraria subsystem, prefer the domain concept itself for local implementation helpers when no competing non-vanilla implementation exists.
+Use `Vanilla` only when it communicates a real source/version/vanilla boundary. Source-backed catalogs such as `VanillaItemDefinitionCatalog` intentionally keep that marker.
 
-Keep source-backed catalogs explicit about their vanilla/version contract. `VanillaItemDefinitionCatalog`, vanilla ID catalogs and equivalent verified data surfaces are intentionally descriptive and should not be shortened just to reduce characters.
+Avoid proxy-only `*Facts`, `*Helper`, `*Provider`, `*Manager`, `*Service`, `*Factory` types. In particular, do not create a `WorldRuntimeManager` simply because multiple worlds exist; use the concrete owner such as a runtime registry/host only if it owns real lifecycle/state.
 
-Do not add proxy-only `*Facts`, `*Helper`, `*Provider`, `*Manager` or compatibility facades when an existing catalog/service already owns the same fact or operation. A compatibility facade requires an actual compatibility commitment and a removal/migration reason, not hypothetical future callers.
+A compatibility facade requires an actual external compatibility commitment and a removal/migration reason. Hypothetical future callers do not qualify.
 
 ## Layering
 
-Vega, plugin and module concepts belong above TerraRuntime. Do not make the runtime core depend on Vega-specific extension policy or names. TerraRuntime exposes stable runtime/host contracts; Vega and modules compose or extend them from above.
+`TerraRuntime.Gameplay` may be a dependency of Core for protocol-neutral gameplay semantics. Core must not be required by Gameplay merely to access a catalog, ID rule or pure evaluator.
+
+Vega, plugin and module concepts stay above TerraRuntime. Core exposes runtime mechanics/contracts; external policy composes them from above.
