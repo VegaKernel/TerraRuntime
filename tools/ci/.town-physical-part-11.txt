@@ -1,0 +1,25 @@
+# Avoid inherited-member qualification differences (position.Y vs base.position.Y) in ILSpy output.
+checker = Path('tools/ci/check_town_movein_schedule_source.py')
+text = checker.read_text(encoding='utf-8')
+old = '''    teleport_home = extract_method(npc, "private void AI_007_TownEntities_TeleportToHome(int homeFloorX, int homeFloorY)")
+    require_ordered(teleport_home, (
+        "position.X",
+        "homeFloorX",
+        "position.Y",
+        "homeFloorY",
+        "height",
+        "0.1f"
+    ), "AI_007 home teleport bottom anchor")
+'''
+new = '''    teleport_home = extract_method(npc, "private void AI_007_TownEntities_TeleportToHome(int homeFloorX, int homeFloorY)")
+    require_ordered(teleport_home, (
+        "homeFloorX",
+        "homeFloorY * 16 - height",
+        "0.1f",
+        "netUpdate = true",
+        "AI_007_TryForcingSitting(homeFloorX, homeFloorY)"
+    ), "AI_007 home teleport bottom anchor")
+'''
+if text.count(old) != 1:
+    raise SystemExit('AI_007 semantic teleport marker drifted')
+checker.write_text(text.replace(old, new, 1), encoding='utf-8')
