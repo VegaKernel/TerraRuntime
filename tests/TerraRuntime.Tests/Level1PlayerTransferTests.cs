@@ -146,6 +146,49 @@ public sealed class Level1PlayerTransferTests
         Assert.Equal((ushort)0, snapshot.Value.MountType);
     }
 
+    [Fact]
+    public async Task Detached_transfer_transaction_restores_source_ownership_without_exposing_payload_to_route()
+    {
+        using WorldRuntime runtime = CreateRuntime("Primary", seed: 606);
+        runtime.Start();
+
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(45);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(
+            runtime,
+            source,
+            outbound,
+            new PlayerSlotId(0),
+            "Dora",
+            out RuntimeConnectionWorldBinding? binding));
+        Assert.NotNull(binding);
+        using (binding)
+        {
+            PlayerHandle player = AssertPlayer(binding!.Player);
+            var connection = new ConnectionHandle(source, player);
+            await AttachInitialPlayerAsync(runtime, source, player, "Dora", x: 112f, y: 144f, life: 65, maxLife: 100);
+
+            RuntimePlayerTransferTransaction? transfer = RuntimePlayerTransferTransaction.Detach(
+                runtime,
+                connection,
+                TestContext.Current.CancellationToken);
+            Assert.NotNull(transfer);
+            Assert.Equal("Dora", transfer!.PlayerName);
+            Assert.Null(await runtime.PlayerStateSnapshots.CaptureAsync(player, TestContext.Current.CancellationToken));
+
+            transfer.RestoreSource(TestContext.Current.CancellationToken);
+            PlayerStateSnapshot? restored = await runtime.PlayerStateSnapshots.CaptureAsync(
+                player,
+                TestContext.Current.CancellationToken);
+            Assert.NotNull(restored);
+            Assert.Equal(112f, restored.Value.PositionX);
+            Assert.Equal(144f, restored.Value.PositionY);
+            Assert.Equal((short)65, restored.Value.Life);
+            Assert.Throws<InvalidOperationException>(() => transfer.RestoreSource(CancellationToken.None));
+        }
+    }
+
     private static async Task AttachInitialPlayerAsync(
         WorldRuntime runtime,
         GameCommandSourceId source,

@@ -124,12 +124,13 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
                 return false;
             }
 
-            RuntimePlayerTransferState? transfer;
+            RuntimePlayerTransferTransaction? transfer;
             try
             {
-                transfer = sourceBinding.Runtime.TransferIngress
-                    .DetachAsync(sourceConnection, cancellation.Token)
-                    .AsTask().GetAwaiter().GetResult();
+                transfer = RuntimePlayerTransferTransaction.Detach(
+                    sourceBinding.Runtime,
+                    sourceConnection,
+                    cancellation.Token);
             }
             catch (Exception exception) when (exception is OperationCanceledException or InvalidOperationException)
             {
@@ -148,7 +149,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
             sourceBinding.Unregister();
             if (!destinationBinding.TryRegister())
             {
-                RollBackWithoutClientWorldChange(sourceBinding, sourceConnection, transfer, cancellation.Token);
+                RollBackWithoutClientWorldChange(sourceBinding, transfer, cancellation.Token);
                 ReleaseUnusedDestination(destinationBinding, destinationIsPrimary);
                 error = "destination runtime could not register the connection after source detach";
                 return false;
@@ -158,7 +159,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
             OutboundEnqueueResult bootstrapResult = destinationBinding.TryQueueWorldBootstrap();
             if (bootstrapResult != OutboundEnqueueResult.Enqueued)
             {
-                RollBackWithoutClientWorldChange(sourceBinding, sourceConnection, transfer, cancellation.Token);
+                RollBackWithoutClientWorldChange(sourceBinding, transfer, cancellation.Token);
                 ReleaseUnusedDestination(destinationBinding, destinationIsPrimary);
                 error = $"destination bootstrap rejected by outbound queue: {bootstrapResult}";
                 return false;
@@ -169,15 +170,12 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
             error = null;
             try
             {
-                attached = destination.TransferIngress.AttachAsync(
-                        destinationConnection,
-                        transfer,
-                        checked((short)destination.World.RuntimeMetadata.SpawnX),
-                        checked((short)destination.World.RuntimeMetadata.SpawnY),
-                        preserveWorldPosition: !forceRespawn,
-                        forceRespawn,
-                        cancellation.Token)
-                    .AsTask().GetAwaiter().GetResult();
+                attached = transfer.TryAttach(
+                    destination,
+                    destinationConnection,
+                    preserveWorldPosition: !forceRespawn,
+                    forceRespawn,
+                    cancellation.Token);
             }
             catch (Exception exception) when (exception is OperationCanceledException or InvalidOperationException)
             {
@@ -187,7 +185,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
 
             if (!attached)
             {
-                RollBackAfterClientBootstrap(sourceBinding, sourceConnection, transfer, cancellation.Token);
+                RollBackAfterClientBootstrap(sourceBinding, transfer, cancellation.Token);
                 ReleaseUnusedDestination(destinationBinding, destinationIsPrimary);
                 error ??= "destination runtime rejected the transferred player state";
                 return false;
@@ -215,10 +213,11 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
                 using var cancellation = new CancellationTokenSource(timeout ?? DefaultTransferTimeout);
                 try
                 {
-                    _ = active.Runtime.TransferIngress.DetachAsync(
-                            new ConnectionHandle(source, player),
-                            cancellation.Token)
-                        .AsTask().GetAwaiter().GetResult();
+                    RuntimePlayerTransferTransaction? detached = RuntimePlayerTransferTransaction.Detach(
+                        active.Runtime,
+                        new ConnectionHandle(source, player),
+                        cancellation.Token);
+                    detached?.Discard();
                 }
                 catch (Exception exception) when (exception is OperationCanceledException or InvalidOperationException)
                 {
@@ -251,11 +250,10 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         CancellationToken cancellationToken,
         out string? error)
     {
-        RuntimePlayerTransferState? transfer;
+        RuntimePlayerTransferTransaction? transfer;
         try
         {
-            transfer = binding.Runtime.TransferIngress.DetachAsync(connection, cancellationToken)
-                .AsTask().GetAwaiter().GetResult();
+            transfer = RuntimePlayerTransferTransaction.Detach(binding.Runtime, connection, cancellationToken);
         }
         catch (Exception exception) when (exception is OperationCanceledException or InvalidOperationException)
         {
@@ -274,7 +272,8 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         OutboundEnqueueResult bootstrap = binding.TryQueueWorldBootstrap();
         if (bootstrap != OutboundEnqueueResult.Enqueued)
         {
-            RestoreDetachedPlayer(binding, connection, transfer, cancellationToken);
+            transfer.RestoreSource(cancellationToken);
+            binding.MarkPlaying();
             error = $"respawn bootstrap rejected by outbound queue: {bootstrap}";
             return false;
         }
@@ -283,15 +282,12 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         error = null;
         try
         {
-            attached = binding.Runtime.TransferIngress.AttachAsync(
-                    connection,
-                    transfer,
-                    checked((short)binding.Runtime.World.RuntimeMetadata.SpawnX),
-                    checked((short)binding.Runtime.World.RuntimeMetadata.SpawnY),
-                    preserveWorldPosition: false,
-                    forceRespawn: true,
-                    cancellationToken)
-                .AsTask().GetAwaiter().GetResult();
+            attached = transfer.TryAttach(
+                binding.Runtime,
+                connection,
+                preserveWorldPosition: false,
+                forceRespawn: true,
+                cancellationToken);
         }
         catch (Exception exception) when (exception is OperationCanceledException or InvalidOperationException)
         {
@@ -303,15 +299,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         {
             // Client already has a bootstrap queued. Re-queue the same world and restore the exact pre-respawn state.
             _ = binding.TryQueueWorldBootstrap();
-            _ = binding.Runtime.TransferIngress.AttachAsync(
-                    connection,
-                    transfer,
-                    checked((short)binding.Runtime.World.RuntimeMetadata.SpawnX),
-                    checked((short)binding.Runtime.World.RuntimeMetadata.SpawnY),
-                    preserveWorldPosition: true,
-                    forceRespawn: false,
-                    CancellationToken.None)
-                .AsTask().GetAwaiter().GetResult();
+            transfer.RestoreSource(CancellationToken.None);
             binding.MarkPlaying();
             error ??= "runtime rejected the respawn state";
             return false;
@@ -324,44 +312,23 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
 
     private static void RollBackWithoutClientWorldChange(
         RuntimeConnectionWorldBinding sourceBinding,
-        ConnectionHandle sourceConnection,
-        RuntimePlayerTransferState transfer,
+        RuntimePlayerTransferTransaction transfer,
         CancellationToken cancellationToken)
     {
         if (!sourceBinding.TryRegister())
             throw new InvalidOperationException("Source runtime could not restore connection registrations after failed transfer.");
-        RestoreDetachedPlayer(sourceBinding, sourceConnection, transfer, cancellationToken);
+        transfer.RestoreSource(cancellationToken);
         sourceBinding.MarkPlaying();
-    }
-
-    private static void RestoreDetachedPlayer(
-        RuntimeConnectionWorldBinding sourceBinding,
-        ConnectionHandle sourceConnection,
-        RuntimePlayerTransferState transfer,
-        CancellationToken cancellationToken)
-    {
-        bool restored = sourceBinding.Runtime.TransferIngress.AttachAsync(
-                sourceConnection,
-                transfer,
-                checked((short)sourceBinding.Runtime.World.RuntimeMetadata.SpawnX),
-                checked((short)sourceBinding.Runtime.World.RuntimeMetadata.SpawnY),
-                preserveWorldPosition: true,
-                forceRespawn: false,
-                cancellationToken)
-            .AsTask().GetAwaiter().GetResult();
-        if (!restored)
-            throw new InvalidOperationException("Source runtime could not restore player state after failed transfer.");
     }
 
     private static void RollBackAfterClientBootstrap(
         RuntimeConnectionWorldBinding sourceBinding,
-        ConnectionHandle sourceConnection,
-        RuntimePlayerTransferState transfer,
+        RuntimePlayerTransferTransaction transfer,
         CancellationToken cancellationToken)
     {
         if (sourceBinding.TryQueueWorldBootstrap() != OutboundEnqueueResult.Enqueued)
             throw new InvalidOperationException("Source runtime could not queue rollback bootstrap after failed transfer.");
-        RollBackWithoutClientWorldChange(sourceBinding, sourceConnection, transfer, cancellationToken);
+        RollBackWithoutClientWorldChange(sourceBinding, transfer, cancellationToken);
     }
 
     private static void ReleaseUnusedDestination(
