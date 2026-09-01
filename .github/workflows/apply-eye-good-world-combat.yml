@@ -24,6 +24,19 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
 
+      - name: Correct exact Russian staging anchor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/ci/apply_eye_good_world_combat.py')
+          text = path.read_text(encoding='utf-8')
+          stale = 'Это ограниченные возможности (`BossExpertPhaseOneSlice`, `BossExpertTransformationSlice`, `BossExpertPhaseTwoDeterministicSlice` и `BossExpertRapidDashSlice`), а не заявление о полной difficulty-parity. Master damage scaling и эффекты `getGoodWorld` reflection/re-entry остаются вне допущенного slice; Good World по-прежнему fail-closed и не наследует Expert-значения молча. Classic-поведение не изменено.'
+          exact = 'Это ограниченные capabilities `BossExpertPhaseOneSlice`, `BossExpertTransformationSlice`, `BossExpertPhaseTwoDeterministicSlice` и `BossExpertRapidDashSlice`, а не заявление о полной поддержке сложности. Master-масштабирование damage и reflection/re-entry ветви `getGoodWorld` остаются вне admitted slice; Good World по-прежнему fail-closed и не наследует Expert-параметры молча. Classic-поведение не изменено.'
+          if text.count(stale) != 1:
+              raise SystemExit(f'expected one stale Russian anchor, got {text.count(stale)}')
+          path.write_text(text.replace(stale, exact, 1), encoding='utf-8')
+          PY
+
       - name: Apply production block
         run: python3 tools/ci/apply_eye_good_world_combat.py
 
