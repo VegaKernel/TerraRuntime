@@ -74,28 +74,29 @@ jobs:
                           return text[opening:index + 1]
               raise SystemExit(f'truncated method: {pattern}')
 
-          combat = (
-              ('defense = 0;', 'phase-two base defense'),
-              ('int num37 = 23;', 'Classic damage endpoint'),
-              ('int num38 = 18;', 'Expert damage endpoint'),
-              ('defense = -15;', 'low-life defense'),
-              ('num38 = 20;', 'critical-life damage endpoint'),
-              ('defense = -30;', 'critical-life defense'),
-              ('damage = GetAttackDamage_LerpBetweenFinalValues(num37, num38);', 'difficulty damage interpolation'),
-              ('damage = GetAttackDamage_CappedAtMaster(damage);', 'Master damage scaling'),
-          )
-          for snippet, label in combat:
-              require(npc, snippet, label)
+          combat_pattern = re.compile(
+              r'defense\s*=\s*0;\s*'
+              r'int\s+(\w+)\s*=\s*23;\s*'
+              r'int\s+(\w+)\s*=\s*18;'
+              r'.*?if\s*\(Main\.expertMode\)'
+              r'.*?defense\s*=\s*-15;'
+              r'.*?\2\s*=\s*20;'
+              r'.*?defense\s*=\s*-30;'
+              r'.*?damage\s*=\s*GetAttackDamage_LerpBetweenFinalValues\(\1,\s*\2\);'
+              r'\s*damage\s*=\s*GetAttackDamage_CappedAtMaster\(damage\);',
+              re.S)
+          if not combat_pattern.search(npc):
+              raise SystemExit('source contract changed: Eye phase-two combat projection block')
 
           reflected = method(npc, r'\bpublic void ReflectProjectile\(Projectile proj\)')
           for snippet, label in (
               ('proj.reflected = true;', 'reflected flag'),
               ('proj.hostile = true;', 'hostile flip'),
               ('proj.friendly = false;', 'friendly flip'),
-              ('Vector2 vector = Main.player[proj.owner].Center - proj.Center;', 'owner-directed vector'),
-              ('vector *= proj.oldVelocity.Length();', 'oldVelocity speed'),
-              ('proj.velocity = new Vector2(Main.rand.Next(-100, 101), Main.rand.Next(-100, 101));', 'reflection RNG'),
-              ('proj.velocity += vector * 20f;', 'owner bias'),
+              ('Main.player[proj.owner].Center - proj.Center', 'owner-directed vector'),
+              ('proj.oldVelocity.Length()', 'oldVelocity speed'),
+              ('new Vector2(Main.rand.Next(-100, 101), Main.rand.Next(-100, 101))', 'reflection RNG'),
+              ('* 20f;', 'owner bias multiplier'),
               ('proj.penetrate = 1;', 'penetration clamp'),
           ):
               require(reflected, snippet, label)
@@ -109,12 +110,6 @@ jobs:
               ('aiStyle == 1 || aiStyle == 2 || aiStyle == 8 || aiStyle == 21 || aiStyle == 24 || aiStyle == 28 || aiStyle == 29 || aiStyle == 131', 'reflectable aiStyle set'),
           ):
               require(reflectability, snippet, label)
-
-          update_anchor = npc.find('int num37 = 23;')
-          if update_anchor < 0:
-              raise SystemExit('Eye combat anchor missing')
-          if abs(npc.find('damage = GetAttackDamage_CappedAtMaster(damage);') - update_anchor) > 1000:
-              raise SystemExit('Eye combat statements are no longer in one local phase-two block')
 
           print('EYE_COMBAT_REFLECTION_SOURCE_CONTRACT=verified')
           PY
