@@ -83,6 +83,7 @@ internal sealed class RuntimeOverviewDashboard : View
     {
         Width = Dim.Fill();
         Height = Dim.Fill();
+        CanFocus = true;
 
         consoleText = CreateSelectableTextSurface(scrollBars: true);
         serverText = CreateSelectableTextSurface(scrollBars: false);
@@ -106,7 +107,8 @@ internal sealed class RuntimeOverviewDashboard : View
             Y = Pos.AnchorEnd(1),
             Width = Dim.Fill(1),
             Text = string.Empty,
-            SchemeName = BaseSchemeName
+            SchemeName = BaseSchemeName,
+            CanFocus = true
         };
         var commandPrompt = new Label
         {
@@ -196,7 +198,14 @@ internal sealed class RuntimeOverviewDashboard : View
         Add(consoleFrame, serverFrame, performanceFrame, networkFrame, memoryFrame, chatFrame);
         ApplyTiledLayout();
 
-        Initialized += (_, _) => consoleFrame.SetFocus();
+        Initialized += (_, _) =>
+        {
+            // Terminal.Gui requires every SuperView in the navigation chain to be focusable. The dashboard is hosted
+            // inside a plain workspace View, so make that immediate parent focusable before focusing the command field.
+            if (SuperView is { } superView)
+                superView.CanFocus = true;
+            commandInput.SetFocus();
+        };
     }
 
     public void Refresh(
@@ -226,12 +235,14 @@ internal sealed class RuntimeOverviewDashboard : View
             consoleText,
             RenderConsole(runtime, logs.Entries.Span),
             ref appliedConsoleText,
-            ref pendingConsoleText);
+            ref pendingConsoleText,
+            followTail: true);
         SetSelectableText(
             chatText,
             RenderLogs(chat.Entries.Span, maximumEntries: 16, emptyText: "<no chat yet>", includeLevelAndSource: false),
             ref appliedChatText,
-            ref pendingChatText);
+            ref pendingChatText,
+            followTail: true);
 
         performanceLegend.Text = string.Create(
             CultureInfo.InvariantCulture,
@@ -274,6 +285,20 @@ internal sealed class RuntimeOverviewDashboard : View
     internal bool ConsoleSupportsSelectionForSmoke => consoleText.ReadOnly && consoleText.CanFocus;
 
     internal bool CommandInputVisibleForSmoke => commandInput.Visible;
+
+    internal bool CommandInputHasFocusForSmoke => commandInput.HasFocus;
+
+    internal bool DashboardCanFocusForSmoke => CanFocus && (SuperView?.CanFocus ?? true);
+
+    internal int ConsoleViewportYForSmoke => consoleText.Viewport.Y;
+
+    internal int ChatViewportYForSmoke => chatText.Viewport.Y;
+
+    internal int ConsoleLinesForSmoke => consoleText.Lines;
+
+    internal int ChatLinesForSmoke => chatText.Lines;
+
+    internal void ScrollConsoleToTopForSmoke() => consoleText.ScrollTo(Point.Empty);
 
     private void ExecuteConsoleCommand(string input)
     {
@@ -683,7 +708,8 @@ internal sealed class RuntimeOverviewDashboard : View
         TextView view,
         string text,
         ref string appliedText,
-        ref string pendingText)
+        ref string pendingText,
+        bool followTail = false)
     {
         if (string.Equals(appliedText, text, StringComparison.Ordinal))
         {
@@ -695,11 +721,34 @@ internal sealed class RuntimeOverviewDashboard : View
         if (view.IsSelecting && view.SelectedLength > 0)
             return;
 
+        bool wasAtTail = followTail && IsAtTail(view);
+        Point previousViewport = view.Viewport.Location;
+
         view.Text = pendingText;
         appliedText = pendingText;
         pendingText = string.Empty;
+
+        if (followTail)
+        {
+            if (wasAtTail)
+                ScrollToTail(view);
+            else
+                view.ScrollTo(previousViewport);
+        }
+
         view.SetNeedsDraw();
     }
+
+    private static bool IsAtTail(TextView view)
+    {
+        if (view.Lines <= 1 || view.Viewport.Height <= 0)
+            return true;
+
+        return view.Viewport.Y + view.Viewport.Height >= view.Lines;
+    }
+
+    private static void ScrollToTail(TextView view) =>
+        view.ScrollTo(new Point(0, Math.Max(0, view.Lines - 1)));
 
     private static string RenderConsole(RuntimeDashboardSnapshot runtime, ReadOnlySpan<RuntimeLogEntry> entries)
     {
