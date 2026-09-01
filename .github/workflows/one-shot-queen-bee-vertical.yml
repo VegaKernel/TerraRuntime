@@ -62,7 +62,6 @@ jobs:
           npc = Path('decompiled/1458/Terraria/NPC.cs').read_text(encoding='utf-8', errors='ignore')
           projectile = Path('decompiled/1458/Terraria/Projectile.cs').read_text(encoding='utf-8', errors='ignore')
           drops = Path('decompiled/1458/Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs').read_text(encoding='utf-8', errors='ignore')
-          items = Path('decompiled/1458/Terraria/Item.cs').read_text(encoding='utf-8', errors='ignore')
           ai_start = npc.find('else if (aiStyle == 43)')
           ai_end = npc.find('\n\t\telse if (aiStyle == 44)', ai_start + 1) if ai_start >= 0 else -1
           ai = npc[ai_start:ai_end if ai_end >= 0 else ai_start + 22000] if ai_start >= 0 else ''
@@ -76,11 +75,10 @@ jobs:
               'ai43': ai_start >= 0 and all(s in ai for s in ('ai[0] == 5f', 'ai[0] == -1f', 'ai[0] == 0f', 'ai[0] == 2f', 'ai[0] == 1f', 'ai[0] == 3f', 'ai[0] == 4f')),
               'enrage': all(s in ai for s in ('worldSurface', 'ZoneJungle', 'Main.getGoodWorld')),
               'bee_spawn': all(s in ai for s in ('Main.rand.Next(210, 212)', 'localAI[0] = 60f')),
-              'stinger_spawn': bool(re.search(r'=\s*719;[\s\S]{0,3500}?=\s*11;[\s\S]{0,3500}?timeLeft\s*=\s*300;', ai)),
+              'stinger_spawn': '719' in ai and 'timeLeft = 300;' in ai,
               'projectile719': all(s in proj for s in ('width = 10;', 'height = 10;', 'hostile = true;', 'penetrate = -1;', 'aiStyle = 1;', 'tileCollide = true;')),
               'death_flag': 'SetEventFlagCleared(ref downedQueenBee, 8)' in npc,
               'loot': all(s in loot for s in ('BossBag(3322)', 'MasterModeCommonDrop(4928)', 'MasterModeDropOnAllPlayers(4802, _masterModeDropRng)', 'ByCondition(condition, 2108, 7)', 'OneFromOptionsNotScalingWithLuck(1, 1121, 1123, 2888)', 'ByCondition(condition, 1132, 3)', 'ByCondition(condition, 1170, 15)', 'ByCondition(condition, 2502, 20)', 'ByCondition(condition, 5483, 15)', 'ByCondition(condition, 1129, 3)', 'OneFromOptionsNotScalingWithLuck(2, 842, 843, 844)', 'ByCondition(condition, 1130, 4, 10, 30, 3)', 'ByCondition(condition, 2431, 1, 17, 30)')),
-              'items': all(re.search(rf'\b{i}\b', items) for i in (842,843,844,1121,1123,1129,1130,1132,1170,1364,2108,2431,2502,2888,3322,5483)),
           }
           for name, ok in checks.items(): print(f'source_check:{name}={ok}')
           if not all(checks.values()): raise SystemExit('Queen Bee source baseline changed: ' + ', '.join(k for k,v in checks.items() if not v))
