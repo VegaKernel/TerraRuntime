@@ -1,0 +1,102 @@
+name: One-shot Queen Bee vertical
+
+on:
+  push:
+    branches: [work/queen-bee-boss-vertical-1458]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: terra-runtime-queen-bee-vertical
+  cancel-in-progress: false
+
+jobs:
+  integrate-test-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: work/queen-bee-boss-vertical-1458
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Merge current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Xekep'
+          git config user.email 'Xekep@users.noreply.github.com'
+          git fetch origin main
+          git merge --no-edit origin/main
+          echo "integration_main=$(git rev-parse origin/main)"
+      - name: Apply Queen Bee vertical
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/ci/apply_queen_bee_vertical_1458.py
+          git diff --check
+      - name: Verify TerrariaServer 1.4.5.8 Queen Bee source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/decompile-reference.sh 1458
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          npc = Path('decompiled/1458/Terraria/NPC.cs').read_text(encoding='utf-8', errors='ignore')
+          projectile = Path('decompiled/1458/Terraria/Projectile.cs').read_text(encoding='utf-8', errors='ignore')
+          drops = Path('decompiled/1458/Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs').read_text(encoding='utf-8', errors='ignore')
+          items = Path('decompiled/1458/Terraria/Item.cs').read_text(encoding='utf-8', errors='ignore')
+
+          ai_start = npc.find('else if (aiStyle == 43)')
+          ai_end = npc.find('\n\t\telse if (aiStyle == 44)', ai_start + 1) if ai_start >= 0 else -1
+          ai = npc[ai_start:ai_end if ai_end >= 0 else ai_start + 22000] if ai_start >= 0 else ''
+          loot_start = drops.find('private void RegisterBoss_QueenBee()')
+          loot_end = drops.find('\n\tprivate void ', loot_start + 1) if loot_start >= 0 else -1
+          loot = drops[loot_start:loot_end if loot_end >= 0 else loot_start + 4000] if loot_start >= 0 else ''
+          proj_start = projectile.find('else if (type == 719)')
+          proj = projectile[proj_start:proj_start + 300] if proj_start >= 0 else ''
+
+          checks = {
+              'defaults': bool(re.search(r'else if \(type == 222\)[\s\S]{0,900}?width = 66;[\s\S]{0,400}?height = 66;[\s\S]{0,400}?aiStyle = 43;[\s\S]{0,500}?damage = 30;[\s\S]{0,300}?defense = 8;[\s\S]{0,300}?lifeMax = 3400;', npc)),
+              'ai43': ai_start >= 0 and all(s in ai for s in ('ai[0] == 5f', 'ai[0] == -1f', 'ai[0] == 0f', 'ai[0] == 2f', 'ai[0] == 1f', 'ai[0] == 3f', 'ai[0] == 4f')),
+              'enrage': all(s in ai for s in ('position.Y / 16f < (float)Main.worldSurface', '!Main.player[target].ZoneJungle', 'Main.getGoodWorld')),
+              'bee_spawn': all(s in ai for s in ('Main.rand.Next(210, 212)', 'localAI[0] = 60f')),
+              'stinger_spawn': all(s in ai for s in ('int num701 = 719;', 'int num700 = 11;', 'Main.projectile[num702].timeLeft = 300;')),
+              'projectile719': all(s in proj for s in ('width = 10;', 'height = 10;', 'hostile = true;', 'penetrate = -1;', 'aiStyle = 1;', 'tileCollide = true;')),
+              'death_flag': 'SetEventFlagCleared(ref downedQueenBee, 8)' in npc,
+              'loot': all(s in loot for s in (
+                  'BossBag(3322)', 'MasterModeCommonDrop(4928)', 'MasterModeDropOnAllPlayers(4802, _masterModeDropRng)',
+                  'ByCondition(condition, 2108, 7)', 'OneFromOptionsNotScalingWithLuck(1, 1121, 1123, 2888)',
+                  'ByCondition(condition, 1132, 3)', 'ByCondition(condition, 1170, 15)', 'ByCondition(condition, 2502, 20)',
+                  'ByCondition(condition, 5483, 15)', 'ByCondition(condition, 1129, 3)',
+                  'OneFromOptionsNotScalingWithLuck(2, 842, 843, 844)', 'ByCondition(condition, 1130, 4, 10, 30, 3)',
+                  'ByCondition(condition, 2431, 1, 17, 30)')),
+              'items': all(f'case {i}:' in items for i in (842,843,844,1121,1123,1129,1130,1132,1170,1364,2108,2431,2502,2888,3322,5483)),
+          }
+          for name, ok in checks.items(): print(f'source_check:{name}={ok}')
+          if not all(checks.values()):
+              raise SystemExit('Queen Bee source baseline changed: ' + ', '.join(k for k,v in checks.items() if not v))
+          print('queen_bee_1458_source_contract=ok')
+          PY
+      - name: Release build
+        run: dotnet build build/TerraRuntime.slnx -c Release --nologo
+      - name: Focused Queen Bee tests
+        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --filter FullyQualifiedName~QueenBee --nologo
+      - name: Full tests
+        run: dotnet test build/TerraRuntime.slnx -c Release --no-build --nologo
+      - name: Commit validated feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Xekep'
+          git config user.email 'Xekep@users.noreply.github.com'
+          git rm -f .github/workflows/one-shot-queen-bee-source-probe.yml .github/workflows/one-shot-queen-bee-vertical.yml tools/ci/apply_queen_bee_vertical_1458.py
+          git add -A
+          git diff --cached --check
+          git commit -m 'Complete Queen Bee boss gameplay vertical' -m 'Import TerrariaServer 1.4.5.8 AI_043 attack states, source-shaped Jungle/surface/Good World enrage, Bee/SmallBee child ownership with localAI seed, hostile stinger 719, source-ordered Classic/Expert/Master loot, and persisted downedQueenBee progression.'
+          git push origin HEAD:work/queen-bee-boss-vertical-1458
