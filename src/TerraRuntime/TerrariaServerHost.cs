@@ -459,6 +459,7 @@ public static class TerrariaServerHost
             worldItemReplication: worldItemReplication,
             townNpcs: townNpcStore,
             townSpawnWorldFacts: RuntimeTownNpcWorldFactsProjection1458.FromMetadata(world.RuntimeMetadata),
+            townCommerceWorldFacts: RuntimeTownCommerceWorldFacts1458.FromMetadata(world.RuntimeMetadata),
             townInitialRaining: world.RuntimeMetadata.Raining,
             townInitialEclipse: world.RuntimeMetadata.Eclipse,
             townInitialInvasionActive: world.RuntimeMetadata.InvasionType > 0,

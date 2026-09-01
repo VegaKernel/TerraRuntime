@@ -16,6 +16,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly Dictionary<byte, RuntimePlayerState> _players = [];
     private readonly PendingPlayerVitals?[] _pendingVitals = new PendingPlayerVitals?[MaxPlayerSlots];
     private readonly short[] _playerTalkNpcSlots = new short[MaxPlayerSlots];
+    private readonly RuntimeTownShopSession1458?[] _townShopSessions = new RuntimeTownShopSession1458?[MaxPlayerSlots];
     private readonly RuntimePlayerInventoryStore _playerInventory = new();
     private readonly VanillaNpcTargetCandidate[] _npcTargetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
@@ -51,6 +52,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     private readonly RuntimeNpcNetworkCombatPipeline _npcCombat;
     private readonly short[] _expiredInstancedItemSlots = new short[RuntimeWorldItemStore.VanillaCapacity];
     private readonly RuntimeTownNpcStateStore? _townNpcs;
+    private readonly RuntimeTownCommerceResolver1458? _townCommerce;
     private readonly VanillaHousingValidator1458? _housingValidator;
     private readonly RuntimeTownNpcMoveInCoordinator1458? _townMoveIn;
     private readonly RuntimeTownNpcSchedule1458? _townSchedule;
@@ -88,6 +90,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         RuntimeWorldItemReplicationRegistry? worldItemReplication = null,
         RuntimeTownNpcStateStore? townNpcs = null,
         VanillaTownSpawnWorldFacts1458? townSpawnWorldFacts = null,
+        RuntimeTownCommerceWorldFacts1458? townCommerceWorldFacts = null,
         bool townInitialRaining = false,
         bool townInitialEclipse = false,
         bool townInitialInvasionActive = false,
@@ -134,6 +137,9 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         _projectileReplication = projectileReplication;
         _npcReplication = npcReplication;
         _townNpcs = townNpcs;
+        _townCommerce = worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 commerceFacts
+            ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, _npcs, in commerceFacts)
+            : null;
         _housingValidator = worldTiles is not null && townNpcs is not null
             ? new VanillaHousingValidator1458(worldTiles)
             : null;
@@ -146,8 +152,10 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             if (townSpawnWorldFacts is VanillaTownSpawnWorldFacts1458 facts)
             {
                 var houseIndex = new RuntimeTownHouseCandidateIndex1458(worldTiles, _housingValidator);
+                RuntimeWorldProgressionMutations progression = RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
+                progression.SetTruffleSpawnBaseline(facts.UnlockedTruffleSpawn);
                 _townMoveIn = new RuntimeTownNpcMoveInCoordinator1458(
-                    townNpcs, _npcs, houseIndex, in facts, npcReplication);
+                    townNpcs, _npcs, houseIndex, in facts, npcReplication, progression: progression);
             }
         }
         _tileManipulationReplication = tileManipulationReplication;
@@ -213,6 +221,21 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
     public long AppliedCommands { get; private set; }
 
     internal RuntimeNpcShopCatalogRegistry NpcShops => _npcShops;
+
+    internal bool TryGetPlayerTownShopSession(PlayerHandle player, out RuntimeTownShopSession1458? session)
+    {
+        if (!player.IsAssigned ||
+            !_players.TryGetValue(player.Slot.Value, out RuntimePlayerState? state) ||
+            state.Connection.Player != player ||
+            _townShopSessions[player.Slot.Value] is not RuntimeTownShopSession1458 current)
+        {
+            session = null;
+            return false;
+        }
+
+        session = current;
+        return true;
+    }
 
     internal RuntimeNpcArchetypeRegistry NpcArchetypes => _npcArchetypes;
 
@@ -1334,7 +1357,31 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
             return;
         }
 
-        _playerTalkNpcSlots[command.Connection.Player.Slot.Value] = command.State.NpcSlot;
+        byte playerSlot = command.Connection.Player.Slot.Value;
+        _playerTalkNpcSlots[playerSlot] = command.State.NpcSlot;
+        _townShopSessions[playerSlot] = null;
+        if (command.State.NpcSlot != TerrariaNpcTalkCodec.NoNpc &&
+            _townCommerce is not null &&
+            _players.TryGetValue(playerSlot, out RuntimePlayerState? playerState))
+        {
+            var commercePlayer = new RuntimeTownCommercePlayer1458(
+                playerState.PositionX,
+                playerState.PositionY,
+                playerState.HasHealth ? playerState.MaxLife : 100,
+                playerState.HasMana ? playerState.MaxMana : 20,
+                playerState.Team);
+            if (_townCommerce.TryResolve(
+                    command.Connection,
+                    _playerInventory,
+                    in commercePlayer,
+                    command.State.NpcSlot,
+                    _worldClock,
+                    out RuntimeTownShopSession1458 session))
+            {
+                _townShopSessions[playerSlot] = session;
+            }
+        }
+
         _npcReplication?.TryPublishNpcTalk(command.Connection, command.State.NpcSlot);
     }
 
@@ -1738,6 +1785,7 @@ internal sealed class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntim
         }
 
         _playerTalkNpcSlots[connection.Player.Slot.Value] = TerrariaNpcTalkCodec.NoNpc;
+        _townShopSessions[connection.Player.Slot.Value] = null;
         _players.Remove(connection.Player.Slot.Value);
         DisconnectedPlayers++;
         _playerEvents?.PlayerDisconnected(connection);

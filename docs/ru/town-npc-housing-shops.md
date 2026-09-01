@@ -31,3 +31,12 @@ Resolver сохраняет порядок исходника и реализо�
 Пакет 40 (`SetNpcTalk`) теперь декодируется на границе соединения, отправляется в authoritative loop и перед репликацией кодируется заново с подтверждённым слотом игрока. Переданный клиентом `player` не используется как источник истины. Значение NPC `-1` закрывает разговор, живые wire-слоты ограничены диапазоном `0..199`.
 
 Таблица обычных продавцов защищена CI-контрактом на закреплённый TerrariaServer 1.4.5.8 `Chest.SetupShop`. Для веток `1..18`, включая диапазонные циклы Santa и Painter, проверяется точная последовательность предметов из исходного кода.
+
+
+Truffle housing 1.4.5.8: до первого вселения нужна surface-комната (кроме `Main.NoFunctionalSurface`), минимум 100 mushroom tiles `70/71/72/528`; unlock сохраняется в `.wld`.
+
+### Authoritative talk-to-shop mirror
+
+Packet 40 теперь повторяет серверную часть `Player.SetTalkNPC`: после проверки authenticated player slot authoritative game thread разрешает live NPC, снимает packet-5 inventory/vitals/team state, сканирует pinned `169x124` SceneMetrics вокруг игрока, считает source-shaped housing crowding и числовой happiness, затем собирает обычный `Chest.SetupShop` или поддержанный special shop в immutable per-player session. Закрытие разговора очищает session, disconnect не даёт ей протечь в переиспользованный player generation.
+
+Не принадлежащие runtime факты не подменяются выдумками: `LoveStruck`, live wind/weather, Golfer score, полный Bestiary/Fairy Torch state, Artisan Bread и Traveling Merchant `travelShop` отмечаются явными missing-fact flags.
