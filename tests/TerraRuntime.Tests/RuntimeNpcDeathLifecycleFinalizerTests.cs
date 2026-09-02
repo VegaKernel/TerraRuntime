@@ -44,6 +44,24 @@ public sealed class RuntimeNpcDeathLifecycleFinalizerTests
         Assert.Equal(0, current.Simulation.Life);
     }
 
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Imported_deerclops_loot_cannot_be_bypassed_by_lifecycle_fallback(bool expert, bool master)
+    {
+        var store = new RuntimeNpcStore(capacity: 1);
+        NpcSnapshot deerclops = Spawn(store, 0, VanillaNpcIds.Deerclops);
+        Kill(store, deerclops.Handle);
+        var finalizer = new RuntimeNpcDeathLifecycleFinalizer(store);
+        var context = new VanillaNpcLootContext(IsExpertMode: expert, IsMasterMode: master);
+
+        Assert.False(finalizer.TryFinalizeWhenLootUnsupported(deerclops.Handle, in context, out _));
+        Assert.True(store.TryGet(deerclops.Handle, out NpcSnapshot current));
+        Assert.Equal(0, current.Simulation.Life);
+    }
+
     [Fact]
     public void Live_eye_is_not_finalized()
     {

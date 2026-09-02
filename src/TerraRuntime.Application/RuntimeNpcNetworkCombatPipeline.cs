@@ -39,6 +39,7 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private readonly RuntimeBrainOfCthulhuLootDeliverySink brainLoot;
     private readonly RuntimeSkeletronLootDeliverySink skeletronLoot;
     private readonly RuntimeQueenBeeLootDeliverySink queenBeeLoot;
+    private readonly RuntimeDeerclopsLootDeliverySink deerclopsLoot;
     private readonly VanillaNpcLootWorldItemMaterializer materializer = VanillaNpcLootWorldItemMaterializer.Instance;
     private readonly SystemNpcCombatRandom random = new();
     private readonly bool expertMode;
@@ -57,6 +58,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         new VanillaSkeletronLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaQueenBeeLootPlayer[] activeQueenBeeLootPlayers =
         new VanillaQueenBeeLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
+    private readonly VanillaDeerclopsLootPlayer[] activeDeerclopsLootPlayers =
+        new VanillaDeerclopsLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly NpcSnapshot[] npcFamilyBuffer;
 
     public RuntimeNpcNetworkCombatPipeline(
@@ -98,6 +101,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             instancedLeases,
             worldItemReplication);
         queenBeeLoot = new RuntimeQueenBeeLootDeliverySink(
+            worldItems,
+            instancedLeases,
+            worldItemReplication);
+        deerclopsLoot = new RuntimeDeerclopsLootDeliverySink(
             worldItems,
             instancedLeases,
             worldItemReplication);
@@ -200,6 +207,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                 ApplySkeletronDeathEffects();
             else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
                 ApplyQueenBeeDeathEffects();
+            else if (dead.TypeIdentity == VanillaNpcIds.Deerclops)
+                ApplyDeerclopsDeathEffects();
             else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
                 ApplyEvilBossDeathEffects();
 
@@ -263,6 +272,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             ApplySkeletronDeathEffects();
         else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
             ApplyQueenBeeDeathEffects();
+        else if (dead.TypeIdentity == VanillaNpcIds.Deerclops)
+            ApplyDeerclopsDeathEffects();
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
             ApplyEvilBossDeathEffects();
 
@@ -283,6 +294,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             return TryExecuteSkeletronLoot(in npc);
         if (npc.TypeIdentity == VanillaNpcIds.QueenBee)
             return TryExecuteQueenBeeLoot(in npc);
+        if (npc.TypeIdentity == VanillaNpcIds.Deerclops)
+            return TryExecuteDeerclopsLoot(in npc);
 
         if (npc.TypeIdentity == VanillaNpcIds.KingSlime && expertMode)
             return TryExecuteKingSlimeDifficultyLoot(in npc);
@@ -520,6 +533,40 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             out _);
     }
 
+    private bool TryExecuteDeerclopsLoot(in NpcSnapshot npc)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Deerclops, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+
+            activeDeerclopsLootPlayers[activeCount++] = new VanillaDeerclopsLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaDeerclopsLootContext(expertMode, masterMode);
+        return VanillaDeerclopsLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeDeerclopsLootPlayers.AsSpan(0, activeCount),
+            random,
+            deerclopsLoot,
+            out _);
+    }
+
     private void MarkSkeletronInteraction(PlayerHandle player)
     {
         int count = npcs.CopyActive(npcFamilyBuffer);
@@ -573,6 +620,11 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private void ApplyQueenBeeDeathEffects()
     {
         progression.MarkCompleted(VanillaWorldProgressionId.QueenBee);
+    }
+
+    private void ApplyDeerclopsDeathEffects()
+    {
+        progression.MarkCompleted(VanillaWorldProgressionId.Deerclops);
     }
 
     private void ApplyEvilBossDeathEffects()

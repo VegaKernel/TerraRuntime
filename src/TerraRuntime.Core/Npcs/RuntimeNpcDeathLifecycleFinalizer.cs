@@ -21,8 +21,8 @@ public readonly record struct NpcDeathLifecycleResult(
 
 /// <summary>
 /// Generation-safe fallback for dead vanilla NPCs whose loot is not imported for the active difficulty. The
-/// overload without a context keeps the historical normal-mode behavior. Imported normal King Slime loot cannot
-/// be bypassed through this fallback; Expert/Master remain explicitly unsupported and may still complete lifecycle.
+/// overload without a context keeps the historical normal-mode behavior. Imported normal King Slime loot and the
+/// all-difficulties Deerclops vertical slice cannot be bypassed through this fallback.
 /// </summary>
 public sealed class RuntimeNpcDeathLifecycleFinalizer
 {
@@ -73,6 +73,7 @@ public sealed class RuntimeNpcDeathLifecycleFinalizer
     {
         if (VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(type, out _))
             return true;
-        return type == VanillaNpcIds.KingSlime && !lootContext.IsExpertMode;
+        return type == VanillaNpcIds.Deerclops ||
+               (type == VanillaNpcIds.KingSlime && !lootContext.IsExpertMode);
     }
 }

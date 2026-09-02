@@ -100,6 +100,19 @@ Materializer выполняет prefix selection до velocity RNG, как и `I
 
 Executable probe проверяет регистрацию rules, `Player.RollLuck`, stack ranges, центр NPC, размеры items, gravity membership, общий `Main.rand`, немедленный `CommonDrop → Item.NewItem`, summon-prefix family, `ReducedNaturalChance` и item-specific prefix validity Slime Staff.
 
+## Вертикальный death-срез Deerclops
+
+Deerclops теперь имеет явный импортированный boss-death path и не проваливается в обычную финализацию неизвестного NPC. Evaluator сохраняет порядок rules TerrariaServer 1.4.5.8 для реализованных difficulty branches:
+
+- Expert: instanced Boss Bag `5111` с существующим `54000`-tick slot lease;
+- Master: relic `5110` плюс независимые `1/4` pet rolls для каждого interacting player, item `5090`;
+- Classic: mask `5109`, Chester `5098`, Eyebrella `5101`, shader `5113`, Dizzy Hat `5385` и один гарантированный weapon из `5117/5118/5119/5095`;
+- все сложности: Deerclops trophy `5108` по source boss-trophy rule `1/10`.
+
+Classic-путь гарантированного weapon намеренно сохраняет оба вложенных guaranteed `Next(1)` из `OneFromRulesRule(1)` и `OneFromOptionsNotScalingWithLuck(1)` до выбора weapon option. Active interacting players должны передаваться в порядке player slots, чтобы Master per-player rolls оставались синхронны с vanilla loop.
+
+После успешной authoritative death выставляется `VanillaWorldProgressionId.Deerclops`. `.wld` progression header patcher теперь обновляет source-backed byte `downedDeerclops`, расположенный непосредственно после `downedQueenSlime`. Regression coverage выполняет round-trip мира текущего формата и доказывает, что patch меняет ровно один byte header, не затрагивая соседние Empress, Queen Slime и town-slime/truffle unlock flags.
+
 ## Текущие ограничения
 
 Это всё ещё NPC-specific срез Blue Slime, а не весь Terraria loot engine. Global/chained rules, world/event conditions, money/heal drops и остальные NPC остаются следующими этапами. Killer/closest-player resolution и production-реализация `Player.RollLuck` также остаются отдельными обязанностями и не должны угадываться по переиспользуемому byte player slot.

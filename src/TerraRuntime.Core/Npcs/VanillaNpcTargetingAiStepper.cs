@@ -47,9 +47,11 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
+    private readonly VanillaDeerclopsNpcBehaviorStrategy _deerclops = new();
     private readonly IVanillaNpcRandom _random;
     private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
     private IVanillaQueenBeeEnvironment? _queenBeeEnvironment;
+    private IVanillaDeerclopsEnvironment? _deerclopsEnvironment;
 
     public VanillaNpcTargetingAiStepper(
         INpcAiStateStepper inner,
@@ -98,6 +100,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         _queenBeeEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
         _queenBee.SetEnvironment(environment);
+    }
+
+    public void SetDeerclopsEnvironment(IVanillaDeerclopsEnvironment environment)
+    {
+        _deerclopsEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
+        _deerclops.SetEnvironment(environment);
     }
 
     public void SetWormEnvironment(IVanillaWormEnvironment environment) =>
@@ -166,6 +174,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             VanillaNpcBehaviorFamily.QueenBee => _queenBee,
+            VanillaNpcBehaviorFamily.Deerclops => _deerclops,
             _ => null
         };
 
@@ -227,6 +236,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanSkeletronSkull(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.QueenBee.Value && proposed.Type == source.Type)
             return PlanQueenBeeStinger(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.Deerclops.Value && proposed.Type == source.Type)
+            return PlanDeerclopsProjectiles(in source, in proposed, destination);
 
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
     }
@@ -750,4 +761,372 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         return count;
     }
+
+    private int PlanDeerclopsProjectiles(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty ||
+            _deerclopsEnvironment is null ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Deerclops, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            return 0;
+        }
+
+        int state = (int)source.Ai.Ai0;
+        int timer = (int)proposed.Ai.Ai1;
+        if (state == 1 && proposed.Ai.Ai0 == 1f)
+            return PlanDeerclopsForwardSpikes(in source, in proposed, in hitbox, timer, destination);
+        if (state == 4 && proposed.Ai.Ai0 == 4f)
+            return PlanDeerclopsBothSideSpikes(in source, in proposed, in hitbox, timer, destination);
+        if (state == 2 && proposed.Ai.Ai0 == 2f)
+            return PlanDeerclopsRubble(in source, in proposed, in hitbox, timer, destination);
+        if (state == 5 && proposed.Ai.Ai0 == 5f && timer == 30)
+            return PlanDeerclopsShadowHands(in source, in proposed, destination);
+        return 0;
+    }
+
+    private int PlanDeerclopsForwardSpikes(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        in VanillaNpcHitboxSize hitbox,
+        int timer,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        const int windup = 36;
+        const int spikeCount = 20;
+        const int batchSize = 4;
+        if (timer < windup || (timer - windup) % batchSize != 0)
+            return 0;
+
+        int first = timer - windup;
+        if (first >= spikeCount)
+            return 0;
+
+        int sourceX = (int)MathF.Floor((source.PositionX + hitbox.Width * 0.5f) / 16f);
+        int sourceY = (int)MathF.Floor((source.PositionY + hitbox.Height) / 16f);
+        int direction = source.Simulation.DirectionX < 0 ? -1 : 1;
+        sourceX += direction * 3;
+        TryResolveDeerclopsTarget(proposed.Target, out VanillaNpcTargetCandidate target);
+        int written = 0;
+        for (int i = first; i < Math.Min(first + batchSize, spikeCount) && written < destination.Length; i++)
+        {
+            if (TryCreateDeerclopsSpikeIntent(sourceX, sourceY, in target, direction, spikeCount, i, i, out NpcAiProjectileIntent intent))
+                destination[written++] = intent;
+        }
+        return written;
+    }
+
+    private int PlanDeerclopsBothSideSpikes(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        in VanillaNpcHitboxSize hitbox,
+        int timer,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        const int windup = 56;
+        const int spikeCount = 15;
+        const int batchSize = 2;
+        if (timer < windup || (timer - windup) % batchSize != 0)
+            return 0;
+
+        int first = timer - windup;
+        if (first >= spikeCount)
+            return 0;
+
+        int sourceX = (int)MathF.Floor((source.PositionX + hitbox.Width * 0.5f) / 16f);
+        int sourceY = (int)MathF.Floor((source.PositionY + hitbox.Height) / 16f);
+        int direction = source.Simulation.DirectionX < 0 ? -1 : 1;
+        TryResolveDeerclopsTarget(proposed.Target, out VanillaNpcTargetCandidate target);
+        int written = 0;
+        for (int i = first; i < Math.Min(first + batchSize, spikeCount) && written < destination.Length; i++)
+        {
+            if (TryCreateDeerclopsSpikeIntent(sourceX, sourceY, in target, direction, spikeCount, -i, i, out NpcAiProjectileIntent right))
+                destination[written++] = right;
+            if (written < destination.Length &&
+                TryCreateDeerclopsSpikeIntent(sourceX, sourceY, in target, -direction, spikeCount, -i, i, out NpcAiProjectileIntent left))
+            {
+                destination[written++] = left;
+            }
+        }
+        return written;
+    }
+
+    private bool TryCreateDeerclopsSpikeIntent(
+        int sourceTileX,
+        int sourceTileY,
+        in VanillaNpcTargetCandidate target,
+        int direction,
+        int totalSpikes,
+        int angleIndex,
+        int xOffset,
+        out NpcAiProjectileIntent intent)
+    {
+        intent = default;
+        if (_deerclopsEnvironment is null)
+            return false;
+
+        int tileX = sourceTileX + xOffset * direction;
+        int tileY = FindDeerclopsSpikeY(sourceTileY, tileX, in target);
+        if (!_deerclopsEnvironment.IsWalkableTile(tileX, tileY))
+            return false;
+
+        float angle = angleIndex * direction * 0.7f * (MathF.PI / 4f / totalSpikes);
+        float velocityX = MathF.Sin(angle);
+        float velocityY = -MathF.Cos(angle);
+        float randomScale = NextUnitFloat() * 0.1f;
+        float scale = 0.1f + randomScale + xOffset * 1.1f / totalSpikes;
+        intent = new NpcAiProjectileIntent(
+            VanillaProjectileIds.DeerclopsIceSpike,
+            tileX * 16f + 8f,
+            tileY * 16f - 8f,
+            velocityX,
+            velocityY,
+            Damage: 13,
+            KnockBack: 0f)
+        {
+            InitialAi = new ProjectileAiState(0f, scale, 0f)
+        };
+        return true;
+    }
+
+    private int FindDeerclopsSpikeY(int sourceTileY, int tileX, in VanillaNpcTargetCandidate target)
+    {
+        if (_deerclopsEnvironment is null)
+            return sourceTileY;
+
+        int result = sourceTileY;
+        if (target.Active && !target.Dead && !target.Ghost)
+        {
+            int targetBottomY = (int)((target.CenterY + VanillaPlayerHitboxFacts.BaseHeight * 0.5f) / 16f);
+            int direction = Math.Sign(targetBottomY - result);
+            if (direction != 0)
+            {
+                int endExclusive = targetBottomY + direction * 15;
+                int? best = null;
+                float bestDistance = float.PositiveInfinity;
+                for (int y = result; y != endExclusive; y += direction)
+                {
+                    if (!_deerclopsEnvironment.IsWalkableTile(tileX, y))
+                        continue;
+                    float dx = tileX * 16f + 8f - target.CenterX;
+                    float dy = y * 16f + 8f - (target.CenterY + VanillaPlayerHitboxFacts.BaseHeight * 0.5f);
+                    float distance = dx * dx + dy * dy;
+                    if (!best.HasValue || distance < bestDistance)
+                    {
+                        best = y;
+                        bestDistance = distance;
+                    }
+                }
+                if (best.HasValue)
+                    result = best.Value;
+            }
+        }
+
+        for (int i = 0; i < 20 && result >= 10 && _deerclopsEnvironment.IsSolidTile(tileX, result); i++)
+            result--;
+        for (int i = 0; i < 20 && result <= _deerclopsEnvironment.WorldHeightTiles - 10 && !_deerclopsEnvironment.IsWalkableTile(tileX, result); i++)
+            result++;
+        return result;
+    }
+
+    private int PlanDeerclopsRubble(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        in VanillaNpcHitboxSize hitbox,
+        int timer,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (_deerclopsEnvironment is null || timer < 32 || timer >= 52 || destination.IsEmpty)
+            return 0;
+        int index = timer - 32;
+        int direction = source.Simulation.DirectionX < 0 ? -1 : 1;
+        int sourceX = (int)MathF.Floor((source.PositionX + hitbox.Width * 0.5f) / 16f) + direction * 3;
+        int sourceY = (int)MathF.Floor(source.PositionY / 16f) - 10;
+        int tileX = sourceX + index * direction;
+        for (int down = 0; down < 35; down++)
+        {
+            int tileY = sourceY + down;
+            if (!_deerclopsEnvironment.IsSolidTile(tileX, tileY))
+                continue;
+
+            float angle = index * direction * 0.7f * (MathF.PI / 4f / 20f);
+            float speed = 8f + NextUnitFloat() * 8f;
+            int frame = 6 + _random.NextInt32(0, 6);
+            destination[0] = new NpcAiProjectileIntent(
+                VanillaProjectileIds.DeerclopsRubble,
+                tileX * 16f + 8f,
+                tileY * 16f - 8f,
+                MathF.Sin(angle) * speed,
+                -MathF.Cos(angle) * speed,
+                Damage: 18,
+                KnockBack: 0f)
+            {
+                InitialAi = new ProjectileAiState(0f, frame, 0f),
+                TimeLeftOverride = 220
+            };
+            return 1;
+        }
+        return 0;
+    }
+
+    private int PlanDeerclopsShadowHands(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (proposed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost)
+        {
+            return 0;
+        }
+
+        int written = 0;
+        while (written < 6 && written < destination.Length)
+        {
+            if (!TryCreateShadowHandIntent(in target, Damage: 15, out NpcAiProjectileIntent intent))
+                break;
+            destination[written++] = intent;
+        }
+        return written;
+    }
+
+    private bool TryCreateShadowHandIntent(
+        in VanillaNpcTargetCandidate target,
+        int Damage,
+        out NpcAiProjectileIntent intent)
+    {
+        const float radius = 200f;
+        int side = _random.NextInt32(0, 2) * 2 - 1;
+        int variation = _random.NextInt32(0, 4);
+        if (target.VelocityX * side > 0f)
+            side *= -1;
+
+        float travelTicks = 30f;
+        for (int attempt = 0; attempt < 8; attempt++)
+        {
+            if (variation == 0)
+                travelTicks += 10f;
+            float spawnX;
+            float spawnY;
+            float velocityX;
+            float velocityY;
+            float ai0;
+            float ai1;
+            switch (variation)
+            {
+                case 1:
+                {
+                    float angle = NextUnitFloat() * MathF.PI * 2f;
+                    float cos = MathF.Cos(angle);
+                    float sin = MathF.Sin(angle);
+                    spawnX = target.CenterX - cos * radius;
+                    spawnY = target.CenterY - sin * radius;
+                    velocityX = cos * 4f;
+                    velocityY = sin * 4f;
+                    ai0 = 180f;
+                    ai1 = angle - MathF.PI * 0.5f;
+                    break;
+                }
+                case 2:
+                {
+                    float angle = NextUnitFloat() * MathF.PI * 2f;
+                    float cos = MathF.Cos(angle);
+                    float sin = MathF.Sin(angle);
+                    spawnX = target.CenterX - cos * radius;
+                    spawnY = target.CenterY - sin * radius;
+                    velocityX = cos * 4f;
+                    velocityY = sin * 4f;
+                    ai0 = 300f;
+                    ai1 = angle;
+                    break;
+                }
+                case 3:
+                {
+                    const int leadTicks = 60;
+                    float angle = NextUnitFloat() * MathF.PI * 2f;
+                    float curve = MathF.PI * 0.5f / leadTicks * NextFloatDirection();
+                    spawnX = target.CenterX + target.VelocityX * leadTicks;
+                    spawnY = target.CenterY + target.VelocityY * leadTicks;
+                    velocityX = MathF.Cos(angle) * 8f;
+                    velocityY = MathF.Sin(angle) * 8f;
+                    for (int tick = 0; tick < leadTicks; tick++)
+                    {
+                        spawnX -= velocityX;
+                        spawnY -= velocityY;
+                        Rotate(ref velocityX, ref velocityY, -curve);
+                    }
+                    ai0 = 390f;
+                    ai1 = curve;
+                    break;
+                }
+                default:
+                {
+                    float jitter = NextFloatDirection() * MathF.PI * 0.125f;
+                    float cos = MathF.Cos(jitter);
+                    float sin = MathF.Sin(jitter);
+                    float offsetX = -side * radius;
+                    spawnX = target.CenterX + target.VelocityX * 30f + offsetX * cos;
+                    spawnY = target.CenterY + target.VelocityY * 30f + offsetX * sin;
+                    float speed = side * radius / (travelTicks + 10f);
+                    velocityX = speed * cos;
+                    velocityY = speed * sin;
+                    ai0 = 0f;
+                    ai1 = 0f;
+                    break;
+                }
+            }
+
+            if (!_context.ShadowSpawnIntersectsOtherPlayer(target.Slot, spawnX, spawnY, 50f))
+            {
+                intent = new NpcAiProjectileIntent(
+                    VanillaProjectileIds.DeerclopsShadowHand,
+                    spawnX,
+                    spawnY,
+                    velocityX,
+                    velocityY,
+                    Damage,
+                    KnockBack: 0f)
+                {
+                    InitialAi = new ProjectileAiState(ai0, ai1, 0f),
+                    TimeLeftOverride = 300
+                };
+                return true;
+            }
+            variation = (variation + 1) % 4;
+        }
+
+        intent = default;
+        return false;
+    }
+
+    private bool TryResolveDeerclopsTarget(ushort targetSlot, out VanillaNpcTargetCandidate target)
+    {
+        if (targetSlot < byte.MaxValue &&
+            _context.TryFindCandidate((byte)targetSlot, out target) &&
+            target.Active && !target.Dead && !target.Ghost)
+        {
+            return true;
+        }
+
+        target = default;
+        return false;
+    }
+
+    private float NextUnitFloat() => _random.NextInt32(0, 1 << 20) / (float)(1 << 20);
+
+    private float NextFloatDirection() => NextUnitFloat() * 2f - 1f;
+
+    private static void Rotate(ref float x, ref float y, float radians)
+    {
+        float cos = MathF.Cos(radians);
+        float sin = MathF.Sin(radians);
+        float nextX = x * cos - y * sin;
+        y = x * sin + y * cos;
+        x = nextX;
+    }
+
 }

@@ -221,6 +221,37 @@ internal sealed class VanillaNpcBehaviorContext
                npc.PositionY + hitbox.Height > playerTop;
     }
 
+    public bool ShadowSpawnIntersectsOtherPlayer(
+        byte targetSlot,
+        float spawnCenterX,
+        float spawnCenterY,
+        float padding)
+    {
+        if (!float.IsFinite(spawnCenterX) || !float.IsFinite(spawnCenterY) || !float.IsFinite(padding) || padding < 0f)
+            return true;
+
+        float left = spawnCenterX - padding;
+        float top = spawnCenterY - padding;
+        float width = 40f + padding * 2f;
+        float height = 40f + padding * 2f;
+        for (int index = 0; index < _candidateCount; index++)
+        {
+            VanillaNpcTargetCandidate candidate = _candidates[index];
+            if (candidate.Slot == targetSlot || !candidate.Active || candidate.Dead || candidate.Ghost)
+                continue;
+            float playerLeft = candidate.CenterX - VanillaPlayerHitboxFacts.BaseWidth * 0.5f;
+            float playerTop = candidate.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f;
+            if (left < playerLeft + VanillaPlayerHitboxFacts.BaseWidth &&
+                left + width > playerLeft &&
+                top < playerTop + VanillaPlayerHitboxFacts.BaseHeight &&
+                top + height > playerTop)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public bool TryFindCandidate(byte slot, out VanillaNpcTargetCandidate candidate)
     {
         ReadOnlySpan<VanillaNpcTargetCandidate> candidates = _candidates.AsSpan(0, _candidateCount);

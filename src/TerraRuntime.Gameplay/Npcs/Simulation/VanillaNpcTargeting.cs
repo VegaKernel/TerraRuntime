@@ -19,6 +19,15 @@ public readonly record struct VanillaNpcTargetCandidate(
     public float VelocityX { get; init; }
 
     public float VelocityY { get; init; }
+
+    /// <summary>Terraria player.buffImmune[BuffID.Slow] projected for Deerclops attack selection.</summary>
+    public bool SlowBuffImmune { get; init; }
+
+    /// <summary>True when BuffID.Slow is already present; used only to suppress redundant Deerclops casts.</summary>
+    public bool HasSlowBuff { get; init; }
+
+    /// <summary>Creative god mode suppresses the source-side Deerclops Slow application.</summary>
+    public bool CreativeGodMode { get; init; }
 }
 
 public readonly record struct VanillaNpcTargetSelection(

@@ -25,7 +25,8 @@ public enum VanillaNpcBehaviorFamily : byte
     BlazingWheel = 12,
     SkeletronHead = 13,
     SkeletronHand = 14,
-    QueenBee = 15
+    QueenBee = 15,
+    Deerclops = 16
 }
 
 /// <summary>
@@ -272,6 +273,27 @@ public static class VanillaNpcDefinitionCatalog
                 Damage: 30,
                 Defense: 8,
                 LifeMax: 3400,
+                KnockBackResist: 0f,
+                Scale: 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.Deerclops)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.Deerclops,
+                AiStyle: VanillaNpcAiStyles.Deerclops,
+                BehaviorFamily: VanillaNpcBehaviorFamily.Deerclops,
+                PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Boss,
+                BaseWidth: 60,
+                BaseHeight: 154,
+                Damage: 20,
+                Defense: 10,
+                LifeMax: 7000,
                 KnockBackResist: 0f,
                 Scale: 1f,
                 NoGravityAtSpawn: true,

@@ -109,6 +109,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [ ] Brain of Cthulhu remaining parity: player `ZoneCrimson` escape gate plus presentation-only sound/dust/gore and client alpha rendering;
 - [x] add Skeletron gameplay vertical: source-backed head/hand ownership, Expert skull cadence/homing/lifetime, shared head/hand interaction credit, Classic/Expert/Master loot, isolated RedHat-condition evaluator coverage and persisted `downedBoss3` progression;
 - [x] add Queen Bee gameplay vertical: AI_043 attack cycle, source-shaped Jungle/surface/Good World enrage, Bee/SmallBee spawn ownership with localAI seed, stinger 719 lifetime, Classic/Expert/Master loot and persisted `downedQueenBee`;
+- [x] add Deerclops gameplay vertical: AI_123 chase/attack/return/teleport/despawn states, distance shield, source-backed 961/962/965 projectile ownership, Classic/Expert/Master loot and persisted `downedDeerclops`;
+- [ ] Deerclops remaining parity: authoritative player `Slow` buff application for the scream and Expert passive shadow hands gated by per-NPC `playerInteraction[]`;
 - [ ] add remaining pre-Hardmode bosses with complete child/projectile ownership;
 - [ ] add Hardmode, event and endgame bosses;
 - [ ] boss bars, announcements, progression transitions and multiplayer targeting parity.

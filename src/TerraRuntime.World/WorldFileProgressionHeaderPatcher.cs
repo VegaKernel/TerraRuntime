@@ -22,7 +22,8 @@ public static class WorldFileProgressionHeaderPatcher
         (1UL << (int)VanillaWorldProgressionId.KingSlime) |
         (1UL << (int)VanillaWorldProgressionId.EvilBoss) |
         (1UL << (int)VanillaWorldProgressionId.Skeletron) |
-        (1UL << (int)VanillaWorldProgressionId.QueenBee);
+        (1UL << (int)VanillaWorldProgressionId.QueenBee) |
+        (1UL << (int)VanillaWorldProgressionId.Deerclops);
 
     public static WorldFileProgressionHeaderPatchResult TryPatch(
         ReadOnlySpan<byte> sourceHeader,
@@ -101,7 +102,8 @@ public static class WorldFileProgressionHeaderPatcher
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         TownStateOffsets1458 townState = default;
-        bool needsTownState = mutations.UnlockSlimeBlueSpawn ||
+        bool needsTownState = mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) ||
+            mutations.UnlockSlimeBlueSpawn ||
             mutations.UnlockTruffleSpawn ||
             mutations.UnlockSlimeYellowSpawn ||
             mutations.RescuedTownNpcs != RuntimeTownRescueFacts1458.None;
@@ -117,6 +119,8 @@ public static class WorldFileProgressionHeaderPatcher
             patchedHeader[downedQueenBeeOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.KingSlime) && !persistedDownedSlimeKing)
             patchedHeader[downedSlimeKingOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) && !townState.PersistedDeerclops)
+            patchedHeader[townState.DeerclopsOffset] = 1;
         if (mutations.UnlockSlimeBlueSpawn && !townState.PersistedSlimeBlue)
             patchedHeader[townState.SlimeBlueOffset] = 1;
         if (mutations.UnlockTruffleSpawn && !townState.PersistedTruffle)
@@ -152,6 +156,8 @@ public static class WorldFileProgressionHeaderPatcher
         bool PersistedSavedGolfer,
         int SavedBartenderOffset,
         bool PersistedSavedBartender,
+        int DeerclopsOffset,
+        bool PersistedDeerclops,
         int SlimeBlueOffset,
         bool PersistedSlimeBlue,
         int TruffleOffset,
@@ -246,10 +252,13 @@ public static class WorldFileProgressionHeaderPatcher
             !reader.TrySkip(checked(treeTopCount * sizeof(int))) ||
             !reader.TrySkipBools(2) ||
             !reader.TrySkip(sizeof(int) * 4) ||
-            !reader.TrySkipBools(6))
+            !reader.TrySkipBools(5))
         {
             return false;
         }
+
+        int deerclopsOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool deerclops)) return false;
 
         int slimeBlueOffset = reader.Offset;
         if (!reader.TryReadBool(out bool slimeBlue) || !reader.TrySkipBools(4)) return false;
@@ -269,6 +278,7 @@ public static class WorldFileProgressionHeaderPatcher
             savedTaxCollectorOffset, savedTaxCollector,
             savedGolferOffset, savedGolfer,
             savedBartenderOffset, savedBartender,
+            deerclopsOffset, deerclops,
             slimeBlueOffset, slimeBlue,
             truffleOffset, truffle,
             slimeYellowOffset, slimeYellow);

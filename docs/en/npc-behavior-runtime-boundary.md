@@ -84,6 +84,22 @@ Player and NPC identities are generation-safe where a generation-bearing handle 
 
 This slice does not expose arbitrary child-NPC or projectile spawning from a behavior callback. Those operations require separately bounded runtime-owned request APIs rather than leaking stores or packet access into the callback.
 
+## Source-backed Deerclops AI_123 slice
+
+The current vanilla behavior chain includes the gameplay-owned TerrariaServer 1.4.5.8 Deerclops (`NPC 668`, `aiStyle 123`) vertical slice. The runtime retains the source state machine rather than collapsing the boss into a generic ground-chaser:
+
+- state `0`: chase and source-ordered attack selection;
+- states `1` and `4`: forward and bilateral ice-spike attacks;
+- state `2`: rubble volley;
+- state `3`: slow-scream timing;
+- state `5`: six-shadow-hand burst;
+- states `6` and `7`: return-home and teleport-home recovery;
+- state `8`: timeout despawn without ordinary boss death loot.
+
+`NpcAuthority` supplies a `WorldTileStore`-backed environment through semantic snow, walkability, solid-tile and collision queries. Deerclops projectile side effects remain runtime-owned post-state intents: ice spike `961`, rubble `962` and shadow hand `965` are admitted through the normal projectile authority rather than being published from inside the AI callback. The distance shield (`localAI[3]`) and its thirty-tick invulnerability threshold are authoritative gameplay state.
+
+Two source branches remain deliberately explicit divergences instead of being approximated. The slow-scream state currently preserves timing but cannot apply vanilla `Slow (buff 32, 720 ticks)` because TerraRuntime does not yet own an authoritative player-buff store. Expert passive shadow hands also remain open because vanilla selects eligible targets from per-NPC `playerInteraction[]`; the current behavior context does not expose an equivalent generation-safe interaction ledger. These gaps keep the Deerclops coverage claim below full vanilla AI parity.
+
 ## Lifecycle and unload
 
 Behavior registrations are leases. The extensible host scope tracks them together with custom actor and archetype leases. Scope retirement performs cleanup in this order:

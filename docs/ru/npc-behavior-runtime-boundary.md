@@ -84,6 +84,22 @@ Identity игрока и NPC generation-safe там, где использует
 
 В этот срез намеренно не входит произвольный spawn дочерних NPC или projectile непосредственно из callback поведения. Для этого нужны отдельные ограниченные runtime-owned request API, а не утечка store или packet access в callback.
 
+## Source-backed срез Deerclops AI_123
+
+Текущая vanilla behavior chain включает gameplay-owned вертикальный срез Deerclops из TerrariaServer 1.4.5.8 (`NPC 668`, `aiStyle 123`). Runtime сохраняет исходную state machine вместо сведения босса к обычному наземному преследователю:
+
+- state `0`: погоня и source-ordered выбор атаки;
+- states `1` и `4`: фронтальная и двусторонняя атаки ice spikes;
+- state `2`: залп rubble;
+- state `3`: тайминг slow scream;
+- state `5`: залп из шести shadow hands;
+- states `6` и `7`: возврат домой и teleport-home recovery;
+- state `8`: timeout despawn без обычного boss death loot.
+
+`NpcAuthority` передаёт окружение поверх `WorldTileStore` через семантические запросы snow, walkability, solid tile и collision. Projectile side effects Deerclops остаются runtime-owned post-state intents: ice spike `961`, rubble `962` и shadow hand `965` проходят через обычный projectile authority, а не публикуются непосредственно из AI callback. Distance shield (`localAI[3]`) и его порог неуязвимости после тридцати тиков являются authoritative gameplay state.
+
+Две ветки source намеренно остаются явно отмеченными divergence, а не приблизительной имитацией. Slow-scream state сохраняет тайминг, но пока не может применить vanilla `Slow (buff 32, 720 ticks)`, потому что TerraRuntime ещё не владеет authoritative player-buff store. Expert passive shadow hands также остаются открытыми: vanilla выбирает допустимые цели по per-NPC `playerInteraction[]`, а текущий behavior context не предоставляет эквивалентный generation-safe interaction ledger. Поэтому Deerclops пока не заявляет full vanilla AI parity.
+
 ## Lifecycle и unload
 
 Регистрации поведения являются lease. Extensible host scope отслеживает их вместе с custom actor и archetype leases. При retirement scope очистка выполняется в таком порядке:

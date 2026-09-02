@@ -315,6 +315,8 @@ Priority:
 14. [ ] world progression;
 15. [ ] world generation.
 
+Current boss verticals now include Deerclops `AI_123`: authoritative state transitions, world collision/snow queries, projectile IDs `961/962/965`, source-ordered Classic/Expert/Master loot and persistent `downedDeerclops`. Full Deerclops parity remains intentionally false until player `Slow` buff application and Expert passive `playerInteraction[]`-selected shadow hands have an authoritative runtime owner.
+
 For every subsystem:
 
 - [ ] document observable vanilla behavior;

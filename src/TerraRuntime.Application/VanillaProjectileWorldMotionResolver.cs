@@ -40,10 +40,33 @@ internal sealed class VanillaProjectileWorldMotionResolver
         ProjectileSnapshot current = projectile.Projectile;
         float velocityX = behavior.VelocityX;
         float velocityY = behavior.VelocityY;
+        float behaviorPositionX = behavior.PositionXOverride ?? current.PositionX;
+        float behaviorPositionY = behavior.PositionYOverride ?? current.PositionY;
+
+        if (behavior.Kill)
+        {
+            next = new ProjectileSimulationStepResult(
+                new ProjectileStateUpdate(
+                    current.Type,
+                    current.Spawner,
+                    behaviorPositionX,
+                    behaviorPositionY,
+                    velocityX,
+                    velocityY,
+                    new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
+                    current.BannerIdToRespondTo,
+                    current.Damage,
+                    current.KnockBack,
+                    current.OriginalDamage),
+                TimeLeft: 0,
+                Liquid: projectile.Lifecycle.Liquid,
+                TerminationReason: ProjectileSimulationTerminationReason.BehaviorKill);
+            return true;
+        }
 
         // Projectile.Update performs this wind-physics pass after AI when the projectile is above the surface,
         // in open air, and horizontal motion meets the vanilla opposition/low-speed predicate.
-        ApplyPostAiWind(in definition, current.PositionX, current.PositionY, in behaviorContext, ref velocityX);
+        ApplyPostAiWind(in definition, behaviorPositionX, behaviorPositionY, in behaviorContext, ref velocityX);
 
         // Fire Arrow evaluates its extinguish branch against the PREVIOUS update's wet flag. Current lava/honey/
         // shimmer flags are raised before wet is replaced by this update's contact result.
@@ -53,8 +76,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
         {
             VanillaLiquidContactState contacts = VanillaWorldCollision.GetLiquidContacts(
                 tiles,
-                current.PositionX,
-                current.PositionY,
+                behaviorPositionX,
+                behaviorPositionY,
                 definition.Width,
                 definition.Height);
 
@@ -80,8 +103,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
         {
             VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
                 tiles,
-                current.PositionX + definition.CollisionOffsetX,
-                current.PositionY + definition.CollisionOffsetY,
+                behaviorPositionX + definition.CollisionOffsetX,
+                behaviorPositionY + definition.CollisionOffsetY,
                 velocityX,
                 velocityY,
                 definition.CollisionWidth,
@@ -110,8 +133,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
             movementY = collideY ? collidedVelocityY : collidedVelocityY * scale;
         }
 
-        float positionX = current.PositionX;
-        float positionY = current.PositionY;
+        float positionX = behaviorPositionX;
+        float positionY = behaviorPositionY;
         if (tileImpact)
         {
             // Supported aiStyle-1/2 families use the generic impact fallback: movement first advances by the
@@ -129,8 +152,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
             VanillaProjectileOwnership.IsServerOwned(current.Spawner) &&
             VanillaWorldProjectileTileCut.HasCandidateAlongSweep(
                 tiles,
-                current.PositionX,
-                current.PositionY,
+                behaviorPositionX,
+                behaviorPositionY,
                 positionX,
                 positionY,
                 definition.Width,

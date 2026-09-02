@@ -8,6 +8,8 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId Arrow = new(1);
     public static readonly ProjectileAiStyleId Thrown = new(2);
     public static readonly ProjectileAiStyleId Boomerang = new(3);
+    public static readonly ProjectileAiStyleId SharpTears = new(157);
+    public static readonly ProjectileAiStyleId ShadowHand = new(187);
 }
 
 /// <summary>
@@ -286,6 +288,36 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    private static readonly VanillaProjectileDefinition DeerclopsIceSpikeDefinition = new(
+        Width: 32,
+        Height: 32,
+        AiStyle: VanillaProjectileAiStyles.SharpTears,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 32,
+        CollisionHeight: 32);
+
+    private static readonly VanillaProjectileDefinition DeerclopsRubbleDefinition = new(
+        Width: 32,
+        Height: 32,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 32,
+        CollisionHeight: 32);
+
+    private static readonly VanillaProjectileDefinition DeerclopsShadowHandDefinition = new(
+        Width: 40,
+        Height: 40,
+        AiStyle: VanillaProjectileAiStyles.ShadowHand,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 40,
+        CollisionHeight: 40);
+
     public static bool TryGet(ProjectileTypeId type, out VanillaProjectileDefinition definition)
     {
         if (type == VanillaProjectileIds.WoodenArrowFriendly)
@@ -436,6 +468,24 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.BoneShard)
         {
             definition = BoneShardDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DeerclopsIceSpike)
+        {
+            definition = DeerclopsIceSpikeDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DeerclopsRubble)
+        {
+            definition = DeerclopsRubbleDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DeerclopsShadowHand)
+        {
+            definition = DeerclopsShadowHandDefinition;
             return true;
         }
 

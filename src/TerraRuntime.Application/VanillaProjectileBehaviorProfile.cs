@@ -14,7 +14,10 @@ internal enum VanillaProjectileBehaviorFamily : byte
     BasicArrow = 1,
     Thrown = 2,
     Boomerang = 3,
-    SkeletronSkull = 4
+    SkeletronSkull = 4,
+    DeerclopsIceSpike = 5,
+    DeerclopsRubble = 6,
+    DeerclopsShadowHand = 7
 }
 
 /// <summary>
@@ -72,6 +75,30 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: true);
 
+    private static readonly VanillaProjectileBehaviorProfile DeerclopsIceSpikeProfile = new(
+        VanillaProjectileBehaviorFamily.DeerclopsIceSpike,
+        VanillaProjectileAiStyles.SharpTears,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile DeerclopsRubbleProfile = new(
+        VanillaProjectileBehaviorFamily.DeerclopsRubble,
+        VanillaProjectileAiStyles.Arrow,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile DeerclopsShadowHandProfile = new(
+        VanillaProjectileBehaviorFamily.DeerclopsShadowHand,
+        VanillaProjectileAiStyles.ShadowHand,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
     public static bool TryGet(
         ProjectileTypeId type,
         out VanillaProjectileBehaviorProfile profile)
@@ -85,6 +112,24 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.SkeletronSkull)
         {
             profile = SkeletronSkullProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DeerclopsIceSpike)
+        {
+            profile = DeerclopsIceSpikeProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DeerclopsRubble)
+        {
+            profile = DeerclopsRubbleProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DeerclopsShadowHand)
+        {
+            profile = DeerclopsShadowHandProfile;
             return true;
         }
 

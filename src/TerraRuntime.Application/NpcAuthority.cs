@@ -159,6 +159,9 @@ internal sealed class NpcAuthority
                     worldTiles,
                     worldSurfaceTiles,
                     townCommerceWorldFacts?.RemixWorld ?? false));
+                vanillaTargeting.SetDeerclopsEnvironment(new VanillaDeerclopsWorldEnvironment(
+                    worldTiles,
+                    townCommerceWorldFacts?.SkyblockWorld ?? false));
                 vanillaTargeting.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(worldTiles));
                 var worldMotion = new VanillaNpcWorldMotionAiStepper(
                     actorIntent,

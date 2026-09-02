@@ -100,6 +100,19 @@ The materializer performs prefix selection before velocity RNG, matching `Item.N
 
 The executable probe verifies rule registration, `Player.RollLuck`, stack ranges, NPC center placement, item dimensions, gravity membership, shared `Main.rand`, immediate `CommonDrop → Item.NewItem` execution, summon-prefix membership, reduced-natural-chance data and Slime Staff prefix validity.
 
+## Deerclops boss death vertical
+
+Deerclops now has an explicit imported boss-death path rather than falling through ordinary unknown-NPC finalization. The evaluator preserves the 1.4.5.8 rule ordering for the currently admitted difficulty branches:
+
+- Expert: instanced Boss Bag `5111` with the existing `54000`-tick slot lease;
+- Master: relic `5110` plus independent per-interacting-player `1/4` pet rolls for item `5090`;
+- Classic: mask `5109`, Chester `5098`, Eyebrella `5101`, shader `5113`, Dizzy Hat `5385`, and one guaranteed weapon from `5117/5118/5119/5095`;
+- all difficulties: Deerclops trophy `5108` at the source `1/10` boss-trophy rule.
+
+The Classic guaranteed weapon path intentionally retains both nested guaranteed `Next(1)` calls from `OneFromRulesRule(1)` and `OneFromOptionsNotScalingWithLuck(1)` before selecting the weapon option. Active interacting players must be supplied in player-slot order so Master per-player rolls stay aligned with the vanilla loop.
+
+Successful authoritative death marks `VanillaWorldProgressionId.Deerclops`. The `.wld` progression header patcher now updates the source-backed `downedDeerclops` byte located immediately after `downedQueenSlime`. Regression coverage round-trips a current-format world and proves that the patch changes exactly one header byte while preserving the adjacent Empress, Queen Slime and town-slime/truffle unlock flags.
+
 ## Current limits
 
 This is still the NPC-specific Blue Slime slice, not the whole Terraria loot engine. Global/chained rules, world/event conditions, money/heal drops and other NPC definitions remain future work. Killer/closest-player resolution and a production `Player.RollLuck` provider also remain separate responsibilities; they must not be guessed from a reused byte player slot.

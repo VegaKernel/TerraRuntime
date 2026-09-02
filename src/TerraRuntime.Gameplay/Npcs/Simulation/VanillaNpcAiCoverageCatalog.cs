@@ -47,7 +47,9 @@ public enum VanillaNpcAiCapability : ulong
     BossDeathLootProgressionSlice = 1ul << 37,
     QueenBeeStateSlice = 1ul << 38,
     QueenBeeMinionSpawnSlice = 1ul << 39,
-    QueenBeeStingerProjectileSlice = 1ul << 40
+    QueenBeeStingerProjectileSlice = 1ul << 40,
+    DeerclopsStateSlice = 1ul << 41,
+    DeerclopsProjectileSlice = 1ul << 42
 }
 
 /// <summary>
@@ -102,7 +104,7 @@ public static class VanillaNpcAiCoverageCatalog
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         var entries = new VanillaNpcAiCoverage[
-            12 +
+            13 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -178,8 +180,14 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAiCapability.QueenBeeMinionSpawnSlice |
             VanillaNpcAiCapability.QueenBeeStingerProjectileSlice |
             VanillaNpcAiCapability.BossDeathLootProgressionSlice);
+        entries[12] = Partial(
+            VanillaNpcIds.Deerclops,
+            OrdinaryCore |
+            VanillaNpcAiCapability.DeerclopsStateSlice |
+            VanillaNpcAiCapability.DeerclopsProjectileSlice |
+            VanillaNpcAiCapability.BossDeathLootProgressionSlice);
 
-        int index = 12;
+        int index = 13;
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {
             VanillaNpcAiCapability capabilities =

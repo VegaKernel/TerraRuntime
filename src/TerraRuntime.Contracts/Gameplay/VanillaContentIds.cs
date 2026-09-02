@@ -151,6 +151,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Bee = new(210);
     public static readonly NpcTypeId SmallBee = new(211);
     public static readonly NpcTypeId QueenBee = new(222);
+    public static readonly NpcTypeId Deerclops = new(668);
     public static readonly NpcTypeId FattyHornet = new(231);
     public static readonly NpcTypeId HoneyHornet = new(232);
     public static readonly NpcTypeId LeafyHornet = new(233);
@@ -191,6 +192,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId QueenBee = new(43);
     public static readonly NpcAiStyleId BrainOfCthulhu = new(54);
     public static readonly NpcAiStyleId BrainCreeper = new(55);
+    public static readonly NpcAiStyleId Deerclops = new(123);
 }
 
 /// <summary>
@@ -271,6 +273,9 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId ConfettiGun = new(178);
     public static readonly ProjectileTypeId SkeletronSkull = new(270);
     public static readonly ProjectileTypeId QueenBeeStinger = new(719);
+    public static readonly ProjectileTypeId DeerclopsIceSpike = new(961);
+    public static readonly ProjectileTypeId DeerclopsRubble = new(962);
+    public static readonly ProjectileTypeId DeerclopsShadowHand = new(965);
     public static readonly ProjectileTypeId BloodShot = new(811);
     public static readonly ProjectileTypeId ConfettiMelee = new(289);
     public static readonly ProjectileTypeId RottenEgg = new(318);

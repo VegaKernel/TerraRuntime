@@ -277,6 +277,20 @@ public static class VanillaItemDefinitionCatalog
     private static readonly VanillaItemDefinition QueenBeeMasterTrophyDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenBeeMasterTrophy, 14, 14);
     private static readonly VanillaItemDefinition QueenOfBeesDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenOfBees, 30, 30);
 
+    private static readonly VanillaItemDefinition DeerclopsPetItemDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DeerclopsPetItem, 16, 30);
+    private static readonly VanillaItemDefinition LucyTheAxeDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.LucyTheAxe, 24, 28);
+    private static readonly VanillaItemDefinition ChesterPetItemDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.ChesterPetItem, 16, 30);
+    private static readonly VanillaItemDefinition EyebrellaDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.Eyebrella, 28, 20);
+    private static readonly VanillaItemDefinition DeerclopsTrophyDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DeerclopsTrophy, 30, 30);
+    private static readonly VanillaItemDefinition DeerclopsMaskDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DeerclopsMask, 18, 18);
+    private static readonly VanillaItemDefinition DeerclopsMasterTrophyDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DeerclopsMasterTrophy, 14, 14);
+    private static readonly VanillaItemDefinition DeerclopsBossBagDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DeerclopsBossBag, 24, 24);
+    private static readonly VanillaItemDefinition DontStarveShaderItemDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DontStarveShaderItem, 26, 30);
+    private static readonly VanillaItemDefinition PewMaticHornDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.PewMaticHorn, 24, 24);
+    private static readonly VanillaItemDefinition WeatherPainDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.WeatherPain, 24, 24);
+    private static readonly VanillaItemDefinition HoundiusShootiusDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.HoundiusShootius, 18, 20);
+    private static readonly VanillaItemDefinition DizzyHatDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DizzyHat, 28, 20);
+
     private static VanillaItemDefinition BrainWorldDrop(ItemTypeId type, int width, int height) =>
         new(
             Type: type,
@@ -304,6 +318,19 @@ public static class VanillaItemDefinitionCatalog
                 PrefixFamily: VanillaItemPrefixFamily.None));
 
     private static VanillaItemDefinition QueenBeeWorldDrop(ItemTypeId type, int width, int height) =>
+        new(
+            Type: type,
+            RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
+            UseTiming: null,
+            Placement: null,
+            PickTool: null,
+            WorldDrop: new VanillaItemWorldDropDefinition(
+                width,
+                height,
+                NoGravity: false,
+                PrefixFamily: VanillaItemPrefixFamily.None));
+
+    private static VanillaItemDefinition DeerclopsWorldDrop(ItemTypeId type, int width, int height) =>
         new(
             Type: type,
             RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
@@ -499,6 +526,20 @@ public static class VanillaItemDefinitionCatalog
         if (type == VanillaQueenBeeItemIds.QueenBeePetItem) { definition = QueenBeePetItemDefinition; return true; }
         if (type == VanillaQueenBeeItemIds.QueenBeeMasterTrophy) { definition = QueenBeeMasterTrophyDefinition; return true; }
         if (type == VanillaQueenBeeItemIds.QueenOfBees) { definition = QueenOfBeesDefinition; return true; }
+
+        if (type == VanillaDeerclopsItemIds.DeerclopsPetItem) { definition = DeerclopsPetItemDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.LucyTheAxe) { definition = LucyTheAxeDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.ChesterPetItem) { definition = ChesterPetItemDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.Eyebrella) { definition = EyebrellaDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.DeerclopsTrophy) { definition = DeerclopsTrophyDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.DeerclopsMask) { definition = DeerclopsMaskDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.DeerclopsMasterTrophy) { definition = DeerclopsMasterTrophyDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.DeerclopsBossBag) { definition = DeerclopsBossBagDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.DontStarveShaderItem) { definition = DontStarveShaderItemDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.PewMaticHorn) { definition = PewMaticHornDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.WeatherPain) { definition = WeatherPainDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.HoundiusShootius) { definition = HoundiusShootiusDefinition; return true; }
+        if (type == VanillaDeerclopsItemIds.DizzyHat) { definition = DizzyHatDefinition; return true; }
 
         definition = default;
         return false;
