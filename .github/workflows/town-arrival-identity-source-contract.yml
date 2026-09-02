@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.Core/Npcs/VanillaTownNpcIdentity1458.cs'
+      - 'src/TerraRuntime.Gameplay/Npcs/Town/VanillaTownNpcIdentity1458.cs'
       - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaTownNpcArrivalCodec1458.cs'
       - 'src/TerraRuntime/RuntimeTownNpcStateStore.cs'
       - 'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs'
@@ -39,7 +39,7 @@ jobs:
           --worldgen decompiled/1458/Terraria/WorldGen.cs
           --chat-helper decompiled/1458/Terraria.Chat/ChatHelper.cs
           --town-json decompiled/1458/Terraria.Localization.Content.en-US.Town.json
-          --runtime-identity src/TerraRuntime.Core/Npcs/VanillaTownNpcIdentity1458.cs
+          --runtime-identity src/TerraRuntime.Gameplay/Npcs/Town/VanillaTownNpcIdentity1458.cs
       - name: Build Release
         run: dotnet build build/TerraRuntime.slnx -c Release
       - name: Focused regressions
