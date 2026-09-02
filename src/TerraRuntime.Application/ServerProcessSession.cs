@@ -76,7 +76,8 @@ internal sealed class ServerProcessSession : IDisposable
             new StartupWorldGeneratorSource(worldGenerators),
             startup.LoadLimits,
             materializationConcurrency: options.SandboxMaterializationConcurrency,
-            maxPlayersPerRuntime: options.MaxPlayers);
+            maxPlayersPerRuntime: options.MaxPlayers,
+            captureOperationsTelemetry: options.TerminalUiEnabled);
         sandboxHost.JobFinished += OnSandboxJobFinished;
         connections = new ServerConnectionAcceptor(options.Port, options.MaxPlayers, primaryRuntime, hostLog);
 
@@ -279,6 +280,9 @@ internal sealed class ServerProcessSession : IDisposable
                 () => primaryRuntime.SectionCacheSnapshot,
                 () => primaryRuntime.CaptureSaveStatus() ?? default,
                 primaryRuntime.TryRequestSave);
+            var worldInspectionOperations = new LocalRuntimeWorldInspectionOperations(
+                runtimeRegistry,
+                sandboxHost);
             terminalUi = TerminalUiHost.Start(
                 dashboardOperations,
                 primaryRuntime.PlayerOperations,
@@ -297,7 +301,8 @@ internal sealed class ServerProcessSession : IDisposable
                 shutdown.Token,
                 primaryRuntime.ProjectileOperations,
                 primaryRuntime.WorldItemOperations,
-                sandboxOperations);
+                sandboxOperations,
+                worldInspectionOperations);
         }
         catch (Exception exception)
         {

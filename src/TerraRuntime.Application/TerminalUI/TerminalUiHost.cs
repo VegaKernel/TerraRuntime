@@ -23,6 +23,7 @@ internal sealed class TerminalUiHost : IDisposable
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
     private readonly SandboxOperations? sandboxOperations;
+    private readonly IRuntimeWorldInspectionOperations? worldInspectionOperations;
     private readonly Action<bool> activityChanged;
     private readonly Action<string> failureSink;
     private readonly CancellationTokenSource stopUi;
@@ -41,7 +42,8 @@ internal sealed class TerminalUiHost : IDisposable
         CancellationToken serverCancellation,
         IProjectileOperations? projectileOperations,
         IWorldItemOperations? worldItemOperations,
-        SandboxOperations? sandboxOperations)
+        SandboxOperations? sandboxOperations,
+        IRuntimeWorldInspectionOperations? worldInspectionOperations)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
@@ -52,6 +54,7 @@ internal sealed class TerminalUiHost : IDisposable
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
         this.sandboxOperations = sandboxOperations;
+        this.worldInspectionOperations = worldInspectionOperations;
         this.activityChanged = activityChanged ?? throw new ArgumentNullException(nameof(activityChanged));
         this.failureSink = failureSink ?? throw new ArgumentNullException(nameof(failureSink));
         stopUi = CancellationTokenSource.CreateLinkedTokenSource(serverCancellation);
@@ -74,7 +77,8 @@ internal sealed class TerminalUiHost : IDisposable
         CancellationToken serverCancellation,
         IProjectileOperations? projectileOperations = null,
         IWorldItemOperations? worldItemOperations = null,
-        SandboxOperations? sandboxOperations = null)
+        SandboxOperations? sandboxOperations = null,
+        IRuntimeWorldInspectionOperations? worldInspectionOperations = null)
     {
         var host = new TerminalUiHost(
             dashboardOperations,
@@ -88,7 +92,8 @@ internal sealed class TerminalUiHost : IDisposable
             serverCancellation,
             projectileOperations,
             worldItemOperations,
-            sandboxOperations);
+            sandboxOperations,
+            worldInspectionOperations);
         host.thread.Start();
         return host;
     }
@@ -149,7 +154,8 @@ internal sealed class TerminalUiHost : IDisposable
                 logOperations,
                 projectileOperations,
                 worldItemOperations,
-                sandboxOperations);
+                sandboxOperations,
+                worldInspectionOperations);
             IProjectileOperations? cachedProjectileOperations = projectileOperations is null ? null : snapshotCache;
             IWorldItemOperations? cachedWorldItemOperations = worldItemOperations is null ? null : snapshotCache;
 
@@ -166,7 +172,8 @@ internal sealed class TerminalUiHost : IDisposable
                 cachedProjectileOperations,
                 cachedWorldItemOperations,
                 sandboxOperations,
-                snapshotCache.CaptureSandboxTreeSnapshot);
+                snapshotCache.CaptureSandboxTreeSnapshot,
+                worldInspectionOperations is null ? null : snapshotCache);
 
             Task? backgroundRefresh = null;
             long nextRefresh = Stopwatch.GetTimestamp() + RefreshIntervalTicks;

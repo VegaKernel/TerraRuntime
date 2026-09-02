@@ -79,7 +79,7 @@ Production TUI после initialization Terminal.Gui также устанав�
 Runtime data сохраняет целевой период snapshot примерно
 
 $$
-T_{\mathrm{snapshot}}\approx500\,\mathrm{ms},
+T_{\mathrm{snapshot}}\approx100\,\mathrm{ms},
 $$
 
 но сбор snapshot больше не выполняется на Terminal.Gui thread. `TerminalUiOperationsCache` собирает detached operations state в worker task и публикует целый cache одним atomic reference swap. UI thread только читает уже опубликованное состояние и форматирует его во views.
@@ -87,7 +87,7 @@ $$
 Лёгкий Terminal.Gui timer проверяет появление новой cache version примерно каждые
 
 $$
-T_{\mathrm{ui\ pump}}\approx25\,\mathrm{ms}.
+T_{\mathrm{ui\ pump}}\approx16\,\mathrm{ms}.
 $$
 
 Этот timer не захватывает gameplay/network/world state. Поэтому медленный operations snapshot не может остановить keyboard navigation, mouse focus, перемещение по menu или interaction с панелями. Если background capture ещё идёт, UI продолжает показывать предыдущий полный snapshot вместо ожидания.
@@ -107,7 +107,9 @@ sequenceDiagram
     U->>U: render / process input
 ```
 
-Overview постоянно обновляет dashboard/player/network/world/log state, который ему нужен. Detail-only snapshots NPC, projectiles, dropped items и full-debug log обновляются demand-driven: пока соответствующий detail screen реально читается. Так отзывчивость UI не превращается в постоянный allocation/copy tax для всех сущностей каждые полсекунды.
+Overview постоянно обновляет dashboard/player/network/world/log state, который ему нужен. Detail-only snapshots NPC, projectiles, dropped items и full-debug log обновляются demand-driven: пока соответствующий detail screen реально читается. Так отзывчивость UI не превращается в постоянный allocation/copy tax для всех сущностей на каждом refresh.
+
+World-scoped inspection вынесен в отдельную ответственность cache. `LocalRuntimeWorldInspectionOperations` разрешает live worlds по стабильному `WorldRuntimeId`, а `TerminalUiWorldInspectionCache` хранит выбранный оператором мир и снимает только запрошенный Players/NPCs/Projectiles/Items/World snapshot этого мира. Terminal.Gui thread получает только detached read models и не хранит ссылки на `WorldRuntime`. Operations telemetry для sandbox включается только при включённом TUI.
 
 Administrative operations не становятся cached writes. Interest-management changes и world-save requests по-прежнему напрямую делегируются в authoritative bounded ingress.
 

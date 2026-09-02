@@ -49,6 +49,14 @@ A `+` control at the top of the roster opens the sandbox creation window. The fo
 
 The form builds the same typed `SandboxCreateRequest` used by command handling. It does not round-trip through a generated command string.
 
+## World-scoped detail inspection
+
+The Players, NPCs, Projectiles, Items and World detail screens expose a `World:` drop-down. The selection is keyed by stable `WorldRuntimeId`, not by the current session ID, so regenerating/restarting a sandbox can rotate its session without silently moving the operator to a different logical world.
+
+The selector talks to a process-owned detached inspection directory/cache. The Terminal.Gui thread never retains `WorldRuntime` references and never captures heavy entity state directly. NPC/projectile/item/player snapshots are refreshed only for the selected world and only after the corresponding detail screen requests that category. Network and Logs intentionally have no world selector because those diagnostics are process-scoped.
+
+Sandbox entity telemetry is enabled when the terminal UI is enabled, allowing the same bounded NPC/projectile/item diagnostics as the primary world without paying that capture cost in a headless process. The primary World screen keeps the richer startup/cache/persistence diagnostics; a sandbox World screen reports its own lifecycle, source, persistence policy, TPS and entity counts.
+
 ## Maximize and focus
 
 Double-clicking a tile title expands that tile to the complete dashboard workspace and hides the other tiles. A second double-click restores the tiled layout. Keyboard or mouse focus applies the Accent scheme and prefixes the active title with `▶`.
@@ -81,4 +89,4 @@ Console and the Details screens remain read-only selectable text surfaces for co
 
 ## Responsiveness
 
-Authoritative operations capture remains outside the Terminal.Gui thread. The UI reads the last atomically published cache snapshot, so input processing, row selection, context menus and the sandbox creation window do not wait for world/network/log snapshot acquisition. Snapshot freshness remains approximately 500 ms while the lightweight UI publication check is approximately 25 ms.
+Authoritative operations capture remains outside the Terminal.Gui thread. The UI reads the last atomically published cache snapshot, so input processing, row selection, context menus and the sandbox creation window do not wait for world/network/log snapshot acquisition. The detached snapshot worker is scheduled approximately every 100 ms while the lightweight UI publication/input pump runs approximately every 16 ms.

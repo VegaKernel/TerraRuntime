@@ -79,7 +79,7 @@ The production TUI also installs an explicit high-contrast TerraRuntime scheme a
 Runtime data still targets an approximately
 
 $$
-T_{\mathrm{snapshot}}\approx500\,\mathrm{ms}
+T_{\mathrm{snapshot}}\approx100\,\mathrm{ms}
 $$
 
 snapshot cadence, but snapshot capture no longer runs on the Terminal.Gui thread. `TerminalUiOperationsCache` captures detached operations state on a worker task and publishes the complete cache through one atomic reference swap. The UI thread only reads the already-published state and formats it into views.
@@ -87,7 +87,7 @@ snapshot cadence, but snapshot capture no longer runs on the Terminal.Gui thread
 A lightweight Terminal.Gui timer checks for a newly published cache version approximately every
 
 $$
-T_{\mathrm{ui\ pump}}\approx25\,\mathrm{ms}.
+T_{\mathrm{ui\ pump}}\approx16\,\mathrm{ms}.
 $$
 
 This timer does not capture gameplay/network/world state. Therefore a slow operations snapshot cannot pause keyboard navigation, mouse focus, menu movement, or panel interaction. If a background capture is still running, the UI keeps rendering the previous complete snapshot instead of waiting for it.
@@ -108,6 +108,8 @@ sequenceDiagram
 ```
 
 The overview always refreshes the dashboard/player/network/world/log state it needs. Detail-only NPC, projectile, dropped-item and full-debug-log snapshots are demand-driven: they are refreshed while their detail screen is actually being read, avoiding a permanent allocation/copy cost merely to make the UI responsive.
+
+World-scoped detail inspection is a separate cache responsibility. `LocalRuntimeWorldInspectionOperations` resolves live worlds by stable `WorldRuntimeId`, while `TerminalUiWorldInspectionCache` remembers the operator-selected world and captures only the demanded Players/NPCs/Projectiles/Items/World snapshot for that world. The Terminal.Gui thread receives detached read models only; it never retains `WorldRuntime` references. Sandbox operations telemetry is enabled only when TUI is enabled.
 
 Administrative operations are not cached writes. Interest-management changes and world-save requests still delegate directly to their authoritative bounded ingress.
 

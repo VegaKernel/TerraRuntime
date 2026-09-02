@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Operations;
 
 namespace TerraRuntime.TerminalUI;
@@ -6,6 +7,8 @@ namespace TerraRuntime.TerminalUI;
 /// Keeps detached operations snapshots away from the Terminal.Gui thread. Built-in dashboard reads are lock-free
 /// and administrative writes still delegate directly to the authoritative ingress exposed by the source operations.
 /// Detail-only snapshots are refreshed on demand so a responsive UI does not become a permanent allocation tax.
+/// World-scoped detail requests select a stable runtime ID; the worker resolves the current session after sandbox
+/// regeneration and publishes only detached snapshots for that selected world.
 /// </summary>
 internal sealed class TerminalUiOperationsCache :
     IRuntimeDashboardOperations,
@@ -15,7 +18,8 @@ internal sealed class TerminalUiOperationsCache :
     IWorldItemOperations,
     INetworkOperations,
     IWorldOperations,
-    ILogOperations
+    ILogOperations,
+    IRuntimeWorldInspectionOperations
 {
     private const int DemandNpcs = 1 << 0;
     private const int DemandProjectiles = 1 << 1;
@@ -48,6 +52,7 @@ internal sealed class TerminalUiOperationsCache :
     private readonly IWorldOperations worldSource;
     private readonly ILogOperations logSource;
     private readonly SandboxOperations? sandboxSource;
+    private readonly TerminalUiWorldInspectionCache? worldInspectionCache;
     private SnapshotState state;
     private int demandMask;
     private long version;
@@ -61,7 +66,8 @@ internal sealed class TerminalUiOperationsCache :
         ILogOperations logSource,
         IProjectileOperations? projectileSource = null,
         IWorldItemOperations? worldItemSource = null,
-        SandboxOperations? sandboxSource = null)
+        SandboxOperations? sandboxSource = null,
+        IRuntimeWorldInspectionOperations? worldInspectionSource = null)
     {
         this.dashboardSource = dashboardSource ?? throw new ArgumentNullException(nameof(dashboardSource));
         this.playerSource = playerSource ?? throw new ArgumentNullException(nameof(playerSource));
@@ -72,6 +78,9 @@ internal sealed class TerminalUiOperationsCache :
         this.worldSource = worldSource ?? throw new ArgumentNullException(nameof(worldSource));
         this.logSource = logSource ?? throw new ArgumentNullException(nameof(logSource));
         this.sandboxSource = sandboxSource;
+        worldInspectionCache = worldInspectionSource is null
+            ? null
+            : new TerminalUiWorldInspectionCache(worldInspectionSource);
 
         state = CaptureInitialState();
     }
@@ -99,6 +108,8 @@ internal sealed class TerminalUiOperationsCache :
         RuntimeLogSnapshot detailLogs = (demand & DemandDetailLogs) != 0
             ? logSource.CaptureSnapshot(DetailLogQuery)
             : previous.DetailLogs;
+
+        worldInspectionCache?.Refresh();
 
         var next = new SnapshotState(
             dashboardSource.CaptureSnapshot(),
@@ -188,22 +199,83 @@ internal sealed class TerminalUiOperationsCache :
         return sources[..Math.Min(maxSources, sources.Length)];
     }
 
+    ReadOnlyMemory<RuntimeWorldInspectionTarget> IRuntimeWorldInspectionOperations.CaptureTargets() =>
+        worldInspectionCache?.CaptureTargets() ?? ReadOnlyMemory<RuntimeWorldInspectionTarget>.Empty;
+
+    bool IRuntimeWorldInspectionOperations.TryCaptureRuntime(
+        WorldRuntimeId runtimeId,
+        out WorldRuntimeSnapshot snapshot)
+    {
+        if (worldInspectionCache is not null)
+            return worldInspectionCache.TryCaptureRuntime(runtimeId, out snapshot);
+
+        snapshot = default;
+        return false;
+    }
+
+    bool IRuntimeWorldInspectionOperations.TryCapturePlayers(
+        WorldRuntimeId runtimeId,
+        out RuntimePlayersSnapshot snapshot)
+    {
+        if (worldInspectionCache is not null)
+            return worldInspectionCache.TryCapturePlayers(runtimeId, out snapshot);
+
+        snapshot = default;
+        return false;
+    }
+
+    bool IRuntimeWorldInspectionOperations.TryCaptureNpcs(
+        WorldRuntimeId runtimeId,
+        out RuntimeNpcsSnapshot snapshot)
+    {
+        if (worldInspectionCache is not null)
+            return worldInspectionCache.TryCaptureNpcs(runtimeId, out snapshot);
+
+        snapshot = default;
+        return false;
+    }
+
+    bool IRuntimeWorldInspectionOperations.TryCaptureProjectiles(
+        WorldRuntimeId runtimeId,
+        out RuntimeProjectilesSnapshot snapshot)
+    {
+        if (worldInspectionCache is not null)
+            return worldInspectionCache.TryCaptureProjectiles(runtimeId, out snapshot);
+
+        snapshot = default;
+        return false;
+    }
+
+    bool IRuntimeWorldInspectionOperations.TryCaptureWorldItems(
+        WorldRuntimeId runtimeId,
+        out RuntimeWorldItemsSnapshot snapshot)
+    {
+        if (worldInspectionCache is not null)
+            return worldInspectionCache.TryCaptureWorldItems(runtimeId, out snapshot);
+
+        snapshot = default;
+        return false;
+    }
+
     internal SandboxTreeSnapshot CaptureSandboxTreeSnapshot() =>
         Volatile.Read(ref state).SandboxTree;
 
-    private SnapshotState CaptureInitialState() => new(
-        dashboardSource.CaptureSnapshot(),
-        playerSource.CaptureSnapshot(),
-        npcSource.CaptureSnapshot(),
-        projectileSource?.CaptureSnapshot(),
-        worldItemSource?.CaptureSnapshot(),
-        networkSource.CaptureSnapshot(),
-        worldSource.CaptureSnapshot(),
-        logSource.CaptureSnapshot(OverviewLogQuery),
-        logSource.CaptureSnapshot(ChatLogQuery),
-        logSource.CaptureSnapshot(DetailLogQuery),
-        logSource.CaptureSources(MaximumCachedLogSources),
-        sandboxSource?.CaptureTreeSnapshot() ?? default);
+    private SnapshotState CaptureInitialState()
+    {
+        return new SnapshotState(
+            dashboardSource.CaptureSnapshot(),
+            playerSource.CaptureSnapshot(),
+            npcSource.CaptureSnapshot(),
+            projectileSource?.CaptureSnapshot(),
+            worldItemSource?.CaptureSnapshot(),
+            networkSource.CaptureSnapshot(),
+            worldSource.CaptureSnapshot(),
+            logSource.CaptureSnapshot(OverviewLogQuery),
+            logSource.CaptureSnapshot(ChatLogQuery),
+            logSource.CaptureSnapshot(DetailLogQuery),
+            logSource.CaptureSources(MaximumCachedLogSources),
+            sandboxSource?.CaptureTreeSnapshot() ?? default);
+    }
 
     private void MarkDemand(int demand) => Interlocked.Or(ref demandMask, demand);
 

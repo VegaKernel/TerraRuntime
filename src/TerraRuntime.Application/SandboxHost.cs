@@ -71,6 +71,7 @@ public sealed class SandboxHost : IDisposable
     private readonly CancellationTokenSource shutdown = new();
     private readonly int maxPlayersPerRuntime;
     private readonly int retainedJobCapacity;
+    private readonly bool captureOperationsTelemetry;
     private long nextJobId;
     private int disposed;
 
@@ -81,7 +82,8 @@ public sealed class SandboxHost : IDisposable
         int materializationConcurrency = 1,
         int pendingJobCapacity = 8,
         int retainedJobCapacity = DefaultRetainedJobCapacity,
-        int maxPlayersPerRuntime = ServerHostOptions.DefaultMaxPlayers)
+        int maxPlayersPerRuntime = ServerHostOptions.DefaultMaxPlayers,
+        bool captureOperationsTelemetry = false)
     {
         this.runtimes = runtimes ?? throw new ArgumentNullException(nameof(runtimes));
         ArgumentNullException.ThrowIfNull(generators);
@@ -98,6 +100,7 @@ public sealed class SandboxHost : IDisposable
         materializer = new SandboxWorldMaterializer(generators, loadLimits);
         this.maxPlayersPerRuntime = maxPlayersPerRuntime;
         this.retainedJobCapacity = retainedJobCapacity;
+        this.captureOperationsTelemetry = captureOperationsTelemetry;
         queue = new BlockingCollection<Job>(
             new ConcurrentQueue<Job>(),
             pendingJobCapacity);
@@ -536,7 +539,11 @@ public sealed class SandboxHost : IDisposable
             materialized.World,
             materialized.Bootstrap,
             new InterestManagementControl(),
-            new WorldRuntimeOptions { MaxPlayers = maxPlayersPerRuntime });
+            new WorldRuntimeOptions
+            {
+                MaxPlayers = maxPlayersPerRuntime,
+                CaptureOperationsTelemetry = captureOperationsTelemetry
+            });
 
         bool admitted = false;
         try

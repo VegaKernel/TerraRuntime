@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
 using Terminal.Gui.App;
@@ -43,10 +45,13 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private readonly INetworkOperations networkOperations;
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
+    private readonly IRuntimeWorldInspectionOperations? worldInspectionOperations;
     private readonly View workspace;
     private readonly View systemRoot;
     private readonly RuntimeOverviewDashboard overviewDashboard;
     private readonly Label detailHeader;
+    private readonly Label worldSelectorLabel;
+    private readonly DropDownList worldSelector;
     private readonly Label filterLabel;
     private readonly TextField filterInput;
     private readonly TextView detailText;
@@ -62,6 +67,10 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private string pendingDetailText = string.Empty;
     private string[] currentDetailLines = [];
     private string[] visibleDetailLines = [];
+    private RuntimeWorldInspectionTarget[] worldInspectionTargets = [];
+    private string[] worldInspectionLabels = [];
+    private WorldRuntimeId selectedInspectionWorld;
+    private bool updatingWorldSelector;
 
     public DashboardWorkspaceWindow(
         IRuntimeDashboardOperations dashboardOperations,
@@ -74,7 +83,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         IProjectileOperations? projectileOperations = null,
         IWorldItemOperations? worldItemOperations = null,
         SandboxOperations? sandboxOperations = null,
-        Func<SandboxTreeSnapshot>? sandboxTreeSource = null)
+        Func<SandboxTreeSnapshot>? sandboxTreeSource = null,
+        IRuntimeWorldInspectionOperations? worldInspectionOperations = null)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
@@ -84,6 +94,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         this.networkOperations = networkOperations ?? throw new ArgumentNullException(nameof(networkOperations));
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
+        this.worldInspectionOperations = worldInspectionOperations;
 
         Title = "TerraRuntime - System Dashboard";
         externalDashboards = CaptureExternalDashboards(terminalDashboards);
@@ -117,6 +128,23 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Y = 0,
             Width = Dim.Fill(1),
             SchemeName = "Accent"
+        };
+        worldSelectorLabel = new Label
+        {
+            X = 1,
+            Y = 1,
+            Text = "World:",
+            SchemeName = "Base",
+            Visible = false
+        };
+        worldSelector = new DropDownList
+        {
+            X = 9,
+            Y = 1,
+            Width = Dim.Fill(1),
+            ReadOnly = true,
+            SchemeName = "Base",
+            Visible = false
         };
         filterLabel = new Label
         {
@@ -154,13 +182,35 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             SchemeName = "Base"
         };
 
+        worldSelector.ValueChanged += (_, args) =>
+        {
+            if (updatingWorldSelector || string.IsNullOrWhiteSpace(args.NewValue))
+                return;
+
+            int selectedIndex = Array.FindIndex(
+                worldInspectionLabels,
+                label => string.Equals(label, args.NewValue, StringComparison.Ordinal));
+            if ((uint)selectedIndex >= (uint)worldInspectionTargets.Length)
+                return;
+
+            selectedInspectionWorld = worldInspectionTargets[selectedIndex].RuntimeId;
+            RefreshSnapshot();
+        };
+
         filterInput.Accepting += (_, args) =>
         {
             ApplyFilterInput();
             args.Handled = true;
         };
 
-        systemRoot.Add(detailHeader, filterLabel, filterInput, detailText, detailFooter);
+        systemRoot.Add(
+            detailHeader,
+            worldSelectorLabel,
+            worldSelector,
+            filterLabel,
+            filterInput,
+            detailText,
+            detailFooter);
         workspace.Add(overviewDashboard, systemRoot);
         Add(menu, workspace, status);
 
@@ -206,6 +256,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             RefreshExternalDashboard(activeExternalDashboard);
             return;
         }
+
+        if (IsWorldScopedScreen(screen))
+            RefreshWorldSelector();
 
         switch (screen)
         {
@@ -278,6 +331,30 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     internal int GetVisibleDetailRowCountForSmoke() => visibleDetailLines.Length;
 
     internal string GetDetailFooterForSmoke() => detailFooter.Text?.ToString() ?? string.Empty;
+
+    internal bool WorldSelectorVisibleForSmoke => worldSelector.Visible;
+
+    internal int WorldSelectorTargetCountForSmoke
+    {
+        get
+        {
+            RefreshWorldSelector();
+            return worldInspectionTargets.Length;
+        }
+    }
+
+    internal WorldRuntimeId SelectedInspectionWorldForSmoke => selectedInspectionWorld;
+
+    internal bool SelectWorldForSmoke(WorldRuntimeId runtimeId)
+    {
+        RefreshWorldSelector();
+        int index = Array.FindIndex(worldInspectionTargets, target => target.RuntimeId == runtimeId);
+        if (index < 0)
+            return false;
+
+        worldSelector.Value = worldInspectionLabels[index];
+        return selectedInspectionWorld == runtimeId;
+    }
 
     internal void SetInterestManagementEnabled(bool enabled)
     {
@@ -403,10 +480,123 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         {
             detailText.IsSelecting = false;
             filterInput.Text = screenFilters[(int)next];
+            ConfigureDetailControls(next);
         }
 
         RefreshSnapshot();
         InvalidateSystemRoot(layout: true);
+    }
+
+    private void ConfigureDetailControls(WorkspaceScreen targetScreen)
+    {
+        bool worldScoped = worldInspectionOperations is not null && IsWorldScopedScreen(targetScreen);
+        worldSelectorLabel.Visible = worldScoped;
+        worldSelector.Visible = worldScoped;
+
+        int filterRow = worldScoped ? 2 : 1;
+        filterLabel.Y = filterRow;
+        filterInput.Y = filterRow;
+        detailText.Y = worldScoped ? 3 : 2;
+        detailText.Height = Dim.Fill(1);
+    }
+
+    private void RefreshWorldSelector()
+    {
+        if (worldInspectionOperations is null)
+            return;
+
+        RuntimeWorldInspectionTarget[] targets = worldInspectionOperations.CaptureTargets().ToArray();
+        if (targets.Length == 0)
+        {
+            worldInspectionTargets = [];
+            worldInspectionLabels = [];
+            selectedInspectionWorld = default;
+            updatingWorldSelector = true;
+            try
+            {
+                worldSelector.Source = new ListWrapper<string>(new ObservableCollection<string>());
+                worldSelector.Value = string.Empty;
+                worldSelector.Enabled = false;
+            }
+            finally
+            {
+                updatingWorldSelector = false;
+            }
+            return;
+        }
+
+        int selectedIndex = Array.FindIndex(targets, target => target.RuntimeId == selectedInspectionWorld);
+        if (selectedIndex < 0)
+        {
+            selectedIndex = Array.FindIndex(targets, static target => target.IsPrimary);
+            if (selectedIndex < 0)
+                selectedIndex = 0;
+            selectedInspectionWorld = targets[selectedIndex].RuntimeId;
+        }
+
+        string[] labels = targets.Select(FormatWorldInspectionTarget).ToArray();
+        bool sourceChanged = !SameWorldTargets(worldInspectionTargets, targets) ||
+                             !worldInspectionLabels.AsSpan().SequenceEqual(labels);
+        worldInspectionTargets = targets;
+        worldInspectionLabels = labels;
+
+        updatingWorldSelector = true;
+        try
+        {
+            if (sourceChanged)
+            {
+                worldSelector.Source = new ListWrapper<string>(
+                    new ObservableCollection<string>(worldInspectionLabels));
+            }
+            worldSelector.Enabled = true;
+            worldSelector.Value = worldInspectionLabels[selectedIndex];
+        }
+        finally
+        {
+            updatingWorldSelector = false;
+        }
+    }
+
+    private static bool SameWorldTargets(
+        ReadOnlySpan<RuntimeWorldInspectionTarget> left,
+        ReadOnlySpan<RuntimeWorldInspectionTarget> right)
+    {
+        if (left.Length != right.Length)
+            return false;
+        for (int i = 0; i < left.Length; i++)
+        {
+            if (left[i].RuntimeId != right[i].RuntimeId ||
+                left[i].SessionId != right[i].SessionId ||
+                left[i].IsPrimary != right[i].IsPrimary ||
+                !string.Equals(left[i].DisplayName, right[i].DisplayName, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static string FormatWorldInspectionTarget(RuntimeWorldInspectionTarget target) =>
+        $"{target.DisplayName} [{(target.IsPrimary ? "primary" : "sandbox")}]";
+
+    private static bool IsWorldScopedScreen(WorkspaceScreen value) =>
+        value is WorkspaceScreen.Players
+            or WorkspaceScreen.Npcs
+            or WorkspaceScreen.Projectiles
+            or WorkspaceScreen.Items
+            or WorkspaceScreen.World;
+
+    private bool TryGetSelectedWorldTarget(out RuntimeWorldInspectionTarget target)
+    {
+        int index = Array.FindIndex(worldInspectionTargets, item => item.RuntimeId == selectedInspectionWorld);
+        if ((uint)index < (uint)worldInspectionTargets.Length)
+        {
+            target = worldInspectionTargets[index];
+            return true;
+        }
+
+        target = default;
+        return false;
     }
 
     private void FocusDetailFilter()
@@ -567,7 +757,23 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     private void RefreshPlayers()
     {
-        RuntimePlayersSnapshot snapshot = playerOperations.CaptureSnapshot();
+        RuntimePlayersSnapshot snapshot;
+        string worldSuffix = string.Empty;
+        if (worldInspectionOperations is not null)
+        {
+            if (!TryGetSelectedWorldTarget(out RuntimeWorldInspectionTarget target) ||
+                !worldInspectionOperations.TryCapturePlayers(target.RuntimeId, out snapshot))
+            {
+                SetDetailContent("PLAYERS  <loading selected world>", []);
+                return;
+            }
+            worldSuffix = $" @ {SanitizeText(target.DisplayName, 28)}";
+        }
+        else
+        {
+            snapshot = playerOperations.CaptureSnapshot();
+        }
+
         ReadOnlySpan<RuntimePlayerSnapshot> players = snapshot.Players.Span;
         var lines = new string[players.Length];
         for (int i = 0; i < players.Length; i++)
@@ -582,12 +788,28 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                 $"vel {player.VelocityX:F1},{player.VelocityY:F1} item-slot {player.SelectedItem} mount {mount} HP {health} MP {mana}";
         }
 
-        SetDetailContent($"PLAYERS  {players.Length} playing", lines);
+        SetDetailContent($"PLAYERS{worldSuffix}  {players.Length} playing", lines);
     }
 
     private void RefreshNpcs()
     {
-        RuntimeNpcsSnapshot snapshot = npcOperations.CaptureSnapshot();
+        RuntimeNpcsSnapshot snapshot;
+        string worldSuffix = string.Empty;
+        if (worldInspectionOperations is not null)
+        {
+            if (!TryGetSelectedWorldTarget(out RuntimeWorldInspectionTarget target) ||
+                !worldInspectionOperations.TryCaptureNpcs(target.RuntimeId, out snapshot))
+            {
+                SetDetailContent("NPCS  <loading or telemetry unavailable for selected world>", []);
+                return;
+            }
+            worldSuffix = $" @ {SanitizeText(target.DisplayName, 28)}";
+        }
+        else
+        {
+            snapshot = npcOperations.CaptureSnapshot();
+        }
+
         ReadOnlySpan<RuntimeNpcSnapshot> npcs = snapshot.Npcs.Span;
         var lines = new string[npcs.Length];
         for (int i = 0; i < npcs.Length; i++)
@@ -603,20 +825,38 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         }
 
         SetDetailContent(
-            $"NPCS  {npcs.Length} live | commits spawn {snapshot.CommittedSpawns:N0} update {snapshot.CommittedUpdates:N0} despawn {snapshot.CommittedDespawns:N0}",
+            $"NPCS{worldSuffix}  {npcs.Length} live | commits spawn {snapshot.CommittedSpawns:N0} update {snapshot.CommittedUpdates:N0} despawn {snapshot.CommittedDespawns:N0}",
             lines);
     }
 
     private void RefreshProjectiles()
     {
-        if (projectileOperations is null)
+        RuntimeProjectilesSnapshot snapshot;
+        RuntimePlayersSnapshot playersSnapshot;
+        string worldSuffix = string.Empty;
+        if (worldInspectionOperations is not null)
         {
-            SetDetailContent("PROJECTILES  <telemetry unavailable>", []);
-            return;
+            if (!TryGetSelectedWorldTarget(out RuntimeWorldInspectionTarget target) ||
+                !worldInspectionOperations.TryCaptureProjectiles(target.RuntimeId, out snapshot) ||
+                !worldInspectionOperations.TryCapturePlayers(target.RuntimeId, out playersSnapshot))
+            {
+                SetDetailContent("PROJECTILES  <loading or telemetry unavailable for selected world>", []);
+                return;
+            }
+            worldSuffix = $" @ {SanitizeText(target.DisplayName, 28)}";
+        }
+        else
+        {
+            if (projectileOperations is null)
+            {
+                SetDetailContent("PROJECTILES  <telemetry unavailable>", []);
+                return;
+            }
+
+            snapshot = projectileOperations.CaptureSnapshot();
+            playersSnapshot = playerOperations.CaptureSnapshot();
         }
 
-        RuntimeProjectilesSnapshot snapshot = projectileOperations.CaptureSnapshot();
-        RuntimePlayersSnapshot playersSnapshot = playerOperations.CaptureSnapshot();
         ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
         ReadOnlySpan<RuntimeProjectileGroupSnapshot> groups = snapshot.Groups.Span;
         var lines = new string[groups.Length];
@@ -632,19 +872,34 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         }
 
         SetDetailContent(
-            $"PROJECTILES  {snapshot.ActiveProjectiles} live in {groups.Length} spawner/type groups | commits {snapshot.CommittedSpawns:N0}/{snapshot.CommittedUpdates:N0}/{snapshot.CommittedDespawns:N0}",
+            $"PROJECTILES{worldSuffix}  {snapshot.ActiveProjectiles} live in {groups.Length} spawner/type groups | commits {snapshot.CommittedSpawns:N0}/{snapshot.CommittedUpdates:N0}/{snapshot.CommittedDespawns:N0}",
             lines);
     }
 
     private void RefreshItems()
     {
-        if (worldItemOperations is null)
+        RuntimeWorldItemsSnapshot snapshot;
+        string worldSuffix = string.Empty;
+        if (worldInspectionOperations is not null)
         {
-            SetDetailContent("ITEMS  <telemetry unavailable>", []);
-            return;
+            if (!TryGetSelectedWorldTarget(out RuntimeWorldInspectionTarget target) ||
+                !worldInspectionOperations.TryCaptureWorldItems(target.RuntimeId, out snapshot))
+            {
+                SetDetailContent("ITEMS  <loading or telemetry unavailable for selected world>", []);
+                return;
+            }
+            worldSuffix = $" @ {SanitizeText(target.DisplayName, 28)}";
+        }
+        else
+        {
+            if (worldItemOperations is null)
+            {
+                SetDetailContent("ITEMS  <telemetry unavailable>", []);
+                return;
+            }
+            snapshot = worldItemOperations.CaptureSnapshot();
         }
 
-        RuntimeWorldItemsSnapshot snapshot = worldItemOperations.CaptureSnapshot();
         ReadOnlySpan<RuntimeWorldItemGroupSnapshot> groups = snapshot.Groups.Span;
         var lines = new string[groups.Length];
         for (int i = 0; i < groups.Length; i++)
@@ -656,7 +911,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                 $"pos~ {group.AveragePositionX / 16f:F1},{group.AveragePositionY / 16f:F1}t";
         }
 
-        SetDetailContent($"ITEMS  {snapshot.ActiveItems} live in {groups.Length} item-type groups", lines);
+        SetDetailContent($"ITEMS{worldSuffix}  {snapshot.ActiveItems} live in {groups.Length} item-type groups", lines);
     }
 
     private void RefreshNetwork()
@@ -720,9 +975,36 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     private void RefreshWorld()
     {
-        RuntimeWorldSnapshot snapshot = worldOperations.CaptureSnapshot();
-        var lines = new List<string>(20)
+        RuntimeWorldInspectionTarget? selectedTarget = null;
+        WorldRuntimeSnapshot? runtimeSnapshot = null;
+        if (worldInspectionOperations is not null)
         {
+            if (!TryGetSelectedWorldTarget(out RuntimeWorldInspectionTarget target) ||
+                !worldInspectionOperations.TryCaptureRuntime(target.RuntimeId, out WorldRuntimeSnapshot selectedRuntime))
+            {
+                SetDetailContent("WORLD  <loading selected world>", []);
+                return;
+            }
+
+            selectedTarget = target;
+            runtimeSnapshot = selectedRuntime;
+            if (!target.IsPrimary)
+            {
+                SetDetailContent(
+                    $"WORLD @ {SanitizeText(target.DisplayName, 36)}  {selectedRuntime.Lifecycle}",
+                    BuildRuntimeWorldLines(selectedRuntime),
+                    lastAdminAction);
+                return;
+            }
+        }
+
+        RuntimeWorldSnapshot snapshot = worldOperations.CaptureSnapshot();
+        var lines = new List<string>(24);
+        if (runtimeSnapshot is WorldRuntimeSnapshot runtime)
+            lines.AddRange(BuildRuntimeWorldLines(runtime));
+
+        lines.AddRange(
+        [
             $"Identity    {snapshot.UniqueId:D}",
             $"Format      {snapshot.FormatVersion}  worldgen {snapshot.WorldGeneratorVersion}",
             $"Dimensions  {snapshot.WidthTiles}x{snapshot.HeightTiles}  tiles {snapshot.TileCount:N0}",
@@ -731,7 +1013,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             $"Cache       {(snapshot.RuntimeCacheHit ? "hit" : "miss")}  reason {snapshot.InitialCacheResult}/{snapshot.InitialCacheDetailCode}  readers {snapshot.CacheParallelReads}",
             $"Load        file {snapshot.FileReadMilliseconds:F2} ms  cache {snapshot.CacheLoadMilliseconds:F2} ms  canonical {snapshot.CanonicalWorldLoadMilliseconds:F2} ms  build {snapshot.CacheWriteMilliseconds:F2} ms",
             $"Ready       world {snapshot.WorldReadyMilliseconds:F2} ms  network {snapshot.NetworkReadyMilliseconds:F2} ms"
-        };
+        ]);
 
         if (snapshot.SectionCacheAvailable)
         {
@@ -773,11 +1055,25 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                 $"last-ms snap/ser/write {persistence.LastSnapshotCaptureMilliseconds:F2}/{persistence.LastSerializationMilliseconds:F2}/{persistence.LastWriteMilliseconds:F2}");
         }
 
+        string selectedSuffix = selectedTarget is RuntimeWorldInspectionTarget targetValue
+            ? $" @ {SanitizeText(targetValue.DisplayName, 36)}"
+            : string.Empty;
         SetDetailContent(
-            $"WORLD  {(snapshot.Ready ? "ready" : "not ready")}  {SanitizeText(snapshot.Name, 36)}  id {snapshot.WorldId}",
+            $"WORLD{selectedSuffix}  {(snapshot.Ready ? "ready" : "not ready")}  {SanitizeText(snapshot.Name, 36)}  id {snapshot.WorldId}",
             lines,
             lastAdminAction);
     }
+
+    private static IReadOnlyList<string> BuildRuntimeWorldLines(WorldRuntimeSnapshot runtime) =>
+    [
+        $"Runtime     {runtime.Identity.RuntimeId}  session {runtime.Identity.SessionId}",
+        $"Lifecycle   {runtime.Lifecycle}  persistence {runtime.PersistenceMode}  source {runtime.Source.GetType().Name}",
+        $"Tick        {runtime.Tick:N0}  TPS {runtime.ObservedTicksPerSecond:F1}/{runtime.TargetTicksPerSecond}",
+        $"Entities    connections {runtime.Connections:N0}  NPCs {runtime.Npcs:N0}  projectiles {runtime.Projectiles:N0}  items {runtime.WorldItems:N0}",
+        runtime.Fault is null
+            ? "Fault       none"
+            : $"Fault       {SanitizeText(runtime.Fault.Message, 88)}"
+    ];
 
     private void RefreshLogs()
     {
