@@ -129,7 +129,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
                 {
                     NpcAiSpawnIntent intent = _spawnIntentBuffer[spawnIndex];
-                    if (!RuntimeNpcSpawnIntentApplier.TryApply(_npcs, in intent, out NpcSnapshot spawned) ||
+                    if (!_npcs.TrySpawnIntent(in intent, out NpcSnapshot spawned) ||
                         !intent.LinkSourceFollowerSlot)
                     {
                         continue;
@@ -173,7 +173,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     bool INpcAiCommittedNpcMutationSink.TrySpawn(
         in NpcAiSpawnIntent intent,
         out NpcSnapshot spawned) =>
-        RuntimeNpcSpawnIntentApplier.TryApply(_npcs, in intent, out spawned);
+        _npcs.TrySpawnIntent(in intent, out spawned);
 
     bool INpcAiCommittedNpcMutationSink.TryUpdateVelocity(
         NpcHandle npc,

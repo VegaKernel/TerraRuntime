@@ -122,7 +122,7 @@ public sealed class VanillaKingSlimeProductionTests
             InitialAi = new NpcAiState(-2000f, -1f, 0f, 0f)
         };
 
-        Assert.True(RuntimeNpcSpawnIntentApplier.TryApply(store, in intent, out NpcSnapshot spawned));
+        Assert.True(store.TrySpawnIntent(in intent, out NpcSnapshot spawned));
         Assert.Equal(-2000f, spawned.Ai.Ai0);
         Assert.Equal(-1f, spawned.Ai.Ai1);
         Assert.Equal(1.2f, spawned.VelocityX, 5);

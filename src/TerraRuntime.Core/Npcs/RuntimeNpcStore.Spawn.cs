@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Core;
 
@@ -27,6 +28,37 @@ public sealed partial class RuntimeNpcStore
         snapshot = Capture(slot, in state);
         _commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in snapshot);
         return true;
+    }
+
+    /// <summary>Materializes and allocates one committed AI spawn intent using source-backed vanilla defaults.</summary>
+    public bool TrySpawnIntent(in NpcAiSpawnIntent intent, out NpcSnapshot snapshot)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(intent.Type, out VanillaNpcDefinition definition) ||
+            !float.IsFinite(intent.VelocityX) ||
+            !float.IsFinite(intent.VelocityY) ||
+            !intent.InitialAi.IsFinite ||
+            !intent.InitialLocalAi.IsFinite)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        var update = new NpcStateUpdate(
+            Type: intent.Type.Value,
+            NetId: checked((short)intent.Type.Value),
+            PositionX: intent.BottomX - definition.Width * 0.5f,
+            PositionY: intent.BottomY - definition.Height,
+            VelocityX: intent.VelocityX,
+            VelocityY: intent.VelocityY,
+            Target: intent.Target,
+            Ai: intent.InitialAi,
+            Simulation: NpcSimulationState.Initial with
+            {
+                TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft,
+                LocalAi = intent.InitialLocalAi
+            });
+
+        return TrySpawnVanilla(in update, out snapshot);
     }
 
     /// <summary>Allocates the first reusable vanilla NPC slot and advances its generation.</summary>

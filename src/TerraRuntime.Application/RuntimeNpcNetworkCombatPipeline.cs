@@ -589,7 +589,7 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         {
             worldClock.MarkSlimeBlueSpawnUnlocked();
             if (TryCreateNerdySlimeSpawnIntent(in kingSlime, out NpcAiSpawnIntent intent) &&
-                TryApplySpawnIntent(in intent, out NpcSnapshot nerdy))
+                npcs.TrySpawnIntent(in intent, out NpcSnapshot nerdy))
             {
                 float velocityX = random.NextFloatDirection() * 3f;
                 var update = new NpcStateUpdate(
@@ -628,35 +628,6 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             VelocityY: 0f,
             Target: checked((ushort)VanillaNpcDefinitionCatalog.DefaultTarget));
         return true;
-    }
-
-    private bool TryApplySpawnIntent(in NpcAiSpawnIntent intent, out NpcSnapshot spawned)
-    {
-        if (!VanillaNpcDefinitionCatalog.TryGet(intent.Type, out VanillaNpcDefinition definition) ||
-            !float.IsFinite(intent.VelocityX) ||
-            !float.IsFinite(intent.VelocityY) ||
-            !intent.InitialAi.IsFinite ||
-            !intent.InitialLocalAi.IsFinite)
-        {
-            spawned = default;
-            return false;
-        }
-
-        var update = new NpcStateUpdate(
-            Type: intent.Type.Value,
-            NetId: checked((short)intent.Type.Value),
-            PositionX: intent.BottomX - definition.Width * 0.5f,
-            PositionY: intent.BottomY - definition.Height,
-            VelocityX: intent.VelocityX,
-            VelocityY: intent.VelocityY,
-            Target: intent.Target,
-            Ai: intent.InitialAi,
-            Simulation: NpcSimulationState.Initial with
-            {
-                TimeLeft = VanillaNpcSpawnFacts.NewNpcTimeLeft,
-                LocalAi = intent.InitialLocalAi
-            });
-        return npcs.TrySpawnVanilla(in update, out spawned);
     }
 
     private void ReleaseReservations(Span<WorldItemDropReservation> reservations)

@@ -420,6 +420,55 @@ public sealed class Level1SandboxRuntimeTests
     }
 
     [Fact]
+    public async Task Sandbox_operations_expose_registered_generators_and_create_an_in_process_world()
+    {
+        WorldRuntime primary = CreateRuntime("Primary", seed: 45);
+        using var registry = new WorldRegistry(capacity: 3);
+        Assert.True(registry.TryAdmit(primary, primary: true));
+        using var sandboxes = new SandboxHost(
+            registry,
+            BuiltInWorldGeneratorSource.Instance,
+            ServerWorldLoadPolicy.CreateLimits());
+        var operations = new SandboxOperations(
+            sandboxes,
+            Path.GetTempPath(),
+            defaultWidthTiles: 32,
+            defaultHeightTiles: 24);
+
+        string[] generators = operations.CaptureWorldGeneratorIds().Select(static id => id.Value).ToArray();
+        Assert.Contains("terraruntime:flat", generators);
+        Assert.Contains("terraruntime:optimized", generators);
+        Assert.Contains("terraruntime:vanilla", generators);
+        Assert.Contains("terraruntime:skyblock", generators);
+
+        Assert.True(operations.TryBuildGeneratedCreate(
+            "form_inprocess",
+            WorldIsolationLevel.InProcess,
+            "terraruntime:flat",
+            "42",
+            widthTiles: 32,
+            heightTiles: 24,
+            WorldGenerationGameMode.Classic,
+            WorldGenerationEvil.Corruption,
+            out SandboxOperation.Create? operation,
+            out string? buildError), buildError);
+        Assert.NotNull(operation);
+
+        string feedback = operations.Execute(operation);
+        Assert.Contains("accepted as operation", feedback, StringComparison.OrdinalIgnoreCase);
+        SandboxJobSnapshot queued = Assert.Single(sandboxes.CaptureJobs());
+        SandboxJobSnapshot completed = await sandboxes.WaitForJobAsync(
+            queued.Id,
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(SandboxJobStatus.Completed, completed.Status);
+        Assert.True(sandboxes.TryGetSandbox(new SandboxName("form_inprocess"), out SandboxSnapshot sandbox));
+        Assert.Equal(WorldIsolationLevel.InProcess, operation.Request.IsolationLevel);
+        Assert.Equal("form_inprocess", sandbox.Name.Value);
+    }
+
+    [Fact]
     public void Sandbox_command_parser_rejects_absolute_and_parent_world_paths()
     {
         string root = Path.Combine(Path.GetTempPath(), "TerraRuntimeSandboxAssets");

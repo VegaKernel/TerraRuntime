@@ -131,6 +131,7 @@ public static class VanillaNpcDefinitionCatalog
 {
     public const ushort DefaultTarget = byte.MaxValue;
     public const int DefaultTimeLeft = 750;
+    public const int NewNpcTimeLeft = 937;
     public const int DefaultSpriteDirection = -1;
 
     /// <summary>

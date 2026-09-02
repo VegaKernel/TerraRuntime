@@ -31,7 +31,7 @@ public sealed class RuntimeNpcAiSpawnIntentTests
         Assert.Equal(8, servant.Simulation.LifeMax);
         Assert.True(servant.Simulation.NoGravity);
         Assert.True(servant.Simulation.NoTileCollide);
-        Assert.Equal(VanillaNpcSpawnFacts.NewNpcTimeLeft, servant.Simulation.TimeLeft);
+        Assert.Equal(VanillaNpcDefinitionCatalog.NewNpcTimeLeft, servant.Simulation.TimeLeft);
 
         float deltaX = 250f - 150f;
         float deltaY = 300f - 155f;

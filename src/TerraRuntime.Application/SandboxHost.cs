@@ -122,6 +122,8 @@ public sealed class SandboxHost : IDisposable
     /// </summary>
     public event Action<SandboxJobSnapshot>? JobFinished;
 
+    internal WorldGeneratorId[] CaptureWorldGeneratorIds() => StartupWorldGeneratorCatalog.Capture(generators);
+
     public bool TryCreate(
         in SandboxCreateRequest request,
         out SandboxJobId jobId,

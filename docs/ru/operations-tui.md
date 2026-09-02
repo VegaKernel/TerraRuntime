@@ -111,6 +111,10 @@ Overview постоянно обновляет dashboard/player/network/world/lo
 
 World-scoped inspection вынесен в отдельную ответственность cache. `LocalRuntimeWorldInspectionOperations` разрешает live worlds по стабильному `WorldRuntimeId`, а `TerminalUiWorldInspectionCache` хранит выбранный оператором мир и снимает только запрошенный Players/NPCs/Projectiles/Items/World snapshot этого мира. Terminal.Gui thread получает только detached read models и не хранит ссылки на `WorldRuntime`. Operations telemetry для sandbox включается только при включённом TUI.
 
+Плитка Worlds / Players содержит действие `+ Sandbox` в той же Base-схеме, что и дерево, без отдельного подсвеченного фона кнопки. В окне создания два варианта isolation остаются явными checkbox, а выбранная isolation дополнительно выводится текстом, поэтому focus нельзя спутать с выбранным состоянием. Generator, game mode, world evil и size preset выбираются через dropdown. Список генераторов снимается из реального runtime/host generator registry. Size presets: Primary, Small `4200x1200`, Medium `6400x1800`, Large `8400x2400` и Custom. При открытии формы сразу создаётся случайный unsigned seed; кнопка `Random` генерирует новый без ручного ввода слова `random`.
+
+Create admission выполняется синхронно и без блокировки: форма закрывается только после того, как `SandboxHost.TryCreate` принял typed request в bounded materialization queue. Немедленный отказ, включая выбор Level 2 dedicated-process isolation при реализованном только Level 1, остаётся видимым прямо в форме. Сама generation/materialization продолжает выполняться на существующем bounded worker и публикует terminal success/failure через sandbox job feed.
+
 Administrative operations не становятся cached writes. Interest-management changes и world-save requests по-прежнему напрямую делегируются в authoritative bounded ingress.
 
 ## 6. Плиточный System Dashboard

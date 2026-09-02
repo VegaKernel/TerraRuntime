@@ -68,7 +68,7 @@ public sealed class KingSlimeExpertMinionParityTests
             InitialAi = new NpcAiState(-2000f, -1f, 0f, 0f)
         };
 
-        Assert.True(RuntimeNpcSpawnIntentApplier.TryApply(store, in intent, out NpcSnapshot spawned));
+        Assert.True(store.TrySpawnIntent(in intent, out NpcSnapshot spawned));
         Assert.Equal(VanillaNpcIds.SpikedSlime.Value, spawned.Type);
         Assert.Equal((short)VanillaNpcIds.SpikedSlime.Value, spawned.NetId);
         Assert.Equal(50, spawned.Simulation.Life);

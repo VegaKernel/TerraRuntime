@@ -130,11 +130,11 @@ internal sealed class RuntimeOverviewDashboard : View
         {
             X = 1,
             Y = 0,
-            Text = "+",
+            Text = "+ Sandbox",
             NoPadding = true,
             NoDecorations = true,
             CanFocus = true,
-            SchemeName = AccentSchemeName,
+            SchemeName = BaseSchemeName,
             Enabled = sandboxOperations is not null
         };
         sandboxAddButton.Accepted += (_, _) => ShowSandboxCreateWindow();
@@ -288,12 +288,31 @@ internal sealed class RuntimeOverviewDashboard : View
 
         var window = new SandboxCreateWindow(sandboxOperations);
         sandboxCreateWindow = window;
-        window.CreateRequested += operation => ExecuteSandboxOperationAsync(operation);
+        window.CreateRequested += operation => SubmitSandboxCreate(window, operation);
         window.CloseRequested += CloseSandboxCreateWindow;
         Add(window);
         window.SetFocus();
         SetNeedsLayout();
         SetNeedsDraw();
+    }
+
+    private void SubmitSandboxCreate(SandboxCreateWindow window, SandboxOperation.Create operation)
+    {
+        if (sandboxOperations is null)
+        {
+            window.SetFeedback("sandbox: creation is unavailable");
+            return;
+        }
+
+        string result = sandboxOperations.Execute(operation);
+        SetCommandFeedback(result);
+        if (!result.Contains("accepted as operation", StringComparison.OrdinalIgnoreCase))
+        {
+            window.SetFeedback(result);
+            return;
+        }
+
+        CloseSandboxCreateWindow();
     }
 
     private void CloseSandboxCreateWindow()

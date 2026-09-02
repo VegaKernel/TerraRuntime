@@ -111,6 +111,10 @@ The overview always refreshes the dashboard/player/network/world/log state it ne
 
 World-scoped detail inspection is a separate cache responsibility. `LocalRuntimeWorldInspectionOperations` resolves live worlds by stable `WorldRuntimeId`, while `TerminalUiWorldInspectionCache` remembers the operator-selected world and captures only the demanded Players/NPCs/Projectiles/Items/World snapshot for that world. The Terminal.Gui thread receives detached read models only; it never retains `WorldRuntime` references. Sandbox operations telemetry is enabled only when TUI is enabled.
 
+The Worlds / Players tile exposes a `+ Sandbox` action using the same Base scheme as the tree rather than a separate highlighted button background. The creation window keeps the two isolation choices as explicit checkboxes and also renders the currently selected isolation as text so focus is never mistaken for selection. Generator identity, game mode, world evil and size preset are dropdown selections. Generator choices are captured from the actual runtime/host generator registry. Size presets include Primary, Small `4200x1200`, Medium `6400x1800`, Large `8400x2400` and Custom. A cryptographically generated unsigned seed is populated when the window opens, and `Random` replaces it without requiring the operator to type `random`.
+
+Create admission is synchronous and non-blocking: the form closes only after `SandboxHost.TryCreate` accepts the typed request into its bounded materialization queue. Immediate rejection, including selecting Level 2 dedicated-process isolation while only Level 1 is implemented, remains visible inside the form. Actual generation/materialization continues on the existing bounded worker and reports terminal success/failure through the sandbox job feed.
+
 Administrative operations are not cached writes. Interest-management changes and world-save requests still delegate directly to their authoritative bounded ingress.
 
 ## 6. Tiled System Dashboard

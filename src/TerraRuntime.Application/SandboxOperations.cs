@@ -486,6 +486,7 @@ public sealed class SandboxOperations
 
     internal int DefaultWidthTiles => parser.DefaultWidthTiles;
     internal int DefaultHeightTiles => parser.DefaultHeightTiles;
+    internal WorldGeneratorId[] CaptureWorldGeneratorIds() => host.CaptureWorldGeneratorIds();
 
     internal bool TryBuildGeneratedCreate(
         string name,
