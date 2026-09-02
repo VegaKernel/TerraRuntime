@@ -27,7 +27,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
         bool noGravityAtSpawn,
         bool noTileCollideAtSpawn)
     {
-        Assert.True(VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), out VanillaNpcDefinition definition));
         Assert.Equal(type, definition.Type.Value);
         Assert.Equal(aiStyle, definition.AiStyle.Value);
         Assert.Equal(baseWidth, definition.BaseWidth);
@@ -56,7 +56,7 @@ public sealed class VanillaNpcDefinitionCatalogTests
         VanillaNpcBehaviorFamily expectedBehavior,
         VanillaNpcPhysicsFamily expectedPhysics)
     {
-        Assert.True(VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), out VanillaNpcDefinition definition));
         Assert.Equal(expectedBehavior, definition.BehaviorFamily);
         Assert.Equal(expectedPhysics, definition.PhysicsFamily);
     }

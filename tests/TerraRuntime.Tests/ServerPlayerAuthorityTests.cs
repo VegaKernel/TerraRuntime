@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Players;
+using TerraRuntime.HostContracts;
 
 namespace TerraRuntime.Tests;
 
