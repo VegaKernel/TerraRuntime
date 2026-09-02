@@ -15,38 +15,15 @@ internal sealed partial class ServerRuntimeState
     {
         _worldTileAuthority.AdvanceTo(Updates);
 
-        _npcArchetypes.CommitPending();
-        _npcShops.CommitPending();
-        _npcActorCommands.CommitPending();
+        _npcs.CommitPending();
         TickServerPlayerPhysics();
-
-        if (_vanillaNpcTargetingAiStepper is not null)
-        {
-            int candidateCount = CopyVanillaNpcTargetCandidates(_npcTargetCandidates);
-            ReadOnlySpan<VanillaNpcTargetCandidate> candidates = _npcTargetCandidates.AsSpan(0, candidateCount);
-            _vanillaNpcTargetingAiStepper.SetCandidates(candidates);
-            _vanillaNpcCheckActiveAiStepper?.SetCandidates(candidates);
-            if (_worldClock is not null)
-            {
-                _vanillaNpcTargetingAiStepper.SetWorldConditions(
-                    _worldClock.DayTime,
-                    _worldClock.SlimeRainActive,
-                    _worldClock.GetGoodWorld,
-                    _expertMode,
-                    _masterMode);
-            }
-        }
-
-        LastNpcAiTick = _npcAiExecutor.Tick(_npcAiStepper);
-        _townNpcAuthority.TickShimmer();
-        _townNpcAuthority.TickLifecycle(_worldClock);
-        AppliedNpcDespawns += _npcs.DespawnExpired();
+        _npcs.TickSimulation();
         if (_projectiles.TryTickState())
         {
-            _townNpcAuthority.TickProjectileInteractions();
+            _npcs.TickProjectileInteractions();
             _projectiles.ApplyReflections();
         }
-        TickInstancedItemLeases();
+        _worldItems.TickInstancedLeases();
 
         _worldClock?.Tick();
         Updates++;
@@ -123,61 +100,6 @@ internal sealed partial class ServerRuntimeState
                 _serverPlayerEvents?.ServerPlayerMoved(in committed);
             }
         }
-    }
-
-    private int CopyVanillaNpcTargetCandidates(Span<VanillaNpcTargetCandidate> destination)
-    {
-        int serverPlayerCount = _serverPlayerStates?.CopySnapshots(_serverPlayerSnapshots) ?? 0;
-        int serverPlayerIndex = 0;
-        int written = 0;
-
-        for (int slot = 0; slot < VanillaNpcTargetingAiStepper.MaximumPlayerCandidates; slot++)
-        {
-            if (_players.TryGet(checked((byte)slot), out RuntimePlayerMember? player))
-            {
-                if (player.MountType != 0)
-                    continue;
-
-                destination[written++] = new VanillaNpcTargetCandidate(
-                    Slot: checked((byte)slot),
-                    CenterX: player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
-                    CenterY: player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
-                    Aggro: 0,
-                    Active: true,
-                    Dead: player.IsDead,
-                    Ghost: false,
-                    NoAggro: false);
-                continue;
-            }
-
-            while (serverPlayerIndex < serverPlayerCount &&
-                   _serverPlayerSnapshots[serverPlayerIndex].Player.Slot.Value < slot)
-            {
-                serverPlayerIndex++;
-            }
-
-            if (serverPlayerIndex >= serverPlayerCount ||
-                _serverPlayerSnapshots[serverPlayerIndex].Player.Slot.Value != slot)
-            {
-                continue;
-            }
-
-            PlayerStateSnapshot serverPlayer = _serverPlayerSnapshots[serverPlayerIndex++];
-            if (serverPlayer.MountType != 0)
-                continue;
-
-            destination[written++] = new VanillaNpcTargetCandidate(
-                Slot: checked((byte)slot),
-                CenterX: serverPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
-                CenterY: serverPlayer.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
-                Aggro: 0,
-                Active: true,
-                Dead: serverPlayer.IsDead,
-                Ghost: false,
-                NoAggro: false);
-        }
-
-        return written;
     }
 
     private bool IsTileActorFree(int tileX, int tileY)

@@ -18,19 +18,16 @@ internal sealed partial class ServerRuntimeState
 
         if (_serverPlayerCommands?.TryApply(command) == true)
             return;
-        if (_npcActorCommands.TryApply(command))
-            return;
         if (_worldTileAuthority.TryApply(this, command))
             return;
         if (_players.TryApply(command))
             return;
         if (_projectiles.TryApply(command))
             return;
-        if (command is NpcActorSpawnRuntimeCommand actorSpawn)
-        {
-            ApplyNpcActorSpawn(actorSpawn);
+        if (_npcs.TryApply(command))
             return;
-        }
+        if (_worldItems.TryApply(command))
+            return;
 
         switch (command)
         {
@@ -39,39 +36,6 @@ internal sealed partial class ServerRuntimeState
                 break;
             case SetInterestManagementRuntimeCommand interestManagement:
                 interestManagement.Control.SetEnabled(interestManagement.Enabled);
-                break;
-            case NpcSpawnRuntimeCommand spawn:
-                ApplyNpcSpawn(spawn);
-                break;
-            case NpcUpdateRuntimeCommand update:
-                ApplyNpcUpdate(update);
-                break;
-            case NpcDespawnRuntimeCommand despawn:
-                ApplyNpcDespawn(despawn);
-                break;
-            case ClientNpcDamageRuntimeCommand npcDamage:
-                ApplyClientNpcDamage(npcDamage);
-                break;
-            case ClientNpcHomeRuntimeCommand home:
-                ApplyClientNpcHome(home);
-                break;
-            case ClientNpcTalkRuntimeCommand talk:
-                ApplyClientNpcTalk(talk);
-                break;
-            case ClientNpcCatchRuntimeCommand npcCatch:
-                ApplyClientNpcCatch(npcCatch);
-                break;
-            case WorldItemAllocateRuntimeCommand allocate:
-                ApplyWorldItemAllocate(allocate);
-                break;
-            case WorldItemDropRuntimeCommand drop:
-                ApplyWorldItemDrop(drop);
-                break;
-            case WorldItemRemoveRuntimeCommand remove:
-                ApplyWorldItemRemove(remove);
-                break;
-            case WorldItemOwnerRuntimeCommand owner:
-                ApplyWorldItemOwner(owner);
                 break;
             case PlayerStateSnapshotRuntimeCommand snapshot:
                 CompletePlayerSnapshot(snapshot);

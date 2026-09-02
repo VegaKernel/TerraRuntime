@@ -67,7 +67,7 @@ flowchart TD
     Commit --> Replication["replication"]
 ```
 
-Behavior dispatcher входит в production AI chain `ServerRuntimeState`. Это не тестовый registry, существующий отдельно от сервера. Composition через `INpcAiStateStepperWrapper` сохраняется, поэтому вложенные vanilla capabilities, включая targeting, spawn planners, projectile planners и post-commit hooks, остаются доступными через wrapper chain.
+Behavior dispatcher входит в production AI chain `NpcAuthority`, который вызывается из `ServerRuntimeState`. Это не тестовый registry, существующий отдельно от сервера. Composition через `INpcAiStateStepperWrapper` сохраняется, поэтому вложенные vanilla capabilities, включая targeting, spawn planners, projectile planners и post-commit hooks, остаются доступными через wrapper chain.
 
 ## Ограниченные запросы мира
 

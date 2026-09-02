@@ -53,14 +53,17 @@ internal sealed partial class ServerRuntimeState
         return _players.TryGetInventoryItem(player, inventorySlot, out item);
     }
 
+    internal bool TryGetPlayerTalkNpc(PlayerHandle player, out short npcSlot) =>
+        _players.TryGetTalkNpc(player, out npcSlot);
+
     internal bool TryCaptureNpcSnapshot(NpcHandle npc, out NpcSnapshot snapshot) =>
-        _npcs.TryGet(npc, out snapshot);
+        _npcs.TryCapture(npc, out snapshot);
 
     internal bool TryCaptureProjectileSnapshot(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
         _projectiles.TryCapture(projectile, out snapshot);
 
     internal bool TryCaptureWorldItemSnapshot(short slot, out WorldItemSnapshot snapshot) =>
-        _worldItems.TryGetActive(slot, out snapshot);
+        _worldItems.TryCapture(slot, out snapshot);
 
     private void CompletePlayerSnapshot(PlayerStateSnapshotRuntimeCommand command)
     {

@@ -143,7 +143,9 @@ Checklist:
 - [x] Extract town-NPC housing, rescue/progression, commerce, schedule, shimmer and combat orchestration from `ServerRuntimeState` into the world-owned `TownNpcAuthority` without changing authoritative tick order.
 - [x] Extract packet-17 tile admission, tile/object mutation transactions, tile replication and tile-drop allocation accounting from `ServerRuntimeState` into the world-owned `WorldTileAuthority`.
 - [x] Finish decomposing `TerrariaServerHost`: canonical world cleanup/load/cache/recovery/bootstrap lives in `WorldStartupPreparation`, process-scoped runtime/signal/TUI/shutdown ownership lives in `ServerProcessSession`, and listener/admission/connection draining lives in `ServerConnectionAcceptor`.
-- [ ] Extract coherent player, NPC, projectile, item, town/housing and world-lifecycle collaborators only where they own state/behavior; do not produce one class per method.
+- [x] Extract coherent player, NPC, projectile, item, town/housing and world-lifecycle collaborators only where they own state/behavior; do not produce one class per method.
+- [x] Extract non-town NPC command application, AI/actor/archetype lifecycle, network combat/catch flow and town-NPC coordination from `ServerRuntimeState` into the world-owned `NpcAuthority`.
+- [x] Extract authoritative world-item commands plus instanced-item lease expiry from `ServerRuntimeState` into the world-owned `WorldItemAuthority`; keep tile-generated item allocation accounting with `WorldTileAuthority`.
 - [ ] Keep source-order-sensitive boss/AI logic cohesive when decomposition would obscure verified vanilla ordering.
 - [ ] Keep large source-backed catalogs cohesive when their size is data, not mixed responsibility.
 - [x] Remove nested conditional/constructor composition tangles when a concrete composition object can own them.

@@ -2,7 +2,7 @@
 
 TerraRuntime теперь владеет постоянным household-состоянием городских NPC, а не использует секции NPC и `TownRoomManager` из `.wld` только как данные начальной загрузки.
 
-`TownNpcAuthority` является конкретным world-scoped владельцем композиции и authoritative lifecycle городских NPC. Он владеет housing validation, rescue/progression transforms, move-in scheduling, домашним расписанием, разрешением shop session, shimmer processing и оркестрацией town combat, но вызывается только существующим world writer. `ServerRuntimeState` маршрутизирует типизированные команды и сохраняет порядок тика; отдельные town-сервисы больше не лежат в нём набором несвязанных полей.
+`TownNpcAuthority` является конкретным world-scoped владельцем композиции и authoritative lifecycle городских NPC. Он владеет housing validation, rescue/progression transforms, move-in scheduling, домашним расписанием, разрешением shop session, shimmer processing и оркестрацией town combat, но вызывается только существующим world writer. Теперь `NpcAuthority` координирует этот town-owner вместе с lifecycle обычных NPC, AI/combat/catch; `ServerRuntimeState` только маршрутизирует entity-команды и фазы тика, сохраняя их порядок.
 
 ## Реализованный срез 1.4.5.8
 

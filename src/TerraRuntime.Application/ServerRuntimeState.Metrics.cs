@@ -11,19 +11,16 @@ namespace TerraRuntime;
 
 internal sealed partial class ServerRuntimeState
 {
-    private long appliedWorldItemAllocations;
-    private long rejectedWorldItemAllocations;
-
     public long AppliedCommands { get; private set; }
 
-    internal RuntimeNpcShopCatalogRegistry NpcShops => _npcShops;
+    internal RuntimeNpcShopCatalogRegistry NpcShops => _npcs.Shops;
 
     internal bool TryGetPlayerTownShopSession(PlayerHandle player, out RuntimeTownShopSession1458? session)
         => _players.TryGetTownShopSession(player, out session);
 
-    internal RuntimeNpcArchetypeRegistry NpcArchetypes => _npcArchetypes;
+    internal RuntimeNpcArchetypeRegistry NpcArchetypes => _npcs.Archetypes;
 
-    internal IWorldItemSpawnRandom WorldItemSpawnRandom => _worldItemSpawnRandom;
+    internal IWorldItemSpawnRandom WorldItemSpawnRandom => _worldItems.SpawnRandom;
 
     internal RuntimeWorldProgressionMutations WorldProgression => _worldProgression;
 
@@ -53,17 +50,17 @@ internal sealed partial class ServerRuntimeState
 
     public long DisconnectedPlayers => _players.DisconnectedPlayers;
 
-    public long AppliedNpcSpawns { get; private set; }
+    public long AppliedNpcSpawns => _npcs.AppliedSpawns;
 
-    public long RejectedNpcSpawns { get; private set; }
+    public long RejectedNpcSpawns => _npcs.RejectedSpawns;
 
-    public long AppliedNpcUpdates { get; private set; }
+    public long AppliedNpcUpdates => _npcs.AppliedUpdates;
 
-    public long RejectedNpcUpdates { get; private set; }
+    public long RejectedNpcUpdates => _npcs.RejectedUpdates;
 
-    public long AppliedNpcDespawns { get; private set; }
+    public long AppliedNpcDespawns => _npcs.AppliedDespawns;
 
-    public long RejectedNpcDespawns { get; private set; }
+    public long RejectedNpcDespawns => _npcs.RejectedDespawns;
 
     public long AppliedProjectileSpawns => _projectiles.AppliedSpawns;
 
@@ -83,9 +80,9 @@ internal sealed partial class ServerRuntimeState
 
     public long RejectedClientProjectileDestroys => _projectiles.RejectedClientDestroys;
 
-    public long AppliedClientNpcDamage { get; private set; }
+    public long AppliedClientNpcDamage => _npcs.AppliedClientDamage;
 
-    public long RejectedClientNpcDamage { get; private set; }
+    public long RejectedClientNpcDamage => _npcs.RejectedClientDamage;
 
     public long RelayedUnknownProjectileDestroys => _projectiles.RelayedUnknownDestroys;
 
@@ -100,24 +97,24 @@ internal sealed partial class ServerRuntimeState
     public long UnsupportedClientTileManipulations => _worldTileAuthority.UnsupportedClientManipulations;
 
     public long AppliedWorldItemAllocations =>
-        appliedWorldItemAllocations + _worldTileAuthority.AppliedWorldItemAllocations;
+        _worldItems.AppliedAllocations + _worldTileAuthority.AppliedWorldItemAllocations;
 
     public long RejectedWorldItemAllocations =>
-        rejectedWorldItemAllocations + _worldTileAuthority.RejectedWorldItemAllocations;
+        _worldItems.RejectedAllocations + _worldTileAuthority.RejectedWorldItemAllocations;
 
-    public long AppliedWorldItemDrops { get; private set; }
+    public long AppliedWorldItemDrops => _worldItems.AppliedDrops;
 
-    public long RejectedWorldItemDrops { get; private set; }
+    public long RejectedWorldItemDrops => _worldItems.RejectedDrops;
 
-    public long AppliedWorldItemRemovals { get; private set; }
+    public long AppliedWorldItemRemovals => _worldItems.AppliedRemovals;
 
-    public long RejectedWorldItemRemovals { get; private set; }
+    public long RejectedWorldItemRemovals => _worldItems.RejectedRemovals;
 
-    public long AppliedWorldItemOwners { get; private set; }
+    public long AppliedWorldItemOwners => _worldItems.AppliedOwners;
 
-    public long RejectedWorldItemOwners { get; private set; }
+    public long RejectedWorldItemOwners => _worldItems.RejectedOwners;
 
-    public NpcAiStateTickSummary LastNpcAiTick { get; private set; }
+    public NpcAiStateTickSummary LastNpcAiTick => _npcs.LastAiTick;
 
     public ProjectileStateTickSummary LastProjectileTick => _projectiles.LastTick;
 

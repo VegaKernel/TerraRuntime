@@ -28,7 +28,8 @@ flowchart TB
     Loop --> Players["Players"]
     Loop --> World["World / tiles / objects"]
     Loop --> NPCs["NPCs"]
-    Loop --> Projectiles["Projectiles / world items"]
+    Loop --> Projectiles["Projectiles"]
+    Loop --> Items["World items"]
 
     Players --> Replication["Synchronization / replication planning"]
     World --> Replication
@@ -68,6 +69,22 @@ Owned state includes, as implementation grows:
 - connection-associated gameplay state after network input has been converted into commands.
 
 Other threads may receive network data, decode bounded input, build immutable work products, perform disk I/O, serialize snapshots, update UI from immutable telemetry, and return results through explicit completion/command boundaries. They may not mutate authoritative collections directly.
+
+`ServerRuntimeState` is the authoritative command/tick coordinator, not the owner of every entity subsystem. World-scoped collaborators own coherent mutation lifecycles while remaining callable only from that same writer: `PlayerAuthority` owns client-player state application, `NpcAuthority` owns NPC commands/AI/combat/actor-archetype lifecycle and coordinates `TownNpcAuthority`, `ProjectileAuthority` owns projectile mutation, `WorldItemAuthority` owns world-item commands and instanced leases, and `WorldTileAuthority` owns tile/object mutation admission. Extraction changes ownership structure, not tick-thread ownership.
+
+```mermaid
+flowchart TD
+    State["ServerRuntimeState\ncommand + tick coordinator"] --> Players["PlayerAuthority"]
+    State --> Npcs["NpcAuthority"]
+    Npcs --> Town["TownNpcAuthority"]
+    State --> Projectiles["ProjectileAuthority"]
+    State --> Items["WorldItemAuthority"]
+    State --> Tiles["WorldTileAuthority"]
+    Npcs --> NpcStore["RuntimeNpcStore"]
+    Projectiles --> ProjectileStore["RuntimeProjectileStore"]
+    Items --> ItemStore["RuntimeWorldItemStore"]
+    Tiles --> WorldTiles["WorldTileStore"]
+```
 
 ## 5. Command boundary
 

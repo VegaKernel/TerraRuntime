@@ -1,8 +1,8 @@
-using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
 
@@ -41,25 +41,28 @@ internal sealed partial class ServerRuntimeState
         bool expertMode = false,
         bool masterMode = false)
     {
+        if (masterMode && !expertMode)
+            throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
+
         _worldTiles = worldTiles;
-        _players = new PlayerAuthority(playerEvents, worldTiles);
         _worldClock = worldClock;
         _worldProgression = worldProgression ?? new RuntimeWorldProgressionMutations();
-        _expertMode = expertMode;
-        _masterMode = masterMode;
-        _worldItemSpawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom();
-        _worldItems = worldItems ?? new RuntimeWorldItemStore();
+        _players = new PlayerAuthority(playerEvents, worldTiles);
+
+        RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();
+        IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom();
+        _worldItems = new WorldItemAuthority(
+            _players,
+            worldItemStore,
+            spawnRandom,
+            worldItemReplication);
         _worldTileAuthority = new WorldTileAuthority(
             _players,
             worldTiles,
-            _worldItems,
-            _worldItemSpawnRandom,
+            worldItemStore,
+            spawnRandom,
             tileManipulationReplication);
-        if (masterMode && !expertMode)
-            throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
-        _npcs = npcs ?? new RuntimeNpcStore();
-        RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
-        _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs, projectileStore);
+
         _serverPlayerStates = serverPlayerStates;
         _serverPlayerEvents = serverPlayerEvents;
         if (serverPlayerIdentities is not null && serverPlayerStates is null)
@@ -70,113 +73,44 @@ internal sealed partial class ServerRuntimeState
         _serverPlayerDryPhysics = serverPlayerStates is not null && worldTiles is not null
             ? new VanillaServerPlayerDryPhysicsStepper(worldTiles)
             : null;
-        _npcActorControls = new RuntimeNpcActorControlRegistry(_npcs);
-        _npcArchetypes = npcArchetypes ?? new RuntimeNpcArchetypeRegistry();
-        _npcArchetypeIdentities = npcArchetypeIdentities ?? new RuntimeNpcArchetypeIdentityStore(_npcs.Capacity);
-        _npcPresentationBehaviors = new RuntimeGameplayBehaviorRegistry<NpcTypeId, INpcAiStateStepper>();
-        _npcArchetypeBehaviors = new RuntimeArchetypeBehaviorRegistry<INpcAiStateStepper>();
-        _npcBehaviorQueries = new RuntimeNpcBehaviorQueries(this, _npcs, _worldTiles);
-        _npcActorCommands = new RuntimeNpcActorControlCommandService(
-            _npcs,
-            _npcActorControls,
-            _npcPresentationBehaviors,
-            _npcArchetypeBehaviors,
-            _npcBehaviorQueries,
-            _npcArchetypes,
-            _npcArchetypeIdentities);
-        _npcArchetypeSpawner = new RuntimeNpcArchetypeSpawner(_npcs, _npcArchetypes, _npcArchetypeIdentities);
-        _npcShops = npcShops ?? new RuntimeNpcShopCatalogRegistry();
+
+        RuntimeNpcStore npcStore = npcs ?? new RuntimeNpcStore();
+        RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
         IProjectileStateStepper? configuredProjectileStepper = projectileStepper ??
             (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles, this));
         _projectiles = new ProjectileAuthority(
             projectileStore,
             _players,
-            _npcs,
+            npcStore,
             this,
             configuredProjectileStepper,
             projectileReplication);
-        _npcReplication = npcReplication;
-        _townNpcAuthority = new TownNpcAuthority(
+        _npcs = new NpcAuthority(
+            this,
             _players,
-            _npcs,
+            npcStore,
             projectileStore,
+            worldItemStore,
+            spawnRandom,
+            _worldItems.InstancedLeases,
             worldTiles,
+            worldClock,
             _worldProgression,
+            npcReplication,
+            worldItemReplication,
             townNpcs,
             townSpawnWorldFacts,
             townCommerceWorldFacts,
             townCombatWorldFacts,
-            npcReplication,
             townInitialRaining,
             townInitialEclipse,
             townInitialInvasionActive,
+            serverPlayerStates,
+            npcShops,
+            npcArchetypes,
+            npcArchetypeIdentities,
+            npcAiStepper,
             expertMode,
             masterMode);
-        _mysticFrogCatch = worldTiles is not null
-            ? new RuntimeMysticFrogCatchService1458(_npcs, worldTiles, this)
-            : null;
-        _worldItemReplication = worldItemReplication;
-        _instancedItemLeases = new RuntimeWorldItemInstancedLeaseStore(_worldItems);
-        _npcCombat = new RuntimeNpcNetworkCombatPipeline(
-            _npcs,
-            _worldItems,
-            this,
-            _npcReplication,
-            _instancedItemLeases,
-            _worldItemReplication,
-            _worldClock,
-            _worldProgression,
-            expertMode,
-            masterMode);
-        _townNpcAuthority.SetMeleeDamageSink(_npcCombat);
-
-        if (npcAiStepper is null)
-        {
-            _vanillaNpcTargetingAiStepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
-            var behaviorDispatch = new RuntimeNpcBehaviorStateStepper(
-                _vanillaNpcTargetingAiStepper,
-                _npcPresentationBehaviors,
-                archetypeBehaviors: _npcArchetypeBehaviors,
-                archetypes: _npcArchetypes,
-                identities: _npcArchetypeIdentities);
-            var actorIntent = new RuntimeNpcActorIntentStateStepper(
-                behaviorDispatch,
-                _npcActorControls,
-                this);
-            if (worldTiles is null)
-            {
-                _npcAiStepper = actorIntent;
-            }
-            else
-            {
-                double worldSurfaceTiles = worldTiles.WorldSurfaceTiles ??
-                    Math.Max(1d, worldTiles.Dimensions.HeightTiles / 3d);
-                _vanillaNpcTargetingAiStepper.EnableBlueSlimeMotion(worldSurfaceTiles);
-                _vanillaNpcTargetingAiStepper.EnableZombieMotion(worldSurfaceTiles);
-                _vanillaNpcTargetingAiStepper.SetFlyingEyeEnvironment(new VanillaFlyingEyeWorldEnvironment(worldTiles));
-                _vanillaNpcTargetingAiStepper.SetQueenBeeEnvironment(new VanillaQueenBeeWorldEnvironment(
-                    worldTiles,
-                    worldSurfaceTiles,
-                    townCommerceWorldFacts?.RemixWorld ?? false));
-                _vanillaNpcTargetingAiStepper.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(worldTiles));
-                var worldMotion = new VanillaNpcWorldMotionAiStepper(
-                    actorIntent,
-                    worldTiles,
-                    worldSurfaceTiles,
-                    _worldClock,
-                    progressionMutations: _worldProgression);
-                _vanillaNpcCheckActiveAiStepper = new VanillaNpcCheckActiveAiStepper(worldMotion);
-                _npcAiStepper = _vanillaNpcCheckActiveAiStepper;
-            }
-        }
-        else
-        {
-            _npcAiStepper = new RuntimeNpcBehaviorStateStepper(
-                npcAiStepper,
-                _npcPresentationBehaviors,
-                archetypeBehaviors: _npcArchetypeBehaviors,
-                archetypes: _npcArchetypes,
-                identities: _npcArchetypeIdentities);
-        }
     }
 }

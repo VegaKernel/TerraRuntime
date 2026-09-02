@@ -28,7 +28,8 @@ flowchart TB
     Loop --> Players["Players"]
     Loop --> World["World / tiles / objects"]
     Loop --> NPCs["NPCs"]
-    Loop --> Projectiles["Projectiles / world items"]
+    Loop --> Projectiles["Projectiles"]
+    Loop --> Items["World items"]
 
     Players --> Replication["Synchronization / replication planning"]
     World --> Replication
@@ -61,6 +62,22 @@ flowchart BT
 К owned state относятся по мере реализации player runtime state, NPC slots/handles/state, projectile slots/handles/state, world item state, mutable world/tile/progression state и connection-associated gameplay state после преобразования network input в commands.
 
 Другие threads могут принимать сеть, декодировать bounded input, строить immutable work products, выполнять disk I/O, сериализовать snapshots, обновлять UI из immutable telemetry и возвращать результаты через explicit completion/command boundaries. Они не могут напрямую менять authoritative collections.
+
+`ServerRuntimeState` является authoritative coordinator команд и тика, а не владельцем каждой entity-подсистемы. World-scoped collaborators владеют связными mutation lifecycle, но вызываются только тем же единственным writer: `PlayerAuthority` владеет применением client-player state, `NpcAuthority` владеет NPC commands/AI/combat/actor-archetype lifecycle и координирует `TownNpcAuthority`, `ProjectileAuthority` владеет projectile mutation, `WorldItemAuthority` владеет world-item commands и instanced leases, а `WorldTileAuthority` владеет admission для tile/object mutations. Такое выделение меняет структуру ownership, но не создаёт дополнительный tick thread.
+
+```mermaid
+flowchart TD
+    State["ServerRuntimeState\ncommand + tick coordinator"] --> Players["PlayerAuthority"]
+    State --> Npcs["NpcAuthority"]
+    Npcs --> Town["TownNpcAuthority"]
+    State --> Projectiles["ProjectileAuthority"]
+    State --> Items["WorldItemAuthority"]
+    State --> Tiles["WorldTileAuthority"]
+    Npcs --> NpcStore["RuntimeNpcStore"]
+    Projectiles --> ProjectileStore["RuntimeProjectileStore"]
+    Items --> ItemStore["RuntimeWorldItemStore"]
+    Tiles --> WorldTiles["WorldTileStore"]
+```
 
 ## 5. Command boundary
 
