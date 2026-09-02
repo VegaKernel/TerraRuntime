@@ -18,12 +18,30 @@ for (int i = 2; i < args.Length; i++)
 {
     if (args[i] == "--enforce")
     {
+        if (enforce)
+        {
+            Console.Error.WriteLine("Duplicate --enforce option.");
+            return 2;
+        }
+
         enforce = true;
         continue;
     }
 
-    if (args[i] == "--json" && i + 1 < args.Length)
+    if (args[i] == "--json")
     {
+        if (jsonPath is not null)
+        {
+            Console.Error.WriteLine("Duplicate --json option.");
+            return 2;
+        }
+
+        if (i + 1 >= args.Length || args[i + 1].StartsWith("--", StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine("Option --json requires a report path.");
+            return 2;
+        }
+
         jsonPath = Path.GetFullPath(args[++i]);
         continue;
     }

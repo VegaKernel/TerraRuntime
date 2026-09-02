@@ -27,8 +27,12 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
         });
         var pass = new VanillaMetadataParityPass1458(fallback, state);
         var context = new GenerationContext(workspace);
+        Assert.True(workspace.TrySetDungeon(bootstrap.DungeonLocation, 333));
 
         pass.Execute(context);
+
+        Assert.True(workspace.TryGetDungeon(out WorldGenerationPoint preservedDungeon));
+        Assert.Equal(new WorldGenerationPoint(bootstrap.DungeonLocation, 333), preservedDungeon);
         FillMinimalValidWorld(workspace, bootstrap);
         workspace.SetVanillaSeedProfile(new VanillaWorldSeedProfile1458(VanillaSpecialWorldSeed1458.NoTraps, VanillaSecretWorldSeed1458.None));
         RuntimeWorldGenerationFinalizationResult finalized = RuntimeWorldGenerationFinalizer.Finalize(workspace);

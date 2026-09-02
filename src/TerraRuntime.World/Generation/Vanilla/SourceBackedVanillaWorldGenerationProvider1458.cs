@@ -507,6 +507,13 @@ internal sealed class VanillaMetadataParityPass1458 : IWorldGenerationPass
 
     public void Execute(IWorldGenerationContext context)
     {
+        IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
+            throw new InvalidOperationException("Vanilla metadata pass requires world metadata storage.");
+
+        WorldGenerationPoint? sourceBackedDungeon = null;
+        if (state.Bootstrap is not null && metadata.TryGetDungeon(out WorldGenerationPoint dungeon))
+            sourceBackedDungeon = dungeon;
+
         fallback.Execute(context);
 
         if (state.Bootstrap is VanillaWorldGenerationBootstrapState1458 bootstrap &&
@@ -515,11 +522,15 @@ internal sealed class VanillaMetadataParityPass1458 : IWorldGenerationPass
             runtimeWorkspace.SetVanillaBootstrapState(bootstrap);
         }
 
+        if (sourceBackedDungeon is WorldGenerationPoint preservedDungeon &&
+            !metadata.TrySetDungeon(preservedDungeon.X, preservedDungeon.Y))
+        {
+            throw new InvalidOperationException("Could not preserve source-backed Terraria dungeon anchor.");
+        }
+
         if (state.TerrainLayers is not WorldGenerationLayers layers)
             return;
 
-        IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
-            throw new InvalidOperationException("Vanilla metadata pass requires world metadata storage.");
         if (!metadata.TrySetLayers(layers.WorldSurface, layers.RockLayer))
             throw new InvalidOperationException("Could not preserve source-backed Terraria terrain layers.");
     }
