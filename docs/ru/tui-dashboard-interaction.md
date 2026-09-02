@@ -37,15 +37,15 @@ Roster переведён на `ListView`: focus/selection выделяет пу
 
 Правая кнопка открывает context menu для выбранной semantic row. У sandbox мира есть `Destroy`, у игрока — `Kick`. Уничтожение primary мира намеренно не предлагается. `Kick` запрашивает закрытие process-owned connection через connection route/outbound queue; UI не удаляет строку самостоятельно и не мутирует player state напрямую.
 
-Кнопка `+` сверху roster открывает окно создания sandbox. Форма покрывает текущие возможности `sb1`/`sb2`:
+Кнопка `+` сверху roster открывает окно создания sandbox. Форма напрямую отображает typed sandbox creation surface:
 
 - имя sandbox;
-- in-process (`sb1`) или dedicated-process (`sb2`) isolation;
+- два явных взаимоисключающих checkbox isolation: `In-process sandbox isolation` и `Dedicated-process sandbox isolation`;
 - generated world или существующий `.wld`;
 - generator ID и numeric/random seed;
 - размер primary или явные width/height;
-- mode classic/expert/master/journey;
-- evil corruption/crimson.
+- выпадающий список mode: Classic, Expert, Master и Journey;
+- выпадающий список evil: Corruption и Crimson.
 
 Форма строит тот же typed `SandboxCreateRequest`, который использует command handling, а не собирает строку команды и не парсит её повторно.
 
@@ -63,7 +63,7 @@ Double-click по title плитки растягивает её на весь d
 
 ## Настраиваемый Console feed
 
-Console остаётся одним bounded хронологическим потоком Logs + Chat. Контролы наверху задают видимость structured logs, минимальный log level и видимость Chat. Detached TUI cache заранее захватывает bounded Debug-level overview superset, поэтому смена фильтра не вызывает синхронное чтение runtime state из Terminal.Gui thread.
+Console остаётся одним bounded хронологическим потоком Logs + Chat. Два выпадающих списка наверху задают видимость structured logs, минимальный log level и видимость Chat. Старая строка runtime/tick status намеренно убрана: lifecycle и TPS теперь относятся к конкретному миру и показываются в per-world roster и world-scoped detail screens. Detached TUI cache заранее захватывает bounded Debug-level overview superset, поэтому смена фильтра не вызывает синхронное чтение runtime state из Terminal.Gui thread.
 
 Те же настройки доступны через command line:
 

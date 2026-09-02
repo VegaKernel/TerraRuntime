@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Globalization;
 using System.Text;
@@ -36,10 +37,9 @@ internal sealed class RuntimeOverviewDashboard : View
     private readonly SandboxWorldTreeView worldsText;
     private readonly Label networkLegend;
     private readonly Label commandFeedback;
-    private readonly Label worldsHint;
     private readonly Button sandboxAddButton;
-    private readonly Label feedLogModeToggle;
-    private readonly Label feedChatToggle;
+    private readonly DropDownList feedLogModeDropDown;
+    private readonly DropDownList feedChatDropDown;
     private readonly TextField commandInput;
     private readonly GraphView networkGraph;
     private readonly SandboxOperations? sandboxOperations;
@@ -62,10 +62,8 @@ internal sealed class RuntimeOverviewDashboard : View
     private string? appliedWorkspaceStatus;
     private RuntimeLogLevel? minimumLogLevel = RuntimeLogLevel.Information;
     private bool showChat = true;
-    private RuntimeDashboardSnapshot latestRuntime;
     private RuntimeLogSnapshot latestLogs;
     private RuntimeLogSnapshot latestChat;
-    private int latestPlayerCount;
     private bool hasFeedSnapshot;
     private bool hasNetworkCounterSample;
     private Task<string>? pendingSandboxCommand;
@@ -75,6 +73,7 @@ internal sealed class RuntimeOverviewDashboard : View
     private long lastMessageInboundBytes;
     private long lastMessageOutboundFrames;
     private long lastMessageOutboundBytes;
+    private bool updatingFeedControls;
 
     public RuntimeOverviewDashboard(
         SandboxOperations? sandboxOperations = null,
@@ -95,10 +94,11 @@ internal sealed class RuntimeOverviewDashboard : View
         networkGraph = CreateGraph();
         networkLegend = CreateLegend();
 
-        feedLogModeToggle = CreateFeedControl(1, 17);
-        feedChatToggle = CreateFeedControl(20, 12);
-        BindFeedControl(feedLogModeToggle, CycleLogMode);
-        BindFeedControl(feedChatToggle, () => SetChatVisibility(!showChat));
+        feedLogModeDropDown = CreateFeedDropDown(1, 18,
+            ["Logs OFF", "Logs DEBUG+", "Logs INFO+", "Logs WARN+", "Logs ERROR+"]);
+        feedChatDropDown = CreateFeedDropDown(22, 13, ["Chat ON", "Chat OFF"]);
+        feedLogModeDropDown.ValueChanged += (_, args) => ApplyLogFeedSelection(args.NewValue);
+        feedChatDropDown.ValueChanged += (_, args) => ApplyChatFeedSelection(args.NewValue);
         UpdateFeedControlText();
 
         commandFeedback = new Label
@@ -126,15 +126,6 @@ internal sealed class RuntimeOverviewDashboard : View
             SchemeName = AccentSchemeName
         };
 
-        worldsHint = new Label
-        {
-            X = 1,
-            Y = Pos.AnchorEnd(1),
-            Width = Dim.Fill(1),
-            Text = "+ create · RMB actions · drag player to world",
-            SchemeName = BaseSchemeName
-        };
-
         sandboxAddButton = new Button
         {
             X = 1,
@@ -148,7 +139,7 @@ internal sealed class RuntimeOverviewDashboard : View
         };
         sandboxAddButton.Accepted += (_, _) => ShowSandboxCreateWindow();
 
-        consoleFrame = CreateFrame("Console", consoleText, commandInput, feedLogModeToggle, feedChatToggle);
+        consoleFrame = CreateFrame("Console", consoleText, commandInput, feedLogModeDropDown, feedChatDropDown);
         networkFrame = CreateFrame("Network", networkGraph);
         worldsFrame = CreateFrame("Worlds / Players", worldsText);
         commandFrame = new FrameView
@@ -166,7 +157,7 @@ internal sealed class RuntimeOverviewDashboard : View
         consoleText.Width = Dim.Fill();
         consoleText.Height = Dim.Fill(5);
         commandFrame.Add(commandPrompt, commandInput);
-        consoleFrame.Add(feedLogModeToggle, feedChatToggle, consoleText, commandFeedback, commandFrame);
+        consoleFrame.Add(feedLogModeDropDown, feedChatDropDown, consoleText, commandFeedback, commandFrame);
 
         networkLegend.X = 1;
         networkLegend.Y = 0;
@@ -180,8 +171,8 @@ internal sealed class RuntimeOverviewDashboard : View
         worldsText.X = 0;
         worldsText.Y = 1;
         worldsText.Width = Dim.Fill();
-        worldsText.Height = Dim.Fill(2);
-        worldsFrame.Add(sandboxAddButton, worldsText, worldsHint);
+        worldsText.Height = Dim.Fill();
+        worldsFrame.Add(sandboxAddButton, worldsText);
         worldsText.TransferRequested += (player, sandbox) =>
             ExecuteSandboxOperationAsync(new SandboxOperation.Move(player, sandbox));
         worldsText.DestroyRequested += sandbox =>
@@ -240,8 +231,6 @@ internal sealed class RuntimeOverviewDashboard : View
         AppendHistory(networkRates);
 
         ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
-        latestRuntime = runtime;
-        latestPlayerCount = players.Length;
         latestLogs = logs;
         latestChat = chat;
         hasFeedSnapshot = true;
@@ -362,7 +351,7 @@ internal sealed class RuntimeOverviewDashboard : View
     internal string GetNetworkLegendForSmoke() => networkLegend.Text?.ToString() ?? string.Empty;
 
     internal string GetFeedControlsForSmoke() =>
-        $"{feedLogModeToggle.Text} | {feedChatToggle.Text}";
+        $"{feedLogModeDropDown.Text} | {feedChatDropDown.Text}";
 
     internal string GetConsoleTextForSmoke() => consoleText.Text?.ToString() ?? string.Empty;
 
@@ -645,29 +634,50 @@ internal sealed class RuntimeOverviewDashboard : View
         RefreshFeedProjection();
     }
 
-    private void CycleLogMode()
+    private void ApplyLogFeedSelection(string? selection)
     {
-        minimumLogLevel = minimumLogLevel switch
+        if (updatingFeedControls || string.IsNullOrWhiteSpace(selection))
+            return;
+
+        RuntimeLogLevel? level = selection switch
         {
-            null => RuntimeLogLevel.Debug,
-            RuntimeLogLevel.Debug => RuntimeLogLevel.Information,
-            RuntimeLogLevel.Information => RuntimeLogLevel.Warning,
-            RuntimeLogLevel.Warning => RuntimeLogLevel.Error,
-            RuntimeLogLevel.Error => null,
-            _ => RuntimeLogLevel.Information
+            "Logs OFF" => null,
+            "Logs DEBUG+" => RuntimeLogLevel.Debug,
+            "Logs INFO+" => RuntimeLogLevel.Information,
+            "Logs WARN+" => RuntimeLogLevel.Warning,
+            "Logs ERROR+" => RuntimeLogLevel.Error,
+            _ => minimumLogLevel
         };
-        UpdateFeedControlText();
-        RefreshFeedProjection();
+        SetLogMode(level);
+    }
+
+    private void ApplyChatFeedSelection(string? selection)
+    {
+        if (updatingFeedControls || string.IsNullOrWhiteSpace(selection))
+            return;
+
+        if (selection == "Chat ON")
+            SetChatVisibility(true);
+        else if (selection == "Chat OFF")
+            SetChatVisibility(false);
     }
 
     private void UpdateFeedControlText()
     {
-        feedLogModeToggle.Text = minimumLogLevel is RuntimeLogLevel level
-            ? $"Logs {FormatLevelName(level)}+"
-            : "Logs OFF";
-        feedChatToggle.Text = $"Chat {(showChat ? "ON" : "OFF")}";
-        feedLogModeToggle.SetNeedsDraw();
-        feedChatToggle.SetNeedsDraw();
+        updatingFeedControls = true;
+        try
+        {
+            feedLogModeDropDown.Text = minimumLogLevel is RuntimeLogLevel level
+                ? $"Logs {FormatLevelName(level)}+"
+                : "Logs OFF";
+            feedChatDropDown.Text = $"Chat {(showChat ? "ON" : "OFF")}";
+            feedLogModeDropDown.SetNeedsDraw();
+            feedChatDropDown.SetNeedsDraw();
+        }
+        finally
+        {
+            updatingFeedControls = false;
+        }
     }
 
     private void RefreshFeedProjection()
@@ -678,8 +688,6 @@ internal sealed class RuntimeOverviewDashboard : View
         SetSelectableText(
             consoleText,
             RenderConsoleFeed(
-                latestRuntime,
-                latestPlayerCount,
                 latestLogs.Entries.Span,
                 latestChat.Entries.Span,
                 minimumLogLevel,
@@ -797,24 +805,16 @@ internal sealed class RuntimeOverviewDashboard : View
         SchemeName = BaseSchemeName
     };
 
-    private static Label CreateFeedControl(int x, int width) => new()
+    private static DropDownList CreateFeedDropDown(int x, int width, IEnumerable<string> items) => new()
     {
         X = x,
         Y = 0,
         Width = width,
         CanFocus = true,
+        ReadOnly = true,
+        Source = new ListWrapper<string>(new ObservableCollection<string>(items.ToArray())),
         SchemeName = BaseSchemeName
     };
-
-    private static void BindFeedControl(Label label, Action action)
-    {
-        label.MouseBindings.Add(MouseFlags.LeftButtonPressed, Command.Accept);
-        label.Accepting += (_, args) =>
-        {
-            action();
-            args.Handled = true;
-        };
-    }
 
     private static GraphView CreateGraph() => new()
     {
@@ -1083,8 +1083,6 @@ internal sealed class RuntimeOverviewDashboard : View
         view.ScrollTo(new Point(0, Math.Max(0, view.Lines - 1)));
 
     private static string RenderConsoleFeed(
-        RuntimeDashboardSnapshot runtime,
-        int playerCount,
         ReadOnlySpan<RuntimeLogEntry> logs,
         ReadOnlySpan<RuntimeLogEntry> chat,
         RuntimeLogLevel? minimumLogLevel,
@@ -1120,13 +1118,6 @@ internal sealed class RuntimeOverviewDashboard : View
 
         int start = Math.Max(0, lines.Count - MaximumFeedEntries);
         var text = new StringBuilder(Math.Max(256, (lines.Count - start) * 96));
-        text.Append(
-            string.Create(
-                CultureInfo.CurrentCulture,
-                $"Tick #{runtime.Tick:N0}  |  {runtime.Lifecycle}  |  World {Sanitize(runtime.WorldName, 24)}  |  Players {playerCount}/{runtime.MaxPlayers}"));
-        text.AppendLine();
-        text.AppendLine();
-
         if (lines.Count == 0)
         {
             text.Append(minimumLogLevel is not null || showChat

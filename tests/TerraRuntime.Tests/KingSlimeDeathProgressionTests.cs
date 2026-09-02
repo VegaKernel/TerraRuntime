@@ -215,6 +215,7 @@ public sealed class KingSlimeDeathProgressionTests
             new PassthroughStepper(),
             tiles,
             worldSurfaceTiles: 40d,
+            worldEvents: null,
             progressionMutations: progression);
         NpcStateUpdate deadKingSlime = CreateDeadKingSlimeUpdate();
 

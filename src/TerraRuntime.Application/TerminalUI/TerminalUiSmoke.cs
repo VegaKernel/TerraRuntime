@@ -49,8 +49,8 @@ internal static class TerminalUiSmoke
                     AssertWorkspaceRow(workspace, "Running");
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "Running");
-                    AssertRendered(app.Driver!, "Tick #120");
-                    AssertRendered(app.Driver!, "TPS");
+                    AssertNotRendered(app.Driver!, "Tick #120");
+                    AssertRendered(app.Driver!, "NativeAOT-Smoke");
                     AssertRendered(app.Driver!, "Network");
                     AssertRendered(app.Driver!, "Chat");
                     AssertNotRendered(app.Driver!, "CPU");
@@ -117,7 +117,7 @@ internal static class TerminalUiSmoke
                     AssertWorkspaceRow(workspace, "Running");
                     app.LayoutAndDraw();
                     AssertRendered(app.Driver!, "Running");
-                    AssertRendered(app.Driver!, "TPS");
+                    AssertRendered(app.Driver!, "NativeAOT-Smoke");
                     AssertRendered(app.Driver!, "Network");
                     AssertRendered(app.Driver!, "Chat");
                     AssertNotRendered(app.Driver!, "Memory / GC");
@@ -130,7 +130,7 @@ internal static class TerminalUiSmoke
 
             Console.WriteLine(
                 "Terminal UI smoke passed: ANSI framebuffer rendered the operator dashboard at wide and narrow terminal sizes, " +
-                "kept TPS and Network graphs beside a large Chat panel, preserved the accented Console command input, " +
+                "kept Network telemetry beside a large Chat panel and the per-world roster, preserved the accented Console command input, " +
                 "the external-dashboard transition, all Details menu hotkeys, Actions/manual-save path, complete bounded network telemetry, " +
                 "section-cache pipeline/world-save telemetry, Players/NPCs/Projectiles/Items/Network/World/Logs detail views and authoritative admin actions.");
             return 0;

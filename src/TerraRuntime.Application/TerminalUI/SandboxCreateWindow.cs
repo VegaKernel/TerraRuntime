@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
@@ -6,12 +7,16 @@ using Terminal.Gui.Views;
 
 namespace TerraRuntime.TerminalUI;
 
-/// <summary>Operator form for the typed sb1/sb2 sandbox creation surface.</summary>
+/// <summary>Operator form for typed sandbox creation.</summary>
 internal sealed class SandboxCreateWindow : Window
 {
+    private static readonly string[] GameModes = ["Classic", "Expert", "Master", "Journey"];
+    private static readonly string[] EvilTypes = ["Corruption", "Crimson"];
+
     private readonly SandboxOperations operations;
     private readonly TextField nameField;
-    private readonly CheckBox dedicatedProcess;
+    private readonly CheckBox inProcessIsolation;
+    private readonly CheckBox dedicatedProcessIsolation;
     private readonly CheckBox worldFile;
     private readonly TextField fileField;
     private readonly TextField generatorField;
@@ -19,49 +24,64 @@ internal sealed class SandboxCreateWindow : Window
     private readonly CheckBox primarySize;
     private readonly TextField widthField;
     private readonly TextField heightField;
-    private readonly TextField modeField;
-    private readonly TextField evilField;
+    private readonly DropDownList modeDropDown;
+    private readonly DropDownList evilDropDown;
     private readonly Label feedback;
+    private bool updatingIsolation;
 
     public SandboxCreateWindow(SandboxOperations operations)
     {
         this.operations = operations ?? throw new ArgumentNullException(nameof(operations));
         Title = "Create sandbox";
-        Width = 68;
-        Height = 20;
+        Width = 72;
+        Height = 22;
         X = Pos.Center();
         Y = Pos.Center();
         SchemeName = "Base";
 
-        nameField = Field(17, 1, 46, "sandbox");
-        dedicatedProcess = new CheckBox { X = 17, Y = 3, Text = "Dedicated process (sb2)" };
-        worldFile = new CheckBox { X = 17, Y = 4, Text = "Load existing .wld file" };
-        fileField = Field(17, 5, 46, "worlds/example.wld");
-        generatorField = Field(17, 7, 46, "terraruntime:optimized");
-        seedField = Field(17, 8, 20, "0");
-        primarySize = new CheckBox { X = 17, Y = 9, Text = "Use primary world size", Value = CheckState.Checked };
-        widthField = Field(17, 10, 10, operations.DefaultWidthTiles.ToString(CultureInfo.InvariantCulture));
-        heightField = Field(37, 10, 10, operations.DefaultHeightTiles.ToString(CultureInfo.InvariantCulture));
-        modeField = Field(17, 11, 14, "classic");
-        evilField = Field(44, 11, 14, "corruption");
+        nameField = Field(20, 1, 47, "sandbox");
+        inProcessIsolation = new CheckBox
+        {
+            X = 20,
+            Y = 3,
+            Text = "In-process sandbox isolation",
+            Value = CheckState.Checked
+        };
+        dedicatedProcessIsolation = new CheckBox
+        {
+            X = 20,
+            Y = 4,
+            Text = "Dedicated-process sandbox isolation"
+        };
+        worldFile = new CheckBox { X = 20, Y = 6, Text = "Load existing .wld file" };
+        fileField = Field(20, 7, 47, "worlds/example.wld");
+        generatorField = Field(20, 9, 47, "terraruntime:optimized");
+        seedField = Field(20, 10, 20, "0");
+        primarySize = new CheckBox { X = 20, Y = 11, Text = "Use primary world size", Value = CheckState.Checked };
+        widthField = Field(20, 12, 10, operations.DefaultWidthTiles.ToString(CultureInfo.InvariantCulture));
+        heightField = Field(42, 12, 10, operations.DefaultHeightTiles.ToString(CultureInfo.InvariantCulture));
+        modeDropDown = DropDown(20, 13, 17, GameModes, "Classic");
+        evilDropDown = DropDown(47, 13, 17, EvilTypes, "Corruption");
 
-        var create = new Button { X = 17, Y = 14, Text = "Create" };
-        var cancel = new Button { X = 29, Y = 14, Text = "Cancel" };
-        feedback = new Label { X = 1, Y = 16, Width = Dim.Fill(1), Text = string.Empty };
+        var create = new Button { X = 20, Y = 16, Text = "Create" };
+        var cancel = new Button { X = 32, Y = 16, Text = "Cancel" };
+        feedback = new Label { X = 1, Y = 18, Width = Dim.Fill(1), Text = string.Empty };
 
         Add(
             LabelAt(1, 1, "Name"), nameField,
-            LabelAt(1, 3, "Isolation"), dedicatedProcess,
-            LabelAt(1, 4, "Source"), worldFile,
-            LabelAt(1, 5, "World file"), fileField,
-            LabelAt(1, 7, "Generator"), generatorField,
-            LabelAt(1, 8, "Seed"), seedField,
-            LabelAt(1, 9, "Size"), primarySize,
-            LabelAt(1, 10, "Width"), widthField, LabelAt(29, 10, "Height"), heightField,
-            LabelAt(1, 11, "Mode"), modeField, LabelAt(34, 11, "Evil"), evilField,
-            LabelAt(1, 12, "mode: classic/expert/master/journey · evil: corruption/crimson"),
+            LabelAt(1, 3, "Isolation"), inProcessIsolation,
+            dedicatedProcessIsolation,
+            LabelAt(1, 6, "Source"), worldFile,
+            LabelAt(1, 7, "World file"), fileField,
+            LabelAt(1, 9, "Generator"), generatorField,
+            LabelAt(1, 10, "Seed"), seedField,
+            LabelAt(1, 11, "Size"), primarySize,
+            LabelAt(1, 12, "Width"), widthField, LabelAt(33, 12, "Height"), heightField,
+            LabelAt(1, 13, "Mode"), modeDropDown, LabelAt(40, 13, "Evil"), evilDropDown,
             create, cancel, feedback);
 
+        inProcessIsolation.ValueChanged += (_, _) => KeepIsolationExclusive(inProcessIsolation, dedicatedProcessIsolation);
+        dedicatedProcessIsolation.ValueChanged += (_, _) => KeepIsolationExclusive(dedicatedProcessIsolation, inProcessIsolation);
         worldFile.ValueChanged += (_, _) => UpdateEnabledFields();
         primarySize.ValueChanged += (_, _) => UpdateEnabledFields();
         create.Accepted += (_, _) => Submit();
@@ -74,7 +94,7 @@ internal sealed class SandboxCreateWindow : Window
 
     private void Submit()
     {
-        WorldIsolationLevel isolation = dedicatedProcess.Value == CheckState.Checked
+        WorldIsolationLevel isolation = dedicatedProcessIsolation.Value == CheckState.Checked
             ? WorldIsolationLevel.DedicatedProcess
             : WorldIsolationLevel.InProcess;
         string name = nameField.Text.Trim();
@@ -91,14 +111,14 @@ internal sealed class SandboxCreateWindow : Window
         }
         else
         {
-            if (!Enum.TryParse(modeField.Text.Trim(), ignoreCase: true, out WorldGenerationGameMode mode) || !Enum.IsDefined(mode))
+            if (!Enum.TryParse(modeDropDown.Text.Trim(), ignoreCase: true, out WorldGenerationGameMode mode) || !Enum.IsDefined(mode))
             {
-                feedback.Text = "Mode must be classic, expert, master or journey.";
+                feedback.Text = "Select a valid game mode.";
                 return;
             }
-            if (!Enum.TryParse(evilField.Text.Trim(), ignoreCase: true, out WorldGenerationEvil evil) || !Enum.IsDefined(evil))
+            if (!Enum.TryParse(evilDropDown.Text.Trim(), ignoreCase: true, out WorldGenerationEvil evil) || !Enum.IsDefined(evil))
             {
-                feedback.Text = "Evil must be corruption or crimson.";
+                feedback.Text = "Select a valid world evil.";
                 return;
             }
 
@@ -143,6 +163,29 @@ internal sealed class SandboxCreateWindow : Window
         CloseRequested?.Invoke();
     }
 
+    private void KeepIsolationExclusive(CheckBox selected, CheckBox other)
+    {
+        if (updatingIsolation)
+            return;
+
+        updatingIsolation = true;
+        try
+        {
+            if (selected.Value == CheckState.Checked)
+            {
+                other.Value = CheckState.UnChecked;
+                return;
+            }
+
+            if (other.Value != CheckState.Checked)
+                selected.Value = CheckState.Checked;
+        }
+        finally
+        {
+            updatingIsolation = false;
+        }
+    }
+
     private void UpdateEnabledFields()
     {
         bool file = worldFile.Value == CheckState.Checked;
@@ -152,8 +195,8 @@ internal sealed class SandboxCreateWindow : Window
         primarySize.Enabled = !file;
         widthField.Enabled = !file && primarySize.Value != CheckState.Checked;
         heightField.Enabled = !file && primarySize.Value != CheckState.Checked;
-        modeField.Enabled = !file;
-        evilField.Enabled = !file;
+        modeDropDown.Enabled = !file;
+        evilDropDown.Enabled = !file;
     }
 
     private static Label LabelAt(int x, int y, string text) => new() { X = x, Y = y, Text = text };
@@ -164,5 +207,15 @@ internal sealed class SandboxCreateWindow : Window
         Y = y,
         Width = width,
         Text = text
+    };
+
+    private static DropDownList DropDown(int x, int y, int width, IEnumerable<string> items, string selected) => new()
+    {
+        X = x,
+        Y = y,
+        Width = width,
+        ReadOnly = true,
+        Source = new ListWrapper<string>(new ObservableCollection<string>(items.ToArray())),
+        Text = selected
     };
 }

@@ -37,15 +37,15 @@ The roster is a `ListView`: focus/selection highlights a complete item row rathe
 
 Right-click opens a context menu for the selected semantic row. A live sandbox world exposes `Destroy`; a player exposes `Kick`. Primary world destruction is deliberately not offered. `Kick` requests process-owned connection shutdown through the connection route/outbound queue; it does not delete a UI row or directly mutate runtime player state.
 
-A `+` control at the top of the roster opens the sandbox creation window. The form covers the currently implemented `sb1`/`sb2` creation surface:
+A `+` control at the top of the roster opens the sandbox creation window. The form maps directly to the typed sandbox creation surface:
 
 - sandbox name;
-- in-process (`sb1`) or dedicated-process (`sb2`) isolation;
+- two explicit, mutually exclusive isolation checkboxes: `In-process sandbox isolation` and `Dedicated-process sandbox isolation`;
 - generated world or existing `.wld` source;
 - generator ID and numeric/random seed;
 - primary-size or explicit width/height;
-- classic/expert/master/journey mode;
-- corruption/crimson evil.
+- a game-mode drop-down with Classic, Expert, Master and Journey;
+- an evil drop-down with Corruption and Crimson.
 
 The form builds the same typed `SandboxCreateRequest` used by command handling. It does not round-trip through a generated command string.
 
@@ -63,7 +63,7 @@ Double-clicking a tile title expands that tile to the complete dashboard workspa
 
 ## Configurable Console feed
 
-Console is one chronological bounded feed rather than separate Log and Chat panes. Controls at the top select structured log visibility/minimum level and Chat visibility. The detached TUI cache captures a bounded Debug-level overview superset, so changing filters does not synchronously query logging state from the Terminal.Gui thread.
+Console is one chronological bounded feed rather than separate Log and Chat panes. Two drop-downs at the top select structured log visibility/minimum level and Chat visibility. The old runtime/tick status row is intentionally absent because world lifecycle and TPS now belong to the per-world roster and world-scoped detail screens. The detached TUI cache captures a bounded Debug-level overview superset, so changing filters does not synchronously query logging state from the Terminal.Gui thread.
 
 The same settings are available through the command line:
 

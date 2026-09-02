@@ -274,10 +274,11 @@ public sealed class TerminalUiWorldInspectionTests
             return false;
         }
 
-        private static RuntimePlayersSnapshot CreatePlayers(string name, long connectionId, byte slot) =>
-            new(
-                [
-                    new RuntimePlayerSnapshot(
+        private static RuntimePlayersSnapshot CreatePlayers(string name, long connectionId, byte slot)
+        {
+            RuntimePlayerSnapshot[] players =
+            [
+                new RuntimePlayerSnapshot(
                         connectionId,
                         slot,
                         Generation: 1,
@@ -293,15 +294,17 @@ public sealed class TerminalUiWorldInspectionTests
                         Life: 100,
                         MaxLife: 100,
                         HasMana: true,
-                        Mana: 20,
-                        MaxMana: 20)
-                ],
-                DateTimeOffset.UnixEpoch);
+                    Mana: 20,
+                    MaxMana: 20)
+            ];
+            return new RuntimePlayersSnapshot(players.AsMemory(), DateTimeOffset.UnixEpoch);
+        }
 
-        private static RuntimeNpcsSnapshot CreateNpcs(byte slot, int type) =>
-            new(
-                [
-                    new RuntimeNpcSnapshot(
+        private static RuntimeNpcsSnapshot CreateNpcs(byte slot, int type)
+        {
+            RuntimeNpcSnapshot[] npcs =
+            [
+                new RuntimeNpcSnapshot(
                         slot,
                         Generation: 1,
                         Revision: 1,
@@ -321,28 +324,39 @@ public sealed class TerminalUiWorldInspectionTests
                         CollideX: false,
                         CollideY: false,
                         Wet: false,
-                        NoGravity: false,
-                        NoTileCollide: false)
-                ],
+                    NoGravity: false,
+                    NoTileCollide: false)
+            ];
+            return new RuntimeNpcsSnapshot(
+                npcs.AsMemory(),
                 CommittedSpawns: 1,
                 CommittedUpdates: 0,
                 CommittedDespawns: 0,
                 DateTimeOffset.UnixEpoch);
+        }
 
-        private static RuntimeProjectilesSnapshot CreateProjectiles(byte spawner, int type) =>
-            new(
+        private static RuntimeProjectilesSnapshot CreateProjectiles(byte spawner, int type)
+        {
+            RuntimeProjectileGroupSnapshot[] groups =
+            [new RuntimeProjectileGroupSnapshot(spawner, type, 1, 16, 32, 0, 0, 10, 10, 1)];
+            return new RuntimeProjectilesSnapshot(
                 ActiveProjectiles: 1,
-                [new RuntimeProjectileGroupSnapshot(spawner, type, 1, 16, 32, 0, 0, 10, 10, 1)],
+                Groups: groups.AsMemory(),
                 CommittedSpawns: 1,
                 CommittedUpdates: 0,
                 CommittedDespawns: 0,
                 DateTimeOffset.UnixEpoch);
+        }
 
-        private static RuntimeWorldItemsSnapshot CreateItems(short itemNetId) =>
-            new(
+        private static RuntimeWorldItemsSnapshot CreateItems(short itemNetId)
+        {
+            RuntimeWorldItemGroupSnapshot[] groups =
+            [new RuntimeWorldItemGroupSnapshot(itemNetId, 1, 1, 0, 0, 1, 16, 32)];
+            return new RuntimeWorldItemsSnapshot(
                 ActiveItems: 1,
-                [new RuntimeWorldItemGroupSnapshot(itemNetId, 1, 1, 0, 0, 1, 16, 32)],
+                Groups: groups.AsMemory(),
                 DateTimeOffset.UnixEpoch);
+        }
 
         private static WorldRuntimeSnapshot CreateRuntimeSnapshot(
             WorldRuntimeId runtimeId,
