@@ -4,7 +4,7 @@
 
 ## 1. Scope
 
-This guide describes the networking and Terraria protocol path that exists in TerraRuntime today. The protocol baseline is Terraria `1.4.5.8`, protocol `326`, with Multiplicity 2.7.x behind the TerraRuntime protocol boundary.
+This guide describes the networking and Terraria protocol path that exists in TerraRuntime today. The protocol baseline is Terraria `1.4.5.8`, protocol `326`, with Multiplicity 3.0.x behind the TerraRuntime protocol boundary.
 
 Official TerrariaServer 1.4.5.8 behavior and independent real-client traffic remain the final reference when implementation and self-round-trip evidence disagree.
 

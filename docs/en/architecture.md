@@ -148,7 +148,7 @@ Terraria framing is `[u16 length][u8 message id][payload]`. A slow client must n
 
 ## 8. Protocol boundary
 
-`TerraRuntime.Protocol` defines runtime-facing protocol concepts. `TerraRuntime.Protocol.Multiplicity` adapts Multiplicity 2.7.x behind that boundary.
+`TerraRuntime.Protocol` defines runtime-facing protocol concepts. `TerraRuntime.Protocol.Multiplicity` adapts Multiplicity 3.0.x behind that boundary.
 
 Gameplay code should not depend on concrete Multiplicity packet classes where it can work with domain commands/state instead.
 
@@ -162,11 +162,13 @@ Source projects are layered and checked by `tools/ci/check_project_references.py
 
 1. `TerraRuntime.Contracts`;
 2. source/domain boundaries: `Gameplay`, `Protocol`, `World`, `HostContracts`, `Transport`, `Schematics`;
-3. runtime mechanics/adapters: `Core`, `Network`, `Protocol.Multiplicity`;
+3. runtime mechanics/adapters: `Core`, `Network`, `Protocol.Multiplicity`, `WorldGeneration`;
 4. authoritative composition: `Application`;
 5. shipping/extension hosts: `TerraRuntime`, `Extensibility`, `ExtensibleHost`.
 
 `TerraRuntime.Protocol.Multiplicity -> TerraRuntime.World` is an intentional same-level adapter dependency today: packet bootstrap/section encoders project immutable world/persistence snapshot types that are still owned by `World`. The adapter may read those projections for wire encoding; it must not become a world mutation owner. If those immutable DTOs later move into Contracts, this reference can disappear instead of being hidden behind a forwarding shim.
+
+`TerraRuntime.WorldGeneration -> TerraRuntime.World` is intentional: built-in generation owns candidate construction, source-backed/optimized passes and finalization, while `World` remains the storage/persistence owner. There is no reverse reference from `World` to `WorldGeneration`; fresh `.wld` metadata is projected into World-owned persistence DTOs at the publication boundary.
 
 ## 9. Entity identity
 

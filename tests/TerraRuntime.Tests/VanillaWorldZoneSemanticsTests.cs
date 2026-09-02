@@ -1,4 +1,5 @@
 using TerraRuntime.World;
+using TerraRuntime.Gameplay.Worlds;
 
 namespace TerraRuntime.Tests;
 
@@ -19,7 +20,7 @@ public sealed class VanillaWorldZoneSemanticsTests
         var dimensions = new WorldDimensions(1_000, 1_000);
 
         Assert.True(VanillaWorldDepthZoneResolver.TryResolve(
-            dimensions,
+            dimensions.HeightTiles,
             worldSurface: 200d,
             rockLayer: 400d,
             tileY,
@@ -32,11 +33,11 @@ public sealed class VanillaWorldZoneSemanticsTests
     {
         var dimensions = new WorldDimensions(1_000, 1_000);
 
-        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions, 200d, 400d, -1, out _));
-        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions, 200d, 400d, 1_000, out _));
-        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions, double.NaN, 400d, 20, out _));
-        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions, 401d, 400d, 20, out _));
-        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions, 200d, 800d, 20, out _));
+        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions.HeightTiles, 200d, 400d, -1, out _));
+        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions.HeightTiles, 200d, 400d, 1_000, out _));
+        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions.HeightTiles, double.NaN, 400d, 20, out _));
+        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions.HeightTiles, 401d, 400d, 20, out _));
+        Assert.False(VanillaWorldDepthZoneResolver.TryResolve(dimensions.HeightTiles, 200d, 800d, 20, out _));
     }
 
     [Fact]

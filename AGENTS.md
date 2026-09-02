@@ -9,7 +9,7 @@ Before non-trivial work, read the relevant parts of `docs/roadmap.md` and `docs/
 When sources disagree, use this order:
 
 1. Locally decompiled official `TerrariaServer.exe` **1.4.5.8** for vanilla behavior, `.wld` layout, gameplay ordering, runtime constants and packet-handling semantics.
-2. `VegaKernel/Multiplicity` **2.7.x** for protocol **326 / Terraria 1.4.5.8** typed packet implementation.
+2. `VegaKernel/Multiplicity` **3.0.x** for protocol **326 / Terraria 1.4.5.8** typed packet implementation.
 3. `bybrooklyn/terrustia` as an independent cross-check and source of testing/performance ideas.
 4. TShock/OTAPI only for historical behavior, compatibility knowledge and exploit lessons.
 

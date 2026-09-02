@@ -106,7 +106,7 @@ public static class TerrariaTileManipulationCodec
             Style = state.Style
         };
 
-        frame = MultiplicityPacketSerializer.Serialize(packet);
+        frame = packet.ToArray();
         return TerrariaTileManipulationEncodeResult.Encoded;
     }
 

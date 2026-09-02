@@ -8,6 +8,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="TerraRuntime.Tests" />
     <InternalsVisibleTo Include="TerraRuntime.WorldCompare" />
+    <InternalsVisibleTo Include="TerraRuntime.WorldGeneration" />
   </ItemGroup>
 
   <ItemGroup>

@@ -22,7 +22,7 @@ flowchart TD
 При расхождении sources порядок такой:
 
 1. locally decompiled official `TerrariaServer.exe` 1.4.5.8 для gameplay behavior, `.wld` layout, ordering, constants и server semantics;
-2. `VegaKernel/Multiplicity` 2.7.x для protocol 326 typed wire models;
+2. `VegaKernel/Multiplicity` 3.0.x для protocol 326 typed wire models;
 3. `bybrooklyn/terrustia` как independent implementation cross-check и источник testing/performance ideas;
 4. TShock/OTAPI только для historical compatibility и exploit lessons.
 

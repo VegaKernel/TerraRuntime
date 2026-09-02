@@ -9,5 +9,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/TerraRuntime.World/TerraRuntime.World.csproj" />
+    <ProjectReference Include="../../src/TerraRuntime.WorldGeneration/TerraRuntime.WorldGeneration.csproj" />
   </ItemGroup>
 </Project>

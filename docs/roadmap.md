@@ -15,7 +15,7 @@ When sources disagree, use this order of authority:
 
 ```text
 TerrariaServer 1.4.5.8 decompiled  = primary behavioral/runtime truth
-Multiplicity 2.7.2                 = primary protocol library for protocol 326 / Terraria 1.4.5.8
+Multiplicity 3.0.0                 = primary protocol library for protocol 326 / Terraria 1.4.5.8
 terrustia                          = secondary independent cross-check
 TShock / OTAPI                    = behavioral/history reference only
 ```
@@ -23,7 +23,7 @@ TShock / OTAPI                    = behavioral/history reference only
 Rules:
 
 - The locally decompiled official `TerrariaServer.exe` **1.4.5.8** is the primary source of truth for vanilla behavior, `.wld` layout, gameplay ordering, state transitions, packet handling semantics and runtime constants.
-- `VegaKernel/Multiplicity` **2.7.2** is the current protocol implementation baseline for protocol **326 / Terraria 1.4.5.8**. Keep golden bytes and real official-client captures as independent verification of its wire behavior.
+- `VegaKernel/Multiplicity` **3.0.0** is the current protocol implementation baseline for protocol **326 / Terraria 1.4.5.8**. Keep golden bytes and real official-client captures as independent verification of its wire behavior.
 - `terrustia` is valuable as an independent implementation, testing reference and source of architectural/performance ideas, but it never overrides the current official 1.4.5.8 server when behavior or format details differ.
 - TShock/OTAPI are useful for historical behavior, compatibility knowledge and exploit lessons, but they never define TerraRuntime architecture or override current vanilla behavior.
 - Never infer a 1.4.5.8 file/packet/gameplay layout from an older-version reference when the 1.4.5.8 decompiled server can answer the question directly.
@@ -90,7 +90,7 @@ Build a standalone Terraria protocol layer before gameplay.
 
 Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the typed packet implementation.
 
-- [x] Baseline package: `Multiplicity` **2.7.2**, protocol **326 / Terraria 1.4.5.8**.
+- [x] Baseline package: `Multiplicity` **3.0.0**, protocol **326 / Terraria 1.4.5.8**.
 - [ ] Use its typed packet model when packets need ownership, mutation or re-serialization.
 - [ ] Prefer its zero-copy `PacketView` / `PacketViewParser` path for hot-path inspection.
 - [x] Keep Multiplicity behind the runtime protocol boundary so gameplay code does not depend on concrete packet-library types.

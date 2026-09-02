@@ -12,6 +12,7 @@ Target ownership:
 - `TerraRuntime.Gameplay`: protocol-neutral gameplay/content rules and source-backed catalogs.
 - `TerraRuntime.Core`: authoritative execution mechanics, ownership, scheduling, command ingress and bounded worker/lifecycle primitives.
 - `TerraRuntime.World`: `.wld`, persistence representation and world storage semantics.
+- `TerraRuntime.WorldGeneration`: built-in candidate construction, source-backed/optimized generation passes and finalization; it may depend on `World`, but `World` must never depend back on generation.
 - `TerraRuntime.Schematics`: standalone `.trschem` model/codec/file API.
 - `TerraRuntime.Protocol*`: wire semantics and protocol-library boundary.
 - `TerraRuntime.Network`: bounded connection/network mechanics.

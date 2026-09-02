@@ -54,7 +54,7 @@ public static class WorldTownNpcSyncPacketEncoder
             LifeBytes = 0
         };
 
-        if (!MultiplicityPacketSerializer.TrySerialize(packet, out byte[] encoded))
+        if (!packet.TrySerialize(out byte[] encoded))
             return WorldTownNpcSyncPacketEncodeResult.FrameTooLarge;
 
         frame = encoded;

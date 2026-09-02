@@ -29,6 +29,7 @@
     <ProjectReference Include="../../src/TerraRuntime.Schematics/TerraRuntime.Schematics.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Transport/TerraRuntime.Transport.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.World/TerraRuntime.World.csproj" />
+    <ProjectReference Include="../../src/TerraRuntime.WorldGeneration/TerraRuntime.WorldGeneration.csproj" />
     <ProjectReference Include="../TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />
   </ItemGroup>
 </Project>

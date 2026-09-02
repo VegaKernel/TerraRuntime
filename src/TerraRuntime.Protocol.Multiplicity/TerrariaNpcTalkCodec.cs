@@ -1,5 +1,5 @@
-using System.Buffers;
 using System.Buffers.Binary;
+using global::Multiplicity.Packets;
 using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Protocol.Multiplicity;
@@ -22,8 +22,8 @@ public enum TerrariaNpcTalkEncodeResult : byte
 }
 
 /// <summary>
-/// Wire adapter for TerrariaServer 1.4.5.8 packet 40. The client sends a player byte and a signed NPC slot;
-/// the server ignores the claimed player byte, substitutes the authenticated connection slot and relays it.
+/// Typed wire adapter for TerrariaServer 1.4.5.8 packet 40. Multiplicity owns the packet layout;
+/// TerraRuntime retains authenticated-player substitution and NPC-slot validation above the wire model.
 /// </summary>
 public static class TerrariaNpcTalkCodec
 {
@@ -59,34 +59,19 @@ public static class TerrariaNpcTalkCodec
 
     public static TerrariaNpcTalkEncodeResult TryEncode(in TerrariaNpcTalkState state, out byte[] frame)
     {
+        frame = [];
         if (!IsValidNpcSlot(state.NpcSlot))
-        {
-            frame = [];
             return TerrariaNpcTalkEncodeResult.InvalidState;
-        }
 
-        Span<byte> payload = stackalloc byte[PayloadLength];
-        payload[0] = state.PlayerSlot;
-        BinaryPrimitives.WriteInt16LittleEndian(payload[1..3], state.NpcSlot);
-
-        var writer = new ArrayBufferWriter<byte>(PayloadLength + TerrariaFrameDecoderOptions.MinimumFrameLength);
-        TerrariaFrameWriteResult result = TerrariaFrameEncoder.TryWrite(
-            writer,
-            (byte)TerrariaMessageId.SetNpcTalk,
-            payload);
-        if (result == TerrariaFrameWriteResult.FrameTooLarge)
+        var packet = new NpcTalk
         {
-            frame = [];
-            return TerrariaNpcTalkEncodeResult.FrameTooLarge;
-        }
-        if (result != TerrariaFrameWriteResult.Written)
-        {
-            frame = [];
-            return TerrariaNpcTalkEncodeResult.Failed;
-        }
+            PlayerId = state.PlayerSlot,
+            NpcTalkTarget = state.NpcSlot
+        };
 
-        frame = writer.WrittenSpan.ToArray();
-        return TerrariaNpcTalkEncodeResult.Encoded;
+        return packet.TrySerialize(out frame)
+            ? TerrariaNpcTalkEncodeResult.Encoded
+            : TerrariaNpcTalkEncodeResult.Failed;
     }
 
     public static bool IsValidNpcSlot(short npcSlot) =>

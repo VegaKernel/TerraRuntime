@@ -12,7 +12,7 @@ the result must be visually coherent and playable without importing a second wor
 Built-in generator implementations are separated by profile:
 
 ```text
-src/TerraRuntime.World/Generation/
+src/TerraRuntime.WorldGeneration/Generation/
 ├── Flat/
 ├── Optimized/
 ├── Skyblock/

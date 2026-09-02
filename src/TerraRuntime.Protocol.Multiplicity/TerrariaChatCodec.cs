@@ -43,7 +43,7 @@ public static class TerrariaChatCodec
         if (frame.Payload.Length < sizeof(ushort) + 2 || frame.Payload.Length > MaximumPayloadLength)
             return TerrariaClientChatDecodeResult.InvalidPayloadLength;
 
-        if (!MultiplicityPacketDeserializer.TryDeserialize(in frame, out TerrariaPacket packet) ||
+        if (!TerrariaPacket.TryDeserializePayload(frame.MessageId, frame.Payload, out TerrariaPacket packet) ||
             packet is not LoadNetModule load)
         {
             return TerrariaClientChatDecodeResult.Malformed;
@@ -83,7 +83,7 @@ public static class TerrariaChatCodec
         if (TerrariaFrameDecoder.TryRead(ref input, out TerrariaFrame frame) != TerrariaFrameReadResult.Frame ||
             !input.IsEmpty ||
             frame.MessageId != (byte)TerrariaMessageId.LoadNetModule ||
-            !MultiplicityPacketDeserializer.TryDeserialize(in frame, out TerrariaPacket packet) ||
+            !TerrariaPacket.TryDeserializePayload(frame.MessageId, frame.Payload, out TerrariaPacket packet) ||
             packet is not LoadNetModule load ||
             load.LoadedModule is not NetTextModule textModule ||
             textModule.PayloadKind != NetTextModulePayloadKind.ServerChatMessage ||
@@ -128,6 +128,6 @@ public static class TerrariaChatCodec
             }
         };
 
-        return MultiplicityPacketSerializer.Serialize(new LoadNetModule { LoadedModule = module });
+        return (new LoadNetModule { LoadedModule = module }).ToArray();
     }
 }

@@ -38,7 +38,7 @@ public static class TerrariaPlayerEquipmentCodec
     }
 
     public static byte[] Encode(in TerrariaPlayerEquipmentState equipment) =>
-        MultiplicityPacketSerializer.Serialize(new PlayerSlot
+        (new PlayerSlot
         {
             PlayerId = equipment.PlayerId,
             SlotId = equipment.SlotId,
@@ -46,7 +46,7 @@ public static class TerrariaPlayerEquipmentCodec
             Prefix = equipment.Prefix,
             ItemNetId = equipment.ItemNetId,
             ItemFlags = equipment.ItemFlags
-        });
+        }).ToArray();
 
     private static TerrariaPlayerEquipmentDecodeResult DecodePayload(
         ReadOnlySpan<byte> payload,

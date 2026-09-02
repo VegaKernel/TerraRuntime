@@ -52,7 +52,7 @@ public static class TerrariaNpcUpdateEncoder
         packet.AI[2] = state.Ai2;
         packet.AI[3] = state.Ai3;
 
-        return MultiplicityPacketSerializer.TrySerialize(packet, out bytes);
+        return packet.TrySerialize(out bytes);
     }
 
     private static byte GetVanillaLifeWidth(int lifeMax)

@@ -144,7 +144,7 @@ public static class TerrariaWorldItemFrameEncoder
         TerrariaPacket packet,
         out ReadOnlyMemory<byte> frame)
     {
-        if (!MultiplicityPacketSerializer.TrySerialize(packet, out byte[] encoded))
+        if (!packet.TrySerialize(out byte[] encoded))
         {
             frame = default;
             return TerrariaWorldItemFrameEncodeResult.FrameTooLarge;

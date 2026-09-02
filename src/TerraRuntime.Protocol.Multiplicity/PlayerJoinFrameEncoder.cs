@@ -24,7 +24,7 @@ public static class PlayerJoinFrameEncoder
             ServerSpecialFlag2 = serverSpecialFlag2
         };
 
-        return MultiplicityPacketSerializer.Serialize(packet);
+        return packet.ToArray();
     }
 
     public static byte[] EncodeWorldInfo(
@@ -32,7 +32,7 @@ public static class PlayerJoinFrameEncoder
         WorldInfoTransientState transient = default)
     {
         ArgumentNullException.ThrowIfNull(world);
-        return MultiplicityPacketSerializer.Serialize(WorldInfoPacketMapper.Create(world, transient));
+        return (WorldInfoPacketMapper.Create(world, transient)).ToArray();
     }
 
     public static byte[] EncodeStatus(int sectionCount)
@@ -51,6 +51,6 @@ public static class PlayerJoinFrameEncoder
             SpecialFlags = StatusSpecialFlags.None
         };
 
-        return MultiplicityPacketSerializer.Serialize(packet);
+        return packet.ToArray();
     }
 }

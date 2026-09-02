@@ -12,7 +12,7 @@ seed-identical генерацию Terraria. Контракт другой: од�
 Встроенные генераторы разделены по профилям:
 
 ```text
-src/TerraRuntime.World/Generation/
+src/TerraRuntime.WorldGeneration/Generation/
 ├── Flat/
 ├── Optimized/
 ├── Skyblock/

@@ -36,7 +36,7 @@ public static class TerrariaProjectileEncoder
             OriginalDamage = state.OriginalDamage
         };
 
-        return MultiplicityPacketSerializer.TrySerialize(packet, out bytes);
+        return packet.TrySerialize(out bytes);
     }
 
     public static bool TryEncodeDestroy(in TerrariaProjectileDestroyState state, out byte[] bytes)
@@ -55,6 +55,6 @@ public static class TerrariaProjectileEncoder
             PositionY = state.PositionY
         };
 
-        return MultiplicityPacketSerializer.TrySerialize(packet, out bytes);
+        return packet.TrySerialize(out bytes);
     }
 }

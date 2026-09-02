@@ -62,20 +62,20 @@ public static class TerrariaPlayerVitalsCodec
     }
 
     public static byte[] EncodeHealth(in TerrariaPlayerHealthState health) =>
-        MultiplicityPacketSerializer.Serialize(new PlayerHp
+        (new PlayerHp
         {
             PlayerId = health.PlayerId,
             Hp = health.Life,
             MaxHp = health.MaxLife
-        });
+        }).ToArray();
 
     public static byte[] EncodeMana(in TerrariaPlayerManaState mana) =>
-        MultiplicityPacketSerializer.Serialize(new PlayerMana
+        (new PlayerMana
         {
             PlayerId = mana.PlayerId,
             Mana = mana.Mana,
             MaxMana = mana.MaxMana
-        });
+        }).ToArray();
 
     private static TerrariaPlayerHealthDecodeResult DecodeHealthPayload(
         ReadOnlySpan<byte> payload,

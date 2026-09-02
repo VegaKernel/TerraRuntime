@@ -13,6 +13,7 @@
   <Project Path="../src/TerraRuntime.Schematics/TerraRuntime.Schematics.csproj" />
   <Project Path="../src/TerraRuntime.Transport/TerraRuntime.Transport.csproj" />
   <Project Path="../src/TerraRuntime.World/TerraRuntime.World.csproj" />
+  <Project Path="../src/TerraRuntime.WorldGeneration/TerraRuntime.WorldGeneration.csproj" />
   <Project Path="../tests/TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />
   <Project Path="../tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj" />
   <Project Path="../tools/TerraRuntime.ProtocolBench/TerraRuntime.ProtocolBench.csproj" />

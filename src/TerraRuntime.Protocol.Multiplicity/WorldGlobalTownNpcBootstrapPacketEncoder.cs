@@ -56,7 +56,7 @@ public static class WorldGlobalTownNpcBootstrapPacketEncoder
                 NpcId = checked((short)npcSlot)
             };
 
-            if (!MultiplicityPacketSerializer.TrySerialize(buffs, out byte[] buffFrame))
+            if (!buffs.TrySerialize(out byte[] buffFrame))
             {
                 frames = [];
                 return WorldGlobalTownNpcBootstrapPacketEncodeResult.FrameTooLarge;

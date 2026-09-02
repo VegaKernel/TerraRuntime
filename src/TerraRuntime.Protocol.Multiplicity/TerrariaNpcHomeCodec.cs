@@ -1,5 +1,5 @@
-using System.Buffers;
 using System.Buffers.Binary;
+using global::Multiplicity.Packets;
 using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Protocol.Multiplicity;
@@ -47,16 +47,14 @@ public enum TerrariaNpcHomeEncodeResult : byte
 }
 
 /// <summary>
-/// Wire-only adapter for Terraria 1.4.5.8 packet 60. The exact payload is seven bytes:
-/// NPC Int16, home X/Y Int16 and one household-status byte. Runtime housing authority lives above this codec.
+/// Typed wire adapter for Terraria 1.4.5.8 packet 60. Multiplicity owns the seven-byte packet layout;
+/// runtime housing authority and semantic status validation remain above this boundary.
 /// </summary>
 public static class TerrariaNpcHomeCodec
 {
     public const int PayloadLength = 7;
 
-    public static TerrariaNpcHomeDecodeResult TryDecode(
-        in TerrariaFrame frame,
-        out TerrariaNpcHomeState state)
+    public static TerrariaNpcHomeDecodeResult TryDecode(in TerrariaFrame frame, out TerrariaNpcHomeState state)
     {
         state = default;
         if (frame.MessageId != (byte)TerrariaMessageId.UpdateNpcHome)
@@ -82,40 +80,23 @@ public static class TerrariaNpcHomeCodec
         return TerrariaNpcHomeDecodeResult.Decoded;
     }
 
-    public static TerrariaNpcHomeEncodeResult TryEncode(
-        in TerrariaNpcHomeState state,
-        out byte[] frame)
+    public static TerrariaNpcHomeEncodeResult TryEncode(in TerrariaNpcHomeState state, out byte[] frame)
     {
+        frame = [];
         if (state.NpcSlot < 0 || !state.TryGetStatus(out _))
-        {
-            frame = [];
             return TerrariaNpcHomeEncodeResult.InvalidState;
-        }
 
-        Span<byte> payload = stackalloc byte[PayloadLength];
-        BinaryPrimitives.WriteInt16LittleEndian(payload[0..2], state.NpcSlot);
-        BinaryPrimitives.WriteInt16LittleEndian(payload[2..4], state.HomeTileX);
-        BinaryPrimitives.WriteInt16LittleEndian(payload[4..6], state.HomeTileY);
-        payload[6] = state.Status;
-
-        var writer = new ArrayBufferWriter<byte>(PayloadLength + TerrariaFrameDecoderOptions.MinimumFrameLength);
-        TerrariaFrameWriteResult result = TerrariaFrameEncoder.TryWrite(
-            writer,
-            (byte)TerrariaMessageId.UpdateNpcHome,
-            payload);
-        if (result == TerrariaFrameWriteResult.FrameTooLarge)
+        var packet = new UpdateNPCHome
         {
-            frame = [];
-            return TerrariaNpcHomeEncodeResult.FrameTooLarge;
-        }
-        if (result != TerrariaFrameWriteResult.Written)
-        {
-            frame = [];
-            return TerrariaNpcHomeEncodeResult.Failed;
-        }
+            NpcId = state.NpcSlot,
+            HomeTileX = state.HomeTileX,
+            HomeTileY = state.HomeTileY,
+            Homeless = state.Status
+        };
 
-        frame = writer.WrittenSpan.ToArray();
-        return TerrariaNpcHomeEncodeResult.Encoded;
+        return packet.TrySerialize(out frame)
+            ? TerrariaNpcHomeEncodeResult.Encoded
+            : TerrariaNpcHomeEncodeResult.Failed;
     }
 
     private static TerrariaNpcHomeState DecodePayload(ReadOnlySpan<byte> payload) =>

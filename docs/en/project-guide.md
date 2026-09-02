@@ -59,7 +59,8 @@ flowchart LR
 | `src/TerraRuntime.Network` | connection pipeline, ingress/egress and bounded queues |
 | `src/TerraRuntime.Protocol` | protocol boundary and shared framing/codec concepts |
 | `src/TerraRuntime.Protocol.Multiplicity` | Multiplicity adapter |
-| `src/TerraRuntime.World` | `.wld`, tiles, sections, collision, liquids, cache and persistence helpers |
+| `src/TerraRuntime.World` | .wld, tile/section storage, collision/liquid primitives, runtime snapshots and persistence codecs |
+| `src/TerraRuntime.WorldGeneration` | built-in flat/skyblock/optimized/source-backed vanilla world-generation implementations and candidate finalization |
 | `tests/TerraRuntime.Tests` | unit/integration/contract tests |
 | `tests/TerraRuntime.HostModuleFixture` | extensible-host boundary fixture |
 | `tools/` | reference probes, world verification and CI tooling |

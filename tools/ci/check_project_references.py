@@ -17,6 +17,7 @@ LAYERS = {
     "TerraRuntime.Gameplay": 1,
     "TerraRuntime.Protocol": 1,
     "TerraRuntime.World": 1,
+    "TerraRuntime.WorldGeneration": 2,
     "TerraRuntime.HostContracts": 1,
     "TerraRuntime.Transport": 1,
     "TerraRuntime.Schematics": 1,

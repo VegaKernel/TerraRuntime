@@ -107,7 +107,7 @@ public static class TerrariaDoorToggleCodec
             Direction = state.DirectionX == 1 ? (byte)1 : (byte)0
         };
 
-        frame = MultiplicityPacketSerializer.Serialize(packet);
+        frame = packet.ToArray();
         return TerrariaDoorToggleEncodeResult.Encoded;
     }
 

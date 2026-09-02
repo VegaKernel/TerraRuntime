@@ -17,6 +17,6 @@ public static class TerrariaPlayerActiveEncoder
             Active = active
         };
 
-        return MultiplicityPacketSerializer.Serialize(packet);
+        return packet.ToArray();
     }
 }

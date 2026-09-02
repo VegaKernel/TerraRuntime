@@ -114,7 +114,7 @@ public static class TerrariaSignCodec
             Flags = state.Flags
         };
 
-        return MultiplicityPacketSerializer.Serialize(packet);
+        return packet.ToArray();
     }
 
     private static TerrariaSignDecodeResult DecodeReadRequest(

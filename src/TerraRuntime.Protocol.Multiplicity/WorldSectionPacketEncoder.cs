@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.IO.Compression;
-using global::Multiplicity.Packets;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
@@ -107,7 +106,7 @@ public static class WorldSectionPacketEncoder
             // written span directly into the exact final array instead of materializing compressed bytes and then
             // materializing the framed bytes a second time.
             var compressedWriter = new ArrayBufferWriter<byte>(Math.Min(uncompressed.Length, 64 * 1024));
-            using var stream = new ArrayBufferWriterStream(compressedWriter);
+            using var stream = new DeflateBufferWriterStream(compressedWriter);
             using (var deflate = new DeflateStream(
                 stream,
                 CompressionLevel.SmallestSize,
@@ -126,7 +125,7 @@ public static class WorldSectionPacketEncoder
             byte[] candidate = GC.AllocateUninitializedArray<byte>(frameLength);
             TerrariaFrameWriteResult frameResult = TerrariaFrameEncoder.TryWrite(
                 candidate.AsSpan(),
-                (byte)PacketTypes.TileSendSection,
+                (byte)TerrariaMessageId.TileSection,
                 compressedWriter.WrittenSpan);
             if (frameResult == TerrariaFrameWriteResult.FrameTooLarge)
                 return WorldSectionPacketEncodeResult.FrameTooLarge;
@@ -145,4 +144,50 @@ public static class WorldSectionPacketEncoder
             return WorldSectionPacketEncodeResult.CompressionFailure;
         }
     }
+    /// <summary>
+    /// Write-only bridge required only because <see cref="DeflateStream"/> is Stream-based while the
+    /// compressed section buffer is grown through <see cref="IBufferWriter{T}"/>. Keep this implementation
+    /// local to packet-10 compression instead of exposing a generic protocol helper.
+    /// </summary>
+    private sealed class DeflateBufferWriterStream(IBufferWriter<byte> writer) : Stream
+    {
+        private readonly IBufferWriter<byte> writer = writer ?? throw new ArgumentNullException(nameof(writer));
+        private long length;
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => length;
+        public override long Position
+        {
+            get => length;
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            if (buffer.IsEmpty)
+                return;
+
+            Span<byte> destination = writer.GetSpan(buffer.Length);
+            buffer.CopyTo(destination);
+            writer.Advance(buffer.Length);
+            length += buffer.Length;
+        }
+
+        public override void WriteByte(byte value)
+        {
+            Span<byte> destination = writer.GetSpan(1);
+            destination[0] = value;
+            writer.Advance(1);
+            length++;
+        }
+    }
+
 }

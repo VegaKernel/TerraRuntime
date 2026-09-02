@@ -1,6 +1,5 @@
-using System.Buffers;
 using System.Text;
-using TerraRuntime.Protocol;
+using global::Multiplicity.Packets;
 
 namespace TerraRuntime.Protocol.Multiplicity;
 
@@ -16,8 +15,8 @@ public enum TerrariaTownNpcIdentityEncodeResult : byte
 }
 
 /// <summary>
-/// Server-side encoder for TerrariaServer 1.4.5.8 packet 56 (UniqueTownNPCInfoSyncRequest response):
-/// Int16 NPC slot, BinaryWriter string and Int32 townNpcVariationIndex.
+/// Server-side adapter for TerrariaServer 1.4.5.8 packet 56. Multiplicity owns the asymmetric
+/// request/response packet model; TerraRuntime keeps NPC-slot and strict UTF-8 admission policy.
 /// </summary>
 public static class TerrariaTownNpcIdentityCodec
 {
@@ -34,34 +33,33 @@ public static class TerrariaTownNpcIdentityCodec
         if (state.GivenName is null)
             return TerrariaTownNpcIdentityEncodeResult.InvalidName;
 
-        byte[] payload;
         try
         {
-            using var stream = new MemoryStream();
-            using (var writer = new BinaryWriter(stream, Utf8, leaveOpen: true))
-            {
-                writer.Write(state.NpcSlot);
-                writer.Write(state.GivenName);
-                writer.Write(state.VariationIndex);
-            }
-            payload = stream.ToArray();
+            _ = Utf8.GetByteCount(state.GivenName);
         }
         catch (EncoderFallbackException)
         {
             return TerrariaTownNpcIdentityEncodeResult.InvalidName;
         }
 
-        var output = new ArrayBufferWriter<byte>(payload.Length + TerrariaFrameDecoderOptions.MinimumFrameLength);
-        TerrariaFrameWriteResult result = TerrariaFrameEncoder.TryWrite(
-            output,
-            (byte)TerrariaMessageId.UniqueTownNpcInfoSyncRequest,
-            payload);
-        if (result == TerrariaFrameWriteResult.FrameTooLarge)
-            return TerrariaTownNpcIdentityEncodeResult.FrameTooLarge;
-        if (result != TerrariaFrameWriteResult.Written)
-            return TerrariaTownNpcIdentityEncodeResult.Failed;
+        var packet = new UpdateNPCName
+        {
+            NpcId = state.NpcSlot,
+            Name = state.GivenName,
+            TownNpcVariationIndex = state.VariationIndex,
+            HasNameData = true
+        };
 
-        frame = output.WrittenSpan.ToArray();
-        return TerrariaTownNpcIdentityEncodeResult.Encoded;
+        try
+        {
+            return packet.TrySerialize(out frame)
+                ? TerrariaTownNpcIdentityEncodeResult.Encoded
+                : TerrariaTownNpcIdentityEncodeResult.Failed;
+        }
+        catch (OverflowException)
+        {
+            frame = [];
+            return TerrariaTownNpcIdentityEncodeResult.FrameTooLarge;
+        }
     }
 }

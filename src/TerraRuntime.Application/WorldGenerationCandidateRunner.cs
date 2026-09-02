@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.World;
+using TerraRuntime.WorldGeneration;
 
 namespace TerraRuntime;
 

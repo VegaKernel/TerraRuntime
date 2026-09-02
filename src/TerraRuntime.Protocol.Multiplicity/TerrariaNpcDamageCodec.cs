@@ -1,12 +1,12 @@
-using System.Buffers;
 using System.Buffers.Binary;
+using global::Multiplicity.Packets;
 using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Protocol.Multiplicity;
 
 /// <summary>
-/// Source-pinned packet-28 codec for TerrariaServer 1.4.5.8 / protocol 326.
-/// Payload: npc byte, generation byte, damage int16, knockback single, hitDirection+1 byte, crit byte.
+/// Source-pinned packet-28 adapter for TerrariaServer 1.4.5.8 / protocol 326.
+/// Multiplicity owns the slot/generation/damage/knockback/direction/crit wire layout.
 /// </summary>
 public static class TerrariaNpcDamageCodec
 {
@@ -69,43 +69,26 @@ public static class TerrariaNpcDamageCodec
             return TerrariaNpcDamageEncodeResult.InvalidState;
         }
 
-        Span<byte> payload = stackalloc byte[PayloadLength];
-        payload[0] = state.NpcSlot;
-        payload[1] = state.Generation;
-        BinaryPrimitives.WriteInt16LittleEndian(payload[2..4], state.Damage);
-        BinaryPrimitives.WriteInt32LittleEndian(
-            payload[4..8],
-            BitConverter.SingleToInt32Bits(state.KnockBack));
-        payload[8] = state.HitDirectionWire;
-        payload[9] = state.CriticalRaw;
+        var packet = new NpcStrike
+        {
+            NpcSlot = state.NpcSlot,
+            Generation = state.Generation,
+            Damage = state.Damage,
+            Knockback = state.KnockBack,
+            Direction = state.HitDirectionWire,
+            Crit = state.CriticalRaw
+        };
 
-        var writer = new ArrayBufferWriter<byte>(PayloadLength + TerrariaFrameDecoderOptions.MinimumFrameLength);
-        TerrariaFrameWriteResult result = TerrariaFrameEncoder.TryWrite(
-            writer,
-            (byte)TerrariaMessageId.NpcDamage,
-            payload);
-        if (result == TerrariaFrameWriteResult.FrameTooLarge)
-            return TerrariaNpcDamageEncodeResult.FrameTooLarge;
-        if (result != TerrariaFrameWriteResult.Written)
-            return TerrariaNpcDamageEncodeResult.Failed;
-
-        frame = writer.WrittenSpan.ToArray();
-        return TerrariaNpcDamageEncodeResult.Encoded;
+        return packet.TrySerialize(out frame)
+            ? TerrariaNpcDamageEncodeResult.Encoded
+            : TerrariaNpcDamageEncodeResult.Failed;
     }
 
     public static TerrariaNpcDamageEncodeResult TryEncodeAck(out byte[] frame)
     {
-        frame = [];
-        var writer = new ArrayBufferWriter<byte>(TerrariaFrameDecoderOptions.MinimumFrameLength);
-        TerrariaFrameWriteResult result = TerrariaFrameEncoder.TryWrite(
-            writer,
-            (byte)TerrariaMessageId.NpcDamageAck,
-            ReadOnlySpan<byte>.Empty);
-        if (result == TerrariaFrameWriteResult.FrameTooLarge)
-            return TerrariaNpcDamageEncodeResult.FrameTooLarge;
-        if (result != TerrariaFrameWriteResult.Written)
-            return TerrariaNpcDamageEncodeResult.Failed;
-        frame = writer.WrittenSpan.ToArray();
-        return TerrariaNpcDamageEncodeResult.Encoded;
+        var packet = new DamageNPCAck();
+        return packet.TrySerialize(out frame)
+            ? TerrariaNpcDamageEncodeResult.Encoded
+            : TerrariaNpcDamageEncodeResult.Failed;
     }
 }

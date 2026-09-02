@@ -88,7 +88,7 @@ public static class WorldItemBootstrapPacketEncoder
 
     private static bool TrySerialize(TerrariaPacket packet, out ReadOnlyMemory<byte> frame)
     {
-        if (!MultiplicityPacketSerializer.TrySerialize(packet, out byte[] encoded))
+        if (!packet.TrySerialize(out byte[] encoded))
         {
             frame = default;
             return false;

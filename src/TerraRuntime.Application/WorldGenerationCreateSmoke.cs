@@ -1,6 +1,7 @@
 using System.Globalization;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
+using TerraRuntime.WorldGeneration;
 
 namespace TerraRuntime;
 

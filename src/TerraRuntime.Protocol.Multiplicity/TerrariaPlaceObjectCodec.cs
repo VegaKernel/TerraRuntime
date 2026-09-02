@@ -82,7 +82,7 @@ public static class TerrariaPlaceObjectCodec
             Direction = state.Direction
         };
 
-        frame = MultiplicityPacketSerializer.Serialize(packet);
+        frame = packet.ToArray();
         return TerrariaPlaceObjectEncodeResult.Encoded;
     }
 

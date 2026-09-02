@@ -4,7 +4,7 @@
 
 ## Scope
 
-TerraRuntime targets Terraria `1.4.5.8`, protocol `326`, with Multiplicity `2.7.2` isolated behind `TerraRuntime.Protocol.Multiplicity`.
+TerraRuntime targets Terraria `1.4.5.8`, protocol `326`, with Multiplicity `3.0.0` isolated behind `TerraRuntime.Protocol.Multiplicity`.
 
 The packet boundary follows three rules:
 
@@ -26,19 +26,17 @@ The remaining manually indexed gameplay packet adapters were migrated to Multipl
 
 Fixed-size fragmented payloads use bounded stack storage. Variable-length fragmented sign payloads rent a buffer from `ArrayPool<byte>` and always return it after decoding. Sign text keeps strict UTF-8 validation at the TerraRuntime protocol boundary.
 
-Multiplicity `PacketViewParser` is span-based in the pinned `2.7.2` baseline and has no `ReadOnlySequence<byte>` overload. Therefore a fragmented fixed-size frame cannot be inspected by a Multiplicity view without first becoming contiguous. TerraRuntime keeps that fallback bounded on the stack for small fixed payloads instead of allocating a temporary array. Single-segment frames continue to go directly to the corresponding Multiplicity view.
+Multiplicity `PacketViewParser` is span-based in the pinned `3.0.0` baseline and has no `ReadOnlySequence<byte>` overload. Therefore a fragmented fixed-size frame cannot be inspected by a Multiplicity view without first becoming contiguous. TerraRuntime keeps that fallback bounded on the stack for small fixed payloads instead of allocating a temporary array. Single-segment frames continue to go directly to the corresponding Multiplicity view.
 
 ## Serialization path
 
-Owned Multiplicity packets are serialized through `MultiplicityPacketSerializer`. `TerrariaPacket.GetLength()` determines the exact final frame size, and `FixedBufferWriteStream` lets Multiplicity's `TerrariaPacket.ToStream(Stream)` write directly into that final `byte[]`. The previous `ArrayBufferWriter<byte>` staging allocation and `WrittenSpan.ToArray()` copy are no longer present on the common owned-packet encode path.
+Multiplicity `3.0.0` owns the exact-size packet-buffer mechanics that TerraRuntime previously carried locally. Owned packet models now call `TerrariaPacket.TrySerialize(...)` / `ToArray()` directly; segmented payload decode calls `TerrariaPacket.TryDeserializePayload(..., ReadOnlySequence<byte>, ...)` directly. The removed TerraRuntime shims were `MultiplicityPacketSerializer`, `FixedBufferWriteStream` and `MultiplicityPacketDeserializer`.
 
-The exact-size path is fail-closed. If a Multiplicity model writes fewer bytes than it declared, the candidate array is discarded so an uninitialized tail can never be published. If it writes past the declared length, `FixedBufferWriteStream` records the logical overflow without allocating a larger buffer, and the candidate is discarded. A successful frame is published only when the actual byte count exactly matches the declared frame length.
+The upstream v3 path is fail-closed: serialization publishes an exact final array only when the model writes exactly its declared length, and the `ReadOnlySequence<byte>` decode path borrows single-segment input while using a bounded `ArrayPool<byte>` lease for multi-segment input. TerraRuntime therefore no longer owns a second implementation of those packet-buffer rules.
 
-`ArrayBufferWriterStream` remains intentionally in the packet-10 compression path because DEFLATE output size is not known before compression. Once `DeflateStream` completes, however, `WorldSectionPacketEncoder` now frames `compressedWriter.WrittenSpan` directly into one exact final array through the span overload of `TerrariaFrameEncoder`. It no longer materializes a separate compressed array and then a second `ArrayBufferWriter`-backed framed copy.
+`DeflateStream` is a different case because packet `10` compressed output size is unknown before compression. `WorldSectionPacketEncoder` keeps a small write-only `IBufferWriter<byte>` stream bridge private to that encoder, then frames the completed compressed span directly into the exact final Terraria frame. It is not a general Multiplicity adapter anymore.
 
-The same exact-size Multiplicity serializer is used by sign, tile manipulation, door/object placement, player lifecycle/appearance/equipment/vitals/movement, NPC/projectile replication, chat, world-item bootstrap/live replication, chest synchronization and persisted town-NPC synchronization paths.
-
-Multiplicity itself still owns `ToStream(Stream)` and may use its own `BinaryWriter` implementation internally. TerraRuntime does not duplicate those packet serializers merely to hide that implementation detail; the runtime-side contract is that no second complete frame buffer is staged around Multiplicity serialization.
+The adapter still owns protocol/domain projection, validation and wire evidence. It does not reimplement generic packet serialization or segmented-buffer coalescing already supplied by Multiplicity. The same 3.0 audit moved packet-28/40/56/60 encoding onto Multiplicity-owned `NpcStrike`, `NpcTalk`, `UpdateNPCName` and `UpdateNPCHome` models, plus `DamageNPCAck`, while retaining allocation-free fixed-size ingress parsing where replacing it with an owned model would add work on an untrusted hot path.
 
 ## Vanilla boolean semantics
 
@@ -72,6 +70,6 @@ Protocol changes in this area must preserve all of the following:
 - strict UTF-8 rejection for malformed sign text;
 - segmented fixed-payload decode and pooled segmented sign/chat/chest decode where ownership permits it;
 - exact-size serialization that rejects both under-write and over-write before publishing a frame;
-- an allocation guard preventing the common Multiplicity serializer from regaining a second complete frame buffer;
+- an integration allocation guard on Multiplicity v3 exact-size serialization so a second complete frame buffer cannot return unnoticed;
 - packet-10 framing directly from the completed DEFLATE writer into the final frame array;
 - no gameplay dependency on Multiplicity concrete types outside the protocol boundary.

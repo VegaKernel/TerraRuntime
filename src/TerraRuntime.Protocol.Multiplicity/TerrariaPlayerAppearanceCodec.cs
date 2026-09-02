@@ -34,7 +34,7 @@ public static class TerrariaPlayerAppearanceCodec
     }
 
     public static byte[] Encode(in TerrariaPlayerAppearanceState appearance) =>
-        MultiplicityPacketSerializer.Serialize(new PlayerInfo
+        (new PlayerInfo
         {
             PlayerId = appearance.PlayerId,
             SkinVariant = appearance.SkinVariant,
@@ -55,7 +55,7 @@ public static class TerrariaPlayerAppearanceCodec
             DifficultyFlags = (PlayerDifficultyFlags)appearance.DifficultyFlags,
             TorchAndCartFlags = (PlayerTorchAndCartFlags)appearance.TorchAndCartFlags,
             ConsumableUnlockFlags = (PlayerConsumableUnlockFlags)appearance.ConsumableUnlockFlags
-        });
+        }).ToArray();
 
     private static TerrariaPlayerAppearanceDecodeResult DecodePayload(
         ReadOnlySpan<byte> payload,

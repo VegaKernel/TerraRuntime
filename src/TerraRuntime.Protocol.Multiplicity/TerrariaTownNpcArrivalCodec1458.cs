@@ -36,7 +36,7 @@ public static class TerrariaTownNpcArrivalCodec1458
             ServerText = arrival,
             MessageColor = new ColorStruct { R = color.R, G = color.G, B = color.B }
         };
-        encoded = MultiplicityPacketSerializer.Serialize(new LoadNetModule { LoadedModule = module });
+        encoded = (new LoadNetModule { LoadedModule = module }).ToArray();
         return true;
     }
 

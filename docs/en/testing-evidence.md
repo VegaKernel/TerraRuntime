@@ -22,7 +22,7 @@ Higher evidence layers are required whenever a lower layer can share the same wr
 When sources disagree, use this order:
 
 1. locally decompiled official `TerrariaServer.exe` 1.4.5.8 for gameplay behavior, `.wld` layout, ordering, constants and server semantics;
-2. `VegaKernel/Multiplicity` 2.7.x for protocol 326 typed wire models;
+2. `VegaKernel/Multiplicity` 3.0.x for protocol 326 typed wire models;
 3. `bybrooklyn/terrustia` as an independent implementation cross-check and source of testing/performance ideas;
 4. TShock/OTAPI only for historical compatibility and exploit lessons.
 

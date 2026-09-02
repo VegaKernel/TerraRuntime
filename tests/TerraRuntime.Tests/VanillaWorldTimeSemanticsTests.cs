@@ -1,4 +1,5 @@
 using TerraRuntime.World;
+using TerraRuntime.Gameplay.Worlds;
 
 namespace TerraRuntime.Tests;
 

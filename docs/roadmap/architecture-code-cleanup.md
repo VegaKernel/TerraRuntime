@@ -12,6 +12,7 @@ flowchart TD
     Gameplay["TerraRuntime.Gameplay\nprotocol-neutral gameplay rules + catalogs"]
     Core["TerraRuntime.Core\nauthoritative execution mechanics"]
     World["TerraRuntime.World\n.wld + persistence + world storage semantics"]
+    WorldGeneration["TerraRuntime.WorldGeneration\nbuilt-in generation + candidate finalization"]
     Protocol["Protocol / Multiplicity\nwire semantics"]
     Network["TerraRuntime.Network\nconnections + bounded network mechanics"]
     Transport["TerraRuntime.Transport\nprocess IPC mechanics"]
@@ -24,11 +25,14 @@ flowchart TD
     Contracts --> Core
     Gameplay --> Core
     Contracts --> World
+    Contracts --> WorldGeneration
+    World --> WorldGeneration
     Contracts --> Protocol
     Protocol --> Network
     Core --> App
     Gameplay --> App
     World --> App
+    WorldGeneration --> App
     Network --> App
     Transport --> App
     Schematics --> App
@@ -44,6 +48,7 @@ The diagram is a direction guide, not a demand that every arrow become a direct 
 - `TerraRuntime.Gameplay` owns protocol-neutral Terraria gameplay/content semantics: items, buffs, gameplay rules, source-backed catalogs and similar behavior that does not require runtime scheduling, networking, persistence or Vega policy.
 - `TerraRuntime.Core` owns authoritative execution mechanics: single-writer ownership, scheduling, command ingress, bounded workers, lifecycle primitives and genuinely cross-subsystem runtime mechanics. It is not the default home for gameplay code.
 - `TerraRuntime.World` owns `.wld`, persistence representation and world-storage semantics. It does not own generic gameplay merely because gameplay touches a world.
+- `TerraRuntime.WorldGeneration` owns built-in candidate construction, source-backed/optimized generation passes and finalization. It depends on `World` storage/persistence; `World` never depends back on generation.
 - `TerraRuntime.Schematics` remains standalone and NativeAOT-safe. It does not depend on Core, World, Vega or editor/runtime ownership code.
 - `TerraRuntime.Transport` remains the mechanics-only process boundary for Vega-to-server sessions and sandbox supervisor-to-worker IPC.
 - Network/protocol projects own wire/connection mechanics, not world mutation policy.
@@ -58,6 +63,7 @@ The diagram is a direction guide, not a demand that every arrow become a direct 
 - [x] Move protocol-neutral NPC loot rules/evaluator/RNG boundary out of Core into `TerraRuntime.Gameplay.Npcs`.
 - [x] Keep `TerraRuntime.Schematics` standalone.
 - [x] Keep `.wld` implementation in `TerraRuntime.World` rather than Core.
+- [ ] Extract built-in world generation from `TerraRuntime.World` into `TerraRuntime.WorldGeneration`; the local 2026-09-02 slice moves ~26.7k LOC of flat/skyblock/optimized/source-backed vanilla passes plus candidate workspace/finalization behind the one-way `WorldGeneration -> World` dependency, leaving `World` at ~19.3k LOC. Keep open until full solution build/tests/CI are green on main.
 - [ ] Make all source projects follow the common architecture/naming rules in `src/AGENTS.md`.
 
 Exit criteria: the intended dependency direction is documented and new code has an obvious default owner before implementation begins.
@@ -89,7 +95,7 @@ A type survives only if it owns at least one real concern: invariant, lifecycle,
 - [x] Remove the unused packet-5 `NormalizeNetId` compatibility wrapper and retain the typed `PlayerEquipmentPacket5Normalizer.TryNormalizeNetId` ingress boundary.
 - [x] Remove `VanillaNpcLootRuleCatalog.GetNpcSpecificRules`; typed table lookup is the single support boundary.
 - [x] Remove `VanillaTileInteractionItemFacts` after migrating remaining callers to `VanillaItemDefinitionCatalog` directly.
-- [ ] Search production code for proxy-only `*Facts`, `*Helper`, `*Provider`, `*Manager`, `*Service`, `*Factory` and compatibility wrappers. Local 2026-09-02 audit found the remaining suffix candidates to be source-backed fact owners, multi-implementation world-generation providers, mutation algorithms or explicit host/UI boundaries; the same pass removed the unused one-implementation `INpcSnapshotReader` and `IProjectileSnapshotReader` contracts. Keep this checkbox open until the audit lands and CI validates the slice on `main`.
+- [ ] Search production code for proxy-only `*Facts`, `*Helper`, `*Provider`, `*Manager`, `*Service`, `*Factory` and compatibility wrappers. Local 2026-09-02 audits found the remaining suffix candidates to be source-backed fact owners, multi-implementation world-generation providers, mutation algorithms or explicit host/UI boundaries; the same cleanup removed the unused one-implementation `INpcSnapshotReader` / `IProjectileSnapshotReader` contracts, the production-unreferenced `WorldSectionPersistenceSyncPacketEncoder` composition facade, and the Multiplicity 2.x-era packet serializer/deserializer stream shims after Multiplicity 3.0.0 took ownership of exact-size serialization and segmented-buffer decode. Keep this checkbox open until the broader audit and CI validate the slice on `main`.
 - [x] Rename authoritative command owners that were mislabeled as generic services: `RuntimeNpcActorControlOwner` names NPC actor command ownership; the follow-up local slice expands the server-player owner into `ServerPlayerAuthority`, which owns server-player lifecycle/control plus authoritative dry-physics state.
 - [x] Rename the expanded world-save cluster from stale `TileChest...Service` terminology to `RuntimeWorldCheckpointCoordinator`, `RuntimeWorldCheckpointSnapshotSource` and `RuntimeWorldCheckpointSnapshot`; the checkpoint now owns tiles, chests, signs, town NPC state and progression capture.
 - [ ] Delete wrappers that merely rename or forward one existing operation. The 2026-09-02 follow-up removes the transparent `SourceBackedVanillaWorldGenerationCanonical1458` alias plus compatibility-only world-section, NPC-gravity, NPC-definition and raw tile-collision overloads; continue the repository-wide audit before closing this item.
@@ -153,6 +159,7 @@ Checklist:
 - [ ] Keep source-order-sensitive boss/AI logic cohesive when decomposition would obscure verified vanilla ordering.
 - [ ] Keep large source-backed catalogs cohesive when their size is data, not mixed responsibility.
 - [x] Remove nested conditional/constructor composition tangles when a concrete composition object can own them.
+- [x] Split the handwritten ~1,166-line `RuntimeWorldSnapshotCache` by responsibility into one partial cache owner: source-stamp/core contract, read path, atomic write/checkpoint path, binary-format helpers and public diagnostics. Keep one API/owner rather than introducing forwarding cache services.
 - [ ] Decompose retained connection replication state without creating forwarding managers. The local 2026-09-02 slices extract `RuntimeConnectionEndpoint` and `ServerPlayerReplicaStore` from the former ~1,000-line `RuntimeConnectionRegistry`, split lifecycle/player/server-player/resync code by responsibility and make retained appearance/equipment/movement baselines exact-`PlayerHandle`-generation scoped; leave open until relay/resync tests and CI validate the move.
 - [ ] Prefer private methods/records for local complexity before inventing a public subsystem.
 

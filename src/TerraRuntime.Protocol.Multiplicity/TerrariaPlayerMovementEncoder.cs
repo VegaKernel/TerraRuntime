@@ -32,6 +32,6 @@ public static class TerrariaPlayerMovementEncoder
             CameraTargetY = movement.CameraTargetY
         };
 
-        return MultiplicityPacketSerializer.Serialize(packet);
+        return packet.ToArray();
     }
 }

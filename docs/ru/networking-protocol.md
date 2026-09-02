@@ -4,7 +4,7 @@
 
 ## 1. Область документа
 
-Здесь описан фактически существующий networking/Terraria protocol path TerraRuntime. Protocol baseline: Terraria `1.4.5.8`, protocol `326`, Multiplicity 2.7.x за protocol boundary TerraRuntime.
+Здесь описан фактически существующий networking/Terraria protocol path TerraRuntime. Protocol baseline: Terraria `1.4.5.8`, protocol `326`, Multiplicity 3.0.x за protocol boundary TerraRuntime.
 
 Official TerrariaServer 1.4.5.8 behavior и independent real-client traffic остаются final reference, если implementation и self-round-trip evidence расходятся.
 

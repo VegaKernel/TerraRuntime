@@ -134,7 +134,7 @@ Terraria framing имеет форму `[u16 length][u8 message id][payload]`. S
 
 ## 8. Protocol boundary
 
-`TerraRuntime.Protocol` задаёт runtime-facing protocol concepts. `TerraRuntime.Protocol.Multiplicity` адаптирует Multiplicity 2.7.x к этой границе.
+`TerraRuntime.Protocol` задаёт runtime-facing protocol concepts. `TerraRuntime.Protocol.Multiplicity` адаптирует Multiplicity 3.0.x к этой границе.
 
 Gameplay-код не должен зависеть от concrete Multiplicity packet classes там, где может работать с domain commands/state.
 
@@ -146,11 +146,13 @@ Source projects разделены по слоям, а `tools/ci/check_project_r
 
 1. `TerraRuntime.Contracts`;
 2. source/domain boundaries: `Gameplay`, `Protocol`, `World`, `HostContracts`, `Transport`, `Schematics`;
-3. runtime mechanics/adapters: `Core`, `Network`, `Protocol.Multiplicity`;
+3. runtime mechanics/adapters: `Core`, `Network`, `Protocol.Multiplicity`, `WorldGeneration`;
 4. authoritative composition: `Application`;
 5. shipping/extension hosts: `TerraRuntime`, `Extensibility`, `ExtensibleHost`.
 
 `TerraRuntime.Protocol.Multiplicity -> TerraRuntime.World` сейчас является намеренной same-level adapter dependency: packet bootstrap/section encoders проецируют immutable world/persistence snapshot types, которыми пока владеет `World`. Adapter может читать эти projections для wire encoding, но не должен становиться владельцем world mutation. Если immutable DTO позднее переедут в Contracts, эту ссылку следует удалить, а не маскировать forwarding shim-ом.
+
+`TerraRuntime.WorldGeneration -> TerraRuntime.World` — намеренная зависимость: built-in generation владеет candidate construction, source-backed/optimized passes и finalization, а `World` остаётся владельцем storage/persistence. Обратной ссылки `World -> WorldGeneration` нет; fresh `.wld` metadata проецируется в World-owned persistence DTO на publication boundary.
 
 ## 9. Entity identity
 

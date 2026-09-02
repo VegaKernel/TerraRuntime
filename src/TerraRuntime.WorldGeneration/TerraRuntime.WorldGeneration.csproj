@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <RootNamespace>TerraRuntime.WorldGeneration</RootNamespace>
+    <AssemblyName>TerraRuntime.WorldGeneration</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TerraRuntime.Tests" />
+    <InternalsVisibleTo Include="TerraRuntime.WorldCompare" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
+    <ProjectReference Include="../TerraRuntime.World/TerraRuntime.World.csproj" />
+  </ItemGroup>
+</Project>

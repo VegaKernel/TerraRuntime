@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Multiplicity" Version="2.7.2" />
+    <PackageReference Include="Multiplicity" Version="3.0.0" />
   </ItemGroup>
 
   <ItemGroup>

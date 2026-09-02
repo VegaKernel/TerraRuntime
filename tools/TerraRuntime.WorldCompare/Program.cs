@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text.Json;
 using TerraRuntime.World;
+using TerraRuntime.WorldGeneration;
 
 if (args.Length < 2)
 {
