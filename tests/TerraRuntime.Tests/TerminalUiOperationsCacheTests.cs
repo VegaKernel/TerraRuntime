@@ -27,16 +27,26 @@ public sealed class TerminalUiOperationsCacheTests
         Assert.Equal(0, cache.Version);
 
         source.BlockDashboardCapture();
-        Task refresh = Task.Run(cache.Refresh, cancellationToken);
-        Assert.True(source.WaitUntilDashboardCaptureStarted(TimeSpan.FromSeconds(2), cancellationToken));
+        Task refresh = Task.Factory.StartNew(
+            cache.Refresh,
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
 
-        // The TUI read must not wait for the in-progress source capture. It consumes the last atomically
-        // published detached state and remains free to process keyboard/mouse input.
-        Assert.Equal(1, dashboard.CaptureSnapshot().Tick);
-        Assert.False(refresh.IsCompleted);
+        try
+        {
+            Assert.True(source.WaitUntilDashboardCaptureStarted(TimeSpan.FromSeconds(2), cancellationToken));
 
-        source.ReleaseDashboardCapture();
-        await refresh.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+            // The TUI read must not wait for the in-progress source capture. It consumes the last atomically
+            // published detached state and remains free to process keyboard/mouse input.
+            Assert.Equal(1, dashboard.CaptureSnapshot().Tick);
+            Assert.False(refresh.IsCompleted);
+        }
+        finally
+        {
+            source.ReleaseDashboardCapture();
+            await refresh.WaitAsync(TimeSpan.FromSeconds(2), CancellationToken.None);
+        }
 
         Assert.Equal(2, dashboard.CaptureSnapshot().Tick);
         Assert.Equal(1, cache.Version);
