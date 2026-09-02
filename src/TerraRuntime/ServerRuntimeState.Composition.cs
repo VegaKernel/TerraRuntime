@@ -4,7 +4,6 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.HostContracts;
-using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
 namespace TerraRuntime;
@@ -41,7 +40,6 @@ internal sealed partial class ServerRuntimeState
         bool expertMode = false,
         bool masterMode = false)
     {
-        Array.Fill(_playerTalkNpcSlots, TerrariaNpcTalkCodec.NoNpc);
         _playerEvents = playerEvents;
         _worldTiles = worldTiles;
         _tileMutations = worldTiles is null ? null : new VanillaWorldTileMutationService(worldTiles);

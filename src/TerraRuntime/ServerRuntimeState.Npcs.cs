@@ -104,11 +104,11 @@ internal sealed partial class ServerRuntimeState
         byte playerSlot = command.Connection.Player.Slot.Value;
         if (command.State.NpcSlot != TerrariaNpcTalkCodec.NoNpc)
             _townRescue?.TryRescueTalk(command.State.NpcSlot, out _);
-        _playerTalkNpcSlots[playerSlot] = command.State.NpcSlot;
-        _townShopSessions[playerSlot] = null;
+        if (!_playerMembership.TrySetTalkNpc(command.Connection, command.State.NpcSlot))
+            return;
         if (command.State.NpcSlot != TerrariaNpcTalkCodec.NoNpc &&
             _townCommerce is not null &&
-            _players.TryGetValue(playerSlot, out RuntimePlayerState? playerState))
+            _playerMembership.TryGet(playerSlot, out RuntimePlayerMember? playerState))
         {
             var commercePlayer = new RuntimeTownCommercePlayer1458(
                 playerState.PositionX,
@@ -124,7 +124,7 @@ internal sealed partial class ServerRuntimeState
                     _worldClock,
                     out RuntimeTownShopSession1458 session))
             {
-                _townShopSessions[playerSlot] = session;
+                _playerMembership.TrySetTownShopSession(command.Connection, session);
             }
         }
 
@@ -135,7 +135,7 @@ internal sealed partial class ServerRuntimeState
     {
         if (!IsCurrentPlayerConnection(command.Connection) ||
             !TerrariaNpcCatchCodec.IsValidNpcSlot(command.State.NpcSlot) ||
-            !_players.TryGetValue(command.Connection.Player.Slot.Value, out RuntimePlayerState? player) ||
+            !_playerMembership.TryGet(command.Connection, out RuntimePlayerMember? player) ||
             !_npcs.TryGetActive(checked((byte)command.State.NpcSlot), out NpcSnapshot npc) ||
             !NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcCatchCatalog1458.TryGetCatchItem(npcType, out ItemTypeId catchItem))
@@ -184,18 +184,7 @@ internal sealed partial class ServerRuntimeState
     }
 
     internal bool TryGetPlayerTalkNpc(PlayerHandle player, out short npcSlot)
-    {
-        if (!player.IsAssigned ||
-            !_players.TryGetValue(player.Slot.Value, out RuntimePlayerState? state) ||
-            state.Connection.Player != player)
-        {
-            npcSlot = TerrariaNpcTalkCodec.NoNpc;
-            return false;
-        }
-
-        npcSlot = _playerTalkNpcSlots[player.Slot.Value];
-        return true;
-    }
+        => _playerMembership.TryGetTalkNpc(player, out npcSlot);
 
     private void ApplyClientNpcHome(ClientNpcHomeRuntimeCommand command)
     {

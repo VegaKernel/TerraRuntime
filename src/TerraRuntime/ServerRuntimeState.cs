@@ -15,10 +15,7 @@ internal sealed partial class ServerRuntimeState : IRuntimePlayerSnapshotLookup,
     private const float VanillaBasePlayerWidth = 20f;
     private const float VanillaBasePlayerHeight = 42f;
 
-    private readonly Dictionary<byte, RuntimePlayerState> _players = [];
-    private readonly PendingPlayerVitals?[] _pendingVitals = new PendingPlayerVitals?[MaxPlayerSlots];
-    private readonly short[] _playerTalkNpcSlots = new short[MaxPlayerSlots];
-    private readonly RuntimeTownShopSession1458?[] _townShopSessions = new RuntimeTownShopSession1458?[MaxPlayerSlots];
+    private readonly RuntimePlayerMembership _playerMembership = new(MaxPlayerSlots);
     private readonly RuntimePlayerInventoryStore _playerInventory = new();
     private readonly RuntimePlayerTransferProfileStore _playerTransferProfiles = new();
     private readonly VanillaNpcTargetCandidate[] _npcTargetCandidates =

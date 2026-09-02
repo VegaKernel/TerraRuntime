@@ -16,19 +16,7 @@ internal sealed partial class ServerRuntimeState
     internal RuntimeNpcShopCatalogRegistry NpcShops => _npcShops;
 
     internal bool TryGetPlayerTownShopSession(PlayerHandle player, out RuntimeTownShopSession1458? session)
-    {
-        if (!player.IsAssigned ||
-            !_players.TryGetValue(player.Slot.Value, out RuntimePlayerState? state) ||
-            state.Connection.Player != player ||
-            _townShopSessions[player.Slot.Value] is not RuntimeTownShopSession1458 current)
-        {
-            session = null;
-            return false;
-        }
-
-        session = current;
-        return true;
-    }
+        => _playerMembership.TryGetTownShopSession(player, out session);
 
     internal RuntimeNpcArchetypeRegistry NpcArchetypes => _npcArchetypes;
 

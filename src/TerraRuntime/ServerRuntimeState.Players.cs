@@ -4,7 +4,6 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.HostContracts;
-using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
 namespace TerraRuntime;
@@ -12,14 +11,12 @@ namespace TerraRuntime;
 internal sealed partial class ServerRuntimeState
 {
     private bool IsCurrentPlayerConnection(ConnectionHandle connection) =>
-        connection.IsAssigned &&
-        _players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) &&
-        player.Connection == connection;
+        _playerMembership.IsCurrent(connection);
 
     private void ApplyPlayerAppearance(PlayerAppearanceRuntimeCommand appearance)
     {
         PlayerAppearanceCommitRequest request = appearance.Request;
-        if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer) &&
+        if (_playerMembership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer) &&
             activePlayer.Connection != appearance.Connection)
         {
             RejectedPlayerAppearances++;
@@ -61,7 +58,7 @@ internal sealed partial class ServerRuntimeState
             return;
         }
 
-        if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer) &&
+        if (_playerMembership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer) &&
             activePlayer.Connection != equipment.Connection)
         {
             RejectedPlayerEquipmentUpdates++;
@@ -96,7 +93,7 @@ internal sealed partial class ServerRuntimeState
             return;
         }
 
-        if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer))
+        if (_playerMembership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
         {
             if (activePlayer.Connection != health.Connection || !activePlayer.TryAdvanceRevision())
             {
@@ -111,7 +108,7 @@ internal sealed partial class ServerRuntimeState
         }
         else
         {
-            PendingPlayerVitals pending = GetOrReplacePending(health.Connection);
+            RuntimePendingPlayerVitals pending = _playerMembership.GetOrReplacePending(health.Connection);
             pending.HasHealth = true;
             pending.Life = request.Life;
             pending.MaxLife = request.MaxLife;
@@ -130,7 +127,7 @@ internal sealed partial class ServerRuntimeState
             return;
         }
 
-        if (_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? activePlayer))
+        if (_playerMembership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
         {
             if (activePlayer.Connection != mana.Connection || !activePlayer.TryAdvanceRevision())
             {
@@ -144,7 +141,7 @@ internal sealed partial class ServerRuntimeState
         }
         else
         {
-            PendingPlayerVitals pending = GetOrReplacePending(mana.Connection);
+            RuntimePendingPlayerVitals pending = _playerMembership.GetOrReplacePending(mana.Connection);
             pending.HasMana = true;
             pending.Mana = request.Mana;
             pending.MaxMana = request.MaxMana;
@@ -152,19 +149,6 @@ internal sealed partial class ServerRuntimeState
 
         AppliedPlayerManaUpdates++;
         _playerEvents?.PlayerManaUpdated(mana.Connection, in request);
-    }
-
-    private PendingPlayerVitals GetOrReplacePending(ConnectionHandle connection)
-    {
-        int slot = connection.Player.Slot.Value;
-        PendingPlayerVitals? pending = _pendingVitals[slot];
-        if (pending is null || pending.Connection != connection)
-        {
-            pending = new PendingPlayerVitals(connection);
-            _pendingVitals[slot] = pending;
-        }
-
-        return pending;
     }
 
     private void ApplyPlayerSpawn(PlayerSpawnRuntimeCommand spawn)
@@ -197,13 +181,11 @@ internal sealed partial class ServerRuntimeState
         if (!_playerInventory.TryAttach(spawn.Connection))
             throw new InvalidOperationException("Player inventory ownership changed during authoritative spawn commit.");
 
-        PendingPlayerVitals? pending = _pendingVitals[request.ClaimedSlot.Value];
+        RuntimePendingPlayerVitals? pending = _playerMembership.TakePending(request.ClaimedSlot);
         bool hasPending = pending is not null && pending.Connection == spawn.Connection;
-        if (pending is not null)
-            _pendingVitals[request.ClaimedSlot.Value] = null;
 
         CommittedPlayerSpawns++;
-        _players[request.ClaimedSlot.Value] = new RuntimePlayerState
+        _playerMembership.Commit(new RuntimePlayerMember
         {
             Connection = spawn.Connection,
             Revision = 1,
@@ -218,7 +200,7 @@ internal sealed partial class ServerRuntimeState
             HasMana = hasPending && pending!.HasMana,
             Mana = hasPending ? pending!.Mana : (short)0,
             MaxMana = hasPending ? pending!.MaxMana : (short)0
-        };
+        });
         _playerEvents?.PlayerSpawned(spawn.Connection, in request);
     }
 
@@ -233,8 +215,7 @@ internal sealed partial class ServerRuntimeState
             return;
         }
 
-        if (!_players.TryGetValue(request.PlayerSlot.Value, out RuntimePlayerState? player) ||
-            player.Connection != movement.Connection)
+        if (!_playerMembership.TryGet(movement.Connection, out RuntimePlayerMember? player))
         {
             RejectedPlayerMovements++;
             return;
@@ -281,22 +262,14 @@ internal sealed partial class ServerRuntimeState
     private void ApplyPlayerDisconnect(PlayerDisconnectRuntimeCommand disconnect)
     {
         ConnectionHandle connection = disconnect.Connection;
-        PendingPlayerVitals? pending = _pendingVitals[connection.Player.Slot.Value];
-        if (pending is not null && pending.Connection == connection)
-            _pendingVitals[connection.Player.Slot.Value] = null;
+        _playerMembership.ClearPending(connection);
 
         _playerInventory.Clear(connection);
         _playerTransferProfiles.Clear(connection);
 
-        if (!_players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) ||
-            player.Connection != disconnect.Connection)
-        {
+        if (!_playerMembership.TryRemove(connection, out _))
             return;
-        }
 
-        _playerTalkNpcSlots[connection.Player.Slot.Value] = TerrariaNpcTalkCodec.NoNpc;
-        _townShopSessions[connection.Player.Slot.Value] = null;
-        _players.Remove(connection.Player.Slot.Value);
         DisconnectedPlayers++;
         _playerEvents?.PlayerDisconnected(connection);
     }
@@ -304,8 +277,7 @@ internal sealed partial class ServerRuntimeState
     private void ApplyPlayerTransferDetach(PlayerTransferDetachRuntimeCommand command)
     {
         ConnectionHandle connection = command.Connection;
-        if (!_players.TryGetValue(connection.Player.Slot.Value, out RuntimePlayerState? player) ||
-            player.Connection != connection)
+        if (!_playerMembership.TryGet(connection, out RuntimePlayerMember? player))
         {
             command.Completion.TrySetResult(null);
             return;
@@ -328,12 +300,11 @@ internal sealed partial class ServerRuntimeState
             appearance,
             equipment);
 
-        _pendingVitals[connection.Player.Slot.Value] = null;
+        _playerMembership.ClearPending(connection);
         _playerInventory.Clear(connection);
         _playerTransferProfiles.Clear(connection);
-        _playerTalkNpcSlots[connection.Player.Slot.Value] = TerrariaNpcTalkCodec.NoNpc;
-        _townShopSessions[connection.Player.Slot.Value] = null;
-        _players.Remove(connection.Player.Slot.Value);
+        if (!_playerMembership.TryRemove(connection, out _))
+            throw new InvalidOperationException("Player membership changed during authoritative transfer detach.");
         _playerEvents?.PlayerDisconnected(connection);
         command.Completion.TrySetResult(transfer);
     }
@@ -345,7 +316,7 @@ internal sealed partial class ServerRuntimeState
         int slot = connection.Player.Slot.Value;
         if (!connection.IsAssigned ||
             transfer.Slot != connection.Player.Slot ||
-            _players.ContainsKey(checked((byte)slot)) ||
+            _playerMembership.Contains(connection.Player.Slot) ||
             transfer.Inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
             !_playerInventory.TryAttach(connection))
         {
@@ -378,7 +349,7 @@ internal sealed partial class ServerRuntimeState
                 life = previous.MaxLife;
         }
 
-        var state = new RuntimePlayerState
+        var state = new RuntimePlayerMember
         {
             Connection = connection,
             Revision = 1,
@@ -408,7 +379,7 @@ internal sealed partial class ServerRuntimeState
             CameraTargetX = preservePosition ? previous.CameraTargetX : 0f,
             CameraTargetY = preservePosition ? previous.CameraTargetY : 0f
         };
-        _players[checked((byte)slot)] = state;
+        _playerMembership.Commit(state);
         _playerTransferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment);
 
         short eventSpawnX = checked((short)Math.Clamp((int)(positionX / 16f), short.MinValue, short.MaxValue));
@@ -501,85 +472,4 @@ internal sealed partial class ServerRuntimeState
         command.Completion.TrySetResult(result);
     }
 
-    private sealed class PendingPlayerVitals(ConnectionHandle connection)
-    {
-        public ConnectionHandle Connection { get; } = connection;
-        public bool HasHealth { get; set; }
-        public short Life { get; set; }
-        public short MaxLife { get; set; }
-        public bool HasMana { get; set; }
-        public short Mana { get; set; }
-        public short MaxMana { get; set; }
-    }
-
-    private sealed class RuntimePlayerState
-    {
-        public ConnectionHandle Connection { get; init; }
-        public ulong Revision { get; set; }
-        public PlayerSlotId Slot { get; init; }
-        public byte Team { get; init; }
-        public bool HasHealth { get; set; }
-        public short Life { get; set; }
-        public short MaxLife { get; set; }
-        public bool IsDead { get; set; }
-        public bool HasMana { get; set; }
-        public short Mana { get; set; }
-        public short MaxMana { get; set; }
-        public byte ControlFlags { get; set; }
-        public byte MovementFlags { get; set; }
-        public byte MiscFlags1 { get; set; }
-        public byte MiscFlags2 { get; set; }
-        public byte SelectedItem { get; set; }
-        public float PositionX { get; set; }
-        public float PositionY { get; set; }
-        public float VelocityX { get; set; }
-        public float VelocityY { get; set; }
-        public ushort MountType { get; set; }
-        public float PotionOfReturnOriginalPositionX { get; set; }
-        public float PotionOfReturnOriginalPositionY { get; set; }
-        public float PotionOfReturnHomePositionX { get; set; }
-        public float PotionOfReturnHomePositionY { get; set; }
-        public float CameraTargetX { get; set; }
-        public float CameraTargetY { get; set; }
-
-        public bool TryAdvanceRevision()
-        {
-            if (Revision == ulong.MaxValue)
-                return false;
-
-            Revision++;
-            return true;
-        }
-
-        public PlayerStateSnapshot CaptureSnapshot() =>
-            new(
-                Connection.Player,
-                new PlayerStateRevision(Revision),
-                Team,
-                ControlFlags,
-                MovementFlags,
-                MiscFlags1,
-                MiscFlags2,
-                SelectedItem,
-                PositionX,
-                PositionY,
-                VelocityX,
-                VelocityY,
-                MountType,
-                PotionOfReturnOriginalPositionX,
-                PotionOfReturnOriginalPositionY,
-                PotionOfReturnHomePositionX,
-                PotionOfReturnHomePositionY,
-                CameraTargetX,
-                CameraTargetY)
-            {
-                HasHealth = HasHealth,
-                Life = Life,
-                MaxLife = MaxLife,
-                IsDead = IsDead,
-                HasMana = HasMana,
-                Mana = Mana,
-                MaxMana = MaxMana
-            };
-    }
 }

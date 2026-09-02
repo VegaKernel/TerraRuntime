@@ -138,6 +138,7 @@ Checklist:
 
 - [ ] Decompose `ServerRuntimeState` by real world-owned responsibilities while preserving one authoritative writer.
 - [x] Extract per-player tile-edit admission counters and ceiling from `ServerRuntimeState` into the precise world-owned `PlayerTileEditBudget` policy object without changing authoritative tick ordering.
+- [x] Extract active player membership, connection-generation guards, pre-spawn vitals, conversation/shop session lifetime and revisioned snapshots from `ServerRuntimeState` into the world-owned `RuntimePlayerMembership`.
 - [ ] Finish decomposing `TerrariaServerHost`: `WorldRuntime` now owns one-world simulation, but startup/load/bootstrap, process lifecycle and network acceptance still share the large host method.
 - [ ] Extract coherent player, NPC, projectile, item, town/housing and world-lifecycle collaborators only where they own state/behavior; do not produce one class per method.
 - [ ] Keep source-order-sensitive boss/AI logic cohesive when decomposition would obscure verified vanilla ordering.

@@ -12,17 +12,7 @@ namespace TerraRuntime;
 internal sealed partial class ServerRuntimeState
 {
     internal bool TryCapturePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
-    {
-        if (!_players.TryGetValue(player.Slot.Value, out RuntimePlayerState? state) ||
-            state.Connection.Player != player)
-        {
-            snapshot = default;
-            return false;
-        }
-
-        snapshot = state.CaptureSnapshot();
-        return true;
-    }
+        => _playerMembership.TryCapture(player, out snapshot);
 
     private bool TryCaptureRuntimePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
     {
@@ -45,7 +35,7 @@ internal sealed partial class ServerRuntimeState
         PlayerSlotId slot,
         out PlayerStateSnapshot snapshot)
     {
-        if (_players.TryGetValue(slot.Value, out RuntimePlayerState? player))
+        if (_playerMembership.TryGet(slot, out RuntimePlayerMember? player))
             return TryCaptureRuntimePlayerSnapshot(player.Connection.Player, out snapshot);
 
         if (_serverPlayerStates is not null)
@@ -60,8 +50,7 @@ internal sealed partial class ServerRuntimeState
         int inventorySlot,
         out RuntimePlayerInventoryItem item)
     {
-        if (!_players.TryGetValue(player.Slot.Value, out RuntimePlayerState? state) ||
-            state.Connection.Player != player)
+        if (!_playerMembership.TryGet(player, out RuntimePlayerMember? state))
         {
             item = default;
             return false;

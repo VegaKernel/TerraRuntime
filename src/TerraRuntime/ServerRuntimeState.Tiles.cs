@@ -18,8 +18,7 @@ internal sealed partial class ServerRuntimeState
         if (_worldTiles is null ||
             tileMutations is null ||
             !command.Connection.IsAssigned ||
-            !_players.TryGetValue(command.Connection.Player.Slot.Value, out RuntimePlayerState? player) ||
-            player.Connection != command.Connection ||
+            !_playerMembership.TryGet(command.Connection, out RuntimePlayerMember? player) ||
             !VanillaTileManipulationWorldRules.IsInPacket17WorldBounds(
                 _worldTiles.Dimensions.WidthTiles,
                 _worldTiles.Dimensions.HeightTiles,

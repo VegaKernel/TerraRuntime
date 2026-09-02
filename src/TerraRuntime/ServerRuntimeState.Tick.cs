@@ -61,7 +61,7 @@ internal sealed partial class ServerRuntimeState
         int spawnPlayerCount = 0;
         int boundsCount = 0;
         Span<RuntimePlayerInventoryItem> inventory = stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
-        foreach (RuntimePlayerState player in _players.Values)
+        foreach (RuntimePlayerMember player in _playerMembership.Members)
         {
             long coinValue = 0;
             bool bullet = false;
@@ -200,7 +200,7 @@ internal sealed partial class ServerRuntimeState
 
         for (int slot = 0; slot < VanillaNpcTargetingAiStepper.MaximumPlayerCandidates; slot++)
         {
-            if (_players.TryGetValue(checked((byte)slot), out RuntimePlayerState? player))
+            if (_playerMembership.TryGet(checked((byte)slot), out RuntimePlayerMember? player))
             {
                 if (player.MountType != 0)
                     continue;
@@ -257,9 +257,8 @@ internal sealed partial class ServerRuntimeState
         int tileTop = tileY * 16;
         int tileRight = tileLeft + 16;
         int tileBottom = tileTop + 16;
-        foreach (var kvp in _players)
+        foreach (RuntimePlayerMember player in _playerMembership.Members)
         {
-            RuntimePlayerState player = kvp.Value;
             if (player.IsDead)
                 continue;
             if (Intersects(player.PositionX, player.PositionY, VanillaBasePlayerWidth, VanillaBasePlayerHeight, tileLeft, tileTop, tileRight, tileBottom))
