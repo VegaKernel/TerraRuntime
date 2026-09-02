@@ -18,6 +18,7 @@ public abstract record SandboxOperation
     public sealed record Respawn(string PlayerSelector, SandboxName? Sandbox) : SandboxOperation;
     public sealed record Regenerate(SandboxName Name, ulong? Seed) : SandboxOperation;
     public sealed record Destroy(SandboxName Name) : SandboxOperation;
+    public sealed record Kick(string PlayerSelector) : SandboxOperation;
     public sealed record Cancel(SandboxJobId Id) : SandboxOperation;
 }
 
@@ -27,6 +28,9 @@ public sealed class SandboxCommandParser
     private readonly string worldAssetRoot;
     private readonly int defaultWidthTiles;
     private readonly int defaultHeightTiles;
+
+    internal int DefaultWidthTiles => defaultWidthTiles;
+    internal int DefaultHeightTiles => defaultHeightTiles;
 
     public SandboxCommandParser(string worldAssetRoot, int defaultWidthTiles, int defaultHeightTiles)
     {
@@ -260,6 +264,89 @@ public sealed class SandboxCommandParser
         return true;
     }
 
+    internal bool TryBuildGeneratedRequest(
+        string name,
+        WorldIsolationLevel isolation,
+        string generatorId,
+        string seedText,
+        int? widthTiles,
+        int? heightTiles,
+        WorldGenerationGameMode gameMode,
+        WorldGenerationEvil evil,
+        out SandboxCreateRequest request,
+        out string? error)
+    {
+        request = default;
+        try
+        {
+            var sandbox = new SandboxName(name);
+            var generator = new WorldGeneratorId(generatorId);
+            ulong seed;
+            if (seedText.Equals("random", StringComparison.OrdinalIgnoreCase))
+                seed = RandomSeed();
+            else if (!ulong.TryParse(seedText, NumberStyles.None, CultureInfo.InvariantCulture, out seed))
+            {
+                error = "seed must be an unsigned integer or random";
+                return false;
+            }
+
+            int width = widthTiles ?? defaultWidthTiles;
+            int height = heightTiles ?? defaultHeightTiles;
+            if (width <= 0 || height <= 0)
+            {
+                error = "world dimensions must be positive";
+                return false;
+            }
+            if (!Enum.IsDefined(gameMode) || !Enum.IsDefined(evil))
+            {
+                error = "world mode or evil selection is invalid";
+                return false;
+            }
+
+            request = new SandboxCreateRequest(
+                sandbox,
+                isolation,
+                new SandboxWorldSource.Generated(
+                    generator,
+                    sandbox.Value,
+                    seed,
+                    width,
+                    height,
+                    new WorldGenerationOptions(gameMode, evil)));
+            error = null;
+            return true;
+        }
+        catch (ArgumentException exception)
+        {
+            error = exception.Message;
+            return false;
+        }
+    }
+
+    internal bool TryBuildWorldFileRequest(
+        string name,
+        WorldIsolationLevel isolation,
+        string relativeWorldPath,
+        out SandboxCreateRequest request,
+        out string? error)
+    {
+        request = default;
+        try
+        {
+            var sandbox = new SandboxName(name);
+            if (!TryResolveAsset(relativeWorldPath, out string? path, out error))
+                return false;
+            request = new SandboxCreateRequest(sandbox, isolation, new SandboxWorldSource.WorldFile(path!));
+            error = null;
+            return true;
+        }
+        catch (ArgumentException exception)
+        {
+            error = exception.Message;
+            return false;
+        }
+    }
+
     private static bool TryParseRegenerate(string[] parts, out SandboxOperation? operation, out string? error)
     {
         if (parts.Length != 3 && parts.Length != 5)
@@ -376,6 +463,7 @@ public sealed class SandboxOperations
             SandboxOperation.Destroy destroy => host.TryDestroy(destroy.Name, out SandboxJobId id, out string? error)
                 ? $"sandbox: destroy accepted as operation {id}"
                 : $"sandbox: {error}",
+            SandboxOperation.Kick kick => ExecuteKick(kick.PlayerSelector),
             SandboxOperation.Cancel cancel => host.TryCancel(cancel.Id)
                 ? $"sandbox: cancellation requested for operation {cancel.Id}"
                 : $"sandbox: operation {cancel.Id} is missing or already complete",
@@ -394,6 +482,55 @@ public sealed class SandboxOperations
         else if (job.RuntimeIdentity is WorldRuntimeIdentity identity)
             result += $" runtime={identity.RuntimeId} session={identity.SessionId}";
         return result;
+    }
+
+    internal int DefaultWidthTiles => parser.DefaultWidthTiles;
+    internal int DefaultHeightTiles => parser.DefaultHeightTiles;
+
+    internal bool TryBuildGeneratedCreate(
+        string name,
+        WorldIsolationLevel isolation,
+        string generatorId,
+        string seedText,
+        int? widthTiles,
+        int? heightTiles,
+        WorldGenerationGameMode gameMode,
+        WorldGenerationEvil evil,
+        out SandboxOperation.Create? operation,
+        out string? error)
+    {
+        if (!parser.TryBuildGeneratedRequest(name, isolation, generatorId, seedText, widthTiles, heightTiles, gameMode, evil, out SandboxCreateRequest request, out error))
+        {
+            operation = null;
+            return false;
+        }
+        operation = new SandboxOperation.Create(request);
+        return true;
+    }
+
+    internal bool TryBuildWorldFileCreate(
+        string name,
+        WorldIsolationLevel isolation,
+        string relativeWorldPath,
+        out SandboxOperation.Create? operation,
+        out string? error)
+    {
+        if (!parser.TryBuildWorldFileRequest(name, isolation, relativeWorldPath, out SandboxCreateRequest request, out error))
+        {
+            operation = null;
+            return false;
+        }
+        operation = new SandboxOperation.Create(request);
+        return true;
+    }
+
+    private string ExecuteKick(string player)
+    {
+        if (transfers is null)
+            return "sandbox: player connection operations are unavailable";
+        return transfers.TryKick(player, out string? error)
+            ? $"sandbox: kick requested for {player}"
+            : $"sandbox: {error}";
     }
 
     private string ExecuteTransfer(string player, SandboxName? sandbox, bool forceRespawn)

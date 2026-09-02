@@ -50,7 +50,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Dashboard_layout_uses_wide_console_graph_row_and_world_player_tree_without_server_tile()
+    public void Dashboard_layout_uses_wide_console_network_row_and_world_player_tree_without_global_tps_tile()
     {
         using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(160, 28);
@@ -85,22 +85,17 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 status: null);
             app.LayoutAndDraw();
 
-            Assert.Equal(4, dashboard.GetVisiblePanelCountForSmoke());
-            Assert.Contains("TPS", dashboard.GetPanelTitleForSmoke("TPS"));
+            Assert.Equal(3, dashboard.GetVisiblePanelCountForSmoke());
             Assert.Contains("Worlds / Players", dashboard.GetPanelTitleForSmoke("Worlds"));
-            Assert.DoesNotContain("CPU", dashboard.GetTpsLegendForSmoke(), StringComparison.OrdinalIgnoreCase);
 
             var console = dashboard.GetPanelFrameForSmoke("Console");
-            var tps = dashboard.GetPanelFrameForSmoke("TPS");
             var network = dashboard.GetPanelFrameForSmoke("Network");
             var worlds = dashboard.GetPanelFrameForSmoke("Worlds");
 
             Assert.True(console.Width > worlds.Width);
-            Assert.Equal(0, tps.Y);
-            Assert.Equal(tps.Y, network.Y);
-            Assert.Equal(tps.Height, network.Height);
-            Assert.Equal(tps.Bottom, worlds.Y);
-            Assert.True(worlds.Height > tps.Height);
+            Assert.Equal(0, network.Y);
+            Assert.Equal(network.Bottom, worlds.Y);
+            Assert.True(worlds.Height > network.Height);
             Assert.Contains("Logs INFO+", dashboard.GetFeedControlsForSmoke());
             Assert.Contains("Chat ON", dashboard.GetFeedControlsForSmoke());
             Assert.DoesNotContain("Level", dashboard.GetFeedControlsForSmoke(), StringComparison.OrdinalIgnoreCase);
@@ -113,7 +108,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Maximized_graph_scales_history_across_wide_viewport()
+    public void Maximized_network_graph_scales_history_across_wide_viewport()
     {
         using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(160, 28);
@@ -143,15 +138,15 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 dashboard.Refresh(runtime with { Tick = i + 1 }, default, default, default, default, default, status: null);
 
             app.LayoutAndDraw();
-            Assert.True(dashboard.GetGraphCellSizeForSmoke("TPS").X >= 1f);
+            Assert.True(dashboard.GetGraphCellSizeForSmoke("Network").X >= 1f);
 
-            dashboard.TogglePanelForSmoke("TPS");
+            dashboard.TogglePanelForSmoke("Network");
             app.LayoutAndDraw();
             dashboard.Refresh(runtime with { Tick = 61 }, default, default, default, default, default, status: null);
             app.LayoutAndDraw();
 
             Assert.Equal(1, dashboard.GetVisiblePanelCountForSmoke());
-            Assert.True(dashboard.GetGraphCellSizeForSmoke("TPS").X < 1f);
+            Assert.True(dashboard.GetGraphCellSizeForSmoke("Network").X < 1f);
         }
         finally
         {
@@ -293,7 +288,9 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 {
                     Identity = primaryIdentity,
                     WorldName = "Main",
-                    Lifecycle = WorldRuntimeLifecycle.Running
+                    Lifecycle = WorldRuntimeLifecycle.Running,
+                    TargetTicksPerSecond = 60,
+                    ObservedTicksPerSecond = 59.8
                 },
                 PendingJob: null,
                 Players: new SandboxTreePlayerSnapshot[]
@@ -308,7 +305,9 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 {
                     Identity = arenaIdentity,
                     WorldName = "Arena World",
-                    Lifecycle = WorldRuntimeLifecycle.Running
+                    Lifecycle = WorldRuntimeLifecycle.Running,
+                    TargetTicksPerSecond = 120,
+                    ObservedTicksPerSecond = 119.6
                 },
                 PendingJob: null,
                 Players: new SandboxTreePlayerSnapshot[]
@@ -330,8 +329,10 @@ public sealed class RuntimeOverviewDashboardInteractionTests
 
         string rendered = dashboard.GetWorldsTextForSmoke();
         Assert.Contains("Main  [primary]", rendered);
+        Assert.Contains("TPS 59.8/60", rendered);
         Assert.Contains("#0 Alice", rendered);
         Assert.Contains("arena  [sandbox · running]", rendered);
+        Assert.Contains("TPS 119.6/120", rendered);
         Assert.Contains("#1 Bob", rendered);
     }
 
@@ -348,6 +349,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             target = sandbox;
         };
         tree.SetRows(
+        ["primary", "#0 Alice", "arena"],
         [
             new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null),
             new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#0"),
@@ -357,6 +359,30 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.True(tree.TryTransferRows(sourceRow: 1, targetRow: 2));
         Assert.Equal("#0", player);
         Assert.Equal(destination, target);
+    }
+
+    [Fact]
+    public void World_tree_context_actions_map_rows_to_typed_semantics()
+    {
+        using var tree = new SandboxWorldTreeView();
+        var arena = new SandboxName("arena");
+        SandboxName? destroyed = null;
+        string? kicked = null;
+        tree.DestroyRequested += sandbox => destroyed = sandbox;
+        tree.KickRequested += player => kicked = player;
+        tree.SetRows(
+            ["primary", "arena", "#4 Bob"],
+            [
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, arena, PlayerSelector: null),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, arena, PlayerSelector: "#4")
+            ]);
+
+        Assert.False(tree.TryInvokeContextActionForSmoke(0));
+        Assert.True(tree.TryInvokeContextActionForSmoke(1));
+        Assert.Equal(arena, destroyed);
+        Assert.True(tree.TryInvokeContextActionForSmoke(2));
+        Assert.Equal("#4", kicked);
     }
 
     private static RuntimePlayerSnapshot CreatePlayer(byte slot, long connectionId, string name) =>

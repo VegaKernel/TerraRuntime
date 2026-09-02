@@ -7,7 +7,6 @@ namespace TerraRuntime.Operations;
 
 internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperations
 {
-    private static readonly long MinimumTickRateSampleTicks = Math.Max(1L, Stopwatch.Frequency / 4);
     private static readonly long MinimumProcessCpuSampleTicks = Math.Max(1L, Stopwatch.Frequency / 4);
 
     private readonly AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> gameLoop;
@@ -20,10 +19,8 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
     private readonly int maxPlayers;
     private readonly int targetTicksPerSecond;
     private readonly object sampleSync = new();
+    private readonly RuntimeTickRateObserver tickRateObserver = new();
 
-    private long sampleTick = -1;
-    private long sampleTimestamp;
-    private double observedTicksPerSecond;
     private long processCpuSampleTimestamp;
     private long processCpuSampleTicks = -1;
     private double processCpuPercent;
@@ -83,7 +80,7 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
             InterestManagementEnabled: interestManagement.IsEnabled,
             Tick: loop.Tick,
             TargetTicksPerSecond: targetTicksPerSecond,
-            ObservedTicksPerSecond: ObserveTickRate(loop.Tick),
+            ObservedTicksPerSecond: tickRateObserver.Observe(loop.Tick),
             LastTickMilliseconds: loop.LastTickMilliseconds,
             WorstTickMilliseconds: loop.WorstTickMilliseconds,
             CpuTimeAvailable: loop.CpuTimeAvailable,
@@ -116,33 +113,6 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
         gameLoop.TryPost(
             GameCommandSourceId.System,
             new SetInterestManagementRuntimeCommand(interestManagement, enabled));
-
-    private double ObserveTickRate(long currentTick)
-    {
-        long now = Stopwatch.GetTimestamp();
-
-        lock (sampleSync)
-        {
-            if (sampleTick < 0)
-            {
-                sampleTick = currentTick;
-                sampleTimestamp = now;
-                return 0d;
-            }
-
-            long elapsed = now - sampleTimestamp;
-            if (elapsed < MinimumTickRateSampleTicks)
-                return observedTicksPerSecond;
-
-            long completedTicks = currentTick - sampleTick;
-            if (completedTicks >= 0)
-                observedTicksPerSecond = completedTicks * (double)Stopwatch.Frequency / elapsed;
-
-            sampleTick = currentTick;
-            sampleTimestamp = now;
-            return observedTicksPerSecond;
-        }
-    }
 
     private double ObserveProcessCpuPercent(TimeSpan totalCpuTime)
     {

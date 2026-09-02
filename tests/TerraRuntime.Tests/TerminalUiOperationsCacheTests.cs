@@ -72,7 +72,6 @@ public sealed class TerminalUiOperationsCacheTests
         Assert.True(dashboard.ConsoleSupportsSelectionForSmoke);
         Assert.True(dashboard.CommandInputVisibleForSmoke);
         Assert.True(dashboard.CommandInputFrameUsesAccentForSmoke);
-        Assert.Contains("TPS", dashboard.GetPanelTitleForSmoke("TPS"));
         Assert.Contains("Network", dashboard.GetPanelTitleForSmoke("Network"));
     }
 
@@ -113,9 +112,8 @@ public sealed class TerminalUiOperationsCacheTests
         try
         {
             app.LayoutAndDraw();
-            Assert.Equal(4, dashboard.GetVisiblePanelCountForSmoke());
+            Assert.Equal(3, dashboard.GetVisiblePanelCountForSmoke());
             Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("Console"));
-            Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("TPS"));
             Assert.True(dashboard.HasTitleDoubleClickBindingForSmoke("Network"));
 
             dashboard.TogglePanelForSmoke("Network");
@@ -124,7 +122,7 @@ public sealed class TerminalUiOperationsCacheTests
 
             dashboard.TogglePanelForSmoke("Network");
             app.LayoutAndDraw();
-            Assert.Equal(4, dashboard.GetVisiblePanelCountForSmoke());
+            Assert.Equal(3, dashboard.GetVisiblePanelCountForSmoke());
         }
         finally
         {

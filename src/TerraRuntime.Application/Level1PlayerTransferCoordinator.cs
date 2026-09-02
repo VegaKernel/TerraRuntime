@@ -71,6 +71,13 @@ internal sealed class Level1PlayerTransferCoordinator
         return route.TryTransfer(destination, forceRespawn, out error);
     }
 
+    public bool TryKick(string playerSelector, out string? error)
+    {
+        if (!connections.TryResolve(playerSelector, out RuntimeConnectionRoute? route, out error) || route is null)
+            return false;
+        return route.TryRequestDisconnect(out error);
+    }
+
     public SandboxTreeSnapshot CaptureTreeSnapshot()
     {
         WorldRuntimeSnapshot? primary = runtimes.TryGetPrimary(out WorldRuntime? primaryRuntime) && primaryRuntime is not null

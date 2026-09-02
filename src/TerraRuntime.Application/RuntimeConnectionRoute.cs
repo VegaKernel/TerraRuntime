@@ -214,6 +214,27 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         }
     }
 
+    public bool TryRequestDisconnect(out string? error)
+    {
+        lock (gate)
+        {
+            if (Volatile.Read(ref disposed) != 0)
+            {
+                error = "player connection is already closed";
+                return false;
+            }
+
+            if (!outbound.Complete())
+            {
+                error = "player connection is already stopping";
+                return false;
+            }
+
+            error = null;
+            return true;
+        }
+    }
+
     public void DisconnectActive(TimeSpan? timeout = null)
     {
         lock (gate)

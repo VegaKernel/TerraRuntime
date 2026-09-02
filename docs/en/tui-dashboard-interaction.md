@@ -4,7 +4,7 @@
 
 ## Purpose
 
-The built-in TerraRuntime System Dashboard follows the interaction model proven by Vega while keeping all data and mutation boundaries runtime-owned.
+The built-in TerraRuntime System Dashboard keeps presentation state detached from authoritative runtime state. UI actions submit typed operations; the Terminal.Gui thread never mutates a world directly.
 
 ## Layout
 
@@ -12,35 +12,50 @@ The built-in TerraRuntime System Dashboard follows the interaction model proven 
 flowchart LR
     Console["Console\nconfigurable Logs + Chat feed\ncommand line"]
     subgraph Right["Right column"]
-        Server["Server"]
-        subgraph Graphs["one graph row"]
-            TPS["TPS"]
-            Network["Network"]
-        end
-        Worlds["Worlds / Players tree"]
+        Network["Network graph"]
+        Worlds["Worlds / Players roster\nper-world TPS"]
     end
-    Console --- Server
+    Console --- Right
 ```
 
-Console occupies the left side. The right side keeps the compact Server tile, TPS and Network graphs on one row, and gives all remaining height to the Worlds / Players tree. CPU and Memory/GC are intentionally absent from the overview dashboard; detailed system diagnostics remain available through the Details screens instead of competing with operator-facing state.
+Console occupies roughly two thirds of the workspace. The right column keeps the compact Network graph at the top and gives the remaining height to Worlds / Players. The former process-wide TPS graph is intentionally removed because Level 1 runtimes have independent authoritative game loops and therefore independent tick rates.
+
+## Per-world TPS and roster
+
+Each live `WorldRuntime` publishes both target TPS and an observed TPS sample from its own game-loop tick counter. The roster renders that value on the world row:
+
+```text
+▼ Main   [primary]            TPS 60.0/60
+  └─ #0 Alice
+▼ arena  [sandbox · running]  TPS 119.8/120
+  └─ #1 Bob
+```
+
+A sandbox that is still being materialized has no live game loop and is rendered as `TPS --` instead of borrowing the primary runtime metric.
+
+The roster is a `ListView`: focus/selection highlights a complete item row rather than selecting text inside the row. Player drag-and-drop still submits the typed Level 1 move operation.
+
+Right-click opens a context menu for the selected semantic row. A live sandbox world exposes `Destroy`; a player exposes `Kick`. Primary world destruction is deliberately not offered. `Kick` requests process-owned connection shutdown through the connection route/outbound queue; it does not delete a UI row or directly mutate runtime player state.
+
+A `+` control at the top of the roster opens the sandbox creation window. The form covers the currently implemented `sb1`/`sb2` creation surface:
+
+- sandbox name;
+- in-process (`sb1`) or dedicated-process (`sb2`) isolation;
+- generated world or existing `.wld` source;
+- generator ID and numeric/random seed;
+- primary-size or explicit width/height;
+- classic/expert/master/journey mode;
+- corruption/crimson evil.
+
+The form builds the same typed `SandboxCreateRequest` used by command handling. It does not round-trip through a generated command string.
 
 ## Maximize and focus
 
-Double-clicking a tile title uses the title/border view binding rather than the content view. The selected tile expands to the complete dashboard workspace and hides the other tiles. A second double-click on its title restores the tiled layout.
-
-Keyboard or mouse focus applies the Accent scheme and prefixes the active title with `▶`, so focus remains visible even on terminals that reduce the configured color range.
+Double-clicking a tile title expands that tile to the complete dashboard workspace and hides the other tiles. A second double-click restores the tiled layout. Keyboard or mouse focus applies the Accent scheme and prefixes the active title with `▶`.
 
 ## Configurable Console feed
 
-Console is one chronological bounded feed rather than separate Log and Chat panes. Three controls at the top change only the UI projection:
-
-- `Logs ON/OFF` includes or excludes structured runtime log entries;
-- `Chat ON/OFF` includes or excludes public chat entries;
-- `Level DEBUG+/INFO+/WARN+/ERROR+` selects the minimum level for structured logs. Chat is independent from the log threshold.
-
-When both sources are enabled, entries are merged by timestamp and rendered in one stream. The UI keeps at most the newest 64 projected entries. This is presentation state only; the authoritative recent-log and chat stores remain separately bounded by their own operations backends.
-
-The detached TUI cache captures a bounded Debug-level overview superset so changing filters does not synchronously query logging state from the Terminal.Gui thread. Manual scrolling and active text selection remain stable while snapshots refresh.
+Console is one chronological bounded feed rather than separate Log and Chat panes. Controls at the top select structured log visibility/minimum level and Chat visibility. The detached TUI cache captures a bounded Debug-level overview superset, so changing filters does not synchronously query logging state from the Terminal.Gui thread.
 
 The same settings are available through the command line:
 
@@ -52,70 +67,18 @@ feed chat on|off
 feed level debug|info|warn|error
 ```
 
-## Graphs
+## Network graph
 
-TPS uses Terminal.Gui `GraphView` with current TPS history and the target-TPS reference line. Network has a separate `GraphView` with inbound and outbound packet-rate histories. The legend also shows current packet rate and throughput in `KiB/s`.
-
-Rates are calculated from deltas of subsystem-owned process-lifetime inbound/outbound Terraria message counters across consecutive detached network snapshots. The elapsed time comes from snapshot capture timestamps. Counter rollback or an invalid/long sampling interval resets the local rate sample rather than emitting a synthetic spike.
-
-The histories and previous-counter sample are UI-local bounded presentation state. They do not become authoritative telemetry and they do not add counters to packet hot paths.
-
-## Worlds / Players tree
-
-The overview now reserves the large lower-right tile for the runtime roster. In the current single-world runtime it projects the active world as the primary root and players as child rows:
-
-```text
-▼ Main  [primary]
-  ├─ #0 Alice
-  └─ #1 Bob
-```
-
-This shape is intentionally compatible with the sandbox roadmap where several live `WorldRuntime` roots will be visible at once and players can be transferred between runtime sessions.
-
-Actual drag-and-drop transfer is not claimed as implemented yet. The authoritative multi-world registry and client-transfer ingress are still S1/S2 sandbox work. The TUI must call that future bounded transfer operation; it must never mutate player/world ownership directly merely because both objects are visible in one process.
+Network uses Terminal.Gui `GraphView` with inbound and outbound packet-rate histories. The legend also shows current packet rate and throughput in `KiB/s`. Rates are calculated from process-lifetime message-counter deltas across detached network snapshots. Invalid intervals/counter rollback reset the local sample instead of emitting a synthetic spike.
 
 ## Console command line
 
-The Console tile contains an always-visible accented `>` input frame. `Ctrl+P` focuses it. Current runtime-owned commands are:
-
-```text
-help
-feed ...
-save
-interest on
-interest off
-system
-players
-npcs
-projectiles
-items
-network
-world
-logs
-```
-
-`save` and `interest on|off` delegate to the existing bounded operations ingress. Navigation commands only switch the current workspace screen. Unknown input is reported locally and is never interpreted as arbitrary runtime mutation.
+The Console tile contains an always-visible accented `>` input frame. `Ctrl+P` focuses it. Sandbox commands and UI actions ultimately use the same runtime-owned operation layer; unknown input is reported locally and is never interpreted as arbitrary runtime mutation.
 
 ## Text selection
 
-Console, Server and Worlds / Players use read-only selectable text surfaces. Mouse or keyboard selection and `Ctrl+C` are supported. Snapshot refresh does not replace displayed text while an active non-empty selection exists, preventing normal telemetry refresh from destroying a selection while the operator is copying it.
-
-All built-in Details screens (Players, NPCs, Projectiles, Items, Network, World and Logs) use the same read-only selectable projection. Their bounded `rows[]` render model remains internal for formatting and smoke assertions, while one scrollable `TextView` presents those rows to the operator.
+Console and the Details screens remain read-only selectable text surfaces for copying diagnostics. Worlds / Players intentionally differs: it is an item list, so selection highlights a row and does not create a text selection.
 
 ## Responsiveness
 
-Authoritative operations capture remains outside the Terminal.Gui thread. The UI reads the last atomically published cache snapshot, so input processing, selection, menu navigation and window interaction do not wait for world/network/log snapshot acquisition.
-
-Runtime snapshots target approximately
-
-$$
-T_{\mathrm{snapshot}}\approx500\,\mathrm{ms},
-$$
-
-while the lightweight UI publication check is approximately
-
-$$
-T_{\mathrm{ui\ pump}}\approx25\,\mathrm{ms}.
-$$
-
-These periods control data freshness, not keyboard or mouse processing latency.
+Authoritative operations capture remains outside the Terminal.Gui thread. The UI reads the last atomically published cache snapshot, so input processing, row selection, context menus and the sandbox creation window do not wait for world/network/log snapshot acquisition. Snapshot freshness remains approximately 500 ms while the lightweight UI publication check is approximately 25 ms.

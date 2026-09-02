@@ -29,32 +29,22 @@ internal sealed class RuntimeOverviewDashboard : View
     private const string AccentSchemeName = "Accent";
 
     private readonly FrameView consoleFrame;
-    private readonly FrameView tpsFrame;
     private readonly FrameView networkFrame;
     private readonly FrameView worldsFrame;
     private readonly FrameView commandFrame;
     private readonly TextView consoleText;
     private readonly SandboxWorldTreeView worldsText;
-    private readonly Label tpsLegend;
     private readonly Label networkLegend;
     private readonly Label commandFeedback;
     private readonly Label worldsHint;
+    private readonly Button sandboxAddButton;
     private readonly Label feedLogModeToggle;
     private readonly Label feedChatToggle;
     private readonly TextField commandInput;
-    private readonly GraphView tpsGraph;
     private readonly GraphView networkGraph;
     private readonly SandboxOperations? sandboxOperations;
     private readonly Func<SandboxTreeSnapshot>? sandboxTreeSource;
     private readonly HashSet<long> observedTerminalSandboxJobs = [];
-    private readonly PathAnnotation tpsTargetPath = new()
-    {
-        LineColor = new TuiAttribute(TuiColor.Gray, TuiColor.Black)
-    };
-    private readonly PathAnnotation tpsPath = new()
-    {
-        LineColor = new TuiAttribute(TuiColor.BrightGreen, TuiColor.Black)
-    };
     private readonly PathAnnotation inboundPath = new()
     {
         LineColor = new TuiAttribute(TuiColor.BrightCyan, TuiColor.Black)
@@ -69,8 +59,6 @@ internal sealed class RuntimeOverviewDashboard : View
     private FrameView? maximized;
     private string appliedConsoleText = string.Empty;
     private string pendingConsoleText = string.Empty;
-    private string appliedWorldsText = string.Empty;
-    private string pendingWorldsText = string.Empty;
     private string? appliedWorkspaceStatus;
     private RuntimeLogLevel? minimumLogLevel = RuntimeLogLevel.Information;
     private bool showChat = true;
@@ -81,6 +69,7 @@ internal sealed class RuntimeOverviewDashboard : View
     private bool hasFeedSnapshot;
     private bool hasNetworkCounterSample;
     private Task<string>? pendingSandboxCommand;
+    private SandboxCreateWindow? sandboxCreateWindow;
     private DateTimeOffset lastNetworkCapturedAtUtc;
     private long lastMessageInboundFrames;
     private long lastMessageInboundBytes;
@@ -103,9 +92,7 @@ internal sealed class RuntimeOverviewDashboard : View
             ViewportSettings = ViewportSettingsFlags.HasScrollBars,
             SchemeName = BaseSchemeName
         };
-        tpsGraph = CreateGraph();
         networkGraph = CreateGraph();
-        tpsLegend = CreateLegend();
         networkLegend = CreateLegend();
 
         feedLogModeToggle = CreateFeedControl(1, 17);
@@ -144,12 +131,24 @@ internal sealed class RuntimeOverviewDashboard : View
             X = 1,
             Y = Pos.AnchorEnd(1),
             Width = Dim.Fill(1),
-            Text = "drag a player onto a destination world",
+            Text = "+ create · RMB actions · drag player to world",
             SchemeName = BaseSchemeName
         };
 
+        sandboxAddButton = new Button
+        {
+            X = 1,
+            Y = 0,
+            Text = "+",
+            NoPadding = true,
+            NoDecorations = true,
+            CanFocus = true,
+            SchemeName = AccentSchemeName,
+            Enabled = sandboxOperations is not null
+        };
+        sandboxAddButton.Accepted += (_, _) => ShowSandboxCreateWindow();
+
         consoleFrame = CreateFrame("Console", consoleText, commandInput, feedLogModeToggle, feedChatToggle);
-        tpsFrame = CreateFrame("TPS", tpsGraph);
         networkFrame = CreateFrame("Network", networkGraph);
         worldsFrame = CreateFrame("Worlds / Players", worldsText);
         commandFrame = new FrameView
@@ -169,15 +168,6 @@ internal sealed class RuntimeOverviewDashboard : View
         commandFrame.Add(commandPrompt, commandInput);
         consoleFrame.Add(feedLogModeToggle, feedChatToggle, consoleText, commandFeedback, commandFrame);
 
-        tpsLegend.X = 1;
-        tpsLegend.Y = 0;
-        tpsLegend.Width = Dim.Fill(1);
-        tpsGraph.X = 0;
-        tpsGraph.Y = 1;
-        tpsGraph.Width = Dim.Fill();
-        tpsGraph.Height = Dim.Fill();
-        tpsFrame.Add(tpsLegend, tpsGraph);
-
         networkLegend.X = 1;
         networkLegend.Y = 0;
         networkLegend.Width = Dim.Fill(1);
@@ -188,19 +178,21 @@ internal sealed class RuntimeOverviewDashboard : View
         networkFrame.Add(networkLegend, networkGraph);
 
         worldsText.X = 0;
-        worldsText.Y = 0;
+        worldsText.Y = 1;
         worldsText.Width = Dim.Fill();
-        worldsText.Height = Dim.Fill(1);
-        worldsFrame.Add(worldsText, worldsHint);
+        worldsText.Height = Dim.Fill(2);
+        worldsFrame.Add(sandboxAddButton, worldsText, worldsHint);
         worldsText.TransferRequested += (player, sandbox) =>
             ExecuteSandboxOperationAsync(new SandboxOperation.Move(player, sandbox));
+        worldsText.DestroyRequested += sandbox =>
+            ExecuteSandboxOperationAsync(new SandboxOperation.Destroy(sandbox));
+        worldsText.KickRequested += player =>
+            ExecuteSandboxOperationAsync(new SandboxOperation.Kick(player));
 
         AttachMaximize(consoleFrame);
-        AttachMaximize(tpsFrame);
         AttachMaximize(networkFrame);
         AttachMaximize(worldsFrame);
 
-        ConfigureTpsGraph();
         ConfigureNetworkGraph();
 
         commandInput.Accepting += (_, args) =>
@@ -221,7 +213,7 @@ internal sealed class RuntimeOverviewDashboard : View
             }
         };
 
-        Add(consoleFrame, tpsFrame, networkFrame, worldsFrame);
+        Add(consoleFrame, networkFrame, worldsFrame);
         ApplyTiledLayout();
 
         Initialized += (_, _) =>
@@ -245,7 +237,7 @@ internal sealed class RuntimeOverviewDashboard : View
     {
         _ = world;
         NetworkRates networkRates = CalculateNetworkRates(network);
-        AppendHistory(runtime, networkRates);
+        AppendHistory(networkRates);
 
         ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
         latestRuntime = runtime;
@@ -256,20 +248,12 @@ internal sealed class RuntimeOverviewDashboard : View
 
         RefreshFeedProjection();
         SandboxTreeSnapshot sandboxTree = sandboxTreeSource?.Invoke() ?? default;
-        (string worldTreeText, SandboxWorldTreeRow[] worldTreeRows) = RenderWorldTree(
+        (string[] worldTreeLines, SandboxWorldTreeRow[] worldTreeRows) = RenderWorldTree(
             runtime,
             players,
             sandboxTree.Worlds.Span);
-        SetSelectableText(
-            worldsText,
-            worldTreeText,
-            ref appliedWorldsText,
-            ref pendingWorldsText);
-        worldsText.SetRows(worldTreeRows);
+        worldsText.SetRows(worldTreeLines, worldTreeRows);
 
-        tpsLegend.Text = string.Create(
-            CultureInfo.InvariantCulture,
-            $"TPS {runtime.ObservedTicksPerSecond:F1} / {runtime.TargetTicksPerSecond}");
         networkLegend.Text = string.Create(
             CultureInfo.InvariantCulture,
             $"IN {networkRates.InboundPacketsPerSecond:F1}p/s {networkRates.InboundKiBPerSecond:F1}K  " +
@@ -292,13 +276,48 @@ internal sealed class RuntimeOverviewDashboard : View
         PublishSandboxCommandCompletion();
         ObserveSandboxJobs(sandboxTree.Jobs.Span);
 
-        UpdateGraphs(runtime.TargetTicksPerSecond);
+        UpdateGraphs();
         SetNeedsDraw();
     }
 
     internal void FocusCommandInput() => commandInput.SetFocus();
 
     internal void FocusWorldTree() => worldsText.SetFocus();
+
+    private void ShowSandboxCreateWindow()
+    {
+        if (sandboxOperations is null)
+        {
+            SetCommandFeedback("sandbox: creation is unavailable");
+            return;
+        }
+        if (sandboxCreateWindow is not null)
+        {
+            sandboxCreateWindow.SetFocus();
+            return;
+        }
+
+        var window = new SandboxCreateWindow(sandboxOperations);
+        sandboxCreateWindow = window;
+        window.CreateRequested += operation => ExecuteSandboxOperationAsync(operation);
+        window.CloseRequested += CloseSandboxCreateWindow;
+        Add(window);
+        window.SetFocus();
+        SetNeedsLayout();
+        SetNeedsDraw();
+    }
+
+    private void CloseSandboxCreateWindow()
+    {
+        SandboxCreateWindow? window = sandboxCreateWindow;
+        if (window is null)
+            return;
+        sandboxCreateWindow = null;
+        Remove(window);
+        window.Dispose();
+        worldsText.SetFocus();
+        SetNeedsDraw();
+    }
 
     protected override void Dispose(bool disposing)
     {
@@ -340,8 +359,6 @@ internal sealed class RuntimeOverviewDashboard : View
                    .Contains(Command.Accept);
     }
 
-    internal string GetTpsLegendForSmoke() => tpsLegend.Text?.ToString() ?? string.Empty;
-
     internal string GetNetworkLegendForSmoke() => networkLegend.Text?.ToString() ?? string.Empty;
 
     internal string GetFeedControlsForSmoke() =>
@@ -349,14 +366,15 @@ internal sealed class RuntimeOverviewDashboard : View
 
     internal string GetConsoleTextForSmoke() => consoleText.Text?.ToString() ?? string.Empty;
 
-    internal string GetWorldsTextForSmoke() => worldsText.Text?.ToString() ?? string.Empty;
+    internal string GetWorldsTextForSmoke() => worldsText.RenderedText;
 
     internal PointF GetGraphCellSizeForSmoke(string panelTitle) => panelTitle switch
     {
-        "TPS" => tpsGraph.CellSize,
         "Network" => networkGraph.CellSize,
         _ => throw new ArgumentOutOfRangeException(nameof(panelTitle))
     };
+
+    internal bool SandboxAddEnabledForSmoke => sandboxAddButton.Enabled;
 
     internal void SetFeedForSmoke(bool logs, bool chat, RuntimeLogLevel minimumLevel)
     {
@@ -852,24 +870,19 @@ internal sealed class RuntimeOverviewDashboard : View
             frame.Visible = true;
 
         // Console is the primary operator surface. With the redundant Server tile gone it owns roughly two thirds
-        // of the terminal; the compact graph row and world/player roster use the remaining side column.
+        // of the terminal; network telemetry and the world/player roster use the remaining side column.
         consoleFrame.X = 0;
         consoleFrame.Y = 0;
         consoleFrame.Width = Dim.Percent(64);
         consoleFrame.Height = Dim.Fill();
 
-        tpsFrame.X = Pos.Right(consoleFrame);
-        tpsFrame.Y = 0;
-        tpsFrame.Width = Dim.Percent(18);
-        tpsFrame.Height = GraphRowHeight;
-
-        networkFrame.X = Pos.Right(tpsFrame);
+        networkFrame.X = Pos.Right(consoleFrame);
         networkFrame.Y = 0;
         networkFrame.Width = Dim.Fill();
         networkFrame.Height = GraphRowHeight;
 
         worldsFrame.X = Pos.Right(consoleFrame);
-        worldsFrame.Y = Pos.Bottom(tpsFrame);
+        worldsFrame.Y = Pos.Bottom(networkFrame);
         worldsFrame.Width = Dim.Fill();
         worldsFrame.Height = Dim.Fill();
 
@@ -882,7 +895,6 @@ internal sealed class RuntimeOverviewDashboard : View
     private FrameView GetFrame(string panelTitle) => panelTitle switch
     {
         "Console" => consoleFrame,
-        "TPS" => tpsFrame,
         "Network" => networkFrame,
         "Worlds" or "Worlds / Players" => worldsFrame,
         _ => throw new ArgumentOutOfRangeException(nameof(panelTitle))
@@ -891,22 +903,8 @@ internal sealed class RuntimeOverviewDashboard : View
     private IEnumerable<FrameView> EnumerateFrames()
     {
         yield return consoleFrame;
-        yield return tpsFrame;
         yield return networkFrame;
         yield return worldsFrame;
-    }
-
-    private void ConfigureTpsGraph()
-    {
-        tpsGraph.Annotations.Add(tpsTargetPath);
-        tpsGraph.Annotations.Add(tpsPath);
-        tpsGraph.AxisX.Visible = false;
-        tpsGraph.AxisY.Minimum = 0;
-        tpsGraph.AxisY.Increment = 30;
-        tpsGraph.AxisY.ShowLabelsEvery = 1;
-        tpsGraph.AxisY.LabelGetter = value => value.Value.ToString("N0", CultureInfo.InvariantCulture);
-        tpsGraph.MarginLeft = 4;
-        tpsGraph.MarginBottom = 0;
     }
 
     private void ConfigureNetworkGraph()
@@ -922,17 +920,11 @@ internal sealed class RuntimeOverviewDashboard : View
         networkGraph.MarginBottom = 0;
     }
 
-    private void UpdateGraphs(int targetTicksPerSecond)
+    private void UpdateGraphs()
     {
         MetricSample[] samples = CaptureHistory();
         if (samples.Length == 0)
             return;
-
-        tpsTargetPath.Points = samples.Select((_, index) => new PointF(index, targetTicksPerSecond)).ToList();
-        tpsPath.Points = Points(samples, static sample => (float)sample.TicksPerSecond);
-        float tpsMaximum = Math.Max(1f, targetTicksPerSecond * 1.05f);
-        tpsGraph.AxisY.Increment = Math.Max(1f, targetTicksPerSecond / 2f);
-        FitGraph(tpsGraph, samples.Length, tpsMaximum);
 
         inboundPath.Points = Points(samples, static sample => (float)sample.InboundPacketsPerSecond);
         outboundPath.Points = Points(samples, static sample => (float)sample.OutboundPacketsPerSecond);
@@ -943,10 +935,9 @@ internal sealed class RuntimeOverviewDashboard : View
         FitGraph(networkGraph, samples.Length, networkMaximum);
     }
 
-    private void AppendHistory(RuntimeDashboardSnapshot runtime, NetworkRates network)
+    private void AppendHistory(NetworkRates network)
     {
         history[historyNext] = new MetricSample(
-            SanitizeSample(runtime.ObservedTicksPerSecond),
             SanitizeSample(network.InboundPacketsPerSecond),
             SanitizeSample(network.OutboundPacketsPerSecond));
         historyNext = (historyNext + 1) % history.Length;
@@ -1166,43 +1157,55 @@ internal sealed class RuntimeOverviewDashboard : View
         return text.ToString();
     }
 
-    private static (string Text, SandboxWorldTreeRow[] Rows) RenderWorldTree(
+    private static (string[] Lines, SandboxWorldTreeRow[] Rows) RenderWorldTree(
         RuntimeDashboardSnapshot runtime,
         ReadOnlySpan<RuntimePlayerSnapshot> primaryPlayers,
         ReadOnlySpan<SandboxTreeWorldSnapshot> worlds)
     {
-        var text = new StringBuilder(Math.Max(96, (primaryPlayers.Length + worlds.Length) * 40));
+        var lines = new List<string>(Math.Max(2, primaryPlayers.Length + worlds.Length * 2));
         var rows = new List<SandboxWorldTreeRow>(Math.Max(2, primaryPlayers.Length + worlds.Length * 2));
 
         if (worlds.Length == 0)
         {
-            text.Append("▼ ").Append(Sanitize(runtime.WorldName, 28)).Append("  [primary]");
+            lines.Add(string.Create(
+                CultureInfo.InvariantCulture,
+                $"▼ {Sanitize(runtime.WorldName, 24)}  [primary]  TPS {runtime.ObservedTicksPerSecond:F1}/{runtime.TargetTicksPerSecond}"));
             rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null));
-            AppendPrimaryPlayers(text, rows, primaryPlayers);
-            return (text.ToString(), rows.ToArray());
+            AppendPrimaryPlayers(lines, rows, primaryPlayers);
+            return (lines.ToArray(), rows.ToArray());
         }
 
         for (int worldIndex = 0; worldIndex < worlds.Length; worldIndex++)
         {
-            if (worldIndex != 0)
-                text.AppendLine();
-
             SandboxTreeWorldSnapshot world = worlds[worldIndex];
-            text.Append("▼ ").Append(Sanitize(world.DisplayName, 24));
+            var line = new StringBuilder(80).Append("▼ ").Append(Sanitize(world.DisplayName, 22));
             if (world.IsPrimary)
-                text.Append("  [primary]");
-            else if (world.Runtime is WorldRuntimeSnapshot live)
-                text.Append("  [sandbox · ").Append(live.Lifecycle.ToString().ToLowerInvariant()).Append(']');
+                line.Append("  [primary]");
+            else if (world.Runtime is WorldRuntimeSnapshot liveState)
+                line.Append("  [sandbox · ").Append(liveState.Lifecycle.ToString().ToLowerInvariant()).Append(']');
             else if (world.PendingJob is SandboxJobSnapshot pending)
-                text.Append("  [sandbox · ").Append(pending.Status.ToString().ToLowerInvariant()).Append(']');
+                line.Append("  [sandbox · ").Append(pending.Status.ToString().ToLowerInvariant()).Append(']');
             else
-                text.Append("  [sandbox]");
+                line.Append("  [sandbox]");
+
+            if (world.Runtime is WorldRuntimeSnapshot live)
+            {
+                line.Append(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"  TPS {live.ObservedTicksPerSecond:F1}/{live.TargetTicksPerSecond}"));
+            }
+            else
+            {
+                line.Append("  TPS --");
+            }
+
+            lines.Add(line.ToString());
             rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, world.Sandbox, PlayerSelector: null));
 
             ReadOnlySpan<SandboxTreePlayerSnapshot> players = world.Players.Span;
             if (players.Length == 0)
             {
-                text.AppendLine().Append("  └─ <no players>");
+                lines.Add("  └─ <no players>");
                 rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Placeholder, world.Sandbox, PlayerSelector: null));
                 continue;
             }
@@ -1210,26 +1213,28 @@ internal sealed class RuntimeOverviewDashboard : View
             for (int playerIndex = 0; playerIndex < players.Length; playerIndex++)
             {
                 SandboxTreePlayerSnapshot player = players[playerIndex];
-                text.AppendLine().Append(playerIndex == players.Length - 1 ? "  └─ " : "  ├─ ")
+                var playerLine = new StringBuilder(48)
+                    .Append(playerIndex == players.Length - 1 ? "  └─ " : "  ├─ ")
                     .Append('#').Append(player.Slot).Append(' ')
                     .Append(Sanitize(player.Name, 28));
                 if (!player.IsPlaying)
-                    text.Append("  [joining]");
+                    playerLine.Append("  [joining]");
+                lines.Add(playerLine.ToString());
                 rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, world.Sandbox, player.Selector));
             }
         }
 
-        return (text.ToString(), rows.ToArray());
+        return (lines.ToArray(), rows.ToArray());
     }
 
     private static void AppendPrimaryPlayers(
-        StringBuilder text,
+        List<string> lines,
         List<SandboxWorldTreeRow> rows,
         ReadOnlySpan<RuntimePlayerSnapshot> players)
     {
         if (players.Length == 0)
         {
-            text.AppendLine().Append("  └─ <no players>");
+            lines.Add("  └─ <no players>");
             rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Placeholder, Target: null, PlayerSelector: null));
             return;
         }
@@ -1237,9 +1242,7 @@ internal sealed class RuntimeOverviewDashboard : View
         for (int i = 0; i < players.Length; i++)
         {
             RuntimePlayerSnapshot player = players[i];
-            text.AppendLine().Append(i == players.Length - 1 ? "  └─ " : "  ├─ ")
-                .Append('#').Append(player.Slot).Append(' ')
-                .Append(Sanitize(player.Name, 28));
+            lines.Add($"{(i == players.Length - 1 ? "  └─ " : "  ├─ ")}#{player.Slot} {Sanitize(player.Name, 28)}");
             rows.Add(new SandboxWorldTreeRow(
                 SandboxWorldTreeRowKind.Player,
                 Target: null,
@@ -1283,7 +1286,6 @@ internal sealed class RuntimeOverviewDashboard : View
     private readonly record struct FeedEntry(RuntimeLogEntry Entry, bool IsChat);
 
     private readonly record struct MetricSample(
-        double TicksPerSecond,
         double InboundPacketsPerSecond,
         double OutboundPacketsPerSecond);
 

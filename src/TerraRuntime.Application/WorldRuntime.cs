@@ -24,6 +24,7 @@ public readonly record struct WorldRuntimeSnapshot(
     WorldRuntimeLifecycle Lifecycle,
     long Tick,
     int TargetTicksPerSecond,
+    double ObservedTicksPerSecond,
     int Connections,
     int Npcs,
     int Projectiles,
@@ -49,6 +50,7 @@ public sealed class WorldRuntime : IDisposable
     private const int SectionCacheCompletionCapacity = 1;
 
     private readonly SectionCacheRebuildPipeline sectionCacheRebuild;
+    private readonly RuntimeTickRateObserver tickRateObserver = new();
     private readonly RuntimeWorldTileChestSaveService? worldSave;
     private readonly VanillaWorldAutosaveScheduler? autosave;
     private int lifecycle;
@@ -326,6 +328,7 @@ public sealed class WorldRuntime : IDisposable
             Lifecycle,
             loop.Tick,
             Options.TargetTicksPerSecond,
+            tickRateObserver.Observe(loop.Tick),
             RuntimeConnections.Count,
             Npcs.ActiveCount,
             Projectiles.ActiveCount,

@@ -249,7 +249,7 @@ Do not introduce `WorldRuntimeSchedulerManager`, generic task orchestration or w
 
 ### RS1 - per-runtime 60 TPS baseline
 
-- [ ] runtime-local target/observed TPS;
+- [x] runtime-local target/observed TPS;
 - [x] ordinary Terraria simulation defaults to 60 TPS;
 - [x] runtime-local overrun/lag metrics;
 - [x] bounded overrun/catch-up behavior;

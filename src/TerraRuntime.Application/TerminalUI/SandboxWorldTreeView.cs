@@ -1,9 +1,8 @@
+using System.Collections.ObjectModel;
 using System.Drawing;
 using TerraRuntime.Contracts.Runtime;
 using Terminal.Gui.Input;
 using Terminal.Gui.Views;
-
-#pragma warning disable CS0618 // Terminal.Gui TextView is still the built-in selectable read-only surface in 2.4.17.
 
 namespace TerraRuntime.TerminalUI;
 
@@ -20,29 +19,49 @@ internal readonly record struct SandboxWorldTreeRow(
     string? PlayerSelector);
 
 /// <summary>
-/// Read-only world roster with one narrow interaction: dragging a player row onto a world (or one of that world's
-/// player rows) requests the existing semantic Level 1 transfer operation.
+/// Row-selecting world roster. Unlike a read-only TextView, ListView highlights an item rather than selecting text.
+/// Player rows retain drag-and-drop world transfer and right-click exposes semantic world/player actions.
 /// </summary>
-internal sealed class SandboxWorldTreeView : TextView
+internal sealed class SandboxWorldTreeView : ListView
 {
     private SandboxWorldTreeRow[] rows = [];
+    private string[] lines = [];
     private int? draggedRow;
 
     public SandboxWorldTreeView()
     {
-        ReadOnly = true;
-        WordWrap = false;
-        TabKeyAddsTab = false;
-        EnterKeyAddsLine = false;
+        CanFocus = true;
     }
 
     public event Action<string, SandboxName?>? TransferRequested;
+    public event Action<SandboxName>? DestroyRequested;
+    public event Action<string>? KickRequested;
 
-    public void SetRows(SandboxWorldTreeRow[] value)
+    public void SetRows(string[] valueLines, SandboxWorldTreeRow[] valueRows)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        rows = value;
+        ArgumentNullException.ThrowIfNull(valueLines);
+        ArgumentNullException.ThrowIfNull(valueRows);
+        if (valueLines.Length != valueRows.Length)
+            throw new ArgumentException("World tree line and row metadata counts must match.");
+
+        SandboxWorldTreeRow? selected = SelectedItem is int selectedIndex &&
+                                            (uint)selectedIndex < (uint)rows.Length
+            ? rows[selectedIndex]
+            : null;
+
+        lines = valueLines;
+        rows = valueRows;
+        SetSource(new ObservableCollection<string>(lines));
+
+        if (selected is SandboxWorldTreeRow selectedRow)
+        {
+            int restored = Array.IndexOf(rows, selectedRow);
+            if (restored >= 0)
+                SelectedItem = restored;
+        }
     }
+
+    internal string RenderedText => string.Join(Environment.NewLine, lines);
 
     internal bool TryTransferRows(int sourceRow, int targetRow)
     {
@@ -62,15 +81,48 @@ internal sealed class SandboxWorldTreeView : TextView
         return true;
     }
 
+    internal bool TryInvokeContextActionForSmoke(int row)
+    {
+        if ((uint)row >= (uint)rows.Length)
+            return false;
+        SandboxWorldTreeRow item = rows[row];
+        if (item.Kind == SandboxWorldTreeRowKind.Player && !string.IsNullOrWhiteSpace(item.PlayerSelector))
+        {
+            KickRequested?.Invoke(item.PlayerSelector);
+            return true;
+        }
+        if (item.Kind == SandboxWorldTreeRowKind.World && item.Target is SandboxName sandbox)
+        {
+            DestroyRequested?.Invoke(sandbox);
+            return true;
+        }
+        return false;
+    }
+
     protected override bool OnMouseEvent(Mouse mouse)
     {
-        if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed) && mouse.Position is Point pressedAt)
+        if (mouse.Position is Point point)
         {
-            int row = pressedAt.Y + Viewport.Y;
-            if ((uint)row < (uint)rows.Length && rows[row].Kind == SandboxWorldTreeRowKind.Player)
+            int row = point.Y + Viewport.Y;
+            if ((uint)row < (uint)rows.Length &&
+                (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed) || mouse.Flags.HasFlag(MouseFlags.RightButtonPressed)))
+            {
+                SelectedItem = row;
+                SetFocus();
+            }
+
+            if (mouse.Flags.HasFlag(MouseFlags.RightButtonPressed) && (uint)row < (uint)rows.Length)
+            {
+                ShowContextMenu(row, ViewportToScreen(point));
+                mouse.Handled = true;
+                return true;
+            }
+
+            if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed) &&
+                (uint)row < (uint)rows.Length &&
+                rows[row].Kind == SandboxWorldTreeRowKind.Player)
             {
                 draggedRow = row;
-                SetFocus();
                 App?.Mouse.GrabMouse(this);
                 mouse.Handled = true;
                 return true;
@@ -90,5 +142,28 @@ internal sealed class SandboxWorldTreeView : TextView
         }
 
         return base.OnMouseEvent(mouse);
+    }
+
+    private void ShowContextMenu(int row, Point screenPoint)
+    {
+        SandboxWorldTreeRow item = rows[row];
+        MenuItem? action = item.Kind switch
+        {
+            SandboxWorldTreeRowKind.Player when !string.IsNullOrWhiteSpace(item.PlayerSelector) =>
+                new MenuItem("Kick", "Disconnect this player", () => KickRequested?.Invoke(item.PlayerSelector)),
+            SandboxWorldTreeRowKind.World when item.Target is SandboxName sandbox =>
+                new MenuItem("Destroy", "Destroy this sandbox world", () => DestroyRequested?.Invoke(sandbox)),
+            SandboxWorldTreeRowKind.World =>
+                new MenuItem("Destroy", "Primary world cannot be destroyed") { Enabled = false },
+            _ => null
+        };
+        if (action is null)
+            return;
+
+        var menu = new PopoverMenu([action])
+        {
+            Target = new WeakReference<Terminal.Gui.ViewBase.View>(this)
+        };
+        menu.MakeVisible(screenPoint);
     }
 }

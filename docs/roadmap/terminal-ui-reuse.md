@@ -36,7 +36,7 @@ Views consume immutable, bounded operations snapshots. Mutations cross explicit 
 
 The standalone server has eight exercised runtime-owned operational views:
 
-- **Dashboard** consumes `IRuntimeDashboardOperations` / `RuntimeDashboardSnapshot` and shows lifecycle/world identity, target/observed TPS, tick wall/CPU, deadlines, command budget/backlog, process/GC, connection and interest-management state.
+- **Dashboard** consumes detached runtime/network snapshots plus the Level 1 sandbox tree. Process-wide TPS visualization is intentionally absent; target/observed TPS is rendered per live `WorldRuntime` in the Worlds / Players roster.
 - **Players** consumes `IPlayerOperations` / `RuntimePlayersSnapshot` and exposes generation-safe identity, team, motion, inventory selection, mount and vitals.
 - **NPCs** consumes `INpcOperations` / `RuntimeNpcsSnapshot` and observes committed authoritative NPC state without exposing `RuntimeNpcStore`.
 - **Projectiles** consumes `IProjectileOperations` / `RuntimeProjectilesSnapshot`, grouping authoritative projectiles rather than materializing every row.
@@ -118,7 +118,7 @@ The TUI formats those values but does not invent them.
 
 ### Dashboard
 
-Compact lifecycle/world/TPS/process/network summary plus bounded world/player/chat/log overview and latest administrative result.
+Compact network summary plus bounded world/player/chat/log overview and latest administrative result. The Worlds / Players roster owns per-runtime TPS display, row selection, transfer drag/drop, typed context actions and sandbox creation entry.
 
 ### Players
 
@@ -146,11 +146,11 @@ Bounded independently from console ownership. Full-screen TUI must not require r
 
 ## Administrative actions
 
-Implemented: enable/disable interest management through authoritative command ingress and request canonical world checkpoint through `IWorldOperations.TryRequestSave()`.
+Implemented: enable/disable interest management through authoritative command ingress, request canonical world checkpoint through `IWorldOperations.TryRequestSave()`, move players between Level 1 runtimes, destroy sandboxes, request player disconnect, and create `sb1`/`sb2` sandboxes through typed operations from the dashboard roster.
 
 Future actions follow the same rules: no mutable implementation references in UI callbacks, no command-budget/lifecycle bypass, explicit rejection, and separation between requesting an asynchronous operation and observing its eventual result.
 
-The current "Move player between worlds" entry remains unavailable because one server process still owns one runtime world and there is no authoritative transfer operation.
+The Worlds / Players roster uses item selection rather than text selection. Right-click maps sandbox/player rows to typed `Destroy`/`Kick` operations, and `+` opens a typed sandbox creation form instead of generating a command string.
 
 ## Next local UI work
 
