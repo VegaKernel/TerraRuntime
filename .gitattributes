@@ -1,0 +1,42 @@
+# Repository-wide text normalization.
+# Keep source and documentation byte-identical across Windows and Linux.
+* text=auto eol=lf
+
+# Source / project / configuration files use LF in the working tree everywhere.
+*.cs          text eol=lf
+*.csproj      text eol=lf
+*.props       text eol=lf
+*.targets     text eol=lf
+*.sln         text eol=lf
+*.slnx        text eol=lf
+*.json        text eol=lf
+*.md          text eol=lf
+*.txt         text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.xml         text eol=lf
+*.editorconfig text eol=lf
+*.gitignore   text eol=lf
+*.gitattributes text eol=lf
+*.sh          text eol=lf
+*.ps1         text eol=lf
+*.py          text eol=lf
+*.patch       text eol=lf
+
+# Windows command scripts keep native CRLF.
+*.bat         text eol=crlf
+*.cmd         text eol=crlf
+
+# Binary/build artifacts must never be line-ending normalized.
+*.dll         -text
+*.exe         -text
+*.pdb         -text
+*.zip         -text
+*.gz          -text
+*.png         -text
+*.jpg         -text
+*.jpeg        -text
+*.gif         -text
+*.ico         -text
+*.wld         -text
+*.pyc         -text
