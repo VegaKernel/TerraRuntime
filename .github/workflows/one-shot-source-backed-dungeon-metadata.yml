@@ -200,65 +200,6 @@ jobs:
               }
           """)
           replace_once('tools/TerraRuntime.WorldCompare/Program.cs', parser_old, parser_new)
-
-          workflow = Path('.github/workflows/vanilla-worldgen-reference-differential.yml')
-          text = workflow.read_text()
-          compare_old = block("""
-              - name: Capture structural fingerprint report
-                shell: bash
-                run: |
-                  set -euo pipefail
-                  dotnet run \\
-                    --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
-                    -c Release \\
-                    --no-build \\
-                    -- \\
-                    "artifacts/reference-differential/official-${SEED}.wld" \\
-                    "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
-                    --json "artifacts/reference-differential/comparison-${SEED}.json"
-                  cat "artifacts/reference-differential/comparison-${SEED}.json"
-
-              - name: Enforce structural budgets
-                shell: bash
-                run: |
-                  set -euo pipefail
-                  dotnet run \\
-                    --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
-                    -c Release \\
-                    --no-build \\
-                    -- \\
-                    "artifacts/reference-differential/official-${SEED}.wld" \\
-                    "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
-                    --enforce
-          """, 6)
-          compare_new = block("""
-              - name: Compare structural fingerprints and enforce budgets
-                shell: bash
-                run: |
-                  set -euo pipefail
-                  dotnet run \\
-                    --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
-                    -c Release \\
-                    --no-build \\
-                    -- \\
-                    "artifacts/reference-differential/official-${SEED}.wld" \\
-                    "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
-                    --json "artifacts/reference-differential/comparison-${SEED}.json" \\
-                    --enforce
-                  cat "artifacts/reference-differential/comparison-${SEED}.json"
-          """, 6)
-          count = text.count(compare_old)
-          if count != 1:
-              raise SystemExit(f"reference workflow compare-step anchor count={count}")
-          text = text.replace(compare_old, compare_new, 1)
-
-          upload_marker = '      - name: Upload differential evidence\n'
-          upload = text.index(upload_marker)
-          prefix = text[:upload]
-          suffix = text[upload:]
-          expression = '$' + '{{ env.SEED }}'
-          suffix = suffix.replace('${SEED}', expression)
-          workflow.write_text(prefix + suffix)
           PY
 
       - name: Run full test suite
@@ -285,18 +226,17 @@ jobs:
           test "$code" -eq 3
           grep -q "World file not found" parser-smoke.log
 
-      - name: Commit directly to main
+      - name: Commit verified code changes to main
         shell: bash
         run: |
           set -euo pipefail
-          git rm .github/workflows/one-shot-source-backed-dungeon-metadata.yml
           git config user.name "Xekep"
           git config user.email "Xekep@users.noreply.github.com"
           git add \
             src/TerraRuntime.World/Generation/Vanilla/SourceBackedVanillaWorldGenerationProvider1458.cs \
             tests/TerraRuntime.Tests/VanillaWorldGenerationBootstrapPersistenceTests.cs \
-            tools/TerraRuntime.WorldCompare/Program.cs \
-            .github/workflows/vanilla-worldgen-reference-differential.yml
+            tools/TerraRuntime.WorldCompare/Program.cs
           git commit -m "Preserve source-backed dungeon metadata"
-          git pull --rebase origin main
+          git fetch origin main
+          git rebase origin/main
           git push origin HEAD:main
