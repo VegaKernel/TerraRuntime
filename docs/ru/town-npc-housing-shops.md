@@ -2,6 +2,8 @@
 
 TerraRuntime теперь владеет постоянным household-состоянием городских NPC, а не использует секции NPC и `TownRoomManager` из `.wld` только как данные начальной загрузки.
 
+`TownNpcAuthority` является конкретным world-scoped владельцем композиции и authoritative lifecycle городских NPC. Он владеет housing validation, rescue/progression transforms, move-in scheduling, домашним расписанием, разрешением shop session, shimmer processing и оркестрацией town combat, но вызывается только существующим world writer. `ServerRuntimeState` маршрутизирует типизированные команды и сохраняет порядок тика; отдельные town-сервисы больше не лежат в нём набором несвязанных полей.
+
 ## Реализованный срез 1.4.5.8
 
 Runtime загружает постоянный список town NPC и соответствие комнат в `RuntimeTownNpcStateStore`, резервирует стабильные runtime-слоты для загруженных NPC и применяет проверенные по исходнику TerrariaServer 1.4.5.8 значения `SetDefaults` для обычных жителей, городских питомцев и town slimes. Old Man, Traveling Merchant и Skeleton Merchant намеренно не входят в этот постоянный household-каталог.

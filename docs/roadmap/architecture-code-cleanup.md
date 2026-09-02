@@ -140,6 +140,7 @@ Checklist:
 - [x] Extract per-player tile-edit admission counters and ceiling from `ServerRuntimeState` into the precise world-owned `PlayerTileEditBudget` policy object without changing authoritative tick ordering.
 - [x] Extract active player membership, connection-generation guards, pre-spawn vitals, conversation/shop session lifetime and revisioned snapshots from `ServerRuntimeState` into the world-owned `RuntimePlayerMembership`.
 - [x] Extract authoritative client-player command application, inventory and transfer-profile lifecycle plus player metrics from `ServerRuntimeState` into `PlayerAuthority`; keep it on the existing world writer.
+- [x] Extract town-NPC housing, rescue/progression, commerce, schedule, shimmer and combat orchestration from `ServerRuntimeState` into the world-owned `TownNpcAuthority` without changing authoritative tick order.
 - [ ] Finish decomposing `TerrariaServerHost`: `WorldRuntime` now owns one-world simulation, but startup/load/bootstrap, process lifecycle and network acceptance still share the large host method.
 - [ ] Extract coherent player, NPC, projectile, item, town/housing and world-lifecycle collaborators only where they own state/behavior; do not produce one class per method.
 - [ ] Keep source-order-sensitive boss/AI logic cohesive when decomposition would obscure verified vanilla ordering.

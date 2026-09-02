@@ -88,58 +88,24 @@ internal sealed partial class ServerRuntimeState
             configuredProjectileStepper,
             projectileReplication);
         _npcReplication = npcReplication;
-        _townNpcs = townNpcs;
-        _worldProgression = worldTiles is null ? null : RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
-        _townRescue = townNpcs is not null && _worldProgression is not null
-            ? new RuntimeTownNpcRescueService1458(_npcs, townNpcs, _worldProgression)
-            : null;
+        _townNpcAuthority = new TownNpcAuthority(
+            _players,
+            _npcs,
+            projectileStore,
+            worldTiles,
+            townNpcs,
+            townSpawnWorldFacts,
+            townCommerceWorldFacts,
+            townCombatWorldFacts,
+            npcReplication,
+            townInitialRaining,
+            townInitialEclipse,
+            townInitialInvasionActive,
+            expertMode,
+            masterMode);
         _mysticFrogCatch = worldTiles is not null
             ? new RuntimeMysticFrogCatchService1458(_npcs, worldTiles, this)
             : null;
-        _purificationPowderNpcInteractions = townNpcs is not null && _worldProgression is not null && _townRescue is not null
-            ? new RuntimePurificationPowderNpcInteraction1458(
-                _npcs, projectileStore, townNpcs, _townRescue, _worldProgression, townSpawnWorldFacts?.InfectedSeed ?? false)
-            : null;
-        _townCommerce = worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 commerceFacts
-            ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, _npcs, in commerceFacts)
-            : null;
-        _townCombat = worldTiles is not null &&
-            townNpcs is not null &&
-            _worldProgression is not null &&
-            townCombatWorldFacts is RuntimeTownNpcCombatWorldFacts1458 combatFacts
-                ? new RuntimeTownNpcCombat1458(
-                    townNpcs, _npcs, projectileStore, worldTiles, in combatFacts, _worldProgression, expertMode, masterMode)
-                : null;
-        _housingValidator = worldTiles is not null && townNpcs is not null
-            ? new VanillaHousingValidator1458(worldTiles)
-            : null;
-        _townInitialRaining = townInitialRaining;
-        _townInitialEclipse = townInitialEclipse;
-        _townInitialInvasionActive = townInitialInvasionActive;
-        if (worldTiles is not null && townNpcs is not null && _housingValidator is not null)
-        {
-            _townSchedule = new RuntimeTownNpcSchedule1458(townNpcs, _npcs, worldTiles);
-            _townShimmer = new RuntimeTownNpcShimmerService1458(_npcs, townNpcs, worldTiles, npcReplication);
-            if (townSpawnWorldFacts is VanillaTownSpawnWorldFacts1458 facts)
-            {
-                var houseIndex = new RuntimeTownHouseCandidateIndex1458(worldTiles, _housingValidator);
-                RuntimeWorldProgressionMutations progression = _worldProgression ?? RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
-                progression.SetTruffleSpawnBaseline(facts.UnlockedTruffleSpawn);
-                progression.SetSlimeYellowSpawnBaseline(facts.UnlockedSlimeYellowSpawn);
-                RuntimeTownRescueFacts1458 rescuedBaseline = RuntimeTownRescueFacts1458.None;
-                if (facts.SavedGoblin) rescuedBaseline |= RuntimeTownRescueFacts1458.Goblin;
-                if (facts.SavedWizard) rescuedBaseline |= RuntimeTownRescueFacts1458.Wizard;
-                if (facts.SavedMechanic) rescuedBaseline |= RuntimeTownRescueFacts1458.Mechanic;
-                if (facts.SavedStylist) rescuedBaseline |= RuntimeTownRescueFacts1458.Stylist;
-                if (facts.SavedAngler) rescuedBaseline |= RuntimeTownRescueFacts1458.Angler;
-                if (facts.SavedBartender) rescuedBaseline |= RuntimeTownRescueFacts1458.Bartender;
-                if (facts.SavedGolfer) rescuedBaseline |= RuntimeTownRescueFacts1458.Golfer;
-                if (facts.SavedTaxCollector) rescuedBaseline |= RuntimeTownRescueFacts1458.TaxCollector;
-                progression.SetTownRescueBaseline(rescuedBaseline);
-                _townMoveIn = new RuntimeTownNpcMoveInCoordinator1458(
-                    townNpcs, _npcs, houseIndex, in facts, npcReplication, progression: progression);
-            }
-        }
         _tileManipulationReplication = tileManipulationReplication;
         if (worldTiles is not null &&
             RuntimeWorldObjectMetadataRegistry.TryGet(
@@ -165,7 +131,7 @@ internal sealed partial class ServerRuntimeState
             _worldClock,
             expertMode,
             masterMode);
-        _townCombat?.SetMeleeDamageSink(_npcCombat);
+        _townNpcAuthority.SetMeleeDamageSink(_npcCombat);
 
         if (npcAiStepper is null)
         {

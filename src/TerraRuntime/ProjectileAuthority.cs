@@ -26,7 +26,7 @@ internal sealed class ProjectileAuthority
         RuntimeProjectileStore projectiles,
         PlayerAuthority players,
         RuntimeNpcStore npcs,
-        IRuntimePlayerSnapshotLookup playerSnapshots,
+        IRuntimePlayerSlotSnapshotLookup playerSnapshots,
         IProjectileStateStepper? stepper,
         RuntimeProjectileReplicationRegistry? replication)
     {

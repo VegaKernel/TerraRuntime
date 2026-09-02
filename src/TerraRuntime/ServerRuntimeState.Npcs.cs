@@ -95,42 +95,7 @@ internal sealed partial class ServerRuntimeState
 
     private void ApplyClientNpcTalk(ClientNpcTalkRuntimeCommand command)
     {
-        if (!_players.IsCurrent(command.Connection) ||
-            !TerrariaNpcTalkCodec.IsValidNpcSlot(command.State.NpcSlot))
-        {
-            return;
-        }
-
-        byte playerSlot = command.Connection.Player.Slot.Value;
-        if (command.State.NpcSlot != TerrariaNpcTalkCodec.NoNpc)
-            _townRescue?.TryRescueTalk(command.State.NpcSlot, out _);
-        if (!_players.TrySetTalkNpc(command.Connection, command.State.NpcSlot))
-            return;
-        if (command.State.NpcSlot != TerrariaNpcTalkCodec.NoNpc &&
-            _townCommerce is not null &&
-            _players.TryGet(playerSlot, out RuntimePlayerMember? playerState))
-        {
-            Span<RuntimePlayerInventoryItem> inventory =
-                stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
-            var commercePlayer = new RuntimeTownCommercePlayer1458(
-                playerState.PositionX,
-                playerState.PositionY,
-                playerState.HasHealth ? playerState.MaxLife : 100,
-                playerState.HasMana ? playerState.MaxMana : 20,
-                playerState.Team);
-            if (_players.TryCopyInventory(command.Connection, inventory) &&
-                _townCommerce.TryResolve(
-                    inventory,
-                    in commercePlayer,
-                    command.State.NpcSlot,
-                    _worldClock,
-                    out RuntimeTownShopSession1458 session))
-            {
-                _players.TrySetTownShopSession(command.Connection, session);
-            }
-        }
-
-        _npcReplication?.TryPublishNpcTalk(command.Connection, command.State.NpcSlot);
+        _townNpcAuthority.ApplyTalk(command.Connection, command.State.NpcSlot, _worldClock);
     }
 
     private void ApplyClientNpcCatch(ClientNpcCatchRuntimeCommand command)
@@ -190,31 +155,8 @@ internal sealed partial class ServerRuntimeState
 
     private void ApplyClientNpcHome(ClientNpcHomeRuntimeCommand command)
     {
-        if (!_players.IsCurrent(command.Connection) ||
-            _townNpcs is null ||
-            _housingValidator is null ||
-            !command.State.TryGetStatus(out TerrariaNpcHomeStatus status))
-        {
-            return;
-        }
-
-        RuntimeTownNpcHomeCommit commit = default;
-        bool applied = status switch
-        {
-            TerrariaNpcHomeStatus.Homeless => _townNpcs.TryKickOut(command.State.NpcSlot, out commit),
-            TerrariaNpcHomeStatus.None => _townNpcs.TryAssignRoom(
-                command.State.NpcSlot,
-                command.State.HomeTileX,
-                command.State.HomeTileY,
-                _housingValidator,
-                out commit,
-                out _),
-            // Status 2 is server-authored GetHouseholdStatus state, not a client room-move request.
-            TerrariaNpcHomeStatus.HasRoom => false,
-            _ => false
-        };
-
-        if (applied)
-            _npcReplication?.TryPublishTownHome(in commit);
+        TerrariaNpcHomeState state = command.State;
+        _townNpcAuthority.ApplyHome(command.Connection, in state);
     }
+
 }

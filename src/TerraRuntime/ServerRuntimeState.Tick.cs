@@ -38,87 +38,18 @@ internal sealed partial class ServerRuntimeState
         }
 
         LastNpcAiTick = _npcAiExecutor.Tick(_npcAiStepper);
-        _townShimmer?.Tick();
-        TickTownNpcLifecycle();
+        _townNpcAuthority.TickShimmer();
+        _townNpcAuthority.TickLifecycle(_worldClock);
         AppliedNpcDespawns += _npcs.DespawnExpired();
         if (_projectiles.TryTickState())
         {
-            _purificationPowderNpcInteractions?.Tick();
+            _townNpcAuthority.TickProjectileInteractions();
             _projectiles.ApplyReflections();
         }
         TickInstancedItemLeases();
 
         _worldClock?.Tick();
         Updates++;
-    }
-
-    private void TickTownNpcLifecycle()
-    {
-        if (_townMoveIn is null && _townSchedule is null && _townCombat is null)
-            return;
-
-        int spawnPlayerCount = 0;
-        int boundsCount = 0;
-        Span<RuntimePlayerInventoryItem> inventory = stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
-        foreach (RuntimePlayerMember player in _players.Members)
-        {
-            long coinValue = 0;
-            bool bullet = false;
-            bool bomb = false;
-            bool dye = false;
-            inventory.Clear();
-            if (_players.TryCopyInventory(player.Connection, inventory))
-            {
-                foreach (RuntimePlayerInventoryItem item in inventory)
-                {
-                    if (item.IsEmpty)
-                        continue;
-                    coinValue = Math.Min(5_000L, coinValue + VanillaTownNpcSpawnItemFacts1458.GetCoinValue(item.ItemType, item.Stack));
-                    bullet |= VanillaTownNpcSpawnItemFacts1458.CountsForArmsDealer(item.ItemType);
-                    bomb |= VanillaTownNpcSpawnItemFacts1458.CountsForDemolitionist(item.ItemType);
-                    dye |= VanillaTownNpcSpawnItemFacts1458.CountsForDyeTrader(item.ItemType);
-                }
-            }
-
-            _townSpawnPlayers[spawnPlayerCount++] = new VanillaTownSpawnPlayerFacts1458(
-                Active: true,
-                MaxLife: player.HasHealth ? player.MaxLife : (short)100,
-                CoinValue: coinValue,
-                HasBulletAmmoOrWeapon: bullet,
-                HasDemolitionistBomb: bomb,
-                HasDyeTraderItem: dye);
-            _townPlayerBounds[boundsCount++] = new RuntimeTownPlayerBounds1458(
-                player.PositionX,
-                player.PositionY,
-                PlayerAuthority.VanillaBasePlayerWidth,
-                PlayerAuthority.VanillaBasePlayerHeight);
-        }
-
-        if (_townMoveIn is not null)
-        {
-            var moveInConditions = new RuntimeTownNpcMoveInConditions1458(
-                DayTime: _worldClock?.DayTime ?? true,
-                Eclipse: _townInitialEclipse,
-                InvasionActive: _townInitialInvasionActive,
-                WorldUpdateRate: 1);
-            _townMoveIn.Tick(
-                in moveInConditions,
-                _townSpawnPlayers.AsSpan(0, spawnPlayerCount),
-                _townPlayerBounds.AsSpan(0, boundsCount));
-        }
-
-        if (_townSchedule is not null)
-        {
-            var scheduleConditions = new RuntimeTownNpcScheduleConditions1458(
-                DayTime: _worldClock?.DayTime ?? true,
-                Raining: _townInitialRaining,
-                Eclipse: _townInitialEclipse,
-                SlimeRain: _worldClock?.SlimeRainActive ?? false,
-                StormingAboveSurface: false);
-            _townSchedule.Tick(in scheduleConditions, _townPlayerBounds.AsSpan(0, boundsCount));
-        }
-
-        _townCombat?.Tick();
     }
 
     private void TickServerPlayerPhysics()

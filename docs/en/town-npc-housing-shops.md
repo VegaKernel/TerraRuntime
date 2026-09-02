@@ -2,6 +2,8 @@
 
 TerraRuntime owns persistent town-NPC household state instead of treating the `.wld` NPC and `TownRoomManager` sections as bootstrap-only data.
 
+`TownNpcAuthority` is the concrete world-scoped owner for town-NPC composition and authoritative lifecycle work. It owns housing validation, rescue/progression transforms, move-in scheduling, home scheduling, shop-session resolution, shimmer processing and town combat orchestration while remaining called only by the existing world writer. `ServerRuntimeState` routes typed commands and preserves tick order; it no longer stores the individual town services as unrelated fields.
+
 ## Implemented 1.4.5.8 slice
 
 The runtime loads the persistent town roster and room mapping into `RuntimeTownNpcStateStore`, reserves stable runtime NPC slots for the loaded roster, and materializes source-pinned TerrariaServer 1.4.5.8 defaults for ordinary residents, town pets and town slimes. Old Man, Traveling Merchant and Skeleton Merchant remain outside this persistent household catalog.
