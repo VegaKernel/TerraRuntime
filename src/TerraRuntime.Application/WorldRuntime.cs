@@ -51,7 +51,7 @@ public sealed class WorldRuntime : IDisposable
 
     private readonly SectionCacheRebuildPipeline sectionCacheRebuild;
     private readonly RuntimeTickRateObserver tickRateObserver = new();
-    private readonly RuntimeWorldTileChestSaveService? worldSave;
+    private readonly RuntimeWorldCheckpointCoordinator? worldSave;
     private readonly VanillaWorldAutosaveScheduler? autosave;
     private int lifecycle;
     private int disposed;
@@ -136,7 +136,7 @@ public sealed class WorldRuntime : IDisposable
 
         if (persistence is not null)
         {
-            worldSave = new RuntimeWorldTileChestSaveService(
+            worldSave = new RuntimeWorldCheckpointCoordinator(
                 persistence.WorldPath,
                 world.Envelope,
                 world.Header,

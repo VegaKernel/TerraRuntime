@@ -77,10 +77,3 @@ public readonly record struct ProjectileSnapshot(
     public bool IsActive => Handle.IsAssigned && Revision.IsAssigned;
 }
 
-/// <summary>Read-only bounded snapshot boundary for authoritative live projectile state.</summary>
-public interface IProjectileSnapshotReader
-{
-    int Capacity { get; }
-
-    int CopyActive(Span<ProjectileSnapshot> destination);
-}

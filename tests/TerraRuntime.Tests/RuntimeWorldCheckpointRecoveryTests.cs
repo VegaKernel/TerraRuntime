@@ -115,7 +115,7 @@ public sealed class RuntimeWorldCheckpointRecoveryTests
 
         var changedTile = new WorldTile { Type = 1, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed };
         source.Tiles.Set(1, 2, in changedTile);
-        var service = new RuntimeWorldTileChestSaveService(
+        var service = new RuntimeWorldCheckpointCoordinator(
             worldPath,
             source.Envelope,
             source.Header,

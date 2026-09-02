@@ -30,12 +30,6 @@ public interface IVanillaKingSlimeEnvironment
         out VanillaKingSlimeTeleportDestination destination);
 }
 
-/// <summary>Authoritative-thread random stream for source-backed vanilla NPC AI side effects.</summary>
-public interface IVanillaNpcRandom
-{
-    int NextInt32(int inclusiveMin, int exclusiveMax);
-}
-
 /// <summary>
 /// Process-local vanilla NPC random stream. Terraria's Main.rand sequence is not a wire or persistence identity;
 /// the compatibility contract pins call ordering and requested ranges while tests can inject a deterministic source.

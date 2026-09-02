@@ -98,6 +98,8 @@ Requirements:
 
 Do not create a generic `PlayerManager`. Use the existing stores/command services where possible and add only a precise world-player aggregate/operations object if a real missing ownership boundary remains.
 
+Local 2026-09-02 implementation note: server-owned player leases, semantic input, dry-physics progression, per-generation liquid contacts and state-store snapshot lookup have been moved behind `ServerPlayerAuthority`; `ServerRuntimeState` now invokes that owner during its existing player phase instead of retaining those buffers and control dictionaries itself. The checklist remains open until the focused server-player suite and normal CI can run.
+
 ## SR3 - NPC / actor slice
 
 The NPC section currently combines stores, AI execution, actor control, behavior registration, archetype identity/spawn, targeting, network combat and replication.
@@ -140,6 +142,8 @@ The former weak-key progression registry was multi-world-safe by `WorldTileStore
 ## SR7 - replication boundary
 
 Replication state belongs to a world/session, but socket/process ownership does not belong inside the mutable simulation god object.
+
+Local 2026-09-02 implementation note: per-connection retained baseline state now lives in `RuntimeConnectionEndpoint`, and retained server-player protocol projections/encoding live in `ServerPlayerReplicaStore`. `RuntimeConnectionRegistry` keeps connection routing, recipient selection, fanout and aggregate relay metrics. This is intentionally a state-owner extraction rather than another forwarding `*Manager`.
 
 - [ ] group runtime-local replication baselines/registries by world ownership;
 - [ ] keep public listener/socket acceptance outside `WorldRuntime`;

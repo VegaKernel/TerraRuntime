@@ -16,7 +16,7 @@ internal sealed partial class ServerRuntimeState
         _worldTileAuthority.AdvanceTo(Updates);
 
         _npcs.CommitPending();
-        TickServerPlayerPhysics();
+        _serverPlayers?.TickPhysics(this);
         _npcs.TickSimulation();
         if (_projectiles.TryTickState())
         {
@@ -27,79 +27,6 @@ internal sealed partial class ServerRuntimeState
 
         _worldClock?.Tick();
         Updates++;
-    }
-
-    private void TickServerPlayerPhysics()
-    {
-        if (_serverPlayerStates is null || _serverPlayerDryPhysics is null)
-            return;
-
-        int count = _serverPlayerStates.CopySnapshots(_serverPlayerSnapshots);
-        for (int index = 0; index < count; index++)
-        {
-            PlayerStateSnapshot player = _serverPlayerSnapshots[index];
-            ServerPlayerMovementIntent movementIntent =
-                _serverPlayerCommands?.GetMovementIntent(player.Player) ?? ServerPlayerMovementIntent.Stop();
-            ServerPlayerHorizontalIntent horizontalIntent;
-            ServerPlayerJumpIntent jumpIntent;
-            if (movementIntent.Kind != ServerPlayerMovementIntentKind.Stop)
-            {
-                RuntimeServerPlayerMovementIntentController.TryResolve(
-                    in player,
-                    in movementIntent,
-                    this,
-                    out horizontalIntent,
-                    out jumpIntent);
-            }
-            else
-            {
-                horizontalIntent =
-                    _serverPlayerCommands?.GetHorizontalIntent(player.Player) ?? ServerPlayerHorizontalIntent.Stop;
-                jumpIntent =
-                    _serverPlayerCommands?.GetJumpIntent(player.Player) ?? ServerPlayerJumpIntent.Released;
-            }
-            VanillaServerPlayerJumpState jumpState =
-                _serverPlayerCommands?.GetJumpState(player.Player) ?? VanillaServerPlayerJumpState.Initial;
-            int slot = player.Player.Slot.Value;
-            VanillaLiquidContactState liquidContacts = _serverPlayerLiquidOwners[slot] == player.Player
-                ? _serverPlayerLiquidContacts[slot]
-                : default;
-            if (!_serverPlayerDryPhysics.TryStep(
-                    in player,
-                    horizontalIntent,
-                    jumpIntent,
-                    in jumpState,
-                    in liquidContacts,
-                    out ServerPlayerDryPhysicsStepResult next,
-                    out VanillaServerPlayerJumpState nextJumpState))
-            {
-                continue;
-            }
-
-            _serverPlayerCommands?.CommitJumpState(player.Player, in nextJumpState);
-            VanillaLiquidContactState nextLiquidContacts = next.LiquidContacts;
-            _serverPlayerLiquidOwners[slot] = player.Player;
-            _serverPlayerLiquidContacts[slot] = nextLiquidContacts;
-
-            if (next.PositionX == player.PositionX &&
-                next.PositionY == player.PositionY &&
-                next.VelocityX == player.VelocityX &&
-                next.VelocityY == player.VelocityY)
-            {
-                continue;
-            }
-
-            if (_serverPlayerStates.TrySetMotion(
-                player.Player,
-                next.PositionX,
-                next.PositionY,
-                next.VelocityX,
-                next.VelocityY,
-                out PlayerStateSnapshot committed))
-            {
-                _serverPlayerEvents?.ServerPlayerMoved(in committed);
-            }
-        }
     }
 
     private bool IsTileActorFree(int tileX, int tileY)
@@ -127,25 +54,15 @@ internal sealed partial class ServerRuntimeState
                     tileBottom))
                 return false;
         }
-        if (_serverPlayerStates is not null)
+        if (_serverPlayers?.IntersectsLivingPlayer(
+                tileLeft,
+                tileTop,
+                tileRight,
+                tileBottom,
+                PlayerAuthority.VanillaBasePlayerWidth,
+                PlayerAuthority.VanillaBasePlayerHeight) == true)
         {
-            int count = _serverPlayerStates.CopySnapshots(_serverPlayerSnapshots);
-            for (int i = 0; i < count; i++)
-            {
-                PlayerStateSnapshot snapshot = _serverPlayerSnapshots[i];
-                if (snapshot.IsDead)
-                    continue;
-                if (Intersects(
-                        snapshot.PositionX,
-                        snapshot.PositionY,
-                        PlayerAuthority.VanillaBasePlayerWidth,
-                        PlayerAuthority.VanillaBasePlayerHeight,
-                        tileLeft,
-                        tileTop,
-                        tileRight,
-                        tileBottom))
-                    return false;
-            }
+            return false;
         }
         var npcBuffer = new NpcSnapshot[_npcs.Capacity];
         int npcCount = _npcs.CopyActive(npcBuffer);

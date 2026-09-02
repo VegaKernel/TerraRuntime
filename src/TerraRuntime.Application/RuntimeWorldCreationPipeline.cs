@@ -32,12 +32,12 @@ public readonly record struct RuntimeWorldCreationPipelineResult(
 
 public sealed class RuntimeWorldCreationPipeline
 {
-    private readonly RuntimeWorldGenerationCandidateService generation;
+    private readonly WorldGenerationCandidateRunner generation;
 
     public RuntimeWorldCreationPipeline(ITerraRuntimeWorldGeneratorSource generators)
     {
         ArgumentNullException.ThrowIfNull(generators);
-        generation = new RuntimeWorldGenerationCandidateService(generators);
+        generation = new WorldGenerationCandidateRunner(generators);
     }
 
     public RuntimeWorldCreationPipelineResult CreateCandidate(

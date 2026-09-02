@@ -21,8 +21,8 @@ public interface IVanillaQueenBeeEnvironment
 /// </summary>
 internal sealed class VanillaQueenBeeNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
-    private const float PlayerWidth = VanillaNpcBehaviorContext.BasePlayerWidth;
-    private const float PlayerHeight = VanillaNpcBehaviorContext.BasePlayerHeight;
+    private const float PlayerWidth = VanillaPlayerHitboxFacts.BaseWidth;
+    private const float PlayerHeight = VanillaPlayerHitboxFacts.BaseHeight;
     private readonly IVanillaNpcRandom random;
     private IVanillaQueenBeeEnvironment? environment;
     private IVanillaNpcProjectileEnvironment? projectileEnvironment;

@@ -200,8 +200,3 @@ public readonly record struct NpcSnapshot(
     public NpcNetId NetIdentity => new(NetId);
 }
 
-public interface INpcSnapshotReader
-{
-    int Capacity { get; }
-    int CopyActive(Span<NpcSnapshot> destination);
-}

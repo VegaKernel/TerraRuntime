@@ -25,7 +25,7 @@ internal sealed class RuntimePlayerEquipmentIngress : IPlayerEquipmentIngress
             !VanillaPlayerItemSlotCatalog.IsValid(request.SlotId))
             return false;
 
-        PlayerEquipmentCommitRequest normalized = VanillaPlayerItemNormalizer.Normalize(in request);
+        PlayerEquipmentCommitRequest normalized = PlayerEquipmentPacket5Normalizer.Normalize(in request);
         if (!normalized.TryGetCanonicalItemType(out _))
             return false;
 

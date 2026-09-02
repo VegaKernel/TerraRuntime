@@ -30,7 +30,7 @@ public sealed class ManualWorldCheckpointOperationsTests
         string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-manual-save-{Guid.NewGuid():N}");
         string destinationPath = Path.Combine(directory, "world.wld");
         Directory.CreateDirectory(directory);
-        var service = new RuntimeWorldTileChestSaveService(
+        var service = new RuntimeWorldCheckpointCoordinator(
             destinationPath,
             source.Envelope,
             source.Header,

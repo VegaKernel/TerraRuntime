@@ -38,7 +38,7 @@ Each recovery-ready managed temporary may have a sibling `.recovery` marker. The
 
 The marker is bounded to `$64\,\mathrm{KiB}$`, written through the durable file path, flushed with `Flush(flushToDisk: true)`, and followed by the Linux parent-directory `fsync` barrier before it can grant recovery authority.
 
-For runtime `.wld` saves the marker is created only after `ValidateCandidateAsync` has accepted the exact candidate. `RuntimeWorldTileChestSaveService` binds that callback to the complete supported `WorldFileLoader`, so the SHA-256 seals bytes that already passed Terraria 1.4.5.8 structural/content validation. For an existing canonical world the marker is created only after the previous generation has also been copied, validated and published at `<world>.wld.bak`.
+For runtime `.wld` saves the marker is created only after `ValidateCandidateAsync` has accepted the exact candidate. `RuntimeWorldCheckpointCoordinator` binds that callback to the complete supported `WorldFileLoader`, so the SHA-256 seals bytes that already passed Terraria 1.4.5.8 structural/content validation. For an existing canonical world the marker is created only after the previous generation has also been copied, validated and published at `<world>.wld.bak`.
 
 ## Startup and next-write recovery
 

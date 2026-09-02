@@ -20,4 +20,7 @@ public sealed partial class RuntimeServerPlayerStateStore
         this.identities = identities;
         states = new ServerPlayerRuntimeState?[capacity];
     }
+
+    /// <summary>Maximum number of server-owned player states retained by this store.</summary>
+    public int Capacity => states.Length;
 }

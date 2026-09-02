@@ -164,7 +164,10 @@ public sealed class RuntimeArchitectureBoundaryTests
             typeof(VanillaSpecialTownShopCatalog1458),
             typeof(VanillaTownHappiness1458),
             typeof(VanillaTownNpcSpawnEligibility1458),
-            typeof(VanillaTownNpcSpawnItemFacts1458)
+            typeof(VanillaTownNpcSpawnItemFacts1458),
+            typeof(VanillaTownNpcRescue1458),
+            typeof(VanillaTownNpcIdentityResolver1458),
+            typeof(VanillaNpcSpawnCadence)
         ];
 
         foreach (Type gameplayType in gameplayTypes)
@@ -202,7 +205,8 @@ public sealed class RuntimeArchitectureBoundaryTests
             typeof(VanillaPlayerAppearanceNormalizer),
             typeof(VanillaPlayerMovementNormalizer),
             typeof(VanillaPlayerSpawnValidator),
-            typeof(VanillaPlayerVitalsRules)
+            typeof(VanillaPlayerVitalsRules),
+            typeof(VanillaPlayerHitboxFacts)
         ];
 
         foreach (Type gameplayType in gameplayTypes)
@@ -213,6 +217,64 @@ public sealed class RuntimeArchitectureBoundaryTests
 
         Assert.Equal("TerraRuntime.Core", typeof(IPlayerAppearanceIngress).Assembly.GetName().Name);
         Assert.Equal("TerraRuntime.Core", typeof(RuntimeServerPlayerStateStore).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Application", typeof(PlayerEquipmentPacket5Normalizer).Assembly.GetName().Name);
+    }
+
+    [Fact]
+    public void Npc_simulation_loot_and_support_catalogs_live_in_gameplay_while_runtime_execution_stays_in_core()
+    {
+        Type[] gameplayTypes =
+        [
+            typeof(VanillaNpcGravity),
+            typeof(VanillaNpcTargeting),
+            typeof(VanillaNpcKnockbackResolver),
+            typeof(VanillaBlueSlimeMotion),
+            typeof(VanillaKingSlimeMotion),
+            typeof(VanillaWormMotion),
+            typeof(VanillaFlyerProjectileAttack),
+            typeof(VanillaNpcAiCoverageCatalog),
+            typeof(VanillaBrainOfCthulhuLootEvaluator),
+            typeof(VanillaEaterOfWorldsLootEvaluator),
+            typeof(VanillaQueenBeeLootEvaluator),
+            typeof(VanillaSkeletronLootEvaluator),
+            typeof(VanillaKingSlimeDifficultyLootEvaluator),
+            typeof(NpcLootWorldItemOrigin),
+            typeof(VanillaNpcPlayerInteractionFacts)
+        ];
+
+        foreach (Type gameplayType in gameplayTypes)
+        {
+            Assert.Equal("TerraRuntime.Gameplay", gameplayType.Assembly.GetName().Name);
+            Assert.Equal("TerraRuntime.Gameplay.Npcs", gameplayType.Namespace);
+        }
+
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeNpcStore).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeNpcDamageExecutor).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeNpcLootWorldItemTransaction).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeKingSlimeDifficultyLootFinalizer).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(VanillaTownNpcSpawnCadence1458).Assembly.GetName().Name);
+    }
+
+    [Fact]
+    public void Extension_dispatch_semantics_live_in_gameplay_while_registry_and_state_ownership_stay_in_core()
+    {
+        Type[] gameplayTypes =
+        [
+            typeof(GameplayExtensionRandom),
+            typeof(GameplayBehaviorStage),
+            typeof(GameplayBehaviorBinding<object>),
+            typeof(GameplayBehaviorDispatchPlan<object>)
+        ];
+
+        foreach (Type gameplayType in gameplayTypes)
+        {
+            Assert.Equal("TerraRuntime.Gameplay", gameplayType.Assembly.GetName().Name);
+            Assert.Equal("TerraRuntime.Gameplay.Extensions", gameplayType.Namespace);
+        }
+
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeGameplayBehaviorRegistry<,>).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeNpcExtensionStateStore<>).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeNpcArchetypeIdentityStore).Assembly.GetName().Name);
     }
 
     [Fact]
@@ -240,7 +302,7 @@ public sealed class RuntimeArchitectureBoundaryTests
         Assert.Equal("TerraRuntime.Core", typeof(RuntimeProjectileStore).Assembly.GetName().Name);
         Assert.Equal("TerraRuntime.Core", typeof(ProjectileLifecycleState).Assembly.GetName().Name);
         Assert.Equal("TerraRuntime.Core", typeof(RuntimeProjectileStateExecutor).Assembly.GetName().Name);
-        Assert.Equal("TerraRuntime.Core", typeof(RuntimeProjectileCombatIntentFactory).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(ProjectileNpcHitIntentBuilder).Assembly.GetName().Name);
     }
 
     [Fact]

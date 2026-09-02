@@ -18,7 +18,7 @@ Trusted host передаёт semantic control intent. Он никогда не 
 flowchart LR
     Host["Trusted host module"] --> API["IServerPlayerOperations"]
     API --> Queue["Bounded authoritative command queue"]
-    Queue --> Commands["RuntimeServerPlayerCommandService"]
+    Queue --> Commands["RuntimeServerPlayerOwner"]
     Commands --> Intent["Generation-bound control intent"]
     Intent --> Tick["ServerRuntimeState.Tick"]
     Tick --> Physics["VanillaServerPlayerDryPhysicsStepper"]

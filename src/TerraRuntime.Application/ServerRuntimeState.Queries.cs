@@ -19,7 +19,7 @@ internal sealed partial class ServerRuntimeState
         if (TryCapturePlayerSnapshot(player, out snapshot))
             return true;
 
-        if (_serverPlayerStates is not null && _serverPlayerStates.TryGet(player, out snapshot))
+        if (_serverPlayers is not null && _serverPlayers.TryGet(player, out snapshot))
             return true;
 
         snapshot = default;
@@ -38,8 +38,8 @@ internal sealed partial class ServerRuntimeState
         if (_players.TryGet(slot, out RuntimePlayerMember? player))
             return TryCaptureRuntimePlayerSnapshot(player.Connection.Player, out snapshot);
 
-        if (_serverPlayerStates is not null)
-            return _serverPlayerStates.TryGet(slot, out snapshot);
+        if (_serverPlayers is not null)
+            return _serverPlayers.TryGet(slot, out snapshot);
 
         snapshot = default;
         return false;

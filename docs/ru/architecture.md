@@ -63,11 +63,14 @@ flowchart BT
 
 Другие threads могут принимать сеть, декодировать bounded input, строить immutable work products, выполнять disk I/O, сериализовать snapshots, обновлять UI из immutable telemetry и возвращать результаты через explicit completion/command boundaries. Они не могут напрямую менять authoritative collections.
 
-`ServerRuntimeState` является authoritative coordinator команд и тика, а не владельцем каждой entity-подсистемы. World-scoped collaborators владеют связными mutation lifecycle, но вызываются только тем же единственным writer: `PlayerAuthority` владеет применением client-player state, `NpcAuthority` владеет NPC commands/AI/combat/actor-archetype lifecycle и координирует `TownNpcAuthority`, `ProjectileAuthority` владеет projectile mutation, `WorldItemAuthority` владеет world-item commands и instanced leases, а `WorldTileAuthority` владеет admission для tile/object mutations. Такое выделение меняет структуру ownership, но не создаёт дополнительный tick thread.
+`ServerRuntimeState` является authoritative coordinator команд и тика, а не владельцем каждой entity-подсистемы. World-scoped collaborators владеют связными mutation lifecycle, но вызываются только тем же единственным writer: `PlayerAuthority` владеет применением connection-player state; `ServerPlayerAuthority` владеет leases runtime-controlled игроков, semantic control intent, dry-physics progression и per-generation liquid-contact state; `NpcAuthority` владеет NPC commands/AI/combat/actor-archetype lifecycle и координирует `TownNpcAuthority`; `ProjectileAuthority` владеет projectile mutation; `WorldItemAuthority` владеет world-item commands и instanced leases; `WorldTileAuthority` владеет admission для tile/object mutations. Такое выделение меняет структуру ownership, но не создаёт дополнительный tick thread.
+
+Connection fanout декомпозирован отдельно от simulation ownership. `RuntimeConnectionEndpoint` владеет retained playing-generation одного соединения и bounded appearance/equipment/movement baselines, а `ServerPlayerReplicaStore` владеет retained protocol projections runtime-controlled игроков. `RuntimeConnectionRegistry` остаётся владельцем routing/fanout и не становится альтернативным simulation writer.
 
 ```mermaid
 flowchart TD
     State["ServerRuntimeState\ncommand + tick coordinator"] --> Players["PlayerAuthority"]
+    State --> ServerPlayers["ServerPlayerAuthority"]
     State --> Npcs["NpcAuthority"]
     Npcs --> Town["TownNpcAuthority"]
     State --> Projectiles["ProjectileAuthority"]

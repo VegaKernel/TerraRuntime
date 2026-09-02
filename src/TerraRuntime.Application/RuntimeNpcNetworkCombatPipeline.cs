@@ -46,17 +46,17 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private readonly RuntimeWorldClock? worldClock;
     private readonly RuntimeWorldProgressionMutations progression;
     private readonly PlayerSlotId[] interactionSlots =
-        new PlayerSlotId[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+        new PlayerSlotId[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaKingSlimeLootPlayer[] activeLootPlayers =
-        new VanillaKingSlimeLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+        new VanillaKingSlimeLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaEaterOfWorldsLootPlayer[] activeEaterLootPlayers =
-        new VanillaEaterOfWorldsLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+        new VanillaEaterOfWorldsLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaBrainOfCthulhuLootPlayer[] activeBrainLootPlayers =
-        new VanillaBrainOfCthulhuLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+        new VanillaBrainOfCthulhuLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaSkeletronLootPlayer[] activeSkeletronLootPlayers =
-        new VanillaSkeletronLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+        new VanillaSkeletronLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaQueenBeeLootPlayer[] activeQueenBeeLootPlayers =
-        new VanillaQueenBeeLootPlayer[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
+        new VanillaQueenBeeLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly NpcSnapshot[] npcFamilyBuffer;
 
     public RuntimeNpcNetworkCombatPipeline(

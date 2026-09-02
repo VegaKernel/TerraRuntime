@@ -17,7 +17,7 @@ Player-данные теперь следуют тому же направлен
 - `TerraRuntime.Core` владеет authoritative ingress-контрактами, lifecycle player slot/session и изменяемыми server-player stores;
 - application composition владеет connection admission, политикой истории/anti-cheat и конкретным routing authoritative-команд.
 
-Преобразование signed net-id из packet 5 пока намеренно остаётся в Core: это ingress canonicalization boundary, а не protocol-neutral gameplay. Его дальнейшее владение отслеживается отдельным пунктом architecture cleanup roadmap.
+Преобразование signed net-id из packet 5 теперь принадлежит application ingress boundary в `PlayerEquipmentPacket5Normalizer`. Core получает только канонические положительные item identity и напрямую проверяет server-owned inventory state; Gameplay не содержит wire-совместимую арифметику.
 
 ## Перенос между runtime
 

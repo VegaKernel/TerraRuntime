@@ -62,8 +62,8 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
         {
             if (hasTarget)
             {
-                float targetX = target.CenterX - VanillaNpcBehaviorContext.BasePlayerWidth * 0.5f;
-                float targetY = target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f;
+                float targetX = target.CenterX - VanillaPlayerHitboxFacts.BaseWidth * 0.5f;
+                float targetY = target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f;
                 hasLineOfSight = _environment.CanHit(
                     staged.PositionX,
                     staged.PositionY,
@@ -71,8 +71,8 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
                     hitbox.Height,
                     targetX,
                     targetY,
-                    (int)VanillaNpcBehaviorContext.BasePlayerWidth,
-                    (int)VanillaNpcBehaviorContext.BasePlayerHeight);
+                    (int)VanillaPlayerHitboxFacts.BaseWidth,
+                    (int)VanillaPlayerHitboxFacts.BaseHeight);
             }
 
             solidCollision = _environment.SolidCollision(
@@ -295,7 +295,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             currentTarget.Active &&
             !currentTarget.Dead &&
             !currentTarget.Ghost &&
-            currentTarget.CenterY + VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f ==
+            currentTarget.CenterY + VanillaPlayerHitboxFacts.BaseHeight * 0.5f ==
             npc.PositionY + definition.Height)
         {
             startingDirectionY = -1;
@@ -433,7 +433,7 @@ internal sealed class VanillaEyeOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehavi
             TargetDead: !targetAvailable || candidate.Dead,
             TargetCenterX: candidate.CenterX,
             TargetCenterY: candidate.CenterY,
-            TargetTopY: candidate.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f,
+            TargetTopY: candidate.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f,
             ExpertMode: context.ExpertMode,
             GoodWorld: context.GoodWorld);
 
@@ -557,7 +557,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             VelocityY: npc.VelocityY,
             TargetCenterX: candidate.CenterX,
             TargetCenterY: candidate.CenterY,
-            TargetTopY: candidate.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f,
+            TargetTopY: candidate.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f,
             OldVelocityX: npc.Simulation.OldVelocityX,
             OldVelocityY: npc.Simulation.OldVelocityY,
             DirectionX: closest.DirectionX,
@@ -684,7 +684,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             return 1;
         }
 
-        float targetPositionY = target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f;
+        float targetPositionY = target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f;
         int offsetX = random.NextInt32(-100, 101);
         int offsetY = random.NextInt32(-100, 101);
         float shotX = target.CenterX + offsetX - sourceCenterX;

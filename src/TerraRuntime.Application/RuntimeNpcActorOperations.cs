@@ -48,7 +48,7 @@ internal sealed record NpcPresentationBehaviorRegisterRuntimeCommand(
 /// snapshots directly: commands arrive through ServerRuntimeState, stage registry changes on the game-loop thread,
 /// and CommitPending publishes immutable dispatch plans immediately before the authoritative NPC tick.
 /// </summary>
-internal sealed class RuntimeNpcActorControlCommandService
+internal sealed class RuntimeNpcActorControlOwner
 {
     private readonly RuntimeNpcStore npcs;
     private readonly RuntimeNpcActorControlRegistry controls;
@@ -59,7 +59,7 @@ internal sealed class RuntimeNpcActorControlCommandService
     private readonly RuntimeNpcArchetypeIdentityStore identities;
     private readonly NpcActorControlLease?[] leases;
 
-    public RuntimeNpcActorControlCommandService(
+    public RuntimeNpcActorControlOwner(
         RuntimeNpcStore npcs,
         RuntimeNpcActorControlRegistry controls,
         RuntimeGameplayBehaviorRegistry<NpcTypeId, INpcAiStateStepper> presentationBehaviors,

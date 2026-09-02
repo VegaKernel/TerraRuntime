@@ -15,7 +15,7 @@ public sealed class RuntimeServerPlayerMutableStateTests
         var slots = new PlayerSlotPool(1);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
-        var service = new RuntimeServerPlayerCommandService(identities, states);
+        var service = new ServerPlayerAuthority(states, identities);
         var id = new ServerPlayerId("test:mutable-fake");
         ServerPlayerCreateResult created = service.Create(id, 100f, 200f);
         Assert.True(created.IsCreated);
@@ -88,7 +88,7 @@ public sealed class RuntimeServerPlayerMutableStateTests
         var slots = new PlayerSlotPool(1);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
-        var service = new RuntimeServerPlayerCommandService(identities, states);
+        var service = new ServerPlayerAuthority(states, identities);
         var id = new ServerPlayerId("test:invalid-fake-state");
         ServerPlayerCreateResult created = service.Create(id, 0f, 0f);
         Assert.True(created.IsCreated);

@@ -70,11 +70,14 @@ Owned state includes, as implementation grows:
 
 Other threads may receive network data, decode bounded input, build immutable work products, perform disk I/O, serialize snapshots, update UI from immutable telemetry, and return results through explicit completion/command boundaries. They may not mutate authoritative collections directly.
 
-`ServerRuntimeState` is the authoritative command/tick coordinator, not the owner of every entity subsystem. World-scoped collaborators own coherent mutation lifecycles while remaining callable only from that same writer: `PlayerAuthority` owns client-player state application, `NpcAuthority` owns NPC commands/AI/combat/actor-archetype lifecycle and coordinates `TownNpcAuthority`, `ProjectileAuthority` owns projectile mutation, `WorldItemAuthority` owns world-item commands and instanced leases, and `WorldTileAuthority` owns tile/object mutation admission. Extraction changes ownership structure, not tick-thread ownership.
+`ServerRuntimeState` is the authoritative command/tick coordinator, not the owner of every entity subsystem. World-scoped collaborators own coherent mutation lifecycles while remaining callable only from that same writer: `PlayerAuthority` owns connection-player state application; `ServerPlayerAuthority` owns runtime-controlled player leases, semantic control intent, dry-physics progression and per-generation liquid-contact state; `NpcAuthority` owns NPC commands/AI/combat/actor-archetype lifecycle and coordinates `TownNpcAuthority`; `ProjectileAuthority` owns projectile mutation; `WorldItemAuthority` owns world-item commands and instanced leases; and `WorldTileAuthority` owns tile/object mutation admission. Extraction changes ownership structure, not tick-thread ownership.
+
+Connection fanout is decomposed independently from simulation ownership. `RuntimeConnectionEndpoint` owns one connection's retained playing-generation and bounded appearance/equipment/movement baselines, while `ServerPlayerReplicaStore` owns retained protocol projections for runtime-controlled players. `RuntimeConnectionRegistry` remains the routing/fanout owner and does not become an alternate simulation writer.
 
 ```mermaid
 flowchart TD
     State["ServerRuntimeState\ncommand + tick coordinator"] --> Players["PlayerAuthority"]
+    State --> ServerPlayers["ServerPlayerAuthority"]
     State --> Npcs["NpcAuthority"]
     Npcs --> Town["TownNpcAuthority"]
     State --> Projectiles["ProjectileAuthority"]

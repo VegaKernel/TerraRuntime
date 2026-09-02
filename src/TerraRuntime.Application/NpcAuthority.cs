@@ -18,7 +18,7 @@ internal sealed class NpcAuthority
     private readonly PlayerAuthority players;
     private readonly RuntimeNpcStore npcs;
     private readonly RuntimeNpcAiStateExecutor aiExecutor;
-    private readonly RuntimeNpcActorControlCommandService actorCommands;
+    private readonly RuntimeNpcActorControlOwner actorControlOwner;
     private readonly RuntimeNpcArchetypeRegistry archetypes;
     private readonly RuntimeNpcArchetypeSpawner archetypeSpawner;
     private readonly RuntimeNpcShopCatalogRegistry shops;
@@ -88,7 +88,7 @@ internal sealed class NpcAuthority
         var presentationBehaviors = new RuntimeGameplayBehaviorRegistry<NpcTypeId, INpcAiStateStepper>();
         var archetypeBehaviors = new RuntimeArchetypeBehaviorRegistry<INpcAiStateStepper>();
         var behaviorQueries = new RuntimeNpcBehaviorQueries(runtime, npcs, worldTiles);
-        actorCommands = new RuntimeNpcActorControlCommandService(
+        actorControlOwner = new RuntimeNpcActorControlOwner(
             npcs,
             actorControls,
             presentationBehaviors,
@@ -199,7 +199,7 @@ internal sealed class NpcAuthority
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        if (actorCommands.TryApply(command))
+        if (actorControlOwner.TryApply(command))
             return true;
         if (command is NpcActorSpawnRuntimeCommand actorSpawn)
         {
@@ -240,7 +240,7 @@ internal sealed class NpcAuthority
     {
         archetypes.CommitPending();
         shops.CommitPending();
-        actorCommands.CommitPending();
+        actorControlOwner.CommitPending();
     }
 
     public void TickSimulation()

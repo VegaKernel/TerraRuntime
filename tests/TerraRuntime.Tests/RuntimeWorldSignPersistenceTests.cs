@@ -39,7 +39,7 @@ public sealed class RuntimeWorldSignPersistenceTests
         string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-sign-save-{Guid.NewGuid():N}");
         string destinationPath = Path.Combine(directory, "world.wld");
         Directory.CreateDirectory(directory);
-        var service = new RuntimeWorldTileChestSaveService(
+        var service = new RuntimeWorldCheckpointCoordinator(
             destinationPath,
             source.Envelope,
             source.Header,
@@ -101,7 +101,7 @@ public sealed class RuntimeWorldSignPersistenceTests
         string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-sparse-sign-save-{Guid.NewGuid():N}");
         string destinationPath = Path.Combine(directory, "world.wld");
         Directory.CreateDirectory(directory);
-        var service = new RuntimeWorldTileChestSaveService(
+        var service = new RuntimeWorldCheckpointCoordinator(
             destinationPath,
             source.Envelope,
             source.Header,

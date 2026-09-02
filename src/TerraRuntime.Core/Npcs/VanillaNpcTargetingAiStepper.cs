@@ -258,13 +258,13 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         float centerX = source.PositionX + hitbox.Width * 0.5f;
         float centerY = source.PositionY + hitbox.Height * 0.5f;
-        float targetX = target.CenterX - VanillaNpcBehaviorContext.BasePlayerWidth * 0.5f;
-        float targetY = target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f;
+        float targetX = target.CenterX - VanillaPlayerHitboxFacts.BaseWidth * 0.5f;
+        float targetY = target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f;
         if (!_projectileEnvironment.CanHit(
                 centerX, centerY, 1, 1,
                 targetX, targetY,
-                (int)VanillaNpcBehaviorContext.BasePlayerWidth,
-                (int)VanillaNpcBehaviorContext.BasePlayerHeight))
+                (int)VanillaPlayerHitboxFacts.BaseWidth,
+                (int)VanillaPlayerHitboxFacts.BaseHeight))
         {
             return 0;
         }
@@ -318,10 +318,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         float spawnY = source.PositionY + definition.Height * 0.8f;
         if (!_projectileEnvironment.CanHit(
                 spawnX, spawnY, 1, 1,
-                target.CenterX - VanillaNpcBehaviorContext.BasePlayerWidth * 0.5f,
-                target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f,
-                (int)VanillaNpcBehaviorContext.BasePlayerWidth,
-                (int)VanillaNpcBehaviorContext.BasePlayerHeight))
+                target.CenterX - VanillaPlayerHitboxFacts.BaseWidth * 0.5f,
+                target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f,
+                (int)VanillaPlayerHitboxFacts.BaseWidth,
+                (int)VanillaPlayerHitboxFacts.BaseHeight))
             return 0;
 
         NpcTypeId child = _random.NextInt32(VanillaNpcIds.Bee.Value, VanillaNpcIds.SmallBee.Value + 1) == VanillaNpcIds.Bee.Value
@@ -362,7 +362,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (timer % cadence != cadence - 1)
             return 0;
 
-        float targetTop = target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f;
+        float targetTop = target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f;
         if (source.PositionY + definition.Height >= targetTop)
             return 0;
 
@@ -372,10 +372,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         float spawnY = source.PositionY + definition.Height * 0.8f;
         if (!_projectileEnvironment.CanHit(
                 spawnX, spawnY, 1, 1,
-                target.CenterX - VanillaNpcBehaviorContext.BasePlayerWidth * 0.5f,
+                target.CenterX - VanillaPlayerHitboxFacts.BaseWidth * 0.5f,
                 targetTop,
-                (int)VanillaNpcBehaviorContext.BasePlayerWidth,
-                (int)VanillaNpcBehaviorContext.BasePlayerHeight))
+                (int)VanillaPlayerHitboxFacts.BaseWidth,
+                (int)VanillaPlayerHitboxFacts.BaseHeight))
             return 0;
 
         float speed = 8f;

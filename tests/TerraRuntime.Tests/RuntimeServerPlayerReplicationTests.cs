@@ -27,7 +27,7 @@ public sealed class RuntimeServerPlayerReplicationTests
         Assert.NotNull(occupied);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
-        var service = new RuntimeServerPlayerCommandService(identities, states, registry);
+        var service = new ServerPlayerAuthority(states, identities, events: registry);
         var id = new ServerPlayerId("test:replicated-fake");
         ServerPlayerCreateResult created = service.Create(id, 160f, 320f);
         Assert.True(created.IsCreated);
@@ -92,7 +92,7 @@ public sealed class RuntimeServerPlayerReplicationTests
         Assert.NotNull(occupied);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
-        var service = new RuntimeServerPlayerCommandService(identities, states, registry);
+        var service = new ServerPlayerAuthority(states, identities, events: registry);
         var id = new ServerPlayerId("test:baseline-fake");
         ServerPlayerCreateResult created = service.Create(id, 160f, 320f);
         Assert.True(created.IsCreated);

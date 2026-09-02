@@ -68,17 +68,17 @@ Goal: Core becomes execution mechanics rather than a convenient warehouse.
 
 - [x] Move source-backed item definitions, object-placement mappings and prefix gameplay from `Core/Items` into `TerraRuntime.Gameplay.Items`.
 - [x] Move the source-backed player item-slot catalog plus protocol-neutral item-use request/capability semantics from `Core/Items` into `TerraRuntime.Gameplay.Items`.
-- [ ] Re-evaluate packet-5 net-id normalization that remains in `Core/Items`; keep wire/ingress canonicalization out of Gameplay unless its ownership boundary is redesigned.
+- [x] Re-evaluate packet-5 net-id normalization that remains in `Core/Items`; signed legacy net-id canonicalization now lives only at the application packet-5 ingress boundary, authoritative Core inventory state validates canonical item identities directly, and the empty `Core/Items` path is removed.
 - [x] Move the immutable vanilla NPC definition/net-variant and definition-family catalogs from `Core/Npcs` into `TerraRuntime.Gameplay.Npcs`.
 - [x] Split NPC catchability facts from captured-world-item materialization: `VanillaNpcCatchCatalog1458` lives in Gameplay while `VanillaNpcCatchWorldItem1458` remains Core runtime mechanics.
 - [x] Move source-backed town shop, happiness and spawn-eligibility rules into `TerraRuntime.Gameplay.Npcs`; keep the mutable per-world town-spawn cadence in Core and the shared typed moon-phase identity in Contracts.
-- [ ] Re-evaluate remaining protocol-neutral NPC mechanics and mixed catalog/runtime files in `Core/Npcs`; retain stores, execution ownership, state steppers, transactions and runtime mutation mechanics in Core.
+- [x] Re-evaluate remaining protocol-neutral NPC mechanics and mixed catalog/runtime files in `Core/Npcs`: source-backed motion/targeting/gravity/check-active/spawn rules, AI coverage, town identity/rescue and boss-loot evaluators live in `TerraRuntime.Gameplay.Npcs`; stores, behavior adapters/state steppers, generation-safe interaction ledgers, world-item transactions and finalizers remain in Core.
 - [x] Consolidate the source-backed `NewNPC` lifetime fact into `VanillaNpcDefinitionCatalog` and make `RuntimeNpcStore.TrySpawnIntent` the single materialization path for committed AI spawn intents; remove the duplicate Core helper and Application copy.
 - [x] Re-evaluate player gameplay code with the same rule: player commit DTOs live in `TerraRuntime.Contracts.Runtime`, source-backed appearance/movement/spawn/vitals normalization lives in `TerraRuntime.Gameplay.Players`, and authoritative ingress/stores/command application remain in Core/application runtime.
 - [x] Re-evaluate projectile gameplay definitions versus runtime stores/executors: source-backed definitions, lifecycle/default facts, hostility, ownership, extra-update semantics and reflection live in `TerraRuntime.Gameplay.Projectiles`; generation-safe stores, lifecycle mutation, executors and commit boundaries remain in Core. The world-only `CutTilesAt` predicate remains with the World/Contracts boundary until that sibling-layer dependency is redesigned rather than making `TerraRuntime.World` point upward to Gameplay.
-- [ ] Re-evaluate `Core/Gameplay/Extensions`; keep only runtime-owned extension mechanics in Core and move pure gameplay identity/behavior semantics downward when dependency direction permits it.
-- [ ] Align namespaces with the new owner while moving code. Do not leave compatibility aliases for old namespaces in this pre-1.0 project.
-- [ ] Remove empty subject folders left behind by moves.
+- [x] Re-evaluate `Core/Gameplay/Extensions`: deterministic extension RNG plus behavior stage/binding/dispatch-plan semantics live in `TerraRuntime.Gameplay.Extensions`; mutable registries, publication revisions, archetype identity/state stores, lifecycle sinks and admission remain in Core.
+- [x] Align namespaces with the new owner while moving code. Do not leave compatibility aliases for old namespaces in this pre-1.0 project.
+- [x] Remove empty subject folders left behind by moves.
 
 Exit criteria: opening `TerraRuntime.Core` shows execution ownership/scheduling/runtime mechanics, not broad Terraria content catalogs.
 
@@ -86,10 +86,12 @@ Exit criteria: opening `TerraRuntime.Core` shows execution ownership/scheduling/
 
 A type survives only if it owns at least one real concern: invariant, lifecycle, state, cache, policy, admission decision, translation, protocol boundary, resource ownership or non-trivial algorithm.
 
-- [x] Remove the unused `VanillaPlayerItemNormalizer.NormalizeNetId` compatibility wrapper and retain the typed `TryNormalizeNetId` boundary.
+- [x] Remove the unused packet-5 `NormalizeNetId` compatibility wrapper and retain the typed `PlayerEquipmentPacket5Normalizer.TryNormalizeNetId` ingress boundary.
 - [x] Remove `VanillaNpcLootRuleCatalog.GetNpcSpecificRules`; typed table lookup is the single support boundary.
 - [x] Remove `VanillaTileInteractionItemFacts` after migrating remaining callers to `VanillaItemDefinitionCatalog` directly.
-- [ ] Search production code for proxy-only `*Facts`, `*Helper`, `*Provider`, `*Manager`, `*Service`, `*Factory` and compatibility wrappers.
+- [ ] Search production code for proxy-only `*Facts`, `*Helper`, `*Provider`, `*Manager`, `*Service`, `*Factory` and compatibility wrappers. Local 2026-09-02 audit found the remaining suffix candidates to be source-backed fact owners, multi-implementation world-generation providers, mutation algorithms or explicit host/UI boundaries; the same pass removed the unused one-implementation `INpcSnapshotReader` and `IProjectileSnapshotReader` contracts. Keep this checkbox open until the audit lands and CI validates the slice on `main`.
+- [x] Rename authoritative command owners that were mislabeled as generic services: `RuntimeNpcActorControlOwner` names NPC actor command ownership; the follow-up local slice expands the server-player owner into `ServerPlayerAuthority`, which owns server-player lifecycle/control plus authoritative dry-physics state.
+- [x] Rename the expanded world-save cluster from stale `TileChest...Service` terminology to `RuntimeWorldCheckpointCoordinator`, `RuntimeWorldCheckpointSnapshotSource` and `RuntimeWorldCheckpointSnapshot`; the checkpoint now owns tiles, chests, signs, town NPC state and progression capture.
 - [ ] Delete wrappers that merely rename or forward one existing operation.
 - [ ] Collapse duplicate catalogs when they own the same source-backed facts.
 - [ ] Remove one-implementation interfaces that exist only because “there might be another implementation later”, unless they mark a real trust/thread/process/testing boundary.
@@ -107,7 +109,7 @@ Naming follows three layers of context:
 
 Rules to apply while touching code:
 
-- [ ] Remove redundant `Runtime`, `World`, `Server`, `Gameplay` prefixes/suffixes when the namespace/owner already makes the meaning unambiguous.
+- [ ] Remove redundant `Runtime`, `World`, `Server`, `Gameplay` prefixes/suffixes when the namespace/owner already makes the meaning unambiguous. The local server-player slice renames `RuntimeServerPlayerMovementIntentController` to the algorithmic `ServerPlayerMovementIntentResolver`; continue the broader audit before closing this item.
 - [ ] Keep `Vanilla` when it communicates an actual source-pinned vanilla boundary, vanilla-versus-extension distinction or content identity.
 - [ ] Keep version suffixes such as `1458` only when a type is deliberately version-pinned and a future version could coexist or differ materially.
 - [ ] Replace vague nouns with ownership nouns: prefer `Store`, `Registry`, `Catalog`, `Router`, `Queue`, `Pool`, `Supervisor`, `Coordinator`, `Session`, `Clock`, `Cache`, `Codec`, `Parser`, `Writer`, `Reader` when that is what the type actually owns.
@@ -141,6 +143,7 @@ Checklist:
 - [x] Extract per-player tile-edit admission counters and ceiling from `ServerRuntimeState` into the precise world-owned `PlayerTileEditBudget` policy object without changing authoritative tick ordering.
 - [x] Extract active player membership, connection-generation guards, pre-spawn vitals, conversation/shop session lifetime and revisioned snapshots from `ServerRuntimeState` into the world-owned `RuntimePlayerMembership`.
 - [x] Extract authoritative client-player command application, inventory and transfer-profile lifecycle plus player metrics from `ServerRuntimeState` into `PlayerAuthority`; keep it on the existing world writer.
+- [ ] Extract server-owned player lifecycle/control/physics state from `ServerRuntimeState` into one world-owned authority. The local 2026-09-02 slice introduces `ServerPlayerAuthority` for leases, semantic intents, dry-physics progression, liquid-contact state and server-player snapshot lookup; leave open until focused server-player tests and CI are green.
 - [x] Extract town-NPC housing, rescue/progression, commerce, schedule, shimmer and combat orchestration from `ServerRuntimeState` into the world-owned `TownNpcAuthority` without changing authoritative tick order.
 - [x] Extract packet-17 tile admission, tile/object mutation transactions, tile replication and tile-drop allocation accounting from `ServerRuntimeState` into the world-owned `WorldTileAuthority`.
 - [x] Finish decomposing `TerrariaServerHost`: canonical world cleanup/load/cache/recovery/bootstrap lives in `WorldStartupPreparation`, process-scoped runtime/signal/TUI/shutdown ownership lives in `ServerProcessSession`, and listener/admission/connection draining lives in `ServerConnectionAcceptor`.
@@ -150,6 +153,7 @@ Checklist:
 - [ ] Keep source-order-sensitive boss/AI logic cohesive when decomposition would obscure verified vanilla ordering.
 - [ ] Keep large source-backed catalogs cohesive when their size is data, not mixed responsibility.
 - [x] Remove nested conditional/constructor composition tangles when a concrete composition object can own them.
+- [ ] Decompose retained connection replication state without creating forwarding managers. The local 2026-09-02 slice extracts `RuntimeConnectionEndpoint` and `ServerPlayerReplicaStore` from the former ~1,000-line `RuntimeConnectionRegistry`; leave open until relay/resync tests and CI validate the move.
 - [ ] Prefer private methods/records for local complexity before inventing a public subsystem.
 
 Exit criteria: large handwritten runtime units have clear ownership boundaries, and no decomposition exists solely to lower line counts.

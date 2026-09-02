@@ -40,6 +40,9 @@ public readonly record struct PlayerEquipmentCommitRequest(
     short ItemNetId,
     byte ItemFlags)
 {
+    /// <summary>Only packet-5 item flag retained by canonical runtime inventory state in Terraria 1.4.5.8.</summary>
+    public const byte FavoriteItemFlag = 1 << 0;
+
     public PrefixId PrefixId => new(Prefix);
 
     /// <summary>

@@ -30,7 +30,7 @@ public sealed class RuntimeWorldSaveRuntimeCacheTests
         string destinationPath = Path.Combine(directory, "world.wld");
         string cachePath = RuntimeWorldSnapshotCache.GetCachePath(destinationPath);
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        var service = new RuntimeWorldTileChestSaveService(
+        var service = new RuntimeWorldCheckpointCoordinator(
             destinationPath,
             source.Envelope,
             source.Header,

@@ -75,7 +75,7 @@ public sealed class RuntimeWorldItemStoreTests
     {
         var store = new RuntimeWorldItemStore();
         WorldItemStateUpdate outOfRange = CreateUpdate(
-            itemNetId: VanillaPlayerItemNormalizer.ItemTypeCount,
+            itemNetId: VanillaItemIds.Count,
             stack: 1);
 
         Assert.False(outOfRange.TryGetItemType(out _));

@@ -2,13 +2,6 @@ using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.Core;
 
-public enum GameplayBehaviorStage : byte
-{
-    Pre = 0,
-    Replacement = 1,
-    Post = 2
-}
-
 public enum GameplayBehaviorRegistrationResult : byte
 {
     Registered = 0,
@@ -16,43 +9,6 @@ public enum GameplayBehaviorRegistrationResult : byte
     InvalidStage = 2,
     DuplicateId = 3,
     ReplacementConflict = 4
-}
-
-public readonly record struct GameplayBehaviorBinding<TBehavior>(
-    GameplayExtensionId Id,
-    int Order,
-    TBehavior Behavior)
-    where TBehavior : class;
-
-/// <summary>
-/// Immutable per-target dispatch plan published by <see cref="RuntimeGameplayBehaviorRegistry{TTarget,TBehavior}"/>.
-/// Arrays are exposed as read-only memories so the authoritative hot path can enumerate without locks or allocation.
-/// </summary>
-public sealed class GameplayBehaviorDispatchPlan<TBehavior>
-    where TBehavior : class
-{
-    private readonly GameplayBehaviorBinding<TBehavior>[] pre;
-    private readonly GameplayBehaviorBinding<TBehavior>[] post;
-
-    internal GameplayBehaviorDispatchPlan(
-        GameplayBehaviorBinding<TBehavior>[] pre,
-        bool hasReplacement,
-        GameplayBehaviorBinding<TBehavior> replacement,
-        GameplayBehaviorBinding<TBehavior>[] post)
-    {
-        this.pre = pre;
-        HasReplacement = hasReplacement;
-        Replacement = replacement;
-        this.post = post;
-    }
-
-    public ReadOnlyMemory<GameplayBehaviorBinding<TBehavior>> Pre => pre;
-
-    public bool HasReplacement { get; }
-
-    public GameplayBehaviorBinding<TBehavior> Replacement { get; }
-
-    public ReadOnlyMemory<GameplayBehaviorBinding<TBehavior>> Post => post;
 }
 
 /// <summary>

@@ -12,7 +12,7 @@ public sealed class RuntimeServerPlayerHorizontalIntentTests
         var slots = new PlayerSlotPool(1);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
-        var service = new RuntimeServerPlayerCommandService(identities, states);
+        var service = new ServerPlayerAuthority(states, identities);
         var firstId = new ServerPlayerId("test:first-horizontal");
         var secondId = new ServerPlayerId("test:second-horizontal");
 
@@ -37,7 +37,7 @@ public sealed class RuntimeServerPlayerHorizontalIntentTests
         var slots = new PlayerSlotPool(1);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
-        var service = new RuntimeServerPlayerCommandService(identities, states);
+        var service = new ServerPlayerAuthority(states, identities);
         var id = new ServerPlayerId("test:stop-horizontal");
         ServerPlayerCreateResult created = service.Create(id, 0f, 0f);
         Assert.True(created.IsCreated);
@@ -57,7 +57,7 @@ public sealed class RuntimeServerPlayerHorizontalIntentTests
         var slots = new PlayerSlotPool(1);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
-        var service = new RuntimeServerPlayerCommandService(identities, states);
+        var service = new ServerPlayerAuthority(states, identities);
 
         Assert.False(service.SetHorizontalIntent(
             new ServerPlayerId("test:missing-horizontal"),

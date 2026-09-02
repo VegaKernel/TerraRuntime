@@ -11,8 +11,8 @@ namespace TerraRuntime.Core;
 /// </summary>
 internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
-    private const float PlayerWidth = VanillaNpcBehaviorContext.BasePlayerWidth;
-    private const float PlayerHeight = VanillaNpcBehaviorContext.BasePlayerHeight;
+    private const float PlayerWidth = VanillaPlayerHitboxFacts.BaseWidth;
+    private const float PlayerHeight = VanillaPlayerHitboxFacts.BaseHeight;
 
     public bool TryStep(
         in NpcSnapshot npc,
@@ -351,7 +351,7 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
         else if (state == 2)
         {
             if (!target.Active || target.Dead || target.Ghost ||
-                npc.PositionY > target.CenterY - VanillaNpcBehaviorContext.BasePlayerHeight * 0.5f ||
+                npc.PositionY > target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f ||
                 DotPastTarget(in npc, in target, velocityX, velocityY) ||
                 DistanceToTarget(in npc, in target) > 2000f ||
                 velocityY < 0f)

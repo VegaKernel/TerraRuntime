@@ -6,6 +6,8 @@ TerraRuntime keeps NPC storage, spawn/default materialization, AI, physics, comb
 
 `TerraRuntime.Gameplay.Npcs` owns the immutable source-backed vanilla definition layer: `VanillaNpcDefinition`, behavior/physics family metadata, net variants, and the admitted slime/flying-eye/flyer/worm/AI17-20-21/town definition catalogs. Core consumes those facts but does not own them. Mutable NPC slots, authoritative state transitions, AI execution, combat and world-item transactions remain in Core/application runtime.
 
+The same ownership rule now covers protocol-neutral NPC simulation and loot. Source-backed gravity, targeting, knockback, motion/check-active primitives, ordinary spawn cadence, town identity/rescue rules, AI coverage and boss-loot evaluators live in `TerraRuntime.Gameplay.Npcs`. Core keeps the mutable behavior context/state steppers, generation-safe interaction ledger, world-item materialization transactions and death/finalization steps. `NpcLootWorldItemOrigin` and the vanilla interactable-player slot ceiling are gameplay facts rather than properties of a particular runtime store.
+
 The same boundary applies to NPC catching: `VanillaNpcCatchCatalog1458` owns immutable critter/catch-item facts in Gameplay, while `VanillaNpcCatchWorldItem1458` remains in Core because it materializes the captured world-item state and reservation policy.
 
 ```mermaid

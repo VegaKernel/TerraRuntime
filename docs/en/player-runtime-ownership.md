@@ -17,7 +17,7 @@ Player data now follows the same dependency direction as the rest of the runtime
 - `TerraRuntime.Core` owns the authoritative ingress contracts, player slot/session lifecycle and mutable server-player stores;
 - application composition owns connection admission, anti-cheat/history policy and the concrete authoritative command routing.
 
-The packet-5 signed net-id compatibility conversion remains in Core for now because it is an ingress canonicalization boundary rather than protocol-neutral gameplay. This is deliberate and tracked separately in the architecture cleanup roadmap.
+Packet-5 signed net-id compatibility conversion is owned by the application ingress boundary in `PlayerEquipmentPacket5Normalizer`. Core receives canonical positive item identities and validates server-owned inventory state directly; Gameplay remains free of wire compatibility arithmetic.
 
 ## Cross-runtime transfer
 

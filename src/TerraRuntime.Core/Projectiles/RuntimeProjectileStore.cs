@@ -63,7 +63,7 @@ public readonly record struct ProjectileLifecycleState(
 /// Protocol ProjectileKey also addresses indices 0..1000, while runtime generations stay wider than the
 /// 14-bit wire generation so stale handles do not alias after ordinary reuse.
 /// </summary>
-public sealed partial class RuntimeProjectileStore : IProjectileSnapshotReader
+public sealed partial class RuntimeProjectileStore
 {
     public const ushort MaximumVanillaPhysicalSlot = 999;
     public const int VanillaPhysicalSlotCount = MaximumVanillaPhysicalSlot + 1;

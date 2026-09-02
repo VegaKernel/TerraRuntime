@@ -14,7 +14,7 @@ public sealed partial class RuntimeServerPlayerStateStore
         normalized = default;
         if (!TryGetState(player, out ServerPlayerRuntimeState? state) ||
             state.Revision == ulong.MaxValue ||
-            !TryNormalizeItem(player.Slot, in item, out normalized))
+            !TryNormalizeItem(in item, out normalized))
         {
             return false;
         }
@@ -47,7 +47,6 @@ public sealed partial class RuntimeServerPlayerStateStore
     }
 
     private static bool TryNormalizeItem(
-        PlayerSlotId playerSlot,
         in ServerPlayerItemState item,
         out ServerPlayerItemState normalized)
     {
@@ -75,33 +74,21 @@ public sealed partial class RuntimeServerPlayerStateStore
         if (item.Stack <= 0 ||
             !VanillaPrefixIds.TryCreate(item.Prefix.Value, out PrefixId canonicalPrefix) ||
             canonicalPrefix != item.Prefix ||
-            !VanillaItemIds.TryCreate(item.ItemType.Value, out ItemTypeId canonical) ||
-            canonical != item.ItemType)
-        {
-            normalized = default;
-            return false;
-        }
-
-        var request = new PlayerEquipmentCommitRequest(
-            playerSlot,
-            item.Slot,
-            item.Stack,
-            checked((byte)item.Prefix.Value),
-            checked((short)item.ItemType.Value),
-            item.ItemFlags);
-        PlayerEquipmentCommitRequest commit = VanillaPlayerItemNormalizer.Normalize(in request);
-        if (!commit.TryGetCanonicalItemType(out ItemTypeId itemType) || itemType.IsNone)
+            !VanillaItemIds.TryCreate(item.ItemType.Value, out ItemTypeId canonicalItemType) ||
+            canonicalItemType != item.ItemType ||
+            canonicalItemType.IsNone ||
+            !VanillaItemDefinitionCatalog.IsValidKnownStack(canonicalItemType, item.Stack))
         {
             normalized = default;
             return false;
         }
 
         normalized = new ServerPlayerItemState(
-            commit.SlotId,
-            itemType,
-            commit.Stack,
-            commit.PrefixId,
-            commit.ItemFlags);
+            item.Slot,
+            canonicalItemType,
+            item.Stack,
+            canonicalPrefix,
+            (byte)(item.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag));
         return true;
     }
 }

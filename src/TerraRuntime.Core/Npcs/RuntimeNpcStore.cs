@@ -19,7 +19,7 @@ public readonly record struct NpcStateUpdate(
 /// active-slot accounting and commit publication. Vanilla spawn/combat/lifetime defaults are resolved by
 /// <see cref="RuntimeNpcStateOwnershipPolicy"/> so the slot store stays independent from content catalogs.
 /// </summary>
-public sealed partial class RuntimeNpcStore : INpcSnapshotReader
+public sealed partial class RuntimeNpcStore
 {
     public const int MaximumAddressableCapacity = byte.MaxValue + 1;
 

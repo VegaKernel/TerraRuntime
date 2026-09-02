@@ -63,16 +63,11 @@ internal sealed partial class ServerRuntimeState
             spawnRandom,
             tileManipulationReplication);
 
-        _serverPlayerStates = serverPlayerStates;
-        _serverPlayerEvents = serverPlayerEvents;
         if (serverPlayerIdentities is not null && serverPlayerStates is null)
             throw new ArgumentException("Server-player identities require an authoritative state store.", nameof(serverPlayerIdentities));
-        _serverPlayerCommands = serverPlayerIdentities is not null && serverPlayerStates is not null
-            ? new RuntimeServerPlayerCommandService(serverPlayerIdentities, serverPlayerStates, serverPlayerEvents)
-            : null;
-        _serverPlayerDryPhysics = serverPlayerStates is not null && worldTiles is not null
-            ? new VanillaServerPlayerDryPhysicsStepper(worldTiles)
-            : null;
+        _serverPlayers = serverPlayerStates is null
+            ? null
+            : new ServerPlayerAuthority(serverPlayerStates, serverPlayerIdentities, worldTiles, serverPlayerEvents);
 
         RuntimeNpcStore npcStore = npcs ?? new RuntimeNpcStore();
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();

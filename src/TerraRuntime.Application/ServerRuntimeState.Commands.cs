@@ -16,7 +16,7 @@ internal sealed partial class ServerRuntimeState
         ArgumentNullException.ThrowIfNull(command);
         AppliedCommands++;
 
-        if (_serverPlayerCommands?.TryApply(command) == true)
+        if (_serverPlayers?.TryApply(command) == true)
             return;
         if (_worldTileAuthority.TryApply(this, command))
             return;

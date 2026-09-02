@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Core;
@@ -9,8 +10,6 @@ namespace TerraRuntime.Core;
 /// </summary>
 public sealed class RuntimeNpcPlayerInteractionLedger
 {
-    public const int VanillaInteractablePlayerSlots = byte.MaxValue;
-
     private readonly RuntimeNpcStore _store;
     private readonly Dictionary<NpcHandle, PlayerSlotMask> _interactions = [];
 
@@ -23,7 +22,7 @@ public sealed class RuntimeNpcPlayerInteractionLedger
     {
         if (!npc.IsAssigned ||
             !player.IsAssigned ||
-            player.Slot.Value >= VanillaInteractablePlayerSlots ||
+            player.Slot.Value >= VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots ||
             !_store.TryGet(npc, out _))
         {
             return false;
@@ -37,7 +36,7 @@ public sealed class RuntimeNpcPlayerInteractionLedger
     public bool HasInteraction(NpcHandle npc, PlayerSlotId player)
     {
         if (!npc.IsAssigned ||
-            player.Value >= VanillaInteractablePlayerSlots ||
+            player.Value >= VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots ||
             !_store.TryGet(npc, out _))
         {
             _interactions.Remove(npc);
@@ -70,7 +69,7 @@ public sealed class RuntimeNpcPlayerInteractionLedger
         if (destination.Length < required)
             return false;
 
-        for (int slot = 0; slot < VanillaInteractablePlayerSlots; slot++)
+        for (int slot = 0; slot < VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots; slot++)
         {
             if (mask.Contains(checked((byte)slot)))
                 destination[count++] = new PlayerSlotId(checked((byte)slot));

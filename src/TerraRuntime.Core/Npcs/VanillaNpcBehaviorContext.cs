@@ -1,4 +1,5 @@
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
@@ -12,8 +13,6 @@ namespace TerraRuntime.Core;
 internal sealed class VanillaNpcBehaviorContext
 {
     public const int MaximumPlayerCandidates = byte.MaxValue;
-    public const float BasePlayerWidth = 20f;
-    public const float BasePlayerHeight = 42f;
 
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
     private readonly NpcSnapshot[] _npcPeers = new NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
@@ -214,11 +213,11 @@ internal sealed class VanillaNpcBehaviorContext
             return false;
         }
 
-        float playerLeft = candidate.CenterX - BasePlayerWidth * 0.5f;
-        float playerTop = candidate.CenterY - BasePlayerHeight * 0.5f;
-        return npc.PositionX < playerLeft + BasePlayerWidth &&
+        float playerLeft = candidate.CenterX - VanillaPlayerHitboxFacts.BaseWidth * 0.5f;
+        float playerTop = candidate.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f;
+        return npc.PositionX < playerLeft + VanillaPlayerHitboxFacts.BaseWidth &&
                npc.PositionX + hitbox.Width > playerLeft &&
-               npc.PositionY < playerTop + BasePlayerHeight &&
+               npc.PositionY < playerTop + VanillaPlayerHitboxFacts.BaseHeight &&
                npc.PositionY + hitbox.Height > playerTop;
     }
 

@@ -38,7 +38,7 @@ flowchart TD
 
 Marker bounded до `$64\,\mathrm{KiB}$`, пишется через durable file path, flush'ится через `Flush(flushToDisk: true)` и на Linux получает parent-directory `fsync` barrier до того, как сможет дать transaction право на recovery.
 
-Для runtime `.wld` marker создаётся только после того, как `ValidateCandidateAsync` принял exact candidate. `RuntimeWorldTileChestSaveService` привязывает этот callback к полному supported `WorldFileLoader`, поэтому SHA-256 seal'ит bytes, уже прошедшие Terraria 1.4.5.8 structural/content validation. Для existing canonical marker создаётся только после copy, validation и publication предыдущей generation в `<world>.wld.bak`.
+Для runtime `.wld` marker создаётся только после того, как `ValidateCandidateAsync` принял exact candidate. `RuntimeWorldCheckpointCoordinator` привязывает этот callback к полному supported `WorldFileLoader`, поэтому SHA-256 seal'ит bytes, уже прошедшие Terraria 1.4.5.8 structural/content validation. Для existing canonical marker создаётся только после copy, validation и publication предыдущей generation в `<world>.wld.bak`.
 
 ## Recovery при startup и следующем write
 

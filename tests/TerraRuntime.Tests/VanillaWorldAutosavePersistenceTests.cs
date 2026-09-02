@@ -23,7 +23,7 @@ public sealed class VanillaWorldAutosavePersistenceTests
         Directory.CreateDirectory(directory);
 
         var chestStore = new RuntimeChestStore(source.Chests);
-        var service = new RuntimeWorldTileChestSaveService(
+        var service = new RuntimeWorldCheckpointCoordinator(
             destinationPath,
             source.Envelope,
             source.Header,
@@ -39,7 +39,7 @@ public sealed class VanillaWorldAutosavePersistenceTests
         {
             // Match the production owner-loop order: scheduler first, save-service maintenance second.
             Assert.False(autosave.Tick());
-            Assert.Equal(RuntimeWorldTileChestSaveTickResult.Synchronizing, service.Tick());
+            Assert.Equal(RuntimeWorldCheckpointTickResult.Synchronizing, service.Tick());
             Assert.True(service.IsTileShadowReady);
 
             var firstTile = new WorldTile
@@ -52,7 +52,7 @@ public sealed class VanillaWorldAutosavePersistenceTests
             timestamp += VanillaWorldAutosaveScheduler.DedicatedServerIntervalMilliseconds + 1;
             Assert.True(autosave.Tick());
             service.RequestSave();
-            Assert.Equal(RuntimeWorldTileChestSaveTickResult.SaveQueued, service.Tick());
+            Assert.Equal(RuntimeWorldCheckpointTickResult.SaveQueued, service.Tick());
 
             await WaitForCompletedWritesAsync(service, expectedWrites: 1);
             RuntimeWorldSaveStatus firstSave = service.CaptureStatus();
@@ -63,7 +63,7 @@ public sealed class VanillaWorldAutosavePersistenceTests
 
             // Vanilla resets the timer after a save and starts the next interval on the following owner update.
             Assert.False(autosave.Tick());
-            Assert.Equal(RuntimeWorldTileChestSaveTickResult.Idle, service.Tick());
+            Assert.Equal(RuntimeWorldCheckpointTickResult.Idle, service.Tick());
 
             var secondTile = new WorldTile
             {
@@ -75,7 +75,7 @@ public sealed class VanillaWorldAutosavePersistenceTests
             timestamp += VanillaWorldAutosaveScheduler.DedicatedServerIntervalMilliseconds + 1;
             Assert.True(autosave.Tick());
             service.RequestSave();
-            Assert.Equal(RuntimeWorldTileChestSaveTickResult.SaveQueued, service.Tick());
+            Assert.Equal(RuntimeWorldCheckpointTickResult.SaveQueued, service.Tick());
 
             await WaitForCompletedWritesAsync(service, expectedWrites: 2);
             RuntimeWorldSaveStatus secondSave = service.CaptureStatus();
@@ -93,7 +93,7 @@ public sealed class VanillaWorldAutosavePersistenceTests
     }
 
     private static async Task WaitForCompletedWritesAsync(
-        RuntimeWorldTileChestSaveService service,
+        RuntimeWorldCheckpointCoordinator service,
         long expectedWrites)
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

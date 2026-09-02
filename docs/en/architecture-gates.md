@@ -42,6 +42,12 @@ The gate keeps a deliberately small allow-set for the low-level projects:
 
 The test rejects new direct production dependencies outside this allow-set. It does not require every allowed edge to exist forever, so removing coupling does not require changing the test.
 
+### Gameplay semantic ownership
+
+The architecture suite also pins representative type placement, not only project references. Protocol-neutral player, NPC and projectile rules must resolve from `TerraRuntime.Gameplay`, while mutable stores, authoritative ingress/executors and generation-safe finalizers resolve from `TerraRuntime.Core`. Extension RNG plus immutable behavior stage/binding/dispatch-plan semantics likewise live in `TerraRuntime.Gameplay.Extensions`; mutable registries and extension state/lifecycle ownership stay in Core.
+
+This prevents a dependency-clean project graph from hiding a gradual return to using Core as a content/semantics warehouse.
+
 ### Host contract surface
 
 `TerraRuntime.HostContracts` may expose its own types, shared `TerraRuntime.Contracts` types and third-party/framework presentation types that are intentionally part of the host API. It may not expose types from concrete TerraRuntime implementation assemblies such as Core, World, Network, protocol adapters or the server executable.
