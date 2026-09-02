@@ -301,20 +301,14 @@ Exit criteria: TUI, Vega and verification tooling can observe the same authorita
 
 Target direction:
 
-```text
-Browser / remote client
-          |
-          v
-      Vega Web API
- HTTP / WS / auth / policy
-          |
-          v
- TerraRuntime.HostContracts
- snapshots / events / operations
-          |
-          v
-      TerraRuntime
- authoritative WorldRuntime ownership
+```mermaid
+flowchart TD
+    Browser["Browser / remote client"]
+    VegaApi["Vega Web API\nHTTP / WS / auth / policy"]
+    HostContracts["TerraRuntime.HostContracts\nsnapshots / events / operations"]
+    Runtime["TerraRuntime\nauthoritative WorldRuntime ownership"]
+
+    Browser --> VegaApi --> HostContracts --> Runtime
 ```
 
 Exit criteria: Web administration can be added, replaced or versioned without introducing Web concerns into TerraRuntime or creating a second runtime-control path.
