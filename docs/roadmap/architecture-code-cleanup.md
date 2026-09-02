@@ -233,6 +233,101 @@ Each coherent refactoring slice should:
 - [ ] remove old code in the same slice instead of leaving permanent forwarding shims;
 - [ ] update this roadmap checkbox state when the slice closes an item.
 
+## R10 - Differential verification, persistence safety, failure handling and host observation
+
+Goal: strengthen correctness, recovery and operator integration around the existing architecture without creating a parallel framework architecture.
+
+### R10.1 - Protocol probe and differential verification
+
+- [ ] Add a small `TerraRuntime.TestClient` or `TerraRuntime.ProtocolProbe` tooling project outside the production runtime dependency graph.
+- [ ] Implement only capabilities required by verification scenarios; do not build a general-purpose alternative Terraria client.
+- [ ] Start with handshake, join/bootstrap, player spawn, movement, basic entity observation and raw/decoded packet capture.
+- [ ] Allow the same scenario to run against TerraRuntime and the pinned reference `TerrariaServer.exe`.
+- [ ] Compare normalized observable results rather than internal implementation details, and explicitly document legitimate timing/order/non-deterministic normalization.
+- [ ] Preserve raw evidence for failed differentials so mismatches remain inspectable after the run.
+- [ ] Grow differential coverage incrementally across bootstrap/section streaming, player replication, NPCs, projectiles and other behavior where reference-server comparison provides meaningful evidence.
+- [ ] Treat reference-server comparison as verification evidence, not as an instruction to reproduce the reference server's internal architecture.
+
+Exit criteria: important observable behavior can be exercised through one scenario against both implementations and a mismatch produces actionable evidence.
+
+### R10.2 - Exhaustive persistence-state contract
+
+- [ ] Give persistence-relevant authoritative mutable state an explicit classification: persisted, derived/reconstructable, session-ephemeral or intentionally excluded.
+- [ ] Keep the persistence decision close to the owning state/checkpoint projection rather than duplicating ownership in a central registry.
+- [ ] Add deterministic architecture/test coverage that fails when new persistence-relevant authoritative state is introduced without an explicit classification.
+- [ ] Add representative save/reload and checkpoint/recovery tests for progression, NPC/town state, world objects and other authoritative domains as they become persistence-relevant.
+- [ ] Prefer compile-time or deterministic test failures over documentation-only requirements.
+
+Exit criteria: adding authoritative state cannot silently omit the decision about whether and how it survives save/recovery.
+
+### R10.3 - Fatal runtime and graceful-crash contract
+
+- [ ] Define explicit connection-local, world-local and process-fatal failure scopes.
+- [ ] Malformed input and recoverable connection-pipeline failures reject or disconnect only the affected connection.
+- [ ] A world-local fatal invariant stops or quarantines only the affected `WorldRuntime` when safe isolation is possible.
+- [ ] A process-fatal invariant attempts bounded checkpoint/shutdown handling for viable worlds and terminates non-zero.
+- [ ] Fatal shutdown work must be bounded; stale background persistence work must not overwrite newer authoritative state.
+- [ ] Level 2 sandbox workers must use the same failure model at the worker/process boundary rather than inventing a separate fatal-path architecture.
+- [ ] Add focused tests for packet-path failure, authoritative execution failure, world-local fatal failure, checkpoint/shutdown failure and process exit status.
+- [ ] Do not introduce a generic exception/failure framework unless multiple concrete paths demonstrate the need.
+
+Exit criteria: connection, world-fatal and process-fatal failures have deterministic, documented and tested outcomes.
+
+### R10.4 - Unified runtime observation boundary
+
+Goal: provide one authoritative read-only observation model for TUI, Vega and future operator surfaces without introducing a universal event bus.
+
+- [ ] Define the shared read-only observation boundary in `TerraRuntime.HostContracts`.
+- [ ] Expose detached immutable snapshots for current state and bounded events for meaningful transitions over time.
+- [ ] Keep mutation commands separate from observation; observing a runtime must never grant mutation authority.
+- [ ] TUI and Vega must consume the same authoritative snapshot/event contracts where they observe the same runtime facts.
+- [ ] Do not maintain separate TUI-only and Vega-only production observation pipelines for the same information.
+- [ ] Prefer snapshot refresh for continuously readable state such as world/player topology and metrics; emit events only for meaningful transitions with real consumers.
+- [ ] Observation delivery must be bounded; a slow TUI, WebSocket client or other observer must never block the authoritative game loop.
+- [ ] Observer failure must not affect already committed runtime state.
+- [ ] Do not introduce a generic application-wide `EventBus`, mediator framework or reflection-based event dispatch system.
+
+Exit criteria: TUI, Vega and verification tooling can observe the same authoritative facts without duplicated production pipelines or mutable-runtime access.
+
+### R10.5 - Vega Web API ownership boundary
+
+- [ ] Keep HTTP/HTTPS/WebSocket hosting and remote-administration policy outside TerraRuntime.
+- [ ] Implement the product-facing Web API in Vega or a Vega-owned infrastructure assembly.
+- [ ] Vega owns authentication, authorization/permissions, API keys/tokens, REST resource design, JSON representations, OpenAPI, API versioning and remote rate limiting.
+- [ ] TerraRuntime owns the typed capabilities consumed by Vega: immutable snapshots, bounded observations, semantic runtime operations and generation-safe runtime identities.
+- [ ] Vega Web API must use the same semantic authoritative operations used by other trusted operator surfaces; it must not create a Web-specific mutation path.
+- [ ] Core, Gameplay, World, Network and Protocol must not acquire ASP.NET Core/HTTP/Web/JSON dependencies solely to support Vega administration.
+- [ ] Ordinary Vega plugins must not gain unrestricted TerraRuntime internals merely because Vega Web API has trusted-host access.
+
+Target direction:
+
+```text
+Browser / remote client
+          |
+          v
+      Vega Web API
+ HTTP / WS / auth / policy
+          |
+          v
+ TerraRuntime.HostContracts
+ snapshots / events / operations
+          |
+          v
+      TerraRuntime
+ authoritative WorldRuntime ownership
+```
+
+Exit criteria: Web administration can be added, replaced or versioned without introducing Web concerns into TerraRuntime or creating a second runtime-control path.
+
+### R10 guardrails
+
+- [ ] TestClient/ProtocolProbe must not become a production dependency.
+- [ ] Do not create interfaces solely to make these additions appear abstract.
+- [ ] Do not expose mutable `WorldRuntime`, entity stores or connection internals to probes/operator surfaces.
+- [ ] Prefer one concrete implementation until a second real implementation or trust/process boundary exists.
+- [ ] No new surface may bypass generation-safe runtime identities or the authoritative command boundary.
+- [ ] A smaller verified implementation is preferable to a reusable framework whose future consumers are hypothetical.
+
 ## Completion definition
 
 The cleanup program is complete when all of the following are true:
