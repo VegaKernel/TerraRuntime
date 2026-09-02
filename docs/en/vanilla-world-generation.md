@@ -91,7 +91,7 @@ The first milestone is implemented by the final overlay. The second remains an e
 - verifies plan length and that every tile/wall id, shape and flag is within `VanillaTileIds`/`VanillaWallIds`/known-flag bounds – the same invariant enforced by `Final Cleanup`;
 - checks that generated chests form dense `2x2` `Containers` objects with unique anchors, that the side-table survives fresh `.wld` v326 composition and that spawn/dungeon/layers/bootstrap are within canonical ranges;
 - asserts that the starting `Guide` town NPC (`netId 22`, name `Andrew`) is emitted exactly once at `spawn * 16` and round-trips through `WorldFileFreshComposer326`;
-- composes the candidate to a validated `.wld` byte image ( >1 MiB for small worlds ), reloads it through `WorldFileLoader` with `TerrariaServerHost.CreateServerWorldLoadLimits()` and confirms chest/NPC counts are preserved;
+- composes the candidate to a validated `.wld` byte image ( >1 MiB for small worlds ), reloads it through `WorldFileLoader` with `ServerWorldLoadPolicy.CreateLimits()` and confirms chest/NPC counts are preserved;
 - proves deterministic replay: the same `WorldGenerationRequest` (seed `8675309`, `640x240` smoke size) hashed with SHA-256 yields byte-identical `.wld` images and that a different seed yields a different hash;
 - exercises budget and cancellation hardening: a `8000x5000` request is rejected as `GenerationBudgetExceeded`, a pre-cancelled `CancellationToken` yields `Cancelled`, and non-canonical `192x128`/`640x240` fallbacks remain valid and composable.
 

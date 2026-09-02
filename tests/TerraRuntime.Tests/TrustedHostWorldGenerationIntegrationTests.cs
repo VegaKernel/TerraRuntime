@@ -82,7 +82,7 @@ public sealed class TrustedHostWorldGenerationIntegrationTests
 
             WorldFileLoadDiagnostic load = WorldFileLoader.TryLoad(
                 File.ReadAllBytes(worldPath),
-                TerrariaServerHost.CreateServerWorldLoadLimits(),
+                ServerWorldLoadPolicy.CreateLimits(),
                 out WorldFileData? world);
             Assert.True(load.IsLoaded, load.ToString());
             Assert.NotNull(world);

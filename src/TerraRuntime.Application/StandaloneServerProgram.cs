@@ -54,7 +54,7 @@ internal static class StandaloneServerProgram
             RuntimeWorldCheckpointSaveDiagnostic save = RuntimeWorldCheckpointExportService.TryExport(
                 cachePath,
                 worldPath,
-                TerrariaServerHost.CreateServerWorldLoadLimits());
+                ServerWorldLoadPolicy.CreateLimits());
             if (!save.IsSaved)
             {
                 Console.Error.WriteLine(

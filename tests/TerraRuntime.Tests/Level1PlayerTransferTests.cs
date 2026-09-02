@@ -19,7 +19,7 @@ public sealed class Level1PlayerTransferTests
         using var sandboxes = new SandboxHost(
             registry,
             BuiltInWorldGeneratorSource.Instance,
-            TerrariaServerHost.CreateServerWorldLoadLimits());
+            ServerWorldLoadPolicy.CreateLimits());
         var sandboxName = new SandboxName("arena");
         var sandboxSource = new SandboxWorldSource.Generated(
             FlatWorldGenerationProvider.GeneratorId,
@@ -361,7 +361,7 @@ public sealed class Level1PlayerTransferTests
             WorldGenerationOptions.Default);
         var materializer = new SandboxWorldMaterializer(
             BuiltInWorldGeneratorSource.Instance,
-            TerrariaServerHost.CreateServerWorldLoadLimits());
+            ServerWorldLoadPolicy.CreateLimits());
         SandboxWorldMaterializationResult result = materializer.Materialize(source, CancellationToken.None);
         Assert.True(result.Succeeded, result.Error);
         return new WorldRuntime(

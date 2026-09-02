@@ -91,7 +91,7 @@ Generation работает с неопубликованным `RuntimeWorldGen
 - проверяет длину плана и то, что каждый tile/wall id, shape и flag находятся в границах `VanillaTileIds`/`VanillaWallIds`/known-flag — тот же инвариант, что и в `Final Cleanup`;
 - убеждается, что сгенерированные сундуки образуют плотные `2x2` объекты `Containers` с уникальными якорями, что side-table переживает fresh `.wld` v326 композицию и что spawn/dungeon/layers/bootstrap находятся в канонических диапазонах;
 - утверждает, что стартовый town NPC `Guide` (`netId 22`, имя `Andrew`) выпускается ровно один раз в `spawn * 16` и делает round-trip через `WorldFileFreshComposer326`;
-- собирает кандидата в валидированный байтовый образ `.wld` (>1 MiB для small миров), перезагружает его через `WorldFileLoader` с лимитами `TerrariaServerHost.CreateServerWorldLoadLimits()` и подтверждает сохранение количества chests/NPC;
+- собирает кандидата в валидированный байтовый образ `.wld` (>1 MiB для small миров), перезагружает его через `WorldFileLoader` с лимитами `ServerWorldLoadPolicy.CreateLimits()` и подтверждает сохранение количества chests/NPC;
 - доказывает детерминированный replay: одинаковый `WorldGenerationRequest` (seed `8675309`, smoke размер `640x240`), захешированный SHA-256, даёт побайтово идентичные образы `.wld`, а другой seed даёт другой хеш;
 - отрабатывает закалку по бюджету и отмене: запрос `8000x5000` отвергается как `GenerationBudgetExceeded`, заранее отменённый `CancellationToken` даёт `Cancelled`, а non-canonical `192x128`/`640x240` fallback остаются валидными и компонуемыми.
 

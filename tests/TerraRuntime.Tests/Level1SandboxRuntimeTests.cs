@@ -58,7 +58,7 @@ public sealed class Level1SandboxRuntimeTests
         using var sandboxes = new SandboxHost(
             registry,
             generators,
-            TerrariaServerHost.CreateServerWorldLoadLimits(),
+            ServerWorldLoadPolicy.CreateLimits(),
             materializationConcurrency: 1,
             pendingJobCapacity: 2);
 
@@ -102,7 +102,7 @@ public sealed class Level1SandboxRuntimeTests
         using var sandboxes = new SandboxHost(
             registry,
             generators,
-            TerrariaServerHost.CreateServerWorldLoadLimits());
+            ServerWorldLoadPolicy.CreateLimits());
         var notification = new TaskCompletionSource<SandboxJobSnapshot>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         sandboxes.JobFinished += snapshot => notification.TrySetResult(snapshot);
@@ -143,7 +143,7 @@ public sealed class Level1SandboxRuntimeTests
         using var sandboxes = new SandboxHost(
             registry,
             BuiltInWorldGeneratorSource.Instance,
-            TerrariaServerHost.CreateServerWorldLoadLimits());
+            ServerWorldLoadPolicy.CreateLimits());
         var source = new SandboxWorldSource.Generated(
             new WorldGeneratorId("missing:generator"),
             "Missing",
@@ -184,7 +184,7 @@ public sealed class Level1SandboxRuntimeTests
         using var sandboxes = new SandboxHost(
             registry,
             new TestGeneratorSource(new BlockingFlatGenerator(entered, release)),
-            TerrariaServerHost.CreateServerWorldLoadLimits());
+            ServerWorldLoadPolicy.CreateLimits());
         var name = new SandboxName("cancel_me");
 
         Assert.True(sandboxes.TryCreate(
@@ -229,7 +229,7 @@ public sealed class Level1SandboxRuntimeTests
         using var sandboxes = new SandboxHost(
             registry,
             new TestGeneratorSource(switchable),
-            TerrariaServerHost.CreateServerWorldLoadLimits());
+            ServerWorldLoadPolicy.CreateLimits());
         var name = new SandboxName("regen");
         var source = new SandboxWorldSource.Generated(
             SwitchableFlatGenerator.GeneratorId,
@@ -275,7 +275,7 @@ public sealed class Level1SandboxRuntimeTests
         using var sandboxes = new SandboxHost(
             registry,
             BuiltInWorldGeneratorSource.Instance,
-            TerrariaServerHost.CreateServerWorldLoadLimits());
+            ServerWorldLoadPolicy.CreateLimits());
 
         for (int i = 0; i < 3; i++)
         {
@@ -308,7 +308,7 @@ public sealed class Level1SandboxRuntimeTests
         using var sandboxes = new SandboxHost(
             registry,
             BuiltInWorldGeneratorSource.Instance,
-            TerrariaServerHost.CreateServerWorldLoadLimits(),
+            ServerWorldLoadPolicy.CreateLimits(),
             retainedJobCapacity: 2);
 
         for (int i = 0; i < 3; i++)
@@ -348,7 +348,7 @@ public sealed class Level1SandboxRuntimeTests
             using var sandboxes = new SandboxHost(
                 registry,
                 BuiltInWorldGeneratorSource.Instance,
-                TerrariaServerHost.CreateServerWorldLoadLimits());
+                ServerWorldLoadPolicy.CreateLimits());
             var name = new SandboxName("file_arena");
 
             Assert.True(sandboxes.TryCreate(
@@ -456,7 +456,7 @@ public sealed class Level1SandboxRuntimeTests
         SandboxWorldSource.Generated source = FlatSource(name, seed);
         var materializer = new SandboxWorldMaterializer(
             BuiltInWorldGeneratorSource.Instance,
-            TerrariaServerHost.CreateServerWorldLoadLimits());
+            ServerWorldLoadPolicy.CreateLimits());
         SandboxWorldMaterializationResult result = materializer.Materialize(source, CancellationToken.None);
         Assert.True(result.Succeeded, result.Error);
         return new WorldRuntime(

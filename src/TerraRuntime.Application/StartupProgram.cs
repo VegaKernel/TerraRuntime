@@ -180,7 +180,7 @@ public static class StartupProgram
         bool terminalUiEnabled,
         out string? worldPath)
     {
-        long maxTileCount = TerrariaServerHost.CreateServerWorldLoadLimits().MaxTileCount;
+        long maxTileCount = ServerWorldLoadPolicy.CreateLimits().MaxTileCount;
         var persistence = new RuntimeWorldCreationPersistencePipeline(generators, maxTileCount);
         long nowBinary = DateTime.UtcNow.ToBinary();
         StartupProgressUiHost? progressUi = terminalUiEnabled

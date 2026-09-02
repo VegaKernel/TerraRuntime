@@ -144,7 +144,7 @@ internal static class WorldGenerationCreateSmoke
         var generators = new StartupWorldGeneratorSource(host: null);
         var pipeline = new RuntimeWorldCreationPersistencePipeline(
             generators,
-            TerrariaServerHost.CreateServerWorldLoadLimits().MaxTileCount);
+            ServerWorldLoadPolicy.CreateLimits().MaxTileCount);
         long timestamp = new DateTime(2026, 8, 29, 12, 0, 0, DateTimeKind.Utc).ToBinary();
 
         RuntimeWorldCreationPersistenceResult result = pipeline.TryCreateAndPersist(

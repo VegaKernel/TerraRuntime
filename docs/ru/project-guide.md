@@ -30,6 +30,19 @@ flowchart TD
 
 Ordinary plugins не получают implementation objects TerraRuntime.
 
+Общий application startup намеренно разделён по lifecycle ownership:
+
+```mermaid
+flowchart LR
+    Launcher["Тонкий launcher"] --> Host["TerrariaServerHost\nтолько координация"]
+    Host --> Prepare["WorldStartupPreparation\ncleanup + stable load + cache + recovery + bootstrap"]
+    Host --> Session["ServerProcessSession\nOS signals + runtime registry + TUI + shutdown"]
+    Session --> Connections["ServerConnectionAcceptor\nlistener + admission + connection drain"]
+    Session --> Runtime["WorldRuntime\nauthoritative world ownership"]
+```
+
+`WorldStartupPreparation` завершает всю работу с canonical `.wld` и derived caches до admission живого runtime. `ServerConnectionAcceptor` владеет public TCP acceptance и drain connection tasks, а `ServerProcessSession` — process-scoped lifecycle вокруг этих collaborators. Поэтому `TerrariaServerHost.RunAsync` остаётся orchestration boundary, а не вторым владельцем simulation или networking state.
+
 ## 3. Структура репозитория
 
 | Path | Responsibility |
