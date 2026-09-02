@@ -44,6 +44,10 @@ jobs:
           from pathlib import Path
           import textwrap
 
+          def block(value: str, indent: int = 0) -> str:
+              normalized = textwrap.dedent(value).strip()
+              return textwrap.indent(normalized, ' ' * indent) if indent else normalized
+
           def replace_once(path: str, old: str, new: str) -> None:
               target = Path(path)
               text = target.read_text()
@@ -52,7 +56,7 @@ jobs:
                   raise SystemExit(f"{path}: expected one patch anchor, found {count}")
               target.write_text(text.replace(old, new, 1))
 
-          provider_old = textwrap.dedent("""
+          provider_old = block("""
               public void Execute(IWorldGenerationContext context)
               {
                   fallback.Execute(context);
@@ -71,8 +75,8 @@ jobs:
                   if (!metadata.TrySetLayers(layers.WorldSurface, layers.RockLayer))
                       throw new InvalidOperationException("Could not preserve source-backed Terraria terrain layers.");
               }
-          """).strip()
-          provider_new = textwrap.dedent("""
+          """, 4)
+          provider_new = block("""
               public void Execute(IWorldGenerationContext context)
               {
                   IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
@@ -102,36 +106,36 @@ jobs:
                   if (!metadata.TrySetLayers(layers.WorldSurface, layers.RockLayer))
                       throw new InvalidOperationException("Could not preserve source-backed Terraria terrain layers.");
               }
-          """).strip()
+          """, 4)
           replace_once(
               'src/TerraRuntime.World/Generation/Vanilla/SourceBackedVanillaWorldGenerationProvider1458.cs',
               provider_old,
               provider_new)
 
-          test_old = textwrap.dedent("""
-                  var pass = new VanillaMetadataParityPass1458(fallback, state);
-                  var context = new GenerationContext(workspace);
+          test_old = block("""
+              var pass = new VanillaMetadataParityPass1458(fallback, state);
+              var context = new GenerationContext(workspace);
 
-                  pass.Execute(context);
-                  FillMinimalValidWorld(workspace, bootstrap);
-          """).strip()
-          test_new = textwrap.dedent("""
-                  var pass = new VanillaMetadataParityPass1458(fallback, state);
-                  var context = new GenerationContext(workspace);
-                  Assert.True(workspace.TrySetDungeon(bootstrap.DungeonLocation, 333));
+              pass.Execute(context);
+              FillMinimalValidWorld(workspace, bootstrap);
+          """, 8)
+          test_new = block("""
+              var pass = new VanillaMetadataParityPass1458(fallback, state);
+              var context = new GenerationContext(workspace);
+              Assert.True(workspace.TrySetDungeon(bootstrap.DungeonLocation, 333));
 
-                  pass.Execute(context);
+              pass.Execute(context);
 
-                  Assert.True(workspace.TryGetDungeon(out WorldGenerationPoint preservedDungeon));
-                  Assert.Equal(new WorldGenerationPoint(bootstrap.DungeonLocation, 333), preservedDungeon);
-                  FillMinimalValidWorld(workspace, bootstrap);
-          """).strip()
+              Assert.True(workspace.TryGetDungeon(out WorldGenerationPoint preservedDungeon));
+              Assert.Equal(new WorldGenerationPoint(bootstrap.DungeonLocation, 333), preservedDungeon);
+              FillMinimalValidWorld(workspace, bootstrap);
+          """, 8)
           replace_once(
               'tests/TerraRuntime.Tests/VanillaWorldGenerationBootstrapPersistenceTests.cs',
               test_old,
               test_new)
 
-          parser_old = textwrap.dedent("""
+          parser_old = block("""
               string referencePath = Path.GetFullPath(args[0]);
               string candidatePath = Path.GetFullPath(args[1]);
               string? jsonPath = null;
@@ -153,8 +157,8 @@ jobs:
                   Console.Error.WriteLine($"Unknown or incomplete argument '{args[i]}'.");
                   return 2;
               }
-          """).strip()
-          parser_new = textwrap.dedent("""
+          """)
+          parser_new = block("""
               string referencePath = Path.GetFullPath(args[0]);
               string candidatePath = Path.GetFullPath(args[1]);
               string? jsonPath = null;
@@ -194,57 +198,58 @@ jobs:
                   Console.Error.WriteLine($"Unknown or incomplete argument '{args[i]}'.");
                   return 2;
               }
-          """).strip()
+          """)
           replace_once('tools/TerraRuntime.WorldCompare/Program.cs', parser_old, parser_new)
 
           workflow = Path('.github/workflows/vanilla-worldgen-reference-differential.yml')
           text = workflow.read_text()
-          compare_old = textwrap.dedent("""
-                    - name: Capture structural fingerprint report
-                      shell: bash
-                      run: |
-                        set -euo pipefail
-                        dotnet run \\
-                          --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
-                          -c Release \\
-                          --no-build \\
-                          -- \\
-                          "artifacts/reference-differential/official-${SEED}.wld" \\
-                          "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
-                          --json "artifacts/reference-differential/comparison-${SEED}.json"
-                        cat "artifacts/reference-differential/comparison-${SEED}.json"
+          compare_old = block("""
+              - name: Capture structural fingerprint report
+                shell: bash
+                run: |
+                  set -euo pipefail
+                  dotnet run \\
+                    --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
+                    -c Release \\
+                    --no-build \\
+                    -- \\
+                    "artifacts/reference-differential/official-${SEED}.wld" \\
+                    "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
+                    --json "artifacts/reference-differential/comparison-${SEED}.json"
+                  cat "artifacts/reference-differential/comparison-${SEED}.json"
 
-                    - name: Enforce structural budgets
-                      shell: bash
-                      run: |
-                        set -euo pipefail
-                        dotnet run \\
-                          --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
-                          -c Release \\
-                          --no-build \\
-                          -- \\
-                          "artifacts/reference-differential/official-${SEED}.wld" \\
-                          "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
-                          --enforce
-          """).strip()
-          compare_new = textwrap.dedent("""
-                    - name: Compare structural fingerprints and enforce budgets
-                      shell: bash
-                      run: |
-                        set -euo pipefail
-                        dotnet run \\
-                          --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
-                          -c Release \\
-                          --no-build \\
-                          -- \\
-                          "artifacts/reference-differential/official-${SEED}.wld" \\
-                          "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
-                          --json "artifacts/reference-differential/comparison-${SEED}.json" \\
-                          --enforce
-                        cat "artifacts/reference-differential/comparison-${SEED}.json"
-          """).strip()
-          if text.count(compare_old) != 1:
-              raise SystemExit(f"reference workflow compare-step anchor count={text.count(compare_old)}")
+              - name: Enforce structural budgets
+                shell: bash
+                run: |
+                  set -euo pipefail
+                  dotnet run \\
+                    --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
+                    -c Release \\
+                    --no-build \\
+                    -- \\
+                    "artifacts/reference-differential/official-${SEED}.wld" \\
+                    "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
+                    --enforce
+          """, 6)
+          compare_new = block("""
+              - name: Compare structural fingerprints and enforce budgets
+                shell: bash
+                run: |
+                  set -euo pipefail
+                  dotnet run \\
+                    --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
+                    -c Release \\
+                    --no-build \\
+                    -- \\
+                    "artifacts/reference-differential/official-${SEED}.wld" \\
+                    "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
+                    --json "artifacts/reference-differential/comparison-${SEED}.json" \\
+                    --enforce
+                  cat "artifacts/reference-differential/comparison-${SEED}.json"
+          """, 6)
+          count = text.count(compare_old)
+          if count != 1:
+              raise SystemExit(f"reference workflow compare-step anchor count={count}")
           text = text.replace(compare_old, compare_new, 1)
 
           upload_marker = '      - name: Upload differential evidence\n'
