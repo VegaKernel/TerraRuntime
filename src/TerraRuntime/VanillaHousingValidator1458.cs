@@ -467,7 +467,7 @@ internal sealed class VanillaHousingValidator1458
         IsNActive(in tile) && IsSolidType(tile.Type, treatTile379AsSolid);
 
     private static bool IsSolidType(int type, bool treatTile379AsSolid) =>
-        (treatTile379AsSolid && type == 379) || VanillaTileCollisionCatalog.IsSolid(new TileTypeId(type));
+        type == 379 ? treatTile379AsSolid : VanillaTileCollisionCatalog.IsSolid(new TileTypeId(type));
 
     private static bool IsNActive(in WorldTile tile) => tile.IsActive && !tile.IsActuated;
 
