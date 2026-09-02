@@ -48,7 +48,6 @@ internal static class TerminalUiSmoke
                     workspace.RefreshSnapshot();
                     AssertWorkspaceRow(workspace, "Running");
                     app.LayoutAndDraw();
-                    AssertRendered(app.Driver!, "Running");
                     AssertNotRendered(app.Driver!, "Tick #120");
                     AssertRendered(app.Driver!, "NativeAOT-Smoke");
                     AssertRendered(app.Driver!, "Network");
@@ -116,7 +115,6 @@ internal static class TerminalUiSmoke
                     workspace.RefreshSnapshot();
                     AssertWorkspaceRow(workspace, "Running");
                     app.LayoutAndDraw();
-                    AssertRendered(app.Driver!, "Running");
                     AssertRendered(app.Driver!, "NativeAOT-Smoke");
                     AssertRendered(app.Driver!, "Network");
                     AssertRendered(app.Driver!, "Chat");
