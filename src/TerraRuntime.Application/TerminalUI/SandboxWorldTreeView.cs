@@ -154,7 +154,14 @@ internal sealed class SandboxWorldTreeView : ListView
             SandboxWorldTreeRowKind.World when item.Target is SandboxName sandbox =>
                 new MenuItem("Destroy", "Destroy this sandbox world", () => DestroyRequested?.Invoke(sandbox)),
             SandboxWorldTreeRowKind.World =>
-                new MenuItem("Destroy", "Primary world cannot be destroyed") { Enabled = false },
+                new MenuItem(
+                    commandText: "Destroy",
+                    helpText: "Primary world cannot be destroyed",
+                    action: null,
+                    key: null)
+                {
+                    Enabled = false
+                },
             _ => null
         };
         if (action is null)
