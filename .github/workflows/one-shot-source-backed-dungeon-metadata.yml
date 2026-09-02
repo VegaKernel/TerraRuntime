@@ -36,65 +36,219 @@ jobs:
           git checkout main
           git pull --rebase origin main
 
-      - name: Apply production, regression and differential fixes
+      - name: Apply source-backed dungeon metadata fixes
         shell: bash
         run: |
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
-          import base64
+          import textwrap
 
-          def replace_b64(path: str, old_b64: str, new_b64: str) -> None:
-              p = Path(path)
-              text = p.read_text()
-              old = base64.b64decode(old_b64).decode()
-              new = base64.b64decode(new_b64).decode()
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text()
               count = text.count(old)
               if count != 1:
                   raise SystemExit(f"{path}: expected one patch anchor, found {count}")
-              p.write_text(text.replace(old, new, 1))
+              target.write_text(text.replace(old, new, 1))
 
-          replace_b64(
+          provider_old = textwrap.dedent("""
+              public void Execute(IWorldGenerationContext context)
+              {
+                  fallback.Execute(context);
+
+                  if (state.Bootstrap is VanillaWorldGenerationBootstrapState1458 bootstrap &&
+                      context.Workspace is RuntimeWorldGenerationWorkspace runtimeWorkspace)
+                  {
+                      runtimeWorkspace.SetVanillaBootstrapState(bootstrap);
+                  }
+
+                  if (state.TerrainLayers is not WorldGenerationLayers layers)
+                      return;
+
+                  IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
+                      throw new InvalidOperationException("Vanilla metadata pass requires world metadata storage.");
+                  if (!metadata.TrySetLayers(layers.WorldSurface, layers.RockLayer))
+                      throw new InvalidOperationException("Could not preserve source-backed Terraria terrain layers.");
+              }
+          """).strip()
+          provider_new = textwrap.dedent("""
+              public void Execute(IWorldGenerationContext context)
+              {
+                  IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
+                      throw new InvalidOperationException("Vanilla metadata pass requires world metadata storage.");
+
+                  WorldGenerationPoint? sourceBackedDungeon = null;
+                  if (state.Bootstrap is not null && metadata.TryGetDungeon(out WorldGenerationPoint dungeon))
+                      sourceBackedDungeon = dungeon;
+
+                  fallback.Execute(context);
+
+                  if (state.Bootstrap is VanillaWorldGenerationBootstrapState1458 bootstrap &&
+                      context.Workspace is RuntimeWorldGenerationWorkspace runtimeWorkspace)
+                  {
+                      runtimeWorkspace.SetVanillaBootstrapState(bootstrap);
+                  }
+
+                  if (sourceBackedDungeon is WorldGenerationPoint preservedDungeon &&
+                      !metadata.TrySetDungeon(preservedDungeon.X, preservedDungeon.Y))
+                  {
+                      throw new InvalidOperationException("Could not preserve source-backed Terraria dungeon anchor.");
+                  }
+
+                  if (state.TerrainLayers is not WorldGenerationLayers layers)
+                      return;
+
+                  if (!metadata.TrySetLayers(layers.WorldSurface, layers.RockLayer))
+                      throw new InvalidOperationException("Could not preserve source-backed Terraria terrain layers.");
+              }
+          """).strip()
+          replace_once(
               'src/TerraRuntime.World/Generation/Vanilla/SourceBackedVanillaWorldGenerationProvider1458.cs',
-              'ICAgIHB1YmxpYyB2b2lkIEV4ZWN1dGUoSVdvcmxkR2VuZXJhdGlvbkNvbnRleHQgY29udGV4dCkKICAgIHsKICAgICAgICBmYWxsYmFjay5FeGVjdXRlKGNvbnRleHQpOwoKICAgICAgICBpZiAoc3RhdGUuQm9vdHN0cmFwIGlzIFZhbmlsbGFXb3JsZEdlbmVyYXRpb25Cb290c3RyYXBTdGF0ZTE0NTggYm9vdHN0cmFwICYmCiAgICAgICAgICAgIGNvbnRleHQuV29ya3NwYWNlIGlzIFJ1bnRpbWVXb3JsZEdlbmVyYXRpb25Xb3Jrc3BhY2UgcnVudGltZVdvcmtzcGFjZSkKICAgICAgICB7CiAgICAgICAgICAgIHJ1bnRpbWVXb3Jrc3BhY2UuU2V0VmFuaWxsYUJvb3RzdHJhcFN0YXRlKGJvb3RzdHJhcCk7CiAgICAgICAgfQoKICAgICAgICBpZiAoc3RhdGUuVGVycmFpbkxheWVycyBpcyBub3QgV29ybGRHZW5lcmF0aW9uTGF5ZXJzIGxheWVycykKICAgICAgICAgICAgcmV0dXJuOwoKICAgICAgICBJV29ybGRHZW5lcmF0aW9uTWV0YWRhdGFXb3Jrc3BhY2UgbWV0YWRhdGEgPSBjb250ZXh0Lk1ldGFkYXRhID8/CiAgICAgICAgICAgIHRocm93IG5ldyBJbnZhbGlkT3BlcmF0aW9uRXhjZXB0aW9uKCJWYW5pbGxhIG1ldGFkYXRhIHBhc3MgcmVxdWlyZXMgd29ybGQgbWV0YWRhdGEgc3RvcmFnZS4iKTsKICAgICAgICBpZiAoIW1ldGFkYXRhLlRyeVNldExheWVycyhsYXllcnMuV29ybGRTdXJmYWNlLCBsYXllcnMuUm9ja0xheWVyKSkKICAgICAgICAgICAgdGhyb3cgbmV3IEludmFsaWRPcGVyYXRpb25FeGNlcHRpb24oIkNvdWxkIG5vdCBwcmVzZXJ2ZSBzb3VyY2UtYmFja2VkIFRlcnJhcmlhIHRlcnJhaW4gbGF5ZXJzLiIpOwogICAgfQ==',
-              'ICAgIHB1YmxpYyB2b2lkIEV4ZWN1dGUoSVdvcmxkR2VuZXJhdGlvbkNvbnRleHQgY29udGV4dCkKICAgIHsKICAgICAgICBJV29ybGRHZW5lcmF0aW9uTWV0YWRhdGFXb3Jrc3BhY2UgbWV0YWRhdGEgPSBjb250ZXh0Lk1ldGFkYXRhID8/CiAgICAgICAgICAgIHRocm93IG5ldyBJbnZhbGlkT3BlcmF0aW9uRXhjZXB0aW9uKCJWYW5pbGxhIG1ldGFkYXRhIHBhc3MgcmVxdWlyZXMgd29ybGQgbWV0YWRhdGEgc3RvcmFnZS4iKTsKCiAgICAgICAgV29ybGRHZW5lcmF0aW9uUG9pbnQ/IHNvdXJjZUJhY2tlZER1bmdlb24gPSBudWxsOwogICAgICAgIGlmIChzdGF0ZS5Cb290c3RyYXAgaXMgbm90IG51bGwgJiYgbWV0YWRhdGEuVHJ5R2V0RHVuZ2VvbihvdXQgV29ybGRHZW5lcmF0aW9uUG9pbnQgZHVuZ2VvbikpCiAgICAgICAgICAgIHNvdXJjZUJhY2tlZER1bmdlb24gPSBkdW5nZW9uOwoKICAgICAgICBmYWxsYmFjay5FeGVjdXRlKGNvbnRleHQpOwoKICAgICAgICBpZiAoc3RhdGUuQm9vdHN0cmFwIGlzIFZhbmlsbGFXb3JsZEdlbmVyYXRpb25Cb290c3RyYXBTdGF0ZTE0NTggYm9vdHN0cmFwICYmCiAgICAgICAgICAgIGNvbnRleHQuV29ya3NwYWNlIGlzIFJ1bnRpbWVXb3JsZEdlbmVyYXRpb25Xb3Jrc3BhY2UgcnVudGltZVdvcmtzcGFjZSkKICAgICAgICB7CiAgICAgICAgICAgIHJ1bnRpbWVXb3Jrc3BhY2UuU2V0VmFuaWxsYUJvb3RzdHJhcFN0YXRlKGJvb3RzdHJhcCk7CiAgICAgICAgfQoKICAgICAgICBpZiAoc291cmNlQmFja2VkRHVuZ2VvbiBpcyBXb3JsZEdlbmVyYXRpb25Qb2ludCBwcmVzZXJ2ZWREdW5nZW9uICYmCiAgICAgICAgICAgICFtZXRhZGF0YS5UcnlTZXREdW5nZW9uKHByZXNlcnZlZER1bmdlb24uWCwgcHJlc2VydmVkRHVuZ2Vvbi5ZKSkKICAgICAgICB7CiAgICAgICAgICAgIHRocm93IG5ldyBJbnZhbGlkT3BlcmF0aW9uRXhjZXB0aW9uKCJDb3VsZCBub3QgcHJlc2VydmUgc291cmNlLWJhY2tlZCBUZXJyYXJpYSBkdW5nZW9uIGFuY2hvci4iKTsKICAgICAgICB9CgogICAgICAgIGlmIChzdGF0ZS5UZXJyYWluTGF5ZXJzIGlzIG5vdCBXb3JsZEdlbmVyYXRpb25MYXllcnMgbGF5ZXJzKQogICAgICAgICAgICByZXR1cm47CgogICAgICAgIGlmICghbWV0YWRhdGEuVHJ5U2V0TGF5ZXJzKGxheWVycy5Xb3JsZFN1cmZhY2UsIGxheWVycy5Sb2NrTGF5ZXIpKQogICAgICAgICAgICB0aHJvdyBuZXcgSW52YWxpZE9wZXJhdGlvbkV4Y2VwdGlvbigiQ291bGQgbm90IHByZXNlcnZlIHNvdXJjZS1iYWNrZWQgVGVycmFyaWEgdGVycmFpbiBsYXllcnMuIik7CiAgICB9')
+              provider_old,
+              provider_new)
 
-          replace_b64(
+          test_old = textwrap.dedent("""
+                  var pass = new VanillaMetadataParityPass1458(fallback, state);
+                  var context = new GenerationContext(workspace);
+
+                  pass.Execute(context);
+                  FillMinimalValidWorld(workspace, bootstrap);
+          """).strip()
+          test_new = textwrap.dedent("""
+                  var pass = new VanillaMetadataParityPass1458(fallback, state);
+                  var context = new GenerationContext(workspace);
+                  Assert.True(workspace.TrySetDungeon(bootstrap.DungeonLocation, 333));
+
+                  pass.Execute(context);
+
+                  Assert.True(workspace.TryGetDungeon(out WorldGenerationPoint preservedDungeon));
+                  Assert.Equal(new WorldGenerationPoint(bootstrap.DungeonLocation, 333), preservedDungeon);
+                  FillMinimalValidWorld(workspace, bootstrap);
+          """).strip()
+          replace_once(
               'tests/TerraRuntime.Tests/VanillaWorldGenerationBootstrapPersistenceTests.cs',
-              'ICAgICAgICB2YXIgcGFzcyA9IG5ldyBWYW5pbGxhTWV0YWRhdGFQYXJpdHlQYXNzMTQ1OChmYWxsYmFjaywgc3RhdGUpOwogICAgICAgIHZhciBjb250ZXh0ID0gbmV3IEdlbmVyYXRpb25Db250ZXh0KHdvcmtzcGFjZSk7CgogICAgICAgIHBhc3MuRXhlY3V0ZShjb250ZXh0KTsKICAgICAgICBGaWxsTWluaW1hbFZhbGlkV29ybGQod29ya3NwYWNlLCBib290c3RyYXApOw==',
-              'ICAgICAgICB2YXIgcGFzcyA9IG5ldyBWYW5pbGxhTWV0YWRhdGFQYXJpdHlQYXNzMTQ1OChmYWxsYmFjaywgc3RhdGUpOwogICAgICAgIHZhciBjb250ZXh0ID0gbmV3IEdlbmVyYXRpb25Db250ZXh0KHdvcmtzcGFjZSk7CiAgICAgICAgQXNzZXJ0LlRydWUod29ya3NwYWNlLlRyeVNldER1bmdlb24oYm9vdHN0cmFwLkR1bmdlb25Mb2NhdGlvbiwgMzMzKSk7CgogICAgICAgIHBhc3MuRXhlY3V0ZShjb250ZXh0KTsKCiAgICAgICAgQXNzZXJ0LlRydWUod29ya3NwYWNlLlRyeUdldER1bmdlb24ob3V0IFdvcmxkR2VuZXJhdGlvblBvaW50IHByZXNlcnZlZER1bmdlb24pKTsKICAgICAgICBBc3NlcnQuRXF1YWwobmV3IFdvcmxkR2VuZXJhdGlvblBvaW50KGJvb3RzdHJhcC5EdW5nZW9uTG9jYXRpb24sIDMzMyksIHByZXNlcnZlZER1bmdlb24pOwogICAgICAgIEZpbGxNaW5pbWFsVmFsaWRXb3JsZCh3b3Jrc3BhY2UsIGJvb3RzdHJhcCk7')
+              test_old,
+              test_new)
 
-          replace_b64(
-              'tools/TerraRuntime.WorldCompare/Program.cs',
-              'aWYgKGFyZ3MuTGVuZ3RoIGlzIDwgMiBvciA+IDQpCnsKICAgIENvbnNvbGUuRXJyb3IuV3JpdGVMaW5lKAogICAgICAgICJVc2FnZTogVGVycmFSdW50aW1lLldvcmxkQ29tcGFyZSA8cmVmZXJlbmNlLndsZD4gPGNhbmRpZGF0ZS53bGQ+IFstLWpzb24gPHJlcG9ydC5qc29uPl0gWy0tZW5mb3JjZV0iKTsKICAgIHJldHVybiAyOwp9CgpzdHJpbmcgcmVmZXJlbmNlUGF0aCA9IFBhdGguR2V0RnVsbFBhdGgoYXJnc1swXSk7CnN0cmluZyBjYW5kaWRhdGVQYXRoID0gUGF0aC5HZXRGdWxsUGF0aChhcmdzWzFdKTsKc3RyaW5nPyBqc29uUGF0aCA9IG51bGw7CmJvb2wgZW5mb3JjZSA9IGZhbHNlOwpmb3IgKGludCBpID0gMjsgaSA8IGFyZ3MuTGVuZ3RoOyBpKyspCnsKICAgIGlmIChhcmdzW2ldID09ICItLWVuZm9yY2UiKQogICAgewogICAgICAgIGVuZm9yY2UgPSB0cnVlOwogICAgICAgIGNvbnRpbnVlOwogICAgfQoKICAgIGlmIChhcmdzW2ldID09ICItLWpzb24iICYmIGkgKyAxIDwgYXJncy5MZW5ndGgpCiAgICB7CiAgICAgICAganNvblBhdGggPSBQYXRoLkdldEZ1bGxQYXRoKGFyZ3NbKytpXSk7CiAgICAgICAgY29udGludWU7CiAgICB9CgogICAgQ29uc29sZS5FcnJvci5Xcml0ZUxpbmUoJCJVbmtub3duIG9yIGluY29tcGxldGUgYXJndW1lbnQgJ3thcmdzW2ldfScuIik7CiAgICByZXR1cm4gMjsKfQ==',
-              'aWYgKGFyZ3MuTGVuZ3RoIDwgMikKewogICAgQ29uc29sZS5FcnJvci5Xcml0ZUxpbmUoCiAgICAgICAgIlVzYWdlOiBUZXJyYVJ1bnRpbWUuV29ybGRDb21wYXJlIDxyZWZlcmVuY2Uud2xkPiA8Y2FuZGlkYXRlLndsZD4gWy0tanNvbiA8cmVwb3J0Lmpzb24+XSBbLS1lbmZvcmNlXSIpOwogICAgcmV0dXJuIDI7Cn0KCnN0cmluZyByZWZlcmVuY2VQYXRoID0gUGF0aC5HZXRGdWxsUGF0aChhcmdzWzBdKTsKc3RyaW5nIGNhbmRpZGF0ZVBhdGggPSBQYXRoLkdldEZ1bGxQYXRoKGFyZ3NbMV0pOwpzdHJpbmc/IGpzb25QYXRoID0gbnVsbDsKYm9vbCBlbmZvcmNlID0gZmFsc2U7CmZvciAoaW50IGkgPSAyOyBpIDwgYXJncy5MZW5ndGg7IGkrKykKewogICAgaWYgKGFyZ3NbaV0gPT0gIi0tZW5mb3JjZSIpCiAgICB7CiAgICAgICAgaWYgKGVuZm9yY2UpCiAgICAgICAgewogICAgICAgICAgICBDb25zb2xlLkVycm9yLldyaXRlTGluZSgiRHVwbGljYXRlIC0tZW5mb3JjZSBvcHRpb24uIik7CiAgICAgICAgICAgIHJldHVybiAyOwogICAgICAgIH0KCiAgICAgICAgZW5mb3JjZSA9IHRydWU7CiAgICAgICAgY29udGludWU7CiAgICB9CgogICAgaWYgKGFyZ3NbaV0gPT0gIi0tanNvbiIpCiAgICB7CiAgICAgICAgaWYgKGpzb25QYXRoIGlzIG5vdCBudWxsKQogICAgICAgIHsKICAgICAgICAgICAgQ29uc29sZS5FcnJvci5Xcml0ZUxpbmUoIkR1cGxpY2F0ZSAtLWpzb24gb3B0aW9uLiIpOwogICAgICAgICAgICByZXR1cm4gMjsKICAgICAgICB9CgogICAgICAgIGlmIChpICsgMSA+PSBhcmdzLkxlbmd0aCB8fCBhcmdzW2kgKyAxXS5TdGFydHNXaXRoKCItLSIsIFN0cmluZ0NvbXBhcmlzb24uT3JkaW5hbCkpCiAgICAgICAgewogICAgICAgICAgICBDb25zb2xlLkVycm9yLldyaXRlTGluZSgiT3B0aW9uIC0tanNvbiByZXF1aXJlcyBhIHJlcG9ydCBwYXRoLiIpOwogICAgICAgICAgICByZXR1cm4gMjsKICAgICAgICB9CgogICAgICAgIGpzb25QYXRoID0gUGF0aC5HZXRGdWxsUGF0aChhcmdzWysraV0pOwogICAgICAgIGNvbnRpbnVlOwogICAgfQoKICAgIENvbnNvbGUuRXJyb3IuV3JpdGVMaW5lKCQiVW5rbm93biBvciBpbmNvbXBsZXRlIGFyZ3VtZW50ICd7YXJnc1tpXX0nLiIpOwogICAgcmV0dXJuIDI7Cn0=')
+          parser_old = textwrap.dedent("""
+              string referencePath = Path.GetFullPath(args[0]);
+              string candidatePath = Path.GetFullPath(args[1]);
+              string? jsonPath = null;
+              bool enforce = false;
+              for (int i = 2; i < args.Length; i++)
+              {
+                  if (args[i] == "--enforce")
+                  {
+                      enforce = true;
+                      continue;
+                  }
+
+                  if (args[i] == "--json" && i + 1 < args.Length)
+                  {
+                      jsonPath = Path.GetFullPath(args[++i]);
+                      continue;
+                  }
+
+                  Console.Error.WriteLine($"Unknown or incomplete argument '{args[i]}'.");
+                  return 2;
+              }
+          """).strip()
+          parser_new = textwrap.dedent("""
+              string referencePath = Path.GetFullPath(args[0]);
+              string candidatePath = Path.GetFullPath(args[1]);
+              string? jsonPath = null;
+              bool enforce = false;
+              for (int i = 2; i < args.Length; i++)
+              {
+                  if (args[i] == "--enforce")
+                  {
+                      if (enforce)
+                      {
+                          Console.Error.WriteLine("Duplicate --enforce option.");
+                          return 2;
+                      }
+
+                      enforce = true;
+                      continue;
+                  }
+
+                  if (args[i] == "--json")
+                  {
+                      if (jsonPath is not null)
+                      {
+                          Console.Error.WriteLine("Duplicate --json option.");
+                          return 2;
+                      }
+
+                      if (i + 1 >= args.Length || args[i + 1].StartsWith("--", StringComparison.Ordinal))
+                      {
+                          Console.Error.WriteLine("Option --json requires a report path.");
+                          return 2;
+                      }
+
+                      jsonPath = Path.GetFullPath(args[++i]);
+                      continue;
+                  }
+
+                  Console.Error.WriteLine($"Unknown or incomplete argument '{args[i]}'.");
+                  return 2;
+              }
+          """).strip()
+          replace_once('tools/TerraRuntime.WorldCompare/Program.cs', parser_old, parser_new)
 
           workflow = Path('.github/workflows/vanilla-worldgen-reference-differential.yml')
           text = workflow.read_text()
-          start_marker = '      - name: Capture structural fingerprint report\n'
-          end_marker = '      - name: Upload differential evidence\n'
-          if text.count(start_marker) != 1 or text.count(end_marker) != 1:
-              raise SystemExit('reference workflow compare-step anchors changed')
-          start = text.index(start_marker)
-          end = text.index(end_marker)
-          combined = '''      - name: Compare structural fingerprints and enforce budgets
-        shell: bash
-        run: |
-          set -euo pipefail
-          dotnet run \\
-            --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
-            -c Release \\
-            --no-build \\
-            -- \\
-            "artifacts/reference-differential/official-${SEED}.wld" \\
-            "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
-            --json "artifacts/reference-differential/comparison-${SEED}.json" \\
-            --enforce
-          cat "artifacts/reference-differential/comparison-${SEED}.json"
+          compare_old = textwrap.dedent("""
+                    - name: Capture structural fingerprint report
+                      shell: bash
+                      run: |
+                        set -euo pipefail
+                        dotnet run \\
+                          --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
+                          -c Release \\
+                          --no-build \\
+                          -- \\
+                          "artifacts/reference-differential/official-${SEED}.wld" \\
+                          "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
+                          --json "artifacts/reference-differential/comparison-${SEED}.json"
+                        cat "artifacts/reference-differential/comparison-${SEED}.json"
 
-'''
-          text = text[:start] + combined + text[end:]
-          upload = text.index(end_marker, start)
+                    - name: Enforce structural budgets
+                      shell: bash
+                      run: |
+                        set -euo pipefail
+                        dotnet run \\
+                          --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
+                          -c Release \\
+                          --no-build \\
+                          -- \\
+                          "artifacts/reference-differential/official-${SEED}.wld" \\
+                          "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
+                          --enforce
+          """).strip()
+          compare_new = textwrap.dedent("""
+                    - name: Compare structural fingerprints and enforce budgets
+                      shell: bash
+                      run: |
+                        set -euo pipefail
+                        dotnet run \\
+                          --project tools/TerraRuntime.WorldCompare/TerraRuntime.WorldCompare.csproj \\
+                          -c Release \\
+                          --no-build \\
+                          -- \\
+                          "artifacts/reference-differential/official-${SEED}.wld" \\
+                          "artifacts/reference-differential/terraruntime-${SEED}.wld" \\
+                          --json "artifacts/reference-differential/comparison-${SEED}.json" \\
+                          --enforce
+                        cat "artifacts/reference-differential/comparison-${SEED}.json"
+          """).strip()
+          if text.count(compare_old) != 1:
+              raise SystemExit(f"reference workflow compare-step anchor count={text.count(compare_old)}")
+          text = text.replace(compare_old, compare_new, 1)
+
+          upload_marker = '      - name: Upload differential evidence\n'
+          upload = text.index(upload_marker)
           prefix = text[:upload]
           suffix = text[upload:]
           expression = '$' + '{{ env.SEED }}'
