@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime;
