@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
@@ -48,7 +49,7 @@ internal sealed class RuntimeNpcProjectileReflectionPass
             ProjectileSnapshot projectile = projectileScratch[projectileIndex];
             if (!projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle) ||
                 !VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition projectileDefinition) ||
-                !VanillaProjectileReflection1458.CanBeReflected(in projectile, in lifecycle, in projectileDefinition) ||
+                !VanillaProjectileReflection1458.CanBeReflected(in projectile, lifecycle.Reflected, in projectileDefinition) ||
                 !players.TryGetPlayer(new PlayerSlotId(projectile.Spawner), out PlayerStateSnapshot owner) ||
                 !owner.Player.IsAssigned)
             {
@@ -69,7 +70,8 @@ internal sealed class RuntimeNpcProjectileReflectionPass
 
                 if (!VanillaProjectileReflection1458.TryResolve(
                         in projectile,
-                        in lifecycle,
+                        lifecycle.OldVelocityX,
+                        lifecycle.OldVelocityY,
                         owner.PositionX + PlayerWidth * 0.5f,
                         owner.PositionY + PlayerHeight * 0.5f,
                         random,

@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Contracts.Runtime;
 using System.Reflection;
@@ -212,6 +213,34 @@ public sealed class RuntimeArchitectureBoundaryTests
 
         Assert.Equal("TerraRuntime.Core", typeof(IPlayerAppearanceIngress).Assembly.GetName().Name);
         Assert.Equal("TerraRuntime.Core", typeof(RuntimeServerPlayerStateStore).Assembly.GetName().Name);
+    }
+
+    [Fact]
+    public void Projectile_identity_gameplay_rules_and_runtime_state_follow_the_dependency_layers()
+    {
+        Assert.Equal("TerraRuntime.Contracts", typeof(ProjectileTypeId).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Contracts.Gameplay", typeof(ProjectileTypeId).Namespace);
+
+        Type[] gameplayTypes =
+        [
+            typeof(VanillaProjectileDefinitionCatalog),
+            typeof(VanillaProjectileLifecycleFacts),
+            typeof(VanillaProjectileFacts),
+            typeof(VanillaProjectileOwnership),
+            typeof(VanillaProjectileUpdateFacts),
+            typeof(VanillaProjectileReflection1458)
+        ];
+
+        foreach (Type gameplayType in gameplayTypes)
+        {
+            Assert.Equal("TerraRuntime.Gameplay", gameplayType.Assembly.GetName().Name);
+            Assert.Equal("TerraRuntime.Gameplay.Projectiles", gameplayType.Namespace);
+        }
+
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeProjectileStore).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(ProjectileLifecycleState).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeProjectileStateExecutor).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeProjectileCombatIntentFactory).Assembly.GetName().Name);
     }
 
     [Fact]

@@ -283,6 +283,11 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId MeleeBone = new(1111);
     public static readonly ProjectileTypeId BoneShard = new(1124);
 
+    /// <summary>
+    /// Validates only the version-pinned projectile identity range. Whether an in-range ID is a live
+    /// <c>Projectile.SetDefaults</c> type is gameplay semantics owned by
+    /// <c>TerraRuntime.Gameplay.Projectiles.VanillaProjectileLifecycleFacts</c>.
+    /// </summary>
     public static bool TryCreate(int rawType, out ProjectileTypeId type)
     {
         if ((uint)rawType >= (uint)Count)
@@ -294,9 +299,6 @@ public static class VanillaProjectileIds
         type = new ProjectileTypeId(rawType);
         return true;
     }
-
-    public static bool IsLiveWireType(ProjectileTypeId type) =>
-        VanillaProjectileLifecycleFacts.IsDefinedLiveType(type);
 }
 
 /// <summary>

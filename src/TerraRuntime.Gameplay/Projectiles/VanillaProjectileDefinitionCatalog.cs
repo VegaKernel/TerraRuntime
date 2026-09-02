@@ -1,4 +1,6 @@
-namespace TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Gameplay;
+
+namespace TerraRuntime.Gameplay.Projectiles;
 
 /// <summary>Named TerrariaServer 1.4.5.8 projectile AI-style identities currently implemented by TerraRuntime.</summary>
 public static class VanillaProjectileAiStyles

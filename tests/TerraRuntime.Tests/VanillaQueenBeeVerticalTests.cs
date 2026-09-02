@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;

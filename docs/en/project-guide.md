@@ -54,6 +54,7 @@ flowchart LR
 | `src/TerraRuntime.Extensibility` | CoreCLR-only trusted host-module loading and scoped host runtime |
 | `src/TerraRuntime.HostContracts` | narrow privileged host-module contracts |
 | `src/TerraRuntime.Contracts` | stable snapshots, IDs and runtime/gameplay control contracts |
+| `src/TerraRuntime.Gameplay` | protocol-neutral gameplay rules and source-backed content catalogs |
 | `src/TerraRuntime.Core` | authoritative state, commands, entity systems and scheduling |
 | `src/TerraRuntime.Network` | connection pipeline, ingress/egress and bounded queues |
 | `src/TerraRuntime.Protocol` | protocol boundary and shared framing/codec concepts |

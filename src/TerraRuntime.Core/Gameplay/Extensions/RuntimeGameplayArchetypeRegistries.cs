@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 
@@ -93,7 +94,7 @@ public sealed class RuntimeProjectileArchetypeRegistry
     public RuntimeGameplayArchetypeSnapshot<ProjectileArchetypeDescriptor> CommitPending() => registry.CommitPending();
 
     private static bool IsValid(ProjectileArchetypeDescriptor descriptor) =>
-        descriptor.Id.IsAssigned && VanillaProjectileIds.IsLiveWireType(descriptor.VanillaPresentationType);
+        descriptor.Id.IsAssigned && VanillaProjectileLifecycleFacts.IsDefinedLiveType(descriptor.VanillaPresentationType);
 }
 
 internal sealed class RuntimeGameplayArchetypeRegistry<TDescriptor>

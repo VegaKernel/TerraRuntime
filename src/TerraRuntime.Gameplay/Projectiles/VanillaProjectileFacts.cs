@@ -1,4 +1,6 @@
-namespace TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Gameplay;
+
+namespace TerraRuntime.Gameplay.Projectiles;
 
 /// <summary>
 /// Version-pinned TerrariaServer 1.4.5.8 projectile facts used by server authority checks.
@@ -33,7 +35,7 @@ public static class VanillaProjectileFacts
 
     public static bool IsHostile(ProjectileTypeId type)
     {
-        if (!VanillaProjectileIds.IsLiveWireType(type))
+        if (!VanillaProjectileLifecycleFacts.IsDefinedLiveType(type))
             return false;
 
         return Array.BinarySearch(HostileTypes, checked((ushort)type.Value)) >= 0;

@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -19,7 +20,8 @@ public sealed class VanillaProjectileReflection1458Tests
 
         Assert.True(VanillaProjectileReflection1458.TryResolve(
             in projectile,
-            in lifecycle,
+            lifecycle.OldVelocityX,
+            lifecycle.OldVelocityY,
             ownerCenterX: 300f,
             ownerCenterY: 121f,
             random,
@@ -36,14 +38,14 @@ public sealed class VanillaProjectileReflection1458Tests
         ProjectileSnapshot arrow = Projectile(damage: 20, velocityX: 3f, velocityY: 4f);
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(arrow.Type, out VanillaProjectileDefinition arrowDefinition));
         var lifecycle = new ProjectileLifecycleState(600, false) { OldVelocityX = 3f, OldVelocityY = 4f };
-        Assert.True(VanillaProjectileReflection1458.CanBeReflected(in arrow, in lifecycle, in arrowDefinition));
+        Assert.True(VanillaProjectileReflection1458.CanBeReflected(in arrow, lifecycle.Reflected, in arrowDefinition));
 
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(VanillaProjectileIds.EnchantedBoomerang, out VanillaProjectileDefinition boomerangDefinition));
         ProjectileSnapshot boomerang = arrow with { Type = VanillaProjectileIds.EnchantedBoomerang };
-        Assert.False(VanillaProjectileReflection1458.CanBeReflected(in boomerang, in lifecycle, in boomerangDefinition));
+        Assert.False(VanillaProjectileReflection1458.CanBeReflected(in boomerang, lifecycle.Reflected, in boomerangDefinition));
 
         ProjectileLifecycleState reflected = lifecycle with { Reflected = true };
-        Assert.False(VanillaProjectileReflection1458.CanBeReflected(in arrow, in reflected, in arrowDefinition));
+        Assert.False(VanillaProjectileReflection1458.CanBeReflected(in arrow, reflected.Reflected, in arrowDefinition));
     }
 
     private static ProjectileSnapshot Projectile(short damage, float velocityX, float velocityY) =>

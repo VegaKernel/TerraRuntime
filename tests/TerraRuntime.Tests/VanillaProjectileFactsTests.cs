@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.Tests;
@@ -55,7 +56,7 @@ public sealed class VanillaProjectileFactsTests
     public void SetDefaults_fallthrough_ids_are_not_live_projectile_types(int rawType)
     {
         var type = new ProjectileTypeId(rawType);
-        Assert.False(VanillaProjectileIds.IsLiveWireType(type));
+        Assert.False(VanillaProjectileLifecycleFacts.IsDefinedLiveType(type));
         Assert.False(VanillaProjectileLifecycleFacts.TryGetDefaults(type, out _));
     }
 

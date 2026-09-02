@@ -32,7 +32,8 @@ The gate keeps a deliberately small allow-set for the low-level projects:
 | Assembly | Allowed direct `TerraRuntime*` references |
 | --- | --- |
 | `TerraRuntime.Contracts` | none |
-| `TerraRuntime.Core` | `TerraRuntime.Contracts` |
+| `TerraRuntime.Gameplay` | `TerraRuntime.Contracts` |
+| `TerraRuntime.Core` | `TerraRuntime.Contracts`, `TerraRuntime.Gameplay` |
 | `TerraRuntime.HostContracts` | `TerraRuntime.Contracts` |
 | `TerraRuntime.Protocol` | none |
 | `TerraRuntime.World` | `TerraRuntime.Contracts` |

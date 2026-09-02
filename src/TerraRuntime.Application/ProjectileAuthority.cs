@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
@@ -231,7 +232,7 @@ internal sealed class ProjectileAuthority
     {
         if (!packet.IsValid ||
             !VanillaProjectileIds.TryCreate(packet.ProjectileType, out ProjectileTypeId type) ||
-            !VanillaProjectileIds.IsLiveWireType(type) ||
+            !VanillaProjectileLifecycleFacts.IsDefinedLiveType(type) ||
             VanillaProjectileFacts.IsHostile(type))
         {
             update = default;

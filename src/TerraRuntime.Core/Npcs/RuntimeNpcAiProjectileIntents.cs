@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
@@ -47,7 +48,7 @@ public static class RuntimeNpcProjectileIntentApplier
         out ProjectileSnapshot spawned)
     {
         ArgumentNullException.ThrowIfNull(projectiles);
-        if (!VanillaProjectileIds.IsLiveWireType(intent.Type) ||
+        if (!VanillaProjectileLifecycleFacts.IsDefinedLiveType(intent.Type) ||
             !float.IsFinite(intent.PositionX) ||
             !float.IsFinite(intent.PositionY) ||
             !float.IsFinite(intent.VelocityX) ||

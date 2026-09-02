@@ -1,4 +1,6 @@
-namespace TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Gameplay;
+
+namespace TerraRuntime.Gameplay.Projectiles;
 
 /// <summary>
 /// Version-pinned TerrariaServer 1.4.5.8 Projectile.extraUpdates defaults. Vanilla executes one ordinary
@@ -18,7 +20,7 @@ public static class VanillaProjectileUpdateFacts
 
     public static int GetExtraUpdates(ProjectileTypeId type)
     {
-        if (!VanillaProjectileIds.IsLiveWireType(type))
+        if (!VanillaProjectileLifecycleFacts.IsDefinedLiveType(type))
             return 0;
 
         return type.Value switch

@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -147,7 +148,7 @@ public sealed class ProjectileLifecycleFrameSink :
             return Stop(ProjectileLifecycleFrameStopReason.MalformedUpdate);
 
         if (!VanillaProjectileIds.TryCreate(state.ProjectileType, out var type) ||
-            !VanillaProjectileIds.IsLiveWireType(type) ||
+            !VanillaProjectileLifecycleFacts.IsDefinedLiveType(type) ||
             VanillaProjectileFacts.IsHostile(type) ||
             state.Key.Spawner != connection.Player.Slot.Value)
         {

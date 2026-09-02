@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Gameplay.Projectiles;
 
 public interface IVanillaProjectileReflectionRandom
 {
@@ -22,18 +22,19 @@ public static class VanillaProjectileReflection1458
 {
     public static bool CanBeReflected(
         in ProjectileSnapshot projectile,
-        in ProjectileLifecycleState lifecycle,
+        bool alreadyReflected,
         in VanillaProjectileDefinition definition) =>
         projectile.IsActive &&
         VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner) &&
         projectile.Damage > 0 &&
-        !lifecycle.Reflected &&
+        !alreadyReflected &&
         (definition.AiStyle == VanillaProjectileAiStyles.Arrow ||
          definition.AiStyle == VanillaProjectileAiStyles.Thrown);
 
     public static bool TryResolve(
         in ProjectileSnapshot projectile,
-        in ProjectileLifecycleState lifecycle,
+        float oldVelocityX,
+        float oldVelocityY,
         float ownerCenterX,
         float ownerCenterY,
         IVanillaProjectileReflectionRandom random,
@@ -42,15 +43,15 @@ public static class VanillaProjectileReflection1458
         ArgumentNullException.ThrowIfNull(random);
         if (!float.IsFinite(ownerCenterX) ||
             !float.IsFinite(ownerCenterY) ||
-            !float.IsFinite(lifecycle.OldVelocityX) ||
-            !float.IsFinite(lifecycle.OldVelocityY) ||
+            !float.IsFinite(oldVelocityX) ||
+            !float.IsFinite(oldVelocityY) ||
             projectile.Damage <= 0)
         {
             result = default;
             return false;
         }
 
-        float oldSpeed = Length(lifecycle.OldVelocityX, lifecycle.OldVelocityY);
+        float oldSpeed = Length(oldVelocityX, oldVelocityY);
         if (!float.IsFinite(oldSpeed) || oldSpeed <= float.Epsilon)
         {
             result = default;

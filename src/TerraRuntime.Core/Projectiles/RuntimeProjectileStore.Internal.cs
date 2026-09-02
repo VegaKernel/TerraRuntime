@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
@@ -25,7 +26,7 @@ public sealed partial class RuntimeProjectileStore
     }
 
     internal static bool IsValidState(in ProjectileStateUpdate update) =>
-        VanillaProjectileIds.IsLiveWireType(update.Type) &&
+        VanillaProjectileLifecycleFacts.IsDefinedLiveType(update.Type) &&
         float.IsFinite(update.PositionX) &&
         float.IsFinite(update.PositionY) &&
         float.IsFinite(update.VelocityX) &&

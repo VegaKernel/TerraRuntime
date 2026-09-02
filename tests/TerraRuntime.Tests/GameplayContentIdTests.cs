@@ -26,19 +26,15 @@ public sealed class GameplayContentIdTests
     }
 
     [Fact]
-    public void Vanilla_projectile_ids_are_pinned_to_1458_count_and_live_wire_range()
+    public void Vanilla_projectile_ids_are_pinned_to_1458_identity_range()
     {
         Assert.Equal(1136, VanillaProjectileIds.Count);
         Assert.True(VanillaProjectileIds.TryCreate(0, out ProjectileTypeId none));
         Assert.Equal(VanillaProjectileIds.None, none);
-        Assert.False(VanillaProjectileIds.IsLiveWireType(none));
-
         Assert.True(VanillaProjectileIds.TryCreate(
             VanillaProjectileIds.Count - 1,
             out ProjectileTypeId last));
-        Assert.True(VanillaProjectileIds.IsLiveWireType(last));
         Assert.False(VanillaProjectileIds.TryCreate(VanillaProjectileIds.Count, out _));
-        Assert.False(VanillaProjectileIds.IsLiveWireType(new ProjectileTypeId(VanillaProjectileIds.Count)));
 
         Assert.Equal(1, VanillaProjectileIds.WoodenArrowFriendly.Value);
         Assert.Equal(2, VanillaProjectileIds.FireArrow.Value);

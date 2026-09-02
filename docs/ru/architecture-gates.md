@@ -32,7 +32,8 @@
 | Assembly | Разрешённые прямые `TerraRuntime*` references |
 | --- | --- |
 | `TerraRuntime.Contracts` | нет |
-| `TerraRuntime.Core` | `TerraRuntime.Contracts` |
+| `TerraRuntime.Gameplay` | `TerraRuntime.Contracts` |
+| `TerraRuntime.Core` | `TerraRuntime.Contracts`, `TerraRuntime.Gameplay` |
 | `TerraRuntime.HostContracts` | `TerraRuntime.Contracts` |
 | `TerraRuntime.Protocol` | нет |
 | `TerraRuntime.World` | `TerraRuntime.Contracts` |

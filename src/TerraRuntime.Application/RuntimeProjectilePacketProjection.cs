@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol;
@@ -33,7 +34,7 @@ internal static class RuntimeProjectilePacketProjection
         if (!projectile.IsActive ||
             !key.IsValid ||
             key.Spawner != projectile.Spawner ||
-            !VanillaProjectileIds.IsLiveWireType(projectile.Type))
+            !VanillaProjectileLifecycleFacts.IsDefinedLiveType(projectile.Type))
         {
             state = default;
             return false;

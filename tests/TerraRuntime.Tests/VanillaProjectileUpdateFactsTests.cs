@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.Tests;
@@ -12,7 +13,7 @@ public sealed class VanillaProjectileUpdateFactsTests
         for (int rawType = 1; rawType < VanillaProjectileIds.Count; rawType++)
         {
             var type = new ProjectileTypeId(rawType);
-            if (!VanillaProjectileIds.IsLiveWireType(type))
+            if (!VanillaProjectileLifecycleFacts.IsDefinedLiveType(type))
                 continue;
 
             int extraUpdates = VanillaProjectileUpdateFacts.GetExtraUpdates(type);

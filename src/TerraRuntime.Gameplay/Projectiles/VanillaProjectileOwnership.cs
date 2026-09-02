@@ -1,4 +1,6 @@
-namespace TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Gameplay;
+
+namespace TerraRuntime.Gameplay.Projectiles;
 
 /// <summary>
 /// TerrariaServer 1.4.5.8 projectile ownership sentinels. Player projectile owners occupy 0..254;

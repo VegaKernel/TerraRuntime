@@ -1,4 +1,6 @@
-namespace TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Gameplay;
+
+namespace TerraRuntime.Gameplay.Projectiles;
 
 /// <summary>Initial lifecycle fields assigned by TerrariaServer 1.4.5.8 Projectile.SetDefaults.</summary>
 public readonly record struct VanillaProjectileLifecycleDefaults(int TimeLeft, bool NetImportant);
