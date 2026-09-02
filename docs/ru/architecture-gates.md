@@ -42,6 +42,12 @@
 
 Тест запрещает новые прямые production dependencies за пределами allow-set. При этом он не требует, чтобы каждый разрешённый edge существовал всегда, поэтому уменьшение coupling не требует правки теста.
 
+### Владение gameplay-семантикой
+
+Architecture suite также закрепляет размещение репрезентативных типов, а не только project references. Protocol-neutral правила player, NPC и projectile должны находиться в `TerraRuntime.Gameplay`, а mutable stores, authoritative ingress/executors и generation-safe finalizers — в `TerraRuntime.Core`. Extension RNG вместе с immutable semantics стадий поведения, bindings и dispatch plans аналогично принадлежат `TerraRuntime.Gameplay.Extensions`; mutable registries и владение extension state/lifecycle остаются в Core.
+
+Так dependency-clean project graph не сможет скрыть постепенный возврат к использованию Core как склада content/semantics. Эти placement checks намеренно репрезентативны, а не исчерпывающи: они защищают направление ownership, не превращая source naming во вторую систему типов.
+
 ### Public surface HostContracts
 
 `TerraRuntime.HostContracts` может публиковать собственные типы, общие типы `TerraRuntime.Contracts` и framework/third-party presentation types, которые намеренно входят в host API. Он не может публиковать типы concrete TerraRuntime implementation assemblies, например Core, World, Network, protocol adapters или server executable.

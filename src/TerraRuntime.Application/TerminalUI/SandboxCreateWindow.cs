@@ -180,14 +180,14 @@ internal sealed class SandboxCreateWindow : Window
             }
 
             ResolveSelectedSize(out int? width, out int? height);
-            if (sizeDropDown.SelectedItem == 4 &&
+            if (SelectedIndex(sizeDropDown, sizeOptions) == 4 &&
                 (!int.TryParse(widthField.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int parsedWidth) || parsedWidth <= 0 ||
                  !int.TryParse(heightField.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int parsedHeight) || parsedHeight <= 0))
             {
                 SetFeedback("Custom width and height must be positive integers.");
                 return;
             }
-            if (sizeDropDown.SelectedItem == 4)
+            if (SelectedIndex(sizeDropDown, sizeOptions) == 4)
             {
                 width = int.Parse(widthField.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture);
                 height = int.Parse(heightField.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture);
@@ -251,7 +251,7 @@ internal sealed class SandboxCreateWindow : Window
 
     private void ApplySelectedSize()
     {
-        switch (sizeDropDown.SelectedItem)
+        switch (SelectedIndex(sizeDropDown, sizeOptions))
         {
             case 0:
                 widthField.Text = operations.DefaultWidthTiles.ToString(CultureInfo.InvariantCulture);
@@ -276,7 +276,7 @@ internal sealed class SandboxCreateWindow : Window
 
     private void ResolveSelectedSize(out int? width, out int? height)
     {
-        switch (sizeDropDown.SelectedItem)
+        switch (SelectedIndex(sizeDropDown, sizeOptions))
         {
             case 0:
                 width = null;
@@ -304,7 +304,7 @@ internal sealed class SandboxCreateWindow : Window
     private void UpdateEnabledFields()
     {
         bool file = worldFile.Value == CheckState.Checked;
-        bool customSize = sizeDropDown.SelectedItem == 4;
+        bool customSize = SelectedIndex(sizeDropDown, sizeOptions) == 4;
         fileField.Enabled = file;
         generatorDropDown.Enabled = !file && generatorIds.Length != 0;
         seedField.Enabled = !file;
@@ -368,9 +368,20 @@ internal sealed class SandboxCreateWindow : Window
         };
         if (selectedIndex >= 0 && selectedIndex < items.Count)
         {
-            dropDown.SelectedItem = selectedIndex;
             dropDown.Text = items[selectedIndex];
         }
         return dropDown;
+    }
+
+    private static int SelectedIndex(DropDownList dropDown, IReadOnlyList<string> items)
+    {
+        string selectedText = dropDown.Text;
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (string.Equals(items[i], selectedText, StringComparison.Ordinal))
+                return i;
+        }
+
+        return -1;
     }
 }

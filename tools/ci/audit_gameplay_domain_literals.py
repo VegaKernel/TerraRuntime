@@ -42,6 +42,7 @@ BOUNDARY_NAME_MARKERS = (
     "Generation",
     "Format",
     "Envelope",
+    "Catalog",
 )
 
 DOMAIN_ID_TYPES = (
@@ -323,6 +324,9 @@ def run_self_test() -> None:
         hits = [rule.name for rule in RULES if rule.pattern.search(strip_comments_and_literals(source))]
         if expected not in hits:
             raise SystemExit(f"audit self-test failed: {expected} did not match {source!r}; hits={hits}")
+
+    if not is_boundary_file(Path("VanillaProjectileDefinitionCatalog.cs")):
+        raise SystemExit("audit self-test failed: catalog files must be excluded from raw-domain literal scanning")
 
     safe = (
         "if (npc.TypeIdentity == VanillaNpcIds.Zombie) return;\n"
