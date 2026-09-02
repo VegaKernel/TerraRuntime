@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -61,11 +62,21 @@ public sealed class RuntimeTownCommerce1458Tests
         var inventory = new RuntimePlayerInventoryStore();
         ConnectionHandle connection = Connection();
         Assert.True(inventory.TrySet(connection, new PlayerEquipmentCommitRequest(connection.Player.Slot, 0, 1, 0, 8, 0)));
+        Span<RuntimePlayerInventoryItem> playerItems =
+            stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        Assert.True(inventory.TryCopyInventory(connection, playerItems));
+        var player = new RuntimeTownCommercePlayer1458(1600f, 1600f, 400, 200, 1);
+
+        Assert.False(resolver.TryResolve(
+            [],
+            in player,
+            0,
+            null,
+            out _));
 
         Assert.True(resolver.TryResolve(
-            connection,
-            inventory,
-            new RuntimeTownCommercePlayer1458(1600f, 1600f, 400, 200, 1),
+            playerItems,
+            in player,
             0,
             null,
             out RuntimeTownShopSession1458 session));

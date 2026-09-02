@@ -80,7 +80,7 @@ internal sealed partial class ServerRuntimeState
     private void ApplyClientNpcDamage(ClientNpcDamageRuntimeCommand command)
     {
         TerrariaNpcDamageState damageState = command.State;
-        if (!IsCurrentPlayerConnection(command.Connection))
+        if (!_players.IsCurrent(command.Connection))
         {
             RejectedClientNpcDamage++;
             return;
@@ -95,7 +95,7 @@ internal sealed partial class ServerRuntimeState
 
     private void ApplyClientNpcTalk(ClientNpcTalkRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection) ||
+        if (!_players.IsCurrent(command.Connection) ||
             !TerrariaNpcTalkCodec.IsValidNpcSlot(command.State.NpcSlot))
         {
             return;
@@ -104,27 +104,29 @@ internal sealed partial class ServerRuntimeState
         byte playerSlot = command.Connection.Player.Slot.Value;
         if (command.State.NpcSlot != TerrariaNpcTalkCodec.NoNpc)
             _townRescue?.TryRescueTalk(command.State.NpcSlot, out _);
-        if (!_playerMembership.TrySetTalkNpc(command.Connection, command.State.NpcSlot))
+        if (!_players.TrySetTalkNpc(command.Connection, command.State.NpcSlot))
             return;
         if (command.State.NpcSlot != TerrariaNpcTalkCodec.NoNpc &&
             _townCommerce is not null &&
-            _playerMembership.TryGet(playerSlot, out RuntimePlayerMember? playerState))
+            _players.TryGet(playerSlot, out RuntimePlayerMember? playerState))
         {
+            Span<RuntimePlayerInventoryItem> inventory =
+                stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
             var commercePlayer = new RuntimeTownCommercePlayer1458(
                 playerState.PositionX,
                 playerState.PositionY,
                 playerState.HasHealth ? playerState.MaxLife : 100,
                 playerState.HasMana ? playerState.MaxMana : 20,
                 playerState.Team);
-            if (_townCommerce.TryResolve(
-                    command.Connection,
-                    _playerInventory,
+            if (_players.TryCopyInventory(command.Connection, inventory) &&
+                _townCommerce.TryResolve(
+                    inventory,
                     in commercePlayer,
                     command.State.NpcSlot,
                     _worldClock,
                     out RuntimeTownShopSession1458 session))
             {
-                _playerMembership.TrySetTownShopSession(command.Connection, session);
+                _players.TrySetTownShopSession(command.Connection, session);
             }
         }
 
@@ -133,9 +135,9 @@ internal sealed partial class ServerRuntimeState
 
     private void ApplyClientNpcCatch(ClientNpcCatchRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection) ||
+        if (!_players.IsCurrent(command.Connection) ||
             !TerrariaNpcCatchCodec.IsValidNpcSlot(command.State.NpcSlot) ||
-            !_playerMembership.TryGet(command.Connection, out RuntimePlayerMember? player) ||
+            !_players.TryGet(command.Connection, out RuntimePlayerMember? player) ||
             !_npcs.TryGetActive(checked((byte)command.State.NpcSlot), out NpcSnapshot npc) ||
             !NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcCatchCatalog1458.TryGetCatchItem(npcType, out ItemTypeId catchItem))
@@ -155,8 +157,8 @@ internal sealed partial class ServerRuntimeState
             return;
         }
 
-        float playerCenterX = player.PositionX + VanillaBasePlayerWidth / 2f;
-        float playerCenterY = player.PositionY + VanillaBasePlayerHeight / 2f;
+        float playerCenterX = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth / 2f;
+        float playerCenterY = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight / 2f;
         WorldItemDropStateUpdate drop = VanillaNpcCatchWorldItem1458.Create(
             playerCenterX,
             playerCenterY,
@@ -184,11 +186,11 @@ internal sealed partial class ServerRuntimeState
     }
 
     internal bool TryGetPlayerTalkNpc(PlayerHandle player, out short npcSlot)
-        => _playerMembership.TryGetTalkNpc(player, out npcSlot);
+        => _players.TryGetTalkNpc(player, out npcSlot);
 
     private void ApplyClientNpcHome(ClientNpcHomeRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection) ||
+        if (!_players.IsCurrent(command.Connection) ||
             _townNpcs is null ||
             _housingValidator is null ||
             !command.State.TryGetStatus(out TerrariaNpcHomeStatus status))

@@ -18,7 +18,7 @@ internal sealed partial class ServerRuntimeState
         if (_worldTiles is null ||
             tileMutations is null ||
             !command.Connection.IsAssigned ||
-            !_playerMembership.TryGet(command.Connection, out RuntimePlayerMember? player) ||
+            !_players.TryGet(command.Connection, out RuntimePlayerMember? player) ||
             !VanillaTileManipulationWorldRules.IsInPacket17WorldBounds(
                 _worldTiles.Dimensions.WidthTiles,
                 _worldTiles.Dimensions.HeightTiles,
@@ -72,7 +72,7 @@ internal sealed partial class ServerRuntimeState
                 return;
             }
 
-            if (!_playerInventory.TryGet(
+            if (!_players.TryGetInventoryItem(
                     command.Connection,
                     player.SelectedItem,
                     out RuntimePlayerInventoryItem wallItem) ||
@@ -131,7 +131,7 @@ internal sealed partial class ServerRuntimeState
                 return;
             }
 
-            if (!_playerInventory.TryGet(
+            if (!_players.TryGetInventoryItem(
                     command.Connection,
                     player.SelectedItem,
                     out RuntimePlayerInventoryItem toolItem) ||
@@ -214,7 +214,7 @@ internal sealed partial class ServerRuntimeState
             return;
         }
 
-        if (!_playerInventory.TryGet(
+        if (!_players.TryGetInventoryItem(
                 command.Connection,
                 player.SelectedItem,
                 out RuntimePlayerInventoryItem selectedItem))

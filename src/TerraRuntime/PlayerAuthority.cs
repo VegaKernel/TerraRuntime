@@ -8,35 +8,179 @@ using TerraRuntime.World;
 
 namespace TerraRuntime;
 
-internal sealed partial class ServerRuntimeState
+/// <summary>
+/// Owns authoritative client-player command application and all mutable player state for one world.
+/// The enclosing world loop remains the sole caller, so extraction does not introduce another writer.
+/// </summary>
+internal sealed class PlayerAuthority
 {
-    private bool IsCurrentPlayerConnection(ConnectionHandle connection) =>
-        _playerMembership.IsCurrent(connection);
+    internal const float VanillaBasePlayerWidth = 20f;
+    internal const float VanillaBasePlayerHeight = 42f;
+
+    private const int MaxPlayerSlots = byte.MaxValue + 1;
+
+    private readonly RuntimePlayerMembership membership = new(MaxPlayerSlots);
+    private readonly RuntimePlayerInventoryStore inventory = new();
+    private readonly RuntimePlayerTransferProfileStore transferProfiles = new();
+    private readonly IRuntimePlayerEventSink? events;
+    private readonly WorldTileStore? worldTiles;
+    private int lastSpawnCommitResult = -1;
+
+    public PlayerAuthority(IRuntimePlayerEventSink? events, WorldTileStore? worldTiles)
+    {
+        this.events = events;
+        this.worldTiles = worldTiles;
+    }
+
+    public bool TryApply(RuntimeCommand command)
+    {
+        switch (command)
+        {
+            case PlayerAppearanceRuntimeCommand appearance:
+                ApplyPlayerAppearance(appearance);
+                return true;
+            case PlayerEquipmentRuntimeCommand equipment:
+                ApplyPlayerEquipment(equipment);
+                return true;
+            case PlayerHealthRuntimeCommand health:
+                ApplyPlayerHealth(health);
+                return true;
+            case PlayerManaRuntimeCommand mana:
+                ApplyPlayerMana(mana);
+                return true;
+            case PlayerSpawnRuntimeCommand spawn:
+                ApplyPlayerSpawn(spawn);
+                return true;
+            case PlayerMovementRuntimeCommand movement:
+                ApplyPlayerMovement(movement);
+                return true;
+            case PlayerDisconnectRuntimeCommand disconnect:
+                ApplyPlayerDisconnect(disconnect);
+                return true;
+            case PlayerTransferDetachRuntimeCommand detach:
+                ApplyPlayerTransferDetach(detach);
+                return true;
+            case PlayerTransferAttachRuntimeCommand attach:
+                ApplyPlayerTransferAttach(attach);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public IEnumerable<RuntimePlayerMember> Members => membership.Members;
+
+    public bool IsCurrent(ConnectionHandle connection) => membership.IsCurrent(connection);
+
+    public bool TryGet(ConnectionHandle connection, out RuntimePlayerMember member) =>
+        membership.TryGet(connection, out member);
+
+    public bool TryGet(PlayerHandle player, out RuntimePlayerMember member) =>
+        membership.TryGet(player, out member);
+
+    public bool TryGet(PlayerSlotId slot, out RuntimePlayerMember member) =>
+        membership.TryGet(slot, out member);
+
+    public bool TryGet(byte slot, out RuntimePlayerMember member) =>
+        membership.TryGet(slot, out member);
+
+    public bool TryCapture(PlayerHandle player, out PlayerStateSnapshot snapshot) =>
+        membership.TryCapture(player, out snapshot);
+
+    public bool TryGetInventoryItem(
+        PlayerHandle player,
+        int inventorySlot,
+        out RuntimePlayerInventoryItem item)
+    {
+        if (!membership.TryGet(player, out RuntimePlayerMember member))
+        {
+            item = default;
+            return false;
+        }
+
+        return inventory.TryGet(member.Connection, inventorySlot, out item);
+    }
+
+    public bool TryGetInventoryItem(
+        ConnectionHandle connection,
+        int inventorySlot,
+        out RuntimePlayerInventoryItem item)
+    {
+        if (!membership.IsCurrent(connection))
+        {
+            item = default;
+            return false;
+        }
+
+        return inventory.TryGet(connection, inventorySlot, out item);
+    }
+
+    public bool TryCopyInventory(
+        ConnectionHandle connection,
+        Span<RuntimePlayerInventoryItem> destination) =>
+        membership.IsCurrent(connection) && inventory.TryCopyInventory(connection, destination);
+
+    public bool TrySetTalkNpc(ConnectionHandle connection, short npcSlot) =>
+        membership.TrySetTalkNpc(connection, npcSlot);
+
+    public bool TryGetTalkNpc(PlayerHandle player, out short npcSlot) =>
+        membership.TryGetTalkNpc(player, out npcSlot);
+
+    public bool TrySetTownShopSession(ConnectionHandle connection, RuntimeTownShopSession1458 session) =>
+        membership.TrySetTownShopSession(connection, session);
+
+    public bool TryGetTownShopSession(PlayerHandle player, out RuntimeTownShopSession1458? session) =>
+        membership.TryGetTownShopSession(player, out session);
+
+    public long AppliedAppearances { get; private set; }
+    public long RejectedAppearances { get; private set; }
+    public long AppliedEquipmentUpdates { get; private set; }
+    public long RejectedEquipmentUpdates { get; private set; }
+    public long AppliedHealthUpdates { get; private set; }
+    public long RejectedHealthUpdates { get; private set; }
+    public long AppliedManaUpdates { get; private set; }
+    public long RejectedManaUpdates { get; private set; }
+    public long CommittedSpawns { get; private set; }
+    public long AppliedMovements { get; private set; }
+    public long RejectedMovements { get; private set; }
+    public long DisconnectedPlayers { get; private set; }
+    public PlayerSlotId? LastMovementSlot { get; private set; }
+    public float LastMovementPositionX { get; private set; }
+    public float LastMovementPositionY { get; private set; }
+
+    public PlayerSpawnCommitResult? LastSpawnCommitResult
+    {
+        get
+        {
+            int value = Volatile.Read(ref lastSpawnCommitResult);
+            return value < 0 ? null : (PlayerSpawnCommitResult)value;
+        }
+    }
 
     private void ApplyPlayerAppearance(PlayerAppearanceRuntimeCommand appearance)
     {
         PlayerAppearanceCommitRequest request = appearance.Request;
-        if (_playerMembership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer) &&
+        if (membership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer) &&
             activePlayer.Connection != appearance.Connection)
         {
-            RejectedPlayerAppearances++;
+            RejectedAppearances++;
             return;
         }
 
         if (activePlayer is not null && !activePlayer.TryAdvanceRevision())
         {
-            RejectedPlayerAppearances++;
+            RejectedAppearances++;
             return;
         }
 
-        if (!_playerTransferProfiles.TrySetAppearance(appearance.Connection, in request))
+        if (!transferProfiles.TrySetAppearance(appearance.Connection, in request))
         {
-            RejectedPlayerAppearances++;
+            RejectedAppearances++;
             return;
         }
 
-        AppliedPlayerAppearances++;
-        _playerEvents?.PlayerAppearanceUpdated(appearance.Connection, in request);
+        AppliedAppearances++;
+        events?.PlayerAppearanceUpdated(appearance.Connection, in request);
     }
 
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
@@ -45,43 +189,43 @@ internal sealed partial class ServerRuntimeState
         if (!equipment.Connection.IsAssigned ||
             equipment.Connection.Player.Slot != request.PlayerSlot)
         {
-            RejectedPlayerEquipmentUpdates++;
+            RejectedEquipmentUpdates++;
             return;
         }
 
         bool inventorySlot = VanillaPlayerItemSlotCatalog.IsInventorySlot(request.SlotId);
         if (inventorySlot &&
             (!RuntimePlayerInventoryItem.TryFromNormalized(in request, out _) ||
-             !_playerInventory.CanAccept(equipment.Connection)))
+             !inventory.CanAccept(equipment.Connection)))
         {
-            RejectedPlayerEquipmentUpdates++;
+            RejectedEquipmentUpdates++;
             return;
         }
 
-        if (_playerMembership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer) &&
+        if (membership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer) &&
             activePlayer.Connection != equipment.Connection)
         {
-            RejectedPlayerEquipmentUpdates++;
+            RejectedEquipmentUpdates++;
             return;
         }
 
         if (activePlayer is not null && !activePlayer.TryAdvanceRevision())
         {
-            RejectedPlayerEquipmentUpdates++;
+            RejectedEquipmentUpdates++;
             return;
         }
 
-        if (inventorySlot && !_playerInventory.TrySet(equipment.Connection, in request))
+        if (inventorySlot && !inventory.TrySet(equipment.Connection, in request))
         {
-            RejectedPlayerEquipmentUpdates++;
+            RejectedEquipmentUpdates++;
             return;
         }
 
         if (!inventorySlot && VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId))
-            _playerTransferProfiles.TrySetEquipment(equipment.Connection, in request);
+            transferProfiles.TrySetEquipment(equipment.Connection, in request);
 
-        AppliedPlayerEquipmentUpdates++;
-        _playerEvents?.PlayerEquipmentUpdated(equipment.Connection, in request);
+        AppliedEquipmentUpdates++;
+        events?.PlayerEquipmentUpdated(equipment.Connection, in request);
     }
 
     private void ApplyPlayerHealth(PlayerHealthRuntimeCommand health)
@@ -89,15 +233,15 @@ internal sealed partial class ServerRuntimeState
         PlayerHealthCommitRequest request = VanillaPlayerHealthNormalizer.Normalize(in health.Request);
         if (!health.Connection.IsAssigned || health.Connection.Player.Slot != request.PlayerSlot)
         {
-            RejectedPlayerHealthUpdates++;
+            RejectedHealthUpdates++;
             return;
         }
 
-        if (_playerMembership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
+        if (membership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
         {
             if (activePlayer.Connection != health.Connection || !activePlayer.TryAdvanceRevision())
             {
-                RejectedPlayerHealthUpdates++;
+                RejectedHealthUpdates++;
                 return;
             }
 
@@ -108,14 +252,14 @@ internal sealed partial class ServerRuntimeState
         }
         else
         {
-            RuntimePendingPlayerVitals pending = _playerMembership.GetOrReplacePending(health.Connection);
+            RuntimePendingPlayerVitals pending = membership.GetOrReplacePending(health.Connection);
             pending.HasHealth = true;
             pending.Life = request.Life;
             pending.MaxLife = request.MaxLife;
         }
 
-        AppliedPlayerHealthUpdates++;
-        _playerEvents?.PlayerHealthUpdated(health.Connection, in request);
+        AppliedHealthUpdates++;
+        events?.PlayerHealthUpdated(health.Connection, in request);
     }
 
     private void ApplyPlayerMana(PlayerManaRuntimeCommand mana)
@@ -123,15 +267,15 @@ internal sealed partial class ServerRuntimeState
         PlayerManaCommitRequest request = mana.Request;
         if (!mana.Connection.IsAssigned || mana.Connection.Player.Slot != request.PlayerSlot)
         {
-            RejectedPlayerManaUpdates++;
+            RejectedManaUpdates++;
             return;
         }
 
-        if (_playerMembership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
+        if (membership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
         {
             if (activePlayer.Connection != mana.Connection || !activePlayer.TryAdvanceRevision())
             {
-                RejectedPlayerManaUpdates++;
+                RejectedManaUpdates++;
                 return;
             }
 
@@ -141,14 +285,14 @@ internal sealed partial class ServerRuntimeState
         }
         else
         {
-            RuntimePendingPlayerVitals pending = _playerMembership.GetOrReplacePending(mana.Connection);
+            RuntimePendingPlayerVitals pending = membership.GetOrReplacePending(mana.Connection);
             pending.HasMana = true;
             pending.Mana = request.Mana;
             pending.MaxMana = request.MaxMana;
         }
 
-        AppliedPlayerManaUpdates++;
-        _playerEvents?.PlayerManaUpdated(mana.Connection, in request);
+        AppliedManaUpdates++;
+        events?.PlayerManaUpdated(mana.Connection, in request);
     }
 
     private void ApplyPlayerSpawn(PlayerSpawnRuntimeCommand spawn)
@@ -167,7 +311,7 @@ internal sealed partial class ServerRuntimeState
             return;
         }
 
-        if (!_playerInventory.CanAccept(spawn.Connection))
+        if (!inventory.CanAccept(spawn.Connection))
         {
             Volatile.Write(ref lastSpawnCommitResult, (int)PlayerSpawnCommitResult.InvalidJoinState);
             return;
@@ -178,14 +322,14 @@ internal sealed partial class ServerRuntimeState
         if (commit != PlayerSpawnCommitResult.Committed)
             return;
 
-        if (!_playerInventory.TryAttach(spawn.Connection))
+        if (!inventory.TryAttach(spawn.Connection))
             throw new InvalidOperationException("Player inventory ownership changed during authoritative spawn commit.");
 
-        RuntimePendingPlayerVitals? pending = _playerMembership.TakePending(request.ClaimedSlot);
+        RuntimePendingPlayerVitals? pending = membership.TakePending(request.ClaimedSlot);
         bool hasPending = pending is not null && pending.Connection == spawn.Connection;
 
-        CommittedPlayerSpawns++;
-        _playerMembership.Commit(new RuntimePlayerMember
+        CommittedSpawns++;
+        membership.Commit(new RuntimePlayerMember
         {
             Connection = spawn.Connection,
             Revision = 1,
@@ -201,7 +345,7 @@ internal sealed partial class ServerRuntimeState
             Mana = hasPending ? pending!.Mana : (short)0,
             MaxMana = hasPending ? pending!.MaxMana : (short)0
         });
-        _playerEvents?.PlayerSpawned(spawn.Connection, in request);
+        events?.PlayerSpawned(spawn.Connection, in request);
     }
 
     private void ApplyPlayerMovement(PlayerMovementRuntimeCommand movement)
@@ -211,19 +355,19 @@ internal sealed partial class ServerRuntimeState
                 in submitted,
                 out PlayerMovementCommitRequest request))
         {
-            RejectedPlayerMovements++;
+            RejectedMovements++;
             return;
         }
 
-        if (!_playerMembership.TryGet(movement.Connection, out RuntimePlayerMember? player))
+        if (!membership.TryGet(movement.Connection, out RuntimePlayerMember? player))
         {
-            RejectedPlayerMovements++;
+            RejectedMovements++;
             return;
         }
 
         if (!player.TryAdvanceRevision())
         {
-            RejectedPlayerMovements++;
+            RejectedMovements++;
             return;
         }
 
@@ -252,45 +396,45 @@ internal sealed partial class ServerRuntimeState
         player.CameraTargetX = request.HasCameraTarget ? request.CameraTargetX : 0f;
         player.CameraTargetY = request.HasCameraTarget ? request.CameraTargetY : 0f;
 
-        AppliedPlayerMovements++;
-        LastMovementPlayerSlot = request.PlayerSlot;
+        AppliedMovements++;
+        LastMovementSlot = request.PlayerSlot;
         LastMovementPositionX = request.PositionX;
         LastMovementPositionY = request.PositionY;
-        _playerEvents?.PlayerMoved(movement.Connection, in request);
+        events?.PlayerMoved(movement.Connection, in request);
     }
 
     private void ApplyPlayerDisconnect(PlayerDisconnectRuntimeCommand disconnect)
     {
         ConnectionHandle connection = disconnect.Connection;
-        _playerMembership.ClearPending(connection);
+        membership.ClearPending(connection);
 
-        _playerInventory.Clear(connection);
-        _playerTransferProfiles.Clear(connection);
+        inventory.Clear(connection);
+        transferProfiles.Clear(connection);
 
-        if (!_playerMembership.TryRemove(connection, out _))
+        if (!membership.TryRemove(connection, out _))
             return;
 
         DisconnectedPlayers++;
-        _playerEvents?.PlayerDisconnected(connection);
+        events?.PlayerDisconnected(connection);
     }
 
     private void ApplyPlayerTransferDetach(PlayerTransferDetachRuntimeCommand command)
     {
         ConnectionHandle connection = command.Connection;
-        if (!_playerMembership.TryGet(connection, out RuntimePlayerMember? player))
+        if (!membership.TryGet(connection, out RuntimePlayerMember? player))
         {
             command.Completion.TrySetResult(null);
             return;
         }
 
         var inventory = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
-        if (!_playerInventory.TryCopyInventory(connection, inventory))
+        if (!this.inventory.TryCopyInventory(connection, inventory))
         {
             command.Completion.TrySetResult(null);
             return;
         }
 
-        _playerTransferProfiles.TryCapture(
+        transferProfiles.TryCapture(
             connection,
             out PlayerAppearanceCommitRequest? appearance,
             out PlayerEquipmentCommitRequest[] equipment);
@@ -300,12 +444,12 @@ internal sealed partial class ServerRuntimeState
             appearance,
             equipment);
 
-        _playerMembership.ClearPending(connection);
-        _playerInventory.Clear(connection);
-        _playerTransferProfiles.Clear(connection);
-        if (!_playerMembership.TryRemove(connection, out _))
+        membership.ClearPending(connection);
+        this.inventory.Clear(connection);
+        transferProfiles.Clear(connection);
+        if (!membership.TryRemove(connection, out _))
             throw new InvalidOperationException("Player membership changed during authoritative transfer detach.");
-        _playerEvents?.PlayerDisconnected(connection);
+        events?.PlayerDisconnected(connection);
         command.Completion.TrySetResult(transfer);
     }
 
@@ -316,9 +460,9 @@ internal sealed partial class ServerRuntimeState
         int slot = connection.Player.Slot.Value;
         if (!connection.IsAssigned ||
             transfer.Slot != connection.Player.Slot ||
-            _playerMembership.Contains(connection.Player.Slot) ||
+            membership.Contains(connection.Player.Slot) ||
             transfer.Inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
-            !_playerInventory.TryAttach(connection))
+            !inventory.TryAttach(connection))
         {
             command.Completion.TrySetResult(false);
             return;
@@ -327,9 +471,9 @@ internal sealed partial class ServerRuntimeState
         var inventoryMutations = new RuntimePlayerInventoryMutation[VanillaPlayerItemSlotCatalog.InventoryCount];
         for (short inventorySlot = 0; inventorySlot < inventoryMutations.Length; inventorySlot++)
             inventoryMutations[inventorySlot] = new RuntimePlayerInventoryMutation(inventorySlot, transfer.Inventory[inventorySlot]);
-        if (!_playerInventory.TryApplyAtomic(connection, inventoryMutations))
+        if (!inventory.TryApplyAtomic(connection, inventoryMutations))
         {
-            _playerInventory.Clear(connection);
+            inventory.Clear(connection);
             command.Completion.TrySetResult(false);
             return;
         }
@@ -379,8 +523,8 @@ internal sealed partial class ServerRuntimeState
             CameraTargetX = preservePosition ? previous.CameraTargetX : 0f,
             CameraTargetY = preservePosition ? previous.CameraTargetY : 0f
         };
-        _playerMembership.Commit(state);
-        _playerTransferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment);
+        membership.Commit(state);
+        transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment);
 
         short eventSpawnX = checked((short)Math.Clamp((int)(positionX / 16f), short.MinValue, short.MaxValue));
         short eventSpawnY = checked((short)Math.Clamp((int)(positionY / 16f), short.MinValue, short.MaxValue));
@@ -393,12 +537,12 @@ internal sealed partial class ServerRuntimeState
             DeathsPvp: 0,
             Team: state.Team,
             SpawnContext: 0);
-        _playerEvents?.PlayerSpawned(connection, in spawn);
+        events?.PlayerSpawned(connection, in spawn);
 
         if (transfer.Appearance is PlayerAppearanceCommitRequest appearance)
         {
             PlayerAppearanceCommitRequest normalizedAppearance = appearance with { PlayerSlot = connection.Player.Slot };
-            _playerEvents?.PlayerAppearanceUpdated(connection, in normalizedAppearance);
+            events?.PlayerAppearanceUpdated(connection, in normalizedAppearance);
         }
 
         for (short inventorySlot = 0; inventorySlot < transfer.Inventory.Length; inventorySlot++)
@@ -407,23 +551,23 @@ internal sealed partial class ServerRuntimeState
             if (item.IsEmpty)
                 continue;
             PlayerEquipmentCommitRequest request = item.ToCommitRequest(connection.Player.Slot, inventorySlot);
-            _playerEvents?.PlayerEquipmentUpdated(connection, in request);
+            events?.PlayerEquipmentUpdated(connection, in request);
         }
         for (int i = 0; i < transfer.Equipment.Length; i++)
         {
             PlayerEquipmentCommitRequest request = transfer.Equipment[i] with { PlayerSlot = connection.Player.Slot };
-            _playerEvents?.PlayerEquipmentUpdated(connection, in request);
+            events?.PlayerEquipmentUpdated(connection, in request);
         }
 
         if (state.HasHealth)
         {
             var health = new PlayerHealthCommitRequest(connection.Player.Slot, state.Life, state.MaxLife);
-            _playerEvents?.PlayerHealthUpdated(connection, in health);
+            events?.PlayerHealthUpdated(connection, in health);
         }
         if (state.HasMana)
         {
             var mana = new PlayerManaCommitRequest(connection.Player.Slot, state.Mana, state.MaxMana);
-            _playerEvents?.PlayerManaUpdated(connection, in mana);
+            events?.PlayerManaUpdated(connection, in mana);
         }
 
         var movement = new PlayerMovementCommitRequest(
@@ -450,26 +594,18 @@ internal sealed partial class ServerRuntimeState
             HasCameraTarget: preservePosition && (state.CameraTargetX != 0f || state.CameraTargetY != 0f),
             state.CameraTargetX,
             state.CameraTargetY);
-        _playerEvents?.PlayerMoved(connection, in movement);
+        events?.PlayerMoved(connection, in movement);
         command.Completion.TrySetResult(true);
     }
 
     private bool IsTransferPositionValid(float positionX, float positionY)
     {
-        if (_worldTiles is null || !float.IsFinite(positionX) || !float.IsFinite(positionY))
+        if (worldTiles is null || !float.IsFinite(positionX) || !float.IsFinite(positionY))
             return false;
 
-        float maximumX = _worldTiles.Dimensions.WidthTiles * 16f - VanillaBasePlayerWidth;
-        float maximumY = _worldTiles.Dimensions.HeightTiles * 16f - VanillaBasePlayerHeight;
+        float maximumX = worldTiles.Dimensions.WidthTiles * 16f - VanillaBasePlayerWidth;
+        float maximumY = worldTiles.Dimensions.HeightTiles * 16f - VanillaBasePlayerHeight;
         return positionX >= 0f && positionY >= 0f && positionX <= maximumX && positionY <= maximumY;
-    }
-
-    private void CompletePlayerSnapshot(PlayerStateSnapshotRuntimeCommand command)
-    {
-        PlayerStateSnapshot? result = TryCaptureRuntimePlayerSnapshot(command.Player, out PlayerStateSnapshot snapshot)
-            ? snapshot
-            : null;
-        command.Completion.TrySetResult(result);
     }
 
 }

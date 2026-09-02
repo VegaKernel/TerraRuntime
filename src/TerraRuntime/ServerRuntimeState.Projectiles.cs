@@ -52,7 +52,7 @@ internal sealed partial class ServerRuntimeState
     {
         TerrariaProjectileUpdateState packet = command.State;
         if (_projectileReplication is null ||
-            !IsCurrentPlayerConnection(command.Connection) ||
+            !_players.IsCurrent(command.Connection) ||
             packet.Key.Spawner != command.Connection.Player.Slot.Value ||
             !TryConvertClientProjectileUpdate(in packet, out ProjectileStateUpdate update))
         {
@@ -96,7 +96,7 @@ internal sealed partial class ServerRuntimeState
         TerrariaProjectileDestroyState packet = command.State;
         if (_projectileReplication is null ||
             !packet.IsValid ||
-            !IsCurrentPlayerConnection(command.Connection))
+            !_players.IsCurrent(command.Connection))
         {
             RejectedClientProjectileDestroys++;
             return;

@@ -1,7 +1,6 @@
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Contracts.Gameplay;
-using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
@@ -304,25 +303,16 @@ internal sealed class RuntimeTownCommerceResolver1458
     }
 
     public bool TryResolve(
-        ConnectionHandle connection,
-        RuntimePlayerInventoryStore inventory,
+        ReadOnlySpan<RuntimePlayerInventoryItem> playerItems,
         in RuntimeTownCommercePlayer1458 player,
         short npcSlot,
         RuntimeWorldClock? clock,
         out RuntimeTownShopSession1458 session)
     {
-        ArgumentNullException.ThrowIfNull(inventory);
-        if ((uint)npcSlot >= RuntimeTownNpcStateStore.MaximumTownNpcs ||
+        if (playerItems.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
+            (uint)npcSlot >= RuntimeTownNpcStateStore.MaximumTownNpcs ||
             !npcs.TryGetActive(checked((byte)npcSlot), out NpcSnapshot vendor) ||
             !NpcTypeId.TryCreate(vendor.Type, out NpcTypeId npcType))
-        {
-            session = null!;
-            return false;
-        }
-
-        Span<RuntimePlayerInventoryItem> playerItems =
-            stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
-        if (!inventory.TryCopyInventory(connection, playerItems))
         {
             session = null!;
             return false;

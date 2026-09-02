@@ -6,6 +6,26 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimePlayerGenerationTests
 {
     [Fact]
+    public void Runtime_states_own_independent_player_authorities()
+    {
+        var first = new ServerRuntimeState();
+        var second = new ServerRuntimeState();
+        var slots = new PlayerSlotPool(1);
+        using PlayerJoinSession session = CreateAwaitingSpawnSession(slots);
+        ConnectionHandle connection = Spawn(first, GameCommandSourceId.FromConnection(1), session);
+
+        Assert.True(first.TryCapturePlayerSnapshot(connection.Player, out _));
+        Assert.False(second.TryCapturePlayerSnapshot(connection.Player, out _));
+        Assert.Equal(1, first.CommittedPlayerSpawns);
+        Assert.Equal(0, second.CommittedPlayerSpawns);
+
+        first.Apply(new PlayerMovementRuntimeCommand(connection, CreateMovement(connection.Player.Slot)));
+
+        Assert.Equal(1, first.AppliedPlayerMovements);
+        Assert.Equal(0, second.AppliedPlayerMovements);
+    }
+
+    [Fact]
     public void Stale_commands_cannot_mutate_a_new_session_reusing_the_same_source_and_slot()
     {
         var slots = new PlayerSlotPool(1);

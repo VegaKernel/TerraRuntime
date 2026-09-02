@@ -61,14 +61,14 @@ internal sealed partial class ServerRuntimeState
         int spawnPlayerCount = 0;
         int boundsCount = 0;
         Span<RuntimePlayerInventoryItem> inventory = stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
-        foreach (RuntimePlayerMember player in _playerMembership.Members)
+        foreach (RuntimePlayerMember player in _players.Members)
         {
             long coinValue = 0;
             bool bullet = false;
             bool bomb = false;
             bool dye = false;
             inventory.Clear();
-            if (_playerInventory.TryCopyInventory(player.Connection, inventory))
+            if (_players.TryCopyInventory(player.Connection, inventory))
             {
                 foreach (RuntimePlayerInventoryItem item in inventory)
                 {
@@ -89,7 +89,10 @@ internal sealed partial class ServerRuntimeState
                 HasDemolitionistBomb: bomb,
                 HasDyeTraderItem: dye);
             _townPlayerBounds[boundsCount++] = new RuntimeTownPlayerBounds1458(
-                player.PositionX, player.PositionY, VanillaBasePlayerWidth, VanillaBasePlayerHeight);
+                player.PositionX,
+                player.PositionY,
+                PlayerAuthority.VanillaBasePlayerWidth,
+                PlayerAuthority.VanillaBasePlayerHeight);
         }
 
         if (_townMoveIn is not null)
@@ -200,15 +203,15 @@ internal sealed partial class ServerRuntimeState
 
         for (int slot = 0; slot < VanillaNpcTargetingAiStepper.MaximumPlayerCandidates; slot++)
         {
-            if (_playerMembership.TryGet(checked((byte)slot), out RuntimePlayerMember? player))
+            if (_players.TryGet(checked((byte)slot), out RuntimePlayerMember? player))
             {
                 if (player.MountType != 0)
                     continue;
 
                 destination[written++] = new VanillaNpcTargetCandidate(
                     Slot: checked((byte)slot),
-                    CenterX: player.PositionX + VanillaBasePlayerWidth * 0.5f,
-                    CenterY: player.PositionY + VanillaBasePlayerHeight * 0.5f,
+                    CenterX: player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
+                    CenterY: player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
                     Aggro: 0,
                     Active: true,
                     Dead: player.IsDead,
@@ -235,8 +238,8 @@ internal sealed partial class ServerRuntimeState
 
             destination[written++] = new VanillaNpcTargetCandidate(
                 Slot: checked((byte)slot),
-                CenterX: serverPlayer.PositionX + VanillaBasePlayerWidth * 0.5f,
-                CenterY: serverPlayer.PositionY + VanillaBasePlayerHeight * 0.5f,
+                CenterX: serverPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
+                CenterY: serverPlayer.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
                 Aggro: 0,
                 Active: true,
                 Dead: serverPlayer.IsDead,
@@ -257,11 +260,19 @@ internal sealed partial class ServerRuntimeState
         int tileTop = tileY * 16;
         int tileRight = tileLeft + 16;
         int tileBottom = tileTop + 16;
-        foreach (RuntimePlayerMember player in _playerMembership.Members)
+        foreach (RuntimePlayerMember player in _players.Members)
         {
             if (player.IsDead)
                 continue;
-            if (Intersects(player.PositionX, player.PositionY, VanillaBasePlayerWidth, VanillaBasePlayerHeight, tileLeft, tileTop, tileRight, tileBottom))
+            if (Intersects(
+                    player.PositionX,
+                    player.PositionY,
+                    PlayerAuthority.VanillaBasePlayerWidth,
+                    PlayerAuthority.VanillaBasePlayerHeight,
+                    tileLeft,
+                    tileTop,
+                    tileRight,
+                    tileBottom))
                 return false;
         }
         if (_serverPlayerStates is not null)
@@ -272,7 +283,15 @@ internal sealed partial class ServerRuntimeState
                 PlayerStateSnapshot snapshot = _serverPlayerSnapshots[i];
                 if (snapshot.IsDead)
                     continue;
-                if (Intersects(snapshot.PositionX, snapshot.PositionY, VanillaBasePlayerWidth, VanillaBasePlayerHeight, tileLeft, tileTop, tileRight, tileBottom))
+                if (Intersects(
+                        snapshot.PositionX,
+                        snapshot.PositionY,
+                        PlayerAuthority.VanillaBasePlayerWidth,
+                        PlayerAuthority.VanillaBasePlayerHeight,
+                        tileLeft,
+                        tileTop,
+                        tileRight,
+                        tileBottom))
                     return false;
             }
         }

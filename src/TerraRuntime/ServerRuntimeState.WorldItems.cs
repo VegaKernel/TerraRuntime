@@ -27,7 +27,7 @@ internal sealed partial class ServerRuntimeState
 
     private void ApplyWorldItemAllocate(WorldItemAllocateRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection))
+        if (!_players.IsCurrent(command.Connection))
         {
             RejectedWorldItemAllocations++;
             command.Completion?.TrySetResult(null);
@@ -48,7 +48,7 @@ internal sealed partial class ServerRuntimeState
 
     private void ApplyWorldItemDrop(WorldItemDropRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection) ||
+        if (!_players.IsCurrent(command.Connection) ||
             !IsCurrentWorldItemTarget(command.Target))
         {
             RejectedWorldItemDrops++;
@@ -67,7 +67,7 @@ internal sealed partial class ServerRuntimeState
 
     private void ApplyWorldItemRemove(WorldItemRemoveRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection) ||
+        if (!_players.IsCurrent(command.Connection) ||
             !IsCurrentWorldItemTarget(command.Target))
         {
             RejectedWorldItemRemovals++;
@@ -85,7 +85,7 @@ internal sealed partial class ServerRuntimeState
 
     private void ApplyWorldItemOwner(WorldItemOwnerRuntimeCommand command)
     {
-        if (!IsCurrentPlayerConnection(command.Connection) ||
+        if (!_players.IsCurrent(command.Connection) ||
             !IsCurrentWorldItemTarget(command.Target))
         {
             RejectedWorldItemOwners++;

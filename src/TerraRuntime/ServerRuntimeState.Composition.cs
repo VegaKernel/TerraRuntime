@@ -40,8 +40,8 @@ internal sealed partial class ServerRuntimeState
         bool expertMode = false,
         bool masterMode = false)
     {
-        _playerEvents = playerEvents;
         _worldTiles = worldTiles;
+        _players = new PlayerAuthority(playerEvents, worldTiles);
         _tileMutations = worldTiles is null ? null : new VanillaWorldTileMutationService(worldTiles);
         _worldClock = worldClock;
         _expertMode = expertMode;

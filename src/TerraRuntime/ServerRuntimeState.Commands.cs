@@ -22,6 +22,8 @@ internal sealed partial class ServerRuntimeState
             return;
         if (_objectPlacementProcessor?.TryApply(this, command) == true)
             return;
+        if (_players.TryApply(command))
+            return;
         if (command is NpcActorSpawnRuntimeCommand actorSpawn)
         {
             ApplyNpcActorSpawn(actorSpawn);
@@ -87,35 +89,8 @@ internal sealed partial class ServerRuntimeState
             case WorldItemOwnerRuntimeCommand owner:
                 ApplyWorldItemOwner(owner);
                 break;
-            case PlayerAppearanceRuntimeCommand appearance:
-                ApplyPlayerAppearance(appearance);
-                break;
-            case PlayerEquipmentRuntimeCommand equipment:
-                ApplyPlayerEquipment(equipment);
-                break;
-            case PlayerHealthRuntimeCommand health:
-                ApplyPlayerHealth(health);
-                break;
-            case PlayerManaRuntimeCommand mana:
-                ApplyPlayerMana(mana);
-                break;
-            case PlayerSpawnRuntimeCommand spawn:
-                ApplyPlayerSpawn(spawn);
-                break;
-            case PlayerMovementRuntimeCommand movement:
-                ApplyPlayerMovement(movement);
-                break;
-            case PlayerDisconnectRuntimeCommand disconnect:
-                ApplyPlayerDisconnect(disconnect);
-                break;
             case PlayerStateSnapshotRuntimeCommand snapshot:
                 CompletePlayerSnapshot(snapshot);
-                break;
-            case PlayerTransferDetachRuntimeCommand detach:
-                ApplyPlayerTransferDetach(detach);
-                break;
-            case PlayerTransferAttachRuntimeCommand attach:
-                ApplyPlayerTransferAttach(attach);
                 break;
         }
     }

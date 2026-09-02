@@ -12,15 +12,10 @@ namespace TerraRuntime;
 internal sealed partial class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntimePlayerSlotSnapshotLookup
 {
     private const int MaxPlayerSlots = 256;
-    private const float VanillaBasePlayerWidth = 20f;
-    private const float VanillaBasePlayerHeight = 42f;
 
-    private readonly RuntimePlayerMembership _playerMembership = new(MaxPlayerSlots);
-    private readonly RuntimePlayerInventoryStore _playerInventory = new();
-    private readonly RuntimePlayerTransferProfileStore _playerTransferProfiles = new();
+    private readonly PlayerAuthority _players;
     private readonly VanillaNpcTargetCandidate[] _npcTargetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
-    private readonly IRuntimePlayerEventSink? _playerEvents;
     private readonly RuntimeNpcStore _npcs;
     private readonly RuntimeNpcAiStateExecutor _npcAiExecutor;
     private readonly RuntimeNpcActorControlRegistry _npcActorControls;
@@ -82,5 +77,4 @@ internal sealed partial class ServerRuntimeState : IRuntimePlayerSnapshotLookup,
     private readonly bool _masterMode;
     private readonly PlayerTileEditBudget _tileEditBudget = new(MaxPlayerSlots);
     private int lastWorkerResult;
-    private int lastSpawnCommitResult = -1;
 }

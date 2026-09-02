@@ -16,7 +16,7 @@ internal sealed partial class ServerRuntimeState
     internal RuntimeNpcShopCatalogRegistry NpcShops => _npcShops;
 
     internal bool TryGetPlayerTownShopSession(PlayerHandle player, out RuntimeTownShopSession1458? session)
-        => _playerMembership.TryGetTownShopSession(player, out session);
+        => _players.TryGetTownShopSession(player, out session);
 
     internal RuntimeNpcArchetypeRegistry NpcArchetypes => _npcArchetypes;
 
@@ -24,29 +24,29 @@ internal sealed partial class ServerRuntimeState
 
     public long Updates { get; private set; }
 
-    public long AppliedPlayerAppearances { get; private set; }
+    public long AppliedPlayerAppearances => _players.AppliedAppearances;
 
-    public long RejectedPlayerAppearances { get; private set; }
+    public long RejectedPlayerAppearances => _players.RejectedAppearances;
 
-    public long AppliedPlayerEquipmentUpdates { get; private set; }
+    public long AppliedPlayerEquipmentUpdates => _players.AppliedEquipmentUpdates;
 
-    public long RejectedPlayerEquipmentUpdates { get; private set; }
+    public long RejectedPlayerEquipmentUpdates => _players.RejectedEquipmentUpdates;
 
-    public long AppliedPlayerHealthUpdates { get; private set; }
+    public long AppliedPlayerHealthUpdates => _players.AppliedHealthUpdates;
 
-    public long RejectedPlayerHealthUpdates { get; private set; }
+    public long RejectedPlayerHealthUpdates => _players.RejectedHealthUpdates;
 
-    public long AppliedPlayerManaUpdates { get; private set; }
+    public long AppliedPlayerManaUpdates => _players.AppliedManaUpdates;
 
-    public long RejectedPlayerManaUpdates { get; private set; }
+    public long RejectedPlayerManaUpdates => _players.RejectedManaUpdates;
 
-    public long CommittedPlayerSpawns { get; private set; }
+    public long CommittedPlayerSpawns => _players.CommittedSpawns;
 
-    public long AppliedPlayerMovements { get; private set; }
+    public long AppliedPlayerMovements => _players.AppliedMovements;
 
-    public long RejectedPlayerMovements { get; private set; }
+    public long RejectedPlayerMovements => _players.RejectedMovements;
 
-    public long DisconnectedPlayers { get; private set; }
+    public long DisconnectedPlayers => _players.DisconnectedPlayers;
 
     public long AppliedNpcSpawns { get; private set; }
 
@@ -114,20 +114,13 @@ internal sealed partial class ServerRuntimeState
 
     public ProjectileStateTickSummary LastProjectileTick { get; private set; }
 
-    public PlayerSlotId? LastMovementPlayerSlot { get; private set; }
+    public PlayerSlotId? LastMovementPlayerSlot => _players.LastMovementSlot;
 
-    public float LastMovementPositionX { get; private set; }
+    public float LastMovementPositionX => _players.LastMovementPositionX;
 
-    public float LastMovementPositionY { get; private set; }
+    public float LastMovementPositionY => _players.LastMovementPositionY;
 
     public int LastWorkerResult => Volatile.Read(ref lastWorkerResult);
 
-    public PlayerSpawnCommitResult? LastSpawnCommitResult
-    {
-        get
-        {
-            int value = Volatile.Read(ref lastSpawnCommitResult);
-            return value < 0 ? null : (PlayerSpawnCommitResult)value;
-        }
-    }
+    public PlayerSpawnCommitResult? LastSpawnCommitResult => _players.LastSpawnCommitResult;
 }

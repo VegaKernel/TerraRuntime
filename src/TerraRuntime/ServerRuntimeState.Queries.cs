@@ -12,7 +12,7 @@ namespace TerraRuntime;
 internal sealed partial class ServerRuntimeState
 {
     internal bool TryCapturePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
-        => _playerMembership.TryCapture(player, out snapshot);
+        => _players.TryCapture(player, out snapshot);
 
     private bool TryCaptureRuntimePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
     {
@@ -35,7 +35,7 @@ internal sealed partial class ServerRuntimeState
         PlayerSlotId slot,
         out PlayerStateSnapshot snapshot)
     {
-        if (_playerMembership.TryGet(slot, out RuntimePlayerMember? player))
+        if (_players.TryGet(slot, out RuntimePlayerMember? player))
             return TryCaptureRuntimePlayerSnapshot(player.Connection.Player, out snapshot);
 
         if (_serverPlayerStates is not null)
@@ -50,13 +50,7 @@ internal sealed partial class ServerRuntimeState
         int inventorySlot,
         out RuntimePlayerInventoryItem item)
     {
-        if (!_playerMembership.TryGet(player, out RuntimePlayerMember? state))
-        {
-            item = default;
-            return false;
-        }
-
-        return _playerInventory.TryGet(state.Connection, inventorySlot, out item);
+        return _players.TryGetInventoryItem(player, inventorySlot, out item);
     }
 
     internal bool TryCaptureNpcSnapshot(NpcHandle npc, out NpcSnapshot snapshot) =>
@@ -67,4 +61,12 @@ internal sealed partial class ServerRuntimeState
 
     internal bool TryCaptureWorldItemSnapshot(short slot, out WorldItemSnapshot snapshot) =>
         _worldItems.TryGetActive(slot, out snapshot);
+
+    private void CompletePlayerSnapshot(PlayerStateSnapshotRuntimeCommand command)
+    {
+        PlayerStateSnapshot? result = TryCaptureRuntimePlayerSnapshot(command.Player, out PlayerStateSnapshot snapshot)
+            ? snapshot
+            : null;
+        command.Completion.TrySetResult(result);
+    }
 }
