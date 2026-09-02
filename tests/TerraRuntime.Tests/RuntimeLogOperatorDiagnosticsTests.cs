@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Diagnostics;
+using TerraRuntime.Diagnostics;
 using TerraRuntime.Operations;
 using OperationsLogLevel = TerraRuntime.Operations.RuntimeLogLevel;
 using StructuredLogLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel;
@@ -67,7 +68,12 @@ public sealed class RuntimeLogOperatorDiagnosticsTests
         var logs = new RuntimeLogBuffer(capacity: 8);
         using var standardOutput = new StringWriter();
         using var standardError = new StringWriter();
-        var host = new RuntimeHostLog(logs, standardOutput, standardError, correlationId: "run-42");
+        var host = new RuntimeHostLog(
+            logs,
+            standardOutput,
+            standardError,
+            new RuntimeHostLoggingOptions { JsonLinesEnabled = false },
+            correlationId: "run-42");
 
         host.Log(
             OperationsLogLevel.Information,

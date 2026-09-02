@@ -92,7 +92,8 @@ internal sealed class WorldTileAuthority
             return;
         }
 
-        if (!command.State.TryGetKnownAction(out var action))
+        if (ClientTileManipulationAdmissionPolicy.Evaluate(command.State, out var action) !=
+            ClientTileManipulationAdmissionResult.Admitted)
         {
             UnsupportedClientManipulations++;
             return;
@@ -106,85 +107,6 @@ internal sealed class WorldTileAuthority
 
         ValidatedClientManipulations++;
         var tileState = command.State;
-
-        if (action == TerrariaTileManipulationAction.KillWall)
-        {
-            if (!ApplyTileMutation(
-                    tileMutations,
-                    WorldTileMutationKind.KillWall,
-                    tileState.TileX,
-                    tileState.TileY))
-            {
-                RejectedClientManipulations++;
-                return;
-            }
-
-            AppliedClientManipulations++;
-            replication?.TryPublishCommitted(command.Connection.Source, in tileState);
-            return;
-        }
-
-        if (action == TerrariaTileManipulationAction.PlaceWall)
-        {
-            if (!VanillaWallIds.TryCreate(tileState.Data, out WallTypeId wallType) ||
-                wallType == VanillaWallIds.None ||
-                !VanillaWallDefinitionCatalog.TryGet(wallType, out VanillaWallDefinition wallDefinition) ||
-                !wallDefinition.IsPresent)
-            {
-                RejectedClientManipulations++;
-                return;
-            }
-
-            if (!players.TryGetInventoryItem(
-                    command.Connection,
-                    player.SelectedItem,
-                    out RuntimePlayerInventoryItem wallItem) ||
-                wallItem.IsEmpty)
-            {
-                RejectedClientManipulations++;
-                return;
-            }
-
-            if (!ApplyTileMutation(
-                    tileMutations,
-                    WorldTileMutationKind.PlaceWall,
-                    tileState.TileX,
-                    tileState.TileY,
-                    wallType: wallType))
-            {
-                RejectedClientManipulations++;
-                return;
-            }
-
-            AppliedClientManipulations++;
-            replication?.TryPublishCommitted(command.Connection.Source, in tileState);
-            return;
-        }
-
-        if (action == TerrariaTileManipulationAction.KillTileNoItem)
-        {
-            WorldTile before = tiles.Get(tileState.TileX, tileState.TileY);
-            bool isDirt = before.TileType == VanillaTileIds.Dirt;
-            if (isDirt && !VanillaDirtRules1458.CanKillIsolated(tiles, tileState.TileX, tileState.TileY))
-            {
-                RejectedClientManipulations++;
-                return;
-            }
-
-            if (!ApplyTileMutation(
-                    tileMutations,
-                    WorldTileMutationKind.KillTile,
-                    tileState.TileX,
-                    tileState.TileY))
-            {
-                RejectedClientManipulations++;
-                return;
-            }
-
-            AppliedClientManipulations++;
-            replication?.TryPublishCommitted(command.Connection.Source, in tileState);
-            return;
-        }
 
         if (action == TerrariaTileManipulationAction.KillTile)
         {
@@ -280,10 +202,7 @@ internal sealed class WorldTileAuthority
         }
 
         if (action != TerrariaTileManipulationAction.PlaceTile)
-        {
-            UnsupportedClientManipulations++;
-            return;
-        }
+            throw new InvalidOperationException("Admitted packet-17 action is outside the authoritative tile slice.");
 
         if (!players.TryGetInventoryItem(
                 command.Connection,

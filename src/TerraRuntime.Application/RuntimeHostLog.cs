@@ -34,32 +34,16 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
         RuntimeLogBuffer runtimeLogs,
         TextWriter standardOutput,
         TextWriter standardError,
-        RuntimeLogPipelineOptions? pipelineOptions = null,
+        RuntimeHostLoggingOptions loggingOptions,
         IReadOnlyList<IRuntimeLogSink>? additionalSinks = null,
         string? correlationId = null)
         : this(
             runtimeLogs,
             standardOutput,
             standardError,
-            RuntimeHostLoggingOptions.ForCompatibilityTests(pipelineOptions),
+            loggingOptions,
             additionalSinks,
             correlationId,
-            enablePlainConsoleChat: false)
-    {
-    }
-
-    internal RuntimeHostLog(
-        RuntimeLogBuffer runtimeLogs,
-        TextWriter standardOutput,
-        TextWriter standardError,
-        RuntimeHostLoggingOptions loggingOptions)
-        : this(
-            runtimeLogs,
-            standardOutput,
-            standardError,
-            loggingOptions,
-            additionalSinks: null,
-            correlationId: null,
             enablePlainConsoleChat: false)
     {
     }

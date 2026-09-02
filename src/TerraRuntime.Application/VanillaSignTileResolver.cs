@@ -27,7 +27,7 @@ internal static class VanillaSignTileResolver
         }
 
         WorldTile clicked = tiles.Get(tileX, tileY);
-        if (!VanillaTileObjectAnchorCatalog.TryResolveSignOriginOffset(
+        if (!VanillaMultiTileObjectCatalog.TryResolveSignOriginOffset(
                 clicked,
                 out int frameColumn,
                 out int frameRow))

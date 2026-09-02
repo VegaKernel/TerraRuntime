@@ -171,6 +171,8 @@ internal sealed class ServerPlayerAuthority
 
     public bool TryGet(PlayerSlotId slot, out PlayerStateSnapshot snapshot) => states.TryGet(slot, out snapshot);
 
+    public int CopySnapshots(Span<PlayerStateSnapshot> destination) => states.CopySnapshots(destination);
+
     public bool IntersectsLivingPlayer(
         float left,
         float top,

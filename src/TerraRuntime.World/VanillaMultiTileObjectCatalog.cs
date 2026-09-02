@@ -36,8 +36,18 @@ public readonly record struct VanillaMultiTileObjectDefinition(
         (MetadataKind == VanillaTileObjectMetadataKind.TileEntity) == TileEntityKind.HasValue &&
         (!TileEntityKind.HasValue || Enum.IsDefined(TileEntityKind.GetValueOrDefault()));
 
-    public VanillaTileObjectAnchorDefinition MetadataAnchor =>
-        new(TileType, FrameXPeriod, FrameYPeriod, RequireFrameYZero);
+    public bool MatchesAnchor(in WorldTile tile)
+    {
+        if (!IsValid || !tile.IsActive || tile.TileType != TileType)
+            return false;
+
+        if (tile.FrameX % FrameXPeriod != 0)
+            return false;
+
+        return RequireFrameYZero
+            ? tile.FrameY == 0
+            : tile.FrameY % FrameYPeriod == 0;
+    }
 }
 
 /// <summary>
@@ -110,6 +120,48 @@ public static class VanillaMultiTileObjectCatalog
         return false;
     }
 
+    private const int FrameCoordinateUnit = 18;
+
+    public static bool MatchesChestAnchor(in WorldTile tile) =>
+        MatchesAnchor(tile, VanillaTileObjectMetadataKind.Chest);
+
+    public static bool MatchesSignAnchor(in WorldTile tile) =>
+        MatchesAnchor(tile, VanillaTileObjectMetadataKind.Sign);
+
+    public static bool TryResolveSignOriginOffset(in WorldTile tile, out int offsetX, out int offsetY) =>
+        TryResolveOriginOffset(tile, VanillaTileObjectMetadataKind.Sign, out offsetX, out offsetY);
+
+    public static bool MatchesTileEntityAnchor(WorldTileEntityKind kind, in WorldTile tile) =>
+        TryGet(kind, out VanillaMultiTileObjectDefinition definition) && definition.MatchesAnchor(tile);
+
+    private static bool MatchesAnchor(in WorldTile tile, VanillaTileObjectMetadataKind metadataKind) =>
+        TryGet(tile.TileType, out VanillaMultiTileObjectDefinition definition) &&
+        definition.MetadataKind == metadataKind &&
+        definition.MatchesAnchor(tile);
+
+    private static bool TryResolveOriginOffset(
+        in WorldTile tile,
+        VanillaTileObjectMetadataKind metadataKind,
+        out int offsetX,
+        out int offsetY)
+    {
+        if (tile.FrameX < 0 ||
+            tile.FrameY < 0 ||
+            !TryGet(tile.TileType, out VanillaMultiTileObjectDefinition definition) ||
+            definition.MetadataKind != metadataKind)
+        {
+            offsetX = 0;
+            offsetY = 0;
+            return false;
+        }
+
+        offsetX = (tile.FrameX / FrameCoordinateUnit) % definition.Width;
+        // Sign.ReadSign removes the complete vertical frame row; unlike the horizontal coordinate it does not
+        // apply a modulo. Keeping this source-backed asymmetry here prevents packet handlers from reimplementing it.
+        offsetY = tile.FrameY / FrameCoordinateUnit;
+        return true;
+    }
+
     private static VanillaMultiTileObjectDefinition Chest(
         TileTypeId type,
         byte width,
@@ -157,98 +209,4 @@ public static class VanillaMultiTileObjectCatalog
             RequireFrameYZero: true,
             VanillaTileObjectMetadataKind.TileEntity,
             kind);
-}
-
-/// <summary>
-/// Source-backed frame-anchor rule used when the runtime identifies a persisted/section object from a tile.
-/// Compatibility view over <see cref="VanillaMultiTileObjectDefinition"/> for existing metadata encoders.
-/// </summary>
-public readonly record struct VanillaTileObjectAnchorDefinition(
-    TileTypeId TileType,
-    short FrameXPeriod,
-    short FrameYPeriod,
-    bool RequireFrameYZero)
-{
-    public bool IsValid =>
-        FrameXPeriod > 0 &&
-        (RequireFrameYZero || FrameYPeriod > 0);
-
-    public bool Matches(in WorldTile tile)
-    {
-        if (!IsValid || !tile.IsActive || tile.TileType != TileType)
-            return false;
-
-        if (tile.FrameX % FrameXPeriod != 0)
-            return false;
-
-        return RequireFrameYZero
-            ? tile.FrameY == 0
-            : tile.FrameY % FrameYPeriod == 0;
-    }
-}
-
-/// <summary>
-/// TerrariaServer 1.4.5.8 section-object anchor facts currently consumed by chest, sign and tile-entity
-/// metadata discovery. Frame periods live here so unrelated encoders do not duplicate vanilla frame arithmetic.
-/// </summary>
-public static class VanillaTileObjectAnchorCatalog
-{
-    private const int FrameCoordinateUnit = 18;
-
-    public static bool MatchesChestAnchor(in WorldTile tile) =>
-        Matches(tile, VanillaTileObjectMetadataKind.Chest);
-
-    public static bool MatchesSignAnchor(in WorldTile tile) =>
-        Matches(tile, VanillaTileObjectMetadataKind.Sign);
-
-    public static bool TryResolveSignOriginOffset(in WorldTile tile, out int offsetX, out int offsetY) =>
-        TryResolveOriginOffset(tile, VanillaTileObjectMetadataKind.Sign, out offsetX, out offsetY);
-
-    public static bool MatchesTileEntityAnchor(WorldTileEntityKind kind, in WorldTile tile) =>
-        TryGetTileEntityAnchorDefinition(kind, out VanillaTileObjectAnchorDefinition definition) &&
-        definition.Matches(tile);
-
-    public static bool TryGetTileEntityAnchorDefinition(
-        WorldTileEntityKind kind,
-        out VanillaTileObjectAnchorDefinition definition)
-    {
-        if (VanillaMultiTileObjectCatalog.TryGet(kind, out VanillaMultiTileObjectDefinition objectDefinition))
-        {
-            definition = objectDefinition.MetadataAnchor;
-            return definition.IsValid;
-        }
-
-        definition = default;
-        return false;
-    }
-
-    private static bool Matches(in WorldTile tile, VanillaTileObjectMetadataKind metadataKind)
-    {
-        return VanillaMultiTileObjectCatalog.TryGet(tile.TileType, out VanillaMultiTileObjectDefinition definition) &&
-               definition.MetadataKind == metadataKind &&
-               definition.MetadataAnchor.Matches(tile);
-    }
-
-    private static bool TryResolveOriginOffset(
-        in WorldTile tile,
-        VanillaTileObjectMetadataKind metadataKind,
-        out int offsetX,
-        out int offsetY)
-    {
-        if (tile.FrameX < 0 ||
-            tile.FrameY < 0 ||
-            !VanillaMultiTileObjectCatalog.TryGet(tile.TileType, out VanillaMultiTileObjectDefinition definition) ||
-            definition.MetadataKind != metadataKind)
-        {
-            offsetX = 0;
-            offsetY = 0;
-            return false;
-        }
-
-        offsetX = (tile.FrameX / FrameCoordinateUnit) % definition.Width;
-        // Sign.ReadSign removes the complete vertical frame row; unlike the horizontal coordinate it does not
-        // apply a modulo. Keeping this source-backed asymmetry here prevents packet handlers from reimplementing it.
-        offsetY = tile.FrameY / FrameCoordinateUnit;
-        return true;
-    }
 }

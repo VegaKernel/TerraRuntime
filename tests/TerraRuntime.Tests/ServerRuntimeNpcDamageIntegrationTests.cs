@@ -145,7 +145,7 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
 
         public ConnectionHandle SpawnPlayer(long connectionId)
         {
-            Assert.True(slots.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+            Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
             var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
             sessions.Add(session);
             Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());

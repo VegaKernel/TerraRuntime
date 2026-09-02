@@ -214,7 +214,9 @@ public sealed class ServerRuntimeNpcActorControlTests
         Assert.Equal(target.Player, snapshot.Player);
 
         return new ServerPlayerTargetSetup(
-            new ServerRuntimeState(worldTiles: tiles, serverPlayerStates: serverPlayers),
+            new ServerRuntimeState(
+                worldTiles: tiles,
+                serverPlayers: new ServerPlayerAuthority(serverPlayers, worldTiles: tiles)),
             target);
     }
 

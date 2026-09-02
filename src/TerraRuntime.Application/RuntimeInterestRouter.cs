@@ -14,14 +14,12 @@ internal sealed class RuntimeInterestRouter
     private const int DefaultPlayerLeaveRadiusSections = 4;
 
     private readonly IInterestManagementControl _control;
-    private readonly IRuntimeInterestPolicy _enabledPolicy;
     private readonly RuntimePlayerSpatialIndex? _players;
     private readonly RuntimePlayerVisibilityTracker? _playerVisibility;
 
     public RuntimeInterestRouter(
         IInterestManagementControl control,
         WorldDimensions? dimensions = null,
-        IRuntimeInterestPolicy? enabledPolicy = null,
         int playerEnterRadiusSections = DefaultPlayerEnterRadiusSections,
         int playerLeaveRadiusSections = DefaultPlayerLeaveRadiusSections)
     {
@@ -30,7 +28,6 @@ internal sealed class RuntimeInterestRouter
         ArgumentOutOfRangeException.ThrowIfLessThan(playerLeaveRadiusSections, playerEnterRadiusSections);
 
         _control = control;
-        _enabledPolicy = enabledPolicy ?? PassthroughInterestPolicy.Instance;
 
         if (dimensions is not null)
         {
@@ -95,10 +92,9 @@ internal sealed class RuntimeInterestRouter
         in RuntimePlayerInterestState observer,
         in RuntimePlayerInterestState subject)
     {
-        if (!_control.IsEnabled)
-            return true;
-
-        return _enabledPolicy.ShouldObservePlayer(in observer, in subject);
+        _ = observer;
+        _ = subject;
+        return true;
     }
 }
 
@@ -112,28 +108,3 @@ internal readonly record struct RuntimePlayerInterestState(
     bool HasPosition,
     float PositionX,
     float PositionY);
-
-internal interface IRuntimeInterestPolicy
-{
-    bool ShouldObservePlayer(
-        in RuntimePlayerInterestState observer,
-        in RuntimePlayerInterestState subject);
-}
-
-/// <summary>
-/// Foundation policy used until enter/leave snapshots and forced resync semantics are wired to the
-/// outbound synchronization layer. Enabling interest management today therefore changes routing
-/// ownership and maintains spatial/visibility state, but does not yet suppress movement updates.
-/// </summary>
-internal sealed class PassthroughInterestPolicy : IRuntimeInterestPolicy
-{
-    public static PassthroughInterestPolicy Instance { get; } = new();
-
-    private PassthroughInterestPolicy()
-    {
-    }
-
-    public bool ShouldObservePlayer(
-        in RuntimePlayerInterestState observer,
-        in RuntimePlayerInterestState subject) => true;
-}

@@ -27,7 +27,7 @@ internal sealed class ServerPlayerReplicaStore
         }
 
         active = TerrariaPlayerActiveEncoder.Encode(player.Player.Slot.Value, active: true);
-        movement = EncodeMovement(in player);
+        movement = TerrariaPlayerReplicationFrameEncoder.EncodeMovement(in player);
         replicas[player.Player.Slot.Value] = new ServerPlayerReplica(player.Player, active)
         {
             Movement = movement
@@ -46,7 +46,7 @@ internal sealed class ServerPlayerReplicaStore
             return false;
         }
 
-        encoded = EncodeAppearance(player.Slot, in appearance);
+        encoded = TerrariaPlayerReplicationFrameEncoder.EncodeAppearance(player.Slot, in appearance);
         replica.Appearance = encoded;
         return true;
     }
@@ -82,7 +82,7 @@ internal sealed class ServerPlayerReplicaStore
             return false;
         }
 
-        encoded = EncodeItem(player.Slot, in item);
+        encoded = TerrariaPlayerReplicationFrameEncoder.EncodeEquipment(player.Slot, in item);
         if (item.IsEmpty)
             replica.Items.Remove(item.Slot);
         else
@@ -98,7 +98,7 @@ internal sealed class ServerPlayerReplicaStore
             return false;
         }
 
-        encoded = EncodeMovement(in player);
+        encoded = TerrariaPlayerReplicationFrameEncoder.EncodeMovement(in player);
         replica.Movement = encoded;
         return true;
     }
@@ -202,74 +202,6 @@ internal sealed class ServerPlayerReplicaStore
         recipient.Outbound.TryEnqueue(new OutboundFrame(encoded)) == OutboundEnqueueResult.Enqueued
             ? 1
             : 0;
-
-    private static byte[] EncodeAppearance(
-        PlayerSlotId player,
-        in ServerPlayerAppearanceState appearance)
-    {
-        var state = new TerrariaPlayerAppearanceState(
-            player.Value,
-            appearance.SkinVariant,
-            appearance.VoiceVariant,
-            appearance.VoicePitchOffset,
-            appearance.Hair,
-            appearance.Name,
-            appearance.HairDye,
-            appearance.HideVisibleAccessory,
-            appearance.HideMisc,
-            ToProtocol(appearance.HairColor),
-            ToProtocol(appearance.SkinColor),
-            ToProtocol(appearance.EyeColor),
-            ToProtocol(appearance.ShirtColor),
-            ToProtocol(appearance.UnderShirtColor),
-            ToProtocol(appearance.PantsColor),
-            ToProtocol(appearance.ShoeColor),
-            appearance.DifficultyFlags,
-            appearance.TorchAndCartFlags,
-            appearance.ConsumableUnlockFlags);
-        return TerrariaPlayerAppearanceCodec.Encode(in state);
-    }
-
-    private static byte[] EncodeItem(PlayerSlotId player, in ServerPlayerItemState item)
-    {
-        var state = new TerrariaPlayerEquipmentState(
-            player.Value,
-            item.Slot,
-            item.Stack,
-            checked((byte)item.Prefix.Value),
-            checked((short)item.ItemType.Value),
-            item.ItemFlags);
-        return TerrariaPlayerEquipmentCodec.Encode(in state);
-    }
-
-    private static byte[] EncodeMovement(in PlayerStateSnapshot player)
-    {
-        var state = new TerrariaPlayerMovementState(
-            player.Player.Slot.Value,
-            player.ControlFlags,
-            player.MovementFlags,
-            player.MiscFlags1,
-            player.MiscFlags2,
-            player.SelectedItem,
-            player.PositionX,
-            player.PositionY,
-            HasVelocity: true,
-            player.VelocityX,
-            player.VelocityY,
-            HasMount: player.MountType != 0,
-            player.MountType,
-            HasPotionOfReturnPositions: false,
-            player.PotionOfReturnOriginalPositionX,
-            player.PotionOfReturnOriginalPositionY,
-            player.PotionOfReturnHomePositionX,
-            player.PotionOfReturnHomePositionY,
-            HasCameraTarget: false,
-            player.CameraTargetX,
-            player.CameraTargetY);
-        return TerrariaPlayerMovementEncoder.Encode(in state);
-    }
-
-    private static TerrariaRgbColor ToProtocol(PlayerRgbColor color) => new(color.R, color.G, color.B);
 
     private sealed class ServerPlayerReplica(PlayerHandle player, byte[] active)
     {

@@ -14,7 +14,7 @@ public sealed class ServerRuntimeDirtKillDropTests
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9301);
         fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperPickaxe, stack: 1);
-        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
         WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
@@ -57,7 +57,7 @@ public sealed class ServerRuntimeDirtKillDropTests
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9302);
         fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperPickaxe, stack: 1);
-        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
         WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
@@ -91,7 +91,7 @@ public sealed class ServerRuntimeDirtKillDropTests
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9303);
         fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperPickaxe, stack: 1);
-        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
         WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
@@ -122,7 +122,7 @@ public sealed class ServerRuntimeDirtKillDropTests
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9304);
         fixture.SetSelectedInventoryItem(connection, VanillaItemIds.DirtBlock, stack: 1);
-        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
         WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
@@ -184,7 +184,7 @@ public sealed class ServerRuntimeDirtKillDropTests
 
         public ConnectionHandle SpawnPlayer(long connectionId)
         {
-            Assert.True(slots.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+            Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
             session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
             Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());
             Assert.Equal(PlayerJoinTransition.SectionRequestAccepted, session.ObserveSectionRequest());

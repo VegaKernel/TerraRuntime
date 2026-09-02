@@ -41,7 +41,9 @@ public sealed class ServerRuntimeTallGateOccupancyTests
         var pool = new PlayerSlotPool(10);
         var identities = new RuntimeServerPlayerSlotRegistry(pool);
         var store = new RuntimeServerPlayerStateStore(identities, 10);
-        var state = new ServerRuntimeState(worldTiles: tiles, serverPlayerStates: store, serverPlayerIdentities: identities);
+        var state = new ServerRuntimeState(
+            worldTiles: tiles,
+            serverPlayers: new ServerPlayerAuthority(store, identities, tiles));
         PlayerHandle handle = CreateServerPlayer(identities, store, 15f * 16f, 12f * 16f);
         Assert.False(state.IsTileActorFreeForTesting(15, 12));
         Assert.True(state.IsTileActorFreeForTesting(30, 30));

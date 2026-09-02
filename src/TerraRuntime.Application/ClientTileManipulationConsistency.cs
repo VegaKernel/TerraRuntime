@@ -24,10 +24,8 @@ internal static class ClientTileManipulationConsistency
         in TerrariaTileManipulationState state,
         in RuntimePlayerInventoryItem selectedItem)
     {
-        if (!state.TryGetKnownAction(out TerrariaTileManipulationAction action))
-            return ClientTileManipulationConsistencyResult.Unsupported;
-
-        if (action != TerrariaTileManipulationAction.PlaceTile)
+        if (!state.TryGetWireAction(out TerrariaTileManipulationAction action) ||
+            action != TerrariaTileManipulationAction.PlaceTile)
             return ClientTileManipulationConsistencyResult.Unsupported;
 
         if (selectedItem.IsEmpty ||

@@ -3,26 +3,11 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.World;
 
 /// <summary>
-/// Source-backed TerrariaServer 1.4.5.8 packet-17 Dirt compatibility facade. The strict isolated-Dirt acceptance
-/// rules remain here because they are packet/gameplay proof, while the actual storage mutation is delegated to the
-/// shared semantic <see cref="VanillaWorldTileMutationService"/> boundary used by future tile/wall operations.
+/// Source-backed TerrariaServer 1.4.5.8 packet-17 Dirt admission rules. This type owns only the pure source-backed
+/// predicates; authoritative storage mutation belongs to <see cref="VanillaWorldTileMutationService"/>.
 /// </summary>
 public static class VanillaDirtRules1458
 {
-    public static bool TryPlaceOnEmpty(WorldTileStore tiles, int x, int y)
-    {
-        if (!CanPlaceOnEmpty(tiles, x, y))
-            return false;
-
-        var service = new VanillaWorldTileMutationService(tiles);
-        var request = new WorldTileMutationRequest(
-            WorldTileMutationKind.PlaceTile,
-            x,
-            y,
-            TileType: VanillaTileIds.Dirt);
-        return service.Apply(in request).Applied;
-    }
-
     /// <summary>
     /// Preflights the strict canonical-empty state accepted by Dirt placement. Production packet handling uses this
     /// check before committing through its long-lived <see cref="VanillaWorldTileMutationService"/> instance.
@@ -38,7 +23,7 @@ public static class VanillaDirtRules1458
     }
 
     /// <summary>
-    /// Preflights the same isolated canonical Dirt subset accepted by <see cref="TryKillIsolatedWithoutDrop"/>
+    /// Preflights the strict isolated canonical Dirt subset accepted by authoritative packet-17 tile mutation
     /// without mutating the world. The authoritative game thread may use this before reserving cross-subsystem
     /// resources; single-writer ownership keeps the preflight stable until the following commit attempt.
     /// </summary>
@@ -66,21 +51,6 @@ public static class VanillaDirtRules1458
         }
 
         return true;
-    }
-
-    /// <summary>
-    /// Implements the no-item packet-17 KillTile subset for an isolated canonical Dirt tile. Cross-subsystem drop
-    /// reservation remains outside this helper; the committed storage transition goes through the shared mutation
-    /// service so section revisions, dirtiness and simple-frame canonicalization follow one path.
-    /// </summary>
-    public static bool TryKillIsolatedWithoutDrop(WorldTileStore tiles, int x, int y)
-    {
-        if (!CanKillIsolated(tiles, x, y))
-            return false;
-
-        var service = new VanillaWorldTileMutationService(tiles);
-        var request = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, x, y);
-        return service.Apply(in request).Applied;
     }
 
     private static bool Contains(WorldTileStore tiles, int x, int y) =>

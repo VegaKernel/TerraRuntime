@@ -27,14 +27,4 @@ internal static class ClientTileManipulationAdmissionPolicy
             ? ClientTileManipulationAdmissionResult.Admitted
             : ClientTileManipulationAdmissionResult.AuthorityUnavailable;
     }
-
-    /// <summary>
-    /// Compatibility-shaped runtime extension for existing authoritative call sites. The method intentionally lives
-    /// in TerraRuntime rather than TerraRuntime.Protocol.Multiplicity so gameplay legality cannot leak back into the
-    /// packet codec. New runtime code should prefer Evaluate when it needs the rejection reason.
-    /// </summary>
-    public static bool TryGetKnownAction(
-        this TerrariaTileManipulationState state,
-        out TerrariaTileManipulationAction action) =>
-        Evaluate(in state, out action) == ClientTileManipulationAdmissionResult.Admitted;
 }

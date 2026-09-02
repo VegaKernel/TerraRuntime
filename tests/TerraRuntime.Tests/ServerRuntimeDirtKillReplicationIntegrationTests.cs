@@ -19,7 +19,7 @@ public sealed class ServerRuntimeDirtKillReplicationIntegrationTests
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9401);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9402);
         fixture.SetSelectedCopperPickaxe(origin);
-        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(fixture.Tiles, 10, 10));
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
 
         var request = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.KillTile,
@@ -112,7 +112,7 @@ public sealed class ServerRuntimeDirtKillReplicationIntegrationTests
 
         public ConnectionHandle SpawnPlayer(long connectionId)
         {
-            Assert.True(slots.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+            Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
             var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
             sessions.Add(session);
             Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());

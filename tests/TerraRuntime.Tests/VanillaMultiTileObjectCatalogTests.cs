@@ -3,7 +3,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
-public sealed class VanillaTileObjectAnchorCatalogTests
+public sealed class VanillaMultiTileObjectCatalogTests
 {
     [Fact]
     public void Multi_tile_catalog_pins_supported_base_style_geometry()
@@ -48,10 +48,10 @@ public sealed class VanillaTileObjectAnchorCatalogTests
         WorldTile dresser = ActiveTile(VanillaTileIds.Dressers, frameX: 54, frameY: 36);
         WorldTile misalignedDresser = ActiveTile(VanillaTileIds.Dressers, frameX: 36, frameY: 36);
 
-        Assert.True(VanillaTileObjectAnchorCatalog.MatchesChestAnchor(chest));
-        Assert.True(VanillaTileObjectAnchorCatalog.MatchesChestAnchor(chest2));
-        Assert.True(VanillaTileObjectAnchorCatalog.MatchesChestAnchor(dresser));
-        Assert.False(VanillaTileObjectAnchorCatalog.MatchesChestAnchor(misalignedDresser));
+        Assert.True(VanillaMultiTileObjectCatalog.MatchesChestAnchor(chest));
+        Assert.True(VanillaMultiTileObjectCatalog.MatchesChestAnchor(chest2));
+        Assert.True(VanillaMultiTileObjectCatalog.MatchesChestAnchor(dresser));
+        Assert.False(VanillaMultiTileObjectCatalog.MatchesChestAnchor(misalignedDresser));
     }
 
     [Theory]
@@ -66,8 +66,8 @@ public sealed class VanillaTileObjectAnchorCatalogTests
         WorldTile aligned = ActiveTile(type, frameX: 36, frameY: 72);
         WorldTile misaligned = ActiveTile(type, frameX: 18, frameY: 72);
 
-        Assert.True(VanillaTileObjectAnchorCatalog.MatchesSignAnchor(aligned));
-        Assert.False(VanillaTileObjectAnchorCatalog.MatchesSignAnchor(misaligned));
+        Assert.True(VanillaMultiTileObjectCatalog.MatchesSignAnchor(aligned));
+        Assert.False(VanillaMultiTileObjectCatalog.MatchesSignAnchor(misaligned));
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public sealed class VanillaTileObjectAnchorCatalogTests
     {
         WorldTile styledSignCell = ActiveTile(VanillaTileIds.AnnouncementBox, frameX: 54, frameY: 54);
 
-        Assert.True(VanillaTileObjectAnchorCatalog.TryResolveSignOriginOffset(
+        Assert.True(VanillaMultiTileObjectCatalog.TryResolveSignOriginOffset(
             styledSignCell,
             out int offsetX,
             out int offsetY));
@@ -83,7 +83,7 @@ public sealed class VanillaTileObjectAnchorCatalogTests
         Assert.Equal(3, offsetY);
 
         WorldTile ordinary = ActiveTile(VanillaTileIds.Stone, frameX: 0, frameY: 0);
-        Assert.False(VanillaTileObjectAnchorCatalog.TryResolveSignOriginOffset(ordinary, out _, out _));
+        Assert.False(VanillaMultiTileObjectCatalog.TryResolveSignOriginOffset(ordinary, out _, out _));
     }
 
     [Fact]
@@ -103,17 +103,17 @@ public sealed class VanillaTileObjectAnchorCatalogTests
     public void Tile_entity_matching_requires_active_type_and_anchor_alignment()
     {
         WorldTile pylon = ActiveTile(VanillaTileIds.TeleportationPylon, frameX: 108, frameY: 144);
-        Assert.True(VanillaTileObjectAnchorCatalog.MatchesTileEntityAnchor(WorldTileEntityKind.TeleportationPylon, pylon));
+        Assert.True(VanillaMultiTileObjectCatalog.MatchesTileEntityAnchor(WorldTileEntityKind.TeleportationPylon, pylon));
 
         pylon.FrameY = 36;
-        Assert.False(VanillaTileObjectAnchorCatalog.MatchesTileEntityAnchor(WorldTileEntityKind.TeleportationPylon, pylon));
+        Assert.False(VanillaMultiTileObjectCatalog.MatchesTileEntityAnchor(WorldTileEntityKind.TeleportationPylon, pylon));
 
         WorldTile itemFrame = ActiveTile(VanillaTileIds.ItemFrame, frameX: 36, frameY: 18);
-        Assert.False(VanillaTileObjectAnchorCatalog.MatchesTileEntityAnchor(WorldTileEntityKind.ItemFrame, itemFrame));
+        Assert.False(VanillaMultiTileObjectCatalog.MatchesTileEntityAnchor(WorldTileEntityKind.ItemFrame, itemFrame));
 
         itemFrame.FrameY = 0;
         itemFrame.Flags = WorldTileFlags.None;
-        Assert.False(VanillaTileObjectAnchorCatalog.MatchesTileEntityAnchor(WorldTileEntityKind.ItemFrame, itemFrame));
+        Assert.False(VanillaMultiTileObjectCatalog.MatchesTileEntityAnchor(WorldTileEntityKind.ItemFrame, itemFrame));
     }
 
     private static WorldTile ActiveTile(TileTypeId type, short frameX, short frameY)
@@ -135,7 +135,7 @@ public sealed class VanillaTileObjectAnchorCatalogTests
         short expectedFrameYPeriod,
         bool requireFrameYZero)
     {
-        Assert.True(VanillaTileObjectAnchorCatalog.TryGetTileEntityAnchorDefinition(kind, out VanillaTileObjectAnchorDefinition definition));
+        Assert.True(VanillaMultiTileObjectCatalog.TryGet(kind, out VanillaMultiTileObjectDefinition definition));
         Assert.Equal(expectedType, definition.TileType);
         Assert.Equal(expectedFrameXPeriod, definition.FrameXPeriod);
         Assert.Equal(expectedFrameYPeriod, definition.FrameYPeriod);

@@ -17,9 +17,9 @@ public sealed class PlayerSlotPoolTests
     {
         var pool = new PlayerSlotPool(2);
 
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? first));
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? second));
-        Assert.False(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? rejected));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? first));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? second));
+        Assert.False(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? rejected));
 
         Assert.NotNull(first);
         Assert.NotNull(second);
@@ -37,7 +37,7 @@ public sealed class PlayerSlotPoolTests
         PlayerHandle releasedHandle = first.Handle;
         first.Dispose();
         Assert.Equal(1, pool.LeasedCount);
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? reused));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? reused));
         Assert.NotNull(reused);
         Assert.Equal((byte)0, reused.Slot.Value);
         Assert.NotEqual(releasedHandle, reused.Handle);
@@ -90,8 +90,8 @@ public sealed class PlayerSlotPoolTests
     public void Generations_advance_independently_for_each_reused_slot()
     {
         var pool = new PlayerSlotPool(2);
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? first));
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? second));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? first));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? second));
         Assert.NotNull(first);
         Assert.NotNull(second);
 

@@ -66,13 +66,6 @@ public sealed class PlayerSlotPool
         }
     }
 
-    /// <summary>
-    /// Backward-compatible connection allocation used by the vanilla join path. Runtime-owned players must use
-    /// <see cref="TryAcquireServerOwned"/> instead of pretending to be a transport connection.
-    /// </summary>
-    public bool TryAcquire(out PlayerSlotLease? lease) =>
-        TryAcquireConnection(out lease);
-
     public bool TryAcquireConnection(out PlayerSlotLease? lease) =>
         TryAcquire(PlayerSlotLeaseKind.Connection, out lease);
 

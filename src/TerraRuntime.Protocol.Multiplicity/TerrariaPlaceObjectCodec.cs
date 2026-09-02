@@ -21,9 +21,7 @@ public enum TerrariaPlaceObjectDecodeResult : byte
 {
     Decoded = 0,
     WrongMessageId = 1,
-    InvalidPayloadLength = 2,
-    // Retained for source compatibility. Vanilla BinaryReader.ReadBoolean accepts every non-zero byte as true.
-    InvalidDirectionValue = 3
+    InvalidPayloadLength = 2
 }
 
 public enum TerrariaPlaceObjectEncodeResult : byte

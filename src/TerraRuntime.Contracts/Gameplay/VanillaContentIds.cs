@@ -69,6 +69,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId TownSlimeRed = new(682);
     public static readonly NpcTypeId TownSlimeYellow = new(683);
     public static readonly NpcTypeId TownSlimeCopper = new(684);
+    public static readonly NpcTypeId MysticFrog = new(687);
     public static readonly NpcTypeId Skeleton = new(21);
     public static readonly NpcTypeId MeteorHead = new(23);
     public static readonly NpcTypeId Hornet = new(42);

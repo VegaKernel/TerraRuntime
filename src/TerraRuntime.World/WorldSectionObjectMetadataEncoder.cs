@@ -110,7 +110,7 @@ public static class WorldSectionObjectMetadataEncoder
                 continue;
 
             WorldTile tile = world.Tiles.Get(chest.X, chest.Y);
-            if (VanillaTileObjectAnchorCatalog.MatchesChestAnchor(tile))
+            if (VanillaMultiTileObjectCatalog.MatchesChestAnchor(tile))
                 result.Add(chest);
         }
 
@@ -132,7 +132,7 @@ public static class WorldSectionObjectMetadataEncoder
                 continue;
 
             WorldTile tile = world.Tiles.Get(sign.X, sign.Y);
-            if (VanillaTileObjectAnchorCatalog.MatchesSignAnchor(tile))
+            if (VanillaMultiTileObjectCatalog.MatchesSignAnchor(tile))
                 result.Add(sign);
         }
 
@@ -154,7 +154,7 @@ public static class WorldSectionObjectMetadataEncoder
                 continue;
 
             WorldTile tile = world.Tiles.Get(entity.X, entity.Y);
-            if (VanillaTileObjectAnchorCatalog.MatchesTileEntityAnchor(entity.Kind, tile))
+            if (VanillaMultiTileObjectCatalog.MatchesTileEntityAnchor(entity.Kind, tile))
                 result.Add(entity);
         }
 

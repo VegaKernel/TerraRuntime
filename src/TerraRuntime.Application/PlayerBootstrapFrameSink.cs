@@ -255,7 +255,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (decode != ConnectRequestDecodeResult.Decoded || !request.IsCurrentProtocol)
             return Stop(PlayerBootstrapStopReason.InvalidHandshake);
 
-        if (!_slots.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease) || lease is null)
+        if (!_slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease) || lease is null)
             return Stop(PlayerBootstrapStopReason.ServerFull);
 
         var session = new PlayerJoinSession(lease);

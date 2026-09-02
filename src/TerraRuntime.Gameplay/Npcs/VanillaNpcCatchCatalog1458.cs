@@ -102,5 +102,5 @@ public static class VanillaNpcCatchCatalog1458
         return true;
     }
 
-    public static bool IsMysticFrog(NpcTypeId type) => type.Value == 687;
+    public static bool IsMysticFrog(NpcTypeId type) => type == VanillaNpcIds.MysticFrog;
 }

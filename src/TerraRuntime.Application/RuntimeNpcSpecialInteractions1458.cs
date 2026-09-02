@@ -164,8 +164,6 @@ internal sealed class RuntimePurificationPowderNpcInteraction1458
     private const int PurificationPowderType = 10;
     private const int NormalPowderSize = 64;
     private const int InfectedSeedPowderSize = 106;
-    private const int DemonTaxCollectorType = 534;
-    private const int MysticFrogType = 687;
     private const int MysticFrogWidth = 18;
     private const int MysticFrogHeight = 20;
     private const int MysticFrogLifeMax = 5;
@@ -210,7 +208,7 @@ internal sealed class RuntimePurificationPowderNpcInteraction1458
             for (int n = 0; n < npcCount; n++)
             {
                 NpcSnapshot npc = npcBuffer[n];
-                if (npc.Type == DemonTaxCollectorType)
+                if (npc.TypeIdentity == VanillaNpcIds.DemonTaxCollector)
                 {
                     if (Intersects(powder.PositionX, powder.PositionY, size, size, npc.PositionX, npc.PositionY, 18, 40) &&
                         townRescue.TryRescuePurificationPowder(npc.Handle, out _))
@@ -218,7 +216,7 @@ internal sealed class RuntimePurificationPowderNpcInteraction1458
                         transformed++;
                     }
                 }
-                else if (npc.Type == MysticFrogType &&
+                else if (VanillaNpcCatchCatalog1458.IsMysticFrog(npc.TypeIdentity) &&
                          Intersects(powder.PositionX, powder.PositionY, size, size, npc.PositionX, npc.PositionY, MysticFrogWidth, MysticFrogHeight) &&
                          TryTransformMysticFrog(in npc))
                 {

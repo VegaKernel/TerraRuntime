@@ -198,14 +198,14 @@ public sealed class VanillaWorldTileMutationServiceTests
     public void Dirt_compatibility_facade_uses_shared_mutation_semantics_without_weakening_isolation_rules()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        Assert.True(VanillaDirtRules1458.TryPlaceOnEmpty(tiles, 20, 20));
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(tiles, 20, 20));
         Assert.True(VanillaDirtRules1458.CanKillIsolated(tiles, 20, 20));
-        Assert.True(VanillaDirtRules1458.TryKillIsolatedWithoutDrop(tiles, 20, 20));
+        Assert.True(WorldTileTestMutations.TryKillIsolatedDirt(tiles, 20, 20));
         Assert.Equal(default, tiles.Get(20, 20));
 
         var wallOnly = new WorldTile { Wall = checked((ushort)VanillaWallIds.Stone.Value) };
         tiles.Set(30, 30, in wallOnly);
-        Assert.False(VanillaDirtRules1458.TryPlaceOnEmpty(tiles, 30, 30));
+        Assert.False(WorldTileTestMutations.TryPlaceDirtOnEmpty(tiles, 30, 30));
     }
 
     private static void ClearDirty(WorldTileStore tiles)

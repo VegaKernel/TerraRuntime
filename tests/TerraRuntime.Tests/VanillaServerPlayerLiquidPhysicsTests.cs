@@ -49,7 +49,7 @@ public sealed class VanillaServerPlayerLiquidPhysicsTests
         {
             var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
             Assert.True(states.TrySpawn(id, 96f, 80f, out PlayerStateSnapshot spawned));
-            var runtime = new ServerRuntimeState(worldTiles: tiles, serverPlayerStates: states);
+            var runtime = new ServerRuntimeState(worldTiles: tiles, serverPlayers: new ServerPlayerAuthority(states, worldTiles: tiles));
 
             runtime.Tick();
             runtime.Tick();
@@ -105,7 +105,7 @@ public sealed class VanillaServerPlayerLiquidPhysicsTests
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(firstId, out var firstLease));
         Assert.NotNull(firstLease);
         Assert.True(states.TrySpawn(firstId, 96f, 80f, out PlayerStateSnapshot first));
-        var runtime = new ServerRuntimeState(worldTiles: tiles, serverPlayerStates: states);
+        var runtime = new ServerRuntimeState(worldTiles: tiles, serverPlayers: new ServerPlayerAuthority(states, worldTiles: tiles));
         runtime.Tick();
         Assert.True(states.TryRemove(first.Player, out _));
         firstLease.Dispose();

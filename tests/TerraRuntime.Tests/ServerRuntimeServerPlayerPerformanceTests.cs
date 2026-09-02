@@ -72,8 +72,7 @@ public sealed class ServerRuntimeServerPlayerPerformanceTests
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
             worldTiles: tiles,
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            serverPlayers: new ServerPlayerAuthority(states, identities, tiles));
         var id = new ServerPlayerId(idValue);
         var create = new TaskCompletionSource<ServerPlayerCreateResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         runtime.Apply(new ServerPlayerCreateRuntimeCommand(id, 96f, 86f, create));

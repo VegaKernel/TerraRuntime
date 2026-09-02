@@ -106,7 +106,7 @@ public sealed class ServerRuntimePlayerVitalsTests
 
     private static PlayerJoinSession CreateAwaitingSpawnSession(PlayerSlotPool slots)
     {
-        Assert.True(slots.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+        Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
         var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
         Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());
         Assert.Equal(PlayerJoinTransition.SectionRequestAccepted, session.ObserveSectionRequest());

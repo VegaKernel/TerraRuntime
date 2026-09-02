@@ -16,8 +16,7 @@ public sealed class ServerRuntimeServerPlayerJumpControlTests
         WorldTileStore tiles = CreateGroundedWorld();
         var runtime = new ServerRuntimeState(
             worldTiles: tiles,
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            serverPlayers: new ServerPlayerAuthority(states, identities, tiles));
         var id = new ServerPlayerId("test:runtime-jump");
 
         var create = new TaskCompletionSource<ServerPlayerCreateResult>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -48,8 +47,7 @@ public sealed class ServerRuntimeServerPlayerJumpControlTests
         WorldTileStore tiles = CreateGroundedWorld();
         var runtime = new ServerRuntimeState(
             worldTiles: tiles,
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            serverPlayers: new ServerPlayerAuthority(states, identities, tiles));
         var id = new ServerPlayerId("test:held-jump-release-gate");
 
         var create = new TaskCompletionSource<ServerPlayerCreateResult>(TaskCreationOptions.RunContinuationsAsynchronously);

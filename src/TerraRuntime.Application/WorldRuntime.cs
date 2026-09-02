@@ -175,8 +175,13 @@ public sealed class WorldRuntime : IDisposable
         var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, signAndEntityReplicationEvents);
 
         Slots = new PlayerSlotPool(options.MaxPlayers);
-        ServerPlayerIdentities = new RuntimeServerPlayerSlotRegistry(Slots);
-        ServerPlayerStates = new RuntimeServerPlayerStateStore(ServerPlayerIdentities, Slots.Capacity);
+        var serverPlayerIdentities = new RuntimeServerPlayerSlotRegistry(Slots);
+        var serverPlayerStates = new RuntimeServerPlayerStateStore(serverPlayerIdentities, Slots.Capacity);
+        ServerPlayers = new ServerPlayerAuthority(
+            serverPlayerStates,
+            serverPlayerIdentities,
+            world.Tiles,
+            RuntimeConnections);
         State = new ServerRuntimeState(
             playerEvents,
             npcs: Npcs,
@@ -196,9 +201,7 @@ public sealed class WorldRuntime : IDisposable
             townInitialEclipse: world.RuntimeMetadata.Eclipse,
             townInitialInvasionActive: world.RuntimeMetadata.InvasionType > 0,
             tileManipulationReplication: TileManipulationReplication,
-            serverPlayerStates: ServerPlayerStates,
-            serverPlayerIdentities: ServerPlayerIdentities,
-            serverPlayerEvents: RuntimeConnections,
+            serverPlayers: ServerPlayers,
             npcArchetypes: NpcArchetypes,
             npcArchetypeIdentities: NpcArchetypeIdentities,
             expertMode: world.RuntimeMetadata.GameMode is
@@ -287,8 +290,7 @@ public sealed class WorldRuntime : IDisposable
     internal RuntimeNpcArchetypeRegistry NpcArchetypes { get; }
     internal RuntimeNpcArchetypeIdentityStore NpcArchetypeIdentities { get; }
     internal PlayerSlotPool Slots { get; }
-    internal RuntimeServerPlayerSlotRegistry ServerPlayerIdentities { get; }
-    internal RuntimeServerPlayerStateStore ServerPlayerStates { get; }
+    internal ServerPlayerAuthority ServerPlayers { get; }
     internal ServerRuntimeState State { get; }
     internal AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> GameLoop { get; }
     internal AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand> CommandIngress { get; }

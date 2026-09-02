@@ -18,9 +18,10 @@ public sealed class ServerRuntimeServerPlayerPhysicsTests
         {
             var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
             Assert.True(states.TrySpawn(id, 96f, 80f, out PlayerStateSnapshot spawned));
+            WorldTileStore tiles = CreateWorld();
             var runtime = new ServerRuntimeState(
-                worldTiles: CreateWorld(),
-                serverPlayerStates: states);
+                worldTiles: tiles,
+                serverPlayers: new ServerPlayerAuthority(states, worldTiles: tiles));
 
             runtime.Tick();
 
@@ -51,7 +52,7 @@ public sealed class ServerRuntimeServerPlayerPhysicsTests
             Assert.True(states.TrySpawn(id, 96f, 86f, out PlayerStateSnapshot spawned));
             var runtime = new ServerRuntimeState(
                 worldTiles: tiles,
-                serverPlayerStates: states);
+                serverPlayers: new ServerPlayerAuthority(states, worldTiles: tiles));
 
             runtime.Tick();
 

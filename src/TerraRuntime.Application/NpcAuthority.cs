@@ -31,7 +31,7 @@ internal sealed class NpcAuthority
     private readonly RuntimeWorldItemStore worldItems;
     private readonly IWorldItemSpawnRandom worldItemSpawnRandom;
     private readonly RuntimeWorldClock? worldClock;
-    private readonly RuntimeServerPlayerStateStore? serverPlayerStates;
+    private readonly ServerPlayerAuthority? serverPlayers;
     private readonly bool expertMode;
     private readonly bool masterMode;
     private readonly VanillaNpcTargetCandidate[] targetCandidates =
@@ -59,7 +59,7 @@ internal sealed class NpcAuthority
         bool townInitialRaining,
         bool townInitialEclipse,
         bool townInitialInvasionActive,
-        RuntimeServerPlayerStateStore? serverPlayerStates,
+        ServerPlayerAuthority? serverPlayers,
         RuntimeNpcShopCatalogRegistry? npcShops,
         RuntimeNpcArchetypeRegistry? npcArchetypes,
         RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities,
@@ -75,7 +75,7 @@ internal sealed class NpcAuthority
         this.worldItemSpawnRandom = worldItemSpawnRandom ?? throw new ArgumentNullException(nameof(worldItemSpawnRandom));
         ArgumentNullException.ThrowIfNull(instancedItemLeases);
         this.worldClock = worldClock;
-        this.serverPlayerStates = serverPlayerStates;
+        this.serverPlayers = serverPlayers;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         ArgumentNullException.ThrowIfNull(progression);
@@ -410,7 +410,7 @@ internal sealed class NpcAuthority
 
     private int CopyTargetCandidates(Span<VanillaNpcTargetCandidate> destination)
     {
-        int serverPlayerCount = serverPlayerStates?.CopySnapshots(serverPlayerSnapshots) ?? 0;
+        int serverPlayerCount = serverPlayers?.CopySnapshots(serverPlayerSnapshots) ?? 0;
         int serverPlayerIndex = 0;
         int written = 0;
 

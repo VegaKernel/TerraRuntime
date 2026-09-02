@@ -85,7 +85,7 @@ internal static class RuntimeWorldGenerationStructuralValidator
             if ((uint)chest.X >= (uint)(width - 1) || (uint)chest.Y >= (uint)(height - 1))
                 return new(VanillaWorldValidationStatus.ObjectOutOfBounds, $"Chest at ({chest.X},{chest.Y}) exceeds {width}x{height}.");
             WorldTile anchor = store.Get(chest.X, chest.Y);
-            if (!VanillaTileObjectAnchorCatalog.MatchesChestAnchor(in anchor))
+            if (!VanillaMultiTileObjectCatalog.MatchesChestAnchor(in anchor))
             {
                 return new(VanillaWorldValidationStatus.InvalidChestAnchor,
                     $"Chest anchor mismatch at ({chest.X},{chest.Y}) type={anchor.Type} flags={anchor.Flags} frame=({anchor.FrameX},{anchor.FrameY}).");

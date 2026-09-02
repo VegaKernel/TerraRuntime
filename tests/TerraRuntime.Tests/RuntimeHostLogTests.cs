@@ -16,7 +16,15 @@ public sealed class RuntimeHostLogTests
         var runtimeLogs = new RuntimeLogBuffer(capacity: 8);
         using var standardOutput = new StringWriter();
         using var standardError = new StringWriter();
-        var log = new RuntimeHostLog(runtimeLogs, standardOutput, standardError);
+        var log = new RuntimeHostLog(
+            runtimeLogs,
+            standardOutput,
+            standardError,
+            new RuntimeHostLoggingOptions
+            {
+                ConsoleMinimumLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel.Trace,
+                JsonLinesEnabled = false
+            });
 
         log.Log(
             RuntimeLogLevel.Information,
@@ -89,8 +97,10 @@ public sealed class RuntimeHostLogTests
             runtimeLogs,
             blockedOutput,
             standardError,
-            new RuntimeLogPipelineOptions
+            new RuntimeHostLoggingOptions
             {
+                ConsoleMinimumLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel.Trace,
+                JsonLinesEnabled = false,
                 SinkTimeout = TimeSpan.FromSeconds(10),
                 ShutdownTimeout = TimeSpan.FromSeconds(10)
             });
@@ -128,6 +138,10 @@ public sealed class RuntimeHostLogTests
             runtimeLogs,
             standardOutput,
             standardError,
+            new RuntimeHostLoggingOptions
+            {
+                JsonLinesEnabled = false
+            },
             additionalSinks: [recent],
             correlationId: "run-42");
 

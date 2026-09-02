@@ -31,9 +31,7 @@ internal sealed partial class ServerRuntimeState
         bool townInitialEclipse = false,
         bool townInitialInvasionActive = false,
         RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null,
-        RuntimeServerPlayerStateStore? serverPlayerStates = null,
-        RuntimeServerPlayerSlotRegistry? serverPlayerIdentities = null,
-        IRuntimeServerPlayerEventSink? serverPlayerEvents = null,
+        ServerPlayerAuthority? serverPlayers = null,
         RuntimeNpcShopCatalogRegistry? npcShops = null,
         RuntimeNpcArchetypeRegistry? npcArchetypes = null,
         RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities = null,
@@ -63,11 +61,7 @@ internal sealed partial class ServerRuntimeState
             spawnRandom,
             tileManipulationReplication);
 
-        if (serverPlayerIdentities is not null && serverPlayerStates is null)
-            throw new ArgumentException("Server-player identities require an authoritative state store.", nameof(serverPlayerIdentities));
-        _serverPlayers = serverPlayerStates is null
-            ? null
-            : new ServerPlayerAuthority(serverPlayerStates, serverPlayerIdentities, worldTiles, serverPlayerEvents);
+        _serverPlayers = serverPlayers;
 
         RuntimeNpcStore npcStore = npcs ?? new RuntimeNpcStore();
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
@@ -100,7 +94,7 @@ internal sealed partial class ServerRuntimeState
             townInitialRaining,
             townInitialEclipse,
             townInitialInvasionActive,
-            serverPlayerStates,
+            serverPlayers,
             npcShops,
             npcArchetypes,
             npcArchetypeIdentities,

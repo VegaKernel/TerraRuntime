@@ -13,8 +13,7 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            serverPlayers: new ServerPlayerAuthority(states, identities));
         var id = new ServerPlayerId("test:host-fake");
 
         var create = new TaskCompletionSource<ServerPlayerCreateResult>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -49,8 +48,7 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            serverPlayers: new ServerPlayerAuthority(states, identities));
         var id = new ServerPlayerId("test:duplicate-fake");
 
         ServerPlayerCreateResult first = await CreateAsync(runtime, id, 10f, 20f);
@@ -71,8 +69,7 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            serverPlayers: new ServerPlayerAuthority(states, identities));
 
         ServerPlayerCreateResult result = await CreateAsync(
             runtime,
@@ -92,8 +89,7 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            serverPlayers: new ServerPlayerAuthority(states, identities));
 
         ServerPlayerCreateResult invalidId = await CreateAsync(runtime, default, 0f, 0f);
         ServerPlayerCreateResult invalidPosition = await CreateAsync(
@@ -114,8 +110,7 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            serverPlayers: new ServerPlayerAuthority(states, identities));
         var id = new ServerPlayerId("test:recreate-fake");
 
         ServerPlayerCreateResult first = await CreateAsync(runtime, id, 1f, 2f);

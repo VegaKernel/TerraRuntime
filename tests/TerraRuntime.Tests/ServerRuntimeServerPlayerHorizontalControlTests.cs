@@ -13,10 +13,10 @@ public sealed class ServerRuntimeServerPlayerHorizontalControlTests
         var slots = new PlayerSlotPool(1);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var runtime = new ServerRuntimeState(
-            worldTiles: new WorldTileStore(new WorldDimensions(100, 100)),
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            worldTiles: tiles,
+            serverPlayers: new ServerPlayerAuthority(states, identities, tiles));
         var id = new ServerPlayerId("test:runtime-horizontal");
 
         var create = new TaskCompletionSource<ServerPlayerCreateResult>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -47,10 +47,10 @@ public sealed class ServerRuntimeServerPlayerHorizontalControlTests
         var slots = new PlayerSlotPool(1);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var runtime = new ServerRuntimeState(
-            worldTiles: new WorldTileStore(new WorldDimensions(100, 100)),
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            worldTiles: tiles,
+            serverPlayers: new ServerPlayerAuthority(states, identities, tiles));
         var id = new ServerPlayerId("test:invalid-runtime-horizontal");
 
         var create = new TaskCompletionSource<ServerPlayerCreateResult>(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -9,7 +9,7 @@ public sealed class PlayerJoinSessionTests
     public void Follows_vanilla_1_2_3_10_bootstrap_states()
     {
         var pool = new PlayerSlotPool(1);
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
         using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
 
         Assert.Equal(PlayerJoinState.AwaitingWorldRequest, session.State);
@@ -31,7 +31,7 @@ public sealed class PlayerJoinSessionTests
     public void Rejects_spawn_for_different_leased_slot_without_advancing()
     {
         var pool = new PlayerSlotPool(1);
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
         using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
         Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());
         Assert.Equal(PlayerJoinTransition.SectionRequestAccepted, session.ObserveSectionRequest());
@@ -47,7 +47,7 @@ public sealed class PlayerJoinSessionTests
     public void Repeated_or_early_bootstrap_messages_do_not_skip_vanilla_states()
     {
         var pool = new PlayerSlotPool(1);
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
         using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
 
         Assert.Equal(PlayerJoinTransition.None, session.ObserveSpawn());
@@ -71,7 +71,7 @@ public sealed class PlayerJoinSessionTests
     public void Closing_session_releases_slot_exactly_once()
     {
         var pool = new PlayerSlotPool(1);
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
         var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
 
         Assert.Equal(1, pool.LeasedCount);
@@ -88,7 +88,7 @@ public sealed class PlayerJoinSessionTests
     public void Refuses_released_slot_lease()
     {
         var pool = new PlayerSlotPool(1);
-        Assert.True(pool.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+        Assert.True(pool.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
         PlayerSlotPool.PlayerSlotLease acquired = Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease);
         acquired.Dispose();
 

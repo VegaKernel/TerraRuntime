@@ -190,7 +190,7 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
 
         public ConnectionHandle SpawnPlayer(long connectionId)
         {
-            Assert.True(slots.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease));
+            Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
             session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
             Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());
             Assert.Equal(PlayerJoinTransition.SectionRequestAccepted, session.ObserveSectionRequest());

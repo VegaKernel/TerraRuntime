@@ -78,10 +78,10 @@ public sealed class RuntimeServerPlayerMovementControllerTests
         var slots = new PlayerSlotPool(capacity);
         var identities = new RuntimeServerPlayerSlotRegistry(slots);
         var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var runtime = new ServerRuntimeState(
-            worldTiles: new WorldTileStore(new WorldDimensions(100, 100)),
-            serverPlayerStates: states,
-            serverPlayerIdentities: identities);
+            worldTiles: tiles,
+            serverPlayers: new ServerPlayerAuthority(states, identities, tiles));
         return new RuntimeFixture(runtime, states);
     }
 

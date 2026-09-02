@@ -1,3 +1,4 @@
+using TerraRuntime.Diagnostics;
 using TerraRuntime.Operations;
 
 namespace TerraRuntime.Tests;
@@ -16,7 +17,15 @@ public sealed class WorldStartupPreparationTests
         try
         {
             var logs = new RuntimeLogBuffer();
-            await using var hostLog = new RuntimeHostLog(logs, TextWriter.Null, TextWriter.Null);
+            await using var hostLog = new RuntimeHostLog(
+                logs,
+                TextWriter.Null,
+                TextWriter.Null,
+                new RuntimeHostLoggingOptions
+                {
+                    ConsoleEnabled = false,
+                    JsonLinesEnabled = false
+                });
             var options = new ServerHostOptions(
                 worldPath,
                 ServerHostOptions.DefaultPort,

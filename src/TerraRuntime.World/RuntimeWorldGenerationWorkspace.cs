@@ -99,7 +99,7 @@ public sealed class RuntimeWorldGenerationWorkspace :
         }
 
         WorldTile anchor = TileStore.Get(x, y);
-        if (!VanillaTileObjectAnchorCatalog.MatchesChestAnchor(in anchor))
+        if (!VanillaMultiTileObjectCatalog.MatchesChestAnchor(in anchor))
             return false;
 
         foreach (WorldChest chest in generatedChests)

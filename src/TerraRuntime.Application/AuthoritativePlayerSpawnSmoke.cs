@@ -181,7 +181,7 @@ internal static class AuthoritativePlayerSpawnSmoke
     private static bool TryCreateAwaitingSpawnSession(PlayerSlotPool slots, out PlayerJoinSession? session)
     {
         session = null;
-        if (!slots.TryAcquire(out PlayerSlotPool.PlayerSlotLease? lease) || lease is null)
+        if (!slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease) || lease is null)
             return false;
 
         var candidate = new PlayerJoinSession(lease);

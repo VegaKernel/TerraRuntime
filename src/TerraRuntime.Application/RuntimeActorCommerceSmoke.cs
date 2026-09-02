@@ -18,14 +18,14 @@ internal static class RuntimeActorCommerceSmoke
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var playerSlots = new PlayerSlotPool(8);
         var serverPlayerIdentities = new RuntimeServerPlayerSlotRegistry(playerSlots);
-        var serverPlayers = new RuntimeServerPlayerStateStore(serverPlayerIdentities, playerSlots.Capacity);
+        var serverPlayerStates = new RuntimeServerPlayerStateStore(serverPlayerIdentities, playerSlots.Capacity);
         var targetId = new ServerPlayerId("smoke:npc-target");
         if (serverPlayerIdentities.TryAcquire(
                 targetId,
                 out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? acquiredTarget) !=
                 ServerPlayerSlotAcquireResult.Acquired ||
             acquiredTarget is null ||
-            !serverPlayers.TrySpawn(targetId, 180f, 100f, out _))
+            !serverPlayerStates.TrySpawn(targetId, 180f, 100f, out _))
         {
             acquiredTarget?.Dispose();
             failure = "merchant target player setup failed";
@@ -36,7 +36,7 @@ internal static class RuntimeActorCommerceSmoke
         var state = new ServerRuntimeState(
             npcs: npcs,
             worldTiles: tiles,
-            serverPlayerStates: serverPlayers,
+            serverPlayers: new ServerPlayerAuthority(serverPlayerStates, worldTiles: tiles),
             npcShops: shops,
             npcArchetypes: archetypes,
             npcArchetypeIdentities: identities);

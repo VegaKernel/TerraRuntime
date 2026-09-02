@@ -38,22 +38,6 @@ internal sealed record RuntimeHostLoggingOptions
         }).NormalizeQueueReserve();
     }
 
-    internal static RuntimeHostLoggingOptions ForCompatibilityTests(RuntimeLogPipelineOptions? pipelineOptions)
-    {
-        pipelineOptions ??= new RuntimeLogPipelineOptions();
-        return new RuntimeHostLoggingOptions
-        {
-            MinimumLevel = pipelineOptions.MinimumLevel,
-            ConsoleMinimumLevel = RuntimeLogLevel.Trace,
-            QueueCapacity = pipelineOptions.QueueCapacity,
-            PriorityReserve = pipelineOptions.PriorityReserve,
-            ConsoleEnabled = true,
-            JsonLinesEnabled = false,
-            SinkTimeout = pipelineOptions.SinkTimeout,
-            ShutdownTimeout = pipelineOptions.ShutdownTimeout
-        };
-    }
-
     public RuntimeLogPipelineOptions ToPipelineOptions() => new()
     {
         MinimumLevel = MinimumLevel,
