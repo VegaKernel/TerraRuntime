@@ -87,7 +87,7 @@ internal static class TerminalUiSmoke
                     AssertRendered(app.Driver!, "Rebuild");
                     AssertRendered(app.Driver!, "Save        shadow ready");
                     SelectDetailsScreen(app, workspace, Key.L, "Logs", "LOG");
-                    SelectDetailsScreen(app, workspace, Key.O, "Overview", "Running");
+                    SelectDetailsScreen(app, workspace, Key.O, "Overview", "Running", "NativeAOT-Smoke");
 
                     workspace.SetInterestManagementEnabled(true);
                     app.LayoutAndDraw();
@@ -145,7 +145,8 @@ internal static class TerminalUiSmoke
         DashboardWorkspaceWindow workspace,
         Key hotKey,
         string menuText,
-        string expectedRowPrefix)
+        string expectedRowPrefix,
+        string? expectedRenderedText = null)
     {
         app.Keyboard.RaiseKeyDownEvent(Key.E.WithAlt);
         app.LayoutAndDraw();
@@ -154,7 +155,7 @@ internal static class TerminalUiSmoke
         app.Keyboard.RaiseKeyDownEvent(hotKey);
         AssertWorkspaceRow(workspace, expectedRowPrefix);
         app.LayoutAndDraw();
-        AssertRendered(app.Driver!, expectedRowPrefix);
+        AssertRendered(app.Driver!, expectedRenderedText ?? expectedRowPrefix);
     }
 
     private static void AssertWorkspaceRow(DashboardWorkspaceWindow workspace, string expectedPrefix)
