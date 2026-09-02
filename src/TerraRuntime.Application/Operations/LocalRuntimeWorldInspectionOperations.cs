@@ -45,7 +45,7 @@ internal sealed class LocalRuntimeWorldInspectionOperations : IRuntimeWorldInspe
 
     public bool TryCaptureRuntime(WorldRuntimeId runtimeId, out WorldRuntimeSnapshot snapshot)
     {
-        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime? runtime))
+        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime runtime))
         {
             snapshot = default;
             return false;
@@ -57,7 +57,7 @@ internal sealed class LocalRuntimeWorldInspectionOperations : IRuntimeWorldInspe
 
     public bool TryCapturePlayers(WorldRuntimeId runtimeId, out RuntimePlayersSnapshot snapshot)
     {
-        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime? runtime))
+        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime runtime))
         {
             snapshot = default;
             return false;
@@ -69,7 +69,7 @@ internal sealed class LocalRuntimeWorldInspectionOperations : IRuntimeWorldInspe
 
     public bool TryCaptureNpcs(WorldRuntimeId runtimeId, out RuntimeNpcsSnapshot snapshot)
     {
-        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime? runtime) || runtime.NpcOperations is null)
+        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime runtime) || runtime.NpcOperations is null)
         {
             snapshot = default;
             return false;
@@ -81,7 +81,7 @@ internal sealed class LocalRuntimeWorldInspectionOperations : IRuntimeWorldInspe
 
     public bool TryCaptureProjectiles(WorldRuntimeId runtimeId, out RuntimeProjectilesSnapshot snapshot)
     {
-        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime? runtime) || runtime.ProjectileOperations is null)
+        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime runtime) || runtime.ProjectileOperations is null)
         {
             snapshot = default;
             return false;
@@ -93,7 +93,7 @@ internal sealed class LocalRuntimeWorldInspectionOperations : IRuntimeWorldInspe
 
     public bool TryCaptureWorldItems(WorldRuntimeId runtimeId, out RuntimeWorldItemsSnapshot snapshot)
     {
-        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime? runtime) || runtime.WorldItemOperations is null)
+        if (!TryGetLiveRuntime(runtimeId, out WorldRuntime runtime) || runtime.WorldItemOperations is null)
         {
             snapshot = default;
             return false;
@@ -103,13 +103,19 @@ internal sealed class LocalRuntimeWorldInspectionOperations : IRuntimeWorldInspe
         return true;
     }
 
-    private bool TryGetLiveRuntime(WorldRuntimeId runtimeId, out WorldRuntime? runtime)
+    private bool TryGetLiveRuntime(WorldRuntimeId runtimeId, out WorldRuntime runtime)
     {
-        runtime = null;
-        if (!runtimeId.IsAssigned || !runtimes.TryGet(runtimeId, out runtime) || runtime is null)
+        runtime = null!;
+        if (!runtimeId.IsAssigned ||
+            !runtimes.TryGet(runtimeId, out WorldRuntime? candidate) ||
+            candidate is null ||
+            candidate.Lifecycle is not (WorldRuntimeLifecycle.Running or WorldRuntimeLifecycle.Stopping))
+        {
             return false;
+        }
 
-        return runtime.Lifecycle is WorldRuntimeLifecycle.Running or WorldRuntimeLifecycle.Stopping;
+        runtime = candidate;
+        return true;
     }
 
     private static RuntimeWorldInspectionTarget Project(
