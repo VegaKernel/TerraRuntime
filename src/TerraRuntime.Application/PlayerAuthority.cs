@@ -230,7 +230,7 @@ internal sealed class PlayerAuthority
 
     private void ApplyPlayerHealth(PlayerHealthRuntimeCommand health)
     {
-        PlayerHealthCommitRequest request = VanillaPlayerHealthNormalizer.Normalize(in health.Request);
+        PlayerHealthCommitRequest request = VanillaPlayerVitalsRules.NormalizeHealth(in health.Request);
         if (!health.Connection.IsAssigned || health.Connection.Player.Slot != request.PlayerSlot)
         {
             RejectedHealthUpdates++;

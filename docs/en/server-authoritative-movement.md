@@ -4,7 +4,7 @@ TerraRuntime treats packet 13 as an input report, not as permission for the clie
 
 ## Boundary contract
 
-`RuntimePlayerMovementIngress` first applies the protocol-neutral `VanillaPlayerMovementNormalizer`, then passes the normalized report through `RuntimePlayerMovementAuthority` before the command can enter the bounded authoritative queue.
+`RuntimePlayerMovementIngress` first applies the detached `TerraRuntime.Gameplay.Players.VanillaPlayerMovementNormalizer`, then passes the normalized `TerraRuntime.Contracts.Runtime.PlayerMovementCommitRequest` through `RuntimePlayerMovementAuthority` before the command can enter the bounded authoritative queue. The rule object owns no runtime state; queue/history ownership stays in application/Core.
 
 The authority owns movement history by generation-safe `PlayerHandle`, not by reusable player slot alone. When a newer generation appears for a slot, history from the previous occupant is discarded. A command from an older generation is rejected before queueing.
 

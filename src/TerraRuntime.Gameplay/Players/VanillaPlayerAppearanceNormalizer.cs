@@ -1,4 +1,6 @@
-namespace TerraRuntime.Core;
+using TerraRuntime.Contracts.Runtime;
+
+namespace TerraRuntime.Gameplay.Players;
 
 /// <summary>
 /// Normalizes packet-4 presentation fields using TerrariaServer 1.4.5.8 limits.

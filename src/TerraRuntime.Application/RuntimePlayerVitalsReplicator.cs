@@ -43,7 +43,7 @@ internal sealed class RuntimePlayerVitalsReplicator
         if (!connection.IsAssigned || connection.Player.Slot != submitted.PlayerSlot)
             return;
 
-        PlayerHealthCommitRequest request = VanillaPlayerHealthNormalizer.Normalize(in submitted);
+        PlayerHealthCommitRequest request = VanillaPlayerVitalsRules.NormalizeHealth(in submitted);
         if (!_endpoints.TryGetValue(connection.Source, out Endpoint? origin))
             return;
 

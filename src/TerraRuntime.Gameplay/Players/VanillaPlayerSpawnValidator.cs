@@ -1,4 +1,6 @@
-namespace TerraRuntime.Core;
+using TerraRuntime.Contracts.Runtime;
+
+namespace TerraRuntime.Gameplay.Players;
 
 /// <summary>
 /// Validates protocol-326 packet-12 scalar ranges before authoritative spawn commit.

@@ -1,3 +1,5 @@
+using TerraRuntime.Gameplay.Players;
+using TerraRuntime.Contracts.Runtime;
 using System.Reflection;
 using TerraRuntime.Core;
 
@@ -173,6 +175,43 @@ public sealed class RuntimeArchitectureBoundaryTests
         Assert.Equal("TerraRuntime.Contracts", typeof(VanillaMoonPhase).Assembly.GetName().Name);
         Assert.Equal("TerraRuntime.Contracts.Gameplay", typeof(VanillaMoonPhase).Namespace);
         Assert.Equal("TerraRuntime.Core", typeof(VanillaTownNpcSpawnCadence1458).Assembly.GetName().Name);
+    }
+
+    [Fact]
+    public void Player_contracts_rules_and_runtime_ownership_follow_the_dependency_layers()
+    {
+        Type[] contractTypes =
+        [
+            typeof(PlayerAppearanceCommitRequest),
+            typeof(PlayerEquipmentCommitRequest),
+            typeof(PlayerMovementCommitRequest),
+            typeof(PlayerSpawnCommitRequest),
+            typeof(PlayerHealthCommitRequest),
+            typeof(PlayerManaCommitRequest)
+        ];
+
+        foreach (Type contractType in contractTypes)
+        {
+            Assert.Equal("TerraRuntime.Contracts", contractType.Assembly.GetName().Name);
+            Assert.Equal("TerraRuntime.Contracts.Runtime", contractType.Namespace);
+        }
+
+        Type[] gameplayTypes =
+        [
+            typeof(VanillaPlayerAppearanceNormalizer),
+            typeof(VanillaPlayerMovementNormalizer),
+            typeof(VanillaPlayerSpawnValidator),
+            typeof(VanillaPlayerVitalsRules)
+        ];
+
+        foreach (Type gameplayType in gameplayTypes)
+        {
+            Assert.Equal("TerraRuntime.Gameplay", gameplayType.Assembly.GetName().Name);
+            Assert.Equal("TerraRuntime.Gameplay.Players", gameplayType.Namespace);
+        }
+
+        Assert.Equal("TerraRuntime.Core", typeof(IPlayerAppearanceIngress).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(RuntimeServerPlayerStateStore).Assembly.GetName().Name);
     }
 
     [Fact]

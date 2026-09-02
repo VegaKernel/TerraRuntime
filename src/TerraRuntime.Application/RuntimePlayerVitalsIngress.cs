@@ -37,7 +37,7 @@ internal sealed class RuntimePlayerHealthIngress : IPlayerHealthIngress
         if (!connection.IsAssigned || connection.Player.Slot != request.PlayerSlot)
             return false;
 
-        PlayerHealthCommitRequest normalized = VanillaPlayerHealthNormalizer.Normalize(in request);
+        PlayerHealthCommitRequest normalized = VanillaPlayerVitalsRules.NormalizeHealth(in request);
         return _ingress.TryPost(
             connection.Source,
             new PlayerHealthRuntimeCommand(connection, normalized));

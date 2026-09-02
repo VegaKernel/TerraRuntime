@@ -8,6 +8,17 @@ A connected player's mutable gameplay state is owned by exactly one `WorldRuntim
 
 Normal packet handling enters the owning runtime through typed authoritative commands. Cross-runtime movement uses the same rule rather than temporarily making connection code a second state owner.
 
+## Layer ownership
+
+Player data now follows the same dependency direction as the rest of the runtime:
+
+- `TerraRuntime.Contracts.Runtime` owns detached player commit DTOs such as `PlayerAppearanceCommitRequest`, `PlayerMovementCommitRequest`, `PlayerSpawnCommitRequest`, equipment and vitals requests;
+- `TerraRuntime.Gameplay.Players` owns source-backed vanilla normalization and validation that does not retain mutable runtime state;
+- `TerraRuntime.Core` owns the authoritative ingress contracts, player slot/session lifecycle and mutable server-player stores;
+- application composition owns connection admission, anti-cheat/history policy and the concrete authoritative command routing.
+
+The packet-5 signed net-id compatibility conversion remains in Core for now because it is an ingress canonicalization boundary rather than protocol-neutral gameplay. This is deliberate and tracked separately in the architecture cleanup roadmap.
+
 ## Cross-runtime transfer
 
 A Level 1 transfer has three distinct ownership phases:

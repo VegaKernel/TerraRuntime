@@ -4,7 +4,7 @@ TerraRuntime рассматривает пакет 13 как сообщение 
 
 ## Контракт границы
 
-`RuntimePlayerMovementIngress` сначала применяет протокольно-независимый `VanillaPlayerMovementNormalizer`, а затем пропускает нормализованное сообщение через `RuntimePlayerMovementAuthority` до попадания команды в ограниченную authoritative-очередь.
+`RuntimePlayerMovementIngress` сначала применяет detached `TerraRuntime.Gameplay.Players.VanillaPlayerMovementNormalizer`, а затем пропускает нормализованный `TerraRuntime.Contracts.Runtime.PlayerMovementCommitRequest` через `RuntimePlayerMovementAuthority` до попадания команды в ограниченную authoritative-очередь. Rule-объект не владеет runtime-state; очередь и история остаются в application/Core.
 
 Authority хранит историю по generation-safe `PlayerHandle`, а не только по переиспользуемому слоту игрока. При появлении более нового поколения история предыдущего владельца слота удаляется. Команда от старого поколения отбрасывается до очереди.
 

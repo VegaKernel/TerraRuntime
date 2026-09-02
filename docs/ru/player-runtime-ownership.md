@@ -8,6 +8,17 @@
 
 Обычная обработка пакетов входит во владеющий runtime через typed authoritative commands. Перемещение между runtime подчиняется тому же правилу и не превращает connection code во временного второго владельца состояния.
 
+## Владение по слоям
+
+Player-данные теперь следуют тому же направлению зависимостей, что и остальной runtime:
+
+- `TerraRuntime.Contracts.Runtime` владеет detached DTO для player commit, включая `PlayerAppearanceCommitRequest`, `PlayerMovementCommitRequest`, `PlayerSpawnCommitRequest`, equipment и vitals requests;
+- `TerraRuntime.Gameplay.Players` владеет source-backed vanilla normalization/validation без изменяемого runtime-состояния;
+- `TerraRuntime.Core` владеет authoritative ingress-контрактами, lifecycle player slot/session и изменяемыми server-player stores;
+- application composition владеет connection admission, политикой истории/anti-cheat и конкретным routing authoritative-команд.
+
+Преобразование signed net-id из packet 5 пока намеренно остаётся в Core: это ingress canonicalization boundary, а не protocol-neutral gameplay. Его дальнейшее владение отслеживается отдельным пунктом architecture cleanup roadmap.
+
 ## Перенос между runtime
 
 Level 1 transfer имеет три отдельные фазы ownership:

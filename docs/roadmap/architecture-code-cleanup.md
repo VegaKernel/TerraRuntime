@@ -74,7 +74,7 @@ Goal: Core becomes execution mechanics rather than a convenient warehouse.
 - [x] Move source-backed town shop, happiness and spawn-eligibility rules into `TerraRuntime.Gameplay.Npcs`; keep the mutable per-world town-spawn cadence in Core and the shared typed moon-phase identity in Contracts.
 - [ ] Re-evaluate remaining protocol-neutral NPC mechanics and mixed catalog/runtime files in `Core/Npcs`; retain stores, execution ownership, state steppers, transactions and runtime mutation mechanics in Core.
 - [x] Consolidate the source-backed `NewNPC` lifetime fact into `VanillaNpcDefinitionCatalog` and make `RuntimeNpcStore.TrySpawnIntent` the single materialization path for committed AI spawn intents; remove the duplicate Core helper and Application copy.
-- [ ] Re-evaluate player gameplay code with the same rule: gameplay semantics in Gameplay, authoritative mutable stores/command application in Core/application runtime.
+- [x] Re-evaluate player gameplay code with the same rule: player commit DTOs live in `TerraRuntime.Contracts.Runtime`, source-backed appearance/movement/spawn/vitals normalization lives in `TerraRuntime.Gameplay.Players`, and authoritative ingress/stores/command application remain in Core/application runtime.
 - [ ] Re-evaluate projectile gameplay definitions versus runtime stores/executors.
 - [ ] Re-evaluate `Core/Gameplay/Extensions`; keep only runtime-owned extension mechanics in Core and move pure gameplay identity/behavior semantics downward when dependency direction permits it.
 - [ ] Align namespaces with the new owner while moving code. Do not leave compatibility aliases for old namespaces in this pre-1.0 project.
