@@ -87,7 +87,7 @@ Example target topology:
 flowchart LR
     A["primary WorldRuntime\n60 TPS"]
     B["arena WorldRuntime\n60 TPS"]
-    C["idle/test WorldRuntime\npolicy may throttle"]
+    C["idle/test WorldRuntime\n60-TPS semantics; work may be elided or suspended"]
 ```
 
 ## Vanilla timing compatibility
@@ -105,7 +105,7 @@ Therefore:
 
 ## Variable active TPS
 
-The architecture must not make non-60 TPS impossible, but enabling it is a separate correctness feature.
+The architecture must not make non-60 TPS impossible, but enabling it is a separate correctness feature. It is **not required for idle optimization** and must not be used as the default way to save CPU for empty worlds.
 
 Before an active runtime may claim arbitrary simulation TPS, implementation must define how tick-based mechanics preserve intended elapsed-time semantics. Relevant domains include at least:
 
@@ -122,27 +122,49 @@ Before an active runtime may claim arbitrary simulation TPS, implementation must
 
 Do not scatter `deltaTime` multipliers through source-backed vanilla logic without evidence. If variable-rate simulation is implemented, it needs a deliberate time model and regression coverage.
 
-## Idle throttling
+## Idle work elision and suspension
 
-Idle throttling is more valuable than arbitrary active TPS and may be implemented earlier, but it remains policy, not an excuse to change gameplay semantics accidentally.
+Idle optimization is more valuable than arbitrary active TPS, but **an empty world must not become a reduced-TPS Terraria simulation by default**. The preferred optimization is to preserve ordinary 60-TPS gameplay semantics while avoiding work that has no observable or required effect when the runtime is empty.
 
-A runtime with no players may use a lower wake/update rate only after defining which state continues advancing while idle.
+A runtime with no players may therefore:
+
+- keep its normal 60-TPS clock while short-circuiting player-, replication-, AI- or other domains that are explicitly safe to skip;
+- avoid waking expensive subsystems when no relevant work is pending;
+- enter a suspended/dormant state when the selected sandbox policy permits it;
+- wake on player admission, operator/runtime commands or other explicitly registered work and restore normal active execution before gameplay resumes.
+
+Suspension is not the same as running Terraria at 5, 10 or 30 TPS. A dormant runtime performs no ordinary gameplay ticks while asleep. Any state that is expected to advance while the runtime is dormant must have explicit wall-clock or catch-up semantics rather than accidentally inheriting a slower tick cadence.
+
+The idle contract must explicitly decide what happens to at least:
+
+- world time/day-night progression;
+- weather;
+- invasions and events;
+- NPCs and spawn scheduling;
+- projectiles and items;
+- wiring/mechanism timers;
+- plant/world growth or other scheduled world updates;
+- plugin/game-mode timers;
+- autosave and housekeeping.
 
 Possible policies may eventually include concepts such as:
 
-- full rate: continue normal 60 TPS simulation;
-- reduced idle rate: reduce expensive work while preserving required wall-clock advancement;
-- suspended: stop simulation entirely for explicitly ephemeral/test worlds where that behavior is acceptable.
+- full rate: continue normal 60-TPS simulation;
+- work-elided idle: retain 60-TPS semantics but skip domains proven irrelevant while empty;
+- suspended: stop ordinary simulation entirely for explicitly ephemeral/test worlds where that behavior is acceptable, with defined wake/catch-up rules for any wall-clock state.
 
 The concrete policy names are intentionally not frozen yet.
 
 Requirements:
 
 - [ ] idle state is determined per runtime;
-- [ ] entering/leaving idle mode cannot alter another runtime;
-- [ ] player admission restores the runtime to its required active cadence before gameplay resumes;
-- [ ] time/event progression during throttling is explicitly defined and tested;
-- [ ] idle throttling does not run background generation on the authoritative thread.
+- [ ] active gameplay remains on the ordinary 60-TPS cadence; idle optimization does not silently lower simulation TPS;
+- [ ] define which simulation domains may be skipped while empty and which must continue or use explicit wall-clock advancement;
+- [ ] entering/leaving idle or suspended state cannot alter another runtime;
+- [ ] player admission wakes the runtime and restores normal active execution before gameplay resumes;
+- [ ] commands/events that require the authoritative owner can wake a dormant runtime deterministically;
+- [ ] time/events/timers under work elision or suspension are explicitly defined and tested;
+- [ ] idle optimization does not run background generation on the authoritative thread.
 
 ## Overrun and catch-up policy
 
@@ -240,16 +262,18 @@ Do not introduce `WorldRuntimeSchedulerManager`, generic task orchestration or w
 - [ ] replication/output pressure for one runtime cannot seize another runtime's simulation owner;
 - [x] generation/materialization remains background work outside live loops.
 
-### RS3 - idle policy
+### RS3 - idle work elision / suspension
 
-- [ ] define supported idle semantics;
-- [ ] implement per-runtime idle transition if measurements justify it;
-- [ ] restore active cadence before admitting/resuming player gameplay;
-- [ ] test time/events/timers under idle policy.
+- [ ] define supported idle semantics without introducing reduced gameplay TPS as the default optimization;
+- [ ] define and implement safe per-domain work elision for empty runtimes where measurements justify it;
+- [ ] implement optional per-runtime suspension/dormancy where sandbox semantics permit it;
+- [ ] wake and restore ordinary 60-TPS active execution before admitting/resuming player gameplay;
+- [ ] define and test wall-clock/catch-up behavior for time, events and timers that must progress while dormant;
+- [ ] prove idle optimization in one runtime cannot alter scheduling or state in another runtime.
 
 ### RS4 - variable active TPS
 
-Only after timing semantics are audited:
+Only after timing semantics are audited, and independently of idle optimization:
 
 - [ ] define elapsed-time semantics for non-60 active simulation;
 - [ ] audit vanilla-compatible tick counters/timers;
@@ -268,4 +292,4 @@ Only after profiling demonstrates a need:
 
 ## Completion criteria
 
-The scheduling foundation is complete when multiple Level 1 `WorldRuntime` instances execute independently, each owns its authoritative clock and metrics, ordinary Terraria worlds retain correct 60 TPS timing, one overloaded runtime cannot directly serialize all others, generation happens outside live loops, and the same clock/ownership model can run unchanged inside a Level 2 worker.
+The scheduling foundation is complete when multiple Level 1 `WorldRuntime` instances execute independently, each owns its authoritative clock and metrics, ordinary active Terraria worlds retain correct 60-TPS timing, empty runtimes can avoid unnecessary work or suspend without masquerading as reduced-TPS gameplay, one overloaded runtime cannot directly serialize all others, generation happens outside live loops, and the same clock/ownership model can run unchanged inside a Level 2 worker.
