@@ -31,12 +31,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="TerraRuntime.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../TerraRuntime/TerraRuntime.csproj" />
-    <ProjectReference Include="../TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
+    <ProjectReference Include="../TerraRuntime.Extensibility/TerraRuntime.Extensibility.csproj" />
   </ItemGroup>
 
   <Target Name="PrepareExtensibleDeployment"

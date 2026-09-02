@@ -148,8 +148,8 @@ public sealed class RuntimeTownNpcMelee1458Tests
             npcReplication: null,
             leases,
             worldItemReplication: null,
-            worldTiles: null,
             worldClock: null,
+            progression: new RuntimeWorldProgressionMutations(),
             expertMode: false,
             masterMode: false);
 
@@ -208,7 +208,7 @@ public sealed class RuntimeTownNpcMelee1458Tests
             var projectiles = new RuntimeProjectileStore(capacity: 8);
             var metadata = new WorldFileRuntimeMetadata();
             RuntimeTownNpcCombatWorldFacts1458 facts = RuntimeTownNpcCombatWorldFacts1458.FromMetadata(metadata);
-            RuntimeWorldProgressionMutations progression = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
+            RuntimeWorldProgressionMutations progression = new();
             var combat = new RuntimeTownNpcCombat1458(
                 town,
                 npcs,

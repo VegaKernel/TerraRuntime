@@ -112,10 +112,10 @@ Protocol/gameplay/security ranges remain available for future real semantic even
 L0-L3 are implemented across:
 
 - `src/TerraRuntime.Contracts/Diagnostics/`;
-- `src/TerraRuntime/Diagnostics/`;
-- `src/TerraRuntime/RuntimeHostLog.cs`;
-- `src/TerraRuntime/Operations/RuntimeLogBuffer.cs`;
-- `src/TerraRuntime/TerrariaServerHost.cs`;
+- `src/TerraRuntime.Application/Diagnostics/`;
+- `src/TerraRuntime.Application/RuntimeHostLog.cs`;
+- `src/TerraRuntime.Application/Operations/RuntimeLogBuffer.cs`;
+- `src/TerraRuntime.Application/TerrariaServerHost.cs`;
 - `tests/TerraRuntime.Tests/RuntimeLogPipelineTests.cs`;
 - `tests/TerraRuntime.Tests/RuntimeHostLogTests.cs`;
 - `tests/TerraRuntime.Tests/RuntimeHostLoggingOptionsTests.cs`;

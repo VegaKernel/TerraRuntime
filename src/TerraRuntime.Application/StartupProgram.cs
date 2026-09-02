@@ -27,7 +27,7 @@ public static class StartupProgram
             return worldgenSmokeExitCode;
 
         if (ContainsStandaloneMode(args))
-            return Program.Main(args);
+            return StandaloneServerProgram.Main(args);
 
         RuntimeProductInfo.TryApplyConsoleTitle();
 

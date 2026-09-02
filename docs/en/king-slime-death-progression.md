@@ -16,7 +16,7 @@ TerrariaServer 1.4.5.8 handles the King Slime death case in this observable orde
 
 ## World scoping and persistence
 
-`RuntimeWorldProgressionRegistry` uses the exact `WorldTileStore` as a weak key. The progression journal tracks both the King Slime milestone and the newly produced blue-town-slime unlock while separately remembering whether that unlock was already present in the loaded world. A persisted unlock therefore suppresses repeat Nerdy spawning without being misreported as a new save mutation.
+Each `WorldRuntime` now owns one explicit `RuntimeWorldProgressionMutations` journal and passes that same instance to NPC AI/combat, town-NPC systems and persistence snapshot capture. Progression is therefore scoped by runtime composition rather than rediscovered through a process-static world registry. The journal tracks both the King Slime milestone and the newly produced blue-town-slime unlock while separately remembering whether that unlock was already present in the loaded world. A persisted unlock therefore suppresses repeat Nerdy spawning without being misreported as a new save mutation.
 
 `WorldFileProgressionHeaderPatcher` persists both `downedSlimeKing` and `UnlockedSlimeBlueSpawn`. It walks the real Terraria 1.4.5.8 header layout, including variable-length Angler names, BannerSystem arrays, party NPC entries and TreeTops data, before locating the blue-slime flag. It changes only owned booleans and fails closed for unsupported milestone bits.
 

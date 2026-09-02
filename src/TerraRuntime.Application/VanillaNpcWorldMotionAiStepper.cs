@@ -66,7 +66,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         IVanillaNpcWorldEventState? worldEvents,
         IVanillaGroundFighterDoorRandom? doorRandom = null,
         IVanillaGroundFighterDoorOpeningSink? doorOpeningSink = null,
-        IKingSlimeDeathRandom? kingSlimeDeathRandom = null)
+        IKingSlimeDeathRandom? kingSlimeDeathRandom = null,
+        RuntimeWorldProgressionMutations? progressionMutations = null)
     {
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
@@ -78,8 +79,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         this.doorRandom = doorRandom;
         this.doorOpeningSink = doorOpeningSink;
         this.kingSlimeDeathRandom = kingSlimeDeathRandom ?? new SystemKingSlimeDeathRandom();
-        progressionMutations = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
-        progressionMutations.SetSlimeBlueSpawnBaseline(worldEvents?.SlimeBlueSpawnUnlocked == true);
+        this.progressionMutations = progressionMutations ?? new RuntimeWorldProgressionMutations();
+        this.progressionMutations.SetSlimeBlueSpawnBaseline(worldEvents?.SlimeBlueSpawnUnlocked == true);
 
         targeting = NpcAiStateStepperComposition.FindCapability<VanillaNpcTargetingAiStepper>(inner);
         if (targeting is not null)

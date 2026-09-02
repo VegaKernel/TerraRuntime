@@ -22,10 +22,8 @@ public sealed class Level1SandboxRuntimeTests
         Assert.NotSame(primary.NpcReplication, sandbox.NpcReplication);
         Assert.NotSame(primary.State.WorldItemSpawnRandom, sandbox.State.WorldItemSpawnRandom);
 
-        RuntimeWorldProgressionMutations primaryProgression =
-            RuntimeWorldProgressionRegistry.GetOrCreate(primary.World.Tiles);
-        RuntimeWorldProgressionMutations sandboxProgression =
-            RuntimeWorldProgressionRegistry.GetOrCreate(sandbox.World.Tiles);
+        RuntimeWorldProgressionMutations primaryProgression = primary.WorldProgression;
+        RuntimeWorldProgressionMutations sandboxProgression = sandbox.WorldProgression;
         Assert.NotSame(primaryProgression, sandboxProgression);
         Assert.True(sandboxProgression.MarkCompleted(VanillaWorldProgressionId.EyeOfCthulhu));
         Assert.False(primaryProgression.IsCompleted(VanillaWorldProgressionId.EyeOfCthulhu));

@@ -14,11 +14,11 @@ TerraRuntime не является форком TerrariaServer и не испо�
 
 ### Standalone NativeAOT
 
-`TerraRuntime.Server` — standalone executable. Runtime core остаётся NativeAOT-compatible; Linux x64 / Windows x64 publish-and-smoke являются shipping gates. Arbitrary managed DLL plugins в этом profile не загружаются.
+`TerraRuntime.Server` — тонкий standalone NativeAOT executable. Startup он передаёт общей AOT-compatible composition assembly `TerraRuntime.Application`. Runtime core остаётся NativeAOT-compatible; Linux x64 / Windows x64 publish-and-smoke являются shipping gates. Arbitrary managed DLL plugins в этом profile не загружаются.
 
 ### Extensible CoreCLR
 
-`TerraRuntime.Extensible.Server` — self-contained CoreCLR host для trusted host module вроде Vega.
+`TerraRuntime.Extensible.Server` — тонкий self-contained CoreCLR launcher. Общий server startup находится в `TerraRuntime.Application`, а CoreCLR-only загрузка trusted host modules — в `TerraRuntime.Extensibility`, поэтому dynamic loading не попадает в NativeAOT graph.
 
 ```mermaid
 flowchart TD
@@ -35,8 +35,10 @@ Ordinary plugins не получают implementation objects TerraRuntime.
 | Path | Responsibility |
 |---|---|
 | `build/` | solution и shipping publish entry point |
-| `src/TerraRuntime` | standalone composition root, startup, gameplay/network/world composition, TUI |
-| `src/TerraRuntime.ExtensibleHost` | CoreCLR host и trusted host-module loading |
+| `src/TerraRuntime` | тонкий standalone NativeAOT launcher |
+| `src/TerraRuntime.Application` | общая AOT-compatible startup/world/server composition и TUI |
+| `src/TerraRuntime.ExtensibleHost` | тонкий CoreCLR extensible launcher |
+| `src/TerraRuntime.Extensibility` | CoreCLR-only trusted host-module loading и scoped host runtime |
 | `src/TerraRuntime.HostContracts` | narrow privileged host-module contracts |
 | `src/TerraRuntime.Contracts` | stable snapshots, IDs и runtime/gameplay control contracts |
 | `src/TerraRuntime.Core` | authoritative state, commands, entity systems и scheduling |

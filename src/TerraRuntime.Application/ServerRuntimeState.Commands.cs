@@ -20,7 +20,7 @@ internal sealed partial class ServerRuntimeState
             return;
         if (_npcActorCommands.TryApply(command))
             return;
-        if (_objectPlacementProcessor?.TryApply(this, command) == true)
+        if (_worldTileAuthority.TryApply(this, command))
             return;
         if (_players.TryApply(command))
             return;
@@ -51,9 +51,6 @@ internal sealed partial class ServerRuntimeState
                 break;
             case ClientNpcDamageRuntimeCommand npcDamage:
                 ApplyClientNpcDamage(npcDamage);
-                break;
-            case ClientTileManipulationRuntimeCommand tile:
-                ApplyClientTileManipulation(tile);
                 break;
             case ClientNpcHomeRuntimeCommand home:
                 ApplyClientNpcHome(home);

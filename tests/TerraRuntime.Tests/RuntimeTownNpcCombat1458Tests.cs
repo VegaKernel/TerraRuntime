@@ -247,7 +247,7 @@ public sealed class RuntimeTownNpcCombat1458Tests
 
             var projectiles = new RuntimeProjectileStore(capacity: 32);
             RuntimeTownNpcCombatWorldFacts1458 facts = RuntimeTownNpcCombatWorldFacts1458.FromMetadata(metadata);
-            RuntimeWorldProgressionMutations progression = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
+            RuntimeWorldProgressionMutations progression = new();
             var combat = new RuntimeTownNpcCombat1458(
                 town,
                 npcs,

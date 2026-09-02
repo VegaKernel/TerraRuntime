@@ -9,6 +9,8 @@ TerraRuntime deliberately keeps two shipping profiles:
 
 The runtime core stays NativeAOT-compatible and continues to pass Linux x64 and Windows x64 native publication/smoke gates even though the Vega-enabled plugin host uses CoreCLR.
 
+Both shipping executables are now thin entry points over explicit reusable boundaries: `TerraRuntime.Application` owns AOT-compatible server/startup composition shared by both profiles, while `TerraRuntime.Extensibility` owns CoreCLR-only trusted host-module loading. The extensible executable never references the standalone `TerraRuntime.Server` project.
+
 ## Documentation
 
 TerraRuntime keeps first-class bilingual documentation in parallel with code changes:

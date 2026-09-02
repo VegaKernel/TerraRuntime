@@ -2,9 +2,9 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net11.0</TargetFramework>
-    <RootNamespace>TerraRuntime</RootNamespace>
+    <RootNamespace>TerraRuntime.Server</RootNamespace>
     <AssemblyName>TerraRuntime.Server</AssemblyName>
-    <StartupObject>TerraRuntime.StartupProgram</StartupObject>
+    <StartupObject>TerraRuntime.Server.Program</StartupObject>
     <IsAotCompatible>true</IsAotCompatible>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <PublishAot>true</PublishAot>
@@ -19,22 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="TerraRuntime.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Terminal.Gui" Version="2.4.17" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
-    <ProjectReference Include="../TerraRuntime.Core/TerraRuntime.Core.csproj" />
-    <ProjectReference Include="../TerraRuntime.Gameplay/TerraRuntime.Gameplay.csproj" />
-    <ProjectReference Include="../TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
-    <ProjectReference Include="../TerraRuntime.Network/TerraRuntime.Network.csproj" />
-    <ProjectReference Include="../TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />
-    <ProjectReference Include="../TerraRuntime.Protocol.Multiplicity/TerraRuntime.Protocol.Multiplicity.csproj" />
-    <ProjectReference Include="../TerraRuntime.World/TerraRuntime.World.csproj" />
+    <ProjectReference Include="../TerraRuntime.Application/TerraRuntime.Application.csproj" />
   </ItemGroup>
 
   <Target Name="PrepareNativeDeployment"

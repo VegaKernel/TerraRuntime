@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 
-namespace TerraRuntime.ExtensibleHost;
+namespace TerraRuntime.Extensibility;
 
 internal sealed class ScopedHostRuntime : ITerraRuntimeHostRuntime
 {

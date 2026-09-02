@@ -82,7 +82,7 @@ The dependency boundary matters more than the number of projects.
 The current implementation may remain directly in the server project:
 
 ```text
-src/TerraRuntime/
+src/TerraRuntime.Application/
     Operations/
     TerminalUI/
 ```

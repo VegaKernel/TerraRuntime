@@ -1,6 +1,6 @@
 using TerraRuntime.HostContracts.TerminalUI;
 
-namespace TerraRuntime.ExtensibleHost;
+namespace TerraRuntime.Extensibility;
 
 internal sealed class TerminalDashboardRegistry :
     ITerraRuntimeTerminalDashboardRegistry,

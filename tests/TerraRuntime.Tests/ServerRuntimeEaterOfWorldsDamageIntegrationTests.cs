@@ -18,7 +18,7 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
         NpcSnapshot body = fixture.SpawnEater(1, VanillaNpcIds.EaterOfWorldsBody, 140f);
         ConnectionHandle firstPlayer = fixture.SpawnPlayer(connectionId: 911);
         ConnectionHandle secondPlayer = fixture.SpawnPlayer(connectionId: 912);
-        RuntimeWorldProgressionMutations progression = RuntimeWorldProgressionRegistry.GetOrCreate(fixture.Tiles);
+        RuntimeWorldProgressionMutations progression = fixture.State.WorldProgression;
 
         Assert.False(progression.IsCompleted(VanillaWorldProgressionId.EvilBoss));
         Assert.Equal(2, fixture.QueuedFrames(firstPlayer.Source)); // two NPC join baselines.

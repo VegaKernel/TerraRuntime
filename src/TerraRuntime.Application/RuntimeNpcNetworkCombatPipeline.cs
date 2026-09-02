@@ -43,8 +43,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private readonly SystemNpcCombatRandom random = new();
     private readonly bool expertMode;
     private readonly bool masterMode;
-    private readonly WorldTileStore? worldTiles;
     private readonly RuntimeWorldClock? worldClock;
+    private readonly RuntimeWorldProgressionMutations progression;
     private readonly PlayerSlotId[] interactionSlots =
         new PlayerSlotId[RuntimeNpcPlayerInteractionLedger.VanillaInteractablePlayerSlots];
     private readonly VanillaKingSlimeLootPlayer[] activeLootPlayers =
@@ -66,8 +66,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         RuntimeNpcReplicationRegistry? npcReplication,
         RuntimeWorldItemInstancedLeaseStore instancedLeases,
         RuntimeWorldItemReplicationRegistry? worldItemReplication,
-        WorldTileStore? worldTiles,
         RuntimeWorldClock? worldClock,
+        RuntimeWorldProgressionMutations progression,
         bool expertMode,
         bool masterMode)
     {
@@ -75,8 +75,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.npcReplication = npcReplication;
-        this.worldTiles = worldTiles;
         this.worldClock = worldClock;
+        this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         if (masterMode && !expertMode)
@@ -567,37 +567,25 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
 
     private void ApplySkeletronDeathEffects()
     {
-        if (worldTiles is null)
-            return;
-        RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles)
-            .MarkCompleted(VanillaWorldProgressionId.Skeletron);
+        progression.MarkCompleted(VanillaWorldProgressionId.Skeletron);
     }
 
     private void ApplyQueenBeeDeathEffects()
     {
-        if (worldTiles is null)
-            return;
-        RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles)
-            .MarkCompleted(VanillaWorldProgressionId.QueenBee);
+        progression.MarkCompleted(VanillaWorldProgressionId.QueenBee);
     }
 
     private void ApplyEvilBossDeathEffects()
     {
-        if (worldTiles is null)
-            return;
-        RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles)
-            .MarkCompleted(VanillaWorldProgressionId.EvilBoss);
+        progression.MarkCompleted(VanillaWorldProgressionId.EvilBoss);
     }
 
     private void ApplyKingSlimeDeathEffects(in NpcSnapshot kingSlime)
     {
-        RuntimeWorldProgressionMutations? progression = worldTiles is null
-            ? null
-            : RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
-        progression?.SetSlimeBlueSpawnBaseline(worldClock?.SlimeBlueSpawnUnlocked == true);
+        progression.SetSlimeBlueSpawnBaseline(worldClock?.SlimeBlueSpawnUnlocked == true);
 
         worldClock?.TryStopSlimeRain(random);
-        if (worldClock is not null && progression?.MarkSlimeBlueSpawnUnlocked() == true)
+        if (worldClock is not null && progression.MarkSlimeBlueSpawnUnlocked())
         {
             worldClock.MarkSlimeBlueSpawnUnlocked();
             if (TryCreateNerdySlimeSpawnIntent(in kingSlime, out NpcAiSpawnIntent intent) &&
@@ -618,7 +606,7 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                     throw new InvalidOperationException("Nerdy Slime death spawn could not receive launch velocity.");
             }
         }
-        progression?.MarkCompleted(VanillaWorldProgressionId.KingSlime);
+        progression.MarkCompleted(VanillaWorldProgressionId.KingSlime);
     }
 
     private static bool TryCreateNerdySlimeSpawnIntent(in NpcSnapshot source, out NpcAiSpawnIntent intent)

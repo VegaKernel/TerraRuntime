@@ -41,7 +41,8 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
         int dirtyBatchCapacity,
         RuntimeWorldClock? worldClock = null,
         RuntimeSignStore? signStore = null,
-        RuntimeTownNpcStateStore? townNpcStore = null)
+        RuntimeTownNpcStateStore? townNpcStore = null,
+        RuntimeWorldProgressionMutations? progressionMutations = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
@@ -50,7 +51,7 @@ internal sealed class RuntimeWorldTileChestSaveSnapshotSource
         this.worldClock = worldClock;
         this.signStore = signStore;
         this.townNpcStore = townNpcStore;
-        progressionMutations = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
+        this.progressionMutations = progressionMutations ?? new RuntimeWorldProgressionMutations();
         tileSynchronizer = new WorldTileSaveShadowSynchronizer(tiles, dirtyBatchCapacity);
     }
 

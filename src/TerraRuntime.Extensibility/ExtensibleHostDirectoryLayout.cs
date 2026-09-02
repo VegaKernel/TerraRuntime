@@ -1,4 +1,4 @@
-namespace TerraRuntime.ExtensibleHost;
+namespace TerraRuntime.Extensibility;
 
 internal sealed class ExtensibleHostDirectoryLayout
 {

@@ -13,7 +13,7 @@ internal sealed partial class ServerRuntimeState
 {
     public void Tick()
     {
-        _tileEditBudget.AdvanceTo(Updates);
+        _worldTileAuthority.AdvanceTo(Updates);
 
         _npcArchetypes.CommitPending();
         _npcShops.CommitPending();

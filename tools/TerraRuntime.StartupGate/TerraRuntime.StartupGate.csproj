@@ -11,6 +11,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/TerraRuntime/TerraRuntime.csproj" />
+    <ProjectReference Include="../../src/TerraRuntime.Application/TerraRuntime.Application.csproj" />
   </ItemGroup>
 </Project>

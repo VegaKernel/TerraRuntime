@@ -16,6 +16,7 @@ internal sealed partial class ServerRuntimeState
         INpcAiStateStepper? npcAiStepper = null,
         WorldTileStore? worldTiles = null,
         RuntimeWorldClock? worldClock = null,
+        RuntimeWorldProgressionMutations? worldProgression = null,
         RuntimeProjectileStore? projectiles = null,
         IProjectileStateStepper? projectileStepper = null,
         RuntimeWorldItemStore? worldItems = null,
@@ -42,11 +43,18 @@ internal sealed partial class ServerRuntimeState
     {
         _worldTiles = worldTiles;
         _players = new PlayerAuthority(playerEvents, worldTiles);
-        _tileMutations = worldTiles is null ? null : new VanillaWorldTileMutationService(worldTiles);
         _worldClock = worldClock;
+        _worldProgression = worldProgression ?? new RuntimeWorldProgressionMutations();
         _expertMode = expertMode;
         _masterMode = masterMode;
         _worldItemSpawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom();
+        _worldItems = worldItems ?? new RuntimeWorldItemStore();
+        _worldTileAuthority = new WorldTileAuthority(
+            _players,
+            worldTiles,
+            _worldItems,
+            _worldItemSpawnRandom,
+            tileManipulationReplication);
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
         _npcs = npcs ?? new RuntimeNpcStore();
@@ -93,6 +101,7 @@ internal sealed partial class ServerRuntimeState
             _npcs,
             projectileStore,
             worldTiles,
+            _worldProgression,
             townNpcs,
             townSpawnWorldFacts,
             townCommerceWorldFacts,
@@ -106,18 +115,6 @@ internal sealed partial class ServerRuntimeState
         _mysticFrogCatch = worldTiles is not null
             ? new RuntimeMysticFrogCatchService1458(_npcs, worldTiles, this)
             : null;
-        _tileManipulationReplication = tileManipulationReplication;
-        if (worldTiles is not null &&
-            RuntimeWorldObjectMetadataRegistry.TryGet(
-                worldTiles,
-                out IVanillaMultiTileObjectMetadataLifecycle objectMetadata))
-        {
-            _objectPlacementProcessor = new RuntimeObjectPlacementCommandProcessor(
-                worldTiles,
-                objectMetadata,
-                tileManipulationReplication);
-        }
-        _worldItems = worldItems ?? new RuntimeWorldItemStore();
         _worldItemReplication = worldItemReplication;
         _instancedItemLeases = new RuntimeWorldItemInstancedLeaseStore(_worldItems);
         _npcCombat = new RuntimeNpcNetworkCombatPipeline(
@@ -127,8 +124,8 @@ internal sealed partial class ServerRuntimeState
             _npcReplication,
             _instancedItemLeases,
             _worldItemReplication,
-            _worldTiles,
             _worldClock,
+            _worldProgression,
             expertMode,
             masterMode);
         _townNpcAuthority.SetMeleeDamageSink(_npcCombat);
@@ -166,7 +163,8 @@ internal sealed partial class ServerRuntimeState
                     actorIntent,
                     worldTiles,
                     worldSurfaceTiles,
-                    _worldClock);
+                    _worldClock,
+                    progressionMutations: _worldProgression);
                 _vanillaNpcCheckActiveAiStepper = new VanillaNpcCheckActiveAiStepper(worldMotion);
                 _npcAiStepper = _vanillaNpcCheckActiveAiStepper;
             }

@@ -121,7 +121,7 @@ The NPC section currently combines stores, AI execution, actor control, behavior
 
 Town gameplay is currently a substantial subsystem inside the god object.
 
-- [ ] move town NPC scheduling, rescue, housing, move-in, commerce, shops, shimmer and town combat coordination behind one or a few **cohesive** world-owned gameplay boundaries;
+- [x] move town NPC scheduling, rescue, housing, move-in, commerce, shops, shimmer and town combat coordination behind one or a few **cohesive** world-owned gameplay boundaries;
 - [ ] do not create one wrapper class per existing type just to shorten the parent file;
 - [ ] keep source-backed town rules in Gameplay where protocol/runtime ownership is not required;
 - [ ] keep mutable town population/housing/session state runtime-local;
@@ -130,12 +130,12 @@ Town gameplay is currently a substantial subsystem inside the god object.
 ## SR6 - world state / progression / tile slice
 
 - [ ] make `WorldTileStore`, `RuntimeWorldClock`, world progression mutations and tile/object mutation ownership explicit members of one `WorldRuntime` composition;
-- [ ] remove hidden world-state discovery from `ServerRuntimeState` where direct world-owned references are cleaner;
-- [ ] re-evaluate `RuntimeWorldProgressionRegistry`: a weak-key registry is multi-world-safe by `WorldTileStore`, but live runtime composition should prefer explicit ownership when practical;
-- [ ] keep tile/object mutation and replication on the authoritative owner;
+- [x] remove hidden world-state discovery from `ServerRuntimeState` where direct world-owned references are cleaner;
+- [x] remove `RuntimeWorldProgressionRegistry` after making the progression journal an explicit `WorldRuntime`-owned dependency shared by gameplay and persistence;
+- [x] keep tile/object mutation and replication on the authoritative owner;
 - [ ] ensure weather/time/events/progression remain independent between runtime instances.
 
-The weak-key progression registry is not automatically a correctness bug: it keys progression by the exact `WorldTileStore`. The cleanup goal is explicit ownership and simpler reasoning, not deleting a safe mechanism solely because it is static.
+The former weak-key progression registry was multi-world-safe by `WorldTileStore`, but explicit `WorldRuntime` ownership is simpler: the live runtime now constructs one journal and passes it to every authoritative consumer and persistence capture path.
 
 ## SR7 - replication boundary
 

@@ -43,23 +43,6 @@ public sealed class KingSlimeDeathProgressionTests
     }
 
     [Fact]
-    public void Progression_registry_is_stable_per_world_and_does_not_cross_worlds()
-    {
-        var firstWorld = new WorldTileStore(new WorldDimensions(100, 100));
-        var secondWorld = new WorldTileStore(new WorldDimensions(100, 100));
-
-        RuntimeWorldProgressionMutations first = RuntimeWorldProgressionRegistry.GetOrCreate(firstWorld);
-        RuntimeWorldProgressionMutations firstAgain = RuntimeWorldProgressionRegistry.GetOrCreate(firstWorld);
-        RuntimeWorldProgressionMutations second = RuntimeWorldProgressionRegistry.GetOrCreate(secondWorld);
-
-        Assert.Same(first, firstAgain);
-        Assert.NotSame(first, second);
-        Assert.True(first.MarkCompleted(VanillaWorldProgressionId.KingSlime));
-        Assert.True(first.IsCompleted(VanillaWorldProgressionId.KingSlime));
-        Assert.False(second.IsCompleted(VanillaWorldProgressionId.KingSlime));
-    }
-
-    [Fact]
     public void Progression_header_patcher_sets_king_slime_and_blue_slime_unlock_and_keeps_world_loadable()
     {
         byte[] sourceFile = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
@@ -153,13 +136,14 @@ public sealed class KingSlimeDeathProgressionTests
             dayRate: 1,
             slimeBlueSpawnUnlocked: false);
         var random = new FixedDeathRandom(cooldownRoll: 4000, direction: 0.25f);
+        var progression = new RuntimeWorldProgressionMutations();
         var stepper = new VanillaNpcWorldMotionAiStepper(
             new PassthroughStepper(),
             tiles,
             worldSurfaceTiles: 40d,
             worldEvents: worldClock,
-            kingSlimeDeathRandom: random);
-        RuntimeWorldProgressionMutations progression = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
+            kingSlimeDeathRandom: random,
+            progressionMutations: progression);
         NpcStateUpdate deadKingSlime = CreateDeadKingSlimeUpdate();
 
         Assert.True(store.TrySpawn(0, in deadKingSlime, out NpcSnapshot spawned));
@@ -200,12 +184,14 @@ public sealed class KingSlimeDeathProgressionTests
             dayRate: 1,
             slimeBlueSpawnUnlocked: true);
         var random = new FixedDeathRandom(4000, 0.5f);
+        var progression = new RuntimeWorldProgressionMutations();
         var stepper = new VanillaNpcWorldMotionAiStepper(
             new PassthroughStepper(),
             tiles,
             40d,
             worldClock,
-            kingSlimeDeathRandom: random);
+            kingSlimeDeathRandom: random,
+            progressionMutations: progression);
         NpcStateUpdate dead = CreateDeadKingSlimeUpdate();
         Assert.True(store.TrySpawn(0, in dead, out _));
 
@@ -216,7 +202,7 @@ public sealed class KingSlimeDeathProgressionTests
         Assert.DoesNotContain(active.AsSpan(0, count).ToArray(), npc => npc.TypeIdentity == VanillaNpcIds.TownSlimeBlue);
         Assert.Equal(0, random.CooldownCalls);
         Assert.Equal(0, random.DirectionCalls);
-        Assert.False(RuntimeWorldProgressionRegistry.GetOrCreate(tiles).CaptureSnapshot().UnlockSlimeBlueSpawn);
+        Assert.False(progression.CaptureSnapshot().UnlockSlimeBlueSpawn);
     }
 
     [Fact]
@@ -224,8 +210,12 @@ public sealed class KingSlimeDeathProgressionTests
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var store = new RuntimeNpcStore(capacity: 4);
-        var stepper = new VanillaNpcWorldMotionAiStepper(new PassthroughStepper(), tiles, worldSurfaceTiles: 40d);
-        RuntimeWorldProgressionMutations progression = RuntimeWorldProgressionRegistry.GetOrCreate(tiles);
+        var progression = new RuntimeWorldProgressionMutations();
+        var stepper = new VanillaNpcWorldMotionAiStepper(
+            new PassthroughStepper(),
+            tiles,
+            worldSurfaceTiles: 40d,
+            progressionMutations: progression);
         NpcStateUpdate deadKingSlime = CreateDeadKingSlimeUpdate();
 
         Assert.True(store.TrySpawn(0, in deadKingSlime, out NpcSnapshot spawned));

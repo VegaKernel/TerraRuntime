@@ -5,7 +5,7 @@ using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.HostContracts.WorldGeneration;
 
-namespace TerraRuntime.ExtensibleHost;
+namespace TerraRuntime.Extensibility;
 
 internal sealed class TrustedHostModuleLoader :
     ITerraRuntimeHostLifecycle,

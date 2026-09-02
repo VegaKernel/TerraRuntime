@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-
 namespace TerraRuntime.World;
 
 [Flags]
@@ -157,26 +155,3 @@ public sealed class RuntimeWorldProgressionMutations
         };
 }
 
-/// <summary>
-/// Associates mutable progression with the exact <see cref="WorldTileStore"/> instance representing a loaded world.
-/// Weak keys prevent process-global current-world state and allow sequential/multi-world hosts to release worlds
-/// without an explicit registry teardown protocol.
-/// </summary>
-public static class RuntimeWorldProgressionRegistry
-{
-    private static readonly ConditionalWeakTable<WorldTileStore, RuntimeWorldProgressionMutations> Worlds = new();
-
-    public static RuntimeWorldProgressionMutations GetOrCreate(WorldTileStore tiles)
-    {
-        ArgumentNullException.ThrowIfNull(tiles);
-        return Worlds.GetValue(tiles, static _ => new RuntimeWorldProgressionMutations());
-    }
-
-    public static bool TryGet(
-        WorldTileStore tiles,
-        out RuntimeWorldProgressionMutations? mutations)
-    {
-        ArgumentNullException.ThrowIfNull(tiles);
-        return Worlds.TryGetValue(tiles, out mutations);
-    }
-}

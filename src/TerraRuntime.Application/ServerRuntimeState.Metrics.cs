@@ -11,6 +11,9 @@ namespace TerraRuntime;
 
 internal sealed partial class ServerRuntimeState
 {
+    private long appliedWorldItemAllocations;
+    private long rejectedWorldItemAllocations;
+
     public long AppliedCommands { get; private set; }
 
     internal RuntimeNpcShopCatalogRegistry NpcShops => _npcShops;
@@ -21,6 +24,8 @@ internal sealed partial class ServerRuntimeState
     internal RuntimeNpcArchetypeRegistry NpcArchetypes => _npcArchetypes;
 
     internal IWorldItemSpawnRandom WorldItemSpawnRandom => _worldItemSpawnRandom;
+
+    internal RuntimeWorldProgressionMutations WorldProgression => _worldProgression;
 
     public long Updates { get; private set; }
 
@@ -84,19 +89,21 @@ internal sealed partial class ServerRuntimeState
 
     public long RelayedUnknownProjectileDestroys => _projectiles.RelayedUnknownDestroys;
 
-    public long ClientTileManipulationRequests { get; private set; }
+    public long ClientTileManipulationRequests => _worldTileAuthority.ClientManipulationRequests;
 
-    public long ValidatedClientTileManipulations { get; private set; }
+    public long ValidatedClientTileManipulations => _worldTileAuthority.ValidatedClientManipulations;
 
-    public long AppliedClientTileManipulations { get; private set; }
+    public long AppliedClientTileManipulations => _worldTileAuthority.AppliedClientManipulations;
 
-    public long RejectedClientTileManipulations { get; private set; }
+    public long RejectedClientTileManipulations => _worldTileAuthority.RejectedClientManipulations;
 
-    public long UnsupportedClientTileManipulations { get; private set; }
+    public long UnsupportedClientTileManipulations => _worldTileAuthority.UnsupportedClientManipulations;
 
-    public long AppliedWorldItemAllocations { get; private set; }
+    public long AppliedWorldItemAllocations =>
+        appliedWorldItemAllocations + _worldTileAuthority.AppliedWorldItemAllocations;
 
-    public long RejectedWorldItemAllocations { get; private set; }
+    public long RejectedWorldItemAllocations =>
+        rejectedWorldItemAllocations + _worldTileAuthority.RejectedWorldItemAllocations;
 
     public long AppliedWorldItemDrops { get; private set; }
 

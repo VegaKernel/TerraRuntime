@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.ExtensibleHost;
+using TerraRuntime.Extensibility;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.HostContracts.WorldGeneration;

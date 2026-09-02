@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts.WorldGeneration;
 
-namespace TerraRuntime.ExtensibleHost;
+namespace TerraRuntime.Extensibility;
 
 /// <summary>
 /// CoreCLR-host adapter over TerraRuntime's explicit provider registry. Each loaded host module receives a scoped

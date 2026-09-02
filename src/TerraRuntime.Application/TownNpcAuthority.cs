@@ -37,6 +37,7 @@ internal sealed class TownNpcAuthority
         RuntimeNpcStore npcs,
         RuntimeProjectileStore projectiles,
         WorldTileStore? worldTiles,
+        RuntimeWorldProgressionMutations progression,
         RuntimeTownNpcStateStore? townNpcs,
         VanillaTownSpawnWorldFacts1458? townSpawnWorldFacts,
         RuntimeTownCommerceWorldFacts1458? townCommerceWorldFacts,
@@ -56,14 +57,12 @@ internal sealed class TownNpcAuthority
         this.initialRaining = initialRaining;
         this.initialEclipse = initialEclipse;
         this.initialInvasionActive = initialInvasionActive;
+        ArgumentNullException.ThrowIfNull(progression);
 
-        RuntimeWorldProgressionMutations? progression = worldTiles is null
-            ? null
-            : RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
-        rescue = townNpcs is not null && progression is not null
+        rescue = townNpcs is not null && worldTiles is not null
             ? new RuntimeTownNpcRescueService1458(npcs, townNpcs, progression)
             : null;
-        purificationPowderInteractions = townNpcs is not null && progression is not null && rescue is not null
+        purificationPowderInteractions = townNpcs is not null && worldTiles is not null && rescue is not null
             ? new RuntimePurificationPowderNpcInteraction1458(
                 npcs,
                 projectiles,
@@ -77,7 +76,6 @@ internal sealed class TownNpcAuthority
             : null;
         combat = worldTiles is not null &&
             townNpcs is not null &&
-            progression is not null &&
             townCombatWorldFacts is RuntimeTownNpcCombatWorldFacts1458 combatFacts
                 ? new RuntimeTownNpcCombat1458(
                     townNpcs,
@@ -102,8 +100,7 @@ internal sealed class TownNpcAuthority
             return;
 
         var houseIndex = new RuntimeTownHouseCandidateIndex1458(worldTiles, housingValidator);
-        RuntimeWorldProgressionMutations configuredProgression =
-            progression ?? RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
+        RuntimeWorldProgressionMutations configuredProgression = progression;
         configuredProgression.SetTruffleSpawnBaseline(facts.UnlockedTruffleSpawn);
         configuredProgression.SetSlimeYellowSpawnBaseline(facts.UnlockedSlimeYellowSpawn);
 

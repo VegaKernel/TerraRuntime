@@ -73,6 +73,7 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
         int synchronizationSectionsPerTick = DefaultSynchronizationSectionsPerTick,
         RuntimeSignStore? signStore = null,
         RuntimeTownNpcStateStore? townNpcStore = null,
+        RuntimeWorldProgressionMutations? progressionMutations = null,
         WorldFileLoadLimits? checkpointValidationLimits = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
@@ -121,7 +122,8 @@ internal sealed class RuntimeWorldTileChestSaveService : IAsyncDisposable
             synchronizationSectionsPerTick,
             worldClock,
             signStore,
-            townNpcStore);
+            townNpcStore,
+            progressionMutations);
         coordinator = new WorldSaveCoordinator<RuntimeWorldTileChestSaveSnapshot>(
             destinationPath,
             CaptureSnapshotOnOwner,

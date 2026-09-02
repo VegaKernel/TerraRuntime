@@ -11,8 +11,6 @@ namespace TerraRuntime;
 
 internal sealed partial class ServerRuntimeState : IRuntimePlayerSnapshotLookup, IRuntimePlayerSlotSnapshotLookup
 {
-    private const int MaxPlayerSlots = 256;
-
     private readonly PlayerAuthority _players;
     private readonly VanillaNpcTargetCandidate[] _npcTargetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
@@ -48,15 +46,13 @@ internal sealed partial class ServerRuntimeState : IRuntimePlayerSnapshotLookup,
     private readonly short[] _expiredInstancedItemSlots = new short[RuntimeWorldItemStore.VanillaCapacity];
     private readonly TownNpcAuthority _townNpcAuthority;
     private readonly RuntimeMysticFrogCatchService1458? _mysticFrogCatch;
-    private readonly RuntimeTileManipulationReplicationRegistry? _tileManipulationReplication;
-    private readonly RuntimeObjectPlacementCommandProcessor? _objectPlacementProcessor;
+    private readonly WorldTileAuthority _worldTileAuthority;
     private readonly RuntimeWorldItemStore _worldItems;
     private readonly IWorldItemSpawnRandom _worldItemSpawnRandom;
     private readonly WorldTileStore? _worldTiles;
-    private readonly VanillaWorldTileMutationService? _tileMutations;
     private readonly RuntimeWorldClock? _worldClock;
+    private readonly RuntimeWorldProgressionMutations _worldProgression;
     private readonly bool _expertMode;
     private readonly bool _masterMode;
-    private readonly PlayerTileEditBudget _tileEditBudget = new(MaxPlayerSlots);
     private int lastWorkerResult;
 }

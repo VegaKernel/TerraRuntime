@@ -16,7 +16,11 @@ TerraRuntime must continue to publish as a native executable:
 
 ```mermaid
 flowchart TD
-    Core["TerraRuntime core / source graph"] --> Publish[".NET 11 NativeAOT publish"]
+    Launcher["TerraRuntime.Server
+thin NativeAOT launcher"] --> App["TerraRuntime.Application
+AOT-compatible composition"]
+    App --> Core["TerraRuntime core / source graph"]
+    Launcher --> Publish[".NET 11 NativeAOT publish"]
     Publish --> Linux["linux-x64 / TerraRuntime.Server"]
     Publish --> Windows["win-x64 / TerraRuntime.Server.exe"]
 ```
@@ -31,8 +35,12 @@ The normal plugin-enabled topology is a .NET 11 CoreCLR host:
 
 ```mermaid
 flowchart TD
-    Server["TerraRuntime.Extensible.Server / CoreCLR"] --> Core["TerraRuntime core"]
-    Server --> Boundary["Privileged host-module boundary"]
+    Server["TerraRuntime.Extensible.Server
+thin CoreCLR launcher"] --> Ext["TerraRuntime.Extensibility
+CoreCLR-only host composition"]
+    Ext --> App["TerraRuntime.Application"]
+    App --> Core["TerraRuntime core"]
+    Ext --> Boundary["Privileged host-module boundary"]
     Boundary --> Vega["HostModules / Vega.dll"]
     Vega --> Sdk["Vega.PluginSdk"]
     Sdk --> Plugins["ServerPlugins / *.dll"]
@@ -129,6 +137,8 @@ Do not introduce these into the AOT/core graph:
 Prefer explicit/static registration, compile-time generated registries, source generators, `System.Text.Json` source generation, typed protocol codecs, `Span<T>`/`ReadOnlySpan<T>`/`IBufferWriter<T>` and bounded buffers, and BCL functionality over unnecessary dependencies.
 
 The deliberate exceptions for managed DLL discovery/loading and collectible `AssemblyLoadContext` belong only to the CoreCLR host/plugin layer. They must not leak into TerraRuntime simulation, networking, protocol, world or other core projects.
+
+`TerraRuntime.Application` is the shared AOT-compatible server composition assembly used by both shipping profiles. `TerraRuntime.Server` delegates to it directly. `TerraRuntime.Extensible.Server` delegates only to CoreCLR-specific `TerraRuntime.Extensibility`, which layers trusted module loading over `TerraRuntime.Application`. Neither reusable composition layer references a shipping executable, and the NativeAOT graph never references `TerraRuntime.Extensibility`.
 
 ## Dependency admission gate
 

@@ -4,7 +4,7 @@
 
 TerraRuntime treats numeric Terraria identity as boundary/version data, not as an ordinary gameplay implementation detail. `tools/ci/audit_gameplay_domain_literals.py` is the high-signal CI guard for that rule.
 
-The gate scans `src/TerraRuntime.Gameplay` as well as gameplay-owned C# in `src/TerraRuntime.Core`, `src/TerraRuntime` and `src/TerraRuntime.World`. Protocol, persistence, snapshot and world-generation adapters whose names explicitly identify boundary ownership are excluded because raw representation is legitimate there.
+The gate scans `src/TerraRuntime.Gameplay` as well as gameplay-owned C# in `src/TerraRuntime.Core`, `src/TerraRuntime.Application` and `src/TerraRuntime.World`. Protocol, persistence, snapshot and world-generation adapters whose names explicitly identify boundary ownership are excluded because raw representation is legitimate there.
 
 The audit rejects these forms outside those boundaries:
 

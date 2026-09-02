@@ -2,7 +2,7 @@ using TerraRuntime.HostContracts.TerminalUI;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-namespace TerraRuntime.ExtensibleHost;
+namespace TerraRuntime.Extensibility;
 
 internal sealed class TrustedHostModuleHealthDashboardProvider : ITerraRuntimeTerminalDashboardProvider
 {

@@ -93,6 +93,7 @@ public sealed class WorldRuntime : IDisposable
             world.RuntimeMetadata,
             world.CreativePowers,
             WorldClockTelemetry);
+        WorldProgression = new RuntimeWorldProgressionMutations();
         RuntimeConnections = new RuntimeConnectionRegistry(interestManagement, world.Header.Dimensions);
 
         NpcReplication = new RuntimeNpcReplicationRegistry();
@@ -143,6 +144,7 @@ public sealed class WorldRuntime : IDisposable
                 worldClock: WorldClock,
                 signStore: Signs,
                 townNpcStore: TownNpcs,
+                progressionMutations: WorldProgression,
                 checkpointValidationLimits: persistence.LoadLimits);
             autosave = new VanillaWorldAutosaveScheduler();
         }
@@ -178,6 +180,7 @@ public sealed class WorldRuntime : IDisposable
             npcs: Npcs,
             worldTiles: world.Tiles,
             worldClock: WorldClock,
+            worldProgression: WorldProgression,
             projectiles: Projectiles,
             worldItems: WorldItems,
             projectileReplication: ProjectileReplication,
@@ -262,6 +265,7 @@ public sealed class WorldRuntime : IDisposable
 
     internal PlayerBootstrapPacketSet BootstrapPackets { get; }
     internal RuntimeWorldClock WorldClock { get; }
+    internal RuntimeWorldProgressionMutations WorldProgression { get; }
     internal RuntimeConnectionRegistry RuntimeConnections { get; }
     internal RuntimeNpcReplicationRegistry NpcReplication { get; }
     internal RuntimeProjectileReplicationRegistry ProjectileReplication { get; }

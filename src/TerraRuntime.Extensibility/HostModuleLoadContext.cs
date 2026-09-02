@@ -4,7 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 using Terminal.Gui.ViewBase;
 
-namespace TerraRuntime.ExtensibleHost;
+namespace TerraRuntime.Extensibility;
 
 internal sealed class HostModuleLoadContext : AssemblyLoadContext
 {

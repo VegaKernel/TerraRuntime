@@ -14,11 +14,11 @@ TerraRuntime is not a fork of TerrariaServer and does not host TerrariaServer ru
 
 ### Standalone NativeAOT
 
-`TerraRuntime.Server` is the standalone executable. Runtime core remains NativeAOT-compatible and Linux x64 / Windows x64 publish-and-smoke paths are shipping gates. Arbitrary managed DLL plugins are not loaded in this profile.
+`TerraRuntime.Server` is the thin standalone NativeAOT executable. It delegates startup to the shared AOT-compatible `TerraRuntime.Application` composition assembly. Runtime core remains NativeAOT-compatible and Linux x64 / Windows x64 publish-and-smoke paths are shipping gates. Arbitrary managed DLL plugins are not loaded in this profile.
 
 ### Extensible CoreCLR
 
-`TerraRuntime.Extensible.Server` is a self-contained CoreCLR host for a trusted host module such as Vega.
+`TerraRuntime.Extensible.Server` is a thin self-contained CoreCLR launcher. Shared server startup lives in `TerraRuntime.Application`; CoreCLR-only trusted host-module loading lives in `TerraRuntime.Extensibility`, so dynamic loading does not enter the NativeAOT graph.
 
 ```mermaid
 flowchart TD
@@ -35,8 +35,10 @@ Ordinary plugins do not receive TerraRuntime implementation objects.
 | Path | Responsibility |
 |---|---|
 | `build/` | solution and shipping publish entry point |
-| `src/TerraRuntime` | standalone composition root, startup, gameplay/network/world composition, TUI |
-| `src/TerraRuntime.ExtensibleHost` | CoreCLR host and trusted host-module loading |
+| `src/TerraRuntime` | thin standalone NativeAOT launcher |
+| `src/TerraRuntime.Application` | shared AOT-compatible startup, world/server composition and TUI |
+| `src/TerraRuntime.ExtensibleHost` | thin CoreCLR extensible launcher |
+| `src/TerraRuntime.Extensibility` | CoreCLR-only trusted host-module loading and scoped host runtime |
 | `src/TerraRuntime.HostContracts` | narrow privileged host-module contracts |
 | `src/TerraRuntime.Contracts` | stable snapshots, IDs and runtime/gameplay control contracts |
 | `src/TerraRuntime.Core` | authoritative state, commands, entity systems and scheduling |

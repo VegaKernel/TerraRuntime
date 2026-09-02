@@ -10,6 +10,10 @@ TerraRuntime проецирует validated `.wld` runtime metadata в gameplay-
 
 `WorldFileRuntimeMetadata.Progression` выполняет explicit projection field-to-milestone. Event activity, weather и temporary holidays не смешиваются с этим state.
 
+## Владение runtime mutations
+
+Каждый живой `WorldRuntime` владеет одним journal `RuntimeWorldProgressionMutations` для progression, произведённой после загрузки. Тот же journal явно передаётся в NPC/town gameplay и в capture persistence snapshot, поэтому два runtime не могут случайно сойтись на одном mutable progression через process-static lookup. Baseline facts из `.wld` остаются отделены от новых mutations, поэтому save patching сохраняет только состояние, которое действительно изменил этот runtime.
+
 ## Active events и invasions
 
 `VanillaWorldInvasionId` закрепляет официальный диапазон из пяти invasion values: none, Goblin Army, Snow Legion, Pirate Invasion и Martian Madness. Unknown persisted values проецируются в `Unknown` и fail closed вместо превращения в valid gameplay event.

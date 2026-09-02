@@ -29,7 +29,7 @@ internal sealed partial class ServerRuntimeState
     {
         if (!_players.IsCurrent(command.Connection))
         {
-            RejectedWorldItemAllocations++;
+            rejectedWorldItemAllocations++;
             command.Completion?.TrySetResult(null);
             return;
         }
@@ -37,12 +37,12 @@ internal sealed partial class ServerRuntimeState
         WorldItemDropStateUpdate state = command.State;
         if (_worldItems.TryAllocateDrop(in state, out WorldItemSnapshot snapshot))
         {
-            AppliedWorldItemAllocations++;
+            appliedWorldItemAllocations++;
             command.Completion?.TrySetResult(snapshot);
             return;
         }
 
-        RejectedWorldItemAllocations++;
+        rejectedWorldItemAllocations++;
         command.Completion?.TrySetResult(null);
     }
 

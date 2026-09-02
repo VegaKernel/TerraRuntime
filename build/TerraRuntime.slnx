@@ -1,7 +1,9 @@
 <Solution>
+  <Project Path="../src/TerraRuntime.Application/TerraRuntime.Application.csproj" />
   <Project Path="../src/TerraRuntime/TerraRuntime.csproj" />
   <Project Path="../src/TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
   <Project Path="../src/TerraRuntime.Core/TerraRuntime.Core.csproj" />
+  <Project Path="../src/TerraRuntime.Extensibility/TerraRuntime.Extensibility.csproj" />
   <Project Path="../src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj" />
   <Project Path="../src/TerraRuntime.Gameplay/TerraRuntime.Gameplay.csproj" />
   <Project Path="../src/TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />

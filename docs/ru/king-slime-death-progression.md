@@ -16,7 +16,7 @@ TerrariaServer 1.4.5.8 выполняет death-case King Slime в наблюд�
 
 ## Привязка к миру и persistence
 
-`RuntimeWorldProgressionRegistry` использует конкретный `WorldTileStore` как слабый ключ. Journal хранит milestone King Slime и новый blue-town-slime unlock, отдельно учитывая persisted baseline загруженного мира. Если unlock уже был в `.wld`, повторный Nerdy не создаётся и это состояние не выдаётся за новую save mutation.
+Каждый `WorldRuntime` теперь явно владеет одним journal `RuntimeWorldProgressionMutations` и передаёт тот же экземпляр в NPC AI/combat, town-NPC systems и capture persistence snapshot. Поэтому progression привязан к runtime composition напрямую, а не заново находится через process-static world registry. Journal хранит milestone King Slime и новый blue-town-slime unlock, отдельно учитывая persisted baseline загруженного мира. Если unlock уже был в `.wld`, повторный Nerdy не создаётся и это состояние не выдаётся за новую save mutation.
 
 `WorldFileProgressionHeaderPatcher` сохраняет оба флага: `downedSlimeKing` и `UnlockedSlimeBlueSpawn`. До blue-slime flag он проходит настоящий layout Terraria 1.4.5.8, включая variable-length список Angler, массивы BannerSystem, party NPC entries и TreeTops. Патчер меняет только принадлежащие runtime boolean-поля и fail-closed отклоняет неподдерживаемые milestone bits.
 

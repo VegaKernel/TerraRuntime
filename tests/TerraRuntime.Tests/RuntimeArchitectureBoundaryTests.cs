@@ -9,6 +9,8 @@ public sealed class RuntimeArchitectureBoundaryTests
     [
         "TerraRuntime.Server",
         "TerraRuntime.Extensible.Server",
+        "TerraRuntime.Application",
+        "TerraRuntime.Extensibility",
         "TerraRuntime.Contracts",
         "TerraRuntime.Core",
         "TerraRuntime.Gameplay",
@@ -88,6 +90,40 @@ public sealed class RuntimeArchitectureBoundaryTests
     }
 
     [Fact]
+    public void Shipping_launchers_depend_on_the_shared_application_composition_not_each_other()
+    {
+        Assembly standalone = Assembly.Load(new AssemblyName("TerraRuntime.Server"));
+        Assembly extensible = Assembly.Load(new AssemblyName("TerraRuntime.Extensible.Server"));
+
+        Assert.Equal(
+            ["TerraRuntime.Application"],
+            GetTerraRuntimeReferences(standalone));
+        Assert.Equal(
+            ["TerraRuntime.Extensibility"],
+            GetTerraRuntimeReferences(extensible));
+
+        Assert.DoesNotContain(
+            extensible.GetReferencedAssemblies(),
+            reference => string.Equals(reference.Name, "TerraRuntime.Server", StringComparison.Ordinal));
+
+        Assembly extensibility = Assembly.Load(new AssemblyName("TerraRuntime.Extensibility"));
+        Assert.Equal(
+            ["TerraRuntime.Application", "TerraRuntime.Contracts", "TerraRuntime.Core", "TerraRuntime.HostContracts"],
+            GetTerraRuntimeReferences(extensibility));
+        Assert.DoesNotContain(
+            extensibility.GetReferencedAssemblies(),
+            reference => string.Equals(reference.Name, "TerraRuntime.Server", StringComparison.Ordinal));
+
+        Assembly application = Assembly.Load(new AssemblyName("TerraRuntime.Application"));
+        Assert.DoesNotContain(
+            application.GetReferencedAssemblies(),
+            reference => string.Equals(reference.Name, "TerraRuntime.Extensibility", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            application.GetReferencedAssemblies(),
+            reference => string.Equals(reference.Name, "TerraRuntime.Extensible.Server", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Foundation_layers_do_not_grow_undeclared_production_dependencies()
     {
         IReadOnlyDictionary<string, Assembly> closure = LoadProductionClosure()
@@ -161,6 +197,16 @@ public sealed class RuntimeArchitectureBoundaryTests
             }
         }
     }
+
+    private static string[] GetTerraRuntimeReferences(Assembly assembly) =>
+        assembly
+            .GetReferencedAssemblies()
+            .Select(reference => reference.Name)
+            .Where(name => name is not null && name.StartsWith("TerraRuntime", StringComparison.Ordinal))
+            .Select(name => name!)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
 
     private static IReadOnlyList<Assembly> LoadProductionClosure()
     {

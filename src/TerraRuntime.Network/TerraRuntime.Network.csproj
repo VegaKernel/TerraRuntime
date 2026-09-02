@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="TerraRuntime.Server" />
+    <InternalsVisibleTo Include="TerraRuntime.Application" />
   </ItemGroup>
 
   <ItemGroup>

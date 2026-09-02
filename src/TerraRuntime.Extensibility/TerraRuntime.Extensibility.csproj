@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <RootNamespace>TerraRuntime.Extensibility</RootNamespace>
+    <AssemblyName>TerraRuntime.Extensibility</AssemblyName>
+
+    <!-- Managed host-module loading is deliberately CoreCLR-only and stays outside the NativeAOT graph. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TerraRuntime.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Terminal.Gui" Version="2.4.17" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../TerraRuntime.Application/TerraRuntime.Application.csproj" />
+    <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
+    <ProjectReference Include="../TerraRuntime.Core/TerraRuntime.Core.csproj" />
+    <ProjectReference Include="../TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
+  </ItemGroup>
+</Project>

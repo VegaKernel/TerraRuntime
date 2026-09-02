@@ -121,7 +121,7 @@ The human-facing CoreCLR server root remains literal filesystem structure:
 
 ```text
 TerraRuntime/
-├── TerraRuntime.Server.exe
+├── TerraRuntime.Extensible.Server.exe
 ├── runtime/
 │   └── managed/native runtime dependencies
 ├── HostModules/
@@ -147,10 +147,15 @@ flowchart TD
     Core --> World["TerraRuntime.World"]
     Core --> Protocol["TerraRuntime.Protocol"]
 
-    Contracts --> Native["NativeAOT host"]
-    Contracts --> Ext["CoreCLR extensible host"]
-    Ext --> HostContracts["TerraRuntime.HostContracts"]
-    Ext --> Loader["Trusted host-module loader"]
+    App["TerraRuntime.Application
+AOT-compatible composition"] --> Core
+    Native["TerraRuntime.Server
+thin NativeAOT launcher"] --> App
+    Ext["TerraRuntime.Extensible.Server
+thin CoreCLR launcher"] --> Loader["TerraRuntime.Extensibility
+CoreCLR-only host composition"]
+    Loader --> App
+    Loader --> HostContracts["TerraRuntime.HostContracts"]
     Loader --> Vega["Vega.dll"]
     Vega --> Sdk["Vega.PluginSdk"]
     Sdk --> Plugins["ServerPlugins / *.dll"]

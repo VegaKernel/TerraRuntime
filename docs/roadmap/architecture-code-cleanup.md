@@ -141,6 +141,7 @@ Checklist:
 - [x] Extract active player membership, connection-generation guards, pre-spawn vitals, conversation/shop session lifetime and revisioned snapshots from `ServerRuntimeState` into the world-owned `RuntimePlayerMembership`.
 - [x] Extract authoritative client-player command application, inventory and transfer-profile lifecycle plus player metrics from `ServerRuntimeState` into `PlayerAuthority`; keep it on the existing world writer.
 - [x] Extract town-NPC housing, rescue/progression, commerce, schedule, shimmer and combat orchestration from `ServerRuntimeState` into the world-owned `TownNpcAuthority` without changing authoritative tick order.
+- [x] Extract packet-17 tile admission, tile/object mutation transactions, tile replication and tile-drop allocation accounting from `ServerRuntimeState` into the world-owned `WorldTileAuthority`.
 - [ ] Finish decomposing `TerrariaServerHost`: `WorldRuntime` now owns one-world simulation, but startup/load/bootstrap, process lifecycle and network acceptance still share the large host method.
 - [ ] Extract coherent player, NPC, projectile, item, town/housing and world-lifecycle collaborators only where they own state/behavior; do not produce one class per method.
 - [ ] Keep source-order-sensitive boss/AI logic cohesive when decomposition would obscure verified vanilla ordering.
@@ -171,11 +172,11 @@ Exit criteria: two independent in-process worlds can run without singleton curre
 
 ## R6 - Launcher and host composition cleanup
 
-- [ ] Remove the architectural dependency where reusable extensible-host code depends on the shipping executable project.
-- [ ] Extract one shared AOT-compatible application/server composition assembly if a distinct assembly is still the smallest clean boundary after `WorldRuntime` extraction.
-- [ ] Keep NativeAOT and CoreCLR launchers thin.
-- [ ] Keep Vega/plugin/module concepts above TerraRuntime runtime/core layers.
-- [ ] Re-audit `InternalsVisibleTo` and cross-project internal access after project moves; retain only concrete justified friendships.
+- [x] Remove the architectural dependency where reusable extensible-host code depends on the shipping executable project.
+- [x] Extract one shared AOT-compatible application/server composition assembly if a distinct assembly is still the smallest clean boundary after `WorldRuntime` extraction.
+- [x] Keep NativeAOT and CoreCLR launchers thin.
+- [x] Keep Vega/plugin/module concepts above TerraRuntime runtime/core layers.
+- [x] Re-audit `InternalsVisibleTo` and cross-project internal access after project moves; retain only concrete justified friendships.
 
 Exit criteria: executable projects are entry points, not reusable libraries disguised as applications.
 

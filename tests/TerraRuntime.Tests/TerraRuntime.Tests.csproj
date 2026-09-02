@@ -15,9 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/TerraRuntime.Application/TerraRuntime.Application.csproj" />
     <ProjectReference Include="../../src/TerraRuntime/TerraRuntime.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Core/TerraRuntime.Core.csproj" />
+    <ProjectReference Include="../../src/TerraRuntime.Extensibility/TerraRuntime.Extensibility.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.Gameplay/TerraRuntime.Gameplay.csproj" />
     <ProjectReference Include="../../src/TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />

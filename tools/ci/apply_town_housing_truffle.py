@@ -18,28 +18,28 @@ replace_once('src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcSpawnEligibility1458.
 '''    bool PartyGirlRollSucceeded)\n{\n    public bool IsValid =>''',
 '''    bool PartyGirlRollSucceeded)\n{\n    /// <summary>Persisted NPC.unlockedTruffleSpawn bit from the pinned world metadata.</summary>\n    public bool UnlockedTruffleSpawn { get; init; }\n\n    public bool IsValid =>''')
 
-replace_once('src/TerraRuntime/RuntimeTownNpcWorldFactsProjection1458.cs',
+replace_once('src/TerraRuntime.Application/RuntimeTownNpcWorldFactsProjection1458.cs',
 '''            BestiaryCompletionPercent: 0f,\n            PartyGirlRollSucceeded: false);''',
 '''            BestiaryCompletionPercent: 0f,\n            PartyGirlRollSucceeded: false)\n        {\n            UnlockedTruffleSpawn = metadata.UnlockedTruffleSpawn\n        };''')
 
-replace_once('src/TerraRuntime/VanillaHousingValidator1458.cs',
+replace_once('src/TerraRuntime.Application/VanillaHousingValidator1458.cs',
 '''    private readonly WorldTileStore tiles;\n\n    public VanillaHousingValidator1458(WorldTileStore tiles) =>\n        this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));''',
 '''    private readonly WorldTileStore tiles;\n    private bool truffleUnlocked;\n\n    public VanillaHousingValidator1458(WorldTileStore tiles) =>\n        this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));\n\n    internal void SetTruffleUnlocked(bool unlocked) => truffleUnlocked = unlocked;''')
 
 start='''    private bool PassesSpecialNpcCondition(\n'''
 end='''    private int CalculateBaseRoomScore'''
 replacement='''    private bool PassesSpecialNpcCondition(\n        NpcTypeId npcType,\n        int roomY2,\n        int startX,\n        int endX,\n        int startY,\n        int endY)\n    {\n        if (npcType != VanillaNpcIds.Truffle)\n            return true;\n\n        double worldSurface = tiles.WorldSurfaceTiles ?? Math.Max(1d, tiles.Dimensions.HeightTiles / 3d);\n        bool noFunctionalSurface = worldSurface <= 30d;\n        if (!truffleUnlocked && roomY2 > worldSurface && !noFunctionalSurface)\n            return false;\n\n        const int mushroomTileThreshold = 100;\n        int mushroomTiles = 0;\n        for (int x = startX + 1; x < endX; x++)\n        {\n            for (int y = startY + 2; y < endY + 2; y++)\n            {\n                WorldTile tile = tiles.Get(x, y);\n                if (IsNActive(in tile) && tile.Type is 70 or 71 or 72 or 528)\n                {\n                    mushroomTiles++;\n                    if (mushroomTiles >= mushroomTileThreshold)\n                        return true;\n                }\n            }\n        }\n\n        return false;\n    }\n\n'''
-replace_between('src/TerraRuntime/VanillaHousingValidator1458.cs', start, end, replacement)
+replace_between('src/TerraRuntime.Application/VanillaHousingValidator1458.cs', start, end, replacement)
 
-replace_once('src/TerraRuntime/RuntimeTownHouseCandidateIndex1458.cs',
+replace_once('src/TerraRuntime.Application/RuntimeTownHouseCandidateIndex1458.cs',
 '''    public int CandidateCount => candidates.Count;\n\n    public void Scan(int tileBudget)''',
 '''    public int CandidateCount => candidates.Count;\n\n    public void SetTruffleUnlocked(bool unlocked) => validator.SetTruffleUnlocked(unlocked);\n\n    public void Scan(int tileBudget)''')
 
-replace_once('src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs',
+replace_once('src/TerraRuntime.Application/RuntimeTownNpcMoveInCoordinator1458.cs',
 '''        this.houses = houses;\n        this.worldFacts = worldFacts;''',
 '''        this.houses = houses;\n        houses.SetTruffleUnlocked(worldFacts.UnlockedTruffleSpawn || townNpcs.ContainsNpcType(VanillaNpcIds.Truffle));\n        this.worldFacts = worldFacts;''')
 
-replace_once('src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs',
+replace_once('src/TerraRuntime.Application/RuntimeTownNpcMoveInCoordinator1458.cs',
 '''            if (!townNpcs.TryAddResident(type, in placement, npcs, out NpcSnapshot snapshot, out RuntimeTownNpcHomeCommit home))\n                continue;\n\n            replication?.TryPublishTownHome(in home);''',
 '''            if (!townNpcs.TryAddResident(type, in placement, npcs, out NpcSnapshot snapshot, out RuntimeTownNpcHomeCommit home))\n                continue;\n\n            if (type == VanillaNpcIds.Truffle)\n                houses.SetTruffleUnlocked(true);\n\n            replication?.TryPublishTownHome(in home);''')
 
@@ -188,11 +188,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime/VanillaHousingValidator1458.cs'
-      - 'src/TerraRuntime/RuntimeTownHouseCandidateIndex1458.cs'
-      - 'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs'
+      - 'src/TerraRuntime.Application/VanillaHousingValidator1458.cs'
+      - 'src/TerraRuntime.Application/RuntimeTownHouseCandidateIndex1458.cs'
+      - 'src/TerraRuntime.Application/RuntimeTownNpcMoveInCoordinator1458.cs'
       - 'src/TerraRuntime.Gameplay/Npcs/VanillaTownNpcSpawnEligibility1458.cs'
-      - 'src/TerraRuntime/RuntimeTownNpcWorldFactsProjection1458.cs'
+      - 'src/TerraRuntime.Application/RuntimeTownNpcWorldFactsProjection1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaTruffleHousing1458Tests.cs'
       - 'tools/ci/check_truffle_housing_source.py'
       - '.github/workflows/truffle-housing-source-contract.yml'

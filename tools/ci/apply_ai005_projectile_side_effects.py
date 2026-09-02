@@ -334,7 +334,7 @@ public static class VanillaFlyerProjectileAttack
 }
 ''')
 
-write("src/TerraRuntime/VanillaNpcProjectileWorldEnvironment.cs", r'''using TerraRuntime.Core;
+write("src/TerraRuntime.Application/VanillaNpcProjectileWorldEnvironment.cs", r'''using TerraRuntime.Core;
 using TerraRuntime.World;
 
 namespace TerraRuntime;
@@ -658,15 +658,15 @@ replace_once(
 
 # Production wiring: one projectile store feeds both NPC side effects and projectile simulation.
 replace_once(
-    "src/TerraRuntime/ServerRuntimeState.cs",
+    "src/TerraRuntime.Application/ServerRuntimeState.cs",
     "        _npcs = npcs ?? new RuntimeNpcStore();\n        _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs);",
     "        _npcs = npcs ?? new RuntimeNpcStore();\n        _projectiles = projectiles ?? new RuntimeProjectileStore();\n        _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs, _projectiles);")
 replace_once(
-    "src/TerraRuntime/ServerRuntimeState.cs",
+    "src/TerraRuntime.Application/ServerRuntimeState.cs",
     "        _npcShops = npcShops ?? new RuntimeNpcShopCatalogRegistry();\n        _projectiles = projectiles ?? new RuntimeProjectileStore();\n        _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);",
     "        _npcShops = npcShops ?? new RuntimeNpcShopCatalogRegistry();\n        _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);")
 replace_once(
-    "src/TerraRuntime/ServerRuntimeState.cs",
+    "src/TerraRuntime.Application/ServerRuntimeState.cs",
     "                _vanillaNpcTargetingAiStepper.SetFlyingEyeEnvironment(new VanillaFlyingEyeWorldEnvironment(worldTiles));",
     "                _vanillaNpcTargetingAiStepper.SetFlyingEyeEnvironment(new VanillaFlyingEyeWorldEnvironment(worldTiles));\n                _vanillaNpcTargetingAiStepper.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(worldTiles));")
 
