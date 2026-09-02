@@ -18,25 +18,15 @@ internal static class OptimizedDungeonV2
     private const ushort Containers = 21;
     private const ushort BlueDungeonUnsafeWall = 7;
 
-    // TerrariaServer 1.4.5.8 WorldGen.GetDungeonLootAndChestStyle / ItemID.
-    private static readonly ItemTypeId MagicMissile = new(113);
-    private static readonly ItemTypeId Muramasa = new(155);
-    private static readonly ItemTypeId CobaltShield = new(156);
-    private static readonly ItemTypeId AquaScepter = new(157);
-    private static readonly ItemTypeId BlueMoon = new(163);
-    private static readonly ItemTypeId Handgun = new(164);
-    private static readonly ItemTypeId GoldenKey = new(327);
-    private static readonly ItemTypeId Valor = new(3317);
-
     private static readonly ItemTypeId[] LockedChestMainLoot =
     [
-        Muramasa,
-        CobaltShield,
-        AquaScepter,
-        BlueMoon,
-        MagicMissile,
-        Valor,
-        Handgun
+        VanillaItemIds.Muramasa,
+        VanillaItemIds.CobaltShield,
+        VanillaItemIds.AquaScepter,
+        VanillaItemIds.BlueMoon,
+        VanillaItemIds.MagicMissile,
+        VanillaItemIds.Valor,
+        VanillaItemIds.Handgun
     ];
 
     internal static OptimizedDungeonV2Report Apply(IWorldGenerationContext context)
@@ -304,7 +294,7 @@ internal static class OptimizedDungeonV2
         DungeonRoom room,
         int lockedChestTarget)
     {
-        WorldGenerationChestItem[] loot = [new WorldGenerationChestItem(lockedChestTarget, GoldenKey)];
+        WorldGenerationChestItem[] loot = [new WorldGenerationChestItem(lockedChestTarget, VanillaItemIds.GoldenKey)];
         if (!TryPrepareAndPlaceRoomChest(workspace, chests, room, preferLeft: true, style: 0, "Dungeon Key Cache", loot))
         {
             throw new InvalidOperationException(

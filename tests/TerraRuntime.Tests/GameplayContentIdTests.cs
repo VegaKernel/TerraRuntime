@@ -85,5 +85,15 @@ public sealed class GameplayContentIdTests
         Assert.True(VanillaTileIds.CarriesSignText(VanillaTileIds.Signs));
         Assert.True(VanillaTileIds.CarriesSignText(VanillaTileIds.TatteredWoodSign));
         Assert.False(VanillaTileIds.CarriesSignText(VanillaTileIds.ItemFrame));
+
+        Assert.True(VanillaTileIds.IsNpcChair(VanillaTileIds.Chairs));
+        Assert.True(VanillaTileIds.IsNpcChair(VanillaTileIds.Toilets));
+        Assert.False(VanillaTileIds.IsNpcChair(VanillaTileIds.Tables));
+
+        Assert.True(VanillaTileIds.CountsForTruffleHousing(VanillaTileIds.MushroomGrass));
+        Assert.True(VanillaTileIds.CountsForTruffleHousing(VanillaTileIds.MushroomPlants));
+        Assert.True(VanillaTileIds.CountsForTruffleHousing(VanillaTileIds.MushroomTrees));
+        Assert.True(VanillaTileIds.CountsForTruffleHousing(VanillaTileIds.MushroomVines));
+        Assert.False(VanillaTileIds.CountsForTruffleHousing(VanillaTileIds.JungleGrass));
     }
 }

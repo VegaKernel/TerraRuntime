@@ -46,6 +46,10 @@ internal sealed class VanillaHousingValidator1458
     private const int MaximumRoomTiles = 750;
     private const int MinimumRoomTiles = 60;
     private const int MaximumRoomSize = 100;
+    private const int TileFrameUnit = 18;
+    private const int OpenDoorFrameCycleWidth = 72;
+    private const int OpenDoorRightFrameStart = 54;
+    private const int TrapdoorFrameDirectionSplit = 36;
 
     private static ReadOnlySpan<int> ChairTypes => [15, 79, 89, 102, 487, 497];
     private static ReadOnlySpan<int> TableTypes => [14, 18, 87, 88, 90, 101, 354, 355, 464, 469, 487, 699];
@@ -155,8 +159,8 @@ internal sealed class VanillaHousingValidator1458
             {
                 if (tile.Type < presentTypes.Length)
                     presentTypes[tile.Type] = true;
-                roomHasStinkbug |= tile.Type == 630;
-                roomHasEchoStinkbug |= tile.Type == 631;
+                roomHasStinkbug |= tile.TileType == VanillaTileIds.StinkbugHousingBlocker;
+                roomHasEchoStinkbug |= tile.TileType == VanillaTileIds.StinkbugHousingBlockerEcho;
                 if (IsBlockingRoomBoundary(in tile, treatTile379AsSolid))
                     continue;
             }
@@ -280,8 +284,7 @@ internal sealed class VanillaHousingValidator1458
             for (int y = startY + 2; y < endY + 2; y++)
             {
                 WorldTile tile = tiles.Get(x, y);
-                bool mushroom = tile.Type == 70 || tile.Type == 71 || tile.Type == 72 || tile.Type == 528;
-                if (tile.IsActive && mushroom)
+                if (tile.IsActive && VanillaTileIds.CountsForTruffleHousing(tile.TileType))
                 {
                     mushroomTiles++;
                     if (mushroomTiles >= 100)
@@ -348,7 +351,7 @@ internal sealed class VanillaHousingValidator1458
             {
                 WorldTile tile = tiles.Get(xx, yy);
                 if (!IsNActive(in tile) || IsIgnoredInHouseScore(tile.Type) ||
-                    (tile.Type == 11 && !IsOpenDoorAnchorFrame(in tile)))
+                    (tile.TileType == VanillaTileIds.OpenDoor && !IsOpenDoorAnchorFrame(in tile)))
                 {
                     continue;
                 }
@@ -357,11 +360,15 @@ internal sealed class VanillaHousingValidator1458
                 {
                     centerColumnObjects++;
                 }
-                else if (tile.Type is 21 or 467)
+                else if (tile.TileType == VanillaTileIds.Containers ||
+                         tile.TileType == VanillaTileIds.Containers2)
                 {
                     nearbyChests++;
                 }
-                else if (tile.Type is 10 or 388 || IsOpenDoorAnchorFrame(in tile) || tile.Type == 389)
+                else if (tile.TileType == VanillaTileIds.ClosedDoor ||
+                         tile.TileType == VanillaTileIds.TallGateClosed ||
+                         IsOpenDoorAnchorFrame(in tile) ||
+                         tile.TileType == VanillaTileIds.TallGateOpen)
                 {
                     score -= 20;
                 }
@@ -395,7 +402,9 @@ internal sealed class VanillaHousingValidator1458
         if (x <= 0 || x >= dimensions.WidthTiles - 1 || y < 3 || y >= dimensions.HeightTiles)
             return false;
         WorldTile floor = tiles.Get(x, y);
-        if (!IsNActive(in floor) || floor.Type == 379 || !IsSolidType(floor.Type, treatTile379AsSolid))
+        if (!IsNActive(in floor) ||
+            floor.TileType == VanillaTileIds.Bubble ||
+            !IsSolidType(floor.Type, treatTile379AsSolid))
             return false;
         if (HasSolidTile(x - 1, x + 1, y - 3, y - 1, treatTile379AsSolid))
             return false;
@@ -453,21 +462,28 @@ internal sealed class VanillaHousingValidator1458
         if (VanillaWallDefinitionCatalog.TryGet(tile.WallType, out VanillaWallDefinition wall) && wall.IsHousingWall)
             return true;
         return IsNActive(in tile) &&
-            (IsSolidType(tile.Type, treatTile379AsSolid) || tile.Type is 11 or 389 or 386);
+            (IsSolidType(tile.Type, treatTile379AsSolid) ||
+             tile.TileType == VanillaTileIds.OpenDoor ||
+             tile.TileType == VanillaTileIds.TallGateOpen ||
+             tile.TileType == VanillaTileIds.TrapdoorOpen);
     }
 
     private static bool IsBlockingRoomBoundary(in WorldTile tile, bool treatTile379AsSolid) =>
         IsBlockingSolid(in tile, treatTile379AsSolid) ||
         (IsNActive(in tile) &&
-         (tile.Type == 11 && tile.FrameX is 0 or 54 or 72 or 126 ||
-          tile.Type == 389 ||
-          tile.Type == 386 && ((tile.FrameX < 36 && tile.FrameY == 18) || (tile.FrameX >= 36 && tile.FrameY == 0))));
+         (tile.TileType == VanillaTileIds.OpenDoor && IsBlockingOpenDoorFrame(tile.FrameX) ||
+          tile.TileType == VanillaTileIds.TallGateOpen ||
+          tile.TileType == VanillaTileIds.TrapdoorOpen &&
+          ((tile.FrameX < TrapdoorFrameDirectionSplit && tile.FrameY == TileFrameUnit) ||
+           (tile.FrameX >= TrapdoorFrameDirectionSplit && tile.FrameY == 0))));
 
     private static bool IsBlockingSolid(in WorldTile tile, bool treatTile379AsSolid) =>
         IsNActive(in tile) && IsSolidType(tile.Type, treatTile379AsSolid);
 
     private static bool IsSolidType(int type, bool treatTile379AsSolid) =>
-        type == 379 ? treatTile379AsSolid : VanillaTileCollisionCatalog.IsSolid(new TileTypeId(type));
+        type == VanillaTileIds.Bubble.Value
+            ? treatTile379AsSolid
+            : VanillaTileCollisionCatalog.IsSolid(new TileTypeId(type));
 
     private static bool IsNActive(in WorldTile tile) => tile.IsActive && !tile.IsActuated;
 
@@ -489,11 +505,17 @@ internal sealed class VanillaHousingValidator1458
 
     private static bool IsOpenDoorAnchorFrame(in WorldTile tile)
     {
-        if (!IsNActive(in tile) || tile.Type != 11)
+        if (!IsNActive(in tile) || tile.TileType != VanillaTileIds.OpenDoor)
             return false;
-        int frame = tile.FrameX % 72;
-        return frame < 18 || frame >= 54;
+        int frame = tile.FrameX % OpenDoorFrameCycleWidth;
+        return frame < TileFrameUnit || frame >= OpenDoorRightFrameStart;
     }
+
+    private static bool IsBlockingOpenDoorFrame(short frameX) => frameX is
+        0 or
+        OpenDoorRightFrameStart or
+        OpenDoorFrameCycleWidth or
+        OpenDoorFrameCycleWidth + OpenDoorRightFrameStart;
 
     private static bool IsRoomTile(HashSet<int> roomTiles, WorldDimensions dimensions, int x, int y)
     {

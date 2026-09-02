@@ -102,9 +102,6 @@ internal static class OptimizedExplorationLoot1458
     ];
 
     // Common AddBuriedChest utility slots used here conservatively for useful, source-backed filler.
-    private static readonly ItemTypeId Rope = new(965);
-    private static readonly ItemTypeId RecallPotion = new(2350);
-    private static readonly ItemTypeId Torch = new(8);
     private static readonly ItemTypeId[] UtilityPotions =
     [
         new(292),  // Ironskin Potion
@@ -465,10 +462,10 @@ internal static class OptimizedExplorationLoot1458
         return
         [
             new WorldGenerationChestItem(1, primary),
-            new WorldGenerationChestItem(NextRange(random, 10, 25), Rope),
-            new WorldGenerationChestItem(NextRange(random, 2, 6), RecallPotion),
+            new WorldGenerationChestItem(NextRange(random, 10, 25), VanillaItemIds.Rope),
+            new WorldGenerationChestItem(NextRange(random, 2, 6), VanillaItemIds.RecallPotion),
             new WorldGenerationChestItem(1, potion),
-            new WorldGenerationChestItem(NextRange(random, 12, 28), Torch)
+            new WorldGenerationChestItem(NextRange(random, 12, 28), VanillaItemIds.Torch)
         ];
     }
 

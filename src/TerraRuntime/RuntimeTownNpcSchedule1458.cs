@@ -49,6 +49,9 @@ internal sealed class SharedRuntimeTownNpcScheduleRandom1458 : IRuntimeTownNpcSc
 /// </summary>
 internal sealed class RuntimeTownNpcSchedule1458
 {
+    private const int ChairFrameCycleHeight = 40;
+    private const int TavernkeepReservedChairFrameYStart = 1080;
+    private const int TavernkeepReservedChairFrameYEnd = 1098;
     private const int ScreenWidth = 1920;
     private const int ScreenHeight = 1200;
     private const int SafeRangeX = 62;
@@ -237,7 +240,8 @@ internal sealed class RuntimeTownNpcSchedule1458
                 if ((uint)x >= (uint)tiles.Dimensions.WidthTiles || (uint)y >= (uint)tiles.Dimensions.HeightTiles)
                     continue;
                 WorldTile tile = tiles.Get(x, y);
-                if (!IsNpcChair(in tile) || (tile.FrameY % 40 == 0 && y + 1 > floorY + ChairSearchDown))
+                if (!IsNpcChair(in tile) ||
+                    (tile.FrameY % ChairFrameCycleHeight == 0 && y + 1 > floorY + ChairSearchDown))
                     continue;
 
                 int distance = Math.Abs(x - floorX) + Math.Abs(y - floorY);
@@ -253,7 +257,7 @@ internal sealed class RuntimeTownNpcSchedule1458
             return;
 
         WorldTile chair = tiles.Get(chairX, chairY);
-        if (chair.FrameY % 40 != 0)
+        if (chair.FrameY % ChairFrameCycleHeight != 0)
             chairY--;
         chairY += 2;
         if (IsSeatOccupied(chairX, chairY))
@@ -355,7 +359,9 @@ internal sealed class RuntimeTownNpcSchedule1458
 
         WorldTile tile = tiles.Get(homeFloorX, homeFloorY - 1);
         if (!IsNpcChair(in tile) ||
-            (tile.Type == 15 && tile.FrameY >= 1080 && tile.FrameY <= 1098) ||
+            (tile.TileType == VanillaTileIds.Chairs &&
+             tile.FrameY >= TavernkeepReservedChairFrameYStart &&
+             tile.FrameY <= TavernkeepReservedChairFrameYEnd) ||
             IsSeatOccupied(homeFloorX, homeFloorY))
         {
             committed = snapshot;
@@ -491,10 +497,19 @@ internal sealed class RuntimeTownNpcSchedule1458
          VanillaTileIds.IsPlatform(tile.TileType));
 
     private static bool IsNpcChair(in WorldTile tile) =>
-        tile.IsActive && !tile.IsActuated && tile.Type is 15 or 497;
+        tile.IsActive && !tile.IsActuated && VanillaTileIds.IsNpcChair(tile.TileType);
 
     private static bool IsSittingExcluded(NpcTypeId type) =>
-        type.Value is 638 or 656 or 670 or 678 or 679 or 680 or 681 or 682 or 683 or 684;
+        type == VanillaNpcIds.TownDog ||
+        type == VanillaNpcIds.TownBunny ||
+        type == VanillaNpcIds.TownSlimeBlue ||
+        type == VanillaNpcIds.TownSlimeGreen ||
+        type == VanillaNpcIds.TownSlimeOld ||
+        type == VanillaNpcIds.TownSlimePurple ||
+        type == VanillaNpcIds.TownSlimeRainbow ||
+        type == VanillaNpcIds.TownSlimeRed ||
+        type == VanillaNpcIds.TownSlimeYellow ||
+        type == VanillaNpcIds.TownSlimeCopper;
 
     private static int BottomTileX(in NpcSnapshot snapshot, NpcTypeId type) =>
         (int)((snapshot.PositionX + GetWidth(type) / 2f) / 16f);

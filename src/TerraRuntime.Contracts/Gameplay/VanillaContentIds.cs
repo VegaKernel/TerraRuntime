@@ -204,9 +204,16 @@ public static class VanillaItemIds
     public static ItemTypeId None => default;
     public static readonly ItemTypeId DirtBlock = new(2);
     public static readonly ItemTypeId StoneBlock = new(3);
+    public static readonly ItemTypeId Torch = new(8);
     public static readonly ItemTypeId Gel = new(23);
     public static readonly ItemTypeId Chest = new(48);
     public static readonly ItemTypeId FlowerOfFire = new(112);
+    public static readonly ItemTypeId MagicMissile = new(113);
+    public static readonly ItemTypeId Muramasa = new(155);
+    public static readonly ItemTypeId CobaltShield = new(156);
+    public static readonly ItemTypeId AquaScepter = new(157);
+    public static readonly ItemTypeId BlueMoon = new(163);
+    public static readonly ItemTypeId Handgun = new(164);
     public static readonly ItemTypeId SandBlock = new(169);
     public static readonly ItemTypeId Obsidian = new(173);
     public static readonly ItemTypeId Stinger = new(209);
@@ -214,9 +221,13 @@ public static class VanillaItemIds
     public static readonly ItemTypeId Flamelash = new(218);
     public static readonly ItemTypeId Sunfury = new(220);
     public static readonly ItemTypeId DarkLance = new(274);
+    public static readonly ItemTypeId GoldenKey = new(327);
     public static readonly ItemTypeId JungleSpores = new(331);
+    public static readonly ItemTypeId Rope = new(965);
     public static readonly ItemTypeId SlimeStaff = new(1309);
+    public static readonly ItemTypeId RecallPotion = new(2350);
     public static readonly ItemTypeId HellwingBow = new(3019);
+    public static readonly ItemTypeId Valor = new(3317);
     public static readonly ItemTypeId CopperPickaxe = new(3509);
 
     public static bool TryCreate(int rawType, out ItemTypeId type)
@@ -304,6 +315,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId ClosedDoor = new(10);
     public static readonly TileTypeId OpenDoor = new(11);
     public static readonly TileTypeId Tables = new(14);
+    public static readonly TileTypeId Chairs = new(15);
     public static readonly TileTypeId Platforms = new(19);
     public static readonly TileTypeId Containers = new(21);
     public static readonly TileTypeId CorruptGrass = new(23);
@@ -318,6 +330,8 @@ public static class VanillaTileIds
     public static readonly TileTypeId Mud = new(59);
     public static readonly TileTypeId JungleGrass = new(60);
     public static readonly TileTypeId MushroomGrass = new(70);
+    public static readonly TileTypeId MushroomPlants = new(71);
+    public static readonly TileTypeId MushroomTrees = new(72);
     public static readonly TileTypeId ObsidianBrick = new(75);
     public static readonly TileTypeId HellstoneBrick = new(76);
     public static readonly TileTypeId Hellforge = new(77);
@@ -335,6 +349,8 @@ public static class VanillaTileIds
     public static readonly TileTypeId Marble = new(367);
     public static readonly TileTypeId Granite = new(368);
     public static readonly TileTypeId TargetDummy = new(378);
+    public static readonly TileTypeId Bubble = new(379);
+    public static readonly TileTypeId TrapdoorOpen = new(386);
     public static readonly TileTypeId TallGateClosed = new(388);
     public static readonly TileTypeId TallGateOpen = new(389);
     public static readonly TileTypeId ItemFrame = new(395);
@@ -349,9 +365,13 @@ public static class VanillaTileIds
     public static readonly TileTypeId DisplayDoll = new(470);
     public static readonly TileTypeId WeaponsRack2 = new(471);
     public static readonly TileTypeId HatRack = new(475);
+    public static readonly TileTypeId Toilets = new(497);
     public static readonly TileTypeId FoodPlatter = new(520);
+    public static readonly TileTypeId MushroomVines = new(528);
     public static readonly TileTypeId TatteredWoodSign = new(573);
     public static readonly TileTypeId TeleportationPylon = new(597);
+    public static readonly TileTypeId StinkbugHousingBlocker = new(630);
+    public static readonly TileTypeId StinkbugHousingBlockerEcho = new(631);
     public static readonly TileTypeId DeadCellsDisplayJar = new(698);
 
     public static bool TryCreate(int rawType, out TileTypeId type)
@@ -383,6 +403,16 @@ public static class VanillaTileIds
     public static bool IsClosedDoor(TileTypeId type) =>
         type == ClosedDoor ||
         type == TallGateClosed;
+
+    public static bool IsNpcChair(TileTypeId type) =>
+        type == Chairs ||
+        type == Toilets;
+
+    public static bool CountsForTruffleHousing(TileTypeId type) =>
+        type == MushroomGrass ||
+        type == MushroomPlants ||
+        type == MushroomTrees ||
+        type == MushroomVines;
 
     public static bool CarriesSignText(TileTypeId type) =>
         type == Signs ||

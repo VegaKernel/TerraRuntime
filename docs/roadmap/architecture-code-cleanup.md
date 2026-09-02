@@ -191,6 +191,7 @@ Checklist:
 
 - [x] Replace Transport envelope field-offset literals with named layout constants.
 - [x] Name the Schematics stream-copy buffer size rather than leaving the I/O literal inline.
+- [x] Replace raw town-NPC combat, housing and schedule identities plus optimized world-generation loot ids with source-backed catalogs and behavior-family predicates.
 - [ ] Audit touched binary codecs for unnamed offsets, masks, section sizes and length ceilings.
 - [ ] Audit gameplay magic numbers and keep source-backed constants near their authoritative catalog/rule with source provenance.
 - [ ] Audit queue/cache/time/batch limits; operational values require rationale or measurement, not mythology.

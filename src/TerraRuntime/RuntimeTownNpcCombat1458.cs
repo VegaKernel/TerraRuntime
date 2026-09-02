@@ -190,25 +190,25 @@ internal readonly record struct VanillaTownNpcMeleeAttackProfile1458(
 internal static class VanillaTownNpcMeleeAttackCatalog1458
 {
     private static readonly VanillaTownNpcMeleeAttackProfile1458 DyeTrader = new(
-        new NpcTypeId(207), 60, 15, 1, 11, 32, 32, 4.25f, 12, 6);
+        VanillaNpcIds.DyeTrader, 60, 15, 1, 11, 32, 32, 4.25f, 12, 6);
     private static readonly VanillaTownNpcMeleeAttackProfile1458 TaxCollector = new(
-        new NpcTypeId(441), 50, 15, 1, 9, 28, 28, 3.5f, 9, 3);
+        VanillaNpcIds.TaxCollector, 50, 15, 1, 9, 28, 28, 3.5f, 9, 3);
     private static readonly VanillaTownNpcMeleeAttackProfile1458 Stylist = new(
-        new NpcTypeId(353), 60, 12, 1, 10, 32, 32, 5f, 15, 8);
+        VanillaNpcIds.Stylist, 60, 12, 1, 10, 32, 32, 5f, 15, 8);
 
     public static bool TryGet(NpcTypeId type, out VanillaTownNpcMeleeAttackProfile1458 profile)
     {
-        if (type.Value == 207)
+        if (type == VanillaNpcIds.DyeTrader)
         {
             profile = DyeTrader;
             return true;
         }
-        if (type.Value == 441)
+        if (type == VanillaNpcIds.TaxCollector)
         {
             profile = TaxCollector;
             return true;
         }
-        if (type.Value == 353)
+        if (type == VanillaNpcIds.Stylist)
         {
             profile = Stylist;
             return true;
@@ -217,8 +217,9 @@ internal static class VanillaTownNpcMeleeAttackCatalog1458
         return false;
     }
 
-    public static bool IsSourceTownPet(NpcTypeId type) => type.Value is
-        637 or 638 or 656 or 670 or 678 or 679 or 680 or 681 or 682 or 683 or 684;
+    public static bool IsSourceTownPet(NpcTypeId type) =>
+        VanillaTownNpcFacts1458.TryGetHousingCategory(type, out int category) &&
+        category == VanillaTownNpcFacts1458.PetHousingCategory;
 }
 
 internal enum RuntimeTownNpcMeleeDamageResult1458 : byte
