@@ -1,19 +1,20 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
-public sealed class RuntimeServerPlayerStateStoreTests
+public sealed class ServerPlayerStateStoreTests
 {
     [Fact]
     public void Spawn_and_motion_use_exact_server_owned_generation()
     {
         var slots = new PlayerSlotPool(2);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:follower");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
         Assert.NotNull(lease);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
 
         Assert.True(states.TrySpawn(id, 100f, 200f, out PlayerStateSnapshot spawned));
         Assert.Equal(lease.Player, spawned.Player);
@@ -43,8 +44,8 @@ public sealed class RuntimeServerPlayerStateStoreTests
         var slots = new PlayerSlotPool(2);
         Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? connection));
         Assert.NotNull(connection);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
 
         Assert.False(states.TryGet(connection.Handle, out _));
         Assert.False(states.TrySetMotion(connection.Handle, 1f, 2f, 3f, 4f, out _));
@@ -58,11 +59,11 @@ public sealed class RuntimeServerPlayerStateStoreTests
     public void Released_identity_immediately_makes_stale_state_unreachable()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:reused");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
         Assert.NotNull(lease);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         Assert.True(states.TrySpawn(id, 10f, 20f, out PlayerStateSnapshot original));
         PlayerHandle stale = original.Player;
 
@@ -87,11 +88,11 @@ public sealed class RuntimeServerPlayerStateStoreTests
     public void Invalid_floating_point_state_is_rejected_without_revision_advance()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:finite");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
         Assert.NotNull(lease);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
 
         Assert.False(states.TrySpawn(id, float.NaN, 0f, out _));
         Assert.True(states.TrySpawn(id, 0f, 0f, out PlayerStateSnapshot spawned));
@@ -107,11 +108,11 @@ public sealed class RuntimeServerPlayerStateStoreTests
     public void Dead_state_is_authoritative_and_generation_safe()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:dead");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
         Assert.NotNull(lease);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         Assert.True(states.TrySpawn(id, 0f, 0f, out _));
 
         Assert.True(states.TrySetDead(lease.Player, true, out PlayerStateSnapshot dead));

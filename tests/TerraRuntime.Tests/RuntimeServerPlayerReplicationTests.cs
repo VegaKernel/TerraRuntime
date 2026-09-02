@@ -6,6 +6,7 @@ using TerraRuntime.HostContracts;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -25,8 +26,8 @@ public sealed class RuntimeServerPlayerReplicationTests
         var slots = new PlayerSlotPool(2);
         Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? occupied));
         Assert.NotNull(occupied);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities, events: registry);
         var id = new ServerPlayerId("test:replicated-fake");
         ServerPlayerCreateResult created = service.Create(id, 160f, 320f);
@@ -90,8 +91,8 @@ public sealed class RuntimeServerPlayerReplicationTests
         var slots = new PlayerSlotPool(2);
         Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? occupied));
         Assert.NotNull(occupied);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities, events: registry);
         var id = new ServerPlayerId("test:baseline-fake");
         ServerPlayerCreateResult created = service.Create(id, 160f, 320f);

@@ -1,4 +1,5 @@
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Core.Players;
 ﻿using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -39,8 +40,8 @@ public sealed class ServerRuntimeTallGateOccupancyTests
     {
         var tiles = new WorldTileStore(new WorldDimensions(40, 40));
         var pool = new PlayerSlotPool(10);
-        var identities = new RuntimeServerPlayerSlotRegistry(pool);
-        var store = new RuntimeServerPlayerStateStore(identities, 10);
+        var identities = new ServerPlayerSlotRegistry(pool);
+        var store = new ServerPlayerStateStore(identities, 10);
         var state = new ServerRuntimeState(
             worldTiles: tiles,
             serverPlayers: new ServerPlayerAuthority(store, identities, tiles));
@@ -96,10 +97,10 @@ public sealed class ServerRuntimeTallGateOccupancyTests
         await completion.Task;
         Assert.False(state.IsTileActorFreeForTesting(20, 77));
     }
-    private static PlayerHandle CreateServerPlayer(RuntimeServerPlayerSlotRegistry identities, RuntimeServerPlayerStateStore store, float x, float y)
+    private static PlayerHandle CreateServerPlayer(ServerPlayerSlotRegistry identities, ServerPlayerStateStore store, float x, float y)
     {
         var id = new ServerPlayerId(Guid.NewGuid().ToString("N"));
-        ServerPlayerSlotAcquireResult result = identities.TryAcquire(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease);
+        ServerPlayerSlotAcquireResult result = identities.TryAcquire(id, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease);
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, result);
         Assert.NotNull(lease);
         PlayerHandle handle = lease!.Player;

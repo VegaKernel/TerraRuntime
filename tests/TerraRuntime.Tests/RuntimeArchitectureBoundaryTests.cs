@@ -3,6 +3,7 @@ using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Contracts.Runtime;
 using System.Reflection;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -216,7 +217,9 @@ public sealed class RuntimeArchitectureBoundaryTests
         }
 
         Assert.Equal("TerraRuntime.Core", typeof(IPlayerAppearanceIngress).Assembly.GetName().Name);
-        Assert.Equal("TerraRuntime.Core", typeof(RuntimeServerPlayerStateStore).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core", typeof(ServerPlayerStateStore).Assembly.GetName().Name);
+        Assert.Equal("TerraRuntime.Core.Players", typeof(ServerPlayerStateStore).Namespace);
+        Assert.Equal("TerraRuntime.Core.Players", typeof(ServerPlayerSlotRegistry).Namespace);
         Assert.Equal("TerraRuntime.Application", typeof(PlayerEquipmentPacket5Normalizer).Assembly.GetName().Name);
     }
 

@@ -20,62 +20,6 @@ public static class VanillaNpcGravity
     private const float BaseGravity = 0.3f;
     private const float BaseMaxFallSpeed = 10f;
 
-    /// <summary>Raw-id compatibility boundary; gameplay code should prefer the resolved-definition overload.</summary>
-    public static bool TryApply(
-        int npcType,
-        float positionY,
-        float velocityY,
-        bool wet,
-        NpcLiquidContactKind liquidContact,
-        int worldWidthTiles,
-        double worldSurfaceTiles,
-        out VanillaNpcGravityResult result)
-    {
-        if (!NpcTypeId.TryCreate(npcType, out NpcTypeId type))
-        {
-            result = default;
-            return false;
-        }
-
-        return TryApply(
-            type,
-            positionY,
-            velocityY,
-            wet,
-            liquidContact,
-            worldWidthTiles,
-            worldSurfaceTiles,
-            out result);
-    }
-
-    /// <summary>Typed compatibility boundary; resolves version-pinned physics metadata once.</summary>
-    public static bool TryApply(
-        NpcTypeId npcType,
-        float positionY,
-        float velocityY,
-        bool wet,
-        NpcLiquidContactKind liquidContact,
-        int worldWidthTiles,
-        double worldSurfaceTiles,
-        out VanillaNpcGravityResult result)
-    {
-        if (!VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition definition))
-        {
-            result = default;
-            return false;
-        }
-
-        return TryApply(
-            in definition,
-            positionY,
-            velocityY,
-            wet,
-            liquidContact,
-            worldWidthTiles,
-            worldSurfaceTiles,
-            out result);
-    }
-
     public static bool TryApply(
         in VanillaNpcDefinition definition,
         float positionY,

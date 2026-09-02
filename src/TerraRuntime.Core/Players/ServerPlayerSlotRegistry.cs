@@ -1,6 +1,7 @@
+using TerraRuntime.Core;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Players;
 
 public enum ServerPlayerSlotAcquireResult : byte
 {
@@ -20,7 +21,7 @@ public readonly record struct ServerPlayerSlotBinding(
 /// connection bootstrap without inventing a fake transport source. Lifecycle/id-index mutation is serialized on the
 /// control path; slot+generation lookup used by simulation is a lock-free immutable-entry read.
 /// </summary>
-public sealed class RuntimeServerPlayerSlotRegistry
+public sealed class ServerPlayerSlotRegistry
 {
     private readonly object gate = new();
     private readonly PlayerSlotPool slots;
@@ -28,7 +29,7 @@ public sealed class RuntimeServerPlayerSlotRegistry
     private readonly SlotEntry?[] bySlot;
     private readonly PlayerSlotPool.PlayerSlotLease?[] slotLeases;
 
-    public RuntimeServerPlayerSlotRegistry(PlayerSlotPool slots)
+    public ServerPlayerSlotRegistry(PlayerSlotPool slots)
     {
         ArgumentNullException.ThrowIfNull(slots);
         this.slots = slots;
@@ -161,11 +162,11 @@ public sealed class RuntimeServerPlayerSlotRegistry
     /// </summary>
     public sealed class ServerPlayerSlotLease : IDisposable
     {
-        private RuntimeServerPlayerSlotRegistry? owner;
+        private ServerPlayerSlotRegistry? owner;
         private readonly ServerPlayerSlotBinding binding;
 
         internal ServerPlayerSlotLease(
-            RuntimeServerPlayerSlotRegistry owner,
+            ServerPlayerSlotRegistry owner,
             ServerPlayerSlotBinding binding)
         {
             this.owner = owner;
@@ -180,7 +181,7 @@ public sealed class RuntimeServerPlayerSlotRegistry
 
         public void Dispose()
         {
-            RuntimeServerPlayerSlotRegistry? registry = Interlocked.Exchange(ref owner, null);
+            ServerPlayerSlotRegistry? registry = Interlocked.Exchange(ref owner, null);
             registry?.Release(in binding);
         }
     }

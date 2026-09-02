@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -9,8 +10,8 @@ public sealed class ServerPlayerAuthorityTests
     public void Authority_owns_exact_generation_lifecycle_and_clears_generation_scoped_control_state()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var authority = new ServerPlayerAuthority(states, identities);
         var id = new ServerPlayerId("test:authority-generation");
 
@@ -43,8 +44,8 @@ public sealed class ServerPlayerAuthorityTests
         static ServerPlayerAuthority CreateAuthority()
         {
             var slots = new PlayerSlotPool(1);
-            var identities = new RuntimeServerPlayerSlotRegistry(slots);
-            var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+            var identities = new ServerPlayerSlotRegistry(slots);
+            var states = new ServerPlayerStateStore(identities, slots.Capacity);
             return new ServerPlayerAuthority(states, identities);
         }
 

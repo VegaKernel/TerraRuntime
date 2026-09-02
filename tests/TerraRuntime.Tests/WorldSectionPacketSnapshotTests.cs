@@ -8,7 +8,7 @@ namespace TerraRuntime.Tests;
 public sealed class WorldSectionPacketSnapshotTests
 {
     [Fact]
-    public void Immutable_packet_snapshot_encodes_identically_to_compatibility_path()
+    public void Immutable_packet_snapshot_encodes_identically_to_live_world_path()
     {
         WorldFileData world = LoadCompleteWorld();
         WorldSectionId section = new(0, 0);
@@ -24,13 +24,20 @@ public sealed class WorldSectionPacketSnapshotTests
 
         Assert.Equal(WorldSectionPacketSnapshotCaptureResult.Captured, captureResult);
         Assert.NotNull(packetSnapshot);
+        WorldTileBounds bounds = tileSnapshot!.Bounds;
         Assert.Equal(
             WorldSectionPacketEncodeResult.Encoded,
-            WorldSectionPacketEncoder.TryEncode(world, tileSnapshot!, out byte[] compatibilityFrame));
+            WorldSectionPacketEncoder.TryEncode(
+                world,
+                bounds.X,
+                bounds.Y,
+                bounds.Width,
+                bounds.Height,
+                out byte[] liveFrame));
         Assert.Equal(
             WorldSectionPacketEncodeResult.Encoded,
             WorldSectionPacketEncoder.TryEncode(packetSnapshot!, out byte[] immutableFrame));
-        Assert.Equal(compatibilityFrame, immutableFrame);
+        Assert.Equal(liveFrame, immutableFrame);
     }
 
     [Fact]
@@ -71,9 +78,16 @@ public sealed class WorldSectionPacketSnapshotTests
             WorldSectionPayloadAssembler.TryEncode(packetSnapshot!, out byte[] capturedAfter));
         Assert.Equal(capturedBefore, capturedAfter);
 
+        WorldTileBounds bounds = tileSnapshot!.Bounds;
         Assert.Equal(
             WorldSectionPayloadAssemblyResult.Encoded,
-            WorldSectionPayloadAssembler.TryEncode(world, tileSnapshot!, out byte[] liveAfter));
+            WorldSectionPayloadAssembler.TryEncode(
+                world,
+                bounds.X,
+                bounds.Y,
+                bounds.Width,
+                bounds.Height,
+                out byte[] liveAfter));
         Assert.NotEqual(capturedAfter, liveAfter);
     }
 

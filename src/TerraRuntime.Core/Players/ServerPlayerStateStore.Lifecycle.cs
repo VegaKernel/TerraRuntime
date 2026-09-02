@@ -1,8 +1,9 @@
+using TerraRuntime.Core;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Players;
 
-public sealed partial class RuntimeServerPlayerStateStore
+public sealed partial class ServerPlayerStateStore
 {
     public bool TrySpawn(
         ServerPlayerId id,

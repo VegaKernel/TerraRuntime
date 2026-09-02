@@ -48,19 +48,6 @@ public static class WorldSectionPayloadEncoder
     }
 
     /// <summary>
-    /// Encodes a previously captured immutable network-section image. This compatibility overload captures the
-    /// immutable format rules from <paramref name="world"/> before delegating to the worker-safe overload.
-    /// </summary>
-    public static WorldSectionPayloadEncodeResult TryEncodeTileOnly(
-        WorldFileData world,
-        WorldSectionTileSnapshot snapshot,
-        out byte[] payload)
-    {
-        ArgumentNullException.ThrowIfNull(world);
-        return TryEncodeTileOnly(WorldSectionEncodingContext.Capture(world), snapshot, out payload);
-    }
-
-    /// <summary>
     /// Encodes an immutable network-section image using only immutable world-format rules. This overload is safe
     /// for asynchronous workers and does not retain or read a live <see cref="WorldFileData"/> instance.
     /// </summary>

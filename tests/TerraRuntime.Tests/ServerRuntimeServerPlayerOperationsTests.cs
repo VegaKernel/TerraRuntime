@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -10,8 +11,8 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
     public async Task Create_and_despawn_hold_shared_slot_and_advance_generation_on_reuse()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
             serverPlayers: new ServerPlayerAuthority(states, identities));
         var id = new ServerPlayerId("test:host-fake");
@@ -45,8 +46,8 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
     public async Task Duplicate_id_is_rejected_without_consuming_another_slot()
     {
         var slots = new PlayerSlotPool(2);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
             serverPlayers: new ServerPlayerAuthority(states, identities));
         var id = new ServerPlayerId("test:duplicate-fake");
@@ -66,8 +67,8 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
         var slots = new PlayerSlotPool(1);
         Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? connection));
         Assert.NotNull(connection);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
             serverPlayers: new ServerPlayerAuthority(states, identities));
 
@@ -86,8 +87,8 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
     public async Task Invalid_identity_and_position_do_not_allocate_slots()
     {
         var slots = new PlayerSlotPool(2);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
             serverPlayers: new ServerPlayerAuthority(states, identities));
 
@@ -107,8 +108,8 @@ public sealed class ServerRuntimeServerPlayerOperationsTests
     public async Task Stable_id_can_be_recreated_only_after_despawn_with_new_generation()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
             serverPlayers: new ServerPlayerAuthority(states, identities));
         var id = new ServerPlayerId("test:recreate-fake");

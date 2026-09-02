@@ -141,7 +141,8 @@ public sealed class VanillaNpcDefinitionCatalogTests
     [Fact]
     public void Unverified_type_is_not_silently_fabricated()
     {
-        Assert.False(VanillaNpcDefinitionCatalog.TryGet(999, out VanillaNpcDefinition definition));
+        Assert.True(NpcTypeId.TryCreate(999, out NpcTypeId unsupported));
+        Assert.False(VanillaNpcDefinitionCatalog.TryGet(unsupported, out VanillaNpcDefinition definition));
         Assert.Equal(default, definition);
     }
 }

@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -11,8 +12,8 @@ public sealed class ServerRuntimeServerPlayerHorizontalControlTests
     public async Task Horizontal_intent_command_drives_authoritative_physics_tick()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var runtime = new ServerRuntimeState(
             worldTiles: tiles,
@@ -45,8 +46,8 @@ public sealed class ServerRuntimeServerPlayerHorizontalControlTests
     public async Task Invalid_intent_command_is_rejected_without_changing_default_stop_state()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var runtime = new ServerRuntimeState(
             worldTiles: tiles,

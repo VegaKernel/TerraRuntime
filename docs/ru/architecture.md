@@ -140,6 +140,18 @@ Gameplay-код не должен зависеть от concrete Multiplicity pa
 
 Protocol layer отвечает за framing, packet IDs/flags, bounded decode/encode и преобразование между wire representation и owned semantic/runtime data. Gameplay layer отвечает за legality, domain invariants, state transitions и authoritative outcomes.
 
+### Направление зависимостей source projects
+
+Source projects разделены по слоям, а `tools/ci/check_project_references.py` проверяет их граф. Проект может ссылаться на свой слой или более фундаментальный, но не на более высокий composition/hosting layer; граф обязан оставаться ацикличным. Текущий порядок:
+
+1. `TerraRuntime.Contracts`;
+2. source/domain boundaries: `Gameplay`, `Protocol`, `World`, `HostContracts`, `Transport`, `Schematics`;
+3. runtime mechanics/adapters: `Core`, `Network`, `Protocol.Multiplicity`;
+4. authoritative composition: `Application`;
+5. shipping/extension hosts: `TerraRuntime`, `Extensibility`, `ExtensibleHost`.
+
+`TerraRuntime.Protocol.Multiplicity -> TerraRuntime.World` сейчас является намеренной same-level adapter dependency: packet bootstrap/section encoders проецируют immutable world/persistence snapshot types, которыми пока владеет `World`. Adapter может читать эти projections для wire encoding, но не должен становиться владельцем world mutation. Если immutable DTO позднее переедут в Contracts, эту ссылку следует удалить, а не маскировать forwarding shim-ом.
+
 ## 9. Entity identity
 
 Content type и live runtime identity являются разными понятиями.

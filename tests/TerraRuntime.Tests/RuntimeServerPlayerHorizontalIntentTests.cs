@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -10,8 +11,8 @@ public sealed class RuntimeServerPlayerHorizontalIntentTests
     public void Intent_is_bound_to_exact_player_generation_and_removed_on_reuse()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities);
         var firstId = new ServerPlayerId("test:first-horizontal");
         var secondId = new ServerPlayerId("test:second-horizontal");
@@ -35,8 +36,8 @@ public sealed class RuntimeServerPlayerHorizontalIntentTests
     public void Stop_removes_sparse_control_state_and_unknown_values_are_rejected()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities);
         var id = new ServerPlayerId("test:stop-horizontal");
         ServerPlayerCreateResult created = service.Create(id, 0f, 0f);
@@ -55,8 +56,8 @@ public sealed class RuntimeServerPlayerHorizontalIntentTests
     public void Missing_server_player_cannot_receive_horizontal_intent()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities);
 
         Assert.False(service.SetHorizontalIntent(

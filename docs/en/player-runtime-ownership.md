@@ -14,8 +14,9 @@ Player data now follows the same dependency direction as the rest of the runtime
 
 - `TerraRuntime.Contracts.Runtime` owns detached player commit DTOs such as `PlayerAppearanceCommitRequest`, `PlayerMovementCommitRequest`, `PlayerSpawnCommitRequest`, equipment and vitals requests;
 - `TerraRuntime.Gameplay.Players` owns source-backed vanilla normalization and validation that does not retain mutable runtime state;
-- `TerraRuntime.Core` owns the authoritative ingress contracts, player slot/session lifecycle and mutable server-player stores;
-- application composition owns connection admission, anti-cheat/history policy and the concrete authoritative command routing.
+- `TerraRuntime.Core` owns the authoritative ingress contracts and shared execution mechanics;
+- `TerraRuntime.Core.Players` owns server-player slot identities and mutable server-player state stores, keeping player-specific mechanics out of the flat Core namespace;
+- application composition owns connection admission, anti-cheat/history policy and the concrete authoritative command routing; its world-owned `ServerPlayerAuthority` is the sole application-level owner that combines server-player lifecycle, semantic control intents, physics progression and replication events.
 
 Packet-5 signed net-id compatibility conversion is owned by the application ingress boundary in `PlayerEquipmentPacket5Normalizer`. Core receives canonical positive item identities and validates server-owned inventory state directly; Gameplay remains free of wire compatibility arithmetic.
 

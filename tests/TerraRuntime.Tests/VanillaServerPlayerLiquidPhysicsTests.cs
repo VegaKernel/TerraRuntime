@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -41,13 +42,13 @@ public sealed class VanillaServerPlayerLiquidPhysicsTests
             LiquidKind = WorldLiquidKind.Water
         });
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:water-physics");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
         Assert.NotNull(lease);
         using (lease)
         {
-            var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+            var states = new ServerPlayerStateStore(identities, slots.Capacity);
             Assert.True(states.TrySpawn(id, 96f, 80f, out PlayerStateSnapshot spawned));
             var runtime = new ServerRuntimeState(worldTiles: tiles, serverPlayers: new ServerPlayerAuthority(states, worldTiles: tiles));
 
@@ -99,8 +100,8 @@ public sealed class VanillaServerPlayerLiquidPhysicsTests
             LiquidKind = WorldLiquidKind.Water
         });
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var firstId = new ServerPlayerId("test:wet-generation");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(firstId, out var firstLease));
         Assert.NotNull(firstLease);
@@ -127,17 +128,17 @@ public sealed class VanillaServerPlayerLiquidPhysicsTests
     private static SpawnedServerPlayer Spawn()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:liquid-jump");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
         Assert.NotNull(lease);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         Assert.True(states.TrySpawn(id, 96f, 80f, out PlayerStateSnapshot snapshot));
         return new SpawnedServerPlayer(lease, snapshot);
     }
 
     private sealed class SpawnedServerPlayer(
-        RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease lease,
+        ServerPlayerSlotRegistry.ServerPlayerSlotLease lease,
         PlayerStateSnapshot snapshot) : IDisposable
     {
         public PlayerStateSnapshot Snapshot { get; } = snapshot;

@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -74,11 +75,11 @@ public sealed class VanillaServerPlayerHorizontalPhysicsTests
         float velocityY = 0f)
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:horizontal-physics");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
         Assert.NotNull(lease);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         Assert.True(states.TrySpawn(id, positionX, positionY, out PlayerStateSnapshot snapshot));
         if (velocityX != 0f || velocityY != 0f)
         {
@@ -95,7 +96,7 @@ public sealed class VanillaServerPlayerHorizontalPhysicsTests
     }
 
     private sealed class SpawnedServerPlayer(
-        RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease lease,
+        ServerPlayerSlotRegistry.ServerPlayerSlotLease lease,
         PlayerStateSnapshot snapshot) : IDisposable
     {
         public PlayerStateSnapshot Snapshot { get; } = snapshot;

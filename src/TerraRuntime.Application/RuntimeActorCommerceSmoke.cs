@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime;
 
@@ -17,12 +18,12 @@ internal static class RuntimeActorCommerceSmoke
         var shops = new RuntimeNpcShopCatalogRegistry();
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var playerSlots = new PlayerSlotPool(8);
-        var serverPlayerIdentities = new RuntimeServerPlayerSlotRegistry(playerSlots);
-        var serverPlayerStates = new RuntimeServerPlayerStateStore(serverPlayerIdentities, playerSlots.Capacity);
+        var serverPlayerIdentities = new ServerPlayerSlotRegistry(playerSlots);
+        var serverPlayerStates = new ServerPlayerStateStore(serverPlayerIdentities, playerSlots.Capacity);
         var targetId = new ServerPlayerId("smoke:npc-target");
         if (serverPlayerIdentities.TryAcquire(
                 targetId,
-                out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? acquiredTarget) !=
+                out ServerPlayerSlotRegistry.ServerPlayerSlotLease? acquiredTarget) !=
                 ServerPlayerSlotAcquireResult.Acquired ||
             acquiredTarget is null ||
             !serverPlayerStates.TrySpawn(targetId, 180f, 100f, out _))
@@ -32,7 +33,7 @@ internal static class RuntimeActorCommerceSmoke
             return false;
         }
 
-        using RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease target = acquiredTarget;
+        using ServerPlayerSlotRegistry.ServerPlayerSlotLease target = acquiredTarget;
         var state = new ServerRuntimeState(
             npcs: npcs,
             worldTiles: tiles,

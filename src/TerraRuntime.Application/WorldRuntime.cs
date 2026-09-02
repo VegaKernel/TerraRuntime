@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Operations;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime;
 
@@ -175,8 +176,8 @@ public sealed class WorldRuntime : IDisposable
         var playerEvents = new RuntimePlayerEventFanout(playerNetworkEvents, signAndEntityReplicationEvents);
 
         Slots = new PlayerSlotPool(options.MaxPlayers);
-        var serverPlayerIdentities = new RuntimeServerPlayerSlotRegistry(Slots);
-        var serverPlayerStates = new RuntimeServerPlayerStateStore(serverPlayerIdentities, Slots.Capacity);
+        var serverPlayerIdentities = new ServerPlayerSlotRegistry(Slots);
+        var serverPlayerStates = new ServerPlayerStateStore(serverPlayerIdentities, Slots.Capacity);
         ServerPlayers = new ServerPlayerAuthority(
             serverPlayerStates,
             serverPlayerIdentities,

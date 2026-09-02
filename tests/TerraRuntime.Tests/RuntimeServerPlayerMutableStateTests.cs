@@ -4,6 +4,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -13,8 +14,8 @@ public sealed class RuntimeServerPlayerMutableStateTests
     public void Appearance_vitals_and_item_state_are_normalized_and_generation_safe()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities);
         var id = new ServerPlayerId("test:mutable-fake");
         ServerPlayerCreateResult created = service.Create(id, 100f, 200f);
@@ -86,8 +87,8 @@ public sealed class RuntimeServerPlayerMutableStateTests
     public void Invalid_presentation_and_item_state_do_not_advance_revision()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities);
         var id = new ServerPlayerId("test:invalid-fake-state");
         ServerPlayerCreateResult created = service.Create(id, 0f, 0f);

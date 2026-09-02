@@ -31,7 +31,7 @@ public sealed class VanillaOceanGeneration1458Tests
     [Fact]
     public void Canonical_provider_leaves_final_cleanup_unwrapped()
     {
-        var provider = new SourceBackedVanillaWorldGenerationCanonical1458();
+        var provider = new SourceBackedVanillaWorldGenerationFinal1458();
         var request = new WorldGenerationRequest(
             VanillaWorldGenerationProvider1458.GeneratorId,
             "OceanPlan",

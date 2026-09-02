@@ -32,12 +32,6 @@ public static class VanillaTileCollisionCatalog
 
     public static bool IsSolidTop(TileTypeId type) => Test(type, SolidTopWords);
 
-    /// <summary>Compatibility boundary for packed/raw tile storage callers.</summary>
-    public static bool IsSolid(ushort type) => IsSolid(new TileTypeId(type));
-
-    /// <summary>Compatibility boundary for packed/raw tile storage callers.</summary>
-    public static bool IsSolidTop(ushort type) => IsSolidTop(new TileTypeId(type));
-
     private static bool Test(TileTypeId type, ReadOnlySpan<ulong> words)
     {
         int value = type.Value;

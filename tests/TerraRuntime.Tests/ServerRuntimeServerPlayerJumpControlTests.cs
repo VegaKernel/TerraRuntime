@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -11,8 +12,8 @@ public sealed class ServerRuntimeServerPlayerJumpControlTests
     public async Task Jump_intent_command_drives_authoritative_jump_before_gravity()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         WorldTileStore tiles = CreateGroundedWorld();
         var runtime = new ServerRuntimeState(
             worldTiles: tiles,
@@ -42,8 +43,8 @@ public sealed class ServerRuntimeServerPlayerJumpControlTests
     public async Task Held_jump_does_not_restart_after_landing_until_release()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         WorldTileStore tiles = CreateGroundedWorld();
         var runtime = new ServerRuntimeState(
             worldTiles: tiles,

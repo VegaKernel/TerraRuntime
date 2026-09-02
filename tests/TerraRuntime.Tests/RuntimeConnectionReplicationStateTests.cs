@@ -47,6 +47,43 @@ public sealed class RuntimeConnectionReplicationStateTests
         Assert.False(store.TryGetMovementFrame(oldHandle, out _));
     }
 
+
+    [Fact]
+    public void Connection_endpoint_retained_frames_are_exact_generation_scoped()
+    {
+        var outbound = new TerraRuntime.Network.TerrariaConnectionOutboundQueue(
+            new TerraRuntime.Network.OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
+        var recipientOutbound = new TerraRuntime.Network.TerrariaConnectionOutboundQueue(
+            new TerraRuntime.Network.OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
+        var endpoint = new RuntimeConnectionEndpoint(outbound);
+        var recipient = new RuntimeConnectionEndpoint(recipientOutbound);
+        PlayerSlotId slot = new(9);
+        PlayerHandle first = new(slot, new PlayerSessionGeneration(21));
+        PlayerHandle second = new(slot, new PlayerSessionGeneration(22));
+
+        endpoint.MarkPlaying(first);
+        endpoint.UpdateLatestAppearanceFrame(first, [1, 2, 3]);
+        endpoint.UpdateLatestMovementFrame(first, [4, 5, 6]);
+        Assert.True(endpoint.UpdateLatestEquipmentFrame(first, equipmentSlot: 0, [7, 8, 9]));
+
+        endpoint.MarkPlaying(second);
+
+        Assert.False(endpoint.TryGetLatestAppearanceFrame(second, out _));
+        Assert.False(endpoint.TryGetLatestMovementFrame(second, out _));
+        Assert.Equal(0, endpoint.EnqueueEquipmentBaselineTo(recipient, second));
+
+        endpoint.UpdateLatestAppearanceFrame(second, [10]);
+        endpoint.UpdateLatestMovementFrame(second, [11]);
+        Assert.True(endpoint.UpdateLatestEquipmentFrame(second, equipmentSlot: 0, [12]));
+        endpoint.ClearPlaying(first);
+
+        Assert.True(endpoint.TryGetPlayingPlayer(out PlayerHandle current));
+        Assert.Equal(second, current);
+        Assert.True(endpoint.TryGetLatestAppearanceFrame(second, out _));
+        Assert.True(endpoint.TryGetLatestMovementFrame(second, out _));
+        Assert.Equal(1, endpoint.EnqueueEquipmentBaselineTo(recipient, second));
+    }
+
     private static PlayerStateSnapshot Snapshot(
         PlayerHandle player,
         ulong revision,

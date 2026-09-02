@@ -4,6 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -149,7 +150,7 @@ public sealed class ServerRuntimeNpcActorControlTests
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var setup = CreateStateWithServerPlayerTarget(tiles, targetX: 300f, targetY: 100f);
-        using RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease fakePlayer = setup.Target;
+        using ServerPlayerSlotRegistry.ServerPlayerSlotLease fakePlayer = setup.Target;
         ServerRuntimeState state = setup.State;
 
         var snapshotCompletion = new TaskCompletionSource<PlayerStateSnapshot?>(
@@ -201,15 +202,15 @@ public sealed class ServerRuntimeNpcActorControlTests
         float targetY)
     {
         var slots = new PlayerSlotPool(8);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var serverPlayers = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var serverPlayers = new ServerPlayerStateStore(identities, slots.Capacity);
         var targetId = new ServerPlayerId("test:npc-target");
 
         Assert.Equal(
             ServerPlayerSlotAcquireResult.Acquired,
-            identities.TryAcquire(targetId, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? acquired));
-        RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease target =
-            Assert.IsType<RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease>(acquired);
+            identities.TryAcquire(targetId, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? acquired));
+        ServerPlayerSlotRegistry.ServerPlayerSlotLease target =
+            Assert.IsType<ServerPlayerSlotRegistry.ServerPlayerSlotLease>(acquired);
         Assert.True(serverPlayers.TrySpawn(targetId, targetX, targetY, out PlayerStateSnapshot snapshot));
         Assert.Equal(target.Player, snapshot.Player);
 
@@ -222,5 +223,5 @@ public sealed class ServerRuntimeNpcActorControlTests
 
     private sealed record ServerPlayerTargetSetup(
         ServerRuntimeState State,
-        RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease Target);
+        ServerPlayerSlotRegistry.ServerPlayerSlotLease Target);
 }

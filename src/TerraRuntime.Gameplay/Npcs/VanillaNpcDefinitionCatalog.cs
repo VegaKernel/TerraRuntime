@@ -134,21 +134,6 @@ public static class VanillaNpcDefinitionCatalog
     public const int NewNpcTimeLeft = 937;
     public const int DefaultSpriteDirection = -1;
 
-    /// <summary>
-    /// Raw-id compatibility boundary for protocol/bootstrap callers that have not yet crossed into
-    /// typed gameplay identity. Authoritative gameplay should prefer the typed overload.
-    /// </summary>
-    public static bool TryGet(int type, out VanillaNpcDefinition definition)
-    {
-        if (!NpcTypeId.TryCreate(type, out NpcTypeId npcType))
-        {
-            definition = default;
-            return false;
-        }
-
-        return TryGet(npcType, out definition);
-    }
-
     public static bool TryGet(NpcTypeId type, out VanillaNpcDefinition definition)
     {
         if (VanillaTownNpcFacts1458.TryGetDefinition(type, out definition))

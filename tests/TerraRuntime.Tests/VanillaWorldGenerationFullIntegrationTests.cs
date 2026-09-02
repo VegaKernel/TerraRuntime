@@ -186,7 +186,7 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         var candidate = new RuntimeWorldGenerationWorkspace(request.WidthTiles, request.HeightTiles);
         IWorldGenerationProvider? resolved = GetVanillaProvider(source, VanillaId);
         Assert.NotNull(resolved);
-        var provider = Assert.IsType<SourceBackedVanillaWorldGenerationCanonical1458>(resolved);
+        var provider = Assert.IsType<SourceBackedVanillaWorldGenerationFinal1458>(resolved);
         using var cts = new CancellationTokenSource();
         cts.Cancel();
         WorldGenerationExecutionResult execResult = RuntimeWorldGenerationExecutor.Execute(

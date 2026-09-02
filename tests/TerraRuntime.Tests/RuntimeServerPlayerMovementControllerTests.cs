@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -76,8 +77,8 @@ public sealed class RuntimeServerPlayerMovementControllerTests
     private static RuntimeFixture CreateFixture(int capacity)
     {
         var slots = new PlayerSlotPool(capacity);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var runtime = new ServerRuntimeState(
             worldTiles: tiles,
@@ -115,5 +116,5 @@ public sealed class RuntimeServerPlayerMovementControllerTests
 
     private sealed record RuntimeFixture(
         ServerRuntimeState Runtime,
-        RuntimeServerPlayerStateStore States);
+        ServerPlayerStateStore States);
 }

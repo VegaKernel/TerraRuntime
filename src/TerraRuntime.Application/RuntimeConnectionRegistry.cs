@@ -16,9 +16,9 @@ namespace TerraRuntime;
 /// </summary>
 internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSink, IRuntimeServerPlayerEventSink
 {
-    private const int MaxPlayerSlots = 256;
+    private const int ProtocolPlayerSlotCount = byte.MaxValue + 1;
     private readonly ConcurrentDictionary<GameCommandSourceId, RuntimeConnectionEndpoint> _endpoints = new();
-    private readonly RuntimeConnectionEndpoint?[] _playingEndpoints = new RuntimeConnectionEndpoint?[MaxPlayerSlots];
+    private readonly RuntimeConnectionEndpoint?[] _playingEndpoints = new RuntimeConnectionEndpoint?[ProtocolPlayerSlotCount];
     private readonly ServerPlayerReplicaStore _serverPlayers = new();
     private readonly RuntimeInterestRouter _interestRouter;
     private readonly RuntimePlayerMovementVisibilityReadiness _movementVisibilityReadiness = new();

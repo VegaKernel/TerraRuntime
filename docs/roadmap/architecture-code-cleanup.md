@@ -92,8 +92,8 @@ A type survives only if it owns at least one real concern: invariant, lifecycle,
 - [ ] Search production code for proxy-only `*Facts`, `*Helper`, `*Provider`, `*Manager`, `*Service`, `*Factory` and compatibility wrappers. Local 2026-09-02 audit found the remaining suffix candidates to be source-backed fact owners, multi-implementation world-generation providers, mutation algorithms or explicit host/UI boundaries; the same pass removed the unused one-implementation `INpcSnapshotReader` and `IProjectileSnapshotReader` contracts. Keep this checkbox open until the audit lands and CI validates the slice on `main`.
 - [x] Rename authoritative command owners that were mislabeled as generic services: `RuntimeNpcActorControlOwner` names NPC actor command ownership; the follow-up local slice expands the server-player owner into `ServerPlayerAuthority`, which owns server-player lifecycle/control plus authoritative dry-physics state.
 - [x] Rename the expanded world-save cluster from stale `TileChest...Service` terminology to `RuntimeWorldCheckpointCoordinator`, `RuntimeWorldCheckpointSnapshotSource` and `RuntimeWorldCheckpointSnapshot`; the checkpoint now owns tiles, chests, signs, town NPC state and progression capture.
-- [ ] Delete wrappers that merely rename or forward one existing operation.
-- [ ] Collapse duplicate catalogs when they own the same source-backed facts.
+- [ ] Delete wrappers that merely rename or forward one existing operation. The 2026-09-02 follow-up removes the transparent `SourceBackedVanillaWorldGenerationCanonical1458` alias plus compatibility-only world-section, NPC-gravity, NPC-definition and raw tile-collision overloads; continue the repository-wide audit before closing this item.
+- [ ] Collapse duplicate catalogs when they own the same source-backed facts. The local cleanup already folds the duplicate tile-object anchor view into `VanillaMultiTileObjectCatalog`; continue auditing other source-backed catalogs before closing globally.
 - [ ] Remove one-implementation interfaces that exist only because “there might be another implementation later”, unless they mark a real trust/thread/process/testing boundary.
 - [ ] Do not create replacement aliases for deleted names. There is no backwards-compatibility commitment yet.
 
@@ -109,7 +109,7 @@ Naming follows three layers of context:
 
 Rules to apply while touching code:
 
-- [ ] Remove redundant `Runtime`, `World`, `Server`, `Gameplay` prefixes/suffixes when the namespace/owner already makes the meaning unambiguous. The local server-player slice renames `RuntimeServerPlayerMovementIntentController` to the algorithmic `ServerPlayerMovementIntentResolver`; continue the broader audit before closing this item.
+- [ ] Remove redundant `Runtime`, `World`, `Server`, `Gameplay` prefixes/suffixes when the namespace/owner already makes the meaning unambiguous. The server-player slices rename `RuntimeServerPlayerMovementIntentController` to `ServerPlayerMovementIntentResolver` and, after moving storage into `TerraRuntime.Core.Players`, rename `RuntimeServerPlayerStateStore`/`RuntimeServerPlayerSlotRegistry` to `ServerPlayerStateStore`/`ServerPlayerSlotRegistry`; continue the broader audit before closing this item.
 - [ ] Keep `Vanilla` when it communicates an actual source-pinned vanilla boundary, vanilla-versus-extension distinction or content identity.
 - [ ] Keep version suffixes such as `1458` only when a type is deliberately version-pinned and a future version could coexist or differ materially.
 - [ ] Replace vague nouns with ownership nouns: prefer `Store`, `Registry`, `Catalog`, `Router`, `Queue`, `Pool`, `Supervisor`, `Coordinator`, `Session`, `Clock`, `Cache`, `Codec`, `Parser`, `Writer`, `Reader` when that is what the type actually owns.
@@ -153,7 +153,7 @@ Checklist:
 - [ ] Keep source-order-sensitive boss/AI logic cohesive when decomposition would obscure verified vanilla ordering.
 - [ ] Keep large source-backed catalogs cohesive when their size is data, not mixed responsibility.
 - [x] Remove nested conditional/constructor composition tangles when a concrete composition object can own them.
-- [ ] Decompose retained connection replication state without creating forwarding managers. The local 2026-09-02 slice extracts `RuntimeConnectionEndpoint` and `ServerPlayerReplicaStore` from the former ~1,000-line `RuntimeConnectionRegistry`; leave open until relay/resync tests and CI validate the move.
+- [ ] Decompose retained connection replication state without creating forwarding managers. The local 2026-09-02 slices extract `RuntimeConnectionEndpoint` and `ServerPlayerReplicaStore` from the former ~1,000-line `RuntimeConnectionRegistry`, split lifecycle/player/server-player/resync code by responsibility and make retained appearance/equipment/movement baselines exact-`PlayerHandle`-generation scoped; leave open until relay/resync tests and CI validate the move.
 - [ ] Prefer private methods/records for local complexity before inventing a public subsystem.
 
 Exit criteria: large handwritten runtime units have clear ownership boundaries, and no decomposition exists solely to lower line counts.
@@ -204,7 +204,7 @@ Checklist:
 - [x] Name the Schematics stream-copy buffer size rather than leaving the I/O literal inline.
 - [x] Replace raw town-NPC combat, housing and schedule identities plus optimized world-generation loot ids with source-backed catalogs and behavior-family predicates.
 - [ ] Audit touched binary codecs for unnamed offsets, masks, section sizes and length ceilings.
-- [ ] Audit gameplay magic numbers and keep source-backed constants near their authoritative catalog/rule with source provenance.
+- [ ] Audit gameplay magic numbers and keep source-backed constants near their authoritative catalog/rule with source provenance. The connection replication slice now derives protocol slot capacity from `byte.MaxValue + 1` and names the source-backed 16-pixel tile scale locally; continue the broader gameplay audit.
 - [ ] Audit queue/cache/time/batch limits; operational values require rationale or measurement, not mythology.
 - [ ] Do not move fixed vanilla/protocol constants into configuration merely to make a literal disappear.
 - [ ] Do not centralize unrelated constants into a giant `Constants` class.
@@ -213,12 +213,12 @@ Exit criteria: a reviewer can tell why an important number exists without archae
 
 ## R8 - Namespace and project cleanup
 
-- [ ] Align new/moved namespaces with actual ownership.
+- [ ] Align new/moved namespaces with actual ownership. The server-player storage/identity slice now lives in `TerraRuntime.Core.Players` with no compatibility namespace shim; continue the broader Core namespace audit.
 - [ ] Remove pre-1.0 namespace compatibility shims after call sites migrate.
 - [ ] Avoid root `TerraRuntime.Core` namespace becoming a flat global namespace for every runtime concept.
 - [ ] Avoid creating new csproj projects for folders that have no independent dependency/lifecycle/deployment boundary.
-- [ ] Keep project references acyclic and downward-oriented.
-- [ ] Document any intentional upward/cross-layer reference that cannot yet be removed.
+- [x] Keep project references acyclic and downward-oriented. `tools/ci/check_project_references.py` classifies every source project, rejects cycles/upward edges and runs in the main CI workflow; the local gate passes 14 projects / 24 edges.
+- [x] Document any intentional upward/cross-layer reference that cannot yet be removed. EN/RU architecture docs record the intentional same-level `TerraRuntime.Protocol.Multiplicity -> TerraRuntime.World` adapter dependency and its non-mutation constraint.
 
 ## R9 - Validation discipline for refactoring
 

@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -68,8 +69,8 @@ public sealed class ServerRuntimeServerPlayerPerformanceTests
         }
 
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var runtime = new ServerRuntimeState(
             worldTiles: tiles,
             serverPlayers: new ServerPlayerAuthority(states, identities, tiles));
@@ -89,6 +90,6 @@ public sealed class ServerRuntimeServerPlayerPerformanceTests
 
     private sealed record RuntimeFixture(
         ServerRuntimeState Runtime,
-        RuntimeServerPlayerStateStore States,
+        ServerPlayerStateStore States,
         PlayerHandle Player);
 }

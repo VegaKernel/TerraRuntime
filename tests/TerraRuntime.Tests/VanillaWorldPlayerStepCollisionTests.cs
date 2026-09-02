@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -47,7 +48,7 @@ public sealed class VanillaWorldPlayerStepCollisionTests
     [Fact]
     public void StepUp_does_not_treat_platform_as_baseline_obstacle_without_holds_matching()
     {
-        Assert.True(VanillaTileCollisionCatalog.IsSolidTop(19));
+        Assert.True(VanillaTileCollisionCatalog.IsSolidTop(new TileTypeId(19)));
         WorldTileStore tiles = CreateWorld();
         tiles.Set(7, 7, PlatformTile());
 

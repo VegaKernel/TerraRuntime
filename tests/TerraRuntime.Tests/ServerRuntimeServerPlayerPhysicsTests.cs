@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -10,13 +11,13 @@ public sealed class ServerRuntimeServerPlayerPhysicsTests
     public void Tick_advances_connection_free_player_through_runtime_owned_dry_physics()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:falling");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
         Assert.NotNull(lease);
         using (lease)
         {
-            var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+            var states = new ServerPlayerStateStore(identities, slots.Capacity);
             Assert.True(states.TrySpawn(id, 96f, 80f, out PlayerStateSnapshot spawned));
             WorldTileStore tiles = CreateWorld();
             var runtime = new ServerRuntimeState(
@@ -42,13 +43,13 @@ public sealed class ServerRuntimeServerPlayerPhysicsTests
         tiles.Set(7, 8, SolidTile());
 
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
+        var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:grounded");
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
         Assert.NotNull(lease);
         using (lease)
         {
-            var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+            var states = new ServerPlayerStateStore(identities, slots.Capacity);
             Assert.True(states.TrySpawn(id, 96f, 86f, out PlayerStateSnapshot spawned));
             var runtime = new ServerRuntimeState(
                 worldTiles: tiles,

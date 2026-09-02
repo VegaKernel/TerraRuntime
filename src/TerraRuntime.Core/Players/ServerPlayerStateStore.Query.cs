@@ -1,9 +1,10 @@
+using TerraRuntime.Core;
 using System.Diagnostics.CodeAnalysis;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Players;
 
-public sealed partial class RuntimeServerPlayerStateStore
+public sealed partial class ServerPlayerStateStore
 {
     public bool TryGet(ServerPlayerId id, out PlayerStateSnapshot snapshot)
     {

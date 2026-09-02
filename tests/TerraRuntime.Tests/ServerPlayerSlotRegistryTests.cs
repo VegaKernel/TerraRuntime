@@ -1,20 +1,21 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
-public sealed class RuntimeServerPlayerSlotRegistryTests
+public sealed class ServerPlayerSlotRegistryTests
 {
     [Fact]
     public void Stable_server_identity_reserves_shared_wire_slot_against_connections()
     {
         var slots = new PlayerSlotPool(2);
-        var registry = new RuntimeServerPlayerSlotRegistry(slots);
+        var registry = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:guide-bot");
 
         Assert.Equal(
             ServerPlayerSlotAcquireResult.Acquired,
-            registry.TryAcquire(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease));
+            registry.TryAcquire(id, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease));
         Assert.NotNull(lease);
         Assert.Equal((byte)0, lease.Player.Slot.Value);
         Assert.Equal(1, registry.Count);
@@ -38,7 +39,7 @@ public sealed class RuntimeServerPlayerSlotRegistryTests
     public void Duplicate_stable_identity_does_not_consume_another_slot()
     {
         var slots = new PlayerSlotPool(2);
-        var registry = new RuntimeServerPlayerSlotRegistry(slots);
+        var registry = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:merchant");
 
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, registry.TryAcquire(id, out var first));
@@ -55,11 +56,11 @@ public sealed class RuntimeServerPlayerSlotRegistryTests
     public void Unassigned_stable_identity_is_rejected_without_consuming_slot()
     {
         var slots = new PlayerSlotPool(1);
-        var registry = new RuntimeServerPlayerSlotRegistry(slots);
+        var registry = new ServerPlayerSlotRegistry(slots);
 
         Assert.Equal(
             ServerPlayerSlotAcquireResult.InvalidId,
-            registry.TryAcquire(default, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease));
+            registry.TryAcquire(default, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease));
         Assert.Null(lease);
         Assert.Equal(0, registry.Count);
         Assert.Equal(0, slots.LeasedCount);
@@ -69,7 +70,7 @@ public sealed class RuntimeServerPlayerSlotRegistryTests
     public void Recreating_identity_after_release_gets_new_generation_and_stale_handle_does_not_resolve()
     {
         var slots = new PlayerSlotPool(1);
-        var registry = new RuntimeServerPlayerSlotRegistry(slots);
+        var registry = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:companion");
 
         Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, registry.TryAcquire(id, out var first));
@@ -96,7 +97,7 @@ public sealed class RuntimeServerPlayerSlotRegistryTests
     {
         var slots = new PlayerSlotPool(1);
         Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? connection));
-        var registry = new RuntimeServerPlayerSlotRegistry(slots);
+        var registry = new ServerPlayerSlotRegistry(slots);
 
         Assert.Equal(
             ServerPlayerSlotAcquireResult.NoAvailableSlot,

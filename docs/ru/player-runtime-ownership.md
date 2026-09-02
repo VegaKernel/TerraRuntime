@@ -14,8 +14,9 @@ Player-данные теперь следуют тому же направлен
 
 - `TerraRuntime.Contracts.Runtime` владеет detached DTO для player commit, включая `PlayerAppearanceCommitRequest`, `PlayerMovementCommitRequest`, `PlayerSpawnCommitRequest`, equipment и vitals requests;
 - `TerraRuntime.Gameplay.Players` владеет source-backed vanilla normalization/validation без изменяемого runtime-состояния;
-- `TerraRuntime.Core` владеет authoritative ingress-контрактами, lifecycle player slot/session и изменяемыми server-player stores;
-- application composition владеет connection admission, политикой истории/anti-cheat и конкретным routing authoritative-команд.
+- `TerraRuntime.Core` владеет authoritative ingress-контрактами и общими execution-механизмами;
+- `TerraRuntime.Core.Players` владеет identity server-player slot и изменяемыми server-player state stores, чтобы player-specific механика не разрасталась в плоском namespace Core;
+- application composition владеет connection admission, политикой истории/anti-cheat и конкретным routing authoritative-команд; world-owned `ServerPlayerAuthority` является единственным application-level owner, объединяющим server-player lifecycle, semantic control intents, physics progression и replication events.
 
 Преобразование signed net-id из packet 5 теперь принадлежит application ingress boundary в `PlayerEquipmentPacket5Normalizer`. Core получает только канонические положительные item identity и напрямую проверяет server-owned inventory state; Gameplay не содержит wire-совместимую арифметику.
 

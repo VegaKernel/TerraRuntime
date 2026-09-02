@@ -5,7 +5,7 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Compatibility facade for verified vanilla NPC targeting/AI dispatch. The facade resolves one version-pinned
+/// Version-pinned dispatcher for verified vanilla NPC targeting/AI behavior. The dispatcher resolves one source-backed
 /// definition and delegates the state step to an explicit runtime-owned behavior family strategy. Family-specific
 /// targeting geometry, world conditions and motion rules are kept outside this dispatcher. Boss NPC spawn side
 /// effects are exposed separately as speculative NPC/projectile intents and are committed only by

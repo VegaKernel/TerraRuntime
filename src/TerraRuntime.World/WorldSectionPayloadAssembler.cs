@@ -41,37 +41,6 @@ public static class WorldSectionPayloadAssembler
     }
 
     /// <summary>
-    /// Compatibility path for callers that already hold an immutable tile snapshot but still source object
-    /// metadata from the loaded world on the caller thread.
-    /// </summary>
-    public static WorldSectionPayloadAssemblyResult TryEncode(
-        WorldFileData world,
-        WorldSectionTileSnapshot snapshot,
-        out byte[] payload)
-    {
-        ArgumentNullException.ThrowIfNull(world);
-        ArgumentNullException.ThrowIfNull(snapshot);
-        payload = [];
-
-        WorldSectionPayloadEncodeResult tileResult = WorldSectionPayloadEncoder.TryEncodeTileOnly(
-            world,
-            snapshot,
-            out byte[] tileOnly);
-        if (tileResult != WorldSectionPayloadEncodeResult.Encoded)
-            return WorldSectionPayloadAssemblyResult.InvalidTilePayload;
-
-        WorldTileBounds bounds = snapshot.Bounds;
-        return TryAssemble(
-            world,
-            bounds.X,
-            bounds.Y,
-            bounds.Width,
-            bounds.Height,
-            tileOnly,
-            out payload);
-    }
-
-    /// <summary>
     /// Worker-safe packet-10 payload assembly. Both tile state and object metadata were captured before the
     /// snapshot crossed the worker boundary, so this overload never reads live world state.
     /// </summary>

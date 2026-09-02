@@ -483,7 +483,7 @@ internal sealed class RuntimeTownNpcSchedule1458
                 if ((uint)x >= (uint)tiles.Dimensions.WidthTiles || (uint)y >= (uint)tiles.Dimensions.HeightTiles)
                     return true;
                 WorldTile tile = tiles.Get(x, y);
-                if (tile.IsActive && !tile.IsActuated && VanillaTileCollisionCatalog.IsSolid(tile.Type))
+                if (tile.IsActive && !tile.IsActuated && VanillaTileCollisionCatalog.IsSolid(tile.TileType))
                     return true;
             }
         }
@@ -493,7 +493,7 @@ internal sealed class RuntimeTownNpcSchedule1458
     private static bool IsRestingFloor(in WorldTile tile) =>
         tile.IsActive &&
         !tile.IsActuated &&
-        ((VanillaTileCollisionCatalog.IsSolid(tile.Type) && !VanillaTileCollisionCatalog.IsSolidTop(tile.Type)) ||
+        ((VanillaTileCollisionCatalog.IsSolid(tile.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType)) ||
          VanillaTileIds.IsPlatform(tile.TileType));
 
     private static bool IsNpcChair(in WorldTile tile) =>

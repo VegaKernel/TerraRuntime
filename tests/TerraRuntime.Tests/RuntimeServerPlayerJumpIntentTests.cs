@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
@@ -10,8 +11,8 @@ public sealed class RuntimeServerPlayerJumpIntentTests
     public void Jump_control_is_bound_to_exact_generation_and_removed_on_reuse()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities);
         var firstId = new ServerPlayerId("test:first-jump");
         var secondId = new ServerPlayerId("test:second-jump");
@@ -39,8 +40,8 @@ public sealed class RuntimeServerPlayerJumpIntentTests
     public void Release_resets_sparse_jump_input_and_physics_state()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities);
         var id = new ServerPlayerId("test:release-jump");
         ServerPlayerCreateResult created = service.Create(id, 0f, 0f);
@@ -59,8 +60,8 @@ public sealed class RuntimeServerPlayerJumpIntentTests
     public void Missing_server_player_cannot_receive_jump_intent()
     {
         var slots = new PlayerSlotPool(1);
-        var identities = new RuntimeServerPlayerSlotRegistry(slots);
-        var states = new RuntimeServerPlayerStateStore(identities, slots.Capacity);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
         var service = new ServerPlayerAuthority(states, identities);
 
         Assert.False(service.SetJumpIntent(

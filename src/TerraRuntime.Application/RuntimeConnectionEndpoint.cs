@@ -7,20 +7,20 @@ namespace TerraRuntime;
 /// <summary>
 /// Retained per-connection replication state. Socket lifetime stays outside this type; it owns the currently playing
 /// exact-generation identity plus bounded appearance/equipment/movement baselines used by runtime fanout.
+/// Every retained player baseline is tagged with the exact <see cref="PlayerHandle"/> that produced it so slot reuse
+/// cannot make a stale generation visible to a later player session.
 /// </summary>
 internal sealed class RuntimeConnectionEndpoint
 {
     private readonly object equipmentGate = new();
     private readonly SortedDictionary<short, byte[]> equipmentFrames = [];
-    private int playingSlot = -1;
-    private ulong playingGeneration;
-    private int appearanceSlot = -1;
-    private int equipmentOwnerSlot = -1;
+    private PlayingIdentity? playing;
+    private PlayerHandle? equipmentOwner;
     private bool hasPosition;
     private float positionX;
     private float positionY;
-    private byte[]? latestAppearanceFrame;
-    private byte[]? latestMovementFrame;
+    private RetainedFrame? latestAppearance;
+    private RetainedFrame? latestMovement;
 
     public RuntimeConnectionEndpoint(TerrariaConnectionOutboundQueue outbound)
     {
@@ -31,25 +31,22 @@ internal sealed class RuntimeConnectionEndpoint
 
     public void MarkPlaying(PlayerHandle player)
     {
-        Volatile.Write(ref playingGeneration, player.Generation.Value);
-        Volatile.Write(ref playingSlot, player.Slot.Value);
+        if (!player.IsAssigned)
+            throw new ArgumentException("Playing identity must be assigned.", nameof(player));
+
+        Volatile.Write(ref playing, new PlayingIdentity(player));
     }
 
     public bool TryGetPlayingPlayer(out PlayerHandle player)
     {
-        int slotValue = Volatile.Read(ref playingSlot);
-        ulong generation = Volatile.Read(ref playingGeneration);
-        if (slotValue < 0 ||
-            generation == 0 ||
-            slotValue != Volatile.Read(ref playingSlot))
+        PlayingIdentity? current = Volatile.Read(ref playing);
+        if (current is null)
         {
             player = default;
             return false;
         }
 
-        player = new PlayerHandle(
-            new PlayerSlotId(checked((byte)slotValue)),
-            new PlayerSessionGeneration(generation));
+        player = current.Player;
         return true;
     }
 
@@ -72,36 +69,30 @@ internal sealed class RuntimeConnectionEndpoint
         hasPosition = true;
     }
 
-    public void UpdateLatestAppearanceFrame(PlayerSlotId slot, byte[] encoded)
+    public void UpdateLatestAppearanceFrame(PlayerHandle owner, byte[] encoded)
     {
         ArgumentNullException.ThrowIfNull(encoded);
-        Volatile.Write(ref latestAppearanceFrame, encoded);
-        Volatile.Write(ref appearanceSlot, slot.Value);
+        if (!owner.IsAssigned)
+            throw new ArgumentException("Appearance baseline owner must be assigned.", nameof(owner));
+
+        Volatile.Write(ref latestAppearance, new RetainedFrame(owner, encoded));
     }
 
-    public bool TryGetLatestAppearanceFrame(PlayerSlotId expectedSlot, out OutboundFrame frame)
+    public bool TryGetLatestAppearanceFrame(PlayerHandle expectedOwner, out OutboundFrame frame) =>
+        TryGetRetainedFrame(Volatile.Read(ref latestAppearance), expectedOwner, out frame);
+
+    public bool UpdateLatestEquipmentFrame(PlayerHandle owner, short equipmentSlot, byte[] encoded)
     {
-        int currentAppearanceSlot = Volatile.Read(ref appearanceSlot);
-        byte[]? encoded = Volatile.Read(ref latestAppearanceFrame);
-        if (currentAppearanceSlot != expectedSlot.Value || encoded is null)
-        {
-            frame = default;
+        ArgumentNullException.ThrowIfNull(encoded);
+        if (!owner.IsAssigned)
             return false;
-        }
 
-        frame = new OutboundFrame(encoded);
-        return true;
-    }
-
-    public bool UpdateLatestEquipmentFrame(PlayerSlotId ownerSlot, short equipmentSlot, byte[] encoded)
-    {
-        ArgumentNullException.ThrowIfNull(encoded);
         lock (equipmentGate)
         {
-            if (equipmentOwnerSlot != ownerSlot.Value)
+            if (equipmentOwner != owner)
             {
                 equipmentFrames.Clear();
-                equipmentOwnerSlot = ownerSlot.Value;
+                equipmentOwner = owner;
             }
 
             if (equipmentFrames.ContainsKey(equipmentSlot))
@@ -118,13 +109,13 @@ internal sealed class RuntimeConnectionEndpoint
         }
     }
 
-    public int EnqueueEquipmentBaselineTo(RuntimeConnectionEndpoint recipient, PlayerSlotId expectedOwnerSlot)
+    public int EnqueueEquipmentBaselineTo(RuntimeConnectionEndpoint recipient, PlayerHandle expectedOwner)
     {
         ArgumentNullException.ThrowIfNull(recipient);
         int enqueued = 0;
         lock (equipmentGate)
         {
-            if (equipmentOwnerSlot != expectedOwnerSlot.Value)
+            if (equipmentOwner != expectedOwner)
                 return 0;
 
             foreach (byte[] encoded in equipmentFrames.Values)
@@ -137,50 +128,76 @@ internal sealed class RuntimeConnectionEndpoint
         return enqueued;
     }
 
-    public void UpdateLatestMovementFrame(byte[] encoded)
+    public void UpdateLatestMovementFrame(PlayerHandle owner, byte[] encoded)
     {
         ArgumentNullException.ThrowIfNull(encoded);
-        Volatile.Write(ref latestMovementFrame, encoded);
+        if (!owner.IsAssigned)
+            throw new ArgumentException("Movement baseline owner must be assigned.", nameof(owner));
+
+        Volatile.Write(ref latestMovement, new RetainedFrame(owner, encoded));
     }
 
-    public bool TryGetLatestMovementFrame(out OutboundFrame frame)
-    {
-        byte[]? encoded = Volatile.Read(ref latestMovementFrame);
-        if (encoded is null)
-        {
-            frame = default;
-            return false;
-        }
-
-        frame = new OutboundFrame(encoded);
-        return true;
-    }
+    public bool TryGetLatestMovementFrame(PlayerHandle expectedOwner, out OutboundFrame frame) =>
+        TryGetRetainedFrame(Volatile.Read(ref latestMovement), expectedOwner, out frame);
 
     public RuntimePlayerInterestState CreateInterestState(PlayerSlotId slot) =>
         new(slot, hasPosition, positionX, positionY);
 
     public void ClearPlaying(PlayerHandle player)
     {
-        if (Volatile.Read(ref playingGeneration) != player.Generation.Value ||
-            Interlocked.CompareExchange(ref playingSlot, -1, player.Slot.Value) != player.Slot.Value)
+        PlayingIdentity? current = Volatile.Read(ref playing);
+        if (current is null ||
+            current.Player != player ||
+            Interlocked.CompareExchange(ref playing, null, current) != current)
         {
             return;
         }
 
-        Volatile.Write(ref playingGeneration, 0);
         hasPosition = false;
-        if (Interlocked.CompareExchange(ref appearanceSlot, -1, player.Slot.Value) == player.Slot.Value)
-            Volatile.Write(ref latestAppearanceFrame, null);
+        ClearRetainedFrame(ref latestAppearance, player);
+        ClearRetainedFrame(ref latestMovement, player);
 
         lock (equipmentGate)
         {
-            if (equipmentOwnerSlot == player.Slot.Value)
+            if (equipmentOwner == player)
             {
-                equipmentOwnerSlot = -1;
+                equipmentOwner = null;
                 equipmentFrames.Clear();
             }
         }
+    }
 
-        Volatile.Write(ref latestMovementFrame, null);
+    private static bool TryGetRetainedFrame(
+        RetainedFrame? retained,
+        PlayerHandle expectedOwner,
+        out OutboundFrame frame)
+    {
+        if (retained is null || retained.Owner != expectedOwner)
+        {
+            frame = default;
+            return false;
+        }
+
+        frame = new OutboundFrame(retained.Encoded);
+        return true;
+    }
+
+    private static void ClearRetainedFrame(ref RetainedFrame? location, PlayerHandle owner)
+    {
+        RetainedFrame? current = Volatile.Read(ref location);
+        if (current is not null && current.Owner == owner)
+            Interlocked.CompareExchange(ref location, null, current);
+    }
+
+    private sealed class PlayingIdentity(PlayerHandle player)
+    {
+        public PlayerHandle Player { get; } = player;
+    }
+
+    private sealed class RetainedFrame(PlayerHandle owner, byte[] encoded)
+    {
+        public PlayerHandle Owner { get; } = owner;
+
+        public byte[] Encoded { get; } = encoded ?? throw new ArgumentNullException(nameof(encoded));
     }
 }

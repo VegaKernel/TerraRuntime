@@ -156,6 +156,18 @@ Protocol-layer responsibilities are wire framing, packet IDs and flags, bounded 
 
 Gameplay-layer responsibilities are legality, domain invariants, state transitions and authoritative outcomes.
 
+### Source-project dependency direction
+
+Source projects are layered and checked by `tools/ci/check_project_references.py`. A project may reference its own layer or a more foundational layer, never a higher composition/hosting layer, and the graph must remain acyclic. The current ordering is:
+
+1. `TerraRuntime.Contracts`;
+2. source/domain boundaries: `Gameplay`, `Protocol`, `World`, `HostContracts`, `Transport`, `Schematics`;
+3. runtime mechanics/adapters: `Core`, `Network`, `Protocol.Multiplicity`;
+4. authoritative composition: `Application`;
+5. shipping/extension hosts: `TerraRuntime`, `Extensibility`, `ExtensibleHost`.
+
+`TerraRuntime.Protocol.Multiplicity -> TerraRuntime.World` is an intentional same-level adapter dependency today: packet bootstrap/section encoders project immutable world/persistence snapshot types that are still owned by `World`. The adapter may read those projections for wire encoding; it must not become a world mutation owner. If those immutable DTOs later move into Contracts, this reference can disappear instead of being hidden behind a forwarding shim.
+
 ## 9. Entity identity
 
 Content type and live runtime identity are different concepts.

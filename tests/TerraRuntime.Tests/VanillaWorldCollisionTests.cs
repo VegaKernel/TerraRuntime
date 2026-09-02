@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -7,12 +8,12 @@ public sealed class VanillaWorldCollisionTests
     [Fact]
     public void Source_backed_tile_collision_catalog_contains_verified_facts()
     {
-        Assert.True(VanillaTileCollisionCatalog.IsSolid(1));
-        Assert.True(VanillaTileCollisionCatalog.IsSolid(19));
-        Assert.True(VanillaTileCollisionCatalog.IsSolidTop(19));
-        Assert.True(VanillaTileCollisionCatalog.IsSolid(750));
-        Assert.False(VanillaTileCollisionCatalog.IsSolid(3));
-        Assert.False(VanillaTileCollisionCatalog.IsSolid(753));
+        Assert.True(VanillaTileCollisionCatalog.IsSolid(new TileTypeId(1)));
+        Assert.True(VanillaTileCollisionCatalog.IsSolid(new TileTypeId(19)));
+        Assert.True(VanillaTileCollisionCatalog.IsSolidTop(new TileTypeId(19)));
+        Assert.True(VanillaTileCollisionCatalog.IsSolid(new TileTypeId(750)));
+        Assert.False(VanillaTileCollisionCatalog.IsSolid(new TileTypeId(3)));
+        Assert.False(VanillaTileCollisionCatalog.IsSolid(new TileTypeId(753)));
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime;
 
@@ -13,22 +14,22 @@ namespace TerraRuntime;
 /// </summary>
 internal sealed class ServerPlayerAuthority
 {
-    private readonly RuntimeServerPlayerStateStore states;
-    private readonly RuntimeServerPlayerSlotRegistry? identities;
+    private readonly ServerPlayerStateStore states;
+    private readonly ServerPlayerSlotRegistry? identities;
     private readonly IRuntimeServerPlayerEventSink? events;
     private readonly VanillaServerPlayerDryPhysicsStepper? dryPhysics;
     private readonly PlayerStateSnapshot[] snapshots;
     private readonly PlayerHandle[] liquidOwners;
     private readonly VanillaLiquidContactState[] liquidContacts;
-    private readonly Dictionary<ServerPlayerId, RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease> leases = [];
+    private readonly Dictionary<ServerPlayerId, ServerPlayerSlotRegistry.ServerPlayerSlotLease> leases = [];
     private readonly Dictionary<PlayerHandle, ServerPlayerHorizontalIntent> horizontalIntents = [];
     private readonly Dictionary<PlayerHandle, ServerPlayerJumpIntent> jumpIntents = [];
     private readonly Dictionary<PlayerHandle, VanillaServerPlayerJumpState> jumpStates = [];
     private readonly Dictionary<PlayerHandle, ServerPlayerMovementIntent> movementIntents = [];
 
     public ServerPlayerAuthority(
-        RuntimeServerPlayerStateStore states,
-        RuntimeServerPlayerSlotRegistry? identities = null,
+        ServerPlayerStateStore states,
+        ServerPlayerSlotRegistry? identities = null,
         WorldTileStore? worldTiles = null,
         IRuntimeServerPlayerEventSink? events = null)
     {
@@ -207,7 +208,7 @@ internal sealed class ServerPlayerAuthority
 
     public ServerPlayerCreateResult Create(ServerPlayerId id, float positionX, float positionY)
     {
-        RuntimeServerPlayerSlotRegistry identityRegistry = identities
+        ServerPlayerSlotRegistry identityRegistry = identities
             ?? throw new InvalidOperationException("Server-player lifecycle identities are not configured.");
         if (!id.IsAssigned)
             return new ServerPlayerCreateResult(ServerPlayerCreateStatus.InvalidId, default);
@@ -218,7 +219,7 @@ internal sealed class ServerPlayerAuthority
 
         ServerPlayerSlotAcquireResult acquire = identityRegistry.TryAcquire(
             id,
-            out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease);
+            out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease);
         if (acquire != ServerPlayerSlotAcquireResult.Acquired || lease is null)
         {
             return new ServerPlayerCreateResult(
@@ -247,7 +248,7 @@ internal sealed class ServerPlayerAuthority
     {
         if (!id.IsAssigned ||
             !IsValidHorizontalIntent(intent) ||
-            !leases.TryGetValue(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) ||
+            !leases.TryGetValue(id, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) ||
             !states.TryGet(lease.Player, out _))
         {
             return false;
@@ -270,7 +271,7 @@ internal sealed class ServerPlayerAuthority
     {
         if (!id.IsAssigned ||
             !IsValidJumpIntent(intent) ||
-            !leases.TryGetValue(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) ||
+            !leases.TryGetValue(id, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) ||
             !states.TryGet(lease.Player, out _))
         {
             return false;
@@ -377,7 +378,7 @@ internal sealed class ServerPlayerAuthority
 
     public bool Despawn(ServerPlayerId id)
     {
-        if (!id.IsAssigned || !leases.TryGetValue(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease))
+        if (!id.IsAssigned || !leases.TryGetValue(id, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease))
             return false;
 
         if (!states.TryRemove(lease.Player, out _))
@@ -399,7 +400,7 @@ internal sealed class ServerPlayerAuthority
     private bool TryGetPlayer(ServerPlayerId id, out PlayerHandle player)
     {
         if (id.IsAssigned &&
-            leases.TryGetValue(id, out RuntimeServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) &&
+            leases.TryGetValue(id, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) &&
             states.TryGet(lease.Player, out _))
         {
             player = lease.Player;

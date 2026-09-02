@@ -1,23 +1,24 @@
 using System.Reflection;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Players;
 
 namespace TerraRuntime.Tests;
 
-public sealed class RuntimeServerPlayerSlotRegistryConcurrencyTests
+public sealed class ServerPlayerSlotRegistryConcurrencyTests
 {
     [Fact]
     public async Task Player_handle_lookup_does_not_wait_for_lifecycle_monitor()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         var slots = new PlayerSlotPool(1);
-        var registry = new RuntimeServerPlayerSlotRegistry(slots);
+        var registry = new ServerPlayerSlotRegistry(slots);
         Assert.Equal(
             ServerPlayerSlotAcquireResult.Acquired,
             registry.TryAcquire(new ServerPlayerId("test:hot-path"), out var lease));
         Assert.NotNull(lease);
 
-        FieldInfo gateField = typeof(RuntimeServerPlayerSlotRegistry).GetField(
+        FieldInfo gateField = typeof(ServerPlayerSlotRegistry).GetField(
             "gate",
             BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new Xunit.Sdk.XunitException("Lifecycle gate field was not found.");

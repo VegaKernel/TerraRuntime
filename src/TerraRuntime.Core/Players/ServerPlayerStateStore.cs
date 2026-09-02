@@ -1,18 +1,19 @@
+using TerraRuntime.Core;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Players;
 
 /// <summary>
 /// Authoritative state for runtime-owned players. Identity ownership is validated against
-/// <see cref="RuntimeServerPlayerSlotRegistry"/> on every operation; no transport connection is accepted anywhere in
+/// <see cref="ServerPlayerSlotRegistry"/> on every operation; no transport connection is accepted anywhere in
 /// this API, so client packet ingress cannot become an alternate writer by constructing a <see cref="ConnectionHandle"/>.
 /// </summary>
-public sealed partial class RuntimeServerPlayerStateStore
+public sealed partial class ServerPlayerStateStore
 {
-    private readonly RuntimeServerPlayerSlotRegistry identities;
+    private readonly ServerPlayerSlotRegistry identities;
     private readonly ServerPlayerRuntimeState?[] states;
 
-    public RuntimeServerPlayerStateStore(RuntimeServerPlayerSlotRegistry identities, int capacity)
+    public ServerPlayerStateStore(ServerPlayerSlotRegistry identities, int capacity)
     {
         ArgumentNullException.ThrowIfNull(identities);
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);

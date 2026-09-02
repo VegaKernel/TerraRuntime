@@ -56,7 +56,7 @@ internal sealed partial class RuntimeConnectionRegistry
             !_interestRouter.IsPlayerVisible(operation.Recipient.Slot, operation.Subject.Slot) ||
             !TryGetPlayingEndpoint(operation.Recipient, out RuntimeConnectionEndpoint recipient) ||
             !TryGetPlayingEndpoint(operation.Subject, out RuntimeConnectionEndpoint subject) ||
-            !subject.TryGetLatestMovementFrame(out OutboundFrame frame))
+            !subject.TryGetLatestMovementFrame(operation.Subject, out OutboundFrame frame))
         {
             return false;
         }
@@ -99,7 +99,7 @@ internal sealed partial class RuntimeConnectionRegistry
             return;
         }
 
-        if (!subjectEndpoint.TryGetLatestMovementFrame(out _))
+        if (!subjectEndpoint.TryGetLatestMovementFrame(subject, out _))
         {
             missingSnapshots++;
             return;

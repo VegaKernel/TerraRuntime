@@ -1,10 +1,11 @@
+using TerraRuntime.Core;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Items;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Players;
 
-public sealed partial class RuntimeServerPlayerStateStore
+public sealed partial class ServerPlayerStateStore
 {
     public bool TrySetItem(
         PlayerHandle player,

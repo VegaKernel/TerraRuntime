@@ -22,7 +22,7 @@ flowchart LR
     Commands --> Intent["Generation-bound control intent"]
     Intent --> Tick["ServerRuntimeState.Tick"]
     Tick --> Physics["VanillaServerPlayerDryPhysicsStepper"]
-    Physics --> State["RuntimeServerPlayerStateStore"]
+    Physics --> State["ServerPlayerStateStore"]
 ```
 
 Game-loop thread остаётся владельцем mutable state. Host может создать/despawn actor и сообщать buttons/intents; TerraRuntime владеет acceleration, jump duration, gravity, collision, slope/step handling, liquid displacement и итоговым motion state.
@@ -96,7 +96,7 @@ Jump input моделирует состояние кнопки, а не тре�
 
 ## 6. Интеграция в tick
 
-Server-player physics включается, когда runtime имеет и `RuntimeServerPlayerStateStore`, и world tiles. `ServerRuntimeState.Tick()` выполняет server-player slice до NPC AI.
+Server-player physics включается, когда runtime имеет и `ServerPlayerStateStore`, и world tiles. `ServerRuntimeState.Tick()` выполняет server-player slice до NPC AI.
 
 Для каждого текущего server-player snapshot runtime:
 

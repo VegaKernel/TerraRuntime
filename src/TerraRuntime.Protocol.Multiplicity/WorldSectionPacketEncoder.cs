@@ -43,26 +43,6 @@ public static class WorldSectionPacketEncoder
     }
 
     /// <summary>
-    /// Compatibility path for callers that provide an immutable tile snapshot while still resolving object
-    /// metadata from the loaded world on the caller thread.
-    /// </summary>
-    public static WorldSectionPacketEncodeResult TryEncode(
-        WorldFileData world,
-        WorldSectionTileSnapshot snapshot,
-        out byte[] frame)
-    {
-        ArgumentNullException.ThrowIfNull(world);
-        ArgumentNullException.ThrowIfNull(snapshot);
-        frame = [];
-
-        WorldSectionPayloadAssemblyResult payloadResult = WorldSectionPayloadAssembler.TryEncode(
-            world,
-            snapshot,
-            out byte[] uncompressed);
-        return CompletePacket(payloadResult, uncompressed, out frame);
-    }
-
-    /// <summary>
     /// Worker-safe packet-10 encoder. The supplied snapshot contains every mutable input required by section
     /// payload assembly, so this overload performs tile encoding and DEFLATE without reading live world state.
     /// </summary>
