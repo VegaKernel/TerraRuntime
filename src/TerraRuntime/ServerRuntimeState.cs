@@ -40,11 +40,7 @@ internal sealed partial class ServerRuntimeState : IRuntimePlayerSnapshotLookup,
     private readonly INpcAiStateStepper _npcAiStepper;
     private readonly VanillaNpcTargetingAiStepper? _vanillaNpcTargetingAiStepper;
     private readonly VanillaNpcCheckActiveAiStepper? _vanillaNpcCheckActiveAiStepper;
-    private readonly RuntimeProjectileStore _projectiles;
-    private readonly RuntimeProjectileStateExecutor _projectileExecutor;
-    private readonly IProjectileStateStepper? _projectileStepper;
-    private readonly RuntimeNpcProjectileReflectionPass _projectileReflections;
-    private readonly RuntimeProjectileReplicationRegistry? _projectileReplication;
+    private readonly ProjectileAuthority _projectiles;
     private readonly RuntimeNpcReplicationRegistry? _npcReplication;
     private readonly RuntimeWorldItemReplicationRegistry? _worldItemReplication;
     private readonly RuntimeWorldItemInstancedLeaseStore _instancedItemLeases;

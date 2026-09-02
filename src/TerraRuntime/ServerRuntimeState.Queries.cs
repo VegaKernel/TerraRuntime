@@ -57,7 +57,7 @@ internal sealed partial class ServerRuntimeState
         _npcs.TryGet(npc, out snapshot);
 
     internal bool TryCaptureProjectileSnapshot(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
-        _projectiles.TryGet(projectile, out snapshot);
+        _projectiles.TryCapture(projectile, out snapshot);
 
     internal bool TryCaptureWorldItemSnapshot(short slot, out WorldItemSnapshot snapshot) =>
         _worldItems.TryGetActive(slot, out snapshot);

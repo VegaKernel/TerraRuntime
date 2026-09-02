@@ -41,11 +41,10 @@ internal sealed partial class ServerRuntimeState
         _townShimmer?.Tick();
         TickTownNpcLifecycle();
         AppliedNpcDespawns += _npcs.DespawnExpired();
-        if (_projectileStepper is not null)
+        if (_projectiles.TryTickState())
         {
-            LastProjectileTick = _projectileExecutor.Tick(_projectileStepper);
             _purificationPowderNpcInteractions?.Tick();
-            AppliedProjectileReflections += _projectileReflections.Tick();
+            _projectiles.ApplyReflections();
         }
         TickInstancedItemLeases();
 

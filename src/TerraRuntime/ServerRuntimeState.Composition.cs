@@ -50,8 +50,8 @@ internal sealed partial class ServerRuntimeState
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
         _npcs = npcs ?? new RuntimeNpcStore();
-        _projectiles = projectiles ?? new RuntimeProjectileStore();
-        _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs, _projectiles);
+        RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
+        _npcAiExecutor = new RuntimeNpcAiStateExecutor(_npcs, projectileStore);
         _serverPlayerStates = serverPlayerStates;
         _serverPlayerEvents = serverPlayerEvents;
         if (serverPlayerIdentities is not null && serverPlayerStates is null)
@@ -78,11 +78,15 @@ internal sealed partial class ServerRuntimeState
             _npcArchetypeIdentities);
         _npcArchetypeSpawner = new RuntimeNpcArchetypeSpawner(_npcs, _npcArchetypes, _npcArchetypeIdentities);
         _npcShops = npcShops ?? new RuntimeNpcShopCatalogRegistry();
-        _projectileExecutor = new RuntimeProjectileStateExecutor(_projectiles);
-        _projectileReflections = new RuntimeNpcProjectileReflectionPass(_npcs, _projectiles, this);
-        _projectileStepper = projectileStepper ??
+        IProjectileStateStepper? configuredProjectileStepper = projectileStepper ??
             (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles, this));
-        _projectileReplication = projectileReplication;
+        _projectiles = new ProjectileAuthority(
+            projectileStore,
+            _players,
+            _npcs,
+            this,
+            configuredProjectileStepper,
+            projectileReplication);
         _npcReplication = npcReplication;
         _townNpcs = townNpcs;
         _worldProgression = worldTiles is null ? null : RuntimeWorldProgressionRegistry.GetOrCreate(worldTiles);
@@ -94,7 +98,7 @@ internal sealed partial class ServerRuntimeState
             : null;
         _purificationPowderNpcInteractions = townNpcs is not null && _worldProgression is not null && _townRescue is not null
             ? new RuntimePurificationPowderNpcInteraction1458(
-                _npcs, _projectiles, townNpcs, _townRescue, _worldProgression, townSpawnWorldFacts?.InfectedSeed ?? false)
+                _npcs, projectileStore, townNpcs, _townRescue, _worldProgression, townSpawnWorldFacts?.InfectedSeed ?? false)
             : null;
         _townCommerce = worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 commerceFacts
             ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, _npcs, in commerceFacts)
@@ -104,7 +108,7 @@ internal sealed partial class ServerRuntimeState
             _worldProgression is not null &&
             townCombatWorldFacts is RuntimeTownNpcCombatWorldFacts1458 combatFacts
                 ? new RuntimeTownNpcCombat1458(
-                    townNpcs, _npcs, _projectiles, worldTiles, in combatFacts, _worldProgression, expertMode, masterMode)
+                    townNpcs, _npcs, projectileStore, worldTiles, in combatFacts, _worldProgression, expertMode, masterMode)
                 : null;
         _housingValidator = worldTiles is not null && townNpcs is not null
             ? new VanillaHousingValidator1458(worldTiles)

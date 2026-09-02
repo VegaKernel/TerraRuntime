@@ -60,29 +60,29 @@ internal sealed partial class ServerRuntimeState
 
     public long RejectedNpcDespawns { get; private set; }
 
-    public long AppliedProjectileSpawns { get; private set; }
+    public long AppliedProjectileSpawns => _projectiles.AppliedSpawns;
 
-    public long RejectedProjectileSpawns { get; private set; }
+    public long RejectedProjectileSpawns => _projectiles.RejectedSpawns;
 
-    public long AppliedProjectileUpdates { get; private set; }
+    public long AppliedProjectileUpdates => _projectiles.AppliedUpdates;
 
-    public long RejectedProjectileUpdates { get; private set; }
+    public long RejectedProjectileUpdates => _projectiles.RejectedUpdates;
 
-    public long AppliedProjectileDespawns { get; private set; }
+    public long AppliedProjectileDespawns => _projectiles.AppliedDespawns;
 
-    public long RejectedProjectileDespawns { get; private set; }
+    public long RejectedProjectileDespawns => _projectiles.RejectedDespawns;
 
-    public long AppliedProjectileReflections { get; private set; }
+    public long AppliedProjectileReflections => _projectiles.AppliedReflections;
 
-    public long RejectedClientProjectileUpdates { get; private set; }
+    public long RejectedClientProjectileUpdates => _projectiles.RejectedClientUpdates;
 
-    public long RejectedClientProjectileDestroys { get; private set; }
+    public long RejectedClientProjectileDestroys => _projectiles.RejectedClientDestroys;
 
     public long AppliedClientNpcDamage { get; private set; }
 
     public long RejectedClientNpcDamage { get; private set; }
 
-    public long RelayedUnknownProjectileDestroys { get; private set; }
+    public long RelayedUnknownProjectileDestroys => _projectiles.RelayedUnknownDestroys;
 
     public long ClientTileManipulationRequests { get; private set; }
 
@@ -112,7 +112,7 @@ internal sealed partial class ServerRuntimeState
 
     public NpcAiStateTickSummary LastNpcAiTick { get; private set; }
 
-    public ProjectileStateTickSummary LastProjectileTick { get; private set; }
+    public ProjectileStateTickSummary LastProjectileTick => _projectiles.LastTick;
 
     public PlayerSlotId? LastMovementPlayerSlot => _players.LastMovementSlot;
 

@@ -24,6 +24,8 @@ internal sealed partial class ServerRuntimeState
             return;
         if (_players.TryApply(command))
             return;
+        if (_projectiles.TryApply(command))
+            return;
         if (command is NpcActorSpawnRuntimeCommand actorSpawn)
         {
             ApplyNpcActorSpawn(actorSpawn);
@@ -46,21 +48,6 @@ internal sealed partial class ServerRuntimeState
                 break;
             case NpcDespawnRuntimeCommand despawn:
                 ApplyNpcDespawn(despawn);
-                break;
-            case ProjectileSpawnRuntimeCommand spawn:
-                ApplyProjectileSpawn(spawn);
-                break;
-            case ProjectileUpdateRuntimeCommand update:
-                ApplyProjectileUpdate(update);
-                break;
-            case ProjectileDespawnRuntimeCommand despawn:
-                ApplyProjectileDespawn(despawn);
-                break;
-            case ClientProjectileUpdateRuntimeCommand update:
-                ApplyClientProjectileUpdate(update);
-                break;
-            case ClientProjectileDestroyRuntimeCommand destroy:
-                ApplyClientProjectileDestroy(destroy);
                 break;
             case ClientNpcDamageRuntimeCommand npcDamage:
                 ApplyClientNpcDamage(npcDamage);
