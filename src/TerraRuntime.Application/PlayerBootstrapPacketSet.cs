@@ -483,9 +483,20 @@ public sealed partial class PlayerBootstrapPacketSet
         WorldSectionTileSnapshot snapshot,
         out SectionCacheEntry entry)
     {
-        WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncode(
+        WorldSectionEncodingContext encodingContext = WorldSectionEncodingContext.Capture(world);
+        WorldSectionPacketSnapshotCaptureResult captureResult = WorldSectionPacketSnapshotCapture.TryCapture(
             world,
             snapshot,
+            encodingContext,
+            out WorldSectionPacketSnapshot? packetSnapshot);
+        if (captureResult != WorldSectionPacketSnapshotCaptureResult.Captured || packetSnapshot is null)
+        {
+            entry = default;
+            return false;
+        }
+
+        WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncode(
+            packetSnapshot,
             out byte[] encoded);
         if (result != WorldSectionPacketEncodeResult.Encoded)
         {

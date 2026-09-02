@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.World/VanillaTileObjectAnchorCatalog.cs'
+      - 'src/TerraRuntime.World/VanillaMultiTileObjectCatalog.cs'
       - 'src/TerraRuntime.World/WorldSectionObjectMetadataEncoder.cs'
-      - 'tests/TerraRuntime.Tests/VanillaTileObjectAnchorCatalogTests.cs'
+      - 'tests/TerraRuntime.Tests/VanillaMultiTileObjectCatalogTests.cs'
       - 'tools/ci/probe_multi_tile_object_definitions.py'
       - 'docs/en/tile-object-anchors.md'
       - 'docs/ru/tile-object-anchors.md'

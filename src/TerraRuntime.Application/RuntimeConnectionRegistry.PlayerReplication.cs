@@ -22,6 +22,7 @@ internal sealed partial class RuntimeConnectionRegistry
             return false;
         }
 
+        frame = default;
         return endpoint.TryGetPlayingPlayer(out PlayerHandle player) &&
             endpoint.TryGetLatestAppearanceFrame(player, out frame);
     }
@@ -34,6 +35,7 @@ internal sealed partial class RuntimeConnectionRegistry
             return false;
         }
 
+        frame = default;
         return endpoint.TryGetPlayingPlayer(out PlayerHandle player) &&
             endpoint.TryGetLatestMovementFrame(player, out frame);
     }
@@ -216,8 +218,9 @@ internal sealed partial class RuntimeConnectionRegistry
     {
         var originActive = new OutboundFrame(
             TerrariaPlayerActiveEncoder.Encode(slot.Value, active: true));
+        OutboundFrame originAppearance = default;
         bool hasOriginAppearance = endpoint.TryGetPlayingPlayer(out PlayerHandle originPlayer) &&
-            endpoint.TryGetLatestAppearanceFrame(originPlayer, out OutboundFrame originAppearance);
+            endpoint.TryGetLatestAppearanceFrame(originPlayer, out originAppearance);
 
         foreach (KeyValuePair<GameCommandSourceId, RuntimeConnectionEndpoint> pair in _endpoints)
         {

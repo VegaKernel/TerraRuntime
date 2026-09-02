@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaCanonicalOceanWorldGeneration1458.cs'
+      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaFinalWorldGenerationPipeline1458.cs'
       - 'src/TerraRuntime.World/Generation/Vanilla/VanillaDungeonWorldGenerationPipeline1458.cs'
       - 'src/TerraRuntime.World/Generation/Vanilla/VanillaOceanGenerationCatalog1458.cs'
       - 'src/TerraRuntime.World/Generation/Vanilla/VanillaOceanIntegrity1458.cs'
@@ -57,7 +57,7 @@ jobs:
             --world-gen artifacts/source-contract/world-gen.cs \
             --runtime-catalog src/TerraRuntime.World/Generation/Vanilla/VanillaOceanGenerationCatalog1458.cs \
             --runtime-pass src/TerraRuntime.World/Generation/Vanilla/VanillaDungeonWorldGenerationPipeline1458.cs \
-            --canonical-provider src/TerraRuntime.World/Generation/Vanilla/VanillaCanonicalOceanWorldGeneration1458.cs \
+            --canonical-provider src/TerraRuntime.World/Generation/Vanilla/VanillaFinalWorldGenerationPipeline1458.cs \
             --output artifacts/source-contract/beaches-contract.txt
 
       - name: Focused ocean tests
