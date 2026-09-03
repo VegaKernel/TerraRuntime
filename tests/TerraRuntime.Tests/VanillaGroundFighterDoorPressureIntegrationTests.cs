@@ -49,6 +49,51 @@ public sealed class VanillaGroundFighterDoorPressureIntegrationTests
         Assert.Equal(0f, next.Ai.Ai1, 5);
     }
 
+    [Fact]
+    public void Goblin_thief_type_specific_bonus_reaches_door_policy_through_world_motion()
+    {
+        WorldTileStore tiles = CreateWorld();
+        var targeting = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        targeting.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        targeting.SetCandidates([
+            new VanillaNpcTargetCandidate(
+                Slot: 7, CenterX: 220f, CenterY: 100f, Aggro: 0,
+                Active: true, Dead: false, Ghost: false, NoAggro: false)
+        ]);
+        var clock = new RuntimeWorldClock(
+            time: 1_000d, dayTime: false, moonPhase: VanillaMoonPhase.Full,
+            slimeRainTime: 0d, dayRate: 1, bloodMoonActive: true);
+        var sink = new CapturingDoorSink();
+        var stepper = new VanillaNpcWorldMotionAiStepper(
+            targeting, tiles, worldSurfaceTiles: 100d, worldEvents: clock,
+            doorRandom: new FixedDoorRandom(false), doorOpeningSink: sink);
+        NpcSnapshot goblinThief = CreateGroundFighter(
+            VanillaNpcIds.GoblinThief, ai1: 4f, ai2: 59f, scale: 0.95f);
+
+        Assert.True(stepper.TryStepState(in goblinThief, out NpcStateUpdate next));
+
+        Assert.True(sink.Captured.HasValue);
+        Assert.Equal(0f, next.Ai.Ai1, 5);
+    }
+
+    private static NpcSnapshot CreateGroundFighter(NpcTypeId type, float ai1, float ai2, float scale) =>
+        new(
+            Handle: new NpcHandle(2, new NpcGeneration(1)),
+            Revision: new NpcRevision(1),
+            Type: type.Value,
+            NetId: checked((short)type.Value),
+            PositionX: 96f,
+            PositionY: 80f,
+            VelocityX: 0.5f,
+            VelocityY: 0f,
+            Target: 7,
+            Ai: new NpcAiState(0f, ai1, ai2, 0f),
+            Simulation: NpcSimulationState.Initial with
+            {
+                DirectionX = 1, DirectionY = 1, OldPositionX = 95f, OldPositionY = 80f,
+                TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft, Scale = scale
+            });
+
     private static NpcSnapshot CreateZombie() =>
         new(
             Handle: new NpcHandle(1, new NpcGeneration(1)),

@@ -67,6 +67,37 @@ public sealed class VanillaGroundFighterBehaviorProfileTests
     }
 
     [Fact]
+    public void Fighter_motion_applies_scale_speed_only_for_source_backed_profiles()
+    {
+        var baseInput = new VanillaZombieMotionInput(
+            PositionX: 100f,
+            OldPositionX: 99f,
+            VelocityX: 1.55f,
+            VelocityY: 0f,
+            DirectionX: 1,
+            DirectionY: 1,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+            Ai: default,
+            Scale: 0.9f,
+            TargetOverlaps: false,
+            ClosestTarget: new VanillaZombieTargetRefresh(true, 3, 1, 1))
+        {
+            BaseMaximumHorizontalSpeed = 1.5f,
+            HorizontalAcceleration = 0.07f,
+            TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft
+        };
+
+        VanillaZombieMotionInput goblinPeon = baseInput with { ScaleAdjustsMaximumHorizontalSpeed = false };
+        VanillaZombieMotionInput scaledFighter = baseInput with { ScaleAdjustsMaximumHorizontalSpeed = true };
+
+        Assert.True(VanillaZombieMotion.TryStep(in goblinPeon, out VanillaZombieMotionResult goblinResult));
+        Assert.True(VanillaZombieMotion.TryStep(in scaledFighter, out VanillaZombieMotionResult scaledResult));
+
+        Assert.Equal(1.24f, goblinResult.VelocityX, 5);
+        Assert.Equal(1.62f, scaledResult.VelocityX, 5);
+    }
+
+    [Fact]
     public void Fighter_motion_consumes_configured_stuck_threshold_and_despawn_window()
     {
         var input = new VanillaZombieMotionInput(

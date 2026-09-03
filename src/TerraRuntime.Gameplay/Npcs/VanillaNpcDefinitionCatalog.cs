@@ -223,26 +223,8 @@ public static class VanillaNpcDefinitionCatalog
         if (VanillaFlyingEyeNpcCatalog.TryGetDefinition(type, out definition))
             return true;
 
-        if (type == VanillaNpcIds.Zombie)
-        {
-            definition = new VanillaNpcDefinition(
-                Type: VanillaNpcIds.Zombie,
-                AiStyle: VanillaNpcAiStyles.Fighter,
-                BehaviorFamily: VanillaNpcBehaviorFamily.GroundFighter,
-                PhysicsFamily: VanillaNpcPhysicsFamily.GroundFighter,
-                Role: NpcArchetypeRole.Ordinary,
-                BaseWidth: 18,
-                BaseHeight: 40,
-                Damage: 14,
-                Defense: 6,
-                LifeMax: 45,
-                KnockBackResist: 0.5f,
-                Scale: 1f,
-                NoGravityAtSpawn: false,
-                NoTileCollideAtSpawn: false,
-                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+        if (VanillaGroundFighterNpcCatalog.TryGetDefinition(type, out definition))
             return true;
-        }
 
         if (type == VanillaNpcIds.EyeOfCthulhu)
         {
@@ -475,27 +457,6 @@ public static class VanillaNpcDefinitionCatalog
                 Scale: 1f,
                 NoGravityAtSpawn: true,
                 NoTileCollideAtSpawn: true,
-                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
-            return true;
-        }
-
-        if (type == VanillaNpcIds.Skeleton)
-        {
-            definition = new VanillaNpcDefinition(
-                Type: VanillaNpcIds.Skeleton,
-                AiStyle: VanillaNpcAiStyles.Fighter,
-                BehaviorFamily: VanillaNpcBehaviorFamily.GroundFighter,
-                PhysicsFamily: VanillaNpcPhysicsFamily.GroundFighter,
-                Role: NpcArchetypeRole.Ordinary,
-                BaseWidth: 18,
-                BaseHeight: 40,
-                Damage: 20,
-                Defense: 8,
-                LifeMax: 60,
-                KnockBackResist: 0.5f,
-                Scale: 1f,
-                NoGravityAtSpawn: false,
-                NoTileCollideAtSpawn: false,
                 SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
             return true;
         }

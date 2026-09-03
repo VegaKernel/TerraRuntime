@@ -56,7 +56,8 @@ public enum VanillaNpcAiCapability : ulong
     WallOfFleshLinkedChildSlice = 1ul << 46,
     HardmodeBossStateSlice = 1ul << 47,
     HardmodeBossLinkedChildSlice = 1ul << 48,
-    HardmodeBossProjectileSlice = 1ul << 49
+    HardmodeBossProjectileSlice = 1ul << 49,
+    GroundFighterCloseRangeLungeSlice = 1ul << 50
 }
 
 /// <summary>
@@ -117,7 +118,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
             VanillaWormNpcCatalog.Count +
-            VanillaNpcAi17_20_21Catalog1458.DefinitionCount];
+            VanillaNpcAi17_20_21Catalog1458.DefinitionCount +
+            VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -250,6 +252,19 @@ public static class VanillaNpcAiCoverageCatalog
         entries[index++] = Partial(VanillaNpcIds.MoonLordFreeEye, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
         entries[index++] = Partial(VanillaNpcIds.EmpressOfLight, hardmodeProjectileRoot);
         entries[index++] = Partial(VanillaNpcIds.QueenSlime, hardmodeProjectileRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+
+        foreach (NpcTypeId type in VanillaGroundFighterNpcCatalog.AdditionalHostileTypes)
+        {
+            VanillaNpcAiCapability capabilities =
+                OrdinaryCore |
+                VanillaNpcAiCapability.CheckActiveSlice |
+                VanillaNpcAiCapability.GroundFighterTraversalSlice |
+                VanillaNpcAiCapability.GroundFighterDoorPressureSlice;
+            if (type == VanillaNpcIds.AngryBones || type == VanillaNpcIds.ArmoredSkeleton)
+                capabilities |= VanillaNpcAiCapability.GroundFighterCloseRangeLungeSlice;
+
+            entries[index++] = Partial(type, capabilities);
+        }
 
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {

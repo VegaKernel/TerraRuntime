@@ -39,6 +39,7 @@ public readonly record struct VanillaZombieMotionInput(
     public bool JustHit { get; init; }
     public int TimeLeft { get; init; }
     public int SpriteDirection { get; init; } = -1;
+    public bool ScaleAdjustsMaximumHorizontalSpeed { get; init; } = true;
 }
 
 public readonly record struct VanillaZombieMotionResult(
@@ -158,7 +159,9 @@ public static class VanillaZombieMotion
                 directionX = 1;
         }
 
-        float maximumSpeed = input.BaseMaximumHorizontalSpeed * (1f + (1f - input.Scale));
+        float maximumSpeed = input.BaseMaximumHorizontalSpeed;
+        if (input.ScaleAdjustsMaximumHorizontalSpeed)
+            maximumSpeed *= 1f + (1f - input.Scale);
         if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
         {
             if (velocityY == 0f)
@@ -220,7 +223,9 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
     float TwoTileJumpVelocity,
     float ThreeTileJumpVelocity,
     float PursuitGapJumpVelocity,
-    float PursuitGapSpeedMultiplier)
+    float PursuitGapSpeedMultiplier,
+    bool ScaleAdjustsMaximumHorizontalSpeed = false,
+    bool CloseRangeLunge = false)
 {
     public bool IsValid =>
         float.IsFinite(BaseMaximumHorizontalSpeed) && BaseMaximumHorizontalSpeed > 0f &&
@@ -242,36 +247,6 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
 /// <summary>Source-backed AI_003 movement/traversal profiles for explicitly admitted NPC definitions.</summary>
 public static class VanillaGroundFighterBehaviorCatalog
 {
-    public static bool TryGet(NpcTypeId type, out VanillaGroundFighterBehaviorParameters parameters)
-    {
-        if (type == VanillaNpcIds.Zombie)
-        {
-            parameters = CreateOrdinaryProfile(1f);
-            return true;
-        }
-
-        if (type == VanillaNpcIds.Skeleton)
-        {
-            parameters = CreateOrdinaryProfile(1.5f);
-            return true;
-        }
-
-        parameters = default;
-        return false;
-    }
-
-    private static VanillaGroundFighterBehaviorParameters CreateOrdinaryProfile(float maximumHorizontalSpeed) =>
-        new(
-            BaseMaximumHorizontalSpeed: maximumHorizontalSpeed,
-            HorizontalAcceleration: 0.07f,
-            StuckThreshold: 60f,
-            MaximumStuckCounter: 600f,
-            EncouragedDespawnTime: 10,
-            StuckHopVelocity: -5f,
-            LowStepJumpVelocity: -5f,
-            OneTileJumpVelocity: -6f,
-            TwoTileJumpVelocity: -7f,
-            ThreeTileJumpVelocity: -8f,
-            PursuitGapJumpVelocity: -8f,
-            PursuitGapSpeedMultiplier: 1.5f);
+    public static bool TryGet(NpcTypeId type, out VanillaGroundFighterBehaviorParameters parameters) =>
+        VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out parameters);
 }

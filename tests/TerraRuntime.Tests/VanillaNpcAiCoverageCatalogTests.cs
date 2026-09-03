@@ -9,7 +9,8 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Every_coverage_entry_has_an_explicit_definition_and_behavior_family()
     {
-        int expected = 16 + 29 +
+        int expected = 16 + 34 +
+            VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -94,6 +95,18 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaNpcIds.Zombie,
             out VanillaNpcAiCoverage zombie));
         Assert.True(zombie.Has(VanillaNpcAiCapability.GroundFighterDoorPressureSlice));
+
+        foreach (NpcTypeId type in VanillaGroundFighterNpcCatalog.AdditionalHostileTypes)
+        {
+            Assert.True(VanillaNpcAiCoverageCatalog.TryGet(type, out VanillaNpcAiCoverage fighter));
+            Assert.True(fighter.Has(VanillaNpcAiCapability.CheckActiveSlice));
+            Assert.True(fighter.Has(VanillaNpcAiCapability.GroundFighterTraversalSlice));
+            Assert.True(fighter.Has(VanillaNpcAiCapability.GroundFighterDoorPressureSlice));
+            Assert.Equal(
+                type == VanillaNpcIds.AngryBones || type == VanillaNpcIds.ArmoredSkeleton,
+                fighter.Has(VanillaNpcAiCapability.GroundFighterCloseRangeLungeSlice));
+            Assert.False(fighter.FullVanillaAiParity);
+        }
 
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.Vulture, out VanillaNpcAiCoverage vulture));
         Assert.True(vulture.Has(VanillaNpcAiCapability.VultureMotionSlice));

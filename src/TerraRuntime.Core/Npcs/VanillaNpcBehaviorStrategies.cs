@@ -343,7 +343,8 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             EncourageDespawn = daytimeSurface,
             JustHit = simulation.JustHit,
             TimeLeft = simulation.TimeLeft,
-            SpriteDirection = simulation.SpriteDirection
+            SpriteDirection = simulation.SpriteDirection,
+            ScaleAdjustsMaximumHorizontalSpeed = parameters.ScaleAdjustsMaximumHorizontalSpeed
         };
 
         if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))

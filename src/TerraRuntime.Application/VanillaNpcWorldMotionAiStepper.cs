@@ -170,6 +170,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 hitboxHeight,
                 simulation.DirectionX,
                 aiState.Ai,
+                definition.Type,
                 doorEnvironment,
                 doorRandom);
             if (doorContact.OpeningIntent is { } openingIntent &&
@@ -212,6 +213,24 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 aiState.Ai.Ai3 == 1f)
             {
                 velocityY = stuckHopVelocity;
+            }
+
+            if (hasFighterProfile &&
+                fighterProfile.CloseRangeLunge &&
+                doorEnvironment.HasTarget &&
+                VanillaGroundFighterCloseRangeLunge.TryResolve(
+                    aiState.PositionX + hitboxWidth * 0.5f,
+                    aiState.PositionY + hitboxHeight * 0.5f,
+                    doorEnvironment.TargetCenterX,
+                    doorEnvironment.TargetCenterY,
+                    velocityX,
+                    velocityY,
+                    simulation.DirectionX,
+                    out float lungedVelocityX,
+                    out float lungedVelocityY))
+            {
+                velocityX = lungedVelocityX;
+                velocityY = lungedVelocityY;
             }
         }
 
