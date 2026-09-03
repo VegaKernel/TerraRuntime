@@ -128,6 +128,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    private static readonly VanillaProjectileDefinition WallOfFleshEyeLaserDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: false,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
     private static readonly VanillaProjectileDefinition BoneDefinition = new(
         Width: 16,
         Height: 16,
@@ -371,6 +381,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.QueenBeeStinger)
         {
             definition = QueenBeeStingerDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.WallOfFleshEyeLaser)
+        {
+            definition = WallOfFleshEyeLaserDefinition;
             return true;
         }
 

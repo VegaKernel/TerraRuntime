@@ -23,6 +23,7 @@ public static class WorldFileProgressionHeaderPatcher
         (1UL << (int)VanillaWorldProgressionId.EvilBoss) |
         (1UL << (int)VanillaWorldProgressionId.Skeletron) |
         (1UL << (int)VanillaWorldProgressionId.QueenBee) |
+        (1UL << (int)VanillaWorldProgressionId.Hardmode) |
         (1UL << (int)VanillaWorldProgressionId.Deerclops);
 
     public static WorldFileProgressionHeaderPatchResult TryPatch(
@@ -101,6 +102,17 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out bool persistedDownedSlimeKing))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
+        HeaderPrefixReader hardModeReader = reader;
+        if (!hardModeReader.TrySkipBools(9) ||
+            !hardModeReader.TryReadByte(out _) ||
+            !hardModeReader.TryReadInt32(out _))
+        {
+            return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        }
+        int hardModeOffset = hardModeReader.Offset;
+        if (!hardModeReader.TryReadBool(out bool persistedHardMode))
+            return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+
         TownStateOffsets1458 townState = default;
         bool needsTownState = mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) ||
             mutations.UnlockSlimeBlueSpawn ||
@@ -119,6 +131,8 @@ public static class WorldFileProgressionHeaderPatcher
             patchedHeader[downedQueenBeeOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.KingSlime) && !persistedDownedSlimeKing)
             patchedHeader[downedSlimeKingOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.Hardmode) && !persistedHardMode)
+            patchedHeader[hardModeOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) && !townState.PersistedDeerclops)
             patchedHeader[townState.DeerclopsOffset] = 1;
         if (mutations.UnlockSlimeBlueSpawn && !townState.PersistedSlimeBlue)

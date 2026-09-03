@@ -128,7 +128,9 @@ internal sealed class NpcAuthority
             worldClock,
             progression,
             expertMode,
-            masterMode);
+            masterMode,
+            worldTiles,
+            townCommerceWorldFacts?.Crimson ?? false);
         townNpcAuthority.SetMeleeDamageSink(combat);
 
         if (npcAiStepper is null)
@@ -162,6 +164,7 @@ internal sealed class NpcAuthority
                 vanillaTargeting.SetDeerclopsEnvironment(new VanillaDeerclopsWorldEnvironment(
                     worldTiles,
                     townCommerceWorldFacts?.SkyblockWorld ?? false));
+                vanillaTargeting.SetWallOfFleshEnvironment(new VanillaWallOfFleshWorldEnvironment(worldTiles));
                 vanillaTargeting.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(worldTiles));
                 var worldMotion = new VanillaNpcWorldMotionAiStepper(
                     actorIntent,
