@@ -391,7 +391,6 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 - [ ] Validate legal `ProjectileType` for the authoritative weapon/ammo/use path.
 - [ ] Track and validate full `Weapon -> Ammo -> Projectile` provenance.
 - [ ] Validate spawn position against the authoritative player/item-use geometry.
-- [ ] Validate firing direction/aim constraints.
 - [ ] Validate initial projectile velocity for every player-owned projectile before it can damage NPCs or players.
 - [ ] Validate projectile damage for both NPC and PvP targets.
 - [ ] Validate projectile knockback.
@@ -399,16 +398,17 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 - [ ] Validate projectile count per item use, including multishot/special weapons.
 - [ ] Promote a client packet-27 projectile into authoritative combat only after provenance/spawn validation succeeds; unverified client spawns remain diagnostic/compatibility state and cannot damage authoritative entities.
 
-#### Projectile velocity envelope
+#### Projectile velocity-magnitude envelope
 
-- [ ] Calculate legal base launch speed from source-backed weapon `shootSpeed` plus ammo `shootSpeed` semantics.
-- [ ] Apply prefix, buff, accessory and class speed modifiers from authoritative player state.
+- [ ] Server computes the legal launch-speed magnitude interval `[MinLaunchSpeed, MaxLaunchSpeed]` for every authoritative player-owned projectile. Combat integrity does not require generic angular/aim validation; weapon-specific direction mechanics may be modeled by gameplay code only where they are required for vanilla behavior.
+- [ ] Calculate the base interval from source-backed weapon `shootSpeed` plus authoritative ammo `shootSpeed` / `PickAmmo` semantics. Deterministic weapons may collapse the interval to `MinLaunchSpeed == MaxLaunchSpeed`.
+- [ ] Apply prefix, buff/debuff, armor/set-bonus, accessory and class speed modifiers from authoritative player state before deriving the final interval.
 - [ ] Apply weapon-specific speed modifiers and exceptional launch mechanics.
-- [ ] Model legal RNG speed variance where vanilla uses it.
-- [ ] Validate legal angular spread and aim variance.
-- [ ] Add specialized velocity validators for weapons whose launch mechanics cannot be represented by a generic envelope.
-- [ ] Record expected/received velocity vectors and envelope bounds in combat diagnostics.
-- [ ] Hard-reject impossible launch velocity before the projectile enters authoritative world state.
+- [ ] Expand the interval only for source-backed vanilla RNG/speed variance; do not add arbitrary anti-cheat tolerance that can mask forged velocity.
+- [ ] Validate `|velocity|` against `[MinLaunchSpeed, MaxLaunchSpeed]` before the projectile can become combat-trusted.
+- [ ] Add specialized magnitude-envelope calculators for weapons whose launch-speed mechanics cannot be represented by the generic weapon+ammo path.
+- [ ] Record expected min/max launch speed, received speed magnitude and all authoritative modifier inputs in combat diagnostics.
+- [ ] Hard-reject impossible launch-speed magnitude before the projectile enters authoritative combat state.
 
 #### Authoritative projectile simulation
 
@@ -427,18 +427,21 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 #### Authoritative damage calculation
 
 - [ ] Server-authoritative damage calculation for every player combat source and target class (PvE + PvP). The first strict direct-melee slice covers source-backed Muramasa and Copper Pickaxe facts; Copper Pickaxe is deliberately included to prevent tools from becoming an unvalidated PvP damage bypass. Wire damage/crit are diagnostics only on accepted strict paths.
+- [ ] Use one explicit pipeline: `AttackContext -> AuthoritativeAttackDamage -> TargetMitigation -> FinalDamageToHp`. Client-reported final damage is never reused as the result on authoritative paths.
+- [ ] `AttackContext` is built entirely from server-owned attacker state: selected weapon/tool, ammo, item/ammo prefixes, armor and set bonuses, accessories, buffs/debuffs, class modifiers, armor penetration, world/difficulty state and source-specific mechanics.
 - [ ] Include weapon + ammo contributions.
 - [ ] Include item/ammo prefixes.
-- [ ] Include armor/accessories.
-- [ ] Include player buffs/debuffs.
-- [ ] Include class modifiers.
+- [ ] Include attacker armor/set bonuses and accessories.
+- [ ] Include attacker buffs/debuffs and class modifiers.
 - [ ] Calculate crit server-side for every weapon/projectile family. The verified direct-melee slice already rolls crit server-side.
-- [ ] Include armor penetration.
-- [ ] Include NPC defense and player PvP defense/endurance/dodge/immunity mechanics from authoritative target state; never reuse NPC defense math blindly for players.
-- [ ] Include difficulty/world-state modifiers.
+- [ ] Include armor penetration and other source-backed offensive modifiers.
+- [ ] Apply `TargetMitigation` from authoritative target state after attack damage is resolved.
+- [ ] For NPC targets include NPC defense, damage-reduction/defense modifiers, buffs/debuffs, immunity state and source-backed exceptional mechanics.
+- [ ] For PvP player targets include equipped armor, armor/set bonuses, accessories, defense, endurance/damage reduction, buffs/debuffs, dodge/avoidance, immunity frames and PvP-specific vanilla rules; never reuse NPC defense math blindly for players.
+- [ ] Include difficulty/world-state modifiers at the vanilla stage where they actually apply.
 - [ ] Include vanilla damage variance using server-owned RNG.
 - [ ] Implement source-backed special weapon/projectile damage mechanics without a parallel anti-cheat formula.
-- [ ] Damage envelope from equipment/prefixes/buffs/world state. Source-backed prefix multipliers are imported; full armor/accessory/player-buff/world modifiers are still intentionally unmodeled and therefore fall back instead of being guessed.
+- [ ] Damage envelopes must be derived from the same attacker/target gameplay facts used to compute real damage, not from static anti-cheat constants. Source-backed prefix multipliers are imported; full armor/accessory/player-buff/target-mitigation coverage remains intentionally incomplete and must fail closed/fall back rather than be guessed.
 - [ ] Validate NPC/player hit target and range across all hit shapes. Strict direct melee has a conservative impossible-distance guard; PvP direct melee must apply the same item-use geometry against player hitboxes, and trusted admitted projectiles must collide server-side with both NPC and hostile legal player targets.
 - [ ] Reject impossible damage before world mutation across every combat path. The strict calculator/validator path already rejects before interaction/HP/loot/replication mutation; unsupported legacy combat remains the blocker.
 
@@ -459,7 +462,7 @@ Impossible combat events must not be applied to authoritative world state merely
 - [ ] Reject impossible projectile type/source.
 - [ ] Reject impossible/incompatible ammo.
 - [ ] Reject impossible damage.
-- [ ] Reject impossible initial projectile velocity or angular spread.
+- [ ] Reject impossible initial projectile speed magnitude outside the authoritative `[MinLaunchSpeed, MaxLaunchSpeed]` interval.
 - [ ] Reject impossible attack cadence/cooldown state. Strict direct melee already rejects cross-target cadence bypass before mutation; remaining weapon/projectile families are open.
 - [ ] Reject projectiles without legal authoritative provenance.
 - [ ] Reject hits against impossible NPC or PvP player targets, friendly/team-protected players, or targets at impossible range.
@@ -481,7 +484,7 @@ Anomaly detection is a second-line diagnostic layer. It must never replace hard 
 - [x] Bounded diagnostics ring explaining every strict-path rejected hit before mutation.
 - [x] Record exact strict-path rejected-attack reason/code.
 - [ ] Record expected/received damage and relevant envelope inputs.
-- [ ] Record expected/received projectile velocity and angular/speed envelope.
+- [ ] Record authoritative min/max launch speed, received speed magnitude and the modifier inputs that produced the interval.
 - [ ] Record weapon/ammo/projectile IDs and provenance chain.
 - [x] Strict direct-melee diagnostics record tick, generation-safe player identity and target NPC generation; projectile-generation diagnostics remain open.
 - [ ] Allow bounded verbose combat audit for a selected player without enabling global packet spam.
@@ -491,7 +494,7 @@ Anomaly detection is a second-line diagnostic layer. It must never replace hard 
 - [ ] Differential combat tests against TerrariaServer 1.4.5.8.
 - [ ] Differential `PickAmmo` tests against TerrariaServer 1.4.5.8.
 - [ ] Projectile spawn parity tests.
-- [ ] Projectile initial velocity / spread parity tests.
+- [ ] Projectile initial speed-magnitude envelope parity tests, including deterministic and vanilla-RNG speed ranges.
 - [ ] Damage parity tests, including defense, crit, armor penetration and variance.
 - [ ] Weapon cadence parity tests.
 - [ ] Dedicated tests for weapons with unusual projectile count, transforms, velocity or AI parameters.

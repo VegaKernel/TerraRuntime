@@ -38,8 +38,12 @@ internal sealed class RuntimeProjectilePlayerCombatPass
         for (int i = 0; i < projectileCount; i++)
         {
             ProjectileSnapshot projectile = projectileBuffer[i];
-            if (!IsEligible(in projectile, out VanillaProjectileDefinition definition) ||
-                !players.TryGet((byte)projectile.Spawner, out RuntimePlayerMember? owner) ||
+            if (!projectiles.IsCombatTrusted(projectile.Handle) ||
+                !projectiles.TryGetCombatTrustedOwner(projectile.Handle, out PlayerHandle trustedOwner) ||
+                !IsEligible(in projectile, out VanillaProjectileDefinition definition) ||
+                !players.TryGet(trustedOwner, out RuntimePlayerMember? owner) ||
+                owner.Connection.Player != trustedOwner ||
+                owner.Slot.Value != projectile.Spawner ||
                 !owner.Hostile || owner.IsDead)
             {
                 continue;

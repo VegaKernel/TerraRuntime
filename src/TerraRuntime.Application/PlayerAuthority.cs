@@ -130,6 +130,29 @@ internal sealed class PlayerAuthority
         return inventory.TryGet(connection, inventorySlot, out item);
     }
 
+    public bool TryCopyInventory(
+        ConnectionHandle connection,
+        Span<RuntimePlayerInventoryItem> destination) =>
+        membership.IsCurrent(connection) && inventory.TryCopyInventory(connection, destination);
+
+    public bool TryCommitInventoryMutation(
+        ConnectionHandle connection,
+        in RuntimePlayerInventoryMutation mutation)
+    {
+        if (!membership.IsCurrent(connection))
+            return false;
+
+        Span<RuntimePlayerInventoryMutation> mutations = stackalloc RuntimePlayerInventoryMutation[1];
+        mutations[0] = mutation;
+        if (!inventory.TryApplyAtomic(connection, mutations))
+            return false;
+
+        PlayerEquipmentCommitRequest request =
+            mutation.Item.ToCommitRequest(connection.Player.Slot, mutation.Slot);
+        events?.PlayerEquipmentUpdated(connection, in request);
+        return true;
+    }
+
     public bool TryCaptureEquipment(
         ConnectionHandle connection,
         out PlayerEquipmentCommitRequest[] equipment)
@@ -155,11 +178,6 @@ internal sealed class PlayerAuthority
         }
         return TryCaptureEquipment(member.Connection, out equipment);
     }
-
-    public bool TryCopyInventory(
-        ConnectionHandle connection,
-        Span<RuntimePlayerInventoryItem> destination) =>
-        membership.IsCurrent(connection) && inventory.TryCopyInventory(connection, destination);
 
     public bool TrySetTalkNpc(ConnectionHandle connection, short npcSlot) =>
         membership.TrySetTalkNpc(connection, npcSlot);
@@ -377,6 +395,7 @@ internal sealed class PlayerAuthority
         bool hasPending = pending is not null && pending.Connection == spawn.Connection;
 
         CommittedSpawns++;
+        pvpImmuneUntil[request.ClaimedSlot.Value] = 0;
         membership.Commit(new RuntimePlayerMember
         {
             Connection = spawn.Connection,
@@ -676,6 +695,7 @@ internal sealed class PlayerAuthority
             CameraTargetX = preservePosition ? previous.CameraTargetX : 0f,
             CameraTargetY = preservePosition ? previous.CameraTargetY : 0f
         };
+        pvpImmuneUntil[slot] = 0;
         membership.Commit(state);
         transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment);
 

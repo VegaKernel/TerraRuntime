@@ -15,6 +15,18 @@ public sealed class VanillaCombatIntegrityCatalogTests
         Assert.Equal(18, muramasa.AnimationTicks);
         Assert.Equal(VanillaItemCombatCatalog.VanillaBaseMeleeCrit, muramasa.BaseCrit);
 
+        Assert.True(VanillaItemCombatCatalog.TryGetDirectMelee(VanillaItemIds.CopperPickaxe, out VanillaDirectMeleeCombatDefinition pickaxe));
+        Assert.Equal((4, 2f, 15, 23), (pickaxe.BaseDamage, pickaxe.BaseKnockBack, pickaxe.UseTimeTicks, pickaxe.AnimationTicks));
+
+        Assert.True(VanillaItemCombatCatalog.TryGetDirectMelee(VanillaItemIds.CopperAxe, out VanillaDirectMeleeCombatDefinition axe));
+        Assert.Equal((3, 4.5f, 21, 30), (axe.BaseDamage, axe.BaseKnockBack, axe.UseTimeTicks, axe.AnimationTicks));
+
+        Assert.True(VanillaItemCombatCatalog.TryGetDirectMelee(VanillaItemIds.CopperHammer, out VanillaDirectMeleeCombatDefinition hammer));
+        Assert.Equal((4, 5.5f, 23, 33), (hammer.BaseDamage, hammer.BaseKnockBack, hammer.UseTimeTicks, hammer.AnimationTicks));
+
+        Assert.True(VanillaItemCombatCatalog.TryGetDirectMelee(VanillaItemIds.CopperBroadsword, out VanillaDirectMeleeCombatDefinition broadsword));
+        Assert.Equal((9, 5.5f, 20, 21), (broadsword.BaseDamage, broadsword.BaseKnockBack, broadsword.UseTimeTicks, broadsword.AnimationTicks));
+
         Assert.True(VanillaItemCombatCatalog.TryGetPrefixModifiers(new PrefixId(57), out VanillaCombatPrefixModifiers ruthless));
         Assert.Equal(1.18f, ruthless.DamageMultiplier);
         Assert.Equal(0.90f, ruthless.KnockBackMultiplier);

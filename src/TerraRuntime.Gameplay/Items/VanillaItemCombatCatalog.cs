@@ -43,6 +43,33 @@ public static class VanillaItemCombatCatalog
         // Exact per-animation item rectangles belong to the later full melee geometry slice.
         ImpossibleCenterDistancePixels: 192f);
 
+    private static readonly VanillaDirectMeleeCombatDefinition CopperHammer = new(
+        VanillaItemIds.CopperHammer,
+        BaseDamage: 4,
+        BaseKnockBack: 5.5f,
+        BaseCrit: VanillaBaseMeleeCrit,
+        UseTimeTicks: 23,
+        AnimationTicks: 33,
+        ImpossibleCenterDistancePixels: 192f);
+
+    private static readonly VanillaDirectMeleeCombatDefinition CopperAxe = new(
+        VanillaItemIds.CopperAxe,
+        BaseDamage: 3,
+        BaseKnockBack: 4.5f,
+        BaseCrit: VanillaBaseMeleeCrit,
+        UseTimeTicks: 21,
+        AnimationTicks: 30,
+        ImpossibleCenterDistancePixels: 192f);
+
+    private static readonly VanillaDirectMeleeCombatDefinition CopperBroadsword = new(
+        VanillaItemIds.CopperBroadsword,
+        BaseDamage: 9,
+        BaseKnockBack: 5.5f,
+        BaseCrit: VanillaBaseMeleeCrit,
+        UseTimeTicks: 20,
+        AnimationTicks: 21,
+        ImpossibleCenterDistancePixels: 192f);
+
     private static readonly VanillaDirectMeleeCombatDefinition CopperPickaxe = new(
         VanillaItemIds.CopperPickaxe,
         BaseDamage: 4,
@@ -57,6 +84,21 @@ public static class VanillaItemCombatCatalog
         if (type == VanillaItemIds.Muramasa)
         {
             definition = Muramasa;
+            return true;
+        }
+        if (type == VanillaItemIds.CopperHammer)
+        {
+            definition = CopperHammer;
+            return true;
+        }
+        if (type == VanillaItemIds.CopperAxe)
+        {
+            definition = CopperAxe;
+            return true;
+        }
+        if (type == VanillaItemIds.CopperBroadsword)
+        {
+            definition = CopperBroadsword;
             return true;
         }
         if (type == VanillaItemIds.CopperPickaxe)

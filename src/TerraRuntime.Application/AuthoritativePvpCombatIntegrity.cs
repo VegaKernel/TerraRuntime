@@ -34,7 +34,10 @@ internal sealed class RuntimePvpCombatIntegrity
     private readonly PlayerAuthority players;
     private readonly Random random;
     private readonly long[] lastAttackTick = new long[PlayerSlots];
+    private readonly PlayerSessionGeneration[] lastAttackGeneration = new PlayerSessionGeneration[PlayerSlots];
     private readonly long[] lastPairHitTick = new long[PlayerSlots * PlayerSlots];
+    private readonly PlayerSessionGeneration[] lastPairAttackerGeneration = new PlayerSessionGeneration[PlayerSlots * PlayerSlots];
+    private readonly PlayerSessionGeneration[] lastPairTargetGeneration = new PlayerSessionGeneration[PlayerSlots * PlayerSlots];
 
     public RuntimePvpCombatIntegrity(PlayerAuthority players, Random? random = null)
     {
@@ -98,18 +101,26 @@ internal sealed class RuntimePvpCombatIntegrity
 
         int attackerSlot = attacker.Player.Slot.Value;
         int targetSlot = target.Player.Slot.Value;
-        long previousAttack = lastAttackTick[attackerSlot];
+        long previousAttack = lastAttackGeneration[attackerSlot] == attacker.Player.Generation
+            ? lastAttackTick[attackerSlot]
+            : long.MinValue;
         if (previousAttack != long.MinValue && tick != previousAttack && tick - previousAttack < resolved.UseTimeTicks)
             return PvpCombatResolveResult.Rejected;
         int pair = attackerSlot * PlayerSlots + targetSlot;
-        long previousPair = lastPairHitTick[pair];
+        long previousPair = lastPairAttackerGeneration[pair] == attacker.Player.Generation &&
+            lastPairTargetGeneration[pair] == target.Player.Generation
+                ? lastPairHitTick[pair]
+                : long.MinValue;
         if (previousPair != long.MinValue && tick - previousPair < resolved.AnimationTicks)
             return PvpCombatResolveResult.Rejected;
 
         if (Math.Max(wire.Damage, (short)0) > resolved.MaximumDamage)
             return PvpCombatResolveResult.Rejected;
 
+        lastAttackGeneration[attackerSlot] = attacker.Player.Generation;
         lastAttackTick[attackerSlot] = tick;
+        lastPairAttackerGeneration[pair] = attacker.Player.Generation;
+        lastPairTargetGeneration[pair] = target.Player.Generation;
         lastPairHitTick[pair] = tick;
         int direction = Math.Clamp(wire.HitDirection, -1, 1);
         hit = new AuthoritativePvpHit(

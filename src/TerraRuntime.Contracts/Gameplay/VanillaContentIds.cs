@@ -283,6 +283,9 @@ public static class VanillaItemIds
     public static readonly ItemTypeId StoneBlock = new(3);
     public static readonly ItemTypeId Torch = new(8);
     public static readonly ItemTypeId Gel = new(23);
+    public static readonly ItemTypeId WoodenBow = new(39);
+    public static readonly ItemTypeId WoodenArrow = new(40);
+    public static readonly ItemTypeId FlamingArrow = new(41);
     public static readonly ItemTypeId Chest = new(48);
     public static readonly ItemTypeId FlowerOfFire = new(112);
     public static readonly ItemTypeId MagicMissile = new(113);
@@ -305,6 +308,9 @@ public static class VanillaItemIds
     public static readonly ItemTypeId RecallPotion = new(2350);
     public static readonly ItemTypeId HellwingBow = new(3019);
     public static readonly ItemTypeId Valor = new(3317);
+    public static readonly ItemTypeId CopperHammer = new(3505);
+    public static readonly ItemTypeId CopperAxe = new(3506);
+    public static readonly ItemTypeId CopperBroadsword = new(3508);
     public static readonly ItemTypeId CopperPickaxe = new(3509);
 
     public static bool TryCreate(int rawType, out ItemTypeId type)
