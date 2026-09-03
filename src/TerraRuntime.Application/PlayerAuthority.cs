@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Buffs;
 using TerraRuntime.HostContracts;
 using TerraRuntime.Protocol;
@@ -42,6 +43,8 @@ internal sealed class PlayerAuthority
     private long currentCombatTick;
     private readonly long[] pvpImmuneUntil = new long[MaxPlayerSlots];
     private readonly PlayerSessionGeneration[] pvpImmuneGeneration = new PlayerSessionGeneration[MaxPlayerSlots];
+    private readonly long[] hallowedDodgeCooldownUntil = new long[MaxPlayerSlots];
+    private readonly PlayerSessionGeneration[] hallowedDodgeCooldownGeneration = new PlayerSessionGeneration[MaxPlayerSlots];
     private readonly int[] badLifeRegenCount = new int[MaxPlayerSlots];
     private readonly PlayerSessionGeneration[] badLifeRegenGeneration = new PlayerSessionGeneration[MaxPlayerSlots];
     private long lastCombatStatusTick = long.MinValue;
@@ -230,6 +233,14 @@ internal sealed class PlayerAuthority
             snapshot = default;
             return false;
         }
+
+        // Player.Update clears Hallowed Protection when the set bonus is no longer active. Keep server-owned buff
+        // state from surviving an armor swap and becoming a phantom dodge.
+        if (snapshot.ShadowDodge && !snapshot.HallowedOnHitDodge)
+        {
+            combatBuffs.Remove(connection.Player, VanillaBuffIds.ShadowDodge);
+            snapshot = snapshot with { ShadowDodge = false };
+        }
         return true;
     }
 
@@ -273,6 +284,28 @@ internal sealed class PlayerAuthority
             return false;
         int slot = player.Slot.Value;
         return pvpImmuneGeneration[slot] == player.Generation && tick < pvpImmuneUntil[slot];
+    }
+
+    internal bool TryGrantHallowedProtectionOnHit(
+        PlayerHandle player,
+        in VanillaPlayerCombatSnapshot combat,
+        long tick)
+    {
+        if (!player.IsAssigned || !combat.HallowedOnHitDodge || !membership.TryGet(player, out _))
+            return !combat.HallowedOnHitDodge;
+
+        int slot = player.Slot.Value;
+        if (hallowedDodgeCooldownGeneration[slot] == player.Generation && tick < hallowedDodgeCooldownUntil[slot])
+            return true;
+
+        return combatBuffs.TryGrant(player, VanillaBuffIds.ShadowDodge, 1800, tick);
+    }
+
+    private void PutHallowedProtectionOnCooldown(PlayerHandle player, long tick)
+    {
+        int slot = player.Slot.Value;
+        hallowedDodgeCooldownGeneration[slot] = player.Generation;
+        hallowedDodgeCooldownUntil[slot] = tick + 1800;
     }
 
     public bool TryCaptureCombatSnapshot(
@@ -622,21 +655,53 @@ internal sealed class PlayerAuthority
             LegacyPvpFallbackHits++;
             return;
         }
-        if (resolve != PvpCombatResolveResult.Accepted)
+        if (resolve != PvpCombatResolveResult.Accepted ||
+            !TryCaptureCombatSnapshot(hit.Attacker, out VanillaPlayerCombatSnapshot attackerCombat))
         {
             RejectedAuthoritativePvpHits++;
             return;
         }
 
-        // ItemCheck_MeleeHitPVP calls StatusToPlayerPvP before Player.Hurt. General immunity is checked before
-        // that branch, while a successful dodge still retains the status. Fire Gauntlet/Magma Stone are already
-        // admitted equipment, so their magmaStone side effect must be authoritative rather than silently omitted.
-        if (!IsAuthoritativePvpImmune(hit.Target, currentCombatTick) && hit.AttackerMagmaStone)
+        // ItemCheck_MeleeHitPVP checks general immunity before StatusToPlayerPvP/OnHit. Once admitted, the source
+        // order is weapon imbue -> Frost set -> magmaStone -> Player.OnHit (Hallowed Protection) -> Player.Hurt.
+        // Shimmer and ordinary dodge happen inside Hurt, so a dodge keeps statuses and can still arm Hallowed.
+        if (!IsAuthoritativePvpImmune(hit.Target, currentCombatTick))
         {
-            int magmaDuration = combatRandom.Next(7) == 0
-                ? 360
-                : combatRandom.Next(3) == 0 ? 120 : 60;
-            if (!TryGrantAuthoritativePvpStatus(hit.Target, VanillaBuffIds.OnFire3, magmaDuration))
+            if (VanillaProjectilePvpCombatFacts.TryRollMeleeEnchantStatus(
+                    attackerCombat.MeleeEnchant,
+                    combatRandom,
+                    out VanillaProjectilePvpStatusEffect enchantStatus) &&
+                enchantStatus.IsPresent &&
+                !TryGrantAuthoritativePvpStatus(hit.Target, enchantStatus.Buff, enchantStatus.DurationTicks))
+            {
+                RejectedAuthoritativePvpHits++;
+                return;
+            }
+
+            if (VanillaProjectilePvpCombatFacts.TryRollFrostBurnStatus(
+                    attackerCombat.FrostBurn,
+                    combatRandom,
+                    out VanillaProjectilePvpStatusEffect frostStatus) &&
+                frostStatus.IsPresent &&
+                !TryGrantAuthoritativePvpStatus(hit.Target, frostStatus.Buff, frostStatus.DurationTicks))
+            {
+                RejectedAuthoritativePvpHits++;
+                return;
+            }
+
+            if (attackerCombat.MagmaStone)
+            {
+                int magmaDuration = combatRandom.Next(7) == 0
+                    ? 360
+                    : combatRandom.Next(3) == 0 ? 120 : 60;
+                if (!TryGrantAuthoritativePvpStatus(hit.Target, VanillaBuffIds.OnFire3, magmaDuration))
+                {
+                    RejectedAuthoritativePvpHits++;
+                    return;
+                }
+            }
+
+            if (!TryGrantHallowedProtectionOnHit(hit.Attacker, in attackerCombat, currentCombatTick))
             {
                 RejectedAuthoritativePvpHits++;
                 return;
@@ -652,6 +717,7 @@ internal sealed class PlayerAuthority
             hit.Critical,
             hit.HitDirection,
             dodgeable: true,
+            allowShimmerDodge: true,
             out _);
         if (commit == AuthoritativePvpDamageCommitResult.Rejected)
         {
@@ -673,6 +739,7 @@ internal sealed class PlayerAuthority
         bool critical,
         int hitDirection,
         bool dodgeable,
+        bool allowShimmerDodge,
         out PlayerStateSnapshot committed)
     {
         committed = default;
@@ -691,6 +758,16 @@ internal sealed class PlayerAuthority
             return AuthoritativePvpDamageCommitResult.Rejected;
 
         int targetSlot = target.Slot.Value;
+        // Player.Hurt performs Shimmer dodge before general immunity and before Mystic Sash / Ninja / Brain /
+        // Hallowed Protection. It returns zero without granting post-dodge immunity.
+        if (dodgeable && allowShimmerDodge && targetCombat.Shimmering)
+        {
+            committed = target.CaptureSnapshot();
+            var shimmerHealth = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
+            events?.PlayerHealthUpdated(target.Connection, in shimmerHealth);
+            return AuthoritativePvpDamageCommitResult.Dodged;
+        }
+
         if (IsAuthoritativePvpImmune(targetHandle, tick))
         {
             committed = target.CaptureSnapshot();
@@ -715,6 +792,7 @@ internal sealed class PlayerAuthority
                 else if (dodge == VanillaPvpDodgeKind.ShadowDodge)
                 {
                     combatBuffs.Remove(targetHandle, VanillaBuffIds.ShadowDodge);
+                    PutHallowedProtectionOnCooldown(targetHandle, tick);
                 }
 
                 committed = target.CaptureSnapshot();
@@ -784,9 +862,20 @@ internal sealed class PlayerAuthority
                 continue;
 
             bool poisoned = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.Poisoned, tick);
+            bool venom = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.Venom, tick);
             bool onFire = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.OnFire, tick);
             bool onFire3 = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.OnFire3, tick);
-            int delta = VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(poisoned, onFire, onFire3);
+            bool cursedInferno = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.CursedInferno, tick);
+            bool frostburn = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.Frostburn, tick);
+            bool frostburn2 = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.Frostburn2, tick);
+            int delta = VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(
+                poisoned,
+                onFire,
+                onFire3,
+                venom,
+                cursedInferno,
+                frostburn,
+                frostburn2);
             if (delta == 0)
                 continue;
 

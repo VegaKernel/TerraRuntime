@@ -96,9 +96,43 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                 int variedDamage = Math.Max(1, (int)Math.Round(
                     projectile.Damage * (1f + random.Next(-15, 16) * 0.01f)));
 
-                // StatusPvP runs before Player.Hurt in the pinned server source, so a successful dodge still keeps
-                // the status. magmaStone is an attacker-equipment effect and therefore rolls before the admitted
-                // type-specific Fire Arrow / Poisoned Knife branch, matching Projectile.StatusPvP source order.
+                // StatusPvP runs before Player.Hurt. For the admitted SetDefaults classes the source order is
+                // meleeEnchant -> Frost set -> magmaStone -> type-specific status. TryDoingOnHitEffects then runs
+                // before Hurt, so Hallowed Protection may arm even when Shimmer/ordinary dodge later returns zero.
+                if (VanillaProjectilePvpCombatFacts.CanCarryMeleeEnchantStatus(projectile.Type) &&
+                    VanillaProjectilePvpCombatFacts.TryRollMeleeEnchantStatus(
+                        attackerCombat.MeleeEnchant,
+                        random,
+                        out VanillaProjectilePvpStatusEffect enchantStatus) &&
+                    enchantStatus.IsPresent)
+                {
+                    if (!players.TryGrantAuthoritativePvpStatus(
+                            target.Connection.Player,
+                            enchantStatus.Buff,
+                            enchantStatus.DurationTicks))
+                    {
+                        continue;
+                    }
+                    AppliedStatusEffects++;
+                }
+
+                if (VanillaProjectilePvpCombatFacts.CanCarryFrostBurnStatus(projectile.Type) &&
+                    VanillaProjectilePvpCombatFacts.TryRollFrostBurnStatus(
+                        attackerCombat.FrostBurn,
+                        random,
+                        out VanillaProjectilePvpStatusEffect frostStatus) &&
+                    frostStatus.IsPresent)
+                {
+                    if (!players.TryGrantAuthoritativePvpStatus(
+                            target.Connection.Player,
+                            frostStatus.Buff,
+                            frostStatus.DurationTicks))
+                    {
+                        continue;
+                    }
+                    AppliedStatusEffects++;
+                }
+
                 if (VanillaProjectilePvpCombatFacts.TryRollMagmaStoneStatus(
                         projectile.Type,
                         attackerCombat.MagmaStone,
@@ -116,10 +150,10 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                     AppliedStatusEffects++;
                 }
 
-                // For the admitted family set only Fire Arrow and Poisoned Knife have type-specific StatusPvP
-                // effects. Difficulty duration extension belongs to Player.AddBuff and is applied by the authoritative
-                // player owner, not trusted from packet 50.
-                if (VanillaProjectilePvpCombatFacts.TryRollAdmittedStatus(projectile.Type, random, out VanillaProjectilePvpStatusEffect status) &&
+                if (VanillaProjectilePvpCombatFacts.TryRollAdmittedStatus(
+                        projectile.Type,
+                        random,
+                        out VanillaProjectilePvpStatusEffect status) &&
                     status.IsPresent)
                 {
                     if (!players.TryGrantAuthoritativePvpStatus(
@@ -132,6 +166,9 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                     AppliedStatusEffects++;
                 }
 
+                if (!players.TryGrantHallowedProtectionOnHit(owner.Connection.Player, in attackerCombat, tick))
+                    continue;
+
                 AuthoritativePvpDamageCommitResult result = players.CommitAuthoritativePvpDamage(
                     tick,
                     owner.Connection.Player,
@@ -141,6 +178,7 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                     critical: false,
                     direction,
                     VanillaProjectilePvpCombatFacts.IsDamageDodgeable(projectile.Type, projectile.Damage),
+                    allowShimmerDodge: !VanillaProjectilePvpCombatFacts.CanHitPastShimmer(projectile.Type),
                     out PlayerStateSnapshot committed);
                 if (result == AuthoritativePvpDamageCommitResult.Rejected)
                     continue;

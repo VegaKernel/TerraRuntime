@@ -28,20 +28,34 @@ public static class VanillaPlayerBuffRuntimeFacts
     }
 
     /// <summary>
-    /// Player.UpdateLifeRegen negative lifeRegen contribution for the admitted server-owned DoT subset.
-    /// Poisoned contributes -4 while On Fire! and Hellfire each contribute -8 every player update. The two fire
-    /// flags are independent in Player.UpdateLifeRegen and therefore stack when both are active. Positive
-    /// regeneration is suppressed by any admitted DoT and is not invented by this helper.
+    /// Player.UpdateLifeRegen negative lifeRegen contribution for the admitted server-owned PvP DoT subset.
+    /// Values are source-exact for 1.4.5.8 and stack independently, matching the separate player status flags.
+    /// Positive regeneration suppression is owned by the broader player-regen slice and is not invented here.
     /// </summary>
-    public static int GetBadLifeRegenDelta(bool poisoned, bool onFire, bool onFire3 = false)
+    public static int GetBadLifeRegenDelta(
+        bool poisoned,
+        bool onFire,
+        bool onFire3 = false,
+        bool venom = false,
+        bool cursedInferno = false,
+        bool frostburn = false,
+        bool frostburn2 = false)
     {
         int delta = 0;
         if (poisoned)
             delta -= 4;
+        if (venom)
+            delta -= 30;
         if (onFire)
             delta -= 8;
         if (onFire3)
             delta -= 8;
+        if (frostburn)
+            delta -= 16;
+        if (frostburn2)
+            delta -= 16;
+        if (cursedInferno)
+            delta -= 24;
         return delta;
     }
 

@@ -36,6 +36,23 @@ internal sealed class RuntimePlayerCombatBuffStore
             buffs.Remove(VanillaBuffIds.Starving.Value);
         }
 
+        // Weapon imbues project one Player.meleeEnchant byte. Keep one server-owned source active so dictionary
+        // iteration order can never invent a different enchant precedence than Player.UpdateBuffs.
+        if (type == VanillaBuffIds.WeaponImbueVenom || type == VanillaBuffIds.WeaponImbueCursedFlames ||
+            type == VanillaBuffIds.WeaponImbueFire || type == VanillaBuffIds.WeaponImbueGold ||
+            type == VanillaBuffIds.WeaponImbueIchor || type == VanillaBuffIds.WeaponImbueNanites ||
+            type == VanillaBuffIds.WeaponImbueConfetti || type == VanillaBuffIds.WeaponImbuePoison)
+        {
+            buffs.Remove(VanillaBuffIds.WeaponImbueVenom.Value);
+            buffs.Remove(VanillaBuffIds.WeaponImbueCursedFlames.Value);
+            buffs.Remove(VanillaBuffIds.WeaponImbueFire.Value);
+            buffs.Remove(VanillaBuffIds.WeaponImbueGold.Value);
+            buffs.Remove(VanillaBuffIds.WeaponImbueIchor.Value);
+            buffs.Remove(VanillaBuffIds.WeaponImbueNanites.Value);
+            buffs.Remove(VanillaBuffIds.WeaponImbueConfetti.Value);
+            buffs.Remove(VanillaBuffIds.WeaponImbuePoison.Value);
+        }
+
         long expiresAt = durationTicks > long.MaxValue - currentTick
             ? long.MaxValue
             : currentTick + durationTicks;

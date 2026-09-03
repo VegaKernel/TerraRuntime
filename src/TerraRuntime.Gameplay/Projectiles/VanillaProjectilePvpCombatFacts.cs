@@ -56,11 +56,80 @@ public static class VanillaProjectilePvpCombatFacts
     }
 
 
-    /// <summary>SetDefaults damage-class facts for the admitted projectile subset that can carry magmaStone.</summary>
+
+    /// <summary>Player.StatusToPlayerPvP / Projectile.StatusPvP weapon-imbue projection.</summary>
+    public static bool TryRollMeleeEnchantStatus(
+        byte meleeEnchant,
+        Random random,
+        out VanillaProjectilePvpStatusEffect effect)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        effect = meleeEnchant switch
+        {
+            1 => new VanillaProjectilePvpStatusEffect(VanillaBuffIds.Venom, 60 * random.Next(5, 10)),
+            2 => new VanillaProjectilePvpStatusEffect(VanillaBuffIds.CursedInferno, 60 * random.Next(3, 7)),
+            3 => new VanillaProjectilePvpStatusEffect(VanillaBuffIds.OnFire, 60 * random.Next(3, 7)),
+            5 => new VanillaProjectilePvpStatusEffect(VanillaBuffIds.Ichor, 60 * random.Next(10, 20)),
+            6 => new VanillaProjectilePvpStatusEffect(VanillaBuffIds.Confused, 60 * random.Next(1, 4)),
+            8 => new VanillaProjectilePvpStatusEffect(VanillaBuffIds.Poisoned, 60 * random.Next(5, 10)),
+            _ => default
+        };
+        // Gold (4) and Confetti (7) have no StatusToPlayerPvP debuff. Confetti's child projectile is a separate
+        // spawn-ordering slice and is deliberately not fabricated here.
+        return meleeEnchant is >= 1 and <= 8;
+    }
+
+    /// <summary>Frost armor set bonus branch shared by direct melee and melee/ranged projectile PvP hits.</summary>
+    public static bool TryRollFrostBurnStatus(
+        bool frostBurn,
+        Random random,
+        out VanillaProjectilePvpStatusEffect effect)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        if (!frostBurn)
+        {
+            effect = default;
+            return false;
+        }
+
+        effect = new VanillaProjectilePvpStatusEffect(VanillaBuffIds.Frostburn2, 60 * random.Next(1, 8));
+        return true;
+    }
+
+    /// <summary>ProjectileID.Sets.CanHitPastShimmer in TerrariaServer 1.4.5.8.</summary>
+    public static bool CanHitPastShimmer(ProjectileTypeId type) => type.Value is
+        605 or 270 or 719 or 961 or 962 or 926 or 922 or 100 or 84 or 83 or 96 or 101 or 102 or
+        275 or 276 or 277 or 258 or 259 or 384 or 385 or 386 or 874 or 872 or 873 or 871 or 683 or
+        676 or 670 or 675 or 686 or 687 or 467 or 468 or 464 or 465 or 466 or 526 or 456 or 462 or
+        455 or 452 or 454 or 949 or 1041 or 1125;
+
+    /// <summary>SetDefaults damage-class facts for the admitted projectile subset.</summary>
     public static bool IsAdmittedMeleeProjectile(ProjectileTypeId type) =>
         type == VanillaProjectileIds.EnchantedBoomerang ||
         type == VanillaProjectileIds.Waffle ||
         type == VanillaProjectileIds.MeleeBone;
+
+    public static bool IsAdmittedRangedProjectile(ProjectileTypeId type) =>
+        type == VanillaProjectileIds.WoodenArrowFriendly ||
+        type == VanillaProjectileIds.FireArrow ||
+        type == VanillaProjectileIds.Shuriken ||
+        type == VanillaProjectileIds.UnholyArrow ||
+        type == VanillaProjectileIds.JestersArrow ||
+        type == VanillaProjectileIds.Bullet ||
+        type == VanillaProjectileIds.Bone ||
+        type == VanillaProjectileIds.ThrowingKnife ||
+        type == VanillaProjectileIds.Seed ||
+        type == VanillaProjectileIds.PoisonedKnife ||
+        type == VanillaProjectileIds.RottenEgg ||
+        type == VanillaProjectileIds.StarAnise ||
+        type == VanillaProjectileIds.BoneArrowFromMerchant ||
+        type == VanillaProjectileIds.BoneDagger ||
+        type == VanillaProjectileIds.BoneShard;
+
+    public static bool CanCarryMeleeEnchantStatus(ProjectileTypeId type) => IsAdmittedMeleeProjectile(type);
+
+    public static bool CanCarryFrostBurnStatus(ProjectileTypeId type) =>
+        IsAdmittedMeleeProjectile(type) || IsAdmittedRangedProjectile(type);
 
     /// <summary>Projectile.StatusPvP magmaStone branch for admitted melee projectiles (noEnchantments=false).</summary>
     public static bool TryRollMagmaStoneStatus(

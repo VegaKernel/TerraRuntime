@@ -288,6 +288,81 @@ public sealed class VanillaCombatIntegrityCatalogTests
             VanillaBuffIds.OnFire3, 180, expertMode: true, masterMode: true));
     }
 
+    [Fact]
+    public void Hardmode_pvp_armor_sets_project_hallowed_and_frost_combat_state()
+    {
+        Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild(
+            [
+                Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 0, new ItemTypeId(559)),
+                Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 1, new ItemTypeId(551)),
+                Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 2, new ItemTypeId(552))
+            ],
+            out VanillaPlayerCombatSnapshot hallowed));
+        Assert.True(hallowed.HallowedOnHitDodge);
+        Assert.Equal(50, hallowed.Defense);
+        Assert.Equal(1.17f, hallowed.MeleeDamage, 3);
+        Assert.Equal(21, hallowed.MeleeCrit);
+
+        Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild(
+            [
+                Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 0, new ItemTypeId(684)),
+                Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 1, new ItemTypeId(685)),
+                Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 2, new ItemTypeId(686))
+            ],
+            out VanillaPlayerCombatSnapshot frost));
+        Assert.True(frost.FrostBurn);
+        Assert.Equal(43, frost.Defense);
+        Assert.Equal(1.26f, frost.MeleeDamage, 3);
+        Assert.Equal(1.26f, frost.RangedDamage, 3);
+        Assert.Equal(15, frost.MeleeCrit);
+        Assert.Equal(1.1f, frost.MeleeAttackSpeed, 3);
+    }
+
+    [Fact]
+    public void Weapon_imbues_frost_and_shimmer_project_source_backed_pvp_state()
+    {
+        VanillaPlayerCombatSnapshot snapshot = VanillaPlayerCombatSnapshot.Baseline;
+        Assert.True(VanillaPlayerCombatBuffCatalog.TryApply(VanillaBuffIds.WeaponImbueIchor, ref snapshot));
+        Assert.Equal(5, snapshot.MeleeEnchant);
+        Assert.True(VanillaPlayerCombatBuffCatalog.TryApply(VanillaBuffIds.Shimmer, ref snapshot));
+        Assert.True(snapshot.Shimmering);
+
+        Assert.True(VanillaProjectilePvpCombatFacts.TryRollMeleeEnchantStatus(
+            5, new MinimumRandom(), out VanillaProjectilePvpStatusEffect ichor));
+        Assert.Equal(VanillaBuffIds.Ichor, ichor.Buff);
+        Assert.Equal(600, ichor.DurationTicks);
+
+        Assert.True(VanillaProjectilePvpCombatFacts.TryRollFrostBurnStatus(
+            true, new MinimumRandom(), out VanillaProjectilePvpStatusEffect frostburn));
+        Assert.Equal(VanillaBuffIds.Frostburn2, frostburn.Buff);
+        Assert.Equal(60, frostburn.DurationTicks);
+
+        Assert.True(VanillaProjectilePvpCombatFacts.CanCarryMeleeEnchantStatus(VanillaProjectileIds.EnchantedBoomerang));
+        Assert.False(VanillaProjectilePvpCombatFacts.CanCarryMeleeEnchantStatus(VanillaProjectileIds.FireArrow));
+        Assert.True(VanillaProjectilePvpCombatFacts.CanCarryFrostBurnStatus(VanillaProjectileIds.FireArrow));
+        Assert.False(VanillaProjectilePvpCombatFacts.CanHitPastShimmer(VanillaProjectileIds.FireArrow));
+        Assert.True(VanillaProjectilePvpCombatFacts.CanHitPastShimmer(new ProjectileTypeId(719)));
+    }
+
+    [Fact]
+    public void Expanded_pvp_dot_subset_matches_player_update_life_regen_values()
+    {
+        Assert.Equal(-30, VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(
+            poisoned: false, onFire: false, venom: true));
+        Assert.Equal(-24, VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(
+            poisoned: false, onFire: false, cursedInferno: true));
+        Assert.Equal(-16, VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(
+            poisoned: false, onFire: false, frostburn2: true));
+        Assert.Equal(-74, VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(
+            poisoned: true, onFire: true, onFire3: true, venom: true, cursedInferno: true, frostburn: false, frostburn2: false));
+    }
+
+    private sealed class MinimumRandom : Random
+    {
+        public override int Next(int maxValue) => 0;
+        public override int Next(int minValue, int maxValue) => minValue;
+    }
+
     private sealed class ConstantRandom(int value) : Random
     {
         public override int Next(int maxValue) => Math.Clamp(value, 0, Math.Max(0, maxValue - 1));

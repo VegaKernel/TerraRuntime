@@ -31,6 +31,10 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     bool MagicQuiver,
     bool MoltenQuiver,
     bool MagmaStone,
+    bool FrostBurn,
+    byte MeleeEnchant,
+    bool HallowedOnHitDodge,
+    bool Shimmering,
     bool AmmoCost80,
     bool MysticSashDodge,
     bool BlackBeltDodge,
@@ -62,6 +66,10 @@ public readonly record struct VanillaPlayerCombatSnapshot(
         MagicQuiver: false,
         MoltenQuiver: false,
         MagmaStone: false,
+        FrostBurn: false,
+        MeleeEnchant: 0,
+        HallowedOnHitDodge: false,
+        Shimmering: false,
         AmmoCost80: false,
         MysticSashDodge: false,
         BlackBeltDodge: false,
@@ -224,6 +232,17 @@ public static class VanillaPlayerCombatEquipmentCatalog
             case 231: requiredIndex = 0; defense = 8; break; // Molten
             case 232: requiredIndex = 1; defense = 9; break;
             case 233: requiredIndex = 2; defense = 8; break;
+
+            // Hardmode PvP-critical armor families. Ancient Hallowed pieces are stat-identical source variants.
+            case 558: case 4898: requiredIndex = 0; defense = 5; break; // Hallowed Headgear
+            case 559: case 4896: requiredIndex = 0; defense = 24; break; // Hallowed Mask
+            case 553: case 4897: requiredIndex = 0; defense = 9; break; // Hallowed Helmet
+            case 4873: case 4899: requiredIndex = 0; defense = 1; break; // Hallowed Hood
+            case 551: case 4900: requiredIndex = 1; defense = 15; break; // Hallowed Plate Mail
+            case 552: case 4901: requiredIndex = 2; defense = 11; break; // Hallowed Greaves
+            case 684: requiredIndex = 0; defense = 10; break; // Frost Helmet
+            case 685: requiredIndex = 1; defense = 20; break; // Frost Breastplate
+            case 686: requiredIndex = 2; defense = 13; break; // Frost Leggings
             default: return false;
         }
 
@@ -280,6 +299,47 @@ public static class VanillaPlayerCombatEquipmentCatalog
                     RangedDamage = snapshot.RangedDamage + 0.03f,
                     MagicDamage = snapshot.MagicDamage + 0.03f
                 };
+                break;
+            case 558: case 4898:
+                snapshot = snapshot with { MagicDamage = snapshot.MagicDamage + 0.12f, MagicCrit = snapshot.MagicCrit + 12 };
+                break;
+            case 559: case 4896:
+                snapshot = snapshot with
+                {
+                    MeleeCrit = snapshot.MeleeCrit + 10,
+                    MeleeDamage = snapshot.MeleeDamage + 0.1f,
+                    MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.1f
+                };
+                break;
+            case 553: case 4897:
+                snapshot = snapshot with { RangedDamage = snapshot.RangedDamage + 0.15f, RangedCrit = snapshot.RangedCrit + 8 };
+                break;
+            case 4873: case 4899:
+                break; // summon-only per-piece modifiers are outside this damage-class slice.
+            case 551: case 4900:
+                snapshot = snapshot with
+                {
+                    MeleeCrit = snapshot.MeleeCrit + 7,
+                    RangedCrit = snapshot.RangedCrit + 7,
+                    MagicCrit = snapshot.MagicCrit + 7
+                };
+                break;
+            case 552: case 4901:
+                snapshot = snapshot with
+                {
+                    MeleeDamage = snapshot.MeleeDamage + 0.07f,
+                    RangedDamage = snapshot.RangedDamage + 0.07f,
+                    MagicDamage = snapshot.MagicDamage + 0.07f
+                };
+                break;
+            case 684:
+                snapshot = snapshot with { MeleeDamage = snapshot.MeleeDamage + 0.16f, RangedDamage = snapshot.RangedDamage + 0.16f };
+                break;
+            case 685:
+                snapshot = snapshot with { MeleeCrit = snapshot.MeleeCrit + 11, RangedCrit = snapshot.RangedCrit + 11 };
+                break;
+            case 686:
+                snapshot = snapshot with { MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.1f };
                 break;
             case 231:
                 snapshot = snapshot with { MeleeCrit = snapshot.MeleeCrit + 7 };
@@ -343,6 +403,20 @@ public static class VanillaPlayerCombatEquipmentCatalog
         else if (head.Value == 231 && body.Value == 232 && legs.Value == 233)
         {
             snapshot = snapshot with { MeleeDamage = snapshot.MeleeDamage + 0.1f };
+        }
+        else if ((head.Value is 558 or 553 or 559 or 4873 or 4898 or 4897 or 4896 or 4899) &&
+                 (body.Value is 551 or 4900) && (legs.Value is 552 or 4901))
+        {
+            snapshot = snapshot with { HallowedOnHitDodge = true };
+        }
+        else if (head.Value == 684 && body.Value == 685 && legs.Value == 686)
+        {
+            snapshot = snapshot with
+            {
+                FrostBurn = true,
+                MeleeDamage = snapshot.MeleeDamage + 0.1f,
+                RangedDamage = snapshot.RangedDamage + 0.1f
+            };
         }
         // Ninja, Shadow, Crimson, Meteor and Jungle full-set bonuses do not change the currently modeled
         // melee/ranged damage/crit/defense/knockback inputs beyond their per-piece effects above.
