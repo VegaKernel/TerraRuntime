@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Buffs;
 using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Tests;
@@ -114,6 +115,193 @@ public sealed class VanillaCombatIntegrityCatalogTests
         Assert.Equal(15, expert.Damage);
         Assert.True(VanillaCombatDamagePipeline.TryResolvePvp(in attack, in target, false, out FinalDamageToHp master, expertMode: true, masterMode: true));
         Assert.Equal(14, master.Damage);
+    }
+
+
+    [Fact]
+    public void Server_confirmed_combat_buffs_modify_the_same_authoritative_snapshot()
+    {
+        VanillaPlayerCombatSnapshot snapshot = VanillaPlayerCombatSnapshot.Baseline;
+        BuffTypeId[] buffs =
+        [
+            VanillaBuffIds.Archery,
+            VanillaBuffIds.Rage,
+            VanillaBuffIds.Wrath,
+            VanillaBuffIds.AmmoReservation,
+            VanillaBuffIds.WellFed
+        ];
+
+        Assert.True(VanillaPlayerCombatBuffCatalog.TryApply(buffs, ref snapshot));
+        Assert.True(snapshot.Archery);
+        Assert.True(snapshot.AmmoPotion);
+        Assert.Equal(1.15f, snapshot.MeleeDamage, 3);
+        Assert.Equal(1.15f, snapshot.RangedDamage, 3);
+        Assert.Equal(1.15f, snapshot.MagicDamage, 3);
+        Assert.Equal(1.1f, snapshot.ArrowDamage, 3);
+        Assert.Equal(16, snapshot.MeleeCrit);
+        Assert.Equal(16, snapshot.RangedCrit);
+        Assert.Equal(16, snapshot.MagicCrit);
+        Assert.Equal(1.05f, snapshot.MeleeAttackSpeed, 3);
+        Assert.Equal(2, snapshot.Defense);
+    }
+
+    [Fact]
+    public void Weak_and_hunger_debuffs_reduce_authoritative_attacker_stats()
+    {
+        VanillaPlayerCombatSnapshot snapshot = VanillaPlayerCombatSnapshot.Baseline;
+        Assert.True(VanillaPlayerCombatBuffCatalog.TryApply(VanillaBuffIds.Weak, ref snapshot));
+        Assert.True(VanillaPlayerCombatBuffCatalog.TryApply(VanillaBuffIds.Hunger, ref snapshot));
+
+        Assert.Equal(0.899f, snapshot.MeleeDamage, 3);
+        Assert.Equal(0.95f, snapshot.RangedDamage, 3);
+        Assert.Equal(0.95f, snapshot.MagicDamage, 3);
+        Assert.Equal(0.899f, snapshot.MeleeAttackSpeed, 3);
+        Assert.Equal(-6, snapshot.Defense);
+        Assert.Equal(2, snapshot.RangedCrit);
+    }
+
+    [Fact]
+    public void Archery_buff_changes_arrow_damage_and_launch_speed_with_vanilla_cap()
+    {
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetWeapon(VanillaItemIds.CopperBow, out VanillaProjectileWeaponCombatDefinition weapon));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetArrowAmmo(VanillaItemIds.WoodenArrow, out VanillaProjectileAmmoCombatDefinition ammo));
+        VanillaCombatPrefixModifiers prefix = VanillaCombatPrefixModifiers.Identity;
+        VanillaPlayerCombatSnapshot attacker = VanillaPlayerCombatSnapshot.Baseline;
+        Assert.True(VanillaPlayerCombatBuffCatalog.TryApply(VanillaBuffIds.Archery, ref attacker));
+
+        VanillaLaunchSpeedEnvelope envelope = VanillaProjectileWeaponCombatCatalog.ResolveLaunchSpeedEnvelope(
+            in weapon, in ammo, in prefix, in attacker);
+        Assert.Equal((6.6f + 3f) * 1.2f, envelope.CanonicalMagnitude, 4);
+        Assert.Equal(11, VanillaProjectileWeaponCombatCatalog.ResolveDamage(in weapon, in ammo, in prefix, in attacker));
+    }
+
+    [Fact]
+    public void Expanded_combat_accessories_project_all_supported_class_stats()
+    {
+        PlayerEquipmentCommitRequest[] equipment =
+        [
+            Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 3, VanillaItemIds.PutridScent),
+            Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 4, VanillaItemIds.SniperScope),
+            Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 5, VanillaItemIds.CelestialEmblem)
+        ];
+
+        Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, out VanillaPlayerCombatSnapshot snapshot));
+        Assert.Equal(1.05f, snapshot.MeleeDamage, 3);
+        Assert.Equal(1.15f, snapshot.RangedDamage, 3);
+        Assert.Equal(1.20f, snapshot.MagicDamage, 3);
+        Assert.Equal(9, snapshot.MeleeCrit);
+        Assert.Equal(19, snapshot.RangedCrit);
+        Assert.Equal(9, snapshot.MagicCrit);
+    }
+
+    [Fact]
+    public void Magma_stone_equipment_and_projectile_status_match_supported_source_slice()
+    {
+        PlayerEquipmentCommitRequest[] gauntlet =
+        [
+            Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 3, VanillaItemIds.FireGauntlet)
+        ];
+        Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild(gauntlet, out VanillaPlayerCombatSnapshot gauntletSnapshot));
+        Assert.True(gauntletSnapshot.MagmaStone);
+
+        PlayerEquipmentCommitRequest[] stone =
+        [
+            Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 3, VanillaItemIds.MagmaStone)
+        ];
+        Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild(stone, out VanillaPlayerCombatSnapshot stoneSnapshot));
+        Assert.True(stoneSnapshot.MagmaStone);
+
+        Assert.True(VanillaProjectilePvpCombatFacts.IsAdmittedMeleeProjectile(VanillaProjectileIds.EnchantedBoomerang));
+        Assert.True(VanillaProjectilePvpCombatFacts.IsAdmittedMeleeProjectile(VanillaProjectileIds.Waffle));
+        Assert.True(VanillaProjectilePvpCombatFacts.IsAdmittedMeleeProjectile(VanillaProjectileIds.MeleeBone));
+        Assert.False(VanillaProjectilePvpCombatFacts.IsAdmittedMeleeProjectile(VanillaProjectileIds.FireArrow));
+
+        Assert.True(VanillaProjectilePvpCombatFacts.TryRollMagmaStoneStatus(
+            VanillaProjectileIds.EnchantedBoomerang, magmaStone: true, new ConstantRandom(0), out VanillaProjectilePvpStatusEffect longFire));
+        Assert.Equal(VanillaBuffIds.OnFire, longFire.Buff);
+        Assert.Equal(360, longFire.DurationTicks);
+
+        Assert.True(VanillaProjectilePvpCombatFacts.TryRollMagmaStoneStatus(
+            VanillaProjectileIds.EnchantedBoomerang, magmaStone: true, new SequenceRandom(1, 0), out VanillaProjectilePvpStatusEffect mediumFire));
+        Assert.Equal(240, mediumFire.DurationTicks);
+
+        Assert.True(VanillaProjectilePvpCombatFacts.TryRollMagmaStoneStatus(
+            VanillaProjectileIds.EnchantedBoomerang, magmaStone: true, new ConstantRandom(1), out VanillaProjectilePvpStatusEffect shortFire));
+        Assert.Equal(120, shortFire.DurationTicks);
+    }
+
+    [Fact]
+    public void Admitted_projectile_pvp_statuses_match_source_chances_and_durations()
+    {
+        var proc = new ConstantRandom(0);
+        Assert.True(VanillaProjectilePvpCombatFacts.TryRollAdmittedStatus(
+            VanillaProjectileIds.FireArrow, proc, out VanillaProjectilePvpStatusEffect fire));
+        Assert.True(fire.IsPresent);
+        Assert.Equal(VanillaBuffIds.OnFire, fire.Buff);
+        Assert.Equal(180, fire.DurationTicks);
+
+        Assert.True(VanillaProjectilePvpCombatFacts.TryRollAdmittedStatus(
+            VanillaProjectileIds.PoisonedKnife, proc, out VanillaProjectilePvpStatusEffect poison));
+        Assert.True(poison.IsPresent);
+        Assert.Equal(VanillaBuffIds.Poisoned, poison.Buff);
+        Assert.Equal(600, poison.DurationTicks);
+
+        var miss = new ConstantRandom(1);
+        Assert.True(VanillaProjectilePvpCombatFacts.TryRollAdmittedStatus(
+            VanillaProjectileIds.FireArrow, miss, out VanillaProjectilePvpStatusEffect missedFire));
+        Assert.False(missedFire.IsPresent);
+        Assert.True(VanillaProjectilePvpCombatFacts.TryRollAdmittedStatus(
+            VanillaProjectileIds.PoisonedKnife, miss, out VanillaProjectilePvpStatusEffect missedPoison));
+        Assert.False(missedPoison.IsPresent);
+    }
+
+    [Fact]
+    public void Projectile_debuff_duration_and_dot_accumulator_match_player_update_rules()
+    {
+        Assert.Equal(180, VanillaPlayerBuffRuntimeFacts.ResolveDuration(VanillaBuffIds.OnFire, 180, expertMode: false, masterMode: false));
+        Assert.Equal(360, VanillaPlayerBuffRuntimeFacts.ResolveDuration(VanillaBuffIds.OnFire, 180, expertMode: true, masterMode: false));
+        Assert.Equal(450, VanillaPlayerBuffRuntimeFacts.ResolveDuration(VanillaBuffIds.OnFire, 180, expertMode: true, masterMode: true));
+
+        int fireCount = 0;
+        int fireDamage = 0;
+        for (int i = 0; i < 15; i++)
+        {
+            fireCount += VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(poisoned: false, onFire: true);
+            fireDamage += VanillaPlayerBuffRuntimeFacts.ConsumeBadLifeRegenDamage(ref fireCount);
+        }
+        Assert.Equal(1, fireDamage);
+        Assert.Equal(0, fireCount);
+
+        int poisonCount = 0;
+        int poisonDamage = 0;
+        for (int i = 0; i < 30; i++)
+        {
+            poisonCount += VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(poisoned: true, onFire: false);
+            poisonDamage += VanillaPlayerBuffRuntimeFacts.ConsumeBadLifeRegenDamage(ref poisonCount);
+        }
+        Assert.Equal(1, poisonDamage);
+        Assert.Equal(0, poisonCount);
+
+        Assert.Equal(-16, VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(
+            poisoned: false, onFire: true, onFire3: true));
+        Assert.Equal(450, VanillaPlayerBuffRuntimeFacts.ResolveDuration(
+            VanillaBuffIds.OnFire3, 180, expertMode: true, masterMode: true));
+    }
+
+    private sealed class ConstantRandom(int value) : Random
+    {
+        public override int Next(int maxValue) => Math.Clamp(value, 0, Math.Max(0, maxValue - 1));
+    }
+
+    private sealed class SequenceRandom(params int[] values) : Random
+    {
+        private int index;
+
+        public override int Next(int maxValue)
+        {
+            int value = values.Length == 0 ? 0 : values[Math.Min(index++, values.Length - 1)];
+            return Math.Clamp(value, 0, Math.Max(0, maxValue - 1));
+        }
     }
 
     private static PlayerEquipmentCommitRequest Equipment(short slot, ItemTypeId item, byte prefix = 0) =>
