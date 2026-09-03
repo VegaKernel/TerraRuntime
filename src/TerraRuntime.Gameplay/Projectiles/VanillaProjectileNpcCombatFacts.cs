@@ -45,9 +45,21 @@ public static class VanillaProjectileNpcCombatFacts
     }
 
     /// <summary>
-    /// Terraria's ordinary owner immunity is longer and type-dependent in some families. Ten ticks is the verified
-    /// baseline used by the currently admitted simple arrow/thrown slice; exceptional local/static immunity types are
-    /// intentionally excluded until their own facts are imported.
+    /// Terraria Projectile.Damage bypasses NPC.immune[owner] for ordinary single-penetration projectiles
+    /// (maxPenetrate == 1) and, unless appliesImmunityTimeOnSingleHits is set, does not write the ordinary owner
+    /// immunity after that hit. Every currently admitted multi/infinite-penetration type uses the ordinary shared
+    /// owner immunity rather than local/static projectile immunity.
     /// </summary>
-    public const int BaselineNpcHitCooldownTicks = 10;
+    public static bool UsesSharedOwnerNpcImmunity(ProjectileTypeId type)
+    {
+        if (!TryGetInitialPenetration(type, out int penetration))
+            return false;
+        return penetration != 1;
+    }
+
+    /// <summary>
+    /// Terraria's ordinary fallback after an admitted multi/infinite-penetration hit writes NPC.immune[owner] = 10.
+    /// Exceptional type-specific local/static immunity projectiles remain outside this catalog and fail closed.
+    /// </summary>
+    public const int BaselineOwnerNpcHitCooldownTicks = 10;
 }

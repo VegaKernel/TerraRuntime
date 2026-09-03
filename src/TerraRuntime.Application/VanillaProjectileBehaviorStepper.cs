@@ -23,7 +23,8 @@ internal readonly record struct VanillaProjectileBehaviorResult(
     float? Ai1Override = null,
     float? PositionXOverride = null,
     float? PositionYOverride = null,
-    bool Kill = false);
+    bool Kill = false,
+    bool? TileCollideOverride = null);
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile behavior that is independent of tile/world queries.
@@ -112,6 +113,9 @@ internal static class VanillaProjectileBehaviorStepper
                     velocityY = MaximumArrowFallSpeed;
                 break;
 
+            case VanillaProjectileBehaviorFamily.Boomerang:
+                return TryStepEnchantedBoomerang(in current, in definition, context.PlayerSnapshots, out next);
+
             case VanillaProjectileBehaviorFamily.SkeletronSkull:
                 float ai1 = current.Ai.Ai1 + 1f;
                 ai1Override = ai1;
@@ -174,6 +178,110 @@ internal static class VanillaProjectileBehaviorStepper
 
         next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, ai1Override);
         return true;
+    }
+
+
+    private static bool TryStepEnchantedBoomerang(
+        in ProjectileSnapshot current,
+        in VanillaProjectileDefinition definition,
+        IRuntimePlayerSlotSnapshotLookup? players,
+        out VanillaProjectileBehaviorResult next)
+    {
+        if (current.Type != VanillaProjectileIds.EnchantedBoomerang ||
+            players is null ||
+            !VanillaProjectileOwnership.IsPlayerOwned(current.Spawner) ||
+            !players.TryGetPlayer(new PlayerSlotId(current.Spawner), out PlayerStateSnapshot owner) ||
+            !owner.Player.IsAssigned ||
+            owner.Player.Slot.Value != current.Spawner ||
+            owner.IsDead)
+        {
+            next = default;
+            return false;
+        }
+
+        float ai0 = current.Ai.Ai0;
+        float ai1 = current.Ai.Ai1;
+        float velocityX = current.VelocityX;
+        float velocityY = current.VelocityY;
+
+        // Projectile.AI_003_Boomerang, type 6. While outbound ai[1] counts to 30. The tick that flips
+        // ai[0] to the return phase still uses outbound tile collision; homing begins on the next update.
+        if (ai0 == 0f)
+        {
+            ai1 += 1f;
+            if (ai1 >= 30f)
+            {
+                ai0 = 1f;
+                ai1 = 0f;
+            }
+
+            next = new VanillaProjectileBehaviorResult(
+                velocityX,
+                velocityY,
+                ai0,
+                Ai1Override: ai1);
+            return true;
+        }
+
+        // The generic return path disables tile collision and accelerates toward the owning player. Vanilla's
+        // melee-speed scaling is intentionally not guessed here; until authoritative meleeSpeed exists the verified
+        // baseline is the ResetEffects value of 1, yielding speed 9 and acceleration 0.4 for type 6.
+        const float returnSpeed = 9f;
+        const float returnAcceleration = 0.4f;
+        float centerX = current.PositionX + definition.Width * 0.5f;
+        float centerY = current.PositionY + definition.Height * 0.5f;
+        float ownerCenterX = owner.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float ownerCenterY = owner.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        float dx = ownerCenterX - centerX;
+        float dy = ownerCenterY - centerY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+
+        if (distance > 3000f)
+        {
+            next = new VanillaProjectileBehaviorResult(
+                velocityX, velocityY, ai0, Ai1Override: ai1, Kill: true, TileCollideOverride: false);
+            return true;
+        }
+
+        if (distance > 0f)
+        {
+            float scale = returnSpeed / distance;
+            float desiredX = dx * scale;
+            float desiredY = dy * scale;
+            AccelerateAxis(ref velocityX, desiredX, returnAcceleration);
+            AccelerateAxis(ref velocityY, desiredY, returnAcceleration);
+        }
+
+        bool intersectsOwner =
+            current.PositionX < owner.PositionX + PlayerAuthority.VanillaBasePlayerWidth &&
+            current.PositionX + definition.Width > owner.PositionX &&
+            current.PositionY < owner.PositionY + PlayerAuthority.VanillaBasePlayerHeight &&
+            current.PositionY + definition.Height > owner.PositionY;
+
+        next = new VanillaProjectileBehaviorResult(
+            velocityX,
+            velocityY,
+            ai0,
+            Ai1Override: ai1,
+            Kill: intersectsOwner,
+            TileCollideOverride: false);
+        return true;
+    }
+
+    private static void AccelerateAxis(ref float velocity, float desired, float acceleration)
+    {
+        if (velocity < desired)
+        {
+            velocity += acceleration;
+            if (velocity < 0f && desired > 0f)
+                velocity += acceleration;
+        }
+        else if (velocity > desired)
+        {
+            velocity -= acceleration;
+            if (velocity > 0f && desired < 0f)
+                velocity -= acceleration;
+        }
     }
 
     private static bool TryStepDeerclopsShadowHand(

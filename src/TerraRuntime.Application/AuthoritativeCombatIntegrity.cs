@@ -91,32 +91,28 @@ internal sealed class AuthoritativeCombatCalculator
         if (players.TryCaptureEquipment(connection, out PlayerEquipmentCommitRequest[] equipment) && equipment.Length != 0)
             return CombatIntegrityReason.UnmodeledEquipment;
 
-        int itemDamage = Math.Max(1, (int)Math.Round(weapon.BaseDamage * prefix.DamageMultiplier));
-        int minDamage = Math.Max(1, (int)Math.Round(itemDamage * 0.85f));
-        int maxDamage = Math.Max(minDamage, (int)Math.Round(itemDamage * 1.15f));
-        int rolledPercent = random.Next(-15, 16);
-        int authoritativeDamage = Math.Max(1, (int)Math.Round(itemDamage * (1f + rolledPercent / 100f)));
-        int critChance = Math.Clamp(weapon.BaseCrit + prefix.CritBonus, 0, 100);
-        bool critical = random.Next(1, 101) <= critChance;
-        int animationTicks = Math.Max(1, (int)Math.Round(weapon.AnimationTicks * prefix.SpeedMultiplier));
-        int useTimeTicks = Math.Max(1, (int)Math.Round(weapon.UseTimeTicks * prefix.SpeedMultiplier));
-        float knockBack = Math.Max(0f, weapon.BaseKnockBack * prefix.KnockBackMultiplier);
+        VanillaResolvedDirectMeleeUse resolved = VanillaDirectMeleeCombatMath.Resolve(
+            in weapon,
+            in prefix,
+            random.Next(-15, 16),
+            random.Next(1, 101),
+            pvp: false);
 
         roll = new AuthoritativeCombatRoll(
             new NpcDamageRequest(
                 target.Handle,
                 DamageSource.FromPlayerItem(connection.Player),
-                authoritativeDamage,
-                ArmorPenetration: prefix.ArmorPenetration,
-                Critical: critical,
-                KnockBack: knockBack,
+                resolved.Damage,
+                ArmorPenetration: resolved.ArmorPenetration,
+                Critical: resolved.Critical,
+                KnockBack: resolved.KnockBack,
                 HitDirection: hitDirection),
-            minDamage,
-            maxDamage,
-            animationTicks,
-            useTimeTicks,
-            weapon.ImpossibleCenterDistancePixels,
-            critChance);
+            resolved.MinimumDamage,
+            resolved.MaximumDamage,
+            resolved.AnimationTicks,
+            resolved.UseTimeTicks,
+            resolved.ImpossibleCenterDistancePixels,
+            resolved.CritChance);
         return CombatIntegrityReason.None;
     }
 }
@@ -134,6 +130,7 @@ internal sealed class CombatValidator
     private const int DiagnosticCapacity = 256;
     private readonly int npcCapacity;
     private readonly long[] lastHitTick;
+    private readonly long[] lastAttackTick = new long[PlayerSlots];
     private readonly int[] dpsDamage;
     private readonly long[] dpsEpoch;
     private readonly float[] suspicion = new float[PlayerSlots];
@@ -153,6 +150,7 @@ internal sealed class CombatValidator
         int pairs = checked(PlayerSlots * npcCapacity);
         lastHitTick = new long[pairs];
         Array.Fill(lastHitTick, long.MinValue);
+        Array.Fill(lastAttackTick, long.MinValue);
         dpsDamage = new int[checked(pairs * DpsBucketCount)];
         dpsEpoch = new long[dpsDamage.Length];
         Array.Fill(dpsEpoch, long.MinValue);
@@ -186,6 +184,13 @@ internal sealed class CombatValidator
         if (dx * dx + dy * dy > maxRange * maxRange)
             return Reject(tick, player.Player, target.Handle, CombatIntegrityReason.TargetOutOfRange, wire.Damage, in roll, 3f, out diagnostic);
 
+        long previousAttack = lastAttackTick[playerSlot];
+        // One use can legitimately touch more than one target on the same tick. A later tick, however, is a new
+        // use and cannot occur before the source-backed useTime gate has elapsed. This closes the old per-target
+        // cadence hole without turning a multi-target melee swing into false-positive anti-cheat noise.
+        if (previousAttack != long.MinValue && tick != previousAttack && tick - previousAttack < roll.UseTimeTicks)
+            return Reject(tick, player.Player, target.Handle, CombatIntegrityReason.AttackCadence, wire.Damage, in roll, 2f, out diagnostic);
+
         int pair = checked(playerSlot * npcCapacity + target.Handle.Slot);
         long previous = lastHitTick[pair];
         if (previous != long.MinValue && tick - previous < roll.AnimationTicks)
@@ -201,6 +206,7 @@ internal sealed class CombatValidator
         if (dps + roll.Request.BaseDamage > dpsCeiling)
             return Reject(tick, player.Player, target.Handle, CombatIntegrityReason.DpsCeiling, clientDamage, in roll, 3f, out diagnostic);
 
+        lastAttackTick[playerSlot] = tick;
         lastHitTick[pair] = tick;
         AddDps(pair, tick, roll.Request.BaseDamage);
         TrackClaimStatistics(playerSlot, in wire, in roll);

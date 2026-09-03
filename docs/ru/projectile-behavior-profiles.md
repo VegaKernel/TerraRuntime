@@ -37,7 +37,7 @@ Runtime работает fail-closed, пока одновременно не в�
 |---|---|---|
 | `BasicArrow` | реализован | требуется default `ai[2]`; только явно перечисленные types |
 | `Thrown` | реализован | явное source-backed membership |
-| `Boomerang` | известен, но не реализован | сохраняет проверенное исключение из pre-AI world-bounds |
+| `Boomerang` | реализован source-backed runtime для type 6 | outbound-таймер, возврат к владельцу, отключение tile collision на return-фазе и проверенное исключение из pre-AI world-bounds |
 
 Green Laser намеренно не спрятан внутри generic basic-arrow пути. Его profile содержит `RejectServerOwned`, потому что dedicated-server owner branch меняет gameplay state, которого текущая authoritative model ещё не представляет.
 
@@ -75,7 +75,7 @@ flowchart TD
 
 - явную классификацию текущих basic-arrow и thrown types;
 - owner-gated исключение Green Laser;
-- известный, но пока не реализованный boomerang profile;
+- source-backed профиль Enchanted Boomerang с outbound/return-фазами, возвратом к владельцу и отключением tile collision на return-фазе;
 - соответствие profile каждому source-backed definition `aiStyle`;
 - fail-closed поведение при несовпадении definition и runtime profile;
 - отсутствие автоматического вывода поведения для unprofiled projectile.
@@ -98,9 +98,9 @@ flowchart LR
     Damage --> Penetration["source-backed penetration consumption"]
 ```
 
-Runtime-only combat trust привязан к точной generation. Projectile, созданный через server runtime command path, может быть помечен как combat-trusted; новая generation из клиентского packet 27 **не** становится trusted только потому, что owner byte совпал с connection. Существующая клиентская generation также не может переписать `type`, `damage`, `originalDamage` или `knockBack`, сохранив ту же wire identity. Это не даёт новому server-side NPC hit pass превратить непроверенный клиентский projectile claim в authoritative world damage.
+Runtime-only combat trust привязан к точной generation. Projectile, созданный через server runtime command path, может быть помечен как combat-trusted; новая generation из клиентского packet 27 **не** становится trusted только потому, что owner byte совпал с connection. После пометки generation как combat-trusted владелец через packet 27/29 уже не может переписать её position/velocity/AI, identity/damage-поля или досрочно уничтожить. Untrusted compatibility-generation сохраняет bounded owner updates, но не допускается к authoritative NPC combat. Это не даёт новому server-side NPC hit pass превратить непроверенный клиентский projectile claim в authoritative world damage.
 
-Для combat-trusted player projectiles текущий hit pass допускает только behavior profiles с уже реализованными source-backed collision/penetration semantics. Первый slice покрывает выбранные `BasicArrow`/`Thrown` projectiles, выбирает live generation-safe NPC по source-backed AABB geometry, применяет bounded baseline cooldown для пары projectile/NPC, коммитит damage/death через существующий NPC combat pipeline и только после успешного hit расходует source-backed penetration. Positive penetration уменьшается; последний hit despawn-ит точную generation; infinite penetration остаётся активным. Порядок детерминирован physical projectile slot, затем physical NPC slot.
+Для combat-trusted player projectiles текущий hit pass допускает только behavior profiles с уже реализованными source-backed collision/penetration semantics. Первый slice покрывает выбранные `BasicArrow`/`Thrown` projectiles и source-backed Enchanted Boomerang, выбирает live generation-safe NPC по source-backed AABB geometry, применяет bounded baseline cooldown для пары projectile/NPC, коммитит damage/death через существующий NPC combat pipeline и только после успешного hit расходует source-backed penetration. Positive penetration уменьшается; последний hit despawn-ит точную generation; infinite penetration остаётся активным. Порядок детерминирован physical projectile slot, затем physical NPC slot.
 
 World motion уже владеет tile collision, liquid contact, world bounds и source-backed lifetime. Новый pass добавляет entity collision и обычные NPC damage side effects, не возвращая эти обязанности в packet handling.
 

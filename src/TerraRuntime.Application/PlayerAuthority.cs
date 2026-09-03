@@ -24,12 +24,16 @@ internal sealed class PlayerAuthority
     private readonly RuntimePlayerTransferProfileStore transferProfiles = new();
     private readonly IRuntimePlayerEventSink? events;
     private readonly WorldTileStore? worldTiles;
+    private readonly RuntimePvpCombatIntegrity pvpCombat;
     private int lastSpawnCommitResult = -1;
+    private long currentCombatTick;
+    private readonly long[] pvpImmuneUntil = new long[MaxPlayerSlots];
 
     public PlayerAuthority(IRuntimePlayerEventSink? events, WorldTileStore? worldTiles)
     {
         this.events = events;
         this.worldTiles = worldTiles;
+        pvpCombat = new RuntimePvpCombatIntegrity(this);
     }
 
     public bool TryApply(RuntimeCommand command)
@@ -54,6 +58,15 @@ internal sealed class PlayerAuthority
             case PlayerMovementRuntimeCommand movement:
                 ApplyPlayerMovement(movement);
                 return true;
+            case PlayerPvpToggleRuntimeCommand hostile:
+                ApplyPlayerPvpToggle(hostile);
+                return true;
+            case PlayerTeamRuntimeCommand team:
+                ApplyPlayerTeam(team);
+                return true;
+            case ClientPlayerPvpHitRuntimeCommand pvpHit:
+                ApplyClientPvpHit(pvpHit);
+                return true;
             case PlayerDisconnectRuntimeCommand disconnect:
                 ApplyPlayerDisconnect(disconnect);
                 return true;
@@ -69,6 +82,8 @@ internal sealed class PlayerAuthority
     }
 
     public IEnumerable<RuntimePlayerMember> Members => membership.Members;
+
+    public void AdvanceCombatTick(long tick) => currentCombatTick = tick;
 
     public bool IsCurrent(ConnectionHandle connection) => membership.IsCurrent(connection);
 
@@ -129,6 +144,18 @@ internal sealed class PlayerAuthority
         return true;
     }
 
+    public bool TryCaptureEquipment(
+        PlayerHandle player,
+        out PlayerEquipmentCommitRequest[] equipment)
+    {
+        if (!membership.TryGet(player, out RuntimePlayerMember member))
+        {
+            equipment = [];
+            return false;
+        }
+        return TryCaptureEquipment(member.Connection, out equipment);
+    }
+
     public bool TryCopyInventory(
         ConnectionHandle connection,
         Span<RuntimePlayerInventoryItem> destination) =>
@@ -158,6 +185,13 @@ internal sealed class PlayerAuthority
     public long AppliedMovements { get; private set; }
     public long RejectedMovements { get; private set; }
     public long DisconnectedPlayers { get; private set; }
+    public long AppliedPvpToggles { get; private set; }
+    public long RejectedPvpToggles { get; private set; }
+    public long AppliedTeamChanges { get; private set; }
+    public long RejectedTeamChanges { get; private set; }
+    public long AppliedAuthoritativePvpHits { get; private set; }
+    public long RejectedAuthoritativePvpHits { get; private set; }
+    public long LegacyPvpFallbackHits { get; private set; }
     public PlayerSlotId? LastMovementSlot { get; private set; }
     public float LastMovementPositionX { get; private set; }
     public float LastMovementPositionY { get; private set; }
@@ -417,6 +451,110 @@ internal sealed class PlayerAuthority
         events?.PlayerMoved(movement.Connection, in request);
     }
 
+
+    private void ApplyPlayerPvpToggle(PlayerPvpToggleRuntimeCommand command)
+    {
+        if (!membership.TryGet(command.Connection, out RuntimePlayerMember? player) || !player.TryAdvanceRevision())
+        {
+            RejectedPvpToggles++;
+            return;
+        }
+
+        player.Hostile = command.Hostile;
+        AppliedPvpToggles++;
+    }
+
+    private void ApplyPlayerTeam(PlayerTeamRuntimeCommand command)
+    {
+        if (command.Team > 5 || !membership.TryGet(command.Connection, out RuntimePlayerMember? player) || !player.TryAdvanceRevision())
+        {
+            RejectedTeamChanges++;
+            return;
+        }
+
+        player.Team = command.Team;
+        AppliedTeamChanges++;
+    }
+
+    private void ApplyClientPvpHit(ClientPlayerPvpHitRuntimeCommand command)
+    {
+        PvpCombatResolveResult resolve = pvpCombat.ResolveClientItemHit(
+            currentCombatTick,
+            command.Connection,
+            in command.State,
+            out AuthoritativePvpHit hit);
+        if (resolve == PvpCombatResolveResult.LegacyFallback)
+        {
+            LegacyPvpFallbackHits++;
+            return;
+        }
+        if (resolve != PvpCombatResolveResult.Accepted)
+        {
+            RejectedAuthoritativePvpHits++;
+            return;
+        }
+
+        if (!TryCommitAuthoritativePvpDamage(
+                currentCombatTick,
+                hit.Attacker,
+                hit.Target,
+                hit.Damage,
+                hit.Critical,
+                hit.HitDirection,
+                out _))
+        {
+            RejectedAuthoritativePvpHits++;
+            return;
+        }
+
+        AppliedAuthoritativePvpHits++;
+    }
+
+    internal bool TryCommitAuthoritativePvpDamage(
+        long tick,
+        PlayerHandle attacker,
+        PlayerHandle targetHandle,
+        int damage,
+        bool critical,
+        int hitDirection,
+        out PlayerStateSnapshot committed)
+    {
+        committed = default;
+        if (!attacker.IsAssigned || !targetHandle.IsAssigned || attacker == targetHandle || damage <= 0 ||
+            hitDirection is < -1 or > 1 ||
+            !membership.TryGet(attacker, out RuntimePlayerMember? source) ||
+            !membership.TryGet(targetHandle, out RuntimePlayerMember? target) ||
+            !source.Hostile || !target.Hostile || source.IsDead || target.IsDead || !target.HasHealth || target.Life <= 0 ||
+            (source.Team != 0 && source.Team == target.Team) ||
+            tick < pvpImmuneUntil[target.Slot.Value])
+        {
+            return false;
+        }
+
+        // Until armor/accessory/buff state is part of the target calculator, a non-empty equipment projection is
+        // explicitly outside the strict PvP slice rather than silently assuming zero defense/endurance.
+        if (TryCaptureEquipment(targetHandle, out PlayerEquipmentCommitRequest[] equipment) && equipment.Length != 0)
+            return false;
+        if (!target.TryAdvanceRevision())
+            return false;
+
+        // For the currently admitted naked baseline, Terraria's player defense term is zero. The same mutation helper
+        // is used by direct melee and trusted projectile PvP so immunity/life/knockback cannot drift between paths.
+        int lifeLost = Math.Max(damage, 1);
+        target.Life = checked((short)Math.Max(0, target.Life - lifeLost));
+        target.IsDead = target.Life <= 0;
+        if (hitDirection != 0)
+        {
+            target.VelocityX = 4.5f * hitDirection;
+            target.VelocityY = -3.5f;
+        }
+        pvpImmuneUntil[target.Slot.Value] = tick + 8;
+        committed = target.CaptureSnapshot();
+        var health = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
+        events?.PlayerHealthUpdated(target.Connection, in health);
+        return true;
+    }
+
     private void ApplyPlayerDisconnect(PlayerDisconnectRuntimeCommand disconnect)
     {
         ConnectionHandle connection = disconnect.Connection;
@@ -513,6 +651,7 @@ internal sealed class PlayerAuthority
             Revision = 1,
             Slot = connection.Player.Slot,
             Team = previous.Team,
+            Hostile = previous.Hostile,
             HasHealth = previous.HasHealth,
             Life = life,
             MaxLife = previous.MaxLife,

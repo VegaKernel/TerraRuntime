@@ -144,7 +144,7 @@ internal sealed class NpcAuthority
             isThereAWorldSurface,
             evilBossDownedBaseline);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
-            projectiles, npcs, combat, () => runtime.Updates);
+            projectiles, npcs, combat, runtime, () => runtime.Updates);
         townNpcAuthority.SetMeleeDamageSink(combat);
 
         if (npcAiStepper is null)

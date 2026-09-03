@@ -357,7 +357,7 @@ Close exploit classes inherited from client-trusting designs without turning the
 ### NPC/projectile/combat
 
 - [x] Server owns entity identity and lifecycle.
-- [ ] Validate targets against live entities across every combat source. The verified direct-melee slice and the admitted trusted-projectile slice already use generation-safe live NPC geometry; unsupported legacy packet-28 combat still keeps the compatibility fallback.
+- [ ] Validate targets against live entities across every combat source. The verified direct-melee slice and the admitted trusted-projectile slice already use generation-safe live NPC geometry; PvP must use the same generation-safe player identity and server-owned health/combat state rather than trusting packet 117. Unsupported legacy combat keeps an explicit compatibility fallback until its formula is imported.
 - [x] Internally use generation/revision handles so stale slot reuse cannot mutate a different entity.
 
 ### Combat integrity
@@ -368,8 +368,9 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 
 #### Authoritative item use
 
+- [ ] Apply the same authoritative item-use calculation to PvE and PvP. Tools are combat sources too: pickaxes, axes and hammers with vanilla damage must pass through the same damage/cadence/range rules as swords rather than bypassing combat integrity.
 - [ ] Server determines the active weapon from authoritative inventory/equipment state.
-- [ ] Validate `useTime`, `useAnimation`, cooldowns and legal attack cadence using the same gameplay facts that drive normal item use.
+- [ ] Validate `useTime`, `useAnimation`, cooldowns and legal attack cadence using the same gameplay facts that drive normal item use. The strict direct-melee slice now enforces player-global `useTime` while allowing one swing to hit multiple targets on the same tick, plus per-target animation cadence.
 - [ ] Client-provided `damage` / `crit` are never a source of truth on fully authoritative combat paths.
 - [ ] Validate weapon ownership and selected inventory slot for every combat family. The strict direct-melee slice already resolves the server-owned selected inventory item; projectile weapon/ammo source mapping remains open.
 - [ ] Reject impossible item-use cadence before projectile spawn or world mutation.
@@ -391,8 +392,8 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 - [ ] Track and validate full `Weapon -> Ammo -> Projectile` provenance.
 - [ ] Validate spawn position against the authoritative player/item-use geometry.
 - [ ] Validate firing direction/aim constraints.
-- [ ] Validate initial projectile velocity.
-- [ ] Validate projectile damage.
+- [ ] Validate initial projectile velocity for every player-owned projectile before it can damage NPCs or players.
+- [ ] Validate projectile damage for both NPC and PvP targets.
 - [ ] Validate projectile knockback.
 - [ ] Validate `ai[]` and special spawn parameters for source-backed weapon families.
 - [ ] Validate projectile count per item use, including multishot/special weapons.
@@ -411,13 +412,13 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 
 #### Authoritative projectile simulation
 
-- [ ] After accepted spawn, client position/velocity updates are never authoritative for projectile simulation.
+- [x] After a projectile generation is marked combat-trusted, client position/velocity updates are never authoritative for its simulation.
 - [ ] Server simulates acceleration, gravity, drag, homing, bouncing and source-backed projectile AI.
 - [ ] Client projectile position/velocity updates may be retained for diagnostics/divergence metrics only.
-- [ ] Ignore impossible client attempts to rewrite projectile type, damage, original damage, knockback, velocity, `ai[]`, ownership or other authoritative state.
-- [ ] Complete vanilla projectile AI families. `BasicArrow`, `Thrown`, the admitted Skeletron/Deerclops families and other existing source-backed slices remain explicit profiles; known unsupported families still fail closed.
-- [ ] Complete projectile ownership/source validation. Connection ownership is enforced, existing client generations cannot rewrite type/damage/originalDamage/knockback, and only server-authoritative generations currently enter NPC combat; weapon/ammo promotion for legitimate client packet-27 spawns remains open.
-- [ ] Complete entity collision. Tile/world collision already exists; the deterministic post-simulation pass adds NPC AABB selection for trusted admitted friendly projectiles. Player/PvP and exceptional hitboxes remain open.
+- [x] Combat-trusted generations reject owner packet-27 state rewrites (`type`, damage, position/velocity, `ai[]`, ownership and related authoritative fields) and packet-29 early termination.
+- [ ] Complete vanilla projectile AI families. `BasicArrow`, `Thrown`, source-backed Enchanted Boomerang type 6, the admitted Skeletron/Deerclops families and other existing source-backed slices remain explicit profiles; known unsupported families still fail closed.
+- [ ] Complete projectile ownership/source validation. Connection ownership is enforced, combat-trusted generations are immutable to client packet 27/29 mutation, and only server-authoritative generations currently enter NPC combat; weapon/ammo promotion for legitimate client packet-27 spawns remains open.
+- [ ] Complete entity collision. Tile/world collision already exists; the deterministic post-simulation pass adds NPC AABB selection for trusted admitted friendly projectiles. Add the equivalent generation-safe player/PvP collision pass, hostility/team gating and exceptional hitboxes so trusted projectile damage is calculated server-side for both target classes.
 - [ ] Buff/debuff application from projectile hits.
 - [x] Source-backed projectile lifetime remains runtime-owned rather than client-owned.
 - [ ] Complete spawn ordering. Physical projectile-slot then NPC-slot hit ordering is deterministic and committed damage precedes penetration, but child-projectile/on-hit spawn ordering is not complete.
@@ -425,7 +426,7 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 
 #### Authoritative damage calculation
 
-- [ ] Server-authoritative damage calculation for every player combat source. The first strict direct-melee slice covers source-backed Muramasa and Copper Pickaxe facts and ignores wire damage/crit for accepted hits.
+- [ ] Server-authoritative damage calculation for every player combat source and target class (PvE + PvP). The first strict direct-melee slice covers source-backed Muramasa and Copper Pickaxe facts; Copper Pickaxe is deliberately included to prevent tools from becoming an unvalidated PvP damage bypass. Wire damage/crit are diagnostics only on accepted strict paths.
 - [ ] Include weapon + ammo contributions.
 - [ ] Include item/ammo prefixes.
 - [ ] Include armor/accessories.
@@ -433,19 +434,19 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 - [ ] Include class modifiers.
 - [ ] Calculate crit server-side for every weapon/projectile family. The verified direct-melee slice already rolls crit server-side.
 - [ ] Include armor penetration.
-- [ ] Include target defense and defense-bypass mechanics.
+- [ ] Include NPC defense and player PvP defense/endurance/dodge/immunity mechanics from authoritative target state; never reuse NPC defense math blindly for players.
 - [ ] Include difficulty/world-state modifiers.
 - [ ] Include vanilla damage variance using server-owned RNG.
 - [ ] Implement source-backed special weapon/projectile damage mechanics without a parallel anti-cheat formula.
 - [ ] Damage envelope from equipment/prefixes/buffs/world state. Source-backed prefix multipliers are imported; full armor/accessory/player-buff/world modifiers are still intentionally unmodeled and therefore fall back instead of being guessed.
-- [ ] Validate NPC/player hit target and range across all hit shapes. Strict direct melee has a conservative impossible-distance guard and trusted admitted projectiles use source-backed AABB collision.
+- [ ] Validate NPC/player hit target and range across all hit shapes. Strict direct melee has a conservative impossible-distance guard; PvP direct melee must apply the same item-use geometry against player hitboxes, and trusted admitted projectiles must collide server-side with both NPC and hostile legal player targets.
 - [ ] Reject impossible damage before world mutation across every combat path. The strict calculator/validator path already rejects before interaction/HP/loot/replication mutation; unsupported legacy combat remains the blocker.
 
 #### Combat envelopes
 
 - [ ] `MaxDamagePerHit` derived from authoritative gameplay state rather than a static anti-cheat constant.
 - [ ] Validate whether a crit is possible for the active weapon/source/state.
-- [ ] `MaxHitsPerSecond` / legal hit cadence per weapon/projectile family.
+- [ ] `MaxHitsPerSecond` / legal hit cadence per weapon/projectile family. Strict direct melee now has a player-global `useTime` gate plus per-target animation gate; projectile-family cadence remains open.
 - [ ] `MaxProjectilesPerUse`.
 - [ ] `MaxProjectilesPerSecond`.
 - [x] Sliding-window DPS ceiling for the verified direct-melee path.
@@ -459,9 +460,9 @@ Impossible combat events must not be applied to authoritative world state merely
 - [ ] Reject impossible/incompatible ammo.
 - [ ] Reject impossible damage.
 - [ ] Reject impossible initial projectile velocity or angular spread.
-- [ ] Reject impossible attack cadence/cooldown state.
+- [ ] Reject impossible attack cadence/cooldown state. Strict direct melee already rejects cross-target cadence bypass before mutation; remaining weapon/projectile families are open.
 - [ ] Reject projectiles without legal authoritative provenance.
-- [ ] Reject hits against impossible targets or at impossible range.
+- [ ] Reject hits against impossible NPC or PvP player targets, friendly/team-protected players, or targets at impossible range.
 - [ ] Perform rejection before HP, inventory/ammo, buffs, loot, projectile side effects or replication mutate authoritative state.
 
 #### Anomaly detection
@@ -478,11 +479,11 @@ Anomaly detection is a second-line diagnostic layer. It must never replace hard 
 #### Diagnostics
 
 - [x] Bounded diagnostics ring explaining every strict-path rejected hit before mutation.
-- [ ] Record exact rejected-attack reason/code.
+- [x] Record exact strict-path rejected-attack reason/code.
 - [ ] Record expected/received damage and relevant envelope inputs.
 - [ ] Record expected/received projectile velocity and angular/speed envelope.
 - [ ] Record weapon/ammo/projectile IDs and provenance chain.
-- [ ] Record tick, player slot/session identity and target/projectile entity generation.
+- [x] Strict direct-melee diagnostics record tick, generation-safe player identity and target NPC generation; projectile-generation diagnostics remain open.
 - [ ] Allow bounded verbose combat audit for a selected player without enabling global packet spam.
 
 #### Parity and exploit regression tests

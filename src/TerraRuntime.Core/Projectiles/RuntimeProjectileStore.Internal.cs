@@ -44,6 +44,7 @@ public sealed partial class RuntimeProjectileStore
         state.Update = update;
         state.Lifecycle = lifecycle;
         state.CombatTrusted = false;
+        state.CombatTrustedOwner = default;
     }
 
     private static ProjectileSnapshot Capture(ushort slot, in SlotState state)
@@ -82,5 +83,6 @@ public sealed partial class RuntimeProjectileStore
         public ProjectileStateUpdate Update;
         public ProjectileLifecycleState Lifecycle;
         public bool CombatTrusted;
+        public PlayerHandle CombatTrustedOwner;
     }
 }

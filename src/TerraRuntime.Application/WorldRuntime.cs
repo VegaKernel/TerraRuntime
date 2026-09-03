@@ -246,6 +246,7 @@ public sealed class WorldRuntime : IDisposable
         HealthIngress = new RuntimePlayerHealthIngress(CommandIngress);
         ManaIngress = new RuntimePlayerManaIngress(CommandIngress);
         MovementIngress = new RuntimePlayerMovementIngress(CommandIngress);
+        PlayerCombatIngress = new RuntimePlayerCombatNetworkIngress(CommandIngress);
         WorldItemIngress = new RuntimeWorldItemIngress(CommandIngress, WorldItems);
         ProjectileIngress = new RuntimeProjectileNetworkIngress(CommandIngress);
         ChestIngress = new RuntimeChestNetworkIngress(CommandIngress);
@@ -307,6 +308,7 @@ public sealed class WorldRuntime : IDisposable
     internal RuntimePlayerHealthIngress HealthIngress { get; }
     internal RuntimePlayerManaIngress ManaIngress { get; }
     internal RuntimePlayerMovementIngress MovementIngress { get; }
+    internal RuntimePlayerCombatNetworkIngress PlayerCombatIngress { get; }
     internal RuntimeWorldItemIngress WorldItemIngress { get; }
     internal RuntimeProjectileNetworkIngress ProjectileIngress { get; }
     internal RuntimeChestNetworkIngress ChestIngress { get; }

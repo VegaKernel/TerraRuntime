@@ -137,7 +137,7 @@ flowchart LR
     Validator -->|rejected| Diagnostics["bounded reason + suspicion diagnostics"]
 ```
 
-The strict source-backed direct-melee slice currently admits Muramasa and Copper Pickaxe. It resolves the selected item from server-owned inventory state, imports the verified prefix multipliers, performs server-side `-15..+15%` damage variation and crit rolls, applies source-backed `useTime`/`useAnimation` cadence, rejects impossible center distance, checks a bounded $60\,	ext{tick}$ DPS window, and commits only the server-generated `NpcDamageRequest`. A client's packet-28 damage/crit values cannot raise the accepted strict-path hit; they are retained only for envelope/anomaly evidence.
+The strict source-backed direct-melee slice currently admits Muramasa and Copper Pickaxe. It resolves the selected item from server-owned inventory state, imports the verified prefix multipliers, performs server-side `-15..+15%` damage variation and crit rolls, applies a player-global source-backed `useTime` gate plus per-target `useAnimation` cadence while allowing one swing to touch multiple targets on the same tick, rejects impossible center distance, checks a bounded $60\,	ext{tick}$ DPS window, and commits only the server-generated `NpcDamageRequest`. A client's packet-28 damage/crit values cannot raise the accepted strict-path hit; they are retained only for envelope/anomaly evidence.
 
 Rejected strict-path hits are recorded in a bounded ring with the exact reason, client claim, server result when available and decaying suspicion score. Statistical crit/damage-edge observations add low-weight suspicion only; they never decide damage themselves.
 

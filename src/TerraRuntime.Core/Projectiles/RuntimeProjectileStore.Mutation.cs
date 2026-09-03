@@ -107,6 +107,7 @@ public sealed partial class RuntimeProjectileStore
             state.Update = default;
             state.Lifecycle = default;
             state.CombatTrusted = false;
+            state.CombatTrustedOwner = default;
             _activeCount--;
             expired = true;
 
@@ -155,7 +156,7 @@ public sealed partial class RuntimeProjectileStore
     /// Marks one exact generation as eligible for server-authoritative combat side effects. This is runtime-only trust
     /// metadata: it does not change packet 27 state, revision, or replication. Only server-owned command paths call it.
     /// </summary>
-    public bool TryMarkCombatTrusted(ProjectileHandle handle)
+    public bool TryMarkCombatTrusted(ProjectileHandle handle, PlayerHandle owner = default)
     {
         if (!IsCurrentHandleCandidate(handle))
             return false;
@@ -164,7 +165,19 @@ public sealed partial class RuntimeProjectileStore
         if (!state.Active || state.Generation != handle.Generation.Value)
             return false;
 
+        bool playerOwned = VanillaProjectileOwnership.IsPlayerOwned(state.Update.Spawner);
+        if (playerOwned)
+        {
+            if (!owner.IsAssigned || owner.Slot.Value != state.Update.Spawner)
+                return false;
+        }
+        else if (owner.IsAssigned)
+        {
+            return false;
+        }
+
         state.CombatTrusted = true;
+        state.CombatTrustedOwner = owner;
         return true;
     }
 
@@ -173,6 +186,12 @@ public sealed partial class RuntimeProjectileStore
     /// remains active; the last positive penetration despawns the exact generation. Runtime-only remaining
     /// penetration advances the revision without publishing a redundant wire update.
     /// </summary>
+    public bool TryConsumeCombatHitPenetration(
+        ProjectileHandle handle,
+        out bool despawned,
+        out ProjectileSnapshot snapshot) =>
+        TryConsumeNpcHitPenetration(handle, out despawned, out snapshot);
+
     public bool TryConsumeNpcHitPenetration(
         ProjectileHandle handle,
         out bool despawned,
@@ -349,6 +368,7 @@ public sealed partial class RuntimeProjectileStore
         state.Update = default;
         state.Lifecycle = default;
         state.CombatTrusted = false;
+        state.CombatTrustedOwner = default;
         _activeCount--;
         _commitSink?.ProjectileStateCommitted(commitKind, in finalSnapshot);
         return true;

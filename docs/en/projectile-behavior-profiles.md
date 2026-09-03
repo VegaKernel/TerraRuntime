@@ -37,7 +37,7 @@ The runtime fails closed unless both conditions hold:
 |---|---|---|
 | `BasicArrow` | implemented | requires default `ai[2]`; selected types only |
 | `Thrown` | implemented | explicit source-backed type membership |
-| `Boomerang` | known, not implemented | preserves the verified pre-AI world-bounds exception |
+| `Boomerang` | source-backed type-6 runtime implemented | outbound timer, owner-targeted return, return-phase tile-collision disable and verified pre-AI world-bounds exception |
 
 Green Laser is deliberately not hidden in the generic basic-arrow path. Its profile sets `RejectServerOwned` because the dedicated-server owner branch mutates gameplay state that the current authoritative model does not yet represent.
 
@@ -75,7 +75,7 @@ Do not infer a behavior profile solely from `AiStyle`. This is intentional dupli
 
 - explicit classification of the currently supported basic-arrow and thrown types;
 - the Green Laser owner-gated exception;
-- the known-but-unimplemented boomerang profile;
+- the source-backed Enchanted Boomerang outbound/return profile, including owner-targeted return and return-phase tile-collision disable;
 - agreement between every profiled type and its source-backed definition `aiStyle`;
 - fail-closed behavior when definition and runtime profile disagree;
 - no behavior inference for an unprofiled projectile.
@@ -98,9 +98,9 @@ flowchart LR
     Damage --> Penetration["source-backed penetration consumption"]
 ```
 
-Runtime-only combat trust is generation-scoped. A projectile created through the server runtime command path is eligible to be promoted as combat-trusted; a new client packet-27 generation is **not** trusted merely because its owner byte matches the connection. Existing client generations also cannot rewrite `type`, `damage`, `originalDamage` or `knockBack` while retaining the same wire identity. This prevents the new server-side NPC hit pass from turning an unverified client projectile claim into authoritative world damage.
+Runtime-only combat trust is generation-scoped. A projectile created through the server runtime command path is eligible to be promoted as combat-trusted; a new client packet-27 generation is **not** trusted merely because its owner byte matches the connection. Once a generation is combat-trusted, owner packet 27/29 traffic can neither rewrite its position/velocity/AI or identity/damage fields nor terminate it early. Untrusted compatibility generations still accept their bounded owner updates but cannot enter authoritative NPC combat. This prevents the new server-side NPC hit pass from turning an unverified client projectile claim into authoritative world damage.
 
-For combat-trusted player projectiles, the current hit pass admits only behavior profiles whose source-backed collision/penetration semantics are implemented. The first slice covers selected `BasicArrow`/`Thrown` projectiles, selects live generation-safe NPC targets by source-backed AABB geometry, applies a bounded baseline per-projectile/NPC cooldown, commits damage/death through the existing NPC combat pipeline, and only after a committed hit consumes source-backed penetration. Positive penetration counts down; the last hit despawns the exact generation; infinite penetration remains active. Ordering is deterministic by physical projectile slot and then physical NPC slot.
+For combat-trusted player projectiles, the current hit pass admits only behavior profiles whose source-backed collision/penetration semantics are implemented. The first slice covers selected `BasicArrow`/`Thrown` projectiles plus the source-backed Enchanted Boomerang, selects live generation-safe NPC targets by source-backed AABB geometry, applies a bounded baseline per-projectile/NPC cooldown, commits damage/death through the existing NPC combat pipeline, and only after a committed hit consumes source-backed penetration. Positive penetration counts down; the last hit despawns the exact generation; infinite penetration remains active. Ordering is deterministic by physical projectile slot and then physical NPC slot.
 
 World motion already owns tile collision, liquid contact, world bounds and source-backed lifetime. The new pass adds entity collision and ordinary NPC damage side effects without moving those responsibilities back into packet handling.
 

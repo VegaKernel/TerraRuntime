@@ -204,7 +204,8 @@ internal sealed class RuntimePlayerMember
     public ConnectionHandle Connection { get; init; }
     public ulong Revision { get; set; }
     public PlayerSlotId Slot { get; init; }
-    public byte Team { get; init; }
+    public byte Team { get; set; }
+    public bool Hostile { get; set; }
     public bool HasHealth { get; set; }
     public short Life { get; set; }
     public short MaxLife { get; set; }
@@ -260,6 +261,7 @@ internal sealed class RuntimePlayerMember
             CameraTargetX,
             CameraTargetY)
         {
+            Hostile = Hostile,
             HasHealth = HasHealth,
             Life = Life,
             MaxLife = MaxLife,

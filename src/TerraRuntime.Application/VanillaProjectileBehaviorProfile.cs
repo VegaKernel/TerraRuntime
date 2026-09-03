@@ -70,7 +70,7 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     private static readonly VanillaProjectileBehaviorProfile BoomerangProfile = new(
         VanillaProjectileBehaviorFamily.Boomerang,
         VanillaProjectileAiStyles.Boomerang,
-        BehaviorImplemented: false,
+        BehaviorImplemented: true,
         RequiresDefaultAi2: false,
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: true);

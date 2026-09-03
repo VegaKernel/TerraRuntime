@@ -108,5 +108,9 @@ internal sealed partial class ServerRuntimeState
             skyblockLowTiles,
             isThereAWorldSurface,
             evilBossDownedBaseline);
+        _projectilePlayerCombat = new RuntimeProjectilePlayerCombatPass(
+            projectileStore,
+            _players,
+            () => Updates);
     }
 }

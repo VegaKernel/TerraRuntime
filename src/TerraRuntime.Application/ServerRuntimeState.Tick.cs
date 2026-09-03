@@ -13,6 +13,7 @@ internal sealed partial class ServerRuntimeState
 {
     public void Tick()
     {
+        _players.AdvanceCombatTick(Updates);
         _worldTileAuthority.AdvanceTo(Updates);
 
         _npcs.CommitPending();
@@ -21,6 +22,7 @@ internal sealed partial class ServerRuntimeState
         if (_projectiles.TryTickState())
         {
             _npcs.TickProjectileInteractions();
+            _projectilePlayerCombat.Tick();
             _projectiles.ApplyReflections();
         }
         _worldItems.TickInstancedLeases();

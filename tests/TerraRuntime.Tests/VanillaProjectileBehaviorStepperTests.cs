@@ -1,6 +1,7 @@
 using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
 
 namespace TerraRuntime.Tests;
 
@@ -72,6 +73,81 @@ public sealed class VanillaProjectileBehaviorStepperTests
             out _));
     }
 
+
+    [Fact]
+    public void Enchanted_boomerang_switches_to_return_after_30_outbound_ticks()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.EnchantedBoomerang,
+            velocityX: 10f,
+            velocityY: 0f,
+            ai0: 0f,
+            ai1: 29f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, new SinglePlayerLookup(100f, 300f));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile,
+            in definition,
+            in context,
+            out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(1f, next.Ai0, 5);
+        Assert.Equal(0f, next.Ai1Override);
+        Assert.Null(next.TileCollideOverride);
+        Assert.False(next.Kill);
+        Assert.Equal(10f, next.VelocityX, 5);
+    }
+
+    [Fact]
+    public void Enchanted_boomerang_return_disables_tile_collision_and_accelerates_to_owner()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.EnchantedBoomerang,
+            velocityX: 5f,
+            velocityY: 0f,
+            ai0: 1f,
+            ai1: 0f,
+            positionX: 300f,
+            positionY: 300f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, new SinglePlayerLookup(100f, 300f));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile,
+            in definition,
+            in context,
+            out VanillaProjectileBehaviorResult next));
+
+        Assert.False(next.Kill);
+        Assert.False(next.TileCollideOverride.GetValueOrDefault(true));
+        Assert.True(next.VelocityX < projectile.VelocityX);
+    }
+
+    [Fact]
+    public void Enchanted_boomerang_return_kills_when_it_reaches_owner()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.EnchantedBoomerang,
+            velocityX: -2f,
+            velocityY: 0f,
+            ai0: 1f,
+            ai1: 0f,
+            positionX: 100f,
+            positionY: 300f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, new SinglePlayerLookup(100f, 300f));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile,
+            in definition,
+            in context,
+            out VanillaProjectileBehaviorResult next));
+
+        Assert.True(next.Kill);
+        Assert.False(next.TileCollideOverride.GetValueOrDefault(true));
+    }
+
     [Fact]
     public void Server_owned_green_laser_remains_unsupported_before_world_motion()
     {
@@ -96,20 +172,61 @@ public sealed class VanillaProjectileBehaviorStepperTests
         float velocityX,
         float velocityY,
         float ai0,
+        float ai1 = 0f,
         float ai2 = 0f,
-        byte spawner = 0) =>
+        byte spawner = 0,
+        float positionX = 100f,
+        float positionY = 100f) =>
         new(
             Handle: default,
             Revision: default,
             Type: type,
             Spawner: spawner,
-            PositionX: 100f,
-            PositionY: 100f,
+            PositionX: positionX,
+            PositionY: positionY,
             VelocityX: velocityX,
             VelocityY: velocityY,
-            Ai: new ProjectileAiState(ai0, 0f, ai2),
+            Ai: new ProjectileAiState(ai0, ai1, ai2),
             BannerIdToRespondTo: 0,
             Damage: 10,
             KnockBack: 1f,
             OriginalDamage: 10);
+
+    private sealed class SinglePlayerLookup(float positionX, float positionY) : IRuntimePlayerSlotSnapshotLookup
+    {
+        public bool TryGetPlayer(PlayerSlotId slot, out PlayerStateSnapshot snapshot)
+        {
+            if (slot.Value != 0)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            snapshot = new PlayerStateSnapshot(
+                new PlayerHandle(slot, new PlayerSessionGeneration(1)),
+                new PlayerStateRevision(1),
+                Team: 0,
+                ControlFlags: 0,
+                MovementFlags: 0,
+                MiscFlags1: 0,
+                MiscFlags2: 0,
+                SelectedItem: 0,
+                PositionX: positionX,
+                PositionY: positionY,
+                VelocityX: 0f,
+                VelocityY: 0f,
+                MountType: 0,
+                PotionOfReturnOriginalPositionX: 0f,
+                PotionOfReturnOriginalPositionY: 0f,
+                PotionOfReturnHomePositionX: 0f,
+                PotionOfReturnHomePositionY: 0f,
+                CameraTargetX: 0f,
+                CameraTargetY: 0f)
+            {
+                IsDead = false
+            };
+            return true;
+        }
+    }
+
 }

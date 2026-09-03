@@ -18,6 +18,7 @@ internal sealed class ProjectileAuthority
 {
     private readonly RuntimeProjectileStore projectiles;
     private readonly PlayerAuthority players;
+    private readonly IRuntimePlayerSlotSnapshotLookup playerSnapshots;
     private readonly RuntimeProjectileStateExecutor executor;
     private readonly IProjectileStateStepper? stepper;
     private readonly RuntimeNpcProjectileReflectionPass reflections;
@@ -34,6 +35,7 @@ internal sealed class ProjectileAuthority
     {
         this.projectiles = projectiles;
         this.players = players;
+        this.playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
         executor = new RuntimeProjectileStateExecutor(projectiles);
         this.stepper = stepper;
         reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots, goodWorld: goodWorld);
@@ -87,18 +89,39 @@ internal sealed class ProjectileAuthority
     public long AppliedReflections { get; private set; }
     public long RejectedClientUpdates { get; private set; }
     public long RejectedClientDestroys { get; private set; }
+    public long RejectedTrustedClientUpdates { get; private set; }
+    public long RejectedTrustedClientDestroys { get; private set; }
     public long RelayedUnknownDestroys { get; private set; }
     public ProjectileStateTickSummary LastTick { get; private set; }
 
     private void ApplySpawn(ProjectileSpawnRuntimeCommand command)
     {
         ProjectileStateUpdate state = command.State;
-        if (projectiles.TrySpawn(command.Slot, in state, out ProjectileSnapshot snapshot) &&
-            projectiles.TryMarkCombatTrusted(snapshot.Handle))
+        PlayerHandle trustedOwner = default;
+        if (VanillaProjectileOwnership.IsPlayerOwned(state.Spawner))
         {
-            AppliedSpawns++;
-            command.Completion?.TrySetResult(snapshot);
-            return;
+            if (!playerSnapshots.TryGetPlayer(new PlayerSlotId(state.Spawner), out PlayerStateSnapshot owner) ||
+                !owner.Player.IsAssigned || owner.Player.Slot.Value != state.Spawner)
+            {
+                RejectedSpawns++;
+                command.Completion?.TrySetResult(null);
+                return;
+            }
+            trustedOwner = owner.Player;
+        }
+
+        if (projectiles.TrySpawn(command.Slot, in state, out ProjectileSnapshot snapshot))
+        {
+            if (projectiles.TryMarkCombatTrusted(snapshot.Handle, trustedOwner))
+            {
+                AppliedSpawns++;
+                command.Completion?.TrySetResult(snapshot);
+                return;
+            }
+
+            // Trust metadata is part of the server-spawn contract. If it cannot be attached, do not leave a live
+            // generation that callers may mistakenly treat as authoritative merely because the spawn command returned.
+            projectiles.TryDespawn(snapshot.Handle, out _);
         }
 
         RejectedSpawns++;
@@ -153,6 +176,16 @@ internal sealed class ProjectileAuthority
                 current.OriginalDamage != update.OriginalDamage ||
                 current.KnockBack != update.KnockBack)
             {
+                RejectedClientUpdates++;
+                return;
+            }
+
+            // A trusted generation has crossed the authoritative spawn boundary. From that point onward its
+            // position, velocity, ai, lifetime and termination are runtime-owned. Packet 27 may still arrive
+            // from the vanilla client, but it is diagnostic input only and must not overwrite simulation state.
+            if (projectiles.IsCombatTrusted(projectile))
+            {
+                RejectedTrustedClientUpdates++;
                 RejectedClientUpdates++;
                 return;
             }
@@ -222,6 +255,15 @@ internal sealed class ProjectileAuthority
 
         if (current.Spawner != command.Connection.Player.Slot.Value)
         {
+            RejectedClientDestroys++;
+            return;
+        }
+
+        // Trusted projectiles die only through authoritative lifetime/collision/penetration/behavior paths.
+        // Accepting packet 29 here would let an owning client erase a server-owned combat generation early.
+        if (projectiles.IsCombatTrusted(projectile))
+        {
+            RejectedTrustedClientDestroys++;
             RejectedClientDestroys++;
             return;
         }

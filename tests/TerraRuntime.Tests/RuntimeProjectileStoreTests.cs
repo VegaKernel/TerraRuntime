@@ -226,8 +226,11 @@ public sealed class RuntimeProjectileStoreTests
 
         Assert.True(store.TrySpawn(0, in state, out ProjectileSnapshot first));
         Assert.False(store.IsCombatTrusted(first.Handle));
-        Assert.True(store.TryMarkCombatTrusted(first.Handle));
+        var owner = new PlayerHandle(new PlayerSlotId(3), new PlayerSessionGeneration(1));
+        Assert.True(store.TryMarkCombatTrusted(first.Handle, owner));
         Assert.True(store.IsCombatTrusted(first.Handle));
+        Assert.True(store.TryGetCombatTrustedOwner(first.Handle, out PlayerHandle trustedOwner));
+        Assert.Equal(owner, trustedOwner);
 
         ProjectileStateUpdate moved = state with { PositionX = 20f };
         Assert.True(store.TryUpdate(first.Handle, in moved, out ProjectileSnapshot updated));
@@ -235,9 +238,11 @@ public sealed class RuntimeProjectileStoreTests
 
         Assert.True(store.TryDespawn(updated.Handle, out _));
         Assert.False(store.IsCombatTrusted(updated.Handle));
+        Assert.False(store.TryGetCombatTrustedOwner(updated.Handle, out _));
         Assert.True(store.TrySpawn(0, in state, out ProjectileSnapshot replacement));
         Assert.NotEqual(first.Handle, replacement.Handle);
         Assert.False(store.IsCombatTrusted(replacement.Handle));
+        Assert.False(store.TryGetCombatTrustedOwner(replacement.Handle, out _));
     }
 
     [Fact]

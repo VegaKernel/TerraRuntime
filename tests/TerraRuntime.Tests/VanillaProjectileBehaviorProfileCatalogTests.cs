@@ -78,7 +78,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     }
 
     [Fact]
-    public void Known_boomerang_family_stays_explicitly_unsupported_without_losing_world_boundary_semantics()
+    public void Enchanted_boomerang_family_is_source_backed_and_preserves_world_boundary_semantics()
     {
         Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
             VanillaProjectileIds.EnchantedBoomerang,
@@ -86,7 +86,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
 
         Assert.Equal(VanillaProjectileBehaviorFamily.Boomerang, profile.Family);
         Assert.Equal(VanillaProjectileAiStyles.Boomerang, profile.ExpectedAiStyle);
-        Assert.False(profile.BehaviorImplemented);
+        Assert.True(profile.BehaviorImplemented);
         Assert.True(profile.ExemptFromPreAiWorldBounds);
     }
 

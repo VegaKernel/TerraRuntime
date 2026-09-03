@@ -75,6 +75,27 @@ public sealed partial class RuntimeProjectileStore
         return state.Active && state.Generation == handle.Generation.Value && state.CombatTrusted;
     }
 
+    /// <summary>
+    /// Returns the exact player session that owns a combat-trusted player projectile generation. Server/NPC-owned
+    /// trusted projectiles intentionally return false because they have no player-session provenance.
+    /// </summary>
+    public bool TryGetCombatTrustedOwner(ProjectileHandle handle, out PlayerHandle owner)
+    {
+        owner = default;
+        if (!IsCurrentHandleCandidate(handle))
+            return false;
+
+        ref readonly SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value || !state.CombatTrusted ||
+            !state.CombatTrustedOwner.IsAssigned || state.CombatTrustedOwner.Slot.Value != state.Update.Spawner)
+        {
+            return false;
+        }
+
+        owner = state.CombatTrustedOwner;
+        return true;
+    }
+
     public int CopyActive(Span<ProjectileSnapshot> destination)
     {
         if (destination.Length < _activeCount)

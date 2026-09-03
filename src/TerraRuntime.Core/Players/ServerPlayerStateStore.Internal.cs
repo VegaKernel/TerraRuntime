@@ -46,6 +46,7 @@ public sealed partial class ServerPlayerStateStore
                 CameraTargetX: 0f,
                 CameraTargetY: 0f)
             {
+                Hostile = false,
                 HasHealth = HasHealth,
                 Life = Life,
                 MaxLife = MaxLife,

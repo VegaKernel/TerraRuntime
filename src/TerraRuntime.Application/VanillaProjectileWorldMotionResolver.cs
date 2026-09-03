@@ -99,7 +99,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
         float collidedVelocityY = velocityY;
         bool collideX = false;
         bool collideY = false;
-        if (definition.TileCollide)
+        bool tileCollide = behavior.TileCollideOverride ?? definition.TileCollide;
+        if (tileCollide)
         {
             VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
                 tiles,

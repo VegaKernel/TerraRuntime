@@ -113,6 +113,66 @@ public sealed class ServerRuntimeClientProjectileIngressTests
     }
 
     [Fact]
+    public void Trusted_server_projectile_rejects_owner_packet27_and_packet29_mutations()
+    {
+        using var fixture = new Fixture(playerCount: 1);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 12);
+        var completion = new TaskCompletionSource<ProjectileSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var spawn = new ProjectileStateUpdate(
+            VanillaProjectileIds.WoodenArrowFriendly,
+            owner.Player.Slot.Value,
+            100f,
+            200f,
+            6f,
+            0f,
+            default,
+            0,
+            25,
+            2f,
+            25);
+
+        fixture.State.Apply(new ProjectileSpawnRuntimeCommand(0, spawn, completion));
+        ProjectileSnapshot? trustedResult = completion.Task.GetAwaiter().GetResult();
+        Assert.True(trustedResult.HasValue);
+        ProjectileSnapshot trusted = trustedResult.Value;
+        Assert.True(fixture.Projectiles.IsCombatTrusted(trusted.Handle));
+        Assert.True(fixture.Replication.WireIdentities.TryGetWireKey(trusted.Handle, out TerrariaProjectileKeyState key));
+
+        var forgedUpdate = new TerrariaProjectileUpdateState(
+            key,
+            trusted.Type.Value,
+            900f,
+            900f,
+            120f,
+            -80f,
+            99f,
+            98f,
+            97f,
+            trusted.BannerIdToRespondTo,
+            trusted.Damage,
+            trusted.KnockBack,
+            trusted.OriginalDamage);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, forgedUpdate));
+
+        Assert.Equal(1, fixture.State.RejectedTrustedClientProjectileUpdates);
+        Assert.Equal(1, fixture.State.RejectedClientProjectileUpdates);
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(trusted.Handle, out ProjectileSnapshot afterUpdate));
+        Assert.Equal(trusted.PositionX, afterUpdate.PositionX);
+        Assert.Equal(trusted.PositionY, afterUpdate.PositionY);
+        Assert.Equal(trusted.VelocityX, afterUpdate.VelocityX);
+        Assert.Equal(trusted.VelocityY, afterUpdate.VelocityY);
+        Assert.Equal(trusted.Ai, afterUpdate.Ai);
+
+        var forgedDestroy = new TerrariaProjectileDestroyState(key, 777f, 888f);
+        fixture.State.Apply(new ClientProjectileDestroyRuntimeCommand(owner, forgedDestroy));
+
+        Assert.Equal(1, fixture.State.RejectedTrustedClientProjectileDestroys);
+        Assert.Equal(1, fixture.State.RejectedClientProjectileDestroys);
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(trusted.Handle, out ProjectileSnapshot afterDestroy));
+        Assert.Equal(afterUpdate, afterDestroy);
+    }
+
+    [Fact]
     public void Unknown_packet29_relays_to_playing_peer_without_local_mutation_or_sender_echo()
     {
         using var fixture = new Fixture(playerCount: 2);

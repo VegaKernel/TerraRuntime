@@ -30,6 +30,9 @@ public sealed class VanillaCombatIntegrityCatalogTests
         Assert.Equal(1, arrow);
         Assert.True(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.Shuriken, out int shuriken));
         Assert.Equal(4, shuriken);
+        Assert.False(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.WoodenArrowFriendly));
+        Assert.True(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.Shuriken));
+        Assert.True(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.EnchantedBoomerang));
         Assert.True(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.JestersArrow, out int jester));
         Assert.Equal(-1, jester);
         Assert.False(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.Seed, out _));

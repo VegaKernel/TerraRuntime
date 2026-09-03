@@ -45,6 +45,8 @@ public readonly record struct PlayerStateSnapshot(
     float CameraTargetX,
     float CameraTargetY)
 {
+    public bool Hostile { get; init; }
+
     public bool HasHealth { get; init; }
 
     public short Life { get; init; }

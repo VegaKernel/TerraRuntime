@@ -80,6 +80,10 @@ internal sealed partial class ServerRuntimeState
 
     public long RejectedClientProjectileDestroys => _projectiles.RejectedClientDestroys;
 
+    public long RejectedTrustedClientProjectileUpdates => _projectiles.RejectedTrustedClientUpdates;
+
+    public long RejectedTrustedClientProjectileDestroys => _projectiles.RejectedTrustedClientDestroys;
+
     public long AppliedClientNpcDamage => _npcs.AppliedClientDamage;
 
     public long RejectedClientNpcDamage => _npcs.RejectedClientDamage;

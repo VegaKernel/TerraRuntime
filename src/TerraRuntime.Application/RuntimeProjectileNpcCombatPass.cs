@@ -15,28 +15,31 @@ internal sealed class RuntimeProjectileNpcCombatPass
 {
     private readonly RuntimeProjectileStore projectiles;
     private readonly RuntimeNpcStore npcs;
+    private const int PlayerSlotCount = byte.MaxValue + 1;
     private readonly RuntimeNpcNetworkCombatPipeline combat;
+    private readonly IRuntimePlayerSlotSnapshotLookup players;
     private readonly Func<long> tickProvider;
     private readonly ProjectileSnapshot[] projectileBuffer;
     private readonly NpcSnapshot[] npcBuffer;
-    private readonly ProjectileGeneration[] seenGenerations;
-    private readonly long[] lastNpcHitTick;
+    private readonly PlayerSessionGeneration[] ownerGenerations = new PlayerSessionGeneration[PlayerSlotCount];
+    private readonly long[] lastOwnerNpcHitTick;
 
     public RuntimeProjectileNpcCombatPass(
         RuntimeProjectileStore projectiles,
         RuntimeNpcStore npcs,
         RuntimeNpcNetworkCombatPipeline combat,
+        IRuntimePlayerSlotSnapshotLookup players,
         Func<long> tickProvider)
     {
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.combat = combat ?? throw new ArgumentNullException(nameof(combat));
+        this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         projectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
         npcBuffer = new NpcSnapshot[npcs.Capacity];
-        seenGenerations = new ProjectileGeneration[projectiles.Capacity];
-        lastNpcHitTick = new long[checked(projectiles.Capacity * npcs.Capacity)];
-        Array.Fill(lastNpcHitTick, long.MinValue);
+        lastOwnerNpcHitTick = new long[checked(PlayerSlotCount * npcs.Capacity)];
+        Array.Fill(lastOwnerNpcHitTick, long.MinValue);
     }
 
     public long CommittedHits { get; private set; }
@@ -58,14 +61,20 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 continue;
             }
 
-            EnsureGenerationRow(projectile.Handle);
+            if (!projectiles.TryGetCombatTrustedOwner(projectile.Handle, out PlayerHandle trustedOwner) ||
+                !TryResolveOwnerRow(trustedOwner, out int ownerRow))
+            {
+                continue;
+            }
+            bool sharedOwnerImmunity = VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(projectile.Type);
+
             bool projectileEnded = false;
             for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
             {
                 NpcSnapshot target = npcBuffer[npcIndex];
                 if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in projectile, in projectileDefinition, in target, in npcHitbox) ||
-                    IsOnCooldown(projectile.Handle, target.Handle.Slot, tick))
+                    (sharedOwnerImmunity && IsOwnerNpcOnCooldown(ownerRow, target.Handle.Slot, tick)))
                 {
                     continue;
                 }
@@ -75,7 +84,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 if (result == RuntimeProjectileNpcDamageResult.Rejected)
                     continue;
 
-                MarkCooldown(projectile.Handle, target.Handle.Slot, tick);
+                if (sharedOwnerImmunity)
+                    MarkOwnerNpcCooldown(ownerRow, target.Handle.Slot, tick);
                 CommittedHits++;
                 if (result == RuntimeProjectileNpcDamageResult.Killed)
                     Kills++;
@@ -109,7 +119,9 @@ internal sealed class RuntimeProjectileNpcCombatPass
             return false;
         }
 
-        return profile.Family is VanillaProjectileBehaviorFamily.BasicArrow or VanillaProjectileBehaviorFamily.Thrown;
+        return profile.Family is VanillaProjectileBehaviorFamily.BasicArrow or
+            VanillaProjectileBehaviorFamily.Thrown or
+            VanillaProjectileBehaviorFamily.Boomerang;
     }
 
     private static bool IsEligibleTarget(in NpcSnapshot target, out VanillaNpcHitboxSize hitbox)
@@ -141,21 +153,35 @@ internal sealed class RuntimeProjectileNpcCombatPass
                projectileTop < npcBottom && projectileBottom > npc.PositionY;
     }
 
-    private void EnsureGenerationRow(ProjectileHandle handle)
+    private bool TryResolveOwnerRow(PlayerHandle trustedOwner, out int ownerRow)
     {
-        int slot = handle.Slot;
-        if (seenGenerations[slot] == handle.Generation)
-            return;
-        seenGenerations[slot] = handle.Generation;
-        Array.Fill(lastNpcHitTick, long.MinValue, slot * npcs.Capacity, npcs.Capacity);
+        ownerRow = -1;
+        if (!trustedOwner.IsAssigned ||
+            !players.TryGetPlayer(trustedOwner.Slot, out PlayerStateSnapshot currentOwner) ||
+            currentOwner.Player != trustedOwner)
+        {
+            return false;
+        }
+
+        byte spawner = trustedOwner.Slot.Value;
+        if (ownerGenerations[spawner] != trustedOwner.Generation)
+        {
+            ownerGenerations[spawner] = trustedOwner.Generation;
+            Array.Fill(lastOwnerNpcHitTick, long.MinValue, spawner * npcs.Capacity, npcs.Capacity);
+        }
+
+        ownerRow = spawner * npcs.Capacity;
+        return true;
     }
 
-    private bool IsOnCooldown(ProjectileHandle projectile, ushort npcSlot, long tick)
+    private bool IsOwnerNpcOnCooldown(int ownerRow, ushort npcSlot, long tick)
     {
-        long previous = lastNpcHitTick[projectile.Slot * npcs.Capacity + npcSlot];
-        return previous != long.MinValue && tick - previous < VanillaProjectileNpcCombatFacts.BaselineNpcHitCooldownTicks;
+        long previous = lastOwnerNpcHitTick[ownerRow + npcSlot];
+        return previous != long.MinValue &&
+            tick - previous < VanillaProjectileNpcCombatFacts.BaselineOwnerNpcHitCooldownTicks;
     }
 
-    private void MarkCooldown(ProjectileHandle projectile, ushort npcSlot, long tick) =>
-        lastNpcHitTick[projectile.Slot * npcs.Capacity + npcSlot] = tick;
+    private void MarkOwnerNpcCooldown(int ownerRow, ushort npcSlot, long tick) =>
+        lastOwnerNpcHitTick[ownerRow + npcSlot] = tick;
+
 }

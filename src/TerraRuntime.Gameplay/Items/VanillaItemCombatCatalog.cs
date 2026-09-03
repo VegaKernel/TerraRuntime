@@ -96,3 +96,58 @@ public static class VanillaItemCombatCatalog
         return modifiers != default;
     }
 }
+
+/// <summary>One source-backed direct-melee item use resolved before target-specific defense/world mutation.</summary>
+public readonly record struct VanillaResolvedDirectMeleeUse(
+    int Damage,
+    int MinimumDamage,
+    int MaximumDamage,
+    bool Critical,
+    int CritChance,
+    int AnimationTicks,
+    int UseTimeTicks,
+    float KnockBack,
+    int ArmorPenetration,
+    float ImpossibleCenterDistancePixels);
+
+/// <summary>
+/// Shared direct-melee formula consumed by both PvE and PvP strict paths. Target-specific defense and PvP
+/// immunity remain downstream; tools are intentionally ordinary melee sources when their SetDefaults damage is non-zero.
+/// </summary>
+public static class VanillaDirectMeleeCombatMath
+{
+    public const int PvpMeleeCritChance = 10;
+
+    public static VanillaResolvedDirectMeleeUse Resolve(
+        in VanillaDirectMeleeCombatDefinition weapon,
+        in VanillaCombatPrefixModifiers prefix,
+        int damageRollPercent,
+        int critRollPercent,
+        bool pvp)
+    {
+        damageRollPercent = Math.Clamp(damageRollPercent, -15, 15);
+        critRollPercent = Math.Clamp(critRollPercent, 1, 100);
+        int itemDamage = Math.Max(1, (int)Math.Round(weapon.BaseDamage * prefix.DamageMultiplier));
+        int minDamage = Math.Max(1, (int)Math.Round(itemDamage * 0.85f));
+        int maxDamage = Math.Max(minDamage, (int)Math.Round(itemDamage * 1.15f));
+        int damage = Math.Max(1, (int)Math.Round(itemDamage * (1f + damageRollPercent / 100f)));
+        int critChance = pvp
+            ? PvpMeleeCritChance
+            : Math.Clamp(weapon.BaseCrit + prefix.CritBonus, 0, 100);
+        bool critical = critRollPercent <= critChance;
+        int animationTicks = Math.Max(1, (int)Math.Round(weapon.AnimationTicks * prefix.SpeedMultiplier));
+        int useTimeTicks = Math.Max(1, (int)Math.Round(weapon.UseTimeTicks * prefix.SpeedMultiplier));
+        float knockBack = Math.Max(0f, weapon.BaseKnockBack * prefix.KnockBackMultiplier);
+        return new VanillaResolvedDirectMeleeUse(
+            damage,
+            minDamage,
+            maxDamage,
+            critical,
+            critChance,
+            animationTicks,
+            useTimeTicks,
+            knockBack,
+            prefix.ArmorPenetration,
+            weapon.ImpossibleCenterDistancePixels);
+    }
+}
