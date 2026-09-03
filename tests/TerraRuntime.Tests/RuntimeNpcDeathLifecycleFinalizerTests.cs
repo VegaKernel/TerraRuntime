@@ -55,7 +55,9 @@ public sealed class RuntimeNpcDeathLifecycleFinalizerTests
         NpcSnapshot deerclops = Spawn(store, 0, VanillaNpcIds.Deerclops);
         Kill(store, deerclops.Handle);
         var finalizer = new RuntimeNpcDeathLifecycleFinalizer(store);
-        var context = new VanillaNpcLootContext(IsExpertMode: expert, IsMasterMode: master);
+        var context = new VanillaNpcLootContext(
+            IsExpertMode: expert || master,
+            DropExtraGel: false);
 
         Assert.False(finalizer.TryFinalizeWhenLootUnsupported(deerclops.Handle, in context, out _));
         Assert.True(store.TryGet(deerclops.Handle, out NpcSnapshot current));
