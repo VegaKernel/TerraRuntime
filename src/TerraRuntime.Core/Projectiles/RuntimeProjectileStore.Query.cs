@@ -61,6 +61,20 @@ public sealed partial class RuntimeProjectileStore
         return true;
     }
 
+
+    /// <summary>
+    /// Returns whether this exact projectile generation came from a server-authoritative spawn path. Client packet-27
+    /// generations remain untrusted until a source/damage validator explicitly promotes them.
+    /// </summary>
+    public bool IsCombatTrusted(ProjectileHandle handle)
+    {
+        if (!IsCurrentHandleCandidate(handle))
+            return false;
+
+        ref readonly SlotState state = ref _slots[handle.Slot];
+        return state.Active && state.Generation == handle.Generation.Value && state.CombatTrusted;
+    }
+
     public int CopyActive(Span<ProjectileSnapshot> destination)
     {
         if (destination.Length < _activeCount)

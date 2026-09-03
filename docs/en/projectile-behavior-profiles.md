@@ -82,18 +82,28 @@ Do not infer a behavior profile solely from `AiStyle`. This is intentional dupli
 
 Existing projectile behavior/world tests continue to exercise the actual velocity, timer, collision and lifecycle paths through the same production steppers.
 
-## Combat handoff
+## Combat handoff and runtime integrity
 
-Projectile simulation and combat mutation now have an explicit handoff instead of sharing packet fields or a monolithic update method:
+Projectile simulation and NPC combat now have an executable post-simulation handoff for a deliberately small trusted slice:
 
 ```mermaid
 flowchart LR
-    Behavior["Behavior family"] --> Motion["World physics / tile collision"]
-    Motion --> Target["Future entity-hit selection"]
-    Target --> Intent["ProjectileNpcHitIntent"]
-    Intent --> Damage["NpcDamageRequest / damage executor"]
+    Spawn["Projectile generation"] --> Trust{"server combat trusted?"}
+    Trust -->|no| Sync["movement/replication only"]
+    Trust -->|yes| Behavior["source-backed behavior profile"]
+    Behavior --> Motion["world physics / tile collision / lifetime"]
+    Motion --> NpcPass["deterministic projectile-slot -> NPC-slot AABB pass"]
+    NpcPass --> Intent["ProjectileNpcHitIntent"]
+    Intent --> Damage["existing NPC damage/death pipeline"]
+    Damage --> Penetration["source-backed penetration consumption"]
 ```
 
-`ProjectileNpcHitIntentBuilder` accepts a selected generation-safe `NpcHandle` plus the source-resolved hit direction and converts a live player-owned projectile into a mutation-free `ProjectileNpcHitIntent`. Its byte owner is resolved through `IRuntimePlayerSlotSnapshotLookup` to the current `PlayerHandle`; a reused or mismatched slot cannot acquire provenance from the replacement player. The builder deliberately does not guess direction from NPC movement or projectile velocity because vanilla has projectile-type branches that derive it differently.
+Runtime-only combat trust is generation-scoped. A projectile created through the server runtime command path is eligible to be promoted as combat-trusted; a new client packet-27 generation is **not** trusted merely because its owner byte matches the connection. Existing client generations also cannot rewrite `type`, `damage`, `originalDamage` or `knockBack` while retaining the same wire identity. This prevents the new server-side NPC hit pass from turning an unverified client projectile claim into authoritative world damage.
 
-Server-owned projectiles fail closed because the current projectile state does not retain an originating `NpcHandle`. The boundary is intentionally not wired to simulation yet: entity hitbox selection, trusted projectile damage/direction derivation, immunity, penetration, crit/variation and kill effects still require independent source-backed work. Once a validated request exists, the NPC executor now applies the ordinary source-backed knockback slice. Tile collision remains owned by world motion and cannot directly apply combat damage.
+For combat-trusted player projectiles, the current hit pass admits only behavior profiles whose source-backed collision/penetration semantics are implemented. The first slice covers selected `BasicArrow`/`Thrown` projectiles, selects live generation-safe NPC targets by source-backed AABB geometry, applies a bounded baseline per-projectile/NPC cooldown, commits damage/death through the existing NPC combat pipeline, and only after a committed hit consumes source-backed penetration. Positive penetration counts down; the last hit despawns the exact generation; infinite penetration remains active. Ordering is deterministic by physical projectile slot and then physical NPC slot.
+
+World motion already owns tile collision, liquid contact, world bounds and source-backed lifetime. The new pass adds entity collision and ordinary NPC damage side effects without moving those responsibilities back into packet handling.
+
+The runtime still fails closed on the important missing pieces: legitimate client projectile weapon/ammo source promotion, full vanilla projectile AI families, exceptional local/static NPC immunity, player/PvP collision, projectile-applied buffs/debuffs, child/on-hit projectile spawn ordering, and type-specific on-hit effects. In particular, client packet-27 projectiles remain synchronization state rather than an authoritative NPC-damage source until their weapon/ammo mapping is independently verified.
+
+`ProjectileNpcHitIntentBuilder` remains the provenance boundary: player-owned projectile hits resolve the owner byte through `IRuntimePlayerSlotSnapshotLookup` to the current `PlayerHandle`, so slot reuse cannot transfer provenance to a replacement player. Server/NPC-origin projectile provenance remains fail-closed until the originating `NpcHandle` is retained explicitly.

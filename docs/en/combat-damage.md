@@ -123,30 +123,50 @@ It deliberately does **not** immediately despawn the NPC, run loot, trigger kill
 - NPCs without a verified definition/combat state are rejected rather than assigned guessed defense values;
 - extreme critical damage is saturated rather than overflowing.
 
-## 8. Current limitations
+## 8. Combat-integrity pipeline
+
+Phase 7 now has one incremental strict path instead of a second external anti-cheat formula:
+
+```mermaid
+flowchart LR
+    Inventory["Authoritative selected inventory item"] --> Calculator["AuthoritativeCombatCalculator"]
+    Calculator --> Validator["CombatValidator"]
+    Validator -->|accepted| Damage["NpcDamageRequest"]
+    Damage --> Mutation["existing NPC damage/death pipeline"]
+    Wire["packet 28 damage / crit"] -->|hint + anomaly evidence only in strict slice| Validator
+    Validator -->|rejected| Diagnostics["bounded reason + suspicion diagnostics"]
+```
+
+The strict source-backed direct-melee slice currently admits Muramasa and Copper Pickaxe. It resolves the selected item from server-owned inventory state, imports the verified prefix multipliers, performs server-side `-15..+15%` damage variation and crit rolls, applies source-backed `useTime`/`useAnimation` cadence, rejects impossible center distance, checks a bounded $60\,	ext{tick}$ DPS window, and commits only the server-generated `NpcDamageRequest`. A client's packet-28 damage/crit values cannot raise the accepted strict-path hit; they are retained only for envelope/anomaly evidence.
+
+Rejected strict-path hits are recorded in a bounded ring with the exact reason, client claim, server result when available and decaying suspicion score. Statistical crit/damage-edge observations add low-weight suspicion only; they never decide damage themselves.
+
+This is deliberately **not** global combat parity yet. Non-inventory equipment is already authoritative identity state but its complete combat modifiers are not modeled, and player buff/world modifier state is not yet a complete authoritative combat input. Unsupported weapon/prefix/equipment formulas therefore use the documented legacy compatibility path rather than fabricated math. Closing that fallback is what eventually makes client `damage` entirely ignorable.
+
+## 9. Current limitations
 
 The following remain explicit follow-up work:
 
 - player PvE/PvP damage and player defense/difficulty rules;
 - damage variation and luck;
-- immunity frames/cooldowns and projectile penetration;
+- complete immunity frames/cooldowns and exceptional projectile-penetration rules beyond the admitted simple projectile slice;
 - buffs, debuffs, banners and special target modifiers, including the On Fire! 2 knockback bonus;
 - dynamically changing knockback resistance and type-specific strike branches not represented by the admitted definition/state model;
-- contact/projectile collision-to-hit generation;
+- complete contact/projectile collision-to-hit generation beyond the trusted admitted NPC-projectile slice;
 - hit packet/combat-text replication;
 - NPC death ordering, kill effects, loot and progression hooks;
 - boss-specific damage rules and special immunities.
 
 The semantic damage model is designed so those systems can attach around one authoritative transition rather than reintroducing packet-driven HP mutation.
 
-## 9. Verification
+## 10. Verification
 
 Focused tests pin source-shape validation, Blue Slime defense resolution, armor penetration before critical multiplication, minimum one-damage behavior, lethal zero-life commit, stale-generation rejection and integer-overflow protection. Regression cases also pin `justHit`, attack-supplied direction, strong/weak and expert thresholds, gravity-aware vertical velocity, ordered soft caps before critical amplification, zero-resistance bosses and variant-specific resistance above `1`. These cases fail under the previous `(1 - resistance)`/NPC-direction approximation. The expected transitions were traced to TerrariaServer 1.4.5.8 `NPC.StrikeNPC_Inner`; broader combat parity still requires differential evidence before the remaining rules are marked complete.
 
 
-## Live packet 28 integration
+## 11. Live packet 28 integration
 
-Production now decodes TerrariaServer 1.4.5.8 packet 28 in the existing bounded gameplay ingress. The authoritative owner sends packet 162 acknowledgement before generation resolution, compares the wrapped 1..255 wire generation against the current runtime handle, records player interaction before the strike, clamps negative wire damage to zero, and applies the existing defense/critical/knockback resolver.
+Production decodes TerrariaServer 1.4.5.8 packet 28 in the existing bounded gameplay ingress. The authoritative owner sends packet 162 acknowledgement before generation resolution and compares the wrapped 1..255 wire generation against the current runtime handle. For source-backed strict direct-melee hits, calculate/validate now runs before player-interaction, HP, loot or replication mutation and replaces wire damage/crit with server-generated values. Unsupported combat formulas intentionally retain the older compatibility behavior until their authoritative source model exists.
 
 For lethal imported deaths, implemented NPC-specific loot is materialized before death effects. King Slime normal/Expert/Master paths use the existing source-backed loot evaluators and instanced-item transport; Slime Rain termination, blue-town-slime unlock/Nerdy spawn and downed-King-Slime progression follow loot, then the NPC generation is despawned. Packet 28 is relayed after those server-side effects and packet 23 follows for death, while the synchronous store packet-23 commit is suppressed only for that exact NPC generation.
 

@@ -43,6 +43,7 @@ public sealed partial class RuntimeProjectileStore
         state.Revision = 1;
         state.Update = update;
         state.Lifecycle = lifecycle;
+        state.CombatTrusted = false;
     }
 
     private static ProjectileSnapshot Capture(ushort slot, in SlotState state)
@@ -80,5 +81,6 @@ public sealed partial class RuntimeProjectileStore
         public ulong Revision;
         public ProjectileStateUpdate Update;
         public ProjectileLifecycleState Lifecycle;
+        public bool CombatTrusted;
     }
 }

@@ -115,6 +115,20 @@ internal sealed class PlayerAuthority
         return inventory.TryGet(connection, inventorySlot, out item);
     }
 
+    public bool TryCaptureEquipment(
+        ConnectionHandle connection,
+        out PlayerEquipmentCommitRequest[] equipment)
+    {
+        if (!membership.IsCurrent(connection) ||
+            !transferProfiles.TryCapture(connection, out _, out equipment))
+        {
+            equipment = [];
+            return false;
+        }
+
+        return true;
+    }
+
     public bool TryCopyInventory(
         ConnectionHandle connection,
         Span<RuntimePlayerInventoryItem> destination) =>

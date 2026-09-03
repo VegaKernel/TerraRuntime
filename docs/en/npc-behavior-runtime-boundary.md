@@ -106,6 +106,12 @@ The current vanilla behavior chain includes the gameplay-owned TerrariaServer 1.
 
 The dedicated-server-only Expert passive-shadow-hand branch is now authoritative. `localAI[2]` uses the source life-scaled 80→40 tick cadence, rotates through three player-slot groups, requires generation-safe per-NPC interaction credit and enforces the 1200-pixel range before staging projectile `965` with source damage `10`. The slow-scream state still deliberately does not apply vanilla `Slow (buff 32, 720 ticks)`: the pinned branch is excluded on `Main.netMode == 2`, so adding that buff on the dedicated server would be false parity rather than completion. Deerclops therefore remains below full vanilla AI parity only for broader/shared gaps, not for this server-executed projectile branch.
 
+## Source-backed late Hardmode and endgame boss slice
+
+The runtime-owned boss boundary now carries the remaining server-authoritative NPC-side state needed by the late Hardmode/endgame roster instead of leaving the encounter roots attached to metadata-only projectile placeholders. Duke Fishron admits AI 71 Sharkron/Sharkron2 emergence and charge state plus source-owned Sharknado `385`. Lunatic Cultist admits Ancient Vision/Light/Doom state, ritual Dragon-or-Vision spawning, ritual interruption by the real boss or a struck clone, and the source-owned `464/465/467/468/490/593` attack families.
+
+Empress of Light stages the specialized lasting-rainbow, rainbow-streak, lance and sun-dance projectile families (`872/873/919/923`); daytime rage also promotes the source cadence and `9999` projectile damage rather than relying only on a remembered `ai[3]` flag. Moon Lord hand/head/True Eye attack clocks follow their pinned 600/1200-tick source sequences and stage Phantasmal eye/sphere/deathray/leech/bolt intents (`452/454/455/456/462`). Cosmetic sound/dust/gore remains outside authority. Exact specialized projectile-style internals, remaining seed-only Empress conditions and Moon Lord part-death/death-presentation choreography remain explicit parity work rather than being forged into generic NPC AI.
+
 ## Lifecycle and unload
 
 Behavior registrations are leases. The extensible host scope tracks them together with custom actor and archetype leases. Scope retirement performs cleanup in this order:

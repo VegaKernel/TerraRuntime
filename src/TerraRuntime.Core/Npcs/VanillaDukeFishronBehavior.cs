@@ -5,9 +5,9 @@ using TerraRuntime.Gameplay.Npcs;
 namespace TerraRuntime.Core;
 
 /// <summary>
-/// Server-authoritative clean-room state slice for TerrariaServer 1.4.5.8 AI 69/70.
+/// Server-authoritative clean-room state slice for TerrariaServer 1.4.5.8 AI 69/70/71.
 /// The root owns intro, phase transitions, hover and dash cadence; Detonating Bubbles own the source homing/lifetime state.
-/// Visual dust/rotation branches and tornado projectile world behavior are intentionally kept out of NPC authority.
+/// Visual dust/rotation branches stay out of NPC authority; Sharkron emergence/charge state is authoritative.
 /// </summary>
 internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
@@ -19,6 +19,8 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             return TryStepRoot(in npc, in definition, context, out next);
         if (npc.TypeIdentity == VanillaNpcIds.DetonatingBubble)
             return TryStepDetonatingBubble(in npc, in definition, context, out next);
+        if (npc.TypeIdentity == VanillaNpcIds.Sharkron || npc.TypeIdentity == VanillaNpcIds.Sharkron2)
+            return TryStepSharkron(in npc, in definition, context, out next);
         next = default;
         return false;
     }
@@ -207,6 +209,69 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             DamageOverride = damage,
             DefenseOverride = defense,
             Alpha = alpha,
+            JustHit = false
+        };
+        next = Build(in npc, vx, vy, targetSlot, in ai, in sim);
+        return true;
+    }
+
+
+    private static bool TryStepSharkron(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out NpcStateUpdate next)
+    {
+        if (definition.AiStyle != VanillaNpcAiStyles.Sharkron)
+        { next = default; return false; }
+
+        ushort targetSlot = npc.Target;
+        if (!TryTarget(in npc, in definition, context, ref targetSlot, out VanillaNpcTargetCandidate target))
+        { next = default; return false; }
+
+        NpcAiState ai = npc.Ai;
+        NpcAiState local = npc.Simulation.LocalAi;
+        NpcSimulationState sim = npc.Simulation;
+        float vx = npc.VelocityX, vy = npc.VelocityY;
+        bool vulnerable = false;
+        bool noGravity = true;
+
+        if (ai.Ai0 == 0f)
+        {
+            ai = ai with { Ai1 = ai.Ai1 + 1f };
+            vy = ai.Ai3;
+            if (npc.TypeIdentity == VanillaNpcIds.Sharkron2)
+            {
+                // Source AI71 stores the horizontal emergence amplitude in ai[2] and advances a 60-tick cosine phase in localAI[1].
+                vx = (MathF.Cos(MathF.PI / 30f * local.Ai1) - .5f) * ai.Ai2;
+                local = local with { Ai1 = local.Ai1 + 1f };
+            }
+            if (ai.Ai1 >= 90f)
+            {
+                ai = ai with { Ai0 = 1f, Ai1 = sim.SolidCollision ? 0f : 1f };
+                SetToward(npc.PositionX + definition.Width * .5f, npc.PositionY + definition.Height * .5f,
+                    target.CenterX, target.CenterY, 16f, ref vx, ref vy);
+            }
+        }
+        else
+        {
+            if (!sim.SolidCollision && ai.Ai1 < 1f)
+                ai = ai with { Ai1 = 1f };
+
+            if (ai.Ai1 >= 1f)
+            {
+                vulnerable = true;
+                ai = ai with { Ai1 = ai.Ai1 + 1f };
+                if (sim.SolidCollision)
+                    sim = sim with { Life = 0, TimeLeft = 0 };
+                if (ai.Ai1 >= 60f)
+                    noGravity = false;
+            }
+        }
+
+        sim = sim with
+        {
+            NoGravity = noGravity,
+            NoTileCollide = true,
+            DontTakeDamage = !vulnerable,
+            LocalAi = local,
             JustHit = false
         };
         next = Build(in npc, vx, vy, targetSlot, in ai, in sim);

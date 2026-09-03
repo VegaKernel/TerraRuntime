@@ -218,6 +218,49 @@ public sealed class RuntimeProjectileStoreTests
         Assert.Equal(0, store.ActiveCount);
     }
 
+    [Fact]
+    public void Combat_trust_is_exact_generation_scoped_and_does_not_survive_slot_reuse()
+    {
+        var store = new RuntimeProjectileStore(capacity: 2);
+        ProjectileStateUpdate state = CreateUpdate(type: 1, positionX: 10f);
+
+        Assert.True(store.TrySpawn(0, in state, out ProjectileSnapshot first));
+        Assert.False(store.IsCombatTrusted(first.Handle));
+        Assert.True(store.TryMarkCombatTrusted(first.Handle));
+        Assert.True(store.IsCombatTrusted(first.Handle));
+
+        ProjectileStateUpdate moved = state with { PositionX = 20f };
+        Assert.True(store.TryUpdate(first.Handle, in moved, out ProjectileSnapshot updated));
+        Assert.True(store.IsCombatTrusted(updated.Handle));
+
+        Assert.True(store.TryDespawn(updated.Handle, out _));
+        Assert.False(store.IsCombatTrusted(updated.Handle));
+        Assert.True(store.TrySpawn(0, in state, out ProjectileSnapshot replacement));
+        Assert.NotEqual(first.Handle, replacement.Handle);
+        Assert.False(store.IsCombatTrusted(replacement.Handle));
+    }
+
+    [Fact]
+    public void Source_backed_penetration_is_consumed_only_on_exact_live_generation()
+    {
+        var store = new RuntimeProjectileStore(capacity: 2);
+        ProjectileStateUpdate shuriken = CreateUpdate(type: 3, positionX: 10f);
+        Assert.True(store.TrySpawn(0, in shuriken, out ProjectileSnapshot spawned));
+
+        for (int remainingHits = 3; remainingHits >= 1; remainingHits--)
+        {
+            Assert.True(store.TryConsumeNpcHitPenetration(spawned.Handle, out bool despawned, out ProjectileSnapshot current));
+            Assert.False(despawned);
+            Assert.True(store.TryGetLifecycle(current.Handle, out ProjectileLifecycleState lifecycle));
+            Assert.Equal(remainingHits, lifecycle.PenetrateOverride);
+        }
+
+        Assert.True(store.TryConsumeNpcHitPenetration(spawned.Handle, out bool finalDespawn, out _));
+        Assert.True(finalDespawn);
+        Assert.False(store.TryGet(spawned.Handle, out _));
+        Assert.False(store.TryConsumeNpcHitPenetration(spawned.Handle, out _, out _));
+    }
+
     private static ProjectileStateUpdate CreateUpdate(int type, float positionX) =>
         new(
             Type: new ProjectileTypeId(type),

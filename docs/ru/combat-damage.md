@@ -123,13 +123,33 @@ Executor разрешает полную definition по положительн�
 - NPC без проверенной definition/combat state отвергается вместо подстановки выдуманной защиты;
 - экстремальный critical damage насыщается, а не вызывает integer overflow.
 
-## 8. Текущие ограничения
+## 8. Контур combat integrity
+
+В Phase 7 появился один инкрементальный строгий путь вместо второй внешней формулы античита:
+
+```mermaid
+flowchart LR
+    Inventory["Авторитетный выбранный предмет inventory"] --> Calculator["AuthoritativeCombatCalculator"]
+    Calculator --> Validator["CombatValidator"]
+    Validator -->|accepted| Damage["NpcDamageRequest"]
+    Damage --> Mutation["существующий NPC damage/death pipeline"]
+    Wire["packet 28 damage / crit"] -->|только hint + anomaly evidence в strict slice| Validator
+    Validator -->|rejected| Diagnostics["bounded reason + suspicion diagnostics"]
+```
+
+Строгий source-backed direct-melee slice сейчас допускает Muramasa и Copper Pickaxe. Он берёт выбранный предмет из server-owned inventory state, применяет проверенные prefix multipliers, серверно выполняет разброс урона `-15..+15%` и crit roll, соблюдает source-backed `useTime`/`useAnimation` cadence, отсекает невозможную дистанцию до центра цели, проверяет bounded DPS-окно $60\,	ext{ticks}$ и коммитит только сформированный сервером `NpcDamageRequest`. Значения damage/crit из packet 28 не могут увеличить принятый strict-path hit и остаются только входом для envelope/anomaly diagnostics.
+
+Каждый reject строгого пути попадает в bounded ring с точной причиной, client claim, серверным результатом при его наличии и затухающим suspicion score. Статистика по crit и попыткам постоянно попадать в края damage envelope добавляет только слабый диагностический вес и сама не определяет урон.
+
+Это намеренно ещё не глобальный combat parity. Non-inventory equipment уже является authoritative identity state, но полный набор его combat modifiers не смоделирован; player buffs/world modifiers тоже ещё не являются полным authoritative combat input. Поэтому неподдержанные weapon/prefix/equipment formulas идут в явно задокументированный legacy compatibility path, а не получают выдуманную математику. Закрытие этого fallback и позволит в итоге полностью игнорировать клиентский `damage`.
+
+## 9. Текущие ограничения
 
 Отдельной последующей работой остаются:
 
 - player PvE/PvP damage и правила player defense/difficulty;
 - damage variation и luck;
-- immunity frames/cooldowns и projectile penetration;
+- полные immunity frames/cooldowns и exceptional projectile-penetration rules за пределами admitted simple projectile slice;
 - buffs, debuffs, banners и специальные target modifiers, включая knockback-бонус On Fire! 2;
 - динамически меняющаяся knockback resistance и type-specific strike branches, ещё не представленные в authoritative definition/state model;
 - преобразование contact/projectile collision в hit;
@@ -139,12 +159,12 @@ Executor разрешает полную definition по положительн�
 
 Семантическая damage model сделана так, чтобы эти системы наращивались вокруг одного авторитетного перехода, а не возвращали packet-driven mutation HP.
 
-## 9. Проверка
+## 10. Проверка
 
 Фокусные тесты закрепляют валидацию формы источника, расчёт защиты Blue Slime, применение armor penetration до critical multiplier, минимум в один damage, lethal commit в zero Life, rejection stale generation и защиту от integer overflow. Regression-сценарии также закрепляют `justHit`, направление от источника атаки, strong/weak и expert thresholds, gravity-aware vertical velocity, ordered soft caps до critical amplification, boss с нулевой resistance и variant-specific resistance выше `1`. Эти сценарии падают при прежней аппроксимации `(1 - resistance)`/NPC-direction. Ожидаемые переходы прослежены до TerrariaServer 1.4.5.8 `NPC.StrikeNPC_Inner`; для оставшихся правил всё ещё требуется differential evidence до заявления о более широком combat parity.
 
 
-## Live integration packet 28
+## 11. Live integration packet 28
 
 Production теперь декодирует packet 28 TerrariaServer 1.4.5.8 в существующем bounded gameplay ingress. Authoritative owner отправляет acknowledgement packet 162 до generation resolution, сравнивает wrapped wire generation 1..255 с текущим runtime handle, отмечает player interaction до strike, clamp'ит отрицательный wire damage в zero и применяет существующий resolver defense/critical/knockback.
 

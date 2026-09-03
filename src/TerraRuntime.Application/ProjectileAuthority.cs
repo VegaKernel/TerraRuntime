@@ -93,7 +93,8 @@ internal sealed class ProjectileAuthority
     private void ApplySpawn(ProjectileSpawnRuntimeCommand command)
     {
         ProjectileStateUpdate state = command.State;
-        if (projectiles.TrySpawn(command.Slot, in state, out ProjectileSnapshot snapshot))
+        if (projectiles.TrySpawn(command.Slot, in state, out ProjectileSnapshot snapshot) &&
+            projectiles.TryMarkCombatTrusted(snapshot.Handle))
         {
             AppliedSpawns++;
             command.Completion?.TrySetResult(snapshot);
@@ -145,6 +146,17 @@ internal sealed class ProjectileAuthority
 
         if (identities.TryResolve(in key, out ProjectileHandle projectile))
         {
+            if (!projectiles.TryGet(projectile, out ProjectileSnapshot current) ||
+                current.Type != update.Type ||
+                current.Spawner != update.Spawner ||
+                current.Damage != update.Damage ||
+                current.OriginalDamage != update.OriginalDamage ||
+                current.KnockBack != update.KnockBack)
+            {
+                RejectedClientUpdates++;
+                return;
+            }
+
             using IDisposable scope = clientCommits.Enter(command.Connection.Source, in key);
             if (projectiles.TryUpdate(projectile, in update, out _))
             {

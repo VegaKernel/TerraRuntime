@@ -16,6 +16,13 @@ internal enum RuntimeNpcNetworkDamageResult : byte
     Killed = 3
 }
 
+internal enum RuntimeProjectileNpcDamageResult : byte
+{
+    Rejected = 0,
+    Committed = 1,
+    Killed = 2
+}
+
 /// <summary>
 /// Authoritative packet-28 bridge. It resolves wrapped wire generations against the live slot, preserves the
 /// TerrariaServer ordering PlayerInteraction -> StrikeNPC -> imported loot -> boss death effects -> despawn -> packet 28
@@ -34,6 +41,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private readonly RuntimeNpcDamageExecutor damage;
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
     private readonly IRuntimePlayerSlotSnapshotLookup players;
+    private readonly RuntimeCombatIntegrity combatIntegrity;
+    private readonly Func<long> tickProvider;
     private readonly RuntimeKingSlimeDifficultyLootDeliverySink? difficultyLoot;
     private readonly RuntimeEaterOfWorldsLootDeliverySink eaterLoot;
     private readonly RuntimeBrainOfCthulhuLootDeliverySink brainLoot;
@@ -72,10 +81,15 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
 
     internal RuntimeNpcPlayerInteractionLedger Interactions => interactions;
 
+    internal int CopyCombatIntegrityDiagnostics(Span<CombatIntegrityDiagnostic> destination) =>
+        combatIntegrity.CopyRecentDiagnostics(destination);
+
     public RuntimeNpcNetworkCombatPipeline(
         RuntimeNpcStore npcs,
         RuntimeWorldItemStore worldItems,
         IRuntimePlayerSlotSnapshotLookup players,
+        PlayerAuthority playerAuthority,
+        Func<long> tickProvider,
         RuntimeNpcReplicationRegistry? npcReplication,
         RuntimeWorldItemInstancedLeaseStore instancedLeases,
         RuntimeWorldItemReplicationRegistry? worldItemReplication,
@@ -92,6 +106,9 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
+        ArgumentNullException.ThrowIfNull(playerAuthority);
+        this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
+        combatIntegrity = new RuntimeCombatIntegrity(playerAuthority, npcs.Capacity);
         this.npcReplication = npcReplication;
         this.worldClock = worldClock;
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
@@ -158,16 +175,30 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             return RuntimeNpcNetworkDamageResult.Rejected;
         }
 
-        short normalizedDamage = Math.Max(wireState.Damage, (short)0);
-        float normalizedKnockBack = Math.Max(wireState.KnockBack, 0f);
-        int normalizedHitDirection = Math.Clamp(wireState.HitDirection, -1, 1);
+        NpcDamageRequest authoritativeRequest = default;
+        CombatIntegrityResolveResult integrity = combatIntegrity.ResolveClientNpcHit(
+            tickProvider(), connection, in current, in wireState, out authoritativeRequest, out _);
+        if (integrity == CombatIntegrityResolveResult.Rejected)
+            return RuntimeNpcNetworkDamageResult.Rejected;
+
+        short normalizedDamage = integrity == CombatIntegrityResolveResult.Accepted
+            ? checked((short)Math.Min(authoritativeRequest.BaseDamage, short.MaxValue))
+            : Math.Max(wireState.Damage, (short)0);
+        float normalizedKnockBack = integrity == CombatIntegrityResolveResult.Accepted
+            ? authoritativeRequest.KnockBack
+            : Math.Max(wireState.KnockBack, 0f);
+        int normalizedHitDirection = integrity == CombatIntegrityResolveResult.Accepted
+            ? authoritativeRequest.HitDirection
+            : Math.Clamp(wireState.HitDirection, -1, 1);
         var normalizedWire = new TerrariaNpcDamageState(
             wireState.NpcSlot,
             wireState.Generation,
             normalizedDamage,
             normalizedKnockBack,
             checked((byte)(normalizedHitDirection + 1)),
-            wireState.Critical ? (byte)1 : (byte)0);
+            integrity == CombatIntegrityResolveResult.Accepted
+                ? (authoritativeRequest.Critical ? (byte)1 : (byte)0)
+                : (wireState.Critical ? (byte)1 : (byte)0));
 
         // PlayerInteraction occurs before StrikeNPC in MessageBuffer case 28. Keep credit even when the strike itself
         // is rejected by invulnerability or another authoritative combat guard.
@@ -204,13 +235,15 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                 throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before packet-28 damage.");
         }
 
-        var request = new NpcDamageRequest(
-            current.Handle,
-            DamageSource.FromPlayerItem(connection.Player),
-            normalizedDamage,
-            Critical: normalizedWire.Critical,
-            KnockBack: normalizedWire.KnockBack,
-            HitDirection: normalizedHitDirection);
+        var request = integrity == CombatIntegrityResolveResult.Accepted
+            ? authoritativeRequest
+            : new NpcDamageRequest(
+                current.Handle,
+                DamageSource.FromPlayerItem(connection.Player),
+                normalizedDamage,
+                Critical: normalizedWire.Critical,
+                KnockBack: normalizedWire.KnockBack,
+                HitDirection: normalizedHitDirection);
 
         bool suppressing = npcReplication?.TryBeginClientDamage(current.Handle) == true;
         try
@@ -325,6 +358,121 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         }
     }
 
+
+
+    public RuntimeProjectileNpcDamageResult TryStrikeProjectile(
+        in ProjectileSnapshot projectile,
+        NpcHandle target,
+        int hitDirection)
+    {
+        if (!projectile.IsActive || !target.IsAssigned || hitDirection is < -1 or > 1 ||
+            !npcs.TryGet(target, out NpcSnapshot liveTarget) || !liveTarget.IsActive ||
+            !ProjectileNpcHitIntentBuilder.TryCreateNpcHit(
+                in projectile, liveTarget.Handle, hitDirection, players, out ProjectileNpcHitIntent intent) ||
+            !intent.TryCreateDamageRequest(out NpcDamageRequest request))
+        {
+            return RuntimeProjectileNpcDamageResult.Rejected;
+        }
+
+        if (VanillaEaterOfWorldsLifecycle.IsSegment(liveTarget.TypeIdentity))
+        {
+            VanillaEaterOfWorldsLifecycle.MarkPlayerInteractionAcrossActiveSegments(
+                npcs, interactions, request.Source.Player, npcFamilyBuffer);
+        }
+        else if (liveTarget.TypeIdentity == VanillaNpcIds.SkeletronHead || liveTarget.TypeIdentity == VanillaNpcIds.SkeletronHand)
+        {
+            MarkSkeletronInteraction(request.Source.Player);
+        }
+        else if (liveTarget.TypeIdentity == VanillaNpcIds.WallOfFlesh || liveTarget.TypeIdentity == VanillaNpcIds.WallOfFleshEye)
+        {
+            MarkWallOfFleshInteraction(in liveTarget, request.Source.Player);
+        }
+        else if (IsDestroyerMember(liveTarget.TypeIdentity))
+        {
+            MarkDestroyerInteraction(in liveTarget, request.Source.Player);
+        }
+
+        bool destroyerSharedLife = IsDestroyerMember(liveTarget.TypeIdentity) &&
+            TryResolveDestroyerRoot(in liveTarget, out NpcSnapshot destroyerRoot);
+        if (destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle && liveTarget.Simulation.Life != destroyerRoot.Simulation.Life)
+        {
+            if (!TrySetNpcLife(in liveTarget, destroyerRoot.Simulation.Life, out liveTarget))
+                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before projectile damage.");
+            request = request with { Target = liveTarget.Handle };
+        }
+
+        if (!damage.TryApply(in request, out NpcDamageResult result))
+            return RuntimeProjectileNpcDamageResult.Rejected;
+
+        NpcSnapshot dead;
+        if (liveTarget.TypeIdentity == VanillaNpcIds.WallOfFleshEye &&
+            TryResolveWallOfFleshRoot(in liveTarget, out NpcSnapshot wallRoot))
+        {
+            if (!TrySetWallOfFleshRootLife(in wallRoot, result.LifeAfter, out NpcSnapshot updatedRoot))
+                throw new InvalidOperationException("Projectile damage could not commit Wall of Flesh shared root life.");
+            if (!result.Lethal)
+                return RuntimeProjectileNpcDamageResult.Committed;
+            dead = updatedRoot;
+        }
+        else if (destroyerSharedLife)
+        {
+            if (liveTarget.Handle != destroyerRoot.Handle)
+            {
+                if (!TrySetDestroyerRootLife(in destroyerRoot, result.LifeAfter, out NpcSnapshot updatedRoot))
+                    throw new InvalidOperationException("Projectile damage could not commit Destroyer shared root life.");
+                if (!result.Lethal)
+                    return RuntimeProjectileNpcDamageResult.Committed;
+                dead = updatedRoot;
+            }
+            else
+            {
+                if (!result.Lethal)
+                    return RuntimeProjectileNpcDamageResult.Committed;
+                if (!npcs.TryGet(liveTarget.Handle, out dead))
+                    throw new InvalidOperationException("A lethal Destroyer projectile commit disappeared before death finalization.");
+            }
+        }
+        else
+        {
+            if (!result.Lethal)
+                return RuntimeProjectileNpcDamageResult.Committed;
+            if (!npcs.TryGet(liveTarget.Handle, out dead))
+                throw new InvalidOperationException("A lethal projectile commit disappeared before death finalization.");
+        }
+
+        bool eaterBoss =
+            VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
+            VanillaEaterOfWorldsLifecycle.IsLastActiveSegment(npcs, in dead, npcFamilyBuffer);
+        if (!TryExecuteImportedLoot(in dead, eaterBoss))
+            throw new InvalidOperationException("Imported NPC loot could not be finalized after projectile damage.");
+
+        if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
+            ApplyKingSlimeDeathEffects(in dead);
+        else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
+            ApplySkeletronDeathEffects();
+        else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
+            ApplyQueenBeeDeathEffects();
+        else if (dead.TypeIdentity == VanillaNpcIds.Deerclops)
+            ApplyDeerclopsDeathEffects();
+        else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+            ApplyWallOfFleshDeathEffects(in dead);
+        else if (IsHardmodeBossRoot(dead.TypeIdentity))
+            ApplyHardmodeBossDeathEffects(in dead);
+        else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
+            ApplyEvilBossDeathEffects(eaterBoss);
+
+        if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
+            DropEaterOfWorldsHealingHeartIfEligible(in dead);
+        if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+            CleanupWallOfFleshChildren(dead.Handle.Slot);
+        if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
+            CleanupDestroyerSegments(dead.Handle.Slot);
+        if (!npcs.TryDespawn(dead.Handle))
+            throw new InvalidOperationException("A projectile kill could not despawn the exact NPC generation.");
+        interactions.Forget(dead.Handle);
+        npcReplication?.TryPublishDeath(in dead);
+        return RuntimeProjectileNpcDamageResult.Killed;
+    }
 
     public RuntimeTownNpcMeleeDamageResult1458 TryStrike(
         NpcHandle attacker,

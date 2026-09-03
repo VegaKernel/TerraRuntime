@@ -106,6 +106,7 @@ public sealed partial class RuntimeProjectileStore
             state.Revision = 0;
             state.Update = default;
             state.Lifecycle = default;
+            state.CombatTrusted = false;
             _activeCount--;
             expired = true;
 
@@ -146,6 +147,71 @@ public sealed partial class RuntimeProjectileStore
         state.Lifecycle = lifecycle;
         snapshot = Capture(handle.Slot, in state);
         _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
+        return true;
+    }
+
+
+    /// <summary>
+    /// Marks one exact generation as eligible for server-authoritative combat side effects. This is runtime-only trust
+    /// metadata: it does not change packet 27 state, revision, or replication. Only server-owned command paths call it.
+    /// </summary>
+    public bool TryMarkCombatTrusted(ProjectileHandle handle)
+    {
+        if (!IsCurrentHandleCandidate(handle))
+            return false;
+
+        ref SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value)
+            return false;
+
+        state.CombatTrusted = true;
+        return true;
+    }
+
+    /// <summary>
+    /// Applies one source-backed NPC penetration consumption after a committed projectile hit. Infinite penetration
+    /// remains active; the last positive penetration despawns the exact generation. Runtime-only remaining
+    /// penetration advances the revision without publishing a redundant wire update.
+    /// </summary>
+    public bool TryConsumeNpcHitPenetration(
+        ProjectileHandle handle,
+        out bool despawned,
+        out ProjectileSnapshot snapshot)
+    {
+        despawned = false;
+        if (!IsCurrentHandleCandidate(handle))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        ref SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value ||
+            !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(state.Update.Type, out int initial))
+        {
+            snapshot = default;
+            return false;
+        }
+
+        int remaining = state.Lifecycle.PenetrateOverride ?? initial;
+        if (remaining < 0)
+        {
+            snapshot = Capture(handle.Slot, in state);
+            return true;
+        }
+        if (remaining <= 1)
+        {
+            despawned = TryDespawn(handle, out snapshot);
+            return despawned;
+        }
+
+        if (!TryAdvance(ref state.Revision))
+        {
+            snapshot = default;
+            return false;
+        }
+        state.Lifecycle = state.Lifecycle with { PenetrateOverride = remaining - 1 };
+        snapshot = Capture(handle.Slot, in state);
         return true;
     }
 
@@ -282,6 +348,7 @@ public sealed partial class RuntimeProjectileStore
         state.Revision = 0;
         state.Update = default;
         state.Lifecycle = default;
+        state.CombatTrusted = false;
         _activeCount--;
         _commitSink?.ProjectileStateCommitted(commitKind, in finalSnapshot);
         return true;

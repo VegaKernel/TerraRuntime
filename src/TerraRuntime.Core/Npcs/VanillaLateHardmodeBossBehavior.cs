@@ -6,8 +6,8 @@ namespace TerraRuntime.Core;
 
 /// <summary>
 /// Authoritative TerrariaServer 1.4.5.8 AI-84 state slice for Lunatic Cultist and its ritual clones.
-/// Root/clone state synchronization, ritual timing, phase defense and movement are server-owned; specialized
-/// projectile AI and Ancient Vision/Dragon attack children remain separately tracked side-effect work.
+/// Root/clone synchronization, ritual timing, phase defense, movement and Ancient Vision/Light/Doom children are server-owned;
+/// projectile emission is planned separately through source-owned intents.
 /// </summary>
 internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
@@ -19,6 +19,12 @@ internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBeha
             return TryRoot(in npc, in definition, context, out next);
         if (npc.TypeIdentity == VanillaNpcIds.LunaticCultistClone)
             return TryClone(in npc, in definition, context, out next);
+        if (npc.TypeIdentity == VanillaNpcIds.AncientVision)
+            return TryAncientVision(in npc, in definition, context, out next);
+        if (npc.TypeIdentity == VanillaNpcIds.AncientLight)
+            return TryAncientLight(in npc, in definition, out next);
+        if (npc.TypeIdentity == VanillaNpcIds.AncientDoom)
+            return TryAncientDoom(in npc, in definition, context, out next);
         next = default;
         return false;
     }
@@ -49,6 +55,21 @@ internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBeha
             local = local with { Ai0 = 1f };
             ai = ai with { Ai0 = -1f, Ai1 = 0f };
             sim = sim with { Alpha = 255 };
+        }
+
+        if (ai.Ai0 == 5f && ai.Ai1 >= 120f && ai.Ai1 < 420f && sim.JustHit)
+        {
+            // Source AI84 aborts a live ritual when the real Cultist is struck and advances the attack cycle.
+            ai = ai with { Ai0 = 0f, Ai1 = 0f, Ai3 = ai.Ai3 + 1f };
+            vx = 0f;
+            vy = 0f;
+        }
+        else if (ai.Ai0 == 5f && HasHitOwnedClone(context, npc.Handle.Slot))
+        {
+            // A struck ritual clone kills itself and forces its owner into the 120-tick punishment state.
+            ai = ai with { Ai0 = 6f, Ai1 = 0f };
+            vx *= .95f;
+            vy *= .95f;
         }
 
         switch ((int)ai.Ai0)
@@ -125,7 +146,15 @@ internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBeha
             case 7:
             {
                 int cadence = context.ExpertMode ? 30 : 20;
-                int count = 2;
+                const int count = 2;
+                ai = ai with { Ai1 = ai.Ai1 + 1f };
+                if (ai.Ai1 >= 4 + cadence * count) ResetAttack(ref ai, ref vx, ref vy);
+                break;
+            }
+            case 8:
+            {
+                const int cadence = 20;
+                const int count = 3;
                 ai = ai with { Ai1 = ai.Ai1 + 1f };
                 if (ai.Ai1 >= 4 + cadence * count) ResetAttack(ref ai, ref vx, ref vy);
                 break;
@@ -156,6 +185,20 @@ internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBeha
         { next = default; return false; }
 
         NpcAiState ai = npc.Ai with { Ai0 = root.Ai.Ai0, Ai1 = root.Ai.Ai1 };
+        if (ai.Ai0 == 5f && npc.Simulation.JustHit)
+        {
+            NpcSimulationState dead = npc.Simulation with
+            {
+                Life = 0,
+                TimeLeft = 0,
+                NoGravity = true,
+                NoTileCollide = true,
+                DontTakeDamage = true,
+                JustHit = false
+            };
+            next = LateBossMath.Build(in npc, 0f, 0f, root.Target, in ai, in dead);
+            return true;
+        }
         float vx = npc.VelocityX, vy = npc.VelocityY;
         if (ai.Ai0 == 1f) { vx = root.VelocityX; vy = root.VelocityY; }
         else { vx *= .9f; vy *= .9f; }
@@ -174,14 +217,138 @@ internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBeha
         return true;
     }
 
+    private static bool HasHitOwnedClone(VanillaNpcBehaviorContext context, byte ownerSlot)
+    {
+        Span<NpcSnapshot> clones = stackalloc NpcSnapshot[6];
+        int count = context.CopyOwnedNpcPeers(VanillaNpcIds.LunaticCultistClone, ownerSlot, clones);
+        for (int i = 0; i < count; i++)
+        {
+            if (clones[i].Simulation.JustHit)
+                return true;
+        }
+        return false;
+    }
+
+
+    private static bool TryAncientVision(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out NpcStateUpdate next)
+    {
+        if (definition.AiStyle != VanillaNpcAiStyles.AncientVision)
+        { next = default; return false; }
+        ushort target = npc.Target;
+        if (!LateBossMath.TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player))
+        { next = default; return false; }
+
+        NpcAiState ai = npc.Ai;
+        NpcAiState local = npc.Simulation.LocalAi;
+        float vx = npc.VelocityX, vy = npc.VelocityY;
+        if (local.Ai0 < 120f) local = local with { Ai0 = local.Ai0 + 1f };
+        switch ((int)ai.Ai0)
+        {
+            case 0:
+                ai = ai with { Ai0 = 1f, Ai1 = player.CenterX >= npc.PositionX + 30f ? 1f : -1f };
+                break;
+            case 1:
+            {
+                float direction = ai.Ai1 == 0f ? 1f : MathF.Sign(ai.Ai1);
+                vx = Math.Clamp(vx + direction * .7f, -14f, 14f);
+                float deltaY = Math.Clamp(player.CenterY - (npc.PositionY + 30f), -6f, 6f);
+                vy = (vy * 2f + deltaY) / 3f;
+                if ((direction > 0f && player.CenterX - (npc.PositionX + 30f) < -500f) ||
+                    (direction < 0f && player.CenterX - (npc.PositionX + 30f) > 500f))
+                    ai = ai with { Ai0 = 2f, Ai1 = player.CenterY < npc.PositionY + 50f ? -1f : 1f };
+                break;
+            }
+            case 2:
+                vy += MathF.Sign(ai.Ai1) * .3f;
+                if (MathF.Sqrt(vx * vx + vy * vy) > 7f) { vx *= .9f; vy *= .9f; }
+                if (vx > -1f && vx < 1f)
+                    ai = ai with { Ai0 = 3f, Ai1 = player.CenterX >= npc.PositionX + 30f ? 1f : -1f };
+                break;
+            case 3:
+                vx += MathF.Sign(ai.Ai1) * .6f;
+                vy += player.CenterY < npc.PositionY + 30f ? -.3f : .3f;
+                if (MathF.Sqrt(vx * vx + vy * vy) > 7f) { vx *= .9f; vy *= .9f; }
+                if (vy > -1f && vy < 1f) ai = ai with { Ai0 = 0f };
+                break;
+            default:
+                ai = ai with { Ai0 = 0f, Ai1 = 0f };
+                break;
+        }
+        NpcSimulationState sim = npc.Simulation with { LocalAi = local, JustHit = false };
+        next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);
+        return true;
+    }
+
+    private static bool TryAncientLight(in NpcSnapshot npc, in VanillaNpcDefinition definition, out NpcStateUpdate next)
+    {
+        if (definition.AiStyle != VanillaNpcAiStyles.AncientLight)
+        { next = default; return false; }
+        NpcAiState ai = npc.Ai;
+        NpcAiState local = npc.Simulation.LocalAi;
+        NpcSimulationState sim = npc.Simulation;
+        float vx = npc.VelocityX, vy = npc.VelocityY;
+        if (vy == 0f && ai.Ai0 >= 0f)
+            ai = ai with { Ai0 = -1f, Ai1 = 0f };
+        if (ai.Ai0 == -1f)
+        {
+            vx = 0f; vy = 0f;
+            ai = ai with { Ai1 = ai.Ai1 + 1f };
+            if (ai.Ai1 >= 5f) sim = sim with { Life = 0, TimeLeft = 0 };
+        }
+        else
+        {
+            if (local.Ai0 == 0f)
+            {
+                local = local with { Ai0 = 1f };
+                vx = ai.Ai2; vy = ai.Ai3;
+            }
+            ai = ai with { Ai0 = ai.Ai0 + 1f };
+            if (ai.Ai0 > 60f)
+            {
+                float c = MathF.Cos(ai.Ai1), sn = MathF.Sin(ai.Ai1);
+                (vx, vy) = (vx * c - vy * sn, vx * sn + vy * c);
+            }
+            if (ai.Ai0 > 120f) { vx *= .98f; vy *= .98f; }
+            if (MathF.Sqrt(vx * vx + vy * vy) < .2f) { vx = 0f; vy = 0f; }
+        }
+        sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, JustHit = false };
+        next = LateBossMath.Build(in npc, vx, vy, npc.Target, in ai, in sim);
+        return true;
+    }
+
+    private static bool TryAncientDoom(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out NpcStateUpdate next)
+    {
+        if (definition.AiStyle != VanillaNpcAiStyles.AncientDoom)
+        { next = default; return false; }
+        int rootSlot = (int)npc.Ai.Ai0;
+        NpcSimulationState sim = npc.Simulation;
+        NpcAiState ai = npc.Ai;
+        if (rootSlot < 0 || rootSlot > byte.MaxValue || ai.Ai1 < 0f ||
+            !context.TryFindNpcPeer((byte)rootSlot, out NpcSnapshot root) || root.TypeIdentity != VanillaNpcIds.LunaticCultist)
+        {
+            sim = sim with { Life = 0, TimeLeft = 0, JustHit = false };
+            next = LateBossMath.Build(in npc, 0f, 0f, npc.Target, in ai, in sim);
+            return true;
+        }
+        int rootLifeMax = Math.Max(1, root.Simulation.LifeMax);
+        int rate = root.Simulation.Life < rootLifeMax / 4 ? 3 : root.Simulation.Life < rootLifeMax / 2 ? 2 : 1;
+        ai = ai with { Ai1 = ai.Ai1 + rate };
+        if (ai.Ai1 >= 420f) sim = sim with { Life = 0, TimeLeft = 0 };
+        sim = sim with { NoGravity = true, NoTileCollide = true, JustHit = false };
+        next = LateBossMath.Build(in npc, npc.VelocityX, npc.VelocityY, root.Target, in ai, in sim);
+        return true;
+    }
+
     private static int SelectAttack(int cycle, bool phaseTwo)
     {
         if (phaseTwo)
         {
-            int[] map = [0, 3, 0, 5, 0, 4, 0, 5, 0, 2, 0, 4, 0, 5];
+            int[] map = [0, 1, 0, 5, 0, 3, 0, 5, 0, 2, 0, 3, 0, 4];
             return map[Math.Abs(cycle) % map.Length];
         }
-        int[] first = [0, 3, 0, 2, 0, 4, 0, 3, 0, 2, 0, 5];
+        int[] first = [0, 1, 0, 2, 0, 3, 0, 1, 0, 2, 0, 4];
         return first[Math.Abs(cycle) % first.Length];
     }
 
@@ -216,9 +383,13 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         int lifeMax = sim.LifeMax > 0 ? sim.LifeMax : definition.LifeMax;
         int life = sim.LifeMax > 0 ? sim.Life : lifeMax;
         bool phaseTwo = life <= lifeMax / 2;
+        bool rageCondition = context.DayTime;
+        if (life == lifeMax && rageCondition && ai.Ai3 is not 2f and not 3f)
+            ai = ai with { Ai3 = ai.Ai3 + 2f };
         if (phaseTwo && ai.Ai3 == 0f) ai = ai with { Ai3 = 1f };
         if (phaseTwo && ai.Ai3 == 2f) ai = ai with { Ai3 = 3f };
-        bool enraged = ai.Ai3 is 2f or 3f;
+        bool enraged = rageCondition || ai.Ai3 is 2f or 3f;
+        bool expertCadence = context.ExpertMode || rageCondition;
         float vx = npc.VelocityX, vy = npc.VelocityY;
         float cx = npc.PositionX + 50f, cy = npc.PositionY + 50f;
         int state = (int)ai.Ai0;
@@ -240,7 +411,7 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
             timer += 1f;
             if (timer >= prep)
             {
-                state = SelectEmpressAttack((int)ai.Ai2, phaseTwo, context.ExpertMode);
+                state = SelectEmpressAttack((int)ai.Ai2, phaseTwo, expertCadence);
                 timer = 0f;
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
             }
@@ -256,7 +427,7 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
             if (state == 10) { vx *= .95f; vy *= .95f; }
             if (state == 13) { vx *= .95f; vy -= .05f; }
             timer += 1f;
-            float duration = StateDuration(state, phaseTwo, context.ExpertMode);
+            float duration = StateDuration(state, phaseTwo, expertCadence);
             if (timer >= duration) { state = state == 13 ? 13 : 1; timer = 0f; }
         }
 
@@ -309,8 +480,8 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
 /// <summary>
 /// Server-owned linkage/state slice for TerrariaServer 1.4.5.8 Moon Lord AI 77/78/79/81. The core creates and
 /// owns its hands/head, transitions vulnerable after the linked shell is gone, and True Eyes remain bound to the
-/// same root. Specialized Phantasmal projectile patterns and the source's 600-tick presentation death drama are
-/// deliberately not forged into generic projectile behavior.
+/// same root. Hand/head/True-Eye attack clocks follow the source sequence so the authoritative projectile planner
+/// can reproduce the Phantasmal attack families without pushing presentation-only effects into the simulation.
 /// </summary>
 internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
@@ -375,7 +546,7 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         float cx = npc.PositionX + definition.Width * .5f, cy = npc.PositionY + definition.Height * .5f;
         float vx = npc.VelocityX, vy = npc.VelocityY;
         LateBossMath.FlyToward(cx, cy, rootCx + offsetX, rootCy + offsetY, 18f, 1.2f, ref vx, ref vy);
-        NpcAiState ai = npc.Ai;
+        NpcAiState ai = AdvancePartAttackClock(npc.Ai, isHead);
         NpcSimulationState sim = npc.Simulation with
         {
             NoGravity = true,
@@ -393,8 +564,8 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         ushort target = root.Target;
         if (target >= byte.MaxValue || !context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate player))
         { next = default; return false; }
-        NpcAiState ai = npc.Ai with { Ai0 = npc.Ai.Ai0 + 1f };
-        float angle = (npc.Handle.Slot % 3) * 2.0943952f + ai.Ai0 * .012f;
+        NpcAiState ai = AdvanceEyeAttackClock(npc.Ai);
+        float angle = (npc.Handle.Slot % 3) * 2.0943952f + ai.Ai1 * .012f;
         float desiredX = player.CenterX + MathF.Cos(angle) * 320f;
         float desiredY = player.CenterY - 180f + MathF.Sin(angle) * 180f;
         float vx = npc.VelocityX, vy = npc.VelocityY;
@@ -402,6 +573,65 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         NpcSimulationState sim = npc.Simulation with { NoGravity = true, NoTileCollide = true, DontTakeDamage = true, JustHit = false };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);
         return true;
+    }
+
+    private static NpcAiState AdvancePartAttackClock(in NpcAiState before, bool isHead)
+    {
+        int row = isHead ? 2 : before.Ai2 <= 0f ? 0 : 1;
+        float timer = before.Ai1 + 1f;
+        int total = row == 2 ? 1200 : 600;
+        if (!float.IsFinite(timer) || timer >= total || timer < 0f)
+            timer = 0f;
+
+        int state = ResolvePartAttackState((int)timer, row);
+        return before with { Ai0 = state, Ai1 = timer };
+    }
+
+    private static int ResolvePartAttackState(int timer, int row)
+    {
+        ReadOnlySpan<int> states = row switch
+        {
+            0 => [0, 1, 2, 0, 3],
+            1 => [1, 0, 3, 0, 2],
+            _ => [3, 0, 2, 3, 1]
+        };
+        ReadOnlySpan<int> durations = row switch
+        {
+            0 => [50, 70, 330, 60, 90],
+            1 => [70, 50, 90, 60, 330],
+            _ => [180, 30, 435, 180, 375]
+        };
+        int cursor = 0;
+        for (int i = 0; i < states.Length; i++)
+        {
+            cursor += durations[i];
+            if (timer < cursor)
+                return states[i];
+        }
+        return states[0];
+    }
+
+    private static NpcAiState AdvanceEyeAttackClock(in NpcAiState before)
+    {
+        float timer = before.Ai1 + 1f;
+        if (!float.IsFinite(timer) || timer >= 1200f || timer < 0f)
+            timer = 0f;
+        int state = ResolveEyeAttackState((int)timer);
+        return before with { Ai0 = state, Ai1 = timer };
+    }
+
+    private static int ResolveEyeAttackState(int timer)
+    {
+        ReadOnlySpan<int> states = [0, 1, 0, 2, 0, 3, 0, 4, 0, 2];
+        ReadOnlySpan<int> durations = [53, 90, 53, 135, 53, 200, 53, 375, 53, 135];
+        int cursor = 0;
+        for (int i = 0; i < states.Length; i++)
+        {
+            cursor += durations[i];
+            if (timer < cursor)
+                return states[i];
+        }
+        return 0;
     }
 
     private static bool TryRoot(in NpcSnapshot child, VanillaNpcBehaviorContext context, out NpcSnapshot root)

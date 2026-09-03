@@ -357,8 +357,144 @@ Close exploit classes inherited from client-trusting designs without turning the
 ### NPC/projectile/combat
 
 - [x] Server owns entity identity and lifecycle.
-- [ ] Validate targets against live entities.
+- [ ] Validate targets against live entities across every combat source. The verified direct-melee slice and the admitted trusted-projectile slice already use generation-safe live NPC geometry; unsupported legacy packet-28 combat still keeps the compatibility fallback.
 - [x] Internally use generation/revision handles so stale slot reuse cannot mutate a different entity.
+
+### Combat integrity
+
+> **One gameplay formula. Anti-cheat must not maintain a separate copy of damage, ammo selection, projectile provenance, velocity, crit, or combat timing rules.**
+
+Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ownership chain is `AuthoritativeCombatCalculator -> CombatValidator -> world mutation`, so normal combat and cheat resistance cannot drift into two competing gameplay implementations. Client `damage`, `crit`, projectile velocity and other combat fields become hints/diagnostics only as source-backed coverage expands.
+
+#### Authoritative item use
+
+- [ ] Server determines the active weapon from authoritative inventory/equipment state.
+- [ ] Validate `useTime`, `useAnimation`, cooldowns and legal attack cadence using the same gameplay facts that drive normal item use.
+- [ ] Client-provided `damage` / `crit` are never a source of truth on fully authoritative combat paths.
+- [ ] Validate weapon ownership and selected inventory slot for every combat family. The strict direct-melee slice already resolves the server-owned selected inventory item; projectile weapon/ammo source mapping remains open.
+- [ ] Reject impossible item-use cadence before projectile spawn or world mutation.
+
+#### Authoritative ammo selection
+
+- [ ] Implement a server-side vanilla-equivalent `PickAmmo` path.
+- [ ] Match vanilla priority across dedicated ammo slots and normal inventory.
+- [ ] Validate weapon/ammo compatibility through authoritative `useAmmo` / `ammo` facts.
+- [ ] Apply ammo `shootSpeed`, damage and knockback contributions server-side.
+- [ ] Apply ammo-specific projectile type transformations server-side.
+- [ ] Apply ammo-conservation effects using server-owned RNG/state.
+- [ ] Consume/decrement ammo only on the server and replicate the resulting inventory mutation.
+- [ ] Differential-test `PickAmmo` against TerrariaServer 1.4.5.8, including conservation and unusual ammo transforms.
+
+#### Projectile spawn validation
+
+- [ ] Validate legal `ProjectileType` for the authoritative weapon/ammo/use path.
+- [ ] Track and validate full `Weapon -> Ammo -> Projectile` provenance.
+- [ ] Validate spawn position against the authoritative player/item-use geometry.
+- [ ] Validate firing direction/aim constraints.
+- [ ] Validate initial projectile velocity.
+- [ ] Validate projectile damage.
+- [ ] Validate projectile knockback.
+- [ ] Validate `ai[]` and special spawn parameters for source-backed weapon families.
+- [ ] Validate projectile count per item use, including multishot/special weapons.
+- [ ] Promote a client packet-27 projectile into authoritative combat only after provenance/spawn validation succeeds; unverified client spawns remain diagnostic/compatibility state and cannot damage authoritative entities.
+
+#### Projectile velocity envelope
+
+- [ ] Calculate legal base launch speed from source-backed weapon `shootSpeed` plus ammo `shootSpeed` semantics.
+- [ ] Apply prefix, buff, accessory and class speed modifiers from authoritative player state.
+- [ ] Apply weapon-specific speed modifiers and exceptional launch mechanics.
+- [ ] Model legal RNG speed variance where vanilla uses it.
+- [ ] Validate legal angular spread and aim variance.
+- [ ] Add specialized velocity validators for weapons whose launch mechanics cannot be represented by a generic envelope.
+- [ ] Record expected/received velocity vectors and envelope bounds in combat diagnostics.
+- [ ] Hard-reject impossible launch velocity before the projectile enters authoritative world state.
+
+#### Authoritative projectile simulation
+
+- [ ] After accepted spawn, client position/velocity updates are never authoritative for projectile simulation.
+- [ ] Server simulates acceleration, gravity, drag, homing, bouncing and source-backed projectile AI.
+- [ ] Client projectile position/velocity updates may be retained for diagnostics/divergence metrics only.
+- [ ] Ignore impossible client attempts to rewrite projectile type, damage, original damage, knockback, velocity, `ai[]`, ownership or other authoritative state.
+- [ ] Complete vanilla projectile AI families. `BasicArrow`, `Thrown`, the admitted Skeletron/Deerclops families and other existing source-backed slices remain explicit profiles; known unsupported families still fail closed.
+- [ ] Complete projectile ownership/source validation. Connection ownership is enforced, existing client generations cannot rewrite type/damage/originalDamage/knockback, and only server-authoritative generations currently enter NPC combat; weapon/ammo promotion for legitimate client packet-27 spawns remains open.
+- [ ] Complete entity collision. Tile/world collision already exists; the deterministic post-simulation pass adds NPC AABB selection for trusted admitted friendly projectiles. Player/PvP and exceptional hitboxes remain open.
+- [ ] Buff/debuff application from projectile hits.
+- [x] Source-backed projectile lifetime remains runtime-owned rather than client-owned.
+- [ ] Complete spawn ordering. Physical projectile-slot then NPC-slot hit ordering is deterministic and committed damage precedes penetration, but child-projectile/on-hit spawn ordering is not complete.
+- [ ] Complete NPC/projectile side effects. Trusted admitted hits now commit NPC damage/death through the existing pipeline and consume source-backed penetration; immunity variants, buffs/debuffs, child spawns and special projectile families remain open.
+
+#### Authoritative damage calculation
+
+- [ ] Server-authoritative damage calculation for every player combat source. The first strict direct-melee slice covers source-backed Muramasa and Copper Pickaxe facts and ignores wire damage/crit for accepted hits.
+- [ ] Include weapon + ammo contributions.
+- [ ] Include item/ammo prefixes.
+- [ ] Include armor/accessories.
+- [ ] Include player buffs/debuffs.
+- [ ] Include class modifiers.
+- [ ] Calculate crit server-side for every weapon/projectile family. The verified direct-melee slice already rolls crit server-side.
+- [ ] Include armor penetration.
+- [ ] Include target defense and defense-bypass mechanics.
+- [ ] Include difficulty/world-state modifiers.
+- [ ] Include vanilla damage variance using server-owned RNG.
+- [ ] Implement source-backed special weapon/projectile damage mechanics without a parallel anti-cheat formula.
+- [ ] Damage envelope from equipment/prefixes/buffs/world state. Source-backed prefix multipliers are imported; full armor/accessory/player-buff/world modifiers are still intentionally unmodeled and therefore fall back instead of being guessed.
+- [ ] Validate NPC/player hit target and range across all hit shapes. Strict direct melee has a conservative impossible-distance guard and trusted admitted projectiles use source-backed AABB collision.
+- [ ] Reject impossible damage before world mutation across every combat path. The strict calculator/validator path already rejects before interaction/HP/loot/replication mutation; unsupported legacy combat remains the blocker.
+
+#### Combat envelopes
+
+- [ ] `MaxDamagePerHit` derived from authoritative gameplay state rather than a static anti-cheat constant.
+- [ ] Validate whether a crit is possible for the active weapon/source/state.
+- [ ] `MaxHitsPerSecond` / legal hit cadence per weapon/projectile family.
+- [ ] `MaxProjectilesPerUse`.
+- [ ] `MaxProjectilesPerSecond`.
+- [x] Sliding-window DPS ceiling for the verified direct-melee path.
+- [ ] Extend `MaxDps` envelopes to authoritative windows such as 1 / 5 / 10 seconds and projectile combat.
+
+#### Hard rejection
+
+Impossible combat events must not be applied to authoritative world state merely because they were well-formed packets.
+
+- [ ] Reject impossible projectile type/source.
+- [ ] Reject impossible/incompatible ammo.
+- [ ] Reject impossible damage.
+- [ ] Reject impossible initial projectile velocity or angular spread.
+- [ ] Reject impossible attack cadence/cooldown state.
+- [ ] Reject projectiles without legal authoritative provenance.
+- [ ] Reject hits against impossible targets or at impossible range.
+- [ ] Perform rejection before HP, inventory/ammo, buffs, loot, projectile side effects or replication mutate authoritative state.
+
+#### Anomaly detection
+
+Anomaly detection is a second-line diagnostic layer. It must never replace hard authoritative rejection of physically impossible combat.
+
+- [x] Statistical crit/damage-roll anomaly detection for strict-path client claims; this is diagnostic evidence, not the source of authoritative damage.
+- [ ] Detect anomalous crit rate across meaningful sample windows.
+- [ ] Detect suspicious damage RNG distributions / constant max-roll behavior.
+- [ ] Detect unusual DPS patterns that remain technically inside individual-hit limits.
+- [x] Suspicion score with tick-based decay for strict-path rejects/anomalies.
+- [ ] Extend `SuspicionScore` evidence to ammo, projectile provenance, velocity and cadence anomalies without allowing score alone to mutate gameplay.
+
+#### Diagnostics
+
+- [x] Bounded diagnostics ring explaining every strict-path rejected hit before mutation.
+- [ ] Record exact rejected-attack reason/code.
+- [ ] Record expected/received damage and relevant envelope inputs.
+- [ ] Record expected/received projectile velocity and angular/speed envelope.
+- [ ] Record weapon/ammo/projectile IDs and provenance chain.
+- [ ] Record tick, player slot/session identity and target/projectile entity generation.
+- [ ] Allow bounded verbose combat audit for a selected player without enabling global packet spam.
+
+#### Parity and exploit regression tests
+
+- [ ] Differential combat tests against TerrariaServer 1.4.5.8.
+- [ ] Differential `PickAmmo` tests against TerrariaServer 1.4.5.8.
+- [ ] Projectile spawn parity tests.
+- [ ] Projectile initial velocity / spread parity tests.
+- [ ] Damage parity tests, including defense, crit, armor penetration and variance.
+- [ ] Weapon cadence parity tests.
+- [ ] Dedicated tests for weapons with unusual projectile count, transforms, velocity or AI parameters.
+- [ ] Maintain a regression corpus for known exploit classes: forged damage, forged crit, impossible ammo/projectile, velocity hacks, cadence hacks, provenance spoofing, impossible range and projectile state rewrites.
 
 ## Phase 8 - Synchronization and scalability
 

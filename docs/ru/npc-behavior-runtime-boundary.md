@@ -106,6 +106,12 @@ Death path владеет обязательными server gameplay мутац�
 
 Dedicated-server Expert-ветка passive shadow hands теперь authoritative. `localAI[2]` использует source life-scaled cadence 80→40 тиков, вращает три группы player slot, требует generation-safe per-NPC interaction credit и проверяет дистанцию 1200 пикселей перед staging projectile `965` с source damage `10`. Slow-scream state по-прежнему намеренно не применяет vanilla `Slow (buff 32, 720 ticks)`: закреплённая ветка исключена при `Main.netMode == 2`, поэтому такой buff на dedicated server был бы ложным parity, а не завершением. Deerclops остаётся ниже full vanilla AI parity только из-за более широких shared/global пробелов, а не этой server-executed projectile ветки.
 
+## Source-backed срез поздних Hardmode/endgame боссов
+
+Runtime-owned boss boundary теперь содержит оставшийся server-authoritative NPC-side state позднего Hardmode/endgame roster вместо encounter root, привязанных к metadata-only заглушкам projectile. Duke Fishron допускает AI 71 Sharkron/Sharkron2 с emergence/charge state и source-owned Sharknado `385`. Lunatic Cultist допускает Ancient Vision/Light/Doom, ritual spawn Dragon либо Vision, прерывание ритуала попаданием по настоящему боссу или копии и source-owned семейства атак `464/465/467/468/490/593`.
+
+Empress of Light staging-ит специализированные lasting-rainbow, rainbow-streak, lance и sun-dance projectile (`872/873/919/923`); дневная ярость также переводит cadence в source Expert-like режим и даёт projectile damage `9999`, а не полагается только на сохранённый `ai[3]`. Attack clock рук, головы и True Eye Moon Lord следует закреплённым source sequence на 600/1200 тиков и staging-ит Phantasmal eye/sphere/deathray/leech/bolt intents (`452/454/455/456/462`). Cosmetic sound/dust/gore остаются вне authority. Точные внутренности специализированных projectile style, оставшиеся seed-only условия Empress и choreography part-death/death-presentation Moon Lord остаются явной parity-работой, а не маскируются под generic NPC AI.
+
 ## Lifecycle и unload
 
 Регистрации поведения являются lease. Extensible host scope отслеживает их вместе с custom actor и archetype leases. При retirement scope очистка выполняется в таком порядке:

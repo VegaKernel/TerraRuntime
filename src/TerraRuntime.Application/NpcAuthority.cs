@@ -26,6 +26,7 @@ internal sealed class NpcAuthority
     private readonly VanillaNpcTargetingAiStepper? vanillaTargeting;
     private readonly VanillaNpcCheckActiveAiStepper? vanillaCheckActive;
     private readonly RuntimeNpcNetworkCombatPipeline combat;
+    private readonly RuntimeProjectileNpcCombatPass projectileNpcCombat;
     private readonly TownNpcAuthority townNpcAuthority;
     private readonly RuntimeMysticFrogCatchService1458? mysticFrogCatch;
     private readonly RuntimeWorldItemStore worldItems;
@@ -128,6 +129,8 @@ internal sealed class NpcAuthority
             npcs,
             worldItems,
             runtime,
+            players,
+            () => runtime.Updates,
             npcReplication,
             instancedItemLeases,
             worldItemReplication,
@@ -140,6 +143,8 @@ internal sealed class NpcAuthority
             skyblockLowTiles,
             isThereAWorldSurface,
             evilBossDownedBaseline);
+        projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
+            projectiles, npcs, combat, () => runtime.Updates);
         townNpcAuthority.SetMeleeDamageSink(combat);
 
         if (npcAiStepper is null)
@@ -284,11 +289,18 @@ internal sealed class NpcAuthority
         AppliedDespawns += npcs.DespawnExpired();
     }
 
-    public void TickProjectileInteractions() => townNpcAuthority.TickProjectileInteractions();
+    public void TickProjectileInteractions()
+    {
+        projectileNpcCombat.Tick();
+        townNpcAuthority.TickProjectileInteractions();
+    }
 
     public bool TryCapture(NpcHandle npc, out NpcSnapshot snapshot) => npcs.TryGet(npc, out snapshot);
 
     public int CopyActive(Span<NpcSnapshot> destination) => npcs.CopyActive(destination);
+
+    internal int CopyCombatIntegrityDiagnostics(Span<CombatIntegrityDiagnostic> destination) =>
+        combat.CopyCombatIntegrityDiagnostics(destination);
 
     private void ApplySpawn(NpcSpawnRuntimeCommand command)
     {

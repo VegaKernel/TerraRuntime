@@ -65,11 +65,24 @@ public sealed class GameplayContentIdTests
         Assert.Equal(69, VanillaNpcAiStyles.DukeFishron.Value);
         Assert.Equal(70, VanillaNpcAiStyles.DetonatingBubble.Value);
         Assert.Equal(71, VanillaNpcAiStyles.Sharkron.Value);
+        Assert.Equal(521, VanillaNpcIds.AncientVision.Value);
+        Assert.Equal(522, VanillaNpcIds.AncientLight.Value);
+        Assert.Equal(523, VanillaNpcIds.AncientDoom.Value);
+        Assert.Equal(86, VanillaNpcAiStyles.AncientVision.Value);
+        Assert.Equal(100, VanillaNpcAiStyles.AncientLight.Value);
+        Assert.Equal(101, VanillaNpcAiStyles.AncientDoom.Value);
         Assert.Equal(258, VanillaProjectileIds.GolemFireball.Value);
         Assert.Equal(259, VanillaProjectileIds.GolemEyeBeam.Value);
         Assert.Equal(275, VanillaProjectileIds.PlanteraSeed.Value);
         Assert.Equal(276, VanillaProjectileIds.PlanteraPoisonSeed.Value);
         Assert.Equal(277, VanillaProjectileIds.PlanteraThornBall.Value);
+        Assert.Equal(385, VanillaProjectileIds.SharknadoBolt.Value);
+        Assert.Equal(452, VanillaProjectileIds.PhantasmalEye.Value);
+        Assert.Equal(455, VanillaProjectileIds.PhantasmalDeathray.Value);
+        Assert.Equal(464, VanillaProjectileIds.CultistBossIceMist.Value);
+        Assert.Equal(490, VanillaProjectileIds.CultistRitual.Value);
+        Assert.Equal(872, VanillaProjectileIds.HallowBossLastingRainbow.Value);
+        Assert.Equal(919, VanillaProjectileIds.FairyQueenLance.Value);
     }
 
     [Fact]

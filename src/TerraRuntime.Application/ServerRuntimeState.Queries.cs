@@ -59,6 +59,9 @@ internal sealed partial class ServerRuntimeState
     internal bool TryCaptureNpcSnapshot(NpcHandle npc, out NpcSnapshot snapshot) =>
         _npcs.TryCapture(npc, out snapshot);
 
+    internal int CopyCombatIntegrityDiagnostics(Span<CombatIntegrityDiagnostic> destination) =>
+        _npcs.CopyCombatIntegrityDiagnostics(destination);
+
     internal bool TryCaptureProjectileSnapshot(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
         _projectiles.TryCapture(projectile, out snapshot);
 

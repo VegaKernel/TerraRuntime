@@ -306,7 +306,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.Type == VanillaNpcIds.DukeFishron.Value && proposed.Type == source.Type)
             return PlanDukeFishronBubble(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.LunaticCultist.Value && proposed.Type == source.Type)
-            return PlanLunaticCultistClones(in source, in proposed, destination);
+            return PlanLunaticCultistSpawns(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.MoonLordCore.Value && proposed.Type == source.Type)
             return PlanMoonLordParts(in source, in proposed, destination);
 
@@ -344,6 +344,16 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanPlanteraProjectile(in source, in proposed, destination);
         if ((source.Type == VanillaNpcIds.GolemHead.Value || source.Type == VanillaNpcIds.GolemHeadFree.Value) && proposed.Type == source.Type)
             return PlanGolemHeadProjectiles(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.DukeFishron.Value && proposed.Type == source.Type)
+            return PlanDukeFishronProjectiles(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.LunaticCultist.Value && proposed.Type == source.Type)
+            return PlanLunaticCultistProjectiles(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.AncientDoom.Value && proposed.Type == source.Type)
+            return PlanAncientDoomProjectiles(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.EmpressOfLight.Value && proposed.Type == source.Type)
+            return PlanEmpressProjectiles(in source, in proposed, destination);
+        if ((source.Type == VanillaNpcIds.MoonLordHead.Value || source.Type == VanillaNpcIds.MoonLordHand.Value || source.Type == VanillaNpcIds.MoonLordFreeEye.Value) && proposed.Type == source.Type)
+            return PlanMoonLordProjectiles(in source, in proposed, destination);
 
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
     }
@@ -1725,8 +1735,59 @@ public sealed class VanillaNpcTargetingAiStepper :
         return 1;
     }
 
-    private int PlanLunaticCultistClones(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    private int PlanLunaticCultistSpawns(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
     {
+        if (source.Ai.Ai0 == 7f && proposed.Ai.Ai0 == 7f && source.Ai.Ai1 >= 4f)
+        {
+            int cadence = _context.ExpertMode ? 30 : 20;
+            if (((int)(source.Ai.Ai1 - 4f) % cadence) == 0)
+            {
+                const int lightRequested = 5;
+                if (destination.Length < lightRequested) return destination.Length + 1;
+                if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+                    return 0;
+                float lightCx = proposed.PositionX + 12f, lightCy = proposed.PositionY + 25f;
+                float dx = target.CenterX - lightCx, dy = target.CenterY - lightCy;
+                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+                float baseAngle = MathF.Atan2(dy / d, dx / d);
+                for (int i = 0; i < lightRequested; i++)
+                {
+                    float angle = baseAngle + (i - 2) * (MathF.PI * 2f / 25f);
+                    float vx = MathF.Cos(angle) * 8f, vy = MathF.Sin(angle) * 8f;
+                    destination[i] = new NpcAiSpawnIntent(VanillaNpcIds.AncientLight, (int)(lightCx + MathF.Sign(dx) * 30f), (int)(lightCy + 19f), vx, vy, proposed.Target)
+                    { InitialAi = new NpcAiState(0f, NextFloatDirection() * .015707964f, vx, vy) };
+                }
+                return lightRequested;
+            }
+        }
+
+        if (source.Ai.Ai0 == 8f && proposed.Ai.Ai0 == 8f && source.Ai.Ai1 >= 4f && ((int)(source.Ai.Ai1 - 4f) % 20) == 0)
+        {
+            int doomRequested = Math.Min(3, _context.CountNpcPeers(VanillaNpcIds.LunaticCultistClone) + 1);
+            if (destination.Length < doomRequested) return destination.Length + 1;
+            if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+                return 0;
+            for (int i = 0; i < doomRequested; i++)
+            {
+                float angle = (i + 1) * (MathF.PI * 2f / (doomRequested + 1));
+                int x = (int)(target.CenterX + MathF.Cos(angle) * 280f);
+                int y = (int)(target.CenterY + MathF.Sin(angle) * 220f);
+                destination[i] = new NpcAiSpawnIntent(VanillaNpcIds.AncientDoom, x, y, 0f, 0f, proposed.Target)
+                { InitialAi = new NpcAiState(source.Handle.Slot, 0f, 0f, 0f) };
+            }
+            return doomRequested;
+        }
+
+        // The ritual projectile reaches ai[0]=300 three hundred ticks after the source-owned ritual spawn at boss ai[1]=30.
+        // Preserve the source side effect here until projectile-to-NPC spawn intents become a first-class runtime boundary.
+        if (source.Ai.Ai0 == 5f && proposed.Ai.Ai0 == 5f && source.Ai.Ai1 == 330f)
+        {
+            if (destination.IsEmpty) return 1;
+            NpcTypeId child = _context.CountNpcPeers(VanillaNpcIds.CultistDragonHead) == 0 ? VanillaNpcIds.CultistDragonHead : VanillaNpcIds.AncientVision;
+            destination[0] = new NpcAiSpawnIntent(child, (int)(proposed.PositionX + 12f), (int)(proposed.PositionY + 25f), 0f, 0f, proposed.Target);
+            return 1;
+        }
+
         if (source.Ai.Ai0 != 5f || proposed.Ai.Ai0 != 5f || source.Ai.Ai1 >= 30f || proposed.Ai.Ai1 < 30f)
             return 0;
         int existing = _context.CountNpcPeers(VanillaNpcIds.LunaticCultistClone);
@@ -1811,6 +1872,400 @@ public sealed class VanillaNpcTargetingAiStepper :
             InitialAi = new NpcAiState(0f, 0f, 0f, _random.NextInt32(80, 121) / 100f)
         };
         return 1;
+    }
+
+
+    private int PlanDukeFishronProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (source.Ai.Ai2 != 60f || (source.Ai.Ai0 != 3f && source.Ai.Ai0 != 8f))
+            return 0;
+        int requested = source.Ai.Ai0 == 3f ? 2 : 1;
+        if (destination.Length < requested) return destination.Length + 1;
+        float cx = proposed.PositionX + 75f, cy = proposed.PositionY + 50f;
+        int direction = source.Simulation.DirectionX;
+        if (direction == 0 && proposed.Target < byte.MaxValue && _context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target))
+            direction = target.CenterX >= cx ? 1 : -1;
+        if (direction == 0) direction = 1;
+        if (source.Ai.Ai0 == 3f)
+        {
+            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.SharknadoBolt, cx, cy, direction * 2f, 8f, 0, 0f);
+            destination[1] = new NpcAiProjectileIntent(VanillaProjectileIds.SharknadoBolt, cx, cy, -direction * 2f, 8f, 0, 0f);
+            return 2;
+        }
+        destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.SharknadoBolt, cx, cy, 0f, 0f, 0, 0f)
+        { InitialAi = new ProjectileAiState(1f, proposed.Target + 1f, 0f) };
+        return 1;
+    }
+
+    private int PlanLunaticCultistProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+            return 0;
+        int state = (int)source.Ai.Ai0;
+        float timer = source.Ai.Ai1;
+        float cx = source.PositionX + 12f, cy = source.PositionY + 25f;
+        float dx = target.CenterX - cx, dy = target.CenterY - cy;
+        float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+        float nx = dx / d, ny = dy / d;
+        int clones = Math.Min(6, _context.CountNpcPeers(VanillaNpcIds.LunaticCultistClone));
+
+        if (state == 5 && timer == 30f)
+        {
+            if (destination.IsEmpty) return 1;
+            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.CultistRitual, cx, cy, 0f, 0f, 0, 0f)
+            { InitialAi = new ProjectileAiState(0f, source.Handle.Slot, 0f) };
+            return 1;
+        }
+
+        int cadence;
+        ProjectileTypeId mainType;
+        int mainDamage;
+        bool cloneVolley = false;
+        int cloneShotsPerClone = 1;
+        if (state == 2)
+        {
+            cadence = _context.ExpertMode ? 90 : 120;
+            if (_context.GoodWorld) cadence -= 30;
+            if (timer < 4f || ((int)(timer - 4f) % cadence) != 0) return 0;
+            mainType = VanillaProjectileIds.CultistBossIceMist;
+            mainDamage = _context.ExpertMode ? 25 : 35;
+            cloneVolley = true;
+        }
+        else if (state == 3)
+        {
+            cadence = _context.GoodWorld ? 10 : _context.ExpertMode ? 12 : 18;
+            if (timer < 4f || ((int)(timer - 4f) % cadence) != 0) return 0;
+            mainType = VanillaProjectileIds.CultistBossFireBall;
+            mainDamage = _context.ExpertMode ? 20 : 30;
+            cloneVolley = ((int)(timer - 4f) / cadence) == 2;
+        }
+        else if (state == 4)
+        {
+            if (timer != 20f) return 0;
+            mainType = VanillaProjectileIds.CultistBossLightningOrb;
+            mainDamage = _context.ExpertMode ? 30 : 45;
+            cloneVolley = true;
+        }
+        else if (state == 7)
+        {
+            cadence = _context.ExpertMode ? 30 : 20;
+            if (timer < 4f || ((int)(timer - 4f) % cadence) != 0 || ((int)(timer - 4f) / cadence) != 2)
+                return 0;
+            mainType = default;
+            mainDamage = 0;
+            cloneVolley = true;
+            cloneShotsPerClone = 5;
+        }
+        else return 0;
+
+        int requested = (mainType.Value == 0 ? 0 : 1) + (cloneVolley ? clones * cloneShotsPerClone : 0);
+        if (requested == 0) return 0;
+        if (destination.Length < requested) return destination.Length + 1;
+        int index = 0;
+        if (mainType.Value != 0)
+        {
+            float leadX = target.CenterX + target.VelocityX * 20f - cx;
+            float leadY = target.CenterY + target.VelocityY * 20f - cy;
+            float leadDistance = MathF.Max(.001f, MathF.Sqrt(leadX * leadX + leadY * leadY));
+            float aimX = leadX / leadDistance, aimY = leadY / leadDistance;
+            float speed = mainType == VanillaProjectileIds.CultistBossIceMist ? 4f :
+                mainType == VanillaProjectileIds.CultistBossFireBall ? 6f + NextUnitFloat() * 4f : 0f;
+            if (mainType == VanillaProjectileIds.CultistBossFireBall)
+                Rotate(ref aimX, ref aimY, NextFloatDirection() * .2617994f);
+            destination[index++] = new NpcAiProjectileIntent(mainType, cx + MathF.Sign(dx) * 30f, cy + (mainType == VanillaProjectileIds.CultistBossLightningOrb ? -100f : 12f), aimX * speed, aimY * speed, mainDamage, 0f)
+            { InitialAi = mainType == VanillaProjectileIds.CultistBossIceMist ? new ProjectileAiState(0f, 1f, 0f) : default };
+        }
+        if (cloneVolley)
+        {
+            Span<NpcSnapshot> peers = stackalloc NpcSnapshot[6];
+            int copied = _context.CopyOwnedNpcPeers(VanillaNpcIds.LunaticCultistClone, source.Handle.Slot, peers);
+            for (int i = 0; i < copied && index < requested; i++)
+            {
+                NpcSnapshot clone = peers[i];
+                float ccx = clone.PositionX + 12f, ccy = clone.PositionY + 25f;
+                float cdx = target.CenterX + target.VelocityX * 20f - ccx, cdy = target.CenterY + target.VelocityY * 20f - ccy;
+                float cd = MathF.Max(.001f, MathF.Sqrt(cdx * cdx + cdy * cdy));
+                float baseX = cdx / cd, baseY = cdy / cd;
+                for (int shot = 0; shot < cloneShotsPerClone && index < requested; shot++)
+                {
+                    float shotX = baseX, shotY = baseY;
+                    float speed = 6f + NextUnitFloat() * 4f;
+                    float spread = cloneShotsPerClone == 5 ? .62831855f : .2617994f;
+                    Rotate(ref shotX, ref shotY, NextFloatDirection() * spread);
+                    destination[index++] = new NpcAiProjectileIntent(VanillaProjectileIds.CultistBossFireBallClone, ccx, ccy, shotX * speed, shotY * speed, 18, 0f);
+                }
+            }
+        }
+        return index;
+    }
+
+    private static int PlanAncientDoomProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (source.Ai.Ai1 >= 420f || proposed.Ai.Ai1 < 420f)
+            return 0;
+        const int requested = 4;
+        if (destination.Length < requested) return destination.Length + 1;
+        float cx = proposed.PositionX + 21f, cy = proposed.PositionY + 21f;
+        for (int i = 0; i < requested; i++)
+        {
+            float angle = i * MathF.PI * .5f;
+            destination[i] = new NpcAiProjectileIntent(VanillaProjectileIds.AncientDoomProjectile, cx, cy, MathF.Cos(angle) * 4f, MathF.Sin(angle) * 4f, 30, 0f);
+        }
+        return requested;
+    }
+
+    private int PlanEmpressProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        int state = (int)source.Ai.Ai0;
+        float timer = source.Ai.Ai1;
+        int lifeMax = Math.Max(1, source.Simulation.LifeMax);
+        bool phaseTwo = source.Simulation.Life <= lifeMax / 2;
+        bool enraged = _context.DayTime || source.Ai.Ai3 is 2f or 3f;
+        bool expertCadence = _context.ExpertMode || _context.DayTime;
+        if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+            return 0;
+
+        int Damage(int normal, int phaseNormal, int expert, int phaseExpert) => enraged ? 9999 : _context.ExpertMode ? (phaseTwo ? phaseExpert : expert) : (phaseTwo ? phaseNormal : normal);
+        float cx = source.PositionX + 50f, cy = source.PositionY + 50f;
+        if (state == 0 && timer == 0f)
+        {
+            if (destination.IsEmpty) return 1;
+            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossDeathAurora, cx, cy - 80f, 0f, 0f, 0, 0f);
+            return 1;
+        }
+        if (state == 2)
+        {
+            int cadence = phaseTwo && expertCadence ? 2 : 3;
+            if (timer >= 60f || ((int)timer % cadence) != 0) return 0;
+            if (destination.IsEmpty) return 1;
+            float dx = target.CenterX - (cx - 55f), dy = target.CenterY - (cy - 30f);
+            float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+            float speed = phaseTwo && expertCadence ? 10f : 6f;
+            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossRainbowStreak, cx - 55f, cy - 30f, dx / d * speed, dy / d * speed, Damage(45, 50, 30, 35), 0f)
+            { InitialAi = new ProjectileAiState(proposed.Target, timer / 60f, 0f) };
+            return 1;
+        }
+        if (state == 4 && timer < 100f && ((int)timer % 4) == 0)
+        {
+            if (destination.IsEmpty) return 1;
+            float angle = MathF.PI / ((phaseTwo ? 5f : 4f) * 2f) + (timer / 4f) * (MathF.PI / (phaseTwo ? 5f : 4f));
+            float radius = phaseTwo ? 450f : 300f;
+            float px = target.CenterX + MathF.Cos(angle) * radius;
+            float py = target.CenterY + MathF.Sin(angle) * radius;
+            float aim = MathF.Atan2(target.CenterY - py, target.CenterX - px);
+            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, px, py, 0f, 0f, Damage(50, 60, 30, 35), 0f)
+            { InitialAi = new ProjectileAiState(aim, timer / 100f, 0f) };
+            return 1;
+        }
+        if (state == 5 && timer == 0f)
+        {
+            const int requested = 13;
+            if (destination.Length < requested) return destination.Length + 1;
+            float offset = _random.NextInt32(0, 10_000) / 10_000f * MathF.PI * 2f;
+            for (int i = 0; i < requested; i++)
+            {
+                float angle = offset + i * MathF.PI * 2f / requested;
+                float vx = MathF.Cos(angle) * 8f, vy = MathF.Sin(angle) * 8f;
+                destination[i] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossLastingRainbow, cx + 55f - vy / 8f * 30f, cy - 30f + vx / 8f * 30f, vx, vy, Damage(45, 50, 30, 35), 0f)
+                { InitialAi = new ProjectileAiState(0f, i / (float)requested, 0f) };
+            }
+            return requested;
+        }
+        if (state == 6 && timer < 180f && ((int)timer % 60) == 0)
+        {
+            int requested = phaseTwo ? 8 : 6;
+            if (destination.Length < requested) return destination.Length + 1;
+            int wave = (int)timer / 60;
+            for (int i = 0; i < requested; i++)
+            {
+                float fraction = (i + .5f + wave * .5f) / requested;
+                float angle = MathF.PI * 2f * (fraction + (target.CenterX > cx ? 1f : 0f));
+                destination[i] = new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenSunDance, cx, cy - 100f, 0f, 0f, Damage(50, 60, 35, 40), 0f)
+                { InitialAi = new ProjectileAiState(angle, source.Handle.Slot, 0f) };
+            }
+            return requested;
+        }
+        if (state == 7)
+        {
+            int cadence = phaseTwo ? 40 : 60;
+            int waves = phaseTwo ? 6 : 4;
+            if (timer >= cadence * waves || ((int)timer % cadence) != 0) return 0;
+            int requested = phaseTwo ? 19 : 14;
+            if (destination.Length < requested) return destination.Length + 1;
+            float span = (phaseTwo ? 18f : 13f) * (phaseTwo ? 200f : 150f);
+            int wave = (int)timer / cadence;
+            bool vertical = wave < 2;
+            for (int i = 0; i < requested; i++)
+            {
+                float t = requested == 1 ? .5f : i / (float)(requested - 1);
+                float px = target.CenterX + (vertical ? (wave == 0 ? -span * .5f : span * .5f) : (t - .5f) * span);
+                float py = target.CenterY + (vertical ? (t - .5f) * span : (wave % 2 == 0 ? -span * .4f : span * .4f));
+                float aim = MathF.Atan2(target.CenterY - py, target.CenterX - px);
+                destination[i] = new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, px, py, 0f, 0f, Damage(70, 65, 65, 30), 0f)
+                { InitialAi = new ProjectileAiState(aim, t, 0f) };
+            }
+            return requested;
+        }
+        if (state == 11 && timer < 100f && ((int)timer % 3) == 0)
+        {
+            if (destination.IsEmpty) return 1;
+            float pvx = target.VelocityX, pvy = target.VelocityY;
+            float pd = MathF.Sqrt(pvx * pvx + pvy * pvy);
+            float nx = pd > .001f ? -pvx / pd : 0f, ny = pd > .001f ? -pvy / pd : -1f;
+            float px = target.CenterX + nx * 100f, py = target.CenterY + ny * 100f;
+            float aim = MathF.Atan2(target.CenterY + pvy * 90f - py, target.CenterX + pvx * 90f - px);
+            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, px, py, 0f, 0f, Damage(50, 60, 30, 35), 0f)
+            { InitialAi = new ProjectileAiState(aim, timer / 100f, 0f) };
+            return 1;
+        }
+        if (state == 12 && timer >= 10f && timer < 60f)
+        {
+            int cadence = phaseTwo && expertCadence ? 4 : 6;
+            if (((int)timer % cadence) != 0) return 0;
+            if (destination.IsEmpty) return 1;
+            float progress = (timer - 10f) / 50f;
+            float angle = MathF.PI * 2f * progress;
+            float vx = MathF.Cos(angle) * 20f, vy = MathF.Sin(angle) * 20f;
+            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossRainbowStreak, cx - 55f, cy - 30f, vx, vy, Damage(45, 50, 30, 35), 0f)
+            { InitialAi = new ProjectileAiState(proposed.Target, progress, 0f) };
+            return 1;
+        }
+        return 0;
+    }
+
+    private int PlanMoonLordProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+            return 0;
+        float cx, cy;
+        if (source.Type == VanillaNpcIds.MoonLordHead.Value) { cx = source.PositionX + 19f; cy = source.PositionY + 28f; }
+        else if (source.Type == VanillaNpcIds.MoonLordHand.Value) { cx = source.PositionX + 23f; cy = source.PositionY + 33f; }
+        else { cx = source.PositionX + 30f; cy = source.PositionY + 30f; }
+
+        if (source.Type == VanillaNpcIds.MoonLordHand.Value)
+        {
+            int elapsed = MoonPartAttackElapsed(source.Ai.Ai1, source.Ai.Ai2 <= 0f ? 0 : 1, out int state, out int duration);
+            float side = source.Ai.Ai2 <= 0f ? -1f : 1f;
+            if (state == 1 && elapsed >= 28 && elapsed < 56 && elapsed % 4 == 0)
+            {
+                if (destination.IsEmpty) return 1;
+                float angle = MathF.PI * 2f * (elapsed % 28) / 28f - MathF.PI / 2f;
+                float vx = MathF.Cos(angle) * 8f, vy = MathF.Sin(angle) * 8f;
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalEye, cx, cy, vx, vy, 30, 0f)
+                { InitialAi = new ProjectileAiState(0f, side * MathF.PI / 180f, 0f) };
+                return 1;
+            }
+            if (state == 2 && elapsed >= 30 && elapsed < 210 && (elapsed - 30) % 30 == 0)
+            {
+                if (destination.IsEmpty) return 1;
+                int volley = (elapsed - 30) / 30;
+                float vx = (5f * side + (volley - 3.5f) * side * 3f) * 1.2f;
+                float vy = (-8f + (volley - 4.5f)) * 1.2f;
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalSphere, cx, cy, vx, vy, 40, 1f)
+                { InitialAi = new ProjectileAiState(0f, source.Handle.Slot, 0f) };
+                return 1;
+            }
+            if (state == 3 && (elapsed == duration - 14 || elapsed == duration - 7 || elapsed == duration))
+            {
+                if (destination.IsEmpty) return 1;
+                float dx = target.CenterX - cx, dy = target.CenterY - cy;
+                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalBolt, cx, cy, dx / d * 8f, dy / d * 8f, 30, 0f);
+                return 1;
+            }
+        }
+        else if (source.Type == VanillaNpcIds.MoonLordHead.Value)
+        {
+            int elapsed = MoonPartAttackElapsed(source.Ai.Ai1, 2, out int state, out int duration);
+            if (state == 1 && elapsed == 180)
+            {
+                if (destination.IsEmpty) return 1;
+                float dx = target.CenterX - cx, dy = target.CenterY - cy;
+                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+                float sign = dx < 0f ? 1f : -1f;
+                float baseAngle = MathF.Atan2(dy / d, dx / d) - sign * MathF.PI * 2f / 6f;
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalDeathray, cx, cy, MathF.Cos(baseAngle), MathF.Sin(baseAngle), 75, 0f)
+                { InitialAi = new ProjectileAiState(sign * MathF.PI * 2f / 540f, source.Handle.Slot, 0f) };
+                return 1;
+            }
+            if (state == 2 && elapsed == 0)
+            {
+                if (destination.IsEmpty) return 1;
+                float dx = target.CenterX - cx, dy = target.CenterY - cy;
+                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.MoonLeech, cx, cy, dx / d * 7f, dy / d * 7f, 0, 0f)
+                { InitialAi = new ProjectileAiState(source.Handle.Slot + 1f, proposed.Target, 0f) };
+                return 1;
+            }
+            if (state == 3 && (elapsed == duration - 14 || elapsed == duration - 7 || elapsed == duration))
+            {
+                if (destination.IsEmpty) return 1;
+                float dx = target.CenterX - cx, dy = target.CenterY - cy;
+                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalBolt, cx, cy, dx / d * 8f, dy / d * 8f, 30, 0f);
+                return 1;
+            }
+        }
+        else if (source.Type == VanillaNpcIds.MoonLordFreeEye.Value)
+        {
+            int elapsed = MoonEyeAttackElapsed(source.Ai.Ai1, out int state, out int duration);
+            if (state == 1 && (elapsed == duration - 14 || elapsed == duration - 7 || elapsed == duration))
+            {
+                if (destination.IsEmpty) return 1;
+                float dx = target.CenterX - cx, dy = target.CenterY - cy;
+                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalBolt, cx, cy, dx / d * 8f, dy / d * 8f, 35, 0f);
+                return 1;
+            }
+            if (state == 2 && elapsed >= 15 && elapsed < 105 && (elapsed - 15) % 30 == 0)
+            {
+                if (destination.IsEmpty) return 1;
+                float dx = target.CenterX - cx, dy = target.CenterY - cy;
+                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalSphere, cx, cy, dx / d * 7f, dy / d * 7f, 40, 0f)
+                { InitialAi = new ProjectileAiState(30f, source.Handle.Slot, 0f) };
+                return 1;
+            }
+            if (state == 4 && elapsed >= 0 && elapsed < 140 && elapsed % 20 == 0)
+            {
+                if (destination.IsEmpty) return 1;
+                float dx = target.CenterX - cx, dy = target.CenterY - cy;
+                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalEye, cx, cy, dx / d * 7f, dy / d * 7f, 35, 0f);
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    private static int MoonPartAttackElapsed(float ai1, int row, out int state, out int duration)
+    {
+        ReadOnlySpan<int> states = row switch { 0 => [0,1,2,0,3], 1 => [1,0,3,0,2], _ => [3,0,2,3,1] };
+        ReadOnlySpan<int> durations = row switch { 0 => [50,70,330,60,90], 1 => [70,50,90,60,330], _ => [180,30,435,180,375] };
+        int total = 0; for (int i = 0; i < durations.Length; i++) total += durations[i];
+        int t = ((int)ai1) % total; if (t < 0) t += total;
+        int start = 0;
+        for (int i = 0; i < states.Length; i++)
+        {
+            if (t < start + durations[i]) { state = states[i]; duration = durations[i]; return t - start; }
+            start += durations[i];
+        }
+        state = states[0]; duration = durations[0]; return 0;
+    }
+
+    private static int MoonEyeAttackElapsed(float ai1, out int state, out int duration)
+    {
+        ReadOnlySpan<int> states = [0,1,0,2,0,3,0,4,0,2];
+        ReadOnlySpan<int> durations = [53,90,53,135,53,200,53,375,53,135];
+        const int total = 1200;
+        int t = ((int)ai1) % total; if (t < 0) t += total;
+        int start = 0;
+        for (int i = 0; i < states.Length; i++)
+        {
+            if (t < start + durations[i]) { state = states[i]; duration = durations[i]; return t - start; }
+            start += durations[i];
+        }
+        state = 0; duration = 53; return 0;
     }
 
     private int PlanGolemSpawns(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)

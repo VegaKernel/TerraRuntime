@@ -39,6 +39,36 @@ public sealed class ServerRuntimeClientProjectileIngressTests
     }
 
     [Fact]
+    public void Existing_client_projectile_cannot_rewrite_combat_identity_or_damage()
+    {
+        using var fixture = new Fixture(playerCount: 1);
+        ConnectionHandle source = fixture.SpawnPlayer(connectionId: 11);
+        TerrariaProjectileUpdateState first = CreateUpdate(source.Player.Slot.Value, 91, 1, type: 1, positionX: 100f);
+        TerrariaProjectileKeyState key = first.Key;
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(source, first));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(in key, out ProjectileHandle handle));
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot before));
+
+        TerrariaProjectileUpdateState forged = first with
+        {
+            ProjectileType = 3,
+            Damage = 30_000,
+            OriginalDamage = 30_000,
+            KnockBack = 99f,
+            PositionX = 150f
+        };
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(source, forged));
+
+        Assert.Equal(1, fixture.State.RejectedClientProjectileUpdates);
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot after));
+        Assert.Equal(before.Type, after.Type);
+        Assert.Equal(before.Damage, after.Damage);
+        Assert.Equal(before.OriginalDamage, after.OriginalDamage);
+        Assert.Equal(before.KnockBack, after.KnockBack);
+        Assert.Equal(before.PositionX, after.PositionX);
+    }
+
+    [Fact]
     public void New_generation_for_same_wire_index_shadows_lookup_but_preserves_old_reverse_identity()
     {
         using var fixture = new Fixture(playerCount: 1);

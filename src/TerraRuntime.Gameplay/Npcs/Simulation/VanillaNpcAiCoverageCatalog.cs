@@ -110,7 +110,7 @@ public static class VanillaNpcAiCoverageCatalog
 
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
-        const int hardmodeBossBehaviorCount = 29;
+        const int hardmodeBossBehaviorCount = 34;
         var entries = new VanillaNpcAiCoverage[
             16 + hardmodeBossBehaviorCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
@@ -235,15 +235,20 @@ public static class VanillaNpcAiCoverageCatalog
         entries[index++] = Partial(VanillaNpcIds.PlanteraHook, hardmodePart);
         entries[index++] = Partial(VanillaNpcIds.PlanteraTentacle, hardmodePart);
         entries[index++] = Partial(VanillaNpcIds.PlanteraSpore, hardmodePart);
-        entries[index++] = Partial(VanillaNpcIds.DukeFishron, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.DukeFishron, hardmodeProjectileRoot | VanillaNpcAiCapability.ChildSpawnSlice);
         entries[index++] = Partial(VanillaNpcIds.DetonatingBubble, hardmodePart);
-        entries[index++] = Partial(VanillaNpcIds.LunaticCultist, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.Sharkron, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.Sharkron2, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.LunaticCultist, hardmodeProjectileRoot | VanillaNpcAiCapability.ChildSpawnSlice);
         entries[index++] = Partial(VanillaNpcIds.LunaticCultistClone, hardmodePart);
-        entries[index++] = Partial(VanillaNpcIds.MoonLordHead, hardmodePart);
-        entries[index++] = Partial(VanillaNpcIds.MoonLordHand, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.AncientVision, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.AncientLight, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.AncientDoom, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
+        entries[index++] = Partial(VanillaNpcIds.MoonLordHead, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
+        entries[index++] = Partial(VanillaNpcIds.MoonLordHand, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
         entries[index++] = Partial(VanillaNpcIds.MoonLordCore, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
-        entries[index++] = Partial(VanillaNpcIds.MoonLordFreeEye, hardmodePart);
-        entries[index++] = Partial(VanillaNpcIds.EmpressOfLight, hardmodeRoot);
+        entries[index++] = Partial(VanillaNpcIds.MoonLordFreeEye, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
+        entries[index++] = Partial(VanillaNpcIds.EmpressOfLight, hardmodeProjectileRoot);
         entries[index++] = Partial(VanillaNpcIds.QueenSlime, hardmodeProjectileRoot | VanillaNpcAiCapability.ChildSpawnSlice);
 
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
