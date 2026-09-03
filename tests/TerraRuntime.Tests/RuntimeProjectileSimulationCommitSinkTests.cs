@@ -33,7 +33,7 @@ public sealed class RuntimeProjectileSimulationCommitSinkTests
 
         Assert.True(store.TryGet(spawned.Handle, out ProjectileSnapshot committed));
         Assert.Equal(committed, sink.FinalProjectile);
-        Assert.Equal(new ProjectileRevision(2), committed.Revision);
+        Assert.Equal(new ProjectileRevision(4), committed.Revision);
         Assert.Equal(16f, committed.PositionX);
     }
 

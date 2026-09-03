@@ -90,13 +90,25 @@ public sealed class VanillaProjectileWorldStateStepperTests
             OriginalDamage: 75);
         Assert.True(store.TrySpawn(0, in state, out ProjectileSnapshot spawned));
         var executor = new RuntimeProjectileStateExecutor(store);
+        var observedPositions = new List<float>();
+        var observedLifetimes = new List<int>();
 
-        ProjectileStateTickSummary summary = executor.Tick(new VanillaProjectileWorldStateStepper(tiles));
+        ProjectileStateTickSummary summary = executor.Tick(new VanillaProjectileWorldStateStepper(tiles), slot =>
+        {
+            Assert.Equal((ushort)0, slot);
+            Assert.True(store.TryGetActive(slot, out ProjectileSnapshot current));
+            Assert.True(store.TryGetLifecycle(current.Handle, out ProjectileLifecycleState currentLifecycle));
+            observedPositions.Add(current.PositionX);
+            observedLifetimes.Add(currentLifecycle.TimeLeft);
+        });
 
         Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal([106f, 112f, 118f], observedPositions);
+        Assert.Equal([29, 28, 27], observedLifetimes);
         Assert.True(store.TryGet(spawned.Handle, out ProjectileSnapshot moved));
         Assert.Equal(118f, moved.PositionX, 5);
         Assert.Equal(100f, moved.PositionY, 5);
+        Assert.Equal(new ProjectileRevision(4), moved.Revision);
         Assert.True(store.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
         Assert.Equal(27, lifecycle.TimeLeft);
     }

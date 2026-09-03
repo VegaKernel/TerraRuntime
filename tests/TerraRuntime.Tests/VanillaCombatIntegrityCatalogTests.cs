@@ -59,6 +59,8 @@ public sealed class VanillaCombatIntegrityCatalogTests
         Assert.True(VanillaProjectileNpcCombatFacts.TryGetStaticNpcHitCooldown(VanillaProjectileIds.SuperStarSlash, out int superStarSlashStatic));
         Assert.Equal(10, superStarSlashStatic);
         Assert.False(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.SuperStarSlash));
+        Assert.True(VanillaProjectilePvpCombatFacts.IsAdmittedRangedProjectile(VanillaProjectileIds.SuperStarSlash));
+        Assert.False(VanillaProjectilePvpCombatFacts.RunsAttackerOnHitEffects(VanillaProjectileIds.SuperStarSlash));
         Assert.False(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.Seed, out _));
     }
     [Fact]

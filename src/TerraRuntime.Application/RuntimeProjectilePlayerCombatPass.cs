@@ -293,7 +293,8 @@ internal sealed class RuntimeProjectilePlayerCombatPass
         return profile.Family is VanillaProjectileBehaviorFamily.BasicArrow or
             VanillaProjectileBehaviorFamily.Thrown or
             VanillaProjectileBehaviorFamily.Boomerang or
-            VanillaProjectileBehaviorFamily.SuperStar;
+            VanillaProjectileBehaviorFamily.SuperStar or
+            VanillaProjectileBehaviorFamily.SuperStarSlash;
     }
 
     private static bool Intersects(

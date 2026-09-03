@@ -125,7 +125,8 @@ public static class VanillaProjectilePvpCombatFacts
         type == VanillaProjectileIds.BoneArrowFromMerchant ||
         type == VanillaProjectileIds.BoneDagger ||
         type == VanillaProjectileIds.BoneShard ||
-        type == VanillaProjectileIds.SuperStar;
+        type == VanillaProjectileIds.SuperStar ||
+        type == VanillaProjectileIds.SuperStarSlash;
 
     /// <summary>Projectile.TryDoingOnHitEffects early-return set, projected for the admitted PvP slice.</summary>
     public static bool RunsAttackerOnHitEffects(ProjectileTypeId type) =>

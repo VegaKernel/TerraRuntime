@@ -82,6 +82,9 @@ internal sealed class RuntimeNpcProjectileReflectionPass
         for (int npcIndex = 0; npcIndex < cachedNpcCount; npcIndex++)
         {
             NpcSnapshot npc = npcScratch[npcIndex];
+            if (!npcs.TryGet(npc.Handle, out npc))
+                continue;
+
             bool reflectsProjectile = npc.Simulation.ReflectsProjectiles ||
                 (goodWorld &&
                  VanillaProjectileReflection1458.IsGoodWorldStarShot(projectile.Type) &&

@@ -80,6 +80,45 @@ public sealed partial class RuntimeProjectileStore
         int timeLeft,
         ProjectileLiquidState? liquidState,
         out ProjectileSnapshot snapshot,
+        out bool expired) =>
+        TryCommitSimulationStepCore(
+            handle,
+            in update,
+            timeLeft,
+            liquidState,
+            publishPositiveUpdate: true,
+            out snapshot,
+            out expired);
+
+    /// <summary>
+    /// Commits one positive-lifetime local extraUpdate without publishing an intermediate packet-27 state.
+    /// The authoritative store must expose this state before Projectile.Damage/reflection runs, because those
+    /// interactions can despawn or mutate the exact generation before the next local subupdate. Terminal
+    /// commits are never silent: removal/despawn still publishes immediately.
+    /// </summary>
+    internal bool TryCommitSimulationSubupdate(
+        ProjectileHandle handle,
+        in ProjectileStateUpdate update,
+        int timeLeft,
+        ProjectileLiquidState? liquidState,
+        out ProjectileSnapshot snapshot,
+        out bool expired) =>
+        TryCommitSimulationStepCore(
+            handle,
+            in update,
+            timeLeft,
+            liquidState,
+            publishPositiveUpdate: false,
+            out snapshot,
+            out expired);
+
+    private bool TryCommitSimulationStepCore(
+        ProjectileHandle handle,
+        in ProjectileStateUpdate update,
+        int timeLeft,
+        ProjectileLiquidState? liquidState,
+        bool publishPositiveUpdate,
+        out ProjectileSnapshot snapshot,
         out bool expired)
     {
         expired = false;
@@ -147,7 +186,8 @@ public sealed partial class RuntimeProjectileStore
         state.Update = update;
         state.Lifecycle = lifecycle;
         snapshot = Capture(handle.Slot, in state);
-        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
+        if (publishPositiveUpdate)
+            _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
         return true;
     }
 

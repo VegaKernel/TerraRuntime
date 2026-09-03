@@ -46,7 +46,8 @@ public readonly record struct ProjectileSimulationStepResult(
 /// <summary>
 /// State-only projectile simulation stepper. Returning false on the first subupdate means the stepper does
 /// not own/support that projectile. Once it returns true for a projectile it must return true for every
-/// remaining subupdate in that world tick; an inconsistent later false is rejected without a partial commit.
+/// remaining subupdate while that generation stays active. Extra-update state is committed source-order live,
+/// so an inconsistent later false is rejected but cannot roll back already committed earlier subupdates.
 /// </summary>
 public interface IProjectileStateStepper
 {
@@ -93,8 +94,9 @@ public readonly record struct ProjectileStateTickSummary(
 
 /// <summary>
 /// Runs allocation-stable projectile simulation in TerrariaServer 1.4.5.8 physical slot order. Vanilla
-/// extraUpdates execute as local subupdates, but only the final state is committed to the authoritative store,
-/// so one world tick cannot amplify replication into one packet-27 commit per subupdate. Slot lookup is live rather
+/// extraUpdates execute as live local subupdates: each state becomes authoritative before Damage/reflection, while
+/// positive intermediate states stay silent to replication and only the final surviving state publishes packet 27.
+/// Slot lookup is live rather
 /// than pre-snapshotted: a child projectile spawned into a later physical slot can still execute during the same
 /// global tick, while a child allocated to an already-visited slot waits until the next tick. Every final commit is
 /// generation-safe, therefore reentrant despawn/slot-reuse cannot let stale simulation mutate a replacement.
@@ -119,7 +121,9 @@ public sealed class RuntimeProjectileStateExecutor
         _stepBuffer = new ProjectileSimulationStepResult[VanillaProjectileUpdateFacts.MaximumExtraUpdates + 1];
     }
 
-    public ProjectileStateTickSummary Tick(IProjectileStateStepper stepper)
+    public ProjectileStateTickSummary Tick(
+        IProjectileStateStepper stepper,
+        Action<ushort>? afterCommittedSubupdate = null)
     {
         ArgumentNullException.ThrowIfNull(stepper);
 
@@ -130,7 +134,7 @@ public sealed class RuntimeProjectileStateExecutor
         int physicalSlots = Math.Min(_projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
         for (ushort slot = 0; slot < physicalSlots; slot++)
         {
-            ProjectileStateTickSummary current = TickSlot(stepper, slot);
+            ProjectileStateTickSummary current = TickSlot(stepper, slot, afterCommittedSubupdate);
             examined += current.Examined;
             proposed += current.Proposed;
             applied += current.Applied;
@@ -145,7 +149,10 @@ public sealed class RuntimeProjectileStateExecutor
     /// visited. This is the primitive used by the authoritative world loop to interleave simulation and combat in
     /// vanilla slot order so child allocation can affect later slots during the same global tick.
     /// </summary>
-    public ProjectileStateTickSummary TickSlot(IProjectileStateStepper stepper, ushort slot)
+    public ProjectileStateTickSummary TickSlot(
+        IProjectileStateStepper stepper,
+        ushort slot,
+        Action<ushort>? afterCommittedSubupdate = null)
     {
         ArgumentNullException.ThrowIfNull(stepper);
         if (slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
@@ -168,6 +175,7 @@ public sealed class RuntimeProjectileStateExecutor
         int recordedSubupdates = 0;
         bool hasProposal = false;
         bool invalid = false;
+        bool simulationExpired = false;
 
         for (int subupdate = 0; subupdate < subupdates; subupdate++)
         {
@@ -191,14 +199,7 @@ public sealed class RuntimeProjectileStateExecutor
             }
 
             ProjectileStateUpdate nextState = next.State;
-            if (!RuntimeProjectileStore.IsValidState(in nextState) ||
-                !TryProjectLifecycle(
-                    currentProjectile.Type,
-                    nextState.Type,
-                    currentLifecycle,
-                    next.TimeLeft,
-                    next.Liquid,
-                    out ProjectileLifecycleState nextLifecycle))
+            if (!RuntimeProjectileStore.IsValidState(in nextState))
             {
                 invalid = true;
                 break;
@@ -210,53 +211,147 @@ public sealed class RuntimeProjectileStateExecutor
                 proposed++;
             }
 
+            bool lifetimeExpiresAfterInteractions =
+                next.TimeLeft <= 0 && next.TerminationReason == ProjectileSimulationTerminationReason.LifetimeExpired;
+            bool finalScheduledSubupdate = subupdate == subupdates - 1;
+            bool publishSimulationState =
+                !lifetimeExpiresAfterInteractions && (finalScheduledSubupdate || next.TimeLeft <= 0);
+            ProjectileSnapshot committedSnapshot;
+            bool committed;
+            if (lifetimeExpiresAfterInteractions)
+            {
+                // TerrariaServer 1.4.5.8 calls Projectile.Damage() before the ordinary timeLeft--/Kill tail.
+                // Keep the moved/AI state live for that last interaction, but retain the pre-decrement positive
+                // lifetime until the interaction pass has had its source-ordered chance to consume/reflect it.
+                committed = _projectiles.TryCommitSimulationSubupdate(
+                    projectile.Handle,
+                    in nextState,
+                    currentLifecycle.TimeLeft,
+                    next.Liquid,
+                    out committedSnapshot,
+                    out simulationExpired);
+            }
+            else if (publishSimulationState)
+            {
+                committed = _projectiles.TryCommitSimulationStep(
+                    projectile.Handle,
+                    in nextState,
+                    next.TimeLeft,
+                    next.Liquid,
+                    out committedSnapshot,
+                    out simulationExpired);
+            }
+            else
+            {
+                committed = _projectiles.TryCommitSimulationSubupdate(
+                    projectile.Handle,
+                    in nextState,
+                    next.TimeLeft,
+                    next.Liquid,
+                    out committedSnapshot,
+                    out simulationExpired);
+            }
+
+            if (!committed)
+            {
+                invalid = true;
+                break;
+            }
+
+            if (applied == 0)
+                applied = 1;
             _stepBuffer[recordedSubupdates++] = next;
             finalResult = next;
-            currentProjectile = Project(in currentProjectile, in nextState);
-            currentLifecycle = nextLifecycle;
 
-            if (next.TimeLeft <= 0)
+            // Tile/world/behavior termination happens before Projectile.Damage in the vanilla update path.
+            // Ordinary lifetime expiration is the exception and is finalized after the interaction callback below.
+            if (simulationExpired)
+            {
+                if (_commitSink is not null)
+                {
+                    _commitSink.ProjectileSimulationCommitted(
+                        in projectile,
+                        in lifecycle,
+                        _stepBuffer.AsSpan(0, recordedSubupdates),
+                        in committedSnapshot,
+                        expired: true);
+                }
+
+                if (_terminationSink is not null)
+                {
+                    _terminationSink.ProjectileTerminated(
+                        in projectile,
+                        in committedSnapshot,
+                        finalResult.TerminationReason);
+                }
                 break;
+            }
+
+            afterCommittedSubupdate?.Invoke(slot);
+
+            if (lifetimeExpiresAfterInteractions)
+            {
+                // Damage may already have consumed penetration and removed the generation. If it survives, apply
+                // the ordinary timeLeft expiration using the interaction-mutated current snapshot, not stale state.
+                if (_projectiles.TryGet(projectile.Handle, out ProjectileSnapshot surviving))
+                {
+                    bool removed = VanillaProjectileOwnership.IsServerOwned(surviving.Spawner)
+                        ? _projectiles.TryDespawn(projectile.Handle, out committedSnapshot)
+                        : _projectiles.TryRemove(projectile.Handle, out committedSnapshot);
+                    if (!removed)
+                    {
+                        invalid = true;
+                        break;
+                    }
+
+                    if (_commitSink is not null)
+                    {
+                        _commitSink.ProjectileSimulationCommitted(
+                            in projectile,
+                            in lifecycle,
+                            _stepBuffer.AsSpan(0, recordedSubupdates),
+                            in committedSnapshot,
+                            expired: true);
+                    }
+
+                    if (_terminationSink is not null)
+                    {
+                        _terminationSink.ProjectileTerminated(
+                            in projectile,
+                            in committedSnapshot,
+                            ProjectileSimulationTerminationReason.LifetimeExpired);
+                    }
+                }
+                break;
+            }
+
+            if (publishSimulationState && _commitSink is not null)
+            {
+                _commitSink.ProjectileSimulationCommitted(
+                    in projectile,
+                    in lifecycle,
+                    _stepBuffer.AsSpan(0, recordedSubupdates),
+                    in committedSnapshot,
+                    expired: false);
+            }
+
+            // Damage/reflection between extraUpdates is authoritative and may consume penetration, reflect velocity,
+            // or remove this exact generation. Feed surviving mutations into the next local subupdate instead of
+            // continuing from the speculative pre-interaction state.
+            if (!_projectiles.TryGet(projectile.Handle, out currentProjectile))
+                break;
+            if (!_projectiles.TryGetLifecycle(projectile.Handle, out currentLifecycle))
+            {
+                invalid = true;
+                break;
+            }
         }
 
         if (!hasProposal)
             return new ProjectileStateTickSummary(examined, proposed, applied, rejected);
 
         if (invalid)
-            return new ProjectileStateTickSummary(examined, proposed, applied, rejected + 1);
-
-        ProjectileStateUpdate finalState = finalResult.State;
-        if (_projectiles.TryCommitSimulationStep(
-                projectile.Handle,
-                in finalState,
-                finalResult.TimeLeft,
-                currentLifecycle.Liquid,
-                out ProjectileSnapshot committed,
-                out bool expired))
-        {
-            applied++;
-            if (_commitSink is not null)
-            {
-                _commitSink.ProjectileSimulationCommitted(
-                    in projectile,
-                    in lifecycle,
-                    _stepBuffer.AsSpan(0, recordedSubupdates),
-                    in committed,
-                    expired);
-            }
-
-            if (expired && _terminationSink is not null)
-            {
-                _terminationSink.ProjectileTerminated(
-                    in projectile,
-                    in committed,
-                    finalResult.TerminationReason);
-            }
-        }
-        else
-        {
             rejected++;
-        }
 
         return new ProjectileStateTickSummary(examined, proposed, applied, rejected);
     }
@@ -294,50 +389,5 @@ public sealed class RuntimeProjectileStateExecutor
         return true;
     }
 
-    private static bool TryProjectLifecycle(
-        ProjectileTypeId previousType,
-        ProjectileTypeId nextType,
-        ProjectileLifecycleState previous,
-        int timeLeft,
-        ProjectileLiquidState? liquid,
-        out ProjectileLifecycleState next)
-    {
-        bool netImportant = previous.NetImportant;
-        if (previousType != nextType)
-        {
-            if (!VanillaProjectileLifecycleFacts.TryGetDefaults(
-                    nextType,
-                    out VanillaProjectileLifecycleDefaults defaults))
-            {
-                next = default;
-                return false;
-            }
 
-            netImportant = defaults.NetImportant;
-        }
-
-        next = new ProjectileLifecycleState(
-            timeLeft,
-            netImportant,
-            liquid ?? previous.Liquid);
-        return true;
-    }
-
-    private static ProjectileSnapshot Project(
-        in ProjectileSnapshot current,
-        in ProjectileStateUpdate update) =>
-        new(
-            current.Handle,
-            current.Revision,
-            update.Type,
-            update.Spawner,
-            update.PositionX,
-            update.PositionY,
-            update.VelocityX,
-            update.VelocityY,
-            update.Ai,
-            update.BannerIdToRespondTo,
-            update.Damage,
-            update.KnockBack,
-            update.OriginalDamage);
 }

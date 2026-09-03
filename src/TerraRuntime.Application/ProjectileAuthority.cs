@@ -85,7 +85,7 @@ internal sealed class ProjectileAuthority
         }
     }
 
-    public bool TryTickState(Action<ushort>? afterPhysicalSlot = null)
+    public bool TryTickState(Action<ushort>? afterCommittedSubupdate = null)
     {
         if (stepper is null)
             return false;
@@ -97,12 +97,17 @@ internal sealed class ProjectileAuthority
         int physicalSlots = Math.Min(projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
         for (ushort slot = 0; slot < physicalSlots; slot++)
         {
-            ProjectileStateTickSummary current = executor.TickSlot(stepper, slot);
+            ProjectileStateTickSummary current = executor.TickSlot(stepper, slot, afterCommittedSubupdate);
             examined += current.Examined;
             proposed += current.Proposed;
             applied += current.Applied;
             rejected += current.Rejected;
-            afterPhysicalSlot?.Invoke(slot);
+
+            // Unsupported compatibility projectiles do not cross the authoritative simulation boundary, but the
+            // legacy per-slot interaction pass still needs one chance to observe them. Invalid/rejected simulation
+            // proposals deliberately fail closed instead of applying combat to state the runtime could not verify.
+            if (current.Examined != 0 && current.Proposed == 0 && current.Rejected == 0)
+                afterCommittedSubupdate?.Invoke(slot);
         }
 
         LastTick = new ProjectileStateTickSummary(examined, proposed, applied, rejected);

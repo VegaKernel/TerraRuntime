@@ -59,7 +59,7 @@ public sealed class RuntimeProjectileStateExecutorTests
     }
 
     [Fact]
-    public void Extra_updates_run_locally_and_commit_once_per_world_tick()
+    public void Extra_updates_commit_live_between_subupdates_but_publish_once_per_world_tick()
     {
         var sink = new RecordingCommitSink();
         var store = new RuntimeProjectileStore(capacity: 4, commitSink: sink);
@@ -68,20 +68,135 @@ public sealed class RuntimeProjectileStateExecutorTests
         sink.Commits.Clear();
         var executor = new RuntimeProjectileStateExecutor(store);
         var stepper = new IntegrateAndDecrementLifetimeStepper();
+        var observedPositions = new List<float>();
+        var observedLifetimes = new List<int>();
 
-        ProjectileStateTickSummary summary = executor.Tick(stepper);
+        ProjectileStateTickSummary summary = executor.Tick(stepper, slot =>
+        {
+            Assert.Equal((ushort)1, slot);
+            Assert.True(store.TryGetActive(slot, out ProjectileSnapshot current));
+            Assert.True(store.TryGetLifecycle(current.Handle, out ProjectileLifecycleState currentLifecycle));
+            observedPositions.Add(current.PositionX);
+            observedLifetimes.Add(currentLifecycle.TimeLeft);
+        });
 
         Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), summary);
         Assert.Equal(3, stepper.Calls);
+        Assert.Equal([12f, 14f, 16f], observedPositions);
+        Assert.Equal([599, 598, 597], observedLifetimes);
         Assert.True(store.TryGet(spawned.Handle, out ProjectileSnapshot updated));
         Assert.Equal(16f, updated.PositionX);
         Assert.Equal(53f, updated.PositionY);
-        Assert.Equal(new ProjectileRevision(2), updated.Revision);
+        Assert.Equal(new ProjectileRevision(4), updated.Revision);
         Assert.True(store.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
         Assert.Equal(597, lifecycle.TimeLeft);
         Assert.Single(sink.Commits);
         Assert.Equal(ProjectileStateCommitKind.Update, sink.Commits[0].Kind);
         Assert.Equal(updated, sink.Commits[0].Snapshot);
+    }
+
+    [Fact]
+    public void Interaction_mutation_after_an_extra_update_feeds_the_next_subupdate()
+    {
+        var store = new RuntimeProjectileStore(capacity: 4);
+        ProjectileStateUpdate state = CreateUpdate(type: 20, positionX: 10f, velocityX: 2f);
+        Assert.True(store.TrySpawn(1, in state, out ProjectileSnapshot spawned));
+        var executor = new RuntimeProjectileStateExecutor(store);
+        var stepper = new IntegrateAndDecrementLifetimeStepper();
+        int interactions = 0;
+
+        ProjectileStateTickSummary summary = executor.Tick(stepper, slot =>
+        {
+            interactions++;
+            if (interactions != 1)
+                return;
+
+            Assert.True(store.TryGetActive(slot, out ProjectileSnapshot current));
+            var reflected = new ProjectileStateUpdate(
+                current.Type,
+                current.Spawner,
+                current.PositionX,
+                current.PositionY,
+                -1f,
+                current.VelocityY,
+                current.Ai,
+                current.BannerIdToRespondTo,
+                current.Damage,
+                current.KnockBack,
+                current.OriginalDamage);
+            Assert.True(store.TryUpdate(current.Handle, in reflected, out _));
+        });
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(3, interactions);
+        Assert.Equal(3, stepper.Calls);
+        Assert.True(store.TryGet(spawned.Handle, out ProjectileSnapshot updated));
+        Assert.Equal(10f, updated.PositionX);
+        Assert.Equal(-1f, updated.VelocityX);
+        Assert.Equal(new ProjectileRevision(5), updated.Revision);
+    }
+
+    [Fact]
+    public void Interaction_despawn_after_an_extra_update_stops_remaining_subupdates()
+    {
+        var store = new RuntimeProjectileStore(capacity: 4);
+        ProjectileStateUpdate state = CreateUpdate(type: 20, positionX: 10f, velocityX: 2f);
+        Assert.True(store.TrySpawn(1, in state, out ProjectileSnapshot spawned));
+        var executor = new RuntimeProjectileStateExecutor(store);
+        var stepper = new IntegrateAndDecrementLifetimeStepper();
+        int interactions = 0;
+
+        ProjectileStateTickSummary summary = executor.Tick(stepper, slot =>
+        {
+            interactions++;
+            Assert.True(store.TryGetActive(slot, out ProjectileSnapshot current));
+            Assert.True(store.TryDespawn(current.Handle, out _));
+        });
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(1, interactions);
+        Assert.Equal(1, stepper.Calls);
+        Assert.False(store.TryGet(spawned.Handle, out _));
+    }
+
+    [Fact]
+    public void Pre_damage_termination_removes_without_running_interaction_callback()
+    {
+        var store = new RuntimeProjectileStore(capacity: 4);
+        ProjectileStateUpdate state = CreateUpdate(type: 1122, positionX: 10f);
+        Assert.True(store.TrySpawn(1, in state, out ProjectileSnapshot spawned));
+        var executor = new RuntimeProjectileStateExecutor(store);
+        int interactions = 0;
+
+        ProjectileStateTickSummary summary = executor.Tick(new TileCollisionTerminationStepper(), _ => interactions++);
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(0, interactions);
+        Assert.False(store.TryGet(spawned.Handle, out _));
+    }
+
+    [Fact]
+    public void Ordinary_lifetime_expiration_runs_interaction_before_final_removal()
+    {
+        var store = new RuntimeProjectileStore(capacity: 4);
+        ProjectileStateUpdate state = CreateUpdate(type: 1122, positionX: 10f, velocityX: 2f);
+        Assert.True(store.TrySpawn(1, in state, out ProjectileSnapshot spawned));
+        var executor = new RuntimeProjectileStateExecutor(store);
+        int interactions = 0;
+
+        ProjectileStateTickSummary summary = executor.Tick(new ExpireLifetimeStepper(), slot =>
+        {
+            interactions++;
+            Assert.Equal((ushort)1, slot);
+            Assert.True(store.TryGetActive(slot, out ProjectileSnapshot current));
+            Assert.Equal(12f, current.PositionX);
+            Assert.True(store.TryGetLifecycle(current.Handle, out ProjectileLifecycleState lifecycle));
+            Assert.Equal(1, lifecycle.TimeLeft);
+        });
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(1, interactions);
+        Assert.False(store.TryGet(spawned.Handle, out _));
     }
 
     [Fact]
@@ -296,6 +411,22 @@ public sealed class RuntimeProjectileStateExecutorTests
             ProjectileSnapshot current = projectile.Projectile;
             ProjectileStateUpdate state = Integrate(in current);
             next = new ProjectileSimulationStepResult(state, 0);
+            return true;
+        }
+    }
+
+    private sealed class TileCollisionTerminationStepper : IProjectileStateStepper
+    {
+        public bool TryStepState(
+            in ProjectileSimulationStepContext projectile,
+            out ProjectileSimulationStepResult next)
+        {
+            ProjectileSnapshot current = projectile.Projectile;
+            ProjectileStateUpdate state = Integrate(in current);
+            next = new ProjectileSimulationStepResult(
+                state,
+                0,
+                TerminationReason: ProjectileSimulationTerminationReason.TileCollision);
             return true;
         }
     }

@@ -23,9 +23,9 @@ internal sealed partial class ServerRuntimeState
         _projectiles.BeginReflectionTick();
         if (_projectiles.TryTickState(projectileSlot =>
             {
-                // TerrariaServer updates one physical projectile slot at a time. Damage/reflection for that exact
-                // generation happens before the loop advances, so child NewProjectile allocation into a later slot
-                // remains eligible for same-global-tick simulation and combat.
+                // TerrariaServer 1.4.5.8 calls Damage() inside every local extraUpdate. The executor exposes each
+                // committed subupdate here before the next one, so reflection/NPC/PvP mutations feed subsequent
+                // motion while later-slot child NewProjectile allocations remain eligible in this global tick.
                 _projectiles.ApplyReflections(projectileSlot);
                 _npcs.TickProjectileInteractions(projectileSlot);
                 _projectilePlayerCombat.TickProjectile(projectileSlot);
