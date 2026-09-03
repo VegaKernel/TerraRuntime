@@ -90,7 +90,8 @@ public static class TerrariaPlayerCombatCodec
             using (var writer = new BinaryWriter(payloadStream, Encoding.UTF8, leaveOpen: true))
             {
                 writer.Write(state.TargetPlayer);
-                WriteReason(writer, in state.Reason);
+                TerrariaPlayerDeathReasonState reason = state.Reason;
+                WriteReason(writer, in reason);
                 writer.Write(state.Damage);
                 writer.Write(state.HitDirectionWire);
                 writer.Write(state.Flags);
