@@ -135,7 +135,8 @@ public readonly record struct ProjectileNpcHitIntent(
 
 /// <summary>
 /// Immutable result of one committed NPC damage transition. ResolvedDamage is not capped to remaining
-/// life; LifeLost reports the actual authoritative HP delta.
+/// life. LifeBefore/LifeAfter describe the strike arithmetic before any source-backed checkDead survival
+/// transition; DeathIntercepted marks that the NPC remained active instead of entering ordinary death finalization.
 /// </summary>
 public readonly record struct NpcDamageResult(
     NpcHandle Target,
@@ -147,11 +148,12 @@ public readonly record struct NpcDamageResult(
     int ResolvedDamage,
     int LifeBefore,
     int LifeAfter,
-    bool Critical)
+    bool Critical,
+    bool DeathIntercepted = false)
 {
     public int LifeLost => LifeBefore - LifeAfter;
 
-    public bool Lethal => LifeBefore > 0 && LifeAfter == 0;
+    public bool Lethal => LifeBefore > 0 && LifeAfter == 0 && !DeathIntercepted;
 }
 
 

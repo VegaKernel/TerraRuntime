@@ -29,90 +29,6 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.Equal(ProjectileSimulationTerminationReason.WorldBounds, next.TerminationReason);
     }
 
-    [Theory]
-    [InlineData(955)]
-    public void Falling_star_family_arms_ai1_in_open_air_without_changing_velocity(int type)
-    {
-        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        var stepper = new VanillaProjectileWorldStateStepper(tiles);
-        ProjectileSnapshot projectile = CreateSnapshot(
-            positionX: 100f, positionY: 100f, velocityX: 4f, velocityY: 2f, ai1: 0f) with
-        {
-            Type = new ProjectileTypeId(type)
-        };
-        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 3600);
-
-        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
-
-        Assert.Equal(1f, next.State.Ai.Ai1, 5);
-        Assert.Equal(4f, next.State.VelocityX, 5);
-        Assert.Equal(2f, next.State.VelocityY, 5);
-        Assert.Equal(104f, next.State.PositionX, 5);
-        Assert.Equal(102f, next.State.PositionY, 5);
-    }
-
-    [Fact]
-    public void Super_star_gameplay_ai_is_motion_only_and_omits_visual_ai151_state()
-    {
-        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        var stepper = new VanillaProjectileWorldStateStepper(tiles);
-        ProjectileSnapshot projectile = CreateSnapshot(
-            positionX: 100f, positionY: 100f, velocityX: 4f, velocityY: 2f) with
-        {
-            Type = VanillaProjectileIds.SuperStar
-        };
-        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 3600);
-
-        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
-        Assert.Equal(104f, next.State.PositionX, 5);
-        Assert.Equal(102f, next.State.PositionY, 5);
-        Assert.Equal(4f, next.State.VelocityX, 5);
-        Assert.Equal(2f, next.State.VelocityY, 5);
-        Assert.Equal(3599, next.TimeLeft);
-    }
-
-    [Fact]
-    public void Super_star_slash_runs_three_source_backed_subupdates_per_world_tick()
-    {
-        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        var store = new RuntimeProjectileStore(capacity: 4);
-        ProjectileStateUpdate state = new(
-            VanillaProjectileIds.SuperStarSlash,
-            Spawner: 3,
-            PositionX: 100f,
-            PositionY: 100f,
-            VelocityX: 6f,
-            VelocityY: 0f,
-            Ai: new ProjectileAiState(0f, 200f, 0f),
-            BannerIdToRespondTo: 0,
-            Damage: 75,
-            KnockBack: 0f,
-            OriginalDamage: 75);
-        Assert.True(store.TrySpawn(0, in state, out ProjectileSnapshot spawned));
-        var executor = new RuntimeProjectileStateExecutor(store);
-        var observedPositions = new List<float>();
-        var observedLifetimes = new List<int>();
-
-        ProjectileStateTickSummary summary = executor.Tick(new VanillaProjectileWorldStateStepper(tiles), slot =>
-        {
-            Assert.Equal((ushort)0, slot);
-            Assert.True(store.TryGetActive(slot, out ProjectileSnapshot current));
-            Assert.True(store.TryGetLifecycle(current.Handle, out ProjectileLifecycleState currentLifecycle));
-            observedPositions.Add(current.PositionX);
-            observedLifetimes.Add(currentLifecycle.TimeLeft);
-        });
-
-        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), summary);
-        Assert.Equal([106f, 112f, 118f], observedPositions);
-        Assert.Equal([29, 28, 27], observedLifetimes);
-        Assert.True(store.TryGet(spawned.Handle, out ProjectileSnapshot moved));
-        Assert.Equal(118f, moved.PositionX, 5);
-        Assert.Equal(100f, moved.PositionY, 5);
-        Assert.Equal(new ProjectileRevision(4), moved.Revision);
-        Assert.True(store.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
-        Assert.Equal(27, lifecycle.TimeLeft);
-    }
-
     [Fact]
     public void Shuriken_empty_world_advances_ai_motion_and_lifetime()
     {
@@ -1002,7 +918,6 @@ public sealed class VanillaProjectileWorldStateStepperTests
         float velocityX,
         float velocityY,
         float ai0 = 0f,
-        float ai1 = 0f,
         float ai2 = 0f) =>
         new(
             new ProjectileHandle(0, new ProjectileGeneration(1)),
@@ -1013,7 +928,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
             positionY,
             velocityX,
             velocityY,
-            new ProjectileAiState(ai0, ai1, ai2),
+            new ProjectileAiState(ai0, 0f, ai2),
             BannerIdToRespondTo: 0,
             Damage: 20,
             KnockBack: 1f,

@@ -38,10 +38,6 @@ The runtime fails closed unless both conditions hold:
 | `BasicArrow` | implemented | requires default `ai[2]`; selected types only |
 | `Thrown` | implemented | explicit source-backed type membership |
 | `Boomerang` | source-backed type-6 runtime implemented | outbound timer, owner-targeted return, return-phase tile-collision disable and verified pre-AI world-bounds exception |
-| `SkeletronSkull` / Deerclops families | implemented source-backed gameplay slices | explicit boss-projectile membership; no generic `aiStyle` promotion |
-| `FallingStar` | Star Cannon Star type `955` implemented | gameplay-relevant `aiStyle 5` state only; natural Falling Star type `12` is not profile-admitted |
-| `SuperStar` | type `728` implemented | source-backed `AI_151` gameplay motion and child type `729` spawn |
-| `SuperStarSlash` | type `729` implemented and combat-admitted | `extraUpdates=2`; collision/damage is interleaved after every local subupdate |
 
 Green Laser is deliberately not hidden in the generic basic-arrow path. Its profile sets `RejectServerOwned` because the dedicated-server owner branch mutates gameplay state that the current authoritative model does not yet represent.
 
@@ -88,28 +84,26 @@ Existing projectile behavior/world tests continue to exercise the actual velocit
 
 ## Combat handoff and runtime integrity
 
-Projectile simulation, reflection and entity combat are interleaved on the authoritative owner. The pinned TerrariaServer 1.4.5.8 `Projectile.Update` loop executes `Damage()` inside every local update, so TerraRuntime must not defer combat until all `extraUpdates` have finished:
+Projectile simulation and NPC combat now have an executable post-simulation handoff for a deliberately small trusted slice:
 
 ```mermaid
 flowchart LR
-    Spawn["combat-trusted generation"] --> Slot["physical slot 0..999"]
-    Slot --> Sub["one local subupdate"]
-    Sub --> Commit["authoritative state commit"]
-    Commit --> Interact["reflection + NPC/PvP collision"]
-    Interact --> Alive{"same generation alive?"}
-    Alive -->|yes, more updates| Sub
-    Alive -->|yes, slot done| Next["next physical slot"]
-    Alive -->|no| Next
+    Spawn["Projectile generation"] --> Trust{"server combat trusted?"}
+    Trust -->|no| Sync["movement/replication only"]
+    Trust -->|yes| Behavior["source-backed behavior profile"]
+    Behavior --> Motion["world physics / tile collision / lifetime"]
+    Motion --> NpcPass["deterministic projectile-slot -> NPC-slot AABB pass"]
+    NpcPass --> Intent["ProjectileNpcHitIntent"]
+    Intent --> Damage["existing NPC damage/death pipeline"]
+    Damage --> Penetration["source-backed penetration consumption"]
 ```
 
-Positive intermediate subupdates are committed to the generation-safe store so reflection, penetration, velocity changes or despawn are visible before the next local update. They are deliberately silent to ordinary packet-27 replication. Ordinary `timeLeft` expiration is finalized after the interaction boundary because vanilla calls `Damage()` before its `timeLeft--`/`Kill()` tail; tile/world/behavior terminations remain pre-damage and do not gain a synthetic hit. The final surviving local state publishes one normal projectile update, while terminal removal/despawn still publishes immediately. This preserves source ordering without multiplying ordinary network replication by `extraUpdates + 1`.
+Runtime-only combat trust is generation-scoped. A projectile created through the server runtime command path is eligible to be promoted as combat-trusted; a new client packet-27 generation is **not** trusted merely because its owner byte matches the connection. Once a generation is combat-trusted, owner packet 27/29 traffic can neither rewrite its position/velocity/AI or identity/damage fields nor terminate it early. Untrusted compatibility generations still accept their bounded owner updates but cannot enter authoritative NPC combat. This prevents the new server-side NPC hit pass from turning an unverified client projectile claim into authoritative world damage.
 
-Runtime-only combat trust remains generation-scoped. A trusted generation rejects owner packet 27/29 rewrites and early termination. Client-origin generations cross that boundary only for source-backed weapon/ammo combinations whose projectile type, damage, knockback, launch-speed magnitude, cadence and spawn parameters have been validated from server-owned state. Unsupported combinations remain compatibility/synchronization state and cannot mutate authoritative NPC/player health.
+For combat-trusted player projectiles, the current hit pass admits only behavior profiles whose source-backed collision/penetration semantics are implemented. The first slice covers selected `BasicArrow`/`Thrown` projectiles plus the source-backed Enchanted Boomerang, selects live generation-safe NPC targets by source-backed AABB geometry, applies a bounded baseline per-projectile/NPC cooldown, commits damage/death through the existing NPC combat pipeline, and only after a committed hit consumes source-backed penetration. Positive penetration counts down; the last hit despawns the exact generation; infinite penetration remains active. Ordering is deterministic by physical projectile slot and then physical NPC slot.
 
-The admitted friendly player-projectile slice now includes the verified `BasicArrow`, `Thrown`, Enchanted Boomerang, Super Star `728`, and Super Star Slash `729` families. NPC collision uses source-backed definition geometry plus the modeled immunity family. Super Star `728` uses generation-local one-hit-per-NPC immunity and creates type `729` after the committed parent hit. Super Star Slash uses infinite penetration and shared-by-type NPC immunity for $10\,\text{ticks}$. Because type `729` has `extraUpdates=2`, its three local movement states can each collide in source order during one global tick; the shared static immunity clock prevents repeated damage to the same NPC while still allowing the slash path to reach a different NPC on a later subupdate.
+World motion already owns tile collision, liquid contact, world bounds and source-backed lifetime. The new pass adds entity collision and ordinary NPC damage side effects without moving those responsibilities back into packet handling.
 
-The PvP pass runs at the same subupdate boundary. Type `729` is treated as ranged for the source-backed Frost/status branch, keeps the normal exact-projectile player immunity behavior, and intentionally skips `Projectile.TryDoingOnHitEffects`, matching the pinned type-specific exclusion. Packet 117 is not used as projectile damage authority.
+The runtime still fails closed on the important missing pieces: legitimate client projectile weapon/ammo source promotion, full vanilla projectile AI families, exceptional local/static NPC immunity, player/PvP collision, projectile-applied buffs/debuffs, child/on-hit projectile spawn ordering, and type-specific on-hit effects. In particular, client packet-27 projectiles remain synchronization state rather than an authoritative NPC-damage source until their weapon/ammo mapping is independently verified.
 
-World motion continues to own tile collision, liquid contact, world bounds and source-backed lifetime. Remaining fail-closed work includes broader weapon/ammo provenance and special spawn geometry, unsupported projectile AI/collision hooks, owner-hit exceptions, remaining status/buff side effects, kill/on-kill child families, and full slot-pressure/oldest-projectile replacement parity. Natural Falling Star type `12` also remains outside the admitted behavior profile until authoritative day/remix-world state owns its gameplay kill gate.
-
-`ProjectileNpcHitIntentBuilder` remains a provenance boundary for paths that build explicit NPC hit intents: player owner bytes resolve through `IRuntimePlayerSlotSnapshotLookup` to the current `PlayerHandle`, so slot reuse cannot transfer provenance to a replacement player. Server/NPC-origin projectile provenance remains fail-closed until the originating `NpcHandle` is retained explicitly.
+`ProjectileNpcHitIntentBuilder` remains the provenance boundary: player-owned projectile hits resolve the owner byte through `IRuntimePlayerSlotSnapshotLookup` to the current `PlayerHandle`, so slot reuse cannot transfer provenance to a replacement player. Server/NPC-origin projectile provenance remains fail-closed until the originating `NpcHandle` is retained explicitly.

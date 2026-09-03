@@ -164,6 +164,93 @@ public sealed class RuntimeTownNpcMelee1458Tests
         Assert.False(npcs.TryGet(target.Handle, out _));
     }
 
+    [Fact]
+    public void Production_melee_sink_retires_moon_lord_hands_and_spawns_one_phase_aligned_true_eye_each()
+    {
+        var npcs = new RuntimeNpcStore();
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(207), out VanillaNpcDefinition attackerDefinition));
+        var attackerUpdate = new NpcStateUpdate(
+            207, 207, 100f, 100f, 0f, 0f, VanillaNpcDefinitionCatalog.DefaultTarget, default,
+            NpcSimulationState.Initial with { Life = attackerDefinition.LifeMax, LifeMax = attackerDefinition.LifeMax });
+        Assert.True(npcs.TrySpawnVanilla(in attackerUpdate, out NpcSnapshot attacker));
+
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.MoonLordCore, out VanillaNpcDefinition coreDefinition));
+        var coreUpdate = new NpcStateUpdate(
+            VanillaNpcIds.MoonLordCore.Value, checked((short)VanillaNpcIds.MoonLordCore.Value),
+            300f, 300f, 0f, 0f, 0, new NpcAiState(0f, 0f, 0f, 0f),
+            NpcSimulationState.Initial with
+            {
+                Life = coreDefinition.LifeMax,
+                LifeMax = coreDefinition.LifeMax,
+                LocalAi = new NpcAiState(0f, 0f, 0f, 1f),
+                DontTakeDamage = true
+            });
+        Assert.True(npcs.TrySpawnVanilla(in coreUpdate, out NpcSnapshot core));
+
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.MoonLordHead, out VanillaNpcDefinition headDefinition));
+        var headUpdate = new NpcStateUpdate(
+            VanillaNpcIds.MoonLordHead.Value, checked((short)VanillaNpcIds.MoonLordHead.Value),
+            300f, 200f, 0f, 0f, 0, new NpcAiState(0f, 700f, 0f, core.Handle.Slot),
+            NpcSimulationState.Initial with
+            {
+                Life = headDefinition.LifeMax,
+                LifeMax = headDefinition.LifeMax,
+                LocalAi = new NpcAiState(0f, 0f, 0f, core.Handle.Slot + 1f)
+            });
+        Assert.True(npcs.TrySpawnVanilla(in headUpdate, out _));
+
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.MoonLordHand, out VanillaNpcDefinition handDefinition));
+        NpcSnapshot[] hands = new NpcSnapshot[2];
+        for (int side = 0; side < hands.Length; side++)
+        {
+            var handUpdate = new NpcStateUpdate(
+                VanillaNpcIds.MoonLordHand.Value, checked((short)VanillaNpcIds.MoonLordHand.Value),
+                240f + side * 120f, 300f, 0f, 0f, 0, new NpcAiState(0f, 25f, side, core.Handle.Slot),
+                NpcSimulationState.Initial with
+                {
+                    Life = 1,
+                    LifeMax = handDefinition.LifeMax,
+                    LocalAi = new NpcAiState(0f, 0f, 0f, core.Handle.Slot + 1f)
+                });
+            Assert.True(npcs.TrySpawnVanilla(in handUpdate, out hands[side]));
+        }
+
+        var items = new RuntimeWorldItemStore();
+        var leases = new RuntimeWorldItemInstancedLeaseStore(items);
+        var pipeline = new RuntimeNpcNetworkCombatPipeline(
+            npcs, items, EmptyPlayers.Instance, npcReplication: null, leases, worldItemReplication: null,
+            worldClock: null, progression: new RuntimeWorldProgressionMutations(), expertMode: false, masterMode: false);
+
+        Assert.Equal(
+            RuntimeTownNpcMeleeDamageResult1458.Committed,
+            pipeline.TryStrike(attacker.Handle, hands[0].Handle, 100_000, 0f, 1));
+        Assert.Equal(
+            RuntimeTownNpcMeleeDamageResult1458.Committed,
+            pipeline.TryStrike(attacker.Handle, hands[1].Handle, 100_000, 0f, 1));
+
+        Assert.True(npcs.TryGet(hands[0].Handle, out NpcSnapshot leftRetired));
+        Assert.True(npcs.TryGet(hands[1].Handle, out NpcSnapshot rightRetired));
+        Assert.Equal(-2f, leftRetired.Ai.Ai0);
+        Assert.Equal(-2f, rightRetired.Ai.Ai0);
+        Assert.Equal(handDefinition.LifeMax, leftRetired.Simulation.Life);
+        Assert.Equal(handDefinition.LifeMax, rightRetired.Simulation.Life);
+        Assert.True(leftRetired.Simulation.DontTakeDamage);
+        Assert.True(rightRetired.Simulation.DontTakeDamage);
+
+        NpcSnapshot[] active = new NpcSnapshot[npcs.Capacity];
+        int activeCount = npcs.CopyActive(active);
+        NpcSnapshot[] eyes = active[..activeCount]
+            .Where(static npc => npc.TypeIdentity == VanillaNpcIds.MoonLordFreeEye)
+            .ToArray();
+        Assert.Equal(2, eyes.Length);
+        Assert.Equal(-2f, eyes[0].Ai.Ai0);
+        Assert.Equal(-2f, eyes[1].Ai.Ai0);
+        Assert.Equal(112f, eyes[0].Ai.Ai1);
+        Assert.Equal(912f, eyes[1].Ai.Ai1);
+        Assert.Equal(core.Handle.Slot, eyes[0].Ai.Ai3);
+        Assert.Equal(core.Handle.Slot, eyes[1].Ai.Ai3);
+    }
+
     private sealed class MeleeFixture
     {
         private MeleeFixture(RuntimeNpcStore npcs, RuntimeTownNpcCombat1458 combat, RecordingDamage damage)

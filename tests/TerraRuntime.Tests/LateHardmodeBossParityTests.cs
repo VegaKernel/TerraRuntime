@@ -136,6 +136,122 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(50f, next.Ai.Ai1);
     }
 
+    [Fact]
+    public void Moon_lord_core_opens_only_after_both_hands_and_head_are_retired()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot root = CreateNpc(
+            VanillaNpcIds.MoonLordCore,
+            new NpcAiState(0f, 0f, 0f, 0f),
+            life: 50_000,
+            slot: 5,
+            localAi: new NpcAiState(0f, 0f, 0f, 1f));
+        NpcSnapshot left = CreateNpc(
+            VanillaNpcIds.MoonLordHand,
+            new NpcAiState(-2f, 0f, 0f, 5f),
+            life: 25_000,
+            slot: 6,
+            localAi: new NpcAiState(0f, 0f, 0f, 6f));
+        NpcSnapshot right = CreateNpc(
+            VanillaNpcIds.MoonLordHand,
+            new NpcAiState(-2f, 0f, 1f, 5f),
+            life: 25_000,
+            slot: 7,
+            localAi: new NpcAiState(0f, 0f, 0f, 6f));
+        NpcSnapshot head = CreateNpc(
+            VanillaNpcIds.MoonLordHead,
+            new NpcAiState(-2f, 700f, 0f, 5f),
+            life: 45_000,
+            slot: 8,
+            localAi: new NpcAiState(0f, 0f, 0f, 6f));
+        stepper.SetNpcPeers([root, left, right, head]);
+
+        Assert.True(stepper.TryStepState(in root, out NpcStateUpdate next));
+        Assert.Equal(1f, next.Ai.Ai0);
+        Assert.False(next.Simulation.DontTakeDamage);
+    }
+
+    [Fact]
+    public void Moon_lord_core_missing_retired_part_fails_closed()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot root = CreateNpc(
+            VanillaNpcIds.MoonLordCore,
+            new NpcAiState(0f, 0f, 0f, 0f),
+            life: 50_000,
+            slot: 5,
+            localAi: new NpcAiState(0f, 0f, 0f, 1f));
+        NpcSnapshot left = CreateNpc(
+            VanillaNpcIds.MoonLordHand,
+            new NpcAiState(-2f, 0f, 0f, 5f),
+            life: 25_000,
+            slot: 6,
+            localAi: new NpcAiState(0f, 0f, 0f, 6f));
+        NpcSnapshot right = CreateNpc(
+            VanillaNpcIds.MoonLordHand,
+            new NpcAiState(-2f, 0f, 1f, 5f),
+            life: 25_000,
+            slot: 7,
+            localAi: new NpcAiState(0f, 0f, 0f, 6f));
+        stepper.SetNpcPeers([root, left, right]);
+
+        Assert.True(stepper.TryStepState(in root, out NpcStateUpdate next));
+        Assert.Equal(0f, next.Ai.Ai0);
+        Assert.True(next.Simulation.DontTakeDamage);
+    }
+
+    [Fact]
+    public void Retired_moon_lord_head_enters_minus_three_when_core_death_drama_starts()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot root = CreateNpc(
+            VanillaNpcIds.MoonLordCore,
+            new NpcAiState(2f, 10f, 0f, 0f),
+            life: 50_000,
+            slot: 5,
+            localAi: new NpcAiState(0f, 0f, 0f, 1f));
+        NpcSnapshot head = CreateNpc(
+            VanillaNpcIds.MoonLordHead,
+            new NpcAiState(-2f, 700f, 0f, 5f),
+            life: 45_000,
+            slot: 8,
+            localAi: new NpcAiState(0f, 0f, 0f, 6f));
+        stepper.SetNpcPeers([root, head]);
+
+        Assert.True(stepper.TryStepState(in head, out NpcStateUpdate next));
+        Assert.Equal(-3f, next.Ai.Ai0);
+        Assert.Equal(701f, next.Ai.Ai1);
+        Assert.True(next.Simulation.DontTakeDamage);
+        Assert.Equal(0, next.Simulation.DamageOverride);
+        Assert.Equal(0f, next.VelocityX);
+        Assert.Equal(0f, next.VelocityY);
+    }
+
+    [Fact]
+    public void Moon_lord_core_open_transition_does_not_synthesize_three_true_eyes()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot root = CreateNpc(
+            VanillaNpcIds.MoonLordCore,
+            new NpcAiState(0f, 0f, 0f, 0f),
+            life: 50_000,
+            slot: 5,
+            localAi: new NpcAiState(0f, 0f, 0f, 1f));
+        NpcStateUpdate proposed = new(
+            root.Type,
+            root.NetId,
+            root.PositionX,
+            root.PositionY,
+            root.VelocityX,
+            root.VelocityY,
+            root.Target,
+            new NpcAiState(1f, 0f, 0f, 0f),
+            root.Simulation with { LocalAi = root.Simulation.LocalAi with { Ai2 = 1f } });
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[3];
+
+        Assert.Equal(0, stepper.PlanNpcSpawns(in root, in proposed, intents));
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(bool dayTime)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());

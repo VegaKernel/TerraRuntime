@@ -42,7 +42,6 @@ public static class VanillaBuffIds
     public static readonly BuffTypeId BrokenArmor = new(36);
     public static readonly BuffTypeId CursedInferno = new(39);
     public static readonly BuffTypeId Frostburn = new(44);
-    public static readonly BuffTypeId ShadowDodge = new(59);
     public static readonly BuffTypeId Chilled = new(46);
     public static readonly BuffTypeId Frozen = new(47);
     public static readonly BuffTypeId Ichor = new(69);
@@ -57,13 +56,8 @@ public static class VanillaBuffIds
     public static readonly BuffTypeId WeaponImbueConfetti = new(78);
     public static readonly BuffTypeId WeaponImbuePoison = new(79);
     public static readonly BuffTypeId Blackout = new(80);
-    public static readonly BuffTypeId AmmoReservation = new(112);
-    public static readonly BuffTypeId Endurance = new(114);
-    public static readonly BuffTypeId Rage = new(115);
-    public static readonly BuffTypeId Wrath = new(117);
     public static readonly BuffTypeId WellFed2 = new(206);
     public static readonly BuffTypeId WellFed3 = new(207);
-    public static readonly BuffTypeId BrainOfConfusionDodge = new(321);
     public static readonly BuffTypeId OnFire3 = new(323);
     public static readonly BuffTypeId Frostburn2 = new(324);
     public static readonly BuffTypeId NeutralHunger = new(332);

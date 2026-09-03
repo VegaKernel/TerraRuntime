@@ -10,7 +10,6 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId Boomerang = new(3);
     public static readonly ProjectileAiStyleId FallingStar = new(5);
     public static readonly ProjectileAiStyleId SuperStar = new(151);
-    public static readonly ProjectileAiStyleId SuperStarSlash = new(152);
     public static readonly ProjectileAiStyleId SharpTears = new(157);
     public static readonly ProjectileAiStyleId ShadowHand = new(187);
 }
@@ -91,16 +90,6 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
-    private static readonly VanillaProjectileDefinition FallingStarDefinition = new(
-        Width: 18,
-        Height: 18,
-        AiStyle: VanillaProjectileAiStyles.FallingStar,
-        TileCollide: true,
-        IgnoreWater: false,
-        CanCutTiles: true,
-        CollisionWidth: 18,
-        CollisionHeight: 18);
-
     private static readonly VanillaProjectileDefinition BulletDefinition = new(
         Width: 4,
         Height: 4,
@@ -170,17 +159,6 @@ public static class VanillaProjectileDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 18,
         CollisionHeight: 18);
-
-    private static readonly VanillaProjectileDefinition SuperStarSlashDefinition = new(
-        Width: 20,
-        Height: 20,
-        AiStyle: VanillaProjectileAiStyles.SuperStarSlash,
-        TileCollide: false,
-        IgnoreWater: true,
-        CanCutTiles: false,
-        CollisionWidth: 20,
-        CollisionHeight: 20);
-
 
     private static readonly VanillaProjectileDefinition BoneDefinition = new(
         Width: 16,
@@ -404,12 +382,6 @@ public static class VanillaProjectileDefinitionCatalog
             return true;
         }
 
-        if (type == VanillaProjectileIds.FallingStar)
-        {
-            definition = FallingStarDefinition;
-            return true;
-        }
-
         if (type == VanillaProjectileIds.Bullet)
         {
             definition = BulletDefinition;
@@ -442,11 +414,6 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.SuperStar)
         {
             definition = SuperStarDefinition;
-            return true;
-        }
-        if (type == VanillaProjectileIds.SuperStarSlash)
-        {
-            definition = SuperStarSlashDefinition;
             return true;
         }
         if (type == VanillaProjectileIds.StarCannonStar)

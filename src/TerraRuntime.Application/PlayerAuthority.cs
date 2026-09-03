@@ -3,22 +3,10 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
-using TerraRuntime.Gameplay.Projectiles;
-using TerraRuntime.Gameplay.Buffs;
 using TerraRuntime.HostContracts;
-using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
 namespace TerraRuntime;
-
-internal enum AuthoritativePvpDamageCommitResult : byte
-{
-    Rejected = 0,
-    Immune = 1,
-    Dodged = 2,
-    Damaged = 3,
-    Killed = 4
-}
 
 /// <summary>
 /// Owns authoritative client-player command application and all mutable player state for one world.
@@ -37,17 +25,10 @@ internal sealed class PlayerAuthority
     private readonly IRuntimePlayerEventSink? events;
     private readonly WorldTileStore? worldTiles;
     private readonly RuntimePvpCombatIntegrity pvpCombat;
-    private readonly Random combatRandom;
-    private readonly RuntimePlayerCombatBuffStore combatBuffs = new();
     private int lastSpawnCommitResult = -1;
     private long currentCombatTick;
     private readonly long[] pvpImmuneUntil = new long[MaxPlayerSlots];
     private readonly PlayerSessionGeneration[] pvpImmuneGeneration = new PlayerSessionGeneration[MaxPlayerSlots];
-    private readonly long[] hallowedDodgeCooldownUntil = new long[MaxPlayerSlots];
-    private readonly PlayerSessionGeneration[] hallowedDodgeCooldownGeneration = new PlayerSessionGeneration[MaxPlayerSlots];
-    private readonly int[] badLifeRegenCount = new int[MaxPlayerSlots];
-    private readonly PlayerSessionGeneration[] badLifeRegenGeneration = new PlayerSessionGeneration[MaxPlayerSlots];
-    private long lastCombatStatusTick = long.MinValue;
     private readonly bool expertMode;
     private readonly bool masterMode;
 
@@ -55,8 +36,7 @@ internal sealed class PlayerAuthority
         IRuntimePlayerEventSink? events,
         WorldTileStore? worldTiles,
         bool expertMode = false,
-        bool masterMode = false,
-        Random? combatRandom = null)
+        bool masterMode = false)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -64,8 +44,7 @@ internal sealed class PlayerAuthority
         this.worldTiles = worldTiles;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
-        this.combatRandom = combatRandom ?? Random.Shared;
-        pvpCombat = new RuntimePvpCombatIntegrity(this, this.combatRandom);
+        pvpCombat = new RuntimePvpCombatIntegrity(this);
     }
 
     public bool TryApply(RuntimeCommand command)
@@ -115,11 +94,7 @@ internal sealed class PlayerAuthority
 
     public IEnumerable<RuntimePlayerMember> Members => membership.Members;
 
-    public void AdvanceCombatTick(long tick)
-    {
-        currentCombatTick = tick;
-        TickAuthoritativeCombatStatuses(tick);
-    }
+    public void AdvanceCombatTick(long tick) => currentCombatTick = tick;
 
     public bool IsCurrent(ConnectionHandle connection) => membership.IsCurrent(connection);
 
@@ -219,93 +194,12 @@ internal sealed class PlayerAuthority
         ConnectionHandle connection,
         out VanillaPlayerCombatSnapshot snapshot)
     {
-        if (!TryCaptureEquipment(connection, out PlayerEquipmentCommitRequest[] equipment) ||
-            !VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, out snapshot))
+        if (!TryCaptureEquipment(connection, out PlayerEquipmentCommitRequest[] equipment))
         {
             snapshot = default;
             return false;
         }
-
-        Span<BuffTypeId> buffs = stackalloc BuffTypeId[32];
-        if (!combatBuffs.TryCopyActive(connection.Player, currentCombatTick, buffs, out int buffCount) ||
-            !VanillaPlayerCombatBuffCatalog.TryApply(buffs[..buffCount], ref snapshot))
-        {
-            snapshot = default;
-            return false;
-        }
-
-        // Player.Update clears Hallowed Protection when the set bonus is no longer active. Keep server-owned buff
-        // state from surviving an armor swap and becoming a phantom dodge.
-        if (snapshot.ShadowDodge && !snapshot.HallowedOnHitDodge)
-        {
-            combatBuffs.Remove(connection.Player, VanillaBuffIds.ShadowDodge);
-            snapshot = snapshot with { ShadowDodge = false };
-        }
-        return true;
-    }
-
-    /// <summary>
-    /// Grants combat-affecting player state only from a server-confirmed gameplay source. Packet 50 must never call
-    /// this method merely because a client claimed a positive buff.
-    /// </summary>
-    internal bool TryGrantAuthoritativeCombatBuff(
-        PlayerHandle player,
-        BuffTypeId type,
-        int durationTicks)
-    {
-        if (!membership.TryGet(player, out _))
-            return false;
-        return combatBuffs.TryGrant(player, type, durationTicks, currentCombatTick);
-    }
-
-    /// <summary>
-    /// StatusToPlayerPvP / Projectile.StatusPvP -> Player.AddBuff path for a server-confirmed PvP hit. Difficulty
-    /// extension is applied here because AddBuff_DetermineBuffTimeToAdd doubles these debuffs in Expert and uses
-    /// 2.5x in Master. Packet 50 is never a grant source.
-    /// </summary>
-    internal bool TryGrantAuthoritativePvpStatus(
-        PlayerHandle player,
-        BuffTypeId type,
-        int baseDurationTicks)
-    {
-        if (!membership.TryGet(player, out _))
-            return false;
-        int durationTicks = VanillaPlayerBuffRuntimeFacts.ResolveDuration(
-            type,
-            baseDurationTicks,
-            expertMode,
-            masterMode);
-        return combatBuffs.TryGrant(player, type, durationTicks, currentCombatTick);
-    }
-
-    internal bool IsAuthoritativePvpImmune(PlayerHandle player, long tick)
-    {
-        if (!player.IsAssigned)
-            return false;
-        int slot = player.Slot.Value;
-        return pvpImmuneGeneration[slot] == player.Generation && tick < pvpImmuneUntil[slot];
-    }
-
-    internal bool TryGrantHallowedProtectionOnHit(
-        PlayerHandle player,
-        in VanillaPlayerCombatSnapshot combat,
-        long tick)
-    {
-        if (!player.IsAssigned || !combat.HallowedOnHitDodge || !membership.TryGet(player, out _))
-            return !combat.HallowedOnHitDodge;
-
-        int slot = player.Slot.Value;
-        if (hallowedDodgeCooldownGeneration[slot] == player.Generation && tick < hallowedDodgeCooldownUntil[slot])
-            return true;
-
-        return combatBuffs.TryGrant(player, VanillaBuffIds.ShadowDodge, 1800, tick);
-    }
-
-    private void PutHallowedProtectionOnCooldown(PlayerHandle player, long tick)
-    {
-        int slot = player.Slot.Value;
-        hallowedDodgeCooldownGeneration[slot] = player.Generation;
-        hallowedDodgeCooldownUntil[slot] = tick + 1800;
+        return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, out snapshot);
     }
 
     public bool TryCaptureCombatSnapshot(
@@ -349,7 +243,6 @@ internal sealed class PlayerAuthority
     public long AppliedTeamChanges { get; private set; }
     public long RejectedTeamChanges { get; private set; }
     public long AppliedAuthoritativePvpHits { get; private set; }
-    public long AppliedAuthoritativePvpDodges { get; private set; }
     public long RejectedAuthoritativePvpHits { get; private set; }
     public long LegacyPvpFallbackHits { get; private set; }
     public PlayerSlotId? LastMovementSlot { get; private set; }
@@ -539,8 +432,6 @@ internal sealed class PlayerAuthority
         CommittedSpawns++;
         pvpImmuneUntil[request.ClaimedSlot.Value] = 0;
         pvpImmuneGeneration[request.ClaimedSlot.Value] = default;
-        badLifeRegenCount[request.ClaimedSlot.Value] = 0;
-        badLifeRegenGeneration[request.ClaimedSlot.Value] = default;
         membership.Commit(new RuntimePlayerMember
         {
             Connection = spawn.Connection,
@@ -642,95 +533,40 @@ internal sealed class PlayerAuthority
 
     private void ApplyClientPvpHit(ClientPlayerPvpHitRuntimeCommand command)
     {
-        // command.State is a record property and cannot be passed by readonly reference directly. Materialize the
-        // packet state once so the strict PvP resolver receives a stable readonly value.
-        TerrariaPlayerHurtState state = command.State;
         PvpCombatResolveResult resolve = pvpCombat.ResolveClientItemHit(
             currentCombatTick,
             command.Connection,
-            in state,
+            in command.State,
             out AuthoritativePvpHit hit);
         if (resolve == PvpCombatResolveResult.LegacyFallback)
         {
             LegacyPvpFallbackHits++;
             return;
         }
-        if (resolve != PvpCombatResolveResult.Accepted ||
-            !TryCaptureCombatSnapshot(hit.Attacker, out VanillaPlayerCombatSnapshot attackerCombat))
+        if (resolve != PvpCombatResolveResult.Accepted)
         {
             RejectedAuthoritativePvpHits++;
             return;
         }
 
-        // ItemCheck_MeleeHitPVP checks general immunity before StatusToPlayerPvP/OnHit. Once admitted, the source
-        // order is weapon imbue -> Frost set -> magmaStone -> Player.OnHit (Hallowed Protection) -> Player.Hurt.
-        // Shimmer and ordinary dodge happen inside Hurt, so a dodge keeps statuses and can still arm Hallowed.
-        if (!IsAuthoritativePvpImmune(hit.Target, currentCombatTick))
-        {
-            if (VanillaProjectilePvpCombatFacts.TryRollMeleeEnchantStatus(
-                    attackerCombat.MeleeEnchant,
-                    combatRandom,
-                    out VanillaProjectilePvpStatusEffect enchantStatus) &&
-                enchantStatus.IsPresent &&
-                !TryGrantAuthoritativePvpStatus(hit.Target, enchantStatus.Buff, enchantStatus.DurationTicks))
-            {
-                RejectedAuthoritativePvpHits++;
-                return;
-            }
-
-            if (VanillaProjectilePvpCombatFacts.TryRollFrostBurnStatus(
-                    attackerCombat.FrostBurn,
-                    combatRandom,
-                    out VanillaProjectilePvpStatusEffect frostStatus) &&
-                frostStatus.IsPresent &&
-                !TryGrantAuthoritativePvpStatus(hit.Target, frostStatus.Buff, frostStatus.DurationTicks))
-            {
-                RejectedAuthoritativePvpHits++;
-                return;
-            }
-
-            if (attackerCombat.MagmaStone)
-            {
-                int magmaDuration = combatRandom.Next(7) == 0
-                    ? 360
-                    : combatRandom.Next(3) == 0 ? 120 : 60;
-                if (!TryGrantAuthoritativePvpStatus(hit.Target, VanillaBuffIds.OnFire3, magmaDuration))
-                {
-                    RejectedAuthoritativePvpHits++;
-                    return;
-                }
-            }
-
-            if (!TryGrantHallowedProtectionOnHit(hit.Attacker, in attackerCombat, currentCombatTick))
-            {
-                RejectedAuthoritativePvpHits++;
-                return;
-            }
-        }
-
-        AuthoritativePvpDamageCommitResult commit = CommitAuthoritativePvpDamage(
-            currentCombatTick,
-            hit.Attacker,
-            hit.Target,
-            hit.Context.Source,
-            hit.Damage,
-            hit.Critical,
-            hit.HitDirection,
-            dodgeable: true,
-            allowShimmerDodge: true,
-            out _);
-        if (commit == AuthoritativePvpDamageCommitResult.Rejected)
+        if (!TryCommitAuthoritativePvpDamage(
+                currentCombatTick,
+                hit.Attacker,
+                hit.Target,
+                hit.Context.Source,
+                hit.Damage,
+                hit.Critical,
+                hit.HitDirection,
+                out _))
         {
             RejectedAuthoritativePvpHits++;
             return;
         }
 
         AppliedAuthoritativePvpHits++;
-        if (commit == AuthoritativePvpDamageCommitResult.Dodged)
-            AppliedAuthoritativePvpDodges++;
     }
 
-    internal AuthoritativePvpDamageCommitResult CommitAuthoritativePvpDamage(
+    internal bool TryCommitAuthoritativePvpDamage(
         long tick,
         PlayerHandle attacker,
         PlayerHandle targetHandle,
@@ -738,8 +574,6 @@ internal sealed class PlayerAuthority
         int damage,
         bool critical,
         int hitDirection,
-        bool dodgeable,
-        bool allowShimmerDodge,
         out PlayerStateSnapshot committed)
     {
         committed = default;
@@ -751,59 +585,14 @@ internal sealed class PlayerAuthority
             !source.Hostile || !target.Hostile || source.IsDead || target.IsDead || !target.HasHealth || target.Life <= 0 ||
             (source.Team != 0 && source.Team == target.Team))
         {
-            return AuthoritativePvpDamageCommitResult.Rejected;
+            return false;
         }
 
         if (!TryCaptureCombatSnapshot(targetHandle, out VanillaPlayerCombatSnapshot targetCombat))
-            return AuthoritativePvpDamageCommitResult.Rejected;
+            return false;
 
         int targetSlot = target.Slot.Value;
-        // Player.Hurt performs Shimmer dodge before general immunity and before Mystic Sash / Ninja / Brain /
-        // Hallowed Protection. It returns zero without granting post-dodge immunity.
-        if (dodgeable && allowShimmerDodge && targetCombat.Shimmering)
-        {
-            committed = target.CaptureSnapshot();
-            var shimmerHealth = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
-            events?.PlayerHealthUpdated(target.Connection, in shimmerHealth);
-            return AuthoritativePvpDamageCommitResult.Dodged;
-        }
-
-        if (IsAuthoritativePvpImmune(targetHandle, tick))
-        {
-            committed = target.CaptureSnapshot();
-            return AuthoritativePvpDamageCommitResult.Immune;
-        }
-
-        if (dodgeable)
-        {
-            VanillaPvpDodgeKind dodge = VanillaPlayerPvpDodge.Resolve(in targetCombat, combatRandom);
-            if (dodge != VanillaPvpDodgeKind.None)
-            {
-                pvpImmuneGeneration[targetSlot] = targetHandle.Generation;
-                pvpImmuneUntil[targetSlot] = tick + VanillaPlayerPvpDodge.GetPostDodgeImmunityTicks(in targetCombat);
-                if (dodge == VanillaPvpDodgeKind.BrainOfConfusion)
-                {
-                    combatBuffs.TryGrant(
-                        targetHandle,
-                        VanillaBuffIds.BrainOfConfusionDodge,
-                        VanillaPlayerPvpDodge.BrainOfConfusionCooldownTicks,
-                        tick);
-                }
-                else if (dodge == VanillaPvpDodgeKind.ShadowDodge)
-                {
-                    combatBuffs.Remove(targetHandle, VanillaBuffIds.ShadowDodge);
-                    PutHallowedProtectionOnCooldown(targetHandle, tick);
-                }
-
-                committed = target.CaptureSnapshot();
-                // The authoritative server owns the dodge roll. Re-emit unchanged health so a client that locally
-                // predicted a different PvP result is pulled back to the server-owned HP value.
-                var dodgeHealth = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
-                events?.PlayerHealthUpdated(target.Connection, in dodgeHealth);
-                return AuthoritativePvpDamageCommitResult.Dodged;
-            }
-        }
-
+        bool immune = pvpImmuneGeneration[targetSlot] == targetHandle.Generation && tick < pvpImmuneUntil[targetSlot];
         var attack = new AuthoritativeAttackDamage(
             sourceDamage,
             damage,
@@ -814,14 +603,14 @@ internal sealed class PlayerAuthority
         if (!VanillaCombatDamagePipeline.TryResolvePvp(
                 in attack,
                 in targetCombat,
-                immune: false,
+                immune,
                 out FinalDamageToHp final,
                 expertMode,
                 masterMode) ||
             final.Damage <= 0 ||
             !target.TryAdvanceRevision())
         {
-            return AuthoritativePvpDamageCommitResult.Rejected;
+            return false;
         }
 
         target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
@@ -837,58 +626,7 @@ internal sealed class PlayerAuthority
         committed = target.CaptureSnapshot();
         var health = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
         events?.PlayerHealthUpdated(target.Connection, in health);
-        return target.IsDead
-            ? AuthoritativePvpDamageCommitResult.Killed
-            : AuthoritativePvpDamageCommitResult.Damaged;
-    }
-
-    private void TickAuthoritativeCombatStatuses(long tick)
-    {
-        if (tick == lastCombatStatusTick)
-            return;
-        lastCombatStatusTick = tick;
-
-        foreach (RuntimePlayerMember player in membership.Members)
-        {
-            PlayerHandle handle = player.Connection.Player;
-            int slot = player.Slot.Value;
-            if (badLifeRegenGeneration[slot] != handle.Generation)
-            {
-                badLifeRegenGeneration[slot] = handle.Generation;
-                badLifeRegenCount[slot] = 0;
-            }
-
-            if (player.IsDead || !player.HasHealth || player.Life <= 0)
-                continue;
-
-            bool poisoned = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.Poisoned, tick);
-            bool venom = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.Venom, tick);
-            bool onFire = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.OnFire, tick);
-            bool onFire3 = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.OnFire3, tick);
-            bool cursedInferno = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.CursedInferno, tick);
-            bool frostburn = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.Frostburn, tick);
-            bool frostburn2 = combatBuffs.IsActiveForStatusUpdate(handle, VanillaBuffIds.Frostburn2, tick);
-            int delta = VanillaPlayerBuffRuntimeFacts.GetBadLifeRegenDelta(
-                poisoned,
-                onFire,
-                onFire3,
-                venom,
-                cursedInferno,
-                frostburn,
-                frostburn2);
-            if (delta == 0)
-                continue;
-
-            badLifeRegenCount[slot] = checked(badLifeRegenCount[slot] + delta);
-            int dotDamage = VanillaPlayerBuffRuntimeFacts.ConsumeBadLifeRegenDamage(ref badLifeRegenCount[slot]);
-            if (dotDamage <= 0 || !player.TryAdvanceRevision())
-                continue;
-
-            player.Life = checked((short)Math.Max(0, player.Life - dotDamage));
-            player.IsDead = player.Life <= 0;
-            var health = new PlayerHealthCommitRequest(player.Slot, player.Life, player.MaxLife);
-            events?.PlayerHealthUpdated(player.Connection, in health);
-        }
+        return true;
     }
 
     private void ApplyPlayerDisconnect(PlayerDisconnectRuntimeCommand disconnect)
@@ -898,7 +636,6 @@ internal sealed class PlayerAuthority
 
         inventory.Clear(connection);
         transferProfiles.Clear(connection);
-        combatBuffs.Clear(connection.Player);
 
         if (!membership.TryRemove(connection, out _))
             return;
@@ -936,7 +673,6 @@ internal sealed class PlayerAuthority
         membership.ClearPending(connection);
         this.inventory.Clear(connection);
         transferProfiles.Clear(connection);
-        combatBuffs.Clear(connection.Player);
         if (!membership.TryRemove(connection, out _))
             throw new InvalidOperationException("Player membership changed during authoritative transfer detach.");
         events?.PlayerDisconnected(connection);
@@ -1016,8 +752,6 @@ internal sealed class PlayerAuthority
         };
         pvpImmuneUntil[slot] = 0;
         pvpImmuneGeneration[slot] = default;
-        badLifeRegenCount[slot] = 0;
-        badLifeRegenGeneration[slot] = default;
         membership.Commit(state);
         transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment);
 

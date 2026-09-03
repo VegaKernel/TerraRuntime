@@ -284,7 +284,6 @@ Benchmark zero extensions, one NPC decorator, dense replacement workload, high p
 - [x] source-backed TerrariaServer 1.4.5.8 `Reset` + `Terrain` branches for the pure canonical `Don't Dig Up`/Remix profile, including its Reset hell-chest/jungle-origin mutations and Terrain rock-layer/surface-offset mutations; later source-shaped overlays remain ordinary-only, while Zenith, combined special switches and secret switches retain compatibility fallbacks;
 - [x] runtime-owned deterministic `terraruntime:skyblock` profile with separated biome-island layout, lowered depth metadata, starter spawn, reserved lower dungeon island and persistent generated chests;
 - [x] ordinary canonical `terraruntime:vanilla` plan covers the complete pinned 109-pass TerrariaServer 1.4.5.8 registration sequence through `Final Cleanup`;
-- [x] ordinary canonical early `TileRunner` replacement/slope gate is source-shaped against 1.4.5.8, and `Sand Patches` shares that runner instead of a separate approximation;
 - [x] generated canonical vanilla `.wld` loads through TerraRuntime and boots successfully in the pinned official TerrariaServer 1.4.5.8 acceptance gate;
 - [x] generated canonical vanilla `.wld` is validated in-process through `VanillaWorldGenerationFullIntegrationTests`: `4200x1200` ordinary world is generated, tile/wall id/flag/shape bounds, chest-anchor uniqueness and `Guide` persistence are checked, fresh `v326` composition is validated by `WorldFileLoader` and deterministic SHA-256 replay is proved;
 - [ ] source-exact 109-pass/reference-world vanilla parity.

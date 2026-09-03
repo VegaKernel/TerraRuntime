@@ -87,29 +87,6 @@ public sealed class RuntimeNpcProjectileReflectionPassTests
     }
 
     [Fact]
-    public void Cached_reflector_that_despawns_before_projectile_slot_cannot_reflect_later_slot()
-    {
-        var npcs = new RuntimeNpcStore(capacity: 4);
-        var projectiles = new RuntimeProjectileStore(capacity: 4);
-        NpcSnapshot eye = SpawnReflectingEye(npcs);
-        ProjectileSnapshot arrow = SpawnArrow(projectiles);
-        var pass = new RuntimeNpcProjectileReflectionPass(
-            npcs,
-            projectiles,
-            new FixedPlayerLookup(),
-            new SequenceRandom(100, 0));
-
-        pass.BeginTick();
-        Assert.True(npcs.TryDespawn(eye.Handle));
-
-        Assert.Equal(0, pass.TickProjectile(arrow.Handle.Slot));
-        Assert.True(projectiles.TryGet(arrow.Handle, out ProjectileSnapshot unchanged));
-        Assert.Equal((short)20, unchanged.Damage);
-        Assert.True(projectiles.TryGetLifecycle(arrow.Handle, out ProjectileLifecycleState lifecycle));
-        Assert.False(lifecycle.Reflected);
-    }
-
-    [Fact]
     public void Non_overlapping_or_non_reflecting_eye_does_not_mutate_projectile()
     {
         var npcs = new RuntimeNpcStore(capacity: 4);

@@ -213,7 +213,7 @@ public static class VanillaDirectMeleeCombatMath
         int prefixedUseTime = Math.Max(1, (int)Math.Round(weapon.UseTimeTicks * prefix.SpeedMultiplier));
         // ApplyItemAnimation(baseFrames, meleeSpeed) truncates rather than rounds after CapAttackSpeeds.
         int animationTicks = Math.Max(1, (int)(prefixedAnimation * attacker.MeleeAnimationMultiplier));
-        float knockBack = Math.Max(0f, weapon.BaseKnockBack * prefix.KnockBackMultiplier * attacker.MeleeKnockBackMultiplier);
+        float knockBack = Math.Max(0f, weapon.BaseKnockBack * prefix.KnockBackMultiplier);
         return new VanillaResolvedDirectMeleeUse(
             damage,
             minDamage,

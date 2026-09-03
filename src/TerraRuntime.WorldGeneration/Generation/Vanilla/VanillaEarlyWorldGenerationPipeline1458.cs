@@ -628,7 +628,7 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
                 x = random.Next(0, grid.Width);
                 y = random.Next((int)state.MainWorldSurface, (int)state.MainRockLayer);
             }
-            RunTileRunner(grid, random, x, y, random.Next(15, 70), random.Next(20, 130), Sand);
+            RunSandPatch(grid, random, x, y, random.Next(15, 70), random.Next(20, 130));
             if ((i & 7) == 0) context.CancellationToken.ThrowIfCancellationRequested();
         }
         context.ReportProgress(1d, "Generating Terraria sand patches");
@@ -1257,6 +1257,41 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
         }
     }
 
+    private void RunSandPatch(RuntimeGrid grid, IRandom random, int i, int j, double strength, int steps)
+    {
+        double current = strength, remaining = steps, x = i, y = j;
+        double vx = random.Next(-10, 11) * 0.1d, vy = random.Next(-10, 11) * 0.1d;
+        _ = random.Next(4);
+        while (current > 0d && remaining > 0d)
+        {
+            current = strength * (remaining / steps); remaining--;
+            int left = Math.Max(1, (int)(x - current * 0.5d));
+            int right = Math.Min(grid.Width - 1, (int)(x + current * 0.5d));
+            int top = Math.Max(1, (int)(y - current * 0.5d));
+            int bottom = Math.Min(grid.Height - 1, (int)(y + current * 0.5d));
+            for (int tx = left; tx < right; tx++)
+            for (int ty = top; ty < bottom; ty++)
+            {
+                double manhattan = Math.Abs(tx - x) + Math.Abs(ty - y);
+                if (manhattan >= strength * 0.575d) { _ = random.Next(-10, 11); continue; }
+                if (manhattan >= strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d)) continue;
+                ref WorldTile tile = ref grid.At(tx, ty);
+                if (tile.IsActive && tile.Type == Sand && ty < state.MainWorldSurface) continue;
+                tile.Type = Sand;
+            }
+            x += vx; y += vy;
+            foreach (double threshold in ExtraStepThresholds)
+            {
+                if (current <= threshold) break;
+                x += vx; y += vy; remaining--;
+                vy += random.Next(-10, 11) * 0.05d;
+                vx += random.Next(-10, 11) * 0.05d;
+            }
+            vx = Math.Clamp(vx + random.Next(-10, 11) * 0.05d, -1d, 1d);
+            vy = Math.Clamp(vy + random.Next(-10, 11) * 0.05d, -1d, 1d);
+        }
+    }
+
     private void RunTileRunner(RuntimeGrid grid, IRandom random, int i, int j, double strength, int steps, int type,
         bool addTile = false, double speedX = 0d, double speedY = 0d, bool noYChange = false)
     {
@@ -1276,11 +1311,8 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
             for (int tx = left; tx < right; tx++)
             for (int ty = top; ty < bottom; ty++)
             {
+                if (Math.Abs(tx - x) + Math.Abs(ty - y) >= strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d)) continue;
                 ref WorldTile tile = ref grid.At(tx, ty);
-                if (tile.IsActive && VanillaTileRunnerGenerationCatalog1458.IsProtectedFrameImportant(tile.Type))
-                    continue;
-                if (Math.Abs(tx - x) + Math.Abs(ty - y) >= strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d))
-                    continue;
                 if (state.MudWall && ty > state.MainWorldSurface && grid.At(tx, ty - 1).Wall != DirtWall &&
                     ty < grid.Height - 210 - random.Next(3) &&
                     Math.Abs(tx - x) + Math.Abs(ty - y) < strength * 0.45d * (1d + random.Next(-10, 11) * 0.01d))
@@ -1306,13 +1338,15 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
                     SetActive(ref tile, false);
                     continue;
                 }
-                bool skip = ShouldPreserveTileForRunner(in tile, type, ty, state.MainWorldSurface, random);
-                if (!skip)
+                bool skip = false;
+                if (tile.IsActive)
                 {
-                    tile.Type = checked((ushort)type);
-                    if (!VanillaTileRunnerGenerationCatalog1458.SavesSlopes(type))
-                        tile.Shape = 0;
+                    if (type is >= 63 and <= 68 && tile.Type != Stone) skip = true;
+                    if (tile.Type == Sand && ty < state.MainWorldSurface && type != Mud) skip = true;
+                    if (tile.Type == Stone && type == Mud && ty < state.MainWorldSurface + random.Next(-50, 50)) skip = true;
+                    if (tile.Type is 147 or 189 or 190 or 196 or 460 or 717 or 718 or 719) skip = true;
                 }
+                if (!skip) tile.Type = checked((ushort)type);
                 if (addTile) { SetActive(ref tile, true); tile.LiquidAmount = 0; tile.LiquidKind = WorldLiquidKind.Water; }
                 if (noYChange && ty < state.MainWorldSurface && type != Mud) tile.Wall = DirtWall;
                 if (type == Mud && ty > state.WaterLine && tile.LiquidAmount > 0) { tile.LiquidAmount = 0; tile.LiquidKind = WorldLiquidKind.Water; }
@@ -1335,58 +1369,6 @@ internal sealed class VanillaEarlyWorldGenerationPass1458 : IWorldGenerationPass
                 if (y > grid.Height - 300) vy = -1d;
             }
         }
-    }
-
-
-    internal static bool ShouldPreserveTileForRunner(
-        in WorldTile tile,
-        int type,
-        int y,
-        double worldSurface,
-        IRandom random)
-    {
-        ArgumentNullException.ThrowIfNull(random);
-        if (!tile.IsActive)
-            return false;
-
-        bool preserve = VanillaTileRunnerGenerationCatalog1458.IsStoneTarget(type) && tile.Type != Stone;
-        if (!VanillaTileRunnerGenerationCatalog1458.CanBeClearedDuringGeneration(tile.Type))
-            preserve = true;
-
-        switch (tile.Type)
-        {
-            case Sand:
-                if (type == Clay || (y < worldSurface && type != Mud))
-                    preserve = true;
-                break;
-            case 45:
-            case 147:
-            case 189:
-            case 190:
-            case 196:
-            case 460:
-            case 717:
-            case 718:
-            case 719:
-                preserve = true;
-                break;
-            case 396:
-            case 397:
-                // Vanilla deliberately overrides the generic non-clearable result here: ore targets may replace
-                // these blocks even though TileID.Sets.CanBeClearedDuringGeneration marks them false.
-                preserve = !VanillaTileRunnerGenerationCatalog1458.IsOreTarget(type);
-                break;
-            case Stone when type == Mud && y < worldSurface + random.Next(-50, 50):
-                preserve = true;
-                break;
-            case 367:
-            case 368:
-                if (type == Mud)
-                    preserve = true;
-                break;
-        }
-
-        return preserve;
     }
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() => state.Bootstrap ??

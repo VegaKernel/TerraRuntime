@@ -23,8 +23,7 @@ internal readonly record struct AuthoritativePvpHit(
     int MinimumDamage,
     int MaximumDamage,
     int AnimationTicks,
-    int UseTimeTicks,
-    bool AttackerMagmaStone);
+    int UseTimeTicks);
 
 /// <summary>
 /// Strict direct-melee PvP bridge. It shares VanillaDirectMeleeCombatMath with NPC combat and admits only the state
@@ -142,8 +141,7 @@ internal sealed class RuntimePvpCombatIntegrity
             resolved.MinimumDamage,
             resolved.MaximumDamage,
             resolved.AnimationTicks,
-            resolved.UseTimeTicks,
-            attackerCombat.MagmaStone);
+            resolved.UseTimeTicks);
         return PvpCombatResolveResult.Accepted;
     }
 }

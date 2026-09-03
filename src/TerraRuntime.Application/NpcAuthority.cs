@@ -289,12 +289,6 @@ internal sealed class NpcAuthority
         AppliedDespawns += npcs.DespawnExpired();
     }
 
-    public void BeginProjectileInteractions() => projectileNpcCombat.BeginTick();
-
-    public void TickProjectileInteractions(ushort projectileSlot) => projectileNpcCombat.TickProjectile(projectileSlot);
-
-    public void EndProjectileInteractions() => townNpcAuthority.TickProjectileInteractions();
-
     public void TickProjectileInteractions()
     {
         projectileNpcCombat.Tick();

@@ -19,19 +19,11 @@ internal sealed partial class ServerRuntimeState
         _npcs.CommitPending();
         _serverPlayers?.TickPhysics(this);
         _npcs.TickSimulation();
-        _npcs.BeginProjectileInteractions();
-        _projectiles.BeginReflectionTick();
-        if (_projectiles.TryTickState(projectileSlot =>
-            {
-                // TerrariaServer 1.4.5.8 calls Damage() inside every local extraUpdate. The executor exposes each
-                // committed subupdate here before the next one, so reflection/NPC/PvP mutations feed subsequent
-                // motion while later-slot child NewProjectile allocations remain eligible in this global tick.
-                _projectiles.ApplyReflections(projectileSlot);
-                _npcs.TickProjectileInteractions(projectileSlot);
-                _projectilePlayerCombat.TickProjectile(projectileSlot);
-            }))
+        if (_projectiles.TryTickState())
         {
-            _npcs.EndProjectileInteractions();
+            _npcs.TickProjectileInteractions();
+            _projectilePlayerCombat.Tick();
+            _projectiles.ApplyReflections();
         }
         _worldItems.TickInstancedLeases();
 

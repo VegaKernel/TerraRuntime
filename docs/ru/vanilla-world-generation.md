@@ -31,12 +31,6 @@ flowchart LR
 
 Постоянный source contract `terraria-worldgen-pass-catalog.yml` декомпилирует закреплённый официальный сервер и теперь падает, если reseed в `RunPass` перестанет происходить до применения pass. Так runtime-тесты больше не могут сами себе доказать неверное время жизни RNG.
 
-### Parity раннего `TileRunner`
-
-В ordinary canonical early overlay проход `Sand Patches` теперь идёт через тот же source-backed `TileRunner`, что и в закреплённом сервере, вместо отдельной приблизительной реализации. Сам runner также повторяет ordinary-ветку 1.4.5.8 для замены tiles: frame-important и не-cuttable объекты пропускаются до radius RNG roll, `tileStone` targets и generation-protected tiles сохраняются с исходными исключениями, sand не заменяется clay и неподходящими surface-материалами, ore может заменить два специальных source tiles, которые переопределяют общий запрет, а slope state очищается только для target types вне `TileID.Sets.SaveSlopes`.
-
-Это закрывает общий разрыв по геометрии и RNG order сразу для нескольких ранних операций, потому что тот же runner используется caves, material patches и формированием Jungle. Полная reference-world parity всех 109 pass от этого **не считается завершённой**: поздние алгоритмы и special-seed ветви всё ещё требуют differential proof.
-
 ## Финальный overlay из восьми проходов
 
 `SourceBackedVanillaWorldGenerationFinal1458` завершает ordinary canonical sequence после `Micro Biomes` последними восемью регистрациями TerrariaServer 1.4.5.8:
