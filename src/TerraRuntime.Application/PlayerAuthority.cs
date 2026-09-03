@@ -28,11 +28,22 @@ internal sealed class PlayerAuthority
     private int lastSpawnCommitResult = -1;
     private long currentCombatTick;
     private readonly long[] pvpImmuneUntil = new long[MaxPlayerSlots];
+    private readonly PlayerSessionGeneration[] pvpImmuneGeneration = new PlayerSessionGeneration[MaxPlayerSlots];
+    private readonly bool expertMode;
+    private readonly bool masterMode;
 
-    public PlayerAuthority(IRuntimePlayerEventSink? events, WorldTileStore? worldTiles)
+    public PlayerAuthority(
+        IRuntimePlayerEventSink? events,
+        WorldTileStore? worldTiles,
+        bool expertMode = false,
+        bool masterMode = false)
     {
+        if (masterMode && !expertMode)
+            throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
         this.events = events;
         this.worldTiles = worldTiles;
+        this.expertMode = expertMode;
+        this.masterMode = masterMode;
         pvpCombat = new RuntimePvpCombatIntegrity(this);
     }
 
@@ -177,6 +188,30 @@ internal sealed class PlayerAuthority
             return false;
         }
         return TryCaptureEquipment(member.Connection, out equipment);
+    }
+
+    public bool TryCaptureCombatSnapshot(
+        ConnectionHandle connection,
+        out VanillaPlayerCombatSnapshot snapshot)
+    {
+        if (!TryCaptureEquipment(connection, out PlayerEquipmentCommitRequest[] equipment))
+        {
+            snapshot = default;
+            return false;
+        }
+        return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, out snapshot);
+    }
+
+    public bool TryCaptureCombatSnapshot(
+        PlayerHandle player,
+        out VanillaPlayerCombatSnapshot snapshot)
+    {
+        if (!membership.TryGet(player, out RuntimePlayerMember member))
+        {
+            snapshot = default;
+            return false;
+        }
+        return TryCaptureCombatSnapshot(member.Connection, out snapshot);
     }
 
     public bool TrySetTalkNpc(ConnectionHandle connection, short npcSlot) =>
@@ -396,6 +431,7 @@ internal sealed class PlayerAuthority
 
         CommittedSpawns++;
         pvpImmuneUntil[request.ClaimedSlot.Value] = 0;
+        pvpImmuneGeneration[request.ClaimedSlot.Value] = default;
         membership.Commit(new RuntimePlayerMember
         {
             Connection = spawn.Connection,
@@ -517,6 +553,7 @@ internal sealed class PlayerAuthority
                 currentCombatTick,
                 hit.Attacker,
                 hit.Target,
+                hit.Context.Source,
                 hit.Damage,
                 hit.Critical,
                 hit.HitDirection,
@@ -533,41 +570,59 @@ internal sealed class PlayerAuthority
         long tick,
         PlayerHandle attacker,
         PlayerHandle targetHandle,
+        DamageSource sourceDamage,
         int damage,
         bool critical,
         int hitDirection,
         out PlayerStateSnapshot committed)
     {
         committed = default;
-        if (!attacker.IsAssigned || !targetHandle.IsAssigned || attacker == targetHandle || damage <= 0 ||
+        if (!attacker.IsAssigned || !targetHandle.IsAssigned || attacker == targetHandle ||
+            !sourceDamage.IsValid || sourceDamage.Player != attacker || damage <= 0 ||
             hitDirection is < -1 or > 1 ||
             !membership.TryGet(attacker, out RuntimePlayerMember? source) ||
             !membership.TryGet(targetHandle, out RuntimePlayerMember? target) ||
             !source.Hostile || !target.Hostile || source.IsDead || target.IsDead || !target.HasHealth || target.Life <= 0 ||
-            (source.Team != 0 && source.Team == target.Team) ||
-            tick < pvpImmuneUntil[target.Slot.Value])
+            (source.Team != 0 && source.Team == target.Team))
         {
             return false;
         }
 
-        // Until armor/accessory/buff state is part of the target calculator, a non-empty equipment projection is
-        // explicitly outside the strict PvP slice rather than silently assuming zero defense/endurance.
-        if (TryCaptureEquipment(targetHandle, out PlayerEquipmentCommitRequest[] equipment) && equipment.Length != 0)
-            return false;
-        if (!target.TryAdvanceRevision())
+        if (!TryCaptureCombatSnapshot(targetHandle, out VanillaPlayerCombatSnapshot targetCombat))
             return false;
 
-        // For the currently admitted naked baseline, Terraria's player defense term is zero. The same mutation helper
-        // is used by direct melee and trusted projectile PvP so immunity/life/knockback cannot drift between paths.
-        int lifeLost = Math.Max(damage, 1);
-        target.Life = checked((short)Math.Max(0, target.Life - lifeLost));
-        target.IsDead = target.Life <= 0;
-        if (hitDirection != 0)
+        int targetSlot = target.Slot.Value;
+        bool immune = pvpImmuneGeneration[targetSlot] == targetHandle.Generation && tick < pvpImmuneUntil[targetSlot];
+        var attack = new AuthoritativeAttackDamage(
+            sourceDamage,
+            damage,
+            ArmorPenetration: 0,
+            critical,
+            KnockBack: 4.5f,
+            hitDirection);
+        if (!VanillaCombatDamagePipeline.TryResolvePvp(
+                in attack,
+                in targetCombat,
+                immune,
+                out FinalDamageToHp final,
+                expertMode,
+                masterMode) ||
+            final.Damage <= 0 ||
+            !target.TryAdvanceRevision())
         {
+            return false;
+        }
+
+        target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
+        target.IsDead = target.Life <= 0;
+        if (!final.Mitigation.NoKnockback && hitDirection != 0)
+        {
+            // Player.Hurt(pvp:true) uses this fixed vanilla impulse; weapon knockback is not an input here.
             target.VelocityX = 4.5f * hitDirection;
             target.VelocityY = -3.5f;
         }
-        pvpImmuneUntil[target.Slot.Value] = tick + 8;
+        pvpImmuneGeneration[targetSlot] = targetHandle.Generation;
+        pvpImmuneUntil[targetSlot] = tick + 8;
         committed = target.CaptureSnapshot();
         var health = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
         events?.PlayerHealthUpdated(target.Connection, in health);
@@ -696,6 +751,7 @@ internal sealed class PlayerAuthority
             CameraTargetY = preservePosition ? previous.CameraTargetY : 0f
         };
         pvpImmuneUntil[slot] = 0;
+        pvpImmuneGeneration[slot] = default;
         membership.Commit(state);
         transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment);
 

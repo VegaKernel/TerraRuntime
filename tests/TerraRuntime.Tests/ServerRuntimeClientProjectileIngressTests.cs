@@ -459,6 +459,16 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             short life,
             bool hostile)
         {
+            // Establish a known authoritative empty equipment projection for strict combat. Packet-5 empty functional
+            // slot state creates the generation-owned transfer profile without inventing any combat modifiers.
+            var emptyEquipment = new PlayerEquipmentCommitRequest(
+                connection.Player.Slot,
+                VanillaPlayerItemSlotCatalog.ArmorStart,
+                Stack: 0,
+                Prefix: 0,
+                ItemNetId: 0,
+                ItemFlags: 0);
+            State.Apply(new PlayerEquipmentRuntimeCommand(connection, emptyEquipment));
             var health = new PlayerHealthCommitRequest(connection.Player.Slot, life, life);
             State.Apply(new PlayerHealthRuntimeCommand(connection, health));
             State.Apply(new PlayerPvpToggleRuntimeCommand(connection, hostile));

@@ -20,6 +20,7 @@ internal enum ClientProjectileProvenanceResolveResult : byte
 internal readonly record struct AuthoritativeClientProjectileSpawn(
     ProjectileStateUpdate State,
     RuntimePlayerInventoryMutation AmmoMutation,
+    VanillaLaunchSpeedEnvelope LaunchSpeedEnvelope,
     int UseTimeTicks);
 
 /// <summary>
@@ -350,11 +351,11 @@ internal sealed class ProjectileAuthority
             return ClientProjectileProvenanceResolveResult.NotApplicable;
         }
 
-        // Prefix and equipment modifiers are not guessed. Until they are imported into the same calculator this
-        // exact source remains compatibility-only and any packet-27 generation stays combat-untrusted.
-        if (weaponItem.Prefix != VanillaPrefixIds.None ||
-            (players.TryCaptureEquipment(connection, out PlayerEquipmentCommitRequest[] equipment) && equipment.Length != 0))
+        if (!VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out VanillaCombatPrefixModifiers prefix) ||
+            !players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat))
         {
+            // An unsupported prefix/equipment combination may still be a legitimate vanilla shot, but it cannot cross
+            // the CombatTrusted boundary until its exact source formula is imported.
             return ClientProjectileProvenanceResolveResult.NotApplicable;
         }
 
@@ -363,44 +364,38 @@ internal sealed class ProjectileAuthority
         if (!players.TryCopyInventory(connection, inventory))
             return ClientProjectileProvenanceResolveResult.Rejected;
 
-        // PickAmmo's default order scans coin slots first, then ammo slots, then the main inventory. This initial
-        // strict slice only promotes when the earlier coin cells are empty and the first non-empty ammo cell is one
-        // of the two imported Arrow-ammo definitions. Ambiguous/unknown cells fall back untrusted instead of making
-        // up ammo classification data that has not been source-imported yet.
-        for (int slot = VanillaPlayerItemSlotCatalog.CoinSlotStart;
-             slot < VanillaPlayerItemSlotCatalog.CoinSlotEndExclusive;
-             slot++)
-        {
-            if (!inventory[slot].IsEmpty)
-                return ClientProjectileProvenanceResolveResult.NotApplicable;
-        }
-
-        int ammoSlot = -1;
-        RuntimePlayerInventoryItem ammoItem = default;
-        VanillaProjectileAmmoCombatDefinition ammo = default;
-        for (int slot = VanillaPlayerItemSlotCatalog.AmmoSlotStart;
-             slot < VanillaPlayerItemSlotCatalog.AmmoSlotEndExclusive;
-             slot++)
-        {
-            RuntimePlayerInventoryItem candidate = inventory[slot];
-            if (candidate.IsEmpty)
-                continue;
-            if (!VanillaProjectileWeaponCombatCatalog.TryGetArrowAmmo(candidate.ItemType, out ammo) ||
-                candidate.Prefix != VanillaPrefixIds.None)
-            {
-                return ClientProjectileProvenanceResolveResult.NotApplicable;
-            }
-
-            ammoSlot = slot;
-            ammoItem = candidate;
-            break;
-        }
+        int ammoSlot = FindFirstArrowAmmo(
+            inventory,
+            VanillaPlayerItemSlotCatalog.CoinSlotStart,
+            VanillaPlayerItemSlotCatalog.CoinSlotEndExclusive,
+            out RuntimePlayerInventoryItem ammoItem,
+            out VanillaProjectileAmmoCombatDefinition ammo);
+        if (ammoSlot == -1)
+            ammoSlot = FindFirstArrowAmmo(
+                inventory,
+                VanillaPlayerItemSlotCatalog.AmmoSlotStart,
+                VanillaPlayerItemSlotCatalog.AmmoSlotEndExclusive,
+                out ammoItem,
+                out ammo);
+        if (ammoSlot == -1)
+            ammoSlot = FindFirstArrowAmmo(
+                inventory,
+                VanillaPlayerItemSlotCatalog.MainInventoryStart,
+                VanillaPlayerItemSlotCatalog.CoinSlotEndExclusive,
+                out ammoItem,
+                out ammo);
         if (ammoSlot < 0)
             return ClientProjectileProvenanceResolveResult.NotApplicable;
 
-        int expectedDamage = checked(weapon.BaseDamage + ammo.Damage);
-        float expectedKnockBack = weapon.BaseKnockBack + ammo.KnockBack;
-        float expectedSpeed = weapon.BaseShootSpeed + ammo.ShootSpeed;
+        int expectedDamage = VanillaProjectileWeaponCombatCatalog.ResolveDamage(
+            in weapon, in ammo, in prefix, in attackerCombat);
+        float expectedKnockBack = VanillaProjectileWeaponCombatCatalog.ResolveKnockBack(
+            in weapon, in ammo, in prefix, in attackerCombat);
+        VanillaLaunchSpeedEnvelope speedEnvelope = VanillaProjectileWeaponCombatCatalog.ResolveLaunchSpeedEnvelope(
+            in weapon, in ammo, in prefix, in attackerCombat);
+        if (!speedEnvelope.IsValid)
+            return ClientProjectileProvenanceResolveResult.NotApplicable;
+
         float packetSpeedSquared = packet.VelocityX * packet.VelocityX + packet.VelocityY * packet.VelocityY;
         if (!(packetSpeedSquared > 0f) || !float.IsFinite(packetSpeedSquared))
             return RejectProvenance();
@@ -411,23 +406,28 @@ internal sealed class ProjectileAuthority
         float dx = packet.PositionX - playerCx;
         float dy = packet.PositionY - playerCy;
         float maximumDistance = weapon.ImpossibleSpawnCenterDistancePixels;
+        int authoritativeUseTime = Math.Max(1, (int)Math.Round(weapon.UseTimeTicks * prefix.SpeedMultiplier));
         long tick = tickProvider();
+        float knockBackTolerance = MathF.Max(0.001f, MathF.Abs(expectedKnockBack) * 0.00001f);
 
         if (packet.ProjectileType != ammo.ProjectileType.Value ||
             packet.Damage != expectedDamage ||
             packet.OriginalDamage != 0 ||
-            MathF.Abs(packet.KnockBack - expectedKnockBack) > 0.01f ||
-            MathF.Abs(packetSpeed - expectedSpeed) > 0.05f ||
+            MathF.Abs(packet.KnockBack - expectedKnockBack) > knockBackTolerance ||
+            !speedEnvelope.ContainsMagnitude(packetSpeed) ||
             MathF.Abs(packet.Ai0) > 0.001f ||
             MathF.Abs(packet.Ai1) > 0.001f ||
             MathF.Abs(packet.Ai2) > 0.001f ||
             dx * dx + dy * dy > maximumDistance * maximumDistance ||
-            IsTrustedClientUseOnCooldown(connection.Player, tick, weapon.UseTimeTicks))
+            IsTrustedClientUseOnCooldown(connection.Player, tick, authoritativeUseTime))
         {
             return RejectProvenance();
         }
 
-        float velocityScale = expectedSpeed / packetSpeed;
+        // Preserve the client's aim direction. Only magnitude is validated/canonicalized; there is deliberately no
+        // generic angular envelope because source-specific spread belongs to individual weapon rules.
+        float canonicalSpeed = speedEnvelope.CanonicalMagnitude;
+        float velocityScale = canonicalSpeed / packetSpeed;
         var state = new ProjectileStateUpdate(
             ammo.ProjectileType,
             connection.Player.Slot.Value,
@@ -441,17 +441,50 @@ internal sealed class ProjectileAuthority
             KnockBack: expectedKnockBack,
             OriginalDamage: 0);
 
-        RuntimePlayerInventoryItem remainingAmmo = ammoItem.Stack == 1
-            ? default
-            : ammoItem with { Stack = checked((short)(ammoItem.Stack - 1)) };
+        bool conserveAmmo = attackerCombat.MagicQuiver && ammo.Consumable && Random.Shared.Next(5) == 0;
+        RuntimePlayerInventoryItem remainingAmmo = conserveAmmo
+            ? ammoItem
+            : ammoItem.Stack == 1
+                ? default
+                : ammoItem with { Stack = checked((short)(ammoItem.Stack - 1)) };
         authoritative = new AuthoritativeClientProjectileSpawn(
             state,
             new RuntimePlayerInventoryMutation(checked((short)ammoSlot), remainingAmmo),
-            weapon.UseTimeTicks);
+            speedEnvelope,
+            authoritativeUseTime);
         return ClientProjectileProvenanceResolveResult.Accepted;
 
         static ClientProjectileProvenanceResolveResult RejectProvenance() =>
             ClientProjectileProvenanceResolveResult.Rejected;
+    }
+
+    private static int FindFirstArrowAmmo(
+        ReadOnlySpan<RuntimePlayerInventoryItem> inventory,
+        int start,
+        int endExclusive,
+        out RuntimePlayerInventoryItem ammoItem,
+        out VanillaProjectileAmmoCombatDefinition ammo)
+    {
+        ammoItem = default;
+        ammo = default;
+        for (int slot = start; slot < endExclusive; slot++)
+        {
+            RuntimePlayerInventoryItem candidate = inventory[slot];
+            if (candidate.IsEmpty || !VanillaProjectileWeaponCombatCatalog.IsArrowAmmoType(candidate.ItemType))
+                continue;
+
+            // Terraria ammo itself is not prefixable here. Unknown arrow types are recognized as arrows but remain
+            // fail-closed rather than allowing a later supported stack to leapfrog PickAmmo's first valid candidate.
+            if (candidate.Prefix != VanillaPrefixIds.None ||
+                !VanillaProjectileWeaponCombatCatalog.TryGetArrowAmmo(candidate.ItemType, out ammo))
+            {
+                return -2;
+            }
+
+            ammoItem = candidate;
+            return slot;
+        }
+        return -1;
     }
 
     private bool IsTrustedClientUseOnCooldown(PlayerHandle player, long tick, int useTimeTicks)

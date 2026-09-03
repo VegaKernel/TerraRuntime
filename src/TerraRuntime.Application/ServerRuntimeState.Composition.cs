@@ -48,7 +48,7 @@ internal sealed partial class ServerRuntimeState
         _worldTiles = worldTiles;
         _worldClock = worldClock;
         _worldProgression = worldProgression ?? new RuntimeWorldProgressionMutations();
-        _players = new PlayerAuthority(playerEvents, worldTiles);
+        _players = new PlayerAuthority(playerEvents, worldTiles, expertMode, masterMode);
 
         RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();
         IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom();

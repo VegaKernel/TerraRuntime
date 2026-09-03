@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Protocol;
@@ -12,6 +13,7 @@ internal enum PvpCombatResolveResult : byte
 }
 
 internal readonly record struct AuthoritativePvpHit(
+    AttackContext Context,
     PlayerHandle Attacker,
     PlayerHandle Target,
     int Damage,
@@ -76,14 +78,14 @@ internal sealed class RuntimePvpCombatIntegrity
             !VanillaItemCombatCatalog.TryGetPrefixModifiers(item.Prefix, out VanillaCombatPrefixModifiers prefix))
             return PvpCombatResolveResult.LegacyFallback;
 
-        // Until armor/accessory/buff state participates in the same calculator, only the naked baseline is strict.
-        if ((players.TryCaptureEquipment(attackerConnection, out PlayerEquipmentCommitRequest[] attackerEquipment) && attackerEquipment.Length != 0) ||
-            (players.TryCaptureEquipment(target.Player, out PlayerEquipmentCommitRequest[] targetEquipment) && targetEquipment.Length != 0))
+        if (!players.TryCaptureCombatSnapshot(attackerConnection, out VanillaPlayerCombatSnapshot attackerCombat) ||
+            !players.TryCaptureCombatSnapshot(target.Player, out _))
             return PvpCombatResolveResult.LegacyFallback;
 
         VanillaResolvedDirectMeleeUse resolved = VanillaDirectMeleeCombatMath.Resolve(
             in weapon,
             in prefix,
+            in attackerCombat,
             random.Next(-15, 16),
             random.Next(1, 101),
             pvp: true);
@@ -123,7 +125,13 @@ internal sealed class RuntimePvpCombatIntegrity
         lastPairTargetGeneration[pair] = target.Player.Generation;
         lastPairHitTick[pair] = tick;
         int direction = Math.Clamp(wire.HitDirection, -1, 1);
+        DamageSource source = DamageSource.FromPlayerItem(attacker.Player);
+        var context = new AttackContext(attacker.Player, source, item.ItemType, item.Prefix, Pvp: true);
+        if (!context.IsValid)
+            return PvpCombatResolveResult.Rejected;
+
         hit = new AuthoritativePvpHit(
+            context,
             attacker.Player,
             target.Player,
             resolved.Damage,

@@ -386,6 +386,8 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 - [ ] Consume/decrement ammo only on the server and replicate the resulting inventory mutation.
 - [ ] Differential-test `PickAmmo` against TerrariaServer 1.4.5.8, including conservation and unusual ammo transforms.
 
+Checkpoint slice: the strict bow path now follows the source-backed `PickAmmo` search order `coin -> ammo -> main inventory`, rejects an unsupported earlier compatible candidate instead of skipping ahead, and owns ammo decrement. The admitted set is Wooden/Iron/Copper/Tin/Lead/Silver/Tungsten/Gold/Platinum Bow with Wooden/Flaming/Unholy/Jester Arrow; Magic Quiver's arrow damage/speed and 20% conservation are modeled. Other ammo families, transforms and conservation sources remain open and fail closed for combat trust.
+
 #### Projectile spawn validation
 
 - [ ] Validate legal `ProjectileType` for the authoritative weapon/ammo/use path.
@@ -409,6 +411,8 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 - [ ] Add specialized magnitude-envelope calculators for weapons whose launch-speed mechanics cannot be represented by the generic weapon+ammo path.
 - [ ] Record expected min/max launch speed, received speed magnitude and all authoritative modifier inputs in combat diagnostics.
 - [ ] Hard-reject impossible launch-speed magnitude before the projectile enters authoritative combat state.
+
+Checkpoint slice: admitted bow/arrow generations now derive a real `VanillaLaunchSpeedEnvelope` from authoritative weapon `shootSpeed`, ammo `shootSpeed`, supported ranged prefixes and Magic Quiver. Deterministic combinations collapse to one magnitude with only a small floating-point/network representation epsilon in `ContainsMagnitude`; there is no generic angular envelope. Full buff/debuff, armor/set, accessory and special-weapon speed coverage remains open.
 
 #### Authoritative projectile simulation
 
@@ -444,6 +448,8 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 - [ ] Damage envelopes must be derived from the same attacker/target gameplay facts used to compute real damage, not from static anti-cheat constants. Source-backed prefix multipliers are imported; full armor/accessory/player-buff/target-mitigation coverage remains intentionally incomplete and must fail closed/fall back rather than be guessed.
 - [ ] Validate NPC/player hit target and range across all hit shapes. Strict direct melee has a conservative impossible-distance guard; PvP direct melee must apply the same item-use geometry against player hitboxes, and trusted admitted projectiles must collide server-side with both NPC and hostile legal player targets.
 - [ ] Reject impossible damage before world mutation across every combat path. The strict calculator/validator path already rejects before interaction/HP/loot/replication mutation; unsupported legacy combat remains the blocker.
+
+Checkpoint slice: the shared contracts now explicitly represent `AttackContext -> AuthoritativeAttackDamage -> TargetMitigation -> FinalDamageToHp`. Direct melee/tools (Copper Pickaxe/Axe/Hammer/Broadsword and Muramasa) consume an authoritative attacker equipment snapshot. The modeled equipment subset includes the Copper armor set, Cobalt Shield, Warrior/Ranger/Sorcerer Emblem, Magic Quiver, Shark Tooth Necklace and source-backed combat accessory prefixes; unknown active combat equipment fails closed. PvP target mitigation now consumes the equipped target snapshot and uses source-backed Classic/Expert/Master player-defense effectiveness plus endurance/no-knockback semantics. Player buffs/debuffs, dodge and most armor/accessory families remain open, so those combinations do not become `CombatTrusted`.
 
 #### Combat envelopes
 

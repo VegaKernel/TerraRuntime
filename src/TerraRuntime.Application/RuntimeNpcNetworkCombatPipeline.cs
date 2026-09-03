@@ -363,12 +363,17 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     public RuntimeProjectileNpcDamageResult TryStrikeProjectile(
         in ProjectileSnapshot projectile,
         NpcHandle target,
-        int hitDirection)
+        int hitDirection,
+        int authoritativeDamage = -1,
+        int armorPenetration = 0,
+        bool critical = false)
     {
+        int resolvedSourceDamage = authoritativeDamage > 0 ? authoritativeDamage : projectile.Damage;
         if (!projectile.IsActive || !target.IsAssigned || hitDirection is < -1 or > 1 ||
             !npcs.TryGet(target, out NpcSnapshot liveTarget) || !liveTarget.IsActive ||
             !ProjectileNpcHitIntentBuilder.TryCreateNpcHit(
-                in projectile, liveTarget.Handle, hitDirection, players, out ProjectileNpcHitIntent intent) ||
+                in projectile, liveTarget.Handle, hitDirection, resolvedSourceDamage, armorPenetration, critical,
+                players, out ProjectileNpcHitIntent intent) ||
             !intent.TryCreateDamageRequest(out NpcDamageRequest request))
         {
             return RuntimeProjectileNpcDamageResult.Rejected;

@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Tests;
@@ -28,6 +29,22 @@ public sealed class CombatValidatorTests
     }
 
     [Fact]
+    public void New_player_and_npc_generations_do_not_inherit_direct_melee_cooldowns()
+    {
+        var validator = new CombatValidator(npcCapacity: 1);
+        PlayerStateSnapshot firstPlayer = CreatePlayer(generation: 1);
+        NpcSnapshot firstNpc = CreateBlueSlime(slot: 0, 130f, 100f, generation: 1);
+        var wire = new TerrariaNpcDamageState(0, 1, 20, 1f, 2, 0);
+        AuthoritativeCombatRoll firstRoll = CreateRoll(firstPlayer.Player, firstNpc.Handle);
+        Assert.True(validator.TryValidate(100, in firstPlayer, in firstNpc, in wire, in firstRoll, out _));
+
+        PlayerStateSnapshot nextPlayer = CreatePlayer(generation: 2);
+        NpcSnapshot nextNpc = CreateBlueSlime(slot: 0, 130f, 100f, generation: 2);
+        AuthoritativeCombatRoll nextRoll = CreateRoll(nextPlayer.Player, nextNpc.Handle);
+        Assert.True(validator.TryValidate(101, in nextPlayer, in nextNpc, in wire, in nextRoll, out _));
+    }
+
+    [Fact]
     public void Suspicion_decay_is_applied_once_per_elapsed_tick()
     {
         var validator = new CombatValidator(npcCapacity: 1);
@@ -45,6 +62,7 @@ public sealed class CombatValidatorTests
 
     private static AuthoritativeCombatRoll CreateRoll(PlayerHandle player, NpcHandle target) =>
         new(
+            new AttackContext(player, DamageSource.FromPlayerItem(player), VanillaItemIds.CopperBroadsword, VanillaPrefixIds.None, Pvp: false),
             new NpcDamageRequest(target, DamageSource.FromPlayerItem(player), 20, 0, false, 1f, 1),
             MinimumDamage: 15,
             MaximumDamage: 25,
@@ -53,11 +71,11 @@ public sealed class CombatValidatorTests
             ImpossibleCenterDistancePixels: 100f,
             CritChance: 4);
 
-    private static PlayerStateSnapshot CreatePlayer()
+    private static PlayerStateSnapshot CreatePlayer(uint generation = 1)
     {
         var slot = new PlayerSlotId(0);
         return new PlayerStateSnapshot(
-            new PlayerHandle(slot, new PlayerSessionGeneration(1)),
+            new PlayerHandle(slot, new PlayerSessionGeneration(generation)),
             new PlayerStateRevision(1),
             Team: 0,
             ControlFlags: 0,
@@ -78,7 +96,7 @@ public sealed class CombatValidatorTests
             CameraTargetY: 0f);
     }
 
-    private static NpcSnapshot CreateBlueSlime(byte slot, float x, float y)
+    private static NpcSnapshot CreateBlueSlime(byte slot, float x, float y, uint generation = 1)
     {
         NpcSimulationState simulation = NpcSimulationState.Initial with
         {
@@ -87,7 +105,7 @@ public sealed class CombatValidatorTests
             Scale = 1f
         };
         return new NpcSnapshot(
-            new NpcHandle(slot, new NpcGeneration(1)),
+            new NpcHandle(slot, new NpcGeneration(generation)),
             new NpcRevision(1),
             Type: 1,
             NetId: 1,

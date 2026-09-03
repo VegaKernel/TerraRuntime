@@ -35,22 +35,50 @@ public static class VanillaNpcDamageResolver
             return false;
         }
 
+        var attack = new AuthoritativeAttackDamage(
+            request.Source,
+            request.BaseDamage,
+            request.ArmorPenetration,
+            request.Critical,
+            request.KnockBack,
+            request.HitDirection);
+        if (!attack.IsValid)
+        {
+            effectiveDefense = 0;
+            resolvedDamage = 0;
+            return false;
+        }
+
         // Existing flat armor-penetration semantics are retained for non-negative defense. Vanilla Eye AI can
         // intentionally write negative defense; checkArmorPenetration treats defense <= 0 as zero penetration,
         // so the negative value reaches CalculateDamageNPCsTake unchanged and increases incoming damage.
         effectiveDefense = defense <= 0
             ? defense
-            : Math.Max(defense - request.ArmorPenetration, 0);
+            : Math.Max(defense - attack.ArmorPenetration, 0);
+        var mitigation = new TargetMitigation(
+            defense,
+            effectiveDefense,
+            Endurance: 0f,
+            Immune: false,
+            Dodged: false,
+            NoKnockback: false);
         float damage = Math.Max(
-            request.BaseDamage - effectiveDefense * DefenseEffectiveness,
+            attack.Damage - effectiveDefense * DefenseEffectiveness,
             1f);
 
-        if (request.Critical)
+        if (attack.Critical)
             damage *= CriticalDamageMultiplier;
 
-        resolvedDamage = damage >= int.MaxValue
+        int hpDamage = damage >= int.MaxValue
             ? int.MaxValue
             : Math.Max((int)damage, 1);
+        var final = new FinalDamageToHp(hpDamage, mitigation);
+        if (!final.IsValid)
+        {
+            resolvedDamage = 0;
+            return false;
+        }
+        resolvedDamage = final.Damage;
         return true;
     }
 }

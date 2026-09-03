@@ -23,6 +23,20 @@ public static class VanillaPlayerItemSlotCatalog
     public const short InventoryMouseItem = InventoryStart + OrdinaryInventoryCount;
     public const short InventoryCount = OrdinaryInventoryCount + 1;
     public const short InventoryEndExclusive = InventoryStart + InventoryCount;
+    public const short ArmorStart = InventoryEndExclusive;
+    public const short ArmorCount = 20;
+    public const short FunctionalArmorCount = 10;
+    public const short BaselineFunctionalArmorCount = 8; // head/body/legs + five ordinary accessory slots
+    public const short FunctionalArmorEndExclusive = ArmorStart + FunctionalArmorCount;
+    public const short BaselineFunctionalArmorEndExclusive = ArmorStart + BaselineFunctionalArmorCount;
+    public const short VanityArmorStart = FunctionalArmorEndExclusive;
+    public const short VanityArmorEndExclusive = ArmorStart + ArmorCount;
+    public const short DyeStart = VanityArmorEndExclusive;
+    public const short DyeCount = 10;
+    public const short MiscStart = DyeStart + DyeCount;
+    public const short MiscCount = 5;
+    public const short MiscDyeStart = MiscStart + MiscCount;
+    public const short MiscDyeCount = 5;
     public const short InventoryAndEquipmentEndExclusive = 99;
     public const short Bank4Start = 700;
     public const short Count = 990;
@@ -46,6 +60,15 @@ public static class VanillaPlayerItemSlotCatalog
         (ushort)(slot - AmmoSlotStart) < AmmoSlotCount;
 
     public static bool IsMouseItemSlot(short slot) => slot == InventoryMouseItem;
+
+    public static bool IsFunctionalArmorSlot(short slot) =>
+        (ushort)(slot - ArmorStart) < FunctionalArmorCount;
+
+    public static bool IsBaselineFunctionalArmorSlot(short slot) =>
+        (ushort)(slot - ArmorStart) < BaselineFunctionalArmorCount;
+
+    public static bool IsVanityArmorSlot(short slot) =>
+        (ushort)(slot - VanityArmorStart) < FunctionalArmorCount;
 
     public static bool CanRelay(short slot) =>
         (ushort)slot < InventoryAndEquipmentEndExclusive ||

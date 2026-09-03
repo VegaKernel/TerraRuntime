@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Projectiles;
@@ -65,6 +66,7 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                         tick,
                         owner.Connection.Player,
                         target.Connection.Player,
+                        DamageSource.FromPlayerProjectile(owner.Connection.Player, projectile.Handle),
                         projectile.Damage,
                         critical: false,
                         direction,

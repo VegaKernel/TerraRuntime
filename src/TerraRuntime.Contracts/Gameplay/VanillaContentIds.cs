@@ -286,11 +286,22 @@ public static class VanillaItemIds
     public static readonly ItemTypeId WoodenBow = new(39);
     public static readonly ItemTypeId WoodenArrow = new(40);
     public static readonly ItemTypeId FlamingArrow = new(41);
+    public static readonly ItemTypeId UnholyArrow = new(47);
+    public static readonly ItemTypeId JestersArrow = new(51);
+    public static readonly ItemTypeId CopperGreaves = new(76);
+    public static readonly ItemTypeId CopperChainmail = new(80);
+    public static readonly ItemTypeId CopperHelmet = new(89);
+    public static readonly ItemTypeId IronBow = new(99);
     public static readonly ItemTypeId Chest = new(48);
     public static readonly ItemTypeId FlowerOfFire = new(112);
     public static readonly ItemTypeId MagicMissile = new(113);
     public static readonly ItemTypeId Muramasa = new(155);
     public static readonly ItemTypeId CobaltShield = new(156);
+    public static readonly ItemTypeId SorcererEmblem = new(489);
+    public static readonly ItemTypeId WarriorEmblem = new(490);
+    public static readonly ItemTypeId RangerEmblem = new(491);
+    public static readonly ItemTypeId MagicQuiver = new(1321);
+    public static readonly ItemTypeId SharkToothNecklace = new(3212);
     public static readonly ItemTypeId AquaScepter = new(157);
     public static readonly ItemTypeId BlueMoon = new(163);
     public static readonly ItemTypeId Handgun = new(164);
@@ -308,10 +319,17 @@ public static class VanillaItemIds
     public static readonly ItemTypeId RecallPotion = new(2350);
     public static readonly ItemTypeId HellwingBow = new(3019);
     public static readonly ItemTypeId Valor = new(3317);
+    public static readonly ItemTypeId PlatinumBow = new(3480);
+    public static readonly ItemTypeId TungstenBow = new(3486);
+    public static readonly ItemTypeId LeadBow = new(3492);
+    public static readonly ItemTypeId TinBow = new(3498);
+    public static readonly ItemTypeId CopperBow = new(3504);
     public static readonly ItemTypeId CopperHammer = new(3505);
     public static readonly ItemTypeId CopperAxe = new(3506);
     public static readonly ItemTypeId CopperBroadsword = new(3508);
     public static readonly ItemTypeId CopperPickaxe = new(3509);
+    public static readonly ItemTypeId SilverBow = new(3510);
+    public static readonly ItemTypeId GoldBow = new(3516);
 
     public static bool TryCreate(int rawType, out ItemTypeId type)
     {

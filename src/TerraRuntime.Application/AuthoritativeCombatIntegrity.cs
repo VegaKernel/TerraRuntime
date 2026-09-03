@@ -40,6 +40,7 @@ internal readonly record struct CombatIntegrityDiagnostic(
     float SuspicionScore);
 
 internal readonly record struct AuthoritativeCombatRoll(
+    AttackContext Context,
     NpcDamageRequest Request,
     int MinimumDamage,
     int MaximumDamage,
@@ -86,22 +87,27 @@ internal sealed class AuthoritativeCombatCalculator
         if (!VanillaItemCombatCatalog.TryGetPrefixModifiers(item.Prefix, out VanillaCombatPrefixModifiers prefix))
             return CombatIntegrityReason.UnsupportedPrefix;
 
-        // Non-inventory packet-5 equipment is authoritative as identity, but its complete combat modifiers are not
-        // imported yet. Fail open into the legacy compatibility path instead of rejecting a legitimate geared player.
-        if (players.TryCaptureEquipment(connection, out PlayerEquipmentCommitRequest[] equipment) && equipment.Length != 0)
+        if (!players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat))
             return CombatIntegrityReason.UnmodeledEquipment;
 
         VanillaResolvedDirectMeleeUse resolved = VanillaDirectMeleeCombatMath.Resolve(
             in weapon,
             in prefix,
+            in attackerCombat,
             random.Next(-15, 16),
             random.Next(1, 101),
             pvp: false);
 
+        DamageSource source = DamageSource.FromPlayerItem(connection.Player);
+        var context = new AttackContext(connection.Player, source, item.ItemType, item.Prefix, Pvp: false);
+        if (!context.IsValid)
+            return CombatIntegrityReason.MissingSelectedItem;
+
         roll = new AuthoritativeCombatRoll(
+            context,
             new NpcDamageRequest(
                 target.Handle,
-                DamageSource.FromPlayerItem(connection.Player),
+                source,
                 resolved.Damage,
                 ArmorPenetration: resolved.ArmorPenetration,
                 Critical: resolved.Critical,
@@ -130,7 +136,9 @@ internal sealed class CombatValidator
     private const int DiagnosticCapacity = 256;
     private readonly int npcCapacity;
     private readonly long[] lastHitTick;
+    private readonly NpcGeneration[] lastHitTargetGeneration;
     private readonly long[] lastAttackTick = new long[PlayerSlots];
+    private readonly PlayerSessionGeneration[] playerGenerations = new PlayerSessionGeneration[PlayerSlots];
     private readonly int[] dpsDamage;
     private readonly long[] dpsEpoch;
     private readonly float[] suspicion = new float[PlayerSlots];
@@ -149,6 +157,7 @@ internal sealed class CombatValidator
         this.npcCapacity = npcCapacity;
         int pairs = checked(PlayerSlots * npcCapacity);
         lastHitTick = new long[pairs];
+        lastHitTargetGeneration = new NpcGeneration[pairs];
         Array.Fill(lastHitTick, long.MinValue);
         Array.Fill(lastAttackTick, long.MinValue);
         dpsDamage = new int[checked(pairs * DpsBucketCount)];
@@ -166,6 +175,7 @@ internal sealed class CombatValidator
     {
         int playerSlot = player.Player.Slot.Value;
         DecaySuspicion(playerSlot, tick);
+        PreparePlayerGeneration(player.Player);
 
         if (!VanillaNpcDefinitionCatalog.TryGet(target.TypeIdentity, target.NetIdentity, out VanillaNpcDefinition npcDef) ||
             !npcDef.TryResolveHitbox(target.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
@@ -192,6 +202,12 @@ internal sealed class CombatValidator
             return Reject(tick, player.Player, target.Handle, CombatIntegrityReason.AttackCadence, wire.Damage, in roll, 2f, out diagnostic);
 
         int pair = checked(playerSlot * npcCapacity + target.Handle.Slot);
+        if (lastHitTargetGeneration[pair] != target.Handle.Generation)
+        {
+            lastHitTargetGeneration[pair] = target.Handle.Generation;
+            lastHitTick[pair] = long.MinValue;
+            ClearDpsPair(pair);
+        }
         long previous = lastHitTick[pair];
         if (previous != long.MinValue && tick - previous < roll.AnimationTicks)
             return Reject(tick, player.Player, target.Handle, CombatIntegrityReason.AttackCadence, wire.Damage, in roll, 2f, out diagnostic);
@@ -264,6 +280,33 @@ internal sealed class CombatValidator
         if (previous <= 0 || tick <= previous || suspicion[playerSlot] <= 0f)
             return;
         suspicion[playerSlot] = Math.Max(0f, suspicion[playerSlot] - (tick - previous) * 0.02f);
+    }
+
+
+    private void PreparePlayerGeneration(PlayerHandle player)
+    {
+        int slot = player.Slot.Value;
+        if (playerGenerations[slot] == player.Generation)
+            return;
+
+        playerGenerations[slot] = player.Generation;
+        lastAttackTick[slot] = long.MinValue;
+        int rowStart = slot * npcCapacity;
+        Array.Fill(lastHitTick, long.MinValue, rowStart, npcCapacity);
+        Array.Clear(lastHitTargetGeneration, rowStart, npcCapacity);
+        for (int pair = rowStart; pair < rowStart + npcCapacity; pair++)
+            ClearDpsPair(pair);
+        critSamples[slot] = 0;
+        critClaims[slot] = 0;
+        damageSamples[slot] = 0;
+        damageEdgeClaims[slot] = 0;
+    }
+
+    private void ClearDpsPair(int pair)
+    {
+        int offset = pair * DpsBucketCount;
+        Array.Clear(dpsDamage, offset, DpsBucketCount);
+        Array.Fill(dpsEpoch, long.MinValue, offset, DpsBucketCount);
     }
 
     private int SumDps(int pair, long tick)

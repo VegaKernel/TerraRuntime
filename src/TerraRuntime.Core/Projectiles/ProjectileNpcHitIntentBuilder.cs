@@ -16,13 +16,33 @@ public static class ProjectileNpcHitIntentBuilder
         NpcHandle target,
         int hitDirection,
         IRuntimePlayerSlotSnapshotLookup players,
+        out ProjectileNpcHitIntent intent) =>
+        TryCreateNpcHit(
+            in projectile,
+            target,
+            hitDirection,
+            projectile.Damage,
+            armorPenetration: 0,
+            critical: false,
+            players,
+            out intent);
+
+    public static bool TryCreateNpcHit(
+        in ProjectileSnapshot projectile,
+        NpcHandle target,
+        int hitDirection,
+        int authoritativeDamage,
+        int armorPenetration,
+        bool critical,
+        IRuntimePlayerSlotSnapshotLookup players,
         out ProjectileNpcHitIntent intent)
     {
         ArgumentNullException.ThrowIfNull(players);
 
         if (!projectile.IsActive ||
             !target.IsAssigned ||
-            projectile.Damage <= 0 ||
+            authoritativeDamage <= 0 ||
+            armorPenetration < 0 ||
             !float.IsFinite(projectile.KnockBack) ||
             projectile.KnockBack < 0f ||
             hitDirection is < -1 or > 1 ||
@@ -44,9 +64,11 @@ public static class ProjectileNpcHitIntentBuilder
         intent = new ProjectileNpcHitIntent(
             target,
             DamageSource.FromPlayerProjectile(owner.Player, projectile.Handle),
-            projectile.Damage,
+            authoritativeDamage,
             projectile.KnockBack,
-            hitDirection);
+            hitDirection,
+            armorPenetration,
+            critical);
         return intent.IsValid;
     }
 }
