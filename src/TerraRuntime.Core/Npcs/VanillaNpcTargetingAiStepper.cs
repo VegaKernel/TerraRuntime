@@ -53,6 +53,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaWallOfFleshHungryNpcBehaviorStrategy _wallOfFleshHungry = new();
     private readonly VanillaFireImpNpcBehaviorStrategy _fireImp = new();
     private readonly VanillaBurningSphereNpcBehaviorStrategy _burningSphere = new();
+    private readonly VanillaQueenSlimeNpcBehaviorStrategy _queenSlime;
+    private readonly VanillaSkeletronPrimeNpcBehaviorStrategy _skeletronPrime = new();
+    private readonly VanillaSkeletronPrimeLimbNpcBehaviorStrategy _skeletronPrimeLimb = new();
+    private readonly VanillaTwinNpcBehaviorStrategy _retinazer = new(false);
+    private readonly VanillaTwinNpcBehaviorStrategy _spazmatism = new(true);
+    private readonly VanillaDestroyerNpcBehaviorStrategy _destroyer;
     private readonly IVanillaNpcRandom _random;
     private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
     private IVanillaQueenBeeEnvironment? _queenBeeEnvironment;
@@ -75,6 +81,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         _brainCreeper = new VanillaBrainCreeperNpcBehaviorStrategy(_random);
         _spikeBall = new VanillaSpikeBallNpcBehaviorStrategy(_random);
         _queenBee = new VanillaQueenBeeNpcBehaviorStrategy(_random);
+        _queenSlime = new VanillaQueenSlimeNpcBehaviorStrategy(_random, kingSlimeEnvironment);
+        _destroyer = new VanillaDestroyerNpcBehaviorStrategy(_random);
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
@@ -98,6 +106,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (environment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
             _brainOfCthulhu.SetEnvironment(brainEnvironment);
+        _queenSlime.SetEnvironment(environment);
     }
 
     public void SetBrainOfCthulhuEnvironment(IVanillaBrainOfCthulhuEnvironment environment) =>
@@ -126,8 +135,11 @@ public sealed class VanillaNpcTargetingAiStepper :
         _fireImp.SetEnvironment(environment);
     }
 
-    public void SetWormEnvironment(IVanillaWormEnvironment environment) =>
+    public void SetWormEnvironment(IVanillaWormEnvironment environment)
+    {
         _worm.SetEnvironment(environment);
+        _destroyer.SetEnvironment(environment);
+    }
 
     public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
         _flyingEye.SetEnvironment(environment);
@@ -198,6 +210,15 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.WallOfFleshHungry => _wallOfFleshHungry,
             VanillaNpcBehaviorFamily.FireImp => _fireImp,
             VanillaNpcBehaviorFamily.BurningSphere => _burningSphere,
+            VanillaNpcBehaviorFamily.QueenSlime => _queenSlime,
+            VanillaNpcBehaviorFamily.SkeletronPrime => _skeletronPrime,
+            VanillaNpcBehaviorFamily.PrimeSaw => _skeletronPrimeLimb,
+            VanillaNpcBehaviorFamily.PrimeVice => _skeletronPrimeLimb,
+            VanillaNpcBehaviorFamily.PrimeCannon => _skeletronPrimeLimb,
+            VanillaNpcBehaviorFamily.PrimeLaser => _skeletronPrimeLimb,
+            VanillaNpcBehaviorFamily.Retinazer => _retinazer,
+            VanillaNpcBehaviorFamily.Spazmatism => _spazmatism,
+            VanillaNpcBehaviorFamily.Destroyer => _destroyer,
             _ => null
         };
 
@@ -247,6 +268,15 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.Type == VanillaNpcIds.FireImp.Value && proposed.Type == source.Type)
             return PlanFireImpSphere(in source, in proposed, destination);
 
+        if (source.Type == VanillaNpcIds.SkeletronPrime.Value && proposed.Type == source.Type)
+            return PlanSkeletronPrimeArms(in source, in proposed, destination);
+
+        if (source.Type == VanillaNpcIds.QueenSlime.Value && proposed.Type == source.Type)
+            return PlanQueenSlimeMinions(in source, in proposed, destination);
+
+        if ((source.Type == VanillaNpcIds.Destroyer.Value || source.Type == VanillaNpcIds.DestroyerBody.Value) && proposed.Type == source.Type)
+            return PlanDestroyerFollower(in source, in proposed, destination);
+
         if (NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType) &&
             VanillaWormNpcCatalog.TryGet(sourceType, out _))
         {
@@ -269,6 +299,14 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanDeerclopsProjectiles(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.WallOfFleshEye.Value && proposed.Type == source.Type)
             return PlanWallOfFleshEyeLaser(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.QueenSlime.Value && proposed.Type == source.Type)
+            return PlanQueenSlimeProjectiles(in source, in proposed, destination);
+        if ((source.Type == VanillaNpcIds.PrimeCannon.Value || source.Type == VanillaNpcIds.PrimeLaser.Value) && proposed.Type == source.Type)
+            return PlanPrimeLimbProjectile(in source, in proposed, destination);
+        if ((source.Type == VanillaNpcIds.Retinazer.Value || source.Type == VanillaNpcIds.Spazmatism.Value) && proposed.Type == source.Type)
+            return PlanTwinProjectile(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.DestroyerBody.Value && proposed.Type == source.Type)
+            return PlanDestroyerLaser(in source, in proposed, destination);
 
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
     }
@@ -1403,6 +1441,186 @@ public sealed class VanillaNpcTargetingAiStepper :
         float nextX = x * cos - y * sin;
         y = x * sin + y * cos;
         x = nextX;
+    }
+
+    private int PlanSkeletronPrimeArms(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        if (source.Ai.Ai0 != 0f || proposed.Ai.Ai0 == 0f)
+            return 0;
+        if (destination.Length < 4)
+            return destination.Length + 1;
+        int x = (int)(proposed.PositionX + 40f);
+        int y = (int)(proposed.PositionY + 51f);
+        byte parent = source.Handle.Slot;
+        destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeCannon, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(-1f, parent, 0f, 0f) };
+        destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeSaw, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(1f, parent, 0f, 0f) };
+        destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeVice, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(-1f, parent, 0f, 150f) };
+        destination[3] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeLaser, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(1f, parent, 0f, 150f) };
+        return 4;
+    }
+
+    private int PlanQueenSlimeMinions(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        int lifeMax = Math.Max(1, proposed.Simulation.LifeMax);
+        int life = proposed.Simulation.Life;
+        bool phaseTwo = life <= lifeMax / 2;
+        float threshold = lifeMax * (phaseTwo ? 0.015f : 0.02f);
+        float previousAnchor = source.Simulation.LocalAi.Ai0;
+        float nextAnchor = proposed.Simulation.LocalAi.Ai0;
+        if (previousAnchor <= 0f || life + threshold >= previousAnchor || nextAnchor == previousAnchor)
+            return 0;
+        int count = _random.NextInt32(1, 3);
+        if (destination.Length < count)
+            return destination.Length + 1;
+        NpcTypeId[] types = [VanillaNpcIds.QueenSlimeMinionBlue, VanillaNpcIds.QueenSlimeMinionPink, VanillaNpcIds.QueenSlimeMinionPurple];
+        for (int i = 0; i < count; i++)
+        {
+            NpcTypeId type = types[_random.NextInt32(0, types.Length)];
+            float vx = _random.NextInt32(-20, 21) * 0.1f;
+            float vy = _random.NextInt32(-20, 1) * 0.1f;
+            destination[i] = new NpcAiSpawnIntent(type, (int)(proposed.PositionX + 57f), (int)(proposed.PositionY + 100f), vx, vy, proposed.Target)
+            { InitialAi = new NpcAiState(-500f * _random.NextInt32(0, 3), 0f, 0f, 0f) };
+        }
+        return count;
+    }
+
+    private int PlanQueenSlimeProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        // Slam projectile is emitted on the landing transition from state 4/substate 1 back to idle.
+        if (source.Ai.Ai0 == 4f && source.Ai.Ai2 == 1f && proposed.Ai.Ai0 == 0f && proposed.Ai.Ai2 == 0f)
+        {
+            if (destination.IsEmpty) return 1;
+            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.QueenSlimeSmash, proposed.PositionX + 57f, proposed.PositionY + 100f, 0f, 0f, 40, 0f);
+            return 1;
+        }
+        // Radial gel burst occurs on the substate-1 timer crossing 10 and resets the attack to idle.
+        if (source.Ai.Ai0 == 5f && source.Ai.Ai2 == 1f && source.Ai.Ai1 < 10f && proposed.Ai.Ai0 == 0f)
+        {
+            int baseCount = _context.GoodWorld ? 15 : 10;
+            int lifeMax = Math.Max(1, proposed.Simulation.LifeMax);
+            bool phaseTwo = proposed.Simulation.Life <= lifeMax / 2;
+            int count = phaseTwo ? baseCount : 6;
+            if (destination.Length < count) return destination.Length + 1;
+            float cx = proposed.PositionX + 57f, cy = proposed.PositionY + 50f;
+            for (int i = 0; i < count; i++)
+            {
+                float angle = -i * (MathF.PI * 2f) / baseCount;
+                destination[i] = new NpcAiProjectileIntent(VanillaProjectileIds.QueenSlimeGelAttack, cx, cy, MathF.Cos(angle) * 9f, MathF.Sin(angle) * 9f, 30, 0f);
+            }
+            return count;
+        }
+        return 0;
+    }
+
+    private int PlanPrimeLimbProjectile(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty) return 0;
+        float previous = source.Simulation.LocalAi.Ai0;
+        float current = proposed.Simulation.LocalAi.Ai0;
+        float threshold = source.Type == VanillaNpcIds.PrimeCannon.Value
+            ? (source.Ai.Ai2 == 1f ? 40f : 140f)
+            : (source.Ai.Ai2 == 1f ? 80f : 200f);
+        if (!(previous <= threshold && current > threshold) || proposed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || target.Dead || !target.Active)
+            return 0;
+        float cx = proposed.PositionX + 26f, cy = proposed.PositionY + 26f;
+        float dx, dy, speed;
+        ProjectileTypeId type;
+        int damage;
+        if (source.Type == VanillaNpcIds.PrimeCannon.Value)
+        {
+            type = VanillaProjectileIds.SkeletronPrimeBomb; damage = 0;
+            if (source.Ai.Ai2 == 1f) { dx = target.CenterX - cx; dy = target.CenterY - cy; speed = 10f; }
+            else { dx = cx - (target.CenterX); dy = cy - target.CenterY; speed = 12f; }
+        }
+        else
+        {
+            type = VanillaProjectileIds.RetinazerDeathLaser; damage = 25;
+            dx = target.CenterX - cx; dy = target.CenterY - cy; speed = source.Ai.Ai2 == 1f ? 10f : 8f;
+        }
+        float d = MathF.Max(0.001f, MathF.Sqrt(dx * dx + dy * dy));
+        float vx = dx / d * speed + _random.NextInt32(-40, 41) * (source.Type == VanillaNpcIds.PrimeCannon.Value ? 0.01f : 0.05f);
+        float vy = dy / d * speed + _random.NextInt32(-40, 41) * (source.Type == VanillaNpcIds.PrimeCannon.Value ? 0.01f : 0.05f);
+        destination[0] = new NpcAiProjectileIntent(type, cx + vx * (source.Type == VanillaNpcIds.PrimeCannon.Value ? 4f : 8f), cy + vy * (source.Type == VanillaNpcIds.PrimeCannon.Value ? 4f : 8f), vx, vy, damage, 0f);
+        return 1;
+    }
+
+    private int PlanTwinProjectile(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty || proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+            return 0;
+        bool spaz = source.Type == VanillaNpcIds.Spazmatism.Value;
+        ProjectileTypeId type;
+        float speed;
+        int damage;
+        bool fire = false;
+        if (source.Ai.Ai0 == 0f && source.Ai.Ai1 == 0f && proposed.Ai.Ai0 == 0f && proposed.Ai.Ai1 == 0f && source.Ai.Ai3 > 0f && proposed.Ai.Ai3 == 0f)
+        {
+            type = spaz ? VanillaProjectileIds.SpazmatismCursedFlame : VanillaProjectileIds.WallOfFleshEyeLaser;
+            speed = spaz ? (_context.ExpertMode ? 14f : 12f) : (_context.ExpertMode ? 10.5f : 9f);
+            damage = spaz ? 25 : 20;
+            fire = true;
+        }
+        else if (source.Ai.Ai0 >= 3f && proposed.Ai.Ai0 >= 3f && source.Simulation.LocalAi.Ai1 > 0f && proposed.Simulation.LocalAi.Ai1 == 0f)
+        {
+            type = spaz ? VanillaProjectileIds.SpazmatismEyeFire : VanillaProjectileIds.RetinazerDeathLaser;
+            if (spaz) { speed = 6f; damage = 30; }
+            else { speed = source.Ai.Ai1 == 0f ? (_context.ExpertMode ? 10f : 8.5f) : 9f; damage = source.Ai.Ai1 == 0f ? 25 : 18; }
+            fire = true;
+        }
+        else return 0;
+        if (!fire) return 0;
+        float cx = proposed.PositionX + 50f, cy = proposed.PositionY + 55f;
+        float dx = target.CenterX - cx, dy = target.CenterY - cy;
+        float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+        float jitter = type == VanillaProjectileIds.WallOfFleshEyeLaser ? .08f : type == VanillaProjectileIds.SpazmatismEyeFire ? .01f : .05f;
+        float vx = dx/d*speed + _random.NextInt32(-40,41)*jitter;
+        float vy = dy/d*speed + _random.NextInt32(-40,41)*jitter;
+        if (spaz && type == VanillaProjectileIds.SpazmatismEyeFire) { vx += proposed.VelocityX*.5f; vy += proposed.VelocityY*.5f; }
+        float lead = type == VanillaProjectileIds.WallOfFleshEyeLaser || type == VanillaProjectileIds.RetinazerDeathLaser ? 15f : type == VanillaProjectileIds.SpazmatismCursedFlame ? 4f : -1f;
+        destination[0] = new NpcAiProjectileIntent(type, cx + vx*lead, cy + vy*lead, vx, vy, damage, 0f);
+        return 1;
+    }
+
+    private int PlanDestroyerFollower(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        if (destination.IsEmpty || source.Ai.Ai0 != 0f || proposed.Ai.Ai0 != 0f)
+            return 0;
+        int remaining;
+        float root;
+        if (source.Type == VanillaNpcIds.Destroyer.Value)
+        {
+            remaining = (_context.GoodWorld ? 100 : 80) - 1;
+            root = source.Handle.Slot;
+        }
+        else
+        {
+            if (!float.IsFinite(source.Ai.Ai2) || source.Ai.Ai2 < 0f || source.Ai.Ai2 != MathF.Truncate(source.Ai.Ai2)) return 0;
+            remaining = (int)source.Ai.Ai2 - 1;
+            root = source.Ai.Ai3;
+        }
+        NpcTypeId child = remaining >= 0 ? VanillaNpcIds.DestroyerBody : VanillaNpcIds.DestroyerTail;
+        if (!VanillaNpcDefinitionCatalog.TryGet(NpcTypeId.TryCreate(source.Type, out var st) ? st : VanillaNpcIds.Destroyer, out VanillaNpcDefinition def) ||
+            !def.TryResolveHitbox(proposed.Simulation.Scale, out VanillaNpcHitboxSize hb)) return 0;
+        destination[0] = new NpcAiSpawnIntent(child, (int)(proposed.PositionX + hb.Width*.5f), (int)(proposed.PositionY + hb.Height), 0f, 0f, proposed.Target)
+        {
+            InitialAi = new NpcAiState(0f, source.Handle.Slot, Math.Max(remaining,0), root),
+            LinkSourceFollowerSlot = true
+        };
+        return 1;
+    }
+
+    private int PlanDestroyerLaser(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty || source.Simulation.LocalAi.Ai0 <= 0f || proposed.Simulation.LocalAi.Ai0 != 0f ||
+            proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+            return 0;
+        float cx=proposed.PositionX+23.75f,cy=proposed.PositionY+23.75f;
+        float dx=target.CenterX-cx+_random.NextInt32(-20,21),dy=target.CenterY-cy+_random.NextInt32(-20,21);
+        float d=MathF.Max(.001f,MathF.Sqrt(dx*dx+dy*dy));
+        float vx=dx/d*8f+_random.NextInt32(-20,21)*.05f,vy=dy/d*8f+_random.NextInt32(-20,21)*.05f;
+        destination[0]=new NpcAiProjectileIntent(VanillaProjectileIds.RetinazerDeathLaser,cx+vx*5f,cy+vy*5f,vx,vy,22,0f){TimeLeftOverride=300};
+        return 1;
     }
 
 }

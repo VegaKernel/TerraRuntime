@@ -187,9 +187,21 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         {
             MarkWallOfFleshInteraction(in current, connection.Player);
         }
+        else if (IsDestroyerMember(current.TypeIdentity))
+        {
+            MarkDestroyerInteraction(in current, connection.Player);
+        }
         else
         {
             interactions.TryMark(current.Handle, connection.Player);
+        }
+
+        bool destroyerSharedLife = IsDestroyerMember(current.TypeIdentity) &&
+            TryResolveDestroyerRoot(in current, out NpcSnapshot destroyerRoot);
+        if (destroyerSharedLife && current.Handle != destroyerRoot.Handle && current.Simulation.Life != destroyerRoot.Simulation.Life)
+        {
+            if (!TrySetNpcLife(in current, destroyerRoot.Simulation.Life, out current))
+                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before packet-28 damage.");
         }
 
         var request = new NpcDamageRequest(
@@ -226,6 +238,34 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                 }
                 dead = updatedRoot;
             }
+            else if (destroyerSharedLife)
+            {
+                if (current.Handle != destroyerRoot.Handle)
+                {
+                    if (!TrySetDestroyerRootLife(in destroyerRoot, result.LifeAfter, out NpcSnapshot updatedRoot))
+                        throw new InvalidOperationException("Destroyer segment damage could not commit shared root life.");
+                    if (!result.Lethal)
+                    {
+                        if (suppressing)
+                            npcReplication!.CompleteClientDamage(current.Handle);
+                        npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+                        return RuntimeNpcNetworkDamageResult.Committed;
+                    }
+                    dead = updatedRoot;
+                }
+                else
+                {
+                    if (!result.Lethal)
+                    {
+                        if (suppressing)
+                            npcReplication!.CompleteClientDamage(current.Handle);
+                        npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+                        return RuntimeNpcNetworkDamageResult.Committed;
+                    }
+                    if (!npcs.TryGet(current.Handle, out dead))
+                        throw new InvalidOperationException("A lethal Destroyer root commit disappeared before death finalization.");
+                }
+            }
             else
             {
                 if (!result.Lethal)
@@ -256,6 +296,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                 ApplyDeerclopsDeathEffects();
             else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
                 ApplyWallOfFleshDeathEffects(in dead);
+            else if (IsHardmodeBossRoot(dead.TypeIdentity))
+                ApplyHardmodeBossDeathEffects(in dead);
             else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
                 ApplyEvilBossDeathEffects(eaterBoss);
 
@@ -263,6 +305,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                 DropEaterOfWorldsHealingHeartIfEligible(in dead);
             if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
                 CleanupWallOfFleshChildren(dead.Handle.Slot);
+            if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
+                CleanupDestroyerSegments(dead.Handle.Slot);
             if (!npcs.TryDespawn(dead.Handle))
                 throw new InvalidOperationException("A lethal packet-28 NPC could not be despawned after death effects.");
             interactions.Forget(dead.Handle);
@@ -297,6 +341,14 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             return RuntimeTownNpcMeleeDamageResult1458.Rejected;
         }
 
+        bool destroyerSharedLife = IsDestroyerMember(liveTarget.TypeIdentity) &&
+            TryResolveDestroyerRoot(in liveTarget, out NpcSnapshot destroyerRoot);
+        if (destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle && liveTarget.Simulation.Life != destroyerRoot.Simulation.Life)
+        {
+            if (!TrySetNpcLife(in liveTarget, destroyerRoot.Simulation.Life, out liveTarget))
+                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before Town NPC melee.");
+        }
+
         var request = new NpcDamageRequest(
             liveTarget.Handle,
             DamageSource.FromNpcContact(liveAttacker.Handle),
@@ -314,6 +366,24 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             if (!result.Lethal)
                 return RuntimeTownNpcMeleeDamageResult1458.Committed;
             dead = updatedRoot;
+        }
+        else if (destroyerSharedLife)
+        {
+            if (liveTarget.Handle != destroyerRoot.Handle)
+            {
+                if (!TrySetDestroyerRootLife(in destroyerRoot, result.LifeAfter, out NpcSnapshot updatedRoot))
+                    throw new InvalidOperationException("Town NPC melee could not commit Destroyer shared root life.");
+                if (!result.Lethal)
+                    return RuntimeTownNpcMeleeDamageResult1458.Committed;
+                dead = updatedRoot;
+            }
+            else
+            {
+                if (!result.Lethal)
+                    return RuntimeTownNpcMeleeDamageResult1458.Committed;
+                if (!npcs.TryGet(liveTarget.Handle, out dead))
+                    throw new InvalidOperationException("A lethal Destroyer root melee commit disappeared before death finalization.");
+            }
         }
         else
         {
@@ -339,6 +409,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             ApplyDeerclopsDeathEffects();
         else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
             ApplyWallOfFleshDeathEffects(in dead);
+        else if (IsHardmodeBossRoot(dead.TypeIdentity))
+            ApplyHardmodeBossDeathEffects(in dead);
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
             ApplyEvilBossDeathEffects(eaterBoss);
 
@@ -346,6 +418,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             DropEaterOfWorldsHealingHeartIfEligible(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
             CleanupWallOfFleshChildren(dead.Handle.Slot);
+        if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
+            CleanupDestroyerSegments(dead.Handle.Slot);
         if (!npcs.TryDespawn(dead.Handle))
             throw new InvalidOperationException("A Town NPC melee kill could not despawn the exact NPC generation.");
         interactions.Forget(dead.Handle);
@@ -669,6 +743,101 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             out _);
     }
 
+    private static bool IsDestroyerMember(NpcTypeId type) =>
+        type == VanillaNpcIds.Destroyer || type == VanillaNpcIds.DestroyerBody || type == VanillaNpcIds.DestroyerTail;
+
+    private static bool IsHardmodeBossRoot(NpcTypeId type) =>
+        type == VanillaNpcIds.QueenSlime || type == VanillaNpcIds.Destroyer ||
+        type == VanillaNpcIds.Retinazer || type == VanillaNpcIds.Spazmatism ||
+        type == VanillaNpcIds.SkeletronPrime || type == VanillaNpcIds.Plantera ||
+        type == VanillaNpcIds.Golem || type == VanillaNpcIds.DukeFishron ||
+        type == VanillaNpcIds.LunaticCultist || type == VanillaNpcIds.EmpressOfLight ||
+        type == VanillaNpcIds.MoonLordCore;
+
+    private bool TryResolveDestroyerRoot(in NpcSnapshot member, out NpcSnapshot root)
+    {
+        if (member.TypeIdentity == VanillaNpcIds.Destroyer)
+        {
+            root = member;
+            return true;
+        }
+        if (IsDestroyerMember(member.TypeIdentity) && float.IsFinite(member.Ai.Ai3) &&
+            member.Ai.Ai3 >= 0f && member.Ai.Ai3 < byte.MaxValue && member.Ai.Ai3 == MathF.Truncate(member.Ai.Ai3) &&
+            npcs.TryGetActive((byte)member.Ai.Ai3, out NpcSnapshot linked) && linked.TypeIdentity == VanillaNpcIds.Destroyer)
+        {
+            root = linked;
+            return true;
+        }
+        int count = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            if (npcFamilyBuffer[index].TypeIdentity == VanillaNpcIds.Destroyer)
+            {
+                root = npcFamilyBuffer[index];
+                return true;
+            }
+        }
+        root = default;
+        return false;
+    }
+
+    private bool TrySetNpcLife(in NpcSnapshot npc, int life, out NpcSnapshot committed)
+    {
+        committed = default;
+        if (life < 0 || life > npc.Simulation.LifeMax)
+            return false;
+        var update = new NpcStateUpdate(
+            npc.Type, npc.NetId, npc.PositionX, npc.PositionY, npc.VelocityX, npc.VelocityY, npc.Target, npc.Ai,
+            npc.Simulation with { Life = life });
+        return npcs.TryUpdate(npc.Handle, in update, out committed);
+    }
+
+    private bool TrySetDestroyerRootLife(in NpcSnapshot root, int life, out NpcSnapshot committed)
+    {
+        committed = default;
+        if (root.TypeIdentity != VanillaNpcIds.Destroyer || life < 0 || life > root.Simulation.LifeMax)
+            return false;
+        var update = new NpcStateUpdate(
+            root.Type, root.NetId, root.PositionX, root.PositionY, root.VelocityX, root.VelocityY, root.Target, root.Ai,
+            root.Simulation with { Life = life, JustHit = true });
+        return npcs.TryUpdate(root.Handle, in update, out committed);
+    }
+
+    private void MarkDestroyerInteraction(in NpcSnapshot member, PlayerHandle player)
+    {
+        if (!TryResolveDestroyerRoot(in member, out NpcSnapshot root))
+        {
+            interactions.TryMark(member.Handle, player);
+            return;
+        }
+        int count = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot peer = npcFamilyBuffer[index];
+            if (peer.TypeIdentity == VanillaNpcIds.Destroyer ||
+                (IsDestroyerMember(peer.TypeIdentity) && float.IsFinite(peer.Ai.Ai3) &&
+                 peer.Ai.Ai3 >= 0f && peer.Ai.Ai3 < byte.MaxValue && (byte)peer.Ai.Ai3 == root.Handle.Slot))
+                interactions.TryMark(peer.Handle, player);
+        }
+    }
+
+    private void CleanupDestroyerSegments(byte rootSlot)
+    {
+        int count = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot peer = npcFamilyBuffer[index];
+            if ((peer.TypeIdentity != VanillaNpcIds.DestroyerBody && peer.TypeIdentity != VanillaNpcIds.DestroyerTail) ||
+                !float.IsFinite(peer.Ai.Ai3) || peer.Ai.Ai3 < 0f || peer.Ai.Ai3 >= byte.MaxValue || (byte)peer.Ai.Ai3 != rootSlot)
+                continue;
+            if (npcs.TryDespawn(peer.Handle))
+            {
+                interactions.Forget(peer.Handle);
+                npcReplication?.TryPublishDeath(in peer);
+            }
+        }
+    }
+
     private bool TryResolveWallOfFleshRoot(in NpcSnapshot member, out NpcSnapshot root)
     {
         if (member.TypeIdentity == VanillaNpcIds.WallOfFlesh)
@@ -782,6 +951,53 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             random,
             difficultyLoot,
             out _);
+    }
+
+    private void ApplyHardmodeBossDeathEffects(in NpcSnapshot dead)
+    {
+        if (dead.TypeIdentity == VanillaNpcIds.QueenSlime)
+        {
+            progression.MarkCompleted(VanillaWorldProgressionId.QueenSlime);
+            return;
+        }
+        if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
+        {
+            progression.MarkCompleted(VanillaWorldProgressionId.Destroyer);
+            progression.MarkCompleted(VanillaWorldProgressionId.AnyMechanicalBoss);
+            return;
+        }
+        if (dead.TypeIdentity == VanillaNpcIds.Retinazer || dead.TypeIdentity == VanillaNpcIds.Spazmatism)
+        {
+            NpcTypeId other = dead.TypeIdentity == VanillaNpcIds.Retinazer ? VanillaNpcIds.Spazmatism : VanillaNpcIds.Retinazer;
+            int count = npcs.CopyActive(npcFamilyBuffer);
+            for (int index = 0; index < count; index++)
+            {
+                NpcSnapshot peer = npcFamilyBuffer[index];
+                if (peer.Handle != dead.Handle && peer.TypeIdentity == other && peer.Simulation.Life > 0)
+                    return;
+            }
+            progression.MarkCompleted(VanillaWorldProgressionId.Twins);
+            progression.MarkCompleted(VanillaWorldProgressionId.AnyMechanicalBoss);
+            return;
+        }
+        if (dead.TypeIdentity == VanillaNpcIds.SkeletronPrime)
+        {
+            progression.MarkCompleted(VanillaWorldProgressionId.SkeletronPrime);
+            progression.MarkCompleted(VanillaWorldProgressionId.AnyMechanicalBoss);
+            return;
+        }
+        if (dead.TypeIdentity == VanillaNpcIds.Plantera)
+            progression.MarkCompleted(VanillaWorldProgressionId.Plantera);
+        else if (dead.TypeIdentity == VanillaNpcIds.Golem)
+            progression.MarkCompleted(VanillaWorldProgressionId.Golem);
+        else if (dead.TypeIdentity == VanillaNpcIds.DukeFishron)
+            progression.MarkCompleted(VanillaWorldProgressionId.DukeFishron);
+        else if (dead.TypeIdentity == VanillaNpcIds.LunaticCultist)
+            progression.MarkCompleted(VanillaWorldProgressionId.LunaticCultist);
+        else if (dead.TypeIdentity == VanillaNpcIds.EmpressOfLight)
+            progression.MarkCompleted(VanillaWorldProgressionId.EmpressOfLight);
+        else if (dead.TypeIdentity == VanillaNpcIds.MoonLordCore)
+            progression.MarkCompleted(VanillaWorldProgressionId.MoonLord);
     }
 
     private void ApplySkeletronDeathEffects()

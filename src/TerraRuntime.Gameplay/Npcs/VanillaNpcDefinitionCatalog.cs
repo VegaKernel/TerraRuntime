@@ -31,7 +31,16 @@ public enum VanillaNpcBehaviorFamily : byte
     WallOfFleshEye = 18,
     WallOfFleshHungry = 19,
     FireImp = 20,
-    BurningSphere = 21
+    BurningSphere = 21,
+    QueenSlime = 22,
+    SkeletronPrime = 23,
+    PrimeSaw = 24,
+    PrimeVice = 25,
+    PrimeCannon = 26,
+    PrimeLaser = 27,
+    Retinazer = 28,
+    Spazmatism = 29,
+    Destroyer = 30
 }
 
 /// <summary>
@@ -48,7 +57,8 @@ public enum VanillaNpcPhysicsFamily : byte
     NoClipFlight = 4,
     Vulture = 5,
     SpikeBall = 6,
-    BlazingWheel = 7
+    BlazingWheel = 7,
+    GenericGround = 8
 }
 
 /// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>
@@ -143,6 +153,9 @@ public static class VanillaNpcDefinitionCatalog
     public static bool TryGet(NpcTypeId type, out VanillaNpcDefinition definition)
     {
         if (VanillaTownNpcFacts1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaHardmodeBossCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
         if (type == VanillaNpcIds.BlueSlime)

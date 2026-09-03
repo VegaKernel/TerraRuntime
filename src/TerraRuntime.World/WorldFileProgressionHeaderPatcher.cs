@@ -23,7 +23,14 @@ public static class WorldFileProgressionHeaderPatcher
         (1UL << (int)VanillaWorldProgressionId.EvilBoss) |
         (1UL << (int)VanillaWorldProgressionId.Skeletron) |
         (1UL << (int)VanillaWorldProgressionId.QueenBee) |
+        (1UL << (int)VanillaWorldProgressionId.Destroyer) |
+        (1UL << (int)VanillaWorldProgressionId.Twins) |
+        (1UL << (int)VanillaWorldProgressionId.SkeletronPrime) |
+        (1UL << (int)VanillaWorldProgressionId.AnyMechanicalBoss) |
+        (1UL << (int)VanillaWorldProgressionId.Plantera) |
+        (1UL << (int)VanillaWorldProgressionId.Golem) |
         (1UL << (int)VanillaWorldProgressionId.Hardmode) |
+        (1UL << (int)VanillaWorldProgressionId.QueenSlime) |
         (1UL << (int)VanillaWorldProgressionId.Deerclops);
 
     public static WorldFileProgressionHeaderPatchResult TryPatch(
@@ -95,8 +102,20 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out bool persistedDownedBoss3))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
         int downedQueenBeeOffset = reader.Offset;
-        if (!reader.TryReadBool(out bool persistedDownedQueenBee) || !reader.TrySkipBools(6))
+        if (!reader.TryReadBool(out bool persistedDownedQueenBee))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedMech1Offset = reader.Offset;
+        if (!reader.TryReadBool(out bool persistedDownedMech1)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedMech2Offset = reader.Offset;
+        if (!reader.TryReadBool(out bool persistedDownedMech2)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedMech3Offset = reader.Offset;
+        if (!reader.TryReadBool(out bool persistedDownedMech3)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedMechAnyOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool persistedDownedMechAny)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedPlanteraOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool persistedDownedPlantera)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedGolemOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool persistedDownedGolem)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         int downedSlimeKingOffset = reader.Offset;
         if (!reader.TryReadBool(out bool persistedDownedSlimeKing))
@@ -114,7 +133,8 @@ public static class WorldFileProgressionHeaderPatcher
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         TownStateOffsets1458 townState = default;
-        bool needsTownState = mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) ||
+        bool needsTownState = mutations.IsCompleted(VanillaWorldProgressionId.QueenSlime) ||
+            mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) ||
             mutations.UnlockSlimeBlueSpawn ||
             mutations.UnlockTruffleSpawn ||
             mutations.UnlockSlimeYellowSpawn ||
@@ -129,10 +149,24 @@ public static class WorldFileProgressionHeaderPatcher
             patchedHeader[downedBoss3Offset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.QueenBee) && !persistedDownedQueenBee)
             patchedHeader[downedQueenBeeOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.Destroyer) && !persistedDownedMech1)
+            patchedHeader[downedMech1Offset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.Twins) && !persistedDownedMech2)
+            patchedHeader[downedMech2Offset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.SkeletronPrime) && !persistedDownedMech3)
+            patchedHeader[downedMech3Offset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.AnyMechanicalBoss) && !persistedDownedMechAny)
+            patchedHeader[downedMechAnyOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.Plantera) && !persistedDownedPlantera)
+            patchedHeader[downedPlanteraOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.Golem) && !persistedDownedGolem)
+            patchedHeader[downedGolemOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.KingSlime) && !persistedDownedSlimeKing)
             patchedHeader[downedSlimeKingOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.Hardmode) && !persistedHardMode)
             patchedHeader[hardModeOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.QueenSlime) && !townState.PersistedQueenSlime)
+            patchedHeader[townState.QueenSlimeOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) && !townState.PersistedDeerclops)
             patchedHeader[townState.DeerclopsOffset] = 1;
         if (mutations.UnlockSlimeBlueSpawn && !townState.PersistedSlimeBlue)
@@ -170,6 +204,8 @@ public static class WorldFileProgressionHeaderPatcher
         bool PersistedSavedGolfer,
         int SavedBartenderOffset,
         bool PersistedSavedBartender,
+        int QueenSlimeOffset,
+        bool PersistedQueenSlime,
         int DeerclopsOffset,
         bool PersistedDeerclops,
         int SlimeBlueOffset,
@@ -266,11 +302,13 @@ public static class WorldFileProgressionHeaderPatcher
             !reader.TrySkip(checked(treeTopCount * sizeof(int))) ||
             !reader.TrySkipBools(2) ||
             !reader.TrySkip(sizeof(int) * 4) ||
-            !reader.TrySkipBools(5))
+            !reader.TrySkipBools(4))
         {
             return false;
         }
 
+        int queenSlimeOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool queenSlime)) return false;
         int deerclopsOffset = reader.Offset;
         if (!reader.TryReadBool(out bool deerclops)) return false;
 
@@ -292,6 +330,7 @@ public static class WorldFileProgressionHeaderPatcher
             savedTaxCollectorOffset, savedTaxCollector,
             savedGolferOffset, savedGolfer,
             savedBartenderOffset, savedBartender,
+            queenSlimeOffset, queenSlime,
             deerclopsOffset, deerclops,
             slimeBlueOffset, slimeBlue,
             truffleOffset, truffle,
