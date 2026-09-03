@@ -140,6 +140,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SlimeRibbonGreen = new(335);
     public static readonly NpcTypeId SlimeRibbonRed = new(336);
     public static readonly NpcTypeId DukeFishron = new(370);
+    public static readonly NpcTypeId DetonatingBubble = new(371);
+    public static readonly NpcTypeId Sharkron = new(372);
+    public static readonly NpcTypeId Sharkron2 = new(373);
     public static readonly NpcTypeId TruffleWormDigger = new(375);
     public static readonly NpcTypeId MoonLordHead = new(396);
     public static readonly NpcTypeId MoonLordHand = new(397);
@@ -188,6 +191,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Plantera = new(262);
     public static readonly NpcTypeId PlanteraHook = new(263);
     public static readonly NpcTypeId PlanteraTentacle = new(264);
+    public static readonly NpcTypeId PlanteraSpore = new(265);
     public static readonly NpcTypeId BrainOfCthulhu = new(266);
     public static readonly NpcTypeId BrainCreeper = new(267);
     public static readonly NpcTypeId BloodSquid = new(619);
@@ -240,12 +244,15 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId GolemHead = new(46);
     public static readonly NpcAiStyleId GolemFist = new(47);
     public static readonly NpcAiStyleId GolemHeadFree = new(48);
+    public static readonly NpcAiStyleId PlanteraSpore = new(50);
     public static readonly NpcAiStyleId Plantera = new(51);
     public static readonly NpcAiStyleId PlanteraHook = new(52);
     public static readonly NpcAiStyleId PlanteraTentacle = new(53);
     public static readonly NpcAiStyleId BrainOfCthulhu = new(54);
     public static readonly NpcAiStyleId BrainCreeper = new(55);
     public static readonly NpcAiStyleId DukeFishron = new(69);
+    public static readonly NpcAiStyleId DetonatingBubble = new(70);
+    public static readonly NpcAiStyleId Sharkron = new(71);
     public static readonly NpcAiStyleId MoonLordCore = new(77);
     public static readonly NpcAiStyleId MoonLordHand = new(78);
     public static readonly NpcAiStyleId MoonLordHead = new(79);
@@ -332,7 +339,12 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
     public static readonly ProjectileTypeId ProbePinkLaser = new(84);
     public static readonly ProjectileTypeId ConfettiGun = new(178);
+    public static readonly ProjectileTypeId GolemFireball = new(258);
+    public static readonly ProjectileTypeId GolemEyeBeam = new(259);
     public static readonly ProjectileTypeId SkeletronSkull = new(270);
+    public static readonly ProjectileTypeId PlanteraSeed = new(275);
+    public static readonly ProjectileTypeId PlanteraPoisonSeed = new(276);
+    public static readonly ProjectileTypeId PlanteraThornBall = new(277);
     public static readonly ProjectileTypeId QueenBeeStinger = new(719);
     public static readonly ProjectileTypeId WallOfFleshEyeLaser = new(83);
     public static readonly ProjectileTypeId SpazmatismCursedFlame = new(96);

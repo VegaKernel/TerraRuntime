@@ -56,6 +56,23 @@ public sealed class GameplayContentIdTests
     }
 
     [Fact]
+    public void Hardmode_boss_support_ids_match_TerrariaServer_1458()
+    {
+        Assert.Equal(370, VanillaNpcIds.DukeFishron.Value);
+        Assert.Equal(371, VanillaNpcIds.DetonatingBubble.Value);
+        Assert.Equal(372, VanillaNpcIds.Sharkron.Value);
+        Assert.Equal(373, VanillaNpcIds.Sharkron2.Value);
+        Assert.Equal(69, VanillaNpcAiStyles.DukeFishron.Value);
+        Assert.Equal(70, VanillaNpcAiStyles.DetonatingBubble.Value);
+        Assert.Equal(71, VanillaNpcAiStyles.Sharkron.Value);
+        Assert.Equal(258, VanillaProjectileIds.GolemFireball.Value);
+        Assert.Equal(259, VanillaProjectileIds.GolemEyeBeam.Value);
+        Assert.Equal(275, VanillaProjectileIds.PlanteraSeed.Value);
+        Assert.Equal(276, VanillaProjectileIds.PlanteraPoisonSeed.Value);
+        Assert.Equal(277, VanillaProjectileIds.PlanteraThornBall.Value);
+    }
+
+    [Fact]
     public void Vanilla_tile_ids_are_pinned_to_1458_count()
     {
         Assert.Equal(VanillaTileIds.Count, VanillaTileCollisionCatalog.TileTypeCount);

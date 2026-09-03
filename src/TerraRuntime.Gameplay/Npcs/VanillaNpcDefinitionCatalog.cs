@@ -40,7 +40,24 @@ public enum VanillaNpcBehaviorFamily : byte
     PrimeLaser = 27,
     Retinazer = 28,
     Spazmatism = 29,
-    Destroyer = 30
+    Destroyer = 30,
+    Plantera = 31,
+    PlanteraHook = 32,
+    PlanteraTentacle = 33,
+    Golem = 34,
+    GolemHead = 35,
+    GolemFist = 36,
+    GolemHeadFree = 37,
+    PlanteraSpore = 38,
+    DukeFishron = 39,
+    DetonatingBubble = 40,
+    LunaticCultist = 41,
+    LunaticCultistClone = 42,
+    EmpressOfLight = 43,
+    MoonLordCore = 44,
+    MoonLordHand = 45,
+    MoonLordHead = 46,
+    MoonLordFreeEye = 47
 }
 
 /// <summary>

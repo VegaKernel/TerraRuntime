@@ -59,6 +59,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaTwinNpcBehaviorStrategy _retinazer = new(false);
     private readonly VanillaTwinNpcBehaviorStrategy _spazmatism = new(true);
     private readonly VanillaDestroyerNpcBehaviorStrategy _destroyer;
+    private readonly VanillaPlanteraNpcBehaviorStrategy _plantera = new();
+    private readonly VanillaGolemNpcBehaviorStrategy _golem = new();
+    private readonly VanillaDukeFishronNpcBehaviorStrategy _dukeFishron = new();
+    private readonly VanillaLunaticCultistNpcBehaviorStrategy _lunaticCultist = new();
+    private readonly VanillaEmpressOfLightNpcBehaviorStrategy _empressOfLight = new();
+    private readonly VanillaMoonLordNpcBehaviorStrategy _moonLord = new();
     private readonly IVanillaNpcRandom _random;
     private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
     private IVanillaQueenBeeEnvironment? _queenBeeEnvironment;
@@ -219,6 +225,23 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Retinazer => _retinazer,
             VanillaNpcBehaviorFamily.Spazmatism => _spazmatism,
             VanillaNpcBehaviorFamily.Destroyer => _destroyer,
+            VanillaNpcBehaviorFamily.Plantera => _plantera,
+            VanillaNpcBehaviorFamily.PlanteraHook => _plantera,
+            VanillaNpcBehaviorFamily.PlanteraTentacle => _plantera,
+            VanillaNpcBehaviorFamily.PlanteraSpore => _plantera,
+            VanillaNpcBehaviorFamily.Golem => _golem,
+            VanillaNpcBehaviorFamily.GolemHead => _golem,
+            VanillaNpcBehaviorFamily.GolemFist => _golem,
+            VanillaNpcBehaviorFamily.GolemHeadFree => _golem,
+            VanillaNpcBehaviorFamily.DukeFishron => _dukeFishron,
+            VanillaNpcBehaviorFamily.DetonatingBubble => _dukeFishron,
+            VanillaNpcBehaviorFamily.LunaticCultist => _lunaticCultist,
+            VanillaNpcBehaviorFamily.LunaticCultistClone => _lunaticCultist,
+            VanillaNpcBehaviorFamily.EmpressOfLight => _empressOfLight,
+            VanillaNpcBehaviorFamily.MoonLordCore => _moonLord,
+            VanillaNpcBehaviorFamily.MoonLordHand => _moonLord,
+            VanillaNpcBehaviorFamily.MoonLordHead => _moonLord,
+            VanillaNpcBehaviorFamily.MoonLordFreeEye => _moonLord,
             _ => null
         };
 
@@ -276,6 +299,16 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         if ((source.Type == VanillaNpcIds.Destroyer.Value || source.Type == VanillaNpcIds.DestroyerBody.Value) && proposed.Type == source.Type)
             return PlanDestroyerFollower(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.Plantera.Value && proposed.Type == source.Type)
+            return PlanPlanteraSpawns(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.Golem.Value && proposed.Type == source.Type)
+            return PlanGolemSpawns(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.DukeFishron.Value && proposed.Type == source.Type)
+            return PlanDukeFishronBubble(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.LunaticCultist.Value && proposed.Type == source.Type)
+            return PlanLunaticCultistClones(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.MoonLordCore.Value && proposed.Type == source.Type)
+            return PlanMoonLordParts(in source, in proposed, destination);
 
         if (NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType) &&
             VanillaWormNpcCatalog.TryGet(sourceType, out _))
@@ -307,6 +340,10 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanTwinProjectile(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.DestroyerBody.Value && proposed.Type == source.Type)
             return PlanDestroyerLaser(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.Plantera.Value && proposed.Type == source.Type)
+            return PlanPlanteraProjectile(in source, in proposed, destination);
+        if ((source.Type == VanillaNpcIds.GolemHead.Value || source.Type == VanillaNpcIds.GolemHeadFree.Value) && proposed.Type == source.Type)
+            return PlanGolemHeadProjectiles(in source, in proposed, destination);
 
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
     }
@@ -1580,6 +1617,256 @@ public sealed class VanillaNpcTargetingAiStepper :
         float lead = type == VanillaProjectileIds.WallOfFleshEyeLaser || type == VanillaProjectileIds.RetinazerDeathLaser ? 15f : type == VanillaProjectileIds.SpazmatismCursedFlame ? 4f : -1f;
         destination[0] = new NpcAiProjectileIntent(type, cx + vx*lead, cy + vy*lead, vx, vy, damage, 0f);
         return 1;
+    }
+
+    private int PlanPlanteraSpawns(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        NpcAiState before = source.Simulation.LocalAi;
+        NpcAiState after = proposed.Simulation.LocalAi;
+        float cx = proposed.PositionX + 43f;
+        float cy = proposed.PositionY + 43f;
+        if (before.Ai0 == 0f && after.Ai0 == 1f)
+        {
+            if (destination.Length < 3) return destination.Length + 1;
+            // The source picks solid/walled tiles around the target. Until the world-aware hook-anchor selector is
+            // admitted, retain three stable server-owned fallback anchors so the linked topology is authoritative.
+            (float x, float y)[] offsets = [(-240f, 80f), (240f, 80f), (0f, 260f)];
+            for (int i = 0; i < 3; i++)
+            {
+                float ax = cx + offsets[i].x;
+                float ay = cy + offsets[i].y;
+                destination[i] = new NpcAiSpawnIntent(
+                    VanillaNpcIds.PlanteraHook, (int)cx, (int)cy, 0f, 0f, proposed.Target)
+                {
+                    InitialAi = new NpcAiState(MathF.Max(1f, MathF.Round((ax + 8f) / 16f)), MathF.Max(1f, MathF.Round((ay + 8f) / 16f)), 0f, 0f),
+                    InitialLocalAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot + 1f)
+                };
+            }
+            return 3;
+        }
+
+        if (before.Ai0 == 1f && after.Ai0 == 2f)
+        {
+            int rootTentacles = _context.GoodWorld ? 14 : 8;
+            int hookTentaclesPerHook = _context.ExpertMode ? rootTentacles / 2 - 1 : 0;
+            int hookCount = Math.Min(3, _context.CopyOwnedNpcPeers(VanillaNpcIds.PlanteraHook, source.Handle.Slot, stackalloc NpcSnapshot[3]));
+            int total = rootTentacles + hookCount * hookTentaclesPerHook;
+            if (destination.Length < total) return destination.Length + 1;
+            int index = 0;
+            for (int i = 0; i < rootTentacles; i++)
+            {
+                destination[index++] = new NpcAiSpawnIntent(VanillaNpcIds.PlanteraTentacle, (int)cx, (int)cy, 0f, 0f, proposed.Target)
+                {
+                    InitialAi = new NpcAiState((i % 4 - 1.5f) * 45f, (i / 4 - 1f) * 45f, 0f, 0f),
+                    InitialLocalAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot + 1f)
+                };
+            }
+            if (hookTentaclesPerHook > 0)
+            {
+                Span<NpcSnapshot> hooks = stackalloc NpcSnapshot[3];
+                int copied = _context.CopyOwnedNpcPeers(VanillaNpcIds.PlanteraHook, source.Handle.Slot, hooks);
+                for (int hookIndex = 0; hookIndex < copied; hookIndex++)
+                {
+                    NpcSnapshot hook = hooks[hookIndex];
+                    for (int j = 0; j < hookTentaclesPerHook; j++)
+                    {
+                        destination[index++] = new NpcAiSpawnIntent(VanillaNpcIds.PlanteraTentacle, (int)cx, (int)cy, 0f, 0f, proposed.Target)
+                        {
+                            InitialAi = new NpcAiState((j - hookTentaclesPerHook / 2f) * 35f, 60f, 0f, hook.Handle.Slot + 1f),
+                            InitialLocalAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot + 1f)
+                        };
+                    }
+                }
+            }
+            return index;
+        }
+
+        int lifeMax = Math.Max(1, proposed.Simulation.LifeMax);
+        bool phaseTwo = proposed.Simulation.Life <= lifeMax / 2;
+        if (phaseTwo && before.Ai1 > 0f && after.Ai1 == 0f)
+        {
+            if (destination.IsEmpty) return 1;
+            if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+                return 0;
+            float dx = target.CenterX - cx + _random.NextInt32(-10, 11);
+            float dy = target.CenterY - cy + _random.NextInt32(-10, 11);
+            if (dy < 0f) dy -= MathF.Abs(dx * .2f);
+            float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+            destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.PlanteraSpore, (int)cx, (int)cy, dx / d * 8f, dy / d * 8f, proposed.Target)
+            {
+                InitialLocalAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot + 1f)
+            };
+            return 1;
+        }
+        return 0;
+    }
+
+    private int PlanPlanteraProjectile(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        int lifeMax = Math.Max(1, proposed.Simulation.LifeMax);
+        if (proposed.Simulation.Life <= lifeMax / 2 || source.Simulation.LocalAi.Ai1 <= 0f || proposed.Simulation.LocalAi.Ai1 != 0f)
+            return 0;
+        if (destination.IsEmpty) return 1;
+        if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+            return 0;
+        ProjectileTypeId type = VanillaProjectileIds.PlanteraSeed;
+        int damage = 22;
+        if (proposed.Simulation.Life < lifeMax * .8f && _random.NextInt32(0, _context.ExpertMode ? 2 : 4) == 0)
+        { type = VanillaProjectileIds.PlanteraPoisonSeed; damage = 27; }
+        else if (proposed.Simulation.Life < lifeMax * .8f && _random.NextInt32(0, _context.ExpertMode ? 6 : 8) == 0)
+        { type = VanillaProjectileIds.PlanteraThornBall; damage = 31; }
+        float cx = proposed.PositionX + 43f, cy = proposed.PositionY + 43f;
+        float dx = target.CenterX - cx, dy = target.CenterY - cy;
+        float speed = _context.ExpertMode ? 17f : 15f;
+        float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+        float vx = dx / d * speed, vy = dy / d * speed;
+        destination[0] = new NpcAiProjectileIntent(type, cx + vx * 3f, cy + vy * 3f, vx, vy, damage, 0f)
+        { TimeLeftOverride = type == VanillaProjectileIds.PlanteraThornBall ? 0 : 300 };
+        return 1;
+    }
+
+    private int PlanLunaticCultistClones(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        if (source.Ai.Ai0 != 5f || proposed.Ai.Ai0 != 5f || source.Ai.Ai1 >= 30f || proposed.Ai.Ai1 < 30f)
+            return 0;
+        int existing = _context.CountNpcPeers(VanillaNpcIds.LunaticCultistClone);
+        int requested = Math.Min(2, Math.Max(0, 6 - existing));
+        if (requested == 0) return 0;
+        if (destination.Length < requested) return destination.Length + 1;
+        float cx = proposed.PositionX + 12f;
+        float cy = proposed.PositionY + 25f;
+        for (int i = 0; i < requested; i++)
+        {
+            float angle = (i + 1) * (MathF.PI * 2f / (requested + 1));
+            destination[i] = new NpcAiSpawnIntent(
+                VanillaNpcIds.LunaticCultistClone,
+                (int)(cx + MathF.Cos(angle) * 180f),
+                (int)(cy + MathF.Sin(angle) * 180f),
+                0f, 0f, proposed.Target)
+            {
+                InitialAi = new NpcAiState(5f, proposed.Ai.Ai1, 0f, source.Handle.Slot),
+                InitialLocalAi = new NpcAiState(0f, proposed.Simulation.LocalAi.Ai1, 0f, source.Handle.Slot + 1f)
+            };
+        }
+        return requested;
+    }
+
+    private int PlanMoonLordParts(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        bool initialShell = source.Ai.Ai0 == -1f && proposed.Ai.Ai0 == 0f;
+        if (initialShell)
+        {
+            if (destination.Length < 3) return destination.Length + 1;
+            float cx = proposed.PositionX + 23f;
+            float cy = proposed.PositionY + 33f;
+            NpcAiState owned = new(0f, 0f, 0f, source.Handle.Slot + 1f);
+            destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, (int)(cx - 400f), (int)(cy - 100f), 0f, 0f, proposed.Target)
+            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned };
+            destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, (int)(cx + 400f), (int)(cy - 100f), 0f, 0f, proposed.Target)
+            { InitialAi = new NpcAiState(0f, 0f, 1f, source.Handle.Slot), InitialLocalAi = owned };
+            destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHead, (int)cx, (int)(cy - 400f), 0f, 0f, proposed.Target)
+            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned };
+            return 3;
+        }
+
+        bool shellBroke = source.Simulation.LocalAi.Ai2 == 0f && proposed.Simulation.LocalAi.Ai2 == 1f && proposed.Ai.Ai0 == 1f;
+        if (!shellBroke) return 0;
+        int eyes = Math.Min(3, destination.Length);
+        float ex = proposed.PositionX + 23f, ey = proposed.PositionY + 33f;
+        NpcAiState eyeOwner = new(0f, 0f, 0f, source.Handle.Slot + 1f);
+        for (int i = 0; i < eyes; i++)
+        {
+            float angle = i * MathF.PI * 2f / 3f;
+            destination[i] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordFreeEye, (int)(ex + MathF.Cos(angle) * 180f), (int)(ey + MathF.Sin(angle) * 120f), 0f, 0f, proposed.Target)
+            { InitialAi = new NpcAiState(i * 120f, 0f, 0f, source.Handle.Slot), InitialLocalAi = eyeOwner };
+        }
+        return eyes;
+    }
+
+    private int PlanDukeFishronBubble(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        if (destination.IsEmpty || proposed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost)
+            return 0;
+
+        bool bubbleState = source.Ai.Ai0 == 2f || source.Ai.Ai0 == 7f;
+        if (!bubbleState || proposed.Ai.Ai2 <= source.Ai.Ai2 || ((int)proposed.Ai.Ai2 % 4) != 0)
+            return 0;
+
+        float cx = proposed.PositionX + 75f;
+        float cy = proposed.PositionY + 50f;
+        float dx = target.CenterX - cx;
+        float dy = target.CenterY - cy;
+        float distance = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+        float speed = _random.NextInt32(165, 265) / 15f;
+        destination[0] = new NpcAiSpawnIntent(
+            VanillaNpcIds.DetonatingBubble,
+            (int)(cx + dx / distance * 85f),
+            (int)(cy + dy / distance * 85f + 45f),
+            dx / distance * speed,
+            dy / distance * speed,
+            proposed.Target)
+        {
+            InitialAi = new NpcAiState(0f, 0f, 0f, _random.NextInt32(80, 121) / 100f)
+        };
+        return 1;
+    }
+
+    private int PlanGolemSpawns(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        NpcAiState before = source.Simulation.LocalAi;
+        NpcAiState after = proposed.Simulation.LocalAi;
+        float cx = proposed.PositionX + 70f, cy = proposed.PositionY + 70f;
+        float owner = source.Handle.Slot + 1f;
+        if (before.Ai0 == 0f && after.Ai0 == 1f)
+        {
+            if (destination.Length < 3) return destination.Length + 1;
+            NpcAiState owned = new(0f, 0f, 0f, owner);
+            destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.GolemFistLeft, (int)(cx - 84f), (int)(cy - 9f), 0f, 0f, proposed.Target) { InitialLocalAi = owned };
+            destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.GolemFistRight, (int)(cx + 78f), (int)(cy - 9f), 0f, 0f, proposed.Target) { InitialLocalAi = owned };
+            destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.GolemHead, (int)(cx - 3f), (int)(cy - 57f), 0f, 0f, proposed.Target) { InitialLocalAi = owned };
+            return 3;
+        }
+        if (before.Ai2 == 0f && after.Ai2 == 1f)
+        {
+            if (destination.IsEmpty) return 1;
+            destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.GolemHeadFree, (int)cx, (int)(proposed.PositionY + 70f), 0f, 0f, proposed.Target)
+            { InitialLocalAi = new NpcAiState(0f, 0f, 0f, owner) };
+            return 1;
+        }
+        return 0;
+    }
+
+    private int PlanGolemHeadProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        bool eyeWrap = source.Ai.Ai1 > 0f && proposed.Ai.Ai1 == 0f;
+        bool fireballWrap = source.Ai.Ai2 > 0f && proposed.Ai.Ai2 == 0f;
+        if (!eyeWrap && !fireballWrap) return 0;
+        if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+            return 0;
+        int count = (eyeWrap ? 1 : 0) + (fireballWrap ? 2 : 0);
+        if (destination.Length < count) return destination.Length + 1;
+        float cx = proposed.PositionX + 35f, cy = proposed.PositionY + 25f;
+        int index = 0;
+        if (eyeWrap)
+        {
+            float dx = target.CenterX - cx, dy = target.CenterY - cy;
+            float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+            destination[index++] = new NpcAiProjectileIntent(VanillaProjectileIds.GolemEyeBeam, cx, cy, dx / d * 8f, dy / d * 8f, source.Type == VanillaNpcIds.GolemHead.Value && source.Ai.Ai0 == 0f ? 18 : 24, 0f);
+        }
+        if (fireballWrap)
+        {
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float sx = cx + side * 18f;
+                float sy = proposed.PositionY + 13f;
+                float dx = target.CenterX - sx, dy = target.CenterY - sy;
+                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+                destination[index++] = new NpcAiProjectileIntent(VanillaProjectileIds.GolemFireball, sx + dx / d * 33f, sy + dy / d * 33f, dx / d * 11f, dy / d * 11f, 28, 0f) { TimeLeftOverride = 300 };
+            }
+        }
+        return index;
     }
 
     private int PlanDestroyerFollower(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)

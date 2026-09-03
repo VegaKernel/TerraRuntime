@@ -53,7 +53,10 @@ public enum VanillaNpcAiCapability : ulong
     BossGoodWorldProjectileReflectionSlice = 1ul << 43,
     WallOfFleshStateSlice = 1ul << 44,
     WallOfFleshProjectileSlice = 1ul << 45,
-    WallOfFleshLinkedChildSlice = 1ul << 46
+    WallOfFleshLinkedChildSlice = 1ul << 46,
+    HardmodeBossStateSlice = 1ul << 47,
+    HardmodeBossLinkedChildSlice = 1ul << 48,
+    HardmodeBossProjectileSlice = 1ul << 49
 }
 
 /// <summary>
@@ -107,8 +110,9 @@ public static class VanillaNpcAiCoverageCatalog
 
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
+        const int hardmodeBossBehaviorCount = 29;
         var entries = new VanillaNpcAiCoverage[
-            16 +
+            16 + hardmodeBossBehaviorCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -208,6 +212,40 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAiCapability.WallOfFleshLinkedChildSlice);
 
         int index = 16;
+        VanillaNpcAiCapability hardmodeRoot = OrdinaryCore | VanillaNpcAiCapability.HardmodeBossStateSlice | VanillaNpcAiCapability.BossDeathLootProgressionSlice;
+        VanillaNpcAiCapability hardmodePart = OrdinaryCore | VanillaNpcAiCapability.HardmodeBossStateSlice | VanillaNpcAiCapability.HardmodeBossLinkedChildSlice;
+        VanillaNpcAiCapability hardmodeProjectileRoot = hardmodeRoot | VanillaNpcAiCapability.HardmodeBossProjectileSlice;
+
+        entries[index++] = Partial(VanillaNpcIds.Retinazer, hardmodeProjectileRoot);
+        entries[index++] = Partial(VanillaNpcIds.Spazmatism, hardmodeProjectileRoot);
+        entries[index++] = Partial(VanillaNpcIds.SkeletronPrime, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.PrimeCannon, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
+        entries[index++] = Partial(VanillaNpcIds.PrimeSaw, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.PrimeVice, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.PrimeLaser, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
+        entries[index++] = Partial(VanillaNpcIds.Destroyer, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.DestroyerBody, hardmodePart | VanillaNpcAiCapability.ChildSpawnSlice | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
+        entries[index++] = Partial(VanillaNpcIds.DestroyerTail, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.Golem, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.GolemHead, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
+        entries[index++] = Partial(VanillaNpcIds.GolemFistLeft, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.GolemFistRight, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.GolemHeadFree, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
+        entries[index++] = Partial(VanillaNpcIds.Plantera, hardmodeProjectileRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.PlanteraHook, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.PlanteraTentacle, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.PlanteraSpore, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.DukeFishron, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.DetonatingBubble, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.LunaticCultist, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.LunaticCultistClone, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.MoonLordHead, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.MoonLordHand, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.MoonLordCore, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.MoonLordFreeEye, hardmodePart);
+        entries[index++] = Partial(VanillaNpcIds.EmpressOfLight, hardmodeRoot);
+        entries[index++] = Partial(VanillaNpcIds.QueenSlime, hardmodeProjectileRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {
             VanillaNpcAiCapability capabilities =

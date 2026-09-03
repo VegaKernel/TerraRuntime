@@ -105,6 +105,18 @@ internal sealed class VanillaNpcBehaviorContext
         _npcPeerCount = peers.Length;
     }
 
+    public int CopyNpcPeers(NpcTypeId type, Span<NpcSnapshot> destination)
+    {
+        int count = 0;
+        for (int index = 0; index < _npcPeerCount && count < destination.Length; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (candidate.IsActive && candidate.TypeIdentity == type)
+                destination[count++] = candidate;
+        }
+        return count;
+    }
+
     public int CountNpcPeers(NpcTypeId type)
     {
         int count = 0;
@@ -144,6 +156,102 @@ internal sealed class VanillaNpcBehaviorContext
                 count++;
         }
         return count;
+    }
+
+    public bool TryGetAverageNpcPeerCenter(NpcTypeId type, out float centerX, out float centerY)
+    {
+        float sumX = 0f;
+        float sumY = 0f;
+        int count = 0;
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (!candidate.IsActive || candidate.TypeIdentity != type ||
+                !VanillaNpcDefinitionCatalog.TryGet(type, candidate.NetIdentity, out VanillaNpcDefinition definition) ||
+                !definition.TryResolveHitbox(candidate.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+                continue;
+            sumX += candidate.PositionX + hitbox.Width * 0.5f;
+            sumY += candidate.PositionY + hitbox.Height * 0.5f;
+            count++;
+        }
+        if (count == 0)
+        {
+            centerX = 0f;
+            centerY = 0f;
+            return false;
+        }
+        centerX = sumX / count;
+        centerY = sumY / count;
+        return true;
+    }
+
+    public bool HasOwnedNpcPeer(NpcTypeId type, byte ownerSlot)
+    {
+        float encodedOwner = ownerSlot + 1;
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (candidate.IsActive && candidate.TypeIdentity == type && candidate.Simulation.LocalAi.Ai3 == encodedOwner)
+                return true;
+        }
+        return false;
+    }
+
+    public int CopyOwnedNpcPeers(NpcTypeId type, byte ownerSlot, Span<NpcSnapshot> destination)
+    {
+        float encodedOwner = ownerSlot + 1;
+        int count = 0;
+        for (int index = 0; index < _npcPeerCount && count < destination.Length; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (candidate.IsActive && candidate.TypeIdentity == type && candidate.Simulation.LocalAi.Ai3 == encodedOwner)
+                destination[count++] = candidate;
+        }
+        return count;
+    }
+
+    public bool TryGetAverageOwnedNpcPeerCenter(NpcTypeId type, byte ownerSlot, out float centerX, out float centerY)
+    {
+        float encodedOwner = ownerSlot + 1;
+        float sumX = 0f;
+        float sumY = 0f;
+        int count = 0;
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (!candidate.IsActive || candidate.TypeIdentity != type || candidate.Simulation.LocalAi.Ai3 != encodedOwner ||
+                !VanillaNpcDefinitionCatalog.TryGet(type, candidate.NetIdentity, out VanillaNpcDefinition definition) ||
+                !definition.TryResolveHitbox(candidate.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+                continue;
+            sumX += candidate.PositionX + hitbox.Width * 0.5f;
+            sumY += candidate.PositionY + hitbox.Height * 0.5f;
+            count++;
+        }
+        if (count == 0)
+        {
+            centerX = 0f;
+            centerY = 0f;
+            return false;
+        }
+        centerX = sumX / count;
+        centerY = sumY / count;
+        return true;
+    }
+
+    public bool TryFindOwnedNpcPeer(NpcTypeId type, byte ownerSlot, out NpcSnapshot peer)
+    {
+        float encodedOwner = ownerSlot + 1;
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (candidate.IsActive && candidate.TypeIdentity == type && candidate.Simulation.LocalAi.Ai3 == encodedOwner)
+            {
+                peer = candidate;
+                return true;
+            }
+        }
+        peer = default;
+        return false;
     }
 
     public bool TryFindFirstNpcPeer(NpcTypeId type, out NpcSnapshot peer)

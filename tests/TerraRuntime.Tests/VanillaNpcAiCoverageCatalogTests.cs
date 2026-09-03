@@ -9,7 +9,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Every_coverage_entry_has_an_explicit_definition_and_behavior_family()
     {
-        int expected = 16 +
+        int expected = 16 + 29 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -101,6 +101,31 @@ public sealed class VanillaNpcAiCoverageCatalogTests
         Assert.True(spikeBall.Has(VanillaNpcAiCapability.SpikeBallMotionSlice));
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.BlazingWheel, out VanillaNpcAiCoverage wheel));
         Assert.True(wheel.Has(VanillaNpcAiCapability.BlazingWheelMotionSlice));
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.Plantera, out VanillaNpcAiCoverage plantera));
+        Assert.True(plantera.Has(VanillaNpcAiCapability.HardmodeBossStateSlice));
+        Assert.True(plantera.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+        Assert.True(plantera.Has(VanillaNpcAiCapability.HardmodeBossProjectileSlice));
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.Golem, out VanillaNpcAiCoverage golem));
+        Assert.True(golem.Has(VanillaNpcAiCapability.HardmodeBossStateSlice));
+        Assert.True(golem.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.DukeFishron, out VanillaNpcAiCoverage duke));
+        Assert.True(duke.Has(VanillaNpcAiCapability.HardmodeBossStateSlice));
+        Assert.True(duke.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.LunaticCultist, out VanillaNpcAiCoverage cultist));
+        Assert.True(cultist.Has(VanillaNpcAiCapability.HardmodeBossStateSlice));
+        Assert.True(cultist.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.EmpressOfLight, out VanillaNpcAiCoverage empress));
+        Assert.True(empress.Has(VanillaNpcAiCapability.HardmodeBossStateSlice));
+        Assert.False(empress.FullVanillaAiParity);
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.MoonLordCore, out VanillaNpcAiCoverage moonLord));
+        Assert.True(moonLord.Has(VanillaNpcAiCapability.HardmodeBossStateSlice));
+        Assert.True(moonLord.Has(VanillaNpcAiCapability.ChildSpawnSlice));
     }
 
     [Fact]
