@@ -48,10 +48,16 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
     private readonly VanillaDeerclopsNpcBehaviorStrategy _deerclops = new();
+    private readonly VanillaWallOfFleshNpcBehaviorStrategy _wallOfFlesh = new();
+    private readonly VanillaWallOfFleshEyeNpcBehaviorStrategy _wallOfFleshEye = new();
+    private readonly VanillaWallOfFleshHungryNpcBehaviorStrategy _wallOfFleshHungry = new();
+    private readonly VanillaFireImpNpcBehaviorStrategy _fireImp = new();
+    private readonly VanillaBurningSphereNpcBehaviorStrategy _burningSphere = new();
     private readonly IVanillaNpcRandom _random;
     private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
     private IVanillaQueenBeeEnvironment? _queenBeeEnvironment;
     private IVanillaDeerclopsEnvironment? _deerclopsEnvironment;
+    private IVanillaWallOfFleshEnvironment? _wallOfFleshEnvironment;
 
     public VanillaNpcTargetingAiStepper(
         INpcAiStateStepper inner,
@@ -106,6 +112,14 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         _deerclopsEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
         _deerclops.SetEnvironment(environment);
+    }
+
+    public void SetWallOfFleshEnvironment(IVanillaWallOfFleshEnvironment environment)
+    {
+        _wallOfFleshEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
+        _wallOfFlesh.SetEnvironment(environment);
+        _wallOfFleshEye.SetEnvironment(environment);
+        _fireImp.SetEnvironment(environment);
     }
 
     public void SetWormEnvironment(IVanillaWormEnvironment environment) =>
@@ -175,6 +189,11 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             VanillaNpcBehaviorFamily.QueenBee => _queenBee,
             VanillaNpcBehaviorFamily.Deerclops => _deerclops,
+            VanillaNpcBehaviorFamily.WallOfFlesh => _wallOfFlesh,
+            VanillaNpcBehaviorFamily.WallOfFleshEye => _wallOfFleshEye,
+            VanillaNpcBehaviorFamily.WallOfFleshHungry => _wallOfFleshHungry,
+            VanillaNpcBehaviorFamily.FireImp => _fireImp,
+            VanillaNpcBehaviorFamily.BurningSphere => _burningSphere,
             _ => null
         };
 
@@ -218,6 +237,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.Type == VanillaNpcIds.QueenBee.Value && proposed.Type == source.Type)
             return PlanQueenBeeMinion(in source, in proposed, destination);
 
+        if (source.Type == VanillaNpcIds.WallOfFlesh.Value && proposed.Type == source.Type)
+            return PlanWallOfFleshSpawns(in source, in proposed, destination);
+
+        if (source.Type == VanillaNpcIds.FireImp.Value && proposed.Type == source.Type)
+            return PlanFireImpSphere(in source, in proposed, destination);
+
         if (NpcTypeId.TryCreate(source.Type, out NpcTypeId sourceType) &&
             VanillaWormNpcCatalog.TryGet(sourceType, out _))
         {
@@ -238,8 +263,204 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanQueenBeeStinger(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.Deerclops.Value && proposed.Type == source.Type)
             return PlanDeerclopsProjectiles(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.WallOfFleshEye.Value && proposed.Type == source.Type)
+            return PlanWallOfFleshEyeLaser(in source, in proposed, destination);
 
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
+    }
+
+    private int PlanWallOfFleshSpawns(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiSpawnIntent> destination)
+    {
+        if (_wallOfFleshEnvironment is null ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.WallOfFlesh, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            return 0;
+
+        NpcAiState sourceLocal = source.Simulation.LocalAi;
+        NpcAiState nextLocal = proposed.Simulation.LocalAi;
+        if (sourceLocal.Ai0 == 0f && nextLocal.Ai0 == 2f)
+        {
+            const int initialChildren = 13;
+            if (destination.Length < initialChildren)
+                return destination.Length + 1;
+
+            float centerY = proposed.PositionY + hitbox.Height * 0.5f;
+            float top = nextLocal.Ai2;
+            float bottom = nextLocal.Ai3;
+            int index = 0;
+            float upperEyeY = (centerY + top) * 0.5f;
+            float lowerEyeY = (centerY + bottom) * 0.5f;
+            destination[index++] = new NpcAiSpawnIntent(
+                VanillaNpcIds.WallOfFleshEye, (int)proposed.PositionX, (int)upperEyeY, 0f, 0f, proposed.Target)
+            {
+                InitialAi = new NpcAiState(1f, 0f, 0f, source.Handle.Slot)
+            };
+            destination[index++] = new NpcAiSpawnIntent(
+                VanillaNpcIds.WallOfFleshEye, (int)proposed.PositionX, (int)lowerEyeY, 0f, 0f, proposed.Target)
+            {
+                InitialAi = new NpcAiState(-1f, 0f, 0f, source.Handle.Slot)
+            };
+            for (int hungry = 0; hungry < 11; hungry++)
+            {
+                destination[index++] = new NpcAiSpawnIntent(
+                    VanillaNpcIds.TheHungry, (int)proposed.PositionX, (int)lowerEyeY, 0f, 0f, proposed.Target)
+                {
+                    InitialAi = new NpcAiState(hungry * 0.1f - 0.05f, 0f, 0f, source.Handle.Slot)
+                };
+            }
+            return index;
+        }
+
+        int count = 0;
+        bool leechPulse = source.Ai.Ai2 > 0f && source.Ai.Ai1 <= 60f &&
+                          proposed.Ai.Ai1 == 0f && proposed.Ai.Ai2 != source.Ai.Ai2;
+        if (leechPulse && _context.CountNpcPeers(VanillaNpcIds.LeechHead) < 10 && count < destination.Length)
+        {
+            int direction = proposed.Simulation.DirectionX == 0 ? 1 : proposed.Simulation.DirectionX;
+            destination[count++] = new NpcAiSpawnIntent(
+                VanillaNpcIds.LeechHead,
+                (int)(proposed.PositionX + hitbox.Width * 0.5f),
+                (int)(proposed.PositionY + hitbox.Height * 0.5f + 20f),
+                direction * 8f,
+                0f,
+                proposed.Target);
+        }
+
+        if (_context.GoodWorld && _random.NextInt32(0, 180) == 0 &&
+            _context.CountNpcPeers(VanillaNpcIds.FireImp) < 4 && proposed.Target < byte.MaxValue &&
+            _context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target))
+        {
+            for (int attempt = 0; attempt < 1000; attempt++)
+            {
+                int tileX = (int)(target.CenterX / 16f) + _random.NextInt32(-50, 51);
+                int tileY = (int)(target.CenterY / 16f) + _random.NextInt32(-50, 51);
+                if (!_wallOfFleshEnvironment.TryFindGroundSpawn(tileX, tileY, out int bottomX, out int bottomY))
+                    continue;
+                if (count >= destination.Length)
+                    return destination.Length + 1;
+                destination[count++] = new NpcAiSpawnIntent(VanillaNpcIds.FireImp, bottomX, bottomY, 0f, 0f, proposed.Target);
+                break;
+            }
+        }
+
+        if (_context.ExpertMode && CountAttachedHungry(source.Handle.Slot) < 10)
+        {
+            int lifeMax = Math.Max(1, proposed.Simulation.LifeMax);
+            int chance = (int)(1f + proposed.Simulation.Life / (float)lifeMax * 10f);
+            chance *= chance;
+            if (chance < 400) chance = (chance * 19 + 400) / 20;
+            if (chance < 60) chance = (chance * 3 + 60) / 4;
+            if (chance < 20) chance = (chance + 20) / 2;
+            chance = Math.Max(1, (int)(chance * 0.7));
+            if (_random.NextInt32(0, chance) == 0)
+            {
+                Span<bool> used = stackalloc bool[10];
+                int existing = MarkAttachedHungrySlots(source.Handle.Slot, used);
+                int maxValue = 1 + existing * 2;
+                if (existing < 10 && _random.NextInt32(0, maxValue) <= 1)
+                {
+                    int selected = -1;
+                    for (int attempt = 0; attempt < 1000; attempt++)
+                    {
+                        int candidate = _random.NextInt32(0, 10);
+                        if (!used[candidate]) { selected = candidate; break; }
+                    }
+                    if (selected >= 0)
+                    {
+                        if (count >= destination.Length)
+                            return destination.Length + 1;
+                        destination[count++] = new NpcAiSpawnIntent(
+                            VanillaNpcIds.TheHungry,
+                            (int)proposed.PositionX,
+                            (int)(proposed.PositionY + hitbox.Height * 0.5f),
+                            0f,
+                            0f,
+                            proposed.Target)
+                        {
+                            InitialAi = new NpcAiState(selected * 0.1f - 0.05f, 0f, 0f, source.Handle.Slot)
+                        };
+                    }
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private int PlanFireImpSphere(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        if (destination.IsEmpty || source.Ai.Ai1 != 11f || proposed.Ai.Ai1 != 10f)
+            return 0;
+        int direction = proposed.Simulation.DirectionX == 0 ? 1 : proposed.Simulation.DirectionX;
+        destination[0] = new NpcAiSpawnIntent(
+            VanillaNpcIds.BurningSphere,
+            (int)proposed.PositionX + 9 + direction * 8,
+            (int)proposed.PositionY + 20,
+            0f,
+            0f,
+            byte.MaxValue);
+        return 1;
+    }
+
+    private int PlanWallOfFleshEyeLaser(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty || proposed.Simulation.LocalAi.Ai0 != 1f || proposed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.WallOfFleshEye, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !VanillaWallOfFleshEyeNpcBehaviorStrategy.TryResolveRoot(in source, _context, out NpcSnapshot root))
+            return 0;
+
+        int life = root.Simulation.Life;
+        int lifeMax = Math.Max(1, root.Simulation.LifeMax);
+        float speed = 9f;
+        int damage = 11;
+        if (life < lifeMax * .50f) { damage++; speed++; }
+        if (life < lifeMax * .25f) { damage++; speed++; }
+        if (life < lifeMax * .10f) { damage += 2; speed += 2f; }
+        float centerX = proposed.PositionX + hitbox.Width * .5f;
+        float centerY = proposed.PositionY + hitbox.Height * .5f;
+        float dx = target.CenterX - centerX;
+        float dy = target.CenterY - centerY;
+        NormalizeTo(ref dx, ref dy, speed);
+        destination[0] = new NpcAiProjectileIntent(
+            VanillaProjectileIds.WallOfFleshEyeLaser,
+            centerX + dx,
+            centerY + dy,
+            dx,
+            dy,
+            damage,
+            0f)
+        {
+            TimeLeftOverride = 600
+        };
+        return 1;
+    }
+
+    private int CountAttachedHungry(byte rootSlot)
+    {
+        int count = 0;
+        for (int slot = 0; slot < byte.MaxValue; slot++)
+            if (_context.TryFindNpcPeer((byte)slot, out NpcSnapshot peer) && peer.TypeIdentity == VanillaNpcIds.TheHungry && (byte)peer.Ai.Ai3 == rootSlot)
+                count++;
+        return count;
+    }
+
+    private int MarkAttachedHungrySlots(byte rootSlot, Span<bool> used)
+    {
+        int count = 0;
+        for (int slot = 0; slot < byte.MaxValue; slot++)
+        {
+            if (!_context.TryFindNpcPeer((byte)slot, out NpcSnapshot peer) || peer.TypeIdentity != VanillaNpcIds.TheHungry || (byte)peer.Ai.Ai3 != rootSlot)
+                continue;
+            int index = (int)MathF.Round((peer.Ai.Ai0 + 0.05f) * 10f);
+            if ((uint)index < (uint)used.Length) used[index] = true;
+            count++;
+        }
+        return count;
     }
 
     private int PlanSkeletronSkull(

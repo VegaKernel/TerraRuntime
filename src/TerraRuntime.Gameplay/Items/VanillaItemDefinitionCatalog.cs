@@ -291,6 +291,24 @@ public static class VanillaItemDefinitionCatalog
     private static readonly VanillaItemDefinition HoundiusShootiusDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.HoundiusShootius, 18, 20);
     private static readonly VanillaItemDefinition DizzyHatDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DizzyHat, 28, 20);
 
+    private static readonly VanillaItemDefinition WofHealingPotionDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.HealingPotion, 14, 24);
+    private static readonly VanillaItemDefinition WofHeartDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.Heart, 12, 12);
+    private static readonly VanillaItemDefinition PwnhammerDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.Pwnhammer, 24, 28);
+    private static readonly VanillaItemDefinition SorcererEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.SorcererEmblem, 24, 24);
+    private static readonly VanillaItemDefinition WarriorEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.WarriorEmblem, 24, 24);
+    private static readonly VanillaItemDefinition RangerEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.RangerEmblem, 24, 24);
+    private static readonly VanillaItemDefinition BreakerBladeDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.BreakerBlade, 60, 70);
+    private static readonly VanillaItemDefinition ClockworkAssaultRifleDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.ClockworkAssaultRifle, 50, 18);
+    private static readonly VanillaItemDefinition LaserRifleDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.LaserRifle, 36, 22);
+    private static readonly VanillaItemDefinition WallOfFleshTrophyDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.WallOfFleshTrophy, 30, 30);
+    private static readonly VanillaItemDefinition FleshMaskDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.FleshMask, 28, 20);
+    private static readonly VanillaItemDefinition SummonerEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.SummonerEmblem, 24, 24);
+    private static readonly VanillaItemDefinition WallOfFleshBossBagDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.WallOfFleshBossBag, 24, 24);
+    private static readonly VanillaItemDefinition GoatSkullDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.GoatSkull, 10, 32);
+    private static readonly VanillaItemDefinition WallOfFleshRelicDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.WallOfFleshRelic, 14, 14);
+    private static readonly VanillaItemDefinition FirecrackerDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.Firecracker, 18, 18);
+    private static readonly VanillaItemDefinition BadgersHatDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.BadgersHat, 18, 14);
+
     private static VanillaItemDefinition BrainWorldDrop(ItemTypeId type, int width, int height) =>
         new(
             Type: type,
@@ -331,6 +349,19 @@ public static class VanillaItemDefinitionCatalog
                 PrefixFamily: VanillaItemPrefixFamily.None));
 
     private static VanillaItemDefinition DeerclopsWorldDrop(ItemTypeId type, int width, int height) =>
+        new(
+            Type: type,
+            RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
+            UseTiming: null,
+            Placement: null,
+            PickTool: null,
+            WorldDrop: new VanillaItemWorldDropDefinition(
+                width,
+                height,
+                NoGravity: false,
+                PrefixFamily: VanillaItemPrefixFamily.None));
+
+    private static VanillaItemDefinition WallOfFleshWorldDrop(ItemTypeId type, int width, int height) =>
         new(
             Type: type,
             RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
@@ -540,6 +571,24 @@ public static class VanillaItemDefinitionCatalog
         if (type == VanillaDeerclopsItemIds.WeatherPain) { definition = WeatherPainDefinition; return true; }
         if (type == VanillaDeerclopsItemIds.HoundiusShootius) { definition = HoundiusShootiusDefinition; return true; }
         if (type == VanillaDeerclopsItemIds.DizzyHat) { definition = DizzyHatDefinition; return true; }
+
+        if (type == VanillaWallOfFleshItemIds.HealingPotion) { definition = WofHealingPotionDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.Heart) { definition = WofHeartDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.Pwnhammer) { definition = PwnhammerDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.SorcererEmblem) { definition = SorcererEmblemDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.WarriorEmblem) { definition = WarriorEmblemDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.RangerEmblem) { definition = RangerEmblemDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.BreakerBlade) { definition = BreakerBladeDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.ClockworkAssaultRifle) { definition = ClockworkAssaultRifleDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.LaserRifle) { definition = LaserRifleDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.WallOfFleshTrophy) { definition = WallOfFleshTrophyDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.FleshMask) { definition = FleshMaskDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.SummonerEmblem) { definition = SummonerEmblemDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.WallOfFleshBossBag) { definition = WallOfFleshBossBagDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.GoatSkull) { definition = GoatSkullDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.WallOfFleshRelic) { definition = WallOfFleshRelicDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.Firecracker) { definition = FirecrackerDefinition; return true; }
+        if (type == VanillaWallOfFleshItemIds.BadgersHat) { definition = BadgersHatDefinition; return true; }
 
         definition = default;
         return false;

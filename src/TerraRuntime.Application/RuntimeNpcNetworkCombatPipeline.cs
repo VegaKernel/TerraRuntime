@@ -40,12 +40,15 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private readonly RuntimeSkeletronLootDeliverySink skeletronLoot;
     private readonly RuntimeQueenBeeLootDeliverySink queenBeeLoot;
     private readonly RuntimeDeerclopsLootDeliverySink deerclopsLoot;
+    private readonly RuntimeWallOfFleshLootDeliverySink wallOfFleshLoot;
     private readonly VanillaNpcLootWorldItemMaterializer materializer = VanillaNpcLootWorldItemMaterializer.Instance;
     private readonly SystemNpcCombatRandom random = new();
     private readonly bool expertMode;
     private readonly bool masterMode;
     private readonly RuntimeWorldClock? worldClock;
     private readonly RuntimeWorldProgressionMutations progression;
+    private readonly WorldTileStore? worldTiles;
+    private readonly bool crimsonWorld;
     private readonly PlayerSlotId[] interactionSlots =
         new PlayerSlotId[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaKingSlimeLootPlayer[] activeLootPlayers =
@@ -60,6 +63,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         new VanillaQueenBeeLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaDeerclopsLootPlayer[] activeDeerclopsLootPlayers =
         new VanillaDeerclopsLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
+    private readonly VanillaWallOfFleshLootPlayer[] activeWallOfFleshLootPlayers =
+        new VanillaWallOfFleshLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly NpcSnapshot[] npcFamilyBuffer;
 
     public RuntimeNpcNetworkCombatPipeline(
@@ -72,7 +77,9 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         RuntimeWorldClock? worldClock,
         RuntimeWorldProgressionMutations progression,
         bool expertMode,
-        bool masterMode)
+        bool masterMode,
+        WorldTileStore? worldTiles = null,
+        bool crimsonWorld = false)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
@@ -80,6 +87,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         this.npcReplication = npcReplication;
         this.worldClock = worldClock;
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
+        this.worldTiles = worldTiles;
+        this.crimsonWorld = crimsonWorld;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         if (masterMode && !expertMode)
@@ -105,6 +114,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             instancedLeases,
             worldItemReplication);
         deerclopsLoot = new RuntimeDeerclopsLootDeliverySink(
+            worldItems,
+            instancedLeases,
+            worldItemReplication);
+        wallOfFleshLoot = new RuntimeWallOfFleshLootDeliverySink(
             worldItems,
             instancedLeases,
             worldItemReplication);
@@ -159,6 +172,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         {
             MarkSkeletronInteraction(connection.Player);
         }
+        else if (current.TypeIdentity == VanillaNpcIds.WallOfFlesh || current.TypeIdentity == VanillaNpcIds.WallOfFleshEye)
+        {
+            MarkWallOfFleshInteraction(in current, connection.Player);
+        }
         else
         {
             interactions.TryMark(current.Handle, connection.Player);
@@ -183,16 +200,33 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                 return RuntimeNpcNetworkDamageResult.Relayed;
             }
 
-            if (!result.Lethal)
+            NpcSnapshot dead;
+            if (current.TypeIdentity == VanillaNpcIds.WallOfFleshEye &&
+                TryResolveWallOfFleshRoot(in current, out NpcSnapshot wallRoot))
             {
-                if (suppressing)
-                    npcReplication!.CompleteClientDamage(current.Handle);
-                npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
-                return RuntimeNpcNetworkDamageResult.Committed;
+                if (!TrySetWallOfFleshRootLife(in wallRoot, result.LifeAfter, out NpcSnapshot updatedRoot))
+                    throw new InvalidOperationException("Wall of Flesh eye damage could not commit shared root life.");
+                if (!result.Lethal)
+                {
+                    if (suppressing)
+                        npcReplication!.CompleteClientDamage(current.Handle);
+                    npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+                    return RuntimeNpcNetworkDamageResult.Committed;
+                }
+                dead = updatedRoot;
             }
-
-            if (!npcs.TryGet(current.Handle, out NpcSnapshot dead))
-                throw new InvalidOperationException("A lethal packet-28 commit disappeared before death finalization.");
+            else
+            {
+                if (!result.Lethal)
+                {
+                    if (suppressing)
+                        npcReplication!.CompleteClientDamage(current.Handle);
+                    npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+                    return RuntimeNpcNetworkDamageResult.Committed;
+                }
+                if (!npcs.TryGet(current.Handle, out dead))
+                    throw new InvalidOperationException("A lethal packet-28 commit disappeared before death finalization.");
+            }
 
             bool eaterBoss =
                 VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
@@ -209,15 +243,19 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
                 ApplyQueenBeeDeathEffects();
             else if (dead.TypeIdentity == VanillaNpcIds.Deerclops)
                 ApplyDeerclopsDeathEffects();
+            else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+                ApplyWallOfFleshDeathEffects(in dead);
             else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
                 ApplyEvilBossDeathEffects();
 
+            if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+                CleanupWallOfFleshChildren(dead.Handle.Slot);
             if (!npcs.TryDespawn(dead.Handle))
                 throw new InvalidOperationException("A lethal packet-28 NPC could not be despawned after death effects.");
             interactions.Forget(dead.Handle);
 
             if (suppressing)
-                npcReplication!.CompleteClientDamage(dead.Handle);
+                npcReplication!.CompleteClientDamage(current.Handle);
             npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
             npcReplication?.TryPublishDeath(in dead);
             return RuntimeNpcNetworkDamageResult.Killed;
@@ -254,11 +292,23 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             HitDirection: hitDirection);
         if (!damage.TryApply(in request, out NpcDamageResult result))
             return RuntimeTownNpcMeleeDamageResult1458.Rejected;
-        if (!result.Lethal)
-            return RuntimeTownNpcMeleeDamageResult1458.Committed;
 
-        if (!npcs.TryGet(liveTarget.Handle, out NpcSnapshot dead))
-            throw new InvalidOperationException("A lethal Town NPC melee commit disappeared before death finalization.");
+        NpcSnapshot dead;
+        if (liveTarget.TypeIdentity == VanillaNpcIds.WallOfFleshEye && TryResolveWallOfFleshRoot(in liveTarget, out NpcSnapshot wallRoot))
+        {
+            if (!TrySetWallOfFleshRootLife(in wallRoot, result.LifeAfter, out NpcSnapshot updatedRoot))
+                throw new InvalidOperationException("Town NPC melee could not commit Wall of Flesh shared root life.");
+            if (!result.Lethal)
+                return RuntimeTownNpcMeleeDamageResult1458.Committed;
+            dead = updatedRoot;
+        }
+        else
+        {
+            if (!result.Lethal)
+                return RuntimeTownNpcMeleeDamageResult1458.Committed;
+            if (!npcs.TryGet(liveTarget.Handle, out dead))
+                throw new InvalidOperationException("A lethal Town NPC melee commit disappeared before death finalization.");
+        }
 
         bool eaterBoss =
             VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
@@ -274,9 +324,13 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             ApplyQueenBeeDeathEffects();
         else if (dead.TypeIdentity == VanillaNpcIds.Deerclops)
             ApplyDeerclopsDeathEffects();
+        else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+            ApplyWallOfFleshDeathEffects(in dead);
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
             ApplyEvilBossDeathEffects();
 
+        if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+            CleanupWallOfFleshChildren(dead.Handle.Slot);
         if (!npcs.TryDespawn(dead.Handle))
             throw new InvalidOperationException("A Town NPC melee kill could not despawn the exact NPC generation.");
         interactions.Forget(dead.Handle);
@@ -296,6 +350,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             return TryExecuteQueenBeeLoot(in npc);
         if (npc.TypeIdentity == VanillaNpcIds.Deerclops)
             return TryExecuteDeerclopsLoot(in npc);
+        if (npc.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+            return TryExecuteWallOfFleshLoot(in npc);
 
         if (npc.TypeIdentity == VanillaNpcIds.KingSlime && expertMode)
             return TryExecuteKingSlimeDifficultyLoot(in npc);
@@ -567,6 +623,107 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             out _);
     }
 
+    private bool TryExecuteWallOfFleshLoot(in NpcSnapshot npc)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.WallOfFlesh, out VanillaNpcDefinition definition))
+            return false;
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+            activeWallOfFleshLootPlayers[activeCount++] = new VanillaWallOfFleshLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaWallOfFleshLootContext(expertMode, masterMode);
+        return VanillaWallOfFleshLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeWallOfFleshLootPlayers.AsSpan(0, activeCount),
+            random,
+            wallOfFleshLoot,
+            out _);
+    }
+
+    private bool TryResolveWallOfFleshRoot(in NpcSnapshot member, out NpcSnapshot root)
+    {
+        if (member.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+        {
+            root = member;
+            return true;
+        }
+        if (member.TypeIdentity == VanillaNpcIds.WallOfFleshEye && float.IsFinite(member.Ai.Ai3) &&
+            member.Ai.Ai3 >= 0f && member.Ai.Ai3 < byte.MaxValue &&
+            npcs.TryGetActive((byte)member.Ai.Ai3, out NpcSnapshot linked) && linked.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+        {
+            root = linked;
+            return true;
+        }
+        int count = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            if (npcFamilyBuffer[index].TypeIdentity == VanillaNpcIds.WallOfFlesh)
+            {
+                root = npcFamilyBuffer[index];
+                return true;
+            }
+        }
+        root = default;
+        return false;
+    }
+
+    private bool TrySetWallOfFleshRootLife(in NpcSnapshot root, int life, out NpcSnapshot committed)
+    {
+        committed = default;
+        if (root.TypeIdentity != VanillaNpcIds.WallOfFlesh || life < 0 || life > root.Simulation.LifeMax)
+            return false;
+        var update = new NpcStateUpdate(
+            root.Type, root.NetId, root.PositionX, root.PositionY, root.VelocityX, root.VelocityY, root.Target, root.Ai,
+            root.Simulation with { Life = life, JustHit = true });
+        return npcs.TryUpdate(root.Handle, in update, out committed);
+    }
+
+    private void MarkWallOfFleshInteraction(in NpcSnapshot member, PlayerHandle player)
+    {
+        if (TryResolveWallOfFleshRoot(in member, out NpcSnapshot root))
+            interactions.TryMark(root.Handle, player);
+        interactions.TryMark(member.Handle, player);
+        int count = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot peer = npcFamilyBuffer[index];
+            if (peer.TypeIdentity == VanillaNpcIds.WallOfFleshEye && (byte)peer.Ai.Ai3 == root.Handle.Slot)
+                interactions.TryMark(peer.Handle, player);
+        }
+    }
+
+    private void CleanupWallOfFleshChildren(byte rootSlot)
+    {
+        int count = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot peer = npcFamilyBuffer[index];
+            bool child = (peer.TypeIdentity == VanillaNpcIds.WallOfFleshEye || peer.TypeIdentity == VanillaNpcIds.TheHungry) &&
+                         float.IsFinite(peer.Ai.Ai3) && peer.Ai.Ai3 >= 0f && peer.Ai.Ai3 < byte.MaxValue && (byte)peer.Ai.Ai3 == rootSlot;
+            if (!child)
+                continue;
+            if (npcs.TryDespawn(peer.Handle))
+            {
+                interactions.Forget(peer.Handle);
+                npcReplication?.TryPublishDeath(in peer);
+            }
+        }
+    }
+
     private void MarkSkeletronInteraction(PlayerHandle player)
     {
         int count = npcs.CopyActive(npcFamilyBuffer);
@@ -625,6 +782,47 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private void ApplyDeerclopsDeathEffects()
     {
         progression.MarkCompleted(VanillaWorldProgressionId.Deerclops);
+    }
+
+    private void ApplyWallOfFleshDeathEffects(in NpcSnapshot wallOfFlesh)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.WallOfFlesh, out VanillaNpcDefinition definition))
+            throw new InvalidOperationException("Wall of Flesh definition disappeared during its committed death path.");
+
+        if (worldTiles is not null)
+        {
+            VanillaWallOfFleshDeathWorldMutation.Apply(
+                worldTiles,
+                wallOfFlesh.PositionX,
+                wallOfFlesh.PositionY,
+                definition.Width,
+                definition.Height,
+                crimsonWorld);
+        }
+
+        DropWallOfFleshRecoveryItems(in wallOfFlesh, in definition);
+        progression.MarkCompleted(VanillaWorldProgressionId.Hardmode);
+    }
+
+    private void DropWallOfFleshRecoveryItems(in NpcSnapshot wallOfFlesh, in VanillaNpcDefinition definition)
+    {
+        var origin = new NpcLootWorldItemOrigin(
+            wallOfFlesh.PositionX + definition.Width * 0.5f,
+            wallOfFlesh.PositionY + definition.Height * 0.5f);
+
+        var potions = new NpcLootDrop(
+            VanillaWallOfFleshItemIds.HealingPotion,
+            checked((short)random.NextInt32(5, 16)));
+        if (!wallOfFleshLoot.TryDeliverWorldItem(in origin, in potions, random))
+            throw new InvalidOperationException("Wall of Flesh recovery Healing Potion drop could not be materialized.");
+
+        int heartCount = random.NextInt32(0, 5) + 5;
+        for (int index = 0; index < heartCount; index++)
+        {
+            var heart = new NpcLootDrop(VanillaWallOfFleshItemIds.Heart, 1);
+            if (!wallOfFleshLoot.TryDeliverWorldItem(in origin, in heart, random))
+                throw new InvalidOperationException("Wall of Flesh recovery Heart drop could not be materialized.");
+        }
     }
 
     private void ApplyEvilBossDeathEffects()

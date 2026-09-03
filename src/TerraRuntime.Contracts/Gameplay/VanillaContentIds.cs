@@ -364,7 +364,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId CrimsonGrass = new(199);
     public static readonly TileTypeId Crimstone = new(203);
     public static readonly TileTypeId DemoniteBrick = new(140);
-    public static readonly TileTypeId CrimtaneBrick = new(234);
+    public static readonly TileTypeId CrimtaneBrick = new(347);
     public static readonly TileTypeId Hive = new(225);
     public static readonly TileTypeId LihzahrdBrick = new(226);
     public static readonly TileTypeId Larva = new(231);

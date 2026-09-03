@@ -38,6 +38,21 @@ the signed identity instead of silently using the positive type defaults.
 - [x] unknown definitions fail closed instead of inheriting an `aiStyle` implementation;
 - [x] full local test suite green after reconciling King Slime and live-scale regressions.
 
+## Server-authoritative parity scope
+
+This roadmap tracks **dedicated-server gameplay parity**, not literal execution parity with every line present in Terraria's shared client/server source. A behavior belongs in TerraRuntime only when the official dedicated-server path owns, mutates, validates, persists, or replicates authoritative game state.
+
+Do **not** import presentation-only branches merely because they appear in the decompiled server assembly. In particular, the following are outside the NPC/AI completion gates unless independent evidence shows an authoritative network/gameplay side effect:
+
+- `Dust.*` and other particle-only effects;
+- direct/local `SoundEngine.PlaySound(...)` calls that become no-ops on `Main.dedServ` and are not paired with an explicit network sound event;
+- `Gore.*`, `CombatText.*`, `Lighting.*`, camera/screen-shake, alpha/rotation changes used only for rendering, and other client presentation state;
+- cosmetic RNG that exists only to shape those presentation effects.
+
+Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buffs that execute on the dedicated server, collision/world mutation, loot, progression, persistence, authoritative RNG ordering, targeting and replicated state **do** count toward parity. When a shared method mixes both categories, reimplement only the server-authoritative branch and document the omitted presentation branch as intentionally out of scope rather than as unfinished gameplay work.
+
+`FullVanillaAiParity` therefore means full parity for the claimed **server-authoritative** profile. It does not require headless emulation of client-only visuals or audio.
+
 ## N1 — AI_003 fighter family
 
 - [x] Zombie ordinary fighter slice;
@@ -55,7 +70,7 @@ the signed identity instead of silently using the positive type defaults.
 - [x] project live `insideUnbreakableWalls` target state via `VanillaWorldUnbreakableWallScan` (8×250 ray scan for wall 350, color ≥16);
 - [ ] route concrete future AI_003 types into the pressure policy and implement type `26` authoritative door destruction before admitting those special branches;
 - [ ] partition and import remaining AI_003 movement parameter families;
-- [ ] type-specific attacks, transformations, projectiles and spawn effects;
+- [ ] type-specific authoritative attacks, transformations, projectiles and spawn side effects; presentation-only spawn effects are intentionally out of scope;
 - [ ] differential scenarios for each admitted AI_003 subtype.
 
 The current door layer is no longer guessing frame geometry. Normal-door mutation reproduces the pinned 1.4.5.8 `OpenDoor` transform, including locked-door rejection and the source clearance set; successful authoritative mutations can be represented exactly as packet 19. The exact AI_003 pressure/reset table is also executable, and the currently admitted restricted Zombie/Skeleton slice now receives the persisted `GetGoodWorld` suppression and live `insideUnbreakableWalls` projection via `VanillaWorldUnbreakableWallScan` (8×250 ray scan for wall 350, color ≥16). Tall-gate type shifting is now fully wired through the production `RuntimeTallGateOccupancyProbe` (live `Collision.EmptyTile(ignoreTiles:true)` actor-rectangle checks) and the authoritative `RuntimeGroundFighterDoorOpeningSink` in default `ServerRuntimeState` composition. Special future fighter types remain fail-closed at production composition until concrete type routing and the type-26 destroy side effect are authoritative.
@@ -64,11 +79,11 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 
 - [x] typed definitions and movement profiles for the hostile AI_001 catalog;
 - [x] source-backed slime net variants `-1..-10` with effective spawn/packet defaults;
-- [ ] remaining AI_001 projectile, item-containment, split, transform, seed and visual branches;
+- [ ] remaining AI_001 authoritative projectile, item-containment, split, transform and seed branches; presentation-only visual branches are intentionally out of scope;
 - [x] typed definitions, steering profiles and wet behavior for all hostile AI_002 identities;
 - [x] source-backed AI_002 net variants `-38..-43` with effective spawn/packet defaults;
 - [x] AI_002 source-backed daylight discouragement/despawn and Pigron 300-tick line-of-sight phasing/re-entry state with live world collision/Graveyard queries;
-- [ ] AI_002 presentation-only alpha/rotation/dust/sound branches and remaining type-specific transforms/effects;
+- [ ] remaining AI_002 authoritative type-specific transforms/effects; presentation-only alpha/rotation/dust/sound branches are intentionally out of scope;
 - [x] typed definitions and classic pursuit/bounce/water profiles for hostile AI_005 identities;
 - [x] admitted AI_005 size net variants for Eaters, Crimeras and Hornet families;
 - [x] AI_005 source-ordered jitter, close homing, Bee/SmallBee acceleration ramp, daylight flight/despawn, surface Hornet damping, bounce minima and wet-rise movement;
@@ -85,7 +100,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] Eater of Worlds classic/expert chain length and missing-link head/tail split repair;
 - [x] pin AI_006 link lifecycle to official TerrariaServer 1.4.5.8 evidence: active-only Eater structural death gates, `aiStyle`-sensitive body split gates, source ordering and `ai[3]` root propagation;
 - [x] Eater of Worlds packet-28 shared playerInteraction, per-segment material loot, last-segment boss promotion, Expert/Master/normal boss loot and persistent `downedBoss2` progression;
-- [ ] Eater of Worlds remaining death-event parity: meteor scheduling, Skyblock low-tile `shadowOrbSmashed`, healing-heart/presentation effects and remaining `realLife` nuances;
+- [ ] Eater of Worlds remaining authoritative death-event parity: meteor scheduling, Skyblock low-tile `shadowOrbSmashed`, healing-heart drops and remaining `realLife` nuances; presentation-only effects are intentionally out of scope;
 - [x] remaining AI_006 worm family definitions and profiles;
 - [x] source-backed AI_017 Vulture/Raven activation, collision rebound, steering and wet escape;
 - [x] source-backed AI_020 Spike Ball and AI_021 Blazing Wheel authoritative motion state machines;
@@ -99,23 +114,23 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] import deterministic Expert phase-two hover/dash behavior: long-range `400/600/800` acceleration bands, `1.15/1.30` later-dash speed multipliers, `50/90` slowdown/duration and low-life state `5` movement up to its RNG transition;
 - [x] finish Eye of Cthulhu Expert RNG-shaped rapid-dash states `ai[1]=3/4`: live player-velocity prediction, `Next(1,4)`/`Next(-3,1)` state seeding, direction/velocity perturbation, critical-life renormalization and source `20/10 + 13` cadence;
 - [x] finish Eye of Cthulhu Good World gameplay reflection/re-entry and Classic/Expert/Master phase-two damage/defense projection;
-- [ ] finish Eye of Cthulhu remaining presentation-only sound/dust/gore effects and unsupported projectile-style reflection identities;
+- [ ] finish Eye of Cthulhu remaining authoritative unsupported projectile-style reflection identities; presentation-only sound/dust/gore effects are intentionally out of scope;
 - [x] finish King Slime `AI_015` difficulty/seed branches and despawn: Good World scale/air-speed behavior plus source-ordered Expert `1/4` Spiked Slime minion selection are authoritative; the pinned method has no separate Master AI branch;
 - [x] finish King Slime authoritative death lifecycle and `downedSlimeKing` progression persistence;
 - [x] import King Slime normal-mode NPC-specific loot plus Expert/Master source-ordered gameplay rule semantics, packet-28-timed `playerInteraction` accounting, active-recipient filtering, Master relic delivery and per-player Master pet placement;
 - [x] implement the concrete packet-90 instanced Boss Bag frame, packet-151 slot-release frame and `54000`-tick unpublished slot lease, plus source-ordered Slime Rain termination and first-kill Nerdy Slime unlock/spawn with `.wld` persistence;
 - [x] connect the Expert/Master difficulty-loot path to live packet-28/playerInteraction combat ingress and advance leased slots from the authoritative item-update phase;
 - [x] add Brain of Cthulhu/Creeper gameplay vertical: source defaults, 20/40 child spawn, invulnerability gate, both teleport/pursuit phases, Creeper charge/pursuit, packet-28 loot and `downedBoss2`;
-- [ ] Brain of Cthulhu remaining parity: player `ZoneCrimson` escape gate plus presentation-only sound/dust/gore and client alpha rendering;
+- [ ] Brain of Cthulhu remaining authoritative parity: player `ZoneCrimson` escape gate; presentation-only sound/dust/gore and client alpha rendering are intentionally out of scope;
 - [x] add Skeletron gameplay vertical: source-backed head/hand ownership, Expert skull cadence/homing/lifetime, shared head/hand interaction credit, Classic/Expert/Master loot, isolated RedHat-condition evaluator coverage and persisted `downedBoss3` progression;
 - [x] add Queen Bee gameplay vertical: AI_043 attack cycle, source-shaped Jungle/surface/Good World enrage, Bee/SmallBee spawn ownership with localAI seed, stinger 719 lifetime, Classic/Expert/Master loot and persisted `downedQueenBee`;
 - [x] add Deerclops gameplay vertical: AI_123 chase/attack/return/teleport/despawn states, distance shield, source-backed 961/962/965 projectile ownership, Classic/Expert/Master loot and persisted `downedDeerclops`;
-- [ ] Deerclops remaining parity: authoritative player `Slow` buff application for the scream and Expert passive shadow hands gated by per-NPC `playerInteraction[]`;
+- [ ] Deerclops remaining authoritative parity must be derived only from dedicated-server branches. Do not implement scream `Slow` from the client/shared branch when `Main.netMode == 2` excludes it; keep only server-executed interaction-gated mechanics such as passive Expert shadow hands where applicable;
 - [ ] add remaining pre-Hardmode bosses with complete child/projectile ownership;
 - [ ] add Hardmode, event and endgame bosses;
 - [ ] boss bars, announcements, progression transitions and multiplayer targeting parity.
 
-Eye of Cthulhu still intentionally reports `FullVanillaAiParity = false`. Expert rapid dashes consume the source RNG sequence through the injected authoritative NPC random stream and read live target velocity through the player-slot snapshot boundary. Good World re-entry, transformation projectile reflection and phase-two Classic/Expert/Master damage/defense projection are now authoritative gameplay state. Reflection is bounded to currently admitted aiStyle 1/2 player projectile identities; source-special 728/955 and presentation-only sound/dust/gore remain open, so the coverage catalog still advertises bounded boss slices rather than full parity.
+Eye of Cthulhu still intentionally reports `FullVanillaAiParity = false`. Expert rapid dashes consume the source RNG sequence through the injected authoritative NPC random stream and read live target velocity through the player-slot snapshot boundary. Good World re-entry, transformation projectile reflection and phase-two Classic/Expert/Master damage/defense projection are now authoritative gameplay state. Reflection is bounded to currently admitted aiStyle 1/2 player projectile identities; source-special 728/955 remain open. Presentation-only sound/dust/gore are intentionally outside the server-authoritative parity claim and must not keep the slice open by themselves, so the coverage catalog advertises bounded boss slices only for real authoritative gaps.
 
 King Slime still intentionally reports `FullVanillaAiParity = false`. Normal-mode loot owns its ordered world-item transaction. Expert/Master rule evaluation preserves the pinned raw-RNG order for Boss Bag, Master relic and per-active-interacting-player pet drops. Packet 90 now reuses the exact packet-21 payload, packet 151 releases an expired instanced slot, and the server-side lease store keeps that unpublished slot unavailable for `54000` ticks. The committed death slice also follows source order for `StopSlimeRain`, the first-kill blue town-slime unlock/Nerdy spawn and `downedSlimeKing`, with both persistent flags patched back into the canonical `.wld`. Live packet-28 combat/death ingress now records source-ordered player interaction, executes the implemented King Slime difficulty loot before death effects, and advances instanced-item leases from the authoritative item phase; packet 151 is emitted when an exact lease expires.
 

@@ -252,6 +252,38 @@ internal sealed class VanillaNpcBehaviorContext
         return false;
     }
 
+    public bool TrySelectClosestWallOfFleshTarget(
+        float centerX,
+        float centerY,
+        float minimumCenterY,
+        out VanillaNpcTargetCandidate target)
+    {
+        target = default;
+        if (!float.IsFinite(centerX) || !float.IsFinite(centerY) || !float.IsFinite(minimumCenterY))
+            return false;
+
+        float bestDistanceSquared = float.PositiveInfinity;
+        bool found = false;
+        for (int index = 0; index < _candidateCount; index++)
+        {
+            VanillaNpcTargetCandidate candidate = _candidates[index];
+            if (!candidate.Active || candidate.Dead || candidate.Ghost || candidate.CenterY < minimumCenterY)
+                continue;
+
+            float dx = candidate.CenterX - centerX;
+            float dy = candidate.CenterY - centerY;
+            float distanceSquared = dx * dx + dy * dy;
+            if (distanceSquared >= bestDistanceSquared)
+                continue;
+
+            bestDistanceSquared = distanceSquared;
+            target = candidate;
+            found = true;
+        }
+
+        return found;
+    }
+
     public bool TryFindCandidate(byte slot, out VanillaNpcTargetCandidate candidate)
     {
         ReadOnlySpan<VanillaNpcTargetCandidate> candidates = _candidates.AsSpan(0, _candidateCount);
