@@ -26,7 +26,12 @@ public enum VanillaNpcBehaviorFamily : byte
     SkeletronHead = 13,
     SkeletronHand = 14,
     QueenBee = 15,
-    Deerclops = 16
+    Deerclops = 16,
+    WallOfFlesh = 17,
+    WallOfFleshEye = 18,
+    WallOfFleshHungry = 19,
+    FireImp = 20,
+    BurningSphere = 21
 }
 
 /// <summary>
@@ -298,6 +303,61 @@ public static class VanillaNpcDefinitionCatalog
                 Scale: 1f,
                 NoGravityAtSpawn: true,
                 NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.FireImp)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.FireImp, AiStyle: VanillaNpcAiStyles.Caster,
+                BehaviorFamily: VanillaNpcBehaviorFamily.FireImp, PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary, BaseWidth: 18, BaseHeight: 40, Damage: 30, Defense: 16, LifeMax: 70,
+                KnockBackResist: 0.5f, Scale: 1f, NoGravityAtSpawn: false, NoTileCollideAtSpawn: false,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.BurningSphere)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.BurningSphere, AiStyle: VanillaNpcAiStyles.BurningSphere,
+                BehaviorFamily: VanillaNpcBehaviorFamily.BurningSphere, PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary, BaseWidth: 16, BaseHeight: 16, Damage: 30, Defense: 0, LifeMax: 1,
+                KnockBackResist: 0f, Scale: 1f, NoGravityAtSpawn: true, NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.WallOfFlesh)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.WallOfFlesh, AiStyle: VanillaNpcAiStyles.WallOfFlesh,
+                BehaviorFamily: VanillaNpcBehaviorFamily.WallOfFlesh, PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Boss, BaseWidth: 100, BaseHeight: 100, Damage: 50, Defense: 12, LifeMax: 8000,
+                KnockBackResist: 0f, Scale: 1.2f, NoGravityAtSpawn: true, NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.WallOfFleshEye)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.WallOfFleshEye, AiStyle: VanillaNpcAiStyles.WallOfFleshEye,
+                BehaviorFamily: VanillaNpcBehaviorFamily.WallOfFleshEye, PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary, BaseWidth: 100, BaseHeight: 100, Damage: 50, Defense: 0, LifeMax: 8000,
+                KnockBackResist: 0f, Scale: 1.2f, NoGravityAtSpawn: true, NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.TheHungry)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.TheHungry, AiStyle: VanillaNpcAiStyles.TheHungry,
+                BehaviorFamily: VanillaNpcBehaviorFamily.WallOfFleshHungry, PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary, BaseWidth: 30, BaseHeight: 30, Damage: 30, Defense: 10, LifeMax: 240,
+                KnockBackResist: 1.1f, Scale: 1f, NoGravityAtSpawn: true, NoTileCollideAtSpawn: true,
                 SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
             return true;
         }

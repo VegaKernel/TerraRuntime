@@ -27,6 +27,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ArmsDealer = new(19);
     public static readonly NpcTypeId Dryad = new(20);
     public static readonly NpcTypeId Guide = new(22);
+    public static readonly NpcTypeId FireImp = new(24);
+    public static readonly NpcTypeId BurningSphere = new(25);
     public static readonly NpcTypeId SkeletronHead = new(35);
     public static readonly NpcTypeId SkeletronHand = new(36);
     public static readonly NpcTypeId Demolitionist = new(38);
@@ -93,6 +95,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SeekerHead = new(98);
     public static readonly NpcTypeId SeekerBody = new(99);
     public static readonly NpcTypeId SeekerTail = new(100);
+    public static readonly NpcTypeId WallOfFlesh = new(113);
+    public static readonly NpcTypeId WallOfFleshEye = new(114);
+    public static readonly NpcTypeId TheHungry = new(115);
     public static readonly NpcTypeId TheHungryII = new(116);
     public static readonly NpcTypeId LeechHead = new(117);
     public static readonly NpcTypeId LeechBody = new(118);
@@ -183,12 +188,17 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Flyer = new(5);
     public static readonly NpcAiStyleId Worm = new(6);
     public static readonly NpcAiStyleId Town = new(7);
+    public static readonly NpcAiStyleId Caster = new(8);
+    public static readonly NpcAiStyleId BurningSphere = new(9);
     public static readonly NpcAiStyleId SkeletronHead = new(11);
     public static readonly NpcAiStyleId SkeletronHand = new(12);
     public static readonly NpcAiStyleId KingSlime = new(15);
     public static readonly NpcAiStyleId Vulture = new(17);
     public static readonly NpcAiStyleId SpikeBall = new(20);
     public static readonly NpcAiStyleId BlazingWheel = new(21);
+    public static readonly NpcAiStyleId WallOfFlesh = new(27);
+    public static readonly NpcAiStyleId WallOfFleshEye = new(28);
+    public static readonly NpcAiStyleId TheHungry = new(29);
     public static readonly NpcAiStyleId QueenBee = new(43);
     public static readonly NpcAiStyleId BrainOfCthulhu = new(54);
     public static readonly NpcAiStyleId BrainCreeper = new(55);
@@ -273,6 +283,9 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId ConfettiGun = new(178);
     public static readonly ProjectileTypeId SkeletronSkull = new(270);
     public static readonly ProjectileTypeId QueenBeeStinger = new(719);
+    public static readonly ProjectileTypeId WallOfFleshEyeLaser = new(83);
+    public static readonly ProjectileTypeId SuperStar = new(728);
+    public static readonly ProjectileTypeId StarCannonStar = new(955);
     public static readonly ProjectileTypeId DeerclopsIceSpike = new(961);
     public static readonly ProjectileTypeId DeerclopsRubble = new(962);
     public static readonly ProjectileTypeId DeerclopsShadowHand = new(965);
@@ -350,6 +363,8 @@ public static class VanillaTileIds
     public static readonly TileTypeId IceBlock = new(161);
     public static readonly TileTypeId CrimsonGrass = new(199);
     public static readonly TileTypeId Crimstone = new(203);
+    public static readonly TileTypeId DemoniteBrick = new(140);
+    public static readonly TileTypeId CrimtaneBrick = new(234);
     public static readonly TileTypeId Hive = new(225);
     public static readonly TileTypeId LihzahrdBrick = new(226);
     public static readonly TileTypeId Larva = new(231);
