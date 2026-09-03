@@ -536,7 +536,7 @@ internal sealed class PlayerAuthority
         PvpCombatResolveResult resolve = pvpCombat.ResolveClientItemHit(
             currentCombatTick,
             command.Connection,
-            in command.State,
+            command.State,
             out AuthoritativePvpHit hit);
         if (resolve == PvpCombatResolveResult.LegacyFallback)
         {

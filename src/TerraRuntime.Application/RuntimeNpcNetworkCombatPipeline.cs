@@ -227,8 +227,9 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             interactions.TryMark(current.Handle, connection.Player);
         }
 
+        NpcSnapshot destroyerRoot = default;
         bool destroyerSharedLife = IsDestroyerMember(current.TypeIdentity) &&
-            TryResolveDestroyerRoot(in current, out NpcSnapshot destroyerRoot);
+            TryResolveDestroyerRoot(in current, out destroyerRoot);
         if (destroyerSharedLife && current.Handle != destroyerRoot.Handle && current.Simulation.Life != destroyerRoot.Simulation.Life)
         {
             if (!TrySetNpcLife(in current, destroyerRoot.Simulation.Life, out current))
@@ -397,8 +398,9 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             MarkDestroyerInteraction(in liveTarget, request.Source.Player);
         }
 
+        NpcSnapshot destroyerRoot = default;
         bool destroyerSharedLife = IsDestroyerMember(liveTarget.TypeIdentity) &&
-            TryResolveDestroyerRoot(in liveTarget, out NpcSnapshot destroyerRoot);
+            TryResolveDestroyerRoot(in liveTarget, out destroyerRoot);
         if (destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle && liveTarget.Simulation.Life != destroyerRoot.Simulation.Life)
         {
             if (!TrySetNpcLife(in liveTarget, destroyerRoot.Simulation.Life, out liveTarget))
@@ -494,8 +496,9 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             return RuntimeTownNpcMeleeDamageResult1458.Rejected;
         }
 
+        NpcSnapshot destroyerRoot = default;
         bool destroyerSharedLife = IsDestroyerMember(liveTarget.TypeIdentity) &&
-            TryResolveDestroyerRoot(in liveTarget, out NpcSnapshot destroyerRoot);
+            TryResolveDestroyerRoot(in liveTarget, out destroyerRoot);
         if (destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle && liveTarget.Simulation.Life != destroyerRoot.Simulation.Life)
         {
             if (!TrySetNpcLife(in liveTarget, destroyerRoot.Simulation.Life, out liveTarget))
