@@ -95,6 +95,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public bool SlimeBlueSpawnUnlocked { get; private set; }
 
+    /// <summary>
+    /// Runtime equivalent of TerrariaServer 1.4.5.8 WorldGen.spawnMeteor. The current world clock owns the pending
+    /// schedule bit; meteor materialization itself remains a separate world-event concern.
+    /// </summary>
+    public bool MeteorSpawnPending { get; private set; }
+
     bool IVanillaNpcWorldEventState.BloodMoonActive => BloodMoonActive && !GetGoodWorld;
     bool IVanillaNpcWorldEventState.GetGoodWorld => GetGoodWorld;
     bool IVanillaNpcWorldEventState.SlimeRainActive => SlimeRainActive;
@@ -140,6 +146,10 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     }
 
     public void MarkSlimeBlueSpawnUnlocked() => SlimeBlueSpawnUnlocked = true;
+
+    public void ScheduleMeteor() => MeteorSpawnPending = true;
+
+    public void ClearMeteorSchedule() => MeteorSpawnPending = false;
 
     public bool TryStopSlimeRain(IKingSlimeDeathRandom random)
     {

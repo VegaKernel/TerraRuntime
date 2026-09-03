@@ -85,7 +85,17 @@ internal sealed class VanillaDeerclopsNpcBehaviorStrategy : IVanillaNpcBehaviorS
         int timeLeft = Math.Max(0, simulation.TimeLeft - 1);
         simulation = simulation with { TimeLeft = timeLeft };
         if (!context.ExpertMode)
+        {
             localAi = localAi with { Ai2 = 0f };
+        }
+        else
+        {
+            int passiveInterval = ResolvePassiveShadowHandInterval(simulation.Life, simulation.LifeMax);
+            int passiveCounter = Math.Max(0, (int)localAi.Ai2) + 1;
+            if (passiveCounter % passiveInterval == 0 && passiveCounter / passiveInterval >= 3)
+                passiveCounter = 0;
+            localAi = localAi with { Ai2 = passiveCounter };
+        }
 
         int homeX = (int)ai.Ai2;
         int homeY = (int)ai.Ai3;
@@ -334,6 +344,14 @@ internal sealed class VanillaDeerclopsNpcBehaviorStrategy : IVanillaNpcBehaviorS
             ai,
             simulation);
         return true;
+    }
+
+    internal static int ResolvePassiveShadowHandInterval(int life, int lifeMax)
+    {
+        if (lifeMax <= 0)
+            return 80;
+        float lifePercent = Math.Clamp(life / (float)lifeMax, 0f, 1f);
+        return Math.Clamp((int)(40f + 40f * lifePercent), 40, 80);
     }
 
     private static void SelectChaseAttack(

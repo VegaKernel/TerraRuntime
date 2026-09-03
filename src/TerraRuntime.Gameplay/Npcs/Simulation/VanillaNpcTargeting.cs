@@ -28,6 +28,12 @@ public readonly record struct VanillaNpcTargetCandidate(
 
     /// <summary>Creative god mode suppresses the source-side Deerclops Slow application.</summary>
     public bool CreativeGodMode { get; init; }
+
+    /// <summary>True when the authoritative world supplied SceneMetrics biome facts for this player.</summary>
+    public bool HasBiomeZoneFacts { get; init; }
+
+    /// <summary>Terraria Player.ZoneCrimson projected from the pinned SceneMetrics scan.</summary>
+    public bool ZoneCrimson { get; init; }
 }
 
 public readonly record struct VanillaNpcTargetSelection(

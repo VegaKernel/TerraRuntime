@@ -37,7 +37,10 @@ internal sealed partial class ServerRuntimeState
         RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities = null,
         IWorldItemSpawnRandom? worldItemSpawnRandom = null,
         bool expertMode = false,
-        bool masterMode = false)
+        bool masterMode = false,
+        bool skyblockLowTiles = false,
+        bool isThereAWorldSurface = true,
+        bool evilBossDownedBaseline = false)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -73,7 +76,8 @@ internal sealed partial class ServerRuntimeState
             npcStore,
             this,
             configuredProjectileStepper,
-            projectileReplication);
+            projectileReplication,
+            worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false);
         _npcs = new NpcAuthority(
             this,
             _players,
@@ -100,6 +104,9 @@ internal sealed partial class ServerRuntimeState
             npcArchetypeIdentities,
             npcAiStepper,
             expertMode,
-            masterMode);
+            masterMode,
+            skyblockLowTiles,
+            isThereAWorldSurface,
+            evilBossDownedBaseline);
     }
 }

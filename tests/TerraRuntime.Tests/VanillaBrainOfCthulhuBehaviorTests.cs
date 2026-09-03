@@ -89,6 +89,54 @@ public sealed class VanillaBrainOfCthulhuBehaviorTests
     }
 
     [Fact]
+    public void Player_outside_crimson_drives_source_escape_gate_after_normal_ai_step()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate update = BrainUpdate();
+        update = update with
+        {
+            Simulation = update.Simulation with
+            {
+                LocalAi = new NpcAiState(1f, 0f, 0f, 60f)
+            }
+        };
+        Assert.True(store.TrySpawnVanilla(in update, out NpcSnapshot brain));
+
+        var stepper = CreateStepper(goodWorld: false, new ZeroRandom());
+        stepper.SetCandidates([Target() with { HasBiomeZoneFacts = true, ZoneCrimson = false }]);
+
+        Assert.True(stepper.TryStepState(in brain, out NpcStateUpdate next));
+
+        Assert.Equal(2f, next.Ai.Ai0);
+        Assert.Equal(61f, next.Simulation.LocalAi.Ai3);
+        Assert.Equal(1.25f, next.VelocityY, 5);
+        Assert.Equal(10, next.Simulation.Alpha);
+    }
+
+    [Fact]
+    public void Player_inside_crimson_clears_prior_escape_counter_one_tick_at_a_time()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate update = BrainUpdate();
+        update = update with
+        {
+            Simulation = update.Simulation with
+            {
+                LocalAi = new NpcAiState(1f, 0f, 0f, 5f)
+            }
+        };
+        Assert.True(store.TrySpawnVanilla(in update, out NpcSnapshot brain));
+
+        var stepper = CreateStepper(goodWorld: false, new ZeroRandom());
+        stepper.SetCandidates([Target() with { HasBiomeZoneFacts = true, ZoneCrimson = true }]);
+
+        Assert.True(stepper.TryStepState(in brain, out NpcStateUpdate next));
+
+        Assert.Equal(4f, next.Simulation.LocalAi.Ai3);
+        Assert.NotEqual(10, next.Simulation.Alpha);
+    }
+
+    [Fact]
     public void Creeper_without_live_brain_expires()
     {
         var store = new RuntimeNpcStore(capacity: 4);

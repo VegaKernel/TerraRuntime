@@ -21,6 +21,7 @@ internal sealed class RuntimeNpcProjectileReflectionPass
     private readonly RuntimeProjectileStore projectiles;
     private readonly IRuntimePlayerSlotSnapshotLookup players;
     private readonly IVanillaProjectileReflectionRandom random;
+    private readonly bool goodWorld;
     private readonly NpcSnapshot[] npcScratch;
     private readonly ProjectileSnapshot[] projectileScratch;
 
@@ -28,12 +29,14 @@ internal sealed class RuntimeNpcProjectileReflectionPass
         RuntimeNpcStore npcs,
         RuntimeProjectileStore projectiles,
         IRuntimePlayerSlotSnapshotLookup players,
-        IVanillaProjectileReflectionRandom? random = null)
+        IVanillaProjectileReflectionRandom? random = null,
+        bool goodWorld = false)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.random = random ?? new SystemProjectileReflectionRandom();
+        this.goodWorld = goodWorld;
         npcScratch = new NpcSnapshot[npcs.Capacity];
         projectileScratch = new ProjectileSnapshot[projectiles.Capacity];
     }
@@ -59,8 +62,12 @@ internal sealed class RuntimeNpcProjectileReflectionPass
             for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
             {
                 NpcSnapshot npc = npcScratch[npcIndex];
+                bool reflectsProjectile = npc.Simulation.ReflectsProjectiles ||
+                    (goodWorld &&
+                     VanillaProjectileReflection1458.IsGoodWorldStarShot(projectile.Type) &&
+                     VanillaProjectileReflection1458.ReflectsStarShotsInGoodWorld(npc.TypeIdentity));
                 if (!npc.IsActive ||
-                    !npc.Simulation.ReflectsProjectiles ||
+                    !reflectsProjectile ||
                     !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition npcDefinition) ||
                     !npcDefinition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in npc, in npcHitbox, in projectile, in projectileDefinition))

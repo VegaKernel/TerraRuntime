@@ -22,6 +22,16 @@ TerraRuntime разделяет два разных понятия NPC:
 | Servant of Cthulhu | `Flyer` | `Flyer` |
 | Skeleton | `Fighter` | `GroundFighter` |
 | King Slime | `KingSlime` | `KingSlime` |
+| Eater of Worlds head/body/tail | `Worm` | `Worm` |
+| Brain of Cthulhu | `BrainOfCthulhu` | `BrainOfCthulhu` |
+| Brain Creeper | `BrainCreeper` | `BrainCreeper` |
+| Skeletron Head | `SkeletronHead` | `SkeletronHead` |
+| Skeletron Hand | `SkeletronHand` | `SkeletronHand` |
+| Queen Bee | `QueenBee` | `QueenBee` |
+| Deerclops | `Deerclops` | `Deerclops` |
+| Wall of Flesh | `WallOfFlesh` | `WallOfFlesh` |
+| Wall of Flesh Eye | `WallOfFleshEye` | `WallOfFleshEye` |
+| The Hungry | `TheHungry` | `WallOfFleshHungry` |
 
 Family назначается только definitions, уже присутствующим в version-pinned `VanillaNpcDefinitionCatalog`. Для нового vanilla NPC требуется отдельное явное решение; один совпавший aiStyle доказательством не является.
 
@@ -75,7 +85,7 @@ Expert transformation тоже authoritative. Обе стадии transformation
 
 `VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy` владеет оставшейся Expert rapid-dash веткой, кроме Good World. Сохраняется source-порядок RNG для seed `Main.rand.Next(1, 4)` после третьего обычного dash второй фазы, low-life seed `Main.rand.Next(-3, 1)`, predictive launch `ai[1] = 3` с live velocity игрока, обоих слоёв ±10% perturbation, velocity jitter, critical-life rotation/renormalization и cadence state `ai[1] = 4` с окнами $20/10 + 13\,\text{тиков}$. Target candidates перед boss AI обогащаются из authoritative player-slot snapshot lookup, поэтому prediction больше не подменяет скорость игрока нулями.
 
-Это ограниченные возможности (`BossExpertPhaseOneSlice`, `BossExpertTransformationSlice`, `BossExpertPhaseTwoDeterministicSlice` и `BossExpertRapidDashSlice`), а не заявление о полной difficulty-parity. Live phase-two combat projection теперь атомарно коммитит source-значения `NPC.damage`/`NPC.defense` для Classic, Expert и Master, включая пороги `<12%` и `<4%`. Good World transformation state запускает authoritative projectile/NPC reflection short-circuit после движения projectile: допущенные player-projectile с aiStyle 1/2 сохраняют скорость `oldVelocity`, получают четверть текущего damage, становятся одноразово reflected с penetrate `1` и сохраняют исходного owner. Звук, dust, gore и прочие presentation-only эффекты остаются вне server gameplay claim.
+Это ограниченные возможности (`BossExpertPhaseOneSlice`, `BossExpertTransformationSlice`, `BossExpertPhaseTwoDeterministicSlice` и `BossExpertRapidDashSlice`), а не заявление о полной difficulty-parity. Live phase-two combat projection теперь атомарно коммитит source-значения `NPC.damage`/`NPC.defense` для Classic, Expert и Master, включая пороги `<12%` и `<4%`. Good World transformation state запускает authoritative projectile/NPC reflection short-circuit после движения projectile: допущенные player-projectile с aiStyle 1/2 сохраняют скорость `oldVelocity`, получают четверть текущего damage, становятся одноразово reflected с penetrate `1` и сохраняют исходного owner. Также допущена закреплённая special star-shot ветка: projectile `728` (`aiStyle 151`) и `955` (`aiStyle 5`) отражаются только от точного набора NPC из `NPCID.Sets.ReflectStarShotsInForTheWorthy` при активном Good World. Звук, dust, gore и прочие presentation-only эффекты остаются вне server gameplay claim.
 
 ## Взаимодействия GroundFighter с дверями и tall-gate
 
@@ -96,7 +106,7 @@ D4-пункт `AI family/behavior decomposition` описывает ownership и
 
 ## Проверка
 
-Brain of Cthulhu и Brain Creeper теперь являются отдельными fail-closed family. Brain владеет source-backed созданием 20/40 Creeper, invulnerability первой фазы, обеими teleport state machine и Good World скоростью преследования; Creeper владеет orbit/charge относительно Brain и Expert/Good World pursuit. Packet-28 death path включает difficulty material loot Creeper, normal/Expert/Master loot Brain и `downedBoss2`. Player `ZoneCrimson` escape gate и presentation-only эффекты пока остаются открытыми, поэтому full parity остаётся false.
+Brain of Cthulhu и Brain Creeper теперь являются отдельными fail-closed family. Brain владеет source-backed созданием 20/40 Creeper, invulnerability первой фазы, обеими teleport state machine и Good World скоростью преследования; Creeper владеет orbit/charge относительно Brain и Expert/Good World pursuit. Packet-28 death path включает difficulty material loot Creeper, normal/Expert/Master loot Brain и `downedBoss2`. Пока Brain активен, target candidates получают `ZoneCrimson` из authoritative SceneMetrics-сканирования тайлов, поэтому source escape/despawn gate на 60/120 тиков больше не опирается на выдуманный biome default. Presentation-only эффекты остаются вне claim, поэтому full parity остаётся false.
 
 `VanillaNpcBehaviorFamilyDispatchTests` закрепляет fail-closed контракт dispatch: отключённые families уходят в fallback, неизвестные catalog types не наследуют поведение, а FlyingEye target refresh выполняется внутри family strategy до делегирования. `VanillaEyeOfCthulhuExpertRapidDashTests` закрепляет source RNG consumption, prediction по live velocity игрока, low-life seeding и cadence rapid states. `VanillaNpcAiCoverageCatalogTests` не позволяет назвать эти slices полным parity.
 

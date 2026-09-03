@@ -34,6 +34,7 @@ internal sealed class NpcAuthority
     private readonly ServerPlayerAuthority? serverPlayers;
     private readonly bool expertMode;
     private readonly bool masterMode;
+    private readonly VanillaTownSceneMetricsScanner1458? npcSceneMetrics;
     private readonly VanillaNpcTargetCandidate[] targetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly PlayerStateSnapshot[] serverPlayerSnapshots =
@@ -65,7 +66,10 @@ internal sealed class NpcAuthority
         RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities,
         INpcAiStateStepper? npcAiStepper,
         bool expertMode,
-        bool masterMode)
+        bool masterMode,
+        bool skyblockLowTiles,
+        bool isThereAWorldSurface,
+        bool evilBossDownedBaseline)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         this.players = players ?? throw new ArgumentNullException(nameof(players));
@@ -78,6 +82,8 @@ internal sealed class NpcAuthority
         this.serverPlayers = serverPlayers;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
+        if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
+            npcSceneMetrics = new VanillaTownSceneMetricsScanner1458(worldTiles, in sceneWorldFacts);
         ArgumentNullException.ThrowIfNull(progression);
 
         aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
@@ -130,12 +136,16 @@ internal sealed class NpcAuthority
             expertMode,
             masterMode,
             worldTiles,
-            townCommerceWorldFacts?.Crimson ?? false);
+            townCommerceWorldFacts?.Crimson ?? false,
+            skyblockLowTiles,
+            isThereAWorldSurface,
+            evilBossDownedBaseline);
         townNpcAuthority.SetMeleeDamageSink(combat);
 
         if (npcAiStepper is null)
         {
             vanillaTargeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+            vanillaTargeting.SetPlayerInteractions(combat.Interactions);
             var behaviorDispatch = new RuntimeNpcBehaviorStateStepper(
                 vanillaTargeting,
                 presentationBehaviors,
@@ -163,7 +173,7 @@ internal sealed class NpcAuthority
                     townCommerceWorldFacts?.RemixWorld ?? false));
                 vanillaTargeting.SetDeerclopsEnvironment(new VanillaDeerclopsWorldEnvironment(
                     worldTiles,
-                    townCommerceWorldFacts?.SkyblockWorld ?? false));
+                    skyblockLowTiles));
                 vanillaTargeting.SetWallOfFleshEnvironment(new VanillaWallOfFleshWorldEnvironment(worldTiles));
                 vanillaTargeting.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(worldTiles));
                 var worldMotion = new VanillaNpcWorldMotionAiStepper(
@@ -419,6 +429,7 @@ internal sealed class NpcAuthority
         int serverPlayerCount = serverPlayers?.CopySnapshots(serverPlayerSnapshots) ?? 0;
         int serverPlayerIndex = 0;
         int written = 0;
+        bool includeBiomeZoneFacts = npcSceneMetrics is not null && HasActiveBrainOfCthulhu();
 
         for (int slot = 0; slot < VanillaNpcTargetingAiStepper.MaximumPlayerCandidates; slot++)
         {
@@ -427,7 +438,7 @@ internal sealed class NpcAuthority
                 if (player.MountType != 0)
                     continue;
 
-                destination[written++] = new VanillaNpcTargetCandidate(
+                destination[written++] = WithBiomeZoneFacts(new VanillaNpcTargetCandidate(
                     Slot: checked((byte)slot),
                     CenterX: player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
                     CenterY: player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
@@ -435,7 +446,7 @@ internal sealed class NpcAuthority
                     Active: true,
                     Dead: player.IsDead,
                     Ghost: false,
-                    NoAggro: false);
+                    NoAggro: false), includeBiomeZoneFacts);
                 continue;
             }
 
@@ -455,7 +466,7 @@ internal sealed class NpcAuthority
             if (serverPlayer.MountType != 0)
                 continue;
 
-            destination[written++] = new VanillaNpcTargetCandidate(
+            destination[written++] = WithBiomeZoneFacts(new VanillaNpcTargetCandidate(
                 Slot: checked((byte)slot),
                 CenterX: serverPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
                 CenterY: serverPlayer.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
@@ -463,9 +474,43 @@ internal sealed class NpcAuthority
                 Active: true,
                 Dead: serverPlayer.IsDead,
                 Ghost: false,
-                NoAggro: false);
+                NoAggro: false), includeBiomeZoneFacts);
         }
 
         return written;
+    }
+
+    private bool HasActiveBrainOfCthulhu()
+    {
+        for (int slot = 0; slot < npcs.Capacity && slot <= byte.MaxValue; slot++)
+        {
+            if (npcs.TryGetActive(checked((byte)slot), out NpcSnapshot npc) &&
+                npc.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private VanillaNpcTargetCandidate WithBiomeZoneFacts(
+        VanillaNpcTargetCandidate candidate,
+        bool includeBiomeZoneFacts)
+    {
+        if (!includeBiomeZoneFacts || npcSceneMetrics is null ||
+            !float.IsFinite(candidate.CenterX) || !float.IsFinite(candidate.CenterY))
+        {
+            return candidate;
+        }
+
+        VanillaTownSceneMetrics1458 scene = npcSceneMetrics.Scan(
+            (int)(candidate.CenterX / 16f),
+            (int)(candidate.CenterY / 16f));
+        return candidate with
+        {
+            HasBiomeZoneFacts = true,
+            ZoneCrimson = scene.ZoneCrimson
+        };
     }
 }

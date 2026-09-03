@@ -29,13 +29,14 @@ internal sealed class ProjectileAuthority
         RuntimeNpcStore npcs,
         IRuntimePlayerSlotSnapshotLookup playerSnapshots,
         IProjectileStateStepper? stepper,
-        RuntimeProjectileReplicationRegistry? replication)
+        RuntimeProjectileReplicationRegistry? replication,
+        bool goodWorld = false)
     {
         this.projectiles = projectiles;
         this.players = players;
         executor = new RuntimeProjectileStateExecutor(projectiles);
         this.stepper = stepper;
-        reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots);
+        reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots, goodWorld: goodWorld);
         this.replication = replication;
     }
 

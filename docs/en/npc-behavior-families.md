@@ -22,6 +22,16 @@ They are deliberately not interchangeable. Terraria contains many NPCs that shar
 | Servant of Cthulhu | `Flyer` | `Flyer` |
 | Skeleton | `Fighter` | `GroundFighter` |
 | King Slime | `KingSlime` | `KingSlime` |
+| Eater of Worlds head/body/tail | `Worm` | `Worm` |
+| Brain of Cthulhu | `BrainOfCthulhu` | `BrainOfCthulhu` |
+| Brain Creeper | `BrainCreeper` | `BrainCreeper` |
+| Skeletron Head | `SkeletronHead` | `SkeletronHead` |
+| Skeletron Hand | `SkeletronHand` | `SkeletronHand` |
+| Queen Bee | `QueenBee` | `QueenBee` |
+| Deerclops | `Deerclops` | `Deerclops` |
+| Wall of Flesh | `WallOfFlesh` | `WallOfFlesh` |
+| Wall of Flesh Eye | `WallOfFleshEye` | `WallOfFleshEye` |
+| The Hungry | `TheHungry` | `WallOfFleshHungry` |
 
 Only entries already present in the version-pinned `VanillaNpcDefinitionCatalog` receive a family. Adding another vanilla definition requires an explicit behavior-family decision; sharing an aiStyle alone is not sufficient evidence.
 
@@ -75,7 +85,7 @@ The deterministic Expert phase-two slice includes the source distance bands abov
 
 `VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy` owns the remaining non-Good-World Expert rapid-dash boundary. It preserves source RNG order for the `Main.rand.Next(1, 4)` seed after the third ordinary phase-two dash, the `Main.rand.Next(-3, 1)` low-life seed, the predictive `ai[1] = 3` launch using live player velocity, both ±10% direction perturbation layers, velocity jitter, critical-life vector rotation/renormalization and the `ai[1] = 4` $20/10 + 13\,\text{tick}$ cadence. Runtime target candidates are enriched from the authoritative player-slot snapshot lookup before boss AI reads them, so prediction uses the same live motion state rather than a fabricated zero velocity.
 
-These are bounded capabilities (`BossExpertPhaseOneSlice`, `BossExpertTransformationSlice`, `BossExpertPhaseTwoDeterministicSlice` and `BossExpertRapidDashSlice`), not a full difficulty claim. The live phase-two combat projection now commits source `NPC.damage`/`NPC.defense` values for Classic, Expert and Master, including the `<12%` and `<4%` bands. Good World transformation state drives an authoritative projectile/NPC reflection short-circuit after projectile movement: admitted aiStyle 1/2 player projectiles preserve `oldVelocity` speed, quarter current damage, become one-shot reflected state with penetrate `1`, and keep their original owner. Sound, dust, gore and other presentation-only effects remain outside the server gameplay claim.
+These are bounded capabilities (`BossExpertPhaseOneSlice`, `BossExpertTransformationSlice`, `BossExpertPhaseTwoDeterministicSlice` and `BossExpertRapidDashSlice`), not a full difficulty claim. The live phase-two combat projection now commits source `NPC.damage`/`NPC.defense` values for Classic, Expert and Master, including the `<12%` and `<4%` bands. Good World transformation state drives an authoritative projectile/NPC reflection short-circuit after projectile movement: admitted aiStyle 1/2 player projectiles preserve `oldVelocity` speed, quarter current damage, become one-shot reflected state with penetrate `1`, and keep their original owner. The pinned special star-shot branch is also admitted: projectile `728` (`aiStyle 151`) and `955` (`aiStyle 5`) reflect only from the exact `NPCID.Sets.ReflectStarShotsInForTheWorthy` identity set when Good World is active. Sound, dust, gore and other presentation-only effects remain outside the server gameplay claim.
 
 ## GroundFighter door and tall-gate interactions
 
@@ -96,7 +106,7 @@ All D4 checkboxes describe decomposition/ownership for admitted slices. They do 
 
 ## Verification
 
-Brain of Cthulhu and Brain Creeper are now explicit fail-closed families. The Brain owns the source 20/40 Creeper bootstrap, phase-one invulnerability, both teleport state machines and Good World pursuit speed; Creepers own Brain-relative orbit/charge and Expert/Good World pursuit. Their packet-28 death path includes Creeper difficulty materials plus Brain normal/Expert/Master loot and `downedBoss2`. The player `ZoneCrimson` escape gate and presentation-only effects remain open, so full parity remains false.
+Brain of Cthulhu and Brain Creeper are now explicit fail-closed families. The Brain owns the source 20/40 Creeper bootstrap, phase-one invulnerability, both teleport state machines and Good World pursuit speed; Creepers own Brain-relative orbit/charge and Expert/Good World pursuit. Their packet-28 death path includes Creeper difficulty materials plus Brain normal/Expert/Master loot and `downedBoss2`. While a Brain is active, target candidates receive `ZoneCrimson` from the authoritative SceneMetrics tile scan, so the source 60/120-tick escape/despawn gate no longer relies on a fabricated biome default. Presentation-only effects remain outside the claim, so full parity remains false.
 
 `VanillaNpcBehaviorFamilyDispatchTests` pins the fail-closed dispatch contract: disabled families fall back, unknown catalog types do not inherit a behavior, and FlyingEye target refresh occurs in the family strategy before delegation. `VanillaEyeOfCthulhuExpertRapidDashTests` pins source RNG consumption, live-player-velocity prediction, low-life seeding and rapid-state cadence. `VanillaNpcAiCoverageCatalogTests` prevents those slices from being mislabeled as full parity.
 

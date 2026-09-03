@@ -31,6 +31,8 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
         Assert.False(fixture.Npcs.TryGet(head.Handle, out _));
         Assert.True(fixture.Npcs.TryGet(body.Handle, out _));
         Assert.False(progression.IsCompleted(VanillaWorldProgressionId.EvilBoss));
+        Assert.False(progression.IsCompleted(VanillaWorldProgressionId.ShadowOrbSmashed));
+        Assert.False(fixture.Clock.MeteorSpawnPending);
         Assert.Equal(0, fixture.ItemRelayedFrames); // non-final segment never owns the Expert bag.
 
         fixture.State.Apply(new ClientNpcDamageRuntimeCommand(secondPlayer, Lethal(body)));
@@ -39,6 +41,8 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
         Assert.Equal(0, fixture.State.RejectedClientNpcDamage);
         Assert.False(fixture.Npcs.TryGet(body.Handle, out _));
         Assert.True(progression.IsCompleted(VanillaWorldProgressionId.EvilBoss));
+        Assert.True(progression.IsCompleted(VanillaWorldProgressionId.ShadowOrbSmashed));
+        Assert.True(fixture.Clock.MeteorSpawnPending); // first victory with a world surface schedules the source meteor event.
         Assert.Equal(2, fixture.ItemRelayedFrames); // final Boss Bag packet 90 addressed to both credited players.
     }
 
@@ -65,20 +69,30 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
             Npcs = new RuntimeNpcStore(commitSink: npcReplication);
             // Keep ordinary material drops silent so ItemRelayedFrames isolates packet-90 Boss Bag delivery.
             WorldItems = new RuntimeWorldItemStore();
+            Clock = new RuntimeWorldClock(
+                time: 0d,
+                dayTime: true,
+                moonPhase: VanillaMoonPhase.Full,
+                slimeRainTime: 0d,
+                dayRate: 1);
             var playerEvents = new RuntimePlayerEventFanout(npcReplication, itemReplication);
             State = new ServerRuntimeState(
                 playerEvents: playerEvents,
                 npcs: Npcs,
                 worldTiles: Tiles,
                 worldItems: WorldItems,
+                worldClock: Clock,
                 npcReplication: npcReplication,
                 worldItemReplication: itemReplication,
-                expertMode: true);
+                expertMode: true,
+                skyblockLowTiles: true,
+                isThereAWorldSurface: true);
         }
 
         public WorldTileStore Tiles { get; }
         public RuntimeNpcStore Npcs { get; }
         public RuntimeWorldItemStore WorldItems { get; }
+        public RuntimeWorldClock Clock { get; }
         public ServerRuntimeState State { get; }
         public long ItemRelayedFrames => itemReplication.RelayedFrames;
 

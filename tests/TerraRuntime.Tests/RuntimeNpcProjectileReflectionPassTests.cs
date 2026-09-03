@@ -35,6 +35,57 @@ public sealed class RuntimeNpcProjectileReflectionPassTests
         Assert.True(npcs.TryGet(eye.Handle, out _));
     }
 
+    [Theory]
+    [InlineData(728)]
+    [InlineData(955)]
+    public void Good_world_eye_reflects_source_special_star_shots_without_transform_reflection_flag(int rawType)
+    {
+        var npcs = new RuntimeNpcStore(capacity: 4);
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        NpcSnapshot eye = SpawnReflectingEye(npcs);
+        var disabled = new NpcStateUpdate(
+            eye.Type, eye.NetId, eye.PositionX, eye.PositionY, eye.VelocityX, eye.VelocityY,
+            eye.Target, eye.Ai, eye.Simulation with { ReflectsProjectiles = false });
+        Assert.True(npcs.TryUpdate(eye.Handle, in disabled, out _));
+        Assert.True(VanillaProjectileIds.TryCreate(rawType, out ProjectileTypeId type));
+        ProjectileSnapshot star = SpawnProjectile(projectiles, type);
+        var pass = new RuntimeNpcProjectileReflectionPass(
+            npcs,
+            projectiles,
+            new FixedPlayerLookup(),
+            new SequenceRandom(100, 0),
+            goodWorld: true);
+
+        Assert.Equal(1, pass.Tick());
+        Assert.True(projectiles.TryGet(star.Handle, out ProjectileSnapshot reflected));
+        Assert.Equal((short)5, reflected.Damage);
+        Assert.True(projectiles.TryGetLifecycle(star.Handle, out ProjectileLifecycleState lifecycle));
+        Assert.True(lifecycle.Reflected);
+    }
+
+    [Fact]
+    public void Classic_world_eye_does_not_gain_source_special_star_reflection()
+    {
+        var npcs = new RuntimeNpcStore(capacity: 4);
+        var projectiles = new RuntimeProjectileStore(capacity: 4);
+        NpcSnapshot eye = SpawnReflectingEye(npcs);
+        var disabled = new NpcStateUpdate(
+            eye.Type, eye.NetId, eye.PositionX, eye.PositionY, eye.VelocityX, eye.VelocityY,
+            eye.Target, eye.Ai, eye.Simulation with { ReflectsProjectiles = false });
+        Assert.True(npcs.TryUpdate(eye.Handle, in disabled, out _));
+        ProjectileSnapshot star = SpawnProjectile(projectiles, VanillaProjectileIds.SuperStar);
+        var pass = new RuntimeNpcProjectileReflectionPass(
+            npcs,
+            projectiles,
+            new FixedPlayerLookup(),
+            new SequenceRandom(100, 0),
+            goodWorld: false);
+
+        Assert.Equal(0, pass.Tick());
+        Assert.True(projectiles.TryGet(star.Handle, out ProjectileSnapshot unchanged));
+        Assert.Equal((short)20, unchanged.Damage);
+    }
+
     [Fact]
     public void Non_overlapping_or_non_reflecting_eye_does_not_mutate_projectile()
     {
@@ -75,10 +126,13 @@ public sealed class RuntimeNpcProjectileReflectionPassTests
         return eye;
     }
 
-    private static ProjectileSnapshot SpawnArrow(RuntimeProjectileStore store)
+    private static ProjectileSnapshot SpawnArrow(RuntimeProjectileStore store) =>
+        SpawnProjectile(store, VanillaProjectileIds.WoodenArrowFriendly);
+
+    private static ProjectileSnapshot SpawnProjectile(RuntimeProjectileStore store, ProjectileTypeId type)
     {
         var update = new ProjectileStateUpdate(
-            VanillaProjectileIds.WoodenArrowFriendly,
+            type,
             Spawner: 0,
             PositionX: 120f,
             PositionY: 120f,

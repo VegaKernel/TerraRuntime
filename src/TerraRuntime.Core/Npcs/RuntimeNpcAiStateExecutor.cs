@@ -39,7 +39,7 @@ public readonly record struct NpcAiStateTickSummary(
 /// </summary>
 public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
 {
-    private const int MaximumProjectileIntentsPerNpcStep = 8;
+    private const int MaximumProjectileIntentsPerNpcStep = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
 
     private readonly RuntimeNpcStore _npcs;
     private readonly RuntimeProjectileStore? _projectiles;

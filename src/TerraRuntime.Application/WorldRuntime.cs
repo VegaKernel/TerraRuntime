@@ -183,6 +183,7 @@ public sealed class WorldRuntime : IDisposable
             serverPlayerIdentities,
             world.Tiles,
             RuntimeConnections);
+        VanillaSkyblockRuntimeState1458 skyblockRuntime = VanillaSkyblockRuntimePolicy1458.Evaluate(world);
         State = new ServerRuntimeState(
             playerEvents,
             npcs: Npcs,
@@ -208,7 +209,10 @@ public sealed class WorldRuntime : IDisposable
             expertMode: world.RuntimeMetadata.GameMode is
                 (byte)WorldGenerationGameMode.Expert or
                 (byte)WorldGenerationGameMode.Master,
-            masterMode: world.RuntimeMetadata.GameMode == (byte)WorldGenerationGameMode.Master);
+            masterMode: world.RuntimeMetadata.GameMode == (byte)WorldGenerationGameMode.Master,
+            skyblockLowTiles: skyblockRuntime.LowTiles,
+            isThereAWorldSurface: world.RuntimeMetadata.WorldSurface > 50,
+            evilBossDownedBaseline: world.RuntimeMetadata.DownedBoss2);
 
         sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,

@@ -104,6 +104,58 @@ public sealed class VanillaDeerclopsBehaviorTests
         }
     }
 
+    [Fact]
+    public void Expert_passive_shadow_hand_uses_player_interaction_rotation_and_source_damage()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot deerclops = Spawn(store, new NpcAiState(0f, 1f, 8f, 15f));
+        var sourceUpdate = new NpcStateUpdate(
+            deerclops.Type, deerclops.NetId, deerclops.PositionX, deerclops.PositionY, deerclops.VelocityX, deerclops.VelocityY,
+            deerclops.Target, deerclops.Ai, deerclops.Simulation with { LocalAi = new NpcAiState(0f, 0f, 79f, 0f) });
+        Assert.True(store.TryUpdate(deerclops.Handle, in sourceUpdate, out deerclops));
+
+        var interactions = new RuntimeNpcPlayerInteractionLedger(store);
+        Assert.True(interactions.TryMark(
+            deerclops.Handle,
+            new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1))));
+
+        var stepper = CreateStepper(new TestEnvironment { PlayerInSnow = true });
+        stepper.SetPlayerInteractions(interactions);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: true);
+        stepper.SetCandidates([Target(1, 300f, 240f)]);
+
+        Assert.True(stepper.TryStepState(in deerclops, out NpcStateUpdate proposed));
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[4];
+        int count = stepper.PlanProjectileSpawns(in deerclops, in proposed, intents);
+
+        Assert.Equal(1, count);
+        Assert.Equal(VanillaProjectileIds.DeerclopsShadowHand, intents[0].Type);
+        Assert.Equal(10, intents[0].Damage);
+        Assert.Equal(300, intents[0].TimeLeftOverride);
+        Assert.Equal(80f, proposed.Simulation.LocalAi.Ai2);
+    }
+
+    [Fact]
+    public void Expert_passive_shadow_hand_skips_active_player_without_player_interaction_credit()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot deerclops = Spawn(store, new NpcAiState(0f, 1f, 8f, 15f));
+        var sourceUpdate = new NpcStateUpdate(
+            deerclops.Type, deerclops.NetId, deerclops.PositionX, deerclops.PositionY, deerclops.VelocityX, deerclops.VelocityY,
+            deerclops.Target, deerclops.Ai, deerclops.Simulation with { LocalAi = new NpcAiState(0f, 0f, 79f, 0f) });
+        Assert.True(store.TryUpdate(deerclops.Handle, in sourceUpdate, out deerclops));
+
+        var stepper = CreateStepper(new TestEnvironment { PlayerInSnow = true });
+        stepper.SetPlayerInteractions(new RuntimeNpcPlayerInteractionLedger(store));
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: true);
+        stepper.SetCandidates([Target(1, 300f, 240f)]);
+
+        Assert.True(stepper.TryStepState(in deerclops, out NpcStateUpdate proposed));
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[4];
+
+        Assert.Equal(0, stepper.PlanProjectileSpawns(in deerclops, in proposed, intents));
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(IVanillaDeerclopsEnvironment environment)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper(), random: new CenteredRandom());

@@ -117,6 +117,15 @@ internal sealed class VanillaNpcBehaviorContext
         return count;
     }
 
+    public int CandidateCount => _candidateCount;
+
+    public VanillaNpcTargetCandidate GetCandidateAt(int index)
+    {
+        if ((uint)index >= (uint)_candidateCount)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        return _candidates[index];
+    }
+
     public int CountActivePlayersWithin(float centerX, float centerY, float radius)
     {
         if (!float.IsFinite(centerX) || !float.IsFinite(centerY) || !float.IsFinite(radius) || radius < 0f)

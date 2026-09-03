@@ -84,6 +84,12 @@ Player and NPC identities are generation-safe where a generation-bearing handle 
 
 This slice does not expose arbitrary child-NPC or projectile spawning from a behavior callback. Those operations require separately bounded runtime-owned request APIs rather than leaking stores or packet access into the callback.
 
+## Source-backed Wall of Flesh vertical slice
+
+The pre-Hardmode boss boundary now also admits Wall of Flesh (`NPC 113`) and its linked server-owned children rather than relying on a generic fallback. The root performs the source-shaped corridor movement and initial 13-child bootstrap (two eyes plus eleven Hungry), while eye/Hungry state preserves explicit root ownership. Runtime post-state intents cover leeches, Good World Fire Imp support, Expert Hungry pressure and eye laser projectile `83`; eye damage is committed back to the shared root life before lethal finalization.
+
+The death path owns the gameplay mutations that must happen on the server: normal/Expert/Master loot delivery, source-shaped recovery drops, the Demonite/Crimtane brick box with liquid clearing, child cleanup and the persisted Hardmode progression mutation. Cosmetic dust/gore/sound and client presentation remain outside this boundary.
+
 ## Source-backed Deerclops AI_123 slice
 
 The current vanilla behavior chain includes the gameplay-owned TerrariaServer 1.4.5.8 Deerclops (`NPC 668`, `aiStyle 123`) vertical slice. The runtime retains the source state machine rather than collapsing the boss into a generic ground-chaser:
@@ -98,7 +104,7 @@ The current vanilla behavior chain includes the gameplay-owned TerrariaServer 1.
 
 `NpcAuthority` supplies a `WorldTileStore`-backed environment through semantic snow, walkability, solid-tile and collision queries. Deerclops projectile side effects remain runtime-owned post-state intents: ice spike `961`, rubble `962` and shadow hand `965` are admitted through the normal projectile authority rather than being published from inside the AI callback. The distance shield (`localAI[3]`) and its thirty-tick invulnerability threshold are authoritative gameplay state.
 
-Two source branches remain deliberately explicit divergences instead of being approximated. The slow-scream state currently preserves timing but cannot apply vanilla `Slow (buff 32, 720 ticks)` because TerraRuntime does not yet own an authoritative player-buff store. Expert passive shadow hands also remain open because vanilla selects eligible targets from per-NPC `playerInteraction[]`; the current behavior context does not expose an equivalent generation-safe interaction ledger. These gaps keep the Deerclops coverage claim below full vanilla AI parity.
+The dedicated-server-only Expert passive-shadow-hand branch is now authoritative. `localAI[2]` uses the source life-scaled 80→40 tick cadence, rotates through three player-slot groups, requires generation-safe per-NPC interaction credit and enforces the 1200-pixel range before staging projectile `965` with source damage `10`. The slow-scream state still deliberately does not apply vanilla `Slow (buff 32, 720 ticks)`: the pinned branch is excluded on `Main.netMode == 2`, so adding that buff on the dedicated server would be false parity rather than completion. Deerclops therefore remains below full vanilla AI parity only for broader/shared gaps, not for this server-executed projectile branch.
 
 ## Lifecycle and unload
 

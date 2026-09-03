@@ -15,8 +15,8 @@ public readonly record struct VanillaProjectileReflectionResult(
 
 /// <summary>
 /// TerrariaServer 1.4.5.8 NPC.ReflectProjectile gameplay mutation without sound/dust presentation effects.
-/// The currently admitted projectile catalog can prove reflectability for aiStyle 1/2; unsupported source
-/// styles and special type 728/955 remain fail-closed until their definitions are admitted.
+/// The admitted projectile catalog proves the currently runtime-owned aiStyle 1/2 identities plus the
+/// source-special Super Star / Star Cannon Star identities. Presentation reflection effects remain client-owned.
 /// </summary>
 public static class VanillaProjectileReflection1458
 {
@@ -28,8 +28,26 @@ public static class VanillaProjectileReflection1458
         VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner) &&
         projectile.Damage > 0 &&
         !alreadyReflected &&
-        (definition.AiStyle == VanillaProjectileAiStyles.Arrow ||
+        (projectile.Type == VanillaProjectileIds.SuperStar ||
+         projectile.Type == VanillaProjectileIds.StarCannonStar ||
+         definition.AiStyle == VanillaProjectileAiStyles.Arrow ||
          definition.AiStyle == VanillaProjectileAiStyles.Thrown);
+
+    /// <summary>
+    /// TerrariaServer 1.4.5.8 NPCID.Sets.ReflectStarShotsInForTheWorthy. Keeping the complete pinned set here
+    /// prevents future boss admission from silently changing Good World reflection semantics.
+    /// </summary>
+    public static bool ReflectsStarShotsInGoodWorld(NpcTypeId npcType) =>
+        npcType.Value is
+            4 or 5 or 13 or 14 or 15 or 266 or 267 or 35 or 36 or
+            113 or 114 or 115 or 116 or 117 or 118 or 119 or
+            125 or 126 or 134 or 135 or 136 or 139 or 127 or 128 or 131 or 129 or 130 or
+            262 or 263 or 264 or 245 or 247 or 248 or 246 or 249 or
+            398 or 400 or 397 or 396 or 401;
+
+    public static bool IsGoodWorldStarShot(ProjectileTypeId projectileType) =>
+        projectileType == VanillaProjectileIds.SuperStar ||
+        projectileType == VanillaProjectileIds.StarCannonStar;
 
     public static bool TryResolve(
         in ProjectileSnapshot projectile,

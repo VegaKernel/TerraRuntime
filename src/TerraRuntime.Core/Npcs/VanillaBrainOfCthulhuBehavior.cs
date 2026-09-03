@@ -21,9 +21,9 @@ public interface IVanillaBrainOfCthulhuEnvironment
 }
 
 /// <summary>
-/// Source-backed AI_054 gameplay state for Brain of Cthulhu. Sound/dust/gore and the unavailable ZoneCrimson
-/// player-biome gate remain outside this slice; child count, invulnerability, both teleport machines, Good World
-/// speed and target-loss escape are authoritative.
+/// Source-backed AI_054 gameplay state for Brain of Cthulhu. Child count, invulnerability, both teleport
+/// machines, Good World speed and the authoritative player ZoneCrimson escape gate are owned here.
+/// Sound/dust/gore remain presentation-only and outside the dedicated-server slice.
 /// </summary>
 internal sealed class VanillaBrainOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
@@ -85,9 +85,6 @@ internal sealed class VanillaBrainOfCthulhuNpcBehaviorStrategy : IVanillaNpcBeha
             next = Build(in npc, positionX, positionY, velocityX, velocityY, targetSlot, in ai, in simulation, in localAi);
             return true;
         }
-
-        if (localAi.Ai3 > 0f)
-            localAi = localAi with { Ai3 = localAi.Ai3 - 1f };
 
         if (ai.Ai0 < 0f)
         {
@@ -174,6 +171,11 @@ internal sealed class VanillaBrainOfCthulhuNpcBehaviorStrategy : IVanillaNpcBeha
                     ai = ai with { Ai0 = 0f };
             }
         }
+
+        if (target.HasBiomeZoneFacts && !target.ZoneCrimson)
+            StepEscape(ref ai, ref localAi, ref simulation, ref velocityY);
+        else if (localAi.Ai3 > 0f)
+            localAi = localAi with { Ai3 = localAi.Ai3 - 1f };
 
         simulation = simulation with
         {

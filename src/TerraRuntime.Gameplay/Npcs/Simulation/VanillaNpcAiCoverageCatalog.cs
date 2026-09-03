@@ -49,7 +49,11 @@ public enum VanillaNpcAiCapability : ulong
     QueenBeeMinionSpawnSlice = 1ul << 39,
     QueenBeeStingerProjectileSlice = 1ul << 40,
     DeerclopsStateSlice = 1ul << 41,
-    DeerclopsProjectileSlice = 1ul << 42
+    DeerclopsProjectileSlice = 1ul << 42,
+    BossGoodWorldProjectileReflectionSlice = 1ul << 43,
+    WallOfFleshStateSlice = 1ul << 44,
+    WallOfFleshProjectileSlice = 1ul << 45,
+    WallOfFleshLinkedChildSlice = 1ul << 46
 }
 
 /// <summary>
@@ -104,7 +108,7 @@ public static class VanillaNpcAiCoverageCatalog
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         var entries = new VanillaNpcAiCoverage[
-            13 +
+            16 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -134,7 +138,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAiCapability.BossExpertPhaseOneSlice |
             VanillaNpcAiCapability.BossExpertTransformationSlice |
             VanillaNpcAiCapability.BossExpertPhaseTwoDeterministicSlice |
-            VanillaNpcAiCapability.BossExpertRapidDashSlice);
+            VanillaNpcAiCapability.BossExpertRapidDashSlice |
+            VanillaNpcAiCapability.BossGoodWorldProjectileReflectionSlice);
         entries[4] = Partial(
             VanillaNpcIds.ServantOfCthulhu,
             OrdinaryCore | VanillaNpcAiCapability.FlyerPursuitProfileSlice);
@@ -186,8 +191,23 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAiCapability.DeerclopsStateSlice |
             VanillaNpcAiCapability.DeerclopsProjectileSlice |
             VanillaNpcAiCapability.BossDeathLootProgressionSlice);
+        entries[13] = Partial(
+            VanillaNpcIds.WallOfFlesh,
+            OrdinaryCore |
+            VanillaNpcAiCapability.ChildSpawnSlice |
+            VanillaNpcAiCapability.WallOfFleshStateSlice |
+            VanillaNpcAiCapability.BossDeathLootProgressionSlice);
+        entries[14] = Partial(
+            VanillaNpcIds.WallOfFleshEye,
+            OrdinaryCore |
+            VanillaNpcAiCapability.WallOfFleshLinkedChildSlice |
+            VanillaNpcAiCapability.WallOfFleshProjectileSlice);
+        entries[15] = Partial(
+            VanillaNpcIds.TheHungry,
+            OrdinaryCore |
+            VanillaNpcAiCapability.WallOfFleshLinkedChildSlice);
 
-        int index = 13;
+        int index = 16;
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {
             VanillaNpcAiCapability capabilities =

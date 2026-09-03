@@ -9,7 +9,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Every_coverage_entry_has_an_explicit_definition_and_behavior_family()
     {
-        int expected = 13 +
+        int expected = 16 +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -60,7 +60,27 @@ public sealed class VanillaNpcAiCoverageCatalogTests
         Assert.True(eyeOfCthulhu.Has(VanillaNpcAiCapability.BossExpertTransformationSlice));
         Assert.True(eyeOfCthulhu.Has(VanillaNpcAiCapability.BossExpertPhaseTwoDeterministicSlice));
         Assert.True(eyeOfCthulhu.Has(VanillaNpcAiCapability.BossExpertRapidDashSlice));
+        Assert.True(eyeOfCthulhu.Has(VanillaNpcAiCapability.BossGoodWorldProjectileReflectionSlice));
         Assert.False(eyeOfCthulhu.FullVanillaAiParity);
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.WallOfFlesh,
+            out VanillaNpcAiCoverage wallOfFlesh));
+        Assert.True(wallOfFlesh.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+        Assert.True(wallOfFlesh.Has(VanillaNpcAiCapability.WallOfFleshStateSlice));
+        Assert.True(wallOfFlesh.Has(VanillaNpcAiCapability.BossDeathLootProgressionSlice));
+        Assert.False(wallOfFlesh.FullVanillaAiParity);
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.WallOfFleshEye,
+            out VanillaNpcAiCoverage wallEye));
+        Assert.True(wallEye.Has(VanillaNpcAiCapability.WallOfFleshLinkedChildSlice));
+        Assert.True(wallEye.Has(VanillaNpcAiCapability.WallOfFleshProjectileSlice));
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.TheHungry,
+            out VanillaNpcAiCoverage hungry));
+        Assert.True(hungry.Has(VanillaNpcAiCapability.WallOfFleshLinkedChildSlice));
 
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
             VanillaNpcIds.Skeleton,

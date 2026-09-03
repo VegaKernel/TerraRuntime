@@ -84,6 +84,12 @@ Identity игрока и NPC generation-safe там, где использует
 
 В этот срез намеренно не входит произвольный spawn дочерних NPC или projectile непосредственно из callback поведения. Для этого нужны отдельные ограниченные runtime-owned request API, а не утечка store или packet access в callback.
 
+## Source-backed вертикальный срез Wall of Flesh
+
+Граница дохардмодных боссов теперь явно допускает Wall of Flesh (`NPC 113`) и его linked server-owned детей вместо generic fallback. Root выполняет source-shaped движение по коридору и стартовый bootstrap из 13 детей (два глаза и одиннадцать Hungry), а state глаз/Hungry сохраняет явную привязку к root. Runtime post-state intents покрывают leech, Good World Fire Imp, Expert Hungry pressure и laser projectile `83` глаз; damage по глазу перед lethal-finalization коммитится в общий life root.
+
+Death path владеет обязательными server gameplay мутациями: normal/Expert/Master loot, source-shaped recovery drops, Demonite/Crimtane brick box с очисткой жидкости, cleanup детей и persisted Hardmode progression mutation. Cosmetic dust/gore/sound и client presentation остаются вне этой границы.
+
 ## Source-backed срез Deerclops AI_123
 
 Текущая vanilla behavior chain включает gameplay-owned вертикальный срез Deerclops из TerrariaServer 1.4.5.8 (`NPC 668`, `aiStyle 123`). Runtime сохраняет исходную state machine вместо сведения босса к обычному наземному преследователю:
@@ -98,7 +104,7 @@ Identity игрока и NPC generation-safe там, где использует
 
 `NpcAuthority` передаёт окружение поверх `WorldTileStore` через семантические запросы snow, walkability, solid tile и collision. Projectile side effects Deerclops остаются runtime-owned post-state intents: ice spike `961`, rubble `962` и shadow hand `965` проходят через обычный projectile authority, а не публикуются непосредственно из AI callback. Distance shield (`localAI[3]`) и его порог неуязвимости после тридцати тиков являются authoritative gameplay state.
 
-Две ветки source намеренно остаются явно отмеченными divergence, а не приблизительной имитацией. Slow-scream state сохраняет тайминг, но пока не может применить vanilla `Slow (buff 32, 720 ticks)`, потому что TerraRuntime ещё не владеет authoritative player-buff store. Expert passive shadow hands также остаются открытыми: vanilla выбирает допустимые цели по per-NPC `playerInteraction[]`, а текущий behavior context не предоставляет эквивалентный generation-safe interaction ledger. Поэтому Deerclops пока не заявляет full vanilla AI parity.
+Dedicated-server Expert-ветка passive shadow hands теперь authoritative. `localAI[2]` использует source life-scaled cadence 80→40 тиков, вращает три группы player slot, требует generation-safe per-NPC interaction credit и проверяет дистанцию 1200 пикселей перед staging projectile `965` с source damage `10`. Slow-scream state по-прежнему намеренно не применяет vanilla `Slow (buff 32, 720 ticks)`: закреплённая ветка исключена при `Main.netMode == 2`, поэтому такой buff на dedicated server был бы ложным parity, а не завершением. Deerclops остаётся ниже full vanilla AI parity только из-за более широких shared/global пробелов, а не этой server-executed projectile ветки.
 
 ## Lifecycle и unload
 

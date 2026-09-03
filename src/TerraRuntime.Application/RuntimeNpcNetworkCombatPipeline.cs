@@ -49,6 +49,9 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
     private readonly RuntimeWorldProgressionMutations progression;
     private readonly WorldTileStore? worldTiles;
     private readonly bool crimsonWorld;
+    private readonly bool skyblockLowTiles;
+    private readonly bool isThereAWorldSurface;
+    private readonly bool evilBossDownedBaseline;
     private readonly PlayerSlotId[] interactionSlots =
         new PlayerSlotId[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaKingSlimeLootPlayer[] activeLootPlayers =
@@ -67,6 +70,8 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         new VanillaWallOfFleshLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly NpcSnapshot[] npcFamilyBuffer;
 
+    internal RuntimeNpcPlayerInteractionLedger Interactions => interactions;
+
     public RuntimeNpcNetworkCombatPipeline(
         RuntimeNpcStore npcs,
         RuntimeWorldItemStore worldItems,
@@ -79,7 +84,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         bool expertMode,
         bool masterMode,
         WorldTileStore? worldTiles = null,
-        bool crimsonWorld = false)
+        bool crimsonWorld = false,
+        bool skyblockLowTiles = false,
+        bool isThereAWorldSurface = true,
+        bool evilBossDownedBaseline = false)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
@@ -89,6 +97,9 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
         this.worldTiles = worldTiles;
         this.crimsonWorld = crimsonWorld;
+        this.skyblockLowTiles = skyblockLowTiles;
+        this.isThereAWorldSurface = isThereAWorldSurface;
+        this.evilBossDownedBaseline = evilBossDownedBaseline;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         if (masterMode && !expertMode)
@@ -246,8 +257,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
             else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
                 ApplyWallOfFleshDeathEffects(in dead);
             else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
-                ApplyEvilBossDeathEffects();
+                ApplyEvilBossDeathEffects(eaterBoss);
 
+            if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
+                DropEaterOfWorldsHealingHeartIfEligible(in dead);
             if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
                 CleanupWallOfFleshChildren(dead.Handle.Slot);
             if (!npcs.TryDespawn(dead.Handle))
@@ -327,8 +340,10 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
             ApplyWallOfFleshDeathEffects(in dead);
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
-            ApplyEvilBossDeathEffects();
+            ApplyEvilBossDeathEffects(eaterBoss);
 
+        if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
+            DropEaterOfWorldsHealingHeartIfEligible(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
             CleanupWallOfFleshChildren(dead.Handle.Slot);
         if (!npcs.TryDespawn(dead.Handle))
@@ -825,9 +840,78 @@ internal sealed class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDama
         }
     }
 
-    private void ApplyEvilBossDeathEffects()
+    private void ApplyEvilBossDeathEffects(bool eaterBoss)
     {
+        if (eaterBoss)
+        {
+            // NPC.DoDeathEvents evaluates these branches before SetEventFlagCleared(downedBoss2).
+            bool wasAlreadyDowned = evilBossDownedBaseline || progression.IsCompleted(VanillaWorldProgressionId.EvilBoss);
+            if (skyblockLowTiles)
+                progression.MarkCompleted(VanillaWorldProgressionId.ShadowOrbSmashed);
+            if (isThereAWorldSurface && (!wasAlreadyDowned || random.NextInt32(0, 2) == 0))
+                worldClock?.ScheduleMeteor();
+        }
+
         progression.MarkCompleted(VanillaWorldProgressionId.EvilBoss);
+    }
+
+    private void DropEaterOfWorldsHealingHeartIfEligible(in NpcSnapshot eaterSegment)
+    {
+        if (!TryFindClosestPlayer(in eaterSegment, out PlayerStateSnapshot closest) ||
+            !closest.HasHealth || closest.Life >= closest.MaxLife ||
+            random.NextInt32(0, 4) != 0 ||
+            !VanillaNpcDefinitionCatalog.TryGet(
+                eaterSegment.TypeIdentity,
+                eaterSegment.NetIdentity,
+                out VanillaNpcDefinition definition))
+        {
+            return;
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            eaterSegment.PositionX + definition.Width * 0.5f,
+            eaterSegment.PositionY + definition.Height * 0.5f);
+        var heart = new NpcLootDrop(VanillaWallOfFleshItemIds.Heart, 1);
+        if (!eaterLoot.TryDeliverWorldItem(in origin, in heart, random))
+            throw new InvalidOperationException("Eater of Worlds healing Heart drop could not be materialized.");
+    }
+
+    private bool TryFindClosestPlayer(in NpcSnapshot npc, out PlayerStateSnapshot closest)
+    {
+        closest = default;
+        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition))
+            return false;
+
+        float npcCenterX = npc.PositionX + definition.Width * 0.5f;
+        float npcCenterY = npc.PositionY + definition.Height * 0.5f;
+        float bestDistance = -1f;
+        bool foundAny = false;
+
+        for (int index = 0; index < VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots; index++)
+        {
+            var slot = new PlayerSlotId(checked((byte)index));
+            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+
+            if (!foundAny)
+            {
+                closest = player;
+                foundAny = true;
+            }
+            if (player.IsDead)
+                continue;
+
+            float playerCenterX = player.PositionX + VanillaPlayerWidth * 0.5f;
+            float playerCenterY = player.PositionY + VanillaPlayerHeight * 0.5f;
+            float distance = MathF.Abs(playerCenterX - npcCenterX) + MathF.Abs(playerCenterY - npcCenterY);
+            if (bestDistance >= 0f && distance >= bestDistance)
+                continue;
+
+            bestDistance = distance;
+            closest = player;
+        }
+
+        return foundAny;
     }
 
     private void ApplyKingSlimeDeathEffects(in NpcSnapshot kingSlime)

@@ -58,6 +58,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private IVanillaQueenBeeEnvironment? _queenBeeEnvironment;
     private IVanillaDeerclopsEnvironment? _deerclopsEnvironment;
     private IVanillaWallOfFleshEnvironment? _wallOfFleshEnvironment;
+    private RuntimeNpcPlayerInteractionLedger? _playerInteractions;
 
     public VanillaNpcTargetingAiStepper(
         INpcAiStateStepper inner,
@@ -113,6 +114,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         _deerclopsEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
         _deerclops.SetEnvironment(environment);
     }
+
+    public void SetPlayerInteractions(RuntimeNpcPlayerInteractionLedger interactions) =>
+        _playerInteractions = interactions ?? throw new ArgumentNullException(nameof(interactions));
 
     public void SetWallOfFleshEnvironment(IVanillaWallOfFleshEnvironment environment)
     {
@@ -996,17 +1000,68 @@ public sealed class VanillaNpcTargetingAiStepper :
             return 0;
         }
 
+        int written = PlanDeerclopsPassiveShadowHands(in source, destination);
+        if (written >= destination.Length)
+            return written;
+
+        Span<NpcAiProjectileIntent> attackDestination = destination[written..];
         int state = (int)source.Ai.Ai0;
         int timer = (int)proposed.Ai.Ai1;
+        int attackCount = 0;
         if (state == 1 && proposed.Ai.Ai0 == 1f)
-            return PlanDeerclopsForwardSpikes(in source, in proposed, in hitbox, timer, destination);
-        if (state == 4 && proposed.Ai.Ai0 == 4f)
-            return PlanDeerclopsBothSideSpikes(in source, in proposed, in hitbox, timer, destination);
-        if (state == 2 && proposed.Ai.Ai0 == 2f)
-            return PlanDeerclopsRubble(in source, in proposed, in hitbox, timer, destination);
-        if (state == 5 && proposed.Ai.Ai0 == 5f && timer == 30)
-            return PlanDeerclopsShadowHands(in source, in proposed, destination);
-        return 0;
+            attackCount = PlanDeerclopsForwardSpikes(in source, in proposed, in hitbox, timer, attackDestination);
+        else if (state == 4 && proposed.Ai.Ai0 == 4f)
+            attackCount = PlanDeerclopsBothSideSpikes(in source, in proposed, in hitbox, timer, attackDestination);
+        else if (state == 2 && proposed.Ai.Ai0 == 2f)
+            attackCount = PlanDeerclopsRubble(in source, in proposed, in hitbox, timer, attackDestination);
+        else if (state == 5 && proposed.Ai.Ai0 == 5f && timer == 30)
+            attackCount = PlanDeerclopsShadowHands(in source, in proposed, attackDestination);
+        return written + attackCount;
+    }
+
+    private int PlanDeerclopsPassiveShadowHands(
+        in NpcSnapshot source,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (!_context.ExpertMode || _playerInteractions is null || source.Simulation.LifeMax <= 0)
+            return 0;
+
+        int interval = VanillaDeerclopsNpcBehaviorStrategy.ResolvePassiveShadowHandInterval(
+            source.Simulation.Life,
+            source.Simulation.LifeMax);
+        int counter = Math.Max(0, (int)source.Simulation.LocalAi.Ai2) + 1;
+        if (counter % interval != 0)
+            return 0;
+
+        int rotationIndex = counter / interval % 3;
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Deerclops, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            return 0;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * 0.5f;
+        float centerY = source.PositionY + hitbox.Height * 0.5f;
+        int written = 0;
+        for (int index = 0; index < _context.CandidateCount && written < destination.Length; index++)
+        {
+            VanillaNpcTargetCandidate candidate = _context.GetCandidateAt(index);
+            if (candidate.Slot % 3 != rotationIndex ||
+                !candidate.Active || candidate.Dead || candidate.Ghost ||
+                !_playerInteractions.HasInteraction(source.Handle, new PlayerSlotId(candidate.Slot)))
+            {
+                continue;
+            }
+
+            float dx = candidate.CenterX - centerX;
+            float dy = candidate.CenterY - centerY;
+            if (dx * dx + dy * dy > 1200f * 1200f)
+                continue;
+
+            if (TryCreateShadowHandIntent(in candidate, Damage: 10, out NpcAiProjectileIntent intent))
+                destination[written++] = intent;
+        }
+        return written;
     }
 
     private int PlanDeerclopsForwardSpikes(
