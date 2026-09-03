@@ -49,6 +49,16 @@ public sealed class VanillaCombatIntegrityCatalogTests
         Assert.True(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.EnchantedBoomerang));
         Assert.True(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.JestersArrow, out int jester));
         Assert.Equal(-1, jester);
+        Assert.True(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.SuperStar, out int superStar));
+        Assert.Equal(-1, superStar);
+        Assert.True(VanillaProjectileNpcCombatFacts.TryGetLocalNpcHitCooldown(VanillaProjectileIds.SuperStar, out int superStarLocal));
+        Assert.Equal(-1, superStarLocal);
+        Assert.False(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.SuperStar));
+        Assert.True(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.SuperStarSlash, out int superStarSlash));
+        Assert.Equal(-1, superStarSlash);
+        Assert.True(VanillaProjectileNpcCombatFacts.TryGetStaticNpcHitCooldown(VanillaProjectileIds.SuperStarSlash, out int superStarSlashStatic));
+        Assert.Equal(10, superStarSlashStatic);
+        Assert.False(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.SuperStarSlash));
         Assert.False(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.Seed, out _));
     }
     [Fact]

@@ -92,9 +92,11 @@ public readonly record struct ProjectileStateTickSummary(
     int Rejected);
 
 /// <summary>
-/// Runs allocation-stable projectile simulation against a pre-pass snapshot of the live table. Vanilla
+/// Runs allocation-stable projectile simulation in TerrariaServer 1.4.5.8 physical slot order. Vanilla
 /// extraUpdates execute as local subupdates, but only the final state is committed to the authoritative store,
-/// so one world tick cannot amplify replication into one packet-27 commit per subupdate. Every final commit is
+/// so one world tick cannot amplify replication into one packet-27 commit per subupdate. Slot lookup is live rather
+/// than pre-snapshotted: a child projectile spawned into a later physical slot can still execute during the same
+/// global tick, while a child allocated to an already-visited slot waits until the next tick. Every final commit is
 /// generation-safe, therefore reentrant despawn/slot-reuse cannot let stale simulation mutate a replacement.
 /// TerrariaServer 1.4.5.8 updates only slots 0..999; physical overflow slot 1000 is intentionally excluded.
 /// </summary>
@@ -103,7 +105,6 @@ public sealed class RuntimeProjectileStateExecutor
     private readonly RuntimeProjectileStore _projectiles;
     private readonly IProjectileSimulationCommitSink? _commitSink;
     private readonly IProjectileTerminationCommitSink? _terminationSink;
-    private readonly ProjectileSnapshot[] _snapshotBuffer;
     private readonly ProjectileSimulationStepResult[] _stepBuffer;
 
     public RuntimeProjectileStateExecutor(
@@ -115,7 +116,6 @@ public sealed class RuntimeProjectileStateExecutor
         _projectiles = projectiles;
         _commitSink = commitSink;
         _terminationSink = terminationSink;
-        _snapshotBuffer = new ProjectileSnapshot[projectiles.Capacity];
         _stepBuffer = new ProjectileSimulationStepResult[VanillaProjectileUpdateFacts.MaximumExtraUpdates + 1];
     }
 
@@ -123,124 +123,139 @@ public sealed class RuntimeProjectileStateExecutor
     {
         ArgumentNullException.ThrowIfNull(stepper);
 
-        int captured = _projectiles.CopyActive(_snapshotBuffer);
         int examined = 0;
         int proposed = 0;
         int applied = 0;
         int rejected = 0;
-
-        for (int index = 0; index < captured; index++)
+        int physicalSlots = Math.Min(_projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
+        for (ushort slot = 0; slot < physicalSlots; slot++)
         {
-            ProjectileSnapshot projectile = _snapshotBuffer[index];
-            if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount)
-                continue;
+            ProjectileStateTickSummary current = TickSlot(stepper, slot);
+            examined += current.Examined;
+            proposed += current.Proposed;
+            applied += current.Applied;
+            rejected += current.Rejected;
+        }
 
-            examined++;
-            if (!_projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle))
+        return new ProjectileStateTickSummary(examined, proposed, applied, rejected);
+    }
+
+    /// <summary>
+    /// Simulates the projectile generation that is active in one exact physical slot at the moment the slot is
+    /// visited. This is the primitive used by the authoritative world loop to interleave simulation and combat in
+    /// vanilla slot order so child allocation can affect later slots during the same global tick.
+    /// </summary>
+    public ProjectileStateTickSummary TickSlot(IProjectileStateStepper stepper, ushort slot)
+    {
+        ArgumentNullException.ThrowIfNull(stepper);
+        if (slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
+            !_projectiles.TryGetActive(slot, out ProjectileSnapshot projectile))
+        {
+            return default;
+        }
+
+        int examined = 1;
+        int proposed = 0;
+        int applied = 0;
+        int rejected = 0;
+        if (!_projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle))
+            return new ProjectileStateTickSummary(examined, proposed, applied, rejected + 1);
+
+        int subupdates = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(projectile.Type);
+        ProjectileSnapshot currentProjectile = projectile;
+        ProjectileLifecycleState currentLifecycle = lifecycle;
+        ProjectileSimulationStepResult finalResult = default;
+        int recordedSubupdates = 0;
+        bool hasProposal = false;
+        bool invalid = false;
+
+        for (int subupdate = 0; subupdate < subupdates; subupdate++)
+        {
+            var context = new ProjectileSimulationStepContext(
+                currentProjectile,
+                currentLifecycle,
+                subupdate,
+                subupdates);
+
+            if (!stepper.TryStepState(in context, out ProjectileSimulationStepResult proposedResult))
             {
-                rejected++;
-                continue;
+                if (hasProposal)
+                    invalid = true;
+                break;
             }
 
-            int subupdates = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(projectile.Type);
-            ProjectileSnapshot currentProjectile = projectile;
-            ProjectileLifecycleState currentLifecycle = lifecycle;
-            ProjectileSimulationStepResult finalResult = default;
-            int recordedSubupdates = 0;
-            bool hasProposal = false;
-            bool invalid = false;
-
-            for (int subupdate = 0; subupdate < subupdates; subupdate++)
+            if (!TryNormalizeTermination(in proposedResult, out ProjectileSimulationStepResult next))
             {
-                var context = new ProjectileSimulationStepContext(
-                    currentProjectile,
+                invalid = true;
+                break;
+            }
+
+            ProjectileStateUpdate nextState = next.State;
+            if (!RuntimeProjectileStore.IsValidState(in nextState) ||
+                !TryProjectLifecycle(
+                    currentProjectile.Type,
+                    nextState.Type,
                     currentLifecycle,
-                    subupdate,
-                    subupdates);
-
-                if (!stepper.TryStepState(in context, out ProjectileSimulationStepResult proposedResult))
-                {
-                    if (hasProposal)
-                        invalid = true;
-                    break;
-                }
-
-                if (!TryNormalizeTermination(in proposedResult, out ProjectileSimulationStepResult next))
-                {
-                    invalid = true;
-                    break;
-                }
-
-                ProjectileStateUpdate nextState = next.State;
-                if (!RuntimeProjectileStore.IsValidState(in nextState) ||
-                    !TryProjectLifecycle(
-                        currentProjectile.Type,
-                        nextState.Type,
-                        currentLifecycle,
-                        next.TimeLeft,
-                        next.Liquid,
-                        out ProjectileLifecycleState nextLifecycle))
-                {
-                    invalid = true;
-                    break;
-                }
-
-                if (!hasProposal)
-                {
-                    hasProposal = true;
-                    proposed++;
-                }
-
-                _stepBuffer[recordedSubupdates++] = next;
-                finalResult = next;
-                currentProjectile = Project(in currentProjectile, in nextState);
-                currentLifecycle = nextLifecycle;
-
-                if (next.TimeLeft <= 0)
-                    break;
+                    next.TimeLeft,
+                    next.Liquid,
+                    out ProjectileLifecycleState nextLifecycle))
+            {
+                invalid = true;
+                break;
             }
 
             if (!hasProposal)
-                continue;
-
-            if (invalid)
             {
-                rejected++;
-                continue;
+                hasProposal = true;
+                proposed++;
             }
 
-            ProjectileStateUpdate finalState = finalResult.State;
-            if (_projectiles.TryCommitSimulationStep(
-                    projectile.Handle,
-                    in finalState,
-                    finalResult.TimeLeft,
-                    currentLifecycle.Liquid,
-                    out ProjectileSnapshot committed,
-                    out bool expired))
-            {
-                applied++;
-                if (_commitSink is not null)
-                {
-                    _commitSink.ProjectileSimulationCommitted(
-                        in projectile,
-                        in lifecycle,
-                        _stepBuffer.AsSpan(0, recordedSubupdates),
-                        in committed,
-                        expired);
-                }
+            _stepBuffer[recordedSubupdates++] = next;
+            finalResult = next;
+            currentProjectile = Project(in currentProjectile, in nextState);
+            currentLifecycle = nextLifecycle;
 
-                if (expired && _terminationSink is not null)
-                {
-                    _terminationSink.ProjectileTerminated(
-                        in projectile,
-                        in committed,
-                        finalResult.TerminationReason);
-                }
-            }
-            else
+            if (next.TimeLeft <= 0)
+                break;
+        }
+
+        if (!hasProposal)
+            return new ProjectileStateTickSummary(examined, proposed, applied, rejected);
+
+        if (invalid)
+            return new ProjectileStateTickSummary(examined, proposed, applied, rejected + 1);
+
+        ProjectileStateUpdate finalState = finalResult.State;
+        if (_projectiles.TryCommitSimulationStep(
+                projectile.Handle,
+                in finalState,
+                finalResult.TimeLeft,
+                currentLifecycle.Liquid,
+                out ProjectileSnapshot committed,
+                out bool expired))
+        {
+            applied++;
+            if (_commitSink is not null)
             {
-                rejected++;
+                _commitSink.ProjectileSimulationCommitted(
+                    in projectile,
+                    in lifecycle,
+                    _stepBuffer.AsSpan(0, recordedSubupdates),
+                    in committed,
+                    expired);
             }
+
+            if (expired && _terminationSink is not null)
+            {
+                _terminationSink.ProjectileTerminated(
+                    in projectile,
+                    in committed,
+                    finalResult.TerminationReason);
+            }
+        }
+        else
+        {
+            rejected++;
         }
 
         return new ProjectileStateTickSummary(examined, proposed, applied, rejected);

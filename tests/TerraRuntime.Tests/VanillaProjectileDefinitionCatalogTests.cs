@@ -32,6 +32,9 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     [InlineData(51, 8, 8)]
     [InlineData(178, 10, 10)]
     [InlineData(289, 10, 10)]
+    [InlineData(12, 18, 18)]
+    [InlineData(728, 24, 24)]
+    [InlineData(955, 18, 18)]
     [InlineData(1124, 6, 6)]
     public void Terraria_1458_simple_ai_style_one_definitions_match_source(int type, int width, int height)
     {

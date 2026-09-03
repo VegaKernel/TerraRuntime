@@ -151,6 +151,51 @@ public sealed class RuntimeProjectileStateExecutorTests
     }
 
     [Fact]
+    public void Child_spawned_into_later_physical_slot_is_updated_in_same_global_tick()
+    {
+        var store = new RuntimeProjectileStore(capacity: 8);
+        ProjectileStateUpdate parentState = CreateUpdate(type: 1, positionX: 10f, velocityX: 2f);
+        Assert.True(store.TrySpawn(1, in parentState, out ProjectileSnapshot parent));
+        var executor = new RuntimeProjectileStateExecutor(store);
+        var stepper = new SpawnChildDuringStep(store, parent.Handle, childSlot: 5);
+
+        ProjectileStateTickSummary summary = executor.Tick(stepper);
+
+        Assert.Equal(new ProjectileStateTickSummary(2, 2, 2, 0), summary);
+        Assert.True(store.TryGet(parent.Handle, out ProjectileSnapshot movedParent));
+        Assert.True(stepper.SpawnedChild.IsAssigned);
+        Assert.True(store.TryGet(stepper.SpawnedChild, out ProjectileSnapshot movedChild));
+        Assert.Equal(12f, movedParent.PositionX);
+        Assert.Equal(102f, movedChild.PositionX);
+        Assert.Equal(new ProjectileRevision(2), movedChild.Revision);
+    }
+
+    [Fact]
+    public void Child_spawned_into_already_visited_physical_slot_waits_until_next_global_tick()
+    {
+        var store = new RuntimeProjectileStore(capacity: 8);
+        ProjectileStateUpdate parentState = CreateUpdate(type: 1, positionX: 10f, velocityX: 2f);
+        Assert.True(store.TrySpawn(3, in parentState, out ProjectileSnapshot parent));
+        var executor = new RuntimeProjectileStateExecutor(store);
+        var stepper = new SpawnChildDuringStep(store, parent.Handle, childSlot: 1);
+
+        ProjectileStateTickSummary first = executor.Tick(stepper);
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), first);
+        Assert.True(stepper.SpawnedChild.IsAssigned);
+        Assert.True(store.TryGet(stepper.SpawnedChild, out ProjectileSnapshot waitingChild));
+        Assert.Equal(100f, waitingChild.PositionX);
+        Assert.Equal(new ProjectileRevision(1), waitingChild.Revision);
+
+        ProjectileStateTickSummary second = executor.Tick(stepper);
+
+        Assert.Equal(new ProjectileStateTickSummary(2, 2, 2, 0), second);
+        Assert.True(store.TryGet(stepper.SpawnedChild, out ProjectileSnapshot movedChild));
+        Assert.Equal(102f, movedChild.PositionX);
+        Assert.Equal(new ProjectileRevision(2), movedChild.Revision);
+    }
+
+    [Fact]
     public void Unsupported_projectiles_are_examined_without_creating_updates()
     {
         var store = new RuntimeProjectileStore(capacity: 4);
@@ -267,6 +312,34 @@ public sealed class RuntimeProjectileStateExecutorTests
             Assert.True(store.TryDespawn(current.Handle, out _));
             ProjectileStateUpdate replacement = CreateUpdate(type: 2, positionX: 100f, velocityX: 0f);
             Assert.True(store.TrySpawn(current.Handle.Slot, in replacement, out _));
+
+            ProjectileStateUpdate state = Integrate(in current);
+            next = new ProjectileSimulationStepResult(state, projectile.Lifecycle.TimeLeft);
+            return true;
+        }
+    }
+
+    private sealed class SpawnChildDuringStep(
+        RuntimeProjectileStore store,
+        ProjectileHandle parent,
+        ushort childSlot) : IProjectileStateStepper
+    {
+        private bool spawned;
+
+        public ProjectileHandle SpawnedChild { get; private set; }
+
+        public bool TryStepState(
+            in ProjectileSimulationStepContext projectile,
+            out ProjectileSimulationStepResult next)
+        {
+            ProjectileSnapshot current = projectile.Projectile;
+            if (!spawned && current.Handle == parent)
+            {
+                ProjectileStateUpdate child = CreateUpdate(type: 2, positionX: 100f, velocityX: 2f);
+                Assert.True(store.TrySpawn(childSlot, in child, out ProjectileSnapshot created));
+                SpawnedChild = created.Handle;
+                spawned = true;
+            }
 
             ProjectileStateUpdate state = Integrate(in current);
             next = new ProjectileSimulationStepResult(state, projectile.Lifecycle.TimeLeft);

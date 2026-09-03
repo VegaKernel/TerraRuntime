@@ -17,7 +17,10 @@ internal enum VanillaProjectileBehaviorFamily : byte
     SkeletronSkull = 4,
     DeerclopsIceSpike = 5,
     DeerclopsRubble = 6,
-    DeerclopsShadowHand = 7
+    DeerclopsShadowHand = 7,
+    FallingStar = 8,
+    SuperStar = 9,
+    SuperStarSlash = 10
 }
 
 /// <summary>
@@ -74,6 +77,31 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RequiresDefaultAi2: false,
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: true);
+
+    private static readonly VanillaProjectileBehaviorProfile FallingStarProfile = new(
+        VanillaProjectileBehaviorFamily.FallingStar,
+        VanillaProjectileAiStyles.FallingStar,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile SuperStarProfile = new(
+        VanillaProjectileBehaviorFamily.SuperStar,
+        VanillaProjectileAiStyles.SuperStar,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile SuperStarSlashProfile = new(
+        VanillaProjectileBehaviorFamily.SuperStarSlash,
+        VanillaProjectileAiStyles.SuperStarSlash,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
 
     private static readonly VanillaProjectileBehaviorProfile DeerclopsIceSpikeProfile = new(
         VanillaProjectileBehaviorFamily.DeerclopsIceSpike,
@@ -148,6 +176,23 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.EnchantedBoomerang)
         {
             profile = BoomerangProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.StarCannonStar)
+        {
+            profile = FallingStarProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SuperStar)
+        {
+            profile = SuperStarProfile;
+            return true;
+        }
+        if (type == VanillaProjectileIds.SuperStarSlash)
+        {
+            profile = SuperStarSlashProfile;
             return true;
         }
 

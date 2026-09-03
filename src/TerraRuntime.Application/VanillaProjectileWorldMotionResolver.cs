@@ -33,6 +33,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
     public bool TryResolve(
         in ProjectileSimulationStepContext projectile,
         in VanillaProjectileDefinition definition,
+        in VanillaProjectileBehaviorProfile profile,
         in VanillaProjectileBehaviorResult behavior,
         in VanillaProjectileBehaviorContext behaviorContext,
         out ProjectileSimulationStepResult next)
@@ -42,6 +43,18 @@ internal sealed class VanillaProjectileWorldMotionResolver
         float velocityY = behavior.VelocityY;
         float behaviorPositionX = behavior.PositionXOverride ?? current.PositionX;
         float behaviorPositionY = behavior.PositionYOverride ?? current.PositionY;
+        float ai1 = behavior.Ai1Override ?? current.Ai.Ai1;
+
+        // Terraria aiStyle 5 arms ai[1] the first update whose current hitbox is not embedded in solid tiles.
+        // The branch is gameplay-relevant because ai[1] is synchronized authoritative AI state; all visual
+        // alpha/rotation/sound/dust work is intentionally omitted. SetDefaults already has tileCollide=true.
+        if (profile.Family == VanillaProjectileBehaviorFamily.FallingStar &&
+            ai1 == 0f &&
+            !VanillaWorldSolidCollision.Intersects(
+                tiles, behaviorPositionX, behaviorPositionY, definition.Width, definition.Height))
+        {
+            ai1 = 1f;
+        }
 
         if (behavior.Kill)
         {
@@ -53,7 +66,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
                     behaviorPositionY,
                     velocityX,
                     velocityY,
-                    new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
+                    new ProjectileAiState(behavior.Ai0, ai1, current.Ai.Ai2),
                     current.BannerIdToRespondTo,
                     current.Damage,
                     current.KnockBack,
@@ -171,7 +184,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
             positionY,
             collidedVelocityX,
             collidedVelocityY,
-            new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
+            new ProjectileAiState(behavior.Ai0, ai1, current.Ai.Ai2),
             current.BannerIdToRespondTo,
             current.Damage,
             current.KnockBack,

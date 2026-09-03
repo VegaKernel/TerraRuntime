@@ -24,6 +24,7 @@ internal sealed class RuntimeNpcProjectileReflectionPass
     private readonly bool goodWorld;
     private readonly NpcSnapshot[] npcScratch;
     private readonly ProjectileSnapshot[] projectileScratch;
+    private int cachedNpcCount;
 
     public RuntimeNpcProjectileReflectionPass(
         RuntimeNpcStore npcs,
@@ -41,66 +42,80 @@ internal sealed class RuntimeNpcProjectileReflectionPass
         projectileScratch = new ProjectileSnapshot[projectiles.Capacity];
     }
 
+    public void BeginTick() => cachedNpcCount = npcs.CopyActive(npcScratch);
+
+    public int TickProjectile(ushort projectileSlot)
+    {
+        if (!projectiles.TryGetActive(projectileSlot, out ProjectileSnapshot projectile))
+            return 0;
+
+        return TryReflect(in projectile) ? 1 : 0;
+    }
+
     public int Tick()
     {
-        int npcCount = npcs.CopyActive(npcScratch);
+        BeginTick();
         int projectileCount = projectiles.CopyActive(projectileScratch);
         int reflected = 0;
-
         for (int projectileIndex = 0; projectileIndex < projectileCount; projectileIndex++)
         {
             ProjectileSnapshot projectile = projectileScratch[projectileIndex];
-            if (!projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle) ||
-                !VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition projectileDefinition) ||
-                !VanillaProjectileReflection1458.CanBeReflected(in projectile, lifecycle.Reflected, in projectileDefinition) ||
-                !players.TryGetPlayer(new PlayerSlotId(projectile.Spawner), out PlayerStateSnapshot owner) ||
-                !owner.Player.IsAssigned)
+            if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount)
+                continue;
+            if (TryReflect(in projectile))
+                reflected++;
+        }
+        return reflected;
+    }
+
+    private bool TryReflect(in ProjectileSnapshot projectile)
+    {
+        if (!projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle) ||
+            !VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition projectileDefinition) ||
+            !VanillaProjectileReflection1458.CanBeReflected(in projectile, lifecycle.Reflected, in projectileDefinition) ||
+            !players.TryGetPlayer(new PlayerSlotId(projectile.Spawner), out PlayerStateSnapshot owner) ||
+            !owner.Player.IsAssigned)
+        {
+            return false;
+        }
+
+        for (int npcIndex = 0; npcIndex < cachedNpcCount; npcIndex++)
+        {
+            NpcSnapshot npc = npcScratch[npcIndex];
+            bool reflectsProjectile = npc.Simulation.ReflectsProjectiles ||
+                (goodWorld &&
+                 VanillaProjectileReflection1458.IsGoodWorldStarShot(projectile.Type) &&
+                 VanillaProjectileReflection1458.ReflectsStarShotsInGoodWorld(npc.TypeIdentity));
+            if (!npc.IsActive ||
+                !reflectsProjectile ||
+                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition npcDefinition) ||
+                !npcDefinition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize npcHitbox) ||
+                !Intersects(in npc, in npcHitbox, in projectile, in projectileDefinition))
             {
                 continue;
             }
 
-            for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
+            if (!VanillaProjectileReflection1458.TryResolve(
+                    in projectile,
+                    lifecycle.OldVelocityX,
+                    lifecycle.OldVelocityY,
+                    owner.PositionX + PlayerWidth * 0.5f,
+                    owner.PositionY + PlayerHeight * 0.5f,
+                    random,
+                    out VanillaProjectileReflectionResult mutation))
             {
-                NpcSnapshot npc = npcScratch[npcIndex];
-                bool reflectsProjectile = npc.Simulation.ReflectsProjectiles ||
-                    (goodWorld &&
-                     VanillaProjectileReflection1458.IsGoodWorldStarShot(projectile.Type) &&
-                     VanillaProjectileReflection1458.ReflectsStarShotsInGoodWorld(npc.TypeIdentity));
-                if (!npc.IsActive ||
-                    !reflectsProjectile ||
-                    !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition npcDefinition) ||
-                    !npcDefinition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize npcHitbox) ||
-                    !Intersects(in npc, in npcHitbox, in projectile, in projectileDefinition))
-                {
-                    continue;
-                }
-
-                if (!VanillaProjectileReflection1458.TryResolve(
-                        in projectile,
-                        lifecycle.OldVelocityX,
-                        lifecycle.OldVelocityY,
-                        owner.PositionX + PlayerWidth * 0.5f,
-                        owner.PositionY + PlayerHeight * 0.5f,
-                        random,
-                        out VanillaProjectileReflectionResult mutation))
-                {
-                    break;
-                }
-
-                if (projectiles.TryReflect(
-                        projectile.Handle,
-                        mutation.VelocityX,
-                        mutation.VelocityY,
-                        mutation.Damage,
-                        out _))
-                {
-                    reflected++;
-                }
-                break;
+                return false;
             }
+
+            return projectiles.TryReflect(
+                projectile.Handle,
+                mutation.VelocityX,
+                mutation.VelocityY,
+                mutation.Damage,
+                out _);
         }
 
-        return reflected;
+        return false;
     }
 
     private static bool Intersects(

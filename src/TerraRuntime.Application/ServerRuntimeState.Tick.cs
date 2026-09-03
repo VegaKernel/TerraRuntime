@@ -19,11 +19,19 @@ internal sealed partial class ServerRuntimeState
         _npcs.CommitPending();
         _serverPlayers?.TickPhysics(this);
         _npcs.TickSimulation();
-        if (_projectiles.TryTickState())
+        _npcs.BeginProjectileInteractions();
+        _projectiles.BeginReflectionTick();
+        if (_projectiles.TryTickState(projectileSlot =>
+            {
+                // TerrariaServer updates one physical projectile slot at a time. Damage/reflection for that exact
+                // generation happens before the loop advances, so child NewProjectile allocation into a later slot
+                // remains eligible for same-global-tick simulation and combat.
+                _projectiles.ApplyReflections(projectileSlot);
+                _npcs.TickProjectileInteractions(projectileSlot);
+                _projectilePlayerCombat.TickProjectile(projectileSlot);
+            }))
         {
-            _npcs.TickProjectileInteractions();
-            _projectilePlayerCombat.Tick();
-            _projectiles.ApplyReflections();
+            _npcs.EndProjectileInteractions();
         }
         _worldItems.TickInstancedLeases();
 

@@ -91,6 +91,31 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     }
 
     [Fact]
+    public void Falling_star_and_super_star_families_are_explicit_gameplay_profiles()
+    {
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.StarCannonStar, out VanillaProjectileBehaviorProfile fallingStar));
+        Assert.Equal(VanillaProjectileBehaviorFamily.FallingStar, fallingStar.Family);
+        Assert.Equal(VanillaProjectileAiStyles.FallingStar, fallingStar.ExpectedAiStyle);
+        Assert.True(fallingStar.BehaviorImplemented);
+
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.SuperStar, out VanillaProjectileBehaviorProfile superStar));
+        Assert.Equal(VanillaProjectileBehaviorFamily.SuperStar, superStar.Family);
+        Assert.Equal(VanillaProjectileAiStyles.SuperStar, superStar.ExpectedAiStyle);
+        Assert.True(superStar.BehaviorImplemented);
+
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.SuperStarSlash, out VanillaProjectileBehaviorProfile superStarSlash));
+        Assert.Equal(VanillaProjectileBehaviorFamily.SuperStarSlash, superStarSlash.Family);
+        Assert.Equal(VanillaProjectileAiStyles.SuperStarSlash, superStarSlash.ExpectedAiStyle);
+        Assert.True(superStarSlash.BehaviorImplemented);
+
+        // Natural Falling Star (12) has a daytime/remix-world kill gate that is not yet fed by authoritative world state.
+        Assert.False(VanillaProjectileBehaviorProfileCatalog.TryGet(VanillaProjectileIds.FallingStar, out _));
+    }
+
+    [Fact]
     public void Every_profiled_type_agrees_with_its_source_backed_definition_ai_style()
     {
         ProjectileTypeId[] types =
@@ -100,6 +125,9 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.UnholyArrow,
             VanillaProjectileIds.JestersArrow,
             VanillaProjectileIds.EnchantedBoomerang,
+            VanillaProjectileIds.SuperStar,
+            VanillaProjectileIds.SuperStarSlash,
+            VanillaProjectileIds.StarCannonStar,
             VanillaProjectileIds.Bullet,
             VanillaProjectileIds.GreenLaser,
             VanillaProjectileIds.Bone,

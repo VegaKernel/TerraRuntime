@@ -102,6 +102,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         return worldMotion.TryResolve(
             in projectile,
             in definition,
+            in profile,
             in behavior,
             in behaviorContext,
             out next);

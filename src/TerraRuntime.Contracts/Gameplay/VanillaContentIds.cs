@@ -445,6 +445,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId UnholyArrow = new(4);
     public static readonly ProjectileTypeId JestersArrow = new(5);
     public static readonly ProjectileTypeId EnchantedBoomerang = new(6);
+    public static readonly ProjectileTypeId FallingStar = new(12);
     public static readonly ProjectileTypeId Bullet = new(14);
     public static readonly ProjectileTypeId GreenLaser = new(20);
     public static readonly ProjectileTypeId Bone = new(21);
@@ -485,6 +486,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId SpazmatismEyeFire = new(101);
     public static readonly ProjectileTypeId SkeletronPrimeBomb = new(102);
     public static readonly ProjectileTypeId SuperStar = new(728);
+    public static readonly ProjectileTypeId SuperStarSlash = new(729);
     public static readonly ProjectileTypeId StarCannonStar = new(955);
     public static readonly ProjectileTypeId QueenSlimeSmash = new(922);
     public static readonly ProjectileTypeId QueenSlimeGelAttack = new(926);

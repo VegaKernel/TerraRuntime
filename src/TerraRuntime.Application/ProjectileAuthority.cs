@@ -85,14 +85,34 @@ internal sealed class ProjectileAuthority
         }
     }
 
-    public bool TryTickState()
+    public bool TryTickState(Action<ushort>? afterPhysicalSlot = null)
     {
         if (stepper is null)
             return false;
 
-        LastTick = executor.Tick(stepper);
+        int examined = 0;
+        int proposed = 0;
+        int applied = 0;
+        int rejected = 0;
+        int physicalSlots = Math.Min(projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
+        for (ushort slot = 0; slot < physicalSlots; slot++)
+        {
+            ProjectileStateTickSummary current = executor.TickSlot(stepper, slot);
+            examined += current.Examined;
+            proposed += current.Proposed;
+            applied += current.Applied;
+            rejected += current.Rejected;
+            afterPhysicalSlot?.Invoke(slot);
+        }
+
+        LastTick = new ProjectileStateTickSummary(examined, proposed, applied, rejected);
         return true;
     }
+
+    public void BeginReflectionTick() => reflections.BeginTick();
+
+    public void ApplyReflections(ushort projectileSlot) =>
+        AppliedReflections += reflections.TickProjectile(projectileSlot);
 
     public void ApplyReflections() => AppliedReflections += reflections.Tick();
 

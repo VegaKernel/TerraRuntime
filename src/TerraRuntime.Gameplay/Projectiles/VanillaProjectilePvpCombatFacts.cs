@@ -124,12 +124,27 @@ public static class VanillaProjectilePvpCombatFacts
         type == VanillaProjectileIds.StarAnise ||
         type == VanillaProjectileIds.BoneArrowFromMerchant ||
         type == VanillaProjectileIds.BoneDagger ||
-        type == VanillaProjectileIds.BoneShard;
+        type == VanillaProjectileIds.BoneShard ||
+        type == VanillaProjectileIds.SuperStar;
+
+    /// <summary>Projectile.TryDoingOnHitEffects early-return set, projected for the admitted PvP slice.</summary>
+    public static bool RunsAttackerOnHitEffects(ProjectileTypeId type) =>
+        type != VanillaProjectileIds.SuperStarSlash;
 
     public static bool CanCarryMeleeEnchantStatus(ProjectileTypeId type) => IsAdmittedMeleeProjectile(type);
 
     public static bool CanCarryFrostBurnStatus(ProjectileTypeId type) =>
         IsAdmittedMeleeProjectile(type) || IsAdmittedRangedProjectile(type);
+
+    /// <summary>Projectile.Damage / Damage_PVP flask-of-party child-projectile branch.</summary>
+    public static bool ShouldSpawnConfettiMeleeChild(ProjectileTypeId type, byte meleeEnchant) =>
+        meleeEnchant == 7 && IsAdmittedMeleeProjectile(type);
+
+    /// <summary>Projectile.Damage Nano Flask melee-projectile damage multiplier.</summary>
+    public static bool ShouldApplyNanoFlaskDamageBoost(ProjectileTypeId type, byte meleeEnchant) =>
+        meleeEnchant == 6 && IsAdmittedMeleeProjectile(type);
+
+    public const float NanoFlaskDamageMultiplier = 1.05f;
 
     /// <summary>Projectile.StatusPvP magmaStone branch for admitted melee projectiles (noEnchantments=false).</summary>
     public static bool TryRollMagmaStoneStatus(

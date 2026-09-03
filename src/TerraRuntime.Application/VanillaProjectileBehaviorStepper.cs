@@ -116,6 +116,31 @@ internal static class VanillaProjectileBehaviorStepper
             case VanillaProjectileBehaviorFamily.Boomerang:
                 return TryStepEnchantedBoomerang(in current, in definition, context.PlayerSnapshots, out next);
 
+            case VanillaProjectileBehaviorFamily.FallingStar:
+                // aiStyle 5 (Falling Star / Star Cannon Star) has no gameplay velocity mutation. Its only
+                // server-relevant AI state in the admitted slice is the ai[1] solid-collision arming transition,
+                // which is resolved by the world-motion layer because it requires a tile query.
+                next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0);
+                return true;
+
+            case VanillaProjectileBehaviorFamily.SuperStar:
+                // AI_151_SuperStar mutates alpha/rotation/sound/gore/dust only. None of those fields affect
+                // authoritative movement, collision, damage, lifetime or spawn ordering, so gameplay is a no-op.
+                next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0);
+                return true;
+
+            case VanillaProjectileBehaviorFamily.SuperStarSlash:
+                // Type 729 is spawned by SummonSuperStarSlash with ai[0] == 0. AI_152 then changes only
+                // alpha/rotation/sound for this exact type; tileCollide=false and extraUpdates are SetDefaults facts.
+                // Any nonzero ai[0] would enter the shared AI_152 curved-flight branch and remains fail-closed here.
+                if (ai0 != 0f)
+                {
+                    next = default;
+                    return false;
+                }
+                next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, TileCollideOverride: false);
+                return true;
+
             case VanillaProjectileBehaviorFamily.SkeletronSkull:
                 float ai1 = current.Ai.Ai1 + 1f;
                 ai1Override = ai1;

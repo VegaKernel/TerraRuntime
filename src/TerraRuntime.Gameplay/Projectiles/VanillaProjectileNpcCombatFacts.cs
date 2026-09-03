@@ -29,7 +29,10 @@ public static class VanillaProjectileNpcCombatFacts
             penetration = 5;
             return true;
         }
-        if (type == VanillaProjectileIds.JestersArrow || type == VanillaProjectileIds.EnchantedBoomerang)
+        if (type == VanillaProjectileIds.JestersArrow ||
+            type == VanillaProjectileIds.EnchantedBoomerang ||
+            type == VanillaProjectileIds.SuperStar ||
+            type == VanillaProjectileIds.SuperStarSlash)
         {
             penetration = -1;
             return true;
@@ -52,14 +55,48 @@ public static class VanillaProjectileNpcCombatFacts
     /// </summary>
     public static bool UsesSharedOwnerNpcImmunity(ProjectileTypeId type)
     {
-        if (!TryGetInitialPenetration(type, out int penetration))
+        if (!TryGetInitialPenetration(type, out int penetration) ||
+            TryGetLocalNpcHitCooldown(type, out _) ||
+            TryGetStaticNpcHitCooldown(type, out _))
+        {
             return false;
+        }
         return penetration != 1;
+    }
+
+    /// <summary>Projectile.localNPCImmunity source facts for the admitted local-immunity slice.</summary>
+    public static bool TryGetLocalNpcHitCooldown(ProjectileTypeId type, out int cooldown)
+    {
+        if (type == VanillaProjectileIds.SuperStar)
+        {
+            // SetDefaults(728): usesLocalNPCImmunity=true, localNPCHitCooldown=-1. The exact generation can
+            // therefore hit each NPC generation only once for its entire lifetime.
+            cooldown = -1;
+            return true;
+        }
+
+        cooldown = 0;
+        return false;
+    }
+
+    /// <summary>Projectile.perIDStaticNPCImmunity source facts for the admitted static-immunity slice.</summary>
+    public static bool TryGetStaticNpcHitCooldown(ProjectileTypeId type, out int cooldown)
+    {
+        if (type == VanillaProjectileIds.SuperStarSlash)
+        {
+            // SetDefaults(729): usesIDStaticNPCImmunity=true, idStaticNPCHitCooldown=10. All type-729
+            // generations share this cooldown against the same NPC generation.
+            cooldown = 10;
+            return true;
+        }
+
+        cooldown = 0;
+        return false;
     }
 
     /// <summary>
     /// Terraria's ordinary fallback after an admitted multi/infinite-penetration hit writes NPC.immune[owner] = 10.
-    /// Exceptional type-specific local/static immunity projectiles remain outside this catalog and fail closed.
+    /// Local/static immunity families bypass this shared owner cooldown and use their dedicated facts above.
     /// </summary>
     public const int BaselineOwnerNpcHitCooldownTicks = 10;
 }

@@ -18,7 +18,6 @@ internal sealed class RuntimeProjectilePlayerCombatPass
     private readonly Func<long> tickProvider;
     private readonly Random random;
     private const int PlayerSlotCount = byte.MaxValue + 1;
-    private readonly ProjectileSnapshot[] projectileBuffer;
     private readonly ProjectileGeneration[] projectileHitGenerations;
     private readonly long[] lastProjectilePlayerHitTick;
     private readonly PlayerSessionGeneration[] lastProjectilePlayerHitGeneration;
@@ -33,7 +32,6 @@ internal sealed class RuntimeProjectilePlayerCombatPass
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         this.random = random ?? Random.Shared;
-        projectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
         projectileHitGenerations = new ProjectileGeneration[projectiles.Capacity];
         lastProjectilePlayerHitTick = new long[checked(projectiles.Capacity * PlayerSlotCount)];
         lastProjectilePlayerHitGeneration = new PlayerSessionGeneration[lastProjectilePlayerHitTick.Length];
@@ -46,173 +44,201 @@ internal sealed class RuntimeProjectilePlayerCombatPass
     public long DodgedHits { get; private set; }
     public long ImmuneSkips { get; private set; }
     public long AppliedStatusEffects { get; private set; }
+    public long SpawnedChildProjectiles { get; private set; }
 
     public void Tick()
     {
-        long tick = tickProvider();
-        int projectileCount = projectiles.CopyActive(projectileBuffer);
-        for (int i = 0; i < projectileCount; i++)
+        int physicalSlots = Math.Min(projectiles.Capacity, RuntimeProjectileStore.VanillaPhysicalSlotCount);
+        for (ushort slot = 0; slot < physicalSlots; slot++)
+            TickProjectile(slot);
+    }
+
+    public void TickProjectile(ushort projectileSlot)
+    {
+        if (!projectiles.TryGetActive(projectileSlot, out ProjectileSnapshot projectile))
+            return;
+
+        ProcessProjectile(in projectile, tickProvider());
+    }
+
+    private void ProcessProjectile(in ProjectileSnapshot initialProjectile, long tick)
+    {
+        ProjectileSnapshot projectile = initialProjectile;
+        if (!projectiles.IsCombatTrusted(projectile.Handle) ||
+            !projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle) ||
+            lifecycle.Reflected ||
+            !projectiles.TryGetCombatTrustedOwner(projectile.Handle, out PlayerHandle trustedOwner) ||
+            !IsEligible(in projectile, out VanillaProjectileDefinition definition) ||
+            !TryResolveProjectileHitRow(projectile.Handle, out int projectileHitRow) ||
+            !players.TryGet(trustedOwner, out RuntimePlayerMember? owner) ||
+            owner.Connection.Player != trustedOwner ||
+            owner.Slot.Value != projectile.Spawner ||
+            !owner.Hostile || owner.IsDead ||
+            !players.TryCaptureCombatSnapshot(trustedOwner, out VanillaPlayerCombatSnapshot attackerCombat))
         {
-            ProjectileSnapshot projectile = projectileBuffer[i];
-            if (!projectiles.IsCombatTrusted(projectile.Handle) ||
-                !projectiles.TryGetCombatTrustedOwner(projectile.Handle, out PlayerHandle trustedOwner) ||
-                !IsEligible(in projectile, out VanillaProjectileDefinition definition) ||
-                !TryResolveProjectileHitRow(projectile.Handle, out int projectileHitRow) ||
-                !players.TryGet(trustedOwner, out RuntimePlayerMember? owner) ||
-                owner.Connection.Player != trustedOwner ||
-                owner.Slot.Value != projectile.Spawner ||
-                !owner.Hostile || owner.IsDead ||
-                !players.TryCaptureCombatSnapshot(trustedOwner, out VanillaPlayerCombatSnapshot attackerCombat))
+            return;
+        }
+
+        foreach (RuntimePlayerMember target in players.Members)
+        {
+            if (target.Slot.Value == projectile.Spawner || !target.Hostile || target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                (owner.Team != 0 && owner.Team == target.Team) ||
+                IsProjectilePlayerOnCooldown(projectileHitRow, target.Connection.Player, tick) ||
+                !Intersects(in projectile, in definition, target))
             {
                 continue;
             }
 
-            bool ended = false;
-            foreach (RuntimePlayerMember target in players.Members)
+            // Damage_PVP rejects general player immunity before StatusPvP/TryDoingOnHitEffects and before
+            // penetration/playerImmune side effects. Preflight the target combat snapshot for the same reason:
+            // a fail-closed target must not receive a status mutation from a hit that cannot be committed.
+            if (players.IsAuthoritativePvpImmune(target.Connection.Player, tick))
             {
-                if (target.Slot.Value == projectile.Spawner || !target.Hostile || target.IsDead || !target.HasHealth || target.Life <= 0 ||
-                    (owner.Team != 0 && owner.Team == target.Team) ||
-                    IsProjectilePlayerOnCooldown(projectileHitRow, target.Connection.Player, tick) ||
-                    !Intersects(in projectile, in definition, target))
+                ImmuneSkips++;
+                continue;
+            }
+            if (!players.TryCaptureCombatSnapshot(target.Connection.Player, out _))
+                continue;
+
+            int direction = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
+            // Projectile.Damage_PVP calls Main.DamageVar before StatusPvP. Keep the roll server-owned instead
+            // of treating packet-117 damage as the already-varied result. Luck-skewed variance remains a later
+            // parity slice; the existing strict projectile path owns the vanilla +/-15% envelope here.
+            int variedDamage = Math.Max(1, (int)Math.Round(
+                projectile.Damage * (1f + random.Next(-15, 16) * 0.01f)));
+
+            // StatusPvP runs before Player.Hurt. For the admitted SetDefaults classes the source order is
+            // meleeEnchant -> Frost set -> magmaStone -> type-specific status. TryDoingOnHitEffects then runs
+            // before Hurt, so Hallowed Protection may arm even when Shimmer/ordinary dodge later returns zero.
+            if (VanillaProjectilePvpCombatFacts.CanCarryMeleeEnchantStatus(projectile.Type) &&
+                VanillaProjectilePvpCombatFacts.TryRollMeleeEnchantStatus(
+                    attackerCombat.MeleeEnchant,
+                    random,
+                    out VanillaProjectilePvpStatusEffect enchantStatus) &&
+                enchantStatus.IsPresent)
+            {
+                if (!players.TryGrantAuthoritativePvpStatus(
+                        target.Connection.Player,
+                        enchantStatus.Buff,
+                        enchantStatus.DurationTicks))
                 {
                     continue;
                 }
+                AppliedStatusEffects++;
+            }
 
-                // Damage_PVP rejects general player immunity before StatusPvP/TryDoingOnHitEffects and before
-                // penetration/playerImmune side effects. Preflight the target combat snapshot for the same reason:
-                // a fail-closed target must not receive a status mutation from a hit that cannot be committed.
-                if (players.IsAuthoritativePvpImmune(target.Connection.Player, tick))
+            if (VanillaProjectilePvpCombatFacts.CanCarryFrostBurnStatus(projectile.Type) &&
+                VanillaProjectilePvpCombatFacts.TryRollFrostBurnStatus(
+                    attackerCombat.FrostBurn,
+                    random,
+                    out VanillaProjectilePvpStatusEffect frostStatus) &&
+                frostStatus.IsPresent)
+            {
+                if (!players.TryGrantAuthoritativePvpStatus(
+                        target.Connection.Player,
+                        frostStatus.Buff,
+                        frostStatus.DurationTicks))
                 {
-                    ImmuneSkips++;
                     continue;
                 }
-                if (!players.TryCaptureCombatSnapshot(target.Connection.Player, out _))
+                AppliedStatusEffects++;
+            }
+
+            if (VanillaProjectilePvpCombatFacts.TryRollMagmaStoneStatus(
+                    projectile.Type,
+                    attackerCombat.MagmaStone,
+                    random,
+                    out VanillaProjectilePvpStatusEffect magmaStatus) &&
+                magmaStatus.IsPresent)
+            {
+                if (!players.TryGrantAuthoritativePvpStatus(
+                        target.Connection.Player,
+                        magmaStatus.Buff,
+                        magmaStatus.DurationTicks))
+                {
                     continue;
-
-                int direction = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
-                // Projectile.Damage_PVP calls Main.DamageVar before StatusPvP. Keep the roll server-owned instead
-                // of treating packet-117 damage as the already-varied result. Luck-skewed variance remains a later
-                // parity slice; the existing strict projectile path owns the vanilla +/-15% envelope here.
-                int variedDamage = Math.Max(1, (int)Math.Round(
-                    projectile.Damage * (1f + random.Next(-15, 16) * 0.01f)));
-
-                // StatusPvP runs before Player.Hurt. For the admitted SetDefaults classes the source order is
-                // meleeEnchant -> Frost set -> magmaStone -> type-specific status. TryDoingOnHitEffects then runs
-                // before Hurt, so Hallowed Protection may arm even when Shimmer/ordinary dodge later returns zero.
-                if (VanillaProjectilePvpCombatFacts.CanCarryMeleeEnchantStatus(projectile.Type) &&
-                    VanillaProjectilePvpCombatFacts.TryRollMeleeEnchantStatus(
-                        attackerCombat.MeleeEnchant,
-                        random,
-                        out VanillaProjectilePvpStatusEffect enchantStatus) &&
-                    enchantStatus.IsPresent)
-                {
-                    if (!players.TryGrantAuthoritativePvpStatus(
-                            target.Connection.Player,
-                            enchantStatus.Buff,
-                            enchantStatus.DurationTicks))
-                    {
-                        continue;
-                    }
-                    AppliedStatusEffects++;
                 }
+                AppliedStatusEffects++;
+            }
 
-                if (VanillaProjectilePvpCombatFacts.CanCarryFrostBurnStatus(projectile.Type) &&
-                    VanillaProjectilePvpCombatFacts.TryRollFrostBurnStatus(
-                        attackerCombat.FrostBurn,
-                        random,
-                        out VanillaProjectilePvpStatusEffect frostStatus) &&
-                    frostStatus.IsPresent)
+            if (VanillaProjectilePvpCombatFacts.TryRollAdmittedStatus(
+                    projectile.Type,
+                    random,
+                    out VanillaProjectilePvpStatusEffect status) &&
+                status.IsPresent)
+            {
+                if (!players.TryGrantAuthoritativePvpStatus(
+                        target.Connection.Player,
+                        status.Buff,
+                        status.DurationTicks))
                 {
-                    if (!players.TryGrantAuthoritativePvpStatus(
-                            target.Connection.Player,
-                            frostStatus.Buff,
-                            frostStatus.DurationTicks))
-                    {
-                        continue;
-                    }
-                    AppliedStatusEffects++;
-                }
-
-                if (VanillaProjectilePvpCombatFacts.TryRollMagmaStoneStatus(
-                        projectile.Type,
-                        attackerCombat.MagmaStone,
-                        random,
-                        out VanillaProjectilePvpStatusEffect magmaStatus) &&
-                    magmaStatus.IsPresent)
-                {
-                    if (!players.TryGrantAuthoritativePvpStatus(
-                            target.Connection.Player,
-                            magmaStatus.Buff,
-                            magmaStatus.DurationTicks))
-                    {
-                        continue;
-                    }
-                    AppliedStatusEffects++;
-                }
-
-                if (VanillaProjectilePvpCombatFacts.TryRollAdmittedStatus(
-                        projectile.Type,
-                        random,
-                        out VanillaProjectilePvpStatusEffect status) &&
-                    status.IsPresent)
-                {
-                    if (!players.TryGrantAuthoritativePvpStatus(
-                            target.Connection.Player,
-                            status.Buff,
-                            status.DurationTicks))
-                    {
-                        continue;
-                    }
-                    AppliedStatusEffects++;
-                }
-
-                if (!players.TryGrantHallowedProtectionOnHit(owner.Connection.Player, in attackerCombat, tick))
                     continue;
+                }
+                AppliedStatusEffects++;
+            }
 
-                AuthoritativePvpDamageCommitResult result = players.CommitAuthoritativePvpDamage(
-                    tick,
+            // Projectile.TryDoingOnHitEffects explicitly excludes type 729, so a Super Star Slash can carry
+            // ranged/Frost StatusPvP but must not arm the attacker's Hallowed Protection.
+            if (VanillaProjectilePvpCombatFacts.RunsAttackerOnHitEffects(projectile.Type) &&
+                !players.TryGrantHallowedProtectionOnHit(owner.Connection.Player, in attackerCombat, tick))
+            {
+                continue;
+            }
+
+            AuthoritativePvpDamageCommitResult result = players.CommitAuthoritativePvpDamage(
+                tick,
+                owner.Connection.Player,
+                target.Connection.Player,
+                DamageSource.FromPlayerProjectile(owner.Connection.Player, projectile.Handle),
+                variedDamage,
+                critical: false,
+                direction,
+                VanillaProjectilePvpCombatFacts.IsDamageDodgeable(projectile.Type, projectile.Damage),
+                allowShimmerDodge: !VanillaProjectilePvpCombatFacts.CanHitPastShimmer(projectile.Type),
+                out PlayerStateSnapshot committed);
+            if (result == AuthoritativePvpDamageCommitResult.Rejected)
+                continue;
+            if (result == AuthoritativePvpDamageCommitResult.Immune)
+            {
+                ImmuneSkips++;
+                continue;
+            }
+
+            // Projectile.Damage_PVP spawns Flask of Party child 289 after Player.Hurt returns, regardless of
+            // whether Hurt dealt damage or resolved to a dodge, and before playerImmune/penetration side effects.
+            if (VanillaProjectilePvpCombatFacts.ShouldSpawnConfettiMeleeChild(projectile.Type, attackerCombat.MeleeEnchant) &&
+                RuntimeProjectileChildSpawn1458.TrySpawnConfettiMelee(
+                    projectiles,
                     owner.Connection.Player,
-                    target.Connection.Player,
-                    DamageSource.FromPlayerProjectile(owner.Connection.Player, projectile.Handle),
-                    variedDamage,
-                    critical: false,
-                    direction,
-                    VanillaProjectilePvpCombatFacts.IsDamageDodgeable(projectile.Type, projectile.Damage),
-                    allowShimmerDodge: !VanillaProjectilePvpCombatFacts.CanHitPastShimmer(projectile.Type),
-                    out PlayerStateSnapshot committed);
-                if (result == AuthoritativePvpDamageCommitResult.Rejected)
-                    continue;
-                if (result == AuthoritativePvpDamageCommitResult.Immune)
-                {
-                    ImmuneSkips++;
-                    continue;
-                }
-
-                // Damage_PVP writes projectile.playerImmune[target] = 40 and consumes penetration even when Hurt
-                // resolves to a dodge. Global player immunity, by contrast, is checked before collision and does not.
-                MarkProjectilePlayerCooldown(projectileHitRow, target.Connection.Player, tick);
-                if (result == AuthoritativePvpDamageCommitResult.Dodged)
-                    DodgedHits++;
-                else
-                {
-                    CommittedHits++;
-                    if (result == AuthoritativePvpDamageCommitResult.Killed || committed.IsDead)
-                        Kills++;
-                }
-
-                if (!projectiles.TryConsumeCombatHitPenetration(projectile.Handle, out bool despawned, out ProjectileSnapshot current))
-                    break;
-                if (despawned)
-                {
-                    ConsumedProjectiles++;
-                    ended = true;
-                    break;
-                }
-                projectile = current;
+                    target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
+                    target.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
+                    target.VelocityX,
+                    target.VelocityY,
+                    out _))
+            {
+                SpawnedChildProjectiles++;
             }
 
-            if (ended)
-                continue;
+            // Damage_PVP writes projectile.playerImmune[target] = 40 and consumes penetration even when Hurt
+            // resolves to a dodge. Global player immunity, by contrast, is checked before collision and does not.
+            MarkProjectilePlayerCooldown(projectileHitRow, target.Connection.Player, tick);
+            if (result == AuthoritativePvpDamageCommitResult.Dodged)
+                DodgedHits++;
+            else
+            {
+                CommittedHits++;
+                if (result == AuthoritativePvpDamageCommitResult.Killed || committed.IsDead)
+                    Kills++;
+            }
+
+            if (!projectiles.TryConsumeCombatHitPenetration(projectile.Handle, out bool despawned, out ProjectileSnapshot current))
+                break;
+            if (despawned)
+            {
+                ConsumedProjectiles++;
+                break;
+            }
+            projectile = current;
         }
     }
 
@@ -266,7 +292,8 @@ internal sealed class RuntimeProjectilePlayerCombatPass
         }
         return profile.Family is VanillaProjectileBehaviorFamily.BasicArrow or
             VanillaProjectileBehaviorFamily.Thrown or
-            VanillaProjectileBehaviorFamily.Boomerang;
+            VanillaProjectileBehaviorFamily.Boomerang or
+            VanillaProjectileBehaviorFamily.SuperStar;
     }
 
     private static bool Intersects(
