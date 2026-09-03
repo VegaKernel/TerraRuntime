@@ -114,7 +114,7 @@ public sealed class ServerRuntimeClientProjectileIngressTests
     }
 
     [Fact]
-    public void Trusted_server_projectile_rejects_owner_packet27_and_packet29_mutations()
+    public async Task Trusted_server_projectile_rejects_owner_packet27_and_packet29_mutations()
     {
         using var fixture = new Fixture(playerCount: 1);
         ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 12);
@@ -133,7 +133,7 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             25);
 
         fixture.State.Apply(new ProjectileSpawnRuntimeCommand(0, spawn, completion));
-        ProjectileSnapshot? trustedResult = completion.Task.GetAwaiter().GetResult();
+        ProjectileSnapshot? trustedResult = await completion.Task;
         Assert.True(trustedResult.HasValue);
         ProjectileSnapshot trusted = trustedResult.Value;
         Assert.True(fixture.Projectiles.IsCombatTrusted(trusted.Handle));
@@ -267,9 +267,9 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, sameTick));
 
         Assert.Equal(1, fixture.Projectiles.ActiveCount);
-        Assert.False(fixture.Replication.WireIdentities.TryResolve(in forgedDamage.Key, out _));
-        Assert.False(fixture.Replication.WireIdentities.TryResolve(in forgedVelocity.Key, out _));
-        Assert.False(fixture.Replication.WireIdentities.TryResolve(in sameTick.Key, out _));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(forgedDamage.Key, out _));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(forgedVelocity.Key, out _));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(sameTick.Key, out _));
         Assert.True(fixture.State.TryCapturePlayerInventoryItem(
             owner.Player, VanillaPlayerItemSlotCatalog.AmmoSlotStart, out RuntimePlayerInventoryItem ammo));
         Assert.Equal((short)3, ammo.Stack);

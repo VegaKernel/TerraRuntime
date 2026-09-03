@@ -141,12 +141,15 @@ public sealed class RuntimeTownNpcMelee1458Tests
 
         var items = new RuntimeWorldItemStore();
         var leases = new RuntimeWorldItemInstancedLeaseStore(items);
+        var playerAuthority = new PlayerAuthority(events: null, worldTiles: null);
         var pipeline = new RuntimeNpcNetworkCombatPipeline(
             npcs,
             items,
             EmptyPlayers.Instance,
+            playerAuthority,
+            tickProvider: static () => 0,
             npcReplication: null,
-            leases,
+            instancedLeases: leases,
             worldItemReplication: null,
             worldClock: null,
             progression: new RuntimeWorldProgressionMutations(),
@@ -217,9 +220,20 @@ public sealed class RuntimeTownNpcMelee1458Tests
 
         var items = new RuntimeWorldItemStore();
         var leases = new RuntimeWorldItemInstancedLeaseStore(items);
+        var playerAuthority = new PlayerAuthority(events: null, worldTiles: null);
         var pipeline = new RuntimeNpcNetworkCombatPipeline(
-            npcs, items, EmptyPlayers.Instance, npcReplication: null, leases, worldItemReplication: null,
-            worldClock: null, progression: new RuntimeWorldProgressionMutations(), expertMode: false, masterMode: false);
+            npcs,
+            items,
+            EmptyPlayers.Instance,
+            playerAuthority,
+            tickProvider: static () => 0,
+            npcReplication: null,
+            instancedLeases: leases,
+            worldItemReplication: null,
+            worldClock: null,
+            progression: new RuntimeWorldProgressionMutations(),
+            expertMode: false,
+            masterMode: false);
 
         Assert.Equal(
             RuntimeTownNpcMeleeDamageResult1458.Committed,
