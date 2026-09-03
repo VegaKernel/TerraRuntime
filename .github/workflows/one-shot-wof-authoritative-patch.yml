@@ -33,10 +33,16 @@ jobs:
           set -euo pipefail
           git config user.name 'Xekep'
           git config user.email 'Xekep@users.noreply.github.com'
-          cat .github/wof-authoritative.patch.gz.b64.part1 .github/wof-authoritative.patch.gz.b64.part2 | base64 -d | gzip -d > /tmp/wof.patch
+          printf '%s  %s\n' 'a8834db787262fd51421d29431718171e9c50294' .github/wof-authoritative.patch.gz.b64.part1 | git hash-object --stdin >/dev/null
+          test "$(git hash-object .github/wof-authoritative.patch.gz.b64.part1)" = 'a8834db787262fd51421d29431718171e9c50294'
+          test "$(git hash-object .github/wof-authoritative.patch.gz.b64.part2a)" = '48b3193cd01c419533578fe4aad234452044ff90'
+          test "$(git hash-object .github/wof-authoritative.patch.gz.b64.part2b)" = '4dfe8a0e8d08cf4fac96cee18c37671b152c110a'
+          test "$(git hash-object .github/wof-authoritative.patch.gz.b64.part2c)" = '531796235ac3efddaba951530a6da46de77b3161'
+          test "$(git hash-object .github/wof-authoritative.patch.gz.b64.part2d)" = 'a1c6602d7312340a1790e06fe59badc260e1d767'
+          cat .github/wof-authoritative.patch.gz.b64.part1 .github/wof-authoritative.patch.gz.b64.part2a .github/wof-authoritative.patch.gz.b64.part2b .github/wof-authoritative.patch.gz.b64.part2c .github/wof-authoritative.patch.gz.b64.part2d | base64 -d | gzip -d > /tmp/wof.patch
           printf '%s  %s\n' 'df6592e8edba1545bf4823d56e91137c324cc2082a7a7c5d4e7ae76c287528cc' /tmp/wof.patch | sha256sum -c -
           git apply --index /tmp/wof.patch
-          rm -f .github/wof-authoritative.patch.gz.b64.part1 .github/wof-authoritative.patch.gz.b64.part2 .github/workflows/one-shot-wof-authoritative-patch.yml
+          rm -f .github/wof-authoritative.patch.gz.b64.part1 .github/wof-authoritative.patch.gz.b64.part2 .github/wof-authoritative.patch.gz.b64.part2a .github/wof-authoritative.patch.gz.b64.part2b .github/wof-authoritative.patch.gz.b64.part2c .github/wof-authoritative.patch.gz.b64.part2d .github/workflows/one-shot-wof-authoritative-patch.yml
           git add -A
       - name: Validate docs, layers and gameplay IDs
         shell: bash
