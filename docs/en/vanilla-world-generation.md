@@ -31,6 +31,12 @@ Every source-backed ordinary-world pass that participates in vanilla generation 
 
 The permanent `terraria-worldgen-pass-catalog.yml` source contract decompiles the pinned official server and now fails unless that `RunPass` reseed remains present before pass application. This prevents a self-consistent runtime test from silently redefining vanilla RNG lifetime.
 
+### Early `TileRunner` parity
+
+The ordinary canonical early overlay now routes `Sand Patches` through the same source-backed `TileRunner` primitive used by the pinned server instead of a separate approximation. The runner also mirrors the ordinary 1.4.5.8 replacement gate: frame-important non-cuttable objects are skipped before the radius RNG roll, `tileStone` targets and generation-protected tiles are preserved with the source exceptions, sand resists clay/surface replacement, ore may replace the two source-special blocks that override the generic protection, and slope state is cleared only for target types outside `TileID.Sets.SaveSlopes`.
+
+This closes a shared early-pass geometry/RNG-order gap because the same runner is reused by caves, material patches and Jungle shaping. It does **not** mark the remaining 109-pass reference-world parity milestone complete; later algorithms and special-seed branches still need differential proof.
+
 ## Final eight-pass overlay
 
 `SourceBackedVanillaWorldGenerationFinal1458` completes the ordinary canonical pass identity sequence after `Micro Biomes` with the final eight TerrariaServer 1.4.5.8 registrations:
