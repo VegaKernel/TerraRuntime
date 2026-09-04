@@ -417,6 +417,48 @@ internal sealed class VanillaNpcBehaviorContext
         return false;
     }
 
+    /// <summary>
+    /// TerrariaServer 1.4.5.8 Player.FindClosest geometry: active, non-dead players are compared by Manhattan
+    /// distance between centers, with physical player-slot order breaking ties.
+    /// </summary>
+    public bool TrySelectClosestActivePlayer(
+        float positionX,
+        float positionY,
+        float width,
+        float height,
+        out VanillaNpcTargetCandidate target)
+    {
+        target = default;
+        if (!float.IsFinite(positionX) || !float.IsFinite(positionY) ||
+            !float.IsFinite(width) || !float.IsFinite(height) || width < 0f || height < 0f)
+        {
+            return false;
+        }
+
+        float centerX = positionX + width * 0.5f;
+        float centerY = positionY + height * 0.5f;
+        float bestDistance = float.PositiveInfinity;
+        byte bestSlot = byte.MaxValue;
+        bool found = false;
+        for (int index = 0; index < _candidateCount; index++)
+        {
+            VanillaNpcTargetCandidate candidate = _candidates[index];
+            if (!candidate.Active || candidate.Dead)
+                continue;
+
+            float distance = MathF.Abs(candidate.CenterX - centerX) + MathF.Abs(candidate.CenterY - centerY);
+            if (found && (distance > bestDistance || (distance == bestDistance && candidate.Slot >= bestSlot)))
+                continue;
+
+            bestDistance = distance;
+            bestSlot = candidate.Slot;
+            target = candidate;
+            found = true;
+        }
+
+        return found;
+    }
+
     private static void ValidateWorldSurface(double worldSurfaceTiles)
     {
         if (double.IsNaN(worldSurfaceTiles) ||

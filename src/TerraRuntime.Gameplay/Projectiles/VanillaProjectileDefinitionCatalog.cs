@@ -5,6 +5,7 @@ namespace TerraRuntime.Gameplay.Projectiles;
 /// <summary>Named TerrariaServer 1.4.5.8 projectile AI-style identities currently implemented by TerraRuntime.</summary>
 public static class VanillaProjectileAiStyles
 {
+    public static readonly ProjectileAiStyleId None = new(0);
     public static readonly ProjectileAiStyleId Arrow = new(1);
     public static readonly ProjectileAiStyleId Thrown = new(2);
     public static readonly ProjectileAiStyleId Boomerang = new(3);
@@ -14,10 +15,14 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId BouncyBall = new(14);
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
+    public static readonly ProjectileAiStyleId Sharknado = new(64);
+    public static readonly ProjectileAiStyleId SharknadoBolt = new(65);
     public static readonly ProjectileAiStyleId PhantasmalEye = new(82);
     public static readonly ProjectileAiStyleId PhantasmalSphere = new(83);
     public static readonly ProjectileAiStyleId PhantasmalDeathray = new(84);
     public static readonly ProjectileAiStyleId HallowBossRainbowStreak = new(171);
+    public static readonly ProjectileAiStyleId HallowBossRainbowTrail = new(173);
+    public static readonly ProjectileAiStyleId QueenSlimeSmash = new(135);
     public static readonly ProjectileAiStyleId SuperStar = new(151);
     public static readonly ProjectileAiStyleId SharpTears = new(157);
     public static readonly ProjectileAiStyleId FairyQueenLance = new(179);
@@ -271,6 +276,36 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 8,
         CollisionHeight: 8);
 
+    private static readonly VanillaProjectileDefinition SharknadoDefinition = new(
+        Width: 150,
+        Height: 42,
+        AiStyle: VanillaProjectileAiStyles.Sharknado,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 150,
+        CollisionHeight: 42);
+
+    private static readonly VanillaProjectileDefinition SharknadoBoltDefinition = new(
+        Width: 30,
+        Height: 30,
+        AiStyle: VanillaProjectileAiStyles.SharknadoBolt,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 30,
+        CollisionHeight: 30);
+
+    private static readonly VanillaProjectileDefinition CthulunadoDefinition = new(
+        Width: 150,
+        Height: 42,
+        AiStyle: VanillaProjectileAiStyles.Sharknado,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 150,
+        CollisionHeight: 42);
+
     private static readonly VanillaProjectileDefinition PhantasmalEyeDefinition = new(
         Width: 14,
         Height: 14,
@@ -305,6 +340,36 @@ public static class VanillaProjectileDefinitionCatalog
         Width: 30,
         Height: 30,
         AiStyle: VanillaProjectileAiStyles.HallowBossRainbowStreak,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 30,
+        CollisionHeight: 30);
+
+    private static readonly VanillaProjectileDefinition HallowBossLastingRainbowDefinition = new(
+        Width: 30,
+        Height: 30,
+        AiStyle: VanillaProjectileAiStyles.HallowBossRainbowTrail,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 30,
+        CollisionHeight: 30);
+
+    private static readonly VanillaProjectileDefinition HallowBossDeathAuroraDefinition = new(
+        Width: 30,
+        Height: 30,
+        AiStyle: VanillaProjectileAiStyles.None,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 30,
+        CollisionHeight: 30);
+
+    private static readonly VanillaProjectileDefinition QueenSlimeSmashDefinition = new(
+        Width: 30,
+        Height: 30,
+        AiStyle: VanillaProjectileAiStyles.QueenSlimeSmash,
         TileCollide: false,
         IgnoreWater: true,
         CanCutTiles: true,
@@ -725,6 +790,24 @@ public static class VanillaProjectileDefinitionCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.Sharknado)
+        {
+            definition = SharknadoDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SharknadoBolt)
+        {
+            definition = SharknadoBoltDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.Cthulunado)
+        {
+            definition = CthulunadoDefinition;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.PhantasmalEye)
         {
             definition = PhantasmalEyeDefinition;
@@ -746,6 +829,24 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.HallowBossRainbowStreak)
         {
             definition = HallowBossRainbowStreakDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.HallowBossLastingRainbow)
+        {
+            definition = HallowBossLastingRainbowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.HallowBossDeathAurora)
+        {
+            definition = HallowBossDeathAuroraDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.QueenSlimeSmash)
+        {
+            definition = QueenSlimeSmashDefinition;
             return true;
         }
 

@@ -430,7 +430,9 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId PlanteraSeed = new(275);
     public static readonly ProjectileTypeId PlanteraPoisonSeed = new(276);
     public static readonly ProjectileTypeId PlanteraThornBall = new(277);
+    public static readonly ProjectileTypeId Sharknado = new(384);
     public static readonly ProjectileTypeId SharknadoBolt = new(385);
+    public static readonly ProjectileTypeId Cthulunado = new(386);
     public static readonly ProjectileTypeId PhantasmalEye = new(452);
     public static readonly ProjectileTypeId PhantasmalSphere = new(454);
     public static readonly ProjectileTypeId PhantasmalDeathray = new(455);

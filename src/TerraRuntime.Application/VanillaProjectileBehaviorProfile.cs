@@ -35,7 +35,12 @@ internal enum VanillaProjectileBehaviorFamily : byte
     FairyQueenLance = 22,
     FairyQueenSunDance = 23,
     PhantasmalDeathray = 24,
-    HallowBossRainbowStreak = 25
+    HallowBossRainbowStreak = 25,
+    HallowBossLastingRainbow = 26,
+    HallowBossDeathAurora = 27,
+    QueenSlimeSmash = 28,
+    Sharknado = 29,
+    SharknadoBolt = 30
 }
 
 /// <summary>
@@ -181,6 +186,22 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile SharknadoProfile = new(
+        VanillaProjectileBehaviorFamily.Sharknado,
+        VanillaProjectileAiStyles.Sharknado,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile SharknadoBoltProfile = new(
+        VanillaProjectileBehaviorFamily.SharknadoBolt,
+        VanillaProjectileAiStyles.SharknadoBolt,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
     private static readonly VanillaProjectileBehaviorProfile PhantasmalEyeProfile = new(
         VanillaProjectileBehaviorFamily.PhantasmalEye,
         VanillaProjectileAiStyles.PhantasmalEye,
@@ -208,6 +229,30 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     private static readonly VanillaProjectileBehaviorProfile HallowBossRainbowStreakProfile = new(
         VanillaProjectileBehaviorFamily.HallowBossRainbowStreak,
         VanillaProjectileAiStyles.HallowBossRainbowStreak,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile HallowBossLastingRainbowProfile = new(
+        VanillaProjectileBehaviorFamily.HallowBossLastingRainbow,
+        VanillaProjectileAiStyles.HallowBossRainbowTrail,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile HallowBossDeathAuroraProfile = new(
+        VanillaProjectileBehaviorFamily.HallowBossDeathAurora,
+        VanillaProjectileAiStyles.None,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile QueenSlimeSmashProfile = new(
+        VanillaProjectileBehaviorFamily.QueenSlimeSmash,
+        VanillaProjectileAiStyles.QueenSlimeSmash,
         BehaviorImplemented: true,
         RequiresDefaultAi2: true,
         RejectServerOwned: false,
@@ -295,6 +340,18 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.Sharknado || type == VanillaProjectileIds.Cthulunado)
+        {
+            profile = SharknadoProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SharknadoBolt)
+        {
+            profile = SharknadoBoltProfile;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.PhantasmalEye)
         {
             profile = PhantasmalEyeProfile;
@@ -316,6 +373,24 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.HallowBossRainbowStreak)
         {
             profile = HallowBossRainbowStreakProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.HallowBossLastingRainbow)
+        {
+            profile = HallowBossLastingRainbowProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.HallowBossDeathAurora)
+        {
+            profile = HallowBossDeathAuroraProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.QueenSlimeSmash)
+        {
+            profile = QueenSlimeSmashProfile;
             return true;
         }
 

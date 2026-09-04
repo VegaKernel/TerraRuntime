@@ -436,6 +436,125 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Hallow_boss_lasting_rainbow_uses_source_ai173_turn_acceleration()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.HallowBossLastingRainbow, 8f, 0f, ai0: 0f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(8f, next.VelocityX, 5);
+        Assert.Equal(0f, next.VelocityY, 5);
+        Assert.Equal((MathF.PI / 360f) / 30f, next.Ai0, 7);
+    }
+
+    [Fact]
+    public void Hallow_boss_death_aurora_ai_style_zero_keeps_state_for_common_motion()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.HallowBossDeathAurora, 0f, 0f, ai0: 3f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(0f, next.VelocityX);
+        Assert.Equal(0f, next.VelocityY);
+        Assert.Equal(3f, next.Ai0);
+        Assert.False(next.Kill);
+    }
+
+    [Fact]
+    public void Queen_slime_smash_grows_about_its_center_and_kills_after_nine_updates()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.QueenSlimeSmash, 4f, 2f, ai0: 0f,
+            spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult first));
+
+        float firstSize = (int)(16f * (5f + 25f / 9f));
+        Assert.Equal(1f, first.Ai0);
+        Assert.Equal(0f, first.VelocityX);
+        Assert.Equal(0f, first.VelocityY);
+        Assert.Equal(firstSize, first.LocalAiOverride!.Value.Ai1, 4);
+        Assert.Equal(115f - firstSize * 0.5f, first.PositionXOverride!.Value, 4);
+        Assert.Equal(215f - firstSize * 0.5f, first.PositionYOverride!.Value, 4);
+
+        ProjectileSnapshot terminal = projectile with { Ai = projectile.Ai with { Ai0 = 9f } };
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in terminal, in definition, default, out VanillaProjectileBehaviorResult killed));
+        Assert.True(killed.Kill);
+        Assert.Equal(10f, killed.Ai0);
+    }
+
+    [Fact]
+    public void Sharknado_initial_ai_step_resizes_with_vanilla_integer_hitbox_and_preserves_source_center()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.Sharknado, -0.01f, 0f, ai0: 16f, ai1: 15f,
+            spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(15f, next.Ai0);
+        Assert.Equal(145f, next.PositionXOverride!.Value, 5);
+        Assert.Equal(213f, next.PositionYOverride!.Value, 5);
+        Assert.Equal(1f, next.LocalAiOverride!.Value.Ai0);
+        Assert.Equal(60f, next.LocalAiOverride.Value.Ai1);
+        Assert.Equal(16f, next.LocalAiOverride.Value.Ai2);
+    }
+
+    [Fact]
+    public void Cthulunado_uses_1458_scale_multiplier_and_integer_half_height()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.Cthulunado, 0f, 0f, ai0: 16f, ai1: 24f,
+            spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(15f, next.Ai0);
+        Assert.Equal(147f, next.PositionXOverride!.Value, 5);
+        Assert.Equal(214f, next.PositionYOverride!.Value, 5);
+        Assert.Equal(56f, next.LocalAiOverride!.Value.Ai1);
+        Assert.Equal(15f, next.LocalAiOverride.Value.Ai2);
+    }
+
+    [Fact]
+    public void Sharknado_bolt_wave_matches_ai_style_65_and_wet_contact_kills_with_source_offset()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.SharknadoBolt, 2f, 8f, ai0: 0f,
+            spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult wave));
+        float expectedY = 8f - 2f + (MathF.Cos(MathF.PI / 15f) - 0.5f) * 4f;
+        Assert.Equal(1f, wave.Ai0);
+        Assert.Equal(expectedY, wave.VelocityY, 5);
+        Assert.Equal(1f, wave.LocalAiOverride!.Value.Ai0);
+        Assert.False(wave.Kill);
+
+        var wet = new VanillaProjectileBehaviorContext(false, 0f, 0f, Wet: true);
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, in wet, out VanillaProjectileBehaviorResult killed));
+        Assert.True(killed.Kill);
+        Assert.Equal(184f, killed.PositionYOverride!.Value, 5);
+    }
+
+    [Fact]
     public void Phantasmal_deathray_anchors_to_moon_lord_head_rotates_and_advances_local_lifetime()
     {
         ProjectileSnapshot projectile = CreateProjectile(

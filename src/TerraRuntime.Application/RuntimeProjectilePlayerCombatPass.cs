@@ -174,7 +174,7 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                 if (damage <= 0)
                     continue;
 
-                float projectileCenterX = projectile.PositionX + definition.Width * 0.5f;
+                float projectileCenterX = GetHostileProjectileCenterX(in projectile, in definition, in lifecycle);
                 float targetCenterX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
                 int hitDirection = targetCenterX < projectileCenterX ? -1 : 1;
                 bool killedBefore = target.IsDead;
@@ -426,6 +426,19 @@ internal sealed class RuntimeProjectilePlayerCombatPass
             return false;
         }
 
+        if (projectile.Type == VanillaProjectileIds.QueenSlimeSmash)
+        {
+            float size = lifecycle.LocalAi.Ai1 > 0f ? lifecycle.LocalAi.Ai1 : definition.Width;
+            return IntersectsDynamicAabb(projectile.PositionX, projectile.PositionY, size, size, playerLeft, playerTop, playerWidth, playerHeight);
+        }
+
+        if (projectile.Type == VanillaProjectileIds.Sharknado || projectile.Type == VanillaProjectileIds.Cthulunado)
+        {
+            float width = lifecycle.LocalAi.Ai1 > 0f ? lifecycle.LocalAi.Ai1 : definition.Width;
+            float height = lifecycle.LocalAi.Ai2 > 0f ? lifecycle.LocalAi.Ai2 : definition.Height;
+            return IntersectsDynamicAabb(projectile.PositionX, projectile.PositionY, width, height, playerLeft, playerTop, playerWidth, playerHeight);
+        }
+
         if (projectile.Type == VanillaProjectileIds.PhantasmalDeathray)
         {
             if (lifecycle.LocalAi.Ai0 < 20f || !npcs.TryGet(sourceNpc, out NpcSnapshot source))
@@ -495,6 +508,35 @@ internal sealed class RuntimeProjectilePlayerCombatPass
 
         return Intersects(in projectile, in definition, player);
     }
+
+    private static float GetHostileProjectileCenterX(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition definition,
+        in ProjectileLifecycleState lifecycle)
+    {
+        if (projectile.Type == VanillaProjectileIds.QueenSlimeSmash && lifecycle.LocalAi.Ai1 > 0f)
+            return projectile.PositionX + lifecycle.LocalAi.Ai1 * 0.5f;
+        if ((projectile.Type == VanillaProjectileIds.Sharknado || projectile.Type == VanillaProjectileIds.Cthulunado) &&
+            lifecycle.LocalAi.Ai1 > 0f)
+        {
+            return projectile.PositionX + lifecycle.LocalAi.Ai1 * 0.5f;
+        }
+        return projectile.PositionX + definition.Width * 0.5f;
+    }
+
+    private static bool IntersectsDynamicAabb(
+        float left,
+        float top,
+        float width,
+        float height,
+        float playerLeft,
+        float playerTop,
+        float playerWidth,
+        float playerHeight) =>
+        left < playerLeft + playerWidth &&
+        left + width > playerLeft &&
+        top < playerTop + playerHeight &&
+        top + height > playerTop;
 
     // Allocation-free port of Terraria Collision.CheckAABBvLineCollision's gameplay geometry. The rectangle
     // is transformed into line-local coordinates and tested against the finite strip [0,length] x +/-width/2.

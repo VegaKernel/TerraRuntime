@@ -137,6 +137,31 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Moon_lord_hand_release_tick_plans_source_phantasmal_sphere_mutation()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        // Left-hand row: attack state 2 starts at absolute timer 120, so timer 412 is local num2 == 292.
+        NpcSnapshot hand = CreateNpc(
+            VanillaNpcIds.MoonLordHand,
+            new NpcAiState(2f, 411f, 0f, 5f),
+            life: 25_000,
+            slot: 6);
+        NpcStateUpdate proposed = Proposed(in hand, new NpcAiState(2f, 412f, 0f, 5f));
+        Span<NpcAiProjectileMutationIntent> intents = stackalloc NpcAiProjectileMutationIntent[1];
+
+        Assert.Equal(1, stepper.PlanProjectileMutations(in hand, in proposed, intents));
+        NpcAiProjectileMutationIntent release = intents[0];
+        Assert.Equal(VanillaProjectileIds.PhantasmalSphere, release.Type);
+        Assert.Equal(-1f, release.Ai0);
+
+        float dx = 500f - 123f;
+        float dy = 300f - (133f - 350f);
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        Assert.Equal(dx / distance * 12f, release.VelocityX, 5);
+        Assert.Equal(dy / distance * 12f, release.VelocityY, 5);
+    }
+
+    [Fact]
     public void Moon_lord_core_opens_only_after_both_hands_and_head_are_retired()
     {
         var stepper = CreateStepper(dayTime: false);

@@ -12,11 +12,14 @@ public readonly record struct VanillaProjectileExplosionDefinition(
     int Width,
     int Height,
     float KnockBack,
-    int? DamageOverride = null);
+    int? DamageOverride = null,
+    bool PreserveKnockBack = false);
 
 public static class VanillaProjectileExplosionFacts
 {
     private static readonly VanillaProjectileExplosionDefinition SkeletronPrimeBombExplosion = new(128, 128, 8f, 40);
+    private static readonly VanillaProjectileExplosionDefinition PhantasmalEyeExplosion = new(144, 144, 0f, PreserveKnockBack: true);
+    private static readonly VanillaProjectileExplosionDefinition PhantasmalSphereExplosion = new(208, 208, 0f, PreserveKnockBack: true);
     private static readonly VanillaProjectileExplosionDefinition SmallLauncherExplosion = new(128, 128, 8f);
     private static readonly VanillaProjectileExplosionDefinition LargeLauncherExplosion = new(200, 200, 10f);
 
@@ -27,6 +30,18 @@ public static class VanillaProjectileExplosionFacts
         if (type == VanillaProjectileIds.SkeletronPrimeBomb)
         {
             definition = SkeletronPrimeBombExplosion;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalEye)
+        {
+            definition = PhantasmalEyeExplosion;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalSphere)
+        {
+            definition = PhantasmalSphereExplosion;
             return true;
         }
 

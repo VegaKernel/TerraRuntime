@@ -78,7 +78,9 @@ internal sealed partial class ServerRuntimeState
             configuredProjectileStepper,
             projectileReplication,
             () => Updates,
-            worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false);
+            goodWorld: worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
+            worldTiles: worldTiles,
+            expertMode: expertMode);
         _npcs = new NpcAuthority(
             this,
             _players,

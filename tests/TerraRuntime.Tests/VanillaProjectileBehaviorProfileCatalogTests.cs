@@ -249,11 +249,17 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     }
 
     [Theory]
+    [InlineData(384, VanillaProjectileBehaviorFamily.Sharknado, 64)]
+    [InlineData(385, VanillaProjectileBehaviorFamily.SharknadoBolt, 65)]
+    [InlineData(386, VanillaProjectileBehaviorFamily.Sharknado, 64)]
     [InlineData(452, VanillaProjectileBehaviorFamily.PhantasmalEye, 82)]
     [InlineData(454, VanillaProjectileBehaviorFamily.PhantasmalSphere, 83)]
     [InlineData(455, VanillaProjectileBehaviorFamily.PhantasmalDeathray, 84)]
+    [InlineData(872, VanillaProjectileBehaviorFamily.HallowBossLastingRainbow, 173)]
     [InlineData(873, VanillaProjectileBehaviorFamily.HallowBossRainbowStreak, 171)]
+    [InlineData(874, VanillaProjectileBehaviorFamily.HallowBossDeathAurora, 0)]
     [InlineData(919, VanillaProjectileBehaviorFamily.FairyQueenLance, 179)]
+    [InlineData(922, VanillaProjectileBehaviorFamily.QueenSlimeSmash, 135)]
     [InlineData(923, VanillaProjectileBehaviorFamily.FairyQueenSunDance, 180)]
     public void Late_boss_projectiles_have_explicit_source_backed_profiles(
         int rawType, VanillaProjectileBehaviorFamily family, int aiStyle)

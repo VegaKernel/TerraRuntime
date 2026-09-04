@@ -15,6 +15,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     INpcAiStateStepper,
     INpcAiSpawnIntentPlanner,
     INpcAiProjectileIntentPlanner,
+    INpcAiProjectileMutationIntentPlanner,
     INpcAiPeerSnapshotConsumer
 {
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
@@ -356,6 +357,51 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanMoonLordProjectiles(in source, in proposed, destination);
 
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
+    }
+
+    public int PlanProjectileMutations(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileMutationIntent> destination)
+    {
+        if (source.Type != VanillaNpcIds.MoonLordHand.Value || proposed.Type != source.Type)
+            return 0;
+
+        int row = source.Ai.Ai2 <= 0f ? 0 : 1;
+        int elapsed = MoonPartAttackElapsed(proposed.Ai.Ai1, row, out int state, out _);
+        if (state != 2 || elapsed != 292)
+            return 0;
+
+        if (!_context.TrySelectClosestActivePlayer(source.PositionX, source.PositionY, 46f, 66f, out VanillaNpcTargetCandidate target))
+            return 0;
+        if (destination.IsEmpty)
+            return 1;
+
+        float centerX = source.PositionX + 23f;
+        float centerY = source.PositionY + 33f;
+        float dx = target.CenterX - centerX;
+        float dy = target.CenterY - (centerY - 350f);
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        float velocityX;
+        float velocityY;
+        if (distance > 0f && float.IsFinite(distance))
+        {
+            velocityX = dx / distance * 12f;
+            velocityY = dy / distance * 12f;
+        }
+        else
+        {
+            // Vector2.Normalize(zero) yields NaN in vanilla, then falls back to Vector2.UnitY.
+            velocityX = 0f;
+            velocityY = 12f;
+        }
+
+        destination[0] = new NpcAiProjectileMutationIntent(
+            VanillaProjectileIds.PhantasmalSphere,
+            velocityX,
+            velocityY,
+            Ai0: -1f);
+        return 1;
     }
 
     private int PlanWallOfFleshSpawns(

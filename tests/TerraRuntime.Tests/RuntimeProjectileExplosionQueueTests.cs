@@ -56,6 +56,38 @@ public sealed class RuntimeProjectileExplosionQueueTests
         Assert.Equal(0, queue.Events.Length);
     }
 
+    [Theory]
+    [InlineData(452, 144, 0f)]
+    [InlineData(454, 208, 1f)]
+    public void Moon_lord_projectile_kill_damage_preserves_source_knockback_and_expands_hitbox(
+        int rawType,
+        int expectedSize,
+        float knockBack)
+    {
+        var queue = new RuntimeProjectileExplosionQueue(4);
+        ProjectileSnapshot projectile = CreateProjectile(new ProjectileTypeId(rawType), 100f, 200f, knockBack) with
+        {
+            Spawner = byte.MaxValue
+        };
+        var sourceNpc = new NpcHandle(6, new NpcGeneration(4));
+        var termination = new ProjectileTerminationCommit(
+            projectile,
+            projectile,
+            ProjectileSimulationTerminationReason.BehaviorKill,
+            CombatTrusted: false,
+            TrustedOwner: default,
+            SourceNpc: sourceNpc);
+
+        queue.ProjectileTerminated(in termination);
+
+        Assert.Single(queue.Events.ToArray());
+        RuntimeProjectileExplosionEvent explosion = queue.Events[0];
+        Assert.Equal(expectedSize, explosion.Width);
+        Assert.Equal(expectedSize, explosion.Height);
+        Assert.Equal(knockBack, explosion.Projectile.KnockBack, 5);
+        Assert.Equal(sourceNpc, explosion.SourceNpc);
+    }
+
     private static ProjectileSnapshot CreateProjectile(
         ProjectileTypeId type,
         float positionX,

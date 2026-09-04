@@ -35,10 +35,13 @@ internal sealed class ProjectileAuthority
     private readonly IRuntimePlayerSlotSnapshotLookup playerSnapshots;
     private readonly RuntimeProjectileStateExecutor executor;
     private readonly RuntimeProjectileExplosionQueue explosions;
+    private readonly RuntimeProjectileChildSpawnQueue childSpawns;
     private readonly IProjectileStateStepper? stepper;
     private readonly RuntimeNpcProjectileReflectionPass reflections;
     private readonly RuntimeProjectileReplicationRegistry? replication;
     private readonly Func<long> tickProvider;
+    private readonly WorldTileStore? worldTiles;
+    private readonly bool expertMode;
     private readonly long[] lastTrustedClientUseTick = new long[byte.MaxValue + 1];
     private readonly PlayerSessionGeneration[] trustedClientUseGenerations = new PlayerSessionGeneration[byte.MaxValue + 1];
     private readonly ProjectileSnapshot[] controlledProjectileBuffer;
@@ -52,17 +55,23 @@ internal sealed class ProjectileAuthority
         IProjectileStateStepper? stepper,
         RuntimeProjectileReplicationRegistry? replication,
         Func<long> tickProvider,
-        bool goodWorld = false)
+        bool goodWorld = false,
+        WorldTileStore? worldTiles = null,
+        bool expertMode = false)
     {
         this.projectiles = projectiles;
         this.players = players;
         this.playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
         explosions = new RuntimeProjectileExplosionQueue(projectiles.Capacity);
-        executor = new RuntimeProjectileStateExecutor(projectiles, terminationSink: explosions);
+        childSpawns = new RuntimeProjectileChildSpawnQueue(projectiles.Capacity);
+        var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, childSpawns);
+        executor = new RuntimeProjectileStateExecutor(projectiles, terminationSink: terminationEffects);
         this.stepper = stepper;
         reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots, goodWorld: goodWorld);
         this.replication = replication;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
+        this.worldTiles = worldTiles;
+        this.expertMode = expertMode;
         controlledProjectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
         Array.Fill(lastTrustedClientUseTick, long.MinValue);
     }
@@ -97,12 +106,31 @@ internal sealed class ProjectileAuthority
             return false;
 
         explosions.Reset();
+        childSpawns.Reset();
         SynchronizeControlledProjectileReleaseInputs();
         LastTick = executor.Tick(stepper);
+        ApplyPendingChildSpawns();
         return true;
     }
 
     public ReadOnlySpan<RuntimeProjectileExplosionEvent> PendingExplosions => explosions.Events;
+
+    private void ApplyPendingChildSpawns()
+    {
+        foreach (RuntimeProjectileChildSpawnEvent child in childSpawns.Events)
+        {
+            if (!RuntimeSharknadoChildSpawn1458.TryCreateIntent(
+                    in child,
+                    worldTiles,
+                    expertMode,
+                    out NpcAiProjectileIntent intent))
+            {
+                continue;
+            }
+
+            RuntimeNpcProjectileIntentApplier.TryApply(projectiles, child.SourceNpc, in intent, out _);
+        }
+    }
 
     public void ApplyReflections() => AppliedReflections += reflections.Tick();
 

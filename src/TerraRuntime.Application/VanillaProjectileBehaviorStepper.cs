@@ -36,7 +36,8 @@ internal readonly record struct VanillaProjectileBehaviorContext(
     IVanillaProjectileNpcTargetResolver? NpcTargets = null,
     VanillaProjectilePlayerTargetResolver? HostilePlayerTargets = null,
     int CurrentTimeLeft = int.MaxValue,
-    ProjectileLocalAiState LocalAi = default);
+    ProjectileLocalAiState LocalAi = default,
+    bool Wet = false);
 
 /// <summary>State produced by one supported vanilla projectile AI-family step before world motion/collision.</summary>
 internal readonly record struct VanillaProjectileBehaviorResult(
@@ -388,6 +389,127 @@ internal static class VanillaProjectileBehaviorStepper
                 return true;
             }
 
+            case VanillaProjectileBehaviorFamily.Sharknado:
+            {
+                // TerrariaServer 1.4.5.8 aiStyle 64. Width/height are gameplay state because the tornado
+                // segments are resized from ai[1]; packet 27 does not carry dimensions, so localAI[1..2]
+                // retain the authoritative dynamic hitbox. Presentation alpha/frame state is omitted.
+                bool cthulunado = current.Type == VanillaProjectileIds.Cthulunado;
+                int startDelay = cthulunado ? 16 : 10;
+                int segmentCount = cthulunado ? 16 : 15;
+                float scaleMultiplier = cthulunado ? 1.5f : 1f;
+                float baseWidth = 150f;
+                float baseHeight = 42f;
+                float segmentScale = current.Ai.Ai1 == -1f
+                    ? (context.LocalAi.Ai1 > 0f ? context.LocalAi.Ai1 / baseWidth : 1f)
+                    : ((startDelay + segmentCount) - current.Ai.Ai1) * scaleMultiplier / (startDelay + segmentCount);
+                if (!(segmentScale > 0f) || !float.IsFinite(segmentScale))
+                {
+                    next = default;
+                    return false;
+                }
+
+                float width = (int)(baseWidth * segmentScale);
+                float height = (int)(baseHeight * segmentScale);
+                float positionX = current.PositionX;
+                float positionY = current.PositionY;
+                float localAi0 = context.LocalAi.Ai0;
+                if (localAi0 == 0f)
+                {
+                    localAi0 = 1f;
+                    float centerX = current.PositionX + definition.Width / 2;
+                    float centerY = current.PositionY + definition.Height / 2;
+                    positionX = centerX - (int)width / 2;
+                    positionY = centerY - (int)height / 2;
+                }
+
+                float tornadoAi0 = current.Ai.Ai0;
+                if (tornadoAi0 > 0f)
+                    tornadoAi0 -= 1f;
+
+                if (tornadoAi0 <= 0f)
+                {
+                    float angularStep = MathF.PI / 30f;
+                    float swayScale = width / 5f * (cthulunado ? 2f : 1f);
+                    int direction = velocityX == 0f ? 1 : -Math.Sign(velocityX);
+                    float offset = (MathF.Cos(angularStep * -tornadoAi0) - 0.5f) * swayScale;
+                    positionX -= offset * -direction;
+                    tornadoAi0 -= 1f;
+                    offset = (MathF.Cos(angularStep * -tornadoAi0) - 0.5f) * swayScale;
+                    positionX += offset * -direction;
+                }
+
+                next = new VanillaProjectileBehaviorResult(
+                    velocityX, velocityY, tornadoAi0,
+                    PositionXOverride: positionX,
+                    PositionYOverride: positionY,
+                    LocalAiOverride: context.LocalAi with { Ai0 = localAi0, Ai1 = width, Ai2 = height });
+                return true;
+            }
+
+            case VanillaProjectileBehaviorFamily.SharknadoBolt:
+            {
+                // TerrariaServer 1.4.5.8 aiStyle 65. ai[1] > 0 homes on that physical player slot;
+                // ai[1] <= 0 follows the vertical cosine wave. The Kill() tornado child is committed by the
+                // termination-effect queue only after this exact generation is removed successfully.
+                float boltAi0 = current.Ai.Ai0;
+                float localAi0 = context.LocalAi.Ai0;
+                if (current.Ai.Ai1 > 0f)
+                {
+                    int rawTarget = (int)current.Ai.Ai1 - 1;
+                    if (rawTarget >= 0 && rawTarget < byte.MaxValue &&
+                        context.HostilePlayerTargets is not null &&
+                        context.HostilePlayerTargets.TryGetActiveTargetCenter(new PlayerSlotId((byte)rawTarget), out float targetX, out float targetY))
+                    {
+                        localAi0 += 1f;
+                        float centerX = current.PositionX + definition.Width * 0.5f;
+                        float centerY = current.PositionY + definition.Height * 0.5f;
+                        float dx = targetX - centerX;
+                        float dy = targetY - centerY;
+                        float distance = MathF.Sqrt(dx * dx + dy * dy);
+                        if (distance < 50f)
+                        {
+                            next = new VanillaProjectileBehaviorResult(
+                                velocityX, velocityY, boltAi0, Kill: true,
+                                LocalAiOverride: context.LocalAi with { Ai0 = localAi0 });
+                            return true;
+                        }
+
+                        if (distance > 0f && float.IsFinite(distance))
+                        {
+                            float speed = 4f + (current.Ai.Ai2 == 1f ? 12f : 0f) + localAi0 / 20f;
+                            velocityX = dx / distance * speed;
+                            velocityY = dy / distance * speed;
+                        }
+                    }
+                }
+                else
+                {
+                    float angularStep = MathF.PI / 15f;
+                    float delta = (MathF.Cos(angularStep * boltAi0) - 0.5f) * 4f;
+                    velocityY -= delta;
+                    boltAi0 += 1f;
+                    delta = (MathF.Cos(angularStep * boltAi0) - 0.5f) * 4f;
+                    velocityY += delta;
+                    localAi0 += 1f;
+                }
+
+                if (context.Wet)
+                {
+                    next = new VanillaProjectileBehaviorResult(
+                        velocityX, velocityY, boltAi0,
+                        PositionYOverride: current.PositionY - 16f,
+                        Kill: true,
+                        LocalAiOverride: context.LocalAi with { Ai0 = localAi0 });
+                    return true;
+                }
+
+                next = new VanillaProjectileBehaviorResult(
+                    velocityX, velocityY, boltAi0,
+                    LocalAiOverride: context.LocalAi with { Ai0 = localAi0 });
+                return true;
+            }
+
             case VanillaProjectileBehaviorFamily.PhantasmalEye:
                 return TryStepPhantasmalEye(in current, in definition, in context, out next);
 
@@ -433,6 +555,49 @@ internal static class VanillaProjectileBehaviorStepper
 
             case VanillaProjectileBehaviorFamily.HallowBossRainbowStreak:
                 return TryStepHallowBossRainbowStreak(in current, in definition, in context, out next);
+
+            case VanillaProjectileBehaviorFamily.HallowBossLastingRainbow:
+            {
+                // TerrariaServer 1.4.5.8 AI_173_HallowBossRainbowTrail. Presentation opacity/rotation are omitted.
+                Rotate(ref velocityX, ref velocityY, current.Ai.Ai0);
+                float trailAi0 = current.Ai.Ai0;
+                const float maximumTurn = MathF.PI / 360f;
+                if (trailAi0 < maximumTurn)
+                    trailAi0 += maximumTurn / 30f;
+                next = new VanillaProjectileBehaviorResult(velocityX, velocityY, trailAi0);
+                return true;
+            }
+
+            case VanillaProjectileBehaviorFamily.HallowBossDeathAurora:
+                // aiStyle 0 has no projectile-specific AI. Common runtime position/lifetime processing still runs.
+                break;
+
+            case VanillaProjectileBehaviorFamily.QueenSlimeSmash:
+            {
+                // TerrariaServer 1.4.5.8 AI_135_OgreStomp, type 922. The source grows a center-preserving square
+                // from 80 toward 480 px across nine AI updates and kills on the tenth. Runtime-only localAI[1]
+                // carries the dynamic width because packet 27 has no projectile-size field.
+                float smashAi0 = current.Ai.Ai0 + 1f;
+                if (smashAi0 > 9f)
+                {
+                    next = new VanillaProjectileBehaviorResult(0f, 0f, smashAi0, Kill: true);
+                    return true;
+                }
+
+                float priorSize = context.LocalAi.Ai1 > 0f ? context.LocalAi.Ai1 : definition.Width;
+                float centerX = current.PositionX + priorSize * 0.5f;
+                float centerY = current.PositionY + priorSize * 0.5f;
+                float progress = Math.Clamp(smashAi0 / 9f, 0f, 1f);
+                float size = (int)(16f * (5f + (30f - 5f) * progress));
+                next = new VanillaProjectileBehaviorResult(
+                    0f,
+                    0f,
+                    smashAi0,
+                    PositionXOverride: centerX - size * 0.5f,
+                    PositionYOverride: centerY - size * 0.5f,
+                    LocalAiOverride: context.LocalAi with { Ai1 = size });
+                return true;
+            }
 
             case VanillaProjectileBehaviorFamily.Bomb:
                 // TerrariaServer 1.4.5.8 Projectile.AI_016_Bombs for launcher projectile types 133..144.
@@ -1366,15 +1531,6 @@ internal static class VanillaProjectileBehaviorStepper
         while (angle > MathF.PI)
             angle -= MathF.PI * 2f;
         return angle;
-    }
-
-    private static void Rotate(ref float x, ref float y, float radians)
-    {
-        float cos = MathF.Cos(radians);
-        float sin = MathF.Sin(radians);
-        float nextX = x * cos - y * sin;
-        y = x * sin + y * cos;
-        x = nextX;
     }
 
     private static bool TryFindClosestPlayer(

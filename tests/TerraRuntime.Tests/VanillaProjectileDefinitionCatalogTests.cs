@@ -270,11 +270,17 @@ public sealed class VanillaProjectileDefinitionCatalogTests
 
 
     [Theory]
+    [InlineData(384, 150, 42, 64, false, true)]
+    [InlineData(385, 30, 30, 65, true, false)]
+    [InlineData(386, 150, 42, 64, false, true)]
     [InlineData(452, 14, 14, 82, true, false)]
     [InlineData(454, 40, 40, 83, false, false)]
     [InlineData(455, 36, 36, 84, false, false)]
+    [InlineData(872, 30, 30, 173, false, true)]
     [InlineData(873, 30, 30, 171, false, true)]
+    [InlineData(874, 30, 30, 0, false, true)]
     [InlineData(919, 8, 8, 179, false, true)]
+    [InlineData(922, 30, 30, 135, false, true)]
     [InlineData(923, 30, 30, 180, false, true)]
     public void Terraria_1458_late_boss_projectile_definitions_match_source(
         int rawType, int width, int height, int aiStyle, bool tileCollide, bool ignoreWater)

@@ -46,6 +46,8 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     private readonly NpcSnapshot[] _snapshotBuffer;
     private readonly NpcAiSpawnIntent[] _spawnIntentBuffer;
     private readonly NpcAiProjectileIntent[] _projectileIntentBuffer;
+    private readonly NpcAiProjectileMutationIntent[] _projectileMutationIntentBuffer;
+    private readonly ProjectileSnapshot[] _projectileMutationScratch;
 
     public RuntimeNpcAiStateExecutor(RuntimeNpcStore npcs, RuntimeProjectileStore? projectiles = null)
     {
@@ -55,6 +57,8 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         _snapshotBuffer = new NpcSnapshot[npcs.Capacity];
         _spawnIntentBuffer = new NpcAiSpawnIntent[npcs.Capacity];
         _projectileIntentBuffer = new NpcAiProjectileIntent[MaximumProjectileIntentsPerNpcStep];
+        _projectileMutationIntentBuffer = new NpcAiProjectileMutationIntent[MaximumProjectileIntentsPerNpcStep];
+        _projectileMutationScratch = projectiles is null ? [] : new ProjectileSnapshot[projectiles.Capacity];
     }
 
     public NpcAiStateTickSummary Tick(INpcAiStateStepper stepper) =>
@@ -75,6 +79,9 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         INpcAiProjectileIntentPlanner? projectilePlanner = _projectiles is null
             ? null
             : NpcAiStateStepperComposition.FindCapability<INpcAiProjectileIntentPlanner>(stepper);
+        INpcAiProjectileMutationIntentPlanner? projectileMutationPlanner = _projectiles is null
+            ? null
+            : NpcAiStateStepperComposition.FindCapability<INpcAiProjectileMutationIntentPlanner>(stepper);
         INpcAiStatePostCommitObserver? postCommitObserver =
             NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitObserver>(stepper);
         INpcAiStatePostCommitEffect? postCommitEffect =
@@ -110,6 +117,16 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 continue;
             }
 
+            int projectileMutationCount = projectileMutationPlanner?.PlanProjectileMutations(
+                in npc,
+                in next,
+                _projectileMutationIntentBuffer) ?? 0;
+            if ((uint)projectileMutationCount > (uint)_projectileMutationIntentBuffer.Length)
+            {
+                rejected++;
+                continue;
+            }
+
             if (_npcs.TryUpdate(npc.Handle, in next, out NpcSnapshot committed))
             {
                 applied++;
@@ -119,6 +136,16 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
 
                 if (_projectiles is not null)
                 {
+                    for (int mutationIndex = 0; mutationIndex < projectileMutationCount; mutationIndex++)
+                    {
+                        NpcAiProjectileMutationIntent mutation = _projectileMutationIntentBuffer[mutationIndex];
+                        RuntimeNpcProjectileMutationIntentApplier.ApplyMatching(
+                            _projectiles,
+                            committed.Handle,
+                            in mutation,
+                            _projectileMutationScratch);
+                    }
+
                     for (int projectileIndex = 0; projectileIndex < projectileCount; projectileIndex++)
                     {
                         NpcAiProjectileIntent intent = _projectileIntentBuffer[projectileIndex];

@@ -100,7 +100,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             npcTargets,
             hostilePlayerTargets,
             projectile.Lifecycle.TimeLeft,
-            projectile.Lifecycle.LocalAi);
+            projectile.Lifecycle.LocalAi,
+            projectile.Lifecycle.Liquid.Wet);
         if (!VanillaProjectileBehaviorStepper.TryStep(
                 in current,
                 in definition,

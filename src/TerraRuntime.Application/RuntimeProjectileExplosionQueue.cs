@@ -64,7 +64,7 @@ internal sealed class RuntimeProjectileExplosionQueue : IProjectileTerminationCo
         ProjectileSnapshot prepared = final with
         {
             Damage = checked((short)(explosion.DamageOverride ?? final.Damage)),
-            KnockBack = explosion.KnockBack
+            KnockBack = explosion.PreserveKnockBack ? final.KnockBack : explosion.KnockBack
         };
         events[count++] = new RuntimeProjectileExplosionEvent(
             prepared,
