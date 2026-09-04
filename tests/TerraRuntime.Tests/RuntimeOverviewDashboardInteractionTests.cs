@@ -385,6 +385,19 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.Equal("#4", kicked);
     }
 
+    [Fact]
+    public void Settings_button_raises_runtime_settings_request()
+    {
+        using var dashboard = new RuntimeOverviewDashboard();
+        int requests = 0;
+        dashboard.SettingsRequested += () => requests++;
+
+        Assert.True(dashboard.SettingsButtonEnabledForSmoke);
+        dashboard.RequestSettingsForSmoke();
+
+        Assert.Equal(1, requests);
+    }
+
     private static RuntimePlayerSnapshot CreatePlayer(byte slot, long connectionId, string name) =>
         new(
             connectionId,

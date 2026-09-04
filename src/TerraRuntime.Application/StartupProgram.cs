@@ -341,7 +341,7 @@ public static class StartupProgram
         Console.WriteLine("    Scans the runtime Worlds folder and lets you load or create a .wld world.");
         Console.WriteLine();
         Console.WriteLine("Server startup:");
-        Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--max-world-runtimes 8] [--sandbox-materialization-concurrency 1] [--interest-management] [--no-tui]");
+        Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--bind 0.0.0.0] [--port 7777] [--max-players 8] [--max-world-runtimes 8] [--sandbox-materialization-concurrency 1] [--interest-management] [--no-tui]");
         Console.WriteLine();
         Console.WriteLine("World generators:");
         Console.WriteLine("  TerraRuntime.Server --list-world-generators");

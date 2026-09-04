@@ -9,4 +9,11 @@ internal interface IRuntimeDashboardOperations
     /// Returns false when the bounded command queue rejects the request.
     /// </summary>
     bool TrySetInterestManagementEnabled(bool enabled);
+
+    /// <summary>
+    /// Attempts to replace the public listener endpoint without disconnecting already accepted clients.
+    /// Implementations must leave the current endpoint active when a non-overlapping replacement cannot bind.
+    /// </summary>
+    ListenerChangeResult TryChangeListenerEndpoint(string bindAddress, int port) =>
+        ListenerChangeResult.Rejected("Dynamic listener settings are not available for this host.");
 }

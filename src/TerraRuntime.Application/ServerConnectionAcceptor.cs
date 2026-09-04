@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Net;
 using System.Net.Sockets;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Network;
@@ -12,16 +11,13 @@ using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEvent
 namespace TerraRuntime;
 
 /// <summary>
-/// Owns the public TCP acceptance lifecycle for one primary runtime: listener socket, bounded admission,
-/// connection routing/telemetry registration and draining of accepted connection tasks during shutdown.
+/// Owns accepted Terraria connection lifetime independently from the public listening endpoint. Listener generations
+/// may therefore be replaced without canceling already accepted client sockets.
 /// </summary>
 internal sealed class ServerConnectionAcceptor : IDisposable
 {
-    private readonly int port;
-    private readonly int maxPlayers;
     private readonly WorldRuntime primaryRuntime;
     private readonly RuntimeHostLog hostLog;
-    private readonly Socket listener = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
     private readonly TerrariaConnectionAdmissionGate admission;
     private readonly RuntimeConnectionQueueTelemetry queueTelemetry = new();
     private readonly RuntimeConnectionRateTelemetry rateTelemetry = new();
@@ -32,16 +28,11 @@ internal sealed class ServerConnectionAcceptor : IDisposable
     private int disposed;
 
     public ServerConnectionAcceptor(
-        int port,
         int maxPlayers,
         WorldRuntime primaryRuntime,
         RuntimeHostLog hostLog)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(port, IPEndPoint.MinPort);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(port, IPEndPoint.MaxPort);
         ArgumentOutOfRangeException.ThrowIfLessThan(maxPlayers, 1);
-        this.port = port;
-        this.maxPlayers = maxPlayers;
         this.primaryRuntime = primaryRuntime ?? throw new ArgumentNullException(nameof(primaryRuntime));
         this.hostLog = hostLog ?? throw new ArgumentNullException(nameof(hostLog));
 
@@ -55,66 +46,43 @@ internal sealed class ServerConnectionAcceptor : IDisposable
             primaryRuntime.ProjectileReplication,
             primaryRuntime.WorldItemReplication,
             stopTelemetry);
-        listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
     }
 
     public TerrariaConnectionAdmissionGate Admission => admission;
     public RuntimeConnectionDirectory Directory => connectionDirectory;
     public LocalRuntimeNetworkOperations Operations { get; }
 
-    public void Start()
+    /// <summary>
+    /// Transfers ownership of one already accepted socket into the shared connection lifecycle. The listener-specific
+    /// cancellation token is deliberately absent: endpoint draining must stop only future accepts, never live clients.
+    /// </summary>
+    public void Accept(Socket socket, CancellationToken serverShutdownToken)
     {
-        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
-        listener.Bind(new IPEndPoint(IPAddress.Any, port));
-        listener.Listen(backlog: Math.Max(32, maxPlayers * 2));
-    }
-
-    public async Task AcceptAsync(CancellationToken cancellationToken)
-    {
-        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
-
-        while (!cancellationToken.IsCancellationRequested)
+        ArgumentNullException.ThrowIfNull(socket);
+        if (Volatile.Read(ref disposed) != 0 || serverShutdownToken.IsCancellationRequested)
         {
-            Socket socket;
-            try
-            {
-                socket = await listener.AcceptAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (SocketException exception) when (!cancellationToken.IsCancellationRequested)
-            {
-                hostLog.Log(
-                    RuntimeLogLevel.Warning,
-                    StructuredLogEventIds.NetworkAcceptFailed,
-                    StructuredLogCategory.Network,
-                    "Network",
-                    $"Accept failed: {exception.SocketErrorCode}.",
-                    useStandardError: true);
-                continue;
-            }
-
-            if (!admission.TryAcquire(out TerrariaConnectionAdmissionGate.Lease? admissionLease) || admissionLease is null)
-            {
-                socket.Dispose();
-                continue;
-            }
-
-            long connectionId = Interlocked.Increment(ref nextConnectionId);
-            Task connectionTask = RunConnectionAsync(
-                connectionId,
-                socket,
-                admissionLease,
-                cancellationToken);
-            connectionTasks[connectionId] = connectionTask;
-            _ = connectionTask.ContinueWith(
-                completed => connectionTasks.TryRemove(connectionId, out _),
-                CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+            socket.Dispose();
+            return;
         }
+
+        if (!admission.TryAcquire(out TerrariaConnectionAdmissionGate.Lease? admissionLease) || admissionLease is null)
+        {
+            socket.Dispose();
+            return;
+        }
+
+        long connectionId = Interlocked.Increment(ref nextConnectionId);
+        Task connectionTask = RunConnectionAsync(
+            connectionId,
+            socket,
+            admissionLease,
+            serverShutdownToken);
+        connectionTasks[connectionId] = connectionTask;
+        _ = connectionTask.ContinueWith(
+            completed => connectionTasks.TryRemove(connectionId, out _),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     public async Task DrainAsync()
@@ -274,8 +242,6 @@ internal sealed class ServerConnectionAcceptor : IDisposable
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref disposed, 1) != 0)
-            return;
-        listener.Dispose();
+        Interlocked.Exchange(ref disposed, 1);
     }
 }

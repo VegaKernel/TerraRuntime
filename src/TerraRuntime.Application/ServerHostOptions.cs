@@ -7,10 +7,13 @@ public sealed record ServerHostOptions(
     bool InterestManagementEnabled = false,
     bool TerminalUiEnabled = true)
 {
+    public const string DefaultBindAddress = "0.0.0.0";
     public const int DefaultPort = 7777;
     public const int DefaultMaxPlayers = 8;
     public const int DefaultMaxWorldRuntimes = 8;
     public const int DefaultSandboxMaterializationConcurrency = 1;
+
+    public string BindAddress { get; init; } = DefaultBindAddress;
 
     public int MaxWorldRuntimes { get; init; } = DefaultMaxWorldRuntimes;
 
@@ -21,6 +24,7 @@ public sealed record ServerHostOptions(
         ArgumentNullException.ThrowIfNull(args);
 
         string? worldPath = null;
+        string bindAddress = DefaultBindAddress;
         int port = DefaultPort;
         int maxPlayers = DefaultMaxPlayers;
         bool interestManagementEnabled = false;
@@ -38,6 +42,16 @@ public sealed record ServerHostOptions(
                     {
                         options = null;
                         error = "--world requires a .wld path.";
+                        return false;
+                    }
+                    break;
+
+                case "--bind":
+                case "--bind-address":
+                    if (!TryReadValue(args, ref i, out string? rawBindAddress) || !TryNormalizeBindAddress(rawBindAddress, out bindAddress))
+                    {
+                        options = null;
+                        error = "--bind/--bind-address requires a numeric IPv4/IPv6 address, '*', 'any', or 'localhost'.";
                         return false;
                     }
                     break;
@@ -106,10 +120,29 @@ public sealed record ServerHostOptions(
             interestManagementEnabled,
             terminalUiEnabled)
         {
+            BindAddress = bindAddress,
             MaxWorldRuntimes = maxWorldRuntimes,
             SandboxMaterializationConcurrency = sandboxMaterializationConcurrency
         };
         error = null;
+        return true;
+    }
+
+    private static bool TryNormalizeBindAddress(string? value, out string normalized)
+    {
+        string candidate = value?.Trim() ?? string.Empty;
+        if (candidate is "*" or "any" or "ANY")
+            candidate = System.Net.IPAddress.Any.ToString();
+        else if (candidate.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+            candidate = System.Net.IPAddress.Loopback.ToString();
+
+        if (!System.Net.IPAddress.TryParse(candidate, out System.Net.IPAddress? address))
+        {
+            normalized = string.Empty;
+            return false;
+        }
+
+        normalized = address.ToString();
         return true;
     }
 

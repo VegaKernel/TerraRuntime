@@ -39,6 +39,7 @@ internal sealed class RuntimeOverviewDashboard : View
     private readonly Label networkLegend;
     private readonly Label commandFeedback;
     private readonly Button sandboxAddButton;
+    private readonly Button settingsButton;
     private readonly DropDownList feedLogModeDropDown;
     private readonly DropDownList feedChatDropDown;
     private readonly TextField commandInput;
@@ -139,6 +140,17 @@ internal sealed class RuntimeOverviewDashboard : View
             Enabled = sandboxOperations is not null
         };
         sandboxAddButton.Accepted += (_, _) => ShowSandboxCreateWindow();
+        settingsButton = new Button
+        {
+            X = Pos.AnchorEnd(12),
+            Y = 0,
+            Text = "Settings",
+            NoPadding = true,
+            NoDecorations = true,
+            CanFocus = true,
+            SchemeName = BaseSchemeName
+        };
+        settingsButton.Accepted += (_, _) => SettingsRequested?.Invoke();
 
         consoleFrame = CreateFrame("Console", consoleText, commandInput, feedLogModeDropDown, feedChatDropDown);
         networkFrame = CreateFrame("Network", networkGraph);
@@ -173,7 +185,7 @@ internal sealed class RuntimeOverviewDashboard : View
         worldsText.Y = 1;
         worldsText.Width = Dim.Fill();
         worldsText.Height = Dim.Fill();
-        worldsFrame.Add(sandboxAddButton, worldsText);
+        worldsFrame.Add(sandboxAddButton, settingsButton, worldsText);
         worldsText.TransferRequested += (player, sandbox) =>
             ExecuteSandboxOperationAsync(new SandboxOperation.Move(player, sandbox));
         worldsText.DestroyRequested += ConfirmSandboxDestroy;
@@ -296,6 +308,8 @@ internal sealed class RuntimeOverviewDashboard : View
         SetNeedsDraw();
     }
 
+    public event Action? SettingsRequested;
+
     internal void FocusCommandInput() => commandInput.SetFocus();
 
     internal void FocusWorldTree() => worldsText.SetFocus();
@@ -410,6 +424,10 @@ internal sealed class RuntimeOverviewDashboard : View
     };
 
     internal bool SandboxAddEnabledForSmoke => sandboxAddButton.Enabled;
+
+    internal bool SettingsButtonEnabledForSmoke => settingsButton.Enabled;
+
+    internal void RequestSettingsForSmoke() => SettingsRequested?.Invoke();
 
     internal void SetFeedForSmoke(bool logs, bool chat, RuntimeLogLevel minimumLevel)
     {

@@ -16,7 +16,8 @@ namespace TerraRuntime;
 /// <summary>
 /// Owns one server-process session after a world has been prepared: the primary runtime, sandbox/runtime registry,
 /// OS shutdown signals, trusted-host attachment, operator UI and orderly world shutdown. Public TCP connection
-/// lifetime is delegated to <see cref="ServerConnectionAcceptor"/>.
+/// lifetime is delegated to <see cref="ServerConnectionAcceptor"/> while replaceable public bind/listen generations
+/// are owned by <see cref="ListenerManager"/>.
 /// </summary>
 internal sealed class ServerProcessSession : IDisposable
 {
@@ -30,6 +31,7 @@ internal sealed class ServerProcessSession : IDisposable
     private readonly WorldRegistry runtimeRegistry;
     private readonly SandboxHost sandboxHost;
     private readonly ServerConnectionAcceptor connections;
+    private readonly ListenerManager listeners;
     private readonly CancellationTokenSource shutdown = new();
     private readonly ConsoleCancelEventHandler cancelHandler;
     private PosixSignalRegistration? terminateSignalRegistration;
@@ -79,7 +81,8 @@ internal sealed class ServerProcessSession : IDisposable
             maxPlayersPerRuntime: options.MaxPlayers,
             captureOperationsTelemetry: options.TerminalUiEnabled);
         sandboxHost.JobFinished += OnSandboxJobFinished;
-        connections = new ServerConnectionAcceptor(options.Port, options.MaxPlayers, primaryRuntime, hostLog);
+        connections = new ServerConnectionAcceptor(options.MaxPlayers, primaryRuntime, hostLog);
+        listeners = new ListenerManager(connections, options.MaxPlayers, hostLog);
 
         cancelHandler = (_, eventArgs) =>
         {
@@ -95,7 +98,7 @@ internal sealed class ServerProcessSession : IDisposable
 
         try
         {
-            connections.Start();
+            listeners.Start(options.BindAddress, options.Port, shutdown.Token);
             if (!runtimeRegistry.TryAdmit(primaryRuntime, primary: true))
                 throw new InvalidOperationException("Primary WorldRuntime admission failed.");
 
@@ -105,11 +108,18 @@ internal sealed class ServerProcessSession : IDisposable
             TimeSpan networkReadyDuration = Stopwatch.GetElapsedTime(startup.Metrics.StartupStartTimestamp);
             LogStartupReady(networkReadyDuration);
             StartTerminalUi(networkReadyDuration);
-            await connections.AcceptAsync(shutdown.Token).ConfigureAwait(false);
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, shutdown.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+            {
+                // Normal process shutdown. Listener generations and live connections drain in ShutdownAsync.
+            }
         }
         catch (SocketException exception)
         {
-            string message = $"Failed to start listener on port {options.Port}: {exception.Message}";
+            string message = $"Failed to start listener on {options.BindAddress}:{options.Port}: {exception.Message}";
             hostLog.Log(
                 RuntimeLogLevel.Error,
                 StructuredLogEventIds.NetworkListenerStartFailed,
@@ -203,7 +213,7 @@ internal sealed class ServerProcessSession : IDisposable
             startupProfile);
 
         string listeningMessage =
-            $"TerraRuntime listening on 0.0.0.0:{options.Port}; " +
+            $"TerraRuntime listening on {options.BindAddress}:{options.Port}; " +
             $"world='{world.Header.Name}' {world.Header.Dimensions.WidthTiles}x{world.Header.Dimensions.HeightTiles}; " +
             $"maxPlayers={options.MaxPlayers}; " +
             $"interestManagement={(interestManagement.IsEnabled ? "enabled" : "disabled")}; " +
@@ -245,7 +255,9 @@ internal sealed class ServerProcessSession : IDisposable
                 world.Header.Dimensions.HeightTiles,
                 options.Port,
                 options.MaxPlayers,
-                GameLoopOptions.DefaultTicksPerSecond);
+                GameLoopOptions.DefaultTicksPerSecond,
+                listeners.CaptureSnapshot,
+                listeners.TryChangeEndpoint);
             var worldOperations = new LocalRuntimeWorldOperations(
                 new RuntimeWorldSnapshot(
                     Ready: true,
@@ -324,6 +336,7 @@ internal sealed class ServerProcessSession : IDisposable
         terminalUi?.Dispose();
         terminalUi = null;
         DetachConsoleHandler();
+        await listeners.CloseAsync().ConfigureAwait(false);
         await connections.DrainAsync().ConfigureAwait(false);
         await DetachHostRuntimeAsync().ConfigureAwait(false);
         await StopPrimaryRuntimeAsync().ConfigureAwait(false);
@@ -458,6 +471,7 @@ internal sealed class ServerProcessSession : IDisposable
         DetachConsoleHandler();
         sandboxHost.JobFinished -= OnSandboxJobFinished;
         terminalUi?.Dispose();
+        listeners.Dispose();
         connections.Dispose();
         terminateSignalRegistration?.Dispose();
         shutdown.Dispose();

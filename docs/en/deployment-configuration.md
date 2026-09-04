@@ -110,7 +110,8 @@ Current server host options:
 | Option | Meaning | Default / range |
 | --- | --- | --- |
 | `--world <path.wld>` | world to load | required unless startup selects/creates one |
-| `--port <n>` | TCP listen port | `7777`; valid `1..65535` |
+| `--bind <ip>`, `--bind-address <ip>` | initial TCP bind address | `0.0.0.0`; numeric IPv4/IPv6, `*`, `any`, or `localhost` |
+| `--port <n>` | initial TCP listen port | `7777`; valid `1..65535` |
 | `--max-players <n>` | maximum player slots | `8`; valid `1..255` |
 | `--interest-management` | enable runtime interest-management control | disabled |
 | `--tui` | enable Terminal UI | enabled |
@@ -119,6 +120,22 @@ Current server host options:
 | `--list-world-generators` | list built-in and trusted-host generators | exits without starting a world |
 
 The runtime normalizes `--world` to an absolute path. Invalid host options that fail required-value/range validation return exit code `23`.
+
+### Live listener endpoint replacement
+
+The startup `--bind`/`--port` pair defines only the initial public endpoint. While the server is running, **Settings → Runtime settings** and the visible **Settings** button on the System Dashboard can replace the bind address and/or port without disconnecting already accepted clients. Hostname lookup is intentionally not part of this control surface: use a numeric IPv4/IPv6 address, `*`/`any`, or `localhost`.
+
+`ListenerManager` owns listening sockets as generations, while `ServerConnectionAcceptor` owns accepted client sockets independently. A listener generation has the explicit lifecycle below:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Active
+    Active --> Draining: replacement or server shutdown
+    Draining --> Closed: accept loop stops and listener socket closes
+    Closed --> [*]
+```
+
+A normal endpoint change binds the replacement listener before retiring the previous generation. If the replacement bind fails, the current active listener remains in service. Some same-port address changes can overlap an `ANY` socket at the OS level; in that case TerraRuntime drains only the old listening socket, retries the requested bind, and attempts to restore the previous endpoint if the retry fails. Already accepted connections are owned outside the listener generation and are preserved in every rebind path. The overlap fallback can therefore cause a short **new-connection acceptance** gap, but it does not migrate or close existing client sockets.
 
 ### No-argument startup
 

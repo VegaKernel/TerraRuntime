@@ -72,7 +72,7 @@ internal static class StandaloneServerProgram
             if (!ServerHostOptions.TryParse(args, out ServerHostOptions? options, out string? error) || options is null)
             {
                 Console.Error.WriteLine(error ?? "Invalid server host options.");
-                Console.Error.WriteLine("Usage: TerraRuntime.Server --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--tui]");
+                Console.Error.WriteLine("Usage: TerraRuntime.Server --world <path.wld> [--bind 0.0.0.0] [--port 7777] [--max-players 8] [--interest-management] [--tui]");
                 return 23;
             }
 
@@ -121,7 +121,7 @@ internal static class StandaloneServerProgram
 
         Console.WriteLine(
             "TerraRuntime .NET 11 server runtime. " +
-            "Start with --world <path.wld> [--port 7777] [--max-players 8] [--interest-management] [--tui], " +
+            "Start with --world <path.wld> [--bind 0.0.0.0] [--port 7777] [--max-players 8] [--interest-management] [--tui], " +
             "restore the compatible checkpoint with --save-wld <path.wld>, " +
             "or use --loop-smoke, --protocol-smoke, --network-smoke, --world-smoke or --tui-smoke.");
         return 0;

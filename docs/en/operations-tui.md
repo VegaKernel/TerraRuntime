@@ -142,6 +142,8 @@ Double-clicking a tile first focuses it and then toggles it between the tiled la
 
 The System Dashboard shows lifecycle/world state, player and connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events and public chat.
 
+The dashboard also exposes a visible **Settings** button and a top-level **Settings → Runtime settings** menu entry. The runtime settings window is deliberately limited to operator controls with concrete runtime value: current bind address/IP and TCP port, listener lifecycle/generation/draining/rebind counters, active connections versus the player limit, target TPS, and the interest-management toggle. Applying a bind/port change calls the operations boundary and replaces the listener generation; the TUI never receives a `Socket` and never owns connection lifetime. Existing accepted clients remain connected while the previous listener moves `Active → Draining → Closed`.
+
 The World detail screen also surfaces section-cache pipeline health from `RuntimeWorldSnapshot`: in-flight/submitted/rejected rebuilds, stale results, encode failures, publish rejections and accumulated encode time. Its on-demand row shows requests, unique/deduplicated requests, pending work versus bounded capacity, rejected requests and completed/timed-out waits.
 
 ## 7. Save telemetry and manual checkpoint

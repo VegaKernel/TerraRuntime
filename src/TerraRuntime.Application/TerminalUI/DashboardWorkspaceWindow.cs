@@ -67,6 +67,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private string pendingDetailText = string.Empty;
     private string[] currentDetailLines = [];
     private string[] visibleDetailLines = [];
+    private RuntimeSettingsWindow? runtimeSettingsWindow;
     private RuntimeWorldInspectionTarget[] worldInspectionTargets = [];
     private string[] worldInspectionLabels = [];
     private WorldRuntimeId selectedInspectionWorld;
@@ -114,6 +115,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Width = Dim.Fill(),
             Height = Dim.Fill()
         };
+        overviewDashboard.SettingsRequested += ShowRuntimeSettings;
 
         systemRoot = new View
         {
@@ -305,6 +307,10 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     internal void ShowLogs() => SelectSystemScreen(WorkspaceScreen.Logs, "TerraRuntime - Logs");
 
+    internal void ShowRuntimeSettingsForSmoke() => ShowRuntimeSettings();
+
+    internal bool RuntimeSettingsVisibleForSmoke => runtimeSettingsWindow is not null;
+
     internal string GetRowTextForSmoke(int index)
     {
         if ((uint)index >= SmokeRowCount)
@@ -379,6 +385,38 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         SelectSystemScreen(WorkspaceScreen.World, "TerraRuntime - World");
     }
 
+    private void ShowRuntimeSettings()
+    {
+        if (runtimeSettingsWindow is not null)
+        {
+            runtimeSettingsWindow.SetFocus();
+            return;
+        }
+
+        var window = new RuntimeSettingsWindow(dashboardOperations);
+        runtimeSettingsWindow = window;
+        window.CloseRequested += CloseRuntimeSettings;
+        workspace.Add(window);
+        window.SetFocus();
+        workspace.SetNeedsLayout();
+        workspace.SetNeedsDraw();
+    }
+
+    private void CloseRuntimeSettings()
+    {
+        RuntimeSettingsWindow? window = runtimeSettingsWindow;
+        if (window is null)
+            return;
+
+        runtimeSettingsWindow = null;
+        window.CloseRequested -= CloseRuntimeSettings;
+        workspace.Remove(window);
+        window.Dispose();
+        overviewDashboard.SetFocus();
+        RefreshSnapshot();
+        workspace.SetNeedsDraw();
+    }
+
     private MenuBar CreateMenu()
     {
         var dashboardItems = new List<MenuItem>
@@ -417,6 +455,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
                         new MenuItem("_World", "World and cache state", ShowWorld),
                         new MenuItem("_Logs", "Recent runtime log events", ShowLogs)
                     ]),
+                new MenuBarItem(
+                    "_Settings",
+                    [new MenuItem("_Runtime settings", "Live listener and runtime controls", ShowRuntimeSettings)]),
                 new MenuBarItem(
                     "_View",
                     [
@@ -748,8 +789,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         RuntimeLogSnapshot logs = logOperations.CaptureSnapshot(RuntimeLogLevel.Information, 12);
 
         smokeRows[0] =
-            $"{runtime.Lifecycle} | world {SanitizeText(runtime.WorldName, 26)} | players {players.Players.Length}/{runtime.MaxPlayers} | " +
-            $"port {runtime.Port} | interest {(runtime.InterestManagementEnabled ? "ON" : "OFF")}";
+            $"{runtime.Lifecycle} | world {SanitizeText(runtime.WorldName, 24)} | players {players.Players.Length}/{runtime.MaxPlayers} | " +
+            $"listen {SanitizeText(runtime.BindAddress, 20)}:{runtime.Port} {runtime.ListenerState} g{runtime.ListenerGeneration} | " +
+            $"interest {(runtime.InterestManagementEnabled ? "ON" : "OFF")}";
 
         string? status = externalDashboardFailure ?? lastAdminAction;
         overviewDashboard.Refresh(runtime, network, world, players, logs, chat, status);

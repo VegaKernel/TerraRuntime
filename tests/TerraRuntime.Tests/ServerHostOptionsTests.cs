@@ -91,4 +91,48 @@ public sealed class ServerHostOptionsTests
         Assert.Null(options);
         Assert.NotNull(error);
     }
+
+    [Fact]
+    public void Bind_address_defaults_to_all_ipv4_interfaces()
+    {
+        bool parsed = ServerHostOptions.TryParse(
+            ["--world", "test.wld"],
+            out ServerHostOptions? options,
+            out string? error);
+
+        Assert.True(parsed, error);
+        Assert.NotNull(options);
+        Assert.Equal(ServerHostOptions.DefaultBindAddress, options.BindAddress);
+    }
+
+    [Theory]
+    [InlineData("--bind", "127.0.0.1", "127.0.0.1")]
+    [InlineData("--bind-address", "::1", "::1")]
+    [InlineData("--bind", "any", "0.0.0.0")]
+    [InlineData("--bind", "localhost", "127.0.0.1")]
+    public void Bind_address_can_be_configured(string option, string value, string expected)
+    {
+        bool parsed = ServerHostOptions.TryParse(
+            ["--world", "test.wld", option, value],
+            out ServerHostOptions? options,
+            out string? error);
+
+        Assert.True(parsed, error);
+        Assert.NotNull(options);
+        Assert.Equal(expected, options.BindAddress);
+    }
+
+    [Fact]
+    public void Bind_address_rejects_hostnames_that_would_require_dns_on_the_operator_path()
+    {
+        bool parsed = ServerHostOptions.TryParse(
+            ["--world", "test.wld", "--bind", "example.invalid"],
+            out ServerHostOptions? options,
+            out string? error);
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.Contains("numeric IPv4/IPv6", error, StringComparison.Ordinal);
+    }
+
 }

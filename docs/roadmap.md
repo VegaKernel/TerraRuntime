@@ -592,10 +592,11 @@ flowchart TD
 - [x] Operations read models are immutable/bounded projections.
 - [x] TUI must never traverse mutable world/player/NPC collections.
 - [x] TUI has its own event loop/thread.
-- [x] Administrative mutations are marshalled back through the same game-loop command boundary used by other control surfaces.
+- [x] Game-state administrative mutations are marshalled back through the same game-loop command boundary used by other control surfaces; host-network endpoint replacement stays outside authoritative game state behind `ListenerManager`.
 - [x] TUI failure is not a server-readiness failure; support interactive, plain-console and headless modes independently.
 - [x] Use Terminal.Gui v2 as the first UI implementation, but keep core contracts toolkit-independent.
 - [x] Dashboard: lifecycle, world, TPS/tick phase, players, queues, packet rates, memory/GC, save/cache state, warnings and recent structured logs.
+- [x] `ListenerManager` separates listening generations from accepted client lifetime; live bind-address/port replacement uses `Active -> Draining -> Closed` and is exposed through bounded dashboard settings without disconnecting accepted clients.
 - [x] Logs viewer uses bounded retention, filters and follow/pause without blocking telemetry refresh.
 
 ## Phase 11 - Observability and performance discipline

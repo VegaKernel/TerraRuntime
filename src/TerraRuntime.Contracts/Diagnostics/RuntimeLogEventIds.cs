@@ -34,6 +34,8 @@ public static class RuntimeLogEventIds
     public static readonly RuntimeLogEventId NetworkConnectionFailed = new(NetworkBase + 5);
     public static readonly RuntimeLogEventId NetworkShutdownFault = new(NetworkBase + 6);
     public static readonly RuntimeLogEventId NetworkDisconnectEnqueueFailed = new(NetworkBase + 7);
+    public static readonly RuntimeLogEventId NetworkListenerRebound = new(NetworkBase + 8);
+    public static readonly RuntimeLogEventId NetworkListenerDrained = new(NetworkBase + 9);
 
     // Live-host world/bootstrap events.
     public static readonly RuntimeLogEventId WorldFileMissing = new(WorldBase);

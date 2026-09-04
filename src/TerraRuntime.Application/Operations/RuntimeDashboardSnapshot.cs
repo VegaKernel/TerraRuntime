@@ -7,6 +7,29 @@ internal enum RuntimeLifecycleState
     Faulted = 2
 }
 
+internal enum ListenerLifecycleState
+{
+    Active = 0,
+    Draining = 1,
+    Closed = 2
+}
+
+internal readonly record struct ListenerChangeResult(bool Success, string Message)
+{
+    public static ListenerChangeResult Accepted(string message) => new(true, message);
+
+    public static ListenerChangeResult Rejected(string message) => new(false, message);
+}
+
+internal readonly record struct ListenerManagerSnapshot(
+    string BindAddress,
+    int Port,
+    ListenerLifecycleState State,
+    long Generation,
+    int DrainingListeners,
+    long SuccessfulRebinds,
+    DateTimeOffset CapturedAtUtc);
+
 internal readonly record struct RuntimeDashboardSnapshot(
     RuntimeLifecycleState Lifecycle,
     string WorldName,
@@ -43,4 +66,9 @@ internal readonly record struct RuntimeDashboardSnapshot(
     DateTimeOffset CapturedAtUtc,
     long WorkingSetBytes = 0,
     double ProcessCpuPercent = 0d,
-    double GcPauseTimePercentage = 0d);
+    double GcPauseTimePercentage = 0d,
+    string BindAddress = "0.0.0.0",
+    ListenerLifecycleState ListenerState = ListenerLifecycleState.Closed,
+    long ListenerGeneration = 0,
+    int DrainingListeners = 0,
+    long ListenerRebinds = 0);

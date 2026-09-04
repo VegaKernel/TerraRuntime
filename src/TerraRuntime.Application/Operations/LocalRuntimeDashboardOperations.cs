@@ -15,7 +15,9 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
     private readonly string worldName;
     private readonly int worldWidthTiles;
     private readonly int worldHeightTiles;
-    private readonly int port;
+    private readonly int initialPort;
+    private readonly Func<ListenerManagerSnapshot>? listenerSnapshotSource;
+    private readonly Func<string, int, ListenerChangeResult>? listenerChange;
     private readonly int maxPlayers;
     private readonly int targetTicksPerSecond;
     private readonly object sampleSync = new();
@@ -34,7 +36,9 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
         int worldHeightTiles,
         int port,
         int maxPlayers,
-        int targetTicksPerSecond)
+        int targetTicksPerSecond,
+        Func<ListenerManagerSnapshot>? listenerSnapshotSource = null,
+        Func<string, int, ListenerChangeResult>? listenerChange = null)
     {
         this.gameLoop = gameLoop ?? throw new ArgumentNullException(nameof(gameLoop));
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
@@ -50,9 +54,11 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
 
         this.worldWidthTiles = worldWidthTiles;
         this.worldHeightTiles = worldHeightTiles;
-        this.port = port;
+        initialPort = port;
         this.maxPlayers = maxPlayers;
         this.targetTicksPerSecond = targetTicksPerSecond;
+        this.listenerSnapshotSource = listenerSnapshotSource;
+        this.listenerChange = listenerChange;
     }
 
     public RuntimeDashboardSnapshot CaptureSnapshot()
@@ -69,13 +75,21 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
             processCpuTime = process.TotalProcessorTime;
 
         GCMemoryInfo gcMemory = GC.GetGCMemoryInfo();
+        ListenerManagerSnapshot listener = listenerSnapshotSource?.Invoke() ?? new ListenerManagerSnapshot(
+            BindAddress: ServerHostOptions.DefaultBindAddress,
+            Port: initialPort,
+            State: ListenerLifecycleState.Active,
+            Generation: 1,
+            DrainingListeners: 0,
+            SuccessfulRebinds: 0,
+            CapturedAtUtc: loop.CapturedAtUtc);
 
         return new RuntimeDashboardSnapshot(
             Lifecycle: lifecycle,
             WorldName: worldName,
             WorldWidthTiles: worldWidthTiles,
             WorldHeightTiles: worldHeightTiles,
-            Port: port,
+            Port: listener.Port,
             MaxPlayers: maxPlayers,
             InterestManagementEnabled: interestManagement.IsEnabled,
             Tick: loop.Tick,
@@ -106,13 +120,22 @@ internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperati
             ActiveConnections: admission.ActiveConnections,
             AcceptedConnections: admission.AcceptedConnections,
             RejectedConnections: admission.RejectedConnections,
-            CapturedAtUtc: loop.CapturedAtUtc);
+            CapturedAtUtc: loop.CapturedAtUtc,
+            BindAddress: listener.BindAddress,
+            ListenerState: listener.State,
+            ListenerGeneration: listener.Generation,
+            DrainingListeners: listener.DrainingListeners,
+            ListenerRebinds: listener.SuccessfulRebinds);
     }
 
     public bool TrySetInterestManagementEnabled(bool enabled) =>
         gameLoop.TryPost(
             GameCommandSourceId.System,
             new SetInterestManagementRuntimeCommand(interestManagement, enabled));
+
+    public ListenerChangeResult TryChangeListenerEndpoint(string bindAddress, int port) =>
+        listenerChange?.Invoke(bindAddress, port)
+        ?? ListenerChangeResult.Rejected("Dynamic listener settings are not available for this host.");
 
     private double ObserveProcessCpuPercent(TimeSpan totalCpuTime)
     {

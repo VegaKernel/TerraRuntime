@@ -110,7 +110,8 @@ Core server пока **не** определяет стабильную унив
 | Опция | Значение | Default / диапазон |
 | --- | --- | --- |
 | `--world <path.wld>` | мир для загрузки | обязателен, если startup не выбирает/создаёт мир |
-| `--port <n>` | TCP listen port | `7777`; допустимо `1..65535` |
+| `--bind <ip>`, `--bind-address <ip>` | начальный TCP bind address | `0.0.0.0`; numeric IPv4/IPv6, `*`, `any` или `localhost` |
+| `--port <n>` | начальный TCP listen port | `7777`; допустимо `1..65535` |
 | `--max-players <n>` | максимум player slots | `8`; допустимо `1..255` |
 | `--interest-management` | включить runtime interest-management control | выключено |
 | `--tui` | включить Terminal UI | включено |
@@ -119,6 +120,22 @@ Core server пока **не** определяет стабильную унив
 | `--list-world-generators` | вывести built-in и trusted-host generators | завершает процесс без запуска мира |
 
 Runtime нормализует `--world` до абсолютного пути. Некорректные host options, не прошедшие required-value/range validation, возвращают exit code `23`.
+
+### Смена listener endpoint на живом сервере
+
+Пара `--bind`/`--port` задаёт только начальный public endpoint. Во время работы сервера **Settings → Runtime settings** и видимая кнопка **Settings** на System Dashboard позволяют заменить bind-address и/или порт без отключения уже принятых клиентов. DNS lookup намеренно не входит в этот control surface: используется numeric IPv4/IPv6, `*`/`any` либо `localhost`.
+
+`ListenerManager` владеет listening sockets по поколениям, а `ServerConnectionAcceptor` независимо владеет уже accepted client sockets. У каждого поколения listener есть явный lifecycle:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Active
+    Active --> Draining: replacement или shutdown сервера
+    Draining --> Closed: accept loop остановлен, listener socket закрыт
+    Closed --> [*]
+```
+
+При обычной смене endpoint новый listener сначала успешно bind/listen, и только после этого предыдущее поколение переводится в Draining. Если новый bind не удался, текущий Active listener остаётся рабочим. При некоторых сменах адреса на том же порту старый `ANY` socket может конфликтовать с новым endpoint на уровне ОС; тогда TerraRuntime закрывает только старый listening socket, повторяет bind и при неудаче пытается восстановить прежний endpoint. Уже принятые соединения принадлежат отдельному connection lifecycle и сохраняются при любом rebind. В fallback-сценарии возможен короткий разрыв только в **приёме новых соединений**, но существующие client sockets не переносятся и не закрываются.
 
 ### Startup без аргументов
 

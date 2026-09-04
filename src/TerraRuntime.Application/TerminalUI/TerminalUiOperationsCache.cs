@@ -135,6 +135,9 @@ internal sealed class TerminalUiOperationsCache :
     bool IRuntimeDashboardOperations.TrySetInterestManagementEnabled(bool enabled) =>
         dashboardSource.TrySetInterestManagementEnabled(enabled);
 
+    ListenerChangeResult IRuntimeDashboardOperations.TryChangeListenerEndpoint(string bindAddress, int port) =>
+        dashboardSource.TryChangeListenerEndpoint(bindAddress, port);
+
     RuntimePlayersSnapshot IPlayerOperations.CaptureSnapshot() =>
         Volatile.Read(ref state).Players;
 
